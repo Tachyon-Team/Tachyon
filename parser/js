@@ -1,0 +1,4 @@
+#! /bin/sh
+
+d8 misc.js scanner.js parser.js js.js -- "$@"
+
