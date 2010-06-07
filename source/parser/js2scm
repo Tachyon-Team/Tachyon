@@ -1,0 +1,48 @@
+#! /bin/sh
+
+OPT_AST=""
+OPT_INT=""
+OPT_EXE=""
+OPT_EXPANSION=""
+OPT_SCM=""
+LAST_FILE=""
+FILES=""
+
+JS2SCM="d8 misc.js scanner.js parser.js pp.js scheme.js js2scm.js --"
+
+while [ "$1" != "" ]; do
+  case "$1" in
+        "-ast") OPT_AST="-ast" ;;
+        "-int") OPT_INT="-int" ;;
+        "-exe") OPT_EXE="-exe" ;;
+  "-expansion") OPT_EXPANSION="-expansion" ;;
+        "-scm") OPT_SCM="-scm" ;;
+          "--") shift
+                break ;;
+          *.js) LAST_FILE="$1"
+                FILES="$FILES $LAST_FILE"
+                ;;
+             *) echo "Usage: $0 [-ast|-int|-exe|-scm] file1.js file2.js ..."
+                exit 1
+                ;;
+  esac
+  shift
+done
+
+if [ "$OPT_AST" != "" ]; then
+  $JS2SCM -ast -noscm $FILES
+else
+  $JS2SCM $FILES < /dev/null > $LAST_FILE.scm
+  if [ "$OPT_INT" != "" ]; then
+    gsi $LAST_FILE.scm "$@"
+  else
+    if [ "$OPT_EXE" != "" ]; then
+      gsc $OPT_EXPANSION -exe -o $LAST_FILE.exe $LAST_FILE.scm
+    else
+      if [ "$OPT_SCM" == "" ]; then
+        cat $LAST_FILE.scm
+        rm -f $LAST_FILE.scm
+      fi
+    fi
+  fi
+fi
