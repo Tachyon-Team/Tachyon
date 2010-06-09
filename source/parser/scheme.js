@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-06-06 20:02:27 feeley>
+// File: "scheme.js", Time-stamp: <2010-06-08 22:47:39 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -553,8 +553,6 @@ function scm_generic_write(obj, width, output)
                 return pp_if;
             else if (head.name == "cond")
                 return pp_cond;
-            else if (head.name == "case")
-                return pp_case;
             else if (head.name == "and" ||
                      head.name == "or")
                 return pp_and;
@@ -590,10 +588,10 @@ function gen_include(filename)
     return cons(include, cons(filename, empty_list));
 }
 
-function gen_var(variable, value)
+function gen_var(variable)
 {
     return cons(new Symbol("js.var"),
-                cons(variable, cons(value, empty_list)));
+                cons(variable, empty_list));
 }
 
 function gen_assign(variable, value)
@@ -602,11 +600,19 @@ function gen_assign(variable, value)
                 cons(variable, cons(value, empty_list)));
 }
 
-function gen_function(params, body)
+function gen_function(features, params, body)
 {
-    return cons(new Symbol("js.function"),
+    return cons(features.use_nontail_return
+                ? new Symbol("js.function-with-nontail-return")
+                : new Symbol("js.function"),
                 cons(vector2list(params),
                      cons(body, empty_list)));
+}
+
+function gen_return(value)
+{
+    return cons(new Symbol("js.return"),
+                cons(value, empty_list));
 }
 
 function gen_if(test, consequent, alternative)
@@ -633,12 +639,54 @@ function gen_begin(exprs)
         return cons(begin, vector2list(exprs));
 }
 
+function gen_continue()
+{
+    return cons(new Symbol("js.continue"), empty_list);
+}
+
+function gen_break()
+{
+    return cons(new Symbol("js.break"), empty_list);
+}
+
+function gen_dowhile(features, loop_id, body, test)
+{
+    return cons(features.use_break
+                ? new Symbol("js.dowhile-with-break")
+                : new Symbol("js.dowhile"),
+                cons(loop_id, cons(body, cons(test, empty_list))));
+}
+
+function gen_while(features, loop_id, test, body)
+{
+    return cons(features.use_break
+                ? new Symbol("js.while-with-break")
+                : new Symbol("js.while"),
+                cons(loop_id, cons(test, cons(body, empty_list))));
+}
+
+function gen_for(features, loop_id, test, step, body)
+{
+    return cons(features.use_break
+                ? new Symbol("js.for-with-break")
+                : new Symbol("js.for"),
+                cons(loop_id, cons(test, cons(step, cons(body, empty_list)))));
+}
+
+function gen_forin(features, loop_id, id, set, body)
+{
+    return cons(features.use_break
+                ? new Symbol("js.forin-with-break")
+                : new Symbol("js.forin"),
+                cons(loop_id, cons(id, cons(set, cons(body, empty_list)))));
+}
+
 function gen_op(op, args)
 {
     return cons(js_op_to_scm_table[op], vector2list(args));
 }
 
-var js_op_to_scm_table = [];
+var js_op_to_scm_table = {};
 js_op_to_scm_table["delete x"]       = new Symbol("js.delete");
 js_op_to_scm_table["void x"]         = new Symbol("js.void");
 js_op_to_scm_table["typeof x"]       = new Symbol("js.typeof");
@@ -672,10 +720,10 @@ js_op_to_scm_table["x === y"]        = new Symbol("js.===");
 js_op_to_scm_table["x !== y"]        = new Symbol("js.!==");
 js_op_to_scm_table["x & y"]          = new Symbol("js.&");
 js_op_to_scm_table["x ^ y"]          = new Symbol("js.^");
-js_op_to_scm_table["x | y"]          = new Symbol("js.|");
+js_op_to_scm_table["x | y"]          = new Symbol("|js.\\||");
 js_op_to_scm_table["x && y"]         = new Symbol("js.&&");
-js_op_to_scm_table["x || y"]         = new Symbol("js.||");
-js_op_to_scm_table["x , y"]          = new Symbol("js.,");
+js_op_to_scm_table["x || y"]         = new Symbol("|js.\\|\\||");
+js_op_to_scm_table["x , y"]          = new Symbol("|js.,|");
 js_op_to_scm_table["x = y"]          = new Symbol("js.=");
 js_op_to_scm_table["x += y"]         = new Symbol("js.+=");
 js_op_to_scm_table["x -= y"]         = new Symbol("js.-=");
@@ -689,6 +737,7 @@ js_op_to_scm_table["x ^= y"]         = new Symbol("js.^=");
 js_op_to_scm_table["x |= y"]         = new Symbol("js.|=");
 js_op_to_scm_table["x %= y"]         = new Symbol("js.%=");
 js_op_to_scm_table["x [ y ]"]        = new Symbol("js.index");
+js_op_to_scm_table["x ? y : z"]      = new Symbol("js.x?y:z");
 
 function gen_ref(sym)
 {
@@ -718,7 +767,6 @@ function gen_prop(name, value)
                 cons(name, cons(value, empty_list)));
 }
 
-
 function gen_void()
 {
     return gen_lit(false);
@@ -743,28 +791,69 @@ function self_evaluating(data)
 
 // AST to Scheme translator.
 
-function Context(tail, global)
+function Context(tail, global, features)
 {
     this.tail = tail;
     this.global = global;
+    this.features = features;
+}
+
+function Features(use_nontail_return, use_break, use_continue)
+{
+    this.use_nontail_return = use_nontail_return;
+    this.use_break = use_break;
+    this.use_continue = use_continue;
+}
+
+function begin_function(ctx)
+{
+    var state = new Features(ctx.features.use_nontail_return,
+                             ctx.features.use_break,
+                             ctx.features.use_continue);
+    ctx.features.use_nontail_return = false;
+    ctx.features.use_break          = false;
+    ctx.features.use_continue       = false;
+    return state;
+}
+
+function end_function(state, ctx, result)
+{
+    ctx.features.use_nontail_return = state.use_nontail_return;
+    ctx.features.use_break          = state.use_break;
+    ctx.features.use_continue       = state.use_continue;
+    return result;
+}
+
+function begin_loop(ctx)
+{
+    var state = new Features(ctx.features.use_nontail_return,
+                             ctx.features.use_break,
+                             ctx.features.use_continue);
+    ctx.features.use_break    = false;
+    ctx.features.use_continue = false;
+    return state;
+}
+
+function end_loop(state, ctx, result)
+{
+    ctx.features.use_break    = state.use_break;
+    ctx.features.use_continue = state.use_continue;
+    return result;
 }
 
 function nontail_ctx(ctx)
 {
-    var c = new Context(false, ctx.global);
-    return c;
+    return new Context(false, ctx.global, ctx.features);
 }
 
 function global_ctx()
 {
-    var c = new Context(true, true);
-    return c;
+    return new Context(true, true, new Features(false, false, false));
 }
 
 function function_body_ctx()
 {
-    var c = new Context(true, false);
-    return c;
+    return new Context(true, false, new Features(false, false, false));
 }
 
 function ast_array_to_scm(asts, ctx)
@@ -790,35 +879,17 @@ function ast_to_scm(ast, ctx)
         error("null ast");
     else if (ast instanceof Program)
     {
-        return gen_begin([gen_include("js2scm-rt#.scm"),gen_include("js2scm-rt.scm")].concat(gen_begin(ast_array_to_scm(ast.statements, ctx))));
+        var accum = [];
+        for (var v in ast.vars)
+            accum.push(gen_var(js_id_to_scm(v)));
+        return gen_begin([gen_include("js2scm-rt#.scm"),gen_include("js2scm-rt.scm")].concat([gen_begin(accum.concat([ast_to_scm(ast.block, ctx)]))]));
     }
     else if (ast instanceof BlockStatement)
     {
         return statements_to_scm(ast.statements, ctx);
     }
-    else if (ast instanceof VariableStatement)
-    {
-        var accum = [];
-        for (var i=0; i<ast.decls.length; i++)
-        {
-            var d = ast.decls[i];
-            if (ctx.global)
-            {
-                if (d.initializer != null)
-                    accum.push(gen_var(js_id_to_scm(d.id),
-                                       ast_to_scm(d.initializer,
-                                                  nontail_ctx(ctx))));
-                else
-                    accum.push(gen_var(js_id_to_scm(d.id),
-                                       gen_void()));
-            }
-            else if (d.initializer != null)
-                accum.push(gen_assign(js_id_to_scm(d.id),
-                                      ast_to_scm(d.initializer,
-                                                 nontail_ctx(ctx))));
-        }
-        return gen_begin(accum);
-    }
+    // else if (ast instanceof VariableStatement)
+    // { impossible due to pass1 transformations }
     else if (ast instanceof ConstStatement)
     {
         // TODO
@@ -826,13 +897,8 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof FunctionDeclaration)
     {
-        var accum = [];
-        for (var i=0; i<ast.params.length; i++)
-            accum.push(js_id_to_scm(ast.params[i]));
-        return gen_var(js_id_to_scm(ast.id),
-                       gen_function(accum,
-                                    statements_to_scm(ast.body,
-                                                      function_body_ctx())));
+        return gen_assign(js_id_to_scm(ast.id.value),
+                          ast_to_scm(ast.funct, ctx));
     }
     else if (ast instanceof ExprStatement)
     {
@@ -851,140 +917,188 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof DoWhileStatement)
     {
-        // TODO
-        error("DoWhileStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "DoWhileStatement");
-        pp_asts(indent, "statement", [ast.statement]);
-        pp_asts(indent, "expr", [ast.expr]);
+        var feature_state = begin_loop(ctx);
+
+        var loop_id = gensym("loop");
+
+        return end_loop(feature_state,
+                        ctx,
+                        gen_dowhile(ctx.features,
+                                    loop_id,
+                                    ast_to_scm(ast.statement, nontail_ctx(ctx)),
+                                    ast_to_scm(ast.expr, nontail_ctx(ctx))));
     }
     else if (ast instanceof WhileStatement)
     {
-        // TODO
-        error("WhileStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "WhileStatement");
-        pp_asts(indent, "expr", [ast.expr]);
-        pp_asts(indent, "statement", [ast.statement]);
+        var feature_state = begin_loop(ctx);
+
+        var loop_id = gensym("loop");
+
+        return end_loop(feature_state,
+                        ctx,
+                        gen_while(ctx.features,
+                                  loop_id,
+                                  ast_to_scm(ast.expr, nontail_ctx(ctx)),
+                                  ast_to_scm(ast.statement, nontail_ctx(ctx))));
     }
     else if (ast instanceof ForStatement)
     {
-        // TODO
-        error("ForStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "ForStatement");
-        pp_asts(indent, "expr1", [ast.expr1]);
-        pp_asts(indent, "expr2", [ast.expr2]);
-        pp_asts(indent, "expr3", [ast.expr3]);
-        pp_asts(indent, "statement", [ast.statement]);
+        var feature_state = begin_loop(ctx);
+
+        var loop_id = gensym("loop");
+
+        var expr1_scm = (ast.expr1 == null)
+                        ? gen_void()
+                        : ast_to_scm(ast.expr1, nontail_ctx(ctx));
+
+        var expr2_scm = (ast.expr2 == null)
+                        ? gen_lit(js_value_to_scm(true))
+                        : ast_to_scm(ast.expr2, nontail_ctx(ctx));
+
+        var stat_scm = ast_to_scm(ast.statement, nontail_ctx(ctx));
+
+        var expr3_scm = (ast.expr3 == null)
+                        ? gen_void()
+                        : ast_to_scm(ast.expr3, nontail_ctx(ctx));
+
+        return end_loop(feature_state,
+                        ctx,
+                        gen_begin([expr1_scm,
+                                   gen_for(ctx.features,
+                                           loop_id,
+                                           expr2_scm,
+                                           stat_scm,
+                                           expr3_scm)]));
     }
-    else if (ast instanceof ForVarStatement)
-    {
-        // TODO
-        error("ForVarStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "ForVarStatement");
-        pp_asts(indent, "decls", ast.decls);
-        pp_asts(indent, "expr2", [ast.expr2]);
-        pp_asts(indent, "expr3", [ast.expr3]);
-        pp_asts(indent, "statement", [ast.statement]);
-    }
+    // else if (ast instanceof ForVarStatement)
+    // { impossible due to pass1 transformations }
     else if (ast instanceof ForInStatement)
     {
-        // TODO
-        error("ForInStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "ForInStatement");
-        pp_asts(indent, "lhs_expr", [ast.lhs_expr]);
-        pp_asts(indent, "set_expr", [ast.set_expr]);
-        pp_asts(indent, "statement", [ast.statement]);
+        var feature_state = begin_loop(ctx);
+
+        var loop_id = gensym("loop");
+
+        return end_loop(feature_state,
+                        ctx,
+                        gen_forin(ctx.features,
+                                  loop_id,
+                                  ast_to_scm(ast.lhs_expr, nontail_ctx(ctx)),
+                                  ast_to_scm(ast.set_expr, nontail_ctx(ctx)),
+                                  ast_to_scm(ast.statement, nontail_ctx(ctx))));
     }
-    else if (ast instanceof ForVarInStatement)
-    {
-        // TODO
-        error("ForVarInStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "ForVarInStatement");
-        print(pp_prefix(indent) + "|-id= " + ast.id);
-        pp_asts(indent, "initializer", [ast.initializer]);
-        pp_asts(indent, "set_expr", [ast.set_expr]);
-        pp_asts(indent, "statement", [ast.statement]);
-    }
+    // else if (ast instanceof ForVarInStatement)
+    // { impossible due to pass1 transformations }
     else if (ast instanceof ContinueStatement)
     {
-        // TODO
-        error("ContinueStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "ContinueStatement");
-        print(pp_prefix(indent) + "|-label= " + ast.label);
+        if (ast.label == null)
+        {
+            ctx.features.use_continue = true;
+            return gen_continue();
+        }
+        else
+            error("continue with label not implemented");
     }
     else if (ast instanceof BreakStatement)
     {
-        // TODO
-        error("BreakStatement not implemented");
-        pp_loc(ast.loc, pp_prefix(indent) + "BreakStatement");
-        print(pp_prefix(indent) + "|-label= " + ast.label);
+        if (ast.label == null)
+        {
+            ctx.features.use_break = true;
+            return gen_break();
+        }
+        else
+            error("break with label not implemented");
     }
     else if (ast instanceof ReturnStatement)
     {
         if (ctx.global)
             error("return not allowed at top level");
-        else if (!ctx.tail)
-            error("return not in tail position");
         else
-            return ast_to_scm(ast.expr, ctx);
+        {
+            var value_scm = (ast.expr == null)
+                            ? gen_void()
+                            : ast_to_scm(ast.expr, ctx);
+
+            if (!ctx.tail)
+            {
+                ctx.features.use_nontail_return = true;
+                return gen_return(value_scm);
+            }
+            else
+                return value_scm;
+        }
     }
     else if (ast instanceof WithStatement)
     {
         // TODO
         error("WithStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "WithStatement");
         pp_asts(indent, "expr", [ast.expr]);
         pp_asts(indent, "statement", [ast.statement]);
+        */
     }
     else if (ast instanceof SwitchStatement)
     {
         // TODO
         error("SwitchStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "SwitchStatement");
         pp_asts(indent, "expr", [ast.expr]);
         pp_asts(indent, "clauses", ast.clauses);
+        */
     }
     else if (ast instanceof CaseClause)
     {
         // TODO
         error("CaseClause not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "CaseClause");
         pp_asts(indent, "expr", [ast.expr]);
         pp_asts(indent, "statements", ast.statements);
+        */
     }
     else if (ast instanceof LabelledStatement)
     {
         // TODO
         error("LabelledStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "LabelledStatement");
-        print(pp_prefix(indent) + "|-id= " + ast.id);
+        print(pp_prefix(indent) + "|-id= " + ast.id.value);
         pp_asts(indent, "statement", [ast.statement]);
+        */
     }
     else if (ast instanceof ThrowStatement)
     {
         // TODO
         error("ThrowStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "ThrowStatement");
         pp_asts(indent, "expr", [ast.expr]);
+        */
     }
     else if (ast instanceof TryStatement)
     {
         // TODO
         error("TryStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "TryStatement");
         pp_asts(indent, "statement", [ast.statement]);
-        print(pp_prefix(indent) + "|-id= " + ast.id);
+        print(pp_prefix(indent) + "|-id= " + ast.id.value);
         pp_asts(indent, "catch_part", [ast.catch_part]);
         pp_asts(indent, "finally_part", [ast.finally_part]);
+        */
     }
     else if (ast instanceof DebuggerStatement)
     {
         // TODO
         error("DebuggerStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "DebuggerStatement");
+        */
     }
     else if (ast instanceof OpExpr)
     {
-        return gen_op(ast.op, ast_array_to_scm(ast.exprs, false));
+        return gen_op(ast.op, ast_array_to_scm(ast.exprs, nontail_ctx(ctx)));
     }
     else if (ast instanceof NewExpr)
     {
@@ -1002,12 +1116,26 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof FunctionExpr)
     {
+        var new_ctx = function_body_ctx();
+
         var accum = [];
-        for (var i=0; i<ast.params.length; i++)
-            accum.push(js_id_to_scm(ast.params[i]));
-        return gen_function(accum,
-                            statements_to_scm(ast.body,
-                                              function_body_ctx()));
+        for (var v in ast.vars)
+        {
+            if (ast.vars[v].is_local)
+                accum.push(gen_var(js_id_to_scm(v)));
+        }
+
+        var params = ast.params.map(
+                       function (param, i, self)
+                       {
+                           return js_id_to_scm(param.value);
+                       });
+
+        accum.push(statements_to_scm(ast.body, new_ctx));
+
+        return gen_function(new_ctx.features,
+                            params,
+                            gen_begin(accum));
     }
     else if (ast instanceof Literal)
     {
@@ -1015,25 +1143,29 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof ArrayLiteral)
     {
-        var accum = [];
-        for (var i=0; i<ast.exprs.length; i++)
-            accum.push(ast_to_scm(ast.exprs[i], nontail_ctx(ctx)));
-        return gen_array_lit(accum);
+        return gen_array_lit(
+                   ast.exprs.map(
+                       function (expr, i, self)
+                       {
+                           return ast_to_scm(expr,
+                                             nontail_ctx(ctx));
+                       }));
     }
     else if (ast instanceof ObjectLiteral)
     {
-        var accum = [];
-        for (var i=0; i<ast.properties.length; i++)
-        {
-            var p = ast.properties[i];
-            accum.push(gen_prop(ast_to_scm(p.name, nontail_ctx(ctx)),
-                                ast_to_scm(p.value, nontail_ctx(ctx))));
-        }
-        return gen_obj_lit(accum);
+        return gen_obj_lit(
+                   ast.properties.map(
+                       function (prop, i, self)
+                       {
+                           return gen_prop(ast_to_scm(prop.name,
+                                                      nontail_ctx(ctx)),
+                                           ast_to_scm(prop.value,
+                                                      nontail_ctx(ctx)));
+                       }));
     }
     else if (ast instanceof Ref)
     {
-        return gen_ref(js_id_to_scm(ast.id));
+        return gen_ref(js_id_to_scm(ast.id.value));
     }
     else if (ast instanceof This)
     {
@@ -1058,8 +1190,11 @@ function js_value_to_scm(value)
 
 function compile_to_scm(ast)
 {
+    var simplified_ast = ast_passes(ast);
+
     print("#! /usr/bin/env gsi");
-    scm_pp(ast_to_scm(ast, global_ctx()));
+    //pp(simplified_ast);
+    scm_pp(ast_to_scm(simplified_ast, global_ctx()));
 }
 
 //=============================================================================

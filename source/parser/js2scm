@@ -8,7 +8,11 @@ OPT_SCM=""
 LAST_FILE=""
 FILES=""
 
-JS2SCM="d8 misc.js scanner.js parser.js pp.js scheme.js js2scm.js --"
+JS2SCM="d8 misc.js scanner.js parser.js pp.js ast-passes.js scheme.js js2scm.js --"
+
+# After a "make boostrap" this can be used instead:
+#
+#JS2SCM="js2scm.js.exe"
 
 while [ "$1" != "" ]; do
   case "$1" in
@@ -34,7 +38,7 @@ if [ "$OPT_AST" != "" ]; then
 else
   $JS2SCM $FILES < /dev/null > $LAST_FILE.scm
   if [ "$OPT_INT" != "" ]; then
-    gsi $LAST_FILE.scm "$@"
+    gsi -:dar $LAST_FILE.scm "$@"
   else
     if [ "$OPT_EXE" != "" ]; then
       gsc $OPT_EXPANSION -exe -o $LAST_FILE.exe $LAST_FILE.scm

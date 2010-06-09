@@ -1,4 +1,9 @@
 #! /bin/sh
 
-d8 misc.js scanner.js parser.js js.js -- "$@"
+JS="d8 misc.js scanner.js parser.js pp.js ast-passes.js js.js --"
 
+# After a "make boostrap" this can be used instead:
+#
+#JS="js.js.exe"
+
+$JS "$@"

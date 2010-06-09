@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-05-24 17:01:48 feeley>
+// File: "parser.js", Time-stamp: <2010-06-08 20:49:22 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -65,7 +65,7 @@ function Parser(scanner)
         {
             this.input = this.get_token();
             this.input_valid = true;
-            //print(this.input.loc.to_string() + ":");////////////////////
+            // print(this.input.loc.to_string() + ":");
         }
     };
 
@@ -128,6 +128,7 @@ function Parser(scanner)
         this.sp = sp;
     };
 
+/*
     this.recover = function (tok)
     {
         var sp = this.sp;
@@ -177,6 +178,7 @@ function Parser(scanner)
             }
         }
     };
+*/
 
     // method parse()
 
@@ -255,107 +257,11 @@ function list_loc(list)
 
 // Constructors.
 
-function Program(loc, statements)
+function Program(loc, vars, block)
 {
     this.loc = loc;
-    this.statements = statements;
-}
-
-function OpExpr(loc, op, exprs)
-{
-    this.loc = loc;
-    this.op = op;
-    this.exprs = exprs;
-}
-
-function prefix_unary_op(op, expr)
-{
-    return new OpExpr(op.loc.join(expr.loc),
-                      prefix_unary_op_table[op.cat],
-                      [expr]);
-}
-
-var prefix_unary_op_table = [];
-prefix_unary_op_table[DELETE_CAT]         = "delete x";
-prefix_unary_op_table[VOID_CAT]           = "void x";
-prefix_unary_op_table[TYPEOF_CAT]         = "typeof x";
-prefix_unary_op_table[PLUSPLUS_CAT]       = "++ x";
-prefix_unary_op_table[AUTOPLUSPLUS_CAT]   = "auto ++ x";
-prefix_unary_op_table[MINUSMINUS_CAT]     = "-- x";
-prefix_unary_op_table[AUTOMINUSMINUS_CAT] = "auto -- x";
-prefix_unary_op_table[PLUS_CAT]           = "+ x";
-prefix_unary_op_table[MINUS_CAT]          = "- x";
-prefix_unary_op_table[BITNOT_CAT]         = "~ x";
-prefix_unary_op_table[EXCL_CAT]           = "! x";
-
-function postfix_unary_op(expr, op)
-{
-    return new OpExpr(expr.loc.join(op.loc),
-                      postfix_unary_op_table[op.cat],
-                      [expr]);
-}
-
-var postfix_unary_op_table = [];
-postfix_unary_op_table[PLUSPLUS_CAT]   = "x ++";
-postfix_unary_op_table[MINUSMINUS_CAT] = "x --";
-
-function binary_op(expr1, op, expr2)
-{
-    return new OpExpr(expr1.loc.join(expr2.loc),
-                      binary_op_table[op.cat],
-                      [expr1, expr2]);
-}
-
-var binary_op_table = [];
-binary_op_table[MULT_CAT]         = "x * y";
-binary_op_table[DIV_CAT]          = "x / y";
-binary_op_table[MOD_CAT]          = "x % y";
-binary_op_table[PLUS_CAT]         = "x + y";
-binary_op_table[MINUS_CAT]        = "x - y";
-binary_op_table[LSHIFT_CAT]       = "x << y";
-binary_op_table[RSHIFT_CAT]       = "x >> y";
-binary_op_table[URSHIFT_CAT]      = "x >>> y";
-binary_op_table[LT_CAT]           = "x < y";
-binary_op_table[GT_CAT]           = "x > y";
-binary_op_table[LE_CAT]           = "x <= y";
-binary_op_table[GE_CAT]           = "x >= y";
-binary_op_table[INSTANCEOF_CAT]   = "x instanceof y";
-binary_op_table[IN_CAT]           = "x in y";
-binary_op_table[EQEQ_CAT]         = "x == y";
-binary_op_table[NE_CAT]           = "x != y";
-binary_op_table[STREQ_CAT]        = "x === y";
-binary_op_table[STRNEQ_CAT]       = "x !== y";
-binary_op_table[BITAND_CAT]       = "x & y";
-binary_op_table[BITXOR_CAT]       = "x ^ y";
-binary_op_table[VBAR_CAT]         = "x | y";
-binary_op_table[AND_CAT]          = "x && y";
-binary_op_table[OR_CAT]           = "x || y";
-binary_op_table[COMMA_CAT]        = "x , y";
-binary_op_table[EQUAL_CAT]        = "x = y";
-binary_op_table[PLUSEQUAL_CAT]    = "x += y";
-binary_op_table[MINUSEQUAL_CAT]   = "x -= y";
-binary_op_table[MULTEQUAL_CAT]    = "x *= y";
-binary_op_table[DIVEQUAL_CAT]     = "x /= y";
-binary_op_table[LSHIFTEQUAL_CAT]  = "x <<= y";
-binary_op_table[RSHIFTEQUAL_CAT]  = "x >>= y";
-binary_op_table[URSHIFTEQUAL_CAT] = "x >>>= y";
-binary_op_table[ANDEQUAL_CAT]     = "x &= y";
-binary_op_table[XOREQUAL_CAT]     = "x ^= y";
-binary_op_table[OREQUAL_CAT]      = "x |= y";
-binary_op_table[MODEQUAL_CAT]     = "x %= y";
-
-function Field(loc, expr, id)
-{
-    this.loc = loc;
-    this.expr = expr;
-    this.id = id;
-}
-
-function NewExpr(loc, expr, args)
-{
-    this.loc = loc;
-    this.expr = expr;
-    this.args = args;
+    this.vars = vars;
+    this.block = block;
 }
 
 function BlockStatement(loc, statements)
@@ -367,117 +273,33 @@ function BlockStatement(loc, statements)
 function VariableStatement(loc, decls)
 {
     this.loc = loc;
-    this.decls = decls;
+    this.decls = decls; // array of Decl
 }
 
-function VarDecl(loc, id, initializer)
+function Decl(loc, id, initializer)
 {
     this.loc = loc;
     this.id = id;
-    this.initializer = initializer;
+    this.initializer = initializer; // possibly null (when in VariableStatement)
 }
 
-function FunctionDeclaration(loc, id, params, body)
+function ConstStatement(loc, decls)
+{
+    this.loc = loc;
+    this.decls = decls; // array of Decl
+}
+
+function FunctionDeclaration(loc, id, funct)
 {
     this.loc = loc;
     this.id = id;
-    this.params = params;
-    this.body = body;
-}
-
-function FunctionExpr(loc, id, params, body)
-{
-    this.loc = loc;
-    this.id = id;
-    this.params = params;
-    this.body = body;
-}
-
-function CallExpr(loc, fn, args)
-{
-    this.loc = loc;
-    this.fn = fn;
-    this.args = args;
-}
-
-function Arguments(loc, args)
-{
-    // This is a temporary object that is not an AST node
-    this.loc = loc;
-    this.args = args;
-}
-
-function BreakStatement(loc, label)
-{
-    this.loc = loc;
-    this.label = label;
-}
-
-function ContinueStatement(loc, label)
-{
-    this.loc = loc;
-    this.label = label;
-}
-
-function ReturnStatement(loc, expr)
-{
-    this.loc = loc;
-    this.expr = expr;
-}
-
-function Literal(loc, value)
-{
-    this.loc = loc;
-    this.value = value;
-}
-
-function ObjectLiteral(loc, properties)
-{
-    this.loc = loc;
-    this.properties = properties;
-}
-
-function ArrayLiteral(loc, elements)
-{
-    this.loc = loc;
-    this.elements = elements;
-}
-
-function Property(loc, name, value)
-{
-    this.loc = loc;
-    this.name = name;
-    this.value = value;
-}
-
-function Var(loc, id)
-{
-    this.loc = loc;
-    this.id = id;
-}
-
-function This(loc)
-{
-    this.loc = loc;
+    this.funct = funct;
 }
 
 function ExprStatement(loc, expr)
 {
     this.loc = loc;
     this.expr = expr;
-}
-
-function CaseClause(loc, expr, statements)
-{
-    this.loc = loc;
-    this.expr = expr;
-    this.statements = statements;
-}
-
-function DefaultClause(loc, statements)
-{
-    this.loc = loc;
-    this.statements = statements;
 }
 
 function IfStatement(loc, expr, statements)
@@ -490,8 +312,8 @@ function IfStatement(loc, expr, statements)
 function DoWhileStatement(loc, statement, expr)
 {
     this.loc = loc;
-    this.statement = statement;
     this.expr = expr;
+    this.statement = statement;
 }
 
 function WhileStatement(loc, expr, statement)
@@ -499,6 +321,265 @@ function WhileStatement(loc, expr, statement)
     this.loc = loc;
     this.expr = expr;
     this.statement = statement;
+}
+
+function ForStatement(loc, expr1, expr2, expr3, statement)
+{
+    this.loc = loc;
+    this.expr1 = expr1; // possibly null
+    this.expr2 = expr2; // possibly null
+    this.expr3 = expr3; // possibly null
+    this.statement = statement;
+}
+
+function ForVarStatement(loc, decls, expr2, expr3, statement)
+{
+    this.loc = loc;
+    this.decls = decls; // array of Decl
+    this.expr2 = expr2; // possibly null
+    this.expr3 = expr3; // possibly null
+    this.statement = statement;
+}
+
+function ForInStatement(loc, lhs_expr, set_expr, statement)
+{
+    this.loc = loc;
+    this.lhs_expr = lhs_expr;
+    this.set_expr = set_expr;
+    this.statement = statement;
+}
+
+function ForVarInStatement(loc, id, initializer, set_expr, statement)
+{
+    this.loc = loc;
+    this.id = id;
+    this.initializer = initializer; // possibly null
+    this.set_expr = set_expr;
+    this.statement = statement;
+}
+
+function ContinueStatement(loc, label)
+{
+    this.loc = loc;
+    this.label = label; // possibly null
+}
+
+function BreakStatement(loc, label)
+{
+    this.loc = loc;
+    this.label = label; // possibly null
+}
+
+function ReturnStatement(loc, expr)
+{
+    this.loc = loc;
+    this.expr = expr; // possibly null
+}
+
+function WithStatement(loc, expr, statement)
+{
+    this.loc = loc;
+    this.expr = expr;
+    this.statement = statement;
+}
+
+function SwitchStatement(loc, expr, clauses)
+{
+    this.loc = loc;
+    this.expr = expr;
+    this.clauses = clauses; // array of CaseClause
+}
+
+function CaseClause(loc, expr, statements)
+{
+    this.loc = loc;
+    this.expr = expr; // null for the default case
+    this.statements = statements;
+}
+
+function CaseBlock(loc, clauses)
+{
+    // This is a temporary object that is not an AST node.  It is used to
+    // attach location information to case clauses, which is an array.
+    this.loc = loc;
+    this.clauses = clauses;
+}
+
+function LabelledStatement(loc, id, statement)
+{
+    this.loc = loc;
+    this.id = id;
+    this.statement = statement;
+}
+
+function ThrowStatement(loc, expr)
+{
+    this.loc = loc;
+    this.expr = expr;
+}
+
+function TryStatement(loc, statement, id, catch_part, finally_part)
+{
+    this.loc = loc;
+    this.statement = statement;
+    this.id = id; // possibly null (when no catch part)
+    this.catch_part = catch_part; // possibly null (when no catch part)
+    this.finally_part = finally_part; // possibly null (when no finally part)
+}
+
+function DebuggerStatement(loc)
+{
+    this.loc = loc;
+}
+
+function OpExpr(loc, op, exprs)
+{
+    this.loc = loc;
+    this.exprs = exprs;
+    this.op = op;
+}
+
+function prefix_op1(op, expr)
+{
+    return new OpExpr(op.loc.join(expr.loc),
+                      prefix_op1_table[op.cat],
+                      [expr]);
+}
+
+var prefix_op1_table = [];
+prefix_op1_table[DELETE_CAT]         = "delete x";
+prefix_op1_table[VOID_CAT]           = "void x";
+prefix_op1_table[TYPEOF_CAT]         = "typeof x";
+prefix_op1_table[PLUSPLUS_CAT]       = "++ x";
+prefix_op1_table[AUTOPLUSPLUS_CAT]   = "auto ++ x";
+prefix_op1_table[MINUSMINUS_CAT]     = "-- x";
+prefix_op1_table[AUTOMINUSMINUS_CAT] = "auto -- x";
+prefix_op1_table[PLUS_CAT]           = "+ x";
+prefix_op1_table[MINUS_CAT]          = "- x";
+prefix_op1_table[BITNOT_CAT]         = "~ x";
+prefix_op1_table[EXCL_CAT]           = "! x";
+
+function postfix_op1(expr, op)
+{
+    return new OpExpr(expr.loc.join(op.loc),
+                      postfix_op1_table[op.cat],
+                      [expr]);
+}
+
+var postfix_op1_table = [];
+postfix_op1_table[PLUSPLUS_CAT]   = "x ++";
+postfix_op1_table[MINUSMINUS_CAT] = "x --";
+
+function op2(expr1, op, expr2)
+{
+    return new OpExpr(expr1.loc.join(expr2.loc),
+                      op2_table[op.cat],
+                      [expr1, expr2]);
+}
+
+var op2_table = [];
+op2_table[MULT_CAT]         = "x * y";
+op2_table[DIV_CAT]          = "x / y";
+op2_table[MOD_CAT]          = "x % y";
+op2_table[PLUS_CAT]         = "x + y";
+op2_table[MINUS_CAT]        = "x - y";
+op2_table[LSHIFT_CAT]       = "x << y";
+op2_table[RSHIFT_CAT]       = "x >> y";
+op2_table[URSHIFT_CAT]      = "x >>> y";
+op2_table[LT_CAT]           = "x < y";
+op2_table[GT_CAT]           = "x > y";
+op2_table[LE_CAT]           = "x <= y";
+op2_table[GE_CAT]           = "x >= y";
+op2_table[INSTANCEOF_CAT]   = "x instanceof y";
+op2_table[IN_CAT]           = "x in y";
+op2_table[EQEQ_CAT]         = "x == y";
+op2_table[NE_CAT]           = "x != y";
+op2_table[STREQ_CAT]        = "x === y";
+op2_table[STRNEQ_CAT]       = "x !== y";
+op2_table[BITAND_CAT]       = "x & y";
+op2_table[BITXOR_CAT]       = "x ^ y";
+op2_table[BITOR_CAT]        = "x | y";
+op2_table[AND_CAT]          = "x && y";
+op2_table[OR_CAT]           = "x || y";
+op2_table[COMMA_CAT]        = "x , y";
+op2_table[EQUAL_CAT]        = "x = y";
+op2_table[PLUSEQUAL_CAT]    = "x += y";
+op2_table[MINUSEQUAL_CAT]   = "x -= y";
+op2_table[MULTEQUAL_CAT]    = "x *= y";
+op2_table[DIVEQUAL_CAT]     = "x /= y";
+op2_table[LSHIFTEQUAL_CAT]  = "x <<= y";
+op2_table[RSHIFTEQUAL_CAT]  = "x >>= y";
+op2_table[URSHIFTEQUAL_CAT] = "x >>>= y";
+op2_table[BITANDEQUAL_CAT]  = "x &= y";
+op2_table[BITXOREQUAL_CAT]  = "x ^= y";
+op2_table[BITOREQUAL_CAT]   = "x |= y";
+op2_table[MODEQUAL_CAT]     = "x %= y";
+
+function NewExpr(loc, expr, args)
+{
+    this.loc = loc;
+    this.expr = expr;
+    this.args = args; // possibly null
+}
+
+function CallExpr(loc, fn, args)
+{
+    this.loc = loc;
+    this.fn = fn;
+    this.args = args;
+}
+
+function FunctionExpr(loc, id, params, body, vars)
+{
+    this.loc = loc;
+    this.id = id; // null when id not supplied
+    this.params = params;
+    this.body = body;
+    this.vars = vars;
+}
+
+function Arguments(loc, args)
+{
+    // This is a temporary object that is not an AST node.  It is used to
+    // attach location information to args, which is an array.
+    this.loc = loc;
+    this.args = args;
+}
+
+function Literal(loc, value)
+{
+    this.loc = loc;
+    this.value = value;
+}
+
+function ArrayLiteral(loc, exprs)
+{
+    this.loc = loc;
+    this.exprs = exprs;
+}
+
+function ObjectLiteral(loc, properties)
+{
+    this.loc = loc;
+    this.properties = properties; // array of Property
+}
+
+function Property(loc, name, value)
+{
+    this.loc = loc;
+    this.name = name;
+    this.value = value;
+}
+
+function Ref(loc, id)
+{
+    this.loc = loc;
+    this.id = id;
+}
+
+function This(loc)
+{
+    this.loc = loc;
 }
 
 // Grammar rule actions.
@@ -513,18 +594,25 @@ function Top(p, arg1, arg2)
 
 function Program_1(p)
 {
-    return new Program(p.current_loc(),
-                       []);
+    var loc = p.current_loc();
+    return new Program(loc,
+                       null,
+                       new BlockStatement(loc,
+                                          []));
 }
 
 function Program_2(p, SourceElements)
 {
-    return new Program(list_loc(SourceElements),
-                       SourceElements);
+    var loc = list_loc(SourceElements);
+    return new Program(loc,
+                       null,
+                       new BlockStatement(loc,
+                                          SourceElements));
 }
 
 function _error__1(p, FOOBAR)
 {
+    // TODO: remove this
     return { type: "_error__1"
            , loc: FOOBAR.loc
            , FOOBAR: FOOBAR
@@ -666,8 +754,8 @@ function PrimaryExprNoBrace_3(p, ArrayLiteral)
 
 function PrimaryExprNoBrace_4(p, IDENT)
 {
-    return new Var(IDENT.loc,
-                   IDENT.value);
+    return new Ref(IDENT.loc,
+                   IDENT);
 }
 
 function PrimaryExprNoBrace_5(p, LPAREN, Expr, RPAREN)
@@ -678,7 +766,7 @@ function PrimaryExprNoBrace_5(p, LPAREN, Expr, RPAREN)
 function ArrayLiteral_1(p, LBRACK, ElisionOpt, RBRACK)
 {
     return new ArrayLiteral(LBRACK.loc.join(RBRACK.loc),
-                            []); // what about ElisionOpt???
+                            ElisionOpt);
 }
 
 function ArrayLiteral_2(p, LBRACK, ElementList, RBRACK)
@@ -690,52 +778,40 @@ function ArrayLiteral_2(p, LBRACK, ElementList, RBRACK)
 function ArrayLiteral_3(p, LBRACK, ElementList, COMMA, ElisionOpt, RBRACK)
 {
     return new ArrayLiteral(LBRACK.loc.join(RBRACK.loc),
-                            ElementList); // what about ElisionOpt???
+                            ElementList.concat(ElisionOpt));
 }
 
 function ElementList_1(p, ElisionOpt, AssignmentExpr)
 {
-    return [AssignmentExpr]; // what about ElisionOpt???
+    ElisionOpt.push(AssignmentExpr);
+    return ElisionOpt;
 }
 
 function ElementList_2(p, ElementList, COMMA, ElisionOpt, AssignmentExpr)
 {
-    ElementList.push(AssignmentExpr); // what about ElisionOpt???
-    return ElementList;
+    ElisionOpt.push(AssignmentExpr);
+    return ElementList.concat(ElisionOpt);
 }
 
 function ElisionOpt_1(p)
 {
-    // TODO: create proper AST node
-    return { type: "ElisionOpt_1"
-           , loc: p.current_loc()
-           };
+    return [];
 }
 
 function ElisionOpt_2(p, Elision)
 {
-    // TODO: create proper AST node
-    return { type: "ElisionOpt_2"
-           , loc: Elision.loc
-           , Elision: Elision
-           };
+    return Elision;
 }
 
 function Elision_1(p, COMMA)
 {
-    // TODO: create proper AST node
-    return { type: "Elision_1"
-           , loc: COMMA.loc
-           };
+    return [null];
 }
 
 function Elision_2(p, Elision, COMMA)
 {
-    // TODO: create proper AST node
-    return { type: "Elision_2"
-           , loc: Elision.loc.join(COMMA.loc)
-           , Elision: Elision
-           };
+    Elision.push(null);
+    return Elision;
 }
 
 function MemberExpr_1(p, PrimaryExpr)
@@ -766,33 +842,27 @@ function MemberExpr_5(p, NEW, MemberExpr, Arguments)
 {
     return new NewExpr(NEW.loc.join(Arguments.loc),
                        MemberExpr,
-                       Arguments);
+                       Arguments.args);
 }
 
 function MemberExprNoBF_1(p, PrimaryExprNoBrace)
 {
-    return PrimaryExprNoBrace;
+    return MemberExpr_1(p, PrimaryExprNoBrace);
 }
 
 function MemberExprNoBF_2(p, MemberExprNoBF, LBRACK, Expr, RBRACK)
 {
-    return new OpExpr(MemberExprNoBF.loc.join(RBRACK.loc),
-                      "x [ y ]",
-                      [MemberExprNoBF, Expr]);
+    return MemberExpr_3(p, MemberExprNoBF, LBRACK, Expr, RBRACK); // call MemberExpr_3
 }
 
 function MemberExprNoBF_3(p, MemberExprNoBF, PERIOD, IDENT)
 {
-    return new OpExpr(MemberExprNoBF.loc.join(IDENT.loc),
-                      "x [ y ]",
-                      [MemberExprNoBF, new Literal(IDENT.loc, IDENT.value)]);
+    return MemberExpr_4(p, MemberExprNoBF, PERIOD, IDENT); // call MemberExpr_4
 }
 
 function MemberExprNoBF_4(p, NEW, MemberExpr, Arguments)
 {
-    return new NewExpr(NEW.loc.join(Arguments.loc),
-                       MemberExpr,
-                       Arguments);
+    return MemberExpr_5(p, NEW, MemberExpr, Arguments); // call MemberExpr_5
 }
 
 function NewExpr_1(p, MemberExpr)
@@ -809,14 +879,12 @@ function NewExpr_2(p, NEW, NewExpr)
 
 function NewExprNoBF_1(p, MemberExprNoBF)
 {
-    return MemberExprNoBF;
+    return NewExpr_1(p, MemberExprNoBF);
 }
 
 function NewExprNoBF_2(p, NEW, NewExpr)
 {
-    return new NewExpr(NEW.loc.join(NewExpr.loc),
-                       NewExpr,
-                       null);
+    return NewExpr_2(p, NEW, NewExpr);
 }
 
 function CallExpr_1(p, MemberExpr, Arguments)
@@ -849,30 +917,22 @@ function CallExpr_4(p, CallExpr, PERIOD, IDENT)
 
 function CallExprNoBF_1(p, MemberExprNoBF, Arguments)
 {
-    return new CallExpr(MemberExprNoBF.loc.join(Arguments.loc),
-                        MemberExprNoBF,
-                        Arguments.args);
+    return CallExpr_1(p, MemberExprNoBF, Arguments);
 }
 
 function CallExprNoBF_2(p, CallExprNoBF, Arguments)
 {
-    return new CallExpr(CallExprNoBF.loc.join(Arguments.loc),
-                        CallExprNoBF,
-                        Arguments.args);
+    return CallExpr_2(p, CallExprNoBF, Arguments);
 }
 
 function CallExprNoBF_3(p, CallExprNoBF, LBRACK, Expr, RBRACK)
 {
-    return new OpExpr(CallExprNoBF.loc.join(RBRACK.loc),
-                      "x [ y ]",
-                      [CallExprNoBF, new Literal(IDENT.loc, IDENT.value)]);
+    return CallExpr_3(p, CallExprNoBF, LBRACK, Expr, RBRACK);
 }
 
 function CallExprNoBF_4(p, CallExprNoBF, PERIOD, IDENT)
 {
-    return new OpExpr(CallExprNoBF.loc.join(IDENT.loc),
-                      "x [ y ]",
-                      [CallExprNoBF, new Literal(IDENT.loc, IDENT.value)]);
+    return CallExpr_4(p, CallExprNoBF, PERIOD, IDENT);
 }
 
 function Arguments_1(p, LPAREN, RPAREN)
@@ -910,12 +970,12 @@ function LeftHandSideExpr_2(p, CallExpr)
 
 function LeftHandSideExprNoBF_1(p, NewExprNoBF)
 {
-    return NewExprNoBF;
+    return LeftHandSideExpr_1(p, NewExprNoBF);
 }
 
 function LeftHandSideExprNoBF_2(p, CallExprNoBF)
 {
-    return CallExprNoBF;
+    return LeftHandSideExpr_2(p, CallExprNoBF);
 }
 
 function PostfixExpr_1(p, LeftHandSideExpr)
@@ -925,82 +985,82 @@ function PostfixExpr_1(p, LeftHandSideExpr)
 
 function PostfixExpr_2(p, LeftHandSideExpr, PLUSPLUS)
 {
-    return postfix_unary_op(LeftHandSideExpr, PLUSPLUS);
+    return postfix_op1(LeftHandSideExpr, PLUSPLUS);
 }
 
 function PostfixExpr_3(p, LeftHandSideExpr, MINUSMINUS)
 {
-    return postfix_unary_op(LeftHandSideExpr, MINUSMINUS);
+    return postfix_op1(LeftHandSideExpr, MINUSMINUS);
 }
 
 function PostfixExprNoBF_1(p, LeftHandSideExprNoBF)
 {
-    return LeftHandSideExprNoBF;
+    return PostfixExpr_1(p, LeftHandSideExprNoBF);
 }
 
 function PostfixExprNoBF_2(p, LeftHandSideExprNoBF, PLUSPLUS)
 {
-    return postfix_unary_op(LeftHandSideExprNoBF, PLUSPLUS);
+    return PostfixExpr_2(p, LeftHandSideExprNoBF, PLUSPLUS);
 }
 
 function PostfixExprNoBF_3(p, LeftHandSideExprNoBF, MINUSMINUS)
 {
-    return postfix_unary_op(LeftHandSideExprNoBF, MINUSMINUS);
+    return PostfixExpr_3(p, LeftHandSideExprNoBF, MINUSMINUS);
 }
 
 function UnaryExprCommon_1(p, DELETE, UnaryExpr)
 {
-    return prefix_unary_op(DELETE, UnaryExpr);
+    return prefix_op1(DELETE, UnaryExpr);
 }
 
 function UnaryExprCommon_2(p, VOID, UnaryExpr)
 {
-    return prefix_unary_op(VOID, UnaryExpr);
+    return prefix_op1(VOID, UnaryExpr);
 }
 
 function UnaryExprCommon_3(p, TYPEOF, UnaryExpr)
 {
-    return prefix_unary_op(TYPEOF, UnaryExpr);
+    return prefix_op1(TYPEOF, UnaryExpr);
 }
 
 function UnaryExprCommon_4(p, PLUSPLUS, UnaryExpr)
 {
-    return prefix_unary_op(PLUSPLUS, UnaryExpr);
+    return prefix_op1(PLUSPLUS, UnaryExpr);
 }
 
 function UnaryExprCommon_5(p, AUTOPLUSPLUS, UnaryExpr)
 {
-    return prefix_unary_op(AUTOPLUSPLUS, UnaryExpr);
+    return prefix_op1(AUTOPLUSPLUS, UnaryExpr);
 }
 
 function UnaryExprCommon_6(p, MINUSMINUS, UnaryExpr)
 {
-    return prefix_unary_op(MINUSMINUS, UnaryExpr);
+    return prefix_op1(MINUSMINUS, UnaryExpr);
 }
 
 function UnaryExprCommon_7(p, AUTOMINUSMINUS, UnaryExpr)
 {
-    return prefix_unary_op(AUTOMINUSMINUS, UnaryExpr);
+    return prefix_op1(AUTOMINUSMINUS, UnaryExpr);
 }
 
 function UnaryExprCommon_8(p, PLUS, UnaryExpr)
 {
-    return prefix_unary_op(PLUS, UnaryExpr);
+    return prefix_op1(PLUS, UnaryExpr);
 }
 
 function UnaryExprCommon_9(p, MINUS, UnaryExpr)
 {
-    return prefix_unary_op(MINUS, UnaryExpr);
+    return prefix_op1(MINUS, UnaryExpr);
 }
 
 function UnaryExprCommon_10(p, BITNOT, UnaryExpr)
 {
-    return prefix_unary_op(BITNOT, UnaryExpr);
+    return prefix_op1(BITNOT, UnaryExpr);
 }
 
 function UnaryExprCommon_11(p, EXCL, UnaryExpr)
 {
-    return prefix_unary_op(EXCL, UnaryExpr);
+    return prefix_op1(EXCL, UnaryExpr);
 }
 
 function UnaryExpr_1(p, PostfixExpr)
@@ -1015,12 +1075,12 @@ function UnaryExpr_2(p, UnaryExprCommon)
 
 function UnaryExprNoBF_1(p, PostfixExprNoBF)
 {
-    return PostfixExprNoBF;
+    return UnaryExpr_1(p, PostfixExprNoBF);
 }
 
 function UnaryExprNoBF_2(p, UnaryExprCommon)
 {
-    return UnaryExprCommon;
+    return UnaryExpr_2(p, UnaryExprCommon);
 }
 
 function MultiplicativeExpr_1(p, UnaryExpr)
@@ -1030,37 +1090,37 @@ function MultiplicativeExpr_1(p, UnaryExpr)
 
 function MultiplicativeExpr_2(p, MultiplicativeExpr, MULT, UnaryExpr)
 {
-    return binary_op(MultiplicativeExpr, MULT, UnaryExpr);
+    return op2(MultiplicativeExpr, MULT, UnaryExpr);
 }
 
 function MultiplicativeExpr_3(p, MultiplicativeExpr, DIV, UnaryExpr)
 {
-    return binary_op(MultiplicativeExpr, DIV, UnaryExpr);
+    return op2(MultiplicativeExpr, DIV, UnaryExpr);
 }
 
 function MultiplicativeExpr_4(p, MultiplicativeExpr, MOD, UnaryExpr)
 {
-    return binary_op(MultiplicativeExpr, MOD, UnaryExpr);
+    return op2(MultiplicativeExpr, MOD, UnaryExpr);
 }
 
 function MultiplicativeExprNoBF_1(p, UnaryExprNoBF)
 {
-    return UnaryExprNoBF;
+    return MultiplicativeExpr_1(p, UnaryExprNoBF);
 }
 
 function MultiplicativeExprNoBF_2(p, MultiplicativeExprNoBF, MULT, UnaryExpr)
 {
-    return binary_op(MultiplicativeExprNoBF, MULT, UnaryExpr);
+    return MultiplicativeExpr_2(p, MultiplicativeExprNoBF, MULT, UnaryExpr);
 }
 
 function MultiplicativeExprNoBF_3(p, MultiplicativeExprNoBF, DIV, UnaryExpr)
 {
-    return binary_op(MultiplicativeExprNoBF, DIV, UnaryExpr);
+    return MultiplicativeExpr_3(p, MultiplicativeExprNoBF, DIV, UnaryExpr);
 }
 
 function MultiplicativeExprNoBF_4(p, MultiplicativeExprNoBF, MOD, UnaryExpr)
 {
-    return binary_op(MultiplicativeExprNoBF, MOD, UnaryExpr);
+    return MultiplicativeExpr_4(p, MultiplicativeExprNoBF, MOD, UnaryExpr);
 }
 
 function AdditiveExpr_1(p, MultiplicativeExpr)
@@ -1070,27 +1130,27 @@ function AdditiveExpr_1(p, MultiplicativeExpr)
 
 function AdditiveExpr_2(p, AdditiveExpr, PLUS, MultiplicativeExpr)
 {
-    return binary_op(AdditiveExpr, PLUS, MultiplicativeExpr);
+    return op2(AdditiveExpr, PLUS, MultiplicativeExpr);
 }
 
 function AdditiveExpr_3(p, AdditiveExpr, MINUS, MultiplicativeExpr)
 {
-    return binary_op(AdditiveExpr, MINUS, MultiplicativeExpr);
+    return op2(AdditiveExpr, MINUS, MultiplicativeExpr);
 }
 
 function AdditiveExprNoBF_1(p, MultiplicativeExprNoBF)
 {
-    return MultiplicativeExprNoBF;
+    return AdditiveExpr_1(p, MultiplicativeExprNoBF);
 }
 
 function AdditiveExprNoBF_2(p, AdditiveExprNoBF, PLUS, MultiplicativeExpr)
 {
-    return binary_op(AdditiveExprNoBF, PLUS, MultiplicativeExpr);
+    return AdditiveExpr_2(p, AdditiveExprNoBF, PLUS, MultiplicativeExpr);
 }
 
 function AdditiveExprNoBF_3(p, AdditiveExprNoBF, MINUS, MultiplicativeExpr)
 {
-    return binary_op(AdditiveExprNoBF, MINUS, MultiplicativeExpr);
+    return AdditiveExpr_3(p, AdditiveExprNoBF, MINUS, MultiplicativeExpr);
 }
 
 function ShiftExpr_1(p, AdditiveExpr)
@@ -1100,37 +1160,37 @@ function ShiftExpr_1(p, AdditiveExpr)
 
 function ShiftExpr_2(p, ShiftExpr, LSHIFT, AdditiveExpr)
 {
-    return binary_op(ShiftExpr, LSHIFT, AdditiveExpr);
+    return op2(ShiftExpr, LSHIFT, AdditiveExpr);
 }
 
 function ShiftExpr_3(p, ShiftExpr, RSHIFT, AdditiveExpr)
 {
-    return binary_op(ShiftExpr, RSHIFT, AdditiveExpr);
+    return op2(ShiftExpr, RSHIFT, AdditiveExpr);
 }
 
 function ShiftExpr_4(p, ShiftExpr, URSHIFT, AdditiveExpr)
 {
-    return binary_op(ShiftExpr, URSHIFT, AdditiveExpr);
+    return op2(ShiftExpr, URSHIFT, AdditiveExpr);
 }
 
 function ShiftExprNoBF_1(p, AdditiveExprNoBF)
 {
-    return AdditiveExprNoBF;
+    return ShiftExpr_1(p, AdditiveExprNoBF);
 }
 
 function ShiftExprNoBF_2(p, ShiftExprNoBF, LSHIFT, AdditiveExpr)
 {
-    return binary_op(ShiftExprNoBF, LSHIFT, AdditiveExpr);
+    return ShiftExpr_2(p, ShiftExprNoBF, LSHIFT, AdditiveExpr);
 }
 
 function ShiftExprNoBF_3(p, ShiftExprNoBF, RSHIFT, AdditiveExpr)
 {
-    return binary_op(ShiftExprNoBF, RSHIFT, AdditiveExpr);
+    return ShiftExpr_3(p, ShiftExprNoBF, RSHIFT, AdditiveExpr);
 }
 
 function ShiftExprNoBF_4(p, ShiftExprNoBF, URSHIFT, AdditiveExpr)
 {
-    return binary_op(ShiftExprNoBF, URSHIFT, AdditiveExpr);
+    return ShiftExpr_4(p, ShiftExprNoBF, URSHIFT, AdditiveExpr);
 }
 
 function RelationalExpr_1(p, ShiftExpr)
@@ -1140,32 +1200,32 @@ function RelationalExpr_1(p, ShiftExpr)
 
 function RelationalExpr_2(p, RelationalExpr, LT, ShiftExpr)
 {
-    return binary_op(RelationalExpr, LT, ShiftExpr);
+    return op2(RelationalExpr, LT, ShiftExpr);
 }
 
 function RelationalExpr_3(p, RelationalExpr, GT, ShiftExpr)
 {
-    return binary_op(RelationalExpr, GT, ShiftExpr);
+    return op2(RelationalExpr, GT, ShiftExpr);
 }
 
 function RelationalExpr_4(p, RelationalExpr, LE, ShiftExpr)
 {
-    return binary_op(RelationalExpr, LE, ShiftExpr);
+    return op2(RelationalExpr, LE, ShiftExpr);
 }
 
 function RelationalExpr_5(p, RelationalExpr, GE, ShiftExpr)
 {
-    return binary_op(RelationalExpr, GE, ShiftExpr);
+    return op2(RelationalExpr, GE, ShiftExpr);
 }
 
 function RelationalExpr_6(p, RelationalExpr, INSTANCEOF, ShiftExpr)
 {
-    return binary_op(RelationalExpr, INSTANCEOF, ShiftExpr);
+    return op2(RelationalExpr, INSTANCEOF, ShiftExpr);
 }
 
 function RelationalExpr_7(p, RelationalExpr, IN, ShiftExpr)
 {
-    return binary_op(RelationalExpr, IN, ShiftExpr);
+    return op2(RelationalExpr, IN, ShiftExpr);
 }
 
 function RelationalExprNoIn_1(p, ShiftExpr)
@@ -1175,62 +1235,62 @@ function RelationalExprNoIn_1(p, ShiftExpr)
 
 function RelationalExprNoIn_2(p, RelationalExprNoIn, LT, ShiftExpr)
 {
-    return binary_op(RelationalExprNoIn, LT, ShiftExpr);
+    return op2(RelationalExprNoIn, LT, ShiftExpr);
 }
 
 function RelationalExprNoIn_3(p, RelationalExprNoIn, GT, ShiftExpr)
 {
-    return binary_op(RelationalExprNoIn, GT, ShiftExpr);
+    return op2(RelationalExprNoIn, GT, ShiftExpr);
 }
 
 function RelationalExprNoIn_4(p, RelationalExprNoIn, LE, ShiftExpr)
 {
-    return binary_op(RelationalExprNoIn, LE, ShiftExpr);
+    return op2(RelationalExprNoIn, LE, ShiftExpr);
 }
 
 function RelationalExprNoIn_5(p, RelationalExprNoIn, GE, ShiftExpr)
 {
-    return binary_op(RelationalExprNoIn, GE, ShiftExpr);
+    return op2(RelationalExprNoIn, GE, ShiftExpr);
 }
 
 function RelationalExprNoIn_6(p, RelationalExprNoIn, INSTANCEOF, ShiftExpr)
 {
-    return binary_op(RelationalExprNoIn, INSTANCEOF, ShiftExpr);
+    return op2(RelationalExprNoIn, INSTANCEOF, ShiftExpr);
 }
 
 function RelationalExprNoBF_1(p, ShiftExprNoBF)
 {
-    return ShiftExprNoBF;
+    return RelationalExpr_1(p, ShiftExprNoBF);
 }
 
 function RelationalExprNoBF_2(p, RelationalExprNoBF, LT, ShiftExpr)
 {
-    return binary_op(RelationalExprNoBF, LT, ShiftExpr);
+    return RelationalExpr_2(p, RelationalExprNoBF, LT, ShiftExpr);
 }
 
 function RelationalExprNoBF_3(p, RelationalExprNoBF, GT, ShiftExpr)
 {
-    return binary_op(RelationalExprNoBF, GT, ShiftExpr);
+    return RelationalExpr_3(p, RelationalExprNoBF, GT, ShiftExpr);
 }
 
 function RelationalExprNoBF_4(p, RelationalExprNoBF, LE, ShiftExpr)
 {
-    return binary_op(RelationalExprNoBF, LE, ShiftExpr);
+    return RelationalExpr_4(p, RelationalExprNoBF, LE, ShiftExpr);
 }
 
 function RelationalExprNoBF_5(p, RelationalExprNoBF, GE, ShiftExpr)
 {
-    return binary_op(RelationalExprNoBF, GE, ShiftExpr);
+    return RelationalExpr_5(p, RelationalExprNoBF, GE, ShiftExpr);
 }
 
 function RelationalExprNoBF_6(p, RelationalExprNoBF, INSTANCEOF, ShiftExpr)
 {
-    return binary_op(RelationalExprNoBF, INSTANCEOF, ShiftExpr);
+    return RelationalExpr_6(p, RelationalExprNoBF, INSTANCEOF, ShiftExpr);
 }
 
 function RelationalExprNoBF_7(p, RelationalExprNoBF, IN, ShiftExpr)
 {
-    return binary_op(RelationalExprNoBF, IN, ShiftExpr);
+    return RelationalExpr_7(p, RelationalExprNoBF, IN, ShiftExpr);
 }
 
 function EqualityExpr_1(p, RelationalExpr)
@@ -1240,22 +1300,22 @@ function EqualityExpr_1(p, RelationalExpr)
 
 function EqualityExpr_2(p, EqualityExpr, EQEQ, RelationalExpr)
 {
-    return binary_op(EqualityExpr, EQEQ, RelationalExpr);
+    return op2(EqualityExpr, EQEQ, RelationalExpr);
 }
 
 function EqualityExpr_3(p, EqualityExpr, NE, RelationalExpr)
 {
-    return binary_op(EqualityExpr, NE, RelationalExpr);
+    return op2(EqualityExpr, NE, RelationalExpr);
 }
 
 function EqualityExpr_4(p, EqualityExpr, STREQ, RelationalExpr)
 {
-    return binary_op(EqualityExpr, STREQ, RelationalExpr);
+    return op2(EqualityExpr, STREQ, RelationalExpr);
 }
 
 function EqualityExpr_5(p, EqualityExpr, STRNEQ, RelationalExpr)
 {
-    return binary_op(EqualityExpr, STRNEQ, RelationalExpr);
+    return op2(EqualityExpr, STRNEQ, RelationalExpr);
 }
 
 function EqualityExprNoIn_1(p, RelationalExprNoIn)
@@ -1265,47 +1325,47 @@ function EqualityExprNoIn_1(p, RelationalExprNoIn)
 
 function EqualityExprNoIn_2(p, EqualityExprNoIn, EQEQ, RelationalExprNoIn)
 {
-    return binary_op(EqualityExprNoIn, EQEQ, RelationalExprNoIn);
+    return op2(EqualityExprNoIn, EQEQ, RelationalExprNoIn);
 }
 
 function EqualityExprNoIn_3(p, EqualityExprNoIn, NE, RelationalExprNoIn)
 {
-    return binary_op(EqualityExprNoIn, NE, RelationalExprNoIn);
+    return op2(EqualityExprNoIn, NE, RelationalExprNoIn);
 }
 
 function EqualityExprNoIn_4(p, EqualityExprNoIn, STREQ, RelationalExprNoIn)
 {
-    return binary_op(EqualityExprNoIn, STREQ, RelationalExprNoIn);
+    return op2(EqualityExprNoIn, STREQ, RelationalExprNoIn);
 }
 
 function EqualityExprNoIn_5(p, EqualityExprNoIn, STRNEQ, RelationalExprNoIn)
 {
-    return binary_op(EqualityExprNoIn, STRNEQ, RelationalExprNoIn);
+    return op2(EqualityExprNoIn, STRNEQ, RelationalExprNoIn);
 }
 
 function EqualityExprNoBF_1(p, RelationalExprNoBF)
 {
-    return RelationalExprNoBF;
+    return EqualityExpr_1(p, RelationalExprNoBF);
 }
 
 function EqualityExprNoBF_2(p, EqualityExprNoBF, EQEQ, RelationalExpr)
 {
-    return binary_op(EqualityExprNoBF, EQEQ, RelationalExpr);
+    return EqualityExpr_2(p, EqualityExprNoBF, EQEQ, RelationalExpr);
 }
 
 function EqualityExprNoBF_3(p, EqualityExprNoBF, NE, RelationalExpr)
 {
-    return binary_op(EqualityExprNoBF, NE, RelationalExpr);
+    return EqualityExpr_3(p, EqualityExprNoBF, NE, RelationalExpr);
 }
 
 function EqualityExprNoBF_4(p, EqualityExprNoBF, STREQ, RelationalExpr)
 {
-    return binary_op(EqualityExprNoBF, STREQ, RelationalExpr);
+    return EqualityExpr_4(p, EqualityExprNoBF, STREQ, RelationalExpr);
 }
 
 function EqualityExprNoBF_5(p, EqualityExprNoBF, STRNEQ, RelationalExpr)
 {
-    return binary_op(EqualityExprNoBF, STRNEQ, RelationalExpr);
+    return EqualityExpr_5(p, EqualityExprNoBF, STRNEQ, RelationalExpr);
 }
 
 function BitwiseANDExpr_1(p, EqualityExpr)
@@ -1315,7 +1375,7 @@ function BitwiseANDExpr_1(p, EqualityExpr)
 
 function BitwiseANDExpr_2(p, BitwiseANDExpr, BITAND, EqualityExpr)
 {
-    return binary_op(BitwiseANDExpr, BITAND, EqualityExpr);
+    return op2(BitwiseANDExpr, BITAND, EqualityExpr);
 }
 
 function BitwiseANDExprNoIn_1(p, EqualityExprNoIn)
@@ -1325,17 +1385,17 @@ function BitwiseANDExprNoIn_1(p, EqualityExprNoIn)
 
 function BitwiseANDExprNoIn_2(p, BitwiseANDExprNoIn, BITAND, EqualityExprNoIn)
 {
-    return binary_op(BitwiseANDExprNoIn, BITAND, EqualityExprNoIn);
+    return op2(BitwiseANDExprNoIn, BITAND, EqualityExprNoIn);
 }
 
 function BitwiseANDExprNoBF_1(p, EqualityExprNoBF)
 {
-    return EqualityExprNoBF;
+    return BitwiseANDExpr_1(p, EqualityExprNoBF);
 }
 
 function BitwiseANDExprNoBF_2(p, BitwiseANDExprNoBF, BITAND, EqualityExpr)
 {
-    return binary_op(BitwiseANDExprNoBF, BITAND, EqualityExpr);
+    return BitwiseANDExpr_2(p, BitwiseANDExprNoBF, BITAND, EqualityExpr);
 }
 
 function BitwiseXORExpr_1(p, BitwiseANDExpr)
@@ -1345,7 +1405,7 @@ function BitwiseXORExpr_1(p, BitwiseANDExpr)
 
 function BitwiseXORExpr_2(p, BitwiseXORExpr, BITXOR, BitwiseANDExpr)
 {
-    return binary_op(BitwiseXORExpr, BITXOR, BitwiseANDExpr);
+    return op2(BitwiseXORExpr, BITXOR, BitwiseANDExpr);
 }
 
 function BitwiseXORExprNoIn_1(p, BitwiseANDExprNoIn)
@@ -1355,17 +1415,17 @@ function BitwiseXORExprNoIn_1(p, BitwiseANDExprNoIn)
 
 function BitwiseXORExprNoIn_2(p, BitwiseXORExprNoIn, BITXOR, BitwiseANDExprNoIn)
 {
-    return binary_op(BitwiseXORExprNoIn, BITXOR, BitwiseANDExprNoIn);
+    return op2(BitwiseXORExprNoIn, BITXOR, BitwiseANDExprNoIn);
 }
 
 function BitwiseXORExprNoBF_1(p, BitwiseANDExprNoBF)
 {
-    return BitwiseANDExprNoBF;
+    return BitwiseXORExpr_1(p, BitwiseANDExprNoBF);
 }
 
 function BitwiseXORExprNoBF_2(p, BitwiseXORExprNoBF, BITXOR, BitwiseANDExpr)
 {
-    return binary_op(BitwiseXORExprNoBF, BITXOR, BitwiseANDExpr);
+    return BitwiseXORExpr_2(p, BitwiseXORExprNoBF, BITXOR, BitwiseANDExpr);
 }
 
 function BitwiseORExpr_1(p, BitwiseXORExpr)
@@ -1373,9 +1433,9 @@ function BitwiseORExpr_1(p, BitwiseXORExpr)
     return BitwiseXORExpr;
 }
 
-function BitwiseORExpr_2(p, BitwiseORExpr, VBAR, BitwiseXORExpr)
+function BitwiseORExpr_2(p, BitwiseORExpr, BITOR, BitwiseXORExpr)
 {
-    return binary_op(BitwiseORExpr, VBAR, BitwiseXORExpr);
+    return op2(BitwiseORExpr, BITOR, BitwiseXORExpr);
 }
 
 function BitwiseORExprNoIn_1(p, BitwiseXORExprNoIn)
@@ -1383,19 +1443,19 @@ function BitwiseORExprNoIn_1(p, BitwiseXORExprNoIn)
     return BitwiseXORExprNoIn;
 }
 
-function BitwiseORExprNoIn_2(p, BitwiseORExprNoIn, VBAR, BitwiseXORExprNoIn)
+function BitwiseORExprNoIn_2(p, BitwiseORExprNoIn, BITOR, BitwiseXORExprNoIn)
 {
-    return binary_op(BitwiseORExprNoIn, VBAR, BitwiseXORExprNoIn);
+    return op2(BitwiseORExprNoIn, BITOR, BitwiseXORExprNoIn);
 }
 
 function BitwiseORExprNoBF_1(p, BitwiseXORExprNoBF)
 {
-    return BitwiseXORExprNoBF;
+    return BitwiseORExpr_1(p, BitwiseXORExprNoBF);
 }
 
-function BitwiseORExprNoBF_2(p, BitwiseORExprNoBF, VBAR, BitwiseXORExpr)
+function BitwiseORExprNoBF_2(p, BitwiseORExprNoBF, BITOR, BitwiseXORExpr)
 {
-    return binary_op(BitwiseORExprNoBF, VBAR, BitwiseXORExpr);
+    return BitwiseORExpr_2(p, BitwiseORExprNoBF, BITOR, BitwiseXORExpr);
 }
 
 function LogicalANDExpr_1(p, BitwiseORExpr)
@@ -1405,7 +1465,7 @@ function LogicalANDExpr_1(p, BitwiseORExpr)
 
 function LogicalANDExpr_2(p, LogicalANDExpr, AND, BitwiseORExpr)
 {
-    return binary_op(LogicalANDExpr, AND, BitwiseORExpr);
+    return op2(LogicalANDExpr, AND, BitwiseORExpr);
 }
 
 function LogicalANDExprNoIn_1(p, BitwiseORExprNoIn)
@@ -1415,17 +1475,17 @@ function LogicalANDExprNoIn_1(p, BitwiseORExprNoIn)
 
 function LogicalANDExprNoIn_2(p, LogicalANDExprNoIn, AND, BitwiseORExprNoIn)
 {
-    return binary_op(LogicalANDExprNoIn, AND, BitwiseORExprNoIn);
+    return op2(LogicalANDExprNoIn, AND, BitwiseORExprNoIn);
 }
 
 function LogicalANDExprNoBF_1(p, BitwiseORExprNoBF)
 {
-    return BitwiseORExprNoBF;
+    return LogicalANDExpr_1(p, BitwiseORExprNoBF);
 }
 
 function LogicalANDExprNoBF_2(p, LogicalANDExprNoBF, AND, BitwiseORExpr)
 {
-    return binary_op(LogicalANDExprNoBF, AND, BitwiseORExpr);
+    return LogicalANDExpr_2(p, LogicalANDExprNoBF, AND, BitwiseORExpr);
 }
 
 function LogicalORExpr_1(p, LogicalANDExpr)
@@ -1435,7 +1495,7 @@ function LogicalORExpr_1(p, LogicalANDExpr)
 
 function LogicalORExpr_2(p, LogicalORExpr, OR, LogicalANDExpr)
 {
-    return binary_op(LogicalORExpr, OR, LogicalANDExpr);
+    return op2(LogicalORExpr, OR, LogicalANDExpr);
 }
 
 function LogicalORExprNoIn_1(p, LogicalANDExprNoIn)
@@ -1445,17 +1505,17 @@ function LogicalORExprNoIn_1(p, LogicalANDExprNoIn)
 
 function LogicalORExprNoIn_2(p, LogicalORExprNoIn, OR, LogicalANDExprNoIn)
 {
-    return binary_op(LogicalORExprNoIn, OR, LogicalANDExprNoIn);
+    return op2(LogicalORExprNoIn, OR, LogicalANDExprNoIn);
 }
 
 function LogicalORExprNoBF_1(p, LogicalANDExprNoBF)
 {
-    return LogicalANDExprNoBF;
+    return LogicalORExpr_1(p, LogicalANDExprNoBF);
 }
 
 function LogicalORExprNoBF_2(p, LogicalORExprNoBF, OR, LogicalANDExpr)
 {
-    return binary_op(LogicalORExprNoBF, OR, LogicalANDExpr);
+    return LogicalORExpr_2(p, LogicalORExprNoBF, OR, LogicalANDExpr);
 }
 
 function ConditionalExpr_1(p, LogicalORExpr)
@@ -1484,14 +1544,12 @@ function ConditionalExprNoIn_2(p, LogicalORExprNoIn, QUESTION, AssignmentExprNoI
 
 function ConditionalExprNoBF_1(p, LogicalORExprNoBF)
 {
-    return LogicalORExprNoBF;
+    return ConditionalExpr_1(p, LogicalORExprNoBF);
 }
 
 function ConditionalExprNoBF_2(p, LogicalORExprNoBF, QUESTION, AssignmentExpr1, COLON, AssignmentExpr2)
 {
-    return new OpExpr(LogicalORExprNoBF.loc.join(AssignmentExpr2.loc),
-                      "x ? y : z",
-                      [LogicalORExprNoBF, AssignmentExpr1, AssignmentExpr2]);
+    return ConditionalExpr_2(p, LogicalORExprNoBF, QUESTION, AssignmentExpr1, COLON, AssignmentExpr2);
 }
 
 function AssignmentExpr_1(p, ConditionalExpr)
@@ -1501,7 +1559,7 @@ function AssignmentExpr_1(p, ConditionalExpr)
 
 function AssignmentExpr_2(p, LeftHandSideExpr, AssignmentOperator, AssignmentExpr)
 {
-    return binary_op(LeftHandSideExpr, AssignmentOperator, AssignmentExpr);
+    return op2(LeftHandSideExpr, AssignmentOperator, AssignmentExpr);
 }
 
 function AssignmentExprNoIn_1(p, ConditionalExprNoIn)
@@ -1511,17 +1569,17 @@ function AssignmentExprNoIn_1(p, ConditionalExprNoIn)
 
 function AssignmentExprNoIn_2(p, LeftHandSideExpr, AssignmentOperator, AssignmentExprNoIn)
 {
-    return binary_op(LeftHandSideExpr, AssignmentOperator, AssignmentExprNoIn);
+    return op2(LeftHandSideExpr, AssignmentOperator, AssignmentExprNoIn);
 }
 
 function AssignmentExprNoBF_1(p, ConditionalExprNoBF)
 {
-    return ConditionalExprNoBF;
+    return AssignmentExpr_1(p, ConditionalExprNoBF);
 }
 
 function AssignmentExprNoBF_2(p, LeftHandSideExprNoBF, AssignmentOperator, AssignmentExpr)
 {
-    return binary_op(LeftHandSideExprNoBF, AssignmentOperator, AssignmentExpr);
+    return AssignmentExpr_2(p, LeftHandSideExprNoBF, AssignmentOperator, AssignmentExpr);
 }
 
 function AssignmentOperator_1(p, EQUAL)
@@ -1564,19 +1622,19 @@ function AssignmentOperator_8(p, URSHIFTEQUAL)
     return URSHIFTEQUAL;
 }
 
-function AssignmentOperator_9(p, ANDEQUAL)
+function AssignmentOperator_9(p, BITANDEQUAL)
 {
-    return ANDEQUAL;
+    return BITANDEQUAL;
 }
 
-function AssignmentOperator_10(p, XOREQUAL)
+function AssignmentOperator_10(p, BITXOREQUAL)
 {
-    return XOREQUAL;
+    return BITXOREQUAL;
 }
 
-function AssignmentOperator_11(p, OREQUAL)
+function AssignmentOperator_11(p, BITOREQUAL)
 {
-    return OREQUAL;
+    return BITOREQUAL;
 }
 
 function AssignmentOperator_12(p, MODEQUAL)
@@ -1591,7 +1649,7 @@ function Expr_1(p, AssignmentExpr)
 
 function Expr_2(p, Expr, COMMA, AssignmentExpr)
 {
-    return binary_op(Expr, COMMA, AssignmentExpr);
+    return op2(Expr, COMMA, AssignmentExpr);
 }
 
 function ExprNoIn_1(p, AssignmentExprNoIn)
@@ -1601,17 +1659,17 @@ function ExprNoIn_1(p, AssignmentExprNoIn)
 
 function ExprNoIn_2(p, ExprNoIn, COMMA, AssignmentExprNoIn)
 {
-    return binary_op(ExprNoIn, COMMA, AssignmentExprNoIn);
+    return op2(ExprNoIn, COMMA, AssignmentExprNoIn);
 }
 
 function ExprNoBF_1(p, AssignmentExprNoBF)
 {
-    return AssignmentExprNoBF;
+    return Expr_1(p, AssignmentExprNoBF);
 }
 
 function ExprNoBF_2(p, ExprNoBF, COMMA, AssignmentExpr)
 {
-    return binary_op(ExprNoBF, COMMA, AssignmentExpr);
+    return Expr_2(p, ExprNoBF, COMMA, AssignmentExpr);
 }
 
 function Statement_1(p, Block)
@@ -1729,61 +1787,61 @@ function VariableStatement_2(p, VAR, VariableDeclarationList, _error_)
 
 function VariableDeclarationList_1(p, IDENT)
 {
-    return [new VarDecl(IDENT.loc,
-                        IDENT.value,
-                        null)];
+    return [new Decl(IDENT.loc,
+                     IDENT,
+                     null)];
 }
 
 function VariableDeclarationList_2(p, IDENT, Initializer)
 {
-    return [new VarDecl(IDENT.loc.join(Initializer.loc),
-                        IDENT.value,
-                        Initializer)];
+    return [new Decl(IDENT.loc.join(Initializer.loc),
+                     IDENT,
+                     Initializer)];
 }
 
 function VariableDeclarationList_3(p, VariableDeclarationList, COMMA, IDENT)
 {
-    VariableDeclarationList.push(new VarDecl(IDENT.loc,
-                                             IDENT.value,
-                                             null));
+    VariableDeclarationList.push(new Decl(IDENT.loc,
+                                          IDENT,
+                                          null));
     return VariableDeclarationList;
 }
 
 function VariableDeclarationList_4(p, VariableDeclarationList, COMMA, IDENT, Initializer)
 {
-    VariableDeclarationList.push(new VarDecl(IDENT.loc.join(Initializer.loc),
-                                             IDENT.value,
-                                             Initializer));
+    VariableDeclarationList.push(new Decl(IDENT.loc.join(Initializer.loc),
+                                          IDENT,
+                                          Initializer));
     return VariableDeclarationList;
 }
 
 function VariableDeclarationListNoIn_1(p, IDENT)
 {
-    return [new VarDecl(IDENT.loc,
-                        IDENT.value,
-                        null)];
+    return [new Decl(IDENT.loc,
+                     IDENT,
+                     null)];
 }
 
 function VariableDeclarationListNoIn_2(p, IDENT, InitializerNoIn)
 {
-    return [new VarDecl(IDENT.loc.join(InitializerNoIn.loc),
-                        IDENT.value,
-                        InitializerNoIn)];
+    return [new Decl(IDENT.loc.join(InitializerNoIn.loc),
+                     IDENT,
+                     InitializerNoIn)];
 }
 
 function VariableDeclarationListNoIn_3(p, VariableDeclarationListNoIn, COMMA, IDENT)
 {
-    VariableDeclarationListNoIn.push(new VarDecl(IDENT.loc,
-                                                 IDENT.value,
-                                                 null));
+    VariableDeclarationListNoIn.push(new Decl(IDENT.loc,
+                                              IDENT,
+                                              null));
     return VariableDeclarationListNoIn;
 }
 
 function VariableDeclarationListNoIn_4(p, VariableDeclarationListNoIn, COMMA, IDENT, InitializerNoIn)
 {
-    VariableDeclarationListNoIn.push(new VarDecl(IDENT.loc.join(InitializerNoIn.loc),
-                                                 IDENT.value,
-                                                 InitializerNoIn));
+    VariableDeclarationListNoIn.push(new Decl(IDENT.loc.join(InitializerNoIn.loc),
+                                              IDENT,
+                                              InitializerNoIn));
     return VariableDeclarationListNoIn;
 }
 
@@ -1913,60 +1971,48 @@ function IterationStatement_3(p, WHILE, LPAREN, Expr, RPAREN, Statement)
                               Statement);
 }
 
-function IterationStatement_4(p, FOR, LPAREN, ExprNoInOpt, SEMICOLON, ExprOpt, SEMICOLON, ExprOpt, RPAREN, Statement)
+function IterationStatement_4(p, FOR, LPAREN, ExprNoInOpt, SEMICOLON1, ExprOpt1, SEMICOLON2, ExprOpt2, RPAREN, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "IterationStatement_4"
-           , loc: FOR.loc.join(Statement.loc)
-           , ExprNoInOpt: ExprNoInOpt
-           , ExprOpt: ExprOpt
-           , ExprOpt: ExprOpt
-           , Statement: Statement
-           };
+    return new ForStatement(FOR.loc.join(Statement.loc),
+                            ExprNoInOpt,
+                            ExprOpt1,
+                            ExprOpt2,
+                            Statement);
 }
 
-function IterationStatement_5(p, FOR, LPAREN, VAR, VariableDeclarationListNoIn, SEMICOLON, ExprOpt, SEMICOLON, ExprOpt, RPAREN, Statement)
+function IterationStatement_5(p, FOR, LPAREN, VAR, VariableDeclarationListNoIn, SEMICOLON1, ExprOpt1, SEMICOLON2, ExprOpt2, RPAREN, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "IterationStatement_5"
-           , loc: FOR.loc.join(Statement.loc)
-           , VariableDeclarationListNoIn: VariableDeclarationListNoIn
-           , ExprOpt: ExprOpt
-           , ExprOpt: ExprOpt
-           , Statement: Statement
-           };
+    return new ForVarStatement(FOR.loc.join(Statement.loc),
+                               VariableDeclarationListNoIn,
+                               ExprOpt1,
+                               ExprOpt2,
+                               Statement);
 }
 
 function IterationStatement_6(p, FOR, LPAREN, LeftHandSideExpr, IN, Expr, RPAREN, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "IterationStatement_6"
-           , loc: FOR.loc.join(Statement.loc)
-           , LeftHandSideExpr: LeftHandSideExpr
-           , Expr: Expr
-           , Statement: Statement
-           };
+    return new ForInStatement(FOR.loc.join(Statement.loc),
+                              LeftHandSideExpr,
+                              Expr,
+                              Statement);
 }
 
 function IterationStatement_7(p, FOR, LPAREN, VAR, IDENT, IN, Expr, RPAREN, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "IterationStatement_7"
-           , loc: FOR.loc.join(Statement.loc)
-           , Expr: Expr
-           , Statement: Statement
-           };
+    return new ForVarInStatement(FOR.loc.join(Statement.loc),
+                                 IDENT,
+                                 null,
+                                 Expr,
+                                 Statement);
 }
 
 function IterationStatement_8(p, FOR, LPAREN, VAR, IDENT, InitializerNoIn, IN, Expr, RPAREN, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "IterationStatement_8"
-           , loc: FOR.loc.join(Statement.loc)
-           , InitializerNoIn: InitializerNoIn
-           , Expr: Expr
-           , Statement: Statement
-           };
+    return new ForVarInStatement(FOR.loc.join(Statement.loc),
+                                 IDENT,
+                                 InitializerNoIn,
+                                 Expr,
+                                 Statement);
 }
 
 function ExprOpt_1(p)
@@ -1991,7 +2037,7 @@ function ExprNoInOpt_2(p, ExprNoIn)
 
 function ContinueStatement_1(p, CONTINUE, SEMICOLON)
 {
-    return new ContinueStatement(BREAK.loc.join(SEMICOLON.loc),
+    return new ContinueStatement(CONTINUE.loc.join(SEMICOLON.loc),
                                  null);
 }
 
@@ -2006,8 +2052,8 @@ function ContinueStatement_2(p, CONTINUE, _error_)
 
 function ContinueStatement_3(p, CONTINUE, IDENT, SEMICOLON)
 {
-    return new ContinueStatement(BREAK.loc.join(SEMICOLON.loc),
-                                 IDENT.value);
+    return new ContinueStatement(CONTINUE.loc.join(SEMICOLON.loc),
+                                 IDENT);
 }
 
 function ContinueStatement_4(p, CONTINUE, IDENT, _error_)
@@ -2037,7 +2083,7 @@ function BreakStatement_2(p, BREAK, _error_)
 function BreakStatement_3(p, BREAK, IDENT, SEMICOLON)
 {
     return new BreakStatement(BREAK.loc.join(SEMICOLON.loc),
-                              IDENT.value);
+                              IDENT);
 }
 
 function BreakStatement_4(p, BREAK, IDENT, _error_)
@@ -2082,78 +2128,50 @@ function ReturnStatement_4(p, RETURN, Expr, _error_)
 
 function WithStatement_1(p, WITH, LPAREN, Expr, RPAREN, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "WithStatement_1"
-           , loc: WITH.loc.join(Statement.loc)
-           , Expr: Expr
-           , Statement: Statement
-           };
+    return new WithStatement(WITH.loc.join(Statement.loc),
+                             Expr,
+                             Statement);
 }
 
 function SwitchStatement_1(p, SWITCH, LPAREN, Expr, RPAREN, CaseBlock)
 {
-    // TODO: create proper AST node
-    return { type: "SwitchStatement_1"
-           , loc: SWITCH.loc.join(CaseBlock.loc)
-           , Expr: Expr
-           , CaseBlock: CaseBlock
-           };
+    return new SwitchStatement(SWITCH.loc.join(CaseBlock.loc),
+                               Expr,
+                               CaseBlock.clauses);
 }
 
 function CaseBlock_1(p, LBRACE, CaseClausesOpt, RBRACE)
 {
-    // TODO: create proper AST node
-    return { type: "CaseBlock_1"
-           , loc: LBRACE.loc.join(RBRACE.loc)
-           , CaseClausesOpt: CaseClausesOpt
-           };
+    return new CaseBlock(LBRACE.loc.join(RBRACE.loc),
+                         CaseClausesOpt);
 }
 
-function CaseBlock_2(p, LBRACE, CaseClausesOpt, DefaultClause, CaseClausesOpt, RBRACE)
+function CaseBlock_2(p, LBRACE, CaseClausesOpt1, DefaultClause, CaseClausesOpt2, RBRACE)
 {
-    // TODO: create proper AST node
-    return { type: "CaseBlock_2"
-           , loc: LBRACE.loc.join(RBRACE.loc)
-           , CaseClausesOpt: CaseClausesOpt
-           , DefaultClause: DefaultClause
-           , CaseClausesOpt: CaseClausesOpt
-           };
+    CaseClausesOpt1.push(DefaultClause);
+    return new CaseBlock(LBRACE.loc.join(RBRACE.loc),
+                         CaseClausesOpt1.concat(CaseClausesOpt2));
 }
 
 function CaseClausesOpt_1(p)
 {
-    // TODO: create proper AST node
-    return { type: "CaseClausesOpt_1"
-           , loc: p.current_loc()
-           };
+    return [];
 }
 
 function CaseClausesOpt_2(p, CaseClauses)
 {
-    // TODO: create proper AST node
-    return { type: "CaseClausesOpt_2"
-           , loc: CaseClauses.loc
-           , CaseClauses: CaseClauses
-           };
+    return CaseClauses;
 }
 
 function CaseClauses_1(p, CaseClause)
 {
-    // TODO: create proper AST node
-    return { type: "CaseClauses_1"
-           , loc: CaseClause.loc
-           , CaseClause: CaseClause
-           };
+    return [CaseClause];
 }
 
 function CaseClauses_2(p, CaseClauses, CaseClause)
 {
-    // TODO: create proper AST node
-    return { type: "CaseClauses_2"
-           , loc: CaseClauses.loc.join(CaseClause.loc)
-           , CaseClauses: CaseClauses
-           , CaseClause: CaseClause
-           };
+    CaseClauses.push(CaseClause);
+    return CaseClauses;
 }
 
 function CaseClause_1(p, CASE, Expr, COLON)
@@ -2172,32 +2190,29 @@ function CaseClause_2(p, CASE, Expr, COLON, SourceElements)
 
 function DefaultClause_1(p, DEFAULT, COLON)
 {
-    return new DefaultClause(DEFAULT.loc.join(COLON.loc),
-                            []);
+    return new CaseClause(DEFAULT.loc.join(COLON.loc),
+                          null,
+                          []);
 }
 
 function DefaultClause_2(p, DEFAULT, COLON, SourceElements)
 {
-    return new DefaultClause(DEFAULT.loc.join(list_loc(SourceElements)),
-                            SourceElements);
+    return new CaseClause(DEFAULT.loc.join(list_loc(SourceElements)),
+                          null,
+                          SourceElements);
 }
 
 function LabelledStatement_1(p, IDENT, COLON, Statement)
 {
-    // TODO: create proper AST node
-    return { type: "LabelledStatement_1"
-           , loc: IDENT.loc.join(Statement.loc)
-           , Statement: Statement
-           };
+    return new LabelledStatement(IDENT.loc.join(Statement.loc),
+                                 IDENT,
+                                 Statement);
 }
 
 function ThrowStatement_1(p, THROW, Expr, SEMICOLON)
 {
-    // TODO: create proper AST node
-    return { type: "ThrowStatement_1"
-           , loc: THROW.loc.join(SEMICOLON.loc)
-           , Expr: Expr
-           };
+    return new ThrowStatement(THROW.loc.join(SEMICOLON.loc),
+                              Expr);
 }
 
 function ThrowStatement_2(p, THROW, Expr, _error_)
@@ -2212,41 +2227,34 @@ function ThrowStatement_2(p, THROW, Expr, _error_)
 
 function TryStatement_1(p, TRY, Block1, FINALLY, Block2)
 {
-    // TODO: create proper AST node
-    return { type: "TryStatement_1"
-           , loc: TRY.loc.join(Block2.loc)
-           , Block1: Block1
-           , Block2: Block2
-           };
+    return new TryStatement(TRY.loc.join(Block2.loc),
+                            Block1,
+                            null,
+                            null,
+                            Block2);
 }
 
 function TryStatement_2(p, TRY, Block1, CATCH, LPAREN, IDENT, RPAREN, Block2)
 {
-    // TODO: create proper AST node
-    return { type: "TryStatement_2"
-           , loc: TRY.loc.join(Block2.loc)
-           , Block1: Block1
-           , Block2: Block2
-           };
+    return new TryStatement(TRY.loc.join(Block2.loc),
+                            Block1,
+                            IDENT,
+                            Block2,
+                            null);
 }
 
 function TryStatement_3(p, TRY, Block1, CATCH, LPAREN, IDENT, RPAREN, Block2, FINALLY, Block3)
 {
-    // TODO: create proper AST node
-    return { type: "TryStatement_3"
-           , loc: TRY.loc.join(Block3.loc)
-           , Block1: Block1
-           , Block2: Block2
-           , Block3: Block3
-           };
+    return new TryStatement(TRY.loc.join(Block3.loc),
+                            Block1,
+                            IDENT,
+                            Block2,
+                            Block3);
 }
 
 function DebuggerStatement_1(p, DEBUGGER, SEMICOLON)
 {
-    // TODO: create proper AST node
-    return { type: "DebuggerStatement_1"
-           , loc: DEBUGGER.loc.join(SEMICOLON.loc)
-           };
+    return new DebuggerStatement(DEBUGGER.loc.join(SEMICOLON.loc));
 }
 
 function DebuggerStatement_2(p, DEBUGGER, _error_)
@@ -2261,17 +2269,23 @@ function DebuggerStatement_2(p, DEBUGGER, _error_)
 function FunctionDeclaration_1(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionDeclaration(FUNCTION.loc.join(RBRACE.loc),
-                                   IDENT.value,
-                                   [],
-                                   FunctionBody);
+                                   IDENT,
+                                   new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
+                                                    null,
+                                                    [],
+                                                    FunctionBody,
+                                                    null));
 }
 
 function FunctionDeclaration_2(p, FUNCTION, IDENT, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionDeclaration(FUNCTION.loc.join(RBRACE.loc),
-                                   IDENT.value,
-                                   FormalParameterList,
-                                   FunctionBody);
+                                   IDENT,
+                                   new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
+                                                    null,
+                                                    FormalParameterList,
+                                                    FunctionBody,
+                                                    null));
 }
 
 function FunctionExpr_1(p, FUNCTION, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
@@ -2279,7 +2293,8 @@ function FunctionExpr_1(p, FUNCTION, LPAREN, RPAREN, LBRACE, FunctionBody, RBRAC
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                             null,
                             [],
-                            FunctionBody);
+                            FunctionBody,
+                            null);
 }
 
 function FunctionExpr_2(p, FUNCTION, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
@@ -2287,33 +2302,36 @@ function FunctionExpr_2(p, FUNCTION, LPAREN, FormalParameterList, RPAREN, LBRACE
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                             null,
                             FormalParameterList,
-                            FunctionBody);
+                            FunctionBody,
+                            null);
 }
 
 function FunctionExpr_3(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
-                            IDENT.value,
+                            IDENT,
                             [],
-                            FunctionBody);
+                            FunctionBody,
+                            null);
 }
 
 function FunctionExpr_4(p, FUNCTION, IDENT, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
-                            IDENT.value,
+                            IDENT,
                             FormalParameterList,
-                            FunctionBody);
+                            FunctionBody,
+                            null);
 }
 
 function FormalParameterList_1(p, IDENT)
 {
-    return [IDENT.value];
+    return [IDENT];
 }
 
 function FormalParameterList_2(p, FormalParameterList, COMMA, IDENT)
 {
-    FormalParameterList.push(IDENT.value);
+    FormalParameterList.push(IDENT);
     return FormalParameterList;
 }
 
@@ -2525,22 +2543,22 @@ function MemberExpr_NoNode_5(p, NEW, MemberExpr_NoNode, Arguments_NoNode)
 
 function MemberExprNoBF_NoNode_1(p, PrimaryExprNoBrace_NoNode)
 {
-    return MemberExprNoBF_1(p, PrimaryExprNoBrace_NoNode);
+    return MemberExpr_1(p, PrimaryExprNoBrace_NoNode);
 }
 
 function MemberExprNoBF_NoNode_2(p, MemberExprNoBF_NoNode, LBRACK, Expr_NoNode, RBRACK)
 {
-    return MemberExprNoBF_2(p, MemberExprNoBF_NoNode, LBRACK, Expr_NoNode, RBRACK);
+    return MemberExpr_3(p, MemberExprNoBF_NoNode, LBRACK, Expr_NoNode, RBRACK); // call MemberExpr_3
 }
 
 function MemberExprNoBF_NoNode_3(p, MemberExprNoBF_NoNode, PERIOD, IDENT)
 {
-    return MemberExprNoBF_3(p, MemberExprNoBF_NoNode, PERIOD, IDENT);
+    return MemberExpr_4(p, MemberExprNoBF_NoNode, PERIOD, IDENT); // call MemberExpr_4
 }
 
 function MemberExprNoBF_NoNode_4(p, NEW, MemberExpr_NoNode, Arguments_NoNode)
 {
-    return MemberExprNoBF_4(p, NEW, MemberExpr_NoNode, Arguments_NoNode);
+    return MemberExpr_5(p, NEW, MemberExpr_NoNode, Arguments_NoNode); // call MemberExpr_5
 }
 
 function NewExpr_NoNode_1(p, MemberExpr_NoNode)
@@ -2555,12 +2573,12 @@ function NewExpr_NoNode_2(p, NEW, NewExpr_NoNode)
 
 function NewExprNoBF_NoNode_1(p, MemberExprNoBF_NoNode)
 {
-    return NewExprNoBF_1(p, MemberExprNoBF_NoNode);
+    return NewExpr_1(p, MemberExprNoBF_NoNode);
 }
 
 function NewExprNoBF_NoNode_2(p, NEW, NewExpr_NoNode)
 {
-    return NewExprNoBF_2(p, NEW, NewExpr_NoNode);
+    return NewExpr_2(p, NEW, NewExpr_NoNode);
 }
 
 function CallExpr_NoNode_1(p, MemberExpr_NoNode, Arguments_NoNode)
@@ -2585,22 +2603,22 @@ function CallExpr_NoNode_4(p, CallExpr_NoNode, PERIOD, IDENT)
 
 function CallExprNoBF_NoNode_1(p, MemberExprNoBF_NoNode, Arguments_NoNode)
 {
-    return CallExprNoBF_1(p, MemberExprNoBF_NoNode, Arguments_NoNode);
+    return CallExpr_1(p, MemberExprNoBF_NoNode, Arguments_NoNode);
 }
 
 function CallExprNoBF_NoNode_2(p, CallExprNoBF_NoNode, Arguments_NoNode)
 {
-    return CallExprNoBF_2(p, CallExprNoBF_NoNode, Arguments_NoNode);
+    return CallExpr_2(p, CallExprNoBF_NoNode, Arguments_NoNode);
 }
 
 function CallExprNoBF_NoNode_3(p, CallExprNoBF_NoNode, LBRACK, Expr_NoNode, RBRACK)
 {
-    return CallExprNoBF_3(p, CallExprNoBF_NoNode, LBRACK, Expr_NoNode, RBRACK);
+    return CallExpr_3(p, CallExprNoBF_NoNode, LBRACK, Expr_NoNode, RBRACK);
 }
 
 function CallExprNoBF_NoNode_4(p, CallExprNoBF_NoNode, PERIOD, IDENT)
 {
-    return CallExprNoBF_4(p, CallExprNoBF_NoNode, PERIOD, IDENT);
+    return CallExpr_4(p, CallExprNoBF_NoNode, PERIOD, IDENT);
 }
 
 function Arguments_NoNode_1(p, LPAREN, RPAREN)
@@ -2635,12 +2653,12 @@ function LeftHandSideExpr_NoNode_2(p, CallExpr_NoNode)
 
 function LeftHandSideExprNoBF_NoNode_1(p, NewExprNoBF_NoNode)
 {
-    return LeftHandSideExprNoBF_1(p, NewExprNoBF_NoNode);
+    return LeftHandSideExpr_1(p, NewExprNoBF_NoNode);
 }
 
 function LeftHandSideExprNoBF_NoNode_2(p, CallExprNoBF_NoNode)
 {
-    return LeftHandSideExprNoBF_2(p, CallExprNoBF_NoNode);
+    return LeftHandSideExpr_2(p, CallExprNoBF_NoNode);
 }
 
 function PostfixExpr_NoNode_1(p, LeftHandSideExpr_NoNode)
@@ -2660,17 +2678,17 @@ function PostfixExpr_NoNode_3(p, LeftHandSideExpr_NoNode, MINUSMINUS)
 
 function PostfixExprNoBF_NoNode_1(p, LeftHandSideExprNoBF_NoNode)
 {
-    return PostfixExprNoBF_1(p, LeftHandSideExprNoBF_NoNode);
+    return PostfixExpr_1(p, LeftHandSideExprNoBF_NoNode);
 }
 
 function PostfixExprNoBF_NoNode_2(p, LeftHandSideExprNoBF_NoNode, PLUSPLUS)
 {
-    return PostfixExprNoBF_2(p, LeftHandSideExprNoBF_NoNode, PLUSPLUS);
+    return PostfixExpr_2(p, LeftHandSideExprNoBF_NoNode, PLUSPLUS);
 }
 
 function PostfixExprNoBF_NoNode_3(p, LeftHandSideExprNoBF_NoNode, MINUSMINUS)
 {
-    return PostfixExprNoBF_3(p, LeftHandSideExprNoBF_NoNode, MINUSMINUS);
+    return PostfixExpr_3(p, LeftHandSideExprNoBF_NoNode, MINUSMINUS);
 }
 
 function UnaryExprCommon_NoNode_1(p, DELETE, UnaryExpr_NoNode)
@@ -2740,12 +2758,12 @@ function UnaryExpr_NoNode_2(p, UnaryExprCommon_NoNode)
 
 function UnaryExprNoBF_NoNode_1(p, PostfixExprNoBF_NoNode)
 {
-    return UnaryExprNoBF_1(p, PostfixExprNoBF_NoNode);
+    return UnaryExpr_1(p, PostfixExprNoBF_NoNode);
 }
 
 function UnaryExprNoBF_NoNode_2(p, UnaryExprCommon_NoNode)
 {
-    return UnaryExprNoBF_2(p, UnaryExprCommon_NoNode);
+    return UnaryExpr_2(p, UnaryExprCommon_NoNode);
 }
 
 function MultiplicativeExpr_NoNode_1(p, UnaryExpr_NoNode)
@@ -2770,22 +2788,22 @@ function MultiplicativeExpr_NoNode_4(p, MultiplicativeExpr_NoNode, MOD, UnaryExp
 
 function MultiplicativeExprNoBF_NoNode_1(p, UnaryExprNoBF_NoNode)
 {
-    return MultiplicativeExprNoBF_1(p, UnaryExprNoBF_NoNode);
+    return MultiplicativeExpr_1(p, UnaryExprNoBF_NoNode);
 }
 
 function MultiplicativeExprNoBF_NoNode_2(p, MultiplicativeExprNoBF_NoNode, MULT, UnaryExpr_NoNode)
 {
-    return MultiplicativeExprNoBF_2(p, MultiplicativeExprNoBF_NoNode, MULT, UnaryExpr_NoNode);
+    return MultiplicativeExpr_2(p, MultiplicativeExprNoBF_NoNode, MULT, UnaryExpr_NoNode);
 }
 
 function MultiplicativeExprNoBF_NoNode_3(p, MultiplicativeExprNoBF_NoNode, DIV, UnaryExpr_NoNode)
 {
-    return MultiplicativeExprNoBF_3(p, MultiplicativeExprNoBF_NoNode, DIV, UnaryExpr_NoNode);
+    return MultiplicativeExpr_3(p, MultiplicativeExprNoBF_NoNode, DIV, UnaryExpr_NoNode);
 }
 
 function MultiplicativeExprNoBF_NoNode_4(p, MultiplicativeExprNoBF_NoNode, MOD, UnaryExpr_NoNode)
 {
-    return MultiplicativeExprNoBF_4(p, MultiplicativeExprNoBF_NoNode, MOD, UnaryExpr_NoNode);
+    return MultiplicativeExpr_4(p, MultiplicativeExprNoBF_NoNode, MOD, UnaryExpr_NoNode);
 }
 
 function AdditiveExpr_NoNode_1(p, MultiplicativeExpr_NoNode)
@@ -2805,17 +2823,17 @@ function AdditiveExpr_NoNode_3(p, AdditiveExpr_NoNode, MINUS, MultiplicativeExpr
 
 function AdditiveExprNoBF_NoNode_1(p, MultiplicativeExprNoBF_NoNode)
 {
-    return AdditiveExprNoBF_1(p, MultiplicativeExprNoBF_NoNode);
+    return AdditiveExpr_1(p, MultiplicativeExprNoBF_NoNode);
 }
 
 function AdditiveExprNoBF_NoNode_2(p, AdditiveExprNoBF_NoNode, PLUS, MultiplicativeExpr_NoNode)
 {
-    return AdditiveExprNoBF_2(p, AdditiveExprNoBF_NoNode, PLUS, MultiplicativeExpr_NoNode);
+    return AdditiveExpr_2(p, AdditiveExprNoBF_NoNode, PLUS, MultiplicativeExpr_NoNode);
 }
 
 function AdditiveExprNoBF_NoNode_3(p, AdditiveExprNoBF_NoNode, MINUS, MultiplicativeExpr_NoNode)
 {
-    return AdditiveExprNoBF_3(p, AdditiveExprNoBF_NoNode, MINUS, MultiplicativeExpr_NoNode);
+    return AdditiveExpr_3(p, AdditiveExprNoBF_NoNode, MINUS, MultiplicativeExpr_NoNode);
 }
 
 function ShiftExpr_NoNode_1(p, AdditiveExpr_NoNode)
@@ -2840,22 +2858,22 @@ function ShiftExpr_NoNode_4(p, ShiftExpr_NoNode, URSHIFT, AdditiveExpr_NoNode)
 
 function ShiftExprNoBF_NoNode_1(p, AdditiveExprNoBF_NoNode)
 {
-    return ShiftExprNoBF_1(p, AdditiveExprNoBF_NoNode);
+    return ShiftExpr_1(p, AdditiveExprNoBF_NoNode);
 }
 
 function ShiftExprNoBF_NoNode_2(p, ShiftExprNoBF_NoNode, LSHIFT, AdditiveExpr_NoNode)
 {
-    return ShiftExprNoBF_2(p, ShiftExprNoBF_NoNode, LSHIFT, AdditiveExpr_NoNode);
+    return ShiftExpr_2(p, ShiftExprNoBF_NoNode, LSHIFT, AdditiveExpr_NoNode);
 }
 
 function ShiftExprNoBF_NoNode_3(p, ShiftExprNoBF_NoNode, RSHIFT, AdditiveExpr_NoNode)
 {
-    return ShiftExprNoBF_3(p, ShiftExprNoBF_NoNode, RSHIFT, AdditiveExpr_NoNode);
+    return ShiftExpr_3(p, ShiftExprNoBF_NoNode, RSHIFT, AdditiveExpr_NoNode);
 }
 
 function ShiftExprNoBF_NoNode_4(p, ShiftExprNoBF_NoNode, URSHIFT, AdditiveExpr_NoNode)
 {
-    return ShiftExprNoBF_4(p, ShiftExprNoBF_NoNode, URSHIFT, AdditiveExpr_NoNode);
+    return ShiftExpr_4(p, ShiftExprNoBF_NoNode, URSHIFT, AdditiveExpr_NoNode);
 }
 
 function RelationalExpr_NoNode_1(p, ShiftExpr_NoNode)
@@ -2925,37 +2943,37 @@ function RelationalExprNoIn_NoNode_6(p, RelationalExprNoIn_NoNode, INSTANCEOF, S
 
 function RelationalExprNoBF_NoNode_1(p, ShiftExprNoBF_NoNode)
 {
-    return RelationalExprNoBF_1(p, ShiftExprNoBF_NoNode);
+    return RelationalExpr_1(p, ShiftExprNoBF_NoNode);
 }
 
 function RelationalExprNoBF_NoNode_2(p, RelationalExprNoBF_NoNode, LT, ShiftExpr_NoNode)
 {
-    return RelationalExprNoBF_2(p, RelationalExprNoBF_NoNode, LT, ShiftExpr_NoNode);
+    return RelationalExpr_2(p, RelationalExprNoBF_NoNode, LT, ShiftExpr_NoNode);
 }
 
 function RelationalExprNoBF_NoNode_3(p, RelationalExprNoBF_NoNode, GT, ShiftExpr_NoNode)
 {
-    return RelationalExprNoBF_3(p, RelationalExprNoBF_NoNode, GT, ShiftExpr_NoNode);
+    return RelationalExpr_3(p, RelationalExprNoBF_NoNode, GT, ShiftExpr_NoNode);
 }
 
 function RelationalExprNoBF_NoNode_4(p, RelationalExprNoBF_NoNode, LE, ShiftExpr_NoNode)
 {
-    return RelationalExprNoBF_4(p, RelationalExprNoBF_NoNode, LE, ShiftExpr_NoNode);
+    return RelationalExpr_4(p, RelationalExprNoBF_NoNode, LE, ShiftExpr_NoNode);
 }
 
 function RelationalExprNoBF_NoNode_5(p, RelationalExprNoBF_NoNode, GE, ShiftExpr_NoNode)
 {
-    return RelationalExprNoBF_5(p, RelationalExprNoBF_NoNode, GE, ShiftExpr_NoNode);
+    return RelationalExpr_5(p, RelationalExprNoBF_NoNode, GE, ShiftExpr_NoNode);
 }
 
 function RelationalExprNoBF_NoNode_6(p, RelationalExprNoBF_NoNode, INSTANCEOF, ShiftExpr_NoNode)
 {
-    return RelationalExprNoBF_6(p, RelationalExprNoBF_NoNode, INSTANCEOF, ShiftExpr_NoNode);
+    return RelationalExpr_6(p, RelationalExprNoBF_NoNode, INSTANCEOF, ShiftExpr_NoNode);
 }
 
 function RelationalExprNoBF_NoNode_7(p, RelationalExprNoBF_NoNode, IN, ShiftExpr_NoNode)
 {
-    return RelationalExprNoBF_7(p, RelationalExprNoBF_NoNode, IN, ShiftExpr_NoNode);
+    return RelationalExpr_7(p, RelationalExprNoBF_NoNode, IN, ShiftExpr_NoNode);
 }
 
 function EqualityExpr_NoNode_1(p, RelationalExpr_NoNode)
@@ -3010,27 +3028,27 @@ function EqualityExprNoIn_NoNode_5(p, EqualityExprNoIn_NoNode, STRNEQ, Relationa
 
 function EqualityExprNoBF_NoNode_1(p, RelationalExprNoBF_NoNode)
 {
-    return EqualityExprNoBF_1(p, RelationalExprNoBF_NoNode);
+    return EqualityExpr_1(p, RelationalExprNoBF_NoNode);
 }
 
 function EqualityExprNoBF_NoNode_2(p, EqualityExprNoBF_NoNode, EQEQ, RelationalExpr_NoNode)
 {
-    return EqualityExprNoBF_2(p, EqualityExprNoBF_NoNode, EQEQ, RelationalExpr_NoNode);
+    return EqualityExpr_2(p, EqualityExprNoBF_NoNode, EQEQ, RelationalExpr_NoNode);
 }
 
 function EqualityExprNoBF_NoNode_3(p, EqualityExprNoBF_NoNode, NE, RelationalExpr_NoNode)
 {
-    return EqualityExprNoBF_3(p, EqualityExprNoBF_NoNode, NE, RelationalExpr_NoNode);
+    return EqualityExpr_3(p, EqualityExprNoBF_NoNode, NE, RelationalExpr_NoNode);
 }
 
 function EqualityExprNoBF_NoNode_4(p, EqualityExprNoBF_NoNode, STREQ, RelationalExpr_NoNode)
 {
-    return EqualityExprNoBF_4(p, EqualityExprNoBF_NoNode, STREQ, RelationalExpr_NoNode);
+    return EqualityExpr_4(p, EqualityExprNoBF_NoNode, STREQ, RelationalExpr_NoNode);
 }
 
 function EqualityExprNoBF_NoNode_5(p, EqualityExprNoBF_NoNode, STRNEQ, RelationalExpr_NoNode)
 {
-    return EqualityExprNoBF_5(p, EqualityExprNoBF_NoNode, STRNEQ, RelationalExpr_NoNode);
+    return EqualityExpr_5(p, EqualityExprNoBF_NoNode, STRNEQ, RelationalExpr_NoNode);
 }
 
 function BitwiseANDExpr_NoNode_1(p, EqualityExpr_NoNode)
@@ -3055,12 +3073,12 @@ function BitwiseANDExprNoIn_NoNode_2(p, BitwiseANDExprNoIn_NoNode, BITAND, Equal
 
 function BitwiseANDExprNoBF_NoNode_1(p, EqualityExprNoBF_NoNode)
 {
-    return BitwiseANDExprNoBF_1(p, EqualityExprNoBF_NoNode);
+    return BitwiseANDExpr_1(p, EqualityExprNoBF_NoNode);
 }
 
 function BitwiseANDExprNoBF_NoNode_2(p, BitwiseANDExprNoBF_NoNode, BITAND, EqualityExpr_NoNode)
 {
-    return BitwiseANDExprNoBF_2(p, BitwiseANDExprNoBF_NoNode, BITAND, EqualityExpr_NoNode);
+    return BitwiseANDExpr_2(p, BitwiseANDExprNoBF_NoNode, BITAND, EqualityExpr_NoNode);
 }
 
 function BitwiseXORExpr_NoNode_1(p, BitwiseANDExpr_NoNode)
@@ -3085,12 +3103,12 @@ function BitwiseXORExprNoIn_NoNode_2(p, BitwiseXORExprNoIn_NoNode, BITXOR, Bitwi
 
 function BitwiseXORExprNoBF_NoNode_1(p, BitwiseANDExprNoBF_NoNode)
 {
-    return BitwiseXORExprNoBF_1(p, BitwiseANDExprNoBF_NoNode);
+    return BitwiseXORExpr_1(p, BitwiseANDExprNoBF_NoNode);
 }
 
 function BitwiseXORExprNoBF_NoNode_2(p, BitwiseXORExprNoBF_NoNode, BITXOR, BitwiseANDExpr_NoNode)
 {
-    return BitwiseXORExprNoBF_2(p, BitwiseXORExprNoBF_NoNode, BITXOR, BitwiseANDExpr_NoNode);
+    return BitwiseXORExpr_2(p, BitwiseXORExprNoBF_NoNode, BITXOR, BitwiseANDExpr_NoNode);
 }
 
 function BitwiseORExpr_NoNode_1(p, BitwiseXORExpr_NoNode)
@@ -3098,9 +3116,9 @@ function BitwiseORExpr_NoNode_1(p, BitwiseXORExpr_NoNode)
     return BitwiseORExpr_1(p, BitwiseXORExpr_NoNode);
 }
 
-function BitwiseORExpr_NoNode_2(p, BitwiseORExpr_NoNode, VBAR, BitwiseXORExpr_NoNode)
+function BitwiseORExpr_NoNode_2(p, BitwiseORExpr_NoNode, BITOR, BitwiseXORExpr_NoNode)
 {
-    return BitwiseORExpr_2(p, BitwiseORExpr_NoNode, VBAR, BitwiseXORExpr_NoNode);
+    return BitwiseORExpr_2(p, BitwiseORExpr_NoNode, BITOR, BitwiseXORExpr_NoNode);
 }
 
 function BitwiseORExprNoIn_NoNode_1(p, BitwiseXORExprNoIn_NoNode)
@@ -3108,19 +3126,19 @@ function BitwiseORExprNoIn_NoNode_1(p, BitwiseXORExprNoIn_NoNode)
     return BitwiseORExprNoIn_1(p, BitwiseXORExprNoIn_NoNode);
 }
 
-function BitwiseORExprNoIn_NoNode_2(p, BitwiseORExprNoIn_NoNode, VBAR, BitwiseXORExprNoIn_NoNode)
+function BitwiseORExprNoIn_NoNode_2(p, BitwiseORExprNoIn_NoNode, BITOR, BitwiseXORExprNoIn_NoNode)
 {
-    return BitwiseORExprNoIn_2(p, BitwiseORExprNoIn_NoNode, VBAR, BitwiseXORExprNoIn_NoNode);
+    return BitwiseORExprNoIn_2(p, BitwiseORExprNoIn_NoNode, BITOR, BitwiseXORExprNoIn_NoNode);
 }
 
 function BitwiseORExprNoBF_NoNode_1(p, BitwiseXORExprNoBF_NoNode)
 {
-    return BitwiseORExprNoBF_1(p, BitwiseXORExprNoBF_NoNode);
+    return BitwiseORExpr_1(p, BitwiseXORExprNoBF_NoNode);
 }
 
-function BitwiseORExprNoBF_NoNode_2(p, BitwiseORExprNoBF_NoNode, VBAR, BitwiseXORExpr_NoNode)
+function BitwiseORExprNoBF_NoNode_2(p, BitwiseORExprNoBF_NoNode, BITOR, BitwiseXORExpr_NoNode)
 {
-    return BitwiseORExprNoBF_2(p, BitwiseORExprNoBF_NoNode, VBAR, BitwiseXORExpr_NoNode);
+    return BitwiseORExpr_2(p, BitwiseORExprNoBF_NoNode, BITOR, BitwiseXORExpr_NoNode);
 }
 
 function LogicalANDExpr_NoNode_1(p, BitwiseORExpr_NoNode)
@@ -3145,12 +3163,12 @@ function LogicalANDExprNoIn_NoNode_2(p, LogicalANDExprNoIn_NoNode, AND, BitwiseO
 
 function LogicalANDExprNoBF_NoNode_1(p, BitwiseORExprNoBF_NoNode)
 {
-    return LogicalANDExprNoBF_1(p, BitwiseORExprNoBF_NoNode);
+    return LogicalANDExpr_1(p, BitwiseORExprNoBF_NoNode);
 }
 
 function LogicalANDExprNoBF_NoNode_2(p, LogicalANDExprNoBF_NoNode, AND, BitwiseORExpr_NoNode)
 {
-    return LogicalANDExprNoBF_2(p, LogicalANDExprNoBF_NoNode, AND, BitwiseORExpr_NoNode);
+    return LogicalANDExpr_2(p, LogicalANDExprNoBF_NoNode, AND, BitwiseORExpr_NoNode);
 }
 
 function LogicalORExpr_NoNode_1(p, LogicalANDExpr_NoNode)
@@ -3175,12 +3193,12 @@ function LogicalORExprNoIn_NoNode_2(p, LogicalORExprNoIn_NoNode, OR, LogicalANDE
 
 function LogicalORExprNoBF_NoNode_1(p, LogicalANDExprNoBF_NoNode)
 {
-    return LogicalORExprNoBF_1(p, LogicalANDExprNoBF_NoNode);
+    return LogicalORExpr_1(p, LogicalANDExprNoBF_NoNode);
 }
 
 function LogicalORExprNoBF_NoNode_2(p, LogicalORExprNoBF_NoNode, OR, LogicalANDExpr_NoNode)
 {
-    return LogicalORExprNoBF_2(p, LogicalORExprNoBF_NoNode, OR, LogicalANDExpr_NoNode);
+    return LogicalORExpr_2(p, LogicalORExprNoBF_NoNode, OR, LogicalANDExpr_NoNode);
 }
 
 function ConditionalExpr_NoNode_1(p, LogicalORExpr_NoNode)
@@ -3188,9 +3206,9 @@ function ConditionalExpr_NoNode_1(p, LogicalORExpr_NoNode)
     return ConditionalExpr_1(p, LogicalORExpr_NoNode);
 }
 
-function ConditionalExpr_NoNode_2(p, LogicalORExpr_NoNode, QUESTION, AssignmentExpr_NoNode, COLON, AssignmentExpr_NoNode)
+function ConditionalExpr_NoNode_2(p, LogicalORExpr_NoNode, QUESTION, AssignmentExpr_NoNode1, COLON, AssignmentExpr_NoNode2)
 {
-    return ConditionalExpr_2(p, LogicalORExpr_NoNode, QUESTION, AssignmentExpr_NoNode, COLON, AssignmentExpr_NoNode);
+    return ConditionalExpr_2(p, LogicalORExpr_NoNode, QUESTION, AssignmentExpr_NoNode1, COLON, AssignmentExpr_NoNode2);
 }
 
 function ConditionalExprNoIn_NoNode_1(p, LogicalORExprNoIn_NoNode)
@@ -3198,19 +3216,19 @@ function ConditionalExprNoIn_NoNode_1(p, LogicalORExprNoIn_NoNode)
     return ConditionalExprNoIn_1(p, LogicalORExprNoIn_NoNode);
 }
 
-function ConditionalExprNoIn_NoNode_2(p, LogicalORExprNoIn_NoNode, QUESTION, AssignmentExprNoIn_NoNode, COLON, AssignmentExprNoIn_NoNode)
+function ConditionalExprNoIn_NoNode_2(p, LogicalORExprNoIn_NoNode, QUESTION, AssignmentExprNoIn_NoNode1, COLON, AssignmentExprNoIn_NoNode2)
 {
-    return ConditionalExprNoIn_2(p, LogicalORExprNoIn_NoNode, QUESTION, AssignmentExprNoIn_NoNode, COLON, AssignmentExprNoIn_NoNode);
+    return ConditionalExprNoIn_2(p, LogicalORExprNoIn_NoNode, QUESTION, AssignmentExprNoIn_NoNode1, COLON, AssignmentExprNoIn_NoNode2);
 }
 
 function ConditionalExprNoBF_NoNode_1(p, LogicalORExprNoBF_NoNode)
 {
-    return ConditionalExprNoBF_1(p, LogicalORExprNoBF_NoNode);
+    return ConditionalExpr_1(p, LogicalORExprNoBF_NoNode);
 }
 
-function ConditionalExprNoBF_NoNode_2(p, LogicalORExprNoBF_NoNode, QUESTION, AssignmentExpr_NoNode, COLON, AssignmentExpr_NoNode)
+function ConditionalExprNoBF_NoNode_2(p, LogicalORExprNoBF_NoNode, QUESTION, AssignmentExpr_NoNode1, COLON, AssignmentExpr_NoNode2)
 {
-    return ConditionalExprNoBF_2(p, LogicalORExprNoBF_NoNode, QUESTION, AssignmentExpr_NoNode, COLON, AssignmentExpr_NoNode);
+    return ConditionalExpr_2(p, LogicalORExprNoBF_NoNode, QUESTION, AssignmentExpr_NoNode1, COLON, AssignmentExpr_NoNode2);
 }
 
 function AssignmentExpr_NoNode_1(p, ConditionalExpr_NoNode)
@@ -3235,12 +3253,12 @@ function AssignmentExprNoIn_NoNode_2(p, LeftHandSideExpr_NoNode, AssignmentOpera
 
 function AssignmentExprNoBF_NoNode_1(p, ConditionalExprNoBF_NoNode)
 {
-    return AssignmentExprNoBF_1(p, ConditionalExprNoBF_NoNode);
+    return AssignmentExpr_1(p, ConditionalExprNoBF_NoNode);
 }
 
 function AssignmentExprNoBF_NoNode_2(p, LeftHandSideExprNoBF_NoNode, AssignmentOperator_NoNode, AssignmentExpr_NoNode)
 {
-    return AssignmentExprNoBF_2(p, LeftHandSideExprNoBF_NoNode, AssignmentOperator_NoNode, AssignmentExpr_NoNode);
+    return AssignmentExpr_2(p, LeftHandSideExprNoBF_NoNode, AssignmentOperator_NoNode, AssignmentExpr_NoNode);
 }
 
 function AssignmentOperator_NoNode_1(p, EQUAL)
@@ -3283,19 +3301,19 @@ function AssignmentOperator_NoNode_8(p, URSHIFTEQUAL)
     return AssignmentOperator_8(p, URSHIFTEQUAL);
 }
 
-function AssignmentOperator_NoNode_9(p, ANDEQUAL)
+function AssignmentOperator_NoNode_9(p, BITANDEQUAL)
 {
-    return AssignmentOperator_9(p, ANDEQUAL);
+    return AssignmentOperator_9(p, BITANDEQUAL);
 }
 
-function AssignmentOperator_NoNode_10(p, XOREQUAL)
+function AssignmentOperator_NoNode_10(p, BITXOREQUAL)
 {
-    return AssignmentOperator_10(p, XOREQUAL);
+    return AssignmentOperator_10(p, BITXOREQUAL);
 }
 
-function AssignmentOperator_NoNode_11(p, OREQUAL)
+function AssignmentOperator_NoNode_11(p, BITOREQUAL)
 {
-    return AssignmentOperator_11(p, OREQUAL);
+    return AssignmentOperator_11(p, BITOREQUAL);
 }
 
 function AssignmentOperator_NoNode_12(p, MODEQUAL)
@@ -3325,12 +3343,12 @@ function ExprNoIn_NoNode_2(p, ExprNoIn_NoNode, COMMA, AssignmentExprNoIn_NoNode)
 
 function ExprNoBF_NoNode_1(p, AssignmentExprNoBF_NoNode)
 {
-    return ExprNoBF_1(p, AssignmentExprNoBF_NoNode);
+    return Expr_1(p, AssignmentExprNoBF_NoNode);
 }
 
 function ExprNoBF_NoNode_2(p, ExprNoBF_NoNode, COMMA, AssignmentExpr_NoNode)
 {
-    return ExprNoBF_2(p, ExprNoBF_NoNode, COMMA, AssignmentExpr_NoNode);
+    return Expr_2(p, ExprNoBF_NoNode, COMMA, AssignmentExpr_NoNode);
 }
 
 function Statement_NoNode_1(p, Block_NoNode)
@@ -3558,14 +3576,14 @@ function IterationStatement_NoNode_3(p, WHILE, LPAREN, Expr_NoNode, RPAREN, Stat
     return IterationStatement_3(p, WHILE, LPAREN, Expr_NoNode, RPAREN, Statement_NoNode);
 }
 
-function IterationStatement_NoNode_4(p, FOR, LPAREN, ExprNoInOpt_NoNode, SEMICOLON, ExprOpt_NoNode, SEMICOLON, ExprOpt_NoNode, RPAREN, Statement_NoNode)
+function IterationStatement_NoNode_4(p, FOR, LPAREN, ExprNoInOpt_NoNode, SEMICOLON1, ExprOpt_NoNode1, SEMICOLON2, ExprOpt_NoNode2, RPAREN, Statement_NoNode)
 {
-    return IterationStatement_4(p, FOR, LPAREN, ExprNoInOpt_NoNode, SEMICOLON, ExprOpt_NoNode, SEMICOLON, ExprOpt_NoNode, RPAREN, Statement_NoNode);
+    return IterationStatement_4(p, FOR, LPAREN, ExprNoInOpt_NoNode, SEMICOLON1, ExprOpt_NoNode1, SEMICOLON2, ExprOpt_NoNode2, RPAREN, Statement_NoNode);
 }
 
-function IterationStatement_NoNode_5(p, FOR, LPAREN, VAR, VariableDeclarationListNoIn_NoNode, SEMICOLON, ExprOpt_NoNode, SEMICOLON, ExprOpt_NoNode, RPAREN, Statement_NoNode)
+function IterationStatement_NoNode_5(p, FOR, LPAREN, VAR, VariableDeclarationListNoIn_NoNode, SEMICOLON1, ExprOpt_NoNode1, SEMICOLON2, ExprOpt_NoNode2, RPAREN, Statement_NoNode)
 {
-    return IterationStatement_5(p, FOR, LPAREN, VAR, VariableDeclarationListNoIn_NoNode, SEMICOLON, ExprOpt_NoNode, SEMICOLON, ExprOpt_NoNode, RPAREN, Statement_NoNode);
+    return IterationStatement_5(p, FOR, LPAREN, VAR, VariableDeclarationListNoIn_NoNode, SEMICOLON1, ExprOpt_NoNode1, SEMICOLON2, ExprOpt_NoNode2, RPAREN, Statement_NoNode);
 }
 
 function IterationStatement_NoNode_6(p, FOR, LPAREN, LeftHandSideExpr_NoNode, IN, Expr_NoNode, RPAREN, Statement_NoNode)
@@ -3678,9 +3696,9 @@ function CaseBlock_NoNode_1(p, LBRACE, CaseClausesOpt_NoNode, RBRACE)
     return CaseBlock_1(p, LBRACE, CaseClausesOpt_NoNode, RBRACE);
 }
 
-function CaseBlock_NoNode_2(p, LBRACE, CaseClausesOpt_NoNode, DefaultClause_NoNode, CaseClausesOpt_NoNode, RBRACE)
+function CaseBlock_NoNode_2(p, LBRACE, CaseClausesOpt_NoNode1, DefaultClause_NoNode, CaseClausesOpt_NoNode2, RBRACE)
 {
-    return CaseBlock_2(p, LBRACE, CaseClausesOpt_NoNode, DefaultClause_NoNode, CaseClausesOpt_NoNode, RBRACE);
+    return CaseBlock_2(p, LBRACE, CaseClausesOpt_NoNode1, DefaultClause_NoNode, CaseClausesOpt_NoNode2, RBRACE);
 }
 
 function CaseClausesOpt_NoNode_1(p)
@@ -3738,19 +3756,19 @@ function ThrowStatement_NoNode_2(p, THROW, Expr_NoNode, _error_)
     return ThrowStatement_2(p, THROW, Expr_NoNode, _error_);
 }
 
-function TryStatement_NoNode_1(p, TRY, Block_NoNode, FINALLY, Block_NoNode)
+function TryStatement_NoNode_1(p, TRY, Block_NoNode1, FINALLY, Block_NoNode2)
 {
-    return TryStatement_1(p, TRY, Block_NoNode, FINALLY, Block_NoNode);
+    return TryStatement_1(p, TRY, Block_NoNode1, FINALLY, Block_NoNode2);
 }
 
-function TryStatement_NoNode_2(p, TRY, Block_NoNode, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode)
+function TryStatement_NoNode_2(p, TRY, Block_NoNode1, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode2)
 {
-    return TryStatement_2(p, TRY, Block_NoNode, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode);
+    return TryStatement_2(p, TRY, Block_NoNode1, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode2);
 }
 
-function TryStatement_NoNode_3(p, TRY, Block_NoNode, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode, FINALLY, Block_NoNode)
+function TryStatement_NoNode_3(p, TRY, Block_NoNode1, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode2, FINALLY, Block_NoNode3)
 {
-    return TryStatement_3(p, TRY, Block_NoNode, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode, FINALLY, Block_NoNode);
+    return TryStatement_3(p, TRY, Block_NoNode1, CATCH, LPAREN, IDENT, RPAREN, Block_NoNode2, FINALLY, Block_NoNode3);
 }
 
 function DebuggerStatement_NoNode_1(p, DEBUGGER, SEMICOLON)

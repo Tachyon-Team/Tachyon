@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-06-07 21:32:35 feeley>
+// File: "ast-passes.js", Time-stamp: <2010-06-08 21:53:22 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -39,7 +39,7 @@ function ast_pass1_add_variable(id, ctx, is_local)
 {
     var id_str = id.value;
     var v = ctx.vars[id_str];
-    if (v === undefined)
+    if (typeof v == "undefined")
     {
         v = new variable(id, is_local);
         ctx.vars[id_str] = v;
@@ -118,7 +118,9 @@ function ast_pass1(ast, ctx)
     else if (ast instanceof IfStatement)
     {
         ast.expr = ast_pass1(ast.expr, ctx);
-        ast.statements = ast_pass1_statements(ast.statements, ctx);
+        ast.statements[0] = ast_pass1(ast.statements[0], ctx);
+        if (ast.statements.length == 2)
+            ast.statements[1] = ast_pass1(ast.statements[1], ctx);
         return ast;
     }
     else if (ast instanceof DoWhileStatement)
@@ -222,42 +224,52 @@ function ast_pass1(ast, ctx)
     {
         // TODO
         error("SwitchStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "SwitchStatement");
         pp_asts(indent, "expr", [ast.expr]);
         pp_asts(indent, "clauses", ast.clauses);
+        */
     }
     else if (ast instanceof CaseClause)
     {
         // TODO
         error("CaseClause not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "CaseClause");
         pp_asts(indent, "expr", [ast.expr]);
         pp_asts(indent, "statements", ast.statements);
+        */
     }
     else if (ast instanceof LabelledStatement)
     {
         // TODO
         error("LabelledStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "LabelledStatement");
         print(pp_prefix(indent) + "|-id= " + ast.id.value);
         pp_asts(indent, "statement", [ast.statement]);
+        */
     }
     else if (ast instanceof ThrowStatement)
     {
         // TODO
         error("ThrowStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "ThrowStatement");
         pp_asts(indent, "expr", [ast.expr]);
+        */
     }
     else if (ast instanceof TryStatement)
     {
         // TODO
         error("TryStatement not implemented");
+        /*
         pp_loc(ast.loc, pp_prefix(indent) + "TryStatement");
         pp_asts(indent, "statement", [ast.statement]);
         print(pp_prefix(indent) + "|-id= " + ast.id.value);
         pp_asts(indent, "catch_part", [ast.catch_part]);
         pp_asts(indent, "finally_part", [ast.finally_part]);
+        */
     }
     else if (ast instanceof DebuggerStatement)
     {
@@ -350,8 +362,10 @@ function ast_passes(ast)
 
 //=============================================================================
 
+/*
 
-///////////////////////////
+ to be used in pass2 to resolve variable references
+
 function ast_pass2_lookup_variable(id, ctx)
 {
     var x = ctx.vars[id];
@@ -362,4 +376,4 @@ function ast_pass2_lookup_variable(id, ctx)
     else
         return pass2_add_variable(id, ctx, false);
 }
-
+*/

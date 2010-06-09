@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-05-24 15:42:17 feeley>
+// File: "scanner.js", Time-stamp: <2010-06-08 20:59:25 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -57,8 +57,7 @@ function Scanner(port)
             this.current_line_pos = this.current_char_pos;
             return EOL_CH;
         }
-
-        if (c == CR_CH)
+        else if (c == CR_CH)
         {
             this.current_line++;
             this.current_line_pos = this.current_char_pos;
@@ -70,8 +69,8 @@ function Scanner(port)
                 this.peeked_char = next; // remember for next time
             return EOL_CH;
         }
-
-        return c;
+        else
+            return c;
     };
 
     // method advance(i)
@@ -175,7 +174,7 @@ function Scanner(port)
             else if (c == PERCENT_CH)
             {
                 if (this.lookahead_char(1) == EQUAL_CH)
-                    return this.simple_token(MODEQ_CAT, 2);
+                    return this.simple_token(MODEQUAL_CAT, 2);
                 else
                     return this.simple_token(MOD_CAT, 1);
             }
@@ -185,7 +184,7 @@ function Scanner(port)
                 if (x == AMPERSAND_CH)
                     return this.simple_token(AND_CAT, 2);
                 else if (x == EQUAL_CH)
-                    return this.simple_token(ANDEQUAL_CAT, 2);
+                    return this.simple_token(BITANDEQUAL_CAT, 2);
                 else
                     return this.simple_token(BITAND_CAT, 1);
             }
@@ -327,7 +326,7 @@ function Scanner(port)
                 if (x == VBAR_CH)
                     return this.simple_token(OR_CAT, 2);
                 else if (x == EQUAL_CH)
-                    return this.simple_token(OREQUAL_CAT, 2);
+                    return this.simple_token(BITOREQUAL_CAT, 2);
                 else
                     return this.simple_token(BITOR_CAT, 1);
             }
@@ -472,17 +471,17 @@ var LINE_SHIFT = 16;
 
 function line_and_column_to_position(line, column)
 {
-    return line + (column << this.LINE_SHIFT);
+    return line + (column << LINE_SHIFT);
 }
 
 function position_to_line(pos)
 {
-    return (pos & ((1 << this.LINE_SHIFT) - 1)) + 1;
+    return (pos & ((1 << LINE_SHIFT) - 1)) + 1;
 }
 
 function position_to_column(pos)
 {
-    return (pos >>> this.LINE_SHIFT) + 1;
+    return (pos >>> LINE_SHIFT) + 1;
 }
 
 function Location(filename, start_pos, end_pos)
@@ -511,7 +510,6 @@ function Location(filename, start_pos, end_pos)
     };
 }
 
-var EOF            =  -1;
 var NUL_CH         =   0;
 var TAB_CH         =   9;
 var EOL_CH         =  10;
@@ -627,10 +625,10 @@ var DIVEQUAL_CAT = 48;
 var LSHIFTEQUAL_CAT = 49;
 var RSHIFTEQUAL_CAT = 50;
 var URSHIFTEQUAL_CAT = 51;
-var ANDEQUAL_CAT = 52;
+var BITANDEQUAL_CAT = 52;
 var MODEQUAL_CAT = 53;
-var XOREQUAL_CAT = 54;
-var OREQUAL_CAT = 55;
+var BITXOREQUAL_CAT = 54;
+var BITOREQUAL_CAT = 55;
 var LBRACE_CAT = 56;
 var RBRACE_CAT = 57;
 var NUMBER_CAT = 58;
@@ -658,7 +656,7 @@ var LPAREN_CAT = 79;
 var EQUAL_CAT = 80;
 var LT_CAT = 81;
 var COLON_CAT = 82;
-var VBAR_CAT = 83;
+var BITOR_CAT = 83;
 var EXCL_CAT = 84;
 var LBRACK_CAT = 85;
 var RBRACK_CAT = 86;
