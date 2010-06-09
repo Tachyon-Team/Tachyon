@@ -15,11 +15,18 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 function BaseInstr()
 {
-
     /**
-    @description Produces a string representation.
+    Produce a string representation.
     */
     this.toString = function () {}
+
+    /**
+    Test if this instruction's output is read (has uses)
+    */
+    this.hasDests = function() { return this.reads.length > 0; }
+
+    // List of instructions reading this instruction's output
+    this.dests = [];
 }
 
 /**
