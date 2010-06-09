@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js2scm.js", Time-stamp: <2010-06-07 15:06:56 feeley>
+// File: "js2scm.js", Time-stamp: <2010-06-09 08:49:57 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -31,7 +31,7 @@ function main()
         var filename = args[i];
         var port = new File_input_port(filename);
         var s = new Scanner(port);
-        var p = new Parser(s);
+        var p = new Parser(s, true);
         prog = p.parse();
         statements.push(prog.block.statements);
         i++;
