@@ -1,4 +1,4 @@
-# File: "makefile", Time-stamp: <2010-05-24 17:17:21 feeley>
+# File: "makefile", Time-stamp: <2010-06-08 22:27:05 feeley>
 
 # Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -11,13 +11,18 @@
 
 GRAMMAR=Grammar
 
-all: test
+all: test-parser
 
-test: misc.js scanner.js parser.js js.js
+test-compiler: misc.js scanner.js parser.js scheme.js js.js
+	./js2scm -exe t.js
+	time ./t.js.exe
+
+test-parser: misc.js scanner.js parser.js js.js
 	./js tests/test0.js
 	./js tests/test1.js
 	./js tests/test2.js
 	time ./js tests/test3.js > /dev/null
+	./js tests/all.js
 
 $(GRAMMAR).y.js: $(GRAMMAR).y keywords.scm
 	./yacc2js.scm $(GRAMMAR).y
@@ -63,6 +68,10 @@ parser.js: parser-tables.js
 	fi
 	mv parser.js.new parser.js
 	rm -f part1.js part2.js
+
+bootstrap:
+	time ./js2scm -exe misc.js scanner.js parser.js pp.js ast-passes.js js.js
+	time ./js2scm -exe misc.js scanner.js parser.js pp.js ast-passes.js scheme.js js2scm.js
 
 clean realclean:
 	rm -f $(GRAMMAR).y.js tokens.js keywords.js scanner-tables.js parser-tables.js build-keyword-ht.o*

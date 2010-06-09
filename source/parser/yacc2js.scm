@@ -2,7 +2,7 @@
 
 ;;;============================================================================
 
-;;; File: "yacc2js.scm", Time-stamp: <2010-05-24 17:03:00 feeley>
+;;; File: "yacc2js.scm", Time-stamp: <2010-06-09 08:06:36 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -177,7 +177,7 @@
                            (loop (cons '() rev-rhss)
                                  (cdr lst)))
                           ((string=? x "error")
-                           (loop (cons (cons '_error_ (car rev-rhss))
+                           (loop (cons (cons 'AUTOSEMICOLON (car rev-rhss))
                                        (cdr rev-rhss))
                                  (cdr lst)))
                           ((char=? (string-ref x 0) #\{)
@@ -225,8 +225,7 @@
   (let* ((start
           (or start-nt (car (car defs))))
          (defs
-           (cons '(_error_ (FOOBAR));;;;;;;;;;;;
-                 (reverse rev-defs)))
+           (reverse rev-defs))
          (reordered-defs
           (cons (assoc start defs)
                 (remove start defs)))
@@ -302,7 +301,8 @@
       ;;(out-table: "foo")
       ;;(output: parser "out")
       (output-javascript: ,output-filename)
-      ,(append (reverse rev-explicit-toks)
+      ,(append '(AUTOSEMICOLON)
+               (reverse rev-explicit-toks)
                (apply append
                       (map (lambda (kw-str)
                              (let ((sym
@@ -315,7 +315,6 @@
                                    (list sym))))
                            keywords))
                (map car (table->list implicit-toks))
-               '(FOOBAR);;;;;;;;;;;;;;;;;;;;;
                (map (lambda (lst) (cons 'left: lst)) rev-left-toks)
                (map (lambda (lst) (cons 'right: lst)) rev-right-toks)
                (map (lambda (lst) (cons 'nonassoc: lst)) rev-nonassoc-toks))

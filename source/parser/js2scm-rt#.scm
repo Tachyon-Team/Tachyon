@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-06 19:59:06 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-08 21:50:47 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -16,11 +16,20 @@
 
 ;;; JavaScript forms.
 
-(define-macro (js.var variable value)
-  `(define ,variable ,value))
+(define-macro (js.var variable)
+  `(define ,variable #f))
 
 (define-macro (js.function params body)
   `(lambda (this ,@params) ,body))
+
+(define-macro (js.function-with-nontail-return params body)
+  `(lambda (this ,@params)
+     (continuation-capture
+      (lambda (return)
+        ,body))))
+
+(define-macro (js.return value)
+  `(continuation-return return ,value))
 
 (define-macro (js.this)
   `this)
@@ -36,7 +45,7 @@
       `(,fn '() ,@args)))
 
 (define-macro (js.new ctor . args)
-  `(let* ((self (make-table)) (ctor ,ctor))
+  `(let* ((ctor ,ctor) (self (make-Object ctor (make-table))))
      (ctor self ,@args)
      self))
 
@@ -50,21 +59,85 @@
   `(js:array-lit ,@elems))
 
 (define-macro (js.obj-lit . props)
-  `(list->table (list ,@props)))
+  `(make-Object #f (list->table (list ,@props))))
 
 (define-macro (js.prop name value)
   `(cons ,name ,value))
 
+(define-macro (js.continue)
+  `(TODO-js.continue))
+
+(define-macro (js.break)
+  `(continuation-return break (void)))
+
+(define-macro (js.dowhile loop-id body test)
+  `(let ,loop-id ()
+     ,body
+     (if ,test
+         (,loop-id))))
+
+(define-macro (js.dowhile-with-break loop-id body test)
+  `(continuation-capture
+    (lambda (break)
+      (let ,loop-id ()
+        ,body
+        (if ,test
+            (,loop-id))))))
+
+(define-macro (js.while loop-id test body)
+  `(let ,loop-id ()
+     (if ,test
+         (begin
+           ,body
+           (,loop-id)))))
+
+(define-macro (js.while-with-break loop-id test body)
+  `(continuation-capture
+    (lambda (break)
+      (let ,loop-id ()
+        (if ,test
+            (begin
+              ,body
+              (,loop-id)))))))
+
+(define-macro (js.for loop-id test body step)
+  `(let ,loop-id ()
+     (if ,test
+         (begin
+           ,body
+           ,step
+           (,loop-id)))))
+
+(define-macro (js.for-with-break loop-id test body step)
+  `(continuation-capture
+    (lambda (break)
+      (let ,loop-id ()
+        (if ,test
+            (begin
+              ,body
+              ,step
+              (,loop-id)))))))
+
+(define-macro (js.forin loop-id lhs set body)
+  `(js:forin
+    ,set
+    (lambda (key) (js.= ,lhs key) ,body)))
+
+(define-macro (js.forin-with-break loop-id lhs set body)
+  `(continuation-capture
+    (lambda (break)
+      (js.forin ,loop-id ,lhs ,set ,body))))
+
 ;;; JavaScript operators.
 
 (define-macro (js.delete x)
-  `())
+  `(TODO-js.delete))
 
 (define-macro (js.void x)
-  `())
+  `(TODO-js.void))
 
 (define-macro (js.typeof x)
-  `())
+  `(js:typeof ,x))
 
 (define-macro (js.++x x)
   (if (and (pair? x)
@@ -77,7 +150,7 @@
          res)))
 
 (define-macro (js.auto++x x)
-  `())
+  `(TODO-js.auto++x))
 
 (define-macro (js.--x x)
   (if (and (pair? x)
@@ -90,10 +163,10 @@
          res)))
 
 (define-macro (js.auto--x x)
-  `())
+  `(TODO-js.auto--x))
 
 (define-macro (js.~ x)
-  `())
+  `(TODO-js.~))
 
 (define-macro (js.! x)
   `(let ((x ,x))
@@ -120,26 +193,28 @@
          res)))
 
 (define-macro (js.* x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
-                 (let ((r (##fx*? x y)))
-                   (or r (js:* x y)))
+                 (if (fx= y 0)
+                     0
+                     (let ((r (##fx*? x y)))
+                       (or r (js:* x y))))
                  (js:* x y))
              (js:* x y)))
       `(##fx* ,x ,y)))
 
 (define-macro (js./ x y)
-  `())
+  `(TODO-js./))
 
 (define-macro (js.% x y)
-  `())
+  `(fxmodulo ,x ,y))
 
 (define-macro (js.+ x . y)
   (if (null? y)
       `(js.+ 0 ,x)
-      (if #f ;; assume only numerical type is fixnum and no overflow
+      (if #t
           `(let* ((x ,x) (y ,(car y)))
              (if (##fixnum? x)
                  (if (##fixnum? y)
@@ -152,7 +227,7 @@
 (define-macro (js.- x . y)
   (if (null? y)
       `(js.- 0 ,x)
-      (if #f ;; assume only numerical type is fixnum and no overflow
+      (if #t ;; assume only numerical type is fixnum and no overflow
           `(let* ((x ,x) (y ,(car y)))
              (if (##fixnum? x)
                  (if (##fixnum? y)
@@ -163,16 +238,16 @@
           `(##fx- ,x ,(car y)))))
 
 (define-macro (js.<< x y)
-  `())
+  `(fxarithmetic-shift-left ,x ,y))
 
 (define-macro (js.>> x y)
-  `())
+  `(fxarithmetic-shift-right ,x ,y))
 
 (define-macro (js.>>> x y)
-  `())
+  `(fxarithmetic-shift-right ,x ,y));;;;;;;;;;;;;;;;;
 
 (define-macro (js.< x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
@@ -182,7 +257,7 @@
       `(##fx< ,x ,y)))
 
 (define-macro (js.> x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
@@ -192,7 +267,7 @@
       `(##fx> ,x ,y)))
 
 (define-macro (js.<= x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
@@ -202,7 +277,7 @@
       `(##fx<= ,x ,y)))
 
 (define-macro (js.>= x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
@@ -212,13 +287,13 @@
       `(##fx>= ,x ,y)))
 
 (define-macro (js.instanceof x y)
-  `())
+  `(js:instanceof ,x ,y))
 
 (define-macro (js.in x y)
-  `())
+  `(TODO-js.in))
 
 (define-macro (js.== x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
@@ -228,7 +303,7 @@
       `(##fx= ,x ,y)))
 
 (define-macro (js.!= x y)
-  (if #f ;; assume only numerical type is fixnum and no overflow
+  (if #t ;; assume only numerical type is fixnum and no overflow
       `(let* ((x ,x) (y ,y))
          (if (##fixnum? x)
              (if (##fixnum? y)
@@ -246,61 +321,81 @@
      (not (eq? x y)))) ;;; is this correct?
 
 (define-macro (js.& x y)
-  `())
+  `(fxand ,x ,y))
 
 (define-macro (js.^ x y)
-  `())
+  `(TODO-js.^))
 
 (define-macro (|js.\|| x y)
-  `())
+  `(|TODO-js.\||))
 
 (define-macro (js.&& x y)
-  `())
+  `(and ,x ,y))
 
 (define-macro (|js.\|\|| x y)
-  `())
+  `(or ,x ,y))
 
 (define-macro (|js.,| x y)
-  `())
+  `(begin ,x ,y))
 
 (define-macro (js.= x y)
   (if (and (pair? x)
            (eq? (car x) 'js.index))
-      `(let* ((self ,(cadr x)) (key ,(caddr x)))
-         (js.index-set! self key ,y))
-      `(set! ,x ,y)))
+      `(let* ((self ,(cadr x)) (key ,(caddr x)) (res ,y))
+         (js.index-set! self key res)
+         res)
+      `(let ((res ,y))
+         (set! ,x res)
+         res)))
 
 (define-macro (js.+= x y)
-  `())
+  (if (and (pair? x)
+           (eq? (car x) 'js.index))
+      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (js.+ (js.index self key) y)))
+         (js.index-set! self key res)
+         res)
+      `(let* ((y ,y) (res (js.+ ,x y)))
+         (set! ,x res)
+         res)))
 
 (define-macro (js.-= x y)
-  `())
+  (if (and (pair? x)
+           (eq? (car x) 'js.index))
+      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (js.- (js.index self key) y)))
+         (js.index-set! self key res)
+         res)
+      `(let* ((y ,y) (res (js.- ,x y)))
+         (set! ,x res)
+         res)))
 
 (define-macro (js.*= x y)
-  `())
+  `(TODO-js.*=))
 
 (define-macro (js./= x y)
-  `())
+  `(TODO-js./=))
 
 (define-macro (js.<<= x y)
-  `())
+  `(TODO-js.<<=))
 
 (define-macro (js.>>= x y)
-  `())
+  `(TODO-js.>>=))
 
 (define-macro (js.>>>= x y)
-  `())
+  `(TODO-js.>>>=))
 
 (define-macro (js.&= x y)
-  `())
+  `(TODO-js.&=))
 
 (define-macro (js.^= x y)
-  `())
+  `(TODO-js.^=))
 
 (define-macro (|js.\|=| x y)
-  `())
+  `(|TODO-js.\|=|))
 
 (define-macro (js.%= x y)
-  `())
+  `(TODO-js.%=))
+
+(define-macro (js.x?y:z x y z)
+  `(if ,x ,y ,z))
 
 ;;;============================================================================

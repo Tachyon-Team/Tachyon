@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "keywords.scm", Time-stamp: <2010-05-23 16:46:15 feeley>
+;;; File: "keywords.scm", Time-stamp: <2010-06-08 20:50:37 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -79,7 +79,9 @@
     (DELETETOKEN . DELETE)
     (THISTOKEN   . THIS)
     (INTOKEN     . IN)
-    (CARETEQUAL  . BITXOREQUAL)
+    (ANDEQUAL    . BITANDEQUAL)
+    (OREQUAL     . BITOREQUAL)
+    (XOREQUAL    . BITXOREQUAL)
     (OPENBRACE   . LBRACE)
     (CLOSEBRACE  . RBRACE)
     (+           . PLUS)
@@ -87,7 +89,7 @@
     (=           . EQUAL)
     (<           . LT)
     (:           . COLON)
-    (|\||        . VBAR)
+    (|\||        . BITOR)
     (!           . EXCL)
     (|[|         . LBRACK)
     (|]|         . RBRACK)
