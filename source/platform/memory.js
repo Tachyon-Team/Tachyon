@@ -20,19 +20,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
-@namespace
-*/
-memory = makeModule("memory");
-
-/**
 Add a signed offset to a pointer value
 @param ptr pointer to raw memory
 @param val signed offset
 @returns the adjusted pointer
 */
-memory.ptrAdd = function(ptr, offset)
-{
-}
+//memory.ptrAdd = function(ptr, offset)
+//{
+//}
 
 /**
 Compute the difference between two pointers
@@ -40,25 +35,25 @@ Compute the difference between two pointers
 @param ptr2 second pointer
 @returns the integer pointer difference
 */
-memory.ptrSub = function(ptr1, ptr2)
-{
-}
+//memory.ptrSub = function(ptr1, ptr2)
+//{
+//}
 
 /**
 Write an 8-bit unsigned integer to memory
 @param ptr pointer to raw memory
 @param val value to write
 */
-memory.writeU8 = function(ptr, val)
-{
-}
+//memory.writeU8 = function(ptr, val)
+//{
+//}
 
 /**
 Read an 8-bit unsigned integer from memory
 @param ptr pointer to raw memory
 @returns value read
 */
-memory.readU8 = function(ptr)
-{
-}
+//memory.readU8 = function(ptr)
+//{
+//}
 

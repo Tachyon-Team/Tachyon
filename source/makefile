@@ -1,11 +1,10 @@
 # Temporary makefile for testing, to be revised
 
 SRCS=                       \
-    utility/modules.js      \
     platform/memory.js      \
-    ir/basicblocks.js       \
     ir/instructions.js      \
-    ir/inline.js
+    ir/inline.js            \
+    ir/cfg.js
 
 all: run
 

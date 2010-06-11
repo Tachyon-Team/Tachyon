@@ -16,14 +16,46 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function BaseInstr()
 {
     /**
-    Produce a string representation.
+    Produce a string representation of this instruction
     */
-    this.toString = function () {}
+    this.toString = function ()
+    {
+        var output = (this.outName? (this.outName + " = "):"") + this.mnemonic + " ";
+
+        for (ins in uses)
+        {
+            if (ins instanceof ConstInstr)
+            {
+                output += ins.toString();
+            }            
+            else
+            {
+                output += ins.outName;
+            }
+
+            if (ins != this.uses[this.uses.length - 1])            
+                output += ", ";
+        }
+
+        return output;
+    }
 
     /**
     Test if this instruction's output is read (has uses)
     */
-    this.hasDests = function() { return this.reads.length > 0; }
+    this.hasDests = function () { return this.reads.length > 0; }
+
+    /**
+    Mnemonic name for this instruction    
+    @field
+    */
+    this.mnemonic = "";
+
+    /**
+    Name of this instruction's output
+    @field
+    */
+    this.outName = "";
 
     /**
     List of values used by this instruction
@@ -36,15 +68,25 @@ function BaseInstr()
     @field
     */
     this.dests = [];
+
+    /**
+    Parent basic block
+    @field
+    */
+    this.parentBlock = null;
 }
 
 /**
-@class Base class for constants, these are treated like regular instructions.
+@class Base class for constants, these are treated like regular instructions
 @augments BaseInstr
 @author Maxime Chevalier-Boisvert
 */
 function ConstInstr()
 {
+    /**
+    Default toString() implementation for constant instructions
+    */
+    this.toString = function() { return String(this.value); }
 }
 ConstInstr.prototype = new BaseInstr();
 
@@ -55,7 +97,8 @@ ConstInstr.prototype = new BaseInstr();
 */
 function BoolConst(value)
 {
-    assert (typeof value == 'boolean');
+    // assert (typeof value == 'boolean');
+
     this.value = value;
 }
 BoolConst.prototype = new ConstInstr();
@@ -67,7 +110,8 @@ BoolConst.prototype = new ConstInstr();
 */
 function IntConst(value)
 {
-    assert (value - math.floor(value) = 0);
+    // assert (value - Math.floor(value) = 0);
+
     this.value = value;
 }
 IntConst.prototype = new ConstInstr();
@@ -79,10 +123,13 @@ IntConst.prototype = new ConstInstr();
 */
 function FPConst(value)
 {
-    assert (typeof value == 'number');
+    //assert (typeof value == 'number');
+
+    //this.toString = function() { return String(this.value); }
+
     this.value = value;
 }
-IntConst.prototype = new ConstInstr();
+FPConst.prototype = new ConstInstr();
 
 /**
 @class String constant value
@@ -91,7 +138,8 @@ IntConst.prototype = new ConstInstr();
 */
 function StrConst(value)
 {
-    assert (typeof value == 'string');
+    //assert (typeof value == 'string');
+
     this.value = value;
 }
 IntConst.prototype = new ConstInstr();
@@ -105,4 +153,34 @@ function ArithInstr()
 {
 }
 ArithInstr.prototype = new BaseInstr();
+
+/**
+@class Base class for branching instructions.
+@augments BaseInstr
+@author Maxime Chevalier-Boisvert
+*/
+function BranchInstr()
+{
+}
+BranchInstr.prototype = new BaseInstr();
+
+/**
+@class Base class for branching instructions.
+@augments BaseInstr
+@author Maxime Chevalier-Boisvert
+*/
+function JumpInstr(targetBlock)
+{
+    /**
+    Obtain a string representation
+    */
+    this.toString = function() { return "jump " + this.targetBlock.label; }
+
+    /**
+    Target basic block
+    @field
+    */
+    this.targetBlock = targetBlock;
+}
+JumpInstr.prototype = new BranchInstr();
 
