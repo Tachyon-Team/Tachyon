@@ -19,11 +19,10 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-
 /**
 @namespace
 */
-memory = {}
+memory = makeModule("memory");
 
 /**
 Add a signed offset to a pointer value
@@ -31,7 +30,6 @@ Add a signed offset to a pointer value
 @param val signed offset
 @returns the adjusted pointer
 */
-//function memPtrAdd(ptr, offset)
 memory.ptrAdd = function(ptr, offset)
 {
 }
@@ -51,7 +49,6 @@ Write an 8-bit unsigned integer to memory
 @param ptr pointer to raw memory
 @param val value to write
 */
-//function memWriteU8(ptr, val)
 memory.writeU8 = function(ptr, val)
 {
 }
@@ -61,7 +58,6 @@ Read an 8-bit unsigned integer from memory
 @param ptr pointer to raw memory
 @returns value read
 */
-//function memReadU8(ptr)
 memory.readU8 = function(ptr)
 {
 }
