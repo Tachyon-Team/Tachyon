@@ -22,12 +22,14 @@ function ControlFlowGraph()
     {
         var output = "";
 
-        for (block in this.blocks)
+        for (var i = 0; i < this.blocks.length; ++i)
         {
-            output + block.toString();
+            block = this.blocks[i];
 
-            if (block != this.blocks[this.blocks.length - 1])
-                output += "\n";
+            output += block;
+
+            if (block !== this.blocks[this.blocks.length - 1])
+                output += "\n\n";
         }
 
         return output;
@@ -110,23 +112,20 @@ function BasicBlock(cfg)
     */
     this.toString = function()
     {
-        var output = this.label + "\n";
+        var output = this.label + ":\n";
 
-        print ("Instrs: " + this.instrs);
-
-        for (instr in this.instrs)
+        for (var i = 0; i < this.instrs.length; ++i)
         {
+            var instr = this.instrs[i];
+
             // If the instruction is unnamed, give it a free name
-            //if (!instr.outName)
-            //    instr.outName = this.parentCFG.getTmpName();
+            if (!instr.outName)
+                instr.outName = this.parentCFG.getTmpName();
 
-            //print("printing");
+            output += instr + ";";
 
-            print("Type is " + typeof instr);
-
-            //output += instr + ";"
-
-            //print("printed");
+            if (instr !== this.instrs[this.instrs.length - 1])
+                output += "\n";
         }
 
         return output;
@@ -165,7 +164,16 @@ cfg = new ControlFlowGraph();
 
 entry = cfg.getEntryBlock();
 
+block2 = cfg.getNewBlock();
+block2.label = "fooblock";
+
 entry.addInstr(new JumpInstr(entry));
+entry.addInstr(new JumpInstr(block2));
+
+//block2.addInstr(new IntConst(1));
+block2.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)));
+
+print("Printing");
 
 print(cfg);
 

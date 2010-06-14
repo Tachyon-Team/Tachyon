@@ -22,22 +22,26 @@ function BaseInstr()
     {
         var output = (this.outName? (this.outName + " = "):"") + this.mnemonic + " ";
 
-        for (ins in uses)
+        for (i = 0; i < this.uses.length; ++i)
         {
-            if (ins instanceof ConstInstr)
-            {
-                output += ins.toString();
-            }            
-            else
-            {
-                output += ins.outName;
-            }
+            ins = this.uses[i];
+
+            output += ins.valToString();
 
             if (ins != this.uses[this.uses.length - 1])            
                 output += ", ";
         }
 
         return output;
+    }
+
+    /**
+    Get a string representation of an instruction's value/name
+    */
+    this.valToString = function ()
+    {
+        // Return the output/temporary name for this instruction
+        return this.outName;
     }
 
     /**
@@ -58,7 +62,7 @@ function BaseInstr()
     this.outName = "";
 
     /**
-    List of values used by this instruction
+    Values used/read by this instruction
     @field
     */
     this.uses = [];
@@ -87,6 +91,12 @@ function ConstInstr()
     Default toString() implementation for constant instructions
     */
     this.toString = function() { return String(this.value); }
+
+    /**
+    Get a string representation of an instruction's value/name.
+    Returns the constant's string representation directly.
+    */
+    this.valToString = toString;
 }
 ConstInstr.prototype = new BaseInstr();
 
@@ -125,8 +135,6 @@ function FPConst(value)
 {
     //assert (typeof value == 'number');
 
-    //this.toString = function() { return String(this.value); }
-
     this.value = value;
 }
 FPConst.prototype = new ConstInstr();
@@ -145,12 +153,45 @@ function StrConst(value)
 IntConst.prototype = new ConstInstr();
 
 /**
+Arithmetic operator enumeration
+*/
+ArithOp =
+{
+    ADD: 0,
+    SUB: 1,
+    MUL: 2,
+    DIV: 3,
+    MOD: 4
+};
+
+/**
 @class Class for arithmetic instructions
 @augments BaseInstr
 @author Maxime Chevalier-Boisvert
 */
-function ArithInstr()
+function ArithInstr(arithOp, leftVal, rightVal)
 {
+    // Set the mnemonic name for the instruction
+    switch (arithOp)
+    {
+        case ArithOp.ADD: this.mnemonic = "add"; break;
+        case ArithOp.SUB: this.mnemonic = "sub"; break;
+        case ArithOp.MUL: this.mnemonic = "mod"; break;
+        case ArithOp.DIV: this.mnemonic = "div"; break;
+        case ArithOp.MOD: this.mnemonic = "mod"; break;
+    }
+
+    /**
+    Arithmetic operator
+    @field
+    */
+    this.arithOp = arithOp;
+
+    /**
+    Arithmetic operands
+    @field
+    */
+    this.uses = [leftVal, rightVal];
 }
 ArithInstr.prototype = new BaseInstr();
 
@@ -161,12 +202,17 @@ ArithInstr.prototype = new BaseInstr();
 */
 function BranchInstr()
 {
+    /**
+    Potential branch target basic blocks
+    @field
+    */
+    this.targets = [];
 }
 BranchInstr.prototype = new BaseInstr();
 
 /**
-@class Base class for branching instructions.
-@augments BaseInstr
+@class Unconditional jump instruction
+@augments BranchInstr
 @author Maxime Chevalier-Boisvert
 */
 function JumpInstr(targetBlock)
@@ -174,13 +220,46 @@ function JumpInstr(targetBlock)
     /**
     Obtain a string representation
     */
-    this.toString = function() { return "jump " + this.targetBlock.label; }
+    this.toString = function() { return "jump " + this.targets[0].label; }
 
     /**
     Target basic block
     @field
     */
-    this.targetBlock = targetBlock;
+    this.targets = [targetBlock];
+}
+JumpInstr.prototype = new BranchInstr();
+
+/**
+@class If conditional test instruction
+@augments BranchInstr
+@author Maxime Chevalier-Boisvert
+*/
+function IfInstr(testVal, trueBlock, falseBlock)
+{
+    /**
+    Obtain a string representation
+    */
+    this.toString = function()
+    {
+        return 
+            "if " + this.uses[0].valToString() +
+            " then " + this.targets[0].label +
+            " else " + this.targets[1].label
+        ; 
+    }
+
+    /**
+    Test value for the branch condition
+    @field
+    */
+    this.uses = [testVal];
+
+    /**
+    Branch targets for the true and false cases
+    @field
+    */
+    this.targets = [trueTarget, falseTarget];
 }
 JumpInstr.prototype = new BranchInstr();
 
