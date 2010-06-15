@@ -184,6 +184,16 @@ function StrConst(value)
 StrConst.prototype = new ConstInstr();
 
 /**
+@class Object reference constant value
+@augments ConstInstr
+*/
+function ObjRefConst(obj)
+{
+   this.value = obj;
+}
+ObjRefConst.prototype = new ConstInstr();
+
+/**
 @class SSA phi node instruction
 @augments BaseInstr
 */
@@ -241,6 +251,52 @@ function ArithInstr(arithOp, leftVal, rightVal)
     this.uses = [leftVal, rightVal];
 }
 ArithInstr.prototype = new BaseInstr();
+
+/**
+Bitwise operator kinds
+*/
+BitOp =
+{
+    AND:    0,
+    OR:     1,
+    XOR:    2,
+    NOT:    3,
+    LSFT:   4,
+    RSFT:   5,
+    RSFTU:  6
+};
+
+/**
+@class Class for bitwise instructions
+@augments BaseInstr
+*/
+function BitwiseInstr(bitOp, leftVal, rightVal)
+{
+    // Set the mnemonic name for the instruction
+    switch (bitOp)
+    {
+        case ArithOp.AND:   this.mnemonic = "and";      break;
+        case ArithOp.OR:    this.mnemonic = "or";       break;
+        case ArithOp.XOR:   this.mnemonic = "xor";      break;
+        case ArithOp.NOT:   this.mnemonic = "not";      break;
+        case ArithOp.LSFT:  this.mnemonic = "lsft";     break;
+        case ArithOp.RSFT:  this.mnemonic = "rsft";     break;
+        case ArithOp.RSFTU: this.mnemonic = "rsftu";    break;
+    }
+
+    /**
+    Arithmetic operator
+    @field
+    */
+    this.bitOp = bitOp;
+
+    /**
+    Arithmetic operands
+    @field
+    */
+    this.uses = [leftVal, rightVal];
+}
+BitwiseInstr.prototype = new BaseInstr();
 
 /**
 Comparison operator kinds
@@ -389,6 +445,99 @@ function IfInstr(testVal, trueBlock, falseBlock)
 IfInstr.prototype = new BranchInstr();
 
 /**
+@class Function return instruction
+@augments BranchInstr
+*/
+function RetInstr(retVal)
+{
+    /**
+    Return value, can be undefined
+    @field
+    */
+    this.uses = [retVal];
+}
+RetInstr.prototype = new BranchInstr();
+
+/**
+@class Exception throw to exception handler. Handler may be left undefined for
+interprocedural throw.
+@augments BranchInstr
+*/
+function ThrowInst(excVal, catchBlock)
+{
+    /**
+    Produce a string representation of the throw instruction
+    */
+    this.toString = function ()
+    {
+        var output = 'throw ' + excVal.valToString();
+
+        if (this.targets[0] != null)
+            output += 'to ' + this.targets[0].label;
+
+        return output;
+    }
+
+    // Set the target block if a catch block is specified
+    if (catchBlock == undefined)
+        catchBlock = null;
+
+    /**
+    Exception value to be thrown
+    @field
+    */
+    this.uses = [excVal];
+
+    /**
+    Catch block for this throw, may be null if unspecified
+    @field
+    */
+    this.targets = [catchBlock];
+}
+ThrowInst.prototype = new BranchInstr();
+
+/**
+@class Exception handler instruction, for function calls. Handler may be left
+undefined for interprocedural throw.
+@augments BranchInstr
+*/
+OnExcInst = function (contBlock, catchBlock)
+{
+    /**
+    Produce a string representation of the exception handler instruction
+    */
+    this.toString = function ()
+    {
+        var output = 'on_exc throw';
+
+        if (this.targets[0] != null)
+            output += ' to ' + this.targets[1].label;
+
+        output += ' else ' + this.targets[0].label;
+
+        return output;
+    }    
+
+    /**
+    Catch block and continue block for the exception handler
+    @field
+    */
+    this.targets = [contBlock, catchBlock];
+}
+OnExcInst.prototype = new BranchInstr();
+
+/**
+@class Exception value catch
+@augments BaseInstr
+*/
+function CatchInstr()
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'catch';
+}
+CatchInstr.prototype = new BaseInstr();
+
+/**
 @class Call with function object reference
 @augments BaseInstr
 */
@@ -415,30 +564,4 @@ function ConstructRefInstr(funcVal, paramVals)
     this.uses = [funcVal].concat(paramVals);
 }
 ConstructRefInstr.prototype = new BaseInstr();
-
-/**
-@class Call with function object reference
-@augments BranchInstr
-*/
-function RetInstr(retVal)
-{
-    /**
-    Return value, can be undefined
-    @field
-    */
-    this.uses = [retVal];
-}
-RetInstr.prototype = new BaseInstr();
-
-
-
-// TODO: global object constant, or set field on null is global set?
-// null prop set is wrong***
-
-
-// TODO: bitwise operators, constants
-
-// TODO: exceptions
-
-
 

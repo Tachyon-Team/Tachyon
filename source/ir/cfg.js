@@ -77,6 +77,47 @@ function ControlFlowGraph()
     }
 
     /**
+    Remove a basic block from this CFG
+    */
+    this.remBlock = function (block)
+    {
+        // Remove each of the block's instructions
+        for (var i = 0; i < block.instrs.length; ++i)
+            block.remInstr(block.instrs[i]);
+
+        // Remove the block from the list
+        arraySetRem(this.blocks, block);
+    }
+
+    /**
+    Verify that this CFG is in proper SSA form
+    */
+    this.verify = function ()
+    {
+        // TODO: verify that edges match
+        // use edges match dest edges
+        // out edges match edges in last instr
+        // block in edges match block out edges
+
+
+        // TODO: verify proper use of phi nodes
+        // uses must be reachable on every incoming path
+        // can do forward traversal, maintain avail defs?
+        // - if def not present on one path, eliminate at merge
+        // this does not need to be efficient, can do back traversal for all nodes...
+    }
+
+    /**
+    Simplify the CFG
+    */
+    this.simplify = function ()
+    {
+        // TODO: iteratively eliminate phi nodes?
+
+        // TODO: merge blocks with only one destination
+    }
+
+    /**
     Entry basic block
     @field
     */
@@ -141,10 +182,26 @@ function BasicBlock(cfg)
         );
 
         // Add reverse edges from all uses to this instruction
-        for (i = 0; i < instr.uses.length; ++i)
+        for (var i = 0; i < instr.uses.length; ++i)
         {
             var use = instr.uses[i];
-            use.dests.push(use);
+            arraySetAdd(use.dests, instr);
+        }
+
+        // If this is a branch instruction
+        if (instr instanceof BranchInstr)
+        {
+            // For each possible destination of this instruction
+            for (var i = 0; i < instr.targets.length; ++i)
+            {
+                target = instr.targets[i];
+
+                // Add an edge to the potential target block
+                arraySetAdd(this.dests, target);
+
+                // Add an incoming edge to the potential target block
+                arraySetAdd(target.srcs, this);
+            }
         }
 
         // Set the parent block for the instruction
@@ -152,6 +209,38 @@ function BasicBlock(cfg)
 
         // Add the instruction to the list
         this.instrs.push(instr);
+    }
+
+    /**
+    Remove an instruction from this basic block
+    */
+    this.remInstr = function (instr)
+    {
+        // Remove the instruction from the list
+        arraySetRem(this.instrs, instr);
+
+        // Remove reverse edges from all uses to this instruction
+        for (var i = 0; i < instr.uses.length; ++i)
+        {
+            var use = instr.uses[i];
+            arraySetRem(use.dests, instr);
+        }
+
+        // If this is a branch instruction
+        if (instr instanceof BranchInstr)
+        {
+            // For each possible destination of this instruction
+            for (var i = 0; i < instr.targets.length; ++i)
+            {
+                target = instr.targets[i];
+
+                // Remove the edge to the potential target block
+                arraySetRem(this.dests, target);
+
+                // Remove the incoming edge to the potential target block
+                arraySetRem(target.srcs, this);
+            }
+        }        
     }
 
     /**
@@ -165,6 +254,18 @@ function BasicBlock(cfg)
     @field
     */
     this.instrs = [];
+
+    /**
+    Blocks that have edges going to this lock
+    @field
+    */
+    this.srcs = [];
+
+    /**
+    Blocks that we have edges going to
+    @field
+    */
+    this.dests = [];
 
     /**
     Parent control flow graph

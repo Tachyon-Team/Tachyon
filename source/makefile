@@ -1,8 +1,9 @@
 # Temporary makefile for testing, to be revised
 
 SRCS=                       \
-    utility/modules.js      \
     utility/debug.js        \
+    utility/modules.js      \
+    utility/arrays.js       \
     platform/memory.js      \
     ir/instructions.js      \
     ir/inline.js            \

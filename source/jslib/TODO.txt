@@ -1,0 +1,2 @@
+// TODO: implement javascript library functions and objects in
+// terms of JS code, inline IR and external (FFI) calls
