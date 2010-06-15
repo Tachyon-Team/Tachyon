@@ -11,7 +11,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 /**
 @class Class to represent control-flow graph
-@author Maxime Chevalier-Boisvert
 */
 function ControlFlowGraph()
 {
@@ -40,7 +39,7 @@ function ControlFlowGraph()
     */
     this.getTmpName = function ()
     {
-        return "$t_" + this.nextTmpIdx;
+        return "$t_" + this.nextTmpIdx++;
     }
 
     /**
@@ -48,7 +47,7 @@ function ControlFlowGraph()
     */
     this.getBlockName = function ()
     {
-        return "block_" + this.nextBlockIdx;
+        return "block_" + this.nextBlockIdx++;
     }
 
     /**
@@ -103,7 +102,6 @@ function ControlFlowGraph()
 
 /**
 @class Class to represent a basic block
-@author Maxime Chevalier-Boisvert
 */
 function BasicBlock(cfg)
 {
@@ -118,8 +116,8 @@ function BasicBlock(cfg)
         {
             var instr = this.instrs[i];
 
-            // If the instruction is unnamed, give it a free name
-            if (!instr.outName)
+            // If the instruction is unnamed and read, give it a free name
+            if (instr.hasDests() && !instr.outName)
                 instr.outName = this.parentCFG.getTmpName();
 
             output += instr + ";";
@@ -136,8 +134,23 @@ function BasicBlock(cfg)
     */
     this.addInstr = function(instr)
     {
+        // Ensure that other instructions are not added after branches
+        assert (
+            !(this.instrs[this.instrs.length - 1] instanceof BranchInstr),
+            'cannot add instruction after branch'
+        );
+
+        // Add reverse edges from all uses to this instruction
+        for (i = 0; i < instr.uses.length; ++i)
+        {
+            var use = instr.uses[i];
+            use.dests.push(use);
+        }
+
+        // Set the parent block for the instruction
         instr.parentBlock = this;
 
+        // Add the instruction to the list
         this.instrs.push(instr);
     }
 
@@ -167,11 +180,13 @@ entry = cfg.getEntryBlock();
 block2 = cfg.getNewBlock();
 block2.label = "fooblock";
 
-entry.addInstr(new JumpInstr(entry));
 entry.addInstr(new JumpInstr(block2));
 
-//block2.addInstr(new IntConst(1));
 block2.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)));
+i1 = new GetPropValInstr(new IntConst(1), new IntConst(2));
+i2 = new IfInstr(i1, block2, block2);
+block2.addInstr(i1);
+block2.addInstr(i2);
 
 print("Printing");
 
