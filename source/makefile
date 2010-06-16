@@ -4,10 +4,12 @@ SRCS=                       \
     utility/debug.js        \
     utility/modules.js      \
     utility/arrays.js       \
+    utility/hashmap.js      \
     platform/memory.js      \
     ir/instructions.js      \
     ir/inline.js            \
-    ir/cfg.js
+    ir/cfg.js               \
+    ir/functions.js
 
 all: run
 

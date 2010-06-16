@@ -50,6 +50,69 @@ function BaseInstr()
     }
 
     /**
+    Add a new use
+    */
+    this.addUse = function (use)
+    {
+        // Create an instance-specific array when necessary
+        if (this.uses.length == 0)
+            this.uses = [use];
+        else
+            this.uses.push(use);
+    }
+
+    /**
+    Remove a use by index
+    */
+    this.remUse = function (index)
+    {
+        this.uses.splice(index, 1);
+    }
+
+    /**
+    Replace a use
+    */
+    this.replUse = function (oldUse, newUse)
+    {
+        for (var i = 0; i < this.uses.length; ++i)
+        {
+            if (this.uses[i] === oldUse)
+                this.uses[i] = newUse;
+        }
+    }
+
+    /**
+    Add a new destination
+    */
+    this.addDest = function (dest)
+    {
+        if (this.dests.length == 0)
+            this.dests = [dest];
+        else
+            arraySetAdd(this.dests, dest);
+    }
+
+    /**
+    Remove a destination
+    */
+    this.remDest = function (dest)
+    {
+        arraySetRem(this.dests, dest);
+    }
+
+    /**
+    Replace a destination
+    */
+    this.replDest = function (oldDest, newDest)
+    {
+        for (var i = 0; i < this.dests.length; ++i)
+        {
+            if (this.dests[i] === oldDest)
+                this.dests[i] = newdest;
+        }
+    }
+
+    /**
     Test if this instruction's output is read (has uses)
     */
     this.hasDests = function () { return this.dests.length > 0; }
@@ -233,7 +296,7 @@ function ArithInstr(arithOp, leftVal, rightVal)
     {
         case ArithOp.ADD: this.mnemonic = "add"; break;
         case ArithOp.SUB: this.mnemonic = "sub"; break;
-        case ArithOp.MUL: this.mnemonic = "mod"; break;
+        case ArithOp.MUL: this.mnemonic = "mul"; break;
         case ArithOp.DIV: this.mnemonic = "div"; break;
         case ArithOp.MOD: this.mnemonic = "mod"; break;
     }
@@ -322,14 +385,14 @@ function CompInstr(compOp, leftVal, rightVal)
     // Set the mnemonic name for the instruction
     switch (compOp)
     {
-        case ArithOp.LT:    this.mnemonic = "<";    break;
-        case ArithOp.LTE:   this.mnemonic = "<=";   break;
-        case ArithOp.GT:    this.mnemonic = ">";    break;
-        case ArithOp.GTE:   this.mnemonic = ">=";   break;
-        case ArithOp.EQ:    this.mnemonic = "==";   break;
-        case ArithOp.NE:    this.mnemonic = "!=";   break;
-        case ArithOp.SEQ:   this.mnemonic = "===";  break;
-        case ArithOp.NSEQ:  this.mnemonic = "!==";  break;
+        case ArithOp.LT:    this.mnemonic = "lt";   break;
+        case ArithOp.LTE:   this.mnemonic = "lte";  break;
+        case ArithOp.GT:    this.mnemonic = "gt";   break;
+        case ArithOp.GTE:   this.mnemonic = "gte";  break;
+        case ArithOp.EQ:    this.mnemonic = "eq";   break;
+        case ArithOp.NE:    this.mnemonic = "ne";   break;
+        case ArithOp.SEQ:   this.mnemonic = "seq";  break;
+        case ArithOp.NSEQ:  this.mnemonic = "nseq"; break;
     }
 
     /**
