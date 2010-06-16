@@ -82,8 +82,8 @@ function ControlFlowGraph()
     this.remBlock = function (block)
     {
         // Remove each of the block's instructions
-        for (var i = 0; i < block.instrs.length; ++i)
-            block.remInstr(block.instrs[i]);
+        while (block.instrs.length > 0)
+            block.remInstr(block.instrs[0]);
 
         // Remove the block from the list
         arraySetRem(this.blocks, block);
@@ -98,7 +98,7 @@ function ControlFlowGraph()
         // use edges match dest edges
         // out edges match edges in last instr
         // block in edges match block out edges
-
+        // blocks are appropriately terminated
 
         // TODO: verify proper use of phi nodes
         // uses must be reachable on every incoming path
@@ -112,9 +112,55 @@ function ControlFlowGraph()
     */
     this.simplify = function ()
     {
-        // TODO: iteratively eliminate phi nodes?
+        //
+        // Merge blocks with only one destination
+        //
 
-        // TODO: merge blocks with only one destination
+        // Copy the CFG blocks list
+        var blocks = this.blocks.slice(0);
+
+        // Until the merging is complete
+        for (;;)
+        {
+            var merged = false;
+
+            // For each block in the original CFG
+            for (var i = 0; i < blocks.length; ++i)
+            {
+                var block = blocks[i];
+
+                // If this block has only one successor
+                if (block.succs.length == 1)
+                {
+                    var succ = block.succs[0];
+
+                    // Remove the final branch instruction
+                    block.remInstr(block.instrs[block.instrs.length - 1]);                    
+
+                    // Add the successor instructions to the predecessor block
+                    for (var j = 0; j < succ.instrs.length; ++j)
+                        block.addInstr(succ.instrs[j]);
+
+                    // Remove the successor block from the CFG
+                    this.remBlock(succ);
+
+                    merged = true;
+                }
+            }
+
+            // If no merges occurred, stop
+            if (merged == false)
+                break;
+        }
+
+        //
+        // TODO: iteratively eliminate phi nodes?
+        //
+
+
+
+
+
     }
 
     /**
@@ -197,10 +243,10 @@ function BasicBlock(cfg)
                 target = instr.targets[i];
 
                 // Add an edge to the potential target block
-                arraySetAdd(this.dests, target);
+                arraySetAdd(this.succs, target);
 
                 // Add an incoming edge to the potential target block
-                arraySetAdd(target.srcs, this);
+                arraySetAdd(target.preds, this);
             }
         }
 
@@ -235,10 +281,10 @@ function BasicBlock(cfg)
                 target = instr.targets[i];
 
                 // Remove the edge to the potential target block
-                arraySetRem(this.dests, target);
+                arraySetRem(this.succs, target);
 
                 // Remove the incoming edge to the potential target block
-                arraySetRem(target.srcs, this);
+                arraySetRem(target.preds, this);
             }
         }        
     }
@@ -256,16 +302,16 @@ function BasicBlock(cfg)
     this.instrs = [];
 
     /**
-    Blocks that have edges going to this lock
+    Blocks that have edges going to this block
     @field
     */
-    this.srcs = [];
+    this.preds = [];
 
     /**
     Blocks that we have edges going to
     @field
     */
-    this.dests = [];
+    this.succs = [];
 
     /**
     Parent control flow graph
@@ -277,21 +323,29 @@ function BasicBlock(cfg)
 cfg = new ControlFlowGraph();
 
 entry = cfg.getEntryBlock();
-
 block2 = cfg.getNewBlock();
-block2.label = "fooblock";
+block2.label = 'fooblock';
+block3 = cfg.getNewBlock();
+block3.label = 'barblock';
 
 entry.addInstr(new JumpInstr(block2));
 
 block2.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)));
 i1 = new GetPropValInstr(new IntConst(1), new IntConst(2));
-i2 = new IfInstr(i1, block2, block2);
+//i2 = new IfInstr(i1, block2, block2);
 block2.addInstr(i1);
-block2.addInstr(i2);
+//block2.addInstr(i2);
+block2.addInstr(new JumpInstr(block3));
+
+block3.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(3), new IntConst(4)));
+
+print(cfg + '\n');
+
+cfg.simplify();
 
 print("Printing");
 
-print(cfg);
+print(cfg + '\n');
 
 print("done");
 
