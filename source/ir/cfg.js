@@ -35,9 +35,9 @@ function ControlFlowGraph()
     }
 
     /**
-    Clone the control-flow graph
+    Make a deep-copy of the control-flow graph
     */
-    this.clone = function ()
+    this.copy = function ()
     {
         // TODO
 
@@ -49,25 +49,77 @@ function ControlFlowGraph()
         // - Can have a default clone for BaseInstr
         //   - Should take instr copy map as input...
 
-        // Need some kind of hash map to make this efficient... (utility/hashmap.js?)
-        // Instrs need hash code function...
-        // - Compute once and store
+        // Create a new control flow graph
+        newCFG = new ControlFlowGraph();
+
+        // Create a map from old blocks to new blocks
+        blockMap = [];
+
+        // Create a map from old instruction ids to new instructions
+        instrMap = [];
+
+        // For each basic block
+        for (var i = 0; i < this.blocks.length; ++i)
+        {
+            // Create a copy and add it to the map
+            var block = this.blocks[i];
+            var newBlock = block.copy();
+            blockMap[block.blockId] = newBlock;
+
+            // For each instruction in the new basic block
+            for (var j = 0; j < newBlock.instrs.length; ++j)
+            {
+                var instr = newBlock.instrs[j];
+                var newInstr = instr.copy();
+                instrMap[instr.instrId] = newInstr;
+
+
+            }
+        }
+
+        
+
+
+        // Return the new CFG
+        return newCFG;
     }
 
     /**
-    Get a temporary name that is free inside the cfg
+    Assign a free id number to an instruction
     */
-    this.getTmpName = function ()
+    this.assignInstrId = function (instr)
     {
-        return "$t_" + this.nextTmpIdx++;
+        if (this.freeInstrIds.length > 0)
+            instr.instrId = this.freeInstrIds.pop();
+        else
+            instr.instrId = this.nextInstrId++;
     }
 
     /**
-    Get a basic block name that is free inside the cfg
+    Free an instruction id number
     */
-    this.getBlockName = function ()
+    this.freeInstrId = function (instr)
     {
-        return "block_" + this.nextBlockIdx++;
+        this.freeInstrIds.push(instr.instrId);
+    }
+
+    /**
+    Assign a free id number to a basic block
+    */
+    this.assignBlockId = function (block)
+    {
+        if (this.freeBlockIds.length > 0)
+            block.blockId = this.freeBlockIds.pop();
+        else
+            block.blockId = this.nextBlockId++;
+    }
+
+    /**
+    Free a block id number
+    */
+    this.freeBlockId = function (block)
+    {
+        this.freeBlockIds.push(block.blockId);
     }
 
     /**
@@ -79,6 +131,9 @@ function ControlFlowGraph()
 
         this.blocks.push(block);
 
+        // Assign an id number to this block
+        this.assignBlockId(block);
+
         return block;
     }
 
@@ -88,10 +143,7 @@ function ControlFlowGraph()
     this.getEntryBlock = function ()
     {
         if (!this.entry)
-        {
-            this.entry = this.getNewBlock();
-            this.entry.label = "entry";
-        }
+            this.entry = this.getNewBlock('entry');
 
         return this.entry;
     }
@@ -111,6 +163,9 @@ function ControlFlowGraph()
 
         // Remove the block from the list
         arraySetRem(this.blocks, block);
+
+        // Free this block's id number
+        this.freeBlockId(block);
     }
 
     /**
@@ -225,13 +280,9 @@ function ControlFlowGraph()
                 // Vi <- phi(...Vi...Vi...)
                 if (numVi == phiNode.uses.length)
                 {
-                    print('REMOVING PHI NODE');
-
                     // Remove the phi node
                     phiNode.parentBlock.remInstr(phiNode);
                     arraySetRem(phiNodes, phiNode);
-
-                    print('DONE REMOVING PHI NODE');
                 }
                 
                 // If this phi-assignment has the form:
@@ -239,8 +290,6 @@ function ControlFlowGraph()
                 // 0 or more Vi and 1 or more Vj
                 else if (numVi + numVj == phiNode.uses.length)        
                 {
-                    print('REMOVING PHI NODE');
-
                     // Rename all occurences of Vi to Vj
                     for (var k = 0; k < phiNode.dests.length; ++k)
                         phiNode.dests[k].replUse(phiNode, Vj);
@@ -250,8 +299,6 @@ function ControlFlowGraph()
                     // Remove the phi node
                     phiNode.parentBlock.remInstr(phiNode);
                     arraySetRem(phiNodes, phiNode);
-
-                    print('DONE REMOVING PHI NODE');                   
                 }
             }
 
@@ -291,16 +338,29 @@ function ControlFlowGraph()
     this.blocks = [];
 
     /**
-    Next free temp name index
+    List of free instruction ids
     @field
     */
-    this.nextTmpIdx = 0;
+    this.freeInstrIds = [];
 
     /**
-    Next free block name index
+    Next instruction id to allocate
     @field
     */
-    this.nextBlockIdx = 0;
+    this.nextInstrId = 0;
+
+    /**
+    List of free basic block ids
+    @field
+    */
+    this.freeBlockIds = [];
+
+    /**
+    Next block id to allocate
+    @field
+    */
+    this.nextBlockId = 0;
+
 }
 
 /**
@@ -311,17 +371,13 @@ function BasicBlock(cfg, label)
     /**
     Produce a string representation
     */
-    this.toString = function()
+    this.toString = function ()
     {
-        var output = this.label + ':\n';
+        var output = this.getBlockName() + ':\n';
 
         for (var i = 0; i < this.instrs.length; ++i)
         {
             var instr = this.instrs[i];
-
-            // If the instruction is read but unnamed, give it a free name
-            if (instr.hasDests() && !instr.outName)
-                instr.outName = this.parentCFG.getTmpName();
 
             output += instr + ';';
 
@@ -330,6 +386,46 @@ function BasicBlock(cfg, label)
         }
 
         return output;
+    }
+
+    /**
+    Get the name for this basic block
+    */
+    this.getBlockName = function ()
+    {
+        // If the label for this block is set
+        if (this.label)
+        {
+            // Return the label
+            return this.label;
+        }
+        else
+        {
+            // Return a name based on the block id number
+            return 'block_' + this.blockId;
+        }
+    }
+
+    /**
+    Make a shallow copy of the basic block
+    */
+    this.copy = function (cfg)
+    {
+        // Create a new basic block
+        newBlock = new BasicBlock(cfg, this.label);
+
+        // Copy the block id
+        newBlock.blockId = this.blockId;
+        
+        // Make a shallow copy of the instruction list
+        newBlock.instrs = this.instrs.slice(0);
+
+        // Make shallow copies of the predecessor and successor lists
+        newBlock.preds = this.preds.slice(0);
+        newBlock.succs = this.succs.slice(0);
+
+        // Return the new basic block
+        return newBlock;
     }
 
     /**
@@ -368,6 +464,9 @@ function BasicBlock(cfg, label)
 
         // Add the instruction to the list
         this.instrs.push(instr);
+
+        // Assign an id number to the instruction
+        this.parentCFG.assignInstrId(instr);
     }
 
     /**
@@ -411,7 +510,10 @@ function BasicBlock(cfg, label)
                 // Remove the incoming edge to the potential target block
                 target.remPred(this);
             }
-        }        
+        }
+
+        // Free this instruction's id number
+        this.parentCFG.freeInstrId(instr);
     }
 
     /**
@@ -457,6 +559,12 @@ function BasicBlock(cfg, label)
     this.label = label;
 
     /**
+    Id number for this basic block
+    @field
+    */
+    this.blockId = 0;
+
+    /**
     List of IR instructions
     @field
     */
@@ -481,7 +589,6 @@ function BasicBlock(cfg, label)
     this.parentCFG = cfg;
 }
 
-/*
 cfg = new ControlFlowGraph();
 
 entry = cfg.getEntryBlock();
@@ -518,6 +625,11 @@ print('SIMPLIFIED CFG: \n---------------\n');
 
 print(cfg + '\n');
 
+
+cfg2 = cfg.copy();
+
+
+
+
 print("done");
-*/
 

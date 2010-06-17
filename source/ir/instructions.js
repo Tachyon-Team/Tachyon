@@ -23,9 +23,9 @@ function BaseInstr()
 
         // If this instruction's value is read, print its output name
         if (this.hasDests())
-            output += (this.outName? (this.outName + " = "):"")
+            output += this.valToString() + ' = ';
 
-        output += this.mnemonic + " ";
+        output += this.mnemonic + ' ';
 
         for (i = 0; i < this.uses.length; ++i)
         {
@@ -45,8 +45,45 @@ function BaseInstr()
     */
     this.valToString = function ()
     {
-        // Return the output/temporary name for this instruction
-        return this.outName;
+        // If the output name for this instruction is set
+        if (this.outName)
+        {
+            // Return the output/temporary name
+            return this.outName;
+        }
+        else
+        {
+            // Return a name based on the instruction id number
+            return '$t_' + this.instrId;
+        }
+    }
+
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        // Create a new instruction object
+        newInstr = new BaseInstr();
+
+        // Copy the mnemonic name
+        newInstr.mnemonic = this.mnemonic;
+
+        // Copy the output name
+        newInstr.outName = this.outName;
+
+        // Copy the instruction id
+        newInstr.instrId = this.instrId;
+
+        // Make shallow copies of the use and dest lists
+        newInstr.uses = this.uses.slice(0);
+        newInstr.dests = this.dests.slice(0);
+
+        // The new instruction is orphaned
+        newInstr.parentBlock = null;
+
+        // Return the new instruction
+        return newInstr;
     }
 
     /**
@@ -130,6 +167,12 @@ function BaseInstr()
     this.outName = "";
 
     /**
+    Id number for this instruction
+    @field
+    */
+    this.instrId = 0;
+
+    /**
     Values used/read by this instruction
     @field
     */
@@ -158,6 +201,21 @@ function ConstInstr()
     Default toString() implementation for constant instructions
     */
     this.toString = function() { return String(this.value); }
+
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        // Copy the instruction
+        newInstr = Object.getPrototypeOf(this).copy();
+
+        // Copy the value
+        newInstr.value = this.value;
+
+        // Return the new instruction
+        return newInstr;
+    }
 
     /**
     Get a string representation of an instruction's value/name.
@@ -229,10 +287,6 @@ FPConst.prototype = new ConstInstr();
 */
 function StrConst(value)
 {
-    assert (typeof value == 'string', 'string constant value must be string');
-
-    this.value = value;
-
     /**
     Get a string representation of a string constant
     */
@@ -243,6 +297,10 @@ function StrConst(value)
     Returns the constant's string representation directly.
     */
     this.valToString = this.toString;
+
+    assert (typeof value == 'string', 'string constant value must be string');
+
+    this.value = value;
 }
 StrConst.prototype = new ConstInstr();
 
@@ -291,6 +349,21 @@ ArithOp =
 */
 function ArithInstr(arithOp, leftVal, rightVal)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        // Copy the instruction
+        newInstr = Object.getPrototypeOf(this).copy();
+
+        // Copy the operator
+        newInstr.arithOp = this.arithOp;
+
+        // Return the new instruction
+        return newInstr;
+    }
+
     // Set the mnemonic name for the instruction
     switch (arithOp)
     {
@@ -335,6 +408,21 @@ BitOp =
 */
 function BitwiseInstr(bitOp, leftVal, rightVal)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        // Copy the instruction
+        newInstr = Object.getPrototypeOf(this).copy();
+
+        // Copy the operator
+        newInstr.bitOp = this.bitOp;
+
+        // Return the new instruction
+        return newInstr;
+    }
+
     // Set the mnemonic name for the instruction
     switch (bitOp)
     {
@@ -382,6 +470,21 @@ CompOp =
 */
 function CompInstr(compOp, leftVal, rightVal)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        // Copy the instruction
+        newInstr = Object.getPrototypeOf(this).copy();
+
+        // Copy the operator
+        newInstr.compOp = this.compOp;
+
+        // Return the new instruction
+        return newInstr;
+    }
+
     // Set the mnemonic name for the instruction
     switch (compOp)
     {
@@ -450,6 +553,21 @@ GetPropValInstr.prototype = new BaseInstr();
 function BranchInstr()
 {
     /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        // Copy the instruction
+        newInstr = Object.getPrototypeOf(this).copy();
+
+        // Make a shallow copy of the target blocks
+        newInstr.targets = this.targets.slice(0);
+
+        // Return the new instruction
+        return newInstr;
+    }
+
+    /**
     Potential branch target basic blocks
     @field
     */
@@ -466,7 +584,7 @@ function JumpInstr(targetBlock)
     /**
     Obtain a string representation
     */
-    this.toString = function() { return "jump " + this.targets[0].label; }
+    this.toString = function() { return "jump " + this.targets[0].getBlockName(); }
 
     /**
     Target basic block
@@ -488,8 +606,8 @@ function IfInstr(testVal, trueBlock, falseBlock)
     this.toString = function()
     {
         return  "if " + this.uses[0].valToString() +
-                " then " + this.targets[0].label +
-                " else " + this.targets[1].label
+                " then " + this.targets[0].getBlockName() +
+                " else " + this.targets[1].getBlockName()
         ;
     }
 
@@ -536,7 +654,7 @@ function ThrowInst(excVal, catchBlock)
         var output = 'throw ' + excVal.valToString();
 
         if (this.targets[0] != null)
-            output += 'to ' + this.targets[0].label;
+            output += 'to ' + this.targets[0].getBlockName();
 
         return output;
     }
@@ -574,9 +692,9 @@ OnExcInst = function (contBlock, catchBlock)
         var output = 'on_exc throw';
 
         if (this.targets[0] != null)
-            output += ' to ' + this.targets[1].label;
+            output += ' to ' + this.targets[1].getBlockName();
 
-        output += ' else ' + this.targets[0].label;
+        output += ' else ' + this.targets[0].getBlockName();
 
         return output;
     }    
