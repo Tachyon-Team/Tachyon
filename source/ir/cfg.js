@@ -481,6 +481,7 @@ function BasicBlock(cfg, label)
     this.parentCFG = cfg;
 }
 
+/*
 cfg = new ControlFlowGraph();
 
 entry = cfg.getEntryBlock();
@@ -518,4 +519,5 @@ print('SIMPLIFIED CFG: \n---------------\n');
 print(cfg + '\n');
 
 print("done");
+*/
 
