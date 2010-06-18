@@ -78,6 +78,22 @@ function ControlFlowGraph()
         }
 
         
+        // TODO: argN instruction?
+
+        // TODO: PROBLEM: constant values not copied, not in CFG per-se
+        // Should instructions simply do their own deep copy?
+        // Could have deep/shallow copy flag?
+
+        // Deep recursive copy could cause stack overflow
+        // - Can get away without copying immutable instructions?
+        //    - Not if they have dests
+
+        // Need to do instruction graph traversal with queue?
+        // Just copy all instructions, and for uncopied instructions, copy when needed...
+        // BUT, non-graph instructions have no graph id....
+        // - Need to attach them to a CFG instance
+        //   - eg: getArgN()
+
 
 
         // Return the new CFG
@@ -347,7 +363,7 @@ function ControlFlowGraph()
     Next instruction id to allocate
     @field
     */
-    this.nextInstrId = 0;
+    this.nextInstrId = 1;
 
     /**
     List of free basic block ids
@@ -359,7 +375,7 @@ function ControlFlowGraph()
     Next block id to allocate
     @field
     */
-    this.nextBlockId = 0;
+    this.nextBlockId = 1;
 
 }
 
