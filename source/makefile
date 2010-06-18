@@ -5,6 +5,7 @@ SRCS=                       \
     utility/modules.js      \
     utility/arrays.js       \
     utility/hashmap.js      \
+    utility/strings.js      \
     platform/memory.js      \
     ir/instructions.js      \
     ir/inline.js            \

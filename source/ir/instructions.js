@@ -9,10 +9,167 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+// TODO: function assignments on prototypes
+
+// TODO: semicolons after function assignments
+
+// TODO: function argument instructions/values (arg N)
+// TODO: argument object instruction/value (argObject)
+// TODO: this value instruction/value (thisValue)
+// Could be created in entry block on CFG creation
+// - Proper instructions, with uses
+// - Easy to replace during inlining
+// Have CFG take parent function as constructor parameter
+// - Create these when creating initial CFG
+// - have getArg(n), etc., functions as part of CFG class
+
 /**
-@class Base class for all instructions
+@class Base class for all IR values
 */
-function BaseInstr()
+function IRValue()
+{
+    /**
+    Get a string representation of a value's name
+    */
+    this.getValName = function () { return 'value' };
+
+    /**
+    Produce a string representation of this value
+    */
+    this.toString = this.getValName;
+}
+
+/**
+@class Represents constant values in the IR
+@augments IRInstr
+*/
+function ConstValue()
+{
+    /**
+    Default toString() implementation for constant instructions
+    */
+    this.toString = function() { return String(this.value); };
+
+    /**
+    Get a string representation of an instruction's value/name.
+    Returns the constant's string representation directly.
+    */
+    this.getValName = this.toString;
+}
+ConstValue.prototype = new IRValue();
+
+/**
+@class Null constant value
+@augments ConstValue
+*/
+function NullConst()
+{
+   this.value = null;
+}
+NullConst.prototype = new ConstValue();
+
+/**
+@class Undefined constant value
+@augments ConstValue
+*/
+function UndefConst()
+{
+   this.value = undefined;
+}
+UndefConst.prototype = new ConstValue();
+
+/**
+@class Boolean constant value
+@augments ConstValue
+*/
+function BoolConst(value)
+{
+    assert (typeof value == 'boolean', 'boolean constant value must be boolean');
+
+    this.value = value;
+}
+BoolConst.prototype = new ConstValue();
+
+/**
+@class Integer constant value
+@augments ConstValue
+*/
+function IntConst(value)
+{
+    assert (value - Math.floor(value) == 0, 'integer constant value must be integer');
+
+    this.value = value;
+}
+IntConst.prototype = new ConstValue();
+
+/**
+@class Floating-point constant value
+@augments ConstValue
+*/
+function FPConst(value)
+{
+    assert (typeof value == 'number', 'floating-point constant value must be number');
+
+    this.value = value;
+}
+FPConst.prototype = new ConstValue();
+
+/**
+@class String constant value
+@augments ConstValue
+*/
+function StrConst(value)
+{
+    /**
+    Get a string representation of a string constant
+    */
+    this.toString = function() { return '"' + escapeJSString(this.value) + '"'; };
+
+    /**
+    Get a string representation of an instruction's value/name.
+    Returns the constant's string representation directly.
+    */
+    this.getValName = this.toString;
+
+    assert (typeof value == 'string', 'string constant value must be string');
+
+    this.value = value;
+}
+StrConst.prototype = new ConstValue();
+
+/**
+@class Object reference constant value
+@augments ConstValue
+*/
+function ObjRefConst(obj)
+{
+   this.value = obj;
+}
+ObjRefConst.prototype = new ConstValue();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+@class Base class for all IR instructions
+*/
+function IRInstr()
 {
     /**
     Produce a string representation of this instruction
@@ -23,7 +180,7 @@ function BaseInstr()
 
         // If this instruction's value is read, print its output name
         if (this.hasDests())
-            output += this.valToString() + ' = ';
+            output += this.getValName() + ' = ';
 
         output += this.mnemonic + ' ';
 
@@ -31,19 +188,19 @@ function BaseInstr()
         {
             var ins = this.uses[i];
 
-            output += ins.valToString();
+            output += ins.getValName();
 
             if (ins != this.uses[this.uses.length - 1])            
                 output += ", ";
         }
 
         return output;
-    }
+    };
 
     /**
     Get a string representation of an instruction's value/name
     */
-    this.valToString = function ()
+    this.getValName = function ()
     {
         // If the output name for this instruction is set
         if (this.outName)
@@ -56,16 +213,13 @@ function BaseInstr()
             // Return a name based on the instruction id number
             return '$t_' + this.instrId;
         }
-    }
+    };
 
     /**
-    Make a shallow copy of the instruction
+    Copy the instruction's generic properties
     */
-    this.copy = function ()
+    this.baseCopy = function (newInstr)
     {
-        // Create a new instruction object
-        newInstr = new BaseInstr();
-
         // Copy the mnemonic name
         newInstr.mnemonic = this.mnemonic;
 
@@ -75,16 +229,11 @@ function BaseInstr()
         // Copy the instruction id
         newInstr.instrId = this.instrId;
 
-        // Make shallow copies of the use and dest lists
-        newInstr.uses = this.uses.slice(0);
-        newInstr.dests = this.dests.slice(0);
-
         // The new instruction is orphaned
         newInstr.parentBlock = null;
 
-        // Return the new instruction
         return newInstr;
-    }
+    };
 
     /**
     Add a new use
@@ -96,7 +245,7 @@ function BaseInstr()
             this.uses = [use];
         else
             this.uses.push(use);
-    }
+    };
 
     /**
     Remove a use by index
@@ -104,7 +253,7 @@ function BaseInstr()
     this.remUse = function (index)
     {
         this.uses.splice(index, 1);
-    }
+    };
 
     /**
     Replace a use
@@ -116,7 +265,7 @@ function BaseInstr()
             if (this.uses[i] === oldUse)
                 this.uses[i] = newUse;
         }
-    }
+    };
 
     /**
     Add a new destination
@@ -127,7 +276,7 @@ function BaseInstr()
             this.dests = [dest];
         else
             arraySetAdd(this.dests, dest);
-    }
+    };
 
     /**
     Remove a destination
@@ -135,7 +284,7 @@ function BaseInstr()
     this.remDest = function (dest)
     {
         arraySetRem(this.dests, dest);
-    }
+    };
 
     /**
     Replace a destination
@@ -147,12 +296,12 @@ function BaseInstr()
             if (this.dests[i] === oldDest)
                 this.dests[i] = newdest;
         }
-    }
+    };
 
     /**
     Test if this instruction's output is read (has uses)
     */
-    this.hasDests = function () { return this.dests.length > 0; }
+    this.hasDests = function () { return this.dests.length > 0; };
 
     /**
     Mnemonic name for this instruction    
@@ -190,136 +339,23 @@ function BaseInstr()
     */
     this.parentBlock = null;
 }
+IRInstr.prototype = new IRValue();
 
 /**
-@class Base class for constants, these are treated like regular instructions
-@augments BaseInstr
+@class SSA phi node instruction
+@augments IRInstr
 */
-function ConstInstr()
+function PhiInstr(values)
 {
-    /**
-    Default toString() implementation for constant instructions
-    */
-    this.toString = function() { return String(this.value); }
-
     /**
     Make a shallow copy of the instruction
     */
     this.copy = function ()
     {
-        // Copy the instruction
-        newInstr = Object.getPrototypeOf(this).copy();
-
-        // Copy the value
-        newInstr.value = this.value;
-
-        // Return the new instruction
-        return newInstr;
+        var newInstr = new PhiInstr(this.uses.slice(0));
+        return this.baseCopy(newInstr);
     }
 
-    /**
-    Get a string representation of an instruction's value/name.
-    Returns the constant's string representation directly.
-    */
-    this.valToString = this.toString;
-}
-ConstInstr.prototype = new BaseInstr();
-
-/**
-@class Null constant value
-@augments ConstInstr
-*/
-function NullConst()
-{
-   this.value = null;
-}
-NullConst.prototype = new ConstInstr();
-
-/**
-@class Undefined constant value
-@augments ConstInstr
-*/
-function UndefConst()
-{
-   this.value = undefined;
-}
-UndefConst.prototype = new ConstInstr();
-
-/**
-@class Boolean constant value
-@augments ConstInstr
-*/
-function BoolConst(value)
-{
-    assert (typeof value == 'boolean', 'boolean constant value must be boolean');
-
-    this.value = value;
-}
-BoolConst.prototype = new ConstInstr();
-
-/**
-@class Integer constant value
-@augments ConstInstr
-*/
-function IntConst(value)
-{
-    assert (value - Math.floor(value) == 0, 'integer constant value must be integer');
-
-    this.value = value;
-}
-IntConst.prototype = new ConstInstr();
-
-/**
-@class Floating-point constant value
-@augments ConstInstr
-*/
-function FPConst(value)
-{
-    assert (typeof value == 'number', 'floating-point constant value must be number');
-
-    this.value = value;
-}
-FPConst.prototype = new ConstInstr();
-
-/**
-@class String constant value
-@augments ConstInstr
-*/
-function StrConst(value)
-{
-    /**
-    Get a string representation of a string constant
-    */
-    this.toString = function() { return '"' + String(this.value) + '"'; }
-
-    /**
-    Get a string representation of an instruction's value/name.
-    Returns the constant's string representation directly.
-    */
-    this.valToString = this.toString;
-
-    assert (typeof value == 'string', 'string constant value must be string');
-
-    this.value = value;
-}
-StrConst.prototype = new ConstInstr();
-
-/**
-@class Object reference constant value
-@augments ConstInstr
-*/
-function ObjRefConst(obj)
-{
-   this.value = obj;
-}
-ObjRefConst.prototype = new ConstInstr();
-
-/**
-@class SSA phi node instruction
-@augments BaseInstr
-*/
-function PhiInstr(values)
-{
     // Set the mnemonic name for this instruction
     this.mnemonic = "phi";
 
@@ -329,7 +365,7 @@ function PhiInstr(values)
     */
     this.uses = values;
 }
-PhiInstr.prototype = new BaseInstr();
+PhiInstr.prototype = new IRInstr();
 
 /**
 Arithmetic operator kinds
@@ -345,7 +381,7 @@ ArithOp =
 
 /**
 @class Class for arithmetic instructions
-@augments BaseInstr
+@augments IRInstr
 */
 function ArithInstr(arithOp, leftVal, rightVal)
 {
@@ -354,14 +390,8 @@ function ArithInstr(arithOp, leftVal, rightVal)
     */
     this.copy = function ()
     {
-        // Copy the instruction
-        newInstr = Object.getPrototypeOf(this).copy();
-
-        // Copy the operator
-        newInstr.arithOp = this.arithOp;
-
-        // Return the new instruction
-        return newInstr;
+        var newInstr = new ArithInstr(this.arithOp, this.uses[0], this.uses[1]);
+        return this.baseCopy(newInstr);
     }
 
     // Set the mnemonic name for the instruction
@@ -386,7 +416,7 @@ function ArithInstr(arithOp, leftVal, rightVal)
     */
     this.uses = [leftVal, rightVal];
 }
-ArithInstr.prototype = new BaseInstr();
+ArithInstr.prototype = new IRInstr();
 
 /**
 Bitwise operator kinds
@@ -404,23 +434,17 @@ BitOp =
 
 /**
 @class Class for bitwise instructions
-@augments BaseInstr
+@augments IRInstr
 */
-function BitwiseInstr(bitOp, leftVal, rightVal)
+function BitInstr(bitOp, leftVal, rightVal)
 {
     /**
     Make a shallow copy of the instruction
     */
     this.copy = function ()
     {
-        // Copy the instruction
-        newInstr = Object.getPrototypeOf(this).copy();
-
-        // Copy the operator
-        newInstr.bitOp = this.bitOp;
-
-        // Return the new instruction
-        return newInstr;
+        var newInstr = new BitInstr(this.bitOp, this.uses[0], this.uses[1]);
+        return this.baseCopy(newInstr);
     }
 
     // Set the mnemonic name for the instruction
@@ -447,7 +471,7 @@ function BitwiseInstr(bitOp, leftVal, rightVal)
     */
     this.uses = [leftVal, rightVal];
 }
-BitwiseInstr.prototype = new BaseInstr();
+BitInstr.prototype = new IRInstr();
 
 /**
 Comparison operator kinds
@@ -466,7 +490,7 @@ CompOp =
 
 /**
 @class Class for comparison instructions
-@augments BaseInstr
+@augments IRInstr
 */
 function CompInstr(compOp, leftVal, rightVal)
 {
@@ -475,14 +499,8 @@ function CompInstr(compOp, leftVal, rightVal)
     */
     this.copy = function ()
     {
-        // Copy the instruction
-        newInstr = Object.getPrototypeOf(this).copy();
-
-        // Copy the operator
-        newInstr.compOp = this.compOp;
-
-        // Return the new instruction
-        return newInstr;
+        var newInstr = new CompInstr(this.compOp, this.uses[0], this.uses[1]);
+        return this.baseCopy(newInstr);
     }
 
     // Set the mnemonic name for the instruction
@@ -510,14 +528,23 @@ function CompInstr(compOp, leftVal, rightVal)
     */
     this.uses = [leftVal, rightVal];
 }
-CompInstr.prototype = new BaseInstr();
+CompInstr.prototype = new IRInstr();
 
 /**
 @class Property set with value for field name
-@augments BaseInstr
+@augments IRInstr
 */
 function SetPropValInstr(objVal, nameVal)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new SetPropValInstr(this.uses[0], this.uses[1]);
+        return this.baseCopy(newInstr);
+    }
+
     // Set the mnemonic name for this instruction
     this.mnemonic = 'setprop_val';
 
@@ -527,14 +554,23 @@ function SetPropValInstr(objVal, nameVal)
     */
     this.uses = [objVal, nameVal];
 }
-SetPropValInstr.prototype = new BaseInstr();
+SetPropValInstr.prototype = new IRInstr();
 
 /**
 @class Property get with value for field name
-@augments BaseInstr
+@augments IRInstr
 */
 function GetPropValInstr(objVal, nameVal)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new GetPropValInstr(this.uses[0], this.uses[1]);
+        return this.baseCopy(newInstr);
+    }
+
     // Set the mnemonic name for this instruction
     this.mnemonic = 'getprop_val';
 
@@ -544,36 +580,21 @@ function GetPropValInstr(objVal, nameVal)
     */
     this.uses = [objVal, nameVal];
 }
-GetPropValInstr.prototype = new BaseInstr();
+GetPropValInstr.prototype = new IRInstr();
 
 /**
 @class Base class for branching instructions.
-@augments BaseInstr
+@augments IRInstr
 */
 function BranchInstr()
 {
-    /**
-    Make a shallow copy of the instruction
-    */
-    this.copy = function ()
-    {
-        // Copy the instruction
-        newInstr = Object.getPrototypeOf(this).copy();
-
-        // Make a shallow copy of the target blocks
-        newInstr.targets = this.targets.slice(0);
-
-        // Return the new instruction
-        return newInstr;
-    }
-
     /**
     Potential branch target basic blocks
     @field
     */
     this.targets = [];
 }
-BranchInstr.prototype = new BaseInstr();
+BranchInstr.prototype = new IRInstr();
 
 /**
 @class Unconditional jump instruction
@@ -585,6 +606,15 @@ function JumpInstr(targetBlock)
     Obtain a string representation
     */
     this.toString = function() { return "jump " + this.targets[0].getBlockName(); }
+
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new JumpInstr(this.targets[0]);
+        return this.baseCopy(newInstr);
+    }
 
     /**
     Target basic block
@@ -605,10 +635,19 @@ function IfInstr(testVal, trueBlock, falseBlock)
     */
     this.toString = function()
     {
-        return  "if " + this.uses[0].valToString() +
+        return  "if " + this.uses[0].getValName() +
                 " then " + this.targets[0].getBlockName() +
                 " else " + this.targets[1].getBlockName()
         ;
+    }
+
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new IfInstr(this.uses[0], this.targets[0], this.targets[1]);
+        return this.baseCopy(newInstr);
     }
 
     /**
@@ -632,6 +671,18 @@ IfInstr.prototype = new BranchInstr();
 function RetInstr(retVal)
 {
     /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new RetInstr(this.uses[0]);
+        return this.baseCopy(newInstr);
+    }
+
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'ret';
+
+    /**
     Return value, can be undefined
     @field
     */
@@ -644,19 +695,28 @@ RetInstr.prototype = new BranchInstr();
 interprocedural throw.
 @augments BranchInstr
 */
-function ThrowInst(excVal, catchBlock)
+function ThrowInstr(excVal, catchBlock)
 {
     /**
     Produce a string representation of the throw instruction
     */
     this.toString = function ()
     {
-        var output = 'throw ' + excVal.valToString();
+        var output = 'throw ' + excVal.getValName();
 
         if (this.targets[0] != null)
             output += 'to ' + this.targets[0].getBlockName();
 
         return output;
+    }
+
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new ThrowInstr(this.uses[0], this.targets[0]);
+        return this.baseCopy(newInstr);
     }
 
     // Set the target block if a catch block is specified
@@ -675,7 +735,7 @@ function ThrowInst(excVal, catchBlock)
     */
     this.targets = [catchBlock];
 }
-ThrowInst.prototype = new BranchInstr();
+ThrowInstr.prototype = new BranchInstr();
 
 /**
 @class Exception handler instruction, for function calls. Handler may be left
@@ -700,6 +760,15 @@ OnExcInst = function (contBlock, catchBlock)
     }    
 
     /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new OnExcInst(this.targets[0], this.targets[1]);
+        return this.baseCopy(newInstr);
+    }
+
+    /**
     Catch block and continue block for the exception handler
     @field
     */
@@ -709,40 +778,67 @@ OnExcInst.prototype = new BranchInstr();
 
 /**
 @class Exception value catch
-@augments BaseInstr
+@augments IRInstr
 */
 function CatchInstr()
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new CatchInstr();
+        return this.baseCopy(newInstr);
+    }
+
     // Set the mnemonic name for this instruction
     this.mnemonic = 'catch';
 }
-CatchInstr.prototype = new BaseInstr();
+CatchInstr.prototype = new IRInstr();
 
 /**
 @class Call with function object reference
-@augments BaseInstr
+@augments IRInstr
 */
 function CallRefInstr(funcVal, thisVal, paramVals)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new CallRefInstr(this.uses[0], this.uses[1], this.uses.slice[2]);
+        return this.baseCopy(newInstr);
+    }
+
     /**
     Function value, this value and parameter values
     @field
     */
     this.uses = [funcVal, thisVal].concat(paramVals);
 }
-CallRefInstr.prototype = new BaseInstr();
+CallRefInstr.prototype = new IRInstr();
 
 /**
 @class Constructor call with function object reference
-@augments BaseInstr
+@augments IRInstr
 */
 function ConstructRefInstr(funcVal, paramVals)
 {
+    /**
+    Make a shallow copy of the instruction
+    */
+    this.copy = function ()
+    {
+        var newInstr = new ConstructRefInstr(this.uses[0], this.uses.slice[1]);
+        return this.baseCopy(newInstr);
+    }
+
     /**
     Function value, this value and parameter values
     @field
     */
     this.uses = [funcVal].concat(paramVals);
 }
-ConstructRefInstr.prototype = new BaseInstr();
+ConstructRefInstr.prototype = new IRInstr();
 

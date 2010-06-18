@@ -32,23 +32,13 @@ function ControlFlowGraph()
         }
 
         return output;
-    }
+    };
 
     /**
     Make a deep-copy of the control-flow graph
     */
     this.copy = function ()
     {
-        // TODO
-
-        // Must create an isomorphic copy
-        // - Implies map from old blocks to new blocks
-
-        // Tricky part is copying instructions
-        // - Also need a map from old instructions to new instructions
-        // - Can have a default clone for BaseInstr
-        //   - Should take instr copy map as input...
-
         // Create a new control flow graph
         newCFG = new ControlFlowGraph();
 
@@ -61,44 +51,84 @@ function ControlFlowGraph()
         // For each basic block
         for (var i = 0; i < this.blocks.length; ++i)
         {
-            // Create a copy and add it to the map
+            // Create a copy and add it to the block map
             var block = this.blocks[i];
-            var newBlock = block.copy();
+            var newBlock = block.copy(newCFG);
             blockMap[block.blockId] = newBlock;
+
+            // Add the block to the new CFG
+            newCFG.blocks.push(newBlock);
+            if (block === this.entry)
+                newCFG.entry = newBlock;
 
             // For each instruction in the new basic block
             for (var j = 0; j < newBlock.instrs.length; ++j)
             {
-                var instr = newBlock.instrs[j];
-                var newInstr = instr.copy();
+                // Add the instruction copy to the instruction map
+                var instr = block.instrs[j];
+                var newInstr = newBlock.instrs[j];
                 instrMap[instr.instrId] = newInstr;
 
-
+                // Make a shallow copy of the instruction's dests
+                newInstr.dests = instr.dests.slice(0);
             }
         }
 
-        
-        // TODO: argN instruction?
+        // For each new basic block
+        for (var i = 0; i < newCFG.blocks.length; ++i)
+        {
+            // Create a copy and add it to the block map
+            var block = newCFG.blocks[i];
 
-        // TODO: PROBLEM: constant values not copied, not in CFG per-se
-        // Should instructions simply do their own deep copy?
-        // Could have deep/shallow copy flag?
+            // Remap the block's predecessor and successors to new blocks
+            for (var j = 0; j < block.preds.length; ++j)
+                block.preds[j] = blockMap[block.preds[j].blockId];
+            for (var j = 0; j < block.succs.length; ++j)
+                block.succs[j] = blockMap[block.succs[j].blockId];
 
-        // Deep recursive copy could cause stack overflow
-        // - Can get away without copying immutable instructions?
-        //    - Not if they have dests
+            // For each new instruction in the new basic block
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                // Create a copy and add it to the instruction map
+                var instr = block.instrs[j];
 
-        // Need to do instruction graph traversal with queue?
-        // Just copy all instructions, and for uncopied instructions, copy when needed...
-        // BUT, non-graph instructions have no graph id....
-        // - Need to attach them to a CFG instance
-        //   - eg: getArgN()
+                // Remap the use instructions
+                if (instr.uses != undefined)
+                {
+                    for (var k = 0; k < instr.uses.length; ++k)
+                    {
+                        var use = instr.uses[k];
+                        if (instrMap[use.instrId] != undefined)
+                            instr.uses[k] = instrMap[use.instrId];                    
+                    }
+                }
 
+                // Remap the dest instructions
+                if (instr.dests != undefined)
+                {
+                    for (var k = 0; k < instr.dests.length; ++k)
+                    {
+                        var dest = instr.dests[k];
+                        if (instrMap[dest.instrId] != undefined)
+                            instr.dests[k] = instrMap[dest.instrId];                    
+                    }
+                }
 
+                // Remap the target blocks
+                if (instr.targets != undefined)
+                {
+                    for (var k = 0; k < instr.targets.length; ++k)
+                    {
+                        var target = instr.targets[k];
+                        instr.targets[k] = blockMap[target.blockId];
+                    }
+                }
+            }
+        }
 
         // Return the new CFG
         return newCFG;
-    }
+    };
 
     /**
     Assign a free id number to an instruction
@@ -109,7 +139,7 @@ function ControlFlowGraph()
             instr.instrId = this.freeInstrIds.pop();
         else
             instr.instrId = this.nextInstrId++;
-    }
+    };
 
     /**
     Free an instruction id number
@@ -117,7 +147,7 @@ function ControlFlowGraph()
     this.freeInstrId = function (instr)
     {
         this.freeInstrIds.push(instr.instrId);
-    }
+    };
 
     /**
     Assign a free id number to a basic block
@@ -128,7 +158,7 @@ function ControlFlowGraph()
             block.blockId = this.freeBlockIds.pop();
         else
             block.blockId = this.nextBlockId++;
-    }
+    };
 
     /**
     Free a block id number
@@ -136,7 +166,7 @@ function ControlFlowGraph()
     this.freeBlockId = function (block)
     {
         this.freeBlockIds.push(block.blockId);
-    }
+    };
 
     /**
     Create a block in this CFG
@@ -151,7 +181,7 @@ function ControlFlowGraph()
         this.assignBlockId(block);
 
         return block;
-    }
+    };
 
     /**
     Get/create the entry block for this CFG
@@ -162,7 +192,7 @@ function ControlFlowGraph()
             this.entry = this.getNewBlock('entry');
 
         return this.entry;
-    }
+    };
 
     /**
     Remove a basic block from this CFG
@@ -175,14 +205,14 @@ function ControlFlowGraph()
 
         // Remove this block from the predecessors of our successors
         for (var i = 0; i < block.succs.length; ++i)
-            block.succs[i].remPred(this);
+            block.succs[i].remPred(block);
 
         // Remove the block from the list
         arraySetRem(this.blocks, block);
 
         // Free this block's id number
         this.freeBlockId(block);
-    }
+    };
 
     /**
     Simplify the CFG
@@ -322,25 +352,211 @@ function ControlFlowGraph()
             if (simplified == false)
                 break;
         }
-    }
+    };
 
     /**
     Validate that this CFG is properly formed
     */
     this.validate = function ()
     {
-        // TODO: verify that edges match
-        // use edges match dest edges
-        // out edges match edges in last instr
-        // block in edges match block out edges
-        // blocks are appropriately terminated
+        //
+        // Verify that the CFG is properly formed
+        //
 
-        // TODO: verify proper use of phi nodes
-        // uses must be reachable on every incoming path
-        // can do forward traversal, maintain avail defs?
-        // - if def not present on one path, eliminate at merge
-        // this does not need to be efficient, can do back traversal for all nodes...
-    }
+        // For each block in the CFG
+        for (var i = 0; i < this.blocks.length; ++i)
+        {
+            var block = this.blocks[i];
+
+            // Verify that the block has this CFG as its parent
+            if (block.parentCFG !== this)
+                return 'parent CFG link broken';
+
+            // Verify that our predecessors have us as a successor
+            for (var j = 0; j < block.preds.length; ++j)
+            {
+                if (!arraySetHas(block.preds[j].succs, block))
+                    return 'predecessor missing successor link';
+            }
+
+            // Verify that our successors have us as a predecessor
+            for (var j = 0; j < block.succs.length; ++j)
+            {
+                if (!arraySetHas(block.succs[j].preds, block))
+                    return 'successor missing predecessor link';
+            }
+
+            // Get a reference to the last instruction in the block
+            var lastInstr = block.instrs[block.instrs.length - 1];
+
+            // Verify that the block is terminated with a branch instruction
+            if (!(lastInstr instanceof BranchInstr))
+                return 'block does not terminate in a branch';
+
+            // Verify that the branch targets match our successor set
+            if (block.succs.length != lastInstr.targets.length)
+                return 'successors do not match branch targets';
+            for (var j = 0; j < block.succs.length; ++j)
+            {
+                if (!arraySetHas(lastInstr.targets, block.succs[j]))
+                    return 'successors do not match branch targets';
+            }
+
+            // For each instruction in the block
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                var instr = block.instrs[j];
+
+                // Verify that the instruction has this block as its parent
+                if (instr.parentBlock !== block)
+                {
+                    print(instr.parentBlock);
+                    return 'parent block link broken:\n' + instr;
+                }
+
+                // Verify that no branches appear before the last instruction
+                if (instr instanceof BranchInstr && j != block.instrs.length - 1)
+                    return 'branch before last block instruction';
+
+                // Verify that our uses have us as a dest
+                for (var k = 0; k < instr.uses.length; ++k)
+                {
+                    if (instr.uses[k] instanceof IRInstr)
+                        if (!arraySetHas(instr.uses[k].dests, instr))
+                            return 'use missing dest link';
+                }
+
+                // Verify that our dests have us as a use
+                for (var k = 0; k < instr.dests.length; ++k)
+                {
+                    if (!arraySetHas(instr.dests[k].uses, instr))
+                        return 'dest missing use link';
+                }
+            }
+        }
+
+        //
+        // Verify proper use of phi nodes and instruction values
+        //
+
+        // Work list for the analysis
+        var workList = [this.entry];
+
+        // Arrays to store must and may reach sets for each block
+        var mustReachOut = [];
+        var mayReachOut = [];
+
+        // Compute the set of all definitions in the CFG
+        var fullReachSet = [];
+        for (var i = 0; i < this.blocks.length; ++i)
+        {
+            var block = this.blocks[i];
+            for (var j = 0; j < block.instrs.length; ++j)
+                fullReachSet.push(block.instrs[j]);
+        }
+
+        // Initialize the reaching def sets for all blocks
+        for (var i = 0; i < this.blocks.length; ++i)
+        {
+            var block = this.blocks[i];
+            mustReachOut[block.blockId] = fullReachSet.slice(0);
+            mayReachOut[block.blockId] = [];
+        }
+
+        // Until the work list is empty
+        while (workList.length != 0)
+        {
+            var block = workList.pop();
+
+            // Compute the must and may reach sets at this block's entry
+            var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+            var mayReachCur = [];
+            for (var i = 0; i < block.preds.length; ++i)
+            {
+                var pred = block.preds[i];
+                mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
+                mayReachCur = arraySetUnion(mayReachCur, mayReachOut[pred.blockId]);
+            }
+
+            // For each instruction
+            for (var i = 0; i < block.instrs.length; ++i)
+            {
+                // Add the instruction to both sets of reaching values
+                var instr = block.instrs[i];
+                arraySetAdd(mustReachCur, instr);
+                arraySetAdd(mayReachCur, instr);
+            }
+            
+            // If the must or may reach sets have changed for this block
+            if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]) ||
+                !arraySetEqual(mayReachCur, mayReachOut[block.blockId])
+            )
+            {
+                // Update the sets for this block
+                mustReachOut[block.blockId] = mustReachCur;
+                mayReachOut[block.blockId] = mayReachCur;
+
+                // Add the successors of this block to the work list
+                for (var i = 0; i < block.succs.length; ++i)
+                    workList.push(block.succs[i]);
+            }
+        }
+
+        // For each basic block
+        for (var i = 0; i < this.blocks.length; ++i)
+        {
+            var block = this.blocks[i];
+
+            // Compute the must and may reach sets at this block's entry
+            var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+            var mayReachCur = [];
+            for (var j = 0; j < block.preds.length; ++j)
+            {
+                var pred = block.preds[j];
+                mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
+                mayReachCur = arraySetUnion(mayReachCur, mayReachOut[pred.blockId]);
+            }
+
+            // For each instruction
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                var instr = block.instrs[j];
+
+                // For each use of the instruction
+                for (var k = 0; k < instr.uses.length; ++k)
+                {
+                    var use = instr.uses[k];
+
+                    // If the use isn't in the CFG, ignore it
+                    if (!(use instanceof IRInstr))
+                        continue;
+    
+                    var mustReach = arraySetHas(mustReachCur, use);
+                    var mayReach = arraySetHas(mayReachCur, use);
+
+                    if (instr instanceof PhiInstr)
+                    {
+                        if (!mayReach)
+                            return 'phi node uses non-reaching value:\n' + use;
+                    }
+                    else
+                    {
+                        if (mayReach && !mustReach)
+                            return 'instr uses value that may not reach\n' + use;
+                        else if (!mustReach)
+                            return 'instr uses non-reaching value\n' + use;
+                    }
+                }
+
+                // Add the instruction to both sets of reaching values
+                arraySetAdd(mustReachCur, instr);
+                arraySetAdd(mayReachCur, instr);
+            }
+        }
+
+        // The CFG is valid
+        return true;
+    };
 
     /**
     Entry basic block
@@ -376,7 +592,6 @@ function ControlFlowGraph()
     @field
     */
     this.nextBlockId = 1;
-
 }
 
 /**
@@ -402,7 +617,7 @@ function BasicBlock(cfg, label)
         }
 
         return output;
-    }
+    };
 
     /**
     Get the name for this basic block
@@ -420,10 +635,10 @@ function BasicBlock(cfg, label)
             // Return a name based on the block id number
             return 'block_' + this.blockId;
         }
-    }
+    };
 
     /**
-    Make a shallow copy of the basic block
+    Make a copy of the basic block
     */
     this.copy = function (cfg)
     {
@@ -433,16 +648,28 @@ function BasicBlock(cfg, label)
         // Copy the block id
         newBlock.blockId = this.blockId;
         
-        // Make a shallow copy of the instruction list
-        newBlock.instrs = this.instrs.slice(0);
+        // Set the parent block for the new instructions
+        for (var i = 0; i < this.instrs.length; ++i)
+        {
+            // Make a shallow copy of the instruction
+            var instr = this.instrs[i];
+            var newInstr = instr.copy();
+            newBlock.instrs.push(newInstr);
+
+            // Set the parent link for the new instruction
+            newInstr.parentBlock = newBlock;
+        }
 
         // Make shallow copies of the predecessor and successor lists
         newBlock.preds = this.preds.slice(0);
         newBlock.succs = this.succs.slice(0);
 
+        // Set the parent CFG link
+        newBlock.parentCFG = cfg;
+
         // Return the new basic block
         return newBlock;
-    }
+    };
 
     /**
     Add an instruction at the end of the block
@@ -455,9 +682,15 @@ function BasicBlock(cfg, label)
             'cannot add instruction after branch'
         );
 
-        // Add reverse edges from all uses to this instruction
+        // For all uses
         for (var i = 0; i < instr.uses.length; ++i)
-            instr.uses[i].addDest(instr);
+        {
+            var use = instr.uses[i];
+
+            // If this use is an instruction, add a reverse dest edge
+            if (use instanceof IRInstr)
+                use.addDest(instr);
+        }
 
         // If this is a branch instruction
         if (instr instanceof BranchInstr)
@@ -483,7 +716,7 @@ function BasicBlock(cfg, label)
 
         // Assign an id number to the instruction
         this.parentCFG.assignInstrId(instr);
-    }
+    };
 
     /**
     Remove an instruction from this basic block by reference
@@ -495,7 +728,7 @@ function BasicBlock(cfg, label)
                 return this.remInstrAtIndex(i);
 
         assert (false, 'Instruction not found in basic block');
-    }
+    };
 
     /**
     Remove an instruction from this basic block by index
@@ -530,7 +763,7 @@ function BasicBlock(cfg, label)
 
         // Free this instruction's id number
         this.parentCFG.freeInstrId(instr);
-    }
+    };
 
     /**
     Add a predecessor block
@@ -538,7 +771,7 @@ function BasicBlock(cfg, label)
     this.addPred = function (pred)
     {
         arraySetAdd(this.preds, pred);
-    }
+    };
 
     /**
     Remove a predecessor block
@@ -546,7 +779,7 @@ function BasicBlock(cfg, label)
     this.remPred = function (pred)
     {
         arraySetRem(this.preds, pred);
-    }
+    };
 
     /**
     Add a successor block
@@ -554,7 +787,7 @@ function BasicBlock(cfg, label)
     this.addSucc = function (succ)
     {
         arraySetAdd(this.succs, succ);
-    }
+    };
 
     /**
     Remove a successor block
@@ -562,7 +795,7 @@ function BasicBlock(cfg, label)
     this.remSucc = function (succ)
     {
         arraySetRem(this.succs, succ);
-    }
+    };
 
     // If no label was specified, use the empty string
     if (label == undefined || label == null)
@@ -613,6 +846,7 @@ l2 = cfg.getNewBlock('left2');
 r1 = cfg.getNewBlock('right1');
 merge = cfg.getNewBlock('merge');
 
+entry.addInstr(new ArithInstr(ArithOp.DIV, new IntConst(1), new IntConst(2)));
 entry.addInstr(new IfInstr(new BoolConst(true), l1, r1));
 
 l1.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)));
@@ -629,7 +863,8 @@ r1.addInstr(new ArithInstr(ArithOp.MUL, new IntConst(7), new IntConst(8)));
 r1.addInstr(new JumpInstr(merge));
 
 merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]]));
-merge.addInstr(new SetPropValInstr(new IntConst(1), new IntConst(2)));
+merge.addInstr(new SetPropValInstr(entry.instrs[0], new IntConst(2)));
+merge.addInstr(new RetInstr(new UndefConst()));
 
 print('ORIGINAL CFG: \n-------------\n');
 
@@ -641,11 +876,14 @@ print('SIMPLIFIED CFG: \n---------------\n');
 
 print(cfg + '\n');
 
-
 cfg2 = cfg.copy();
 
+print('COPY OF CFG: \n---------------\n');
 
+print(cfg2 + '\n');
 
+print('CFG1 VALID: ' + cfg.validate());
+print('CFG2 VALID: ' + cfg2.validate());
 
 print("done");
 
