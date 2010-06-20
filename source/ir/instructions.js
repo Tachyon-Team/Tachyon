@@ -9,19 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: function argument instructions/values (arg N)
-// TODO: argument object instruction/value (argObject)
-// TODO: this value instruction/value (thisValue)
-// Could be created in entry block on CFG creation
-// - Proper instructions, with uses
-// - Easy to replace during inlining
-// Have CFG take parent function as constructor parameter
-// - Create these when creating initial CFG
-// - have getArg(n), etc., functions as part of CFG class
-
-// TODO: new object instruction
-// Doesn't need parameters, can do setfields after
-
 /**
 @class Base class for all IR values
 */
@@ -165,7 +152,7 @@ function IRInstr()
         if (this.hasDests())
             output += this.getValName() + ' = ';
 
-        output += this.mnemonic + ' ';
+        output += this.mnemonic + (this.uses.length? ' ':'');
 
         for (i = 0; i < this.uses.length; ++i)
         {
@@ -347,6 +334,29 @@ Make a shallow copy of the instruction
 PhiInstr.prototype.copy = function ()
 {
     var newInstr = new PhiInstr(this.uses.slice(0));
+    return this.baseCopy(newInstr);
+};
+
+/**
+@class Function argument value instruction
+@augments IRInstr
+*/
+function ArgValInstr(argName)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = "arg";
+
+    // Set the output name as the argument name
+    this.outName = argName;
+}
+ArgValInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+ArgValInstr.prototype.copy = function ()
+{
+    var newInstr = new ArgValInstr(this.outName);
     return this.baseCopy(newInstr);
 };
 
@@ -788,6 +798,9 @@ CatchInstr.prototype.copy = function ()
 */
 function CallRefInstr(funcVal, thisVal, paramVals)
 {
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'call';
+
     /**
     Function value, this value and parameter values
     @field
@@ -811,6 +824,9 @@ CallRefInstr.prototype.copy = function ()
 */
 function ConstructRefInstr(funcVal, paramVals)
 {
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'construct';
+
     /**
     Function value, this value and parameter values
     @field
@@ -825,6 +841,26 @@ Make a shallow copy of the instruction
 ConstructRefInstr.prototype.copy = function ()
 {
     var newInstr = new ConstructRefInstr(this.uses[0], this.uses.slice[1]);
+    return this.baseCopy(newInstr);
+};
+
+/**
+@class Instruction to create a new, empty object
+@augments IRInstr
+*/
+function NewObjInstr()
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'new_obj';
+}
+NewObjInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+NewObjInstr.prototype.copy = function ()
+{
+    var newInstr = new NewObjInstr();
     return this.baseCopy(newInstr);
 };
 

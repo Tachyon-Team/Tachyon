@@ -15,12 +15,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function ControlFlowGraph(ownerFunc)
 {
     /**
-    Entry basic block
-    @field
-    */
-    this.entry = null;
-
-    /**
     Basic blocks contained in this CFG
     */
     this.blocks = [];
@@ -54,6 +48,28 @@ function ControlFlowGraph(ownerFunc)
     @field
     */
     this.ownerFunc = ownerFunc;
+
+    /**
+    Entry basic block, created on CFG creation
+    @field
+    */
+    this.entry = null;
+
+    /**
+    Function argument values
+    @field
+    */
+    this.argVals = [];
+
+    // Add the function arguments
+    this.argVals.push(new ArgValInstr('this'));
+    this.argVals.push(new ArgValInstr('argObj'));
+    for (var i = 0; i < this.ownerFunc.getNumArgs(); ++i)
+        this.argVals.push(new ArgValInstr('arg' + i));
+
+    // Assign instruction ids to the function arguments
+    for (var i = 0; i < this.argVals.length; ++i)
+        this.assignInstrId(this.argVals[i]);
 }
 ControlFlowGraph.prototype = {};
 
@@ -83,7 +99,7 @@ Make a deep-copy of the control-flow graph
 ControlFlowGraph.prototype.copy = function ()
 {
     // Create a new control flow graph
-    newCFG = new ControlFlowGraph();
+    newCFG = new ControlFlowGraph(this.ownerFunc);
 
     // Create a map from old blocks to new blocks
     blockMap = [];
@@ -91,18 +107,25 @@ ControlFlowGraph.prototype.copy = function ()
     // Create a map from old instruction ids to new instructions
     instrMap = [];
 
+    // Map the function arguments
+    for (var i = 0; i < this.argVals.length; ++i)
+        instrMap[this.argVals[i].instrId] = newCFG.argVals[i];
+
     // For each basic block
     for (var i = 0; i < this.blocks.length; ++i)
     {
-        // Create a copy and add it to the block map
         var block = this.blocks[i];
+
+        // Create a copy and add it to the block map
         var newBlock = block.copy(newCFG);
         blockMap[block.blockId] = newBlock;
 
-        // Add the block to the new CFG
-        newCFG.blocks.push(newBlock);
+        // If this is the entry block, store the entry block reference
         if (block === this.entry)
             newCFG.entry = newBlock;
+
+        // Add the block to the new CFG
+        newCFG.blocks.push(newBlock);
 
         // For each instruction in the new basic block
         for (var j = 0; j < newBlock.instrs.length; ++j)
@@ -153,7 +176,7 @@ ControlFlowGraph.prototype.copy = function ()
                 {
                     var dest = instr.dests[k];
                     if (instrMap[dest.instrId] != undefined)
-                        instr.dests[k] = instrMap[dest.instrId];                    
+                        instr.dests[k] = instrMap[dest.instrId];                  
                 }
             }
 
@@ -167,6 +190,17 @@ ControlFlowGraph.prototype.copy = function ()
                 }
             }
         }
+    }
+
+    // Remap the function argument dests
+    for (var i = 0; i < this.argVals.length; ++i)
+    {
+        var dests = this.argVals[i].dests;
+        for (var j = 0; j < dests.length; ++j)
+        {
+            var dest = dests[j];
+            newCFG.argVals[i].addDest(instrMap[dest.instrId]);
+        }      
     }
 
     // Return the new CFG
@@ -227,14 +261,40 @@ ControlFlowGraph.prototype.getNewBlock = function (label)
 };
 
 /**
-Get/create the entry block for this CFG
+Get the entry block for this CFG
 */
 ControlFlowGraph.prototype.getEntryBlock = function ()
 {
-    if (!this.entry)
+    if (this.entry === null)
         this.entry = this.getNewBlock('entry');
 
     return this.entry;
+};
+
+/**
+Get the this argument value
+*/
+ControlFlowGraph.prototype.getThisArg = function ()
+{
+    return this.argVals[0];
+};
+
+/**
+Get the argument object value
+*/
+ControlFlowGraph.prototype.getArgObj = function ()
+{
+    return this.argVals[1];
+};
+
+/**
+Get a function argument value
+*/
+ControlFlowGraph.prototype.getArgVal = function (index)
+{
+    assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
+
+    return this.argVals[index + 2];
 };
 
 /**
@@ -434,7 +494,7 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Verify that the block is terminated with a branch instruction
         if (!(lastInstr instanceof BranchInstr))
-            return 'block does not terminate in a branch';
+            return 'block does not terminate in a branch:\n' + block;
 
         // Verify that the branch targets match our successor set
         if (block.succs.length != lastInstr.targets.length)
@@ -466,7 +526,7 @@ ControlFlowGraph.prototype.validate = function ()
             {
                 if (instr.uses[k] instanceof IRInstr)
                     if (!arraySetHas(instr.uses[k].dests, instr))
-                        return 'use missing dest link';
+                        return 'use missing dest link:\n' + instr.uses[k];
             }
 
             // Verify that our dests have us as a use
@@ -491,6 +551,10 @@ ControlFlowGraph.prototype.validate = function ()
 
     // Compute the set of all definitions in the CFG
     var fullReachSet = [];
+    for (var i = 0; i < this.argVals.length; ++i)
+    {
+        fullReachSet.push(this.argVals[i]);
+    }
     for (var i = 0; i < this.blocks.length; ++i)
     {
         var block = this.blocks[i];
@@ -512,8 +576,8 @@ ControlFlowGraph.prototype.validate = function ()
         var block = workList.pop();
 
         // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
-        var mayReachCur = [];
+        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):this.argVals.slice(0);
+        var mayReachCur = (block.preds.length == 0)? this.argVals.slice(0):[];
         for (var i = 0; i < block.preds.length; ++i)
         {
             var pred = block.preds[i];
@@ -765,6 +829,8 @@ BasicBlock.prototype.addInstr = function(instr)
 
     // Assign an id number to the instruction
     this.parentCFG.assignInstrId(instr);
+
+    return instr;
 };
 
 /**
@@ -845,55 +911,4 @@ BasicBlock.prototype.remSucc = function (succ)
 {
     arraySetRem(this.succs, succ);
 };
-
-
-cfg = new ControlFlowGraph();
-
-entry = cfg.getEntryBlock();
-l1 = cfg.getNewBlock('left1');
-l2 = cfg.getNewBlock('left2');
-r1 = cfg.getNewBlock('right1');
-merge = cfg.getNewBlock('merge');
-
-entry.addInstr(new ArithInstr(ArithOp.DIV, new IntConst(1), new IntConst(2)));
-entry.addInstr(new IfInstr(new BoolConst(true), l1, r1));
-
-l1.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)));
-l1.addInstr(new GetPropValInstr(new IntConst(1), new IntConst(2)));
-l1.addInstr(new JumpInstr(l2));
-
-l2.addInstr(new PhiInstr([l1.instrs[1]]));
-l2.addInstr(new ArithInstr(ArithOp.MOD, l1.instrs[1], new IntConst(7)));
-l2.addInstr(new ArithInstr(ArithOp.SUB, new IntConst(3), new IntConst(4)));
-l2.addInstr(new ArithInstr(ArithOp.SUB, new IntConst(3), new IntConst(4)));
-l2.addInstr(new JumpInstr(merge));
-
-r1.addInstr(new ArithInstr(ArithOp.MUL, new IntConst(7), new IntConst(8)));
-r1.addInstr(new JumpInstr(merge));
-
-merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]]));
-merge.addInstr(new SetPropValInstr(entry.instrs[0], new IntConst(2)));
-merge.addInstr(new RetInstr(new UndefConst()));
-
-print('ORIGINAL CFG: \n-------------\n');
-
-print(cfg + '\n');
-
-cfg.simplify();
-
-print('SIMPLIFIED CFG: \n---------------\n');
-
-print(cfg + '\n');
-
-cfg2 = cfg.copy();
-
-print('COPY OF CFG: \n---------------\n');
-
-print(cfg2 + '\n');
-
-print('CFG1 VALID: ' + cfg.validate());
-print('CFG2 VALID: ' + cfg2.validate());
-
-print("done");
-
 
