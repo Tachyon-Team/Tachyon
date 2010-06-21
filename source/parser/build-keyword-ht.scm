@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "build-keyword-ht.scm", Time-stamp: <2010-05-21 11:24:43 feeley>
+;;; File: "build-keyword-ht.scm", Time-stamp: <2010-06-21 14:45:43 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -105,7 +105,7 @@
                        "_CAT")))
                 (print "{ id: \"" name "\", cat: " cat " }"))
               (begin
-                (print "false")))
+                (print "null")))
           (print "\n")
           (loop (+ i 1)))))
   (print "];\n"))

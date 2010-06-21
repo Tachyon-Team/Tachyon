@@ -1,10 +1,11 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-06-19 09:06:31 feeley>
+// File: "parser.js", Time-stamp: <2010-06-21 15:03:25 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
 //=============================================================================
+
 
 function Parser(scanner, autosemicolon_enabled)
 {
@@ -15,285 +16,319 @@ function Parser(scanner, autosemicolon_enabled)
 
     this.autosemicolon_enabled = autosemicolon_enabled;
 
-    // method get_token()
-
-    this.get_token = function ()
-    {
-        return this.scanner.get_token();
-    };
-
-    // method token_cat(tok)
-
-    this.token_cat = function (tok)
-    {
-        return tok.cat;
-    };
-
-    // method error(loc, msg)
-
-    this.error = function (loc, msg)
-    {
-        print(loc.to_string() + ": syntax error -- " + msg);
-        exit(); // exit process
-    };
-
-    // constants
-
-    this.eoi_cat   = 0; // encoding of "end of input" category
-    this.error_cat = 1; // encoding of "error" category
-
-    this.accept_op = 999999; // action table encoding of "accept" operation
-    this.error_op  = 999998; // action table encoding of "error" operation
-
-    // encoding of action table
-
-    this.action_cat = function (a) { return a & 255;  };
-    this.action_op  = function (a) { return a >> 8; };
-
-    // encoding of goto table
-
-    this.goto_cat       = function (g) { return g & 255;  };
-    this.goto_new_state = function (g) { return g >> 8; };
-
     this.stack = [];
     this.sp    = 0;
 
     this.input_valid = false;
     this.input = null;
     this.previous_input = null; // for automatic semicolon insertion
+}
 
-    this.consume = function ()
-    {
-        if (!this.input_valid)
-        {
-            this.previous_input = this.input;
-            this.input = this.get_token();
-            this.input_valid = true;
-            // print(this.input.loc.to_string() + ":");
-        }
-    };
 
-    this.current_loc = function ()
-    {
-        return this.input.loc;
-    };
+// constants
 
-    this.init_stack = function ()
-    {
-        this.stack = [0];
-        this.sp    = 0;
-    };
+Parser.prototype.eoi_cat   = 0; // encoding of "end of input" category
+Parser.prototype.error_cat = 1; // encoding of "error" category
 
-    this.arg = function (i)
-    {
-        return this.stack[this.sp - 2*i - 1];
-    };
+Parser.prototype.accept_op = 999999; // action table encoding of "accept"
+Parser.prototype.error_op  = 999998; // action table encoding of "error"
 
-    this.index_gtable = function (state, new_category)
-    {
-        var t = this.gtable[state];
-        for (var i=0; i<t.length; i++)
-        {
-            var g = t[i];
-            if (this.goto_cat(g) == new_category)
-                return this.goto_new_state(g);
-        }
-        return 0; // never reached
-    };
 
-    this.token_attr = function (token)
-    {
-        return token;
-    };
+// encoding of action table
 
-    this.push = function (delta, new_category, value)
-    {
-        var sp = this.sp - 2*delta;
-        var state = this.stack[sp];
-        var new_state = this.index_gtable(state, new_category);
-        sp += 2;
-        this.stack[sp] = new_state;
-        this.stack[sp-1] = value;
-        this.sp = sp;
-        //if (value !== null && value.type)
-        //    print(value.loc.to_string() + ": type: " + value.type);
-    };
+Parser.prototype.action_cat = function (a) { return a & 255;  };
+Parser.prototype.action_op  = function (a) { return a >> 8; };
 
-    this.reduce = function (state)
-    {
-        this.rtable[state](this);
-    };
 
-    this.shift = function (state, attr)
+// encoding of goto table
+
+Parser.prototype.goto_cat       = function (g) { return g & 255;  };
+Parser.prototype.goto_new_state = function (g) { return g >> 8; };
+
+
+// method token_cat(tok)
+
+Parser.prototype.token_cat = function (tok)
+{
+    return tok.cat;
+};
+
+
+// method error(loc, msg)
+
+Parser.prototype.error = function (loc, msg)
+{
+    print(loc.to_string() + ": syntax error -- " + msg);
+    exit(); // exit process
+};
+
+
+// method consume()
+
+Parser.prototype.consume = function ()
+{
+    if (!this.input_valid)
     {
-        var sp = this.sp + 2;
-        this.stack[sp-1] = attr;
-        this.stack[sp] = state;
-        this.sp = sp;
-    };
+        this.previous_input = this.input;
+        this.input = this.scanner.get_token();
+        this.input_valid = true;
+        // print(this.input.loc.to_string() + ":");
+    }
+};
+
+
+// method current_loc()
+
+Parser.prototype.current_loc = function ()
+{
+    return this.input.loc;
+};
+
+
+// method init_stack()
+
+Parser.prototype.init_stack = function ()
+{
+    this.stack = [0];
+    this.sp    = 0;
+};
+
+
+// method arg(i)
+
+Parser.prototype.arg = function (i)
+{
+    return this.stack[this.sp - 2*i - 1];
+};
+
+
+// method index_gtable(state, new_category)
+
+Parser.prototype.index_gtable = function (state, new_category)
+{
+    var t = this.gtable[state];
+    for (var i=0; i<t.length; i++)
+    {
+        var g = t[i];
+        if (this.goto_cat(g) == new_category)
+            return this.goto_new_state(g);
+    }
+    return 0; // never reached
+};
+
+
+// method token_attr(token)
+
+Parser.prototype.token_attr = function (token)
+{
+    return token;
+};
+
+
+// method push(delta, new_category, value)
+
+Parser.prototype.push = function (delta, new_category, value)
+{
+    var sp = this.sp - 2*delta;
+    var state = this.stack[sp];
+    var new_state = this.index_gtable(state, new_category);
+    sp += 2;
+    this.stack[sp] = new_state;
+    this.stack[sp-1] = value;
+    this.sp = sp;
+    //if (value !== null && value.type)
+    //    print(value.loc.to_string() + ": type: " + value.type);
+};
+
+
+// method reduce(state)
+
+Parser.prototype.reduce = function (state)
+{
+    this.rtable[state](this);
+};
+
+
+// method shift(state, attr)
+
+Parser.prototype.shift = function (state, attr)
+{
+    var sp = this.sp + 2;
+    this.stack[sp-1] = attr;
+    this.stack[sp] = state;
+    this.sp = sp;
+};
+
 
 /*
-    this.recover = function (tok)
-    {
-        var sp = this.sp;
-        while (sp >= 0)
-        {
-            var state = this.stack[sp];
-            // Scheme code: var act = assoc "error" this.atable[state];
-            if (act)
-            {
-                this.sp = sp;
-                this.sync( cadr(act), tok);
-                return;
-            }
-            sp -= 2;
-        }
-        this.sp = sp;
-    };
 
-    this.sync = function (state, tok)
+// method recover(tok)
+
+Parser.prototype.recover = function (tok)
+{
+    var sp = this.sp;
+    while (sp >= 0)
     {
-        var t = this.atable[state];
-        var sp = this.sp+4;
-        this.sp = sp;
-        this.stack[sp-3] = false;
-        this.stack[sp-2] = state;
-        for (;;)
+        var state = this.stack[sp];
+        // Scheme code: var act = assoc "error" this.atable[state];
+        if (act)
         {
-            var cat = this.token_cat(this.input);
-            if (cat == this.eoi_cat)
-            {
-                this.sp = -1;
-                break;
-            }
-            else
-            {
-                for (var i = t.length-1; i>0; i--)
-                {
-                    var a = t[i];
-                    if (cat == this.action_cat(a))
-                    {
-                        this.stack[sp-1] = false;
-                        this.stack[sp] = this.action_op(a);
-                        break;
-                    }
-                }
-                this.consume();
-            }
+            this.sp = sp;
+            this.sync( cadr(act), tok);
+            return;
         }
-    };
+        sp -= 2;
+    }
+    this.sp = sp;
+};
+
+
+// method sync(state, tok)
+
+Parser.prototype.sync = function (state, tok)
+{
+    var t = this.atable[state];
+    var sp = this.sp+4;
+    this.sp = sp;
+    this.stack[sp-3] = false;
+    this.stack[sp-2] = state;
+    for (;;)
+    {
+        var cat = this.token_cat(this.input);
+        if (cat == this.eoi_cat)
+        {
+            this.sp = -1;
+            break;
+        }
+        else
+        {
+            for (var i = t.length-1; i>0; i--)
+            {
+                var a = t[i];
+                if (cat == this.action_cat(a))
+                {
+                    this.stack[sp-1] = false;
+                    this.stack[sp] = this.action_op(a);
+                    break;
+                }
+            }
+            this.consume();
+        }
+    }
+};
+
 */
 
-    // method parse()
+// method parse()
 
-    this.parse = function ()
+Parser.prototype.parse = function ()
+{
+    this.init_stack();
+    this.consume();
+
+    for (;;)
     {
-        this.init_stack();
-        this.consume();
+        if (this.sp < 0)
+            this.error(this.input.loc,
+                       "no error production and an error occurred");
 
-        for (;;)
+        var state = this.stack[this.sp];
+        var t = this.atable[state];
+
+        if (this.input_valid)
         {
-            if (this.sp < 0)
-                this.error(this.input.loc,
-                           "no error production and an error occurred");
+            var autosemicolon_inserted = false;
+            var cat = this.token_cat(this.input);
+            var i = t.length-1;
+            var a = t[i];
 
-            var state = this.stack[this.sp];
-            var t = this.atable[state];
-
-            if (this.input_valid)
+            if (this.autosemicolon_enabled &&
+                this.scanner.crossed_eol)
             {
-                var autosemicolon_inserted = false;
-                var cat = this.token_cat(this.input);
-                var i = t.length-1;
-                var a = t[i];
+                // automatic semicolon insertion should be considered
 
-                if (this.autosemicolon_enabled &&
-                    this.scanner.crossed_eol)
+                var normal_index = 0;
+                var autosemicolon_index = 0;
+
+                while (i > 0)
                 {
-                    // automatic semicolon insertion should be considered
+                    var a_cat = this.action_cat(a);
 
-                    var normal_index = 0;
-                    var autosemicolon_index = 0;
+                    if (a_cat == cat)
+                        normal_index = i;
+                    else if (a_cat == AUTOSEMICOLON_CAT)
+                        autosemicolon_index = i;
 
-                    while (i > 0)
-                    {
-                        var a_cat = this.action_cat(a);
+                    i--;
+                    a = t[i];
+                }
 
-                        if (a_cat == cat)
-                            normal_index = i;
-                        else if (a_cat == AUTOSEMICOLON_CAT)
-                            autosemicolon_index = i;
+                if (autosemicolon_index != 0)
+                {
+                    autosemicolon_inserted = true;
+                    a = t[autosemicolon_index];
+                }
+                else
+                    a = t[normal_index];
+            }
+            else
+            {
+                // automatic semicolon insertion should not be considered
 
-                        i--;
-                        a = t[i];
-                    }
+                while (i > 0)
+                {
+                    var a_cat = this.action_cat(a);
 
-                    if (autosemicolon_index != 0)
-                    {
-                        autosemicolon_inserted = true;
-                        a = t[autosemicolon_index];
-                    }
-                    else
-                        a = t[normal_index];
+                    if (a_cat == cat)
+                        break;
+
+                    i--;
+                    a = t[i];
+                }
+            }
+
+            var op = this.action_op(a);
+
+            if (op == this.accept_op)
+            {
+                return this.stack[1]; // attribute of root
+            }
+            else if (op == this.error_op)
+            {
+                if (this.input.cat == this.eoi_cat)
+                    this.error(this.input.loc, "unexpected end of file");
+                else
+                    this.error(this.input.loc, "unexpected token");
+            }
+            else if (op >= 0)
+            {
+                if (autosemicolon_inserted)
+                {
+                    this.shift(op, this.token_attr(this.previous_input));
                 }
                 else
                 {
-                    // automatic semicolon insertion should not be considered
-
-                    while (i > 0)
-                    {
-                        var a_cat = this.action_cat(a);
-
-                        if (a_cat == cat)
-                            break;
-
-                        i--;
-                        a = t[i];
-                    }
-                }
-
-                var op = this.action_op(a);
-
-                if (op == this.accept_op)
-                {
-                    return this.stack[1]; // attribute of root
-                }
-                else if (op == this.error_op)
-                {
-                    if (this.input.cat == this.eoi_cat)
-                        this.error(this.input.loc, "unexpected end of file");
-                    else
-                        this.error(this.input.loc, "unexpected token");
-                }
-                else if (op >= 0)
-                {
-                    if (autosemicolon_inserted)
-                    {
-                        this.shift(op, this.token_attr(this.previous_input));
-                    }
-                    else
-                    {
-                        this.shift(op, this.token_attr(this.input));
-                        this.input_valid = false;
-                    }
-                }
-                else
-                {
-                    this.reduce(-op);
+                    this.shift(op, this.token_attr(this.input));
+                    this.input_valid = false;
                 }
             }
             else
             {
-                var a = t[0];
-                var defop = this.action_op(a);
-                if (t.length == 1 && defop < 0)
-                    this.reduce(-defop);
-                else
-                    this.consume();
+                this.reduce(-op);
             }
         }
-    };
-}
+        else
+        {
+            var a = t[0];
+            var defop = this.action_op(a);
+            if (t.length == 1 && defop < 0)
+                this.reduce(-defop);
+            else
+                this.consume();
+        }
+    }
+};
+
 
 function list_loc(list)
 {

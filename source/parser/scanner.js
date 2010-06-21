@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-06-09 08:42:06 feeley>
+// File: "scanner.js", Time-stamp: <2010-06-21 14:46:42 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -18,457 +18,473 @@
 
 //-----------------------------------------------------------------------------
 
+
 function Scanner(port)
 {
     this.port             = port;
     this.current_char_pos = 0;
     this.current_line_pos = 0;
     this.current_line     = 0;
-    this.peeked_char      = false;
-    this.peeked_char_pos  = false;
-    this.pos_window       = [false,false,false,false,false];
-    this.char_window      = [false,false,false,false,false];
+    this.peeked_char      = null;
+    this.peeked_char_pos  = null;
+    this.pos_window       = [null, null, null, null, null];
+    this.char_window      = [null, null, null, null, null];
     this.window_size      = 0;
     this.crossed_eol      = false;
+}
 
-    // method read_char()
 
-    this.read_char = function ()
+// method read_char()
+
+Scanner.prototype.read_char = function ()
+{
+    var c = this.port.read_char();
+    if (c != EOF)
+        this.current_char_pos++;
+    return c;
+};
+
+
+// method get_char()
+
+Scanner.prototype.get_char = function ()
+{
+    var c = this.peeked_char;
+
+    if (c != null)
+        this.peeked_char = null;
+    else
+        c = this.read_char();
+
+    if (c == LF_CH)
     {
-        var c = this.port.read_char();
-        if (c != EOF)
-            this.current_char_pos++;
+        this.current_line++;
+        this.current_line_pos = this.current_char_pos;
+        return EOL_CH;
+    }
+    else if (c == CR_CH)
+    {
+        this.current_line++;
+        this.current_line_pos = this.current_char_pos;
+        this.peeked_char_pos = this.current_char_pos;
+        var next = this.read_char();
+        if (next == LF_CH)
+            this.current_line_pos = this.current_char_pos;
+        else
+            this.peeked_char = next; // remember for next time
+        return EOL_CH;
+    }
+    else
         return c;
-    };
+};
 
-    // method get_char()
 
-    this.get_char = function ()
+// method advance(i)
+
+Scanner.prototype.advance = function (i)
+{
+    var j = 0;
+    this.fill_window(i);
+    while (i < this.window_size)
     {
-        var c = this.peeked_char;
+        var p = this.pos_window[i];
+        var c = this.char_window[i];
+        //delete this.pos_window[i];
+        //delete this.char_window[i];
+        this.pos_window[j] = p;
+        this.char_window[j] = c;
+        i++;
+        j++;
+    }
+    this.window_size = j;
+};
 
-        if (c)
-            this.peeked_char = false;
-        else
-            c = this.read_char();
 
-        if (c == LF_CH)
-        {
-            this.current_line++;
-            this.current_line_pos = this.current_char_pos;
-            return EOL_CH;
-        }
-        else if (c == CR_CH)
-        {
-            this.current_line++;
-            this.current_line_pos = this.current_char_pos;
-            this.peeked_char_pos = this.current_char_pos;
-            var next = this.read_char();
-            if (next == LF_CH)
-                this.current_line_pos = this.current_char_pos;
-            else
-                this.peeked_char = next; // remember for next time
-            return EOL_CH;
-        }
-        else
-            return c;
-    };
+// method lookahead_pos(i)
 
-    // method advance(i)
+Scanner.prototype.lookahead_pos = function (i)
+{
+    this.fill_window(i+1);
+    return this.pos_window[i];
+};
 
-    this.advance = function (i)
+
+// method lookahead_char(i)
+
+Scanner.prototype.lookahead_char = function (i)
+{
+    this.fill_window(i+1);
+    return this.char_window[i];
+};
+
+
+// method fill_window(n)
+
+Scanner.prototype.fill_window = function (n)
+{
+    // fill first n entries of the lookahead window
+    var s = this.window_size;
+    if (s < n)
     {
-        var j = 0;
-        this.fill_window(i);
-        while (i < this.window_size)
+        var i = s;
+        while (i < n)
         {
-            var p = this.pos_window[i];
-            var c = this.char_window[i];
-            //delete this.pos_window[i];
-            //delete this.char_window[i];
-            this.pos_window[j] = p;
-            this.char_window[j] = c;
+            var cp = (this.peeked_char == null)
+                     ? this.current_char_pos
+                     : this.peeked_char_pos;
+            this.pos_window[i] =
+                line_and_column_to_position(this.current_line,
+                                            cp - this.current_line_pos);
+            this.char_window[i] = this.get_char();
             i++;
-            j++;
         }
-        this.window_size = j;
-    };
+        this.window_size = i;
+    }
+};
 
-    // method lookahead_pos(i)
 
-    this.lookahead_pos = function (i)
+// method get_token()
+
+Scanner.prototype.get_token = function ()
+{
+    var c = this.lookahead_char(0);
+
+    this.crossed_eol = false;
+
+    for (;;)
     {
-        this.fill_window(i+1);
-        return this.pos_window[i];
-    };
-
-    // method lookahead_char(i)
-
-    this.lookahead_char = function (i)
-    {
-        this.fill_window(i+1);
-        return this.char_window[i];
-    };
-
-    // method fill_window(n)
-
-    this.fill_window = function (n)
-    {
-        // fill first n entries of the lookahead window
-        var s = this.window_size;
-        if (s < n)
+        if (c == EOF)
+            return this.simple_token(EOI_CAT, 0);
+        else if (c == SPACE_CH || c == EOL_CH || c == TAB_CH)
         {
-            var i = s;
-            while (i < n)
+            if (c == EOL_CH)
+                this.crossed_eol = true;
+            this.advance(1);
+            c = this.lookahead_char(0);
+        }
+        else if (this.identifier_class(c))
+            return this.parse_identifier();
+        else if (this.decimal_class(c))
+            return this.parse_number();
+        else if (c == PERIOD_CH)
+        {
+            if (this.decimal_class(this.lookahead_char(1)))
+                return this.parse_number();
+            else
+                return this.simple_token(PERIOD_CAT, 1);
+        }
+        else if (c == EXCL_CH)
+        {
+            if (this.lookahead_char(1) == EQUAL_CH)
             {
-                var cp = this.peeked_char
-                         ? this.peeked_char_pos
-                         : this.current_char_pos;
-                this.pos_window[i] =
-                    line_and_column_to_position(this.current_line,
-                                                cp - this.current_line_pos);
-                this.char_window[i] = this.get_char();
-                i++;
+                if (this.lookahead_char(2) == EQUAL_CH)
+                    return this.simple_token(STRNEQ_CAT, 3);
+                else
+                    return this.simple_token(NE_CAT, 2);
             }
-            this.window_size = i;
+            else
+                return this.simple_token(EXCL_CAT, 1);
         }
-    };
-
-    // method get_token()
-
-    this.get_token = function ()
-    {
-        var c = this.lookahead_char(0);
-
-        this.crossed_eol = false;
-
-        for (;;)
+        else if (c == PERCENT_CH)
         {
-            if (c == EOF)
-                return this.simple_token(EOI_CAT, 0);
-            else if (c == SPACE_CH || c == EOL_CH || c == TAB_CH)
+            if (this.lookahead_char(1) == EQUAL_CH)
+                return this.simple_token(MODEQUAL_CAT, 2);
+            else
+                return this.simple_token(MOD_CAT, 1);
+        }
+        else if (c == AMPERSAND_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == AMPERSAND_CH)
+                return this.simple_token(AND_CAT, 2);
+            else if (x == EQUAL_CH)
+                return this.simple_token(BITANDEQUAL_CAT, 2);
+            else
+                return this.simple_token(BITAND_CAT, 1);
+        }
+        else if (c == STAR_CH)
+        {
+            if (this.lookahead_char(1) == EQUAL_CH)
+                return this.simple_token(MULTEQUAL_CAT, 2);
+            else
+                return this.simple_token(MULT_CAT, 1);
+        }
+        else if (c == PLUS_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == PLUS_CH)
+                return this.simple_token(PLUSPLUS_CAT, 2);
+            else if (x == EQUAL_CH)
+                return this.simple_token(PLUSEQUAL_CAT, 2);
+            else
+                return this.simple_token(PLUS_CAT, 1);
+        }
+        else if (c == MINUS_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == MINUS_CH)
+                return this.simple_token(MINUSMINUS_CAT, 2);
+            else if (x == EQUAL_CH)
+                return this.simple_token(MINUSEQUAL_CAT, 2);
+            else
+                return this.simple_token(MINUS_CAT, 1);
+        }
+        else if (c == SLASH_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == SLASH_CH)
             {
-                if (c == EOL_CH)
-                    this.crossed_eol = true;
-                this.advance(1);
+                this.advance(2);
+                for (;;)
+                {
+                    c = this.lookahead_char(0);
+                    if (c == EOL_CH || c == EOF)
+                    {
+                        this.crossed_eol = true;
+                        break;
+                    }
+                    this.advance(1);
+                }
+            }
+            else if (x == STAR_CH)
+            {
+                this.advance(2);
+                for (;;)
+                {
+                    c = this.lookahead_char(0);
+                    if (c == EOF)
+                        error("unterminated comment");
+                    if (c == STAR_CH && this.lookahead_char(1) == SLASH_CH)
+                        break;
+                    if (c == EOL_CH)
+                        this.crossed_eol = true;
+                    this.advance(1);
+                }
+                this.advance(2);
                 c = this.lookahead_char(0);
             }
-            else if (this.identifier_class(c))
-                return this.parse_identifier();
-            else if (this.decimal_class(c))
-                return this.parse_number();
-            else if (c == PERIOD_CH)
-            {
-                if (this.decimal_class(this.lookahead_char(1)))
-                    return this.parse_number();
-                else
-                    return this.simple_token(PERIOD_CAT, 1);
-            }
-            else if (c == EXCL_CH)
-            {
-                if (this.lookahead_char(1) == EQUAL_CH)
-                {
-                    if (this.lookahead_char(2) == EQUAL_CH)
-                        return this.simple_token(STRNEQ_CAT, 3);
-                    else
-                        return this.simple_token(NE_CAT, 2);
-                }
-                else
-                    return this.simple_token(EXCL_CAT, 1);
-            }
-            else if (c == PERCENT_CH)
-            {
-                if (this.lookahead_char(1) == EQUAL_CH)
-                    return this.simple_token(MODEQUAL_CAT, 2);
-                else
-                    return this.simple_token(MOD_CAT, 1);
-            }
-            else if (c == AMPERSAND_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == AMPERSAND_CH)
-                    return this.simple_token(AND_CAT, 2);
-                else if (x == EQUAL_CH)
-                    return this.simple_token(BITANDEQUAL_CAT, 2);
-                else
-                    return this.simple_token(BITAND_CAT, 1);
-            }
-            else if (c == STAR_CH)
-            {
-                if (this.lookahead_char(1) == EQUAL_CH)
-                    return this.simple_token(MULTEQUAL_CAT, 2);
-                else
-                    return this.simple_token(MULT_CAT, 1);
-            }
-            else if (c == PLUS_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == PLUS_CH)
-                    return this.simple_token(PLUSPLUS_CAT, 2);
-                else if (x == EQUAL_CH)
-                    return this.simple_token(PLUSEQUAL_CAT, 2);
-                else
-                    return this.simple_token(PLUS_CAT, 1);
-            }
-            else if (c == MINUS_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == MINUS_CH)
-                    return this.simple_token(MINUSMINUS_CAT, 2);
-                else if (x == EQUAL_CH)
-                    return this.simple_token(MINUSEQUAL_CAT, 2);
-                else
-                    return this.simple_token(MINUS_CAT, 1);
-            }
-            else if (c == SLASH_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == SLASH_CH)
-                {
-                    this.advance(2);
-                    for (;;)
-                    {
-                        c = this.lookahead_char(0);
-                        if (c == EOL_CH || c == EOF)
-                        {
-                            this.crossed_eol = true;
-                            break;
-                        }
-                        this.advance(1);
-                    }
-                }
-                else if (x == STAR_CH)
-                {
-                    this.advance(2);
-                    for (;;)
-                    {
-                        c = this.lookahead_char(0);
-                        if (c == EOF)
-                            error("unterminated comment");
-                        if (c == STAR_CH && this.lookahead_char(1) == SLASH_CH)
-                            break;
-                        if (c == EOL_CH)
-                            this.crossed_eol = true;
-                        this.advance(1);
-                    }
-                    this.advance(2);
-                    c = this.lookahead_char(0);
-                }
-                else if (x == EQUAL_CH)
-                    return this.simple_token(DIVEQUAL_CAT, 2);
-                else
-                    return this.simple_token(DIV_CAT, 1);
-            }
-            else if (c == COLON_CH)
-                return this.simple_token(COLON_CAT, 1);
-            else if (c == EQUAL_CH)
-            {
-                if (this.lookahead_char(1) == EQUAL_CH)
-                {
-                    if (this.lookahead_char(2) == EQUAL_CH)
-                        return this.simple_token(STREQ_CAT, 3);
-                    else
-                        return this.simple_token(EQEQ_CAT, 2);
-                }
-                else
-                    return this.simple_token(EQUAL_CAT, 1);
-            }
-            else if (c == LT_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == LT_CH)
-                {
-                    if (this.lookahead_char(2) == EQUAL_CH)
-                        return this.simple_token(LSHIFTEQUAL_CAT, 3);
-                    else
-                        return this.simple_token(LSHIFT_CAT, 2);
-                }
-                else if (x == EQUAL_CH)
-                    return this.simple_token(LE_CAT, 2);
-                else
-                    return this.simple_token(LT_CAT, 1);
-            }
-            else if (c == GT_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == GT_CH)
-                {
-                    var y = this.lookahead_char(2);
-                    if (y == GT_CH)
-                    {
-                        if (this.lookahead_char(3) == EQUAL_CH)
-                            return this.simple_token(URSHIFTEQUAL_CAT, 4);
-                        else
-                            return this.simple_token(URSHIFT_CAT, 3);
-                    }
-                    else if (y == EQUAL_CH)
-                        return this.simple_token(RSHIFTEQUAL_CAT, 3);
-                    else
-                        return this.simple_token(RSHIFT_CAT, 2);
-                }
-                else if (x == EQUAL_CH)
-                    return this.simple_token(GE_CAT, 2);
-                else
-                    return this.simple_token(GT_CAT, 1);
-            }
-            else if (c == QUESTION_CH)
-                return this.simple_token(QUESTION_CAT, 1);
-            else if (c == CARET_CH)
-            {
-                if (this.lookahead_char(1) == EQUAL_CH)
-                    return this.simple_token(BITXOREQUAL_CAT, 2);
-                else
-                    return this.simple_token(BITXOR_CAT, 1);
-            }
-            else if (c == LPAREN_CH)
-                return this.simple_token(LPAREN_CAT, 1);
-            else if (c == RPAREN_CH)
-                return this.simple_token(RPAREN_CAT, 1);
-            else if (c == COMMA_CH)
-                return this.simple_token(COMMA_CAT, 1);
-            else if (c == SEMICOLON_CH)
-                return this.simple_token(SEMICOLON_CAT, 1);
-            else if (c == LBRACK_CH)
-                return this.simple_token(LBRACK_CAT, 1);
-            else if (c == VBAR_CH)
-            {
-                var x = this.lookahead_char(1);
-                if (x == VBAR_CH)
-                    return this.simple_token(OR_CAT, 2);
-                else if (x == EQUAL_CH)
-                    return this.simple_token(BITOREQUAL_CAT, 2);
-                else
-                    return this.simple_token(BITOR_CAT, 1);
-            }
-            else if (c == RBRACK_CH)
-                return this.simple_token(RBRACK_CAT, 1);
-            else if (c == LBRACE_CH)
-                return this.simple_token(LBRACE_CAT, 1);
-            else if (c == RBRACE_CH)
-                return this.simple_token(RBRACE_CAT, 1);
-            else if (c == TILDE_CH)
-                return this.simple_token(BITNOT_CAT, 1);
-            else if (c == DOUBLEQUOTE_CH || c == QUOTE_CH)
-                return this.parse_string();
+            else if (x == EQUAL_CH)
+                return this.simple_token(DIVEQUAL_CAT, 2);
             else
-                error("unknown token");
+                return this.simple_token(DIV_CAT, 1);
         }
-    };
-
-    // method identifier_class()
-
-    this.identifier_class = function (c)
-    {
-        return (c >= LOWER_A_CH && c <= LOWER_Z_CH) ||
-               (c >= UPPER_A_CH && c <= UPPER_Z_CH) ||
-               c == UNDERSCORE_CH ||
-               c == DOLLAR_CH;
-    };
-
-    // method decimal_class()
-
-    this.decimal_class = function (c)
-    {
-        return c >= ZERO_CH && c <= NINE_CH;
-    };
-
-    // method parse_identifier()
-
-    this.parse_identifier = function ()
-    {
-        var start_pos = this.lookahead_pos(0);
-        var chars = [];
-        var h = 0;
-        for (;;)
+        else if (c == COLON_CH)
+            return this.simple_token(COLON_CAT, 1);
+        else if (c == EQUAL_CH)
         {
-            var c = this.lookahead_char(0);
-            if (!(this.identifier_class(c) || this.decimal_class(c)))
-                break;
-            this.advance(1);
-            chars.push(c);
-            h = (h * HASH_MULT + c) % HASH_MOD;
+            if (this.lookahead_char(1) == EQUAL_CH)
+            {
+                if (this.lookahead_char(2) == EQUAL_CH)
+                    return this.simple_token(STREQ_CAT, 3);
+                else
+                    return this.simple_token(EQEQ_CAT, 2);
+            }
+            else
+                return this.simple_token(EQUAL_CAT, 1);
         }
-        var id = String.fromCharCode.apply(null,chars);
-        var x = keyword_hashtable[h];
-        if (x != false && x.id == id)
-            return this.valued_token(x.cat, id, start_pos);
+        else if (c == LT_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == LT_CH)
+            {
+                if (this.lookahead_char(2) == EQUAL_CH)
+                    return this.simple_token(LSHIFTEQUAL_CAT, 3);
+                else
+                    return this.simple_token(LSHIFT_CAT, 2);
+            }
+            else if (x == EQUAL_CH)
+                return this.simple_token(LE_CAT, 2);
+            else
+                return this.simple_token(LT_CAT, 1);
+        }
+        else if (c == GT_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == GT_CH)
+            {
+                var y = this.lookahead_char(2);
+                if (y == GT_CH)
+                {
+                    if (this.lookahead_char(3) == EQUAL_CH)
+                        return this.simple_token(URSHIFTEQUAL_CAT, 4);
+                    else
+                        return this.simple_token(URSHIFT_CAT, 3);
+                }
+                else if (y == EQUAL_CH)
+                    return this.simple_token(RSHIFTEQUAL_CAT, 3);
+                else
+                    return this.simple_token(RSHIFT_CAT, 2);
+            }
+            else if (x == EQUAL_CH)
+                return this.simple_token(GE_CAT, 2);
+            else
+                return this.simple_token(GT_CAT, 1);
+        }
+        else if (c == QUESTION_CH)
+            return this.simple_token(QUESTION_CAT, 1);
+        else if (c == CARET_CH)
+        {
+            if (this.lookahead_char(1) == EQUAL_CH)
+                return this.simple_token(BITXOREQUAL_CAT, 2);
+            else
+                return this.simple_token(BITXOR_CAT, 1);
+        }
+        else if (c == LPAREN_CH)
+            return this.simple_token(LPAREN_CAT, 1);
+        else if (c == RPAREN_CH)
+            return this.simple_token(RPAREN_CAT, 1);
+        else if (c == COMMA_CH)
+            return this.simple_token(COMMA_CAT, 1);
+        else if (c == SEMICOLON_CH)
+            return this.simple_token(SEMICOLON_CAT, 1);
+        else if (c == LBRACK_CH)
+            return this.simple_token(LBRACK_CAT, 1);
+        else if (c == VBAR_CH)
+        {
+            var x = this.lookahead_char(1);
+            if (x == VBAR_CH)
+                return this.simple_token(OR_CAT, 2);
+            else if (x == EQUAL_CH)
+                return this.simple_token(BITOREQUAL_CAT, 2);
+            else
+                return this.simple_token(BITOR_CAT, 1);
+        }
+        else if (c == RBRACK_CH)
+            return this.simple_token(RBRACK_CAT, 1);
+        else if (c == LBRACE_CH)
+            return this.simple_token(LBRACE_CAT, 1);
+        else if (c == RBRACE_CH)
+            return this.simple_token(RBRACE_CAT, 1);
+        else if (c == TILDE_CH)
+            return this.simple_token(BITNOT_CAT, 1);
+        else if (c == DOUBLEQUOTE_CH || c == QUOTE_CH)
+            return this.parse_string();
         else
-            return this.valued_token(IDENT_CAT, id, start_pos);
-    };
+            error("unknown token");
+    }
+};
 
-    // method parse_number()
 
-    this.parse_number = function ()
+// method identifier_class()
+
+Scanner.prototype.identifier_class = function (c)
+{
+    return (c >= LOWER_A_CH && c <= LOWER_Z_CH) ||
+        (c >= UPPER_A_CH && c <= UPPER_Z_CH) ||
+        c == UNDERSCORE_CH ||
+        c == DOLLAR_CH;
+};
+
+
+// method decimal_class()
+
+Scanner.prototype.decimal_class = function (c)
+{
+    return c >= ZERO_CH && c <= NINE_CH;
+};
+
+
+// method parse_identifier()
+
+Scanner.prototype.parse_identifier = function ()
+{
+    var start_pos = this.lookahead_pos(0);
+    var chars = [];
+    var h = 0;
+    for (;;)
     {
-        var start_pos = this.lookahead_pos(0);
-        var n = 0;
-        for (;;)
-        {
-            var c = this.lookahead_char(0);
-            if (!this.decimal_class(c))
-                break;
-            this.advance(1);
-            n = n * 10 + (c - ZERO_CH);
-        }
-        return this.valued_token(NUMBER_CAT, n, start_pos);
-    };
-
-    // method parse_string()
-
-    this.parse_string = function ()
-    {
-        var start_pos = this.lookahead_pos(0);
-        var chars = [];
-        var close = this.lookahead_char(0);
+        var c = this.lookahead_char(0);
+        if (!(this.identifier_class(c) || this.decimal_class(c)))
+            break;
         this.advance(1);
-        for (;;)
+        chars.push(c);
+        h = (h * HASH_MULT + c) % HASH_MOD;
+    }
+    var id = String.fromCharCode.apply(null,chars);
+    var x = keyword_hashtable[h];
+    if (x != null && x.id == id)
+        return this.valued_token(x.cat, id, start_pos);
+    else
+        return this.valued_token(IDENT_CAT, id, start_pos);
+};
+
+
+// method parse_number()
+
+Scanner.prototype.parse_number = function ()
+{
+    var start_pos = this.lookahead_pos(0);
+    var n = 0;
+    for (;;)
+    {
+        var c = this.lookahead_char(0);
+        if (!this.decimal_class(c))
+            break;
+        this.advance(1);
+        n = n * 10 + (c - ZERO_CH);
+    }
+    return this.valued_token(NUMBER_CAT, n, start_pos);
+};
+
+
+// method parse_string()
+
+Scanner.prototype.parse_string = function ()
+{
+    var start_pos = this.lookahead_pos(0);
+    var chars = [];
+    var close = this.lookahead_char(0);
+    this.advance(1);
+    for (;;)
+    {
+        var c = this.lookahead_char(0);
+        if (c == EOF)
+            error("unterminated string");
+        this.advance(1);
+        if (c == close)
+            break;
+        else if (c == BACKSLASH_CH)
         {
-            var c = this.lookahead_char(0);
+            c = this.lookahead_char(0);
             if (c == EOF)
                 error("unterminated string");
             this.advance(1);
-            if (c == close)
-                break;
-            else if (c == BACKSLASH_CH)
-            {
-                c = this.lookahead_char(0);
-                if (c == EOF)
-                    error("unterminated string");
-                this.advance(1);
-                if (c == LOWER_N_CH)
-                    c = LF_CH;
-                else if (c == ZERO_CH)
-                    c = NUL_CH;
-                chars.push(c);
-            }                    
-            else
-                chars.push(c);
-        }
-        var str = String.fromCharCode.apply(null,chars);
-        return this.valued_token(STRING_CAT, str, start_pos);
-    };
+            if (c == LOWER_N_CH)
+                c = LF_CH;
+            else if (c == ZERO_CH)
+                c = NUL_CH;
+            chars.push(c);
+        }                    
+        else
+            chars.push(c);
+    }
+    var str = String.fromCharCode.apply(null,chars);
+    return this.valued_token(STRING_CAT, str, start_pos);
+};
 
-    // method simple_token(cat, n)
 
-    this.simple_token = function (cat, n)
-    {
-        var loc = new Location(this.port.filename,
-                               this.lookahead_pos(0),
-                               this.lookahead_pos(n));
-        this.advance(n);
-        return new Token(cat, cat, loc);
-    };
+// method simple_token(cat, n)
 
-    // method valued_token(cat, value, start_pos)
+Scanner.prototype.simple_token = function (cat, n)
+{
+    var loc = new Location(this.port.filename,
+                           this.lookahead_pos(0),
+                           this.lookahead_pos(n));
+    this.advance(n);
+    return new Token(cat, cat, loc);
+};
 
-    this.valued_token = function (cat, value, start_pos)
-    {
-        var loc = new Location(this.port.filename,
-                               start_pos,
-                               this.lookahead_pos(0));
-        return new Token(cat, value, loc);
-    };
-}
+
+// method valued_token(cat, value, start_pos)
+
+Scanner.prototype.valued_token = function (cat, value, start_pos)
+{
+    var loc = new Location(this.port.filename,
+                           start_pos,
+                           this.lookahead_pos(0));
+    return new Token(cat, value, loc);
+};
+
 
 function Token(cat, value, loc)
 {
@@ -477,22 +493,27 @@ function Token(cat, value, loc)
     this.loc   = loc;
 }
 
+
 var LINE_SHIFT = 16;
+
 
 function line_and_column_to_position(line, column)
 {
     return line + (column << LINE_SHIFT);
 }
 
+
 function position_to_line(pos)
 {
     return (pos & ((1 << LINE_SHIFT) - 1)) + 1;
 }
 
+
 function position_to_column(pos)
 {
     return (pos >>> LINE_SHIFT) + 1;
 }
+
 
 function Location(filename, start_pos, end_pos)
 {
@@ -519,6 +540,7 @@ function Location(filename, start_pos, end_pos)
                position_to_column(this.end_pos);
     };
 }
+
 
 var NUL_CH         =   0;
 var TAB_CH         =   9;
@@ -572,6 +594,7 @@ var LBRACE_CH      = 123;
 var VBAR_CH        = 124;
 var RBRACE_CH      = 125;
 var TILDE_CH       = 126;
+
 
 //-----------------------------------------------------------------------------
 
@@ -694,148 +717,148 @@ var keyword_hashtable =
 [
  { id: "const", cat: CONST_CAT }
 ,{ id: "continue", cat: CONTINUE_CAT }
-,false
-,false
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
+,null
+,null
 ,{ id: "try", cat: TRY_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "finally", cat: FINALLY_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "enum", cat: ENUM_CAT }
-,false
+,null
 ,{ id: "for", cat: FOR_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "debugger", cat: DEBUGGER_CAT }
 ,{ id: "class", cat: CLASS_CAT }
-,false
+,null
 ,{ id: "public", cat: PUBLIC_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "switch", cat: SWITCH_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "break", cat: BREAK_CAT }
 ,{ id: "true", cat: TRUE_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "typeof", cat: TYPEOF_CAT }
-,false
-,false
-,false
+,null
+,null
+,null
 ,{ id: "this", cat: THIS_CAT }
 ,{ id: "do", cat: DO_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "throw", cat: THROW_CAT }
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
 ,{ id: "implements", cat: IMPLEMENTS_CAT }
 ,{ id: "case", cat: CASE_CAT }
-,false
-,false
-,false
+,null
+,null
+,null
 ,{ id: "package", cat: PACKAGE_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "delete", cat: DELETE_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "default", cat: DEFAULT_CAT }
-,false
+,null
 ,{ id: "import", cat: IMPORT_CAT }
 ,{ id: "super", cat: SUPER_CAT }
-,false
+,null
 ,{ id: "protected", cat: PROTECTED_CAT }
 ,{ id: "false", cat: FALSE_CAT }
-,false
-,false
-,false
+,null
+,null
+,null
 ,{ id: "yield", cat: YIELD_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "null", cat: NULL_CAT }
 ,{ id: "return", cat: RETURN_CAT }
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
 ,{ id: "while", cat: WHILE_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "with", cat: WITH_CAT }
 ,{ id: "new", cat: NEW_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "private", cat: PRIVATE_CAT }
-,false
+,null
 ,{ id: "let", cat: LET_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "void", cat: VOID_CAT }
 ,{ id: "function", cat: FUNCTION_CAT }
-,false
+,null
 ,{ id: "if", cat: IF_CAT }
-,false
+,null
 ,{ id: "export", cat: EXPORT_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "in", cat: IN_CAT }
-,false
+,null
 ,{ id: "interface", cat: INTERFACE_CAT }
 ,{ id: "else", cat: ELSE_CAT }
 ,{ id: "instanceof", cat: INSTANCEOF_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "catch", cat: CATCH_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "var", cat: VAR_CAT }
 ,{ id: "extends", cat: EXTENDS_CAT }
 ,{ id: "static", cat: STATIC_CAT }
