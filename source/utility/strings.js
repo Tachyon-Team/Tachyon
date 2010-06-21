@@ -14,7 +14,7 @@ Escape JavaScript strings for output
 */
 function escapeJSString(input)
 {
-    chars = [];
+    var chars = [];
 
     for (var i = 0; i < input.length; ++i)
     {
@@ -100,6 +100,35 @@ function escapeJSString(input)
                         chars.push(hexStr.charCodeAt(j));                               
                 }
             }
+        }
+    }
+
+    return String.fromCharCode.apply(null, chars);
+}
+
+/**
+Indent each line of a text string
+*/
+function indentText(inputStr, indentStr)
+{
+    var chars = [];
+
+    if (inputStr.length > 0)
+    {
+        for (var i = 0; i < indentStr.length; ++i)
+            chars.push(indentStr.charCodeAt(i));
+    }
+
+    for (var i = 0; i < inputStr.length; ++i)
+    {
+        var charCode = inputStr.charCodeAt(i);
+
+        chars.push(charCode);
+
+        if (charCode == 10 && i != inputStr.length - 1)
+        {
+            for (var j = 0; j < indentStr.length; ++j)
+                chars.push(indentStr.charCodeAt(j));
         }
     }
 
