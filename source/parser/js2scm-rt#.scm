@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-08 21:50:47 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-19 10:28:40 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -45,7 +45,7 @@
       `(,fn '() ,@args)))
 
 (define-macro (js.new ctor . args)
-  `(let* ((ctor ,ctor) (self (make-Object ctor (make-table))))
+  `(let* ((ctor ,ctor) (self (make-Object ctor (get-prototype ctor) (make-assoc-table))))
      (ctor self ,@args)
      self))
 
@@ -59,7 +59,7 @@
   `(js:array-lit ,@elems))
 
 (define-macro (js.obj-lit . props)
-  `(make-Object #f (list->table (list ,@props))))
+  `(make-Object #f #f (list->assoc-table (list ,@props))))
 
 (define-macro (js.prop name value)
   `(cons ,name ,value))

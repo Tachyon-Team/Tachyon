@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-06-09 08:49:01 feeley>
+// File: "parser.js", Time-stamp: <2010-06-19 09:06:31 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -207,38 +207,52 @@ function Parser(scanner, autosemicolon_enabled)
                 var i = t.length-1;
                 var a = t[i];
 
-                while (i > 0)
-                {
-                    if (cat == this.action_cat(a))
-                        break;
-                    i--;
-                    a = t[i];
-                }
-
-                var op = this.action_op(a);
-
-                // check for automatic semicolon insertion
-
                 if (this.autosemicolon_enabled &&
-                    op == this.error_op &&
                     this.scanner.crossed_eol)
                 {
-                    i = t.length-1;
-                    a = t[i];
+                    // automatic semicolon insertion should be considered
+
+                    var normal_index = 0;
+                    var autosemicolon_index = 0;
 
                     while (i > 0)
                     {
-                        if (AUTOSEMICOLON_CAT == this.action_cat(a))
-                        {
-                            autosemicolon_inserted = true;
-                            break;
-                        }
+                        var a_cat = this.action_cat(a);
+
+                        if (a_cat == cat)
+                            normal_index = i;
+                        else if (a_cat == AUTOSEMICOLON_CAT)
+                            autosemicolon_index = i;
+
                         i--;
                         a = t[i];
                     }
 
-                    op = this.action_op(a);
+                    if (autosemicolon_index != 0)
+                    {
+                        autosemicolon_inserted = true;
+                        a = t[autosemicolon_index];
+                    }
+                    else
+                        a = t[normal_index];
                 }
+                else
+                {
+                    // automatic semicolon insertion should not be considered
+
+                    while (i > 0)
+                    {
+                        var a_cat = this.action_cat(a);
+
+                        if (a_cat == cat)
+                            break;
+
+                        i--;
+                        a = t[i];
+                    }
+                }
+
+                var op = this.action_op(a);
 
                 if (op == this.accept_op)
                 {
