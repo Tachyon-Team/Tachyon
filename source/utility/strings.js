@@ -135,10 +135,11 @@ function indentText(inputStr, indentStr)
     return String.fromCharCode.apply(null, chars);
 }
 
-/*
-str = 'foo\f\v\b\r\nbar\"\'\ubbbb\\bif\u0aaabuz\tfoo'
-print(str);
-str2 = escapeJSString(str);
-print(str2);
+/**
+Pluralize a word in function of a count
 */
+function pluralize(word, count)
+{
+    return word + ((count != 1)? 's':'');
+}
 

@@ -70,7 +70,7 @@ IRFunction.prototype.getNumArgs = function ()
 
 
 
-
+/*
 func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
 
 cfg = new ControlFlowGraph(func);
@@ -121,5 +121,5 @@ print('CFG1 VALID: ' + cfg.validate());
 print('CFG2 VALID: ' + cfg2.validate());
 
 print("done");
-
+*/
 

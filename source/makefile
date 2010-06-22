@@ -22,6 +22,7 @@ MAIN_SPEC_SRCS =            \
 # Insert unit test files between testing.js and testmain.js
 TEST_SPEC_SRCS =            \
     tests/testing.js        \
+    tests/utility.js        \
     tests/testmain.js
 
 # Main target source files
