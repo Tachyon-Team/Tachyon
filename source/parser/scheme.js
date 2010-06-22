@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-06-08 22:47:39 feeley>
+// File: "scheme.js", Time-stamp: <2010-06-21 12:21:51 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -211,12 +211,12 @@ function scm_generic_write(obj, width, output)
 
         function wr_boolean(x, col)
         {
-            return out((obj == false) ? "#f" : "#t", col);
+            return out((x == false) ? "#f" : "#t", col);
         }
 
         function wr_number(x, col)
         {
-            return out(obj.toString(), col);
+            return out(x.toString(), col);
         }
 
         function wr_string(x, col)
