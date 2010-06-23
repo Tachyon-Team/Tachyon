@@ -31,6 +31,18 @@ function IRFunction(funcName, argNames, virginIR)
     @field
     */
     this.virginIR = virginIR;
+
+    /**
+    List of child (nested) functions
+    @field
+    */
+    this.childFuncs = [];
+
+    /**
+    Parent function, for nested functions
+    @field
+    */
+    this.parentFunc = null;
 }
 IRFunction.prototype = {};
 
@@ -39,8 +51,6 @@ Produce a string representation of an IR function
 */
 IRFunction.prototype.toString = function ()
 {
-    // TODO: indentText
-
     var output = 'function ' + this.funcName + '(';
 
     for (var i = 0; i < this.argNames.length; ++i)
@@ -61,6 +71,14 @@ IRFunction.prototype.toString = function ()
 };
 
 /**
+Create a deep copy of the function
+*/
+IRFunction.prototype.copy = function ()
+{
+    // TODO
+}
+
+/**
 Get the default number of function arguments
 */
 IRFunction.prototype.getNumArgs = function ()
@@ -68,9 +86,17 @@ IRFunction.prototype.getNumArgs = function ()
     return this.argNames.length;
 };
 
+/**
+Add a child function
+*/
+IRFunction.prototype.addChildFunc = function (func)
+{
+    this.childFuncs.push(func);
+
+    func.parentFunc = this;
+};
 
 
-/*
 func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
 
 cfg = new ControlFlowGraph(func);
@@ -120,6 +146,6 @@ print(cfg2 + '\n');
 print('CFG1 VALID: ' + cfg.validate());
 print('CFG2 VALID: ' + cfg2.validate());
 
+
 print("done");
-*/
 

@@ -14,7 +14,7 @@ Object containing IR instructions usable inline inside functions
 */
 inline =
 {
-    BoolConst: BoolConst,
-    FPConst: FPConst
+    LoadInstr : LoadInstr,
+    StoreInstr : StoreInstr
 }
 
