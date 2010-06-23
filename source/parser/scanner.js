@@ -383,6 +383,14 @@ Scanner.prototype.decimal_class = function (c)
     return c >= ZERO_CH && c <= NINE_CH;
 };
 
+// method hexadecimal_class()
+
+Scanner.prototype.hexadecimal_class = function (c)
+{
+    return Scanner.prototype.decimal_class(c) ||
+           (c >= LOWER_A_CH && c <= LOWER_F_CH) ||
+           (c >= UPPER_A_CH && c <= UPPER_F_CH);
+};
 
 // method parse_identifier()
 
@@ -413,18 +421,144 @@ Scanner.prototype.parse_identifier = function ()
 
 Scanner.prototype.parse_number = function ()
 {
-    var start_pos = this.lookahead_pos(0);
-    var n = 0;
-    for (;;)
+    // Assuming:
+    //     digits      := [0-9]+
+    //
+    // 3 types of numbers can be parsed:
+    //     decimal     := digits
+    //     hexadecimal := 0(x|X)[0-9a-fA-F]+
+    //     float       := [digits][.digits][(e|E)[(+|-)]digits]
+
+    // Workaround to allow private helper functions
+    // to access the "this" object
+    var that;
+
+    // Computes the value of a serie of digit characters
+    // as if they are on the "left-hand side" of the decimal point
+    var lhs_value = function (accepted_char, base, char_value) 
     {
-        var c = this.lookahead_char(0);
-        if (!this.decimal_class(c))
-            break;
-        this.advance(1);
-        n = n * 10 + (c - ZERO_CH);
+        var n = 0;
+        for (;;)
+        {
+            var c = that.lookahead_char(0);
+            if (!accepted_char(c))
+                break;
+            that.advance(1);
+            n = n * base + char_value(c);
+        }
+        return n;
     }
-    return this.valued_token(NUMBER_CAT, n, start_pos);
-};
+    
+    // Computes the value of a serie of digit characters
+    // as if they are on the "right-hand side" of the decimal point
+    var rhs_value = function (accepted_char, base, char_value)
+    {
+        var n = 0;
+        var pos = 1;
+        for (;;)
+        {
+            var c = that.lookahead_char(0);
+            if (!accepted_char(c))
+                break;
+            that.advance(1);
+            pos = pos / base;
+            n = n + pos * char_value(c);
+        }
+        return n;
+    }
+
+    // Decimal helper functions
+    function decimal (c)
+    {
+        return that.decimal_class(c);
+    }
+    
+    function decimal_value (c)
+    {
+        return c - ZERO_CH;
+    }   
+
+    // Hex helper functions
+    function hexadecimal (c)
+    {
+        return that.hexadecimal_class(c);
+    }
+
+    function hexadecimal_value (c) 
+    {
+        if (c >= LOWER_A_CH) 
+        {
+            return (c - LOWER_A_CH) + 10;
+        } else if (c >= UPPER_A_CH)
+        {
+            return (c - UPPER_A_CH) + 10; 
+        } else
+        {
+            return decimal_value(c);
+        }
+    }
+
+    // parsing function
+    return function ()
+    {
+        // Workaround for passing "this"
+        that = this;
+
+        var start_pos = that.lookahead_pos(0);
+        var n;
+        var fst_char = that.lookahead_char(0);
+        var snd_char = that.lookahead_char(1);
+        var exp_sign = 1;
+
+        if (snd_char === LOWER_X_CH || snd_char === UPPER_X_CH)
+        {
+            // We got an hex number!
+            that.advance(2);
+            n = lhs_value(hexadecimal, 16, hexadecimal_value);
+        }
+        else 
+        {
+            // FIXME: When given 1.1e2, this algorithm gives
+            //       110.00000000000001 instead of 110, like v8
+
+            // We got a decimal number! This should be
+            // zero if the first character is a decimal point.
+            n = lhs_value(decimal, 10, decimal_value);
+
+            // We might have numbers after the decimal points
+            if (that.lookahead_char(0) === PERIOD_CH)
+            {
+                that.advance(1);
+                n = n + rhs_value(decimal, 10, decimal_value);
+            }
+
+            // Let's check for an exponent
+            fst_char = that.lookahead_char(0);
+            if (fst_char === LOWER_E_CH || fst_char === UPPER_E_CH)
+            {
+                that.advance(1);
+
+                // The exponent might have a sign  
+                fst_char = that.lookahead_char(0);
+                if (fst_char === PLUS_CH)
+                {
+                    exp_sign = 1;
+                    that.advance(1);
+                } else if (fst_char === MINUS_CH)
+                {  
+                    exp_sign = -1;
+                    that.advance(1);
+                } 
+
+                n = n * Math.pow(10, exp_sign * 
+                                     lhs_value(decimal, 10, decimal_value));
+            }
+        }
+
+
+        return that.valued_token(NUMBER_CAT, n, start_pos);
+    }
+}();
 
 
 // method parse_string()
@@ -572,6 +706,7 @@ var GT_CH          =  62;
 var QUESTION_CH    =  63;
 var UPPER_A_CH     =  65;
 var UPPER_E_CH     =  69;
+var UPPER_F_CH     =  70;
 var UPPER_X_CH     =  88;
 var UPPER_Z_CH     =  90;
 var LBRACK_CH      =  91;

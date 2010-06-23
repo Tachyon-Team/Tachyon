@@ -109,148 +109,148 @@ var keyword_hashtable =
 [
  { id: "const", cat: CONST_CAT }
 ,{ id: "continue", cat: CONTINUE_CAT }
-,false
-,false
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
+,null
+,null
 ,{ id: "try", cat: TRY_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "finally", cat: FINALLY_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "enum", cat: ENUM_CAT }
-,false
+,null
 ,{ id: "for", cat: FOR_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "debugger", cat: DEBUGGER_CAT }
 ,{ id: "class", cat: CLASS_CAT }
-,false
+,null
 ,{ id: "public", cat: PUBLIC_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "switch", cat: SWITCH_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "break", cat: BREAK_CAT }
 ,{ id: "true", cat: TRUE_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "typeof", cat: TYPEOF_CAT }
-,false
-,false
-,false
+,null
+,null
+,null
 ,{ id: "this", cat: THIS_CAT }
 ,{ id: "do", cat: DO_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "throw", cat: THROW_CAT }
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
 ,{ id: "implements", cat: IMPLEMENTS_CAT }
 ,{ id: "case", cat: CASE_CAT }
-,false
-,false
-,false
+,null
+,null
+,null
 ,{ id: "package", cat: PACKAGE_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "delete", cat: DELETE_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "default", cat: DEFAULT_CAT }
-,false
+,null
 ,{ id: "import", cat: IMPORT_CAT }
 ,{ id: "super", cat: SUPER_CAT }
-,false
+,null
 ,{ id: "protected", cat: PROTECTED_CAT }
 ,{ id: "false", cat: FALSE_CAT }
-,false
-,false
-,false
+,null
+,null
+,null
 ,{ id: "yield", cat: YIELD_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "null", cat: NULL_CAT }
 ,{ id: "return", cat: RETURN_CAT }
-,false
-,false
-,false
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
+,null
+,null
+,null
 ,{ id: "while", cat: WHILE_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "with", cat: WITH_CAT }
 ,{ id: "new", cat: NEW_CAT }
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
 ,{ id: "private", cat: PRIVATE_CAT }
-,false
+,null
 ,{ id: "let", cat: LET_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "void", cat: VOID_CAT }
 ,{ id: "function", cat: FUNCTION_CAT }
-,false
+,null
 ,{ id: "if", cat: IF_CAT }
-,false
+,null
 ,{ id: "export", cat: EXPORT_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "in", cat: IN_CAT }
-,false
+,null
 ,{ id: "interface", cat: INTERFACE_CAT }
 ,{ id: "else", cat: ELSE_CAT }
 ,{ id: "instanceof", cat: INSTANCEOF_CAT }
-,false
-,false
-,false
-,false
-,false
+,null
+,null
+,null
+,null
+,null
 ,{ id: "catch", cat: CATCH_CAT }
-,false
-,false
+,null
+,null
 ,{ id: "var", cat: VAR_CAT }
 ,{ id: "extends", cat: EXTENDS_CAT }
 ,{ id: "static", cat: STATIC_CAT }
