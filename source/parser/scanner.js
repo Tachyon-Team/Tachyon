@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-06-21 14:46:42 feeley>
+// File: "scanner.js", Time-stamp: <2010-06-23 16:22:57 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -626,6 +626,12 @@ function Token(cat, value, loc)
     this.value = value;
     this.loc   = loc;
 }
+
+
+Token.prototype.toString = function ()
+{
+    return this.value.toString();
+};
 
 
 var LINE_SHIFT = 16;

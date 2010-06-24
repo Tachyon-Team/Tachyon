@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js.js", Time-stamp: <2010-06-09 08:50:26 feeley>
+// File: "js.js", Time-stamp: <2010-06-23 16:48:28 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -17,7 +17,8 @@ function main()
         var s = new Scanner(port);
         var p = new Parser(s, true);
         var ast = p.parse();
-        pp(ast); // pretty-print AST
+        var normalized_ast = ast_normalize(ast);
+        pp(normalized_ast); // pretty-print AST
     }
 }
 

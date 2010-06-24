@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js2scm.js", Time-stamp: <2010-06-09 08:49:57 feeley>
+// File: "js2scm.js", Time-stamp: <2010-06-23 21:50:57 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -41,14 +41,18 @@ function main()
     {
         prog = new Program(prog.loc,
                            null,
+                           null,
+                           null,
                            new BlockStatement(prog.loc,
                                               Array.prototype.concat.apply([], statements)));
 
+        var normalized_prog = ast_normalize(prog);
+
         if (opt_ast)
-            pp(prog);
+            pp(normalized_prog);
 
         if (!opt_noscm)
-            compile_to_scm(prog);
+            compile_to_scm(normalized_prog);
     }
 }
 
