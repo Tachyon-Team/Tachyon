@@ -44,6 +44,18 @@ function ControlFlowGraph(ownerFunc)
     this.nextBlockId = 1;
 
     /**
+    Instruction output names used in the CFG
+    @field
+    */
+    this.instrNames = [];
+
+    /**
+    Block names used in the CFG
+    @field
+    */
+    this.blockNames = [];
+
+    /**
     IR function to which this CFG belongs
     @field
     */
@@ -100,6 +112,14 @@ ControlFlowGraph.prototype.copy = function ()
 {
     // Create a new control flow graph
     newCFG = new ControlFlowGraph(this.ownerFunc);
+
+    // Copy information about free block/instruction names and ids
+    newCFG.freeInstrIds = this.freeInstrIds.slice(0);
+    newCFG.nextInstrId  = this.nextInstrId;
+    newCFG.freeBlockIds = this.freeBlockIds.slice(0);
+    newCFG.nextBlockId  = this.nextBlockId;
+    newCFG.instrNames   = this.instrNames.slice(0);
+    newCFG.blockNames   = this.blockNames.slice(0);
 
     // Create a map from old blocks to new blocks
     blockMap = [];
@@ -246,16 +266,91 @@ ControlFlowGraph.prototype.freeBlockId = function (block)
 };
 
 /**
+Assign a free output name to an instruction
+*/
+ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
+{
+    if (outName == undefined || outName == '')
+    {
+        instr.outName = '';
+        return;
+    }
+
+    if (!arraySetHas(this.instrNames, outName))
+    {
+        instr.outName = outName;
+    }
+    else
+    {
+        var idx = 1;
+
+        while (arraySetHas(this.instrNames, outName + idx))
+            idx++;
+
+        instr.outName = outName + idx;
+    }
+
+    arraySetAdd(this.instrNames, instr.outName);
+};
+
+/**
+Free an instruction output name
+*/
+ControlFlowGraph.prototype.freeInstrName = function (instr)
+{
+    arraySetRem(this.instrNames, instr.outName);
+};
+
+/**
+Assign a free label name to a block
+*/
+ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
+{
+    if (labelName == undefined || labelName == '')
+    {
+        block.label = '';
+        return;
+    }
+
+    if (!arraySetHas(this.blockNames, labelName))
+    {
+        block.label = labelName;
+    }
+    else
+    {
+        var idx = 1;
+
+        while (arraySetHas(this.blockNames, labelName + idx))
+            idx++;
+
+        block.label = labelName + idx;
+    }
+
+    arraySetAdd(this.blockNames, block.label);
+};
+
+/**
+Free a block label name
+*/
+ControlFlowGraph.prototype.freeBlockName = function (block)
+{
+    arraySetRem(this.blockNames, block.label);
+};
+
+/**
 Create a block in this CFG
 */
 ControlFlowGraph.prototype.getNewBlock = function (label)
 {
-    var block = new BasicBlock(this, label);
+    var block = new BasicBlock(this);
 
     this.blocks.push(block);
 
     // Assign an id number to this block
     this.assignBlockId(block);
+
+    // Assign a name to the block
+    this.assignBlockName(block, label);
 
     return block;
 };
@@ -269,6 +364,29 @@ ControlFlowGraph.prototype.getEntryBlock = function ()
         this.entry = this.getNewBlock('entry');
 
     return this.entry;
+};
+
+/**
+Remove a basic block from this CFG
+*/
+ControlFlowGraph.prototype.remBlock = function (block)
+{
+    // Remove this block from the successors of our predecessors
+    for (var i = 0; i < block.preds.length; ++i)
+        block.preds[i].remSucc(this);
+
+    // Remove this block from the predecessors of our successors
+    for (var i = 0; i < block.succs.length; ++i)
+        block.succs[i].remPred(block);
+
+    // Remove the block from the list
+    arraySetRem(this.blocks, block);
+
+    // Free this block's id number
+    this.freeBlockId(block);
+
+    // Free this block's label name
+    this.freeBlockName(block);
 };
 
 /**
@@ -295,26 +413,6 @@ ControlFlowGraph.prototype.getArgVal = function (index)
     assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
 
     return this.argVals[index + 2];
-};
-
-/**
-Remove a basic block from this CFG
-*/
-ControlFlowGraph.prototype.remBlock = function (block)
-{
-    // Remove this block from the successors of our predecessors
-    for (var i = 0; i < block.preds.length; ++i)
-        block.preds[i].remSucc(this);
-
-    // Remove this block from the predecessors of our successors
-    for (var i = 0; i < block.succs.length; ++i)
-        block.succs[i].remPred(block);
-
-    // Remove the block from the list
-    arraySetRem(this.blocks, block);
-
-    // Free this block's id number
-    this.freeBlockId(block);
 };
 
 /**
@@ -668,17 +766,13 @@ ControlFlowGraph.prototype.validate = function ()
 /**
 @class Class to represent a basic block
 */
-function BasicBlock(cfg, label)
+function BasicBlock(cfg)
 {
-    // If no label was specified, use the empty string
-    if (label == undefined || label == null)
-        label = '';
-
     /**
     Label name string for this basic block
     @field
     */
-    this.label = label;
+    this.label = '';
 
     /**
     Id number for this basic block
@@ -760,6 +854,9 @@ BasicBlock.prototype.copy = function (cfg)
 
     // Copy the block id
     newBlock.blockId = this.blockId;
+
+    // Copy the block label
+    newBlock.label = this.label;
     
     // Set the parent block for the new instructions
     for (var i = 0; i < this.instrs.length; ++i)
@@ -787,7 +884,7 @@ BasicBlock.prototype.copy = function (cfg)
 /**
 Add an instruction at the end of the block
 */
-BasicBlock.prototype.addInstr = function(instr)
+BasicBlock.prototype.addInstr = function(instr, outName)
 {
     // Ensure that other instructions are not added after branches
     assert (
@@ -829,6 +926,9 @@ BasicBlock.prototype.addInstr = function(instr)
 
     // Assign an id number to the instruction
     this.parentCFG.assignInstrId(instr);
+
+    // Assign a free name to the instruction
+    this.parentCFG.assignInstrName(instr, outName);
 
     return instr;
 };
@@ -878,6 +978,9 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 
     // Free this instruction's id number
     this.parentCFG.freeInstrId(instr);
+
+    // Free this instruction's output name
+    this.parentCFG.freeInstrName(instr);
 };
 
 /**

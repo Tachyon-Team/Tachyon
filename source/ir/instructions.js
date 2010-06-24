@@ -284,13 +284,13 @@ function IRInstr()
     Mnemonic name for this instruction    
     @field
     */
-    this.mnemonic = "";
+    this.mnemonic = '';
 
     /**
     Name of this instruction's output
     @field
     */
-    this.outName = "";
+    this.outName = '';
 
     /**
     Id number for this instruction
@@ -965,6 +965,11 @@ NewObjInstr.prototype.copy = function ()
 
 
 // TODO: complete this section
+
+//
+// TODO: type conversion functions?
+// unbox, box, convert?
+//
 
 // IR value type enumeration
 IRTypes =
