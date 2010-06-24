@@ -966,6 +966,37 @@ NewObjInstr.prototype.copy = function ()
 
 // TODO: complete this section
 
+// IR value type enumeration
+IRTypes =
+{
+    BOXED:      0,
+    POINTER:    1,
+    INT8:       2,
+    INT16:      3,
+    INT32:      4,
+    INT64:      5,
+    FLOAT64:    6
+};
+
+/**
+Get the name of an IR type
+*/
+function getIRTypeName()
+{
+}
+
+/**
+Get the size of an IR type in bytes
+*/
+function getIRTypeSize()
+{
+}
+
+
+
+
+
+
 
 //=============================================================================
 // Low-Level IR (LIR)
@@ -979,6 +1010,8 @@ NewObjInstr.prototype.copy = function ()
 //=============================================================================
 
 // TODO: complete this section
+
+// TODO: load/store values by type instead of by bit width???
 
 /**
 @class Load a value from memory
