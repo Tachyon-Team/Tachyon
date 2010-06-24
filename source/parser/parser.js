@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-06-21 15:03:25 feeley>
+// File: "parser.js", Time-stamp: <2010-06-23 21:49:49 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -59,7 +59,7 @@ Parser.prototype.token_cat = function (tok)
 Parser.prototype.error = function (loc, msg)
 {
     print(loc.to_string() + ": syntax error -- " + msg);
-    exit(); // exit process
+    quit(); // exit process
 };
 
 
@@ -341,11 +341,20 @@ function list_loc(list)
 
 // Constructors.
 
-function Program(loc, vars, block)
+function Program(loc, parent, vars, free_vars, block)
 {
     this.loc = loc;
+    this.parent = parent;
     this.vars = vars;
+    this.free_vars = free_vars;
     this.block = block;
+}
+
+function FunctionDeclaration(loc, id, funct)
+{
+    this.loc = loc;
+    this.id = id;
+    this.funct = funct;
 }
 
 function BlockStatement(loc, statements)
@@ -371,13 +380,6 @@ function ConstStatement(loc, decls)
 {
     this.loc = loc;
     this.decls = decls; // array of Decl
-}
-
-function FunctionDeclaration(loc, id, funct)
-{
-    this.loc = loc;
-    this.id = id;
-    this.funct = funct;
 }
 
 function ExprStatement(loc, expr)
@@ -489,10 +491,10 @@ function CaseBlock(loc, clauses)
     this.clauses = clauses;
 }
 
-function LabelledStatement(loc, id, statement)
+function LabelledStatement(loc, label, statement)
 {
     this.loc = loc;
-    this.id = id;
+    this.label = label;
     this.statement = statement;
 }
 
@@ -613,13 +615,15 @@ function CallExpr(loc, fn, args)
     this.args = args;
 }
 
-function FunctionExpr(loc, id, params, body, vars)
+function FunctionExpr(loc, parent, vars, free_vars, id, params, body)
 {
     this.loc = loc;
+    this.parent = parent;
+    this.vars = vars;
+    this.free_vars = free_vars;
     this.id = id; // null when id not supplied
     this.params = params;
     this.body = body;
-    this.vars = vars;
 }
 
 function Arguments(loc, args)
@@ -681,6 +685,8 @@ function Program_1(p)
     var loc = p.current_loc();
     return new Program(loc,
                        null,
+                       null,
+                       null,
                        new BlockStatement(loc,
                                           []));
 }
@@ -689,6 +695,8 @@ function Program_2(p, SourceElements)
 {
     var loc = list_loc(SourceElements);
     return new Program(loc,
+                       null,
+                       null,
                        null,
                        new BlockStatement(loc,
                                           SourceElements));
@@ -2292,9 +2300,11 @@ function FunctionDeclaration_1(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, Funct
                                    IDENT,
                                    new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                                                     null,
+                                                    null,
+                                                    null,
+                                                    null,
                                                     [],
-                                                    FunctionBody,
-                                                    null));
+                                                    FunctionBody));
 }
 
 function FunctionDeclaration_2(p, FUNCTION, IDENT, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
@@ -2303,45 +2313,55 @@ function FunctionDeclaration_2(p, FUNCTION, IDENT, LPAREN, FormalParameterList, 
                                    IDENT,
                                    new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                                                     null,
+                                                    null,
+                                                    null,
+                                                    null,
                                                     FormalParameterList,
-                                                    FunctionBody,
-                                                    null));
+                                                    FunctionBody));
 }
 
 function FunctionExpr_1(p, FUNCTION, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                             null,
+                            null,
+                            null,
+                            null,
                             [],
-                            FunctionBody,
-                            null);
+                            FunctionBody);
 }
 
 function FunctionExpr_2(p, FUNCTION, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                             null,
+                            null,
+                            null,
+                            null,
                             FormalParameterList,
-                            FunctionBody,
-                            null);
+                            FunctionBody);
 }
 
 function FunctionExpr_3(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
+                            null,
+                            null,
+                            null,
                             IDENT,
                             [],
-                            FunctionBody,
-                            null);
+                            FunctionBody);
 }
 
 function FunctionExpr_4(p, FUNCTION, IDENT, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
+                            null,
+                            null,
+                            null,
                             IDENT,
                             FormalParameterList,
-                            FunctionBody,
-                            null);
+                            FunctionBody);
 }
 
 function FormalParameterList_1(p, IDENT)

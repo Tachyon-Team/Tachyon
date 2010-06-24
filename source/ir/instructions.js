@@ -9,6 +9,13 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+//=============================================================================
+// IR Core
+//
+// Implementation of the foundational logic of the IR instructions.
+//
+//=============================================================================
+
 /**
 @class Base class for all IR values
 */
@@ -337,6 +344,14 @@ PhiInstr.prototype.copy = function ()
     return this.baseCopy(newInstr);
 };
 
+//=============================================================================
+// High-Level IR (HIR)
+//
+// Untyped, abstract operations on implicitly boxed values.
+// Close to the original JavaScript language semantics.
+//
+//=============================================================================
+
 /**
 @class Function argument value instruction
 @augments IRInstr
@@ -357,6 +372,32 @@ Make a shallow copy of the instruction
 ArgValInstr.prototype.copy = function ()
 {
     var newInstr = new ArgValInstr(this.outName);
+    return this.baseCopy(newInstr);
+};
+
+/**
+@class Logical negation instruction
+@augments IRInstr
+*/
+function LogNotInstr(inVal)
+{
+    // Set the mnemonic name for the instruction
+    this.mnemonic = "not";
+
+    /**
+    Input operand
+    @field
+    */
+    this.uses = [inVal];
+}
+LogNotInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+LogNotInstr.prototype.copy = function ()
+{
+    var newInstr = new LogNotInstr(this.uses[0]);
     return this.baseCopy(newInstr);
 };
 
@@ -521,6 +562,56 @@ CompInstr.prototype.copy = function ()
 {
     var newInstr = new CompInstr(this.compOp, this.uses[0], this.uses[1]);
     return this.baseCopy(newInstr);
+};
+
+/**
+@class Type query instruction
+@augments IRInstr
+*/
+function TypeOfInstr(value)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'typeof';
+
+    /**
+    JS value
+    @field
+    */
+    this.uses = [value];
+}
+TypeOfInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+TypeOfInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new TypeOfInstr(this.uses[0]));
+};
+
+/**
+@class Instance/class query instruction
+@augments IRInstr
+*/
+function InstOfInstr(testObj, classObj)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'instanceof';
+
+    /**
+    Test object and class object
+    @field
+    */
+    this.uses = [testObj, classObj];
+}
+InstOfInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+InstOfInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new InstOfInstr(this.uses[0], this.uses[1]));
 };
 
 /**
@@ -862,5 +953,137 @@ NewObjInstr.prototype.copy = function ()
 {
     var newInstr = new NewObjInstr();
     return this.baseCopy(newInstr);
+};
+
+//=============================================================================
+// Medium-Level IR (MIR)
+//
+// Introduction of specialized instruction forms.
+// Type-specialized instruction variants.
+//
+//=============================================================================
+
+
+// TODO: complete this section
+
+// IR value type enumeration
+IRTypes =
+{
+    BOXED:      0,
+    POINTER:    1,
+    INT8:       2,
+    INT16:      3,
+    INT32:      4,
+    INT64:      5,
+    FLOAT64:    6
+};
+
+/**
+Get the name of an IR type
+*/
+function getIRTypeName()
+{
+}
+
+/**
+Get the size of an IR type in bytes
+*/
+function getIRTypeSize()
+{
+}
+
+
+
+
+
+
+
+//=============================================================================
+// Low-Level IR (LIR)
+//
+// Introduction of a pointer type.
+// Access to memory representation.
+// Calculation of memory offsets directly.
+// Store and load instructions.
+// Still machine agnostic. No machine-specific instructions or reg. alloc.
+//
+//=============================================================================
+
+// TODO: complete this section
+
+// TODO: load/store values by type instead of by bit width???
+
+/**
+@class Load a value from memory
+@augments IRInstr
+*/
+function LoadInstr(numBits, ptr)
+{
+    // Ensure that the number of bits specified is valid
+    assert (
+        numBits == 8 || numBits == 16 || numBits == 32 || numBits == 64,
+        'invalid number of bits for load instruction'
+    );
+
+    // Set the mnemonic name for the instruction
+    this.mnemonic = 'load' + numBits;
+
+    /**
+    Number of bits to load
+    @field
+    */
+    this.numBits = numBits;
+
+    /**
+    Address of the value to load
+    @field
+    */
+    this.uses = [ptr];
+}
+LoadInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+LoadInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new LoadInstr(this.numBits, this.uses[0]));
+};
+
+/**
+@class Store a value to memory
+@augments IRInstr
+*/
+function StoreInstr(numBits, ptr, value)
+{
+    // Ensure that the number of bits specified is valid
+    assert (
+        numBits == 8 || numBits == 16 || numBits == 32 || numBits == 64,
+        'invalid number of bits for load instruction'
+    );
+
+    // Set the mnemonic name for the instruction
+    this.mnemonic = 'store' + numBits;
+
+    /**
+    Number of bits to load
+    @field
+    */
+    this.numBits = numBits;
+
+    /**
+    Memory address, value to store
+    @field
+    */
+    this.uses = [ptr, value];
+}
+StoreInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+StoreInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new StoreInstr(this.numBits, this.uses[0], this.uses[1]));
 };
 

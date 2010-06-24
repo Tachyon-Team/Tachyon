@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "pp.js", Time-stamp: <2010-06-07 22:26:15 feeley>
+// File: "pp.js", Time-stamp: <2010-06-23 21:42:24 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -23,7 +23,7 @@ function pp_indent(ast, indent)
         if (ast.vars != null)
         {
             for (var v in ast.vars)
-                pp_loc(ast.vars[v].id.loc, pp_prefix(indent) + "|-var= " + ast.vars[v].id.value);
+                pp_id(ast.vars[v], indent, "var");
         }
         pp_asts(indent, "block", [ast.block]);
     }
@@ -40,7 +40,7 @@ function pp_indent(ast, indent)
     else if (ast instanceof Decl)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "Decl");
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        pp_id(ast.id, indent, "id");
         pp_asts(indent, "initializer", [ast.initializer]);
     }
     else if (ast instanceof ConstStatement)
@@ -51,7 +51,8 @@ function pp_indent(ast, indent)
     else if (ast instanceof FunctionDeclaration)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "FunctionDeclaration");
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        if (ast.id != null)
+            pp_id(ast.id, indent, "id");
         pp_asts(indent, "funct", [ast.funct]);
     }
     else if (ast instanceof ExprStatement)
@@ -103,7 +104,7 @@ function pp_indent(ast, indent)
     else if (ast instanceof ForVarInStatement)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "ForVarInStatement");
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        pp_id(ast.id, indent, "id");
         pp_asts(indent, "initializer", [ast.initializer]);
         pp_asts(indent, "set_expr", [ast.set_expr]);
         pp_asts(indent, "statement", [ast.statement]);
@@ -111,12 +112,14 @@ function pp_indent(ast, indent)
     else if (ast instanceof ContinueStatement)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "ContinueStatement");
-        print(pp_prefix(indent) + "|-label= " + ast.label);
+        if (ast.label != null)
+            print(pp_prefix(indent) + "|-label= " + ast.label.toString());
     }
     else if (ast instanceof BreakStatement)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "BreakStatement");
-        print(pp_prefix(indent) + "|-label= " + ast.label);
+        if (ast.label != null)
+            print(pp_prefix(indent) + "|-label= " + ast.label.toString());
     }
     else if (ast instanceof ReturnStatement)
     {
@@ -144,7 +147,7 @@ function pp_indent(ast, indent)
     else if (ast instanceof LabelledStatement)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "LabelledStatement");
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        print(pp_prefix(indent) + "|-label= " + ast.label.toString());
         pp_asts(indent, "statement", [ast.statement]);
     }
     else if (ast instanceof ThrowStatement)
@@ -156,7 +159,8 @@ function pp_indent(ast, indent)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "TryStatement");
         pp_asts(indent, "statement", [ast.statement]);
-        print(pp_prefix(indent) + "|-id= " + ((ast.id == null) ? "<null>" : ast.id.value));
+        if (ast.id != null)
+            pp_id(ast.id, indent, "id");
         pp_asts(indent, "catch_part", [ast.catch_part]);
         pp_asts(indent, "finally_part", [ast.finally_part]);
     }
@@ -185,13 +189,19 @@ function pp_indent(ast, indent)
     else if (ast instanceof FunctionExpr)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "FunctionExpr");
-        print(pp_prefix(indent) + "|-id= " + ((ast.id == null) ? "<null>" : ast.id.value));
+        if (ast.id != null)
+            pp_id(ast.id, indent, "id");
         for (var p in ast.params)
-            pp_loc(ast.params[p].loc, pp_prefix(indent) + "|-param= " + ast.params[p].value);
+            pp_loc(ast.params[p].loc, pp_prefix(indent) + "|-param= " + ast.params[p].toString());
         if (ast.vars != null)
         {
             for (var v in ast.vars)
-                pp_loc(ast.vars[v].id.loc, pp_prefix(indent) + "|-var= " + ast.vars[v].id.value);
+                pp_id(ast.vars[v], indent, "var");
+        }
+        if (ast.free_vars != null)
+        {
+            for (var v in ast.free_vars)
+                pp_id(ast.free_vars[v], indent, "free_var");
         }
         pp_asts(indent, "body", ast.body);
     }
@@ -219,7 +229,7 @@ function pp_indent(ast, indent)
     else if (ast instanceof Ref)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "Ref");
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        pp_id(ast.id, indent, "id");
     }
     else if (ast instanceof This)
     {
@@ -229,9 +239,14 @@ function pp_indent(ast, indent)
         print(pp_prefix(indent) + "UNKNOWN AST");
 }
 
+function pp_id(id, indent, label)
+{
+    pp_loc(id.scope.loc, pp_prefix(indent) + "|-" + label + "= " + id.toString() + " " +((id.scope instanceof Program) ? "[global]" : "[local]"));
+}
+
 function pp_loc(loc, line)
 {
-    print(line + pp_spaces(40-line.length) + "  (" + loc.to_string() + ":)");
+    print(line + pp_spaces(48-line.length) + "  (" + loc.to_string() + ":)");
 }
 
 function pp_asts(indent, label, asts)

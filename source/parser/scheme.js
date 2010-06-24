@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-06-21 12:21:51 feeley>
+// File: "scheme.js", Time-stamp: <2010-06-23 21:39:29 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -897,7 +897,7 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof FunctionDeclaration)
     {
-        return gen_assign(js_id_to_scm(ast.id.value),
+        return gen_assign(js_id_to_scm(ast.id.toString()),
                           ast_to_scm(ast.funct, ctx));
     }
     else if (ast instanceof ExprStatement)
@@ -1063,7 +1063,7 @@ function ast_to_scm(ast, ctx)
         error("LabelledStatement not implemented");
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "LabelledStatement");
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        print(pp_prefix(indent) + "|-id= " + ast.id.toString());
         pp_asts(indent, "statement", [ast.statement]);
         */
     }
@@ -1083,7 +1083,7 @@ function ast_to_scm(ast, ctx)
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "TryStatement");
         pp_asts(indent, "statement", [ast.statement]);
-        print(pp_prefix(indent) + "|-id= " + ast.id.value);
+        print(pp_prefix(indent) + "|-id= " + ast.id.toString());
         pp_asts(indent, "catch_part", [ast.catch_part]);
         pp_asts(indent, "finally_part", [ast.finally_part]);
         */
@@ -1121,14 +1121,14 @@ function ast_to_scm(ast, ctx)
         var accum = [];
         for (var v in ast.vars)
         {
-            if (ast.vars[v].is_local)
+            if (!ast.vars[v].is_param)
                 accum.push(gen_var(js_id_to_scm(v)));
         }
 
         var params = ast.params.map(
                        function (param, i, self)
                        {
-                           return js_id_to_scm(param.value);
+                           return js_id_to_scm(param.toString());
                        });
 
         accum.push(statements_to_scm(ast.body, new_ctx));
@@ -1165,7 +1165,7 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof Ref)
     {
-        return gen_ref(js_id_to_scm(ast.id.value));
+        return gen_ref(js_id_to_scm(ast.id.toString()));
     }
     else if (ast instanceof This)
     {
@@ -1190,11 +1190,9 @@ function js_value_to_scm(value)
 
 function compile_to_scm(ast)
 {
-    var simplified_ast = ast_passes(ast);
-
     print("#! /usr/bin/env gsi");
-    //pp(simplified_ast);
-    scm_pp(ast_to_scm(simplified_ast, global_ctx()));
+    //pp(ast);
+    scm_pp(ast_to_scm(ast, global_ctx()));
 }
 
 //=============================================================================
