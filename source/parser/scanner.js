@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-06-21 14:46:42 feeley>
+// File: "scanner.js", Time-stamp: <2010-06-23 16:22:57 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -461,10 +461,10 @@ Scanner.prototype.parse_number = function ()
             if (!accepted_char(c))
                 break;
             that.advance(1);
-            pos = pos / base;
-            n = n + pos * char_value(c);
+            pos = pos * base;
+            n = n * base + char_value(c);
         }
-        return n;
+        return n/pos;
     }
 
     // Decimal helper functions
@@ -518,8 +518,8 @@ Scanner.prototype.parse_number = function ()
         }
         else 
         {
-            // FIXME: When given 1.1e2, this algorithm gives
-            //       110.00000000000001 instead of 110, like v8
+            // TODO: Use Clinger's algorithm:
+            // http://portal.acm.org/citation.cfm?id=93542.93557
 
             // We got a decimal number! This should be
             // zero if the first character is a decimal point.
@@ -626,6 +626,12 @@ function Token(cat, value, loc)
     this.value = value;
     this.loc   = loc;
 }
+
+
+Token.prototype.toString = function ()
+{
+    return this.value.toString();
+};
 
 
 var LINE_SHIFT = 16;

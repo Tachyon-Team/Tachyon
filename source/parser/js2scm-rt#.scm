@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-19 10:28:40 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-23 22:21:44 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -206,7 +206,7 @@
       `(##fx* ,x ,y)))
 
 (define-macro (js./ x y)
-  `(TODO-js./))
+  `(/ ,x ,y));;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-macro (js.% x y)
   `(fxmodulo ,x ,y))

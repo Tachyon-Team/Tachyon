@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-06-21 12:36:26 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-06-23 22:25:23 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -205,7 +205,7 @@
   (println (to-string message))
   (exit))
 
-(define (_exit this)
+(define (_quit this)
   (exit))
 
 (define _undefined
@@ -322,6 +322,12 @@
  (lambda (self . args)
    (apply string-append
           (cons self args))))
+
+(js:index-set!
+ (js:index _String "prototype")
+ "toString"
+ (lambda (self)
+   self))
 
 (js:index-set!
  (js:index _String "prototype")
