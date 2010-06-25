@@ -12,7 +12,8 @@ BASE_SRCS =                 \
     ir/instructions.js      \
     ir/inline.js            \
     ir/cfg.js               \
-    ir/functions.js
+    ir/functions.js         \
+    ir/ir.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =            \

@@ -445,9 +445,39 @@ ControlFlowGraph.prototype.simplify = function ()
                 // Remove the final branch instruction
                 block.remInstrAtIndex(block.instrs.length - 1);                    
 
-                // Add the successor instructions to the predecessor block
+                // For each instruction of the successor
                 for (var j = 0; j < succ.instrs.length; ++j)
-                    block.addInstr(succ.instrs[j]);
+                {
+                    var instr = succ.instrs[j];
+                    
+                    // If the instruction is a phi node
+                    if (instr instanceof PhiInstr)
+                    {
+                        // Ensure that this phi node has only one use
+                        assert (
+                            instr.uses.length == 1, 
+                            'phi node in merged block should have only one use'
+                        );
+
+                        var phiIn = instr.uses[0];
+
+                        // Remove the edge from the use to the phi node
+                        phiIn.remDest(instr);
+
+                        // For each dest of the phi node
+                        for (var k = 0; k < instr.dests.length; ++k)
+                        {
+                            // Replace all uses of the phi by uses of its input
+                            instr.dests[k].replUse(instr, phiIn);
+                            phiIn.addDest(instr.dests[k]);                            
+                        }
+                    }
+                    else
+                    {
+                        // Add the instruction to the predecessor
+                        block.addInstr(instr);
+                    }
+                }
 
                 // Remove the successor block from the CFG
                 this.remBlock(succ);
@@ -610,9 +640,28 @@ ControlFlowGraph.prototype.validate = function ()
 
             // Verify that the instruction has this block as its parent
             if (instr.parentBlock !== block)
-            {
-                print(instr.parentBlock);
                 return 'parent block link broken:\n' + instr;
+
+            // If this is a phi instruction
+            if (instr instanceof PhiInstr)
+            {
+                // Verify that it appears at the start of the block
+                if (j != 0 && !(block.instrs[j-1] instanceof PhiInstr))
+                   return 'phi node after non-phi instruction';
+
+                // Build the list of blocks from which the phi node uses come from
+                var phiPreds = [];
+                for (var k = 0; k < instr.uses.length; ++k)
+                    phiPreds.push(instr.uses[k].parentBlock);
+
+                // Verify that each immediate predecessor has a corresponding use
+                for (var k = 0; k < block.preds.length; ++k)
+                    if (!arraySetHas(phiPreds, block.preds[k]))
+                        return 'phi node does not cover all immediate predecessors';
+
+                // Verify that no values from non-predecessors are included in phi uses
+                if (phiPreds.length != block.preds.length)
+                    return 'phi uses value coming from non-predecessor';
             }
 
             // Verify that no branches appear before the last instruction
@@ -886,12 +935,6 @@ Add an instruction at the end of the block
 */
 BasicBlock.prototype.addInstr = function(instr, outName)
 {
-    // Ensure that other instructions are not added after branches
-    assert (
-        !(this.instrs[this.instrs.length - 1] instanceof BranchInstr),
-        'cannot add instruction after branch'
-    );
-
     // For all uses
     for (var i = 0; i < instr.uses.length; ++i)
     {
