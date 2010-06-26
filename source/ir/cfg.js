@@ -9,6 +9,10 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+//
+// TODO: insert instruction at index... If undefined, assume insert at end?
+//
+
 /**
 @class Class to represent control-flow graph
 */
@@ -178,31 +182,38 @@ ControlFlowGraph.prototype.copy = function ()
             // Create a copy and add it to the instruction map
             var instr = block.instrs[j];
 
-            // Remap the use instructions
-            if (instr.uses != undefined)
+            // Remap the uses
+            for (var k = 0; k < instr.uses.length; ++k)
             {
-                for (var k = 0; k < instr.uses.length; ++k)
-                {
-                    var use = instr.uses[k];
-                    if (instrMap[use.instrId] != undefined)
-                        instr.uses[k] = instrMap[use.instrId];                    
-                }
+                var use = instr.uses[k];
+                if (instrMap[use.instrId] != undefined)
+                    instr.uses[k] = instrMap[use.instrId];                    
             }
 
-            // Remap the dest instructions
-            if (instr.dests != undefined)
+            // Remap the dests
+            for (var k = 0; k < instr.dests.length; ++k)
             {
-                for (var k = 0; k < instr.dests.length; ++k)
-                {
-                    var dest = instr.dests[k];
-                    if (instrMap[dest.instrId] != undefined)
-                        instr.dests[k] = instrMap[dest.instrId];                  
-                }
+                var dest = instr.dests[k];
+                if (instrMap[dest.instrId] != undefined)
+                    instr.dests[k] = instrMap[dest.instrId];                  
             }
 
-            // Remap the target blocks
-            if (instr.targets != undefined)
+            // If this is a phi instruction
+            if (instr instanceof PhiInstr)
             {
+                // Remap the predecessor blocks
+                for (var k = 0; k < instr.preds.length; ++k)
+                {
+                    var pred = instr.preds[k];
+                    instr.preds[k] = blockMap[pred.blockId];
+                }
+
+            }
+
+            // If this is a branch instruction
+            if (instr instanceof BranchInstr)
+            {
+                // Remap the target blocks
                 for (var k = 0; k < instr.targets.length; ++k)
                 {
                     var target = instr.targets[k];
@@ -521,7 +532,7 @@ ControlFlowGraph.prototype.simplify = function ()
         }
     }
 
-    // Until the simplification is complete        
+    // Until the simplification is complete
     for (;;)
     {
         var phiCopies = phiNodes.slice(0);
@@ -649,19 +660,18 @@ ControlFlowGraph.prototype.validate = function ()
                 if (j != 0 && !(block.instrs[j-1] instanceof PhiInstr))
                    return 'phi node after non-phi instruction';
 
-                // Build the list of blocks from which the phi node uses come from
-                var phiPreds = [];
-                for (var k = 0; k < instr.uses.length; ++k)
-                    phiPreds.push(instr.uses[k].parentBlock);
-
                 // Verify that each immediate predecessor has a corresponding use
                 for (var k = 0; k < block.preds.length; ++k)
-                    if (!arraySetHas(phiPreds, block.preds[k]))
+                    if (!arraySetHas(instr.preds, block.preds[k]))
                         return 'phi node does not cover all immediate predecessors';
 
-                // Verify that no values from non-predecessors are included in phi uses
-                if (phiPreds.length != block.preds.length)
-                    return 'phi uses value coming from non-predecessor';
+                // Verify that there is exactly one predecessor for each use
+                if (instr.preds.length != instr.uses.length)
+                    return 'phi node does not have one predecessor for each use';
+
+                // Verify that there are no more phi uses than block predecessors
+                if (instr.preds.length != block.preds.length)
+                    return 'phi node has more uses than predecessors';
             }
 
             // Verify that no branches appear before the last instruction
@@ -692,9 +702,8 @@ ControlFlowGraph.prototype.validate = function ()
     // Work list for the analysis
     var workList = [this.entry];
 
-    // Arrays to store must and may reach sets for each block
+    // Array to store must reach sets for each block
     var mustReachOut = [];
-    var mayReachOut = [];
 
     // Compute the set of all definitions in the CFG
     var fullReachSet = [];
@@ -714,7 +723,6 @@ ControlFlowGraph.prototype.validate = function ()
     {
         var block = this.blocks[i];
         mustReachOut[block.blockId] = fullReachSet.slice(0);
-        mayReachOut[block.blockId] = [];
     }
 
     // Until the work list is empty
@@ -724,12 +732,10 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Compute the must and may reach sets at this block's entry
         var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):this.argVals.slice(0);
-        var mayReachCur = (block.preds.length == 0)? this.argVals.slice(0):[];
         for (var i = 0; i < block.preds.length; ++i)
         {
             var pred = block.preds[i];
             mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
-            mayReachCur = arraySetUnion(mayReachCur, mayReachOut[pred.blockId]);
         }
 
         // For each instruction
@@ -738,17 +744,13 @@ ControlFlowGraph.prototype.validate = function ()
             // Add the instruction to both sets of reaching values
             var instr = block.instrs[i];
             arraySetAdd(mustReachCur, instr);
-            arraySetAdd(mayReachCur, instr);
         }
         
-        // If the must or may reach sets have changed for this block
-        if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]) ||
-            !arraySetEqual(mayReachCur, mayReachOut[block.blockId])
-        )
+        // If the must reach set has changed for this block
+        if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]))
         {
             // Update the sets for this block
             mustReachOut[block.blockId] = mustReachCur;
-            mayReachOut[block.blockId] = mayReachCur;
 
             // Add the successors of this block to the work list
             for (var i = 0; i < block.succs.length; ++i)
@@ -763,12 +765,10 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Compute the must and may reach sets at this block's entry
         var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
-        var mayReachCur = [];
         for (var j = 0; j < block.preds.length; ++j)
         {
             var pred = block.preds[j];
             mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
-            mayReachCur = arraySetUnion(mayReachCur, mayReachOut[pred.blockId]);
         }
 
         // For each instruction
@@ -785,26 +785,21 @@ ControlFlowGraph.prototype.validate = function ()
                 if (!(use instanceof IRInstr))
                     continue;
 
-                var mustReach = arraySetHas(mustReachCur, use);
-                var mayReach = arraySetHas(mayReachCur, use);
-
                 if (instr instanceof PhiInstr)
                 {
-                    if (!mayReach)
-                        return 'phi node uses non-reaching value:\n' + use;
+                    var phiPred = instr.preds[k];
+                    if (!arraySetHas(mustReachOut[phiPred.blockId], use))
+                        return 'phi node uses non-reaching value';
                 }
                 else
                 {
-                    if (mayReach && !mustReach)
-                        return 'instr uses value that may not reach\n' + use;
-                    else if (!mustReach)
+                    if (!arraySetHas(mustReachCur, use))
                         return 'instr uses non-reaching value\n' + use;
                 }
             }
 
-            // Add the instruction to both sets of reaching values
+            // Add the instruction to the must reach set
             arraySetAdd(mustReachCur, instr);
-            arraySetAdd(mayReachCur, instr);
         }
     }
 

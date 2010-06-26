@@ -114,7 +114,7 @@ l1.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)), 'eee'
 l1.addInstr(new GetPropValInstr(cfg.getThisArg(), new IntConst(2)));
 l1.addInstr(new JumpInstr(l2));
 
-l2.addInstr(new PhiInstr([l1.instrs[1]]));
+l2.addInstr(new PhiInstr([l1.instrs[1]], [l1]));
 l2.addInstr(new ArithInstr(ArithOp.MOD, l1.instrs[1], new IntConst(7)));
 l2.addInstr(new ArithInstr(ArithOp.SUB, new IntConst(3), new IntConst(4)));
 l2.addInstr(new ArithInstr(ArithOp.SUB, new IntConst(3), new IntConst(4)));
@@ -123,7 +123,7 @@ l2.addInstr(new JumpInstr(merge));
 r1.addInstr(new ArithInstr(ArithOp.MUL, new IntConst(7), new IntConst(8)), 'eee');
 r1.addInstr(new JumpInstr(merge));
 
-merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]]));
+merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]], [l1, r1]));
 merge.addInstr(new SetPropValInstr(entry.instrs[0], new IntConst(2)));
 merge.addInstr(new RetInstr(new UndefConst()));
 

@@ -213,26 +213,6 @@ function IRInstr()
     };
 
     /**
-    Add a new use
-    */
-    this.addUse = function (use)
-    {
-        // Create an instance-specific array when necessary
-        if (this.uses.length == 0)
-            this.uses = [use];
-        else
-            this.uses.push(use);
-    };
-
-    /**
-    Remove a use by index
-    */
-    this.remUse = function (index)
-    {
-        this.uses.splice(index, 1);
-    };
-
-    /**
     Replace a use
     */
     this.replUse = function (oldUse, newUse)
@@ -322,8 +302,14 @@ IRInstr.prototype = new IRValue();
 @class SSA phi node instruction
 @augments IRInstr
 */
-function PhiInstr(values)
+function PhiInstr(values, preds)
 {
+    // Ensure that each value has one associated predecessor
+    assert (
+        values.length == preds.length,
+        'must have one predecessor for each phi use'
+    );
+
     // Set the mnemonic name for this instruction
     this.mnemonic = "phi";
 
@@ -332,6 +318,12 @@ function PhiInstr(values)
     @field
     */
     this.uses = values;
+
+    /**
+    Immediate predecessor blocks associated with the uses
+    @field
+    */
+    this.preds = preds;
 }
 PhiInstr.prototype = new IRInstr();
 
@@ -340,8 +332,7 @@ Make a shallow copy of the instruction
 */
 PhiInstr.prototype.copy = function ()
 {
-    var newInstr = new PhiInstr(this.uses.slice(0));
-    return this.baseCopy(newInstr);
+    return this.baseCopy(new PhiInstr(this.uses.slice(0), this.preds.slice(0)));
 };
 
 //=============================================================================
