@@ -127,6 +127,8 @@ merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]], [l1, r1]));
 merge.addInstr(new SetPropValInstr(entry.instrs[0], new IntConst(2)));
 merge.addInstr(new RetInstr(new UndefConst()));
 
+merge.addInstr(new BitInstr(BitOp.LSFT, new IntConst(1), new IntConst(2)), 'foo', 1);
+
 print('ORIGINAL CFG: \n-------------\n');
 
 print(cfg + '\n');

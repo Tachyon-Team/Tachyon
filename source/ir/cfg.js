@@ -926,10 +926,23 @@ BasicBlock.prototype.copy = function (cfg)
 };
 
 /**
-Add an instruction at the end of the block
+Insert an instruction into the block
+@param instr instruction to insert
+@param outName output name of the instruction
+@param index before which to insert the new instruction
 */
-BasicBlock.prototype.addInstr = function(instr, outName)
+BasicBlock.prototype.addInstr = function(instr, outName, index)
 {
+    // If the index is undefined, insert at the end of the block
+    if (index == undefined)
+        index = this.instrs.length;
+
+    // Ensure that the index is valid
+    assert (
+        index <= this.instrs.length,
+        'invalid instruction insertion index'
+    );
+
     // For all uses
     for (var i = 0; i < instr.uses.length; ++i)
     {
@@ -959,8 +972,19 @@ BasicBlock.prototype.addInstr = function(instr, outName)
     // Set the parent block for the instruction
     instr.parentBlock = this;
 
-    // Add the instruction to the list
-    this.instrs.push(instr);
+    // If we are inserting at the end of the block
+    if (index == this.instrs.length)
+    {
+        // Add the instruction to the end of the list
+        this.instrs.push(instr);
+    }
+    else
+    {
+        // Insert the instruction before the index
+        var ls = this.instrs.slice(0, index);
+        var rs = this.instrs.slice(index, this.instrs.length + 1);
+        this.instrs = ls.concat(instr, rs);
+    }
 
     // Assign an id number to the instruction
     this.parentCFG.assignInstrId(instr);

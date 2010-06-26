@@ -310,6 +310,12 @@ function PhiInstr(values, preds)
         'must have one predecessor for each phi use'
     );
 
+    // Ensure that the phi node has at least one input
+    assert (
+        values.length > 0,
+        'must have at least one input to phi node'
+    );
+
     // Set the mnemonic name for this instruction
     this.mnemonic = "phi";
 
@@ -326,6 +332,33 @@ function PhiInstr(values, preds)
     this.preds = preds;
 }
 PhiInstr.prototype = new IRInstr();
+
+/**
+Produce a string representation of the phi instruction
+*/
+PhiInstr.prototype.toString = function ()
+{
+    var output = "";
+
+    // If this instruction's value is read, print its output name
+    if (this.hasDests())
+        output += this.getValName() + ' = ';
+
+    output += this.mnemonic + ' ';
+
+    for (i = 0; i < this.uses.length; ++i)
+    {
+        var ins = this.uses[i];
+        var pred = this.preds[i];
+
+        output += '[' + ins.getValName() + ' ' + pred.getBlockName() + ']';
+
+        if (ins != this.uses[this.uses.length - 1])            
+            output += ", ";
+    }
+
+    return output;
+};
 
 /**
 Make a shallow copy of the instruction
@@ -454,7 +487,7 @@ BitOp =
     NOT:    3,
     LSFT:   4,
     RSFT:   5,
-    RSFTU:  6
+    URSFT:  6
 };
 
 /**
@@ -466,13 +499,13 @@ function BitInstr(bitOp, leftVal, rightVal)
     // Set the mnemonic name for the instruction
     switch (bitOp)
     {
-        case ArithOp.AND:   this.mnemonic = "and";      break;
-        case ArithOp.OR:    this.mnemonic = "or";       break;
-        case ArithOp.XOR:   this.mnemonic = "xor";      break;
-        case ArithOp.NOT:   this.mnemonic = "not";      break;
-        case ArithOp.LSFT:  this.mnemonic = "lsft";     break;
-        case ArithOp.RSFT:  this.mnemonic = "rsft";     break;
-        case ArithOp.RSFTU: this.mnemonic = "rsftu";    break;
+        case BitOp.AND:   this.mnemonic = "and";      break;
+        case BitOp.OR:    this.mnemonic = "or";       break;
+        case BitOp.XOR:   this.mnemonic = "xor";      break;
+        case BitOp.NOT:   this.mnemonic = "not";      break;
+        case BitOp.LSFT:  this.mnemonic = "lsft";     break;
+        case BitOp.RSFT:  this.mnemonic = "rsft";     break;
+        case BitOp.RSFTU: this.mnemonic = "ursft";    break;
     }
 
     /**
@@ -522,14 +555,14 @@ function CompInstr(compOp, leftVal, rightVal)
     // Set the mnemonic name for the instruction
     switch (compOp)
     {
-        case ArithOp.LT:    this.mnemonic = "lt";   break;
-        case ArithOp.LTE:   this.mnemonic = "lte";  break;
-        case ArithOp.GT:    this.mnemonic = "gt";   break;
-        case ArithOp.GTE:   this.mnemonic = "gte";  break;
-        case ArithOp.EQ:    this.mnemonic = "eq";   break;
-        case ArithOp.NE:    this.mnemonic = "ne";   break;
-        case ArithOp.SEQ:   this.mnemonic = "seq";  break;
-        case ArithOp.NSEQ:  this.mnemonic = "nseq"; break;
+        case CompOp.LT:    this.mnemonic = "lt";   break;
+        case CompOp.LTE:   this.mnemonic = "lte";  break;
+        case CompOp.GT:    this.mnemonic = "gt";   break;
+        case CompOp.GTE:   this.mnemonic = "gte";  break;
+        case CompOp.EQ:    this.mnemonic = "eq";   break;
+        case CompOp.NE:    this.mnemonic = "ne";   break;
+        case CompOp.SEQ:   this.mnemonic = "seq";  break;
+        case CompOp.NSEQ:  this.mnemonic = "nseq"; break;
     }
 
     /**
