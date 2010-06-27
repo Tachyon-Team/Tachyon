@@ -13,7 +13,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 HASH_MAP_INIT_SIZE = 89;
 
 // Hash map expansion threshold
-HASH_MAP_EXPAND_THRESHOLD = 0.7;
+HASH_MAP_EXPAND_THRESHOLD = 0.5;
 
 // Next object serial number to be assigned
 nextObjectSerial = 1;
@@ -55,6 +55,9 @@ function defEqualFunc(key1, key2)
     return key1 === key2;
 }
 
+// Key value for free hash table slots
+freeHashKey = [];
+
 /**
 @class Hash map implementation
 */
@@ -65,29 +68,76 @@ function HashMap(hashFunc, equalFunc)
     */
     this.addItem = function (key, value)
     {
-        if (this.numElems + 1 > this.array.length * HASH_MAP_EXPAND_THRESHOLD)
+        // If we are past the expansion threshold, expand the internal array
+        if (this.numItems + 1 > this.numSlots * HASH_MAP_EXPAND_THRESHOLD)
             this.expand();
 
-        var index = this.hashFunc(key) % this.array.length;
+        var index = 2 * (this.hashFunc(key) % this.numSlots);
 
-        this.array[index].push(key);
-        this.array[index].push(value);
+        // Until a free item slot is found
+        while (this.array[index] !== freeHashKey)
+            index = (index + 2) % this.array.length;
+    
+        // Inser the new item at the free slot
+        this.array[index] = key;
+        this.array[index + 1] = value;
+
+        // Increment the number of items stored
+        this.numItems++;
     }
 
     /**
     Remove an item from the map
     */
     this.remItem = function (key)
-    {
-        var index = this.hashFunc(key) % this.array.length;
-        var itemList = this.array[index];
-        var numItems = itemList.length / 2;
+    {    
+        var index = 2 * (this.hashFunc(key) % this.numSlots);
 
-        for (var i = 0; i < numItems; ++i)
+        // Until a free cell is found
+        while (this.array[index] !== freeHashKey)
         {
-            if (this.equalFunc(itemList[2 * i], key))
-                itemList.splice(2 * i, 2);
-        }      
+            // If this slot has the item we want
+            if (this.equalFunc(this.array[index], key))
+            {
+                // Shift the following items left to keep clusters contiguous
+                for (;;)
+                {
+                    // Compute the index of the following item
+                    var nextIndex = (index + 2) % this.array.length;
+
+                    // If this is a free item, stop
+                    if (this.array[nextIndex] === freeHashKey)
+                        break;
+
+                    // Calculate the index at which this item's hash key maps
+                    var origIndex = 2 * (this.hashFunc(this.array[nextIndex]) % this.numSlots);
+       
+                    // If the item was mapped directly at its intended location, stop
+                    if (origIndex == nextIndex)
+                        break;
+
+                    // Shift the item left, erasing the previous item
+                    this.array[index] = this.array[nextIndex];
+                    this.array[index + 1] = this.array[nextIndex + 1];
+            
+                    // Move to the next item
+                    index = nextIndex;
+                }
+
+                // Clear the hash key at the current position
+                this.array[index] = freeHashKey;
+
+                // Decrement the number of items stored
+                this.numItems--;
+
+                // Item removed
+                return;
+            }
+
+            index = (index + 2) % this.array.length;
+        }
+    
+        assert (false, 'cannot remove item, key not found');        
     }
 
     /**
@@ -95,16 +145,22 @@ function HashMap(hashFunc, equalFunc)
     */    
     this.hasItem = function (key)
     {
-        var index = this.hashFunc(key) % this.array.length;
-        var itemList = this.array[index];
-        var numItems = itemList.length / 2;
+        var index = 2 * (this.hashFunc(key) % this.numSlots);
 
-        for (var i = 0; i < numItems; ++i)
+        // Until a free cell is found
+        while (this.array[index] !== freeHashKey)
         {
-            if (this.equalFunc(itemList[2 * i], key))
+            // If this slot has the item we want
+            if (this.equalFunc(this.array[index], key))
+            {
+                // Item found
                 return true;
-        }
+            }
 
+            index = (index + 2) % this.array.length;
+        }
+    
+        // Item not found
         return false;
     }
 
@@ -113,39 +169,53 @@ function HashMap(hashFunc, equalFunc)
     */
     this.getItem = function (key)
     {
-        var index = this.hashFunc(key) % this.array.length;
-        var itemList = this.array[index];
-        var numItems = itemList.length / 2;
+        var index = 2 * (this.hashFunc(key) % this.numSlots);
 
-        for (var i = 0; i < numItems; ++i)
+        // Until a free cell is found
+        while (this.array[index] !== freeHashKey)
         {
-            if (this.equalFunc(itemList[2 * i], key))
-                return itemList[2 * i + 1];
-        }
+            // If this slot has the item we want
+            if (this.equalFunc(this.array[index], key))
+            {
+                // Return the item's value
+                return this.array[index + 1];
+            }
 
-        throw 'Item not found in hash map';
+            index = (index + 2) % this.array.length;
+        }
+    
+        assert (false, 'cannot get item, key not found');
     }
 
     /**
     Expand the hash map's internal storage
     */
-    this.expand = function (key)
+    this.expand = function ()
     {
+        var oldNumSlots = this.numSlots;
         var oldArray = this.array;
 
+        // Initialize a new internal array
         this.array = [];
-        this.array.length = 2 * oldArray.length + 1;
-        for (var i = 0; i < this.array.length; ++i)
-            this.array[i] = [];
+        this.numSlots = 2 * oldNumSlots + 1;
+        this.array.length = 2 * this.numSlots;
+        for (var i = 0; i < this.numSlots; ++i)
+            this.array[2 * i] = freeHashKey;
 
-        for (var i = 0; i < oldArray.length; ++i)
-        {
-            var itemList = oldArray[i];
+        // Reset the number of elements stored
+        this.numItems = 0;
 
-            for (var j = 0; j < itemList.length; ++j)
-                this.addItem(itemList[2 * j], itemList[2 * j + 1]);
-        }
+        // Re-insert the elements from the old array
+        for (var i = 0; i < oldNumSlots; ++i)
+            if (oldArray[2 * i] !== freeHashKey)
+                this.addItem(oldArray[2 * i], oldArray[2 * i + 1]);     
     }
+
+    /**
+    Number of internal array slots
+    @field
+    */
+    this.numSlots = HASH_MAP_INIT_SIZE;
 
     /**
     Internal storage array
@@ -154,17 +224,17 @@ function HashMap(hashFunc, equalFunc)
     this.array = []
 
     // Set the initial array size
-    this.array.length = HASH_MAP_INIT_SIZE;
+    this.array.length = 2 * this.numSlots;
 
     // Initialize each array element
-    for (var i = 0; i < this.array.length; ++i)
-        this.array[i] = [];
+    for (var i = 0; i < this.numSlots; ++i)
+        this.array[2 * i] = freeHashKey;
 
     /**
-    Number of elements stored
+    Number of items stored
     @field
     */
-    this.numElems = 0;
+    this.numItems = 0;
 
     // If no hash function was specified, use the default function
     if (hashFunc == undefined || hashFunc == null)
@@ -186,26 +256,4 @@ function HashMap(hashFunc, equalFunc)
     */
     this.equalFunc = equalFunc;
 }
-
-/*
-map = new HashMap();
-
-a = {x:1};
-b = {x:2};
-c = {x:3};
-
-map.addItem(a, '1');
-map.addItem(b, '2');
-map.addItem(c, '3');
-
-print(map.getItem(a));
-print(map.getItem(b));
-print(map.getItem(c));
-
-map.remItem(b);
-
-print(map.hasItem(a));
-print(map.hasItem(b));
-print(map.hasItem(c));
-*/
 

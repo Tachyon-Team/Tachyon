@@ -96,7 +96,7 @@ IRFunction.prototype.addChildFunc = function (func)
     func.parentFunc = this;
 };
 
-
+/*
 func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
 
 cfg = new ControlFlowGraph(func);
@@ -148,6 +148,6 @@ print(cfg2 + '\n');
 print('CFG1 VALID: ' + cfg.validate());
 print('CFG2 VALID: ' + cfg2.validate());
 
-
 print("done");
+*/
 

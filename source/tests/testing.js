@@ -51,15 +51,20 @@ function TestSuite(suiteName)
 
             print('Running test: ' + testCase.testName);
 
-            var passed = testCase.runTest();
+            var output = testCase.runTest();
 
-            if (passed)
+            if (output === true)
             {
                 print('PASSED');
             }
-            if (!passed)
+            else
             {
-                print('*** FAILED ***');
+                // If the test returned an output string, print it
+                if (typeof output == 'string')
+                    print ('*** FAILED: ' + output);
+                else
+                    print('*** FAILED ***');
+
                 failCount++;
             }
         }
