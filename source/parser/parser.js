@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-06-23 21:49:49 feeley>
+// File: "parser.js", Time-stamp: <2010-06-27 01:56:09 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -15,6 +15,7 @@ function Parser(scanner, autosemicolon_enabled)
     this.rtable  = reduction_table;
 
     this.autosemicolon_enabled = autosemicolon_enabled;
+    this.autosemicolon_warning = autosemicolon_enabled;
 
     this.stack = [];
     this.sp    = 0;
@@ -60,6 +61,14 @@ Parser.prototype.error = function (loc, msg)
 {
     print(loc.to_string() + ": syntax error -- " + msg);
     quit(); // exit process
+};
+
+
+// method warning(loc, msg)
+
+Parser.prototype.warning = function (loc, msg)
+{
+    print(loc.to_string() + ": warning -- " + msg);
 };
 
 
@@ -243,7 +252,8 @@ Parser.prototype.parse = function ()
             var a = t[i];
 
             if (this.autosemicolon_enabled &&
-                this.scanner.crossed_eol)
+                (this.scanner.crossed_eol ||
+                 this.token_cat(this.input) == RBRACE_CAT))
             {
                 // automatic semicolon insertion should be considered
 
@@ -305,6 +315,9 @@ Parser.prototype.parse = function ()
                 if (autosemicolon_inserted)
                 {
                     this.shift(op, this.token_attr(this.previous_input));
+                    if (this.autosemicolon_warning)
+                        this.warning(this.previous_input.loc,
+                                     "semicolon was inserted after this token");
                 }
                 else
                 {
