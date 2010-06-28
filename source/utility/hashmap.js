@@ -99,33 +99,43 @@ function HashMap(hashFunc, equalFunc)
             // If this slot has the item we want
             if (this.equalFunc(this.array[index], key))
             {
-                // Shift the following items left to keep clusters contiguous
-                for (;;)
+                // Initialize the current free index to the removed item index
+                var curFreeIndex = index;
+
+                // For every subsequent item, until we encounter a free slot
+                for (var shiftIndex = (index + 2) % this.array.length;
+                    this.array[shiftIndex] !== freeHashKey;
+                    shiftIndex = (shiftIndex + 2) % this.array.length)
                 {
-                    // Compute the index of the following item
-                    var nextIndex = (index + 2) % this.array.length;
-
-                    // If this is a free item, stop
-                    if (this.array[nextIndex] === freeHashKey)
-                        break;
-
                     // Calculate the index at which this item's hash key maps
-                    var origIndex = 2 * (this.hashFunc(this.array[nextIndex]) % this.numSlots);
-       
-                    // If the item was mapped directly at its intended location, stop
-                    if (origIndex == nextIndex)
-                        break;
+                    var origIndex = 2 * (this.hashFunc(this.array[shiftIndex]) % this.numSlots);
 
-                    // Shift the item left, erasing the previous item
-                    this.array[index] = this.array[nextIndex];
-                    this.array[index + 1] = this.array[nextIndex + 1];
-            
-                    // Move to the next item
-                    index = nextIndex;
+                    // Compute the distance from the element to its origin mapping
+                    var distToOrig =
+                        (shiftIndex < origIndex)? 
+                        (shiftIndex + this.array.length - origIndex):
+                        (shiftIndex - origIndex);
+
+                    // Compute the distance from the element to the current free index
+                    var distToFree =
+                        (shiftIndex < curFreeIndex)?
+                        (shiftIndex + this.array.length - curFreeIndex):
+                        (shiftIndex - curFreeIndex);                    
+
+                    // If the free slot is between the element and its origin
+                    if (distToFree <= distToOrig)
+                    {
+                        // Move the item into the free slot
+                        this.array[curFreeIndex] = this.array[shiftIndex];
+                        this.array[curFreeIndex + 1] = this.array[shiftIndex + 1];
+
+                        // Update the current free index
+                        curFreeIndex = shiftIndex;
+                    }
                 }
 
-                // Clear the hash key at the current position
-                this.array[index] = freeHashKey;
+                // Clear the hash key at the current free position
+                this.array[curFreeIndex] = freeHashKey;
 
                 // Decrement the number of items stored
                 this.numItems--;

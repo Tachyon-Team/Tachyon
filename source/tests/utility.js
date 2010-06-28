@@ -39,41 +39,56 @@ Test of the hash map functionality
 */
 function hashMapTest()
 {
-    map = new HashMap();
+    var map = new HashMap();
 
     var itemList = [];
     var keyList = [];
 
-    for (var i = 0; i < 200; ++i)
+    for (var i = 0; i < 300; ++i)
     {
-        keyList.push({x:i});
-        itemList.push(String(i));
+        keyList.push(i / 2);
+        itemList.push(i);
 
         map.addItem(keyList[i], itemList[i]);
     }
 
     map.expand();
 
-    for (var i = 0; i < 50; ++i)
+    for (var repeat = 0; repeat < 10; ++repeat)
     {
-        var idx = (1337 + 3 * i) % keyList.length;
+        var remList = [];
 
-        map.remItem(keyList[idx]);
+        for (var i = 0; i < 150; ++i)
+        {
+            var idx = Math.floor(Math.random() * keyList.length);
 
-        if (map.hasItem(keyList[idx]))
-            return 'removed item still in table';
+            map.remItem(keyList[idx]);
 
-        keyList.splice(idx, 1);
-        itemList.splice(idx, 1);
-    }    
-    
-    for (var i = 0; i < keyList.length; ++i)
-    {
-        if (!map.hasItem(keyList[i]))
-            return 'item not found in table';
+            if (map.hasItem(keyList[idx]))
+                return 'removed item still in table';
 
-        if (map.getItem(keyList[i]) != itemList[i])
-            return 'item extracted does not match item inserted';
+            remList.push(itemList[idx]);
+
+            keyList.splice(idx, 1);
+            itemList.splice(idx, 1);
+        }
+
+        for (var i = 0; i < keyList.length; ++i)
+        {
+            if (!map.hasItem(keyList[i]))
+                return 'item not found in table';
+
+            if (map.getItem(keyList[i]) != itemList[i])
+                return 'item extracted does not match item inserted';
+        }
+
+        for (var i = 0; i < remList.length; ++i)
+        {
+            keyList.push(remList[i] / 2);
+            itemList.push(remList[i]);
+
+            map.addItem(keyList[keyList.length - 1], itemList[keyList.length - 1]);
+        }
     }
 
     return true;
