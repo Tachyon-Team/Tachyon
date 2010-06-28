@@ -148,7 +148,7 @@ function HashMap(hashFunc, equalFunc)
                 this.numItems--;
 
                 // If we are under the minimum load factor, shrink the internal array
-                if (this.numItems < this.numSlots * HASH_MAP_MIN_LOAD)
+                if (this.numItems < this.numSlots * HASH_MAP_MIN_LOAD && this.numSlots > HASH_MAP_INIT_SIZE)
                     this.resize((this.numSlots - 1) / 2);
 
                 // Item removed
