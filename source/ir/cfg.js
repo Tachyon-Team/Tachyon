@@ -9,10 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-//
-// TODO: insert instruction at index... If undefined, assume insert at end?
-//
-
 /**
 @class Class to represent control-flow graph
 */

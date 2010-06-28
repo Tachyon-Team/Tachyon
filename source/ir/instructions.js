@@ -987,31 +987,40 @@ NewObjInstr.prototype.copy = function ()
 //
 //=============================================================================
 
-
-// TODO: complete this section
-
 //
-// TODO: type conversion functions?
+// TODO: complete this section
+//
+// TODO: type conversion instructions?
 // unbox, box, convert?
 //
 
 // IR value type enumeration
 IRTypes =
 {
-    BOXED:      0,
-    POINTER:    1,
-    INT8:       2,
-    INT16:      3,
-    INT32:      4,
-    INT64:      5,
-    FLOAT64:    6
+    BOXED:      0,  // Boxed value type
+    POINTER:    1,  // Unboxed pointer
+    INT8:       2,  // Unboxed int8
+    INT16:      3,  // Unboxed int16
+    INT32:      4,  // Unboxed int32
+    INT64:      5,  // Unboxed int64
+    FLOAT64:    6   // Unboxed float64
 };
 
 /**
 Get the name of an IR type
 */
-function getIRTypeName()
+function getIRTypeName(tp)
 {
+    switch (tp)
+    {
+        case BOXED:     return 'boxt';  break;
+        case POINTER:   return 'ptrt';  break;
+        case INT8:      return 'i8';    break;
+        case INT16:     return 'i16';   break;
+        case INT32:     return 'i32';   break;
+        case INT64:     return 'i64';   break;
+        case FLOAT64:   return 'f64';   break;
+    }
 }
 
 /**
@@ -1019,12 +1028,33 @@ Get the size of an IR type in bytes
 */
 function getIRTypeSize()
 {
+    // TODO: boxed and pointer type sizes are actually platform-dependent
+    // Need code get appropriate size for the platform
+
+    switch (tp)
+    {
+        case BOXED:     return '8'; break;
+        case POINTER:   return '8'; break;
+        case INT8:      return '1'; break;
+        case INT16:     return '2'; break;
+        case INT32:     return '4'; break;
+        case INT64:     return '8'; break;
+        case FLOAT64:   return '8'; break;
+    }
 }
 
 
+// unbox, box, convert?
 
+// TODO: UnboxValInstr
 
+// TODO: BoxValInstr
 
+// TODO: IntCastInstr
+
+// TODO: FPToIntInstr
+
+// TODO: IntToFPInstr
 
 
 //=============================================================================
@@ -1045,23 +1075,19 @@ function getIRTypeSize()
 /**
 @class Load a value from memory
 @augments IRInstr
+@param tp IR type to load
+@param ptr memory pointer
 */
-function LoadInstr(numBits, ptr)
+function LoadInstr(tp, ptr)
 {
-    // Ensure that the number of bits specified is valid
-    assert (
-        numBits == 8 || numBits == 16 || numBits == 32 || numBits == 64,
-        'invalid number of bits for load instruction'
-    );
-
     // Set the mnemonic name for the instruction
-    this.mnemonic = 'load' + numBits;
+    this.mnemonic = 'load_' + getIRTypeName(tp);
 
     /**
-    Number of bits to load
+    IR type to load
     @field
     */
-    this.numBits = numBits;
+    this.tp = tp;
 
     /**
     Address of the value to load
@@ -1082,23 +1108,19 @@ LoadInstr.prototype.copy = function ()
 /**
 @class Store a value to memory
 @augments IRInstr
+@param tp IR type to store
+@param ptr memory pointer
 */
-function StoreInstr(numBits, ptr, value)
+function StoreInstr(tp, ptr, value)
 {
-    // Ensure that the number of bits specified is valid
-    assert (
-        numBits == 8 || numBits == 16 || numBits == 32 || numBits == 64,
-        'invalid number of bits for load instruction'
-    );
-
     // Set the mnemonic name for the instruction
-    this.mnemonic = 'store' + numBits;
+    this.mnemonic = 'store_' + getIRTypeName(tp);
 
     /**
-    Number of bits to load
+    IR type to store
     @field
     */
-    this.numBits = numBits;
+    this.tp = tp;
 
     /**
     Memory address, value to store

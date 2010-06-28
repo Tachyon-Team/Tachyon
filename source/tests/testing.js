@@ -40,7 +40,7 @@ function TestSuite(suiteName)
         print(
             'Running test suite: ' + this.suiteName + ' (' +
             this.testCases.length + ' ' + 
-            pluralize('test', this.testCases.length) + ')\n'
+            pluralize('test', this.testCases.length) + ')'
         );
 
         var failCount = 0;
