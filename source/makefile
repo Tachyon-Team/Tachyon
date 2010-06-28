@@ -8,6 +8,11 @@ BASE_SRCS =                 \
     utility/arrays.js       \
     utility/hashmap.js      \
     utility/strings.js      \
+    parser/misc.js          \
+    parser/scanner.js       \
+    parser/parser.js        \
+    parser/pp.js            \
+    parser/ast-passes.js    \
     platform/memory.js      \
     ir/instructions.js      \
     ir/inline.js            \
