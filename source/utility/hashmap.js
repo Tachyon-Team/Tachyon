@@ -12,8 +12,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // Initial hash map size
 HASH_MAP_INIT_SIZE = 89;
 
-// Hash map expansion threshold
-HASH_MAP_EXPAND_THRESHOLD = 0.5;
+// Hash map min and max load factors
+HASH_MAP_MIN_LOAD = 0.1;
+HASH_MAP_MAX_LOAD = 0.6;
 
 // Next object serial number to be assigned
 nextObjectSerial = 1;
@@ -68,9 +69,15 @@ function HashMap(hashFunc, equalFunc)
     */
     this.addItem = function (key, value)
     {
-        // If we are past the expansion threshold, expand the internal array
-        if (this.numItems + 1 > this.numSlots * HASH_MAP_EXPAND_THRESHOLD)
-            this.expand();
+        // Ensure that the item is not already in the table
+        assert (
+            !this.hasItem(key), 
+            'cannot add item, key already in hash map'
+        );
+
+        // If we will be above the max load factor, expand the internal array
+        if (this.numItems + 1 > this.numSlots * HASH_MAP_MAX_LOAD)
+            this.resize(2 * this.numSlots + 1);
 
         var index = 2 * (this.hashFunc(key) % this.numSlots);
 
@@ -140,6 +147,10 @@ function HashMap(hashFunc, equalFunc)
                 // Decrement the number of items stored
                 this.numItems--;
 
+                // If we are under the minimum load factor, shrink the internal array
+                if (this.numItems < this.numSlots * HASH_MAP_MIN_LOAD)
+                    this.resize((this.numSlots - 1) / 2);
+
                 // Item removed
                 return;
             }
@@ -198,16 +209,22 @@ function HashMap(hashFunc, equalFunc)
     }
 
     /**
-    Expand the hash map's internal storage
+    Resize the hash map's internal storage
     */
-    this.expand = function ()
+    this.resize = function (newSize)
     {
+        // Ensure that the new size is valid
+        assert (
+            this.numItems <= newSize && Math.round(newSize) - newSize == 0,
+            'cannot resize, more items than new size allows'
+        );
+
         var oldNumSlots = this.numSlots;
         var oldArray = this.array;
 
         // Initialize a new internal array
         this.array = [];
-        this.numSlots = 2 * oldNumSlots + 1;
+        this.numSlots = newSize;
         this.array.length = 2 * this.numSlots;
         for (var i = 0; i < this.numSlots; ++i)
             this.array[2 * i] = freeHashKey;

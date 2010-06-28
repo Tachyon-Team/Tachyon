@@ -39,12 +39,15 @@ Test of the hash map functionality
 */
 function hashMapTest()
 {
+    var NUM_ELEMS = 400;
+    var REM_ELEMS = 370;
+
     var map = new HashMap();
 
     var itemList = [];
     var keyList = [];
 
-    for (var i = 0; i < 300; ++i)
+    for (var i = 0; i < NUM_ELEMS; ++i)
     {
         keyList.push(i / 2);
         itemList.push(i);
@@ -52,13 +55,11 @@ function hashMapTest()
         map.addItem(keyList[i], itemList[i]);
     }
 
-    map.expand();
-
     for (var repeat = 0; repeat < 10; ++repeat)
     {
         var remList = [];
 
-        for (var i = 0; i < 150; ++i)
+        for (var i = 0; i < REM_ELEMS; ++i)
         {
             var idx = Math.floor(Math.random() * keyList.length);
 
