@@ -760,7 +760,7 @@ ControlFlowGraph.prototype.validate = function ()
         var block = this.blocks[i];
 
         // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):this.argVals.slice(0);
         for (var j = 0; j < block.preds.length; ++j)
         {
             var pred = block.preds[j];

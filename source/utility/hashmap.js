@@ -209,6 +209,38 @@ function HashMap(hashFunc, equalFunc)
     }
 
     /**
+    Get the keys present in the hash map
+    */
+    this.getKeys = function ()
+    {
+        var keys = [];
+
+        for (var i = 0; i < this.numSlots; ++i)
+        {
+            var index = 2 * i;
+
+            if (this.array[index] !== freeHashKey)
+                keys.push(this.array[index]);
+        }
+
+        return keys;
+    }
+
+    /**
+    Copy the map
+    */
+    this.copy = function ()
+    {
+        var newMap = new HashMap(this.hashFunc, this.equalFunc);
+
+        newMap.numSlots = this.numSlots;
+        newMap.array = this.array.slice(0);
+        newMap.numItems = this.numItems;
+
+        return newMap;
+    }
+
+    /**
     Resize the hash map's internal storage
     */
     this.resize = function (newSize)

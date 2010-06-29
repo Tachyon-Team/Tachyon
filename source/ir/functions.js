@@ -68,6 +68,9 @@ IRFunction.prototype.toString = function ()
         output += indentText(this.childFuncs[i].toString(), '    ') + '\n';
     }
 
+    if (this.childFuncs.length > 0)
+        output += '\n';
+
     output += indentText(this.virginIR.toString(), '    ');
 
     output += '\n}';
@@ -82,6 +85,14 @@ IRFunction.prototype.copy = function ()
 {
     // TODO
 }
+
+/**
+Get the argument names
+*/
+IRFunction.prototype.getArgNames = function()
+{
+    return this.argNames;
+};
 
 /**
 Get the default number of function arguments
