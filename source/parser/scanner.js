@@ -418,7 +418,12 @@ Scanner.prototype.parse_identifier = function ()
 
 
 // method parse_number()
-
+// WARNING: The following implementation will not work
+//          in a multi-threaded environment because
+//          there could be a race condition on that
+// TODO: Refactor not to use a closure and assume 
+//       private functions will be lambda lifted
+//       by the compiler
 Scanner.prototype.parse_number = function ()
 {
     // Assuming:
