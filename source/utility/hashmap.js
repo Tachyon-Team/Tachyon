@@ -10,14 +10,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // Initial hash map size
-HASH_MAP_INIT_SIZE = 89;
+var HASH_MAP_INIT_SIZE = 89;
 
 // Hash map min and max load factors
-HASH_MAP_MIN_LOAD = 0.1;
-HASH_MAP_MAX_LOAD = 0.6;
+var HASH_MAP_MIN_LOAD = 0.1;
+var HASH_MAP_MAX_LOAD = 0.6;
 
 // Next object serial number to be assigned
-nextObjectSerial = 1;
+var nextObjectSerial = 1;
 
 /**
 Default hash function implementation
@@ -33,7 +33,7 @@ function defHashFunc(val)
         var hashCode = 0;
 
         for (var i = 0; i < val.length; ++i)
-            hashCode = hashCode << 1 + val[i];
+            hashCode = (((hashCode << 8) + val.charCodeAt(i)) * 331804471) & 536870911;
 
         return hashCode;
     }
@@ -57,7 +57,7 @@ function defEqualFunc(key1, key2)
 }
 
 // Key value for free hash table slots
-freeHashKey = [];
+var freeHashKey = [];
 
 /**
 @class Hash map implementation
@@ -71,13 +71,9 @@ function HashMap(hashFunc, equalFunc)
     {
         // Ensure that the item is not already in the table
         assert (
-            !this.hasItem(key), 
+            !this.hasItem(key),
             'cannot add item, key already in hash map'
         );
-
-        // If we will be above the max load factor, expand the internal array
-        if (this.numItems + 1 > this.numSlots * HASH_MAP_MAX_LOAD)
-            this.resize(2 * this.numSlots + 1);
 
         var index = 2 * (this.hashFunc(key) % this.numSlots);
 
@@ -85,12 +81,48 @@ function HashMap(hashFunc, equalFunc)
         while (this.array[index] !== freeHashKey)
             index = (index + 2) % this.array.length;
     
-        // Inser the new item at the free slot
+        // Insert the new item at the free slot
         this.array[index] = key;
         this.array[index + 1] = value;
 
         // Increment the number of items stored
         this.numItems++;
+
+        // If we are above the max load factor, expand the internal array
+        if (this.numItems > this.numSlots * HASH_MAP_MAX_LOAD - 1)
+            this.resize(2 * this.numSlots + 1);
+    };
+
+    /**
+    Add or change a key-value binding in the map
+    */
+    this.setItem = function (key, value)
+    {
+        var index = 2 * (this.hashFunc(key) % this.numSlots);
+
+        // Until a free cell is found
+        while (this.array[index] !== freeHashKey)
+        {
+            // If this slot has the item we want
+            if (this.equalFunc(this.array[index], key))
+            {
+                // Set the item's value
+                this.array[index + 1] = value;
+            }
+
+            index = (index + 2) % this.array.length;
+        }
+    
+        // Insert the new item at the free slot
+        this.array[index] = key;
+        this.array[index + 1] = value;
+
+        // Increment the number of items stored
+        this.numItems++;
+
+        // If we are above the max load factor, expand the internal array
+        if (this.numItems > this.numSlots * HASH_MAP_MAX_LOAD - 1)
+            this.resize(2 * this.numSlots + 1);
     };
 
     /**
@@ -149,7 +181,7 @@ function HashMap(hashFunc, equalFunc)
 
                 // If we are under the minimum load factor, shrink the internal array
                 if (this.numItems < this.numSlots * HASH_MAP_MIN_LOAD && this.numSlots > HASH_MAP_INIT_SIZE)
-                    this.resize((this.numSlots - 1) / 2);
+                    this.resize((this.numSlots - 1) >> 1);
 
                 // Item removed
                 return;

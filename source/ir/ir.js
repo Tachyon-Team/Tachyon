@@ -13,8 +13,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: Explain result of translation in function description comments
 //
 
-// ********************* TODO **************
-// Refactor to create less useless basic blocks and time execution...
+// TODO: code gen/translation context object
+
+// TODO: getprop closer to function call, after arg evaluation
+
+// TODO: closure pointer for function?
+// global env pointer in closure?
+
+// TODO: rename args to contain var name
 
 /**
 Convert an AST code unit into IR functions
@@ -124,20 +130,18 @@ function StmtsToIRFunc(
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
 
-    // Create a block for the CFG exit
-    var exitBlock = cfg.getNewBlock('exit');
-
-    // Add a return undefined instruction to the exit block
-    exitBlock.addInstr(new RetInstr(new UndefConst()));
-
     // Generate code for the function body
-    StmtsToIR(
+    var bodyContext = new IRConvContext(
         bodyStmts, 
-        cfg,
-        localsMap,
         entryBlock,
-        exitBlock
+        localsMap,
+        cfg
     );
+    StmtsToIR(bodyContext);
+
+    // If the context is not terminated, add a return undefined instruction to the exit block
+    if (!bodyContext.isTerminated())
+        bodyContext.getExitBlock().addInstr(new RetInstr(new UndefConst()));
 
     // Simplify the CFG
     cfg.simplify();
@@ -158,18 +162,160 @@ function StmtsToIRFunc(
 }
 
 /**
+@class IR Conversion context
+*/
+function IRConvContext(astNode, entryBlock, localsMap, cfg)
+{
+    // Ensure that the arguments are valid
+    assert (
+        astNode !== undefined,
+        'ast node not defined in IR conversion context'
+    );
+    assert (
+        entryBlock !== undefined && entryBlock instanceof BasicBlock,
+        'entry block not defined or invalid in IR conversion context'
+    );
+    assert (
+        localsMap !== undefined,
+        'locals map not defined in IR conversion context'
+    );
+    assert (
+        cfg !== undefined && cfg instanceof ControlFlowGraph,
+        'CFG not defined or invalid in IR conversion context'
+    );
+
+    /**
+    AST node to convert
+    @field
+    */
+    this.astNode = astNode;
+
+    /**
+    Entry block at which to begin IR stream output
+    @field
+    */
+    this.entryBlock = entryBlock;
+
+    /**
+    Mutable map of local variable states
+    @field
+    */
+    this.localsMap = localsMap;
+
+    /**
+    Control-flow graph to which the generate code belongs
+    @field
+    */
+    this.cfg = cfg;
+
+    /**
+    Current basic block at the output
+    @field
+    */
+    this.exitBlock = undefined;
+
+    /**
+    Output value of the evaluated AST node
+    @field
+    */
+    this.outValue = undefined;
+}
+IRConvContext.prototype = {};
+
+/**
+Set the output of the IR conversion
+*/
+IRConvContext.prototype.setOutput = function (exitBlock, outValue)
+{
+    // Ensure that the arguments are valid
+    assert (
+        exitBlock !== undefined,
+        'exit block not defined for IR conversion context output'
+    );
+    assert (
+        outValue === undefined || outValue instanceof IRValue,
+        'invalid value specified for IR conversion context output'
+    );
+
+    this.exitBlock = exitBlock;
+
+    this.outValue = outValue;
+}
+
+/**
+Get the exit block from a conversion context
+*/
+IRConvContext.prototype.getExitBlock = function ()
+{
+    // Ensure that the output was set
+    assert (
+        this.exitBlock !== undefined,
+        'cannot get exit block from conversion context, output not set'
+    );
+
+    return this.exitBlock;
+}
+
+/**
+Get the output value from a conversion context
+*/
+IRConvContext.prototype.getOutValue = function ()
+{
+    // Ensure that the output was set
+    assert (
+        this.outValue instanceof IRValue,
+        'cannot get output value from conversion context, output not set'
+    );
+
+    return this.outValue;
+}
+
+/**
+Test if a context is terminated
+*/
+IRConvContext.prototype.isTerminated = function (astNode)
+{
+    return this.exitBlock === null;
+}
+
+/**
+Create a new context to pursue the conversion of a sequential
+unit of code for which a previous context exits
+*/
+IRConvContext.prototype.pursue = function (astNode)
+{
+    // Ensure that the context is not terminated
+    assert (
+        !this.isTerminated(),
+        'cannot pursue terminated context'
+    );
+
+    return new IRConvContext(
+        astNode,
+        (this.exitBlock !== undefined)? this.exitBlock:this.entryBlock,
+        this.localsMap,
+        this.cfg
+    );
+}
+
+/**
 Convert a statement list to IR code
 */
-function StmtsToIR(
-    stmtList, 
-    cfg,
-    localsMap,
-    entryBlock,
-    exitBlock
-)
+function StmtsToIR(context)
 {
-    // The current statement entry block is the entry block
-    var curEntry = entryBlock;
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    var stmtList = context.astNode;
+
+    // "Close" the current context, in case the statement list is empty
+    context.setOutput(context.entryBlock);
+
+    // The current statement context is the entry context
+    var curContext = context;
 
     // For each statement
     for (var i = 0; i < stmtList.length; ++i)
@@ -182,59 +328,50 @@ function StmtsToIR(
             // Compile the function
             var newFunc = FuncToIR(
                 stmt.id.toString(),
-                cfg.ownerFunc,
+                context.cfg.ownerFunc,
                 stmt.funct
             );
 
             // Make the new function a child of the function being compiled
-            cfg.ownerFunc.addChildFunc(newFunc);
+            context.cfg.ownerFunc.addChildFunc(newFunc);
         }
 
         // Otherwise, for executable statements
         else
         {
-            // Create a block for the statement's exit
-            var curExit = cfg.getNewBlock();
+            // Pursue the context for the statement
+            curContext = curContext.pursue(stmt);
 
             // Generate code for the statement
-            StmtToIR(
-                stmt,
-                cfg,
-                localsMap,
-                curEntry,
-                curExit
-            );
+            StmtToIR(curContext);
 
-            // Make the current exit the next entry block
-            curEntry = curExit;
+            // If the context is terminated, stop
+            if (curContext.isTerminated())
+                break;
         }
     }
 
-    // Jump from the current entry to the exit block
-    curEntry.addInstr(new JumpInstr(exitBlock));
+    // The exit block is the current exit block
+    context.setOutput(curContext.getExitBlock());
 }
 
 /**
 Convert an AST statement into IR code
 */
-function StmtToIR(
-    astStmt,
-    cfg,
-    localsMap,
-    entryBlock,
-    exitBlock
-)
+function StmtToIR(context)
 {
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    var astStmt = context.astNode;
+
     if (astStmt instanceof BlockStatement)
     {
         // Compile the statement list
-        StmtsToIR(
-            astStmt.statements, 
-            cfg,
-            localsMap,
-            entryBlock,
-            exitBlock
-        );
+        StmtsToIR(context);
     }
 
     else if (astStmt instanceof ConstStatement)
@@ -245,13 +382,7 @@ function StmtToIR(
     else if (astStmt instanceof ExprStatement)
     {
         // Compile the expression
-        ExprToIR(
-            astStmt.expr, 
-            cfg,
-            localsMap,
-            entryBlock,
-            exitBlock
-        );
+        ExprToIR(context);
     }
 
     else if (astStmt instanceof IfStatement)
@@ -268,63 +399,74 @@ function StmtToIR(
         // getprop_val already implies complex underlying algorithm, unlike if test
 
         // Compile the test expression
-        var testExit = cfg.getNewBlock();
-        var testVal = ExprToIR(
-            astStmt.expr,
-            cfg,
-            localsMap,
-            entryBlock,
-            testExit
-        );
-
-        // Create a block for the joining of the if branches
-        var joinBlock = cfg.getNewBlock('if_join');
+        var testContext = context.pursue(astStmt.expr);
+        ExprToIR(testContext);
 
         // Compile the true statement
-        var trueEntry = cfg.getNewBlock('if_true');
-        var trueExit = cfg.getNewBlock();
-        var trueLocals = localsMap.copy();
-        StmtToIR(
+        var trueContext = new IRConvContext(
             astStmt.statements[0],
-            cfg,
-            trueLocals,
-            trueEntry,
-            trueExit
+            context.cfg.getNewBlock('if_true'),
+            context.localsMap.copy(),
+            context.cfg
         );
+        StmtToIR(trueContext);
 
-        // Compile the true statement
-        var falseEntry = cfg.getNewBlock('if_false');
-        var falseExit = cfg.getNewBlock();
-        var falseLocals = localsMap.copy();
-        StmtToIR(
+        // Compile the false statement
+        var falseContext = new IRConvContext(
             astStmt.statements[1],
-            cfg,
-            falseLocals,
-            falseEntry,
-            falseExit
+            context.cfg.getNewBlock('if_false'),
+            context.localsMap.copy(),
+            context.cfg
         );
-
-        // Branch from the true and false exit blocks jump to the join block
-        trueExit.addInstr(new JumpInstr(joinBlock));
-        falseExit.addInstr(new JumpInstr(joinBlock));
-
-        // Merge the local maps using phi nodes
-        mergeLocals(
-            [
-                new JoinPoint(trueExit, trueLocals), 
-                new JoinPoint(falseExit, falseLocals)
-            ],
-            joinBlock,
-            localsMap
-        );
+        StmtToIR(falseContext);
 
         // Create the if branching instruction
-        testExit.addInstr(new IfInstr(testVal, trueEntry, falseEntry));       
+        testContext.getExitBlock().addInstr(
+            new IfInstr(
+                testContext.getOutValue(),
+                trueContext.entryBlock,
+                falseContext.entryBlock)
+        );       
 
-        // Jump from the join block to the exit block
-        joinBlock.addInstr(new JumpInstr(exitBlock));
+
+
+
+        // TODO
+
+        var joinPoints = [];
+        if (!trueContext.isTerminated())
+            joinPoints.push(new JoinPoint(trueContext.getExitBlock(), trueContext.localsMap));
+        if (!falseContext.isTerminated())
+            joinPoints.push(new JoinPoint(falseContext.getExitBlock(), falseContext.localsMap));
+
+
+        if (joinPoints.length > 0)
+        {
+            // Create a block for the joining of the if branches
+            var joinBlock = context.cfg.getNewBlock('if_join');
+
+            // Branch from the true and false exit blocks jump to the join block
+            if (!trueContext.isTerminated())
+                trueContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
+            if (!falseContext.isTerminated())
+                falseContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
+
+
+            // Merge the local maps using phi nodes
+            mergeLocals(
+                joinPoints,
+                joinBlock,
+                context.localsMap
+            );
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock);
+        }
+        else
+        {
+            context.setOutput(null);
+        }
     }
-
 
     /*
     else if (astStmt instanceof DoWhileStatement)
@@ -372,17 +514,14 @@ function StmtToIR(
     else if (astStmt instanceof ReturnStatement)
     {
         // Compile the return expression
-        var retExit = cfg.getNewBlock();
-        var retVal = ExprToIR(
-            astStmt.expr,
-            cfg,
-            localsMap,
-            entryBlock,
-            retExit
-        );
+        var retContext = context.pursue(astStmt.expr);
+        ExprToIR(retContext);
 
         // Add a return instruction
-        retExit.addInstr(new RetInstr(retVal));
+        retContext.getExitBlock().addInstr(new RetInstr(retContext.getOutValue()));
+
+        // Indicate that there is no continuation for this context
+        context.setOutput(null);
     }
 
     /*
@@ -432,8 +571,8 @@ function StmtToIR(
 
     else
     {
-        // Temporary, for unimplemented statements, jump to the exit block to maintain a valid CFG
-        entryBlock.addInstr(new JumpInstr(exitBlock));
+        // Temporary, for unimplemented statements, the exit block is the entry block
+        context.setOutput(context.entryBlock);
 
         // TODO
         // error("UNKNOWN AST");
@@ -444,16 +583,22 @@ function StmtToIR(
 Convert an AST expression list into IR code
 @returns a list of values for the evaluated expressions
 */
-function ExprsToIR(
-    exprList,
-    cfg,
-    localsMap,
-    entryBlock,
-    exitBlock
-)
+function ExprsToIR(context)
 {
-    // The current argument entry block is the entry block
-    var curEntry = entryBlock;
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    // Get the expression list
+    var exprList = context.astNode;
+
+    // "Close" the current context, in case the expression list is empty
+    context.setOutput(context.entryBlock);
+
+    // The current context is the entry context
+    var curContext = context;
 
     // Create a list for the expression values
     var exprVals = [];
@@ -463,26 +608,18 @@ function ExprsToIR(
     {
         var expr = exprList[i];
 
-        // Create a block for the expression's exit
-        var curExit = cfg.getNewBlock();
+        // Pursue the context for this expression
+        curContext = curContext.pursue(expr);
 
         // Generate code for the argument expression
-        exprVals.push(
-            ExprToIR(
-                expr,
-                cfg,
-                localsMap,
-                curEntry,
-                curExit
-            )
-        );
+        ExprToIR(curContext);
 
-        // Make the current exit the next entry block
-        curEntry = curExit;
+        // Add the expression's value to the list
+        exprVals.push(curContext.getOutValue());
     }
 
-    // Jump from the current entry to the exit block
-    curEntry.addInstr(new JumpInstr(exitBlock));
+    // The exit block is the current exit block
+    context.setOutput(curContext.getExitBlock());
 
     // Return the expression value list
     return exprVals;
@@ -492,14 +629,16 @@ function ExprsToIR(
 Convert an AST expression into IR code
 @returns the value of the evaluated expression
 */
-function ExprToIR(
-    astExpr,
-    cfg,
-    localsMap,
-    entryBlock,
-    exitBlock
-)
+function ExprToIR(context)
 {
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    var astExpr = context.astNode;
+
     // TODO
 
     if (false)
@@ -518,17 +657,14 @@ function ExprToIR(
         */        
 
         // Compile the argument values
-        var argsExit = cfg.getNewBlock();
-        var argVals = ExprsToIR(
-            astExpr.exprs,
-            cfg,
-            localsMap,
-            entryBlock,
-            argsExit
-        );
+        var argsContext = context.pursue(astExpr.exprs);
+        var argVals = ExprsToIR(argsContext);
 
         // Variable to store the operator's output value
         var opVal;
+
+        // Get the exit block for the arguments context
+        var argsExit = argsContext.getExitBlock();
 
         // Switch on the operator
         switch (astExpr.op)
@@ -550,11 +686,8 @@ function ExprToIR(
             opVal = new UndefConst();
         }
 
-        // Jump to the exit block
-        argsExit.addInstr(new JumpInstr(exitBlock));
-
-        // Return the operator's output value
-        return opVal;
+        // Set the operator's output value as the output
+        context.setOutput(argsContext.getExitBlock(), opVal);
     }
 
     /*
@@ -568,14 +701,20 @@ function ExprToIR(
 
     else if (astExpr instanceof CallExpr)
     {
+        print('call expr');
+
+        // Compile the function argument list
+        var argsContext = context.pursue(astExpr.args);
+        var argVals = ExprsToIR(argsContext);
+
         // Variable for the function value
         var funcVal;
 
-        // Variable for the "this" reference value
+        // Variable for the "this" value
         var thisVal;
 
-        // Variable for the current exit block
-        var fnExit;
+        // Variable for the last context used
+        var lastContext;
 
         // If the function expression is of the form x[y]
         if (astExpr.fn instanceof OpExpr && astExpr.fn.op == 'x [ y ]')
@@ -584,64 +723,43 @@ function ExprToIR(
             var idxExpr = astExpr.fn.exprs[1];
     
             // Generate code for the "this" expression
-            var thisExit = cfg.getNewBlock();
-            thisVal = ExprToIR(
-                thisExpr,
-                cfg,
-                localsMap,
-                entryBlock,
-                thisExit
-            );
+            var thisContext = argsContext.pursue(thisExpr);
+            ExprToIR(thisContext);
 
             // Generate code for the index expression
-            fnExit = cfg.getNewBlock();
-            var idxVal = ExprToIR(
-                idxExpr,
-                cfg,
-                localsMap,
-                thisExit,
-                fnExit
-            );
+            var idxContext = thisContext.pursue(idxExpr);
+            ExprToIR(idxContext);
 
             // Get the function property from the object
-            funcVal = fnExit.addInstr(new GetPropValInstr(thisVal, idxVal));
+            funcVal = idxContext.getExitBlock().addInstr(
+                new GetPropValInstr(
+                    thisContext.getOutValue(),
+                    idxContext.getOutValue
+                )
+            );
+
+            thisVal = thisContext.getOutValue();
+
+            lastContext = idxContext;
         }
         else
         {
-            // Create a block for the function expression exit
-            fnExit = cfg.getNewBlock();
-
             // Generate code for the statement
-            funcVal = ExprToIR(
-                astExpr.fn,
-                cfg,
-                localsMap,
-                entryBlock,
-                fnExit
-            );
+            var funcContext = argsContext.pursue(astExpr.fn);
+            ExprToIR(funcContext);
+            funcVal = funcContext.getOutValue();
 
             // The this value is null
             thisVal = new NullConst();
+
+            lastContext = funcContext;
         }
 
-        // Compile the function argument list
-        var argsExit = cfg.getNewBlock();
-        var argVals = ExprsToIR(
-            astExpr.args,
-            cfg,
-            localsMap,
-            fnExit,
-            argsExit
-        );
-
         // Create the call instruction
-        var exprVal = argsExit.addInstr(new CallRefInstr(funcVal, thisVal, argVals));
+        var exprVal = lastContext.getExitBlock().addInstr(new CallRefInstr(funcVal, thisVal, argVals));
 
-        // Jump from the current entry to the exit block
-        argsExit.addInstr(new JumpInstr(exitBlock));
-
-        // Return the expression value
-        return exprVal;
+        // Set the output
+        context.setOutput(lastContext.getExitBlock(), exprVal);
     }
 
     /*
@@ -677,11 +795,8 @@ function ExprToIR(
             assert (false, 'invalid constant value: ' + astExpr.value);
         }
 
-        // Jump to the exit block
-        entryBlock.addInstr(new JumpInstr(exitBlock));
-
-        // Return the variable's value
-        return constValue;
+        // Set the constant value as the output
+        context.setOutput(context.entryBlock, constValue);
     }
 
     /*
@@ -713,7 +828,7 @@ function ExprToIR(
         if (astExpr.id.scope instanceof Program)
         {
             // Get the value from the global object
-            varValue = entryBlock.addInstr(
+            varValue = context.entryBlock.addInstr(
                 new GetPropValInstr(
                     new GlobalRefConst(),
                     new StrConst(symName)
@@ -725,19 +840,16 @@ function ExprToIR(
         else
         {
             assert (
-                localsMap.hasItem(symName), 
+                context.localsMap.hasItem(symName), 
                 'local variable not in locals map: ' + symName
             );
 
             // Lookup the variable in the locals map
-            varValue = localsMap.getItem(symName);
+            varValue = context.localsMap.getItem(symName);
         }
 
-        // Jump to the exit block
-        entryBlock.addInstr(new JumpInstr(exitBlock));
-
-        // Return the variable's value
-        return varValue;
+        // Set the variable's value as the output
+        context.setOutput(context.entryBlock, varValue);
     }
 
     /*
@@ -749,10 +861,8 @@ function ExprToIR(
 
     else
     {
-        // Temporary, for unimplemented expressions, jump to the exit block to maintain a valid CFG
-        // Also return an undefined value
-        entryBlock.addInstr(new JumpInstr(exitBlock));
-        return new UndefConst();
+        // Temporary, for unimplemented statements, the exit block is the entry block
+        context.setOutput(context.entryBlock, new UndefConst());
 
         // TODO
         // error("UNKNOWN AST");
@@ -821,18 +931,21 @@ function mergeLocals(pointList, mergeBlock, mergeMap)
     }
 }
 
+function testIR()
+{
+    var filename = 'parser/tests/test4.js';
+    var port = new File_input_port(filename);
+    var p = new Parser(new Scanner(port), true);
+    var ast = p.parse();
+    var normalized_ast = ast_normalize(ast);
 
-var filename = 'parser/tests/test4.js';
-var port = new File_input_port(filename);
-var p = new Parser(new Scanner(port), true);
-var ast = p.parse();
-var normalized_ast = ast_normalize(ast);
+    pp(normalized_ast); // pretty-print AST
+    print('\n');
 
-pp(normalized_ast); // pretty-print AST
-print('\n');
+    ir = UnitToIR(normalized_ast);
 
-ir = UnitToIR(normalized_ast);
+    print(ir);
+}
 
-print(ir);
-
+testIR();
 

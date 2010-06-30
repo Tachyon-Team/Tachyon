@@ -205,8 +205,8 @@ ControlFlowGraph.prototype.copy = function ()
                 }
             }
 
-            // If this is a branch instruction
-            if (instr instanceof BranchInstr)
+            // Otherwise, if this is a branch instruction
+            else if (instr instanceof BranchInstr)
             {
                 // Remap the target blocks
                 for (var k = 0; k < instr.targets.length; ++k)
