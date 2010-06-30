@@ -7,6 +7,12 @@ function f(x)
 
     return true;
 
+    /*
+    if (x && y)
+    {
+    }
+    */
+
     //x.foo(5);
 
     /*

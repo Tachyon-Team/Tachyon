@@ -91,7 +91,7 @@ function HashMap(hashFunc, equalFunc)
 
         // Increment the number of items stored
         this.numItems++;
-    }
+    };
 
     /**
     Remove an item from the map
@@ -159,7 +159,7 @@ function HashMap(hashFunc, equalFunc)
         }
     
         assert (false, 'cannot remove item, key not found');        
-    }
+    };
 
     /**
     Test if the map contains an item
@@ -183,7 +183,7 @@ function HashMap(hashFunc, equalFunc)
     
         // Item not found
         return false;
-    }
+    };
 
     /**
     Get an item in the map
@@ -206,7 +206,7 @@ function HashMap(hashFunc, equalFunc)
         }
     
         assert (false, 'cannot get item, key not found');
-    }
+    };
 
     /**
     Get the keys present in the hash map
@@ -224,7 +224,26 @@ function HashMap(hashFunc, equalFunc)
         }
 
         return keys;
-    }
+    };
+
+    /**
+    Erase all contained items
+    */
+    this.clear = function ()
+    {
+        // Set the initial number of slots
+        this.numSlots = HASH_MAP_INIT_SIZE;
+
+        // Set the initial array size
+        this.array.length = 2 * this.numSlots;
+
+        // Reset each array key element
+        for (var i = 0; i < this.numSlots; ++i)
+            this.array[2 * i] = freeHashKey;
+
+        // Reset the number of items stored
+        this.numItems = 0;
+    };
 
     /**
     Copy the map
@@ -238,7 +257,7 @@ function HashMap(hashFunc, equalFunc)
         newMap.numItems = this.numItems;
 
         return newMap;
-    }
+    };
 
     /**
     Resize the hash map's internal storage
@@ -268,7 +287,7 @@ function HashMap(hashFunc, equalFunc)
         for (var i = 0; i < oldNumSlots; ++i)
             if (oldArray[2 * i] !== freeHashKey)
                 this.addItem(oldArray[2 * i], oldArray[2 * i + 1]);     
-    }
+    };
 
     /**
     Number of internal array slots

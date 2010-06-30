@@ -13,6 +13,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: Explain result of translation in function description comments
 //
 
+// ********************* TODO **************
+// Refactor to create less useless basic blocks and time execution...
+
 /**
 Convert an AST code unit into IR functions
 */
@@ -42,7 +45,7 @@ function UnitToIR(
         '',
         null,
         [],
-        astUnit.vars,
+        [],
         [],
         astUnit.block.statements
     );
@@ -251,18 +254,79 @@ function StmtToIR(
         );
     }
 
-
-    // TODO
-    /*
     else if (astStmt instanceof IfStatement)
     {
-        // TODO: must copy locals map when branching
+        // TODO: conversion to boolean, need ToBoolean()
+        // False is: null, undefined, 0, NaN, ''
+        // Could implement tobool instruction? Or leave this as detail for lower level conversion
+        //
+        // PROBABLY best to have explicit conversions which get removed later
+        // These map to inlinable functions which have different cases for each type
+        //
+        // What about indexing and ToString!? We don't actually want a string!
+        // Could possibly have custom tokey conversion... Or no conversion,
+        // getprop_val already implies complex underlying algorithm, unlike if test
 
-        ast.expr = ctx.walk_expr(ast.expr);
-        ast.statements = ast_walk_statements(ast.statements, ctx);
-        return ast;
+        // Compile the test expression
+        var testExit = cfg.getNewBlock();
+        var testVal = ExprToIR(
+            astStmt.expr,
+            cfg,
+            localsMap,
+            entryBlock,
+            testExit
+        );
+
+        // Create a block for the joining of the if branches
+        var joinBlock = cfg.getNewBlock('if_join');
+
+        // Compile the true statement
+        var trueEntry = cfg.getNewBlock('if_true');
+        var trueExit = cfg.getNewBlock();
+        var trueLocals = localsMap.copy();
+        StmtToIR(
+            astStmt.statements[0],
+            cfg,
+            trueLocals,
+            trueEntry,
+            trueExit
+        );
+
+        // Compile the true statement
+        var falseEntry = cfg.getNewBlock('if_false');
+        var falseExit = cfg.getNewBlock();
+        var falseLocals = localsMap.copy();
+        StmtToIR(
+            astStmt.statements[1],
+            cfg,
+            falseLocals,
+            falseEntry,
+            falseExit
+        );
+
+        // Branch from the true and false exit blocks jump to the join block
+        trueExit.addInstr(new JumpInstr(joinBlock));
+        falseExit.addInstr(new JumpInstr(joinBlock));
+
+        // Merge the local maps using phi nodes
+        mergeLocals(
+            [
+                new JoinPoint(trueExit, trueLocals), 
+                new JoinPoint(falseExit, falseLocals)
+            ],
+            joinBlock,
+            localsMap
+        );
+
+        // Create the if branching instruction
+        testExit.addInstr(new IfInstr(testVal, trueEntry, falseEntry));       
+
+        // Jump from the join block to the exit block
+        joinBlock.addInstr(new JumpInstr(exitBlock));
     }
 
+
+    /*
     else if (astStmt instanceof DoWhileStatement)
     {
         ast.statement = ctx.walk_statement(ast.statement);
@@ -303,13 +367,25 @@ function StmtToIR(
     {
         return ast;
     }
+    */
 
     else if (astStmt instanceof ReturnStatement)
     {
-        ast.expr = ctx.walk_expr(ast.expr);
-        return ast;
+        // Compile the return expression
+        var retExit = cfg.getNewBlock();
+        var retVal = ExprToIR(
+            astStmt.expr,
+            cfg,
+            localsMap,
+            entryBlock,
+            retExit
+        );
+
+        // Add a return instruction
+        retExit.addInstr(new RetInstr(retVal));
     }
 
+    /*
     else if (astStmt instanceof WithStatement)
     {
         ast.expr = ctx.walk_expr(ast.expr);
@@ -365,7 +441,56 @@ function StmtToIR(
 }
 
 /**
+Convert an AST expression list into IR code
+@returns a list of values for the evaluated expressions
+*/
+function ExprsToIR(
+    exprList,
+    cfg,
+    localsMap,
+    entryBlock,
+    exitBlock
+)
+{
+    // The current argument entry block is the entry block
+    var curEntry = entryBlock;
+
+    // Create a list for the expression values
+    var exprVals = [];
+
+    // For each expression
+    for (var i = 0; i < exprList.length; ++i)
+    {
+        var expr = exprList[i];
+
+        // Create a block for the expression's exit
+        var curExit = cfg.getNewBlock();
+
+        // Generate code for the argument expression
+        exprVals.push(
+            ExprToIR(
+                expr,
+                cfg,
+                localsMap,
+                curEntry,
+                curExit
+            )
+        );
+
+        // Make the current exit the next entry block
+        curEntry = curExit;
+    }
+
+    // Jump from the current entry to the exit block
+    curEntry.addInstr(new JumpInstr(exitBlock));
+
+    // Return the expression value list
+    return exprVals;
+}
+
+/**
 Convert an AST expression into IR code
+@returns the value of the evaluated expression
 */
 function ExprToIR(
     astExpr,
@@ -377,19 +502,60 @@ function ExprToIR(
 {
     // TODO
 
-    // All expressions return a *value*, the result of their evaluation
-
     if (false)
     {
     }
 
-    /*
     if (astExpr instanceof OpExpr)
     {
-        ast.exprs = ast_walk_exprs(ast.exprs, ctx);
-        return ast;
+        /*
+        if (astExpr.op == 'x && y' || astExpr.op == 'x || y')
+        {
+            // TODO
+            entryBlock.addInstr(new JumpInstr(exitBlock));
+            return new UndefConst();
+        }
+        */        
+
+        // Compile the argument values
+        var argsExit = cfg.getNewBlock();
+        var argVals = ExprsToIR(
+            astExpr.exprs,
+            cfg,
+            localsMap,
+            entryBlock,
+            argsExit
+        );
+
+        // Variable to store the operator's output value
+        var opVal;
+
+        // Switch on the operator
+        switch (astExpr.op)
+        {
+            case 'x < y':
+            opVal = argsExit.addInstr(new CompInstr(CompOp.LT, argVals[0], argVals[1]));
+            break;
+
+            case 'x + y':
+            opVal = argsExit.addInstr(new ArithInstr(ArithOp.ADD, argVals[0], argVals[1]));
+            break;
+
+            case 'x - y':
+            opVal = argsExit.addInstr(new ArithInstr(ArithOp.SUB, argVals[0], argVals[1]));
+            break;
+
+            // TODO
+            default:
+            opVal = new UndefConst();
+        }
+
+        // Jump to the exit block
+        argsExit.addInstr(new JumpInstr(exitBlock));
+
+        // Return the operator's output value
+        return opVal;
     }
-    */
 
     /*
     else if (astExpr instanceof NewExpr)
@@ -458,40 +624,21 @@ function ExprToIR(
             thisVal = new NullConst();
         }
 
-        // The current argument entry block is the function exit block
-        var curEntry = fnExit;
-
-        // Create a list for the argument values
-        var argVals = [];
-
-        // For each argument
-        for (var i = 0; i < astExpr.args.length; ++i)
-        {
-            var argExpr = astExpr.args[i];
-
-            // Create a block for the statement's exit
-            var curExit = cfg.getNewBlock();
-
-            // Generate code for the argument expression
-            argVals.push(
-                ExprToIR(
-                    argExpr,
-                    cfg,
-                    localsMap,
-                    curEntry,
-                    curExit
-                )
-            );
-
-            // Make the current exit the next entry block
-            curEntry = curExit;
-        }
+        // Compile the function argument list
+        var argsExit = cfg.getNewBlock();
+        var argVals = ExprsToIR(
+            astExpr.args,
+            cfg,
+            localsMap,
+            fnExit,
+            argsExit
+        );
 
         // Create the call instruction
-        var exprVal = curEntry.addInstr(new CallRefInstr(funcVal, thisVal, argVals));
+        var exprVal = argsExit.addInstr(new CallRefInstr(funcVal, thisVal, argVals));
 
         // Jump from the current entry to the exit block
-        curEntry.addInstr(new JumpInstr(exitBlock));
+        argsExit.addInstr(new JumpInstr(exitBlock));
 
         // Return the expression value
         return exprVal;
@@ -565,8 +712,13 @@ function ExprToIR(
         // If the variable is global
         if (astExpr.id.scope instanceof Program)
         {
-            // TODO
-            varValue = new UndefConst();
+            // Get the value from the global object
+            varValue = entryBlock.addInstr(
+                new GetPropValInstr(
+                    new GlobalRefConst(),
+                    new StrConst(symName)
+                )
+            );
         }
 
         // Otherwise, the variable is local
@@ -605,6 +757,68 @@ function ExprToIR(
         // TODO
         // error("UNKNOWN AST");
     }    
+}
+
+/**
+@class State before a branch merge point
+*/
+function JoinPoint(block, localsMap)
+{
+    /**
+    Block jumping to the merge point
+    @field
+    */
+    this.block = block;
+
+    /**
+    Map of locals at the join point
+    @field
+    */
+    this.localsMap = localsMap;
+}
+
+/**
+Merge local variables locations using phi nodes
+*/
+function mergeLocals(pointList, mergeBlock, mergeMap)
+{
+    // Ensure that at least one join point was specified
+    assert (
+        pointList.length > 0,
+        'no join points provided for merge'
+    );
+
+    // Clear the contents of the merge map, if any
+    mergeMap.clear();
+
+    // Get the keys from the first join point
+    var keys = pointList[0].localsMap.getKeys();
+
+    // For each local
+    for (var i = 0; i < keys.length; ++i)
+    {
+        var varName = keys[i];
+
+        // Create arrays for the incoming values and corresponding predecessors
+        var values = [];
+        var preds = [];
+
+        // For each join point
+        for (var j = 0; j < pointList.length; ++j)
+        {
+            values.push(pointList[j].localsMap.getItem(varName));
+            preds.push(pointList[j].block);                  
+        }
+
+        // Create a phi node for this variable
+        var phiNode = new PhiInstr(values, preds);
+
+        // Add the phi node to the merge block
+        mergeBlock.addInstr(phiNode);
+
+        // Add the phi node to the merge map
+        mergeMap.addItem(varName, phiNode);
+    }
 }
 
 

@@ -203,7 +203,6 @@ ControlFlowGraph.prototype.copy = function ()
                     var pred = instr.preds[k];
                     instr.preds[k] = blockMap[pred.blockId];
                 }
-
             }
 
             // If this is a branch instruction
@@ -386,6 +385,37 @@ ControlFlowGraph.prototype.remBlock = function (block)
     for (var i = 0; i < block.succs.length; ++i)
         block.succs[i].remPred(block);
 
+    // For each successor of the block
+    for (var i = 0; i < block.succs.length; ++i)
+    {
+        var succ = block.succs[i];
+
+        // For each instruction of the successor
+        for (var j = 0; j < succ.instrs.length; ++j)
+        {
+            var instr = succ.instrs[j];
+            
+            // If the instruction is not a phi node, stop
+            if (!(instr instanceof PhiInstr))
+                break;
+
+            // For each predecessor of the phi node
+            for (var k = 0; k < instr.preds.length; ++k)
+            {
+                // If this is a reference to the block
+                if (instr.preds[k] === succ)
+                {
+                    // Remove this value
+                    instr.preds.splice(l, 1);
+                    instr.uses.splice(l, 1);
+                    
+                    // Move back to the previous index
+                    k--;
+                }
+            }
+        }
+    }
+
     // Remove the block from the list
     arraySetRem(this.blocks, block);
 
@@ -431,18 +461,41 @@ ControlFlowGraph.prototype.simplify = function ()
     // Merge blocks with only one destination
     //
 
+    // Until the dead block elimination is complete
+    for (;;)
+    {
+        var changed = false;
+
+        // For each block in the original CFG
+        for (var i = 0; i < this.blocks.length; ++i)
+        {
+            var block = this.blocks[i];
+
+            // If this block has no predecessors, and it is not the entry block
+            if (block.preds.length == 0 && block !== this.entry)
+            {
+                // Remove the block from the CFG
+                this.remBlock(block);
+
+                // Set the changed flag
+                changed = true;
+            }
+        }
+
+        // If no changes occurred, stop
+        if (changed == false)
+            break;
+    }
+
     // Until the merging is complete
     for (;;)
     {
-        // Copy the CFG blocks list
-        var blocks = this.blocks.slice(0);
-
         var merged = false;
 
-        // For each block in the original CFG
-        for (var i = 0; i < blocks.length; ++i)
+        // For each block in the CFG
+        for (var i = 0; i < this.blocks.length; ++i)
         {
-            var block = blocks[i];
+            var block = this.blocks[i];
 
             // If this block has only one successor, which has only one predecessor
             if (block.succs.length == 1 && block.succs[0].preds.length == 1)
@@ -486,6 +539,32 @@ ControlFlowGraph.prototype.simplify = function ()
                     }
                 }
 
+                // For each successor of the successor
+                for (var j = 0; j < succ.succs.length; ++j)
+                {
+                    var succSucc = succ.succs[j];
+
+                    // For each instruction of the successor's successor
+                    for (var k = 0; k < succSucc.instrs.length; ++k)
+                    {
+                        var instr = succSucc.instrs[k];
+                        
+                        // If the instruction is not a phi node, stop
+                        if (!(instr instanceof PhiInstr))
+                            break;
+
+                        var phiPreds = instr.preds;
+
+                        // For each predecessor of the phi node
+                        for (var l = 0; l < phiPreds.length; ++l)
+                        {
+                            // If this is a reference to the successor, make it a reference to the predecessor instead
+                            if (phiPreds[l] === succ)
+                                phiPreds[l] = block;
+                        }
+                    }
+                }
+
                 // Remove the successor block from the CFG
                 this.remBlock(succ);
 
@@ -493,7 +572,7 @@ ControlFlowGraph.prototype.simplify = function ()
             }
         }
 
-        // If no merges occurred, stop
+        // If no changes occurred, stop
         if (merged == false)
             break;
     }

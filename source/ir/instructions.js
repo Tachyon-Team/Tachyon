@@ -144,6 +144,16 @@ function ObjRefConst(obj)
 ObjRefConst.prototype = new ConstValue();
 
 /**
+@class Global object reference constant value
+@augments ConstValue
+*/
+function GlobalRefConst()
+{
+    this.value = 'global';
+};
+GlobalRefConst.prototype = new ConstValue();
+
+/**
 @class Base class for all IR instructions
 */
 function IRInstr()
@@ -167,7 +177,7 @@ function IRInstr()
 
             output += ins.getValName();
 
-            if (ins != this.uses[this.uses.length - 1])            
+            if (i != this.uses.length - 1)
                 output += ", ";
         }
 
@@ -310,12 +320,6 @@ function PhiInstr(values, preds)
         'must have one predecessor for each phi use'
     );
 
-    // Ensure that the phi node has at least one input
-    assert (
-        values.length > 0,
-        'must have at least one input to phi node'
-    );
-
     // Set the mnemonic name for this instruction
     this.mnemonic = "phi";
 
@@ -353,11 +357,25 @@ PhiInstr.prototype.toString = function ()
 
         output += '[' + ins.getValName() + ' ' + pred.getBlockName() + ']';
 
-        if (ins != this.uses[this.uses.length - 1])            
+        if (i != this.uses.length - 1)
             output += ", ";
     }
 
     return output;
+};
+
+/**
+Add an incoming value to a phi node
+*/
+PhiInstr.prototype.addIncoming = function (value, pred)
+{
+    assert (
+        pred != undefined,
+        'must specify predecessor block'
+    );
+
+    this.uses.push(value);
+    this.preds.push(pred);
 };
 
 /**
