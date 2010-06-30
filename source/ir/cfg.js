@@ -76,8 +76,13 @@ function ControlFlowGraph(ownerFunc)
     // Add the function arguments
     this.argVals.push(new ArgValInstr('this'));
     this.argVals.push(new ArgValInstr('argObj'));
-    for (var i = 0; i < this.ownerFunc.getNumArgs(); ++i)
-        this.argVals.push(new ArgValInstr('arg' + i));
+    var argNames = this.ownerFunc.getArgNames();
+    for (var i = 0; i < argNames.length; ++i)
+    {
+        var argInstr = new ArgValInstr();
+        this.assignInstrName(argInstr, argNames[i]);
+        this.argVals.push(argInstr);
+    }
 
     // Assign instruction ids to the function arguments
     for (var i = 0; i < this.argVals.length; ++i)

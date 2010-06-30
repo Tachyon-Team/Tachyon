@@ -13,14 +13,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: Explain result of translation in function description comments
 //
 
-// TODO: code gen/translation context object
-
-// TODO: getprop closer to function call, after arg evaluation
-
 // TODO: closure pointer for function?
 // global env pointer in closure?
 
-// TODO: rename args to contain var name
+// TODO: implement code for assignments
+// rename instr for assigned value to assigned var name?
+// CFG setInstrName function? Does assignName just work?
+// Is instruction renaming even necessary? What's more practical?
 
 /**
 Convert an AST code unit into IR functions
@@ -428,44 +427,16 @@ function StmtToIR(context)
                 falseContext.entryBlock)
         );       
 
+        // Merge the local maps using phi nodes
+        var joinBlock = mergeContexts(
+            [trueContext, falseContext],
+            context.localsMap,
+            context.cfg,
+            'if_join'
+        );
 
-
-
-        // TODO
-
-        var joinPoints = [];
-        if (!trueContext.isTerminated())
-            joinPoints.push(new JoinPoint(trueContext.getExitBlock(), trueContext.localsMap));
-        if (!falseContext.isTerminated())
-            joinPoints.push(new JoinPoint(falseContext.getExitBlock(), falseContext.localsMap));
-
-
-        if (joinPoints.length > 0)
-        {
-            // Create a block for the joining of the if branches
-            var joinBlock = context.cfg.getNewBlock('if_join');
-
-            // Branch from the true and false exit blocks jump to the join block
-            if (!trueContext.isTerminated())
-                trueContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
-            if (!falseContext.isTerminated())
-                falseContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
-
-
-            // Merge the local maps using phi nodes
-            mergeLocals(
-                joinPoints,
-                joinBlock,
-                context.localsMap
-            );
-
-            // Set the exit block to be the join block
-            context.setOutput(joinBlock);
-        }
-        else
-        {
-            context.setOutput(null);
-        }
+        // Set the exit block to be the join block
+        context.setOutput(joinBlock);
     }
 
     /*
@@ -870,39 +841,28 @@ function ExprToIR(context)
 }
 
 /**
-@class State before a branch merge point
+Merge IR conversion contexts local variables locations using phi nodes
 */
-function JoinPoint(block, localsMap)
+function mergeContexts(contexts, mergeMap, cfg, blockName)
 {
-    /**
-    Block jumping to the merge point
-    @field
-    */
-    this.block = block;
+    // Build a list of non-terminated contexts
+    var ntContexts = [];
+    for (var i = 0; i < contexts.length; ++i)
+        if (!contexts[i].isTerminated())
+            ntContexts.push(contexts[i]);
 
-    /**
-    Map of locals at the join point
-    @field
-    */
-    this.localsMap = localsMap;
-}
-
-/**
-Merge local variables locations using phi nodes
-*/
-function mergeLocals(pointList, mergeBlock, mergeMap)
-{
-    // Ensure that at least one join point was specified
-    assert (
-        pointList.length > 0,
-        'no join points provided for merge'
-    );
+    // If there are no non-terminated contexts, there is nothing to merge, stop
+    if (ntContexts.length == 0)
+        return null;
 
     // Clear the contents of the merge map, if any
     mergeMap.clear();
 
     // Get the keys from the first join point
-    var keys = pointList[0].localsMap.getKeys();
+    var keys = ntContexts[0].localsMap.getKeys();
+
+    // Create a block for the merging
+    var mergeBlock = cfg.getNewBlock(blockName);
 
     // For each local
     for (var i = 0; i < keys.length; ++i)
@@ -913,22 +873,53 @@ function mergeLocals(pointList, mergeBlock, mergeMap)
         var values = [];
         var preds = [];
 
-        // For each join point
-        for (var j = 0; j < pointList.length; ++j)
+        // For each context
+        for (var j = 0; j < ntContexts.length; ++j)
         {
-            values.push(pointList[j].localsMap.getItem(varName));
-            preds.push(pointList[j].block);                  
+            var context = ntContexts[j];
+
+            // Add the value of the current variable to the list
+            values.push(context.localsMap.getItem(varName));
+            preds.push(context.exitBlock);
         }
 
-        // Create a phi node for this variable
-        var phiNode = new PhiInstr(values, preds);
+        // Test if all incoming values are the same
+        var firstVal = values[0];
+        var allEqual = true;
+        for (var j = 0; j < values.length; ++j)
+            if (values[j] !== firstVal)
+                allEqual = false;
 
-        // Add the phi node to the merge block
-        mergeBlock.addInstr(phiNode);
+        // If not all incoming values are the same
+        if (!allEqual)
+        {
+            // Create a phi node for this variable
+            var phiNode = new PhiInstr(values, preds);
 
-        // Add the phi node to the merge map
-        mergeMap.addItem(varName, phiNode);
+            // Add the phi node to the merge block
+            mergeBlock.addInstr(phiNode);
+
+            // Add the phi node to the merge map
+            mergeMap.addItem(varName, phiNode);
+        }
+        else
+        {
+            // Add the value directly to the merge map
+            mergeMap.addItem(varName, firstVal);
+        }
     }
+
+    // For each context
+    for (var i = 0; i < ntContexts.length; ++i)
+    {
+        var context = ntContexts[i];
+
+        // Make the block jump to the merge block
+        context.getExitBlock().addInstr(new JumpInstr(mergeBlock));
+    }
+
+    // Return the merge block
+    return mergeBlock;
 }
 
 function testIR()
