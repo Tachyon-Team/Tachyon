@@ -144,6 +144,16 @@ function ObjRefConst(obj)
 ObjRefConst.prototype = new ConstValue();
 
 /**
+@class Global object reference constant value
+@augments ConstValue
+*/
+function GlobalRefConst()
+{
+    this.value = 'global';
+};
+GlobalRefConst.prototype = new ConstValue();
+
+/**
 @class Base class for all IR instructions
 */
 function IRInstr()
@@ -167,7 +177,7 @@ function IRInstr()
 
             output += ins.getValName();
 
-            if (ins != this.uses[this.uses.length - 1])            
+            if (i != this.uses.length - 1)
                 output += ", ";
         }
 
@@ -210,26 +220,6 @@ function IRInstr()
         newInstr.parentBlock = null;
 
         return newInstr;
-    };
-
-    /**
-    Add a new use
-    */
-    this.addUse = function (use)
-    {
-        // Create an instance-specific array when necessary
-        if (this.uses.length == 0)
-            this.uses = [use];
-        else
-            this.uses.push(use);
-    };
-
-    /**
-    Remove a use by index
-    */
-    this.remUse = function (index)
-    {
-        this.uses.splice(index, 1);
     };
 
     /**
@@ -284,13 +274,13 @@ function IRInstr()
     Mnemonic name for this instruction    
     @field
     */
-    this.mnemonic = "";
+    this.mnemonic = '';
 
     /**
     Name of this instruction's output
     @field
     */
-    this.outName = "";
+    this.outName = '';
 
     /**
     Id number for this instruction
@@ -322,8 +312,14 @@ IRInstr.prototype = new IRValue();
 @class SSA phi node instruction
 @augments IRInstr
 */
-function PhiInstr(values)
+function PhiInstr(values, preds)
 {
+    // Ensure that each value has one associated predecessor
+    assert (
+        values.length == preds.length,
+        'must have one predecessor for each phi use'
+    );
+
     // Set the mnemonic name for this instruction
     this.mnemonic = "phi";
 
@@ -332,16 +328,62 @@ function PhiInstr(values)
     @field
     */
     this.uses = values;
+
+    /**
+    Immediate predecessor blocks associated with the uses
+    @field
+    */
+    this.preds = preds;
 }
 PhiInstr.prototype = new IRInstr();
+
+/**
+Produce a string representation of the phi instruction
+*/
+PhiInstr.prototype.toString = function ()
+{
+    var output = "";
+
+    // If this instruction's value is read, print its output name
+    if (this.hasDests())
+        output += this.getValName() + ' = ';
+
+    output += this.mnemonic + ' ';
+
+    for (i = 0; i < this.uses.length; ++i)
+    {
+        var ins = this.uses[i];
+        var pred = this.preds[i];
+
+        output += '[' + ins.getValName() + ' ' + pred.getBlockName() + ']';
+
+        if (i != this.uses.length - 1)
+            output += ", ";
+    }
+
+    return output;
+};
+
+/**
+Add an incoming value to a phi node
+*/
+PhiInstr.prototype.addIncoming = function (value, pred)
+{
+    assert (
+        pred != undefined,
+        'must specify predecessor block'
+    );
+
+    this.uses.push(value);
+    this.preds.push(pred);
+};
 
 /**
 Make a shallow copy of the instruction
 */
 PhiInstr.prototype.copy = function ()
 {
-    var newInstr = new PhiInstr(this.uses.slice(0));
-    return this.baseCopy(newInstr);
+    return this.baseCopy(new PhiInstr(this.uses.slice(0), this.preds.slice(0)));
 };
 
 //=============================================================================
@@ -463,7 +505,7 @@ BitOp =
     NOT:    3,
     LSFT:   4,
     RSFT:   5,
-    RSFTU:  6
+    URSFT:  6
 };
 
 /**
@@ -475,13 +517,13 @@ function BitInstr(bitOp, leftVal, rightVal)
     // Set the mnemonic name for the instruction
     switch (bitOp)
     {
-        case ArithOp.AND:   this.mnemonic = "and";      break;
-        case ArithOp.OR:    this.mnemonic = "or";       break;
-        case ArithOp.XOR:   this.mnemonic = "xor";      break;
-        case ArithOp.NOT:   this.mnemonic = "not";      break;
-        case ArithOp.LSFT:  this.mnemonic = "lsft";     break;
-        case ArithOp.RSFT:  this.mnemonic = "rsft";     break;
-        case ArithOp.RSFTU: this.mnemonic = "rsftu";    break;
+        case BitOp.AND:   this.mnemonic = "and";      break;
+        case BitOp.OR:    this.mnemonic = "or";       break;
+        case BitOp.XOR:   this.mnemonic = "xor";      break;
+        case BitOp.NOT:   this.mnemonic = "not";      break;
+        case BitOp.LSFT:  this.mnemonic = "lsft";     break;
+        case BitOp.RSFT:  this.mnemonic = "rsft";     break;
+        case BitOp.RSFTU: this.mnemonic = "ursft";    break;
     }
 
     /**
@@ -531,14 +573,14 @@ function CompInstr(compOp, leftVal, rightVal)
     // Set the mnemonic name for the instruction
     switch (compOp)
     {
-        case ArithOp.LT:    this.mnemonic = "lt";   break;
-        case ArithOp.LTE:   this.mnemonic = "lte";  break;
-        case ArithOp.GT:    this.mnemonic = "gt";   break;
-        case ArithOp.GTE:   this.mnemonic = "gte";  break;
-        case ArithOp.EQ:    this.mnemonic = "eq";   break;
-        case ArithOp.NE:    this.mnemonic = "ne";   break;
-        case ArithOp.SEQ:   this.mnemonic = "seq";  break;
-        case ArithOp.NSEQ:  this.mnemonic = "nseq"; break;
+        case CompOp.LT:    this.mnemonic = "lt";   break;
+        case CompOp.LTE:   this.mnemonic = "lte";  break;
+        case CompOp.GT:    this.mnemonic = "gt";   break;
+        case CompOp.GTE:   this.mnemonic = "gte";  break;
+        case CompOp.EQ:    this.mnemonic = "eq";   break;
+        case CompOp.NE:    this.mnemonic = "ne";   break;
+        case CompOp.SEQ:   this.mnemonic = "seq";  break;
+        case CompOp.NSEQ:  this.mnemonic = "nseq"; break;
     }
 
     /**
@@ -963,26 +1005,40 @@ NewObjInstr.prototype.copy = function ()
 //
 //=============================================================================
 
-
+//
 // TODO: complete this section
+//
+// TODO: type conversion instructions?
+// unbox, box, convert?
+//
 
 // IR value type enumeration
 IRTypes =
 {
-    BOXED:      0,
-    POINTER:    1,
-    INT8:       2,
-    INT16:      3,
-    INT32:      4,
-    INT64:      5,
-    FLOAT64:    6
+    BOXED:      0,  // Boxed value type
+    POINTER:    1,  // Unboxed pointer
+    INT8:       2,  // Unboxed int8
+    INT16:      3,  // Unboxed int16
+    INT32:      4,  // Unboxed int32
+    INT64:      5,  // Unboxed int64
+    FLOAT64:    6   // Unboxed float64
 };
 
 /**
 Get the name of an IR type
 */
-function getIRTypeName()
+function getIRTypeName(tp)
 {
+    switch (tp)
+    {
+        case BOXED:     return 'boxt';  break;
+        case POINTER:   return 'ptrt';  break;
+        case INT8:      return 'i8';    break;
+        case INT16:     return 'i16';   break;
+        case INT32:     return 'i32';   break;
+        case INT64:     return 'i64';   break;
+        case FLOAT64:   return 'f64';   break;
+    }
 }
 
 /**
@@ -990,12 +1046,33 @@ Get the size of an IR type in bytes
 */
 function getIRTypeSize()
 {
+    // TODO: boxed and pointer type sizes are actually platform-dependent
+    // Need code get appropriate size for the platform
+
+    switch (tp)
+    {
+        case BOXED:     return '8'; break;
+        case POINTER:   return '8'; break;
+        case INT8:      return '1'; break;
+        case INT16:     return '2'; break;
+        case INT32:     return '4'; break;
+        case INT64:     return '8'; break;
+        case FLOAT64:   return '8'; break;
+    }
 }
 
 
+// unbox, box, convert?
 
+// TODO: UnboxValInstr
 
+// TODO: BoxValInstr
 
+// TODO: IntCastInstr
+
+// TODO: FPToIntInstr
+
+// TODO: IntToFPInstr
 
 
 //=============================================================================
@@ -1016,23 +1093,19 @@ function getIRTypeSize()
 /**
 @class Load a value from memory
 @augments IRInstr
+@param tp IR type to load
+@param ptr memory pointer
 */
-function LoadInstr(numBits, ptr)
+function LoadInstr(tp, ptr)
 {
-    // Ensure that the number of bits specified is valid
-    assert (
-        numBits == 8 || numBits == 16 || numBits == 32 || numBits == 64,
-        'invalid number of bits for load instruction'
-    );
-
     // Set the mnemonic name for the instruction
-    this.mnemonic = 'load' + numBits;
+    this.mnemonic = 'load_' + getIRTypeName(tp);
 
     /**
-    Number of bits to load
+    IR type to load
     @field
     */
-    this.numBits = numBits;
+    this.tp = tp;
 
     /**
     Address of the value to load
@@ -1053,23 +1126,19 @@ LoadInstr.prototype.copy = function ()
 /**
 @class Store a value to memory
 @augments IRInstr
+@param tp IR type to store
+@param ptr memory pointer
 */
-function StoreInstr(numBits, ptr, value)
+function StoreInstr(tp, ptr, value)
 {
-    // Ensure that the number of bits specified is valid
-    assert (
-        numBits == 8 || numBits == 16 || numBits == 32 || numBits == 64,
-        'invalid number of bits for load instruction'
-    );
-
     // Set the mnemonic name for the instruction
-    this.mnemonic = 'store' + numBits;
+    this.mnemonic = 'store_' + getIRTypeName(tp);
 
     /**
-    Number of bits to load
+    IR type to store
     @field
     */
-    this.numBits = numBits;
+    this.tp = tp;
 
     /**
     Memory address, value to store
