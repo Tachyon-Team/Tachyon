@@ -9,17 +9,20 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-//
 // TODO: Explain result of translation in function description comments
-//
 
 // TODO: closure pointer for function?
 // global env pointer in closure?
 
-// TODO: implement code for assignments
-// rename instr for assigned value to assigned var name?
+// TODO: rename instr for assigned value to assigned var name?
 // CFG setInstrName function? Does assignName just work?
 // Is instruction renaming even necessary? What's more practical?
+
+// TODO: exception handling
+
+// TODO: while loops
+// - Merging of contexts at loop entry
+// - Break and continue (with labels) handling in context
 
 /**
 Convert an AST code unit into IR functions
@@ -134,6 +137,8 @@ function stmtListToIRFunc(
         bodyStmts, 
         entryBlock,
         localsMap,
+        new HashMap(),
+        new HashMap(),
         cfg
     );
     stmtListToIR(bodyContext);
@@ -163,7 +168,7 @@ function stmtListToIRFunc(
 /**
 @class IR Conversion context
 */
-function IRConvContext(astNode, entryBlock, localsMap, cfg)
+function IRConvContext(astNode, entryBlock, localsMap, breakMap, contMap, cfg)
 {
     // Ensure that the arguments are valid
     assert (
@@ -179,9 +184,18 @@ function IRConvContext(astNode, entryBlock, localsMap, cfg)
         'locals map not defined in IR conversion context'
     );
     assert (
+        breakMap !== undefined,
+        'break map not defined in IR conversion context'
+    );
+    assert (
+        contMap !== undefined,
+        'continue map not defined in IR conversion context'
+    );
+    assert (
         cfg !== undefined && cfg instanceof ControlFlowGraph,
         'CFG not defined or invalid in IR conversion context'
     );
+
 
     /**
     AST node to convert
@@ -200,6 +214,18 @@ function IRConvContext(astNode, entryBlock, localsMap, cfg)
     @field
     */
     this.localsMap = localsMap;
+
+    /**
+    Break context lists map
+    @field
+    */
+    this.breakMap = breakMap;
+
+    /**
+    Continue context lists map
+    @field
+    */
+    this.contMap = contMap;
 
     /**
     Control-flow graph to which the generate code belongs
@@ -293,6 +319,8 @@ IRConvContext.prototype.pursue = function (astNode)
         astNode,
         (this.exitBlock !== undefined)? this.exitBlock:this.entryBlock,
         this.localsMap,
+        this.breakMap,
+        this.contMap,
         this.cfg
     );
 }
@@ -365,6 +393,7 @@ function stmtToIR(context)
         'invalid IR conversion context specified'
     );
 
+    // Get a reference to the statement
     var astStmt = context.astNode;
 
     if (astStmt instanceof BlockStatement)
@@ -410,6 +439,8 @@ function stmtToIR(context)
             astStmt.statements[0],
             context.cfg.getNewBlock('if_true'),
             context.localsMap.copy(),
+            context.breakMap,
+            context.contMap,
             context.cfg
         );
         stmtToIR(trueContext);
@@ -419,6 +450,8 @@ function stmtToIR(context)
             astStmt.statements[1],
             context.cfg.getNewBlock('if_false'),
             context.localsMap.copy(),
+            context.breakMap,
+            context.contMap,
             context.cfg
         );
         stmtToIR(falseContext);
@@ -450,14 +483,65 @@ function stmtToIR(context)
         ast.expr = ctx.walk_expr(ast.expr);
         return ast;
     }
+    */
 
     else if (astStmt instanceof WhileStatement)
     {
+        // TODO
+        /*
         ast.expr = ctx.walk_expr(ast.expr);
         ast.statement = ctx.walk_statement(ast.statement);
-        return ast;
+        */
+
+
+        // This statement can have a label
+        // The body can contain many breaks and continues
+        // Only those that match our label matter
+        //
+        // Need a map from labels to break point lists
+        // Need a map from labels to continue point lists
+        //
+        // Can pass these down through contexts
+        // Create lists *for a given label* (can be '') here
+        // only pass these to the body statement when creating its context
+        //
+        // Must also pass lists coming from higher-up contexts
+
+        // Pursue should keep same maps of contexts
+        // Creating contexts should require passing a new map
+
+
+        // Test -> body -> test
+
+
+        // TODO: merging of contexts before test?
+        // Create phi nodes for everything in locals map
+        // For each context in continue context, do the merging...
+        // Could write function to do this
+        // Note that the body provides a continue context
+
+
+        // Get the label for this statement
+        var label = astStmt.stmtLabel? astStmt.stmtLabel:'';
+
+        // Create lists for the break and continue contexts
+        var brkCtxList = [];
+        var cntCtxList = [];
+
+
+
+
+
+
+
+
+
+
+        // TODO
+        context.setOutput(context.entryBlock);
     }
 
+    /*
     else if (astStmt instanceof ForStatement)
     {
         ast.expr1 = ctx.walk_expr(ast.expr1);
@@ -474,12 +558,27 @@ function stmtToIR(context)
         ast.statement = ctx.walk_statement(ast.statement);
         return ast;
     }
+    */
 
     else if (astStmt instanceof ContinueStatement)
     {
-        return ast;
+        var label = astStmt.label? astStmt.label:'';
+
+        // Add this context to the list corresponding to this label
+        context.contMap.getItem(label).push(context);
+
+        // TODO: problem: terminated contexts don't work in merge?
+        // However, we do not want more instructions added after here
+        // Indicate that this context is terminated
+
+        // Could actually "unterminate" continue and break contexts before merge...
+
+        // Idea: more context functions: close, reopen, bridge
+
+        context.setOutput(null);        
     }
 
+    /*
     else if (astStmt instanceof BreakStatement)
     {
         return ast;
@@ -517,13 +616,20 @@ function stmtToIR(context)
                             });
         return ast;
     }
+    */
 
     else if (astStmt instanceof LabelledStatement)
     {
-        ast.statement = ctx.walk_statement(ast.statement);
-        return ast;
+        // Assign our label to the inner statement
+        astStmt.statement.stmtLabel = astStmt.label;
+
+        // Compile the inner statement
+        var stmtContext = context.pursue(astStmt.statement);
+        stmtToIR(stmtContext);
+        context.setOutput(stmtContext.getExitBlock());
     }
 
+    /*
     else if (astStmt instanceof ThrowStatement)
     {
         ast.expr = ctx.walk_expr(ast.expr);
@@ -537,20 +643,18 @@ function stmtToIR(context)
         ast.finally_part = ctx.walk_statement(ast.finally_part);
         return ast;
     }
+    */
 
     else if (astStmt instanceof DebuggerStatement)
     {
-        return ast;
+        // This statement does nothing for now
+        context.setOutput(context.entryBlock);
     }
-    */
 
     else
     {
-        // Temporary, for unimplemented statements, the exit block is the entry block
-        context.setOutput(context.entryBlock);
-
-        // TODO
-        // error("UNKNOWN AST");
+        pp (astStmt);
+        assert (false, 'unsupported statement in IR translation');
     }
 }
 
@@ -602,7 +706,6 @@ function exprListToIR(context)
 
 /**
 Convert an AST expression into IR code
-@returns the value of the evaluated expression
 */
 function exprToIR(context)
 {
@@ -612,13 +715,8 @@ function exprToIR(context)
         'invalid IR conversion context specified'
     );
 
+    // Get a reference to the expression
     var astExpr = context.astNode;
-
-    // TODO
-
-    if (false)
-    {
-    }
 
     if (astExpr instanceof OpExpr)
     {
@@ -815,11 +913,8 @@ function exprToIR(context)
 
     else
     {
-        // Temporary, for unimplemented statements, the exit block is the entry block
-        context.setOutput(context.entryBlock, new UndefConst());
-
-        // TODO
-        // error("UNKNOWN AST");
+        pp(astExpr);
+        assert (false, 'unsupported expression in AST->IR translation');
     }    
 }
 

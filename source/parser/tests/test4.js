@@ -13,6 +13,12 @@ function f(x)
 
     //y[0] = x + 1;
 
+    foo:
+    while (true)
+    {
+        break foo;
+    }
+
     if (x < 2)
         return 1;
     else
