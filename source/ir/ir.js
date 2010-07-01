@@ -24,7 +24,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Convert an AST code unit into IR functions
 */
-function UnitToIR(
+function unitToIR(
     astUnit
 )
 {
@@ -46,7 +46,7 @@ function UnitToIR(
     assert (astUnit instanceof Program, 'top-level AST must be program');
 
     // Treat the top-level unit as a function
-    return StmtsToIRFunc(
+    return stmtListToIRFunc(
         '',
         null,
         [],
@@ -59,7 +59,7 @@ function UnitToIR(
 /**
 Convert an AST function into an IR function
 */
-function FuncToIR(
+function funcToIR(
     funcName,
     parentFunc,
     astFunc
@@ -69,7 +69,7 @@ function FuncToIR(
     assert (astFunc instanceof FunctionExpr, 'function must be AST function expression');
 
     // Compile the function
-    return StmtsToIRFunc(
+    return stmtListToIRFunc(
         funcName, 
         parentFunc,
         astFunc.params,
@@ -82,7 +82,7 @@ function FuncToIR(
 /**
 Convert an AST statement list into an IR function
 */
-function StmtsToIRFunc(
+function stmtListToIRFunc(
     funcName, 
     parentFunc,
     params,
@@ -136,7 +136,7 @@ function StmtsToIRFunc(
         localsMap,
         cfg
     );
-    StmtsToIR(bodyContext);
+    stmtListToIR(bodyContext);
 
     // If the context is not terminated, add a return undefined instruction to the exit block
     if (!bodyContext.isTerminated())
@@ -300,7 +300,7 @@ IRConvContext.prototype.pursue = function (astNode)
 /**
 Convert a statement list to IR code
 */
-function StmtsToIR(context)
+function stmtListToIR(context)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -325,7 +325,7 @@ function StmtsToIR(context)
         if (stmt instanceof FunctionDeclaration)
         {
             // Compile the function
-            var newFunc = FuncToIR(
+            var newFunc = funcToIR(
                 stmt.id.toString(),
                 context.cfg.ownerFunc,
                 stmt.funct
@@ -342,7 +342,7 @@ function StmtsToIR(context)
             curContext = curContext.pursue(stmt);
 
             // Generate code for the statement
-            StmtToIR(curContext);
+            stmtToIR(curContext);
 
             // If the context is terminated, stop
             if (curContext.isTerminated())
@@ -357,7 +357,7 @@ function StmtsToIR(context)
 /**
 Convert an AST statement into IR code
 */
-function StmtToIR(context)
+function stmtToIR(context)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -370,7 +370,9 @@ function StmtToIR(context)
     if (astStmt instanceof BlockStatement)
     {
         // Compile the statement list
-        StmtsToIR(context);
+        var blockContext = context.pursue(astStmt.statements);
+        stmtListToIR(blockContext);
+        context.setOutput(blockContext.getExitBlock());
     }
 
     else if (astStmt instanceof ConstStatement)
@@ -381,7 +383,9 @@ function StmtToIR(context)
     else if (astStmt instanceof ExprStatement)
     {
         // Compile the expression
-        ExprToIR(context);
+        var exprContext = context.pursue(astStmt.expr);
+        exprToIR(exprContext);
+        context.setOutput(exprContext.getExitBlock());
     }
 
     else if (astStmt instanceof IfStatement)
@@ -399,7 +403,7 @@ function StmtToIR(context)
 
         // Compile the test expression
         var testContext = context.pursue(astStmt.expr);
-        ExprToIR(testContext);
+        exprToIR(testContext);
 
         // Compile the true statement
         var trueContext = new IRConvContext(
@@ -408,7 +412,7 @@ function StmtToIR(context)
             context.localsMap.copy(),
             context.cfg
         );
-        StmtToIR(trueContext);
+        stmtToIR(trueContext);
 
         // Compile the false statement
         var falseContext = new IRConvContext(
@@ -417,7 +421,7 @@ function StmtToIR(context)
             context.localsMap.copy(),
             context.cfg
         );
-        StmtToIR(falseContext);
+        stmtToIR(falseContext);
 
         // Create the if branching instruction
         testContext.getExitBlock().addInstr(
@@ -486,7 +490,7 @@ function StmtToIR(context)
     {
         // Compile the return expression
         var retContext = context.pursue(astStmt.expr);
-        ExprToIR(retContext);
+        exprToIR(retContext);
 
         // Add a return instruction
         retContext.getExitBlock().addInstr(new RetInstr(retContext.getOutValue()));
@@ -554,7 +558,7 @@ function StmtToIR(context)
 Convert an AST expression list into IR code
 @returns a list of values for the evaluated expressions
 */
-function ExprsToIR(context)
+function exprListToIR(context)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -583,7 +587,7 @@ function ExprsToIR(context)
         curContext = curContext.pursue(expr);
 
         // Generate code for the argument expression
-        ExprToIR(curContext);
+        exprToIR(curContext);
 
         // Add the expression's value to the list
         exprVals.push(curContext.getOutValue());
@@ -600,7 +604,7 @@ function ExprsToIR(context)
 Convert an AST expression into IR code
 @returns the value of the evaluated expression
 */
-function ExprToIR(context)
+function exprToIR(context)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -618,47 +622,27 @@ function ExprToIR(context)
 
     if (astExpr instanceof OpExpr)
     {
-        /*
-        if (astExpr.op == 'x && y' || astExpr.op == 'x || y')
+        // If this is an assignment expression
+        if (astExpr.op == 'x = y')
+        {
+            // Convert the assignment statement
+            assgToIR(context);
+        }
+
+        // Otherwise, if this is a logical expression
+        else if (astExpr.op == 'x && y' || astExpr.op == 'x || y')
         {
             // TODO
             entryBlock.addInstr(new JumpInstr(exitBlock));
             return new UndefConst();
         }
-        */        
-
-        // Compile the argument values
-        var argsContext = context.pursue(astExpr.exprs);
-        var argVals = ExprsToIR(argsContext);
-
-        // Variable to store the operator's output value
-        var opVal;
-
-        // Get the exit block for the arguments context
-        var argsExit = argsContext.getExitBlock();
-
-        // Switch on the operator
-        switch (astExpr.op)
+        
+        // Otherwise, for all other unary and binary operations
+        else
         {
-            case 'x < y':
-            opVal = argsExit.addInstr(new CompInstr(CompOp.LT, argVals[0], argVals[1]));
-            break;
-
-            case 'x + y':
-            opVal = argsExit.addInstr(new ArithInstr(ArithOp.ADD, argVals[0], argVals[1]));
-            break;
-
-            case 'x - y':
-            opVal = argsExit.addInstr(new ArithInstr(ArithOp.SUB, argVals[0], argVals[1]));
-            break;
-
-            // TODO
-            default:
-            opVal = new UndefConst();
+            // Convert the operation
+            opToIR(context);
         }
-
-        // Set the operator's output value as the output
-        context.setOutput(argsContext.getExitBlock(), opVal);
     }
 
     /*
@@ -672,11 +656,9 @@ function ExprToIR(context)
 
     else if (astExpr instanceof CallExpr)
     {
-        print('call expr');
-
         // Compile the function argument list
         var argsContext = context.pursue(astExpr.args);
-        var argVals = ExprsToIR(argsContext);
+        var argVals = exprListToIR(argsContext);
 
         // Variable for the function value
         var funcVal;
@@ -695,11 +677,11 @@ function ExprToIR(context)
     
             // Generate code for the "this" expression
             var thisContext = argsContext.pursue(thisExpr);
-            ExprToIR(thisContext);
+            exprToIR(thisContext);
 
             // Generate code for the index expression
             var idxContext = thisContext.pursue(idxExpr);
-            ExprToIR(idxContext);
+            exprToIR(idxContext);
 
             // Get the function property from the object
             funcVal = idxContext.getExitBlock().addInstr(
@@ -709,6 +691,7 @@ function ExprToIR(context)
                 )
             );
 
+            // The this value is the result of the this expression evaluation
             thisVal = thisContext.getOutValue();
 
             lastContext = idxContext;
@@ -717,7 +700,7 @@ function ExprToIR(context)
         {
             // Generate code for the statement
             var funcContext = argsContext.pursue(astExpr.fn);
-            ExprToIR(funcContext);
+            exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
             // The this value is null
@@ -841,6 +824,175 @@ function ExprToIR(context)
 }
 
 /**
+Convert an assignment expression to IR code
+*/
+function assgToIR(context)
+{
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    // Get the left and right expressions
+    var leftExpr = context.astNode.exprs[0];
+    var rightExpr = context.astNode.exprs[1];
+
+    // Generate IR for the right expression
+    var rightContext = context.pursue(rightExpr);
+    exprToIR(rightContext);
+
+    var lastContext = rightContext;
+
+    // If the left-hand side is a simple variable name
+    if (leftExpr instanceof Ref)
+    {
+        var symName = leftExpr.id.toString();   
+
+        // If the variable is global
+        if (leftExpr.id.scope instanceof Program)
+        {
+            // Get the value from the global object
+            rightContext.getExitBlock().addInstr(
+                new SetPropValInstr(
+                    new GlobalRefConst(),
+                    new StrConst(symName),
+                    rightContext.getOutValue()
+                )
+            );
+        }
+
+        // Otherwise, the variable is local
+        else
+        {
+            // Update the variable value in the locals map
+            context.localsMap.setItem(symName, rightContext.getOutValue());
+        }
+    }
+
+    // Otherwise, if the left-hand side is an object field
+    else if (leftExpr instanceof OpExpr && leftExpr.op == 'x [ y ]')
+    {
+        var objExpr = leftExpr.exprs[0];
+        var idxExpr = leftExpr.exprs[1];
+    
+        // Generate code for the object expression
+        var objContext = rightContext.pursue(objExpr);
+        exprToIR(objContext);
+
+        // Generate code for the index expression
+        var idxContext = objContext.pursue(idxExpr);
+        exprToIR(idxContext);
+
+        // Set the property to the right expression's value
+        idxContext.getExitBlock().addInstr(
+            new SetPropValInstr(
+                objContext.getOutValue(),
+                idxContext.getOutValue(),
+                rightContext.getOutValue()
+            )
+        );
+
+        lastContext = idxContext;
+    }
+
+    // Otherwise
+    else
+    {
+        assert (false, 'unsupported assignment lhs expression');
+    }
+
+    // The value of the right expression is the assignment expression's value
+    context.setOutput(lastContext.getExitBlock(), rightContext.getOutValue());    
+}
+
+/**
+Convert ordinary unary and binary operations to IR code
+*/
+function opToIR(context)
+{
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    // Compile the argument values
+    var argsContext = context.pursue(context.astNode.exprs);
+    var argVals = exprListToIR(argsContext);
+
+    // Variable to store the operator's output value
+    var opVal;
+
+    // Get the exit block for the arguments context
+    var argsExit = argsContext.getExitBlock();
+
+    // Switch on the operator
+    switch (context.astNode.op)
+    {
+        case 'x < y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.LT, argVals[0], argVals[1]));
+        break;
+
+        case 'x <= y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.LTE, argVals[0], argVals[1]));
+        break;
+
+        case 'x > y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.GT, argVals[0], argVals[1]));
+        break;
+
+        case 'x >= y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.GTE, argVals[0], argVals[1]));
+        break;
+
+        case 'x == y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.EQ, argVals[0], argVals[1]));
+        break;
+
+        case 'x != y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.NEQ, argVals[0], argVals[1]));
+        break;
+
+        case 'x === y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.SEQ, argVals[0], argVals[1]));
+        break;
+
+        case 'x !== y':
+        opVal = argsExit.addInstr(new CompInstr(CompOp.NSEQ, argVals[0], argVals[1]));
+        break;
+
+        case 'x + y':
+        opVal = argsExit.addInstr(new ArithInstr(ArithOp.ADD, argVals[0], argVals[1]));
+        break;
+
+        case 'x - y':
+        opVal = argsExit.addInstr(new ArithInstr(ArithOp.SUB, argVals[0], argVals[1]));
+        break;
+
+        case 'x * y':
+        opVal = argsExit.addInstr(new ArithInstr(ArithOp.MUL, argVals[0], argVals[1]));
+        break;
+
+        case 'x / y':
+        opVal = argsExit.addInstr(new ArithInstr(ArithOp.DIV, argVals[0], argVals[1]));
+        break;
+
+        case 'x % y':
+        opVal = argsExit.addInstr(new ArithInstr(ArithOp.MOD, argVals[0], argVals[1]));
+        break;
+
+        default:
+        {
+            assert (false, 'Unsupported AST operation "' + astExpr.op + '"');
+        }
+    }
+
+    // Set the operator's output value as the output
+    context.setOutput(argsContext.getExitBlock(), opVal);
+}
+
+/**
 Merge IR conversion contexts local variables locations using phi nodes
 */
 function mergeContexts(contexts, mergeMap, cfg, blockName)
@@ -933,7 +1085,7 @@ function testIR()
     pp(normalized_ast); // pretty-print AST
     print('\n');
 
-    ir = UnitToIR(normalized_ast);
+    ir = unitToIR(normalized_ast);
 
     print(ir);
 }

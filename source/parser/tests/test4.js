@@ -1,18 +1,22 @@
 function f(x)
 {
     /*
+    var y;
+
     if (true)
-        f(0);
+        y = x + 1;
     else
-        f(1);
+        y = x + 2;
+
+    f(y);
     */
+
+    //y[0] = x + 1;
 
     if (x < 2)
         return 1;
     else
         return f(x-1) + f(x-2);
-
-    //return true;
 
     /*
     if (x && y)

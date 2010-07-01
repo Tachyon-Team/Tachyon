@@ -660,16 +660,16 @@ InstOfInstr.prototype.copy = function ()
 @class Property set with value for field name
 @augments IRInstr
 */
-function SetPropValInstr(objVal, nameVal)
+function SetPropValInstr(objVal, nameVal, setVal)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = 'setprop_val';
 
     /**
-    Object and field name values
+    Object name, field name and value to set
     @field
     */
-    this.uses = [objVal, nameVal];
+    this.uses = [objVal, nameVal, setVal];
 }
 SetPropValInstr.prototype = new IRInstr();
 
@@ -678,7 +678,7 @@ Make a shallow copy of the instruction
 */
 SetPropValInstr.prototype.copy = function ()
 {
-    var newInstr = new SetPropValInstr(this.uses[0], this.uses[1]);
+    var newInstr = new SetPropValInstr(this.uses[0], this.uses[1], this.uses[2]);
     return this.baseCopy(newInstr);
 };
 
