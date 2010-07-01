@@ -33,7 +33,7 @@ function defHashFunc(val)
         var hashCode = 0;
 
         for (var i = 0; i < val.length; ++i)
-            hashCode = (((hashCode << 8) + val.charCodeAt(i)) * 331804471) & 536870911;
+            hashCode = (hashCode * 256 + val.charCodeAt(i)) % 426870919;
 
         return hashCode;
     }
