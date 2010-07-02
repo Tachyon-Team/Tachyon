@@ -9,6 +9,8 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+// TODO: maintain unique constant instances...
+
 //=============================================================================
 // IR Core
 //

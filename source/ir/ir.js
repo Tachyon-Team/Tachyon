@@ -265,7 +265,23 @@ IRConvContext.prototype.setOutput = function (exitBlock, outValue)
     this.exitBlock = exitBlock;
 
     this.outValue = outValue;
-}
+};
+
+/**
+Terminate a context so it cannot be pursued
+*/
+IRConvContext.prototype.terminate = function ()
+{
+    this.exitBlock = null;
+};
+
+/**
+Bridge a context with no exit block
+*/
+IRConvContext.prototype.bridge = function ()
+{
+    this.exitBlock = this.entryBlock;
+};
 
 /**
 Get the exit block from a conversion context
@@ -279,7 +295,7 @@ IRConvContext.prototype.getExitBlock = function ()
     );
 
     return this.exitBlock;
-}
+};
 
 /**
 Get the output value from a conversion context
@@ -293,7 +309,7 @@ IRConvContext.prototype.getOutValue = function ()
     );
 
     return this.outValue;
-}
+};
 
 /**
 Test if a context is terminated
@@ -301,7 +317,7 @@ Test if a context is terminated
 IRConvContext.prototype.isTerminated = function (astNode)
 {
     return this.exitBlock === null;
-}
+};
 
 /**
 Create a new context to pursue the conversion of a sequential
@@ -323,7 +339,7 @@ IRConvContext.prototype.pursue = function (astNode)
         this.contMap,
         this.cfg
     );
-}
+};
 
 /**
 Convert a statement list to IR code
@@ -338,8 +354,8 @@ function stmtListToIR(context)
 
     var stmtList = context.astNode;
 
-    // "Close" the current context, in case the statement list is empty
-    context.setOutput(context.entryBlock);
+    // Bridge the current context, in case the statement list is empty
+    context.bridge();
 
     // The current statement context is the entry context
     var curContext = context;
@@ -514,6 +530,15 @@ function stmtToIR(context)
         // Test -> body -> test
 
 
+        // TODO: problem: terminated contexts don't work in merge?
+        // However, we do not want more instructions added after here
+        // Indicate that this context is terminated
+        //
+        // Could actually "unterminate" continue and break contexts before merge...
+        //
+        // Idea: more context functions: close, reopen, bridge        
+
+
         // TODO: merging of contexts before test?
         // Create phi nodes for everything in locals map
         // For each context in continue context, do the merging...
@@ -528,7 +553,20 @@ function stmtToIR(context)
         var brkCtxList = [];
         var cntCtxList = [];
 
+        /*
+        var testEntry = context.cfg.getNewBlock('loop_test');
 
+
+        var testContext = new IRConvContext(
+            astStmt.expr,
+            testEntry,
+            context.localsMap.copy(),
+            //context.breakMap,
+            //context.contMap,
+            context.cfg
+        );
+        stmtToIR();
+        */
 
 
 
@@ -538,7 +576,7 @@ function stmtToIR(context)
 
 
         // TODO
-        context.setOutput(context.entryBlock);
+        context.bridge();
     }
 
     /*
@@ -562,28 +600,27 @@ function stmtToIR(context)
 
     else if (astStmt instanceof ContinueStatement)
     {
+        // Get the label, if one was specified
         var label = astStmt.label? astStmt.label:'';
 
         // Add this context to the list corresponding to this label
         context.contMap.getItem(label).push(context);
 
-        // TODO: problem: terminated contexts don't work in merge?
-        // However, we do not want more instructions added after here
-        // Indicate that this context is terminated
-
-        // Could actually "unterminate" continue and break contexts before merge...
-
-        // Idea: more context functions: close, reopen, bridge
-
-        context.setOutput(null);        
+        // Terminate the context, no instructions go after this
+        context.terminate();
     }
 
-    /*
     else if (astStmt instanceof BreakStatement)
     {
-        return ast;
+        // Get the label, if one was specified
+        var label = astStmt.label? astStmt.label:'';
+
+        // Add this context to the list corresponding to this label
+        context.breakMap.getItem(label).push(context);
+
+        // Terminate the context, no instructions go after this
+        context.terminate();
     }
-    */
 
     else if (astStmt instanceof ReturnStatement)
     {
@@ -595,7 +632,7 @@ function stmtToIR(context)
         retContext.getExitBlock().addInstr(new RetInstr(retContext.getOutValue()));
 
         // Indicate that there is no continuation for this context
-        context.setOutput(null);
+        context.terminate();
     }
 
     /*
@@ -648,7 +685,7 @@ function stmtToIR(context)
     else if (astStmt instanceof DebuggerStatement)
     {
         // This statement does nothing for now
-        context.setOutput(context.entryBlock);
+        context.bridge();
     }
 
     else
@@ -673,8 +710,8 @@ function exprListToIR(context)
     // Get the expression list
     var exprList = context.astNode;
 
-    // "Close" the current context, in case the expression list is empty
-    context.setOutput(context.entryBlock);
+    // Bridge the current context, in case the expression list is empty
+    context.bridge();
 
     // The current context is the entry context
     var curContext = context;
