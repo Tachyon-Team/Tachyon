@@ -10,7 +10,8 @@ generator written in Scheme.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-function x86_Assembler()
+// TODO: Why can't we put those constructors on a global object named x86?
+function x86_Assembler ()
 {
     this.listing   = true;
     this.codeBlock = new asm_CodeBlock(true, 0, this.listing);
@@ -25,6 +26,85 @@ x86.gen8  = function (n) { this.codeBlock.gen8(n);  return this;};
 x86.gen16 = function (n) { this.codeBlock.gen16(n); return this;};
 x86.gen32 = function (n) { this.codeBlock.gen32(n); return this;};
 x86.gen64 = function (n) { this.codeBlock.gen64(n); return this;};
+
+x86.genImmNum = function (k, width)
+{
+    // TODO: Find out what behavior should the signed-lo have
+    function signed-lo(n, k) 
+    {
+        return k & (Math.pow(2,n) - 1);
+    }
+
+    if ( width === 8) 
+    {
+        this.gen8(signed-lo(8,k));   
+    } else if (width === 16) 
+    {
+        this.gen16(signed-lo(16,k));
+    } else if (width === 32)
+    {
+        this.gen32(signed-lo(32,k));
+    }
+    else 
+    {
+        this.gen64(signed-lo(64,k));
+    }   
+    return this;
+}
+
+// Types to allow testing for object type on x86 related
+// objects
+x86.type = {};
+x86.type.IMM = 0;
+x86.type.REG = 1;
+x86.type.MEM = 2;
+x86.type.GLO = 3;
+x86.type.LBL = 4;
+
+// Immediate object to represent immediate value
+x86.immediate = function (value)
+{
+    // Enforce that modifications of the that object
+    // won't screw up the prototype by creating a
+    // new object for each instance whether they
+    // have non-default properties or not
+    var that = Object.create(x86.immediate.prototype);
+
+    // Minimize memory usage by storing default values 
+    // for properties only on the prototype and avoid
+    // duplicating default values in each instance    
+    if (value)   { that.value = value; }
+
+    return that;
+}
+x86.immediate.prototype.value = 0;
+x86.immediate.prototype.type  = x86.type.IMM;
+
+// Memory object operand representing an access 
+// to memory through a Displacement, Scale, Index and Base
+x86.memory = function ( disp, base, index, scale )
+{
+    var that = Object.create(x86.memory.prototype);
+
+    if (disp)   { that.disp   = disp; }
+    if (base)   { that.base   = base;   }
+    if (index)  { that.index  = index;  }
+    if (scale)  { that.scale  = scale;  }
+    
+    return that;
+}
+
+// Let's use explicit null values to enforce
+// presence of the properties while 
+// being able to detect that these are defaults
+x86.memory.prototype.base   = null;
+x86.memory.prototype.index  = null;
+// Idem for 0
+x86.memory.prototype.disp   = 0;
+x86.memory.prototype.scale  = 0;
+x86.memory.prototype.type   = x86.type.MEM;
+
+
 
 //-----------------------------------------------------------------------------
 

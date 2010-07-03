@@ -188,9 +188,20 @@
     '(asm-8
       asm-16
       asm-32
+      asm-code-extend
+      asm-code-block-stream
       gen-8
       gen-16
       gen-32
+      gen-64
+      gen-imm-num
+      x86-opnd-size-override-prefix
+      x86-mem
+      x86-mem?
+      x86-mem-offset
+      x86-mem-reg1
+      x86-mem-reg2
+      x86-mem-scale
       rtl-code-gen-context-code-block))
 
 (if (null? (cdr (command-line))) (report) (report2))
