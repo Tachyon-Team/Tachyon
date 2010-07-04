@@ -202,6 +202,27 @@
       x86-mem-reg1
       x86-mem-reg2
       x86-mem-scale
+      x86-glo
+      x86-glo?
+      x86-glo-name
+      x86-glo-offset
+      x86-reg
+      x86-reg-field
+      x86-reg-width
+      x86-reg-name
+      x86-reg?
+      x86-r8?
+      x86-r8-h?
+      x86-xmm?
+      x86-mm?
+      x86-fpu?
+      x86-r16?
+      x86-r32?
+      x86-r64?
+      x86-r8
+      x86-r16
+      x86-r32
+      x86-r64
       rtl-code-gen-context-code-block))
 
 (if (null? (cdr (command-line))) (report) (report2))
