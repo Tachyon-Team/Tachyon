@@ -382,6 +382,8 @@ Remove a basic block from this CFG
 */
 ControlFlowGraph.prototype.remBlock = function (block)
 {
+    print('Removing block: ' + block.label);
+
     // Remove this block from the successors of our predecessors
     for (var i = 0; i < block.preds.length; ++i)
         block.preds[i].remSucc(this);
@@ -408,11 +410,11 @@ ControlFlowGraph.prototype.remBlock = function (block)
             for (var k = 0; k < instr.preds.length; ++k)
             {
                 // If this is a reference to the block
-                if (instr.preds[k] === succ)
+                if (instr.preds[k] === block)
                 {
                     // Remove this value
-                    instr.preds.splice(l, 1);
-                    instr.uses.splice(l, 1);
+                    instr.preds.splice(k, 1);
+                    instr.uses.splice(k, 1);
                     
                     // Move back to the previous index
                     k--;
@@ -544,6 +546,8 @@ ControlFlowGraph.prototype.simplify = function ()
                     }
                 }
 
+                print('Number of succ succs: ' + succ.succs.length);
+
                 // For each successor of the successor
                 for (var j = 0; j < succ.succs.length; ++j)
                 {
@@ -560,6 +564,8 @@ ControlFlowGraph.prototype.simplify = function ()
 
                         var phiPreds = instr.preds;
 
+                        print('Fixing up phi node: ' + instr);
+
                         // For each predecessor of the phi node
                         for (var l = 0; l < phiPreds.length; ++l)
                         {
@@ -567,6 +573,8 @@ ControlFlowGraph.prototype.simplify = function ()
                             if (phiPreds[l] === succ)
                                 phiPreds[l] = block;
                         }
+
+                        print('Fixed up: ' + instr);
                     }
                 }
 
@@ -648,6 +656,8 @@ ControlFlowGraph.prototype.simplify = function ()
             // Vi <- phi(...Vi...Vi...)
             if (numVi == phiNode.uses.length)
             {
+                print('Removing: ' + phiNode);
+
                 // Remove the phi node
                 phiNode.parentBlock.remInstr(phiNode);
                 arraySetRem(phiNodes, phiNode);
@@ -658,11 +668,16 @@ ControlFlowGraph.prototype.simplify = function ()
             // 0 or more Vi and 1 or more Vj
             else if (numVi + numVj == phiNode.uses.length)        
             {
+                print('Renaming: ' + phiNode);
+
                 // Rename all occurences of Vi to Vj
                 for (var k = 0; k < phiNode.dests.length; ++k)
-                    phiNode.dests[k].replUse(phiNode, Vj);
-
-                print(phiNode);
+                {
+                    var dest = phiNode.dests[k];
+                    dest.replUse(phiNode, Vj);
+                    if (Vj instanceof IRInstr)
+                        Vj.addDest(dest);
+                }
 
                 // Remove the phi node
                 phiNode.parentBlock.remInstr(phiNode);
@@ -770,7 +785,7 @@ ControlFlowGraph.prototype.validate = function ()
             for (var k = 0; k < instr.dests.length; ++k)
             {
                 if (!arraySetHas(instr.dests[k].uses, instr))
-                    return 'dest missing use link';
+                    return 'dest missing use link:\n' + instr.dests[k] + ' using ' + instr;
             }
         }
     }
@@ -1092,6 +1107,8 @@ Remove an instruction from this basic block by index
 */
 BasicBlock.prototype.remInstrAtIndex = function (index)
 {
+    print('Removing instr: ' + this.instrs[index]);
+
     // Get a reference to the instruction
     var instr = this.instrs[index]
 
@@ -1100,7 +1117,8 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 
     // Remove reverse edges from all uses to this instruction
     for (var i = 0; i < instr.uses.length; ++i)
-        instr.uses[i].remDest(instr);
+        if (instr.uses[i] instanceof IRInstr)
+            instr.uses[i].remDest(instr);
 
     // If this is a branch instruction
     if (instr instanceof BranchInstr)
@@ -1124,6 +1142,24 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
     // Free this instruction's output name
     this.parentCFG.freeInstrName(instr);
 };
+
+/**
+Test if this block is terminated by a branch instruction
+*/
+BasicBlock.prototype.hasBranch = function ()
+{
+    return this.instrs.length > 0 && this.instrs[this.instrs.length - 1] instanceof BranchInstr;
+}
+
+/**
+Remove the branch instruction terminating a block
+*/
+BasicBlock.prototype.remBranch = function ()
+{
+    assert (this.hasBranch(), 'cannot remove branch, none present');
+
+    this.remInstrAtIndex(this.instrs.length - 1);
+}
 
 /**
 Add a predecessor block

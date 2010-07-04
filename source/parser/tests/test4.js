@@ -1,5 +1,15 @@
 function f(x)
 {
+    var y = 0;
+
+    do
+    {
+        y = y + 1;
+
+    } while (true);
+
+
+
     /*
     var y;
 
@@ -13,16 +23,36 @@ function f(x)
 
     //y[0] = x + 1;
 
+    /*
+    var y = 0;
+
+    if (true)
+        y = 0;
+
+    f(y);
+    */
+
+    /*    
     foo:
     while (true)
     {
-        break foo;
-    }
+        y = y + 1;
 
+        f(y);
+
+        if (true)
+            continue;
+        else
+            y = 3;
+    }
+    */
+
+    /*
     if (x < 2)
         return 1;
     else
         return f(x-1) + f(x-2);
+    */
 
     /*
     if (x && y)

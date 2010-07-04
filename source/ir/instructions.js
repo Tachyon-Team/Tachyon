@@ -378,6 +378,9 @@ PhiInstr.prototype.addIncoming = function (value, pred)
 
     this.uses.push(value);
     this.preds.push(pred);
+
+    if (value instanceof IRInstr)
+        value.addDest(this);
 };
 
 /**

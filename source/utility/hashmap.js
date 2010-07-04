@@ -108,6 +108,9 @@ function HashMap(hashFunc, equalFunc)
             {
                 // Set the item's value
                 this.array[index + 1] = value;
+
+                // Exit the function
+                return;
             }
 
             index = (index + 2) % this.array.length;

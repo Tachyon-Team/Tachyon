@@ -147,9 +147,12 @@ function stmtListToIRFunc(
     if (!bodyContext.isTerminated())
         bodyContext.getExitBlock().addInstr(new RetInstr(new UndefConst()));
 
+    print(cfg);
+    print('');
+
     // Simplify the CFG
     cfg.simplify();
-
+    
     // Run a validation test on the CFG
     var validation = cfg.validate();
 
@@ -195,7 +198,6 @@ function IRConvContext(astNode, entryBlock, localsMap, breakMap, contMap, cfg)
         cfg !== undefined && cfg instanceof ControlFlowGraph,
         'CFG not defined or invalid in IR conversion context'
     );
-
 
     /**
     AST node to convert
@@ -447,7 +449,7 @@ function stmtToIR(context)
         // getprop_val already implies complex underlying algorithm, unlike if test
 
         // Compile the test expression
-        var testContext = context.pursue(astStmt.expr);
+        var testContext = context.pursue(astStmt.expr);        
         exprToIR(testContext);
 
         // Compile the true statement
@@ -461,24 +463,33 @@ function stmtToIR(context)
         );
         stmtToIR(trueContext);
 
-        // Compile the false statement
-        var falseContext = new IRConvContext(
-            astStmt.statements[1],
-            context.cfg.getNewBlock('if_false'),
-            context.localsMap.copy(),
-            context.breakMap,
-            context.contMap,
-            context.cfg
-        );
-        stmtToIR(falseContext);
-
-        // Create the if branching instruction
-        testContext.getExitBlock().addInstr(
-            new IfInstr(
-                testContext.getOutValue(),
-                trueContext.entryBlock,
-                falseContext.entryBlock)
-        );       
+        // If a false statement is defined
+        if (astStmt.statements.length > 1)
+        {
+            // Compile the false statement
+            var falseContext = new IRConvContext(
+                astStmt.statements[1],
+                context.cfg.getNewBlock('if_false'),
+                context.localsMap.copy(),
+                context.breakMap,
+                context.contMap,
+                context.cfg
+            );
+            stmtToIR(falseContext);
+        }
+        else
+        {
+            // Create a context for the empty false branch and bridge it
+            var falseContext = new IRConvContext(
+                astStmt.expr,
+                context.cfg.getNewBlock('if_false'),
+                context.localsMap.copy(),
+                context.breakMap,
+                context.contMap,
+                context.cfg
+            );
+            falseContext.bridge();
+        }
 
         // Merge the local maps using phi nodes
         var joinBlock = mergeContexts(
@@ -488,95 +499,267 @@ function stmtToIR(context)
             'if_join'
         );
 
+        // Create the if branching instruction
+        testContext.getExitBlock().addInstr(
+            new IfInstr(
+                testContext.getOutValue(),
+                trueContext.entryBlock,
+                falseContext.entryBlock
+            )
+        );
+
         // Set the exit block to be the join block
         context.setOutput(joinBlock);
     }
 
-    /*
     else if (astStmt instanceof DoWhileStatement)
-    {
-        ast.statement = ctx.walk_statement(ast.statement);
-        ast.expr = ctx.walk_expr(ast.expr);
-        return ast;
-    }
-    */
-
-    else if (astStmt instanceof WhileStatement)
     {
         // TODO
         /*
-        ast.expr = ctx.walk_expr(ast.expr);
         ast.statement = ctx.walk_statement(ast.statement);
+        ast.expr = ctx.walk_expr(ast.expr);
         */
 
 
-        // This statement can have a label
-        // The body can contain many breaks and continues
-        // Only those that match our label matter
-        //
-        // Need a map from labels to break point lists
-        // Need a map from labels to continue point lists
-        //
-        // Can pass these down through contexts
-        // Create lists *for a given label* (can be '') here
-        // only pass these to the body statement when creating its context
-        //
-        // Must also pass lists coming from higher-up contexts
-
-        // Pursue should keep same maps of contexts
-        // Creating contexts should require passing a new map
 
 
-        // Test -> body -> test
 
 
-        // TODO: problem: terminated contexts don't work in merge?
-        // However, we do not want more instructions added after here
-        // Indicate that this context is terminated
-        //
-        // Could actually "unterminate" continue and break contexts before merge...
-        //
-        // Idea: more context functions: close, reopen, bridge        
 
 
-        // TODO: merging of contexts before test?
-        // Create phi nodes for everything in locals map
-        // For each context in continue context, do the merging...
-        // Could write function to do this
-        // Note that the body provides a continue context
 
 
         // Get the label for this statement
-        var label = astStmt.stmtLabel? astStmt.stmtLabel:'';
+        var label = astStmt.stmtLabel? astStmt.stmtLabel.toString():'';
 
         // Create lists for the break and continue contexts
         var brkCtxList = [];
         var cntCtxList = [];
 
-        /*
-        var testEntry = context.cfg.getNewBlock('loop_test');
+        // Update the break and continue context maps for the loop body
+        var breakMap = context.breakMap.copy();
+        var contMap = context.contMap.copy();
+        breakMap.setItem(label, brkCtxList);
+        contMap.setItem(label, cntCtxList);
+        breakMap.setItem('', brkCtxList);
+        contMap.setItem('', cntCtxList);
+
+        // Create a basic block for the loop entry
+        var loopEntry = context.cfg.getNewBlock('loop_body');
+
+        // Create a new locals map for the loop entry
+        var entryLocals = context.localsMap.copy();
+
+        // Create a phi node for each local variable in the current context
+        var localVars = context.localsMap.getKeys();
+        for (var i = 0; i < localVars.length; ++i)
+        {
+            var varName = localVars[i];
+            var phiNode = new PhiInstr(
+                [context.localsMap.getItem(varName)],
+                [context.entryBlock]
+            );
+            loopEntry.addInstr(phiNode);
+            entryLocals.setItem(varName, phiNode);
+        }
 
 
+
+              
+        // Compile the test statement
+        var bodyContext = new IRConvContext(
+            astStmt.statement,
+            loopEntry,
+            entryLocals.copy(),
+            breakMap,
+            contMap,
+            context.cfg
+        );
+        stmtToIR(bodyContext);
+
+        // Add the body exit to the continue context list
+        cntCtxList.push(bodyContext);
+
+        // Merge the continue contexts
+        var testLocals = new HashMap();
+        var testEntry = mergeContexts(
+            cntCtxList,
+            testLocals,
+            context.cfg,
+            'loop_test'
+        );
+
+        // Compile the loop test
         var testContext = new IRConvContext(
             astStmt.expr,
             testEntry,
-            context.localsMap.copy(),
-            //context.breakMap,
-            //context.contMap,
+            testLocals,
+            breakMap,
+            contMap,
             context.cfg
         );
-        stmtToIR();
-        */
+        exprToIR(testContext);
+
+        // Add the test exit to the break context list
+        brkCtxList.push(testContext);
+
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localsMap,
+            context.cfg,
+            'loop_exit'
+        );
 
 
 
+    
+        // For each local variable
+        for (var i = 0; i < localVars.length; ++i)
+        {
+            var varName = localVars[i];
+            var phiNode = entryLocals.getItem(varName);
+
+            // Add an incoming value for the test exit
+            var varValue = testContext.localsMap.getItem(varName);
+            phiNode.addIncoming(varValue, testContext.getExitBlock());
+        }
+        
 
 
 
+        // Replace the jump added by the context merging at the test exit
+        // by the if branching instruction
+        var testExit = testContext.getExitBlock();
+        testExit.remBranch();
+        testExit.addInstr(
+            new IfInstr(
+                testContext.getOutValue(),
+                bodyContext.entryBlock,
+                loopExit
+            )
+        );       
 
+        // Add a jump from the entry block to the loop entry
+        context.entryBlock.addInstr(new JumpInstr(loopEntry));
 
-        // TODO
-        context.bridge();
+        // Set the exit block to be the join block
+        context.setOutput(loopExit);
+    }
+
+    else if (astStmt instanceof WhileStatement)
+    {
+        // Get the label for this statement
+        var label = astStmt.stmtLabel? astStmt.stmtLabel.toString():'';
+
+        // Create lists for the break and continue contexts
+        var brkCtxList = [];
+        var cntCtxList = [];
+
+        // Update the break and continue context maps for the loop body
+        var breakMap = context.breakMap.copy();
+        var contMap = context.contMap.copy();
+        breakMap.setItem(label, brkCtxList);
+        contMap.setItem(label, cntCtxList);
+        breakMap.setItem('', brkCtxList);
+        contMap.setItem('', cntCtxList);
+
+        // Create a basic block for the loop entry
+        var loopEntry = context.cfg.getNewBlock('loop_test');
+
+        // Create a new locals map for the loop entry
+        var entryLocals = context.localsMap.copy();
+
+        // Create a phi node for each local variable in the current context
+        var localVars = context.localsMap.getKeys();
+        for (var i = 0; i < localVars.length; ++i)
+        {
+            var varName = localVars[i];
+            var phiNode = new PhiInstr(
+                [context.localsMap.getItem(varName)],
+                [context.entryBlock]
+            );
+            loopEntry.addInstr(phiNode);
+            entryLocals.setItem(varName, phiNode);
+        }
+        
+        // Create a context for the loop entry
+        var entryContext = new IRConvContext(
+            astStmt.expr,
+            loopEntry,
+            entryLocals.copy(),
+            breakMap,
+            contMap,
+            context.cfg
+        );
+
+        // Compile the loop test in the entry context
+        exprToIR(entryContext);
+              
+        // Compile the body statement
+        var bodyContext = new IRConvContext(
+            astStmt.statement,
+            context.cfg.getNewBlock('loop_body'),
+            entryContext.localsMap.copy(),
+            breakMap,
+            contMap,
+            context.cfg
+        );
+        stmtToIR(bodyContext);
+
+        // Add the test exit to the entry context list
+        brkCtxList.push(entryContext);
+
+        // Add the body exit to the continue context list
+        cntCtxList.push(bodyContext);  
+
+        // For each local variable
+        for (var i = 0; i < localVars.length; ++i)
+        {
+            var varName = localVars[i];
+            var phiNode = entryLocals.getItem(varName);
+
+            // Add an incoming value for every context
+            for (var j = 0; j < cntCtxList.length; ++j)
+            {
+                var cntContext = cntCtxList[j];
+                var varValue = cntContext.localsMap.getItem(varName);
+                phiNode.addIncoming(varValue, cntContext.getExitBlock());
+            }
+        }
+
+        // Add a branch from every continue context to the loop entry
+        for (var j = 0; j < cntCtxList.length; ++j)
+        {
+            var cntContext = cntCtxList[j];
+            cntContext.getExitBlock().addInstr(new JumpInstr(loopEntry));
+        }
+
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localsMap,
+            context.cfg,
+            'loop_exit'
+        );
+
+        // Replace the jump added by the context merging at the test exit
+        // by the if branching instruction
+        var testExit = entryContext.getExitBlock();
+        testExit.remBranch();
+        testExit.addInstr(
+            new IfInstr(
+                entryContext.getOutValue(),
+                bodyContext.entryBlock,
+                loopExit
+            )
+        );       
+
+        // Add a jump from the entry block to the loop entry
+        context.entryBlock.addInstr(new JumpInstr(loopEntry));
+
+        // Set the exit block to be the join block
+        context.setOutput(loopExit);
     }
 
     /*
@@ -601,24 +784,32 @@ function stmtToIR(context)
     else if (astStmt instanceof ContinueStatement)
     {
         // Get the label, if one was specified
-        var label = astStmt.label? astStmt.label:'';
+        var label = astStmt.label? astStmt.label.toString():'';
 
-        // Add this context to the list corresponding to this label
-        context.contMap.getItem(label).push(context);
+        // Create a new context and bridge it
+        var newContext = context.pursue(context.astNode);
+        newContext.bridge();
 
-        // Terminate the context, no instructions go after this
+        // Add the new context to the list corresponding to this label
+        context.contMap.getItem(label).push(newContext);
+
+        // Terminate the current context, no instructions go after this
         context.terminate();
     }
 
     else if (astStmt instanceof BreakStatement)
     {
         // Get the label, if one was specified
-        var label = astStmt.label? astStmt.label:'';
+        var label = astStmt.label? astStmt.label.toString():'';
 
-        // Add this context to the list corresponding to this label
-        context.breakMap.getItem(label).push(context);
+        // Create a new context and bridge it
+        var newContext = context.pursue(context.astNode);
+        newContext.bridge();
 
-        // Terminate the context, no instructions go after this
+        // Add the new context to the list corresponding to this label
+        context.breakMap.getItem(label).push(newContext);
+
+        // Terminate the current context, no instructions go after this
         context.terminate();
     }
 
