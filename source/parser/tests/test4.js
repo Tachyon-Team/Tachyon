@@ -1,25 +1,42 @@
 function f(x)
 {
+    
+    
     var y = 0;
 
     do
     {
+        if (true)
+        {
+            y = 1;
+            break;
+        }
+
         y = y + 1;
 
     } while (true);
 
+    f(y);
+    
 
 
     /*
-    var y;
+    var y = 0;
 
-    if (true)
-        y = x + 1;
-    else
-        y = x + 2;
+    while (true)
+    {
+        if (true)
+        {
+            y = 3;
+            break;
+        }
+
+        y = y + 1;
+    }    
 
     f(y);
     */
+
 
     //y[0] = x + 1;
 
