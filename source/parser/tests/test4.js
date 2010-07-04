@@ -1,7 +1,15 @@
 function f(x)
 {
+    var y;
+
+    if (true)
+        y = 1;
+    else
+        y = 1;
     
+    f(y);
     
+    /*
     var y = 0;
 
     do
@@ -17,7 +25,7 @@ function f(x)
     } while (true);
 
     f(y);
-    
+    */
 
 
     /*
@@ -89,3 +97,4 @@ function f(x)
 }
 
 print(f(20));
+

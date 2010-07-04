@@ -126,7 +126,7 @@ function stmtListToIRFunc(
     // Add the lcoals to the locals map
     for (var i = 0; i < locals.length; ++i)
     {
-        localsMap.addItem(locals[i].toString(), new UndefConst());
+        localsMap.addItem(locals[i].toString(), ConstValue.getConst(undefined));
     }
 
     // Get the entry block for the CFG
@@ -143,9 +143,14 @@ function stmtListToIRFunc(
     );
     stmtListToIR(bodyContext);
 
-    // If the context is not terminated, add a return undefined instruction to the exit block
+    // If the context is not terminated
     if (!bodyContext.isTerminated())
-        bodyContext.getExitBlock().addInstr(new RetInstr(new UndefConst()));
+    {
+        // Add a return undefined instruction to the exit block
+        bodyContext.getExitBlock().addInstr(
+            new RetInstr(ConstValue.getConst(undefined))
+        );
+    }
 
     print(cfg);
     print('');
@@ -859,7 +864,7 @@ function exprToIR(context)
         {
             // TODO
             entryBlock.addInstr(new JumpInstr(exitBlock));
-            return new UndefConst();
+            return ConstValue.getConst(undefined);
         }
         
         // Otherwise, for all other unary and binary operations
@@ -929,7 +934,7 @@ function exprToIR(context)
             funcVal = funcContext.getOutValue();
 
             // The this value is null
-            thisVal = new NullConst();
+            thisVal = ConstValue.getConst(null);
 
             lastContext = funcContext;
         }
@@ -954,23 +959,17 @@ function exprToIR(context)
     {
         var constValue;
 
-        if (typeof astExpr.value == 'string')
+        switch (typeof astExpr.value)
         {
-            constValue = new StrConst(astExpr.value);
-        }
-        else if (typeof astExpr.value == 'number')
-        {
-            if (astExpr.value == parseInt(astExpr.value))
-                constValue = new IntConst(astExpr.value);
-            else
-                constValue = new FPConst(astExpr.value);
-        }
-        else if (typeof astExpr.value == 'boolean')
-        {
-            constValue = new BoolConst(astExpr.value);
-        }
-        else
-        {
+            case 'string':
+            case 'number':
+            case 'boolean':
+            case 'null':
+            case 'undefined':
+            constValue = ConstValue.getConst(astExpr.value);
+            break;
+
+            default:
             assert (false, 'invalid constant value: ' + astExpr.value);
         }
 
@@ -1009,8 +1008,8 @@ function exprToIR(context)
             // Get the value from the global object
             varValue = context.entryBlock.addInstr(
                 new GetPropValInstr(
-                    new GlobalRefConst(),
-                    new StrConst(symName)
+                    ConstValue.globalConst,
+                    ConstValue.getConst(symName)
                 )
             );
         }
@@ -1077,8 +1076,8 @@ function assgToIR(context)
             // Get the value from the global object
             rightContext.getExitBlock().addInstr(
                 new SetPropValInstr(
-                    new GlobalRefConst(),
-                    new StrConst(symName),
+                    ConstValue.globalConst,
+                    ConstValue.getConst(symName),
                     rightContext.getOutValue()
                 )
             );

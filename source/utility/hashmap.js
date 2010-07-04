@@ -27,8 +27,9 @@ function defHashFunc(val)
     if (typeof val == 'number')
     {
         return parseInt(val);
-    }
-    else if (typeof val == 'string')
+    }     
+ 
+    else if (typeof val == 'string')  
     {
         var hashCode = 0;
 
@@ -37,6 +38,17 @@ function defHashFunc(val)
 
         return hashCode;
     }
+
+    else if (typeof val == 'boolean')
+    {
+        return val? 1:0;
+    }
+
+    else if (val === null || val === undefined)
+    {
+        return 0;
+    }
+
     else
     {
         if (!val.hasOwnProperty('__hashCode__'))

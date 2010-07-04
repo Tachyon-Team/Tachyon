@@ -38,122 +38,85 @@ function IRValue()
 @class Represents constant values in the IR
 @augments IRInstr
 */
-function ConstValue()
+function ConstValue(value)
 {
     /**
-    Default toString() implementation for constant instructions
+    Value of the constant
+    @field
     */
-    this.toString = function() { return String(this.value); };
-
-    /**
-    Get a string representation of an instruction's value/name.
-    Returns the constant's string representation directly.
-    */
-    this.getValName = this.toString;
+    this.value = value;
 }
 ConstValue.prototype = new IRValue();
 
 /**
-@class Null constant value
-@augments ConstValue
+Get a string representation of a constant instruction
 */
-function NullConst()
+ConstValue.prototype.toString = function ()
 {
-   this.value = null;
-}
-NullConst.prototype = new ConstValue();
+    if (typeof this.value == 'string')
+    {
+       return '"' + escapeJSString(this.value) + '"';
+    }
 
-/**
-@class Undefined constant value
-@augments ConstValue
-*/
-function UndefConst()
-{
-   this.value = undefined;
-}
-UndefConst.prototype = new ConstValue();
-
-/**
-@class Boolean constant value
-@augments ConstValue
-*/
-function BoolConst(value)
-{
-    assert (typeof value == 'boolean', 'boolean constant value must be boolean');
-
-    this.value = value;
-}
-BoolConst.prototype = new ConstValue();
-
-/**
-@class Integer constant value
-@augments ConstValue
-*/
-function IntConst(value)
-{
-    assert (value - Math.floor(value) == 0, 'integer constant value must be integer');
-
-    this.value = value;
-}
-IntConst.prototype = new ConstValue();
-
-/**
-@class Floating-point constant value
-@augments ConstValue
-*/
-function FPConst(value)
-{
-    assert (typeof value == 'number', 'floating-point constant value must be number');
-
-    this.value = value;
-}
-FPConst.prototype = new ConstValue();
-
-/**
-@class String constant value
-@augments ConstValue
-*/
-function StrConst(value)
-{
-    assert (typeof value == 'string', 'string constant value must be string');
-
-    this.value = value;
-}
-StrConst.prototype = new ConstValue();
-
-/**
-Get a string representation of a string constant
-*/
-StrConst.prototype.toString = function()
-{
-    return '"' + escapeJSString(this.value) + '"';
+    else if (this.isGlobalConst())
+    {
+        return 'global';
+    }
+    else
+    {
+        return String(this.value);
+    }
 };
 
 /**
 Get a string representation of an instruction's value/name.
 Returns the constant's string representation directly.
 */
-StrConst.prototype.getValName = StrConst.prototype.toString;
+ConstValue.prototype.getValName = ConstValue.prototype.toString;
 
 /**
-@class Object reference constant value
-@augments ConstValue
+Test if a constant is an integer
 */
-function ObjRefConst(obj)
+ConstValue.prototype.isIntConst = function ()
 {
-   this.value = obj;
+    return this.value - Math.floor(this.value) == 0;
 }
-ObjRefConst.prototype = new ConstValue();
 
 /**
-@class Global object reference constant value
-@augments ConstValue
+Global object reference constant
 */
-function GlobalRefConst()
+ConstValue.prototype.isGlobalConst = function ()
 {
-    this.value = 'global';
+    return this.value === ConstValue.globalConstVal;
+}
+
+/**
+Map of values to IR constants
+*/
+ConstValue.constMap = new HashMap();
+
+/**
+Global object constant value
+*/
+ConstValue.globalConstVal = {};
+
+/**
+Global object reference constant
+*/
+ConstValue.globalConst = new ConstValue(ConstValue.globalConstVal);
+
+/**
+Get the unique constant instance for a given value
+*/
+ConstValue.getConst = function (value)
+{
+    if (!ConstValue.constMap.hasItem(value))
+    {
+        ConstValue.constMap.addItem(value, new ConstValue(value));
+    }
+
+    return ConstValue.constMap.getItem(value);
 };
-GlobalRefConst.prototype = new ConstValue();
 
 /**
 @class Base class for all IR instructions
