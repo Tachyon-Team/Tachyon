@@ -666,16 +666,101 @@ function stmtToIR(context)
         context.setOutput(loopExit);
     }
 
-    /*
     else if (astStmt instanceof ForStatement)
     {
-        ast.expr1 = ctx.walk_expr(ast.expr1);
-        ast.expr2 = ctx.walk_expr(ast.expr2);
-        ast.expr3 = ctx.walk_expr(ast.expr3);
-        ast.statement = ctx.walk_statement(ast.statement);
-        return ast;
+        // Compile the loop initialization expression
+        var initContext = context.pursue(astStmt.expr1);
+        exprToIR(initContext);
+
+        // Create a context for the loop entry (the loop test)
+        var entryLocals = new HashMap();
+        var brkCtxList = [];
+        var cntCtxList = [];
+        var testContext = createLoopEntry(
+            astStmt,
+            astStmt.expr2,
+            initContext,
+            entryLocals,
+            brkCtxList,
+            cntCtxList,
+            'loop_test'
+        );
+
+        // Compile the loop test in the entry context
+        exprToIR(testContext);
+
+        // Compile the body statement
+        var bodyContext = new IRConvContext(
+            astStmt.statement,
+            context.cfg.getNewBlock('loop_body'),
+            testContext.localsMap.copy(),
+            testContext.breakMap,
+            testContext.contMap,
+            context.cfg
+        );
+        stmtToIR(bodyContext);
+
+        // Add the test exit to the entry context list
+        brkCtxList.push(testContext);
+
+        // Add the body exit to the continue context list
+        cntCtxList.push(bodyContext);  
+
+        // Merge the break contexts
+        var incrLocals = new HashMap();
+        var loopIncr = mergeContexts(
+            cntCtxList,
+            incrLocals,
+            context.cfg,
+            'loop_incr'
+        );
+
+        // Compile the loop incrementation
+        var incrContext = new IRConvContext(
+            astStmt.expr3,
+            loopIncr,
+            incrLocals,
+            bodyContext.breakMap,
+            bodyContext.contMap,
+            context.cfg
+        );
+        exprToIR(incrContext);
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            [incrContext],
+            entryLocals,
+            testContext.entryBlock
+        );
+        
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localsMap,
+            context.cfg,
+            'loop_exit'
+        );
+
+        // Replace the jump added by the context merging at the test exit
+        // by the if branching instruction
+        var testExit = testContext.getExitBlock();
+        testExit.remBranch();
+        testExit.addInstr(
+            new IfInstr(
+                testContext.getOutValue(),
+                bodyContext.entryBlock,
+                loopExit
+            )
+        );       
+
+        // Add a jump from the entry block to the loop entry
+        context.entryBlock.addInstr(new JumpInstr(testContext.entryBlock));
+
+        // Set the exit block to be the join block
+        context.setOutput(loopExit);
     }
 
+    /*
     else if (astStmt instanceof ForInStatement)
     {
         ast.lhs_expr = ctx.walk_expr(ast.lhs_expr);
@@ -959,17 +1044,16 @@ function exprToIR(context)
     {
         var constValue;
 
-        switch (typeof astExpr.value)
-        {
-            case 'string':
-            case 'number':
-            case 'boolean':
-            case 'null':
-            case 'undefined':
-            constValue = ConstValue.getConst(astExpr.value);
-            break;
+        var constType = typeof astExpr.value;
 
-            default:
+        if (constType == 'string' || constType == 'number' || 
+            constType == 'boolean' || constValue === null || 
+            constValue === undefined)
+        {
+           constValue = ConstValue.getConst(astExpr.value);
+        }
+        else
+        {
             assert (false, 'invalid constant value: ' + astExpr.value);
         }
 
@@ -1030,12 +1114,14 @@ function exprToIR(context)
         context.setOutput(context.entryBlock, varValue);
     }
 
-    /*
     else if (astExpr instanceof This)
     {
-        return ast;
+        // Set the value of the this argument as output
+        context.setOutput(
+            context.entryBlock,
+            context.cfg.getThisArg()
+        );
     }
-    */
 
     else
     {
@@ -1203,9 +1289,41 @@ function opToIR(context)
         opVal = argsExit.addInstr(new ArithInstr(ArithOp.MOD, argVals[0], argVals[1]));
         break;
 
+        case 'x & y':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.AND, argVals[0], argVals[1]));
+        break;
+
+        case 'x | y':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.OR, argVals[0], argVals[1]));
+        break;
+
+        case 'x ^ y':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.XOR, argVals[0], argVals[1]));
+        break;
+
+        case '~ x':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.NOT, argVals[0]));
+        break;
+
+        case 'x << y':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.LSFT, argVals[0], argVals[1]));
+        break;
+
+        case 'x >> y':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.RSFT, argVals[0], argVals[1]));
+        break;
+
+        case 'x >>> y':
+        opVal = argsExit.addInstr(new BitInstr(BitOp.URSFT, argVals[0], argVals[1]));
+        break;
+
+        case 'x , y':
+        opVal = argVals[1];
+        break;
+
         default:
         {
-            assert (false, 'Unsupported AST operation "' + astExpr.op + '"');
+            assert (false, 'Unsupported AST operation "' + context.astNode.op + '"');
         }
     }
 

@@ -1,5 +1,23 @@
 function f(x)
 {
+    // TODO: x++, ++x
+
+    //++x;
+
+    //this.foo = a;
+
+    /*
+    for (var i = 0; i < 10; i = i + 1)
+    {
+        if (true)
+            continue;
+
+    }
+
+    print(i);
+    */
+
+    /*
     var y;
 
     if (true)
@@ -8,6 +26,7 @@ function f(x)
         y = 1;
     
     f(y);
+    */
     
     /*
     var y = 0;
