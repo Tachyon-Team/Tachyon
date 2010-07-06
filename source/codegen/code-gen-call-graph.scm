@@ -195,7 +195,11 @@
       gen-32
       gen-64
       gen-imm-num
-      x86-opnd-size-override-prefix
+      x86-width-suffix
+      x86-reg-width-suffix
+      x86-imm-num
+      x86-imm-num?
+      x86-imm-num-value
       x86-mem
       x86-mem?
       x86-mem-offset
@@ -223,6 +227,21 @@
       x86-r16
       x86-r32
       x86-r64
+      x86-64bit-mode?
+      x86-assert-64bit-mode
+      x86-addr-size-override-prefix
+      x86-opnd-size-override-prefix
+      x86-opnd-prefix
+      x86-opnd-modrm/sib
+      x86-opnd-prefix-opnd
+      x86-opnd-prefix-reg-opnd
+      x86-opnd-modrm/sib-reg-opnd
+      x86-gen-imm-num
+      x86-op-imm
+      general
+      x86-mov-imm
+      x86-op
+      gen-op
       rtl-code-gen-context-code-block))
 
 (if (null? (cdr (command-line))) (report) (report2))

@@ -10,11 +10,26 @@ generator written in Scheme.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-// TODO: Why can't we put those constructors on a global object named x86?
-function x86_Assembler ()
+// TODO: Could we put those constructors on a global object named x86?
+function x86_Assembler (target)
 {
     this.listing   = true;
     this.codeBlock = new asm_CodeBlock(true, 0, this.listing);
+    if (target) { this.target = target; } 
+}
+
+x86_Assembler.target = {}
+x86_Assembler.target.x86    = 0; 
+x86_Assembler.target.x86_64 = 1;
+
+x86_Assembler.prototype.target = x86_Assembler.target.x86;
+x86_Assembler.prototype.is64bitMode = function () 
+{
+    return this.target === x86_Assembler.target.x86_64;
+}
+x86_Assembler.prototype.assert64bitMode = function ()
+{
+    if (!this.is64bitMode()) { throw "instruction only valid for x86-64"; }
 }
 
 (function () { // local namespace
@@ -22,12 +37,51 @@ function x86_Assembler ()
 // Alias
 const x86 = x86_Assembler.prototype;
 
+// error reporting
+function error (message)
+{
+    var err = message;
+    for (var i=1; i<arguments.length; i++)
+    {
+        err += arguments[i];
+    }
+    throw err;
+}
+
+function assert (bool, message)
+{
+    if (!bool) { error(message, Array.prototype.slice.call(arguments, 2)); } 
+}
+
+// utility functions
+function isSigned8 (num)
+{
+   return (num >= -128 && num <= 127); 
+}
+
+// utility functions
+function isSigned32 (num)
+{
+   return (num >= -2147483648 && num <= 2147483647); 
+}
+
+x86.widthSuffix = function (width)
+{
+    if      (width === 64) { return "q"; }
+    else if (width === 32) { return "l"; }
+    else if (width === 16) { return "w"; }
+    else if (width === 8 ) { return "b"; }
+    else                   { return "";  }
+}
+
+x86.regWidthSuffix = function (reg) { return this.widthSuffix(reg.width()); }
+
 x86.gen8  = function (n) { this.codeBlock.gen8(n);  return this;};
 x86.gen16 = function (n) { this.codeBlock.gen16(n); return this;};
 x86.gen32 = function (n) { this.codeBlock.gen32(n); return this;};
 x86.gen64 = function (n) { this.codeBlock.gen64(n); return this;};
 
-x86.genImmNum = function (k, width)
+x86._genImmNum = function (k, width)
 {
     // TODO: Find out what behavior should the signed-lo have
     function signed-lo(n, k) 
@@ -52,6 +106,12 @@ x86.genImmNum = function (k, width)
     return this;
 }
 
+x86.genImmNum = function (k, width)
+{
+    this._genImmNum(k, Math.min(32, width));
+}
+
+
 // Types to allow testing for object type on x86 related
 // objects
 x86.type = {};
@@ -60,6 +120,8 @@ x86.type.REG = 1;
 x86.type.MEM = 2;
 x86.type.GLO = 3;
 x86.type.LBL = 4;
+
+// TODO: Add toString method for every type
 
 // Immediate object to represent immediate value
 x86.immediate = function (value)
@@ -144,7 +206,10 @@ reg.isfpu = function () { return this.value >= 48 && this.value < 56;}
 reg.isr16 = function () { return this.value >= 32 && this.value < 48;}
 reg.isr32 = function () { return this.value >= 16 && this.value < 32;}
 reg.isr64 = function () { return this.value <  16;}
-reg.regField = function () { return this.value & 0xF }
+// TODO: When getter setter are supported, refactor field and width to 
+// act as properties instead of a method. This will make it more
+// similar to the way base, index and disp are accessed on memory object
+reg.field = function () { return this.value & 0xF }
 reg.width    = function () 
 {
     if      (this.value < 16) { return 64;} 
@@ -288,13 +353,244 @@ x86.instrFormat = function(mnemonic, suffix)
     return "    " + mnemonic + suffix; 
 };
 
-
 x86.opndSizeOverridePrefix = function (width) 
 {
     if (width === 16) { this.gen8(0x66); }; return this;
 }
-x86.op    = function (op, mnemonic, src, dest, width) {return this;}
-x86.opImm = function (op, mnemonic, k,   dest, width) 
+
+x86.addrSizeOverridePrefix = function (opnd)
+{
+    if (opnd.type === x86.type.MEM &&
+        opnd.base !== null         &&
+        this.is64bitMode() !== opnd.base.isr64())
+    {
+        this.gen8(0x67);
+    }
+}
+
+x86.opndPrefix = function (width, field, opnd, forceRex)
+{
+    // TODO: Check that the logic for producing the REX byte
+    //       is correct
+    var rex = // If needed emit REX.W (64 bit operand size)
+              (( width === 64 || ( opnd.type === x86.type.REG && opnd.isr64())) 
+               ? 8 : 0) +
+              // If needed emit REX.R (Extension of the ModR/M reg field)
+              (( field >> 3) << 2);
+
+    // finish setting the rex value
+    switch (opnd.type)
+    {
+        case x86.type.REG:
+            // If needed emit REX.B (Extension of the ModR/M r/m field,
+            // SIB base field, or Opcode reg field
+            rex += (opnd.field() >> 3);
+            break;
+
+        case x86.type.GLO:
+            break;
+
+        case x86.type.MEM:
+            const base = opnd.base; 
+            if(base) 
+            {
+                assert((base.isr32() || (base.isr64() && this.is64bitMode())),
+                       "invalid width base register",
+                       base); 
+                // If needed emit REX.B (Extension of the ModR/M r/m field,
+                // SIB base field, or Opcode reg field
+                rex += (base.field() >> 3);
+                
+                const index = opnd.index;
+                if(index) 
+                {
+                    assert((base.isr32() ? index.isr32() : index.isr64()),
+                           "index register must have the same width as base",
+                           reg2);        
+                    rex += ((index.field() >> 3) << 1);
+                }
+            }
+            break;
+
+        default:
+            error("unknown operand", opnd);
+    }
+
+    this.opndSizeOverridePrefix(width); 
+    this.addrSizeOverridePrefix(opnd);
+
+    if (forceRex || (!rex === 0))
+    {
+        this.assert64bitMode();
+        this.gen8(0x40 + rex);
+        return true;    
+    }             
+    return false;
+}
+
+x86.opndModRMSIB = function (field, opnd)
+{
+    // TODO: Double check the logic
+    const modrm_rf = (7 & field) << 3;
+    
+    function absAddr (that)
+    {
+        if (that.is64bitMode())
+        {
+            that.gen8(modrm_rf + 4); // ModR/M
+            that.gen8(0x25);         // SIB
+        } else
+        {
+            that.gen8(modrm_rf + 5); // ModR/M
+        }
+    }
+
+    var modrm;
+    switch (opnd.type)
+    {
+        case x86.type.REG:
+            modrm = modrm_rf + (7 & opnd.field());
+            this.gen8(0xc0 + modrm); // ModR/M
+            break;
+
+        case x86.type.GLO:
+            // TODO: Implement when labels are supported
+            error("opndModRMSIB: unimplemented for opnd of type global");
+            break;
+
+        case x86.type.MEM:
+            const base  = opnd.base;
+            const baseFieldLo = 7 & base.field();
+            const index = opnd.index;
+            const disp  = opnd.disp;
+            const scale = opnd.scale;
+            
+            if (base) 
+            {
+                
+                // index: Need a SIB when using an index
+                // baseFieldLo: register or base = RSP/R12 
+                if (index || (baseFieldLo === 4))
+                {
+                    // SIB Needed
+                    modrm = modrm_rf + 4;
+                    var sib   = baseFieldLo;
+                    
+                    if (index)
+                    {
+                        assert(!(index.field() === 4),
+                               "SP not allowed as index", index);
+                        sib += ((7 & index.field()) << 3) +
+                               (scale << 6));
+                    } else // !index
+                    {
+                        sib += 0x20;
+                    }
+                   
+                    if (isSigned8(disp))
+                    {
+                        // use 8 bit displacement
+                        if (!(disp === 0) ||        // non-null displacement
+                              (base.field() === 5)) // or RBP    
+                        {
+                            this.gen8(0x40 + modrm);// ModR/M
+                            this.gen8(sib);         // SIB
+                            this.gen8(disp);
+                        } else
+                        {
+                            this.gen8(modrm);      // ModR/M
+                            this.gen8(sib);        // SIB
+                        }
+                    } else // !isSigned8(disp)
+                    {
+                        // use 32 bit displacement
+                        this.gen8(0x80 + modrm);   // ModR/M
+                        this.gen8(sib);            // SIB
+                        this.gen32(disp);          
+                    }
+                } else // !index && !baseFieldLo === 4 
+                {
+                    // SIB Not Needed
+                    modrm = modrm_rf + baseFieldLo;
+                    if (isSigned8(disp))
+                    {
+                        if (!(disp === 0) ||       // non-null displacement
+                            (baseFieldLo === 5))   // or RBP/R13
+                        {
+                            // use 8 bit displacement 
+                            this.gen8(0x40 + modrm);// ModR/M
+                            this.gen8(disp);
+                        } else
+                        {
+                            this.gen8(modrm);       // ModR/M
+                        }
+                    } else // !isSigned8(disp)
+                    {
+                        // use 32 bit displacement
+                        this.gen8(0x80 + modrm);
+                        this.gen32(disp);
+                    }
+                } 
+            } else // (!base)
+            {
+                // Absolute address, use disp32 ModR/M 
+                absAddr(this);
+                this.gen32(disp);
+            }
+            break;
+
+        default:
+            error("unkown operand", opnd);
+    }
+    return this;
+}
+
+x86.opndPrefixRegOpnd = function (reg, opnd)
+{
+    const width  = reg.width();
+    const field  = reg.field();
+    const isExtLo8 = ((width === 8) && (field >= 4) && (!reg.isr8h()));
+
+    if (opnd.type === x86.type.REG)
+    {
+        const isExtLo8Reg2 = ((width === 8) && 
+                              (opnd.field() >= 4) && 
+                              (!opnd.isr8h()));
+        var isRex;
+        assert(((width === opnd.width) || 
+                reg.isxmm()),             // for cvtsi2ss/cvtsi2sd instructions
+               "registers are not of the same width" reg opnd);
+
+        isRex = this.opndPrefix(width, field, opnd, (isExtLo8 || isExtLo8Reg2));
+
+        assert(!(isRex && (reg.isr8h() || opnd.isr8h())),
+               "cannot use high 8 bit register here", reg, opnd);
+        return isRex;
+    } else  // opnd.type !== x86.type.REG
+    {
+        return this.opndPrefix(width, field, opnd, isExtLo8);
+    }
+}
+
+x86.opndPrefixOpnd = function (width, opnd)
+{
+    if (opnd.type === x86.type.REG)
+    {
+        const field = opnd.field();
+        const isExtLo8 = ((width === 8) && (field >= 4) && (!reg.isr8h()));
+        return this.opndPrefix(width, 0, opnd, isExtLo8);
+    } else // opnd.type !== x86.type.REG
+    {
+        return this.opndPrefix(width, 0, opnd, false);
+    }
+}
+
+x86.opndModRMSIBRegOpnd = function (reg, opnd)
+{
+    return this.opndModRMSIB(reg.field(), opnd);
+}
+
+x86.opImm = function (op, mnemonic, k, dest, width) 
 {
     const that = this;
 
@@ -307,17 +603,151 @@ x86.opImm = function (op, mnemonic, k,   dest, width)
     {
         that.
         opndSizeOverridePrefix(width).
+        // opcode = #x04, #x0c, #x14, ..., #x3c (for AL)
+        //       or #x05, #x0d, #x15, ..., #x3d (for AX/EAX/RAX)
         gen8( ((width === 8) ? 0x04 : 0x05) + (op << 3) );
-        // TODO: listing(width)
+        listing(width, that.genImmNum(k,width));
     }
 
     function general (width)
     {
+        that.opndPrefixOpnd(width, dest);
+
+        if (width === 8) 
+        {
+            that.
+            gen8(0x80).            // opcode = 8 bit operation
+            opndModRMSIB(op,dest); // ModR/M
+            listing(width, that.genImmNum(k,8);
+        } else if (isSigned8(k))
+        {
+            that.
+            gen8(0x83).            // opcode = sign extended 8 bit imm
+            opndModRMSIB(op,dest); // ModR/M
+            listing(width, that.genImmNum(k,8);
+        } else 
+        {
+            that.
+            gen8(0x81).            // opcode = sign extended 16/32 bit imm
+            opndModRMSIB(op,dest); // ModR/M
+            listing(width, that.genImmNum(k,width);
+        }
+    }
+
+    assert((dest.type === x86.type.REG) ? 
+            (!width || (dest.width() === width)) : width,
+            "missing or inconsistent operand width", width);
+
+    if (dest.type === x86.type.REG)
+    {
+        if ((dest.field() === 0) && 
+            (dest.width() === 8 || !isSigned8(k)))
+        {
+            accumulator(width);
+        } else 
+        {
+            general(width);
+        }
+    } else // dest.type !== x86.type.REG
+    {
+        general(width);
+    }
+    return that;
+};
+
+x86.movImm = function (dest, k, width)
+{
+
+    const that = this;
+
+    function listing (width,n)
+    {
+        //TODO
+    }
+
+    function register (width)
+    {
+        that.
+        opndPrefixOpnd(width, dest). // prefix
+        // opcode = #xb0-#xb7 (for 8 bit registers)
+        //      or #xb8-#xbf (for 16/32/64 bit registers)
+        gen8( ((width === 8) ? 0xb0 : 0xb8) + (7 & dest.field()) );
+        listing(width, that.genImmNum(k, width));
+    }
+
+    function general (width)
+    {
+        that.opndPrefixOpnd(width, dest);
+        that.
+        gen8((width === 8) ? 0xc6 : 0xc7).  // opcode
+        opndModRMSIB(0,dest); // ModR/M
+        listing(width, that.genImmNum(k,width);
+    }
+
+    assert((dest.type === x86.type.REG) ? 
+            (!width || (dest.width() === width)) : width,
+            "missing or inconsistent operand width", width);
+
+    if (dest.type === x86.type.REG)
+    {
+        if (dest.width() === 64 &&
+            isSigned32(k))
+        {
+            general(width);
+        } else 
+        {
+            register(width);
+        }
+    } else // dest.type !== x86.type.REG
+    {
+        general(width);
+    }
+    return this;
+}
+
+x86.op    = function (op, mnemonic, dest, src, width) 
+{
+    const that = this;
+
+    function genOp (reg, opnd, isSwapped)
+    {
+        assert(!width || (reg.width() === width),
+               "inconsistent operand width",width);
+        that.opndPrefixRegOpnd(reg, opnd);
+        that.
+        gen8((op << 3) +
+             (isSwapped ? 0 : 2) +
+             (reg.isr8() ? 0 : 1)).
+        opndModRMSIBRegOpnd(reg.opnd);
+
+        if (this.listing)
+        {
+            // TODO
+        }
 
     }
 
-    return that;
-};
+    if (src.type === x86.type.IMM)
+    {
+        if (op === 17)
+        {
+            this.movImm(dest, src.value, width);
+        } else
+        {
+            this.opImm(op, mnemonic, dest, src.value, width);
+        }
+    } else if (src.type === x86.type.REG)
+    {
+        genOp(src, dest, true);
+    } else if (dest.type === x86.type.REG)
+    {
+        genOp(dest, src, false);
+    } else 
+    {
+        error("invalid operand combination", dest, src);
+    }
+   return this;
+}
 
 })(); // end of local namespace
 
