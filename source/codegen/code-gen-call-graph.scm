@@ -229,6 +229,7 @@
       x86-r64
       x86-64bit-mode?
       x86-assert-64bit-mode
+      x86-assert-32bit-mode
       x86-addr-size-override-prefix
       x86-opnd-size-override-prefix
       x86-opnd-prefix
@@ -250,6 +251,18 @@
       x86-xor
       x86-cmp
       x86-mov
+      x86-ret
+      x86-cmc
+      x86-clc
+      x86-stc
+      x86-cli
+      x86-sti
+      x86-cld
+      x86-std
+      x86-push/pop
+      x86-push
+      x86-push-imm
+      x86-pop
       gen-op
       rtl-code-gen-context-code-block))
 

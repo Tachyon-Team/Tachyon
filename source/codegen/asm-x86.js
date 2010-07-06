@@ -32,6 +32,11 @@ x86_Assembler.prototype.assert64bitMode = function ()
     if (!(this.is64bitMode())) { throw "instruction only valid for x86-64"; };
 };
 
+x86_Assembler.prototype.assert32bitMode = function ()
+{
+    if (this.is64bitMode()) { throw "instruction only valid for x86"; };
+};
+
 (function () { // local namespace
 
 // Alias
@@ -807,6 +812,78 @@ x86.movb = function (src, dest) { return this.mov(dest, src,  8) };
 x86.movw = function (src, dest) { return this.mov(dest, src, 16) };
 x86.movl = function (src, dest) { return this.mov(dest, src, 32) };
 x86.movq = function (src, dest) { return this.mov(dest, src, 64) };
+
+
+x86.pushImm = function (k)
+{
+    // width is always width of stack pointer
+
+    const that = this;
+    function listing (n)
+    {
+        // TODO
+    }
+
+    if (isSigned8(k))
+    {
+        this.gen8(0x6a); // opcode
+        listing(this._genImmNum(k, 8));
+    } else
+    {
+        this.gen8(0x68); // opcode
+        listing(this._genImmNum(k, 32));
+    }
+}
+
+x86.pushPop = function (opnd, isPop)
+{
+    const that = this;
+    function listing () { /* TODO */};
+
+    function register()
+    {
+        if (opnd.isr32())
+        {
+            that.assert32bitMode();
+            assert(opnd.field() < 8, 
+                   "cannot push/pop extended register in 32 bit mode");
+        } else
+        {
+            that.assert64bitMode();
+            if (opnd.field() >= 8)
+            {
+                that.gen8(0x41); // REX
+            }
+        }
+       
+        // opcode 0x50 - 0x5f 
+        that.gen8((isPop ? 0x58 : 0x50) + (7 & opnd.field));
+        listing();
+    }
+
+    function general()
+    {
+        that.opndPrefix(0,0,opnd,false); // prefix (width is implicit)
+        if(isPop) { that.gen8(0x8f); } else { that.gen8(0xff); } // opcode
+        that.opndModRMSIB((isPop? 0 : 6), opnd);
+        listing();
+    }
+
+    if (!isPop && opnd.type === x86.type.IMM)
+    {
+        this.pushImm(opnd.value);
+    } else if (opnd.type === x86.type.REG)
+    {
+        register();
+    } else 
+    {
+        general();
+    }
+    return this;
+}
+
+x86.push = function (opnd) { return this.pushPop(opnd, false); };
+x86.pop  = function (opnd) { return this.pushPop(opnd, true); };
 
 })(); // end of local namespace
 
