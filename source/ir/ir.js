@@ -109,6 +109,53 @@ function stmtListToIRFunc(
     // Set the parent for the function
     newFunc.parentFunc = parentFunc;
 
+
+
+
+    //
+    // TODO: 
+    // - Find all nested functions
+    // - Find all escaping variables
+    //   - use Mark's AST traversal
+    // - Create mutable cells escaping variables in entry block
+    //   - MakeCellInstr, GetCellInstr, PutCellInstr
+    //   - Integrate into context/function object?
+    // - Create closures for function statements
+    //   - closure instruction MakeClosInstr, GetClosInstr, PutClosInstr
+    //   - assign these to locals mapped in locals map *** works in FF
+    //     - even if you declare a local var, doesn't matter until assignment
+    // - Closure for func exprs created only at expression evaluation
+    // - Add closure pointer/argument
+    //
+    //
+
+
+
+
+
+
+    /*
+        // If the statement is a function declaration
+        if (stmt instanceof FunctionDeclaration)
+        {
+            // TODO, move to statement, ignore
+
+
+            // Compile the function
+            var newFunc = funcToIR(
+                stmt.id.toString(),
+                context.cfg.ownerFunc,
+                stmt.funct
+            );
+
+            // Make the new function a child of the function being compiled
+            context.cfg.ownerFunc.addChildFunc(newFunc);
+        }
+    */
+
+
+
+
     // Create a map for the local variable storage locations
     var localsMap = new HashMap();
 
@@ -119,7 +166,7 @@ function stmtListToIRFunc(
         localsMap.addItem(params[i].toString(), cfg.getArgVal(i));
     }
 
-    // Add the lcoals to the locals map
+    // Add the locals to the locals map
     for (var i = 0; i < locals.length; ++i)
     {
         localsMap.addItem(locals[i].toString(), ConstValue.getConst(undefined));
@@ -375,33 +422,15 @@ function stmtListToIR(context)
     {
         var stmt = stmtList[i];
 
-        // If the statement is a function declaration
-        if (stmt instanceof FunctionDeclaration)
-        {
-            // Compile the function
-            var newFunc = funcToIR(
-                stmt.id.toString(),
-                context.cfg.ownerFunc,
-                stmt.funct
-            );
+        // Pursue the context for the statement
+        curContext = curContext.pursue(stmt);
 
-            // Make the new function a child of the function being compiled
-            context.cfg.ownerFunc.addChildFunc(newFunc);
-        }
+        // Generate code for the statement
+        stmtToIR(curContext);
 
-        // Otherwise, for executable statements
-        else
-        {
-            // Pursue the context for the statement
-            curContext = curContext.pursue(stmt);
-
-            // Generate code for the statement
-            stmtToIR(curContext);
-
-            // If the context is terminated, stop
-            if (curContext.isTerminated())
-                break;
-        }
+        // If the context is terminated, stop
+        if (curContext.isTerminated())
+            break;
     }
 
     // The exit block is the current exit block
@@ -422,7 +451,14 @@ function stmtToIR(context)
     // Get a reference to the statement
     var astStmt = context.astNode;
 
-    if (astStmt instanceof BlockStatement)
+    // If the statement is a function declaration
+    if (astStmt instanceof FunctionDeclaration)
+    {
+        // Do nothing
+        context.bridge();
+    }
+
+    else if (astStmt instanceof BlockStatement)
     {
         // Compile the statement list
         var blockContext = context.pursue(astStmt.statements);
@@ -938,7 +974,16 @@ function exprToIR(context)
     // Get a reference to the expression
     var astExpr = context.astNode;
 
-    if (astExpr instanceof OpExpr)
+    if (astExpr instanceof FunctionExpr)
+    {
+        //ast.body = ast_walk_statements(ast.body, ctx);
+        //return ast;
+
+        // TODO ***************
+        context.bridge();
+    }
+
+    else if (astExpr instanceof OpExpr)
     {
         // If this is an assignment expression
         if (astExpr.op == 'x = y')
@@ -1128,14 +1173,27 @@ function exprToIR(context)
         }
     }
 
-    /*
     else if (astExpr instanceof NewExpr)
     {
-        ast.expr = ctx.walk_expr(ast.expr);
-        ast.args = ast_walk_exprs(ast.args, ctx);
-        return ast;
+        // Compile the function argument list
+        var argsContext = context.pursue(astExpr.args);
+        var argVals = exprListToIR(argsContext);
+
+        // Generate code for the statement
+        var funcContext = argsContext.pursue(astExpr.expr);
+        exprToIR(funcContext);
+
+        // Create the construct instruction
+        var exprVal = funcContext.getExitBlock().addInstr(
+            new ConstructRefInstr(
+                funcContext.getOutValue(),
+                argVals
+            )
+        );
+
+        // Set the output
+        context.setOutput(funcContext.getExitBlock(), exprVal);
     }
-    */
 
     else if (astExpr instanceof CallExpr)
     {
@@ -1199,14 +1257,6 @@ function exprToIR(context)
         context.setOutput(lastContext.getExitBlock(), exprVal);
     }
 
-    /*
-    else if (astExpr instanceof FunctionExpr)
-    {
-        ast.body = ast_walk_statements(ast.body, ctx);
-        return ast;
-    }
-    */
-
     // Constant values
     else if (astExpr instanceof Literal)
     {
@@ -1229,13 +1279,30 @@ function exprToIR(context)
         context.setOutput(context.entryBlock, constValue);
     }
 
-    /*
     else if (astExpr instanceof ArrayLiteral)
     {
-        ast.exprs = ast_walk_exprs(ast.exprs, ctx);
-        return ast;
+        // Compile the element value expressions
+        var elemCtx = context.pursue(astExpr.exprs);
+        var elemVals = exprListToIR(elemCtx);
+
+        // Create a new array
+        var newArray = elemCtx.getExitBlock().addInstr(new NewArrayInstr());
+
+        // Set the value of each element in the new array
+        for (var i = 0; i < elemVals.length; ++i)
+        {
+            elemCtx.getExitBlock().addInstr(
+                new SetPropValInstr(
+                    newArray,
+                    ConstValue.getConst(i),
+                    elemVals[i]
+                )
+            );
+        }
+        
+        // Set the new array as the output
+        context.setOutput(elemCtx.getExitBlock(), newArray);
     }
-    */
 
     else if (astExpr instanceof ObjectLiteral)
     {
@@ -1252,7 +1319,7 @@ function exprToIR(context)
         var valVals = exprListToIR(valCtx);
 
         // Create a new object
-        var newObj = valCtx.getExitBlock().addInstr(new NewObjInstr());
+        var newObject = valCtx.getExitBlock().addInstr(new NewObjectInstr());
 
         // Set the value of each property in the new object
         for (var i = 0; i < propNames.length; ++i)
@@ -1262,7 +1329,7 @@ function exprToIR(context)
 
             valCtx.getExitBlock().addInstr(
                 new SetPropValInstr(
-                    newObj,
+                    newObject,
                     propName,
                     propValue
                 )
@@ -1270,7 +1337,7 @@ function exprToIR(context)
         }
         
         // Set the new object as the output
-        context.setOutput(valCtx.getExitBlock(), newObj);
+        context.setOutput(valCtx.getExitBlock(), newObject);
     }
 
     // Symbol expression

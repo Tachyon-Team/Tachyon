@@ -461,11 +461,14 @@ function ast_pass1(ast)
 
 //-----------------------------------------------------------------------------
 
-// Pass 2.
+// Pass 2.f
 //
 // Transforms an AST into an AST in which
 //
 //   - variables are resolved according to their scope
+//   - a map of escaping variables is added to functions
+//   - a map of closure-provided variables is added to functions
+//   - a list of all nested functions is added to functions
 
 function ast_pass2_ctx(scope)
 {
@@ -475,29 +478,53 @@ function ast_pass2_ctx(scope)
 ast_pass2_ctx.prototype.function_ctx = function (ast)
 {
     var new_ctx = new ast_pass2_ctx(ast);
-    ast.params.forEach(function (param, i, self)
-                       {
-                           param[i] = new_ctx.resolve_variable(param);
-                       });
+
+    ast.params.forEach(
+        function (param, i, self)
+        {
+            param[i] = new_ctx.resolve_variable(param);
+        }
+    );
+
     return new_ctx;
 }
 
 ast_pass2_ctx.prototype.resolve_variable = function (id)
 {
+    // Where is this id declared???
+
     function resolve(scope)
     {
         var id_str = id.value;
+
+        // If the id is a local variable of the current scope
         var v = scope.vars[id_str];
         if (typeof v != "undefined")
             return v;
+
+        // If the id is a free variable of the current scope
         v = scope.free_vars[id_str];
         if (typeof v != "undefined")
             return v;
+
+        // If the current scope is global
         if (scope instanceof Program)
             v = new ast_Variable(id, false, scope);
         else
             v = resolve(scope.parent);
+
+        // This variable is not a local, add it to the free variable list of the scope
         scope.free_vars[id_str] = v;
+
+        // If this is not a global variable, add it to the closure variable list of the scope
+        if (!(v.scope instanceof Program))
+            scope.clos_vars[id_str] = v;
+
+        // If the variable's scope is a function and does not match the current scope, mark
+        // the variable as escaping in its scope of origin
+        if (v.scope instanceof FunctionExpr && v.scope !== scope)
+            v.scope.esc_vars[id_str] = v;
+
         return v;
     }
 
@@ -520,8 +547,12 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
     }
     else if (ast instanceof FunctionDeclaration)
     {
+        // Set the current function declaration
+        this.func_decl = ast;
+
         ast.id = this.resolve_variable(ast.id);
         ast.funct = this.walk_expr(ast.funct);
+
         return ast;
     }
     else if (ast instanceof TryStatement)
@@ -534,7 +565,9 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
         return ast;
     }
     else
+    {
         return ast_walk_statement(ast, this);
+    }
 };
 
 ast_pass2_ctx.prototype.walk_expr = function (ast)
@@ -547,10 +580,27 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
     else if (ast instanceof FunctionExpr)
     {
         ast.free_vars = {};
+        ast.clos_vars = {};
+        ast.esc_vars = {};
+        ast.nested = [];
+
+        // If the current scope is a function, add this function to its nested function list
+        if (this.scope instanceof FunctionExpr)
+        {
+            // If this function is part of a function declaration, add the declaration instead
+            if (this.func_decl != undefined && this.func_decl.funct === ast)
+                this.scope.nested.push(this.func_decl);
+            else
+                this.scope.nested.push(ast);
+        }
+
         var new_ctx = this.function_ctx(ast);
+
         if (ast.id != null)
             ast.id = new_ctx.resolve_variable(ast.id);
+
         ast.body = ast_walk_statements(ast.body, new_ctx);
+
         return ast;
     }
     else if (ast instanceof Ref)
@@ -559,7 +609,9 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
         return ast;
     }
     else
+    {
         return ast_walk_expr(ast, this);
+    }
 };
 
 function ast_pass2(ast)

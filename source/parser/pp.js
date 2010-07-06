@@ -189,20 +189,48 @@ function pp_indent(ast, indent)
     else if (ast instanceof FunctionExpr)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "FunctionExpr");
+
         if (ast.id != null)
             pp_id(ast.id, indent, "id");
+
         for (var p in ast.params)
             pp_loc(ast.params[p].loc, pp_prefix(indent) + "|-param= " + ast.params[p].toString());
+
         if (ast.vars != null)
         {
             for (var v in ast.vars)
                 pp_id(ast.vars[v], indent, "var");
         }
+
         if (ast.free_vars != null)
         {
             for (var v in ast.free_vars)
                 pp_id(ast.free_vars[v], indent, "free_var");
         }
+
+        if (ast.clos_vars != null)
+        {
+            for (var v in ast.clos_vars)
+                pp_id(ast.clos_vars[v], indent, "clos_var");
+        }
+
+        if (ast.esc_vars != null)
+        {
+            for (var v in ast.esc_vars)
+                pp_id(ast.esc_vars[v], indent, "esc_var");
+        }
+
+        if (ast.nested != null)
+        {
+            for (var i in ast.nested)
+            {
+                if (ast.nested[i].id != null)
+                    pp_id(ast.nested[i].id, indent, "nested");
+                else
+                    print(pp_prefix(indent) + "|-nested anonymous");
+            }
+        }
+
         pp_asts(indent, "body", ast.body);
     }
     else if (ast instanceof Literal)

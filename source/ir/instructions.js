@@ -9,7 +9,16 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: maintain unique constant instances...
+
+// TODO: unique "operator" instruction for instructions without control-flow?
+// Idea: HIR instrs all map to some function defining their behavior in termsof MIR/LIR
+// Perhaps not a great idea, too much into one
+// Some operators will eventually have control-flow...
+// Only works for HIR operators
+//
+// Perhaps HIR operators should have a superclass HIROpInstr, or a system to map
+// them to functions/handlers
+
 
 //=============================================================================
 // IR Core
@@ -949,20 +958,38 @@ ConstructRefInstr.prototype.copy = function ()
 @class Instruction to create a new, empty object
 @augments IRInstr
 */
-function NewObjInstr()
+function NewObjectInstr()
 {
     // Set the mnemonic name for this instruction
-    this.mnemonic = 'new_obj';
+    this.mnemonic = 'new_object';
 }
-NewObjInstr.prototype = new IRInstr();
+NewObjectInstr.prototype = new IRInstr();
 
 /**
 Make a shallow copy of the instruction
 */
-NewObjInstr.prototype.copy = function ()
+NewObjectInstr.prototype.copy = function ()
 {
-    var newInstr = new NewObjInstr();
-    return this.baseCopy(newInstr);
+    return this.baseCopy(new NewObjectInstr());
+};
+
+/**
+@class Instruction to create a new, empty array
+@augments IRInstr
+*/
+function NewArrayInstr()
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'new_array';
+}
+NewArrayInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+NewArrayInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new NewArrayInstr());
 };
 
 //=============================================================================
