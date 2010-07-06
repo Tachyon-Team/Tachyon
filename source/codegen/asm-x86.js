@@ -16,9 +16,9 @@ function x86_Assembler (target)
     this.listing   = true;
     this.codeBlock = new asm_CodeBlock(true, 0, this.listing);
     if (target) { this.target = target; } 
-}
+};
 
-x86_Assembler.target = {}
+x86_Assembler.target = {};
 x86_Assembler.target.x86    = 0; 
 x86_Assembler.target.x86_64 = 1;
 
@@ -26,11 +26,11 @@ x86_Assembler.prototype.target = x86_Assembler.target.x86;
 x86_Assembler.prototype.is64bitMode = function () 
 {
     return this.target === x86_Assembler.target.x86_64;
-}
+};
 x86_Assembler.prototype.assert64bitMode = function ()
 {
-    if (!this.is64bitMode()) { throw "instruction only valid for x86-64"; }
-}
+    if (!(this.is64bitMode())) { throw "instruction only valid for x86-64"; };
+};
 
 (function () { // local namespace
 
@@ -84,33 +84,32 @@ x86.gen64 = function (n) { this.codeBlock.gen64(n); return this;};
 x86._genImmNum = function (k, width)
 {
     // TODO: Find out what behavior should the signed-lo have
-    function signed-lo(n, k) 
+    function signedLo(n, k) 
     {
-        return k & (Math.pow(2,n) - 1);
-    }
+        return (k & (Math.pow(2,n) - 1));
+    };
 
-    if ( width === 8) 
+    if (width === 8) 
     {
-        this.gen8(signed-lo(8,k));   
+        this.gen8(signedLo(8,k));   
     } else if (width === 16) 
     {
-        this.gen16(signed-lo(16,k));
+        this.gen16(signedLo(16,k));
     } else if (width === 32)
     {
-        this.gen32(signed-lo(32,k));
+        this.gen32(signedLo(32,k));
     }
     else 
     {
-        this.gen64(signed-lo(64,k));
+        this.gen64(signedLo(64,k));
     }   
     return this;
-}
+};
 
 x86.genImmNum = function (k, width)
 {
     this._genImmNum(k, Math.min(32, width));
-}
-
+};
 
 // Types to allow testing for object type on x86 related
 // objects
@@ -169,8 +168,8 @@ x86.memory.prototype.scale  = 0;
 x86.global = function ( name, offset )
 {
     var that = Object.create(x86.global.prototype);
-    if (name)   { that.name   = name; );
-    if (offset) { that.offset = offset; );
+    if (name)   { that.name   = name; };
+    if (offset) { that.offset = offset; };
     return that;
 }
 x86.global.prototype.type   = x86.GLO;
@@ -182,7 +181,8 @@ x86.register = function ( name, value )
     var that = Object.create(x86.register.prototype);
     if (!name)  { throw "register: name property not supplied" }    
     that.name  = name;
-    if (!value) { throw "register: value property not supplied" }    
+    if (typeof value !== "number" && 
+        !value) { throw "register: value property not supplied" }
     that.value = value;
 
     x86.register.names[value] = that;
@@ -324,7 +324,6 @@ x86.register.xmm15 = x86.register("xmm15", 79);
 
 
 
-
 //-----------------------------------------------------------------------------
 
 // x86 instruction encoding.
@@ -383,7 +382,7 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
     {
         case x86.type.REG:
             // If needed emit REX.B (Extension of the ModR/M r/m field,
-            // SIB base field, or Opcode reg field
+            // SIB base field, or Opcode reg field)
             rex += (opnd.field() >> 3);
             break;
 
@@ -432,8 +431,9 @@ x86.opndModRMSIB = function (field, opnd)
 {
     // TODO: Double check the logic
     const modrm_rf = (7 & field) << 3;
+    const that = this;
     
-    function absAddr (that)
+    function absAddr ()
     {
         if (that.is64bitMode())
         {
@@ -481,7 +481,7 @@ x86.opndModRMSIB = function (field, opnd)
                         assert(!(index.field() === 4),
                                "SP not allowed as index", index);
                         sib += ((7 & index.field()) << 3) +
-                               (scale << 6));
+                               (scale << 6);
                     } else // !index
                     {
                         sib += 0x20;
@@ -534,7 +534,7 @@ x86.opndModRMSIB = function (field, opnd)
             } else // (!base)
             {
                 // Absolute address, use disp32 ModR/M 
-                absAddr(this);
+                absAddr();
                 this.gen32(disp);
             }
             break;
@@ -559,7 +559,7 @@ x86.opndPrefixRegOpnd = function (reg, opnd)
         var isRex;
         assert(((width === opnd.width) || 
                 reg.isxmm()),             // for cvtsi2ss/cvtsi2sd instructions
-               "registers are not of the same width" reg opnd);
+               "registers are not of the same width",reg,opnd);
 
         isRex = this.opndPrefix(width, field, opnd, (isExtLo8 || isExtLo8Reg2));
 
@@ -605,7 +605,7 @@ x86.opImm = function (op, mnemonic, k, dest, width)
         opndSizeOverridePrefix(width).
         // opcode = #x04, #x0c, #x14, ..., #x3c (for AL)
         //       or #x05, #x0d, #x15, ..., #x3d (for AX/EAX/RAX)
-        gen8( ((width === 8) ? 0x04 : 0x05) + (op << 3) );
+        gen8(((width === 8) ? 0x04 : 0x05) + (op << 3));
         listing(width, that.genImmNum(k,width));
     }
 
@@ -618,19 +618,19 @@ x86.opImm = function (op, mnemonic, k, dest, width)
             that.
             gen8(0x80).            // opcode = 8 bit operation
             opndModRMSIB(op,dest); // ModR/M
-            listing(width, that.genImmNum(k,8);
+            listing(width, that.genImmNum(k,8));
         } else if (isSigned8(k))
         {
             that.
             gen8(0x83).            // opcode = sign extended 8 bit imm
             opndModRMSIB(op,dest); // ModR/M
-            listing(width, that.genImmNum(k,8);
+            listing(width, that.genImmNum(k,8));
         } else 
         {
             that.
             gen8(0x81).            // opcode = sign extended 16/32 bit imm
             opndModRMSIB(op,dest); // ModR/M
-            listing(width, that.genImmNum(k,width);
+            listing(width, that.genImmNum(k,width));
         }
     }
 
@@ -681,7 +681,7 @@ x86.movImm = function (dest, k, width)
         that.
         gen8((width === 8) ? 0xc6 : 0xc7).  // opcode
         opndModRMSIB(0,dest); // ModR/M
-        listing(width, that.genImmNum(k,width);
+        listing(width, that.genImmNum(k,width));
     }
 
     assert((dest.type === x86.type.REG) ? 
@@ -747,6 +747,11 @@ x86.op    = function (op, mnemonic, dest, src, width)
         error("invalid operand combination", dest, src);
     }
    return this;
+}
+
+x86.add = function ( dest, src, width )
+{
+    return this.op(0,"add",dest,src,width);
 }
 
 })(); // end of local namespace
