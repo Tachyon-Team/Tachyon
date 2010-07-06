@@ -461,7 +461,7 @@ function ast_pass1(ast)
 
 //-----------------------------------------------------------------------------
 
-// Pass 2.f
+// Pass 2.
 //
 // Transforms an AST into an AST in which
 //
@@ -541,6 +541,8 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
     else if (ast instanceof Program)
     {
         ast.free_vars = {};
+        ast.funcs = [];
+
         var new_ctx = new ast_pass2_ctx(ast);
         ast.block = new_ctx.walk_statement(ast.block);
         return ast;
@@ -582,17 +584,14 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
         ast.free_vars = {};
         ast.clos_vars = {};
         ast.esc_vars = {};
-        ast.nested = [];
+        ast.funcs = [];
 
-        // If the current scope is a function, add this function to its nested function list
-        if (this.scope instanceof FunctionExpr)
-        {
-            // If this function is part of a function declaration, add the declaration instead
-            if (this.func_decl != undefined && this.func_decl.funct === ast)
-                this.scope.nested.push(this.func_decl);
-            else
-                this.scope.nested.push(ast);
-        }
+        // Add this function to the scope's nested function list
+        // If this function is part of a function declaration, add the declaration instead
+        if (this.func_decl != undefined && this.func_decl.funct === ast)
+            this.scope.funcs.push(this.func_decl);
+        else
+            this.scope.funcs.push(ast);
 
         var new_ctx = this.function_ctx(ast);
 
@@ -616,19 +615,18 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
 
 function ast_pass2(ast)
 {
-    var ctx = new ast_pass2_ctx(null);
+    var ctx = new ast_pass2_ctx(ast);
     ctx.walk_statement(ast);
 }
 
 //-----------------------------------------------------------------------------
 
-
 function ast_normalize(ast)
 {
     ast_pass1(ast);
     ast_pass2(ast);
+
     return ast;
 }
-
 
 //=============================================================================

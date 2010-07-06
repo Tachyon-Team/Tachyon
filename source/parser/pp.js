@@ -20,11 +20,30 @@ function pp_indent(ast, indent)
     else if (ast instanceof Program)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "Program");
+
         if (ast.vars != null)
         {
             for (var v in ast.vars)
                 pp_id(ast.vars[v], indent, "var");
         }
+
+        if (ast.free_vars != null)
+        {
+            for (var v in ast.free_vars)
+                pp_id(ast.free_vars[v], indent, "free_var");
+        }
+
+        if (ast.funcs != null)
+        {
+            for (var i in ast.funcs)
+            {
+                if (ast.funcs[i].id != null)
+                    pp_id(ast.funcs[i].id, indent, "func");
+                else
+                    print(pp_prefix(indent) + "|-func anonymous");
+            }
+        }
+
         pp_asts(indent, "block", [ast.block]);
     }
     else if (ast instanceof BlockStatement)
@@ -220,14 +239,14 @@ function pp_indent(ast, indent)
                 pp_id(ast.esc_vars[v], indent, "esc_var");
         }
 
-        if (ast.nested != null)
+        if (ast.funcs != null)
         {
-            for (var i in ast.nested)
+            for (var i in ast.funcs)
             {
-                if (ast.nested[i].id != null)
-                    pp_id(ast.nested[i].id, indent, "nested");
+                if (ast.funcs[i].id != null)
+                    pp_id(ast.funcs[i].id, indent, "func");
                 else
-                    print(pp_prefix(indent) + "|-nested anonymous");
+                    print(pp_prefix(indent) + "|-func anonymous");
             }
         }
 

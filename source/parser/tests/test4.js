@@ -23,7 +23,7 @@ function f(x)
     var z;
     var w;
 
-    a = function() { y = 2; };
+    //a = function() { y = 2; };
 
     /*
     for (var i = 0; i < 10; i = i + 1)

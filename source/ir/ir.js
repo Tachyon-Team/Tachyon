@@ -51,6 +51,9 @@ function unitToIR(
         [],
         [],
         [],
+        [],
+        [],
+        astUnit.funcs,
         astUnit.block.statements
     );
 }
@@ -74,6 +77,9 @@ function funcToIR(
         astFunc.params,
         astFunc.vars,
         astFunc.free_vars,
+        astFunc.clos_vars,
+        astFunc.esc_vars,
+        astFunc.funcs,
         astFunc.body
     );
 }
@@ -85,20 +91,26 @@ function stmtListToIRFunc(
     funcName, 
     parentFunc,
     params,
-    locals,
+    localVars,
     freeVars,
+    closureVars,
+    escapeVars,
+    nestedFuncs,
     bodyStmts
 )
 {
     // Extract the argument names
     var argNames = [];
-    for (var i = 0; i < params.length; ++i)
-    {
+    for (var i in params)
         argNames.push(params[i].toString());
-    }
+
+    // Extract the closure variable names
+    var closVars = [];
+    for (var i in closureVars)
+        closVars.push(closureVars[i].toString());
 
     // Create a new function object for the function
-    var newFunc = new IRFunction(funcName, argNames);
+    var newFunc = new IRFunction(funcName, argNames, closVars);
 
     // Create a new CFG for the function
     var cfg = new ControlFlowGraph(newFunc);
@@ -114,44 +126,55 @@ function stmtListToIRFunc(
 
     //
     // TODO: 
+    //
     // - Find all nested functions
     // - Find all escaping variables
     //   - use Mark's AST traversal
-    // - Create mutable cells escaping variables in entry block
+    //
+    // - Create mutable cells for escaping local variables in entry block
     //   - MakeCellInstr, GetCellInstr, PutCellInstr
-    //   - Integrate into context/function object?
+    //   - Need map of escaping vars to mutable cells
+    //     - Integrate into context/function object?
+    //
     // - Create closures for function statements
     //   - closure instruction MakeClosInstr, GetClosInstr, PutClosInstr
     //   - assign these to locals mapped in locals map *** works in FF
     //     - even if you declare a local var, doesn't matter until assignment
+    //
     // - Closure for func exprs created only at expression evaluation
+    //
     // - Add closure pointer/argument
     //
+
+
+
+
+    // Get the entry block for the CFG
+    var entryBlock = cfg.getEntryBlock();
+
+
+
+    print('Cur func: ' + funcName);
+
+    // Create a map for the escaping variable mutable cells
+    var escapeMap = new HashMap();
+
+    // For each escaping variable
+    for (var i in escapeVars)
+    {
+        var symName = escapeVars[i].toString();
+
+        print(symName);
+
+        // TODO: create mutable cells
+    }
+
+
+
+
     //
-
-
-
-
-
-
-    /*
-        // If the statement is a function declaration
-        if (stmt instanceof FunctionDeclaration)
-        {
-            // TODO, move to statement, ignore
-
-
-            // Compile the function
-            var newFunc = funcToIR(
-                stmt.id.toString(),
-                context.cfg.ownerFunc,
-                stmt.funct
-            );
-
-            // Make the new function a child of the function being compiled
-            context.cfg.ownerFunc.addChildFunc(newFunc);
-        }
-    */
+    // TODO: Create closures for local function declarations (not exprs), add to the locals map
+    //
 
 
 
@@ -163,17 +186,77 @@ function stmtListToIRFunc(
     localsMap.addItem('arguments', cfg.getArgObj());
     for (var i = 0; i < params.length; ++i)
     {
-        localsMap.addItem(params[i].toString(), cfg.getArgVal(i));
+        var symName = params[i].toString();
+
+        localsMap.addItem(symName, cfg.getArgVal(i));
     }
 
-    // Add the locals to the locals map
-    for (var i = 0; i < locals.length; ++i)
+    // Add the local variables to the locals map
+    for (var i = 0; i < localVars.length; ++i)
     {
-        localsMap.addItem(locals[i].toString(), ConstValue.getConst(undefined));
+        var symName = localVars[i].toString();
+
+        localsMap.addItem(symName, ConstValue.getConst(undefined));
     }
 
-    // Get the entry block for the CFG
-    var entryBlock = cfg.getEntryBlock();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // For each nested function
+    for (var i in nestedFuncs)
+    {
+        var nestFuncAst = nestedFuncs[i];
+
+        var nestFuncName;
+        var nestFuncExpr;
+
+        if (nestFuncAst instanceof FunctionDeclaration)
+        {
+            nestFuncName = nestFuncAst.id;
+            nestFuncExpr = nestFuncAst.funct;
+        }
+        else
+        {
+            nestFuncName = '';
+            nestFuncExpr = nestFuncAst;
+        }
+
+        var nestFunc = funcToIR(
+            nestFuncName,
+            newFunc,
+            nestFuncExpr
+        );
+        
+        // Make the new function a child of the function being compiled
+        newFunc.addChildFunc(nestFunc);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Generate code for the function body
     var bodyContext = new IRConvContext(
@@ -195,8 +278,8 @@ function stmtListToIRFunc(
         );
     }
 
-    print(cfg);
-    print('');
+    //print(cfg);
+    //print('');
 
     // Simplify the CFG
     cfg.simplify();
@@ -1357,6 +1440,14 @@ function exprToIR(context)
                     ConstValue.getConst(symName)
                 )
             );
+        }
+
+        // Otherwise, if this variable comes from a parent function
+        else if (astExpr.id.scope !== context.cfg.ownerFunc)
+        {
+            // TODO
+            print('CLOSURE VAR');
+            varValue = ConstValue.getConst(undefined);
         }
 
         // Otherwise, the variable is local
