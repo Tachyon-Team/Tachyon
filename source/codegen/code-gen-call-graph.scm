@@ -241,6 +241,15 @@
       general
       x86-mov-imm
       x86-op
+      x86-add
+      x86-or
+      x86-adc
+      x86-sbb
+      x86-and
+      x86-sub
+      x86-xor
+      x86-cmp
+      x86-mov
       gen-op
       rtl-code-gen-context-code-block))
 

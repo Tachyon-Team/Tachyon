@@ -197,7 +197,7 @@ x86.register.r64   = function (n) { return this.names [ n ]; }
 x86.register.fpu   = function (n) { return this.names [ 48 + n ]; }
 
 const reg = x86.register.prototype;
-reg.type = x86.REG;
+reg.type = x86.type.REG;
 reg.isr8  = function () { return this.value >= 80; }
 reg.isr8h = function () { return this.value >= 96; }
 reg.isxmm = function () { return this.value >= 64 && this.value < 80;}
@@ -707,6 +707,7 @@ x86.movImm = function (dest, k, width)
 
 x86.op    = function (op, mnemonic, dest, src, width) 
 {
+    // TODO: Add support for immediate label, see x86-mov 
     const that = this;
 
     function genOp (reg, opnd, isSwapped)
@@ -718,7 +719,7 @@ x86.op    = function (op, mnemonic, dest, src, width)
         gen8((op << 3) +
              (isSwapped ? 0 : 2) +
              (reg.isr8() ? 0 : 1)).
-        opndModRMSIBRegOpnd(reg.opnd);
+        opndModRMSIBRegOpnd(reg, opnd);
 
         if (this.listing)
         {
@@ -734,7 +735,7 @@ x86.op    = function (op, mnemonic, dest, src, width)
             this.movImm(dest, src.value, width);
         } else
         {
-            this.opImm(op, mnemonic, dest, src.value, width);
+            this.opImm(op, mnemonic, src.value, dest, width);
         }
     } else if (src.type === x86.type.REG)
     {
@@ -749,10 +750,63 @@ x86.op    = function (op, mnemonic, dest, src, width)
    return this;
 }
 
-x86.add = function ( dest, src, width )
-{
-    return this.op(0,"add",dest,src,width);
-}
+// Generic operations follow Intel syntax
+x86.add = function (dest, src, width) { return this.op(0, "add",dest,src,width); };
+x86.or  = function (dest, src, width) { return this.op(1, "or", dest,src,width); };
+x86.adc = function (dest, src, width) { return this.op(2, "adc",dest,src,width); };
+x86.sbb = function (dest, src, width) { return this.op(3, "sbb",dest,src,width); };
+x86.and = function (dest, src, width) { return this.op(4, "and",dest,src,width); };
+x86.sub = function (dest, src, width) { return this.op(5, "sub",dest,src,width); };
+x86.xor = function (dest, src, width) { return this.op(6, "xor",dest,src,width); };
+x86.cmp = function (dest, src, width) { return this.op(7, "cmp",dest,src,width); };
+x86.mov = function (dest, src, width) { return this.op(17,"mov",dest,src,width); };
+
+
+// Suffixed operations follow AT&T syntax
+x86.addb = function (src, dest) { return this.add(dest, src,  8) };
+x86.addw = function (src, dest) { return this.add(dest, src, 16) };
+x86.addl = function (src, dest) { return this.add(dest, src, 32) };
+x86.addq = function (src, dest) { return this.add(dest, src, 64) };
+
+x86.orb  = function (src, dest) { return this.or(dest, src,  8) };
+x86.orw  = function (src, dest) { return this.or(dest, src, 16) };
+x86.orl  = function (src, dest) { return this.or(dest, src, 32) };
+x86.orq  = function (src, dest) { return this.or(dest, src, 64) };
+
+x86.adcb = function (src, dest) { return this.adc(dest, src,  8) };
+x86.adcw = function (src, dest) { return this.adc(dest, src, 16) };
+x86.adcl = function (src, dest) { return this.adc(dest, src, 32) };
+x86.adcq = function (src, dest) { return this.adc(dest, src, 64) };
+
+x86.sbbb = function (src, dest) { return this.sbb(dest, src,  8) };
+x86.sbbw = function (src, dest) { return this.sbb(dest, src, 16) };
+x86.sbbl = function (src, dest) { return this.sbb(dest, src, 32) };
+x86.sbbq = function (src, dest) { return this.sbb(dest, src, 64) };
+
+x86.andb = function (src, dest) { return this.and(dest, src,  8) };
+x86.andw = function (src, dest) { return this.and(dest, src, 16) };
+x86.andl = function (src, dest) { return this.and(dest, src, 32) };
+x86.andq = function (src, dest) { return this.and(dest, src, 64) };
+
+x86.subb = function (src, dest) { return this.sub(dest, src,  8) };
+x86.subw = function (src, dest) { return this.sub(dest, src, 16) };
+x86.subl = function (src, dest) { return this.sub(dest, src, 32) };
+x86.subq = function (src, dest) { return this.sub(dest, src, 64) };
+
+x86.xorb = function (src, dest) { return this.xor(dest, src,  8) };
+x86.xorw = function (src, dest) { return this.xor(dest, src, 16) };
+x86.xorl = function (src, dest) { return this.xor(dest, src, 32) };
+x86.xorq = function (src, dest) { return this.xor(dest, src, 64) };
+
+x86.cmpb = function (src, dest) { return this.cmp(dest, src,  8) };
+x86.cmpw = function (src, dest) { return this.cmp(dest, src, 16) };
+x86.cmpl = function (src, dest) { return this.cmp(dest, src, 32) };
+x86.cmpq = function (src, dest) { return this.cmp(dest, src, 64) };
+
+x86.movb = function (src, dest) { return this.mov(dest, src,  8) };
+x86.movw = function (src, dest) { return this.mov(dest, src, 16) };
+x86.movl = function (src, dest) { return this.mov(dest, src, 32) };
+x86.movq = function (src, dest) { return this.mov(dest, src, 64) };
 
 })(); // end of local namespace
 
