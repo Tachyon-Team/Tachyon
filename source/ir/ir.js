@@ -20,10 +20,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: exception handling
 
-// TODO: while loops
-// - Merging of contexts at loop entry
-// - Break and continue (with labels) handling in context
-
 /**
 Convert an AST code unit into IR functions
 */
@@ -176,7 +172,14 @@ function stmtListToIRFunc(
 /**
 @class IR Conversion context
 */
-function IRConvContext(astNode, entryBlock, localsMap, breakMap, contMap, cfg)
+function IRConvContext(
+    astNode, 
+    entryBlock, 
+    localsMap, 
+    breakMap, 
+    contMap, 
+    cfg
+)
 {
     // Ensure that the arguments are valid
     assert (
@@ -944,14 +947,179 @@ function exprToIR(context)
             assgToIR(context);
         }
 
-        // Otherwise, if this is a logical expression
-        else if (astExpr.op == 'x && y' || astExpr.op == 'x || y')
+        // If this is a logical AND expression
+        else if (astExpr.op == 'x && y')
         {
-            // TODO
-            entryBlock.addInstr(new JumpInstr(exitBlock));
-            return ConstValue.getConst(undefined);
+            // Compile the first expression
+            var fstContext = context.pursue(astExpr.exprs[0])
+            exprToIR(fstContext);
+
+            // Compile the second expression
+            var secContext = new IRConvContext(
+                astExpr.exprs[1],
+                context.cfg.getNewBlock('log_and_sec'),
+                fstContext.localsMap.copy(),
+                context.breakMap,
+                context.contMap,
+                context.cfg
+            );
+            exprToIR(secContext);
+
+            // Create a block to join the contexts
+            var joinBlock = context.cfg.getNewBlock('log_and_join');
+
+            // Create blocks for the true and false cases
+            var trueBlock = context.cfg.getNewBlock('log_and_true');
+            var falseBlock = context.cfg.getNewBlock('log_and_false');
+            trueBlock.addInstr(new JumpInstr(joinBlock));
+            falseBlock.addInstr(new JumpInstr(joinBlock));
+
+            // Create the first if branching instruction
+            fstContext.getExitBlock().addInstr(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    secContext.entryBlock,
+                    falseBlock
+                )
+            );
+
+            // Create the second if branching instruction
+            secContext.getExitBlock().addInstr(
+                new IfInstr(
+                    secContext.getOutValue(),
+                    trueBlock,
+                    falseBlock
+                )
+            );
+
+            // Create a phi node to join the values
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [ConstValue.getConst(true), ConstValue.getConst(false)],
+                    [trueBlock, falseBlock]
+                )
+            );
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
+        }
+
+        // If this is a logical OR expression
+        else if (astExpr.op == 'x || y')
+        {
+            // Compile the first expression
+            var fstContext = context.pursue(astExpr.exprs[0])
+            exprToIR(fstContext);
+
+            // Compile the second expression
+            var secContext = new IRConvContext(
+                astExpr.exprs[1],
+                context.cfg.getNewBlock('log_or_sec'),
+                fstContext.localsMap.copy(),
+                context.breakMap,
+                context.contMap,
+                context.cfg
+            );
+            exprToIR(secContext);
+
+            // Create a block to join the contexts
+            var joinBlock = context.cfg.getNewBlock('log_or_join');
+
+            // Create blocks for the true and false cases
+            var trueBlock = context.cfg.getNewBlock('log_or_true');
+            var falseBlock = context.cfg.getNewBlock('log_or_false');
+            trueBlock.addInstr(new JumpInstr(joinBlock));
+            falseBlock.addInstr(new JumpInstr(joinBlock));
+
+            // Create the first if branching instruction
+            fstContext.getExitBlock().addInstr(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    trueBlock,
+                    secContext.entryBlock
+                )
+            );
+
+            // Create the second if branching instruction
+            secContext.getExitBlock().addInstr(
+                new IfInstr(
+                    secContext.getOutValue(),
+                    trueBlock,
+                    falseBlock
+                )
+            );
+
+            // Create a phi node to join the values
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [ConstValue.getConst(true), ConstValue.getConst(false)],
+                    [trueBlock, falseBlock]
+                )
+            );
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
         }
         
+        // If this is a conditional operator expression
+        else if (astExpr.op == 'x ? y : z')
+        {
+            // Compile the test expression
+            var testContext = context.pursue(astExpr.exprs[0])
+            exprToIR(testContext);
+
+            // Compile the true expression
+            var trueContext = new IRConvContext(
+                astExpr.exprs[1],
+                context.cfg.getNewBlock('cond_true'),
+                testContext.localsMap.copy(),
+                context.breakMap,
+                context.contMap,
+                context.cfg
+            );
+            exprToIR(trueContext);
+
+            // Compile the false expression
+            var falseContext = new IRConvContext(
+                astExpr.exprs[2],
+                context.cfg.getNewBlock('cond_false'),
+                testContext.localsMap.copy(),
+                context.breakMap,
+                context.contMap,
+                context.cfg
+            );
+            exprToIR(falseContext);
+
+            // Create the if branching instruction
+            testContext.getExitBlock().addInstr(
+                new IfInstr(
+                    testContext.getOutValue(),
+                    trueContext.entryBlock,
+                    falseContext.entryBlock
+                )
+            );
+
+            // Create a block to join the contexts
+            var joinBlock = context.cfg.getNewBlock('cond_join');
+
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [trueContext.getOutValue(), falseContext.getOutValue()],
+                    [trueContext.getExitBlock(), falseContext.getExitBlock()]
+                )
+            );
+
+            // Make the true and false contexts jump to the join block
+            trueContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
+            falseContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
+        }
+
         // Otherwise, for all other unary and binary operations
         else
         {
@@ -1067,17 +1235,43 @@ function exprToIR(context)
         ast.exprs = ast_walk_exprs(ast.exprs, ctx);
         return ast;
     }
+    */
 
     else if (astExpr instanceof ObjectLiteral)
     {
-        ast.properties.forEach(function (prop, i, self)
-                               {
-                                   prop.name = ctx.walk_expr(prop.name);
-                                   prop.value = ctx.walk_expr(prop.value);
-                               });
-        return ast;
+        // Get the property names and values
+        var propNames = astExpr.properties.map(function (v) { return v.name });
+        var propValues = astExpr.properties.map(function (v) { return v.value });
+
+        // Compile the property name expressions
+        var nameCtx = context.pursue(propNames);
+        var nameVals = exprListToIR(nameCtx);
+
+        // Compile the property value expressions
+        var valCtx = nameCtx.pursue(propValues);
+        var valVals = exprListToIR(valCtx);
+
+        // Create a new object
+        var newObj = valCtx.getExitBlock().addInstr(new NewObjInstr());
+
+        // Set the value of each property in the new object
+        for (var i = 0; i < propNames.length; ++i)
+        {
+            var propName = nameVals[i];
+            var propValue = valVals[i];
+
+            valCtx.getExitBlock().addInstr(
+                new SetPropValInstr(
+                    newObj,
+                    propName,
+                    propValue
+                )
+            );
+        }
+        
+        // Set the new object as the output
+        context.setOutput(valCtx.getExitBlock(), newObj);
     }
-    */
 
     // Symbol expression
     else if (astExpr instanceof Ref)

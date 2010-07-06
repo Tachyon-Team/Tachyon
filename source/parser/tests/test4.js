@@ -1,10 +1,13 @@
 function f(x)
 {
     // TODO: x++, ++x
-
     //++x;
 
+    //a = { x: 1, y:'foo', z: (x+1) };
     //this.foo = a;
+    //a = x? y:z;
+    //a = x && y;
+    a = x || y;
 
     /*
     for (var i = 0; i < 10; i = i + 1)
