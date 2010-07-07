@@ -25,7 +25,7 @@ function f(x)
 
     //a = function() { y = 2; };
 
-    /*
+    
     for (var i = 0; i < 10; i = i + 1)
     {
         if (true)
@@ -34,7 +34,7 @@ function f(x)
     }
 
     print(i);
-    */
+    
 
     /*
     var y;

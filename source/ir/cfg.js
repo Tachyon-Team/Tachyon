@@ -75,6 +75,7 @@ function ControlFlowGraph(ownerFunc)
 
     // Add the function arguments
     this.argVals.push(new ArgValInstr('this'));
+    this.argVals.push(new ArgValInstr('funcObj'));
     this.argVals.push(new ArgValInstr('argObj'));
     var argNames = this.ownerFunc.getArgNames();
     for (var i = 0; i < argNames.length; ++i)
@@ -442,11 +443,19 @@ ControlFlowGraph.prototype.getThisArg = function ()
 };
 
 /**
+Get the function object value
+*/
+ControlFlowGraph.prototype.getFuncObj = function ()
+{
+    return this.argVals[1];
+};
+
+/**
 Get the argument object value
 */
 ControlFlowGraph.prototype.getArgObj = function ()
 {
-    return this.argVals[1];
+    return this.argVals[2];
 };
 
 /**
@@ -456,7 +465,7 @@ ControlFlowGraph.prototype.getArgVal = function (index)
 {
     assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
 
-    return this.argVals[index + 2];
+    return this.argVals[index + 3];
 };
 
 /**

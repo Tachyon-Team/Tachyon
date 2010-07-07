@@ -954,6 +954,87 @@ ConstructRefInstr.prototype.copy = function ()
     return this.baseCopy(newInstr);
 };
 
+
+
+
+
+
+
+
+// TODO: MakeCellInstr, GetCellInstr, PutCellInstr
+
+
+/**
+@class Mutable cell creation
+@augments IRInstr
+*/
+function MakeCellInstr()
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'make_cell';
+}
+MakeCellInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+MakeCellInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new MakeCellInstr());
+};
+
+/**
+@class Get the value stored in a mutable cell
+@augments IRhInstr
+*/
+function GetCellInstr(cellVal)
+{
+    /**
+    Cell value to be accessed
+    @field
+    */
+    this.uses = [cellVal];
+}
+GetCellInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+GetCellInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new GetCellInstr(this.uses[0]));
+};
+
+/**
+@class Set the value stored in a mutable cell
+@augments IRhInstr
+*/
+function SetCellInstr(cellVal, setVal)
+{
+    /**
+    Cell value to be accessed, value to be set
+    @field
+    */
+    this.uses = [cellVal, setVa];
+}
+SetCellInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+SetCellInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new SetCellInstr(this.uses[0], this.uses[1]));
+};
+
+
+
+
+
+
+
+
+
 /**
 @class Instruction to create a new, empty object
 @augments IRInstr

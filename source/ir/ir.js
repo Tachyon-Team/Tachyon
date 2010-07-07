@@ -127,7 +127,7 @@ function stmtListToIRFunc(
     //
     // TODO: 
     //
-    // - Find all nested functions
+    // - Find all nested functions [X]
     // - Find all escaping variables
     //   - use Mark's AST traversal
     //
@@ -136,6 +136,11 @@ function stmtListToIRFunc(
     //   - Need map of escaping vars to mutable cells
     //     - Integrate into context/function object?
     //
+    // - Read closure var mutable cells from closure obj
+    //   - Map inside closure var map?
+    //   - NOTE: a variable could be BOTH a closure var and an escaping var
+    //   - Could just pass along the same mutable cell?
+    //
     // - Create closures for function statements
     //   - closure instruction MakeClosInstr, GetClosInstr, PutClosInstr
     //   - assign these to locals mapped in locals map *** works in FF
@@ -143,7 +148,7 @@ function stmtListToIRFunc(
     //
     // - Closure for func exprs created only at expression evaluation
     //
-    // - Add closure pointer/argument
+    // - Add closure pointer/argument [X]
     //
 
 
@@ -151,10 +156,6 @@ function stmtListToIRFunc(
 
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
-
-
-
-    print('Cur func: ' + funcName);
 
     // Create a map for the escaping variable mutable cells
     var escapeMap = new HashMap();
@@ -164,20 +165,12 @@ function stmtListToIRFunc(
     {
         var symName = escapeVars[i].toString();
 
-        print(symName);
+        // Create a new mutable cell
+        var newCell = entryBlock.addInstr(new MakeCellInstr());
 
-        // TODO: create mutable cells
+        // Map the variable to the mutable cell
+        escapeMap.addItem(symName, newCell);
     }
-
-
-
-
-    //
-    // TODO: Create closures for local function declarations (not exprs), add to the locals map
-    //
-
-
-
 
     // Create a map for the local variable storage locations
     var localsMap = new HashMap();
@@ -198,22 +191,6 @@ function stmtListToIRFunc(
 
         localsMap.addItem(symName, ConstValue.getConst(undefined));
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // For each nested function
     for (var i in nestedFuncs)
@@ -242,6 +219,23 @@ function stmtListToIRFunc(
         
         // Make the new function a child of the function being compiled
         newFunc.addChildFunc(nestFunc);
+
+
+
+        //
+        // TODO: Create closures for local function declarations (not exprs), add to the locals map
+        //
+        // Need to read closure variables, requires evaluation
+
+
+        if (nestFuncAst instanceof FunctionDeclaration)
+        {
+            // TODO
+
+
+        }
+
+
     }
 
 
@@ -253,7 +247,7 @@ function stmtListToIRFunc(
 
 
 
-
+    // TODO: add escape map to context
 
 
 
@@ -1443,10 +1437,17 @@ function exprToIR(context)
         }
 
         // Otherwise, if this variable comes from a parent function
-        else if (astExpr.id.scope !== context.cfg.ownerFunc)
+        // TODO: use closure/escaping var map(s)
+        else if (!context.localsMap.hasItem(symName))
         {
+            print('Origin scope is func: ' + (astExpr.id.scope instanceof FunctionExpr));
+
+            //
             // TODO
-            print('CLOSURE VAR');
+            //
+
+            print("Closure var: " + symName);
+
             varValue = ConstValue.getConst(undefined);
         }
 
