@@ -11,7 +11,7 @@ function f(x)
     // TODO: x++, ++x
     //++x;
 
-    //a = { x: 1, y:'foo', z: (x+1) };
+    a = { x: 1, y:'foo', z: (x+1) };
     //a = [1, 'foo', (x+1)];
     //this.foo = a;
     //a = x? y:z;

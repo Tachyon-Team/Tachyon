@@ -18,7 +18,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // CFG setInstrName function? Does assignName just work?
 // Is instruction renaming even necessary? What's more practical?
 
-// TODO: exception handling
+// TODO: exception handling, see notes
+
+// TODO: typeof, instanceof, ++x, x++, --x, x--
+// assgVarToIR, readVarToIR
 
 /**
 Convert an AST code unit into IR functions
@@ -131,10 +134,10 @@ function stmtListToIRFunc(
     // - Find all escaping variables
     //   - use Mark's AST traversal
     //
-    // - Create mutable cells for escaping local variables in entry block
+    // - Create mutable cells for escaping local variables in entry block [X]
     //   - MakeCellInstr, GetCellInstr, PutCellInstr
     //   - Need map of escaping vars to mutable cells
-    //     - Integrate into context/function object?
+    //     - Integrate into context?
     //
     // - Read closure var mutable cells from closure obj
     //   - Map inside closure var map?
@@ -153,34 +156,58 @@ function stmtListToIRFunc(
 
 
 
+    //
+    // TODO: consider combining sharedMap and localsMap into varMap
+    //
+
 
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
 
-    // Create a map for the escaping variable mutable cells
-    var escapeMap = new HashMap();
+    // Create a map for the closure and escaping variable mutable cells
+    var sharedMap = new HashMap();
+
+    // For each closure variable
+    for (var i = 0; i < closVars.length; ++i)
+    {
+        var symName = closVars[i];
+
+        // Get the corresponding mutable cell from the closure
+        var closCell = entryBlock.addInstr(
+            new GetClosInstr(cfg.getFuncObj(), ConstValue.getConst(i))
+        );
+
+        // Add the mutable cell to the shared variable map
+        sharedMap.addItem(symName, closCell);
+    }
 
     // For each escaping variable
     for (var i in escapeVars)
     {
         var symName = escapeVars[i].toString();
 
-        // Create a new mutable cell
-        var newCell = entryBlock.addInstr(new MakeCellInstr());
+        // If this variable is not already provided by the closure
+        if (!sharedMap.hasItem(symName))
+        {
+            // Create a new mutable cell for this variable
+            var newCell = entryBlock.addInstr(new MakeCellInstr());
 
-        // Map the variable to the mutable cell
-        escapeMap.addItem(symName, newCell);
+            // Map the variable to the mutable cell
+            sharedMap.addItem(symName, newCell);
+        }
     }
 
     // Create a map for the local variable storage locations
     var localsMap = new HashMap();
+
+
+    // TODO: parameters could technically be captured by a closure, use a mutable cell when needed
 
     // Add the arguments to the locals map
     localsMap.addItem('arguments', cfg.getArgObj());
     for (var i = 0; i < params.length; ++i)
     {
         var symName = params[i].toString();
-
         localsMap.addItem(symName, cfg.getArgVal(i));
     }
 
@@ -188,7 +215,6 @@ function stmtListToIRFunc(
     for (var i = 0; i < localVars.length; ++i)
     {
         var symName = localVars[i].toString();
-
         localsMap.addItem(symName, ConstValue.getConst(undefined));
     }
 
@@ -211,6 +237,7 @@ function stmtListToIRFunc(
             nestFuncExpr = nestFuncAst;
         }
 
+        // Compile the nested function to IR
         var nestFunc = funcToIR(
             nestFuncName,
             newFunc,
@@ -220,22 +247,46 @@ function stmtListToIRFunc(
         // Make the new function a child of the function being compiled
         newFunc.addChildFunc(nestFunc);
 
-
-
-        //
-        // TODO: Create closures for local function declarations (not exprs), add to the locals map
-        //
-        // Need to read closure variables, requires evaluation
-
-
+        // If the nested function is a function declaration
         if (nestFuncAst instanceof FunctionDeclaration)
         {
-            // TODO
+
+            // TODO: Create closures for local function declarations (not exprs), add to the locals map
+            //
+            // Need to read closure variables, requires evaluation, readSymToIR? No
+            // In this case, could just look in maps
+            // Want to be able to pass along mutable cells***
+            // Closure can't capture object sub-field or globals...
+
+
+            // TODO: PROBLEM: if a captured variable comes from several levels above, where do we get it?
+            // this variable should also be captured by our closure
+            // Must propagate up until a local declaration is found
+
+            // MakeClosInstr(newFunc, [])
+
+
+
+
+            // For each closure variable of the new function
+            for (var i = 0; i < newFunc.closVars.length; ++i)
+            {
+                var symName = newFunc.closVars[i];
+
+
+
+
+
+
+
+
+            }
+
+
+
 
 
         }
-
-
     }
 
 
@@ -1369,7 +1420,7 @@ function exprToIR(context)
         for (var i = 0; i < elemVals.length; ++i)
         {
             elemCtx.getExitBlock().addInstr(
-                new SetPropValInstr(
+                new PutPropValInstr(
                     newArray,
                     ConstValue.getConst(i),
                     elemVals[i]
@@ -1405,7 +1456,7 @@ function exprToIR(context)
             var propValue = valVals[i];
 
             valCtx.getExitBlock().addInstr(
-                new SetPropValInstr(
+                new PutPropValInstr(
                     newObject,
                     propName,
                     propValue
@@ -1514,7 +1565,7 @@ function assgToIR(context)
         {
             // Get the value from the global object
             rightContext.getExitBlock().addInstr(
-                new SetPropValInstr(
+                new PutPropValInstr(
                     ConstValue.globalConst,
                     ConstValue.getConst(symName),
                     rightContext.getOutValue()
@@ -1546,7 +1597,7 @@ function assgToIR(context)
 
         // Set the property to the right expression's value
         idxContext.getExitBlock().addInstr(
-            new SetPropValInstr(
+            new PutPropValInstr(
                 objContext.getOutValue(),
                 idxContext.getOutValue(),
                 rightContext.getOutValue()

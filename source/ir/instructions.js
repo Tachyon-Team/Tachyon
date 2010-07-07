@@ -637,10 +637,10 @@ InstOfInstr.prototype.copy = function ()
 @class Property set with value for field name
 @augments IRInstr
 */
-function SetPropValInstr(objVal, nameVal, setVal)
+function PutPropValInstr(objVal, nameVal, setVal)
 {
     // Set the mnemonic name for this instruction
-    this.mnemonic = 'setprop_val';
+    this.mnemonic = 'put_prop_val';
 
     /**
     Object name, field name and value to set
@@ -648,14 +648,14 @@ function SetPropValInstr(objVal, nameVal, setVal)
     */
     this.uses = [objVal, nameVal, setVal];
 }
-SetPropValInstr.prototype = new IRInstr();
+PutPropValInstr.prototype = new IRInstr();
 
 /**
 Make a shallow copy of the instruction
 */
-SetPropValInstr.prototype.copy = function ()
+PutPropValInstr.prototype.copy = function ()
 {
-    var newInstr = new SetPropValInstr(this.uses[0], this.uses[1], this.uses[2]);
+    var newInstr = new PutPropValInstr(this.uses[0], this.uses[1], this.uses[2]);
     return this.baseCopy(newInstr);
 };
 
@@ -666,7 +666,7 @@ SetPropValInstr.prototype.copy = function ()
 function GetPropValInstr(objVal, nameVal)
 {
     // Set the mnemonic name for this instruction
-    this.mnemonic = 'getprop_val';
+    this.mnemonic = 'get_prop_val';
 
     /**
     Object and field name values
@@ -938,7 +938,7 @@ function ConstructRefInstr(funcVal, paramVals)
     this.mnemonic = 'construct';
 
     /**
-    Function value, this value and parameter values
+    Function value and parameter values
     @field
     */
     this.uses = [funcVal].concat(paramVals);
@@ -953,6 +953,15 @@ ConstructRefInstr.prototype.copy = function ()
     var newInstr = new ConstructRefInstr(this.uses[0], this.uses.slice[1]);
     return this.baseCopy(newInstr);
 };
+
+
+
+
+
+
+
+
+
 
 
 
@@ -985,10 +994,13 @@ MakeCellInstr.prototype.copy = function ()
 
 /**
 @class Get the value stored in a mutable cell
-@augments IRhInstr
+@augments IRInstr
 */
 function GetCellInstr(cellVal)
 {
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'get_cell';
+
     /**
     Cell value to be accessed
     @field
@@ -1009,23 +1021,121 @@ GetCellInstr.prototype.copy = function ()
 @class Set the value stored in a mutable cell
 @augments IRhInstr
 */
-function SetCellInstr(cellVal, setVal)
+function PutCellInstr(cellVal, setVal)
 {
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'put_cell';
+
     /**
     Cell value to be accessed, value to be set
     @field
     */
-    this.uses = [cellVal, setVa];
+    this.uses = [cellVal, setVal];
 }
-SetCellInstr.prototype = new IRInstr();
+PutCellInstr.prototype = new IRInstr();
 
 /**
 Make a shallow copy of the instruction
 */
-SetCellInstr.prototype.copy = function ()
+PutCellInstr.prototype.copy = function ()
 {
-    return this.baseCopy(new SetCellInstr(this.uses[0], this.uses[1]));
+    return this.baseCopy(new PutCellInstr(this.uses[0], this.uses[1]));
 };
+
+
+
+// TODO: MakeClosInstr, GetClosInstr, PutClosInstr
+
+
+
+/**
+@class Closure creation with closure variable arguments
+@augments IRInstr
+*/
+function MakeClosInstr(funcVal, varVals)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'make_clos';
+
+    /**
+    Function value and closure variable values
+    @field
+    */
+    this.uses = [funcVal].concat(varVals);
+}
+MakeClosInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+MakeClosInstr.prototype.copy = function ()
+{
+    var newInstr = new MakeClosInstr(this.uses[0], this.uses.slice[1]);
+    return this.baseCopy(newInstr);
+};
+
+/**
+@class Get the value stored in a closure variable
+@augments IRInstr
+*/
+function GetClosInstr(closVal, idxVal)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'get_clos';
+
+    /**
+    Closure value to be accessed and index of the variable to get
+    @field
+    */
+    this.uses = [closVal, idxVal];
+}
+GetClosInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+GetClosInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new GetClosInstr(this.uses[0], this.uses[1]));
+};
+
+/**
+@class Set the value stored in a closure variable
+@augments IRInstr
+*/
+function PutClosInstr(closVal, idxVal, setVal)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'put_clos';
+
+    /**
+    Closure value to be accessed, index of the variable to set, and value to set
+    @field
+    */
+    this.uses = [closVal, idxVal, setVal];
+}
+PutClosInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+PutClosInstr.prototype.copy = function ()
+{
+    return this.baseCopy(new PutClosInstr(this.uses[0], this.uses[1], this.uses[2]));
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
