@@ -50,7 +50,7 @@ function IRFunction(funcName, argNames, closVars)
     */
     this.parentFunc = null;
 }
-IRFunction.prototype = {};
+IRFunction.prototype = new IRValue();
 
 /**
 Produce a string representation of an IR function
@@ -93,6 +93,14 @@ IRFunction.prototype.toString = function ()
 
     return output;
 };
+
+/**
+Return the IR value name for this function
+*/
+IRFunction.prototype.getValName = function ()
+{
+    return '<func' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
+}
 
 /**
 Create a deep copy of the function

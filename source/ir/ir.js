@@ -139,12 +139,12 @@ function stmtListToIRFunc(
     //   - Need map of escaping vars to mutable cells
     //     - Integrate into context?
     //
-    // - Read closure var mutable cells from closure obj
+    // - Read closure var mutable cells from closure obj [X]
     //   - Map inside closure var map?
     //   - NOTE: a variable could be BOTH a closure var and an escaping var
     //   - Could just pass along the same mutable cell?
     //
-    // - Create closures for function statements
+    // - Create closures for function statements [X]
     //   - closure instruction MakeClosInstr, GetClosInstr, PutClosInstr
     //   - assign these to locals mapped in locals map *** works in FF
     //     - even if you declare a local var, doesn't matter until assignment
@@ -156,9 +156,6 @@ function stmtListToIRFunc(
 
 
 
-    //
-    // TODO: consider combining sharedMap and localsMap into varMap
-    //
 
 
     // Get the entry block for the CFG
@@ -186,7 +183,7 @@ function stmtListToIRFunc(
     {
         var symName = escapeVars[i].toString();
 
-        // If this variable is not already provided by the closure
+        // If this variable is not already provided by the local function object
         if (!sharedMap.hasItem(symName))
         {
             // Create a new mutable cell for this variable
@@ -198,25 +195,44 @@ function stmtListToIRFunc(
     }
 
     // Create a map for the local variable storage locations
-    var localsMap = new HashMap();
+    var localMap = new HashMap();
 
+    // Add the arguments object to the variable map
+    localMap.addItem('arguments', cfg.getArgObj());
 
-    // TODO: parameters could technically be captured by a closure, use a mutable cell when needed
-
-    // Add the arguments to the locals map
-    localsMap.addItem('arguments', cfg.getArgObj());
+    // For each function argument
     for (var i = 0; i < params.length; ++i)
     {
         var symName = params[i].toString();
-        localsMap.addItem(symName, cfg.getArgVal(i));
+
+        // If there is no entry in the shared map
+        if (!sharedMap.hasItem(symName))
+        {
+            // Add the argument value directly to the local map
+            localMap.addItem(symName, cfg.getArgVal(i));
+        }
+        else
+        {
+            // Put the argument value in the corresponding mutable cell
+            var mutCell = sharedMap.getItem(symName);
+            entryBlock.addInstr(PutCellInstr(mutCell, cfg.getArgVal(i)));
+        }
     }
 
-    // Add the local variables to the locals map
-    for (var i = 0; i < localVars.length; ++i)
+    // For each local variable declaration
+    for (var i in localVars)
     {
         var symName = localVars[i].toString();
-        localsMap.addItem(symName, ConstValue.getConst(undefined));
+        print(symName);
+
+        // If there is no shared map or local map entry, add an undefined value
+        if (!sharedMap.hasItem(symName) && !localMap.hasItem(symName))
+            localMap.addItem(symName, ConstValue.getConst(undefined));
     }
+
+
+    // TODO: if global/unit function (null parent?), define functions in global object with put_prop??? ***
+
 
     // For each nested function
     for (var i in nestedFuncs)
@@ -247,6 +263,10 @@ function stmtListToIRFunc(
         // Make the new function a child of the function being compiled
         newFunc.addChildFunc(nestFunc);
 
+
+        // TODO: modularize closure creation in another function?
+
+
         // If the nested function is a function declaration
         if (nestFuncAst instanceof FunctionDeclaration)
         {
@@ -258,56 +278,37 @@ function stmtListToIRFunc(
             // Want to be able to pass along mutable cells***
             // Closure can't capture object sub-field or globals...
 
-
             // TODO: PROBLEM: if a captured variable comes from several levels above, where do we get it?
             // this variable should also be captured by our closure
             // Must propagate up until a local declaration is found
 
-            // MakeClosInstr(newFunc, [])
 
-
-
+            // Create a list for the closure variable values
+            var closVals = [];
 
             // For each closure variable of the new function
-            for (var i = 0; i < newFunc.closVars.length; ++i)
+            for (var i = 0; i < nestFunc.closVars.length; ++i)
             {
-                var symName = newFunc.closVars[i];
+                var symName = nestFunc.closVars[i];
 
-
-
-
-
-
-
-
+                // Add the variable to the closure variable values
+                closVals.push(sharedMap.getItem(symName));
             }
 
+            // Create a closure for the function
+            var closVal = entryBlock.addInstr(new MakeClosInstr(nestFunc, closVals));
 
-
-
-
+            // Map the function name to the closure in the local variable map
+            localMap.setItem(nestFuncName, closVal);
         }
     }
-
-
-
-
-
-
-
-
-
-
-    // TODO: add escape map to context
-
-
-
 
     // Generate code for the function body
     var bodyContext = new IRConvContext(
         bodyStmts, 
         entryBlock,
-        localsMap,
+        localMap,
+        sharedMap,
         new HashMap(),
         new HashMap(),
         cfg
@@ -350,7 +351,8 @@ function stmtListToIRFunc(
 function IRConvContext(
     astNode, 
     entryBlock, 
-    localsMap, 
+    localMap,
+    sharedMap,
     breakMap, 
     contMap, 
     cfg
@@ -366,8 +368,12 @@ function IRConvContext(
         'entry block not defined or invalid in IR conversion context'
     );
     assert (
-        localsMap !== undefined,
-        'locals map not defined in IR conversion context'
+        localMap !== undefined,
+        'local variable map not defined in IR conversion context'
+    );
+    assert (
+        sharedMap !== undefined,
+        'shared variable map not defined in IR conversion context'
     );
     assert (
         breakMap !== undefined,
@@ -398,7 +404,13 @@ function IRConvContext(
     Mutable map of local variable states
     @field
     */
-    this.localsMap = localsMap;
+    this.localMap = localMap;
+
+    /**
+    Map of shared variable locations
+    @field
+    */
+    this.sharedMap = sharedMap;
 
     /**
     Break context lists map
@@ -519,7 +531,8 @@ IRConvContext.prototype.pursue = function (astNode)
     return new IRConvContext(
         astNode,
         (this.exitBlock !== undefined)? this.exitBlock:this.entryBlock,
-        this.localsMap,
+        this.localMap,
+        this.sharedMap,
         this.breakMap,
         this.contMap,
         this.cfg
@@ -628,7 +641,8 @@ function stmtToIR(context)
         var trueContext = new IRConvContext(
             astStmt.statements[0],
             context.cfg.getNewBlock('if_true'),
-            context.localsMap.copy(),
+            context.localMap.copy(),
+            context.sharedMap,
             context.breakMap,
             context.contMap,
             context.cfg
@@ -642,7 +656,8 @@ function stmtToIR(context)
             var falseContext = new IRConvContext(
                 astStmt.statements[1],
                 context.cfg.getNewBlock('if_false'),
-                context.localsMap.copy(),
+                context.localMap.copy(),
+                context.sharedMap,
                 context.breakMap,
                 context.contMap,
                 context.cfg
@@ -655,7 +670,8 @@ function stmtToIR(context)
             var falseContext = new IRConvContext(
                 astStmt.expr,
                 context.cfg.getNewBlock('if_false'),
-                context.localsMap.copy(),
+                context.localMap.copy(),
+                context.sharedMap,
                 context.breakMap,
                 context.contMap,
                 context.cfg
@@ -666,7 +682,7 @@ function stmtToIR(context)
         // Merge the local maps using phi nodes
         var joinBlock = mergeContexts(
             [trueContext, falseContext],
-            context.localsMap,
+            context.localMap,
             context.cfg,
             'if_join'
         );
@@ -720,6 +736,7 @@ function stmtToIR(context)
             astStmt.expr,
             testEntry,
             testLocals,
+            context.sharedMap,
             bodyContext.breakMap,
             bodyContext.contMap,
             context.cfg
@@ -732,7 +749,7 @@ function stmtToIR(context)
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
-            context.localsMap,
+            context.localMap,
             context.cfg,
             'loop_exit'
         );
@@ -786,7 +803,8 @@ function stmtToIR(context)
         var bodyContext = new IRConvContext(
             astStmt.statement,
             context.cfg.getNewBlock('loop_body'),
-            testContext.localsMap.copy(),
+            testContext.localMap.copy(),
+            context.sharedMap,
             testContext.breakMap,
             testContext.contMap,
             context.cfg
@@ -809,7 +827,7 @@ function stmtToIR(context)
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
-            context.localsMap,
+            context.localMap,
             context.cfg,
             'loop_exit'
         );
@@ -860,7 +878,8 @@ function stmtToIR(context)
         var bodyContext = new IRConvContext(
             astStmt.statement,
             context.cfg.getNewBlock('loop_body'),
-            testContext.localsMap.copy(),
+            testContext.localMap.copy(),
+            context.sharedMap,
             testContext.breakMap,
             testContext.contMap,
             context.cfg
@@ -887,6 +906,7 @@ function stmtToIR(context)
             astStmt.expr3,
             loopIncr,
             incrLocals,
+            context.sharedMap,
             bodyContext.breakMap,
             bodyContext.contMap,
             context.cfg
@@ -903,7 +923,7 @@ function stmtToIR(context)
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
-            context.localsMap,
+            context.localMap,
             context.cfg,
             'loop_exit'
         );
@@ -1131,7 +1151,8 @@ function exprToIR(context)
             var secContext = new IRConvContext(
                 astExpr.exprs[1],
                 context.cfg.getNewBlock('log_and_sec'),
-                fstContext.localsMap.copy(),
+                fstContext.localMap.copy(),
+                context.sharedMap,
                 context.breakMap,
                 context.contMap,
                 context.cfg
@@ -1189,7 +1210,8 @@ function exprToIR(context)
             var secContext = new IRConvContext(
                 astExpr.exprs[1],
                 context.cfg.getNewBlock('log_or_sec'),
-                fstContext.localsMap.copy(),
+                fstContext.localMap.copy(),
+                context.sharedMap,
                 context.breakMap,
                 context.contMap,
                 context.cfg
@@ -1247,7 +1269,8 @@ function exprToIR(context)
             var trueContext = new IRConvContext(
                 astExpr.exprs[1],
                 context.cfg.getNewBlock('cond_true'),
-                testContext.localsMap.copy(),
+                testContext.localMap.copy(),
+                context.sharedMap,
                 context.breakMap,
                 context.contMap,
                 context.cfg
@@ -1258,7 +1281,8 @@ function exprToIR(context)
             var falseContext = new IRConvContext(
                 astExpr.exprs[2],
                 context.cfg.getNewBlock('cond_false'),
-                testContext.localsMap.copy(),
+                testContext.localMap.copy(),
+                context.sharedMap,
                 context.breakMap,
                 context.contMap,
                 context.cfg
@@ -1487,31 +1511,28 @@ function exprToIR(context)
             );
         }
 
-        // Otherwise, if this variable comes from a parent function
-        // TODO: use closure/escaping var map(s)
-        else if (!context.localsMap.hasItem(symName))
+        // Otherwise, if this variable is a shared closure variable
+        else if (context.sharedMap.hasItem(symName))
         {
-            print('Origin scope is func: ' + (astExpr.id.scope instanceof FunctionExpr));
+            // Get the mutable cell for the variable
+            var cellValue = context.sharedMap.getItem(symName);
 
-            //
-            // TODO
-            //
-
-            print("Closure var: " + symName);
-
-            varValue = ConstValue.getConst(undefined);
+            // Get the value from the mutable cell
+            varValue = context.entryBlock.addInstr(
+                new GetCellInstr(cellValue)
+            );
         }
 
         // Otherwise, the variable is local
         else
         {
             assert (
-                context.localsMap.hasItem(symName), 
+                context.localMap.hasItem(symName), 
                 'local variable not in locals map: ' + symName
             );
 
             // Lookup the variable in the locals map
-            varValue = context.localsMap.getItem(symName);
+            varValue = context.localMap.getItem(symName);
         }
 
         // Set the variable's value as the output
@@ -1573,11 +1594,23 @@ function assgToIR(context)
             );
         }
 
+        // Otherwise, if this variable is a shared closure variable
+        else if (context.sharedMap.hasItem(symName))
+        {
+            // Get the mutable cell for the variable
+            var cellValue = rightContext.sharedMap.getItem(symName);
+
+            // Set the value in the mutable cell
+            rightContext.entryBlock.addInstr(
+                new PutCellInstr(cellValue, rightContext.getOutValue())
+            );   
+        }
+
         // Otherwise, the variable is local
         else
         {
             // Update the variable value in the locals map
-            context.localsMap.setItem(symName, rightContext.getOutValue());
+            context.localMap.setItem(symName, rightContext.getOutValue());
         }
     }
 
@@ -1759,7 +1792,7 @@ function mergeContexts(
     mergeMap.clear();
 
     // Get the keys from the first join point
-    var keys = ntContexts[0].localsMap.getKeys();
+    var keys = ntContexts[0].localMap.getKeys();
 
     // Create a block for the merging
     var mergeBlock = cfg.getNewBlock(blockName);
@@ -1779,7 +1812,7 @@ function mergeContexts(
             var context = ntContexts[j];
 
             // Add the value of the current variable to the list
-            values.push(context.localsMap.getItem(varName));
+            values.push(context.localMap.getItem(varName));
             preds.push(context.exitBlock);
         }
 
@@ -1850,12 +1883,12 @@ function createLoopEntry(
     var loopEntry = context.cfg.getNewBlock(blockName);
 
     // Create a phi node for each local variable in the current context
-    var localVars = context.localsMap.getKeys();
+    var localVars = context.localMap.getKeys();
     for (var i = 0; i < localVars.length; ++i)
     {
         var varName = localVars[i];
         var phiNode = new PhiInstr(
-            [context.localsMap.getItem(varName)],
+            [context.localMap.getItem(varName)],
             [context.entryBlock]
         );
         loopEntry.addInstr(phiNode);
@@ -1867,6 +1900,7 @@ function createLoopEntry(
         entryNode,
         loopEntry,
         entryLocals.copy(),
+        context.sharedMap,
         breakMap,
         contMap,
         context.cfg
@@ -1895,7 +1929,7 @@ function mergeLoopEntry(
         for (var j = 0; j < contexts.length; ++j)
         {
             var context = contexts[j];
-            var varValue = context.localsMap.getItem(varName);
+            var varValue = context.localMap.getItem(varName);
             phiNode.addIncoming(varValue, context.getExitBlock());
         }
     }

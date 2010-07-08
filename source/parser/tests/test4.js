@@ -2,28 +2,36 @@ function f(x)
 {
     function g(z)
     {
+        function h()
+        {
+            u = u + 1;
+        }
+
         a;
-        z;
+
         y;
+        z;
         w;
     }
+
+
+    var y = 3;
+    var z;
+    var w;
+    var u;
+
+    //a = function() { y = 2; };
 
     // TODO: x++, ++x
     //++x;
 
-    a = { x: 1, y:'foo', z: (x+1) };
+    //a = { x: 1, y:'foo', z: (x+1) };
     //a = [1, 'foo', (x+1)];
     //this.foo = a;
     //a = x? y:z;
     //a = x && y;
     //a = x || y;
     //a = new foo(1, 2, 3);
-
-    var y = 3;
-    var z;
-    var w;
-
-    //a = function() { y = 2; };
 
     
     for (var i = 0; i < 10; i = i + 1)

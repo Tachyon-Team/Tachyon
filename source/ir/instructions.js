@@ -149,7 +149,10 @@ function IRInstr()
         {
             var ins = this.uses[i];
 
-            output += ins.getValName();
+            if (!(ins instanceof IRValue))
+                output += '***invalid value***';
+            else
+                output += ins.getValName();
 
             if (i != this.uses.length - 1)
                 output += ", ";
