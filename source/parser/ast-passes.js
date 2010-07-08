@@ -260,6 +260,7 @@ function ast_walk_exprs(asts, ctx)
 //   - transform "ForVarStatement" into "ForStatement"
 //   - transform "ForVarInStatement" into "ForInStatement"
 //   - flattening of nested block statements
+//   - elimination of composite assignment operators (e.g.: +=, *=, ...)
 
 function ast_pass1_ctx(vars, scope)
 {
@@ -434,8 +435,48 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
         ast.parent = this.scope;
         return ast;
     }
+    else if (ast instanceof OpExpr)
+    {
+        function assgToOp(op)
+        {
+            return new OpExpr(
+                ast.loc,
+                'x = y',
+                [ 
+                    ast.exprs[0],
+                    new OpExpr(
+                        ast.loc,
+                        op, 
+                        [ast.exprs[0], ast.exprs[1]]
+                    )
+                ]
+            );
+        }
+
+        switch (ast.op)
+        {
+            case 'x += y':      return assgToOp('x + y');   break;
+            case 'x -= y':      return assgToOp('x - y');   break;
+            case 'x *= y':      return assgToOp('x * y');   break;
+            case 'x /= y':      return assgToOp('x / y');   break;
+            case 'x %= y':      return assgToOp('x % y');   break;
+
+            case 'x &= y':      return assgToOp('x & y');   break;
+            case 'x |= y':      return assgToOp('x | y');   break;
+            case 'x ^= y':      return assgToOp('x ^ y');   break;
+
+            case 'x <<= y':     return assgToOp('x << y');  break;
+            case 'x >>= y':     return assgToOp('x >> y');  break;
+            case 'x >>>= y':    return assgToOp('x >>> y'); break;
+
+            default:
+            return ast_walk_expr(ast, this);
+        }
+    }
     else
+    {
         return ast_walk_expr(ast, this);
+    }
 };
 
 ast_pass1_ctx.prototype.walk_statements = function (asts)

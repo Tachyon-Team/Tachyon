@@ -20,10 +20,17 @@ function f(x)
     var w;
     var u;
 
-    //a = function() { y = 2; };
+    a = function () { y = 2; };
 
-    // TODO: x++, ++x
-    //++x;
+    for (var i = 0; i < 10; ++i)
+    {
+        if (true)
+            continue;
+    }
+
+    print(i);
+    
+
 
     //a = { x: 1, y:'foo', z: (x+1) };
     //a = [1, 'foo', (x+1)];
@@ -32,17 +39,10 @@ function f(x)
     //a = x && y;
     //a = x || y;
     //a = new foo(1, 2, 3);
-
-    
-    for (var i = 0; i < 10; i = i + 1)
-    {
-        if (true)
-            continue;
-
-    }
-
-    print(i);
-    
+    //a += 1;
+    //++x;
+    //typeof x;
+    //x instanceof y
 
     /*
     var y;

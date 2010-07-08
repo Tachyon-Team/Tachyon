@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Intermediate representation function
 */
-function IRFunction(funcName, argNames, closVars)
+function IRFunction(funcName, argNames, closVars, parentFunc, astNode)
 {
     /**
     Function name
@@ -31,6 +31,11 @@ function IRFunction(funcName, argNames, closVars)
     @field
     */
     this.closVars = closVars;
+
+    /**
+    AST node corresponding to the function
+    */
+    this.astNode = astNode;
 
     /**
     Virgin, unoptimized IR CFG
@@ -81,11 +86,8 @@ IRFunction.prototype.toString = function ()
 
     for (var i = 0; i < this.childFuncs.length; ++i)
     {
-        output += indentText(this.childFuncs[i].toString(), '    ') + '\n';
+        output += indentText(this.childFuncs[i].toString(), '    ') + '\n\n';
     }
-
-    if (this.childFuncs.length > 0)
-        output += '\n';
 
     output += indentText(this.virginIR.toString(), '    ');
 

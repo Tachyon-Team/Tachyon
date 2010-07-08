@@ -11,17 +11,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments
 
-// TODO: closure pointer for function?
-// global env pointer in closure?
-
-// TODO: rename instr for assigned value to assigned var name?
-// CFG setInstrName function? Does assignName just work?
-// Is instruction renaming even necessary? What's more practical?
-
 // TODO: exception handling, see notes
-
-// TODO: typeof, instanceof, ++x, x++, --x, x--
-// assgVarToIR, readVarToIR
 
 /**
 Convert an AST code unit into IR functions
@@ -57,7 +47,8 @@ function unitToIR(
         [],
         [],
         astUnit.funcs,
-        astUnit.block.statements
+        astUnit.block.statements,
+        astUnit
     );
 }
 
@@ -83,7 +74,8 @@ function funcToIR(
         astFunc.clos_vars,
         astFunc.esc_vars,
         astFunc.funcs,
-        astFunc.body
+        astFunc.body,
+        astFunc
     );
 }
 
@@ -99,7 +91,8 @@ function stmtListToIRFunc(
     closureVars,
     escapeVars,
     nestedFuncs,
-    bodyStmts
+    bodyStmts,
+    astNode
 )
 {
     // Extract the argument names
@@ -113,50 +106,19 @@ function stmtListToIRFunc(
         closVars.push(closureVars[i].toString());
 
     // Create a new function object for the function
-    var newFunc = new IRFunction(funcName, argNames, closVars);
+    var newFunc = new IRFunction(
+        funcName,
+        argNames,
+        closVars,
+        parentFunc,
+        astNode
+    );
 
     // Create a new CFG for the function
     var cfg = new ControlFlowGraph(newFunc);
 
     // Set the CFG for the function
     newFunc.virginIR = cfg;
-
-    // Set the parent for the function
-    newFunc.parentFunc = parentFunc;
-
-
-
-
-    //
-    // TODO: 
-    //
-    // - Find all nested functions [X]
-    // - Find all escaping variables
-    //   - use Mark's AST traversal
-    //
-    // - Create mutable cells for escaping local variables in entry block [X]
-    //   - MakeCellInstr, GetCellInstr, PutCellInstr
-    //   - Need map of escaping vars to mutable cells
-    //     - Integrate into context?
-    //
-    // - Read closure var mutable cells from closure obj [X]
-    //   - Map inside closure var map?
-    //   - NOTE: a variable could be BOTH a closure var and an escaping var
-    //   - Could just pass along the same mutable cell?
-    //
-    // - Create closures for function statements [X]
-    //   - closure instruction MakeClosInstr, GetClosInstr, PutClosInstr
-    //   - assign these to locals mapped in locals map *** works in FF
-    //     - even if you declare a local var, doesn't matter until assignment
-    //
-    // - Closure for func exprs created only at expression evaluation
-    //
-    // - Add closure pointer/argument [X]
-    //
-
-
-
-
 
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
@@ -230,10 +192,6 @@ function stmtListToIRFunc(
             localMap.addItem(symName, ConstValue.getConst(undefined));
     }
 
-
-    // TODO: if global/unit function (null parent?), define functions in global object with put_prop??? ***
-
-
     // For each nested function
     for (var i in nestedFuncs)
     {
@@ -263,43 +221,41 @@ function stmtListToIRFunc(
         // Make the new function a child of the function being compiled
         newFunc.addChildFunc(nestFunc);
 
-
-        // TODO: modularize closure creation in another function?
-
-
         // If the nested function is a function declaration
         if (nestFuncAst instanceof FunctionDeclaration)
         {
-
-            // TODO: Create closures for local function declarations (not exprs), add to the locals map
-            //
-            // Need to read closure variables, requires evaluation, readSymToIR? No
-            // In this case, could just look in maps
-            // Want to be able to pass along mutable cells***
-            // Closure can't capture object sub-field or globals...
-
-            // TODO: PROBLEM: if a captured variable comes from several levels above, where do we get it?
-            // this variable should also be captured by our closure
-            // Must propagate up until a local declaration is found
-
-
-            // Create a list for the closure variable values
-            var closVals = [];
-
-            // For each closure variable of the new function
-            for (var i = 0; i < nestFunc.closVars.length; ++i)
+            // If the current function is a unit level function
+            if (astNode instanceof Program)
             {
-                var symName = nestFunc.closVars[i];
-
-                // Add the variable to the closure variable values
-                closVals.push(sharedMap.getItem(symName));
+                // Bind the nested function name in the global environment
+                entryBlock.addInstr(
+                    new PutPropValInstr(
+                        ConstValue.globalConst,
+                        ConstValue.getConst(nestFuncName),
+                        nestFunc
+                    )
+                );
             }
+            else
+            {
+                // Create a list for the closure variable values
+                var closVals = [];
 
-            // Create a closure for the function
-            var closVal = entryBlock.addInstr(new MakeClosInstr(nestFunc, closVals));
+                // For each closure variable of the new function
+                for (var i = 0; i < nestFunc.closVars.length; ++i)
+                {
+                    var symName = nestFunc.closVars[i];
 
-            // Map the function name to the closure in the local variable map
-            localMap.setItem(nestFuncName, closVal);
+                    // Add the variable to the closure variable values
+                    closVals.push(sharedMap.getItem(symName));
+                }
+
+                // Create a closure for the function
+                var closVal = entryBlock.addInstr(new MakeClosInstr(nestFunc, closVals));
+
+                // Map the function name to the closure in the local variable map
+                localMap.setItem(nestFuncName, closVal);
+            }
         }
     }
 
@@ -1124,11 +1080,39 @@ function exprToIR(context)
 
     if (astExpr instanceof FunctionExpr)
     {
-        //ast.body = ast_walk_statements(ast.body, ctx);
-        //return ast;
+        // Find the compiled nested function corresponding to this expression
+        var curFunc = context.cfg.ownerFunc;
+        var nestFunc = null;
+        for (var f in curFunc.childFuncs)
+            if (curFunc.childFuncs[f].astNode === astExpr)
+                nestFunc = curFunc.childFuncs[f];
 
-        // TODO ***************
-        context.bridge();
+        // Ensure that he nested function was found
+        assert (
+            nestFunc != null,
+            'nested function not found for function expression'
+        );
+
+
+        // Create a list for the closure variable values
+        var closVals = [];
+
+        // For each closure variable of the new function
+        for (var i = 0; i < nestFunc.closVars.length; ++i)
+        {
+            var symName = nestFunc.closVars[i];
+
+            // Add the variable to the closure variable values
+            closVals.push(context.sharedMap.getItem(symName));
+        }
+
+        // Create a closure for the function
+        var closVal = context.entryBlock.addInstr(
+            new MakeClosInstr(nestFunc, closVals)
+        );
+
+        // Set the output to the new closure
+        context.setOutput(context.entryBlock, closVal);
     }
 
     else if (astExpr instanceof OpExpr)
@@ -1136,8 +1120,128 @@ function exprToIR(context)
         // If this is an assignment expression
         if (astExpr.op == 'x = y')
         {
-            // Convert the assignment statement
-            assgToIR(context);
+            // Get the left and right expressions
+            var leftExpr = context.astNode.exprs[0];
+            var rightExpr = context.astNode.exprs[1];
+
+            // Generate IR for the right expression
+            var rightContext = context.pursue(rightExpr);
+            exprToIR(rightContext);
+
+            // Convert the assignment
+            var leftContext = rightContext.pursue(leftExpr);
+            assgToIR(leftContext, rightContext.getOutValue());
+
+            // Set the output to that of the assignment
+            context.setOutput(leftContext.getExitBlock(), leftContext.getOutValue());
+        }
+
+        // If this is a pre-incrementation expression
+        else if (astExpr.op == '++ x')
+        {
+            // Get the variable expression
+            var varExpr = context.astNode.exprs[0];
+
+            // Generate IR for the expression
+            var fstContext = context.pursue(varExpr);
+            exprToIR(fstContext);
+            
+            // Compute the incremented value
+            var incVal = fstContext.getExitBlock().addInstr(
+                new ArithInstr(
+                    ArithOp.ADD,
+                    fstContext.getOutValue(),
+                    ConstValue.getConst(1)
+                )
+            );
+        
+            // Assign the incremented value to the variable
+            var secContext = fstContext.pursue(varExpr);
+            assgToIR(secContext, incVal);
+
+            // Set the output to the incremented value
+            context.setOutput(secContext.getExitBlock(), incVal);            
+        }
+
+        // If this is a pre-decrementation expression
+        else if (astExpr.op == '-- x')
+        {
+            // Get the variable expression
+            var varExpr = context.astNode.exprs[0];
+
+            // Generate IR for the expression
+            var fstContext = context.pursue(varExpr);
+            exprToIR(fstContext);
+            
+            // Compute the decremented value
+            var decVal = fstContext.getExitBlock().addInstr(
+                new ArithInstr(
+                    ArithOp.SUB,
+                    fstContext.getOutValue(),
+                    ConstValue.getConst(1)
+                )
+            );
+        
+            // Assign the incremented value to the variable
+            var secContext = fstContext.pursue(varExpr);
+            assgToIR(secContext, incVal);
+
+            // Set the output to the incremented value
+            context.setOutput(secContext.getExitBlock(), decVal);            
+        }
+
+        // If this is a post-incrementation expression
+        else if (astExpr.op == 'x ++')
+        {
+            // Get the variable expression
+            var varExpr = context.astNode.exprs[0];
+
+            // Generate IR for the expression
+            var fstContext = context.pursue(varExpr);
+            exprToIR(fstContext);
+            
+            // Compute the incremented value
+            var incVal = fstContext.getExitBlock().addInstr(
+                new ArithInstr(
+                    ArithOp.ADD,
+                    fstContext.getOutValue(),
+                    ConstValue.getConst(1)
+                )
+            );
+        
+            // Assign the incremented value to the variable
+            var secContext = fstContext.pursue(varExpr);
+            assgToIR(secContext, incVal);
+
+            // Set the output to the original value
+            context.setOutput(secContext.getExitBlock(), fstContext.getOutValue());            
+        }
+
+        // If this is a post-decrementation expression
+        else if (astExpr.op == '-- x')
+        {
+            // Get the variable expression
+            var varExpr = context.astNode.exprs[0];
+
+            // Generate IR for the expression
+            var fstContext = context.pursue(varExpr);
+            exprToIR(fstContext);
+            
+            // Compute the decremented value
+            var decVal = fstContext.getExitBlock().addInstr(
+                new ArithInstr(
+                    ArithOp.SUB,
+                    fstContext.getOutValue(),
+                    ConstValue.getConst(1)
+                )
+            );
+        
+            // Assign the incremented value to the variable
+            var secContext = fstContext.pursue(varExpr);
+            assgToIR(secContext, incVal);
+
+            // Set the output to the original value
+            context.setOutput(secContext.getExitBlock(), fstContext.getOutValue());            
         }
 
         // If this is a logical AND expression
@@ -1558,7 +1662,7 @@ function exprToIR(context)
 /**
 Convert an assignment expression to IR code
 */
-function assgToIR(context)
+function assgToIR(context, rightVal)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -1566,15 +1670,11 @@ function assgToIR(context)
         'invalid IR conversion context specified'
     );
 
-    // Get the left and right expressions
-    var leftExpr = context.astNode.exprs[0];
-    var rightExpr = context.astNode.exprs[1];
+    // Get the left side expression
+    var leftExpr = context.astNode;
 
-    // Generate IR for the right expression
-    var rightContext = context.pursue(rightExpr);
-    exprToIR(rightContext);
-
-    var lastContext = rightContext;
+    // Variable for the last used context
+    var lastContext;
 
     // If the left-hand side is a simple variable name
     if (leftExpr instanceof Ref)
@@ -1585,11 +1685,11 @@ function assgToIR(context)
         if (leftExpr.id.scope instanceof Program)
         {
             // Get the value from the global object
-            rightContext.getExitBlock().addInstr(
+            context.entryBlock.addInstr(
                 new PutPropValInstr(
                     ConstValue.globalConst,
                     ConstValue.getConst(symName),
-                    rightContext.getOutValue()
+                    rightVal
                 )
             );
         }
@@ -1598,11 +1698,11 @@ function assgToIR(context)
         else if (context.sharedMap.hasItem(symName))
         {
             // Get the mutable cell for the variable
-            var cellValue = rightContext.sharedMap.getItem(symName);
+            var cellValue = context.sharedMap.getItem(symName);
 
             // Set the value in the mutable cell
-            rightContext.entryBlock.addInstr(
-                new PutCellInstr(cellValue, rightContext.getOutValue())
+            context.entryBlock.addInstr(
+                new PutCellInstr(cellValue, rightVal)
             );   
         }
 
@@ -1610,8 +1710,11 @@ function assgToIR(context)
         else
         {
             // Update the variable value in the locals map
-            context.localMap.setItem(symName, rightContext.getOutValue());
+            context.localMap.setItem(symName, rightVal);
         }
+
+        context.bridge();
+        lastContext = context;
     }
 
     // Otherwise, if the left-hand side is an object field
@@ -1621,7 +1724,7 @@ function assgToIR(context)
         var idxExpr = leftExpr.exprs[1];
     
         // Generate code for the object expression
-        var objContext = rightContext.pursue(objExpr);
+        var objContext = context.pursue(objExpr);
         exprToIR(objContext);
 
         // Generate code for the index expression
@@ -1643,11 +1746,14 @@ function assgToIR(context)
     // Otherwise
     else
     {
+        pp(leftExpr);
         assert (false, 'unsupported assignment lhs expression');
     }
 
+    pp(lastContext.astNode);
+
     // The value of the right expression is the assignment expression's value
-    context.setOutput(lastContext.getExitBlock(), rightContext.getOutValue());    
+    context.setOutput(lastContext.getExitBlock(), rightVal);
 }
 
 /**
@@ -1752,6 +1858,14 @@ function opToIR(context)
 
         case 'x >>> y':
         opVal = argsExit.addInstr(new BitInstr(BitOp.URSFT, argVals[0], argVals[1]));
+        break;
+
+        case 'typeof x':
+        opVal = argsExit.addInstr(new TypeOfInstr(argVals[0]));
+        break;
+
+        case 'x instanceof y':
+        opVal = argsExit.addInstr(new InstOfInstr(argVals[0], argVals[1]));
         break;
 
         case 'x , y':
