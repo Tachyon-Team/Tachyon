@@ -190,6 +190,10 @@
       asm-32
       asm-code-extend
       asm-code-block-stream
+      asm-label
+      asm-make-label
+      asm-label-pos
+      asm-label-id
       gen-8
       gen-16
       gen-32

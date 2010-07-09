@@ -51,24 +51,24 @@ function error (message)
         err += arguments[i];
     }
     throw err;
-}
+};
 
 function assert (bool, message)
 {
     if (!bool) { error(message, Array.prototype.slice.call(arguments, 2)); } 
-}
+};
 
 // utility functions
 function isSigned8 (num)
 {
    return (num >= -128 && num <= 127); 
-}
+};
 
 // utility functions
 function isSigned32 (num)
 {
    return (num >= -2147483648 && num <= 2147483647); 
-}
+};
 
 x86.widthSuffix = function (width)
 {
@@ -77,7 +77,7 @@ x86.widthSuffix = function (width)
     else if (width === 16) { return "w"; }
     else if (width === 8 ) { return "b"; }
     else                   { return "";  }
-}
+};
 
 x86.regWidthSuffix = function (reg) { return this.widthSuffix(reg.width()); }
 
@@ -123,7 +123,6 @@ x86.type.IMM = 0;
 x86.type.REG = 1;
 x86.type.MEM = 2;
 x86.type.GLO = 3;
-x86.type.LBL = 4;
 
 // TODO: Add toString method for every type
 
@@ -142,7 +141,7 @@ x86.immediate = function (value)
     if (value)   { that.value = value; }
 
     return that;
-}
+};
 x86.immediate.prototype.type  = x86.type.IMM;
 x86.immediate.prototype.value = 0;
 
@@ -158,7 +157,7 @@ x86.memory = function ( disp, base, index, scale )
     if (scale)  { that.scale  = scale;  }
     
     return that;
-}
+};
 
 x86.memory.prototype.type   = x86.type.MEM;
 // Let's use explicit null values to enforce
@@ -176,7 +175,7 @@ x86.global = function ( name, offset )
     if (name)   { that.name   = name; };
     if (offset) { that.offset = offset; };
     return that;
-}
+};
 x86.global.prototype.type   = x86.GLO;
 x86.global.prototype.name   = null;
 x86.global.prototype.offset = 0;
@@ -190,9 +189,10 @@ x86.register = function ( name, value )
         !value) { throw "register: value property not supplied" }
     that.value = value;
 
+    // TODO: change names to registers
     x86.register.names[value] = that;
     return that;
-}
+};
 
 x86.register.names = []
 x86.register.r8    = function (n) { return this.names [ 80 + n ]; }
@@ -223,7 +223,7 @@ reg.width    = function ()
     else if (this.value < 64) { return 80;}
     else if (this.value < 80) { return 128;}
     else                      { return 8;}
-}
+};
  
 x86.register.al    = x86.register("al",    80); 
 x86.register.cl    = x86.register("cl",    81); 
@@ -295,12 +295,12 @@ x86.register.r14   = x86.register("r14",   14);
 x86.register.r15   = x86.register("r15",   15); 
 x86.register.st    = x86.register("st",    48); 
 x86.register.st_1  = x86.register("st_1",  49); 
-x86.register.st_2  = x86.register("st_1",  50); 
-x86.register.st_3  = x86.register("st_1",  51); 
-x86.register.st_4  = x86.register("st_1",  52); 
-x86.register.st_5  = x86.register("st_1",  53); 
-x86.register.st_6  = x86.register("st_1",  54); 
-x86.register.st_7  = x86.register("st_1",  55); 
+x86.register.st_2  = x86.register("st_2",  50); 
+x86.register.st_3  = x86.register("st_3",  51); 
+x86.register.st_4  = x86.register("st_4",  52); 
+x86.register.st_5  = x86.register("st_5",  53); 
+x86.register.st_6  = x86.register("st_6",  54); 
+x86.register.st_7  = x86.register("st_7",  55); 
 x86.register.mm0   = x86.register("mm0",   56); 
 x86.register.mm1   = x86.register("mm1",   57); 
 x86.register.mm2   = x86.register("mm2",   58); 
@@ -360,7 +360,7 @@ x86.instrFormat = function(mnemonic, suffix)
 x86.opndSizeOverridePrefix = function (width) 
 {
     if (width === 16) { this.gen8(0x66); }; return this;
-}
+};
 
 x86.addrSizeOverridePrefix = function (opnd)
 {
@@ -370,7 +370,7 @@ x86.addrSizeOverridePrefix = function (opnd)
     {
         this.gen8(0x67);
     }
-}
+};
 
 x86.opndPrefix = function (width, field, opnd, forceRex)
 {
@@ -430,7 +430,7 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
         return true;    
     }             
     return false;
-}
+};
 
 x86.opndModRMSIB = function (field, opnd)
 {
@@ -548,7 +548,7 @@ x86.opndModRMSIB = function (field, opnd)
             error("unkown operand", opnd);
     }
     return this;
-}
+};
 
 x86.opndPrefixRegOpnd = function (reg, opnd)
 {
@@ -575,7 +575,7 @@ x86.opndPrefixRegOpnd = function (reg, opnd)
     {
         return this.opndPrefix(width, field, opnd, isExtLo8);
     }
-}
+};
 
 x86.opndPrefixOpnd = function (width, opnd)
 {
@@ -588,12 +588,12 @@ x86.opndPrefixOpnd = function (width, opnd)
     {
         return this.opndPrefix(width, 0, opnd, false);
     }
-}
+};
 
 x86.opndModRMSIBRegOpnd = function (reg, opnd)
 {
     return this.opndModRMSIB(reg.field(), opnd);
-}
+};
 
 x86.opImm = function (op, mnemonic, k, dest, width) 
 {
@@ -708,7 +708,7 @@ x86.movImm = function (dest, k, width)
         general(width);
     }
     return this;
-}
+};
 
 x86.op    = function (op, mnemonic, dest, src, width) 
 {
@@ -753,7 +753,7 @@ x86.op    = function (op, mnemonic, dest, src, width)
         error("invalid operand combination", dest, src);
     }
    return this;
-}
+};
 
 // Generic operations follow Intel syntax
 x86.add = function (dest, src, width) { return this.op(0, "add",dest,src,width); };
@@ -766,52 +766,51 @@ x86.xor = function (dest, src, width) { return this.op(6, "xor",dest,src,width);
 x86.cmp = function (dest, src, width) { return this.op(7, "cmp",dest,src,width); };
 x86.mov = function (dest, src, width) { return this.op(17,"mov",dest,src,width); };
 
-
 // Suffixed operations follow AT&T syntax
-x86.addb = function (src, dest) { return this.add(dest, src,  8) };
-x86.addw = function (src, dest) { return this.add(dest, src, 16) };
-x86.addl = function (src, dest) { return this.add(dest, src, 32) };
-x86.addq = function (src, dest) { return this.add(dest, src, 64) };
+x86.addb = function (src, dest) { return this.add(dest, src,  8); };
+x86.addw = function (src, dest) { return this.add(dest, src, 16); };
+x86.addl = function (src, dest) { return this.add(dest, src, 32); };
+x86.addq = function (src, dest) { return this.add(dest, src, 64); };
 
-x86.orb  = function (src, dest) { return this.or(dest, src,  8) };
-x86.orw  = function (src, dest) { return this.or(dest, src, 16) };
-x86.orl  = function (src, dest) { return this.or(dest, src, 32) };
-x86.orq  = function (src, dest) { return this.or(dest, src, 64) };
+x86.orb  = function (src, dest) { return this.or(dest, src,  8); };
+x86.orw  = function (src, dest) { return this.or(dest, src, 16); };
+x86.orl  = function (src, dest) { return this.or(dest, src, 32); };
+x86.orq  = function (src, dest) { return this.or(dest, src, 64); };
 
-x86.adcb = function (src, dest) { return this.adc(dest, src,  8) };
-x86.adcw = function (src, dest) { return this.adc(dest, src, 16) };
-x86.adcl = function (src, dest) { return this.adc(dest, src, 32) };
-x86.adcq = function (src, dest) { return this.adc(dest, src, 64) };
+x86.adcb = function (src, dest) { return this.adc(dest, src,  8); };
+x86.adcw = function (src, dest) { return this.adc(dest, src, 16); };
+x86.adcl = function (src, dest) { return this.adc(dest, src, 32); };
+x86.adcq = function (src, dest) { return this.adc(dest, src, 64); };
 
-x86.sbbb = function (src, dest) { return this.sbb(dest, src,  8) };
-x86.sbbw = function (src, dest) { return this.sbb(dest, src, 16) };
-x86.sbbl = function (src, dest) { return this.sbb(dest, src, 32) };
-x86.sbbq = function (src, dest) { return this.sbb(dest, src, 64) };
+x86.sbbb = function (src, dest) { return this.sbb(dest, src,  8); };
+x86.sbbw = function (src, dest) { return this.sbb(dest, src, 16); };
+x86.sbbl = function (src, dest) { return this.sbb(dest, src, 32); };
+x86.sbbq = function (src, dest) { return this.sbb(dest, src, 64); };
 
-x86.andb = function (src, dest) { return this.and(dest, src,  8) };
-x86.andw = function (src, dest) { return this.and(dest, src, 16) };
-x86.andl = function (src, dest) { return this.and(dest, src, 32) };
-x86.andq = function (src, dest) { return this.and(dest, src, 64) };
+x86.andb = function (src, dest) { return this.and(dest, src,  8); };
+x86.andw = function (src, dest) { return this.and(dest, src, 16); };
+x86.andl = function (src, dest) { return this.and(dest, src, 32); };
+x86.andq = function (src, dest) { return this.and(dest, src, 64); };
 
-x86.subb = function (src, dest) { return this.sub(dest, src,  8) };
-x86.subw = function (src, dest) { return this.sub(dest, src, 16) };
-x86.subl = function (src, dest) { return this.sub(dest, src, 32) };
-x86.subq = function (src, dest) { return this.sub(dest, src, 64) };
+x86.subb = function (src, dest) { return this.sub(dest, src,  8); };
+x86.subw = function (src, dest) { return this.sub(dest, src, 16); };
+x86.subl = function (src, dest) { return this.sub(dest, src, 32); };
+x86.subq = function (src, dest) { return this.sub(dest, src, 64); };
 
-x86.xorb = function (src, dest) { return this.xor(dest, src,  8) };
-x86.xorw = function (src, dest) { return this.xor(dest, src, 16) };
-x86.xorl = function (src, dest) { return this.xor(dest, src, 32) };
-x86.xorq = function (src, dest) { return this.xor(dest, src, 64) };
+x86.xorb = function (src, dest) { return this.xor(dest, src,  8); };
+x86.xorw = function (src, dest) { return this.xor(dest, src, 16); };
+x86.xorl = function (src, dest) { return this.xor(dest, src, 32); };
+x86.xorq = function (src, dest) { return this.xor(dest, src, 64); };
 
-x86.cmpb = function (src, dest) { return this.cmp(dest, src,  8) };
-x86.cmpw = function (src, dest) { return this.cmp(dest, src, 16) };
-x86.cmpl = function (src, dest) { return this.cmp(dest, src, 32) };
-x86.cmpq = function (src, dest) { return this.cmp(dest, src, 64) };
+x86.cmpb = function (src, dest) { return this.cmp(dest, src,  8); };
+x86.cmpw = function (src, dest) { return this.cmp(dest, src, 16); };
+x86.cmpl = function (src, dest) { return this.cmp(dest, src, 32); };
+x86.cmpq = function (src, dest) { return this.cmp(dest, src, 64); };
 
-x86.movb = function (src, dest) { return this.mov(dest, src,  8) };
-x86.movw = function (src, dest) { return this.mov(dest, src, 16) };
-x86.movl = function (src, dest) { return this.mov(dest, src, 32) };
-x86.movq = function (src, dest) { return this.mov(dest, src, 64) };
+x86.movb = function (src, dest) { return this.mov(dest, src,  8); };
+x86.movw = function (src, dest) { return this.mov(dest, src, 16); };
+x86.movl = function (src, dest) { return this.mov(dest, src, 32); };
+x86.movq = function (src, dest) { return this.mov(dest, src, 64); };
 
 
 x86.pushImm = function (k)
@@ -833,7 +832,7 @@ x86.pushImm = function (k)
         this.gen8(0x68); // opcode
         listing(this._genImmNum(k, 32));
     }
-}
+};
 
 x86.pushPop = function (opnd, isPop)
 {
@@ -880,7 +879,7 @@ x86.pushPop = function (opnd, isPop)
         general();
     }
     return this;
-}
+};
 
 x86.push = function (opnd) { return this.pushPop(opnd, false); };
 x86.pop  = function (opnd) { return this.pushPop(opnd, true); };
