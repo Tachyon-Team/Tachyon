@@ -9,6 +9,8 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+// TODO: in simplify, jump to empty block with one successor can be made jump to successor
+
 /**
 @class Class to represent control-flow graph
 */
@@ -514,7 +516,11 @@ ControlFlowGraph.prototype.simplify = function ()
             var block = this.blocks[i];
 
             // If this block has only one successor, which has only one predecessor
-            if (block.succs.length == 1 && block.succs[0].preds.length == 1)
+            // and the block is not terminated by a throw instruction
+            if (block.succs.length == 1 && 
+                block.succs[0].preds.length == 1 &&
+                !(block.getLastInstr() instanceof ThrowInstr)
+            )
             {
                 var succ = block.succs[0];
 
@@ -538,14 +544,16 @@ ControlFlowGraph.prototype.simplify = function ()
                         var phiIn = instr.uses[0];
 
                         // Remove the edge from the use to the phi node
-                        phiIn.remDest(instr);
+                        if (phiIn instanceof IRInstr)
+                            phiIn.remDest(instr);
 
                         // For each dest of the phi node
                         for (var k = 0; k < instr.dests.length; ++k)
                         {
                             // Replace all uses of the phi by uses of its input
                             instr.dests[k].replUse(instr, phiIn);
-                            phiIn.addDest(instr.dests[k]);                            
+                            if (phiIn instanceof IRInstr)
+                                phiIn.addDest(instr.dests[k]);
                         }
                     }
                     else
@@ -1157,7 +1165,7 @@ Test if this block is terminated by a branch instruction
 */
 BasicBlock.prototype.hasBranch = function ()
 {
-    return this.instrs.length > 0 && this.instrs[this.instrs.length - 1] instanceof BranchInstr;
+    return this.instrs.length > 0 && this.getLastInstr() instanceof BranchInstr;
 }
 
 /**
@@ -1168,6 +1176,16 @@ BasicBlock.prototype.remBranch = function ()
     assert (this.hasBranch(), 'cannot remove branch, none present');
 
     this.remInstrAtIndex(this.instrs.length - 1);
+}
+
+/**
+Get the last instruction in the block
+*/
+BasicBlock.prototype.getLastInstr = function ()
+{
+    assert (this.instrs.length > 0, 'cannot get last instruction, none present');
+
+    return this.instrs[this.instrs.length - 1];
 }
 
 /**

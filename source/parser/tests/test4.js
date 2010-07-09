@@ -1,5 +1,59 @@
 function f(x)
 {
+    /*
+    var x;
+
+    try
+    {
+        if (true)
+        {
+            x = 1;
+            
+            //new foo();
+            print(x);
+            //throw a;
+            //throw new foo();
+        }
+        else
+        {
+            x = 2;
+            throw a;
+        }
+    }
+
+    catch (e)
+    {
+        x = 3;
+    }
+
+    finally
+    {
+        print(x);
+        print(e);
+    }
+    */
+
+    var x;
+
+    try
+    {
+        if (true)
+        {
+            x = 1;
+            throw new foo();
+        }
+        else
+        {
+            x = 2;
+            throw a;
+        }
+    }
+    catch (e)
+    {
+        print(e);
+    }
+
+    /*
     function g(z)
     {
         function h()
@@ -14,26 +68,19 @@ function f(x)
         w;
     }
 
-
     var y = 3;
     var z;
     var w;
     var u;
 
-    a = function () { y = 2; };
-
-    for (var i = 0; i < 10; ++i)
-    {
-        if (true)
-            continue;
-    }
-
-    print(i);
+    g(2);
+    */
     
-
-
+    //a = function () { y = 2; };
+    
     //a = { x: 1, y:'foo', z: (x+1) };
     //a = [1, 'foo', (x+1)];
+    //y[0] = x + 1;
     //this.foo = a;
     //a = x? y:z;
     //a = x && y;
@@ -73,7 +120,6 @@ function f(x)
     f(y);
     */
 
-
     /*
     var y = 0;
 
@@ -91,8 +137,15 @@ function f(x)
     f(y);
     */
 
+    /*
+    for (var i = 0; i < 10; ++i)
+    {
+        if (true)
+            break;
+    }
 
-    //y[0] = x + 1;
+    print(i);
+    */
 
     /*
     var y = 0;
@@ -142,5 +195,5 @@ function f(x)
     */
 }
 
-print(f(20));
+//print(f(20));
 

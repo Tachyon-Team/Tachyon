@@ -11,6 +11,12 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments
 
+// TODO: switch statement
+
+// TODO: with statement
+
+// TODO: for-in loop statement
+
 // TODO: exception handling, see notes
 
 /**
@@ -185,12 +191,14 @@ function stmtListToIRFunc(
     for (var i in localVars)
     {
         var symName = localVars[i].toString();
-        print(symName);
 
         // If there is no shared map or local map entry, add an undefined value
         if (!sharedMap.hasItem(symName) && !localMap.hasItem(symName))
             localMap.addItem(symName, ConstValue.getConst(undefined));
     }
+
+    // Variable for the next anonymous function name
+    var nextAnonNum = 0;
 
     // For each nested function
     for (var i in nestedFuncs)
@@ -202,12 +210,12 @@ function stmtListToIRFunc(
 
         if (nestFuncAst instanceof FunctionDeclaration)
         {
-            nestFuncName = nestFuncAst.id;
+            nestFuncName = nestFuncAst.id.toString();
             nestFuncExpr = nestFuncAst.funct;
         }
         else
         {
-            nestFuncName = '';
+            nestFuncName = 'anon_' + nextAnonNum++;
             nestFuncExpr = nestFuncAst;
         }
 
@@ -267,6 +275,7 @@ function stmtListToIRFunc(
         sharedMap,
         new HashMap(),
         new HashMap(),
+        null,
         cfg
     );
     stmtListToIR(bodyContext);
@@ -310,7 +319,8 @@ function IRConvContext(
     localMap,
     sharedMap,
     breakMap, 
-    contMap, 
+    contMap,
+    throwList,
     cfg
 )
 {
@@ -338,6 +348,10 @@ function IRConvContext(
     assert (
         contMap !== undefined,
         'continue map not defined in IR conversion context'
+    );
+    assert (
+        throwList !== undefined,
+        'throw list not defined in IR conversion context'
     );
     assert (
         cfg !== undefined && cfg instanceof ControlFlowGraph,
@@ -379,6 +393,12 @@ function IRConvContext(
     @field
     */
     this.contMap = contMap;
+
+    /**
+    Throw context list
+    @field
+    */
+    this.throwList = throwList;
 
     /**
     Control-flow graph to which the generate code belongs
@@ -491,6 +511,7 @@ IRConvContext.prototype.pursue = function (astNode)
         this.sharedMap,
         this.breakMap,
         this.contMap,
+        this.throwList,
         this.cfg
     );
 };
@@ -601,39 +622,28 @@ function stmtToIR(context)
             context.sharedMap,
             context.breakMap,
             context.contMap,
+            context.throwList,
             context.cfg
         );
         stmtToIR(trueContext);
 
-        // If a false statement is defined
+        // Create a context for the false statement
+        var falseContext = new IRConvContext(
+            astStmt.statements[1]? astStmt.statements[1]:null,
+            context.cfg.getNewBlock('if_false'),
+            context.localMap.copy(),
+            context.sharedMap,
+            context.breakMap,
+            context.contMap,
+            context.throwList,
+            context.cfg
+        );
+
+        // Compile the false statement, if it is defined
         if (astStmt.statements.length > 1)
-        {
-            // Compile the false statement
-            var falseContext = new IRConvContext(
-                astStmt.statements[1],
-                context.cfg.getNewBlock('if_false'),
-                context.localMap.copy(),
-                context.sharedMap,
-                context.breakMap,
-                context.contMap,
-                context.cfg
-            );
             stmtToIR(falseContext);
-        }
         else
-        {
-            // Create a context for the empty false branch and bridge it
-            var falseContext = new IRConvContext(
-                astStmt.expr,
-                context.cfg.getNewBlock('if_false'),
-                context.localMap.copy(),
-                context.sharedMap,
-                context.breakMap,
-                context.contMap,
-                context.cfg
-            );
             falseContext.bridge();
-        }
 
         // Merge the local maps using phi nodes
         var joinBlock = mergeContexts(
@@ -695,6 +705,7 @@ function stmtToIR(context)
             context.sharedMap,
             bodyContext.breakMap,
             bodyContext.contMap,
+            context.throwList,
             context.cfg
         );
         exprToIR(testContext);
@@ -763,6 +774,7 @@ function stmtToIR(context)
             context.sharedMap,
             testContext.breakMap,
             testContext.contMap,
+            context.throwList,
             context.cfg
         );
         stmtToIR(bodyContext);
@@ -838,6 +850,7 @@ function stmtToIR(context)
             context.sharedMap,
             testContext.breakMap,
             testContext.contMap,
+            context.throwList,
             context.cfg
         );
         stmtToIR(bodyContext);
@@ -863,8 +876,9 @@ function stmtToIR(context)
             loopIncr,
             incrLocals,
             context.sharedMap,
-            bodyContext.breakMap,
-            bodyContext.contMap,
+            testContext.breakMap,
+            testContext.contMap,
+            context.throwList,
             context.cfg
         );
         exprToIR(incrContext);
@@ -989,21 +1003,119 @@ function stmtToIR(context)
         context.setOutput(stmtContext.getExitBlock());
     }
 
-    /*
     else if (astStmt instanceof ThrowStatement)
     {
-        ast.expr = ctx.walk_expr(ast.expr);
-        return ast;
+        // Compile the throw expression
+        var throwContext = context.pursue(astStmt.expr);
+        exprToIR(throwContext);
+
+        // Add a throw instruction
+        throwContext.getExitBlock().addInstr(new ThrowInstr(throwContext.getOutValue()));
+
+        // If this is an intraprocedural throw
+        if (context.throwList)
+        {
+            // Add the context to the list of throw contexts
+            context.throwList.push(throwContext);
+        }
+
+        // Terminate the current context, no instructions go after this
+        context.terminate();
     }
 
     else if (astStmt instanceof TryStatement)
     {
-        ast.statement = ctx.walk_statement(ast.statement);
-        ast.catch_part = ctx.walk_statement(ast.catch_part);
-        ast.finally_part = ctx.walk_statement(ast.finally_part);
-        return ast;
+        // Create a list for all the throw contexts in the try body
+        var throwCtxList = [];
+        
+        // Compile the try body statement
+        var tryBodyCtx = new IRConvContext(
+            astStmt.statement,
+            context.cfg.getNewBlock('try_body'),
+            context.localMap.copy(),
+            context.sharedMap,
+            context.breakMap,
+            context.contMap,
+            throwCtxList,
+            context.cfg
+        );
+        stmtToIR(tryBodyCtx);
+
+        // Merge the throw contexts
+        var catchLocals = context.localMap.copy();
+        var catchBlock = mergeContexts(
+            throwCtxList,
+            catchLocals,
+            context.cfg,
+            'try_catch'
+        );
+
+        // For each throw context
+        for (var c in throwCtxList)
+        {
+            var throwExit = throwCtxList[c].getExitBlock();
+
+            // Get the last instruction (the throw instruction) in the block
+            var throwInstr = throwExit.getLastInstr();
+
+            // Set the throw target to the catch block
+            throwInstr.setThrowTarget(catchBlock);
+
+            // Make the catch block a successor of the throw block
+            throwExit.addSucc(catchBlock);
+            catchBlock.addPred(throwExit);
+        }
+
+        // Bind the exception value to its variable name
+        var catchVal = catchBlock.addInstr(new CatchInstr());
+        catchLocals.setItem(astStmt.id.toString(), catchVal);
+
+        // Compile the catch block
+        var catchCtx = new IRConvContext(
+            astStmt.catch_part,
+            catchBlock,
+            catchLocals,
+            context.sharedMap,
+            context.breakMap,
+            context.contMap,
+            context.throwList,
+            context.cfg
+        );
+        stmtToIR(catchCtx);
+
+        // Merge the finally contexts
+        var finallyLocals = new HashMap();
+        var finallyBlock = mergeContexts(
+            [tryBodyCtx, catchCtx],
+            finallyLocals,
+            context.cfg,
+            'try_finally'
+        );
+
+        // Create a context for the finally statement
+        var finallyCtx = new IRConvContext(
+            astStmt.finally_part,
+            finallyBlock,
+            finallyLocals,
+            context.sharedMap,
+            context.breakMap,
+            context.contMap,
+            context.throwList,
+            context.cfg
+        );
+
+        // Compile the finally statement, if it is defined
+        if (astStmt.finally_part)
+            stmtToIR(finallyCtx);
+        else
+            finallyCtx.bridge();
+        
+        // Make the parent context jump to the try body block
+        context.entryBlock.addInstr(new JumpInstr(tryBodyCtx.entryBlock));
+
+        // The exit block is the exit of the finaly context
+        context.setOutput(finallyCtx.getExitBlock());
     }
-    */
 
     else if (astStmt instanceof DebuggerStatement)
     {
@@ -1259,6 +1371,7 @@ function exprToIR(context)
                 context.sharedMap,
                 context.breakMap,
                 context.contMap,
+                context.throwList,
                 context.cfg
             );
             exprToIR(secContext);
@@ -1318,6 +1431,7 @@ function exprToIR(context)
                 context.sharedMap,
                 context.breakMap,
                 context.contMap,
+                context.throwList,
                 context.cfg
             );
             exprToIR(secContext);
@@ -1377,6 +1491,7 @@ function exprToIR(context)
                 context.sharedMap,
                 context.breakMap,
                 context.contMap,
+                context.throwList,
                 context.cfg
             );
             exprToIR(trueContext);
@@ -1389,6 +1504,7 @@ function exprToIR(context)
                 context.sharedMap,
                 context.breakMap,
                 context.contMap,
+                context.throwList,
                 context.cfg
             );
             exprToIR(falseContext);
@@ -1439,16 +1555,30 @@ function exprToIR(context)
         var funcContext = argsContext.pursue(astExpr.expr);
         exprToIR(funcContext);
 
+        // Create a basic block for the call continuation
+        var contBlock = context.cfg.getNewBlock('call_cont');
+
         // Create the construct instruction
         var exprVal = funcContext.getExitBlock().addInstr(
             new ConstructRefInstr(
                 funcContext.getOutValue(),
-                argVals
+                argVals,
+                contBlock
             )
         );
 
+        // If we are in a try block
+        if (context.throwList)
+        {
+            // Bridge the last context
+            funcContext.bridge();
+
+            // Add the new context to the list of throw contexts
+            context.throwList.push(funcContext);
+        }
+
         // Set the output
-        context.setOutput(funcContext.getExitBlock(), exprVal);
+        context.setOutput(contBlock, exprVal);
     }
 
     else if (astExpr instanceof CallExpr)
@@ -1484,7 +1614,7 @@ function exprToIR(context)
             funcVal = idxContext.getExitBlock().addInstr(
                 new GetPropValInstr(
                     thisContext.getOutValue(),
-                    idxContext.getOutValue
+                    idxContext.getOutValue()
                 )
             );
 
@@ -1506,11 +1636,31 @@ function exprToIR(context)
             lastContext = funcContext;
         }
 
+        // Create a basic block for the call continuation
+        var contBlock = context.cfg.getNewBlock('call_cont');
+
         // Create the call instruction
-        var exprVal = lastContext.getExitBlock().addInstr(new CallRefInstr(funcVal, thisVal, argVals));
+        var exprVal = lastContext.getExitBlock().addInstr(
+            new CallRefInstr(
+                funcVal,
+                thisVal,
+                argVals,
+                contBlock
+            )
+        );
+
+        // If we are in a try block
+        if (context.throwList)
+        {
+            // Bridge the last context
+            lastContext.bridge();
+
+            // Add the new context to the list of throw contexts
+            context.throwList.push(lastContext);
+        }
 
         // Set the output
-        context.setOutput(lastContext.getExitBlock(), exprVal);
+        context.setOutput(contBlock, exprVal);
     }
 
     // Constant values
@@ -1750,8 +1900,6 @@ function assgToIR(context, rightVal)
         assert (false, 'unsupported assignment lhs expression');
     }
 
-    pp(lastContext.astNode);
-
     // The value of the right expression is the assignment expression's value
     context.setOutput(lastContext.getExitBlock(), rightVal);
 }
@@ -1898,18 +2046,18 @@ function mergeContexts(
         if (!contexts[i].isTerminated())
             ntContexts.push(contexts[i]);
 
+    // Create a block for the merging
+    var mergeBlock = cfg.getNewBlock(blockName);
+
     // If there are no non-terminated contexts, there is nothing to merge, stop
     if (ntContexts.length == 0)
-        return null;
+        return mergeBlock;
 
     // Clear the contents of the merge map, if any
     mergeMap.clear();
 
     // Get the keys from the first join point
     var keys = ntContexts[0].localMap.getKeys();
-
-    // Create a block for the merging
-    var mergeBlock = cfg.getNewBlock(blockName);
 
     // For each local
     for (var i = 0; i < keys.length; ++i)
@@ -1962,7 +2110,8 @@ function mergeContexts(
         var context = ntContexts[i];
 
         // Make the block jump to the merge block
-        context.getExitBlock().addInstr(new JumpInstr(mergeBlock));
+        if (!context.getExitBlock().hasBranch())
+            context.getExitBlock().addInstr(new JumpInstr(mergeBlock));
     }
 
     // Return the merge block
@@ -2017,6 +2166,7 @@ function createLoopEntry(
         context.sharedMap,
         breakMap,
         contMap,
+        context.throwList,
         context.cfg
     );
 }
