@@ -976,14 +976,35 @@ function stmtToIR(context)
         context.terminate();
     }
 
-    /*
     else if (astStmt instanceof WithStatement)
     {
-        ast.expr = ctx.walk_expr(ast.expr);
-        ast.statement = ctx.walk_statement(ast.statement);
-        return ast;
+
+        //ast.expr = ctx.walk_expr(ast.expr);
+        //ast.statement = ctx.walk_statement(ast.statement);
+        
+        //
+        // TODO: need toObject instruction?
+        //
+
+
+        // Compile the object expression
+        var objContext = context.pursue(astStmt.expr);
+        exprToIR(objContext);
+
+        // Pursue the context for the statement
+        var stmtContext = objContext.pursue(astStmt.statement);
+
+        // Set the with value for the statement context
+        stmtContext.withVal = objContext.getOutValue();
+
+        // Compile the statement
+        stmtToIR(stmtContext);
+
+        // Set the exit block for the current context
+        context.setOutput(stmtContext.getExitBlock());
     }
 
+    /*
     else if (astStmt instanceof SwitchStatement)
     {
         ast.expr = ctx.walk_expr(ast.expr);
@@ -1792,10 +1813,75 @@ function assgToIR(context, rightVal)
     // Variable for the last used context
     var lastContext;
 
+
+    // TODO: get rid of lastContext, set output directly
+
+
     // If the left-hand side is a simple variable name
     if (leftExpr instanceof Ref)
     {
         var symName = leftExpr.id.toString();   
+
+
+
+
+
+        // TODO
+
+
+
+        // Context for the case where the object has the property
+        var propContext = context.branch(
+            null,
+            context.cfg.getNewBlock('with_prop'),
+            context.localMap.copy()
+        );
+
+        // Context for the case where the object doesn't have the property
+        var varContext = context.branch(
+            null,
+            context.cfg.getNewBlock('with_var'),
+            context.localMap.copy()
+        );
+
+        // Add a has-property test on the object for the symbol name
+        var testVal = context.entryBlock.addInstr(
+            new HasPropValInstr(
+                context.withVal,
+                ConstValue.getConst(symName)                
+            )
+        );
+        
+        // Add the if branch expression
+        context.entryBlock.addInstr(
+            new IfInstr(
+                testVal,
+                propContext.entryBlock,
+                varContext.entryBlock
+            )
+        );
+        
+
+
+
+        /*
+        // Merge the local maps using phi nodes
+        var joinBlock = mergeContexts(
+            [trueContext, falseContext],
+            context.localMap,
+            context.cfg,
+            'if_join'
+        );
+        */
+
+
+
+        
+
+
+
+
+
 
         // If the variable is global
         if (leftExpr.id.scope instanceof Program)
@@ -1831,6 +1917,13 @@ function assgToIR(context, rightVal)
 
         context.bridge();
         lastContext = context;
+
+
+
+
+
+
+
     }
 
     // Otherwise, if the left-hand side is an object field
