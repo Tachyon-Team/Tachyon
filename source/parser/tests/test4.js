@@ -33,6 +33,7 @@ function f(x)
     }
     */
 
+    /*
     var x;
 
     try
@@ -52,6 +53,7 @@ function f(x)
     {
         print(e);
     }
+    */
 
     /*
     function g(z)
@@ -90,18 +92,7 @@ function f(x)
     //++x;
     //typeof x;
     //x instanceof y
-
-    /*
-    var y;
-
-    if (true)
-        y = 1;
-    else
-        y = 1;
-    
-    f(y);
-    */
-    
+     
     /*
     var y = 0;
 
@@ -147,11 +138,11 @@ function f(x)
     print(i);
     */
 
-    /*
+    /*    
     var y = 0;
 
     if (true)
-        y = 0;
+        y = 1;
 
     f(y);
     */

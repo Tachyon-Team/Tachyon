@@ -13,11 +13,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: switch statement
 
-// TODO: with statement
-
 // TODO: for-in loop statement
 
-// TODO: exception handling, see notes
+// TODO: with statement
+
 
 /**
 Convert an AST code unit into IR functions
@@ -271,6 +270,7 @@ function stmtListToIRFunc(
     var bodyContext = new IRConvContext(
         bodyStmts, 
         entryBlock,
+        null,
         localMap,
         sharedMap,
         new HashMap(),
@@ -315,7 +315,8 @@ function stmtListToIRFunc(
 */
 function IRConvContext(
     astNode, 
-    entryBlock, 
+    entryBlock,
+    withVal, 
     localMap,
     sharedMap,
     breakMap, 
@@ -332,6 +333,10 @@ function IRConvContext(
     assert (
         entryBlock !== undefined && entryBlock instanceof BasicBlock,
         'entry block not defined or invalid in IR conversion context'
+    );
+    assert (
+        withVal !== undefined,
+        'with context value not defined in IR conversion context'
     );
     assert (
         localMap !== undefined,
@@ -369,6 +374,12 @@ function IRConvContext(
     @field
     */
     this.entryBlock = entryBlock;
+
+    /**
+    With context value
+    @field
+    */
+    this.withVal = withVal;
 
     /**
     Mutable map of local variable states
@@ -507,7 +518,30 @@ IRConvContext.prototype.pursue = function (astNode)
     return new IRConvContext(
         astNode,
         (this.exitBlock !== undefined)? this.exitBlock:this.entryBlock,
+        this.withVal,
         this.localMap,
+        this.sharedMap,
+        this.breakMap,
+        this.contMap,
+        this.throwList,
+        this.cfg
+    );
+};
+
+/**
+Create a new context for the conversion of a branch
+*/
+IRConvContext.prototype.branch = function (
+    astNode,
+    entryBlock,
+    localMap
+)
+{
+    return new IRConvContext(
+        astNode,
+        entryBlock,
+        this.withVal,
+        localMap,
         this.sharedMap,
         this.breakMap,
         this.contMap,
@@ -615,28 +649,18 @@ function stmtToIR(context)
         exprToIR(testContext);
 
         // Compile the true statement
-        var trueContext = new IRConvContext(
+        var trueContext = context.branch(
             astStmt.statements[0],
             context.cfg.getNewBlock('if_true'),
-            context.localMap.copy(),
-            context.sharedMap,
-            context.breakMap,
-            context.contMap,
-            context.throwList,
-            context.cfg
+            context.localMap.copy()
         );
         stmtToIR(trueContext);
 
         // Create a context for the false statement
-        var falseContext = new IRConvContext(
+        var falseContext = context.branch(
             astStmt.statements[1]? astStmt.statements[1]:null,
             context.cfg.getNewBlock('if_false'),
-            context.localMap.copy(),
-            context.sharedMap,
-            context.breakMap,
-            context.contMap,
-            context.throwList,
-            context.cfg
+            context.localMap.copy()
         );
 
         // Compile the false statement, if it is defined
@@ -698,15 +722,10 @@ function stmtToIR(context)
         );
 
         // Compile the loop test
-        var testContext = new IRConvContext(
+        var testContext = bodyContext.branch(
             astStmt.expr,
             testEntry,
-            testLocals,
-            context.sharedMap,
-            bodyContext.breakMap,
-            bodyContext.contMap,
-            context.throwList,
-            context.cfg
+            testLocals
         );
         exprToIR(testContext);
 
@@ -767,15 +786,10 @@ function stmtToIR(context)
         exprToIR(testContext);
 
         // Compile the body statement
-        var bodyContext = new IRConvContext(
+        var bodyContext = testContext.branch(
             astStmt.statement,
             context.cfg.getNewBlock('loop_body'),
-            testContext.localMap.copy(),
-            context.sharedMap,
-            testContext.breakMap,
-            testContext.contMap,
-            context.throwList,
-            context.cfg
+            testContext.localMap.copy()
         );
         stmtToIR(bodyContext);
 
@@ -843,15 +857,10 @@ function stmtToIR(context)
         exprToIR(testContext);
 
         // Compile the body statement
-        var bodyContext = new IRConvContext(
+        var bodyContext = testContext.branch(
             astStmt.statement,
             context.cfg.getNewBlock('loop_body'),
-            testContext.localMap.copy(),
-            context.sharedMap,
-            testContext.breakMap,
-            testContext.contMap,
-            context.throwList,
-            context.cfg
+            testContext.localMap.copy()
         );
         stmtToIR(bodyContext);
 
@@ -859,7 +868,7 @@ function stmtToIR(context)
         brkCtxList.push(testContext);
 
         // Add the body exit to the continue context list
-        cntCtxList.push(bodyContext);  
+        cntCtxList.push(bodyContext); 
 
         // Merge the break contexts
         var incrLocals = new HashMap();
@@ -871,15 +880,10 @@ function stmtToIR(context)
         );
 
         // Compile the loop incrementation
-        var incrContext = new IRConvContext(
+        var incrContext = testContext.branch(
             astStmt.expr3,
             loopIncr,
-            incrLocals,
-            context.sharedMap,
-            testContext.breakMap,
-            testContext.contMap,
-            context.throwList,
-            context.cfg
+            incrLocals
         );
         exprToIR(incrContext);
 
@@ -1027,18 +1031,12 @@ function stmtToIR(context)
     {
         // Create a list for all the throw contexts in the try body
         var throwCtxList = [];
-        
+               
+        // Create a context for the try body
+        var tryBodyCtx = context.pursue(astStmt.statement);
+        tryBodyCtx.throwList = throwCtxList;
+
         // Compile the try body statement
-        var tryBodyCtx = new IRConvContext(
-            astStmt.statement,
-            context.cfg.getNewBlock('try_body'),
-            context.localMap.copy(),
-            context.sharedMap,
-            context.breakMap,
-            context.contMap,
-            throwCtxList,
-            context.cfg
-        );
         stmtToIR(tryBodyCtx);
 
         // Merge the throw contexts
@@ -1071,15 +1069,10 @@ function stmtToIR(context)
         catchLocals.setItem(astStmt.id.toString(), catchVal);
 
         // Compile the catch block
-        var catchCtx = new IRConvContext(
+        var catchCtx = context.branch(
             astStmt.catch_part,
             catchBlock,
-            catchLocals,
-            context.sharedMap,
-            context.breakMap,
-            context.contMap,
-            context.throwList,
-            context.cfg
+            catchLocals
         );
         stmtToIR(catchCtx);
 
@@ -1093,15 +1086,10 @@ function stmtToIR(context)
         );
 
         // Create a context for the finally statement
-        var finallyCtx = new IRConvContext(
+        var finallyCtx = context.branch(
             astStmt.finally_part,
             finallyBlock,
-            finallyLocals,
-            context.sharedMap,
-            context.breakMap,
-            context.contMap,
-            context.throwList,
-            context.cfg
+            finallyLocals
         );
 
         // Compile the finally statement, if it is defined
@@ -1109,9 +1097,6 @@ function stmtToIR(context)
             stmtToIR(finallyCtx);
         else
             finallyCtx.bridge();
-        
-        // Make the parent context jump to the try body block
-        context.entryBlock.addInstr(new JumpInstr(tryBodyCtx.entryBlock));
 
         // The exit block is the exit of the finaly context
         context.setOutput(finallyCtx.getExitBlock());
@@ -1364,15 +1349,10 @@ function exprToIR(context)
             exprToIR(fstContext);
 
             // Compile the second expression
-            var secContext = new IRConvContext(
+            var secContext = context.branch(
                 astExpr.exprs[1],
                 context.cfg.getNewBlock('log_and_sec'),
-                fstContext.localMap.copy(),
-                context.sharedMap,
-                context.breakMap,
-                context.contMap,
-                context.throwList,
-                context.cfg
+                fstContext.localMap.copy()
             );
             exprToIR(secContext);
 
@@ -1424,15 +1404,10 @@ function exprToIR(context)
             exprToIR(fstContext);
 
             // Compile the second expression
-            var secContext = new IRConvContext(
+            var secContext = context.branch(
                 astExpr.exprs[1],
                 context.cfg.getNewBlock('log_or_sec'),
-                fstContext.localMap.copy(),
-                context.sharedMap,
-                context.breakMap,
-                context.contMap,
-                context.throwList,
-                context.cfg
+                fstContext.localMap.copy()
             );
             exprToIR(secContext);
 
@@ -1484,28 +1459,18 @@ function exprToIR(context)
             exprToIR(testContext);
 
             // Compile the true expression
-            var trueContext = new IRConvContext(
+            var trueContext = context.branch(
                 astExpr.exprs[1],
                 context.cfg.getNewBlock('cond_true'),
-                testContext.localMap.copy(),
-                context.sharedMap,
-                context.breakMap,
-                context.contMap,
-                context.throwList,
-                context.cfg
+                testContext.localMap.copy()
             );
             exprToIR(trueContext);
 
             // Compile the false expression
-            var falseContext = new IRConvContext(
+            var falseContext = context.branch(
                 astExpr.exprs[2],
                 context.cfg.getNewBlock('cond_false'),
-                testContext.localMap.copy(),
-                context.sharedMap,
-                context.breakMap,
-                context.contMap,
-                context.throwList,
-                context.cfg
+                testContext.localMap.copy()
             );
             exprToIR(falseContext);
 
@@ -1518,8 +1483,13 @@ function exprToIR(context)
                 )
             );
 
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('cond_join');
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [trueContext, falseContext],
+                context.localMap,
+                context.cfg,
+                'cond_join'
+            );
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
@@ -1528,10 +1498,6 @@ function exprToIR(context)
                     [trueContext.getExitBlock(), falseContext.getExitBlock()]
                 )
             );
-
-            // Make the true and false contexts jump to the join block
-            trueContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
-            falseContext.getExitBlock().addInstr(new JumpInstr(joinBlock));
 
             // Set the exit block to be the join block
             context.setOutput(joinBlock, phiValue);
@@ -1630,8 +1596,8 @@ function exprToIR(context)
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
-            // The this value is null
-            thisVal = ConstValue.getConst(null);
+            // The this value is the global object
+            thisVal = ConstValue.globalConst;
 
             lastContext = funcContext;
         }
@@ -2162,6 +2128,7 @@ function createLoopEntry(
     return new IRConvContext(
         entryNode,
         loopEntry,
+        context.withVal,
         entryLocals.copy(),
         context.sharedMap,
         breakMap,

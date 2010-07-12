@@ -10,6 +10,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 
+
 // TODO: unique "operator" instruction for instructions without control-flow?
 // Idea: HIR instrs all map to some function defining their behavior in termsof MIR/LIR
 // Perhaps not a great idea, too much into one
@@ -18,6 +19,42 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //
 // Perhaps HIR operators should have a superclass HIROpInstr, or a system to map
 // them to functions/handlers
+
+// TODO: Method to generate an instruction constructor from a handler and type
+// propagation function using a closure?*****
+//
+// CAN make distinct constructors from closures
+//
+// function maker() { return function h() {}; }
+// a = maker();
+// b = maker();
+// a === b
+// false
+// nA = new a();
+// nB = new b();
+// nA instanceof a
+// true
+// nA instanceof b
+// false
+//
+// How to pass operands?
+// - constructor can take 2-3 operands, can pass number of actual operands to maker function
+//
+// Can pass toString func, or set it in prototype directly
+// - pass prototype instance to maker function
+//
+// Can have higher layers of maker/factory functions
+//
+// Can we generate copy function automatically?
+// - can call newly generated function, know how many uses to pass to ctor
+//
+// May need to build custom instructions for some things
+// - add_i32 with overflow path
+// - might actually need platform-specific code
+//
+// Some operators can have side effects
+// - May want a "write" or "side effect" flag
+
 
 
 //=============================================================================
@@ -684,8 +721,72 @@ Make a shallow copy of the instruction
 */
 GetPropValInstr.prototype.copy = function ()
 {
-    var newInstr = new GetPropValInstr(this.uses[0], this.uses[1]);
-    return this.baseCopy(newInstr);
+    return this.baseCopy(
+        new GetPropValInstr(
+            this.uses[0],
+            this.uses[1]
+        )
+    );
+};
+
+/**
+@class Property deletion with value for field name
+@augments IRInstr
+*/
+function DetPropValInstr(objVal, nameVal)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'del_prop_val';
+
+    /**
+    Object and field name values
+    @field
+    */
+    this.uses = [objVal, nameVal];
+}
+DetPropValInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+DetPropValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new DetPropValInstr(
+            this.uses[0],
+            this.uses[1]
+        )
+    );
+};
+
+/**
+@class Property test with value for field name
+@augments IRInstr
+*/
+function HasPropValInstr(objVal, nameVal)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'has_prop_val';
+
+    /**
+    Object and field name values
+    @field
+    */
+    this.uses = [objVal, nameVal];
+}
+HasPropValInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+HasPropValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new HasPropValInstr(
+            this.uses[0],
+            this.uses[1]
+        )
+    );
 };
 
 /**
