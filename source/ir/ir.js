@@ -15,7 +15,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: for-in loop statement
 
-// TODO: with statement
 
 
 /**
@@ -1235,301 +1234,8 @@ function exprToIR(context)
 
     else if (astExpr instanceof OpExpr)
     {
-        // If this is an assignment expression
-        if (astExpr.op == 'x = y')
-        {
-            // Get the left and right expressions
-            var leftExpr = context.astNode.exprs[0];
-            var rightExpr = context.astNode.exprs[1];
-
-            // Generate IR for the right expression
-            var rightContext = context.pursue(rightExpr);
-            exprToIR(rightContext);
-
-            // Convert the assignment
-            var leftContext = rightContext.pursue(leftExpr);
-            assgToIR(leftContext, rightContext.getOutValue());
-
-            // Set the output to that of the assignment
-            context.setOutput(leftContext.getExitBlock(), leftContext.getOutValue());
-        }
-
-        // If this is a pre-incrementation expression
-        else if (astExpr.op == '++ x')
-        {
-            // Get the variable expression
-            var varExpr = context.astNode.exprs[0];
-
-            // Generate IR for the expression
-            var fstContext = context.pursue(varExpr);
-            exprToIR(fstContext);
-            
-            // Compute the incremented value
-            var incVal = fstContext.getExitBlock().addInstr(
-                new ArithInstr(
-                    ArithOp.ADD,
-                    fstContext.getOutValue(),
-                    ConstValue.getConst(1)
-                )
-            );
-        
-            // Assign the incremented value to the variable
-            var secContext = fstContext.pursue(varExpr);
-            assgToIR(secContext, incVal);
-
-            // Set the output to the incremented value
-            context.setOutput(secContext.getExitBlock(), incVal);            
-        }
-
-        // If this is a pre-decrementation expression
-        else if (astExpr.op == '-- x')
-        {
-            // Get the variable expression
-            var varExpr = context.astNode.exprs[0];
-
-            // Generate IR for the expression
-            var fstContext = context.pursue(varExpr);
-            exprToIR(fstContext);
-            
-            // Compute the decremented value
-            var decVal = fstContext.getExitBlock().addInstr(
-                new ArithInstr(
-                    ArithOp.SUB,
-                    fstContext.getOutValue(),
-                    ConstValue.getConst(1)
-                )
-            );
-        
-            // Assign the incremented value to the variable
-            var secContext = fstContext.pursue(varExpr);
-            assgToIR(secContext, incVal);
-
-            // Set the output to the incremented value
-            context.setOutput(secContext.getExitBlock(), decVal);            
-        }
-
-        // If this is a post-incrementation expression
-        else if (astExpr.op == 'x ++')
-        {
-            // Get the variable expression
-            var varExpr = context.astNode.exprs[0];
-
-            // Generate IR for the expression
-            var fstContext = context.pursue(varExpr);
-            exprToIR(fstContext);
-            
-            // Compute the incremented value
-            var incVal = fstContext.getExitBlock().addInstr(
-                new ArithInstr(
-                    ArithOp.ADD,
-                    fstContext.getOutValue(),
-                    ConstValue.getConst(1)
-                )
-            );
-        
-            // Assign the incremented value to the variable
-            var secContext = fstContext.pursue(varExpr);
-            assgToIR(secContext, incVal);
-
-            // Set the output to the original value
-            context.setOutput(secContext.getExitBlock(), fstContext.getOutValue());            
-        }
-
-        // If this is a post-decrementation expression
-        else if (astExpr.op == '-- x')
-        {
-            // Get the variable expression
-            var varExpr = context.astNode.exprs[0];
-
-            // Generate IR for the expression
-            var fstContext = context.pursue(varExpr);
-            exprToIR(fstContext);
-            
-            // Compute the decremented value
-            var decVal = fstContext.getExitBlock().addInstr(
-                new ArithInstr(
-                    ArithOp.SUB,
-                    fstContext.getOutValue(),
-                    ConstValue.getConst(1)
-                )
-            );
-        
-            // Assign the incremented value to the variable
-            var secContext = fstContext.pursue(varExpr);
-            assgToIR(secContext, incVal);
-
-            // Set the output to the original value
-            context.setOutput(secContext.getExitBlock(), fstContext.getOutValue());            
-        }
-
-        // If this is a logical AND expression
-        else if (astExpr.op == 'x && y')
-        {
-            // Compile the first expression
-            var fstContext = context.pursue(astExpr.exprs[0])
-            exprToIR(fstContext);
-
-            // Compile the second expression
-            var secContext = context.branch(
-                astExpr.exprs[1],
-                context.cfg.getNewBlock('log_and_sec'),
-                fstContext.localMap.copy()
-            );
-            exprToIR(secContext);
-
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('log_and_join');
-
-            // Create blocks for the true and false cases
-            var trueBlock = context.cfg.getNewBlock('log_and_true');
-            var falseBlock = context.cfg.getNewBlock('log_and_false');
-            trueBlock.addInstr(new JumpInstr(joinBlock));
-            falseBlock.addInstr(new JumpInstr(joinBlock));
-
-            // Create the first if branching instruction
-            fstContext.getExitBlock().addInstr(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    secContext.entryBlock,
-                    falseBlock
-                )
-            );
-
-            // Create the second if branching instruction
-            secContext.getExitBlock().addInstr(
-                new IfInstr(
-                    secContext.getOutValue(),
-                    trueBlock,
-                    falseBlock
-                )
-            );
-
-            // Create a phi node to join the values
-            // Create a phi node to merge the values
-            var phiValue = joinBlock.addInstr(
-                new PhiInstr(
-                    [ConstValue.getConst(true), ConstValue.getConst(false)],
-                    [trueBlock, falseBlock]
-                )
-            );
-
-            // Set the exit block to be the join block
-            context.setOutput(joinBlock, phiValue);
-        }
-
-        // If this is a logical OR expression
-        else if (astExpr.op == 'x || y')
-        {
-            // Compile the first expression
-            var fstContext = context.pursue(astExpr.exprs[0])
-            exprToIR(fstContext);
-
-            // Compile the second expression
-            var secContext = context.branch(
-                astExpr.exprs[1],
-                context.cfg.getNewBlock('log_or_sec'),
-                fstContext.localMap.copy()
-            );
-            exprToIR(secContext);
-
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('log_or_join');
-
-            // Create blocks for the true and false cases
-            var trueBlock = context.cfg.getNewBlock('log_or_true');
-            var falseBlock = context.cfg.getNewBlock('log_or_false');
-            trueBlock.addInstr(new JumpInstr(joinBlock));
-            falseBlock.addInstr(new JumpInstr(joinBlock));
-
-            // Create the first if branching instruction
-            fstContext.getExitBlock().addInstr(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    trueBlock,
-                    secContext.entryBlock
-                )
-            );
-
-            // Create the second if branching instruction
-            secContext.getExitBlock().addInstr(
-                new IfInstr(
-                    secContext.getOutValue(),
-                    trueBlock,
-                    falseBlock
-                )
-            );
-
-            // Create a phi node to join the values
-            // Create a phi node to merge the values
-            var phiValue = joinBlock.addInstr(
-                new PhiInstr(
-                    [ConstValue.getConst(true), ConstValue.getConst(false)],
-                    [trueBlock, falseBlock]
-                )
-            );
-
-            // Set the exit block to be the join block
-            context.setOutput(joinBlock, phiValue);
-        }
-        
-        // If this is a conditional operator expression
-        else if (astExpr.op == 'x ? y : z')
-        {
-            // Compile the test expression
-            var testContext = context.pursue(astExpr.exprs[0])
-            exprToIR(testContext);
-
-            // Compile the true expression
-            var trueContext = context.branch(
-                astExpr.exprs[1],
-                context.cfg.getNewBlock('cond_true'),
-                testContext.localMap.copy()
-            );
-            exprToIR(trueContext);
-
-            // Compile the false expression
-            var falseContext = context.branch(
-                astExpr.exprs[2],
-                context.cfg.getNewBlock('cond_false'),
-                testContext.localMap.copy()
-            );
-            exprToIR(falseContext);
-
-            // Create the if branching instruction
-            testContext.getExitBlock().addInstr(
-                new IfInstr(
-                    testContext.getOutValue(),
-                    trueContext.entryBlock,
-                    falseContext.entryBlock
-                )
-            );
-
-            // Merge the local maps using phi nodes
-            var joinBlock = mergeContexts(
-                [trueContext, falseContext],
-                context.localMap,
-                context.cfg,
-                'cond_join'
-            );
-
-            // Create a phi node to merge the values
-            var phiValue = joinBlock.addInstr(
-                new PhiInstr(
-                    [trueContext.getOutValue(), falseContext.getOutValue()],
-                    [trueContext.getExitBlock(), falseContext.getExitBlock()]
-                )
-            );
-
-            // Set the exit block to be the join block
-            context.setOutput(joinBlock, phiValue);
-        }
-
-        // Otherwise, for all other unary and binary operations
-        else
-        {
-            // Convert the operation
-            opToIR(context);
-        }
+        // Compile the operator expression
+        opToIR(context);
     }
 
     else if (astExpr instanceof NewExpr)
@@ -1736,48 +1442,10 @@ function exprToIR(context)
     // Symbol expression
     else if (astExpr instanceof Ref)
     {
-        var symName = astExpr.id.toString();
-
-        var varValue;
-
-        // If the variable is global
-        if (astExpr.id.scope instanceof Program)
-        {
-            // Get the value from the global object
-            varValue = context.entryBlock.addInstr(
-                new GetPropValInstr(
-                    ConstValue.globalConst,
-                    ConstValue.getConst(symName)
-                )
-            );
-        }
-
-        // Otherwise, if this variable is a shared closure variable
-        else if (context.sharedMap.hasItem(symName))
-        {
-            // Get the mutable cell for the variable
-            var cellValue = context.sharedMap.getItem(symName);
-
-            // Get the value from the mutable cell
-            varValue = context.entryBlock.addInstr(
-                new GetCellInstr(cellValue)
-            );
-        }
-
-        // Otherwise, the variable is local
-        else
-        {
-            assert (
-                context.localMap.hasItem(symName), 
-                'local variable not in locals map: ' + symName
-            );
-
-            // Lookup the variable in the locals map
-            varValue = context.localMap.getItem(symName);
-        }
-
-        // Set the variable's value as the output
-        context.setOutput(context.entryBlock, varValue);
+        // Compile the expression
+        var exprContext = context.pursue(astExpr);
+        refToIR(exprContext);
+        context.setOutput(exprContext.getExitBlock(), exprContext.getOutValue());
     }
 
     else if (astExpr instanceof This)
@@ -1793,13 +1461,488 @@ function exprToIR(context)
     {
         pp(astExpr);
         assert (false, 'unsupported expression in AST->IR translation');
-    }    
+    }
+}
+
+/**
+Convert ast operator expression nodes to IR
+*/
+function opToIR(context)
+{
+    // Ensure that the IR conversion context is valid
+    assert (
+        context instanceof IRConvContext,
+        'invalid IR conversion context specified'
+    );
+
+    // Get references to the operator and the sub-expressions
+    var op = context.astNode.op;
+    var exprs = context.astNode.exprs;
+
+    // Function to generate code for pre/post increment/decrement operations
+    function prePostGen(arithOp, post)
+    {
+        // Get the variable expression
+        var varExpr = exprs[0];
+
+        // Generate IR for the assignee expression
+        var fstContext = context.pursue(exprs[0]);
+        exprToIR(fstContext);
+        
+        // Compute the incremented value
+        var postVal = fstContext.getExitBlock().addInstr(
+            new ArithInstr(
+                arithOp,
+                fstContext.getOutValue(),
+                ConstValue.getConst(1)
+            )
+        );
+    
+        // Assign the incremented value to the variable
+        var secContext = fstContext.pursue(varExpr);
+        assgToIR(secContext, postVal);
+
+        // Set the output to the pre or post value
+        context.setOutput(
+            secContext.getExitBlock(),
+            post? postVal:fstContext.getOutValue()
+        );
+    }
+
+    // Function to generate code for composite assignment expressions
+    function compAssgGen(instrClass, binOp)
+    {
+        // Function to implement the operator code gen
+        function opFunc(context, lhsVal)
+        {
+            // Generate IR for the rhs expression
+            var rhsContext = context.pursue(exprs[1]);
+            exprToIR(rhsContext);
+
+            // Compute the added value
+            var addVal = rhsContext.getExitBlock().addInstr(
+                new instrClass(
+                    binOp,
+                    lhsVal,
+                    rhsContext.getOutValue()
+                )
+            );
+
+            context.setOutput(rhsContext.getExitBlock(), addVal);
+        }
+    
+        // Assign the added value to the left expression
+        var assgContext = context.pursue(exprs[0]);
+        assgToIR(assgContext, opFunc);
+
+        // Set the output to the original value
+        context.setOutput(assgContext.getExitBlock(), assgContext.getOutValue());
+    }
+
+
+    // Function to generate code for generic unary/binary operators
+    function opGen(genFunc)
+    {
+       // Compile the argument values
+        var argsContext = context.pursue(exprs);
+        var argVals = exprListToIR(argsContext);
+
+        // Get the exit block for the arguments context
+        var argsExit = argsContext.getExitBlock();
+
+        // Generate code for the operator
+        var opVal = genFunc(argsExit, argVals);
+
+        // Set the operator's output value as the output
+        context.setOutput(argsExit, opVal);
+    }
+
+    // Switch on the operator
+    switch (op)
+    {
+        // If this is an assignment expression
+        case 'x = y':
+        {
+            // Get the left and right expressions
+            var leftExpr = exprs[0];
+            var rightExpr = exprs[1];
+
+            // Generate IR for the right expression
+            var rightContext = context.pursue(rightExpr);
+            exprToIR(rightContext);
+
+            // Convert the assignment
+            var leftContext = rightContext.pursue(leftExpr);
+            assgToIR(leftContext, rightContext.getOutValue());
+
+            // Set the output to that of the assignment
+            context.setOutput(leftContext.getExitBlock(), leftContext.getOutValue());
+        }
+        break;
+
+        // If this is a logical AND expression
+        case 'x && y':
+        {
+            // Compile the first expression
+            var fstContext = context.pursue(exprs[0])
+            exprToIR(fstContext);
+
+            // Compile the second expression
+            var secContext = context.branch(
+                exprs[1],
+                context.cfg.getNewBlock('log_and_sec'),
+                fstContext.localMap.copy()
+            );
+            exprToIR(secContext);
+
+            // Create a block to join the contexts
+            var joinBlock = context.cfg.getNewBlock('log_and_join');
+
+            // Create blocks for the true and false cases
+            var trueBlock = context.cfg.getNewBlock('log_and_true');
+            var falseBlock = context.cfg.getNewBlock('log_and_false');
+            trueBlock.addInstr(new JumpInstr(joinBlock));
+            falseBlock.addInstr(new JumpInstr(joinBlock));
+
+            // Create the first if branching instruction
+            fstContext.getExitBlock().addInstr(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    secContext.entryBlock,
+                    falseBlock
+                )
+            );
+
+            // Create the second if branching instruction
+            secContext.getExitBlock().addInstr(
+                new IfInstr(
+                    secContext.getOutValue(),
+                    trueBlock,
+                    falseBlock
+                )
+            );
+
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [ConstValue.getConst(true), ConstValue.getConst(false)],
+                    [trueBlock, falseBlock]
+                )
+            );
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
+        }
+        break;
+
+        // If this is a logical OR expression
+        case 'x || y':
+        {
+            // Compile the first expression
+            var fstContext = context.pursue(exprs[0])
+            exprToIR(fstContext);
+
+            // Compile the second expression
+            var secContext = context.branch(
+                exprs[1],
+                context.cfg.getNewBlock('log_or_sec'),
+                fstContext.localMap.copy()
+            );
+            exprToIR(secContext);
+
+            // Create a block to join the contexts
+            var joinBlock = context.cfg.getNewBlock('log_or_join');
+
+            // Create blocks for the true and false cases
+            var trueBlock = context.cfg.getNewBlock('log_or_true');
+            var falseBlock = context.cfg.getNewBlock('log_or_false');
+            trueBlock.addInstr(new JumpInstr(joinBlock));
+            falseBlock.addInstr(new JumpInstr(joinBlock));
+
+            // Create the first if branching instruction
+            fstContext.getExitBlock().addInstr(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    trueBlock,
+                    secContext.entryBlock
+                )
+            );
+
+            // Create the second if branching instruction
+            secContext.getExitBlock().addInstr(
+                new IfInstr(
+                    secContext.getOutValue(),
+                    trueBlock,
+                    falseBlock
+                )
+            );
+
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [ConstValue.getConst(true), ConstValue.getConst(false)],
+                    [trueBlock, falseBlock]
+                )
+            );
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
+        }
+        break;
+        
+        // If this is a conditional operator expression
+        case 'x ? y : z':
+        {
+            // Compile the test expression
+            var testContext = context.pursue(exprs[0])
+            exprToIR(testContext);
+
+            // Compile the true expression
+            var trueContext = context.branch(
+                exprs[1],
+                context.cfg.getNewBlock('cond_true'),
+                testContext.localMap.copy()
+            );
+            exprToIR(trueContext);
+
+            // Compile the false expression
+            var falseContext = context.branch(
+                exprs[2],
+                context.cfg.getNewBlock('cond_false'),
+                testContext.localMap.copy()
+            );
+            exprToIR(falseContext);
+
+            // Create the if branching instruction
+            testContext.getExitBlock().addInstr(
+                new IfInstr(
+                    testContext.getOutValue(),
+                    trueContext.entryBlock,
+                    falseContext.entryBlock
+                )
+            );
+
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [trueContext, falseContext],
+                context.localMap,
+                context.cfg,
+                'cond_join'
+            );
+
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [trueContext.getOutValue(), falseContext.getOutValue()],
+                    [trueContext.getExitBlock(), falseContext.getExitBlock()]
+                )
+            );
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
+        }
+        break;
+
+        case '++ x':
+        prePostGen(ArithOp.ADD, false);
+        break;
+
+        case '-- x':
+        prePostGen(ArithOp.SUB, false);
+        break;
+
+        case 'x ++':
+        prePostGen(ArithOp.ADD, true);     
+        break;
+
+        case '-- x':
+        prePostGen(ArithOp.SUB, true);           
+        break;
+
+        case 'x += y':
+        compAssgGen(ArithInstr, ArithOp.ADD);
+        break;
+        
+        case 'x < y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.LT, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x <= y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.LTE, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x > y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.GT, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x >= y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.GTE, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x == y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.EQ, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x != y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.NEQ, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x === y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.SEQ, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x !== y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new CompInstr(CompOp.NSEQ, argVals[0], argVals[1]));
+        });
+        break;
+        
+        case 'x + y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new ArithInstr(ArithOp.ADD, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x - y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new ArithInstr(ArithOp.SUB, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x * y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new ArithInstr(ArithOp.MUL, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x / y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new ArithInstr(ArithOp.DIV, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x % y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new ArithInstr(ArithOp.MOD, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x & y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.AND, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x | y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.OR, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x ^ y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.XOR, argVals[0], argVals[1]));
+        });
+        break;
+
+        case '~ x':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.NOT, argVals[0]));
+        });
+        break;
+
+        case 'x << y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.LSFT, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x >> y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.RSFT, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x >>> y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new BitInstr(BitOp.URSFT, argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'typeof x':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new TypeOfInstr(argVals[0]));
+        });
+        break;
+
+        case 'x instanceof y':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new InstOfInstr(argVals[0], argVals[1]));
+        });
+        break;
+
+        case 'x , y':
+        opGen(function (block, argVals) 
+        { 
+            return argVals[1];
+        });
+        break;
+
+        case 'x [ y ]':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new GetPropValInstr(argVals[0], argVals[1]));
+        });
+        break;
+
+        default:
+        {
+            assert (false, 'Unsupported AST operation "' + op + '"');
+        }
+    }
 }
 
 /**
 Convert an assignment expression to IR code
+@param rhsVal value to assign or code gen function
 */
-function assgToIR(context, rightVal)
+function assgToIR(context, rhsVal)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -1810,88 +1953,109 @@ function assgToIR(context, rightVal)
     // Get the left side expression
     var leftExpr = context.astNode;
 
-    // Variable for the last used context
-    var lastContext;
-
-
-    // TODO: get rid of lastContext, set output directly
-
-
     // If the left-hand side is a simple variable name
     if (leftExpr instanceof Ref)
     {
         var symName = leftExpr.id.toString();   
 
+        // If we are within a with block
+        if (context.withVal)
+        {
+            // Add a has-property test on the object for the symbol name
+            var hasTestVal = context.entryBlock.addInstr(
+                new HasPropValInstr(
+                    context.withVal,
+                    ConstValue.getConst(symName)                
+                )
+            );
 
+            // Context for the case where the with object has the property
+            var propContext = context.branch(
+                null,
+                context.cfg.getNewBlock('with_prop'),
+                context.localMap.copy()
+            );
 
+            // Context for the case where the object doesn't have the property
+            var varContext = context.branch(
+                null,
+                context.cfg.getNewBlock('with_var'),
+                context.localMap.copy()
+            );
 
+            // Add the if branch expression
+            context.entryBlock.addInstr(
+                new IfInstr(
+                    hasTestVal,
+                    propContext.entryBlock,
+                    varContext.entryBlock
+                )
+            );
+        }
+        else
+        {
+            var varContext = context;
+        }
 
-        // TODO
+        // If a RHS code gen function was specified
+        if (rhsVal instanceof Function)
+        {      
+            // Declare a variable for the LHS value
+            var lhsVal;
+      
+            // If the variable is global
+            if (leftExpr.id.scope instanceof Program)
+            {
+                // Get the value from the global object
+                lhsVal = varContext.entryBlock.addInstr(
+                    new GetPropValInstr(
+                        ConstValue.globalConst,
+                        ConstValue.getConst(symName)
+                    )
+                );
+            }
 
+            // Otherwise, if this variable is a shared closure variable
+            else if (varContext.sharedMap.hasItem(symName))
+            {
+                // Get the mutable cell for the variable
+                var cellValue = context.sharedMap.getItem(symName);
 
+                // Get the value in the mutable cell
+                lhsVal = varContext.entryBlock.addInstr(
+                    new GetCellInstr(cellValue)
+                );   
+            }
 
-        // Context for the case where the object has the property
-        var propContext = context.branch(
-            null,
-            context.cfg.getNewBlock('with_prop'),
-            context.localMap.copy()
-        );
+            // Otherwise, the variable is local
+            else
+            {
+                // Get the value in the local map
+                lhsVal = varContext.localMap.getItem(symName, rhsVal);
+            }
 
-        // Context for the case where the object doesn't have the property
-        var varContext = context.branch(
-            null,
-            context.cfg.getNewBlock('with_var'),
-            context.localMap.copy()
-        );
+            // Update the RHS value according to the specified function
+            var funcCtx = varContext.pursue(context.astNode);
+            rhsVal(funcCtx, lhsVal);
+            var rhsValAssg = funcCtx.getOutValue();
 
-        // Add a has-property test on the object for the symbol name
-        var testVal = context.entryBlock.addInstr(
-            new HasPropValInstr(
-                context.withVal,
-                ConstValue.getConst(symName)                
-            )
-        );
-        
-        // Add the if branch expression
-        context.entryBlock.addInstr(
-            new IfInstr(
-                testVal,
-                propContext.entryBlock,
-                varContext.entryBlock
-            )
-        );
-        
-
-
-
-        /*
-        // Merge the local maps using phi nodes
-        var joinBlock = mergeContexts(
-            [trueContext, falseContext],
-            context.localMap,
-            context.cfg,
-            'if_join'
-        );
-        */
-
-
-
-        
-
-
-
-
-
+            // Create a new context to pursue the code generation
+            varContext = funcCtx.pursue(funcCtx.astNode);
+        }
+        else
+        {
+            var rhsValAssg = rhsVal;
+        }
 
         // If the variable is global
         if (leftExpr.id.scope instanceof Program)
         {
             // Get the value from the global object
-            context.entryBlock.addInstr(
+            varContext.entryBlock.addInstr(
                 new PutPropValInstr(
                     ConstValue.globalConst,
                     ConstValue.getConst(symName),
-                    rightVal
+                    rhsValAssg
                 )
             );
         }
@@ -1903,8 +2067,8 @@ function assgToIR(context, rightVal)
             var cellValue = context.sharedMap.getItem(symName);
 
             // Set the value in the mutable cell
-            context.entryBlock.addInstr(
-                new PutCellInstr(cellValue, rightVal)
+            varContext.entryBlock.addInstr(
+                new PutCellInstr(cellValue, rhsValAssg)
             );   
         }
 
@@ -1912,18 +2076,75 @@ function assgToIR(context, rightVal)
         else
         {
             // Update the variable value in the locals map
-            context.localMap.setItem(symName, rightVal);
+            varContext.localMap.setItem(symName, rhsValAssg);
         }
 
-        context.bridge();
-        lastContext = context;
+        // If we are within a with block
+        if (context.withVal)
+        {
+            // If a RHS code gen function was specified
+            if (rhsVal instanceof Function)
+            {   
+                // Declare a variable for the LHS value
+                var lhsVal;
 
+                // Get the value in the with object
+                lhsVal = propContext.entryBlock.addInstr(
+                    new GetPropValInstr(
+                        context.withVal,
+                        ConstValue.getConst(symName)
+                    )
+                );
 
+                // Update the RHS value according to the specified function
+                var funcCtx = propContext.pursue(context.astNode);
+                rhsVal(funcCtx, lhsVal);
+                var rhsValAssg = funcCtx.getOutValue();
 
+                // Create a new context to pursue the code generation
+                propContext = funcCtx.pursue(funcCtx.astNode);
+            }
+            else
+            {
+                var rhsValAssg = rhsVal;
+            }
 
+            // Set the value in the with object
+            propContext.entryBlock.addInstr(
+                new PutPropValInstr(
+                    context.withVal,
+                    ConstValue.getConst(symName),
+                    rhsValAssg
+                )
+            );
 
+            // Bridge the prop and var contexts
+            propContext.bridge();
+            varContext.bridge();
 
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [propContext, varContext],
+                context.localMap,
+                context.cfg,
+                'with_join'
+            );
 
+            // Create a new context for the join block
+            var curContext = context.branch(
+                context.astNode,
+                joinBlock,
+                context.localMap
+            );
+        }
+        else
+        {
+            // Use the context from the variable case
+            var curContext = varContext;
+        }
+
+        // The value of the right expression is the assignment expression's value
+        context.setOutput(curContext.entryBlock, rhsValAssg);
     }
 
     // Otherwise, if the left-hand side is an object field
@@ -1940,16 +2161,43 @@ function assgToIR(context, rightVal)
         var idxContext = objContext.pursue(idxExpr);
         exprToIR(idxContext);
 
+        // Create a new context to pursue the code generation
+        var curContext = idxContext.pursue(context.astNode);
+
+        // If a RHS code gen function was specified
+        if (rhsVal instanceof Function)
+        {
+            // Declare a variable for the LHS value
+            var lhsVal;
+
+            // Get the property's current value
+            lhsVal = curContext.entryBlock.addInstr(
+                new GetPropValInstr(
+                    objContext.getOutValue(),
+                    idxContext.getOutValue()
+                )
+            ); 
+
+            // Update the RHS value according to the specified function
+            var funcCtx = curContext.pursue(context.astNode);
+            rhsVal(funcCtx, lhsVal);
+            rhsVal = funcCtx.getOutValue();
+
+            // Create a new context to pursue the code generation
+            curContext = funcCtx.pursue(funcCtx.astNode);
+        }
+
         // Set the property to the right expression's value
-        idxContext.getExitBlock().addInstr(
+        curContext.entryBlock.addInstr(
             new PutPropValInstr(
                 objContext.getOutValue(),
                 idxContext.getOutValue(),
-                rightContext.getOutValue()
+                rhsVal
             )
         );
 
-        lastContext = idxContext;
+        // The value of the right expression is the assignment expression's value
+        context.setOutput(curContext.entryBlock, rhsVal);
     }
 
     // Otherwise
@@ -1958,15 +2206,12 @@ function assgToIR(context, rightVal)
         pp(leftExpr);
         assert (false, 'unsupported assignment lhs expression');
     }
-
-    // The value of the right expression is the assignment expression's value
-    context.setOutput(lastContext.getExitBlock(), rightVal);
 }
 
 /**
-Convert ordinary unary and binary operations to IR code
+Convert an assignment expression to IR code
 */
-function opToIR(context)
+function refToIR(context)
 {
     // Ensure that the IR conversion context is valid
     assert (
@@ -1974,119 +2219,136 @@ function opToIR(context)
         'invalid IR conversion context specified'
     );
 
-    // Compile the argument values
-    var argsContext = context.pursue(context.astNode.exprs);
-    var argVals = exprListToIR(argsContext);
+    var astExpr = context.astNode;
 
-    // Variable to store the operator's output value
-    var opVal;
+    var symName = astExpr.id.toString();
 
-    // Get the exit block for the arguments context
-    var argsExit = argsContext.getExitBlock();
+    // Declare variables for the variable value
+    var varValueVar;
+    var varValueProp;
 
-    // Switch on the operator
-    switch (context.astNode.op)
+    // If we are within a with block
+    if (context.withVal)
     {
-        case 'x < y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.LT, argVals[0], argVals[1]));
-        break;
+        // Add a has-property test on the object for the symbol name
+        var hasTestVal = context.entryBlock.addInstr(
+            new HasPropValInstr(
+                context.withVal,
+                ConstValue.getConst(symName)                
+            )
+        );
 
-        case 'x <= y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.LTE, argVals[0], argVals[1]));
-        break;
+        // Context for the case where the with object has the property
+        var propContext = context.branch(
+            null,
+            context.cfg.getNewBlock('with_prop'),
+            context.localMap.copy()
+        );
 
-        case 'x > y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.GT, argVals[0], argVals[1]));
-        break;
+        // Context for the case where the object doesn't have the property
+        var varContext = context.branch(
+            null,
+            context.cfg.getNewBlock('with_var'),
+            context.localMap.copy()
+        );
 
-        case 'x >= y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.GTE, argVals[0], argVals[1]));
-        break;
-
-        case 'x == y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.EQ, argVals[0], argVals[1]));
-        break;
-
-        case 'x != y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.NEQ, argVals[0], argVals[1]));
-        break;
-
-        case 'x === y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.SEQ, argVals[0], argVals[1]));
-        break;
-
-        case 'x !== y':
-        opVal = argsExit.addInstr(new CompInstr(CompOp.NSEQ, argVals[0], argVals[1]));
-        break;
-
-        case 'x + y':
-        opVal = argsExit.addInstr(new ArithInstr(ArithOp.ADD, argVals[0], argVals[1]));
-        break;
-
-        case 'x - y':
-        opVal = argsExit.addInstr(new ArithInstr(ArithOp.SUB, argVals[0], argVals[1]));
-        break;
-
-        case 'x * y':
-        opVal = argsExit.addInstr(new ArithInstr(ArithOp.MUL, argVals[0], argVals[1]));
-        break;
-
-        case 'x / y':
-        opVal = argsExit.addInstr(new ArithInstr(ArithOp.DIV, argVals[0], argVals[1]));
-        break;
-
-        case 'x % y':
-        opVal = argsExit.addInstr(new ArithInstr(ArithOp.MOD, argVals[0], argVals[1]));
-        break;
-
-        case 'x & y':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.AND, argVals[0], argVals[1]));
-        break;
-
-        case 'x | y':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.OR, argVals[0], argVals[1]));
-        break;
-
-        case 'x ^ y':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.XOR, argVals[0], argVals[1]));
-        break;
-
-        case '~ x':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.NOT, argVals[0]));
-        break;
-
-        case 'x << y':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.LSFT, argVals[0], argVals[1]));
-        break;
-
-        case 'x >> y':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.RSFT, argVals[0], argVals[1]));
-        break;
-
-        case 'x >>> y':
-        opVal = argsExit.addInstr(new BitInstr(BitOp.URSFT, argVals[0], argVals[1]));
-        break;
-
-        case 'typeof x':
-        opVal = argsExit.addInstr(new TypeOfInstr(argVals[0]));
-        break;
-
-        case 'x instanceof y':
-        opVal = argsExit.addInstr(new InstOfInstr(argVals[0], argVals[1]));
-        break;
-
-        case 'x , y':
-        opVal = argVals[1];
-        break;
-
-        default:
-        {
-            assert (false, 'Unsupported AST operation "' + context.astNode.op + '"');
-        }
+        // Add the if branch expression
+        context.entryBlock.addInstr(
+            new IfInstr(
+                hasTestVal,
+                propContext.entryBlock,
+                varContext.entryBlock
+            )
+        );
+    }
+    else
+    {
+        var varContext = context;
     }
 
-    // Set the operator's output value as the output
-    context.setOutput(argsContext.getExitBlock(), opVal);
+    // If the variable is global
+    if (astExpr.id.scope instanceof Program)
+    {
+        // Get the value from the global object
+        varValueVar = varContext.entryBlock.addInstr(
+            new GetPropValInstr(
+                ConstValue.globalConst,
+                ConstValue.getConst(symName)
+            )
+        );
+    }
+
+    // Otherwise, if this variable is a shared closure variable
+    else if (context.sharedMap.hasItem(symName))
+    {
+        // Get the mutable cell for the variable
+        var cellValue = context.sharedMap.getItem(symName);
+
+        // Get the value from the mutable cell
+        varValueVar = varContext.entryBlock.addInstr(
+            new GetCellInstr(cellValue)
+        );
+    }
+
+    // Otherwise, the variable is local
+    else
+    {
+        assert (
+            context.localMap.hasItem(symName), 
+            'local variable not in locals map: ' + symName
+        );
+
+        // Lookup the variable in the locals map
+        varValueVar = varContext.localMap.getItem(symName);
+    }
+
+    // If we are within a with block
+    if (context.withVal)
+    {
+        // Get the value in the with object
+        var varValueProp = propContext.entryBlock.addInstr(
+            new GetPropValInstr(
+                context.withVal,
+                ConstValue.getConst(symName)
+            )
+        );
+
+        // Bridge the prop and var contexts
+        propContext.bridge();
+        varContext.bridge();
+
+        // Merge the local maps using phi nodes
+        var joinBlock = mergeContexts(
+            [propContext, varContext],
+            context.localMap,
+            context.cfg,
+            'with_join'
+        );
+
+        // Create a phi node to merge the variable values
+        var varValue = joinBlock.addInstr(
+            new PhiInstr(
+                [varValueVar, varValueProp],
+                [varContext.getExitBlock(), propContext.getExitBlock()]
+            )
+        );
+
+        // Create a new context for the join block
+        var curContext = context.branch(
+            context.astNode,
+            joinBlock,
+            context.localMap
+        );
+    }
+    else
+    {
+        // Use the value and context from the variable case
+        var curContext = varContext;
+        var varValue = varValueVar;
+    }
+
+    // The variable value is the output value
+    context.setOutput(curContext.entryBlock, varValue);
 }
 
 /**

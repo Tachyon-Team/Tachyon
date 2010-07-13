@@ -1,6 +1,30 @@
 function f(x)
 {
+
+
+
     /*
+    x = 3;
+    x++;
+
+    if (true)
+        x += y;
+    else
+        x = x + 1;
+
+    print(x);
+    */
+
+    /*
+    with (obj)
+    {
+        x[0] = x[1];
+    }
+    
+    print(x);
+    */
+
+    /*    
     var x;
 
     try
@@ -32,6 +56,7 @@ function f(x)
         print(e);
     }
     */
+    
 
     /*
     var x;
