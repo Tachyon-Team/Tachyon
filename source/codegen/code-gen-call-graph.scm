@@ -194,6 +194,17 @@
       asm-make-label
       asm-label-pos
       asm-label-id
+      asm-label-name
+      asm-at-assembly
+      asm-origin
+      asm-align
+      asm-assemble
+      asm-display-listing
+      asm-code-block-start-pos
+      asm-code-block-listing?
+      asm-listing
+      gen-listing
+      gen-listing?
       gen-8
       gen-16
       gen-32
@@ -241,6 +252,7 @@
       x86-opnd-prefix-opnd
       x86-opnd-prefix-reg-opnd
       x86-opnd-modrm/sib-reg-opnd
+      x86-no-opnd-instr
       x86-gen-imm-num
       x86-op-imm
       general
@@ -267,6 +279,54 @@
       x86-push
       x86-push-imm
       x86-pop
+      x86-esc-opcode
+      x86-jmp-rel8-opcode
+      x86-jmp-rel32-opcode
+      x86-call-rel32-opcode
+      x86-jo-rel8-opcode
+      x86-jno-rel8-opcode
+      x86-jb-rel8-opcode
+      x86-jae-rel8-opcode
+      x86-je-rel8-opcode
+      x86-jne-rel8-opcode
+      x86-jbe-rel8-opcode
+      x86-ja-rel8-opcode
+      x86-js-rel8-opcode
+      x86-jns-rel8-opcode
+      x86-jp-rel8-opcode
+      x86-jnp-rel8-opcode
+      x86-jl-rel8-opcode
+      x86-jge-rel8-opcode
+      x86-jle-rel8-opcode
+      x86-jge-rel8-opcode
+      x86-jg-rel8-opcode
+      x86-jump-label
+      x86-jump-general
+      x86-jmp
+      x86-call
+      x86-jmp-label
+      x86-call-label
+      x86-jo-label
+      x86-jno-label
+      x86-jb-label
+      x86-jae-label
+      x86-je-label
+      x86-jne-label
+      x86-jbe-label
+      x86-ja-label
+      x86-js-label
+      x86-jns-label
+      x86-jp-label
+      x86-jnp-label
+      x86-jl-label
+      x86-jge-label
+      x86-jle-label
+      x86-jg-label
+      x86-offset->string
+      x86-opnd-format-gnu
+      x86-opnd-format
+      x86-instr-format
+      x86-instr-format-gnu
       gen-op
       rtl-code-gen-context-code-block))
 

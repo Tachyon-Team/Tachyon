@@ -487,7 +487,6 @@
                        (loop1 (cdr lst) pos 0))
                       (else
                        (loop1 (cdr lst) pos col)
-#;
                        (compiler-internal-error
                         "asm-display-listing, code stream not assembled"))))
               (if (or (= col 0) (>= col (- text-col byte-width)))
