@@ -1,4 +1,4 @@
-var a = new x86_Assembler();
+var a = new x86_Assembler(x86_Assembler.target.x86);
 const reg = a.register;
 const ESP = reg.esp;
 const EAX = reg.eax;
@@ -16,10 +16,10 @@ var RECURSION = a.codeBlock.label("RECURSION");
 a.codeBlock.bigEndian = false;
 
 a.
-movl($(40), EAX).
+mov($(10), EAX).
 
 label(FIB).
-    cmpl($(2), EAX).
+    cmp($(2), EAX).
     jge(RECURSION).
 
 label(BASE_CASE).
@@ -27,18 +27,18 @@ label(BASE_CASE).
 
 label(RECURSION).
     push(EAX).
-    addl($(-1), EAX).
+    add($(-1), EAX).
     call(FIB).
 
-    movl(EAX, EBX).
+    mov(EAX, EBX).
     pop(EAX).
     push(EBX).
-    addl($(-2), EAX).
+    add($(-2), EAX).
     call(FIB).
 
     pop(EBX).
-    addl(EBX, EAX).
-    ret     ();
+    add(EBX, EAX).
+    ret();
 
 a.codeBlock.assemble();
 

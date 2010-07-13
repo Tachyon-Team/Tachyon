@@ -43,12 +43,12 @@ x86_Assembler.prototype.assert32bitMode = function ()
 const x86 = x86_Assembler.prototype;
 
 // error reporting
-function error (message)
+function error (message, args)
 {
     var err = message;
-    for (var i=1; i<arguments.length; i++)
+    for (var i=0; i<args.length; i++)
     {
-        err += arguments[i];
+        err += args[i];
     }
     throw err;
 };
@@ -103,7 +103,7 @@ x86._genImmNum = function (k, width)
 
 x86.genImmNum = function (k, width)
 {
-    this._genImmNum(k, Math.min(32, width));
+    this._genImmNum(k, Math.min(32, width || 32));
 };
 
 // Types to allow testing for object type on x86 related
@@ -114,7 +114,34 @@ x86.type.IMM_LBL = 1;
 x86.type.REG = 2;
 x86.type.MEM = 3;
 x86.type.GLO = 4;
+x86.type.toString = function (type)
+{
+    switch (type)
+    {
+        case x86.type.IMM_VAL: return "X86_IMMEDIATE_VALUE"; 
+        case x86.type.IMM_LBL: return "X86_IMMEDIATE_LABEL"; 
+        case x86.type.REG:     return "X86_REGISTER"; 
+        case x86.type.MEM:     return "X86_MEMORY"; 
+        case x86.type.GLO:     return "X86_GLOBAL"; 
+        default: return "X86_UNKOWN";
+    }
+}
 
+x86.root = {};
+x86.root.toString = function ()
+{
+    var s = [];
+    for (var p in this)
+    {
+        if (typeof this[p] !== "function")
+        {
+            s.push( ((this.hasOwnProperty(p)) ? "" : "*") + // Mark parent prop 
+                    p + ":" + String(this[p]));
+        }
+    } 
+
+    return x86.type.toString(this.type) + "(" + s.join(", ") + ")";
+};
 
 // Immediate object to represent immediate value
 x86.immediateValue = function (value)
@@ -132,6 +159,7 @@ x86.immediateValue = function (value)
 
     return that;
 };
+x86.immediateValue.prototype = Object.create(x86.root);
 x86.immediateValue.prototype.type  = x86.type.IMM_VAL;
 x86.immediateValue.prototype.value = 0;
 
@@ -166,6 +194,7 @@ x86.global = function ( name, offset )
     if (offset) { that.offset = offset; };
     return that;
 };
+x86.global.prototype = Object.create(x86.root);
 x86.global.prototype.type   = x86.type.GLO;
 x86.global.prototype.name   = null;
 x86.global.prototype.offset = 0;
@@ -190,7 +219,9 @@ x86.register.r32   = function (n) { return this.registers [ 16 + n ]; }
 x86.register.r64   = function (n) { return this.registers [ n ]; }
 x86.register.fpu   = function (n) { return this.registers [ 48 + n ]; }
 
+x86.register.prototype = Object.create(x86.root);
 const reg = x86.register.prototype;
+
 reg.type = x86.type.REG;
 reg.isr8  = function () { return this.value >= 80; }
 reg.isr8h = function () { return this.value >= 96; }
@@ -401,7 +432,7 @@ x86.instrFormatGNU = function (mnemonic, suffix, dest, src)
     if (suffix)
     {
         return mnemonic + suffix + " " + opnds; // 1 or 2 generic instruction
-    } else if (dest &&
+    } else if (dest && !src &&
                (dest.type === x86.type.REG || 
                 dest.type === x86.type.MEM))
     {
@@ -744,10 +775,10 @@ x86.opImm = function (op, mnemonic, src, dest, width)
         if ((dest.field() === 0) && 
             (dest.width() === 8 || !isSigned8(k)))
         {
-            accumulator(width);
+            accumulator(dest.width());
         } else 
         {
-            general(width);
+            general(dest.width());
         }
     } else // dest.type !== x86.type.REG
     {
@@ -795,17 +826,17 @@ x86.movImm = function (dest, src, width)
 
     assert((dest.type === x86.type.REG) ? 
             (!width || (dest.width() === width)) : width,
-            "missing or inconsistent operand width", width);
+            "missing or inconsistent operand width '", width, "'");
 
     if (dest.type === x86.type.REG)
     {
         if (dest.width() === 64 &&
             isSigned32(k))
         {
-            general(width);
+            general(dest.width());
         } else 
         {
-            register(width);
+            register(dest.width());
         }
     } else // dest.type !== x86.type.REG
     {
@@ -819,10 +850,23 @@ x86.op    = function (op, mnemonic, dest, src, width)
     // TODO: Add support for immediate label, see x86-mov 
     const that = this;
 
+    assert( dest.type === x86.type.REG ||
+            dest.type === x86.type.MEM ||
+            src.type  === x86.type.REG ||
+            src.type  === x86.type.MEM,
+            "x86.op: one of dest or src should be a register or" +
+            " a memory location");
+
+    assert(!(dest.type === x86.type.MEM &&
+             src.type  === x86.type.MEM),
+             "x86.op: dest and src cannot refer both to a " +
+             "memory location"); 
+
     function genOp (reg, opnd, isSwapped)
     {
         assert(!width || (reg.width() === width),
-               "inconsistent operand width",width);
+               "inconsistent operand width '",width, 
+               "' and register width '", reg.width(), "'");
         that.opndPrefixRegOpnd(reg, opnd);
         that.
         gen8((op << 3) +
@@ -861,63 +905,15 @@ x86.op    = function (op, mnemonic, dest, src, width)
    return this;
 };
 
-// Generic operations follow Intel syntax
-x86.add = function (dest, src, width) { return this.op(0, "add",dest,src,width); };
-x86.or  = function (dest, src, width) { return this.op(1, "or", dest,src,width); };
-x86.adc = function (dest, src, width) { return this.op(2, "adc",dest,src,width); };
-x86.sbb = function (dest, src, width) { return this.op(3, "sbb",dest,src,width); };
-x86.and = function (dest, src, width) { return this.op(4, "and",dest,src,width); };
-x86.sub = function (dest, src, width) { return this.op(5, "sub",dest,src,width); };
-x86.xor = function (dest, src, width) { return this.op(6, "xor",dest,src,width); };
-x86.cmp = function (dest, src, width) { return this.op(7, "cmp",dest,src,width); };
-x86.mov = function (dest, src, width) { return this.op(17,"mov",dest,src,width); };
-
-// Suffixed operations follow AT&T syntax
-x86.addb = function (src, dest) { return this.add(dest, src,  8); };
-x86.addw = function (src, dest) { return this.add(dest, src, 16); };
-x86.addl = function (src, dest) { return this.add(dest, src, 32); };
-x86.addq = function (src, dest) { return this.add(dest, src, 64); };
-
-x86.orb  = function (src, dest) { return this.or(dest, src,  8); };
-x86.orw  = function (src, dest) { return this.or(dest, src, 16); };
-x86.orl  = function (src, dest) { return this.or(dest, src, 32); };
-x86.orq  = function (src, dest) { return this.or(dest, src, 64); };
-
-x86.adcb = function (src, dest) { return this.adc(dest, src,  8); };
-x86.adcw = function (src, dest) { return this.adc(dest, src, 16); };
-x86.adcl = function (src, dest) { return this.adc(dest, src, 32); };
-x86.adcq = function (src, dest) { return this.adc(dest, src, 64); };
-
-x86.sbbb = function (src, dest) { return this.sbb(dest, src,  8); };
-x86.sbbw = function (src, dest) { return this.sbb(dest, src, 16); };
-x86.sbbl = function (src, dest) { return this.sbb(dest, src, 32); };
-x86.sbbq = function (src, dest) { return this.sbb(dest, src, 64); };
-
-x86.andb = function (src, dest) { return this.and(dest, src,  8); };
-x86.andw = function (src, dest) { return this.and(dest, src, 16); };
-x86.andl = function (src, dest) { return this.and(dest, src, 32); };
-x86.andq = function (src, dest) { return this.and(dest, src, 64); };
-
-x86.subb = function (src, dest) { return this.sub(dest, src,  8); };
-x86.subw = function (src, dest) { return this.sub(dest, src, 16); };
-x86.subl = function (src, dest) { return this.sub(dest, src, 32); };
-x86.subq = function (src, dest) { return this.sub(dest, src, 64); };
-
-x86.xorb = function (src, dest) { return this.xor(dest, src,  8); };
-x86.xorw = function (src, dest) { return this.xor(dest, src, 16); };
-x86.xorl = function (src, dest) { return this.xor(dest, src, 32); };
-x86.xorq = function (src, dest) { return this.xor(dest, src, 64); };
-
-x86.cmpb = function (src, dest) { return this.cmp(dest, src,  8); };
-x86.cmpw = function (src, dest) { return this.cmp(dest, src, 16); };
-x86.cmpl = function (src, dest) { return this.cmp(dest, src, 32); };
-x86.cmpq = function (src, dest) { return this.cmp(dest, src, 64); };
-
-x86.movb = function (src, dest) { return this.mov(dest, src,  8); };
-x86.movw = function (src, dest) { return this.mov(dest, src, 16); };
-x86.movl = function (src, dest) { return this.mov(dest, src, 32); };
-x86.movq = function (src, dest) { return this.mov(dest, src, 64); };
-
+x86.add = function (src, dest, width) { return this.op(0, "add",dest,src,width); };
+x86.or  = function (src, dest, width) { return this.op(1, "or", dest,src,width); };
+x86.adc = function (src, dest, width) { return this.op(2, "adc",dest,src,width); };
+x86.sbb = function (src, dest, width) { return this.op(3, "sbb",dest,src,width); };
+x86.and = function (src, dest, width) { return this.op(4, "and",dest,src,width); };
+x86.sub = function (src, dest, width) { return this.op(5, "sub",dest,src,width); };
+x86.xor = function (src, dest, width) { return this.op(6, "xor",dest,src,width); };
+x86.cmp = function (src, dest, width) { return this.op(7, "cmp",dest,src,width); };
+x86.mov = function (src, dest, width) { return this.op(17,"mov",dest,src,width); };
 
 x86.pushImm = function (dest)
 {
@@ -1046,6 +1042,9 @@ x86.jumpLabel = function (opcode, mnemonic, label, offset)
     const that = this;
     var offset = offset || 0;
 
+    assert(label.type === this.codeBlock.type.LBL,
+           "x86.jumpLabel: Invalid label '", label, "'");
+
     function labelDist (label, offsetLabel, pos, offsetPos)
     {
         return (label.getPos() + offsetLabel) - (pos + offsetPos);
@@ -1080,7 +1079,6 @@ x86.jumpLabel = function (opcode, mnemonic, label, offset)
     //  32 bit relative address
     function dispCheck (cb, pos)
     {
-        print("dispCheck for " + mnemonic);
         return (opcode === x86.opcode.jmpRel8 || 
                 opcode === x86.opcode.callRel32) ? 5 : 6;
     };

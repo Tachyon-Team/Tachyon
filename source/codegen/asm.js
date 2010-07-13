@@ -140,6 +140,32 @@ asm.type = {}
 asm.type.LBL = 0;
 asm.type.DEF = 1;
 asm.type.LST = 2;
+asm.type.toString = function (type)
+{
+    switch (type)
+    {
+        case asm.type.LBL: return "ASM_LABEL"; 
+        case asm.type.DEF: return "ASM_DEFERRED"; 
+        case asm.type.LST: return "ASM_LISTING"; 
+        default: return "ASM_UNKOWN";
+    }
+}
+
+asm.root = {};
+asm.root.toString = function ()
+{
+    var s = [];
+    for (var p in this)
+    {
+        if (typeof this[p] !== "function")
+        {
+            s.push( ((this.hasOwnProperty(p)) ? "" : "*") + // Mark parent prop 
+                    p + ":" + String(this[p]));
+        }
+    } 
+
+    return asm.type.toString(this.type) + "(" + s.join(", ") + ")";
+};
 
 asm.label   = function (id, pos)
 {
@@ -149,6 +175,7 @@ asm.label   = function (id, pos)
 
     return that;
 };
+asm.label.prototype = Object.create(asm.root);
 asm.label.prototype.type = asm.type.LBL; 
 asm.label.prototype.id   = "default";
 asm.label.prototype._pos = null;
@@ -198,6 +225,7 @@ asm.listing = function (text)
     if (text) { that.text = text; };
     return that;
 };
+asm.listing.prototype = Object.create(asm.root);
 asm.listing.prototype.type = asm.type.LST;
 asm.listing.prototype.text = "";
 
@@ -326,6 +354,7 @@ asm.deferred = function (checks, prods)
     return that;
 };
 
+asm.deferred.prototype = Object.create(asm.root);
 asm.deferred.prototype.type   = asm.type.DEF;
 asm.deferred.prototype.checks = [function () { return 0; }];
 asm.deferred.prototype.prods  = [function () {}];
