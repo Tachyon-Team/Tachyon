@@ -543,7 +543,7 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
     this.opndSizeOverridePrefix(width); 
     this.addrSizeOverridePrefix(opnd);
 
-    if (forceRex || (!rex === 0))
+    if (forceRex || (rex !== 0))
     {
         this.assert64bitMode();
         this.gen8(0x40 + rex);
