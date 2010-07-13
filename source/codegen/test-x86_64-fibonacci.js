@@ -18,13 +18,7 @@ var RECURSION = a.codeBlock.label("RECURSION");
 a.codeBlock.bigEndian = false;
 
 a.
-mov($(0), RAX).
-//gen8(0x05).gen32(1).
-gen8(0x83).gen8(0xc0).gen8(-1).
-//add($(0), RAX).
-//push(RAX).
-//pop(RAX).
-ret().
+mov($(10), RAX).
 
 label(FIB).
     cmp($(2), RAX).
