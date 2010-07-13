@@ -1,6 +1,19 @@
 function f(x)
 {
+    /*
+    switch (a)
+    {
+        case 'foo':
+        a + 1;
+        break;
 
+        default:
+        a + 3;
+
+        case 'bar':
+        a + 2;
+    }
+    */
 
 
     /*

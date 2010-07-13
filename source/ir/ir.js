@@ -976,15 +976,10 @@ function stmtToIR(context)
     }
 
     else if (astStmt instanceof WithStatement)
-    {
-
-        //ast.expr = ctx.walk_expr(ast.expr);
-        //ast.statement = ctx.walk_statement(ast.statement);
-        
+    {       
         //
         // TODO: need toObject instruction?
         //
-
 
         // Compile the object expression
         var objContext = context.pursue(astStmt.expr);
@@ -1006,13 +1001,155 @@ function stmtToIR(context)
     /*
     else if (astStmt instanceof SwitchStatement)
     {
-        ast.expr = ctx.walk_expr(ast.expr);
-        ast.clauses.forEach(function (c, i, asts)
-                            {
-                                c.expr = ctx.walk_expr(c.expr);
-                                c.statements = ast_walk_statements(c.statements, ctx);
-                            });
-        return ast;
+        //ast.expr = ctx.walk_expr(ast.expr);
+        //ast.clauses.forEach(
+        //    function (c, i, asts)
+        //    {
+        //        c.expr = ctx.walk_expr(c.expr);
+        //        c.statements = ast_walk_statements(c.statements, ctx);
+        //    }
+        //);
+        //
+        // null expr for default case
+        // default case comes last in the chain
+
+
+
+        // Get the label for this statement
+        var label = astStmt.stmtLabel? astStmt.stmtLabel.toString():'';
+
+        // Compile the switch expression
+        var switchCtx = context.pursue(astStmt.expr);        
+        exprToIR(switchCtx);
+
+        // Create a list for the break contexts
+        var brkCtxList = [];
+
+
+
+
+
+
+
+        // Compile actual code for each clause in a separate sequence
+        // each clause jumps to the next if not terminated by break
+        // default is no exception
+
+
+        // Should remember what entry block matches with each clause
+        // separate test sequence jumps to blocks
+
+
+
+        // Create a context for the first case test
+        var nextTestCtx = context.branch(
+            astStmt.clauses[0]? astStmt.clauses[0].expr:null,
+            context.cfg.getNewBlock('switch_test_0'),
+            switchCtx.localMap.copy()
+        );
+
+        // Variable for the previous clause statements context
+        var prevStmtCtx = null;
+
+        // For each clause
+        for (var i = 0; i < astStmt.clauses.length; ++i)
+        {
+            var clause = astStmt.clauses[i];
+            var nextClause = astStmt.clauses[i + 1];
+ 
+            // Get the context for the current test
+            var curTestCtx = nextTestCtx;
+
+            // Create a context for the next case test
+            nextTestCtx = context.branch(
+                nextClause? nextClause.expr:null,
+                context.cfg.getNewBlock('switch_test_' + (i + 1)),
+                curTestCtx.localMap.copy()
+            );
+
+            // If this is not the default clause
+            if (clause.expr)           
+            {
+                // Generate code for the test expression
+                exprToIR(curTestCtx);
+
+                // Compare the testvalue with the switch value
+                var testVal = curTestCtx.getExitBlock().addInstr(
+                    new CompInstr(
+                        CompOp.SEQ,
+                        curTestCtx.getOutValue(),
+                        switchCtx.getOutValue()
+                    )
+                );
+            }
+            else
+            {
+                // Bridge the test context
+                curTestCtx.bridge();
+
+                // The test evaluates to false
+                var testVal = ConstValue.getConst(false);
+            }
+
+            // Create a new context for the clause statements
+            var stmtEntryLocals = curTestCtx.localMap.copy()
+            var stmtCtx = createLoopEntry(
+                astStmt,
+                clause.statements,
+                curTestCtx,
+                stmtEntryLocals,
+                brkCtxList,
+                null,
+                'switch_case_' + i
+            );
+
+            // Generate code for the statement
+            stmtListToIR(stmtCtx);
+
+            // Add the if test instruction
+            curTestCtx.getExitBlock().addInstr(
+                new IfInstr(
+                    testVal,
+                    stmtCtx.entryBlock,
+                    nextTestCtx.entryBlock
+                )
+            );
+
+            // If there was a previous statement, merge its locals at the
+            // current clause statement entry
+            if (prevStmtCtx)
+            {
+                mergeLoopEntry(
+                    [prevStmtCtx],
+                    stmtEntryLocals,
+                    stmtCtx.entryBlock
+                );
+            }
+
+            // Update the previous statement context
+            prevStmtCtx = stmtCtx;
+        }
+
+
+
+
+
+        // TODO: add last clause context to break contexts, if not terminated?
+
+        // TODO: merge break contexts
+
+
+
+
+
+        
+
+
+
+
+
+        
+
     }
     */
 
@@ -2458,10 +2595,16 @@ function createLoopEntry(
     // Update the break and continue context maps for the loop body
     var breakMap = context.breakMap.copy();
     var contMap = context.contMap.copy();
-    breakMap.setItem(label, brkCtxList);
-    contMap.setItem(label, cntCtxList);
-    breakMap.setItem('', brkCtxList);
-    contMap.setItem('', cntCtxList);
+    if (brkCtxList)
+    {
+        breakMap.setItem(label, brkCtxList);
+        breakMap.setItem('', brkCtxList);
+    }
+    if (cntCtxList)
+    {
+        contMap.setItem(label, cntCtxList);
+        contMap.setItem('', cntCtxList);
+    }
 
     // Create a basic block for the loop entry
     var loopEntry = context.cfg.getNewBlock(blockName);
