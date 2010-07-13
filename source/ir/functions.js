@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Intermediate representation function
 */
-function IRFunction(funcName, argNames)
+function IRFunction(funcName, argNames, closVars, parentFunc, astNode)
 {
     /**
     Function name
@@ -25,6 +25,17 @@ function IRFunction(funcName, argNames)
     @field
     */
     this.argNames = argNames;
+
+    /**
+    Closure variable name list
+    @field
+    */
+    this.closVars = closVars;
+
+    /**
+    AST node corresponding to the function
+    */
+    this.astNode = astNode;
 
     /**
     Virgin, unoptimized IR CFG
@@ -44,7 +55,7 @@ function IRFunction(funcName, argNames)
     */
     this.parentFunc = null;
 }
-IRFunction.prototype = {};
+IRFunction.prototype = new IRValue();
 
 /**
 Produce a string representation of an IR function
@@ -61,15 +72,22 @@ IRFunction.prototype.toString = function ()
             output += ', ';
     }
 
-    output += ')\n{\n';
+    output += ') ['
+
+    for (var i = 0; i < this.closVars.length; ++i)
+    {
+        output += this.closVars[i];
+
+        if (i != this.closVars.length - 1)
+            output += ', ';
+    }
+
+    output += ']\n{\n';
 
     for (var i = 0; i < this.childFuncs.length; ++i)
     {
-        output += indentText(this.childFuncs[i].toString(), '    ') + '\n';
+        output += indentText(this.childFuncs[i].toString(), '    ') + '\n\n';
     }
-
-    if (this.childFuncs.length > 0)
-        output += '\n';
 
     output += indentText(this.virginIR.toString(), '    ');
 
@@ -77,6 +95,14 @@ IRFunction.prototype.toString = function ()
 
     return output;
 };
+
+/**
+Return the IR value name for this function
+*/
+IRFunction.prototype.getValName = function ()
+{
+    return '<func' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
+}
 
 /**
 Create a deep copy of the function

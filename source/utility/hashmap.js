@@ -27,16 +27,28 @@ function defHashFunc(val)
     if (typeof val == 'number')
     {
         return parseInt(val);
-    }
-    else if (typeof val == 'string')
+    }     
+ 
+    else if (typeof val == 'string')  
     {
         var hashCode = 0;
 
         for (var i = 0; i < val.length; ++i)
-            hashCode = (((hashCode << 8) + val.charCodeAt(i)) * 331804471) & 536870911;
+            hashCode = (hashCode * 256 + val.charCodeAt(i)) % 426870919;
 
         return hashCode;
     }
+
+    else if (typeof val == 'boolean')
+    {
+        return val? 1:0;
+    }
+
+    else if (val === null || val === undefined)
+    {
+        return 0;
+    }
+
     else
     {
         if (!val.hasOwnProperty('__hashCode__'))
@@ -108,6 +120,9 @@ function HashMap(hashFunc, equalFunc)
             {
                 // Set the item's value
                 this.array[index + 1] = value;
+
+                // Exit the function
+                return;
             }
 
             index = (index + 2) % this.array.length;
