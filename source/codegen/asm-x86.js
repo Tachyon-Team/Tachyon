@@ -14,7 +14,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 function x86_Assembler (target)
 {
     this.useListing   = true;
-    this.codeBlock = new asm_CodeBlock(0, true, this.useListing);
+    this.codeBlock = new asm_CodeBlock(0, false, this.useListing);
     if (target) { this.target = target; } 
 };
 
@@ -115,7 +115,6 @@ x86.type.REG = 2;
 x86.type.MEM = 3;
 x86.type.GLO = 4;
 
-// TODO: Add toString method for every type
 
 // Immediate object to represent immediate value
 x86.immediateValue = function (value)
@@ -180,17 +179,16 @@ x86.register = function ( name, value )
         !value) { throw "register: value property not supplied" }
     that.value = value;
 
-    // TODO: change names to registers
-    x86.register.names[value] = that;
+    x86.register.registers[value] = that;
     return that;
 };
 
-x86.register.names = []
-x86.register.r8    = function (n) { return this.names [ 80 + n ]; }
-x86.register.r16   = function (n) { return this.names [ 32 + n ]; }
-x86.register.r32   = function (n) { return this.names [ 16 + n ]; }
-x86.register.r64   = function (n) { return this.names [ n ]; }
-x86.register.fpu   = function (n) { return this.names [ 48 + n ]; }
+x86.register.registers = []
+x86.register.r8    = function (n) { return this.registers [ 80 + n ]; }
+x86.register.r16   = function (n) { return this.registers [ 32 + n ]; }
+x86.register.r32   = function (n) { return this.registers [ 16 + n ]; }
+x86.register.r64   = function (n) { return this.registers [ n ]; }
+x86.register.fpu   = function (n) { return this.registers [ 48 + n ]; }
 
 const reg = x86.register.prototype;
 reg.type = x86.type.REG;
@@ -407,7 +405,7 @@ x86.instrFormatGNU = function (mnemonic, suffix, dest, src)
                (dest.type === x86.type.REG || 
                 dest.type === x86.type.MEM))
     {
-        return mnemonic + "* " + opnds; // call instruction
+        return mnemonic + " *" + opnds; // call instruction
     } else
     {
         return mnemonic + " " + opnds;
@@ -952,7 +950,15 @@ x86.pushImm = function (dest)
 x86.pushPop = function (opnd, isPop)
 {
     const that = this;
-    function listing () { /* TODO */};
+    function listing ()
+    {
+        if (that.useListing)
+        {
+            that.genListing(that.instrFormat(isPop ? "pop" : "push", 
+                                             that._32or64bitSuffix(),
+                                             opnd));
+        }
+    }
 
     function register()
     {
@@ -971,7 +977,7 @@ x86.pushPop = function (opnd, isPop)
         }
        
         // opcode 0x50 - 0x5f 
-        that.gen8((isPop ? 0x58 : 0x50) + (7 & opnd.field));
+        that.gen8((isPop ? 0x58 : 0x50) + (7 & opnd.field()));
         listing();
     }
 
@@ -1074,6 +1080,7 @@ x86.jumpLabel = function (opcode, mnemonic, label, offset)
     //  32 bit relative address
     function dispCheck (cb, pos)
     {
+        print("dispCheck for " + mnemonic);
         return (opcode === x86.opcode.jmpRel8 || 
                 opcode === x86.opcode.callRel32) ? 5 : 6;
     };
@@ -1091,6 +1098,7 @@ x86.jumpLabel = function (opcode, mnemonic, label, offset)
                 cb.
                 gen8(opcode).
                 gen32(labelDist(label, offset, pos, 5));
+                break;
             default:
                 // opcode is for a conditional jump
                 cb.

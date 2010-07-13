@@ -12,7 +12,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 function asm_CodeBlock(startPos, bigEndian, listing)
 {
     this.startPos     = startPos  || 0;
-    this.bigEndian    = bigEndian || true;
+    this.bigEndian    = bigEndian || false; // Let's default to the x86 case 
     this.useListing   = listing   || false;
 
     this.code = [];
@@ -488,10 +488,18 @@ asm.assemble = function ()
             newSize = null;
             // Try every check procedure until finding one that returns
             // a valid size
-            while (newSize === null && curr.current < curr.length())
+            while (curr.current < curr.length())
             {
                 check   = curr.checks[curr.current];
                 newSize = check(this, pos);
+
+                if (newSize !== null)
+                {
+                    break;
+                } else 
+                { 
+                    curr.current++;
+                }
             }
 
             if (newSize === null) 
