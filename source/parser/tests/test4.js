@@ -1,20 +1,39 @@
 function f(x)
 {
     /*
+    var e = 3;
+
+    function g() { e; }
+
+    try
+    {
+        throw 'foo';
+    }
+    catch (e)
+    {
+    }
+
+    print(e);
+    */
+
+    /*
+    var y;
+
     switch (a)
     {
         case 'foo':
-        a + 1;
+        y = a + 1;
         break;
 
         default:
-        a + 3;
+        y = a + 2;
 
         case 'bar':
-        a + 2;
+        y = a + 3;
     }
-    */
 
+    print(y);
+    */
 
     /*
     x = 3;

@@ -384,7 +384,7 @@ Add an incoming value to a phi node
 PhiInstr.prototype.addIncoming = function (value, pred)
 {
     assert (
-        pred != undefined,
+        pred !== undefined,
         'must specify predecessor block'
     );
 
