@@ -9,13 +9,15 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: Explain result of translation in function description comments
-
-// TODO: switch statement
+// TODO: Explain result of translation in function description comments 
 
 // TODO: for-in loop statement
 
+// TODO: fix scope of catch variable
 
+// TODO: create closure for function statements at statement location?
+
+// TODO: use id directly (unique) instead of name
 
 /**
 Convert an AST code unit into IR functions
@@ -998,23 +1000,8 @@ function stmtToIR(context)
         context.setOutput(stmtContext.getExitBlock());
     }
 
-    /*
     else if (astStmt instanceof SwitchStatement)
     {
-        //ast.expr = ctx.walk_expr(ast.expr);
-        //ast.clauses.forEach(
-        //    function (c, i, asts)
-        //    {
-        //        c.expr = ctx.walk_expr(c.expr);
-        //        c.statements = ast_walk_statements(c.statements, ctx);
-        //    }
-        //);
-        //
-        // null expr for default case
-        // default case comes last in the chain
-
-
-
         // Get the label for this statement
         var label = astStmt.stmtLabel? astStmt.stmtLabel.toString():'';
 
@@ -1025,22 +1012,11 @@ function stmtToIR(context)
         // Create a list for the break contexts
         var brkCtxList = [];
 
-
-
-
-
-
-
-        // Compile actual code for each clause in a separate sequence
-        // each clause jumps to the next if not terminated by break
-        // default is no exception
-
-
-        // Should remember what entry block matches with each clause
-        // separate test sequence jumps to blocks
-
-
-
+        // Create a break context map
+        var breakMap = context.breakMap.copy();
+        breakMap.setItem(label, brkCtxList);
+        breakMap.setItem('', brkCtxList);
+        
         // Create a context for the first case test
         var nextTestCtx = context.branch(
             astStmt.clauses[0]? astStmt.clauses[0].expr:null,
@@ -1048,8 +1024,17 @@ function stmtToIR(context)
             switchCtx.localMap.copy()
         );
 
+        // Make the entry jump to the first test
+        context.entryBlock.addInstr(new JumpInstr(nextTestCtx.entryBlock));
+
         // Variable for the previous clause statements context
         var prevStmtCtx = null;
+
+        // Variable for the default clause entry block
+        var defaultEntry = null;
+
+        // Local variable map for the default case entry
+        var defaultLocals = null;
 
         // For each clause
         for (var i = 0; i < astStmt.clauses.length; ++i)
@@ -1068,7 +1053,7 @@ function stmtToIR(context)
             );
 
             // If this is not the default clause
-            if (clause.expr)           
+            if (clause.expr !== null)
             {
                 // Generate code for the test expression
                 exprToIR(curTestCtx);
@@ -1081,7 +1066,37 @@ function stmtToIR(context)
                         switchCtx.getOutValue()
                     )
                 );
+
+                // Merge the incoming contexts
+                var caseLocals = curTestCtx.localMap.copy();
+                var caseEntry = mergeContexts(
+                    prevStmtCtx? [curTestCtx, prevStmtCtx]:[curTestCtx],
+                    caseLocals,
+                    context.cfg,
+                    'switch_case_' + i
+                );
+
+                // Remove the branch introduced by the merge
+                curTestCtx.getExitBlock().remBranch();
+
+                // Create a new context for the clause statements
+                var stmtCtx = new IRConvContext(
+                    clause.statements,
+                    caseEntry,
+                    context.withVal,
+                    caseLocals,
+                    context.sharedMap,
+                    breakMap,
+                    context.contMap,
+                    context.throwList,
+                    context.cfg
+                );
+
+                // Generate code for the statement
+                stmtListToIR(stmtCtx);
             }
+
+            // Otherwise, this is the default case
             else
             {
                 // Bridge the test context
@@ -1089,22 +1104,38 @@ function stmtToIR(context)
 
                 // The test evaluates to false
                 var testVal = ConstValue.getConst(false);
+
+                // Create a new context for the clause statements
+                var stmtCtx = createLoopEntry(
+                    astStmt,
+                    clause.statements,
+                    curTestCtx,
+                    curTestCtx.localMap.copy(),
+                    brkCtxList,
+                    null,
+                    'switch_case_' + i
+                );
+
+                // Store the local map for the default case entry
+                defaultLocals = stmtCtx.localMap.copy();
+
+                // Store the entry block for the default clause
+                defaultEntry = stmtCtx.entryBlock;
+
+                // Generate code for the statement
+                stmtListToIR(stmtCtx);
+
+                // If there was a previous statement, merge its locals at the
+                // current clause statement entry
+                if (prevStmtCtx && !prevStmtCtx.isTerminated())
+                {
+                    mergeLoopEntry(
+                        [prevStmtCtx],
+                        defaultLocals,
+                        stmtCtx.entryBlock
+                    );
+                }
             }
-
-            // Create a new context for the clause statements
-            var stmtEntryLocals = curTestCtx.localMap.copy()
-            var stmtCtx = createLoopEntry(
-                astStmt,
-                clause.statements,
-                curTestCtx,
-                stmtEntryLocals,
-                brkCtxList,
-                null,
-                'switch_case_' + i
-            );
-
-            // Generate code for the statement
-            stmtListToIR(stmtCtx);
 
             // Add the if test instruction
             curTestCtx.getExitBlock().addInstr(
@@ -1115,43 +1146,43 @@ function stmtToIR(context)
                 )
             );
 
-            // If there was a previous statement, merge its locals at the
-            // current clause statement entry
-            if (prevStmtCtx)
-            {
-                mergeLoopEntry(
-                    [prevStmtCtx],
-                    stmtEntryLocals,
-                    stmtCtx.entryBlock
-                );
-            }
-
             // Update the previous statement context
             prevStmtCtx = stmtCtx;
         }
 
+        // Bridge the last test context
+        nextTestCtx.bridge();
 
+        // If a default clause was specified
+        if (defaultEntry)
+        {
+            // Merge the context from the default case into the default entry
+            mergeLoopEntry(
+                [nextTestCtx],
+                defaultLocals,
+                defaultEntry
+            );
+        }
+        else
+        {
+            // Add the last test context to the break context list
+            brkCtxList.add(nextTestCtx);
+        }
 
+        // Add the last clause context to the break context list
+        brkCtxList.push(prevStmtCtx);
 
+        // Merge the break contexts
+        var switchExit = mergeContexts(
+            brkCtxList,
+            context.localMap,
+            context.cfg,
+            'switch_exit'
+        );
 
-        // TODO: add last clause context to break contexts, if not terminated?
-
-        // TODO: merge break contexts
-
-
-
-
-
-        
-
-
-
-
-
-        
-
-    }
-    */
+        // Set the exit block to be the join block
+        context.setOutput(switchExit);
+    }    
 
     else if (astStmt instanceof LabelledStatement)
     {
@@ -1223,7 +1254,8 @@ function stmtToIR(context)
 
         // Bind the exception value to its variable name
         var catchVal = catchBlock.addInstr(new CatchInstr());
-        catchLocals.setItem(astStmt.id.toString(), catchVal);
+       
+        //catchLocals.setItem(astStmt.id.toString(), catchVal);
 
         // Compile the catch block
         var catchCtx = context.branch(
@@ -1231,7 +1263,16 @@ function stmtToIR(context)
             catchBlock,
             catchLocals
         );
+
+        
+        var catchCell = catchBlock.addInstr(new MakeCellInstr());
+        catchBlock.addInstr(new PutCellInstr(catchCell, catchVal));
+        catchCtx.sharedMap.setItem(astStmt.id.toString(), catchCell);
+        
+
         stmtToIR(catchCtx);
+
+        catchCtx.sharedMap.remItem(astStmt.id.toString());
 
         // Merge the finally contexts
         var finallyLocals = new HashMap();
