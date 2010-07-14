@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "pp.js", Time-stamp: <2010-06-23 21:42:24 feeley>
+// File: "pp.js", Time-stamp: <2010-07-14 14:06:59 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -178,10 +178,14 @@ function pp_indent(ast, indent)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "TryStatement");
         pp_asts(indent, "statement", [ast.statement]);
-        if (ast.id != null)
-            pp_id(ast.id, indent, "id");
         pp_asts(indent, "catch_part", [ast.catch_part]);
         pp_asts(indent, "finally_part", [ast.finally_part]);
+    }
+    else if (ast instanceof CatchPart)
+    {
+        pp_loc(ast.loc, pp_prefix(indent) + "CatchPart");
+        pp_id(ast.id, indent, "id");
+        pp_asts(indent, "statement", [ast.statement]);
     }
     else if (ast instanceof DebuggerStatement)
     {
@@ -288,7 +292,16 @@ function pp_indent(ast, indent)
 
 function pp_id(id, indent, label)
 {
-    pp_loc(id.scope.loc, pp_prefix(indent) + "|-" + label + "= " + id.toString() + " " +((id.scope instanceof Program) ? "[global]" : "[local]"));
+    var kind = "[unknown]";
+
+    if (id.scope instanceof Program)
+        kind = "[global]";
+    else if (id.scope instanceof FunctionExpr)
+        kind = "[local]";
+    else if (id.scope instanceof CatchPart)
+        kind = "[catch]";
+
+    pp_loc(id.scope.loc, pp_prefix(indent) + "|-" + label + "= " + id.toString() + " " + kind);
 }
 
 function pp_loc(loc, line)

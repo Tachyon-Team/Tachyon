@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-06-23 21:39:29 feeley>
+// File: "scheme.js", Time-stamp: <2010-07-14 14:08:31 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -1083,9 +1083,18 @@ function ast_to_scm(ast, ctx)
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "TryStatement");
         pp_asts(indent, "statement", [ast.statement]);
-        print(pp_prefix(indent) + "|-id= " + ast.id.toString());
         pp_asts(indent, "catch_part", [ast.catch_part]);
         pp_asts(indent, "finally_part", [ast.finally_part]);
+        */
+    }
+    else if (ast instanceof CatchPart)
+    {
+        // TODO
+        error("CatchPart not implemented");
+        /*
+        pp_loc(ast.loc, pp_prefix(indent) + "CatchPart");
+        print(pp_prefix(indent) + "|-id= " + ast.id.toString());
+        pp_asts(indent, "statement", [ast.statement]);
         */
     }
     else if (ast instanceof DebuggerStatement)

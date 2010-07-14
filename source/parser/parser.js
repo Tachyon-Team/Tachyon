@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-06-27 01:56:09 feeley>
+// File: "parser.js", Time-stamp: <2010-07-14 13:52:57 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -354,12 +354,12 @@ function list_loc(list)
 
 // Constructors.
 
-function Program(loc, parent, vars, free_vars, block)
+function Program(loc, block)
 {
     this.loc = loc;
-    this.parent = parent;
-    this.vars = vars;
-    this.free_vars = free_vars;
+    this.parent = null;
+    this.vars = null;
+    this.free_vars = null;
     this.block = block;
 }
 
@@ -517,13 +517,21 @@ function ThrowStatement(loc, expr)
     this.expr = expr;
 }
 
-function TryStatement(loc, statement, id, catch_part, finally_part)
+function TryStatement(loc, statement, catch_part, finally_part)
 {
     this.loc = loc;
     this.statement = statement;
-    this.id = id; // possibly null (when no catch part)
     this.catch_part = catch_part; // possibly null (when no catch part)
     this.finally_part = finally_part; // possibly null (when no finally part)
+}
+
+function CatchPart(loc, id, statement)
+{
+    this.loc = loc;
+    this.parent = null;
+    this.vars = null;
+    this.id = id;
+    this.statement = statement;
 }
 
 function DebuggerStatement(loc)
@@ -628,12 +636,12 @@ function CallExpr(loc, fn, args)
     this.args = args;
 }
 
-function FunctionExpr(loc, parent, vars, free_vars, id, params, body)
+function FunctionExpr(loc, id, params, body)
 {
     this.loc = loc;
-    this.parent = parent;
-    this.vars = vars;
-    this.free_vars = free_vars;
+    this.parent = null;
+    this.vars = null;
+    this.free_vars = null;
     this.id = id; // null when id not supplied
     this.params = params;
     this.body = body;
@@ -697,9 +705,6 @@ function Program_1(p)
 {
     var loc = p.current_loc();
     return new Program(loc,
-                       null,
-                       null,
-                       null,
                        new BlockStatement(loc,
                                           []));
 }
@@ -708,9 +713,6 @@ function Program_2(p, SourceElements)
 {
     var loc = list_loc(SourceElements);
     return new Program(loc,
-                       null,
-                       null,
-                       null,
                        new BlockStatement(loc,
                                           SourceElements));
 }
@@ -2275,7 +2277,6 @@ function TryStatement_1(p, TRY, Block1, FINALLY, Block2)
     return new TryStatement(TRY.loc.join(Block2.loc),
                             Block1,
                             null,
-                            null,
                             Block2);
 }
 
@@ -2283,8 +2284,9 @@ function TryStatement_2(p, TRY, Block1, CATCH, LPAREN, IDENT, RPAREN, Block2)
 {
     return new TryStatement(TRY.loc.join(Block2.loc),
                             Block1,
-                            IDENT,
-                            Block2,
+                            new CatchPart(CATCH.loc.join(Block2.loc),
+                                          IDENT,
+                                          Block2),
                             null);
 }
 
@@ -2292,8 +2294,9 @@ function TryStatement_3(p, TRY, Block1, CATCH, LPAREN, IDENT, RPAREN, Block2, FI
 {
     return new TryStatement(TRY.loc.join(Block3.loc),
                             Block1,
-                            IDENT,
-                            Block2,
+                            new CatchPart(CATCH.loc.join(Block2.loc),
+                                          IDENT,
+                                          Block2),
                             Block3);
 }
 
@@ -2313,9 +2316,6 @@ function FunctionDeclaration_1(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, Funct
                                    IDENT,
                                    new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                                                     null,
-                                                    null,
-                                                    null,
-                                                    null,
                                                     [],
                                                     FunctionBody));
 }
@@ -2326,9 +2326,6 @@ function FunctionDeclaration_2(p, FUNCTION, IDENT, LPAREN, FormalParameterList, 
                                    IDENT,
                                    new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                                                     null,
-                                                    null,
-                                                    null,
-                                                    null,
                                                     FormalParameterList,
                                                     FunctionBody));
 }
@@ -2336,9 +2333,6 @@ function FunctionDeclaration_2(p, FUNCTION, IDENT, LPAREN, FormalParameterList, 
 function FunctionExpr_1(p, FUNCTION, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
-                            null,
-                            null,
-                            null,
                             null,
                             [],
                             FunctionBody);
@@ -2348,9 +2342,6 @@ function FunctionExpr_2(p, FUNCTION, LPAREN, FormalParameterList, RPAREN, LBRACE
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
                             null,
-                            null,
-                            null,
-                            null,
                             FormalParameterList,
                             FunctionBody);
 }
@@ -2358,9 +2349,6 @@ function FunctionExpr_2(p, FUNCTION, LPAREN, FormalParameterList, RPAREN, LBRACE
 function FunctionExpr_3(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
-                            null,
-                            null,
-                            null,
                             IDENT,
                             [],
                             FunctionBody);
@@ -2369,9 +2357,6 @@ function FunctionExpr_3(p, FUNCTION, IDENT, LPAREN, RPAREN, LBRACE, FunctionBody
 function FunctionExpr_4(p, FUNCTION, IDENT, LPAREN, FormalParameterList, RPAREN, LBRACE, FunctionBody, RBRACE)
 {
     return new FunctionExpr(FUNCTION.loc.join(RBRACE.loc),
-                            null,
-                            null,
-                            null,
                             IDENT,
                             FormalParameterList,
                             FunctionBody);

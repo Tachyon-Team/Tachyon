@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-06-23 22:00:14 feeley>
+// File: "ast-passes.js", Time-stamp: <2010-07-14 15:14:37 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -159,6 +159,11 @@ function ast_walk_statement(ast, ctx)
         ast.finally_part = ctx.walk_statement(ast.finally_part);
         return ast;
     }
+    else if (ast instanceof CatchPart)
+    {
+        ast.statement = ctx.walk_statement(ast.statement);
+        return ast;
+    }
     else if (ast instanceof DebuggerStatement)
     {
         return ast;
@@ -294,6 +299,13 @@ ast_pass1_ctx.prototype.function_ctx = function (ast)
     return new_ctx;
 }
 
+ast_pass1_ctx.prototype.catch_ctx = function (ast)
+{
+    var new_ctx = ast_pass1_empty_ctx(ast);
+    new_ctx.add_variable(ast.id, true);
+    return new_ctx;
+}
+
 ast_pass1_ctx.prototype.add_variable = function (id, is_param)
 {
     var id_str = id.value;
@@ -404,13 +416,12 @@ ast_pass1_ctx.prototype.walk_statement = function (ast)
                                                      initializer])),
                                        for_stat]);
     }
-    else if (ast instanceof TryStatement)
+    else if (ast instanceof CatchPart)
     {
-        if (ast.id != null)
-            this.add_variable(ast.id, false);
-        ast.statement = this.walk_statement(ast.statement);
-        ast.catch_part = this.walk_statement(ast.catch_part);
-        ast.finally_part = this.walk_statement(ast.finally_part);
+        var new_ctx = this.catch_ctx(ast);
+        ast.statement = new_ctx.walk_statement(ast.statement);
+        ast.vars = new_ctx.vars;
+        ast.parent = this.scope;
         return ast;
     }
     else
@@ -434,7 +445,6 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
         ast.parent = this.scope;
         return ast;
     }
-
     else
     {
         return ast_walk_expr(ast, this);
@@ -492,6 +502,15 @@ ast_pass2_ctx.prototype.function_ctx = function (ast)
     return new_ctx;
 }
 
+ast_pass2_ctx.prototype.catch_ctx = function (ast)
+{
+    var new_ctx = new ast_pass2_ctx(ast);
+
+    ast.id = new_ctx.resolve_variable(ast.id);
+
+    return new_ctx;
+}
+
 ast_pass2_ctx.prototype.resolve_variable = function (id)
 {
     // Where is this id declared???
@@ -500,7 +519,7 @@ ast_pass2_ctx.prototype.resolve_variable = function (id)
     {
         var id_str = id.value;
 
-        // If the id is a local variable of the current scope
+        // If the id is declared in the current scope
         var v = scope.vars[id_str];
         if (typeof v != "undefined")
             return v;
@@ -516,12 +535,16 @@ ast_pass2_ctx.prototype.resolve_variable = function (id)
         else
             v = resolve(scope.parent);
 
-        // This variable is not a local, add it to the free variable list of the scope
-        scope.free_vars[id_str] = v;
+        if (!(scope instanceof CatchPart))
+        {
+            // This variable is declared in an enclosing scope, add it to the free variable list of the current scope
+            scope.free_vars[id_str] = v;
 
-        // If this is not a global variable, add it to the closure variable list of the scope
-        if (!(v.scope instanceof Program))
-            scope.clos_vars[id_str] = v;
+            // If this is not a global variable, add it to the closure variable list of the current scope
+            // TODO: the computation of clos_vars should be done elsewhere as it is not related to the semantics
+            if (!(v.scope instanceof Program))
+                scope.clos_vars[id_str] = v;
+        }
 
         // If the variable's scope is a function and does not match the current scope, mark
         // the variable as escaping in its scope of origin
@@ -560,13 +583,12 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
 
         return ast;
     }
-    else if (ast instanceof TryStatement)
+    else if (ast instanceof CatchPart)
     {
-        if (ast.id != null)
-            ast.id = this.resolve_variable(ast.id);
-        ast.statement = this.walk_statement(ast.statement);
-        ast.catch_part = this.walk_statement(ast.catch_part);
-        ast.finally_part = this.walk_statement(ast.finally_part);
+        ast.free_vars = {};
+
+        var new_ctx = this.catch_ctx(ast);
+        ast.statement = new_ctx.walk_statement(ast.statement);
         return ast;
     }
     else
@@ -591,10 +613,13 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
 
         // Add this function to the scope's nested function list
         // If this function is part of a function declaration, add the declaration instead
+        // TODO: fix this code which does not work when the scope is for a CatchPart
+        /*
         if (this.func_decl != undefined && this.func_decl.funct === ast)
             this.scope.funcs.push(this.func_decl);
         else
             this.scope.funcs.push(ast);
+        */
 
         var new_ctx = this.function_ctx(ast);
 

@@ -20,7 +20,7 @@ function f(x, y)
     lab: x = 10;
     throw x;
     try { print("a"); } finally { print("b"); }
-    try { print("a"); } catch(e) { print("e"); }
-    try { print("a"); } catch(e) { print("e"); } finally { print("b"); }
+    x = function (y) { try { print("a"); } catch(e) { y = function () { print(e+y+z); }; } };
+    try { print("a"); } catch(e) { print(e); } finally { print("b"); }
     debugger;
 }
