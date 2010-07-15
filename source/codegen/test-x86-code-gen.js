@@ -38,7 +38,10 @@ var falseLabel = a.labelObj("IF_FALSE");
 
 a.
 mov($(1), reg.al).
+mov($(0), reg.ebx).
 cmp($(0), reg.al).
+test($(0), reg.al).
+lea(_(reg.eax), reg.ebx).
 je(trueLabel).
 
 label(falseLabel).

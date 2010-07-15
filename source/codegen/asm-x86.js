@@ -163,6 +163,8 @@ x86.Assembler.prototype.gen64 = function (n)
 /** @private */
 x86.Assembler.prototype._genImmNum = function (k, width)
 {
+    var n;
+
     // TODO: Find out what behavior should the signed-lo have
     /** @ignore */
     function signedLo(n, k) 
@@ -172,29 +174,36 @@ x86.Assembler.prototype._genImmNum = function (k, width)
 
     if (width === 8) 
     {
-        this.gen8(signedLo(8,k));   
+        n = signedLo(8,k);
+        this.gen8(n);   
+        return n;
     } else if (width === 16) 
     {
-        this.gen16(signedLo(16,k));
+        n = signedLo(16,k);
+        this.gen16(n);
+        return n;
     } else if (width === 32)
     {
+        n = signedLo(32,k);
         this.gen32(signedLo(32,k));
+        return n;
     }
     else 
     {
+        n = signedLo(64,k);
         this.gen64(signedLo(64,k));
+        return n;
     }   
-    return this;
 };
 
-/** Adds an immediate number to the code stream. Can be chained. 
+/** Adds an immediate number to the code stream. Cannot be chained. 
     @param {Number} k
     @param {Number} width Width of the value in number of bits. 
                           Minimum of 32. Defaults to 32.
 */
 x86.Assembler.prototype.genImmNum = function (k, width)
 {
-    this._genImmNum(k, Math.min(32, width || 32));
+    return this._genImmNum(k, Math.min(32, width || 32));
 };
 
 
@@ -1143,7 +1152,7 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
             that.genListing(x86.instrFormat(mnemonic, 
                                              x86.widthSuffix(width),
                                              dest,
-                                             src));
+                                             that.immediateValue(n)));
         }
     }
 
@@ -1230,7 +1239,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
             that.genListing(x86.instrFormat("mov", 
                                              x86.widthSuffix(width),
                                              dest,
-                                             src));
+                                             that.immediateValue(n)));
         }
     }
 
@@ -1358,7 +1367,7 @@ x86.Assembler.prototype.pushImm = function (dest)
         {
             that.genListing(x86.instrFormat("push", 
                                              that._32or64bitSuffix(),
-                                             dest));
+                                             that.immediateValue(n)));
         }
     }
 
@@ -1723,6 +1732,88 @@ x86.Assembler.prototype.pop  = function (opnd)
 { 
     return this.pushPop(opnd, true); 
 };
+
+x86.Assembler.prototype.lea  = function (src, dest)
+{
+    x86.assert(dest.type === x86.type.REG,
+               "'dest' argument should be a register, instead received ", dest);
+    x86.assert(!dest.isr8(),
+               "'dest' argument should not be an 8 bit register");
+    x86.assert(src.type === x86.type.MEM,
+               "'src' argument should be a memory operand," +
+               " instead received ", dest);
+
+    this.opndPrefixRegOpnd(dest, src);
+    this.gen8(0x8d); // opcode
+    this.opndModRMSIBRegOpnd(dest, src);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat("lea", 
+                                        x86.regWidthSuffix(dest),
+                                        dest,
+                                        src));
+    }
+    return this;
+};
+
+/** Can be chained */
+x86.Assembler.prototype.test = function (src, dest, width)
+{
+    const that = this;
+    const k = src.value;
+
+    x86.assert(src.type !== x86.type.REG,
+               "'src' as a register is not supported yet");  
+    x86.assert(src.type === x86.type.IMM_VAL,
+               "'src' is should be an immediate value instead of", src);  
+
+    x86.assert((dest.type === x86.type.REG) ?
+                ((width === undefined) || (dest.width() === width)) :
+                (width !== undefined),
+               "missing or inconsistent operand width");
+
+    function listing(width, n)
+    {
+        if (that.useListing) 
+        {
+            that.genListing(x86.instrFormat("test", 
+                                             x86.widthSuffix(width),
+                                             dest,
+                                             that.immediateValue(n)));
+        }
+    }
+
+    function accumulator(width)
+    {
+        that.opndSizeOverridePrefix(width);
+        that.gen8((width === 8) ? 0xa8 : 0xa9); // opcode 
+        listing(width, that.genImmNum(k, width)); 
+    }
+
+    function general(width)
+    {
+        that.opndPrefixOpnd(width, opnd);  
+        that.gen8((width === 8) ? 0xf6 : 0xf7);
+        listing(width, that.genImmNum(k, width));
+    }
+
+    if (dest.type === x86.type.REG)
+    {
+        if (dest.field() === 0)
+        {
+            accumulator(dest.width());
+        } else
+        {
+            general(dest.width());
+        } 
+    } else
+    {
+        general(width);
+    }
+    return this;
+};
+
 
 /** Can be chained.
     @param {x86.Assembler#register or label } opnd1
