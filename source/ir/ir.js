@@ -11,8 +11,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: for-in loop statement
-
 // TODO: fix scope of catch variable
 
 // TODO: create closure for function statements at statement location? May not be valid
@@ -290,8 +288,8 @@ function stmtListToIRFunc(
         );
     }
 
-    //print(cfg);
-    //print('');
+    print(cfg);
+    print('');
 
     // Simplify the CFG
     cfg.simplify();
@@ -922,56 +920,88 @@ function stmtToIR(context)
         context.setOutput(loopExit);
     }
 
-    /*
     else if (astStmt instanceof ForInStatement)
     {
-        //ast.lhs_expr = ctx.walk_expr(ast.lhs_expr);
-        //ast.set_expr = ctx.walk_expr(ast.set_expr);
-        //ast.statement = ctx.walk_statement(ast.statement);
+        // Compile the set expression
+        var setCtx = context.pursue(astStmt.set_expr);
+        exprToIR(setCtx);
 
+        // Get the property names of the set object
+        var propNameArr = setCtx.getExitBlock().addInstr(
+            new GetPropNamesInstr(
+                setCtx.getOutValue()
+            )
+        );
 
-
-
-        // TODO: evaluate the object/set expression
-
-
-
-        // TODO: make this work
-
-        // Compile the loop initialization expression
-        var initContext = context.pursue(astStmt.expr1);
-        exprToIR(initContext);
+        // Get the length of the property name array
+        var numPropNames = setCtx.getExitBlock().addInstr(
+            new GetPropValInstr(
+                propNameArr,
+                ConstValue.getConst('length')
+            )
+        );
 
         // Create a context for the loop entry (the loop test)
         var entryLocals = new HashMap();
         var brkCtxList = [];
         var cntCtxList = [];
-        var testContext = createLoopEntry(
+        var testCtx = createLoopEntry(
             astStmt,
-            astStmt.expr2,
-            initContext,
+            astStmt,
+            setCtx,
             entryLocals,
             brkCtxList,
             cntCtxList,
             'loop_test'
         );
 
-        // Compile the loop test in the entry context
-        exprToIR(testContext);
-
-        // Compile the body statement
-        var bodyContext = testContext.branch(
-            astStmt.statement,
-            context.cfg.getNewBlock('loop_body'),
-            testContext.localMap.copy()
+        // Create a phi node for the current property index
+        var propIndex = testCtx.entryBlock.addInstr(
+            new PhiInstr(
+                [ConstValue.getConst(0)],
+                [setCtx.getExitBlock()]
+            )
         );
-        stmtToIR(bodyContext);
 
-        // Add the test exit to the entry context list
-        brkCtxList.push(testContext);
+        // Test that the current property index is valid
+        var testVal = testCtx.entryBlock.addInstr(
+            new CompInstr(
+                CompOp.LT,
+                propIndex,
+                numPropNames                
+            )
+        );
+      
+        // Bridge the test context
+        testCtx.bridge();
+  
+        // Create a context for the loop body
+        var bodyCtx = testCtx.branch(
+            astStmt.lhs_expr,
+            context.cfg.getNewBlock('loop_body'),
+            testCtx.localMap.copy()
+        );
+        
+        // Get the current property
+        var curPropName = bodyCtx.entryBlock.addInstr(
+            new GetPropValInstr(
+                propNameArr,
+                propIndex
+            )
+        );
+        
+        // Assign the current prop name to LHS expr
+        assgToIR(bodyCtx, curPropName);
+
+        // Compile the loop body statement
+        var bodyStmtCtx = bodyCtx.pursue(astStmt.statement);
+        stmtToIR(bodyStmtCtx);
+
+        // Add the test exit to the break context list
+        brkCtxList.push(testCtx);
 
         // Add the body exit to the continue context list
-        cntCtxList.push(bodyContext); 
+        cntCtxList.push(bodyStmtCtx); 
 
         // Merge the break contexts
         var incrLocals = new HashMap();
@@ -982,19 +1012,33 @@ function stmtToIR(context)
             'loop_incr'
         );
 
-        // Compile the loop incrementation
-        var incrContext = testContext.branch(
-            astStmt.expr3,
+        // Create a context for the loop incrementation
+        var incrContext = testCtx.branch(
+            astStmt,
             loopIncr,
             incrLocals
         );
-        exprToIR(incrContext);
+
+        // Compute the current property index + 1
+        var incrVal = incrContext.entryBlock.addInstr(
+            new ArithInstr(
+                ArithOp.ADD,
+                propIndex,
+                ConstValue.getConst(1)
+            )
+        );
+
+        // Add an incoming value to the property index phi node
+        propIndex.addIncoming(incrVal, incrContext.entryBlock);
+
+        // Bridge the incrementation context
+        incrContext.bridge();
 
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
             [incrContext],
             entryLocals,
-            testContext.entryBlock
+            testCtx.entryBlock
         );
         
         // Merge the break contexts
@@ -1007,37 +1051,22 @@ function stmtToIR(context)
 
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
-        var testExit = testContext.getExitBlock();
+        var testExit = testCtx.getExitBlock();
         testExit.remBranch();
         testExit.addInstr(
             new IfInstr(
-                testContext.getOutValue(),
-                bodyContext.entryBlock,
+                testVal,
+                bodyCtx.entryBlock,
                 loopExit
             )
         );       
 
         // Add a jump from the entry block to the loop entry
-        context.entryBlock.addInstr(new JumpInstr(testContext.entryBlock));
+        setCtx.entryBlock.addInstr(new JumpInstr(testCtx.entryBlock));
 
         // Set the exit block to be the join block
         context.setOutput(loopExit);
-
-
-
-        // TODO: implement if array case
-        // obj instanceof Array
-        // Need Array constructor object ref
-
-
-
-
-
-
-
-
     }
-    */
 
     else if (astStmt instanceof ContinueStatement)
     {
@@ -2491,7 +2520,7 @@ function assgToIR(context, rhsVal)
 }
 
 /**
-Convert an assignment expression to IR code
+Convert a variable reference expression to IR code
 */
 function refToIR(context)
 {

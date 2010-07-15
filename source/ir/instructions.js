@@ -790,7 +790,7 @@ HasPropValInstr.prototype.copy = function ()
 };
 
 /**
-@class Get the named properties of an object, excluding array indices
+@class Get an array containing the named properties of an object
 @augments IRInstr
 */
 function GetPropNamesInstr(objVal)

@@ -2,6 +2,7 @@ function f(x)
 {
     for (var v in lst)
     {
+        print(v);
     } 
 
     /*
