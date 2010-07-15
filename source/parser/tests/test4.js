@@ -1,5 +1,9 @@
 function f(x)
 {
+    for (var v in lst)
+    {
+    } 
+
     /*
     var e = 3;
 

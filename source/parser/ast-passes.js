@@ -587,7 +587,10 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
     {
         ast.free_vars = {};
 
-        var new_ctx = this.catch_ctx(ast);
+        // TODO
+        //var new_ctx = this.catch_ctx(ast);
+        var new_ctx = this;
+
         ast.statement = new_ctx.walk_statement(ast.statement);
         return ast;
     }
@@ -613,13 +616,11 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
 
         // Add this function to the scope's nested function list
         // If this function is part of a function declaration, add the declaration instead
-        // TODO: fix this code which does not work when the scope is for a CatchPart
-        /*
+        // TODO: fix this code which does not work when the scope is for a CatchPart   
         if (this.func_decl != undefined && this.func_decl.funct === ast)
             this.scope.funcs.push(this.func_decl);
         else
             this.scope.funcs.push(ast);
-        */
 
         var new_ctx = this.function_ctx(ast);
 

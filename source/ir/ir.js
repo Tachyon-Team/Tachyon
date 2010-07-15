@@ -15,9 +15,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: fix scope of catch variable
 
-// TODO: create closure for function statements at statement location?
+// TODO: create closure for function statements at statement location? May not be valid
 
-// TODO: use id directly (unique) instead of name
+// TODO: use id directly (unique) instead of variable name?
 
 /**
 Convert an AST code unit into IR functions
@@ -925,10 +925,117 @@ function stmtToIR(context)
     /*
     else if (astStmt instanceof ForInStatement)
     {
-        ast.lhs_expr = ctx.walk_expr(ast.lhs_expr);
-        ast.set_expr = ctx.walk_expr(ast.set_expr);
-        ast.statement = ctx.walk_statement(ast.statement);
-        return ast;
+        //ast.lhs_expr = ctx.walk_expr(ast.lhs_expr);
+        //ast.set_expr = ctx.walk_expr(ast.set_expr);
+        //ast.statement = ctx.walk_statement(ast.statement);
+
+
+
+
+        // TODO: evaluate the object/set expression
+
+
+
+        // TODO: make this work
+
+        // Compile the loop initialization expression
+        var initContext = context.pursue(astStmt.expr1);
+        exprToIR(initContext);
+
+        // Create a context for the loop entry (the loop test)
+        var entryLocals = new HashMap();
+        var brkCtxList = [];
+        var cntCtxList = [];
+        var testContext = createLoopEntry(
+            astStmt,
+            astStmt.expr2,
+            initContext,
+            entryLocals,
+            brkCtxList,
+            cntCtxList,
+            'loop_test'
+        );
+
+        // Compile the loop test in the entry context
+        exprToIR(testContext);
+
+        // Compile the body statement
+        var bodyContext = testContext.branch(
+            astStmt.statement,
+            context.cfg.getNewBlock('loop_body'),
+            testContext.localMap.copy()
+        );
+        stmtToIR(bodyContext);
+
+        // Add the test exit to the entry context list
+        brkCtxList.push(testContext);
+
+        // Add the body exit to the continue context list
+        cntCtxList.push(bodyContext); 
+
+        // Merge the break contexts
+        var incrLocals = new HashMap();
+        var loopIncr = mergeContexts(
+            cntCtxList,
+            incrLocals,
+            context.cfg,
+            'loop_incr'
+        );
+
+        // Compile the loop incrementation
+        var incrContext = testContext.branch(
+            astStmt.expr3,
+            loopIncr,
+            incrLocals
+        );
+        exprToIR(incrContext);
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            [incrContext],
+            entryLocals,
+            testContext.entryBlock
+        );
+        
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localMap,
+            context.cfg,
+            'loop_exit'
+        );
+
+        // Replace the jump added by the context merging at the test exit
+        // by the if branching instruction
+        var testExit = testContext.getExitBlock();
+        testExit.remBranch();
+        testExit.addInstr(
+            new IfInstr(
+                testContext.getOutValue(),
+                bodyContext.entryBlock,
+                loopExit
+            )
+        );       
+
+        // Add a jump from the entry block to the loop entry
+        context.entryBlock.addInstr(new JumpInstr(testContext.entryBlock));
+
+        // Set the exit block to be the join block
+        context.setOutput(loopExit);
+
+
+
+        // TODO: implement if array case
+        // obj instanceof Array
+        // Need Array constructor object ref
+
+
+
+
+
+
+
+
     }
     */
 
@@ -1252,27 +1359,24 @@ function stmtToIR(context)
             catchBlock.addPred(throwExit);
         }
 
-        // Bind the exception value to its variable name
-        var catchVal = catchBlock.addInstr(new CatchInstr());
-       
-        //catchLocals.setItem(astStmt.id.toString(), catchVal);
-
-        // Compile the catch block
+        // Create a new context for the catch statement
         var catchCtx = context.branch(
             astStmt.catch_part,
             catchBlock,
             catchLocals
         );
 
-        
+        // Create a new shared map for the catch block
+        catchCtx.sharedMap = context.sharedMap.copy();
+
+        // Set the exception value in a mutable cell
+        var catchVal = catchBlock.addInstr(new CatchInstr());
         var catchCell = catchBlock.addInstr(new MakeCellInstr());
         catchBlock.addInstr(new PutCellInstr(catchCell, catchVal));
         catchCtx.sharedMap.setItem(astStmt.id.toString(), catchCell);
         
-
+        // Compile the catch statement
         stmtToIR(catchCtx);
-
-        catchCtx.sharedMap.remItem(astStmt.id.toString());
 
         // Merge the finally contexts
         var finallyLocals = new HashMap();
