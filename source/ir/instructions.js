@@ -384,7 +384,7 @@ Add an incoming value to a phi node
 PhiInstr.prototype.addIncoming = function (value, pred)
 {
     assert (
-        pred != undefined,
+        pred !== undefined,
         'must specify predecessor block'
     );
 
@@ -733,7 +733,7 @@ GetPropValInstr.prototype.copy = function ()
 @class Property deletion with value for field name
 @augments IRInstr
 */
-function DetPropValInstr(objVal, nameVal)
+function DelPropValInstr(objVal, nameVal)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = 'del_prop_val';
@@ -744,12 +744,12 @@ function DetPropValInstr(objVal, nameVal)
     */
     this.uses = [objVal, nameVal];
 }
-DetPropValInstr.prototype = new IRInstr();
+DelPropValInstr.prototype = new IRInstr();
 
 /**
 Make a shallow copy of the instruction
 */
-DetPropValInstr.prototype.copy = function ()
+DelPropValInstr.prototype.copy = function ()
 {
     return this.baseCopy(
         new DetPropValInstr(
@@ -785,6 +785,35 @@ HasPropValInstr.prototype.copy = function ()
         new HasPropValInstr(
             this.uses[0],
             this.uses[1]
+        )
+    );
+};
+
+/**
+@class Get an array containing the named properties of an object
+@augments IRInstr
+*/
+function GetPropNamesInstr(objVal)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'get_prop_names';
+
+    /**
+    Object value
+    @field
+    */
+    this.uses = [objVal];
+}
+GetPropNamesInstr.prototype = new IRInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+GetPropNamesInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new GetPropNamesInstr(
+            this.uses[0]
         )
     );
 };

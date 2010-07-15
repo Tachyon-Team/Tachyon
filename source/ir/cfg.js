@@ -10,6 +10,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // TODO: in simplify, jump to empty block with one successor can be made jump to successor
+// PROBLEM: may break phi nodes, don't want two different values from same predecessor
+// Can only do merge if no phi node will have two values from same pred?
 
 /**
 @class Class to represent control-flow graph
@@ -519,6 +521,7 @@ ControlFlowGraph.prototype.simplify = function ()
             // and the block is not terminated by a throw instruction
             if (block.succs.length == 1 && 
                 block.succs[0].preds.length == 1 &&
+                block !== block.succs[0] &&
                 !(block.getLastInstr() instanceof ThrowInstr)
             )
             {
