@@ -758,8 +758,7 @@ x86.opndFormatGNU = function (opnd)
             return "$" + String(opnd.value);
         case x86.type.IMM_LBL: 
             // TODO: Implement Immediate Label formatting
-            x86.error("opndFormatGNU: Immediate label formatting" +
-                      " unimplemented");
+            x86.error("Immediate label formatting unimplemented");
         case x86.type.REG:
             return "%" + opnd.name;
         case x86.type.MEM:
@@ -1067,7 +1066,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             break;
 
         default:
-            x86.error("opndModRMSIB: unkown operand", opnd);
+            x86.error("unkown operand", opnd);
     }
     return this;
 };
@@ -1335,7 +1334,7 @@ x86.Assembler.prototype.op    = function (op, mnemonic, dest, src, width)
         genOp(dest, src, false);
     } else 
     {
-        x86.error("op: invalid operand combination", dest, src);
+        x86.error("invalid operand combination", dest, src);
     }
    return this;
 };
@@ -1720,8 +1719,10 @@ x86.Assembler.prototype.push = function (opnd)
     return this.pushPop(opnd, false); 
 };
 /** Can be chained. */
-x86.Assembler.prototype.pop  = function (opnd) { return this.pushPop(opnd, true); };
-
+x86.Assembler.prototype.pop  = function (opnd) 
+{ 
+    return this.pushPop(opnd, true); 
+};
 
 /** Can be chained.
     @param {x86.Assembler#register or label } opnd1
@@ -1736,7 +1737,7 @@ x86.Assembler.prototype.jmp = function (opnd1, opnd2)
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
         default:
-            x86.error("jmp: invalid operand type", opnd1.type); 
+            x86.error("invalid operand type", opnd1.type); 
     } 
 };
 
@@ -1755,7 +1756,7 @@ x86.Assembler.prototype.call = function (opnd1, opnd2)
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.callRel32, "call",opnd1, opnd2);
         default:
-            x86.error("call: invalid operand type", opnd1.type); 
+            x86.error("invalid operand type", opnd1.type); 
     } 
 };
 
