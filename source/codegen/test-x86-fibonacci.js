@@ -1,4 +1,4 @@
-var a = new x86_Assembler(x86_Assembler.target.x86);
+var a = new x86.Assembler(x86.target.x86);
 const reg = a.register;
 const ESP = reg.esp;
 const EAX = reg.eax;
@@ -9,14 +9,14 @@ const _   = function (reg) { return mem(0,reg); };
 const _12   = function (reg) { return mem(12,reg); };
 const _16   = function (reg) { return mem(16,reg); };
 
-var FIB       = a.codeBlock.label("FIB");
-var BASE_CASE = a.codeBlock.label("BASE_CASE");
-var RECURSION = a.codeBlock.label("RECURSION");
+var FIB       = a.labelObj("FIB");
+var BASE_CASE = a.labelObj("BASE_CASE");
+var RECURSION = a.labelObj("RECURSION");
 
 a.codeBlock.bigEndian = false;
 
 a.
-mov($(10), EAX).
+mov($(40), EAX).
 
 label(FIB).
     cmp($(2), EAX).

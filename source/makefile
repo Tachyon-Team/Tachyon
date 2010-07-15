@@ -18,7 +18,9 @@ BASE_SRCS =                 \
     ir/inline.js            \
     ir/cfg.js               \
     ir/functions.js         \
-    ir/ir.js
+    ir/ir.js                \
+    codegen/asm.js          \
+    codegen/asm-x86.js  
 
 # Main-specific source files
 MAIN_SPEC_SRCS =            \

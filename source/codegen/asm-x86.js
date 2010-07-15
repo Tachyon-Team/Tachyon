@@ -10,75 +10,161 @@ generator written in Scheme.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-// TODO: Could we put those constructors on a global object named x86?
-function x86_Assembler (target)
-{
-    this.useListing   = true;
-    this.codeBlock = new asm_CodeBlock(0, false, this.useListing);
-    if (target) { this.target = target; } 
-};
+/** @namespace x86 code generator */
+var x86 = x86 || {};
 
-x86_Assembler.target = {};
-x86_Assembler.target.x86    = 0; 
-x86_Assembler.target.x86_64 = 1;
+/** @namespace potential x86 targets */
+x86.target = {};
 
-x86_Assembler.prototype.target = x86_Assembler.target.x86;
-x86_Assembler.prototype.is64bitMode = function () 
-{
-    return this.target === x86_Assembler.target.x86_64;
-};
-x86_Assembler.prototype.assert64bitMode = function ()
-{
-    if (!(this.is64bitMode())) { throw "instruction only valid for x86-64"; };
-};
+/** x86 32 bit target */
+x86.target.x86    = 0; 
 
-x86_Assembler.prototype.assert32bitMode = function ()
-{
-    if (this.is64bitMode()) { throw "instruction only valid for x86"; };
-};
+/** x86 64 bit target */
+x86.target.x86_64 = 1;
 
-(function () { // local namespace
-
-// Alias
-const x86 = x86_Assembler.prototype;
-
-// error reporting
-function error (message, args)
+/** Throw an exception with message and args */
+x86.error = function (message)
 {
     var err = message;
-    for (var i=0; i<args.length; i++)
+    for (var i=1; i<arguments.length; i++)
     {
-        err += args[i];
+        err += arguments[i];
     }
-    throw err;
+    throw "x86Error: " + err;
 };
 
-function assert (bool, message)
+/** Ensure a boolean condition is met, otherwise throw an exception */
+x86.assert = function (bool, message)
 {
-    if (!bool) { error(message, Array.prototype.slice.call(arguments, 2)); } 
+    if (!bool) 
+    { 
+        x86.error.apply(null, Array.prototype.slice.call(arguments, 1));
+    } 
 };
 
-// utility functions
-function isSigned8 (num)
+/** @namespace */
+x86.type = {};
+/** Generic x86 object */
+x86.type.OBJ = "X86_OBJ";
+/** Immediate value */
+x86.type.IMM_VAL = "X86_IMMEDIATE_VALUE";
+/** Immediate label */
+x86.type.IMM_LBL = "X86_IMMEDIATE_LABEL"; 
+/** Register */
+x86.type.REG = "X86_REGISTER"; 
+/** Memory access */
+x86.type.MEM = "X86_MEMORY";
+
+// TODO: Clean if not useful
+/** @private Might not be useful */
+x86.type.GLO = "X86_GLOBAL";
+
+/** @private test if num is a valid 8 bit signed value */
+x86.isSigned8 = function (num) { return (num >= -128 && num <= 127); };
+
+/** @private test if num is a valid 32 bit signed value */
+x86.isSigned32 = function (num) 
+{ 
+    return (num >= -2147483648 && num <= 2147483647); 
+};
+
+/** 
+    Returns a new assembler object.
+
+    @class Assembler for x86 code 
+    @param {x86.target} target optional x86.target value, 
+                        defaults to x86.target.x86
+*/
+x86.Assembler = function (target)
 {
-   return (num >= -128 && num <= 127); 
+    /** Flag for listing output */
+    this.useListing = true;
+
+    /** Generic underlying assembler object  */
+    this.codeBlock  = new asm.CodeBlock(0, false, this.useListing);
+
+    /** @private Current target for compilation,
+        should not be modified once the object is constructed */
+    // TODO: refactor to have a setter throw an exception once
+    // getter and setter are supported
+    this.target     = target || x86.target.x86; 
 };
 
-// utility functions
-function isSigned32 (num)
+/** Returns whether the current compilation target is x86_64 */ 
+x86.Assembler.prototype.is64bitMode = function () 
 {
-   return (num >= -2147483648 && num <= 2147483647); 
+    return this.target === x86.target.x86_64;
 };
 
+/** @private */
+x86.Assembler.prototype.assert64bitMode = function ()
+{
+    x86.assert(this.is64bitMode(), 
+               "instruction only valid for x86-64");
+};
 
-x86.gen8  = function (n) { this.codeBlock.gen8(n);  return this;};
-x86.gen16 = function (n) { this.codeBlock.gen16(n); return this;};
-x86.gen32 = function (n) { this.codeBlock.gen32(n); return this;};
-x86.gen64 = function (n) { this.codeBlock.gen64(n); return this;};
+/** @private */
+x86.Assembler.prototype.assert32bitMode = function ()
+{
+    x86.assert(!this.is64bitMode(), "instruction only valid for x86");
+};
 
-x86._genImmNum = function (k, width)
+/**
+    Returns a new x86 generic object. Note: the lower case constructor
+    means new is not necessary to create an object of this class
+
+    @class x86 object 
+*/
+x86.Assembler.obj = function () 
+{ 
+    return Object.create(x86.Assembler.obj.prototype); 
+}; 
+/** x86 object type */
+x86.Assembler.obj.prototype.type = x86.type.OBJ;
+
+/** Returns a string representation containing the type and 
+    properties of the x86 object */
+x86.Assembler.obj.prototype.toString = function ()
+{
+    var s = [];
+    for (var p in this)
+    {
+        if (typeof this[p] !== "function")
+        {
+            s.push( ((this.hasOwnProperty(p)) ? "" : "*") + // Mark parent prop 
+                    p + ":" + String(this[p]));
+        }
+    } 
+
+    return this.type + "(" + s.join(", ") + ")";
+};
+
+/** Adds a byte to the code stream. Can be chained. */
+x86.Assembler.prototype.gen8  = function (n) 
+{ 
+    this.codeBlock.gen8(n);  return this;
+};
+/** Adds two bytes to the code stream. Can be chained.  */
+x86.Assembler.prototype.gen16 = function (n) 
+{ 
+    this.codeBlock.gen16(n); return this;
+};
+/** Adds three bytes to the code stream. Can be chained.  */
+x86.Assembler.prototype.gen32 = function (n) 
+{ 
+    this.codeBlock.gen32(n); return this;
+};
+/** Adds four bytes to the code stream. Can be chained.  */
+x86.Assembler.prototype.gen64 = function (n) 
+{ 
+    this.codeBlock.gen64(n); return this;
+};
+
+/** @private */
+x86.Assembler.prototype._genImmNum = function (k, width)
 {
     // TODO: Find out what behavior should the signed-lo have
+    /** @ignore */
     function signedLo(n, k) 
     {
         return (k & (Math.pow(2,n) - 1));
@@ -101,141 +187,208 @@ x86._genImmNum = function (k, width)
     return this;
 };
 
-x86.genImmNum = function (k, width)
+/** Adds an immediate number to the code stream. Can be chained. 
+    @param {Number} k
+    @param {Number} width Width of the value in number of bits. 
+                          Minimum of 32. Defaults to 32.
+*/
+x86.Assembler.prototype.genImmNum = function (k, width)
 {
     this._genImmNum(k, Math.min(32, width || 32));
 };
 
-// Types to allow testing for object type on x86 related
-// objects
-x86.type = {};
-x86.type.IMM_VAL = 0;
-x86.type.IMM_LBL = 1;
-x86.type.REG = 2;
-x86.type.MEM = 3;
-x86.type.GLO = 4;
-x86.type.toString = function (type)
+
+/** 
+    Returns a new immediate value object. Note: the lower case constructor
+    means new is not necessary to create an object of this class 
+
+    @class Immediate value object
+    @augments x86.Assembler.obj
+    @param {Number} value Defaults to 0.
+*/
+x86.Assembler.prototype.immediateValue = function (value)
 {
-    switch (type)
-    {
-        case x86.type.IMM_VAL: return "X86_IMMEDIATE_VALUE"; 
-        case x86.type.IMM_LBL: return "X86_IMMEDIATE_LABEL"; 
-        case x86.type.REG:     return "X86_REGISTER"; 
-        case x86.type.MEM:     return "X86_MEMORY"; 
-        case x86.type.GLO:     return "X86_GLOBAL"; 
-        default: return "X86_UNKOWN";
-    }
-}
+    x86.assert((value === undefined) || typeof value === "number",
+               "'value' argument should be a number");
 
-x86.root = {};
-x86.root.toString = function ()
-{
-    var s = [];
-    for (var p in this)
-    {
-        if (typeof this[p] !== "function")
-        {
-            s.push( ((this.hasOwnProperty(p)) ? "" : "*") + // Mark parent prop 
-                    p + ":" + String(this[p]));
-        }
-    } 
+    var that = Object.create(x86.Assembler.prototype.immediateValue.prototype);
 
-    return x86.type.toString(this.type) + "(" + s.join(", ") + ")";
-};
-
-// Immediate object to represent immediate value
-x86.immediateValue = function (value)
-{
-    // Enforce that modifications of the that object
-    // won't screw up the prototype by creating a
-    // new object for each instance whether they
-    // have non-default properties or not
-    var that = Object.create(x86.immediateValue.prototype);
-
-    // Minimize memory usage by storing default values 
-    // for properties only on the prototype and avoid
-    // duplicating default values in each instance    
-    if (value)   { that.value = value; }
+    /** @private */
+    that.value = value || 0;
 
     return that;
 };
-x86.immediateValue.prototype = Object.create(x86.root);
-x86.immediateValue.prototype.type  = x86.type.IMM_VAL;
-x86.immediateValue.prototype.value = 0;
+x86.Assembler.prototype.immediateValue.prototype = x86.Assembler.obj();
+/** x86 object type */
+x86.Assembler.prototype.immediateValue.prototype.type  = x86.type.IMM_VAL;
 
-// Memory object operand representing an access 
-// to memory through a Displacement, Scale, Index and Base
-x86.memory = function ( disp, base, index, scale )
+/** 
+    Returns a new memory object. Note: the lower case constructor
+    means new is not necessary to create an object of this class.
+
+    @class Represents an access to memory 
+    @augments x86.Assembler.obj
+    @param {Number} disp 
+    @param {x86.Assembler#register} base
+    @param {x86.Assembler#register} index
+    @param {Number} scale
+    
+*/
+x86.Assembler.prototype.memory = function ( disp, base, index, scale )
 {
-    var that = Object.create(x86.memory.prototype);
+    x86.assert((disp === undefined)  || typeof disp === "number",
+               "'disp' argument should be a number");
+    x86.assert((base === undefined)  || base.type === x86.type.REG,
+               "'base' argument should be a register");
+    x86.assert((index === undefined) || index.type === x86.type.REG,
+               "'index' argument should be a register");
+    x86.assert((scale === undefined) || typeof scale === "number",
+               "'scale' argument should be a number");
 
-    if (disp)   { that.disp   = disp; }
-    if (base)   { that.base   = base;   }
-    if (index)  { that.index  = index;  }
-    if (scale)  { that.scale  = scale;  }
+    var that = Object.create(x86.Assembler.prototype.memory.prototype);
+
+    /** @private */
+    that.disp  = disp  || 0;
+    /** @private */
+    that.base  = base  || null;
+    /** @private */
+    that.index = index || null;
+    /** @private */
+    that.scale = scale || 0;
     
     return that;
 };
+x86.Assembler.prototype.memory.prototype        = x86.Assembler.obj();
+x86.Assembler.prototype.memory.prototype.type   = x86.type.MEM;
 
-x86.memory.prototype.type   = x86.type.MEM;
-// Let's use explicit null values to enforce
-// presence of the properties while 
-// being able to detect that these are defaults
-x86.memory.prototype.base   = null;
-x86.memory.prototype.index  = null;
-// Idem for 0
-x86.memory.prototype.disp   = 0;
-x86.memory.prototype.scale  = 0;
-
-x86.global = function ( name, offset )
+/** @private Undocumented until found useful */
+x86.Assembler.prototype.global = function ( name, offset )
 {
-    var that = Object.create(x86.global.prototype);
+    var that = Object.create(x86.Assembler.prototype.global.prototype);
     if (name)   { that.name   = name; };
     if (offset) { that.offset = offset; };
     return that;
 };
-x86.global.prototype = Object.create(x86.root);
-x86.global.prototype.type   = x86.type.GLO;
-x86.global.prototype.name   = null;
-x86.global.prototype.offset = 0;
+x86.Assembler.prototype.global.prototype = x86.Assembler.obj();
+x86.Assembler.prototype.global.prototype.type   = x86.type.GLO;
+x86.Assembler.prototype.global.prototype.name   = null;
+x86.Assembler.prototype.global.prototype.offset = 0;
 
-x86.register = function ( name, value )
+/**
+    Returns a new memory object. Note: the lower case constructor
+    means new is not necessary to create an object of this class.
+
+    @class Represents a register
+    @augments x86.Assembler.obj
+    @param {String} name
+    @param {Number} value
+*/
+x86.Assembler.prototype.register = function ( name, value )
 {
-    var that = Object.create(x86.register.prototype);
-    if (!name)  { throw "register: name property not supplied" }    
+    x86.assert(name  !== undefined, 
+               "'name' argument not supplied");
+    x86.assert(value !== undefined && typeof value === "number", 
+               "'value' argument not supplied or wrong type");
+
+    var that = Object.create(x86.Assembler.prototype.register.prototype);
+    /** @private */
     that.name  = name;
-    if (typeof value !== "number" && 
-        !value) { throw "register: value property not supplied" }
+    /** @private */
     that.value = value;
 
-    x86.register.registers[value] = that;
+    x86.Assembler.prototype.register.registers[value] = that;
     return that;
 };
+x86.Assembler.prototype.register.prototype = x86.Assembler.obj();
+x86.Assembler.prototype.register.prototype.type = x86.type.REG;
 
-x86.register.registers = []
-x86.register.r8    = function (n) { return this.registers [ 80 + n ]; }
-x86.register.r16   = function (n) { return this.registers [ 32 + n ]; }
-x86.register.r32   = function (n) { return this.registers [ 16 + n ]; }
-x86.register.r64   = function (n) { return this.registers [ n ]; }
-x86.register.fpu   = function (n) { return this.registers [ 48 + n ]; }
+/** @private cache of registers */
+x86.Assembler.prototype.register.registers = [];
 
-x86.register.prototype = Object.create(x86.root);
-const reg = x86.register.prototype;
+/** returns an 8 bit register */
+x86.Assembler.prototype.register.reg8 = function (n) 
+{ 
+    return this.registers[80 + n]; 
+};
+/** returns a 16 bit register */
+x86.Assembler.prototype.register.reg16 = function (n) 
+{ 
+    return this.registers[32 + n]; 
+};
+/** returns a 32 bit register */
+x86.Assembler.prototype.register.reg32 = function (n) 
+{ 
+    return this.registers[16 + n]; 
+};
+/** returns a 64 bit register */
+x86.Assembler.prototype.register.reg64 = function (n) 
+{ 
+    return this.registers[n]; 
+};
+/** returns a floating point register */
+x86.Assembler.prototype.register.fpu = function (n) 
+{ 
+    return this.registers[48 + n];
+};
 
-reg.type = x86.type.REG;
-reg.isr8  = function () { return this.value >= 80; }
-reg.isr8h = function () { return this.value >= 96; }
-reg.isxmm = function () { return this.value >= 64 && this.value < 80;}
-reg.ismm  = function () { return this.value >= 56 && this.value < 64;}
-reg.isfpu = function () { return this.value >= 48 && this.value < 56;}
-reg.isr16 = function () { return this.value >= 32 && this.value < 48;}
-reg.isr32 = function () { return this.value >= 16 && this.value < 32;}
-reg.isr64 = function () { return this.value <  16;}
+/** tells if a register is an 8 bit register */
+x86.Assembler.prototype.register.prototype.isr8  = function () 
+{ 
+    return this.value >= 80; 
+};
+
+/** tells if a register is a high 8 bit register */
+x86.Assembler.prototype.register.prototype.isr8h = function () 
+{ 
+    return this.value >= 96; 
+};
+
+/** tells if a register is an xmm register */
+x86.Assembler.prototype.register.prototype.isxmm = function () 
+{ 
+    return this.value >= 64 && this.value < 80;
+};
+
+/** tells if a register is a mm register */
+x86.Assembler.prototype.register.prototype.ismm  = function () 
+{ 
+    return this.value >= 56 && this.value < 64;
+};
+
+/** tells if a register is a fpu register */
+x86.Assembler.prototype.register.prototype.isfpu = function () 
+{ 
+    return this.value >= 48 && this.value < 56;
+};
+
+/** tells if a register is a 16 bit register */
+x86.Assembler.prototype.register.prototype.isr16 = function () 
+{ 
+    return this.value >= 32 && this.value < 48;
+};
+
+/** tells if a register is a 32 bit register */
+x86.Assembler.prototype.register.prototype.isr32 = function () 
+{ 
+    return this.value >= 16 && this.value < 32;
+};
+
+/** tells if a register is a 64 bit register */
+x86.Assembler.prototype.register.prototype.isr64 = function () 
+{ 
+    return this.value <  16;
+};
+
 // TODO: When getter setter are supported, refactor field and width to 
 // act as properties instead of a method. This will make it more
 // similar to the way base, index and disp are accessed on memory object
-reg.field = function () { return this.value & 0xF }
-reg.width    = function () 
+/** returns the field value of the register */
+x86.Assembler.prototype.register.prototype.field = function () 
+{ 
+    return this.value & 0xF 
+};
+/** returns the width value of the register */
+x86.Assembler.prototype.register.prototype.width    = function () 
 {
     if      (this.value < 16) { return 64;} 
     else if (this.value < 32) { return 32;}
@@ -244,113 +397,331 @@ reg.width    = function ()
     else if (this.value < 80) { return 128;}
     else                      { return 8;}
 };
- 
-x86.register.al    = x86.register("al",    80); 
-x86.register.cl    = x86.register("cl",    81); 
-x86.register.dl    = x86.register("dl",    82); 
-x86.register.bl    = x86.register("bl",    83); 
-x86.register.ah    = x86.register("ah",   100); 
-x86.register.ch    = x86.register("ch",   101); 
-x86.register.dh    = x86.register("dh",   102); 
-x86.register.bh    = x86.register("bh",   103); 
-x86.register.spl   = x86.register("spl",   84); 
-x86.register.bpl   = x86.register("bpl",   85); 
-x86.register.sil   = x86.register("sil",   86); 
-x86.register.dil   = x86.register("dil",   87); 
-x86.register.r8b   = x86.register("r8b",   88); 
-x86.register.r9b   = x86.register("r9b",   89); 
-x86.register.r10b  = x86.register("r10b",  90); 
-x86.register.r11b  = x86.register("r11b",  91); 
-x86.register.r12b  = x86.register("r12b",  92); 
-x86.register.r13b  = x86.register("r13b",  93); 
-x86.register.r14b  = x86.register("r14b",  94); 
-x86.register.r15b  = x86.register("r15b",  95); 
-x86.register.ax    = x86.register("ax",    32); 
-x86.register.cx    = x86.register("cx",    33); 
-x86.register.dx    = x86.register("dx",    34); 
-x86.register.bx    = x86.register("bx",    35); 
-x86.register.sp    = x86.register("sp",    36); 
-x86.register.bp    = x86.register("bp",    37); 
-x86.register.si    = x86.register("si",    38); 
-x86.register.di    = x86.register("di",    39); 
-x86.register.r8w   = x86.register("r8w",   40); 
-x86.register.r9w   = x86.register("r9w",   41); 
-x86.register.r10w  = x86.register("r10w",  42); 
-x86.register.r11w  = x86.register("r11w",  43); 
-x86.register.r12w  = x86.register("r12w",  44); 
-x86.register.r13w  = x86.register("r13w",  45); 
-x86.register.r14w  = x86.register("r14w",  46); 
-x86.register.r15w  = x86.register("r15w",  47); 
-x86.register.eax   = x86.register("eax",   16); 
-x86.register.ecx   = x86.register("ecx",   17); 
-x86.register.edx   = x86.register("edx",   18); 
-x86.register.ebx   = x86.register("ebx",   19); 
-x86.register.esp   = x86.register("esp",   20); 
-x86.register.ebp   = x86.register("ebp",   21); 
-x86.register.esi   = x86.register("esi",   22); 
-x86.register.edi   = x86.register("edi",   23); 
-x86.register.r8d   = x86.register("r8d",   24); 
-x86.register.r9d   = x86.register("r9d",   25); 
-x86.register.r10d  = x86.register("r10d",  26); 
-x86.register.r11d  = x86.register("r11d",  27); 
-x86.register.r12d  = x86.register("r12d",  28); 
-x86.register.r13d  = x86.register("r13d",  29); 
-x86.register.r14d  = x86.register("r14d",  30); 
-x86.register.r15d  = x86.register("r15d",  31); 
-x86.register.rax   = x86.register("rax",    0); 
-x86.register.rcx   = x86.register("rcx",    1); 
-x86.register.rdx   = x86.register("rdx",    2); 
-x86.register.rbx   = x86.register("rbx",    3); 
-x86.register.rsp   = x86.register("rsp",    4); 
-x86.register.rbp   = x86.register("rbp",    5); 
-x86.register.rsi   = x86.register("rsi",    6); 
-x86.register.rdi   = x86.register("rdi",    7); 
-x86.register.r8    = x86.register("r8",     8); 
-x86.register.r9    = x86.register("r9",     9); 
-x86.register.r10   = x86.register("r10",   10); 
-x86.register.r11   = x86.register("r11",   11); 
-x86.register.r12   = x86.register("r12",   12); 
-x86.register.r13   = x86.register("r13",   13); 
-x86.register.r14   = x86.register("r14",   14); 
-x86.register.r15   = x86.register("r15",   15); 
-x86.register.st    = x86.register("st",    48); 
-x86.register.st_1  = x86.register("st_1",  49); 
-x86.register.st_2  = x86.register("st_2",  50); 
-x86.register.st_3  = x86.register("st_3",  51); 
-x86.register.st_4  = x86.register("st_4",  52); 
-x86.register.st_5  = x86.register("st_5",  53); 
-x86.register.st_6  = x86.register("st_6",  54); 
-x86.register.st_7  = x86.register("st_7",  55); 
-x86.register.mm0   = x86.register("mm0",   56); 
-x86.register.mm1   = x86.register("mm1",   57); 
-x86.register.mm2   = x86.register("mm2",   58); 
-x86.register.mm3   = x86.register("mm3",   59); 
-x86.register.mm4   = x86.register("mm4",   60); 
-x86.register.mm5   = x86.register("mm5",   61); 
-x86.register.mm6   = x86.register("mm6",   62); 
-x86.register.mm7   = x86.register("mm7",   63); 
-x86.register.xmm0  = x86.register("xmm0",  64); 
-x86.register.xmm1  = x86.register("xmm1",  65); 
-x86.register.xmm2  = x86.register("xmm2",  66); 
-x86.register.xmm3  = x86.register("xmm3",  67); 
-x86.register.xmm4  = x86.register("xmm4",  68); 
-x86.register.xmm5  = x86.register("xmm5",  69); 
-x86.register.xmm6  = x86.register("xmm6",  70); 
-x86.register.xmm7  = x86.register("xmm7",  71); 
-x86.register.xmm8  = x86.register("xmm8",  72); 
-x86.register.xmm9  = x86.register("xmm9",  73); 
-x86.register.xmm10 = x86.register("xmm10", 74); 
-x86.register.xmm11 = x86.register("xmm11", 75); 
-x86.register.xmm12 = x86.register("xmm12", 76); 
-x86.register.xmm13 = x86.register("xmm13", 77); 
-x86.register.xmm14 = x86.register("xmm14", 78); 
-x86.register.xmm15 = x86.register("xmm15", 79); 
+
+/** Predefined register object */ 
+x86.Assembler.prototype.register.al = 
+    x86.Assembler.prototype.register("al",    80); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.cl = 
+    x86.Assembler.prototype.register("cl",    81); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.dl = 
+    x86.Assembler.prototype.register("dl",    82); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.bl = 
+    x86.Assembler.prototype.register("bl",    83); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.ah = 
+    x86.Assembler.prototype.register("ah",   100); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.ch = 
+    x86.Assembler.prototype.register("ch",   101); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.dh = 
+    x86.Assembler.prototype.register("dh",   102); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.bh = 
+    x86.Assembler.prototype.register("bh",   103); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.spl = 
+    x86.Assembler.prototype.register("spl",   84); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.bpl = 
+    x86.Assembler.prototype.register("bpl",   85); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.sil = 
+    x86.Assembler.prototype.register("sil",   86); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.dil = 
+    x86.Assembler.prototype.register("dil",   87); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r8b = 
+    x86.Assembler.prototype.register("r8b",   88); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r9b = 
+    x86.Assembler.prototype.register("r9b",   89); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r10b = 
+    x86.Assembler.prototype.register("r10b",  90); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r11b = 
+    x86.Assembler.prototype.register("r11b",  91); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r12b = 
+    x86.Assembler.prototype.register("r12b",  92); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r13b = 
+    x86.Assembler.prototype.register("r13b",  93); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r14b = 
+    x86.Assembler.prototype.register("r14b",  94); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r15b = 
+    x86.Assembler.prototype.register("r15b",  95); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.ax = 
+    x86.Assembler.prototype.register("ax",    32); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.cx = 
+    x86.Assembler.prototype.register("cx",    33); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.dx = 
+    x86.Assembler.prototype.register("dx",    34); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.bx = 
+    x86.Assembler.prototype.register("bx",    35); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.sp = 
+    x86.Assembler.prototype.register("sp",    36); 
+/** Predefined register object */
+x86.Assembler.prototype.register.bp = 
+    x86.Assembler.prototype.register("bp",    37); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.si = 
+    x86.Assembler.prototype.register("si",    38); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.di = 
+    x86.Assembler.prototype.register("di",    39); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r8w = 
+    x86.Assembler.prototype.register("r8w",   40); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r9w = 
+    x86.Assembler.prototype.register("r9w",   41); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r10w = 
+    x86.Assembler.prototype.register("r10w",  42); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r11w = 
+    x86.Assembler.prototype.register("r11w",  43); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r12w = 
+    x86.Assembler.prototype.register("r12w",  44); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r13w = 
+    x86.Assembler.prototype.register("r13w",  45); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r14w = 
+    x86.Assembler.prototype.register("r14w",  46); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r15w = 
+    x86.Assembler.prototype.register("r15w",  47); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.eax = 
+    x86.Assembler.prototype.register("eax",   16); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.ecx = 
+    x86.Assembler.prototype.register("ecx",   17); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.edx = 
+    x86.Assembler.prototype.register("edx",   18); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.ebx = 
+    x86.Assembler.prototype.register("ebx",   19); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.esp = 
+    x86.Assembler.prototype.register("esp",   20); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.ebp = 
+    x86.Assembler.prototype.register("ebp",   21); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.esi = 
+    x86.Assembler.prototype.register("esi",   22); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.edi = 
+    x86.Assembler.prototype.register("edi",   23); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r8d = 
+    x86.Assembler.prototype.register("r8d",   24); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r9d = 
+    x86.Assembler.prototype.register("r9d",   25); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r10d = 
+    x86.Assembler.prototype.register("r10d",  26); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r11d = 
+    x86.Assembler.prototype.register("r11d",  27); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r12d = 
+    x86.Assembler.prototype.register("r12d",  28); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r13d = 
+    x86.Assembler.prototype.register("r13d",  29); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r14d = 
+    x86.Assembler.prototype.register("r14d",  30); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r15d = 
+    x86.Assembler.prototype.register("r15d",  31); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rax = 
+    x86.Assembler.prototype.register("rax",    0); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rcx = 
+    x86.Assembler.prototype.register("rcx",    1); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rdx = 
+    x86.Assembler.prototype.register("rdx",    2); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rbx = 
+    x86.Assembler.prototype.register("rbx",    3); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rsp = 
+    x86.Assembler.prototype.register("rsp",    4); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rbp = 
+    x86.Assembler.prototype.register("rbp",    5); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rsi = 
+    x86.Assembler.prototype.register("rsi",    6); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.rdi = 
+    x86.Assembler.prototype.register("rdi",    7); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r8 = 
+    x86.Assembler.prototype.register("r8",     8); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r9 = 
+    x86.Assembler.prototype.register("r9",     9); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r10 = 
+    x86.Assembler.prototype.register("r10",   10); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r11 = 
+    x86.Assembler.prototype.register("r11",   11); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r12 = 
+    x86.Assembler.prototype.register("r12",   12); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r13 = 
+    x86.Assembler.prototype.register("r13",   13); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r14 = 
+    x86.Assembler.prototype.register("r14",   14); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.r15 = 
+    x86.Assembler.prototype.register("r15",   15); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st = 
+    x86.Assembler.prototype.register("st",    48); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_1 = 
+    x86.Assembler.prototype.register("st_1",  49); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_2 = 
+    x86.Assembler.prototype.register("st_2",  50); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_3 = 
+    x86.Assembler.prototype.register("st_3",  51); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_4 = 
+    x86.Assembler.prototype.register("st_4",  52); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_5 = 
+    x86.Assembler.prototype.register("st_5",  53); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_6 = 
+    x86.Assembler.prototype.register("st_6",  54); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.st_7 = 
+    x86.Assembler.prototype.register("st_7",  55); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm0 = 
+    x86.Assembler.prototype.register("mm0",   56); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm1 = 
+    x86.Assembler.prototype.register("mm1",   57); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm2 = 
+    x86.Assembler.prototype.register("mm2",   58); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm3 = 
+    x86.Assembler.prototype.register("mm3",   59); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm4 = 
+    x86.Assembler.prototype.register("mm4",   60); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm5 = 
+    x86.Assembler.prototype.register("mm5",   61); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm6 = 
+    x86.Assembler.prototype.register("mm6",   62); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.mm7 = 
+    x86.Assembler.prototype.register("mm7",   63); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm0 = 
+    x86.Assembler.prototype.register("xmm0",  64); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm1 = 
+    x86.Assembler.prototype.register("xmm1",  65); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm2 = 
+    x86.Assembler.prototype.register("xmm2",  66); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm3 = 
+    x86.Assembler.prototype.register("xmm3",  67); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm4 = 
+    x86.Assembler.prototype.register("xmm4",  68); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm5 = 
+    x86.Assembler.prototype.register("xmm5",  69); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm6 = 
+    x86.Assembler.prototype.register("xmm6",  70); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm7 = 
+    x86.Assembler.prototype.register("xmm7",  71); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm8 = 
+    x86.Assembler.prototype.register("xmm8",  72); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm9 = 
+    x86.Assembler.prototype.register("xmm9",  73); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm10 = 
+    x86.Assembler.prototype.register("xmm10", 74); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm11 = 
+    x86.Assembler.prototype.register("xmm11", 75); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm12 = 
+    x86.Assembler.prototype.register("xmm12", 76); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm13 = 
+    x86.Assembler.prototype.register("xmm13", 77); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm14 = 
+    x86.Assembler.prototype.register("xmm14", 78); 
+/** Predefined register object */ 
+x86.Assembler.prototype.register.xmm15 = 
+    x86.Assembler.prototype.register("xmm15", 79); 
+
+/** Returns an {@link asm.CodeBlock#label} object. */
+x86.Assembler.prototype.labelObj = function (text)
+{
+   return this.codeBlock.label(text); 
+};
 
 //-----------------------------------------------------------------------------
 
 // print formatting functions
 
+/** @private Returns the right suffix depending on compilation target */
+x86.Assembler.prototype._32or64bitSuffix = function () 
+{ 
+    return this.is64bitMode() ? "q" : "l"; 
+};
 
+/** @private Returns the right jump label suffix depending on length of jump */
+x86.Assembler.prototype.jumpLabelSuffix = function (isShort) 
+{ 
+    return isShort ? "" : this._32or64bitSuffix(); 
+};
+
+/** @private Returns an offset with an explicit sign as a string */
 x86.offsetToString = function (offset)
 {
     if (offset === 0)
@@ -365,6 +736,7 @@ x86.offsetToString = function (offset)
     }
 };
 
+/** @private Returns the corresponding width suffix */ 
 x86.widthSuffix = function (width)
 {
     if      (width === 64) { return "q"; }
@@ -374,15 +746,10 @@ x86.widthSuffix = function (width)
     else                   { return "";  }
 };
 
-x86.regWidthSuffix = function (reg) { return this.widthSuffix(reg.width()); };
+/** @private Returns the corresponding width suffix for a given register */
+x86.regWidthSuffix = function (reg) { return x86.widthSuffix(reg.width()); };
 
-x86._32or64bitSuffix = function () { return this.is64bitMode() ? "q" : "l"; };
-
-x86.jumpLabelSuffix = function (isShort) 
-{ 
-    return isShort ? "" : this._32or64bitSuffix(); 
-};
-
+/** @private Format an operand according to GNU (AT&T) assembly syntax */
 x86.opndFormatGNU = function (opnd)
 {
     switch(opnd.type)
@@ -391,42 +758,45 @@ x86.opndFormatGNU = function (opnd)
             return "$" + String(opnd.value);
         case x86.type.IMM_LBL: 
             // TODO: Implement Immediate Label formatting
-            error("Immediate label formatting unimplemented");
+            x86.error("opndFormatGNU: Immediate label formatting" +
+                      " unimplemented");
         case x86.type.REG:
             return "%" + opnd.name;
         case x86.type.MEM:
             if (opnd.base !== null)
             {
                 return ((opnd.disp === 0) ? "" : opnd.disp) + "(" +
-                        this.opndFormatGNU(opnd.base) + 
+                        x86.opndFormatGNU(opnd.base) + 
                        ((opnd.index === null) ? 
-                            "" : ", " + this.opndFormatGNU(opnd.index)) +
+                            "" : ", " + x86.opndFormatGNU(opnd.index)) +
                        ((opnd.index === null || opnd.scale === 0) ? 
                             "" : opnd.scale.toString()) +
                         ")"; 
             } else 
             {
-                return this.offsetToString(opnd.disp);
+                return x86.offsetToString(opnd.disp);
             }
         case x86.type.GLO:
-            return opnd.name + this.offsetToString(opnd.offset);
+            return opnd.name + x86.offsetToString(opnd.offset);
         default:
             return opnd.toString();
     }
 };
 
-x86.opndFormat = function (opnd) { return this.opndFormatGNU(opnd); };
+/** @private Format an operand according to the current assembly syntax */
+x86.opndFormat = function (opnd) { return x86.opndFormatGNU(opnd); };
 
+/** @private Format an instruction according to GNU (AT&T) assembly syntax */
 x86.instrFormatGNU = function (mnemonic, suffix, dest, src) 
 { 
     var opnds = "";
 
     if (dest && src)
     {
-        opnds = this.opndFormatGNU(src) + "," + this.opndFormatGNU(dest);
+        opnds = x86.opndFormatGNU(src) + "," + x86.opndFormatGNU(dest);
     } else  if (dest)
     {
-        opnds = this.opndFormatGNU(dest);
+        opnds = x86.opndFormatGNU(dest);
     }
 
     if (suffix)
@@ -443,11 +813,13 @@ x86.instrFormatGNU = function (mnemonic, suffix, dest, src)
     }
 };
 
+/** @private Format an instruction according to the current assembly syntax */
 x86.instrFormat = function (mnemonic, suffix, dest, src)
 {
-    return this.instrFormatGNU(mnemonic, suffix, dest, src);
+    return x86.instrFormatGNU(mnemonic, suffix, dest, src);
 };
 
+/** @private Format a label */
 x86.labelFormat = function (label)
 {
     return label.name() + ":";
@@ -456,33 +828,45 @@ x86.labelFormat = function (label)
 //-----------------------------------------------------------------------------
 
 // x86 instruction encoding.
-x86.ret   = function ()  { return this.noOpndInstr(0xc3, "ret");};
-x86.cmc   = function ()  { return this.noOpndInstr(0xf5, "cmc");};
-x86.clc   = function ()  { return this.noOpndInstr(0xf8, "clc");};
-x86.stc   = function ()  { return this.noOpndInstr(0xf9, "stc");};
-x86.cli   = function ()  { return this.noOpndInstr(0xfa, "cli");};
-x86.sti   = function ()  { return this.noOpndInstr(0xfb, "sti");};
-x86.cld   = function ()  { return this.noOpndInstr(0xfc, "cld");};
-x86.std   = function ()  { return this.noOpndInstr(0xfd, "std");};
 
-
-x86.noOpndInstr = function (opcode, mnemonic)
+/** @private generic no operand instruction encoding */
+x86.Assembler.prototype.noOpndInstr = function (opcode, mnemonic)
 {
     this.gen8(opcode);
     if (this.useListing)
-        this.genListing(this.instrFormat(mnemonic, ""));
+        this.genListing(x86.instrFormat(mnemonic, ""));
     return this;
 };
 
-
-x86.genListing = function(text) { this.codeBlock.genListing(text); return this; };
-
-x86.opndSizeOverridePrefix = function (width) 
-{
-    if (width === 16) { this.gen8(0x66); }; return this;
+/** Adds text to the listing output. Can be chained. */
+x86.Assembler.prototype.genListing = function (text) 
+{ 
+    this.codeBlock.genListing(text); 
+    return this; 
 };
 
-x86.addrSizeOverridePrefix = function (opnd)
+/** @private 
+    Adds a prefix byte selecting a non-default operand size for
+    the following instruction.
+    This prefix allows mixing 16-bit, 32-bit and 64-bit data
+    on an instruction-by-instruction basis. 
+*/
+x86.Assembler.prototype.opndSizeOverridePrefix = function (width) 
+{
+    if (width === 16) 
+    { 
+        this.gen8(0x66); 
+    }; 
+    return this;
+};
+
+/** @private 
+    Adds a prefix byte selecting a non-default address size
+    for the following instruction.  
+    This prefix allows mixing 16-bit and 32-bit or 32-bit and 64-bit
+    addresses on an instruction-by-instruction basis.
+*/
+x86.Assembler.prototype.addrSizeOverridePrefix = function (opnd)
 {
     if (opnd.type === x86.type.MEM &&
         opnd.base !== null         &&
@@ -491,11 +875,19 @@ x86.addrSizeOverridePrefix = function (opnd)
         this.gen8(0x67);
     }
 };
+/** @private
+    Adds the needed prefixes to an instruction.
 
-x86.opndPrefix = function (width, field, opnd, forceRex)
+    REX: use extended registers, 
+         use 64-bit versions of GPRs,
+         use extended control and debug registers, 
+         use uniform byte registers 
+    Operand Size Override: see above
+    Address Size Override: see above
+
+*/
+x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
 {
-    // TODO: Check that the logic for producing the REX byte
-    //       is correct
     var rex = // If needed emit REX.W (64 bit operand size)
               (( width === 64 || ( opnd.type === x86.type.REG && opnd.isr64())) 
                ? 8 : 0) +
@@ -518,9 +910,10 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
             const base = opnd.base; 
             if(base) 
             {
-                assert((base.isr32() || (base.isr64() && this.is64bitMode())),
-                       "invalid width base register",
-                       base); 
+                x86.assert((base.isr32() || (base.isr64() && 
+                            this.is64bitMode())),
+                           "invalid width base register",
+                           base); 
                 // If needed emit REX.B (Extension of the ModR/M r/m field,
                 // SIB base field, or Opcode reg field
                 rex += (base.field() >> 3);
@@ -528,8 +921,9 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
                 const index = opnd.index;
                 if(index) 
                 {
-                    assert((base.isr32() ? index.isr32() : index.isr64()),
-                           "index register must have the same width as base",
+                    x86.assert((base.isr32() ? index.isr32() : index.isr64()),
+                           "index register must have the"+
+                           " same width as base",
                            reg2);        
                     rex += ((index.field() >> 3) << 1);
                 }
@@ -537,7 +931,7 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
             break;
 
         default:
-            error("unknown operand", opnd);
+            x86.error("unknown operand", opnd);
     }
 
     this.opndSizeOverridePrefix(width); 
@@ -552,13 +946,21 @@ x86.opndPrefix = function (width, field, opnd, forceRex)
     return false;
 };
 
-x86.opndModRMSIB = function (field, opnd)
+/**
+    @private
+    Adds the ModRM, SIB and DISP bytes to the instruction.
+   
+    ModRM: Extension of the opcode or register access 
+    SIB:   Scale, Index, Base for memory access
+    DISP:  Displacement byte for memory access
+*/
+x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
 {
-    // TODO: Double check the logic
     const modrm_rf = (7 & field) << 3;
     const that = this;
-    
-    function absAddr ()
+   
+    /** @ignore */ 
+    function absAddr()
     {
         if (that.is64bitMode())
         {
@@ -579,8 +981,8 @@ x86.opndModRMSIB = function (field, opnd)
             break;
 
         case x86.type.GLO:
-            // TODO: Implement when labels are supported
-            error("opndModRMSIB: unimplemented for opnd of type global");
+            // TODO: Remove if not needed
+            x86.error("unimplemented for opnd of type global");
             break;
 
         case x86.type.MEM:
@@ -603,7 +1005,7 @@ x86.opndModRMSIB = function (field, opnd)
                     
                     if (index)
                     {
-                        assert(!(index.field() === 4),
+                        x86.assert(!(index.field() === 4),
                                "SP not allowed as index", index);
                         sib += ((7 & index.field()) << 3) +
                                (scale << 6);
@@ -612,7 +1014,7 @@ x86.opndModRMSIB = function (field, opnd)
                         sib += 0x20;
                     }
                    
-                    if (isSigned8(disp))
+                    if (x86.isSigned8(disp))
                     {
                         // use 8 bit displacement
                         if (!(disp === 0) ||        // non-null displacement
@@ -626,7 +1028,7 @@ x86.opndModRMSIB = function (field, opnd)
                             this.gen8(modrm);      // ModR/M
                             this.gen8(sib);        // SIB
                         }
-                    } else // !isSigned8(disp)
+                    } else // !x86.isSigned8(disp)
                     {
                         // use 32 bit displacement
                         this.gen8(0x80 + modrm);   // ModR/M
@@ -637,7 +1039,7 @@ x86.opndModRMSIB = function (field, opnd)
                 {
                     // SIB Not Needed
                     modrm = modrm_rf + baseFieldLo;
-                    if (isSigned8(disp))
+                    if (x86.isSigned8(disp))
                     {
                         if (!(disp === 0) ||       // non-null displacement
                             (baseFieldLo === 5))   // or RBP/R13
@@ -649,7 +1051,7 @@ x86.opndModRMSIB = function (field, opnd)
                         {
                             this.gen8(modrm);       // ModR/M
                         }
-                    } else // !isSigned8(disp)
+                    } else // !x86.isSigned8(disp)
                     {
                         // use 32 bit displacement
                         this.gen8(0x80 + modrm);
@@ -665,12 +1067,17 @@ x86.opndModRMSIB = function (field, opnd)
             break;
 
         default:
-            error("unkown operand", opnd);
+            x86.error("opndModRMSIB: unkown operand", opnd);
     }
     return this;
 };
 
-x86.opndPrefixRegOpnd = function (reg, opnd)
+/**
+    @private
+    Adds the corresponding prefix for two operands knowing one of the operand
+    is a register
+*/
+x86.Assembler.prototype.opndPrefixRegOpnd = function (reg, opnd)
 {
     const width  = reg.width();
     const field  = reg.field();
@@ -682,14 +1089,16 @@ x86.opndPrefixRegOpnd = function (reg, opnd)
                               (opnd.field() >= 4) && 
                               (!opnd.isr8h()));
         var isRex;
-        assert(((width === opnd.width()) || 
-                reg.isxmm()),             // for cvtsi2ss/cvtsi2sd instructions
-               "registers are not of the same width",reg,opnd);
+        x86.assert(((width === opnd.width()) || 
+                    reg.isxmm()),   // for cvtsi2ss/cvtsi2sd instructions
+                   "registers are not of the same width",
+                   reg,opnd);
 
         isRex = this.opndPrefix(width, field, opnd, (isExtLo8 || isExtLo8Reg2));
 
-        assert(!(isRex && (reg.isr8h() || opnd.isr8h())),
-               "cannot use high 8 bit register here", reg, opnd);
+        x86.assert(!(isRex && (reg.isr8h() || opnd.isr8h())),
+                   "cannot use high 8 bit register here", 
+                   reg, opnd);
         return isRex;
     } else  // opnd.type !== x86.type.REG
     {
@@ -697,7 +1106,8 @@ x86.opndPrefixRegOpnd = function (reg, opnd)
     }
 };
 
-x86.opndPrefixOpnd = function (width, opnd)
+/** @private */
+x86.Assembler.prototype.opndPrefixOpnd = function (width, opnd)
 {
     if (opnd.type === x86.type.REG)
     {
@@ -710,27 +1120,38 @@ x86.opndPrefixOpnd = function (width, opnd)
     }
 };
 
-x86.opndModRMSIBRegOpnd = function (reg, opnd)
+/** @private */
+x86.Assembler.prototype.opndModRMSIBRegOpnd = function (reg, opnd)
 {
     return this.opndModRMSIB(reg.field(), opnd);
 };
 
-x86.opImm = function (op, mnemonic, src, dest, width) 
+/** 
+    @private 
+    generic encoding for instructions with the source
+    operand as an immediate value
+*/  
+x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width) 
 {
     const that = this;
     const k = src.value;
 
-    function listing (width,n)
+    /** @ignore Adds the listing for the instruction */
+    function listing(width,n)
     {
         if (that.useListing) 
         {
-            that.genListing(that.instrFormat(mnemonic, 
-                                             that.widthSuffix(width),
+            that.genListing(x86.instrFormat(mnemonic, 
+                                             x86.widthSuffix(width),
                                              dest,
                                              src));
         }
     }
 
+    /** 
+        @ignore 
+        Generate encoding when the targeted register is AL or AX/EAX/RAX
+    */
     function accumulator (width)
     {
         that.
@@ -741,7 +1162,11 @@ x86.opImm = function (op, mnemonic, src, dest, width)
         listing(width, that.genImmNum(k,width));
     }
 
-    function general (width)
+    /**
+        @ignore
+        General case
+    */
+    function general(width)
     {
         that.opndPrefixOpnd(width, dest);
 
@@ -751,7 +1176,7 @@ x86.opImm = function (op, mnemonic, src, dest, width)
             gen8(0x80).            // opcode = 8 bit operation
             opndModRMSIB(op,dest); // ModR/M
             listing(width, that.genImmNum(k,8));
-        } else if (isSigned8(k))
+        } else if (x86.isSigned8(k))
         {
             that.
             gen8(0x83).            // opcode = sign extended 8 bit imm
@@ -766,14 +1191,14 @@ x86.opImm = function (op, mnemonic, src, dest, width)
         }
     }
 
-    assert((dest.type === x86.type.REG) ? 
+    x86.assert((dest.type === x86.type.REG) ? 
             (!width || (dest.width() === width)) : width,
             "missing or inconsistent operand width", width);
 
     if (dest.type === x86.type.REG)
     {
         if ((dest.field() === 0) && 
-            (dest.width() === 8 || !isSigned8(k)))
+            (dest.width() === 8 || !x86.isSigned8(k)))
         {
             accumulator(dest.width());
         } else 
@@ -787,24 +1212,31 @@ x86.opImm = function (op, mnemonic, src, dest, width)
     return that;
 };
 
-x86.movImm = function (dest, src, width)
+/**
+    @private
+    special case for encoding the mov instruction with an 
+    immediate value
+*/
+x86.Assembler.prototype.movImm = function (dest, src, width)
 {
 
     const that = this;
     const k = src.value;
 
-    function listing (width,n)
+    /** @ignore generate listing */
+    function listing(width,n)
     {
         if (that.useListing) 
         {
-            that.genListing(that.instrFormat("mov", 
-                                             that.widthSuffix(width),
+            that.genListing(x86.instrFormat("mov", 
+                                             x86.widthSuffix(width),
                                              dest,
                                              src));
         }
     }
 
-    function register (width)
+    /** @ignore special case when the destination is a register */
+    function register(width)
     {
         that.
         opndPrefixOpnd(width, dest); // prefix
@@ -815,7 +1247,8 @@ x86.movImm = function (dest, src, width)
         listing(width, that.genImmNum(k, width));
     }
 
-    function general (width)
+    /** @ignore general case */
+    function general(width)
     {
         that.opndPrefixOpnd(width, dest);
         that.
@@ -824,14 +1257,14 @@ x86.movImm = function (dest, src, width)
         listing(width, that.genImmNum(k,width));
     }
 
-    assert((dest.type === x86.type.REG) ? 
+    x86.assert((dest.type === x86.type.REG) ? 
             (!width || (dest.width() === width)) : width,
             "missing or inconsistent operand width '", width, "'");
 
     if (dest.type === x86.type.REG)
     {
         if (dest.width() === 64 &&
-            isSigned32(k))
+            x86.isSigned32(k))
         {
             general(dest.width());
         } else 
@@ -845,26 +1278,28 @@ x86.movImm = function (dest, src, width)
     return this;
 };
 
-x86.op    = function (op, mnemonic, dest, src, width) 
+/** @private generic two operands instruction encoding */
+x86.Assembler.prototype.op    = function (op, mnemonic, dest, src, width) 
 {
     // TODO: Add support for immediate label, see x86-mov 
     const that = this;
 
-    assert( dest.type === x86.type.REG ||
+    x86.assert( dest.type === x86.type.REG ||
             dest.type === x86.type.MEM ||
             src.type  === x86.type.REG ||
             src.type  === x86.type.MEM,
-            "x86.op: one of dest or src should be a register or" +
+            "one of dest or src should be a register or" +
             " a memory location");
 
-    assert(!(dest.type === x86.type.MEM &&
+    x86.assert(!(dest.type === x86.type.MEM &&
              src.type  === x86.type.MEM),
-             "x86.op: dest and src cannot refer both to a " +
+             "dest and src cannot refer both to a " +
              "memory location"); 
 
-    function genOp (reg, opnd, isSwapped)
+    /** @ignore generate the instruction */
+    function genOp(reg, opnd, isSwapped)
     {
-        assert(!width || (reg.width() === width),
+        x86.assert(!width || (reg.width() === width),
                "inconsistent operand width '",width, 
                "' and register width '", reg.width(), "'");
         that.opndPrefixRegOpnd(reg, opnd);
@@ -876,8 +1311,8 @@ x86.op    = function (op, mnemonic, dest, src, width)
         
         if (that.useListing)
         {
-            that.genListing(that.instrFormat(mnemonic, 
-                                             that.regWidthSuffix(reg),
+            that.genListing(x86.instrFormat(mnemonic, 
+                                             x86.regWidthSuffix(reg),
                                              (isSwapped) ? opnd : reg,
                                              (isSwapped) ? reg  : opnd));
         }
@@ -900,39 +1335,35 @@ x86.op    = function (op, mnemonic, dest, src, width)
         genOp(dest, src, false);
     } else 
     {
-        error("invalid operand combination", dest, src);
+        x86.error("op: invalid operand combination", dest, src);
     }
    return this;
 };
 
-x86.add = function (src, dest, width) { return this.op(0, "add",dest,src,width); };
-x86.or  = function (src, dest, width) { return this.op(1, "or", dest,src,width); };
-x86.adc = function (src, dest, width) { return this.op(2, "adc",dest,src,width); };
-x86.sbb = function (src, dest, width) { return this.op(3, "sbb",dest,src,width); };
-x86.and = function (src, dest, width) { return this.op(4, "and",dest,src,width); };
-x86.sub = function (src, dest, width) { return this.op(5, "sub",dest,src,width); };
-x86.xor = function (src, dest, width) { return this.op(6, "xor",dest,src,width); };
-x86.cmp = function (src, dest, width) { return this.op(7, "cmp",dest,src,width); };
-x86.mov = function (src, dest, width) { return this.op(17,"mov",dest,src,width); };
-
-x86.pushImm = function (dest)
+/**
+    @private
+    special case when a push instruction has an immediate value
+    as a destination
+*/
+x86.Assembler.prototype.pushImm = function (dest)
 {
     // width is always width of stack pointer
 
     const that = this;
     const k = dest.value;
-
-    function listing (n)
+    
+    /** @ignore */
+    function listing(n)
     {
         if (that.useListing)
         {
-            that.genListing(that.instrFormat("push", 
+            that.genListing(x86.instrFormat("push", 
                                              that._32or64bitSuffix(),
                                              dest));
         }
     }
 
-    if (isSigned8(k))
+    if (x86.isSigned8(k))
     {
         this.gen8(0x6a); // opcode
         listing(this._genImmNum(k, 8));
@@ -943,26 +1374,33 @@ x86.pushImm = function (dest)
     }
 };
 
-x86.pushPop = function (opnd, isPop)
+/**
+    @private
+    encoding of push and pop instructions
+*/
+x86.Assembler.prototype.pushPop = function (opnd, isPop)
 {
     const that = this;
-    function listing ()
+    /** @ignore */
+    function listing()
     {
         if (that.useListing)
         {
-            that.genListing(that.instrFormat(isPop ? "pop" : "push", 
+            that.genListing(x86.instrFormat(isPop ? "pop" : "push", 
                                              that._32or64bitSuffix(),
                                              opnd));
         }
     }
 
+    /** @ignore special case when the destination is a register */
     function register()
     {
         if (opnd.isr32())
         {
             that.assert32bitMode();
-            assert(opnd.field() < 8, 
-                   "cannot push/pop extended register in 32 bit mode");
+            x86.assert(opnd.field() < 8, 
+                   "cannot push/pop extended register" +
+                   " in 32 bit mode");
         } else
         {
             that.assert64bitMode();
@@ -977,6 +1415,7 @@ x86.pushPop = function (opnd, isPop)
         listing();
     }
 
+    /** @ignore general case */
     function general()
     {
         that.opndPrefix(0,0,opnd,false); // prefix (width is implicit)
@@ -998,13 +1437,10 @@ x86.pushPop = function (opnd, isPop)
     return this;
 };
 
-x86.push = function (opnd) { return this.pushPop(opnd, false); };
-x86.pop  = function (opnd) { return this.pushPop(opnd, true); };
 
-// Opcodes
 x86.opcode = {};
 // Escape opcode
-x86.opcode.esc      = 0x0f;
+x86.opcode.esc        = 0x0f;
 
 // Unconditional jump/call opcodes
 x86.opcode.jmpRel8    = 0xeb; 
@@ -1029,61 +1465,70 @@ x86.opcode.jgeRel8    = 0x7d;
 x86.opcode.jleRel8    = 0x7e;
 x86.opcode.jgRel8     = 0x7f;
 
-x86.label = function (lbl)
+/** Adds a label to the code stream. Can be chained. */
+x86.Assembler.prototype.label = function (lbl)
 { 
+    x86.assert(lbl.type === asm.type.LBL,
+               "invalid label", lbl);
     this.
-    genListing(this.labelFormat(lbl)).
+    genListing(x86.labelFormat(lbl)).
     codeBlock.genLabel(lbl); 
     return this;
 };
 
-x86.jumpLabel = function (opcode, mnemonic, label, offset)
+/** @private Generic jump to label instruction encoding */
+x86.Assembler.prototype.jumpLabel = function (opcode, mnemonic, label, offset)
 {
     const that = this;
     var offset = offset || 0;
 
-    assert(label.type === this.codeBlock.type.LBL,
-           "x86.jumpLabel: Invalid label '", label, "'");
+    x86.assert(label.type === asm.type.LBL,
+           "invalid label '", label, "'");
 
-    function labelDist (label, offsetLabel, pos, offsetPos)
+    /** @ignore */
+    function labelDist(label, offsetLabel, pos, offsetPos)
     {
         return (label.getPos() + offsetLabel) - (pos + offsetPos);
     };
 
-    function listing (isShort)
+    /** @ignore */
+    function listing(isShort)
     {
         if (that.useListing) 
         {
             that.genListing(
-                that.instrFormat(mnemonic, 
+                x86.instrFormat(mnemonic, 
                                  that.jumpLabelSuffix(isShort),
-                                 label.name() + that.offsetToString(offset)));
+                                 label.name() + x86.offsetToString(offset)));
         }
     };
 
-    // Short Displacement (-128..127 bytes)
-    function shortDispCheck (cb, pos)
+    /** @ignore Short Displacement (-128..127 bytes) */
+    function shortDispCheck(cb, pos)
     {
-       return isSigned8(labelDist(label, offset, pos, 2)) ? 2 : null;
+       return x86.isSigned8(labelDist(label, offset, pos, 2)) ? 2 : null;
     }; 
 
-    function alwaysNull (cb, pos) { return null; };
+    /** @ignore for an invalid check */
+    function alwaysNull(cb, pos) { return null; };
 
-    function shortDispProd (cb, pos)
+    /** @ignore generate a short displacement instruction */
+    function shortDispProd(cb, pos)
     {
         cb.gen8(opcode);
         cb.gen8(labelDist(label, offset, pos, 2) & 0xFF);
         listing(true);
     };
 
-    //  32 bit relative address
-    function dispCheck (cb, pos)
+    /** @ignore 32 bit relative address */
+    function dispCheck(cb, pos)
     {
         return (opcode === x86.opcode.jmpRel8 || 
                 opcode === x86.opcode.callRel32) ? 5 : 6;
     };
-    
-    function dispProd (cb, pos)
+   
+    /** @ignore generate a 32 bit relative address displacement instruction */ 
+    function dispProd(cb, pos)
     {
         switch (opcode)
         {
@@ -1115,9 +1560,10 @@ x86.jumpLabel = function (opcode, mnemonic, label, offset)
     return this;
 };
 
-x86.jumpGeneral = function (field, opnd)
+/** @private jump for the general case */
+x86.Assembler.prototype.jumpGeneral = function (field, opnd)
 {
-    assert(!(opnd.type === x86.type.REG) || 
+    x86.assert(!(opnd.type === x86.type.REG) || 
            (this.is64bitMode() ? opnd.isr64() : opnd.isr32()),
            "invalid width register", opnd);  
 
@@ -1130,7 +1576,7 @@ x86.jumpGeneral = function (field, opnd)
     if (this.useListing) 
     {
         this.genListing(
-            this.instrFormat((field === 4) ? "jmp" : "call", 
+            x86.instrFormat((field === 4) ? "jmp" : "call", 
                              null,
                              opnd));
     }
@@ -1138,20 +1584,167 @@ x86.jumpGeneral = function (field, opnd)
     return this;
 };
 
-x86.jmp = function (opnd1, opnd2) 
+
+
+
+// No operand instructions
+/** Can be chained. */
+x86.Assembler.prototype.ret = function ()  
+{ 
+    return this.noOpndInstr(0xc3, "ret");
+};
+/** Can be chained. */
+x86.Assembler.prototype.cmc = function ()  
+{ 
+    return this.noOpndInstr(0xf5, "cmc");
+};
+/** Can be chained. */
+x86.Assembler.prototype.clc = function ()  
+{ 
+    return this.noOpndInstr(0xf8, "clc");
+};
+/** Can be chained. */
+x86.Assembler.prototype.stc = function ()  
+{ 
+    return this.noOpndInstr(0xf9, "stc");
+};
+/** Can be chained. */
+x86.Assembler.prototype.cli = function ()  
+{ 
+    return this.noOpndInstr(0xfa, "cli");
+};
+/** Can be chained. */
+x86.Assembler.prototype.sti = function ()  
+{ 
+    return this.noOpndInstr(0xfb, "sti");
+};
+/** Can be chained. */
+x86.Assembler.prototype.cld = function ()  
+{ 
+    return this.noOpndInstr(0xfc, "cld");
+};
+/** Can be chained. */
+x86.Assembler.prototype.std = function ()  
+{ 
+    return this.noOpndInstr(0xfd, "std");
+};
+
+
+// Two operand instructions
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.add = function (src, dest, width) 
+{ 
+    return this.op(0, "add",dest,src,width); }
+;
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.or  = function (src, dest, width) 
+{ 
+    return this.op(1, "or", dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.adc = function (src, dest, width) 
+{ 
+    return this.op(2, "adc",dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.sbb = function (src, dest, width) 
+{ 
+    return this.op(3, "sbb",dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.and = function (src, dest, width) 
+{ 
+    return this.op(4, "and",dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.sub = function (src, dest, width) 
+{ 
+    return this.op(5, "sub",dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.xor = function (src, dest, width) 
+{ 
+    return this.op(6, "xor",dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.cmp = function (src, dest, width) 
+{ 
+    return this.op(7, "cmp",dest,src,width); 
+};
+/** Can be chained. 
+    @param src
+    @param dest
+    @param {Number} width optional 
+*/
+x86.Assembler.prototype.mov = function (src, dest, width) 
+{ 
+    return this.op(17,"mov",dest,src,width); 
+};
+
+
+/** Can be chained. */
+x86.Assembler.prototype.push = function (opnd) 
+{ 
+    return this.pushPop(opnd, false); 
+};
+/** Can be chained. */
+x86.Assembler.prototype.pop  = function (opnd) { return this.pushPop(opnd, true); };
+
+
+/** Can be chained.
+    @param {x86.Assembler#register or label } opnd1
+    @param {Number} opnd2 optional and ignored when opnd1 is a register
+*/
+x86.Assembler.prototype.jmp = function (opnd1, opnd2) 
 { 
     switch (opnd1.type)
     {
         case x86.type.REG: 
             return this.jumpGeneral(4, opnd1); 
-        case this.codeBlock.type.LBL:
+        case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
         default:
-            error("x86.jmp: invalid operand type", opnd1.type); 
+            x86.error("jmp: invalid operand type", opnd1.type); 
     } 
 };
 
-x86.call = function (opnd1, opnd2)  
+/** Can be chained.
+    @param {x86.Assembler#register or label } opnd1
+    @param {Number} opnd2 optional and ignored when opnd1 is a register
+*/
+x86.Assembler.prototype.call = function (opnd1, opnd2)  
 { 
     switch (opnd1.type)
     {
@@ -1159,93 +1752,108 @@ x86.call = function (opnd1, opnd2)
             return this.jumpGeneral(2, opnd1); 
         case x86.type.MEM:
             return this.jumpGeneral(2, opnd1); 
-        case this.codeBlock.type.LBL:
+        case asm.type.LBL:
             return this.jumpLabel(x86.opcode.callRel32, "call",opnd1, opnd2);
         default:
-            error("x86.call: invalid operand type", opnd1.type); 
+            x86.error("call: invalid operand type", opnd1.type); 
     } 
 };
 
-x86.jo = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jo = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.joRel8, "jo", label, offset); 
 };
 
-x86.jno = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jno = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jnoRel8, "jno", label, offset); 
 };
 
-x86.jb = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jb = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jbRel8, "jb", label, offset); 
 };
 
-x86.jae = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jae = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jaeRel8, "jae", label, offset); 
 };
 
-x86.je = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.je = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jeRel8, "je", label, offset); 
 };
 
-x86.jne = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jne = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jneRel8, "jne", label, offset); 
 };
 
-x86.jbe = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jbe = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jbeRel8, "jbe", label, offset); 
 };
 
-x86.ja = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.ja = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jaRel8, "ja", label, offset); 
 };
 
-x86.js = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.js = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jsRel8, "js", label, offset); 
 };
 
-x86.jns = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jns = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jnsRel8, "jns", label, offset); 
 };
 
-x86.jp = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jp = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jpRel8, "jp", label, offset); 
 };
 
-x86.jnp = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jnp = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jnpRel8, "jnp", label, offset); 
 };
 
-x86.jl = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jl = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jlRel8, "jl", label, offset); 
 };
 
-x86.jge = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jge = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jgeRel8, "jge", label, offset); 
 };
 
-x86.jle = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jle = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jleRel8, "jle", label, offset); 
 };
 
-x86.jg = function (label, offset) 
+/** Can be chained */
+x86.Assembler.prototype.jg = function (label, offset) 
 { 
     return this.jumpLabel(x86.opcode.jgRel8, "jg", label, offset); 
 };
 
 
-})(); // end of local namespace
 

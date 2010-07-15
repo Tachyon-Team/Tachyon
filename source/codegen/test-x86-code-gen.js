@@ -1,4 +1,4 @@
-var a = new x86_Assembler();
+var a = new x86.Assembler();
 const reg = a.register;
 const ESP = reg.esp;
 const EAX = reg.eax;
@@ -9,7 +9,7 @@ const _12   = function (reg) { return mem(12,reg); };
 const _16   = function (reg) { return mem(16,reg); };
 
 a.ld_handlers   = function () {return this.
-                                      movl(_16(ESP), EAX);};
+                                      mov(_16(ESP), EAX);};
 a.call_print    = function () {return this.
                                       ld_handlers().
                                       call(_12(EAX));};
@@ -18,27 +18,27 @@ a.call_add      = function () {return this.
                                       call(_16(EAX));};
 
 a.print         = function (v) { return this.
-                                        addl    ($(-8),   ESP).
+                                        add    ($(-8),   ESP).
                                         push    (v).
                                         call_print().
-                                        addl    ($(12),   ESP);};
+                                        add    ($(12),   ESP);};
 
 // Duplicate top of stack
 a.tos_dup       = function () {return this.
-                                      movl(_(ESP),EAX).
-                                      addl($(-4),ESP).
-                                      movl(EAX,_(ESP));};
+                                      mov(_(ESP),EAX).
+                                      add($(-4),ESP).
+                                      mov(EAX,_(ESP));};
 a.tos_add       = function () {return this.
-                                      movl(_(ESP),EAX).
-                                      addl($(4),  ESP).
-                                      addl(EAX,   _(ESP));};
+                                      mov(_(ESP),EAX).
+                                      add($(4),  ESP).
+                                      add(EAX,   _(ESP));};
 
-var trueLabel = a.codeBlock.label("IF_TRUE");
-var falseLabel = a.codeBlock.label("IF_FALSE");
+var trueLabel = a.labelObj("IF_TRUE");
+var falseLabel = a.labelObj("IF_FALSE");
 
 a.
-movb($(1), reg.al).
-cmpb($(0), reg.al).
+mov($(1), reg.al).
+cmp($(0), reg.al).
 je(trueLabel).
 
 label(falseLabel).
