@@ -11,6 +11,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
+// TODO: eval
+
+// TODO: arguments object
+
 // TODO: throw exception if break/continue to invalid label?
 
 // TODO: fix scope of catch variable
@@ -1021,8 +1025,7 @@ function stmtToIR(context)
 
         // Compute the current property index + 1
         var incrVal = incrContext.entryBlock.addInstr(
-            new ArithInstr(
-                ArithOp.ADD,
+            new AddInstr(
                 propIndex,
                 ConstValue.getConst(1)
             )
@@ -1791,7 +1794,7 @@ function opToIR(context)
     var exprs = context.astNode.exprs;
 
     // Function to generate code for pre/post increment/decrement operations
-    function prePostGen(arithOp, post)
+    function prePostGen(instrClass, post)
     {
         // Get the variable expression
         var varExpr = exprs[0];
@@ -1802,8 +1805,7 @@ function opToIR(context)
         
         // Compute the incremented value
         var postVal = fstContext.getExitBlock().addInstr(
-            new ArithInstr(
-                arithOp,
+            new instrClass(
                 fstContext.getOutValue(),
                 ConstValue.getConst(1)
             )
@@ -1821,7 +1823,7 @@ function opToIR(context)
     }
 
     // Function to generate code for composite assignment expressions
-    function compAssgGen(instrClass, binOp)
+    function compAssgGen(instrClass)
     {
         // Function to implement the operator code gen
         function opFunc(context, lhsVal)
@@ -1833,7 +1835,6 @@ function opToIR(context)
             // Compute the added value
             var addVal = rhsContext.getExitBlock().addInstr(
                 new instrClass(
-                    binOp,
                     lhsVal,
                     rhsContext.getOutValue()
                 )
@@ -1850,22 +1851,20 @@ function opToIR(context)
         context.setOutput(assgContext.getExitBlock(), assgContext.getOutValue());
     }
 
-
     // Function to generate code for generic unary/binary operators
-    function opGen(genFunc)
+    function opGen(instrClass)
     {
-       // Compile the argument values
+        // Compile the argument values
         var argsContext = context.pursue(exprs);
         var argVals = exprListToIR(argsContext);
 
-        // Get the exit block for the arguments context
-        var argsExit = argsContext.getExitBlock();
-
-        // Generate code for the operator
-        var opVal = genFunc(argsExit, argVals);
+        // Create the appropriate operator instruction
+        var opVal = argsContext.getExitBlock().addInstr(
+            new instrClass(argVals)
+        );
 
         // Set the operator's output value as the output
-        context.setOutput(argsExit, opVal);
+        context.setOutput(argsContext.getExitBlock(), opVal);
     }
 
     // Switch on the operator
@@ -2054,199 +2053,132 @@ function opToIR(context)
         }
         break;
 
+        // If this is the comma operator
+        case 'x , y':
+        { 
+            // Compile the argument values
+            var argsContext = context.pursue(exprs);
+            var argVals = exprListToIR(argsContext);
+
+            // Set the second argument's output value as the output
+            context.setOutput(argsContext.getExitBlock(), argVals[1]);
+        }
+        break;
+
         case '++ x':
-        prePostGen(ArithOp.ADD, false);
+        prePostGen(AddInstr, false);
         break;
 
         case '-- x':
-        prePostGen(ArithOp.SUB, false);
+        prePostGen(SubInstr, false);
         break;
 
         case 'x ++':
-        prePostGen(ArithOp.ADD, true);     
+        prePostGen(AddInstr, true);     
         break;
 
         case '-- x':
-        prePostGen(ArithOp.SUB, true);           
+        prePostGen(SubInstr, true);           
         break;
 
         case 'x += y':
-        compAssgGen(ArithInstr, ArithOp.ADD);
-        break;
-        
-        case '! x':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new LogNotInstr(argVals[0]));
-        });
+        compAssgGen(AddInstr);
         break;
 
-        case 'x < y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.LT, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x <= y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.LTE, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x > y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CommpInstr(CompOp.GT, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x >= y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.GTE, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x == y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.EQ, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x != y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.NEQ, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x === y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.SEQ, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x !== y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new CompInstr(CompOp.NSEQ, argVals[0], argVals[1]));
-        });
-        break;
-        
         case 'x + y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new ArithInstr(ArithOp.ADD, argVals[0], argVals[1]));
-        });
+        opGen(AddInstr);
         break;
 
         case 'x - y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new ArithInstr(ArithOp.SUB, argVals[0], argVals[1]));
-        });
+        opGen(SubInstr);
         break;
 
         case 'x * y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new ArithInstr(ArithOp.MUL, argVals[0], argVals[1]));
-        });
+        opGen(MulInstr);
         break;
 
         case 'x / y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new ArithInstr(ArithOp.DIV, argVals[0], argVals[1]));
-        });
+        opGen(DivInstr);
         break;
 
         case 'x % y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new ArithInstr(ArithOp.MOD, argVals[0], argVals[1]));
-        });
+        opGen(ModInstr);
         break;
 
-        case 'x & y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.AND, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x | y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.OR, argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x ^ y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.XOR, argVals[0], argVals[1]));
-        });
+        case '! x':
+        opGen(LogNotInstr);
         break;
 
         case '~ x':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.NOT, argVals[0]));
-        });
+        opGen(BitNotInstr);
+        break;
+
+        case 'x & y':
+        opGen(BitAndInstr);
+        break;
+
+        case 'x | y':
+        opGen(BitOrInstr);
+        break;
+
+        case 'x ^ y':
+        opGen(BitXorInstr);
         break;
 
         case 'x << y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.LSFT, argVals[0], argVals[1]));
-        });
+        opGen(LsftInstr);
         break;
 
         case 'x >> y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.RSFT, argVals[0], argVals[1]));
-        });
+        opGen(RsftInstr);
         break;
 
         case 'x >>> y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new BitInstr(BitOp.URSFT, argVals[0], argVals[1]));
-        });
+        opGen(UrsftInstr);
+        break;
+
+        case 'x < y':
+        opGen(LtInstr);
+        break;
+
+        case 'x <= y':
+        opGen(LteInstr);
+        break;
+
+        case 'x > y':
+        opGen(GtInstr);
+        break;
+
+        case 'x >= y':
+        opGen(GteInstr);
+        break;
+
+        case 'x == y':
+        opGen(EqInstr);
+        break;
+
+        case 'x != y':
+        opGen(NeqInstr);
+        break;
+
+        case 'x === y':
+        opGen(SeqInstr);
+        break;
+
+        case 'x !== y':
+        opGen(NseqInstr);
         break;
 
         case 'typeof x':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new TypeOfInstr(argVals[0]));
-        });
+        opGen(TypeOfInstr);
         break;
 
         case 'x instanceof y':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new InstOfInstr(argVals[0], argVals[1]));
-        });
-        break;
-
-        case 'x , y':
-        opGen(function (block, argVals) 
-        { 
-            return argVals[1];
-        });
+        opGen(InstOfInstr);
         break;
 
         case 'x [ y ]':
-        opGen(function (block, argVals) 
-        { 
-            return block.addInstr(new GetPropValInstr(argVals[0], argVals[1]));
-        });
+        opGen(GetPropValInstr);
         break;
 
         default:

@@ -1,6 +1,6 @@
 function f(x)
 {
-    print(!x);
+    //print(!x);
 
     /*
     for (var v in lst)
@@ -194,7 +194,7 @@ function f(x)
     f(y);
     */
 
-    /*
+    
     for (var i = 0; i < 10; ++i)
     {
         if (true)
@@ -202,7 +202,7 @@ function f(x)
     }
 
     print(i);
-    */
+    
 
     /*    
     var y = 0;
