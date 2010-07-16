@@ -149,27 +149,29 @@ l2 = cfg.getNewBlock('left');
 r1 = cfg.getNewBlock('right');
 merge = cfg.getNewBlock('merge');
 
-entry.addInstr(new ArithInstr(ArithOp.DIV, new IntConst(1), new IntConst(2)));
-entry.addInstr(new IfInstr(new BoolConst(true), l1, r1));
+entry.addInstr(new ArithInstr(ArithOp.DIV, ConstValue.getConst(1), ConstValue.getConst(2)));
+entry.addInstr(new IfInstr(ConstValue.getConst(true), l1, r1));
 
-l1.addInstr(new ArithInstr(ArithOp.ADD, new IntConst(1), new IntConst(2)), 'eee');
-l1.addInstr(new GetPropValInstr(cfg.getThisArg(), new IntConst(2)));
+l1.addInstr(new ArithInstr(ArithOp.ADD, ConstValue.getConst(1), ConstValue.getConst(2)), 'eee');
+l1.addInstr(new GetPropValInstr(cfg.getThisArg(), ConstValue.getConst(2)));
 l1.addInstr(new JumpInstr(l2));
 
 l2.addInstr(new PhiInstr([l1.instrs[1]], [l1]));
-l2.addInstr(new ArithInstr(ArithOp.MOD, l1.instrs[1], new IntConst(7)));
-l2.addInstr(new ArithInstr(ArithOp.SUB, new IntConst(3), new IntConst(4)));
-l2.addInstr(new ArithInstr(ArithOp.SUB, new IntConst(3), new IntConst(4)));
+l2.addInstr(new ArithInstr(ArithOp.MOD, l1.instrs[1], ConstValue.getConst(7)));
+l2.addInstr(new ArithInstr(ArithOp.SUB, ConstValue.getConst(3), ConstValue.getConst(4)));
+l2.addInstr(new ArithInstr(ArithOp.SUB, ConstValue.getConst(3), ConstValue.getConst(4)));
 l2.addInstr(new JumpInstr(merge));
 
-r1.addInstr(new ArithInstr(ArithOp.MUL, new IntConst(7), new IntConst(8)), 'eee');
+r1.addInstr(new ArithInstr(ArithOp.MUL, ConstValue.getConst(7), ConstValue.getConst(8)), 'eee');
 r1.addInstr(new JumpInstr(merge));
 
 merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]], [l1, r1]));
-merge.addInstr(new SetPropValInstr(entry.instrs[0], new IntConst(2)));
-merge.addInstr(new RetInstr(new UndefConst()));
+merge.addInstr(new PutPropValInstr(entry.instrs[0], ConstValue.getConst('foo'), ConstValue.getConst(2)));
+merge.addInstr(new LogNotInstr(merge.instrs[0]));
+merge.addInstr(new LogNotInstr(merge.instrs[2]));
+merge.addInstr(new RetInstr(ConstValue.getConst(undefined)));
 
-merge.addInstr(new BitInstr(BitOp.LSFT, new IntConst(1), new IntConst(2)), 'foo', 1);
+merge.addInstr(new BitInstr(BitOp.LSFT, ConstValue.getConst(1), ConstValue.getConst(2)), 'foo', 1);
 
 print('ORIGINAL CFG: \n-------------\n');
 

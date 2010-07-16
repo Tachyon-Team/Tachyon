@@ -11,9 +11,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: fix scope of catch variable
+// TODO: throw exception if break/continue to invalid label?
 
-// TODO: create closure for function statements at statement location? May not be valid
+// TODO: fix scope of catch variable
 
 // TODO: use id directly (unique) instead of variable name?
 
@@ -288,8 +288,8 @@ function stmtListToIRFunc(
         );
     }
 
-    print(cfg);
-    print('');
+    //print(cfg);
+    //print('');
 
     // Simplify the CFG
     cfg.simplify();
@@ -2074,6 +2074,13 @@ function opToIR(context)
         compAssgGen(ArithInstr, ArithOp.ADD);
         break;
         
+        case '! x':
+        opGen(function (block, argVals) 
+        { 
+            return block.addInstr(new LogNotInstr(argVals[0]));
+        });
+        break;
+
         case 'x < y':
         opGen(function (block, argVals) 
         { 
@@ -2091,7 +2098,7 @@ function opToIR(context)
         case 'x > y':
         opGen(function (block, argVals) 
         { 
-            return block.addInstr(new CompInstr(CompOp.GT, argVals[0], argVals[1]));
+            return block.addInstr(new CommpInstr(CompOp.GT, argVals[0], argVals[1]));
         });
         break;
 

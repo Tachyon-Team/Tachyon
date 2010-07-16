@@ -1,9 +1,13 @@
 function f(x)
 {
+    print(!x);
+
+    /*
     for (var v in lst)
     {
         print(v);
-    } 
+    }
+    */
 
     /*
     var e = 3;
