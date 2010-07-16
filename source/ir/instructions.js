@@ -9,8 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-
-
 // TODO: unique "operator" instruction for instructions without control-flow?
 // Idea: HIR instrs all map to some function defining their behavior in termsof MIR/LIR
 // Perhaps not a great idea, too much into one
@@ -55,7 +53,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // Some operators can have side effects
 // - May want a "write" or "side effect" flag
 
-
+// TODO: should instructions have write, branch, etc. flags? eliminate BranchInstr?
 
 //=============================================================================
 // IR Core
@@ -323,6 +321,75 @@ IRInstr.prototype.replDest = function (oldDest, newDest)
 };
 
 /**
+Function to generate a generic instruction constructor using a closure
+@param mnemonic mnemonic name for the instruction
+@param numInputs number of input operands
+@param protoObj prototype object instance, new IRInstr instance by default
+*/
+function GenericInstrMaker(mnemonic, numInputs, protoObj)
+{
+    /**
+    Instruction constructor function instance, implemented as a closure
+    */
+    function InstrConstr(inputs)
+    {
+        // Put the arguments into an array
+        if (inputs instanceof Array)
+        {
+            var inputArray = inputs;
+        }
+        else
+        {
+            var inputArray = [];
+            for (var i = 0; i < arguments.length; ++i)
+                inputArray.push(arguments[i]);
+        }
+
+        // Ensure that the argument count is valid
+        assert (
+            inputArray.length == numInputs,
+            'invalid argument count (' + inputArray.length + ') to "' +
+            mnemonic + '" instruction constructor'
+        );
+
+        // Ensure that each argument is valid
+        for (var i in inputArray)
+        {
+            assert (
+                inputArray[i] instanceof IRValue,
+                'argument ' + i + ' to "' + mnemonic + 
+                '" instruction constructor is not valid IR value'
+            );            
+        }
+
+        // Set the mnemonic name for the instruction
+        this.mnemonic = mnemonic;
+
+        // Copy the uses of the instruction      
+        this.uses = inputArray.slice(0);
+    }
+    
+    // If no prototype object was specified, create an IRInstr instance
+    if (!protoObj)
+        protoObj = new IRInstr();
+
+    // Set the constructor for the new instruction
+    InstrConstr.prototype = protoObj;
+
+    /**
+    Generic instruction shallow copy function
+    */
+    InstrConstr.prototype.copy = function ()
+    {
+        // Return a new instruction with the same uses
+        return this.baseCopy(new InstrConstr(this.uses.slice(0)));
+    };
+
+    // Return the new constructor instance
+    return InstrConstr;
+}
+
+/**
 @class SSA phi node instruction
 @augments IRInstr
 */
@@ -418,7 +485,7 @@ PhiInstr.prototype.copy = function ()
 function ArgValInstr(argName)
 {
     // Set the mnemonic name for this instruction
-    this.mnemonic = "arg";
+    this.mnemonic = 'arg';
 
     // Set the output name as the argument name
     this.outName = argName;
@@ -438,27 +505,10 @@ ArgValInstr.prototype.copy = function ()
 @class Logical negation instruction
 @augments IRInstr
 */
-function LogNotInstr(inVal)
-{
-    // Set the mnemonic name for the instruction
-    this.mnemonic = "not";
-
-    /**
-    Input operand
-    @field
-    */
-    this.uses = [inVal];
-}
-LogNotInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-LogNotInstr.prototype.copy = function ()
-{
-    var newInstr = new LogNotInstr(this.uses[0]);
-    return this.baseCopy(newInstr);
-};
+var LogNotInstr = GenericInstrMaker(
+    'not',
+     1
+);
 
 /**
 Arithmetic operator kinds
@@ -1149,7 +1199,7 @@ GetCellInstr.prototype.copy = function ()
 
 /**
 @class Set the value stored in a mutable cell
-@augments IRhInstr
+@augments IRInstr
 */
 function PutCellInstr(cellVal, setVal)
 {
