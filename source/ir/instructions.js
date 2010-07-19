@@ -1140,7 +1140,8 @@ IRTypes =
     INT16:      3,  // Unboxed int16
     INT32:      4,  // Unboxed int32
     INT64:      5,  // Unboxed int64
-    FLOAT64:    6   // Unboxed float64
+    FLOAT32:    6,  // Unboxed float32
+    FLOAT64:    7   // Unboxed float64
 };
 
 /**
@@ -1156,6 +1157,7 @@ function getIRTypeName(tp)
         case INT16:     return 'i16';   break;
         case INT32:     return 'i32';   break;
         case INT64:     return 'i64';   break;
+        case FLOAT32:   return 'f32';   break;
         case FLOAT64:   return 'f64';   break;
     }
 }
@@ -1176,6 +1178,7 @@ function getIRTypeSize()
         case INT16:     return '2'; break;
         case INT32:     return '4'; break;
         case INT64:     return '8'; break;
+        case FLOAT32:   return '4'; break;
         case FLOAT64:   return '8'; break;
     }
 }
@@ -1192,6 +1195,27 @@ function getIRTypeSize()
 // TODO: FPToIntInstr
 
 // TODO: IntToFPInstr
+
+
+
+
+
+// TODO: TypedInstrMaker???
+// - Specify input types (array?), output type?
+//
+// add_tp, sub, mul, div, mod
+// no need for int64 ops? start with int32 only
+//
+// Box and unbox?
+
+
+
+// TODO: OvfArithOp?
+// OvfInstrMaker?
+// int add, sub, mul
+
+
+
 
 
 //=============================================================================

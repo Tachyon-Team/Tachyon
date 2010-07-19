@@ -11,11 +11,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: eval
+// TODO: handle eval
 
-// TODO: arguments object
+// TODO: handle arguments object
 
 // TODO: throw exception if break/continue to invalid label?
+// throwToIR w/ throw value?
+// SyntaxError object, calling ctor as function creates new object
 
 // TODO: fix scope of catch variable
 
