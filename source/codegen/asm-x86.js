@@ -160,43 +160,87 @@ x86.Assembler.prototype.gen64 = function (n)
     this.codeBlock.gen64(n); return this;
 };
 
-/** @private */
+/** @private
+    The value returned is the signed value 'k' coerced to the given
+    width 'n'.
+
+    ((k + 2^(n-1)) & (2^n - 1)) - (2^(n-1))
+
+    For example, with width of 8:
+
+      k         |      coerced value 
+    [...] 
+    -130        ->     126
+    -129        ->     127
+    -128..127   ->     identity
+    128         ->     -128
+    129         ->     -127
+    [...]
+
+    It gives the signed value of the given bit 
+    pattern generated from extracting the lowest n bits.
+    
+ */
 x86.Assembler.prototype._genImmNum = function (k, width)
 {
     var n;
 
-    // TODO: Find out what behavior should the signed-lo have
     /** @ignore */
-    function signedLo(n, k) 
+    function signedLo8(k) 
     {
-        return (k & (Math.pow(2,n) - 1));
+        return ((k + 0x80) & 0xff) - 0x80;
+    };
+
+    /** @ignore */
+    function signedLo16(k) 
+    {
+        return ((k + 0x8000) & 0xffff) - 0x8000;
+    };
+
+    /** @ignore */
+    function signedLo32(k) 
+    {
+        return ((k + 0x80000000) & 0xffffffff) - 0x80000000;
+    };
+
+    /** @ignore */
+    function signedLo64(k) 
+    {
+        x86.assert( k <= 9007199254740991 || k >= -9007199254740991,
+                  "Internal error: current scheme cannot garantee an exact" + 
+                  " representation for signed numbers greater than (2^53-1)" +
+                  " or lesser than -(2^53-1)");
+        return k;
     };
 
     if (width === 8) 
     {
-        n = signedLo(8,k);
+        n = signedLo8(k);
         this.gen8(n);   
         return n;
     } else if (width === 16) 
     {
-        n = signedLo(16,k);
+        n = signedLo16(k);
         this.gen16(n);
         return n;
     } else if (width === 32)
     {
-        n = signedLo(32,k);
-        this.gen32(signedLo(32,k));
+        n = signedLo32(k);
+        this.gen32(n);
         return n;
     }
     else 
     {
-        n = signedLo(64,k);
-        this.gen64(signedLo(64,k));
+        n = signedLo64(k);
+        this.gen64(n);
         return n;
     }   
 };
 
-/** Adds an immediate number to the code stream. Cannot be chained. 
+/** Adds an immediate number to the code stream. 
+    The value returned is the signed value coerced to the given
+    width.
+    Cannot be chained. 
     @param {Number} k
     @param {Number} width Width of the value in number of bits. 
                           Minimum of 32. Defaults to 32.

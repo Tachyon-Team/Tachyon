@@ -37,6 +37,7 @@ var trueLabel = a.labelObj("IF_TRUE");
 var falseLabel = a.labelObj("IF_FALSE");
 
 a.
+add($(128), reg.al, 8).
 mov($(1), reg.al).
 mov($(0), reg.ebx).
 cmp($(0), reg.al).

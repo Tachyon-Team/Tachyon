@@ -327,6 +327,8 @@
       x86-opnd-format
       x86-instr-format
       x86-instr-format-gnu
+      x86-lea
+      x86-test-imm
       gen-op
       rtl-code-gen-context-code-block))
 
