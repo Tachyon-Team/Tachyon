@@ -80,7 +80,7 @@ function IRValue()
 
 /**
 @class Represents constant values in the IR
-@augments IRInstr
+@augments IRValue
 */
 function ConstValue(value)
 {
@@ -502,6 +502,51 @@ ArgValInstr.prototype.copy = function ()
 };
 
 /**
+@class Arithmetic add instruction
+@augments IRInstr
+*/
+var AddInstr = GenericInstrMaker(
+    'add',
+     2
+);
+
+/**
+@class Arithmetic subtraction instruction
+@augments IRInstr
+*/
+var SubInstr = GenericInstrMaker(
+    'mul',
+     2
+);
+
+/**
+@class Arithmetic divide instruction
+@augments IRInstr
+*/
+var DivInstr = GenericInstrMaker(
+    'div',
+     2
+);
+
+/**
+@class Arithmetic multiply instruction
+@augments IRInstr
+*/
+var MulInstr = GenericInstrMaker(
+    'mul',
+     2
+);
+
+/**
+@class Arithmetic modulo instruction
+@augments IRInstr
+*/
+var ModInstr = GenericInstrMaker(
+    'mod',
+     2
+);
+
+/**
 @class Logical negation instruction
 @augments IRInstr
 */
@@ -511,362 +556,202 @@ var LogNotInstr = GenericInstrMaker(
 );
 
 /**
-Arithmetic operator kinds
-*/
-ArithOp =
-{
-    ADD: 0,
-    SUB: 1,
-    MUL: 2,
-    DIV: 3,
-    MOD: 4
-};
-
-/**
-@class Class for arithmetic instructions
+@class Bitwise NOT instruction
 @augments IRInstr
 */
-function ArithInstr(arithOp, leftVal, rightVal)
-{
-    // Set the mnemonic name for the instruction
-    switch (arithOp)
-    {
-        case ArithOp.ADD: this.mnemonic = "add"; break;
-        case ArithOp.SUB: this.mnemonic = "sub"; break;
-        case ArithOp.MUL: this.mnemonic = "mul"; break;
-        case ArithOp.DIV: this.mnemonic = "div"; break;
-        case ArithOp.MOD: this.mnemonic = "mod"; break;
-    }
-
-    /**
-    Arithmetic operator
-    @field
-    */
-    this.arithOp = arithOp;
-
-    /**
-    Arithmetic operands
-    @field
-    */
-    this.uses = [leftVal, rightVal];
-}
-ArithInstr.prototype = new IRInstr();
+var BitNotInstr = GenericInstrMaker(
+    'not',
+     1
+);
 
 /**
-Make a shallow copy of the instruction
-*/
-ArithInstr.prototype.copy = function ()
-{
-    var newInstr = new ArithInstr(this.arithOp, this.uses[0], this.uses[1]);
-    return this.baseCopy(newInstr);
-};
-
-/**
-Bitwise operator kinds
-*/
-BitOp =
-{
-    AND:    0,
-    OR:     1,
-    XOR:    2,
-    NOT:    3,
-    LSFT:   4,
-    RSFT:   5,
-    URSFT:  6
-};
-
-/**
-@class Class for bitwise instructions
+@class Bitwise AND instruction
 @augments IRInstr
 */
-function BitInstr(bitOp, leftVal, rightVal)
-{
-    // Set the mnemonic name for the instruction
-    switch (bitOp)
-    {
-        case BitOp.AND:   this.mnemonic = "and";      break;
-        case BitOp.OR:    this.mnemonic = "or";       break;
-        case BitOp.XOR:   this.mnemonic = "xor";      break;
-        case BitOp.NOT:   this.mnemonic = "not";      break;
-        case BitOp.LSFT:  this.mnemonic = "lsft";     break;
-        case BitOp.RSFT:  this.mnemonic = "rsft";     break;
-        case BitOp.RSFTU: this.mnemonic = "ursft";    break;
-    }
-
-    /**
-    Arithmetic operator
-    @field
-    */
-    this.bitOp = bitOp;
-
-    /**
-    Arithmetic operands
-    @field
-    */
-    this.uses = [leftVal, rightVal];
-}
-BitInstr.prototype = new IRInstr();
+var BitAndInstr = GenericInstrMaker(
+    'and',
+     2
+);
 
 /**
-Make a shallow copy of the instruction
-*/
-BitInstr.prototype.copy = function ()
-{
-    var newInstr = new BitInstr(this.bitOp, this.uses[0], this.uses[1]);
-    return this.baseCopy(newInstr);
-};
-
-/**
-Comparison operator kinds
-*/
-CompOp =
-{
-    LT:     0,
-    LTE:    1,
-    GT:     2,
-    GTE:    3,
-    EQ:     4,
-    NE:     5,
-    SEQ:    6,
-    NSEQ:   7
-};
-
-/**
-@class Class for comparison instructions
+@class Bitwise AND instruction
 @augments IRInstr
 */
-function CompInstr(compOp, leftVal, rightVal)
-{
-    // Set the mnemonic name for the instruction
-    switch (compOp)
-    {
-        case CompOp.LT:    this.mnemonic = "lt";   break;
-        case CompOp.LTE:   this.mnemonic = "lte";  break;
-        case CompOp.GT:    this.mnemonic = "gt";   break;
-        case CompOp.GTE:   this.mnemonic = "gte";  break;
-        case CompOp.EQ:    this.mnemonic = "eq";   break;
-        case CompOp.NE:    this.mnemonic = "ne";   break;
-        case CompOp.SEQ:   this.mnemonic = "seq";  break;
-        case CompOp.NSEQ:  this.mnemonic = "nseq"; break;
-    }
-
-    /**
-    Comparison operator
-    @field
-    */
-    this.compOp = compOp;
-
-    /**
-    Arithmetic operands
-    @field
-    */
-    this.uses = [leftVal, rightVal];
-}
-CompInstr.prototype = new IRInstr();
+var BitOrInstr = GenericInstrMaker(
+    'and',
+     2
+);
 
 /**
-Make a shallow copy of the instruction
+@class Bitwise XOR instruction
+@augments IRInstr
 */
-CompInstr.prototype.copy = function ()
-{
-    var newInstr = new CompInstr(this.compOp, this.uses[0], this.uses[1]);
-    return this.baseCopy(newInstr);
-};
+var BitXorInstr = GenericInstrMaker(
+    'xor',
+     2
+);
+
+/**
+@class Left shift instruction
+@augments IRInstr
+*/
+var LsftInstr = GenericInstrMaker(
+    'lsft',
+     2
+);
+
+/**
+@class Right shift instruction
+@augments IRInstr
+*/
+var RsftInstr = GenericInstrMaker(
+    'rsft',
+     2
+);
+
+/**
+@class Unsigned right shift instruction
+@augments IRInstr
+*/
+var UrsftInstr = GenericInstrMaker(
+    'ursft',
+     2
+);
+
+/**
+@class Less-than comparison instruction
+@augments IRInstr
+*/
+var LtInstr = GenericInstrMaker(
+    'lt',
+     2
+);
+
+/**
+@class Less-than-or-equal comparison instruction
+@augments IRInstr
+*/
+var LteInstr = GenericInstrMaker(
+    'lte',
+     2
+);
+
+/**
+@class Greater-than comparison instruction
+@augments IRInstr
+*/
+var GtInstr = GenericInstrMaker(
+    'gt',
+     2
+);
+
+/**
+@class Greater-than-or-equal comparison instruction
+@augments IRInstr
+*/
+var GteInstr = GenericInstrMaker(
+    'gte',
+     2
+);
+
+/**
+@class Equality comparison instruction
+@augments IRInstr
+*/
+var EqInstr = GenericInstrMaker(
+    'eq',
+     2
+);
+
+/**
+@class Inequality comparison instruction
+@augments IRInstr
+*/
+var NeqInstr = GenericInstrMaker(
+    'neq',
+     2
+);
+
+/**
+@class Strict-equality comparison instruction
+@augments IRInstr
+*/
+var SeqInstr = GenericInstrMaker(
+    'seq',
+     2
+);
+
+/**
+@class Strict-inequality comparison instruction
+@augments IRInstr
+*/
+var NseqInstr = GenericInstrMaker(
+    'nseq',
+     2
+);
 
 /**
 @class Type query instruction
 @augments IRInstr
 */
-function TypeOfInstr(value)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'typeof';
-
-    /**
-    JS value
-    @field
-    */
-    this.uses = [value];
-}
-TypeOfInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-TypeOfInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new TypeOfInstr(this.uses[0]));
-};
+var TypeOfInstr = GenericInstrMaker(
+    'typeof',
+     1
+);
 
 /**
 @class Instance/class query instruction
 @augments IRInstr
 */
-function InstOfInstr(testObj, classObj)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'instanceof';
-
-    /**
-    Test object and class object
-    @field
-    */
-    this.uses = [testObj, classObj];
-}
-InstOfInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-InstOfInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new InstOfInstr(this.uses[0], this.uses[1]));
-};
+var InstOfInstr = GenericInstrMaker(
+    'instanceof',
+     2
+);
 
 /**
 @class Property set with value for field name
 @augments IRInstr
 */
-function PutPropValInstr(objVal, nameVal, setVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'put_prop_val';
-
-    /**
-    Object name, field name and value to set
-    @field
-    */
-    this.uses = [objVal, nameVal, setVal];
-}
-PutPropValInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-PutPropValInstr.prototype.copy = function ()
-{
-    var newInstr = new PutPropValInstr(this.uses[0], this.uses[1], this.uses[2]);
-    return this.baseCopy(newInstr);
-};
+var PutPropValInstr = GenericInstrMaker(
+    'put_prop_val',
+     3
+);
 
 /**
 @class Property get with value for field name
 @augments IRInstr
 */
-function GetPropValInstr(objVal, nameVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'get_prop_val';
-
-    /**
-    Object and field name values
-    @field
-    */
-    this.uses = [objVal, nameVal];
-}
-GetPropValInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-GetPropValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new GetPropValInstr(
-            this.uses[0],
-            this.uses[1]
-        )
-    );
-};
+var GetPropValInstr = GenericInstrMaker(
+    'get_prop_val',
+     2
+);
 
 /**
 @class Property deletion with value for field name
 @augments IRInstr
 */
-function DelPropValInstr(objVal, nameVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'del_prop_val';
-
-    /**
-    Object and field name values
-    @field
-    */
-    this.uses = [objVal, nameVal];
-}
-DelPropValInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-DelPropValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new DetPropValInstr(
-            this.uses[0],
-            this.uses[1]
-        )
-    );
-};
+var DelPropValInstr = GenericInstrMaker(
+    'del_prop_val',
+     2
+);
 
 /**
 @class Property test with value for field name
 @augments IRInstr
 */
-function HasPropValInstr(objVal, nameVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'has_prop_val';
-
-    /**
-    Object and field name values
-    @field
-    */
-    this.uses = [objVal, nameVal];
-}
-HasPropValInstr.prototype = new IRInstr();
+var HasPropValInstr = GenericInstrMaker(
+    'has_prop_val',
+     2
+);
 
 /**
-Make a shallow copy of the instruction
-*/
-HasPropValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new HasPropValInstr(
-            this.uses[0],
-            this.uses[1]
-        )
-    );
-};
-
-/**
-@class Get an array containing the named properties of an object
+@class Instruction to get an array containing the property names of an object
 @augments IRInstr
 */
-function GetPropNamesInstr(objVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'get_prop_names';
-
-    /**
-    Object value
-    @field
-    */
-    this.uses = [objVal];
-}
-GetPropNamesInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-GetPropNamesInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new GetPropNamesInstr(
-            this.uses[0]
-        )
-    );
-};
+var GetPropNamesInstr = GenericInstrMaker(
+    'get_prop_names',
+     1
+);
 
 /**
 @class Base class for branching instructions.
@@ -1037,21 +922,10 @@ ThrowInstr.prototype.copy = function ()
 @class Exception value catch
 @augments IRInstr
 */
-function CatchInstr()
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'catch';
-}
-CatchInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-CatchInstr.prototype.copy = function ()
-{
-    var newInstr = new CatchInstr();
-    return this.baseCopy(newInstr);
-};
+var CatchInstr = GenericInstrMaker(
+    'catch',
+     0
+);
 
 /**
 @class Call with function object reference
@@ -1157,70 +1031,28 @@ ConstructRefInstr.prototype.copy = function ()
 @class Mutable cell creation
 @augments IRInstr
 */
-function MakeCellInstr()
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'make_cell';
-}
-MakeCellInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-MakeCellInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new MakeCellInstr());
-};
+var MakeCellInstr = GenericInstrMaker(
+    'make_cell',
+     0
+);
 
 /**
 @class Get the value stored in a mutable cell
 @augments IRInstr
 */
-function GetCellInstr(cellVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'get_cell';
-
-    /**
-    Cell value to be accessed
-    @field
-    */
-    this.uses = [cellVal];
-}
-GetCellInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-GetCellInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new GetCellInstr(this.uses[0]));
-};
+var GetCellInstr = GenericInstrMaker(
+    'get_cell',
+     1
+);
 
 /**
 @class Set the value stored in a mutable cell
 @augments IRInstr
 */
-function PutCellInstr(cellVal, setVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'put_cell';
-
-    /**
-    Cell value to be accessed, value to be set
-    @field
-    */
-    this.uses = [cellVal, setVal];
-}
-PutCellInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-PutCellInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new PutCellInstr(this.uses[0], this.uses[1]));
-};
+var GetCellInstr = GenericInstrMaker(
+    'put_cell',
+     2
+);
 
 /**
 @class Closure creation with closure variable arguments
@@ -1252,89 +1084,37 @@ MakeClosInstr.prototype.copy = function ()
 @class Get the value stored in a closure variable
 @augments IRInstr
 */
-function GetClosInstr(closVal, idxVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'get_clos';
-
-    /**
-    Closure value to be accessed and index of the variable to get
-    @field
-    */
-    this.uses = [closVal, idxVal];
-}
-GetClosInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-GetClosInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new GetClosInstr(this.uses[0], this.uses[1]));
-};
+var GetClosInstr = GenericInstrMaker(
+    'get_clos',
+     2
+);
 
 /**
 @class Set the value stored in a closure variable
 @augments IRInstr
 */
-function PutClosInstr(closVal, idxVal, setVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'put_clos';
-
-    /**
-    Closure value to be accessed, index of the variable to set, and value to set
-    @field
-    */
-    this.uses = [closVal, idxVal, setVal];
-}
-PutClosInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-PutClosInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new PutClosInstr(this.uses[0], this.uses[1], this.uses[2]));
-};
+var PutClosInstr = GenericInstrMaker(
+    'put_clos',
+     3
+);
 
 /**
 @class Instruction to create a new, empty object
 @augments IRInstr
 */
-function NewObjectInstr()
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'new_object';
-}
-NewObjectInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-NewObjectInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new NewObjectInstr());
-};
+var NewObjectInstr = GenericInstrMaker(
+    'new_object',
+     0
+);
 
 /**
 @class Instruction to create a new, empty array
 @augments IRInstr
 */
-function NewArrayInstr()
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'new_array';
-}
-NewArrayInstr.prototype = new IRInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-NewArrayInstr.prototype.copy = function ()
-{
-    return this.baseCopy(new NewArrayInstr());
-};
+var NewArrayInstr = GenericInstrMaker(
+    'new_array',
+     0
+);
 
 //=============================================================================
 // Medium-Level IR (MIR)
@@ -1360,7 +1140,8 @@ IRTypes =
     INT16:      3,  // Unboxed int16
     INT32:      4,  // Unboxed int32
     INT64:      5,  // Unboxed int64
-    FLOAT64:    6   // Unboxed float64
+    FLOAT32:    6,  // Unboxed float32
+    FLOAT64:    7   // Unboxed float64
 };
 
 /**
@@ -1376,6 +1157,7 @@ function getIRTypeName(tp)
         case INT16:     return 'i16';   break;
         case INT32:     return 'i32';   break;
         case INT64:     return 'i64';   break;
+        case FLOAT32:   return 'f32';   break;
         case FLOAT64:   return 'f64';   break;
     }
 }
@@ -1396,6 +1178,7 @@ function getIRTypeSize()
         case INT16:     return '2'; break;
         case INT32:     return '4'; break;
         case INT64:     return '8'; break;
+        case FLOAT32:   return '4'; break;
         case FLOAT64:   return '8'; break;
     }
 }
@@ -1412,6 +1195,27 @@ function getIRTypeSize()
 // TODO: FPToIntInstr
 
 // TODO: IntToFPInstr
+
+
+
+
+
+// TODO: TypedInstrMaker???
+// - Specify input types (array?), output type?
+//
+// add_tp, sub, mul, div, mod
+// no need for int64 ops? start with int32 only
+//
+// Box and unbox?
+
+
+
+// TODO: OvfArithOp?
+// OvfInstrMaker?
+// int add, sub, mul
+
+
+
 
 
 //=============================================================================
