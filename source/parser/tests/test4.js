@@ -1,5 +1,15 @@
 function f(x)
 {
+    for (var i = 0; i < 10; ++i)
+    {
+        while (true)
+        {
+            print(i);
+        }
+    }
+
+    print(i);
+
     //print(!x);
 
     /*
@@ -194,7 +204,7 @@ function f(x)
     f(y);
     */
 
-    
+    /*
     for (var i = 0; i < 10; ++i)
     {
         if (true)
@@ -202,7 +212,7 @@ function f(x)
     }
 
     print(i);
-    
+    */
 
     /*    
     var y = 0;

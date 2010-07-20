@@ -20,7 +20,8 @@ BASE_SRCS =                 \
     ir/functions.js         \
     ir/ir.js                \
     codegen/asm.js          \
-    codegen/asm-x86.js  
+    codegen/asm-x86.js      \
+    codegen/liveranges.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =            \
