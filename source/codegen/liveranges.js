@@ -31,14 +31,13 @@ function orderBlocks(cfg)
     for (var i = 0; i < cfg.blocks.length; ++i)
     {
         blockInfo[cfg.blocks[i].blockId] = {
-            visited         : false,
-            active          : false,
             loopIndex       : -1,
             loopDepth       : 0,
             numForwBranch   : 0,
             numBackBranch   : 0,
             loopHeader      : null,
-            loopSet         : []
+            loopSet         : [],
+            weight          : 0
         };
     }
 
@@ -51,6 +50,10 @@ function orderBlocks(cfg)
     // Stack for the CFG traversal
     var stack = [cfg.getEntryBlock()];
 
+    // Arrays to mark visited and active blocks
+    var visited = [];
+    var active = [];
+
     // Until the stack is empty
     while (stack.length > 0)
     {
@@ -58,15 +61,16 @@ function orderBlocks(cfg)
         var info = blockInfo[block.blockId];
 
         // If we are done visiting this block
-        if (info.visited)
+        if (visited[block.blockId])
         {
-            info.active = false;
+            active[block.blockId] = undefined;
             stack.pop();
             continue;
         }
 
-        info.visited = true;
-        info.active = true;
+        // Mark the block as visited and active
+        visited[block.blockId] = true;
+        active[block.blockId] = true;
 
         // For each successor
         for (var i = 0; i < block.succs.length; ++i)
@@ -74,11 +78,11 @@ function orderBlocks(cfg)
             var succ = block.succs[i];
             var succInfo = blockInfo[succ.blockId];
 
-            if (!succInfo.visited)
+            if (!visited[succ.blockId])
                 stack.push(succ);
 
             // If this is a backward branch
-            if (succInfo.active)
+            if (active[succ.blockId])
             {
                 // Assign the loop header a loop index
                 succInfo.loopIndex = nextLoopIndex++;
@@ -88,8 +92,6 @@ function orderBlocks(cfg)
 
                 // Set the loop header for this loop
                 info.loopHeader = succ;
-
-                print('Found loop end: ' + block.getBlockName());
 
                 // Add this block to the loop end list
                 loopEnds.push(block);
@@ -111,8 +113,6 @@ function orderBlocks(cfg)
         // Get the loop header for this loop
         var loopHeader = endInfo.loopHeader;
 
-        print('Loop header: ' + loopHeader.getBlockName());
-
         // Array to mark visited blocks
         var visited = [];
 
@@ -124,8 +124,6 @@ function orderBlocks(cfg)
         {
             var block = stack.pop();
             var info = blockInfo[block.blockId];
-
-            print('Visiting: ' + block.getBlockName());
 
             // Mark this block as visited
             visited[block.blockId] = true;
@@ -152,7 +150,65 @@ function orderBlocks(cfg)
         }
     }
 
+    // Function to compute a block's weight from its block info
+    function blockWeight(info)
+    {
+        return info.loopDepth;
+    }
 
+    // Assign a weight to each block
+    for (var i = 0; i < cfg.blocks.length; ++i)
+    {
+        var block = cfg.blocks[i];
+        var info = blockInfo[block.blockId];
+        info.weight = blockWeight(info);
+    }
+
+    // Function to sort blocks for the block order computation
+    function blockSortFunc(b1, b2)
+    {
+        return blockInfo[b1.blockId].weight >= blockInfo[b2.blockId].weight;
+    }
+
+    // Final block order list
+    var blockOrder = [];
+
+    // Work list for the block order computation
+    var workList = new LinkedList();
+
+    // Add the entry block to the work list
+    workList.addLast(cfg.entry);
+
+    // Until the work list is empty
+    while (!workList.isEmpty())
+    {
+        // Remove the block with the highest weight
+        var block = workList.remFirst();
+        var info = blockInfo[block.blockId];
+
+        // Append the block to the block ordering
+        blockOrder.push(block);
+
+        // For each successor of the block
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+            var succInfo = blockInfo[succ.blockId];
+
+            // Decrement the number of incoming forward branches
+            succInfo.numForwBranch--;
+
+            // If all forward branches have been seen
+            if (succInfo.numForwBranch == 0)
+            {
+                // Add the block to the work list, sorted by decreasing weight
+                workList.addSorted(succ, blockSortFunc);
+            }
+        }
+    }
+
+    /*
+    print('Loop depth:');
     for (var i = 0; i < cfg.blocks.length; ++i)
     {
         var block = cfg.blocks[i];
@@ -162,20 +218,16 @@ function orderBlocks(cfg)
         print(info.loopDepth);
     }
 
-
-    // Function to compute a block's weight from its block info
-    function blockWeight(info)
+    print('Final block order:')
+    for (var i = 0; i < blockOrder.length; ++i)
     {
-        return info.loopDepth;
+        print(blockOrder[i].getBlockName());
+        
     }
+    */
 
-
-    // TODO: linked list?
-
-
-
-
-
+    // Return the produced block order
+    return blockOrder;
 }
 
 

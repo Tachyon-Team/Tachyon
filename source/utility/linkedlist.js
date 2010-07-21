@@ -149,7 +149,11 @@ LinkedList.prototype.remFirst = function ()
         'cannot remove first, list empty'
     );
 
+    var item = this.first.item;
+
     this.first = this.first.next;
+
+    return item;
 }
 
 /**
