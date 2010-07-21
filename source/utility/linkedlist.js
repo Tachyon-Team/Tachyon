@@ -1,0 +1,297 @@
+/**
+@fileOverview
+Implementation of a linked list data structure.
+
+@author
+Maxime Chevalier-Boisvert
+
+@copyright
+Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+*/
+
+/**
+@class Linked list implementation
+*/
+function LinkedList()
+{
+    /**
+    First list node
+    @field
+    */
+    this.first = null;
+
+    /**
+    Last list node
+    @field
+    */
+    this.last = null;
+}
+LinkedList.prototype = {};
+
+/**
+Get a string representation of the linked list
+*/
+LinkedList.prototype.toString = function ()
+{
+    var output = '(';
+
+    for (var node = this.first; node != null; node = node.next)
+    {
+        output += node.item.toString();
+
+        if (node.next != null)
+            output += ',';
+    }
+
+    return output + ')';
+}
+
+/**
+Get an iterator to the list
+*/
+LinkedList.prototype.iterator = function ()
+{
+    return new LinkedList.Iterator(this.first);
+}
+
+/**
+Test if the list is empty
+*/
+LinkedList.prototype.isEmpty = function ()
+{
+    return (this.first === null);
+}
+
+/**
+Clear all the list contents
+*/
+LinkedList.prototype.clear = function ()
+{
+    this.first = null;
+    this.last = null;
+}
+
+/**
+Add an element to the beginning of the list
+*/
+LinkedList.prototype.addFirst = function (item)
+{
+    this.first = new LinkedList.Node(item, this.first);
+
+    if (this.last === null)
+        this.last = this.first;
+}
+
+/**
+Add an element to the end of the list
+*/
+LinkedList.prototype.addLast = function (item)
+{
+    var newNode = new LinkedList.Node(item, null);
+
+    if (this.first === null)
+    {
+        this.first = newNode;
+        this.last = newNode; 
+    }
+    else
+    {
+        this.last.next = newNode;
+        this.last = this.last.next;
+    }
+}
+
+/**
+Add an element before an iterator's current position
+*/
+LinkedList.prototype.addBefore = function (item, itr)
+{
+    if (itr.prev === null)
+        this.addFirst(item);
+    else
+        itr.prev.next = new LinkedList.Node(item, itr.current);
+}
+
+/**
+Add an element after an iterator's current position
+*/
+LinkedList.prototype.addAfter = function (item, itr)
+{
+    if (itr.current === null)
+        this.addLast(item);
+    else
+        itr.current.next = new LinkedList.Node(item, itr.current.next);
+}
+
+/**
+Add an element to the end of the list
+*/
+LinkedList.prototype.addSorted = function (item, compFunc)
+{
+    for (var itr = this.iterator(); itr.isValid(); itr.next())
+    {
+        // If item < node.item
+        if (compFunc(item, itr.getItem()))
+            break;
+    }
+
+    // Add the new item before the current node
+    this.addBefore(item, itr);
+}
+
+/**
+Remove an elemement from the beginning of the list
+*/
+LinkedList.prototype.remFirst = function ()
+{
+    assert (
+        this.first != null,
+        'cannot remove first, list empty'
+    );
+
+    this.first = this.first.next;
+}
+
+/**
+Remove an elemement at an iterator's position
+*/
+LinkedList.prototype.remItr = function (itr)
+{
+    assert (
+        itr.isValid(),
+        'cannot remove item at iterator, iterator not valid'
+    );
+
+    if (itr.prev)
+    {
+        itr.prev.next = itr.current.next;
+    }
+    else
+    {
+        this.remFirst();
+    }
+}
+
+/**
+Obtain the contents of the list as an array
+*/
+LinkedList.prototype.toArray = function ()
+{
+    var output = [];
+
+    for (var node = this.first; node != null; node = node.next)
+        output.push(node.item);
+
+    return output;
+}
+
+/**
+Create a linked list form an array's content
+*/
+LinkedList.fromArray = function (array)
+{
+    var list = new LinkedList();
+
+    for (var i = 0; i < array.length; ++i)
+        list.addLast(array[i]);
+
+    return list;
+}
+
+/**
+@class Linked list node
+*/
+LinkedList.Node = function (item, next)
+{
+    /**
+    Internal item value
+    @field
+    */
+    this.item = item;
+
+    /**
+    Reference to next node
+    @field
+    */
+    this.next = next;
+}
+
+/**
+@class Linked list iterator
+*/
+LinkedList.Iterator = function (node)
+{
+    /**
+    Previous node
+    @field
+    */
+    this.prev = null;
+
+    /**
+    Current node
+    @field
+    */
+    this.current = node;
+}
+LinkedList.Iterator.prototype = {};
+
+/**
+Test if the iterator is at a valid position
+*/
+LinkedList.Iterator.prototype.isValid = function ()
+{
+    return (this.current !== null);
+}
+
+/**
+Move to the next list item
+*/
+LinkedList.Iterator.prototype.next = function ()
+{
+    assert (
+        this.isValid(),
+        'cannot move to next list item, iterator not valid'
+    );
+
+    this.prev = this.current;
+    this.current = this.current.next;
+}
+
+/**
+Get the current list item
+*/
+LinkedList.Iterator.prototype.getItem = function ()
+{
+    assert (
+        this.isValid(),
+        'cannot get current list item, iterator not valid'
+    );
+
+    return this.current.item;
+}
+
+/*
+var list = new LinkedList();
+
+list.addFirst(1);
+list.addLast(2);
+list.addFirst(0);
+list.addLast(3);
+
+list.addSorted(0.5, function (i1, i2) { return i1 < i2; });
+*/
+
+/*
+var list = LinkedList.fromArray([0,1,2,3,4]);
+
+for (var itr = list.iterator(); itr.isValid(); itr.next())
+{
+    var cur = itr.getItem();
+
+    print(cur);
+}
+
+print(list);
+print(list.toArray());
+*/
+

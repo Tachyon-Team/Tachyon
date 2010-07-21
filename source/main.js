@@ -28,5 +28,5 @@ function testIR()
     orderBlocks(ir.childFuncs[0].virginIR);
 }
 
-testIR();
+//testIR();
 

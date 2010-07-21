@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Implementation of a hash map
+Implementation of a hash map data structure.
 
 @author
 Maxime Chevalier-Boisvert

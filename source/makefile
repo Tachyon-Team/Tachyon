@@ -7,6 +7,7 @@ BASE_SRCS =                 \
     utility/modules.js      \
     utility/arrays.js       \
     utility/hashmap.js      \
+    utility/linkedlist.js   \
     utility/strings.js      \
     parser/misc.js          \
     parser/scanner.js       \
