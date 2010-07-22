@@ -9,10 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: in simplify, jump to empty block with one successor can be made jump to successor
-// PROBLEM: may break phi nodes, don't want two different values from same predecessor
-// Can only do merge if no phi node will have two values from same pred?
-
 /**
 @class Class to represent control-flow graph
 */
@@ -483,49 +479,136 @@ Simplify the CFG
 */
 ControlFlowGraph.prototype.simplify = function ()
 {
-    //
-    // Merge blocks with only one destination
-    //
-
-    // Until the dead block elimination is complete
-    for (;;)
+    // Build a list of phi nodes in the CFG
+    var phiNodes = [];
+    for (var i = 0; i < this.blocks.length; ++i)
     {
-        var changed = false;
-
-        // For each block in the original CFG
-        for (var i = 0; i < this.blocks.length; ++i)
+        var block = this.blocks[i];
+        for (var j = 0; j < block.instrs.length; ++j)
         {
-            var block = this.blocks[i];
-
-            // If this block has no predecessors, and it is not the entry block
-            if (block.preds.length == 0 && block !== this.entry)
-            {
-                // Remove the block from the CFG
-                this.remBlock(block);
-
-                // Set the changed flag
-                changed = true;
-            }
+            var instr = block.instrs[j];
+            if (instr instanceof PhiInstr)
+                phiNodes.push(instr);
         }
-
-        // If no changes occurred, stop
-        if (changed == false)
-            break;
     }
 
-    // Until the merging is complete
+    // Iterate until the simplification is complete
     for (;;)
     {
-        var merged = false;
+        // No simplifications made in this iteration yet
+        var simplified = false;
+
+        //
+        // Iteratively eliminate phi nodes
+        //
+        // Delete all phi-assignments of the form:
+        // Vi <- phi(...Vi...Vi...)
+        //
+        // If a phi-assignment has the form:
+        // Vi <- phi(...Vi...Vj...Vi...Vj...)
+        // 0 or more Vi and 1 or more Vj
+        //
+        // Then delete the assignment and rename
+        // all occurences of Vi to Vj
+        //
+
+        // Copy the list of phi nodes in the CFG
+        var phiCopies = phiNodes.slice(0);
+
+        // For each phi node
+        for (var i = 0; i < phiCopies.length; ++i)
+        {
+            var phiNode = phiCopies[i];
+
+            var numVi = 0;
+            var numVj = 0;
+            var Vj = null;
+
+            // Count the kinds of uses of the phi node
+            for (var j = 0; j < phiNode.uses.length; ++j)
+            {
+                var use = phiNode.uses[j];
+
+                if (use === phiNode)
+                {
+                    numVi++;
+                }
+                else if (use === Vj || Vj === null)
+                {
+                    numVj++;
+                    Vj = use;
+                }
+            }
+
+            // If this phi node has the form:
+            // Vi <- phi(...Vi...Vi...)
+            if (numVi == phiNode.uses.length)
+            {
+                //print('Removing: ' + phiNode);
+
+                // Remove the phi node
+                phiNode.parentBlock.remInstr(phiNode);
+                arraySetRem(phiNodes, phiNode);
+
+                // Set the simplified flag
+                simplified = true;
+            }
+            
+            // If this phi-assignment has the form:
+            // Vi <- phi(...Vi...Vj...Vi...Vj...)
+            // 0 or more Vi and 1 or more Vj
+            else if (numVi + numVj == phiNode.uses.length)        
+            {
+                //print('Renaming: ' + phiNode);
+
+                // Rename all occurences of Vi to Vj
+                for (var k = 0; k < phiNode.dests.length; ++k)
+                {
+                    var dest = phiNode.dests[k];
+                    dest.replUse(phiNode, Vj);
+                    if (Vj instanceof IRInstr)
+                        Vj.addDest(dest);
+                }
+
+                // Remove the phi node
+                phiNode.parentBlock.remInstr(phiNode);
+                arraySetRem(phiNodes, phiNode);
+
+                // Set the simplified flag
+                simplified = true;
+            }
+        }
 
         // For each block in the CFG
         for (var i = 0; i < this.blocks.length; ++i)
         {
             var block = this.blocks[i];
 
+            //
+            // Eliminate blocks with no predecessors
+            //
+
+            // If this block has no predecessors, and it is not the entry block
+            if (
+                block.preds.length == 0 &&
+                block !== this.entry
+            )
+            {
+                // Remove the block from the CFG
+                this.remBlock(block);
+
+                // Set the simplified flag
+                simplified = true;
+            }
+
+            //
+            // Merge blocks with only one destination
+            //
+
             // If this block has only one successor, which has only one predecessor
             // and the block is not terminated by a throw instruction
-            if (block.succs.length == 1 && 
+            else if (
+                block.succs.length == 1 && 
                 block.succs[0].preds.length == 1 &&
                 block !== block.succs[0] &&
                 !(block.getLastInstr() instanceof ThrowInstr)
@@ -572,7 +655,7 @@ ControlFlowGraph.prototype.simplify = function ()
                     }
                 }
 
-                print('Number of succ succs: ' + succ.succs.length);
+                //print('Number of succ succs: ' + succ.succs.length);
 
                 // For each successor of the successor
                 for (var j = 0; j < succ.succs.length; ++j)
@@ -590,7 +673,7 @@ ControlFlowGraph.prototype.simplify = function ()
 
                         var phiPreds = instr.preds;
 
-                        print('Fixing up phi node: ' + instr);
+                        //print('Fixing up phi node: ' + instr);
 
                         // For each predecessor of the phi node
                         for (var l = 0; l < phiPreds.length; ++l)
@@ -600,118 +683,100 @@ ControlFlowGraph.prototype.simplify = function ()
                                 phiPreds[l] = block;
                         }
 
-                        print('Fixed up: ' + instr);
+                        //print('Fixed up: ' + instr);
                     }
                 }
 
                 // Remove the successor block from the CFG
                 this.remBlock(succ);
 
-                merged = true;
+                // Set the simplified flag
+                simplified = true;
             }
-        }
 
-        // If no changes occurred, stop
-        if (merged == false)
-            break;
-    }
+            //
+            // Jump over blocks with no instructions and a single successor
+            //
 
-    //
-    // Iteratively eliminate phi nodes
-    //
-    // Delete all phi-assignments of the form:
-    // Vi <- phi(...Vi...Vi...)
-    //
-    // If a phi-assignment has the form:
-    // Vi <- phi(...Vi...Vj...Vi...Vj...)
-    // 0 or more Vi and 1 or more Vj
-    //
-    // Then delete the assignment and rename
-    // all occurences of Vi to Vj
-    //
-
-    var phiNodes = [];
-
-    // Build a list of phi nodes in the CFG
-    for (var i = 0; i < this.blocks.length; ++i)
-    {
-        var block = this.blocks[i];
-
-        for (var j = 0; j < block.instrs.length; ++j)
-        {
-            var instr = block.instrs[j];
-
-            if (instr instanceof PhiInstr)
-                phiNodes.push(instr);
-        }
-    }
-
-    // Until the simplification is complete
-    for (;;)
-    {
-        var phiCopies = phiNodes.slice(0);
-
-        var simplified = false;
-
-        // For each phi node
-        for (var i = 0; i < phiCopies.length; ++i)
-        {
-            var phiNode = phiCopies[i];
-
-            var numVi = 0;
-            var numVj = 0;
-            var Vj = null;
-
-            // Count the kinds of uses of the phi node
-            for (var j = 0; j < phiNode.uses.length; ++j)
+            // If this block has only one successor, no instructions but a branch, 
+            // and the block is not terminated by a throw instruction
+            else if (
+                block.succs.length == 1 && 
+                block.instrs.length == 1 &&
+                !(block.getLastInstr() instanceof ThrowInstr)
+            )
             {
-                var use = phiNode.uses[j];
-
-                if (use === phiNode)
-                {
-                    numVi++;
-                }
-                else if (use === Vj || Vj === null)
-                {
-                    numVj++;
-                    Vj = use;
-                }
-            }
-
-            // If this phi node has the form:
-            // Vi <- phi(...Vi...Vi...)
-            if (numVi == phiNode.uses.length)
-            {
-                print('Removing: ' + phiNode);
-
-                // Remove the phi node
-                phiNode.parentBlock.remInstr(phiNode);
-                arraySetRem(phiNodes, phiNode);
-            }
+                var succ = block.succs[0];
             
-            // If this phi-assignment has the form:
-            // Vi <- phi(...Vi...Vj...Vi...Vj...)
-            // 0 or more Vi and 1 or more Vj
-            else if (numVi + numVj == phiNode.uses.length)        
-            {
-                print('Renaming: ' + phiNode);
+                //print('got block: ' + block.getBlockName());
 
-                // Rename all occurences of Vi to Vj
-                for (var k = 0; k < phiNode.dests.length; ++k)
+                // Copy the predecessor list for this block
+                var preds = block.preds.slice(0);
+
+                // For each predecessor
+                PRED_LOOP:
+                for (var j = 0; j < preds.length; ++j)
                 {
-                    var dest = phiNode.dests[k];
-                    dest.replUse(phiNode, Vj);
-                    if (Vj instanceof IRInstr)
-                        Vj.addDest(dest);
-                }
+                    var pred = preds[j];
 
-                // Remove the phi node
-                phiNode.parentBlock.remInstr(phiNode);
-                arraySetRem(phiNodes, phiNode);
+                    //print('got pred: ' + pred.getBlockName());
+
+                    // For each instruction of the successor
+                    for (var k = 0; k < succ.instrs.length; ++k)
+                    {
+                        var instr = succ.instrs[k];
+
+                        // If this instruction is not a phi node, stop
+                        if (!(instr instanceof PhiInstr))
+                            break;                        
+
+                        // If the phi node already has this predecessor, skip the predecessor
+                        if (arraySetHas(instr.preds, pred))
+                            continue PRED_LOOP;
+                    }
+
+                    //print('*** simplifying ***');
+
+                    // Remove the predecessor from our predecessor list
+                    arraySetRem(block.preds, pred);
+
+                    // Get the predecessor's branch instruction
+                    var branchInstr = pred.getLastInstr();
+
+                    // Replace the predecessor's branch target by the successor
+                    for (var k = 0; k < branchInstr.targets.length; ++k)
+                        if (branchInstr.targets[k] === block)
+                            branchInstr.targets[k] = succ;
+
+                    // Replace the predecessor's successor block by the successor
+                    for (var k = 0; k < pred.succs.length; ++k)
+                        if (pred.succs[k] === block)
+                            pred.succs[k] = succ;
+
+                    // Add the predecessor as a predecessor of the successor
+                    succ.preds.push(pred);
+
+                    // For each instruction of the successor
+                    for (var k = 0; k < succ.instrs.length; ++k)
+                    {
+                        var instr = succ.instrs[k];
+
+                        // If this instruction is not a phi node, stop
+                        if (!(instr instanceof PhiInstr))
+                            break;
+
+                        // Add an incoming value for the predecessor
+                        var inVal = instr.getIncoming(block);
+                        instr.addIncoming(inVal, pred);
+                    }
+
+                    // Set the simplified flag
+                    simplified = true;
+                }
             }
         }
 
-        // If no simplification occurred, stop
+        // If no simplifications occurred, stop
         if (simplified == false)
             break;
     }
@@ -739,14 +804,14 @@ ControlFlowGraph.prototype.validate = function ()
         for (var j = 0; j < block.preds.length; ++j)
         {
             if (!arraySetHas(block.preds[j].succs, block))
-                return 'predecessor missing successor link';
+                return 'predecessor missing successor link to:\n' + block;
         }
 
         // Verify that our successors have us as a predecessor
         for (var j = 0; j < block.succs.length; ++j)
         {
             if (!arraySetHas(block.succs[j].preds, block))
-                return 'successor missing predecessor link';
+                return 'successor missing predecessor link to:\n' + block;
         }
 
         // Get a reference to the last instruction in the block

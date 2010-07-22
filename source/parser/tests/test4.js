@@ -1,14 +1,28 @@
 function f(x)
 {
+    if (x < 2)
+        return x;
+    else
+        return f(x-1) + f(x-2);
+
+    /*
     for (var i = 0; i < 10; ++i)
     {
         while (true)
         {
             print(i);
         }
+
+        if (true)
+        {
+        }
+        else
+        {
+        }
     }
 
     print(i);
+    */
 
     /*
     for (var v in lst)
