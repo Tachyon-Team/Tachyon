@@ -77,21 +77,25 @@ function ControlFlowGraph(ownerFunc)
     */
     this.argVals = [];
 
-    // Add the function arguments
-    this.argVals.push(new ArgValInstr('this'));
-    this.argVals.push(new ArgValInstr('funcObj'));
-    this.argVals.push(new ArgValInstr('argObj'));
-    var argNames = this.ownerFunc.getArgNames();
-    for (var i = 0; i < argNames.length; ++i)
+    // Create the entry block
+    this.entry = this.getNewBlock('entry');
+
+    // Function to add an argument instruction to the entry block
+    var that = this;
+    function addArg(argName)
     {
-        var argInstr = new ArgValInstr();
-        this.assignInstrName(argInstr, argNames[i]);
-        this.argVals.push(argInstr);
+        var argInstr = new ArgValInstr(argName);
+        that.argVals.push(argInstr);
+        that.entry.addInstr(argInstr, argName);
     }
 
-    // Assign instruction ids to the function arguments
-    for (var i = 0; i < this.argVals.length; ++i)
-        this.assignInstrId(this.argVals[i]);
+    // Add the function arguments
+    addArg('this');
+    addArg('funcObj');
+    addArg('argObj');
+    var argNames = this.ownerFunc.getArgNames();
+    for (var i = 0; i < argNames.length; ++i)
+        addArg(argNames[i]);
 }
 ControlFlowGraph.prototype = {};
 
@@ -137,25 +141,26 @@ ControlFlowGraph.prototype.copy = function ()
     // Create a map from old instruction ids to new instructions
     instrMap = [];
 
-    // Map the function arguments
-    for (var i = 0; i < this.argVals.length; ++i)
-        instrMap[this.argVals[i].instrId] = newCFG.argVals[i];
+    // Remove the entry block from the new CFG
+    newCFG.blocks = [];
 
     // For each basic block
     for (var i = 0; i < this.blocks.length; ++i)
     {
         var block = this.blocks[i];
 
-        // Create a copy and add it to the block map
+        // Create a copy of the block
         var newBlock = block.copy(newCFG);
-        blockMap[block.blockId] = newBlock;
 
-        // If this is the entry block, store the entry block reference
+        // If this is the entry block, set the entry block for the new CFG
         if (block === this.entry)
             newCFG.entry = newBlock;
 
-        // Add the block to the new CFG
+        // Add the new block to the new CFG
         newCFG.blocks.push(newBlock);
+
+        // Add the new block to the block map
+        blockMap[block.blockId] = newBlock;
 
         // For each instruction in the new basic block
         for (var j = 0; j < newBlock.instrs.length; ++j)
@@ -169,6 +174,10 @@ ControlFlowGraph.prototype.copy = function ()
             newInstr.dests = instr.dests.slice(0);
         }
     }
+
+    // Map the function arguments
+    for (var i = 0; i < this.argVals.length; ++i)
+        newCFG.argVals[i] = instrMap[this.argVals[i].instrId];
 
     // For each new basic block
     for (var i = 0; i < newCFG.blocks.length; ++i)
@@ -376,9 +385,6 @@ Get the entry block for this CFG
 */
 ControlFlowGraph.prototype.getEntryBlock = function ()
 {
-    if (this.entry === null)
-        this.entry = this.getNewBlock('entry');
-
     return this.entry;
 };
 
@@ -822,10 +828,6 @@ ControlFlowGraph.prototype.validate = function ()
 
     // Compute the set of all definitions in the CFG
     var fullReachSet = [];
-    for (var i = 0; i < this.argVals.length; ++i)
-    {
-        fullReachSet.push(this.argVals[i]);
-    }
     for (var i = 0; i < this.blocks.length; ++i)
     {
         var block = this.blocks[i];
@@ -846,7 +848,7 @@ ControlFlowGraph.prototype.validate = function ()
         var block = workList.pop();
 
         // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):this.argVals.slice(0);
+        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
         for (var i = 0; i < block.preds.length; ++i)
         {
             var pred = block.preds[i];
@@ -879,7 +881,7 @@ ControlFlowGraph.prototype.validate = function ()
         var block = this.blocks[i];
 
         // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):this.argVals.slice(0);
+        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
         for (var j = 0; j < block.preds.length; ++j)
         {
             var pred = block.preds[j];

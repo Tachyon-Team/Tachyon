@@ -25,7 +25,14 @@ function testIR()
 
     print(ir);
 
-    orderBlocks(ir.childFuncs[0].virginIR);
+    var cfg = ir.childFuncs[0].virginIR;
+    var order = orderBlocks(cfg);
+    numberInstrs(cfg, order);
+    liveIntervals(cfg, order);
+
+
+
+
 }
 
 testIR();

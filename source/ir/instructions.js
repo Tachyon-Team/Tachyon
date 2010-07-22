@@ -463,6 +463,23 @@ PhiInstr.prototype.addIncoming = function (value, pred)
 };
 
 /**
+Get the input value for a given predecessor
+*/
+PhiInstr.prototype.getIncoming = function (pred)
+{
+    for (var i = 0; i < this.preds.length; ++i)
+    {
+        if (this.preds[i] === pred)
+            return this.uses[i];
+    }
+
+    assert (
+        false,
+        'cannot get incoming for pred, invalid pred'
+    );        
+}
+
+/**
 Make a shallow copy of the instruction
 */
 PhiInstr.prototype.copy = function ()
@@ -491,6 +508,14 @@ function ArgValInstr(argName)
     this.outName = argName;
 }
 ArgValInstr.prototype = new IRInstr();
+
+/**
+Get a string representation of the argument instruction
+*/
+ArgValInstr.prototype.toString = function ()
+{
+    return this.outName + ' = ' + this.mnemonic;
+}
 
 /**
 Make a shallow copy of the instruction

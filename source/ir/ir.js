@@ -23,6 +23,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: use id directly (unique) instead of variable name?
 
+// TODO: loop over key names in reverse order for for-in loop
+
 /**
 Convert an AST code unit into IR functions
 */

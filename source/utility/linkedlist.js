@@ -72,6 +72,32 @@ LinkedList.prototype.clear = function ()
 }
 
 /**
+Get the first list element
+*/
+LinkedList.prototype.getFirst = function ()
+{
+    assert(
+        !this.isEmpty(),
+        'cannot get first list item, list empty'
+    );
+
+    return this.first;
+}
+
+/**
+Get the last list element
+*/
+LinkedList.prototype.getLast = function ()
+{
+    assert(
+        !this.isEmpty(),
+        'cannot get last list item, list empty'
+    );
+
+    return this.last;
+}
+
+/**
 Add an element to the beginning of the list
 */
 LinkedList.prototype.addFirst = function (item)
@@ -128,12 +154,8 @@ Add an element to the end of the list
 */
 LinkedList.prototype.addSorted = function (item, compFunc)
 {
-    for (var itr = this.iterator(); itr.isValid(); itr.next())
-    {
-        // If item < node.item
-        if (compFunc(item, itr.getItem()))
-            break;
-    }
+    // Find the node this item should be placed before
+    var itr = this.find(item, compFunc);
 
     // Add the new item before the current node
     this.addBefore(item, itr);
@@ -174,6 +196,20 @@ LinkedList.prototype.remItr = function (itr)
     {
         this.remFirst();
     }
+}
+
+/**
+Find an element matching a comparison criteria
+*/
+LinkedList.prototype.find = function (item, compFunc)
+{
+    for (var itr = this.iterator(); itr.isValid(); itr.next())
+    {
+        if (compFunc(item, itr.getItem()))
+            break;
+    }
+
+    return itr;
 }
 
 /**
