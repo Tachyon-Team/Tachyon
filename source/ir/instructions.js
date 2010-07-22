@@ -540,6 +540,15 @@ var AddInstr = GenericInstrMaker(
 @augments IRInstr
 */
 var SubInstr = GenericInstrMaker(
+    'sub',
+     2
+);
+
+/**
+@class Arithmetic multiply instruction
+@augments IRInstr
+*/
+var MulInstr = GenericInstrMaker(
     'mul',
      2
 );
@@ -550,15 +559,6 @@ var SubInstr = GenericInstrMaker(
 */
 var DivInstr = GenericInstrMaker(
     'div',
-     2
-);
-
-/**
-@class Arithmetic multiply instruction
-@augments IRInstr
-*/
-var MulInstr = GenericInstrMaker(
-    'mul',
      2
 );
 

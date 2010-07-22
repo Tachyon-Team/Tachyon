@@ -23,8 +23,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: loop over key names in reverse order for for-in loop
-
 /**
 Convert an AST code unit into IR functions
 */
@@ -941,11 +939,17 @@ function stmtToIR(context)
             )
         );
 
-        // Get the length of the property name array
+        // Get the length of the property name array minus one
         var numPropNames = setCtx.getExitBlock().addInstr(
             new GetPropValInstr(
                 propNameArr,
                 ConstValue.getConst('length')
+            )
+        );
+        var numPropNamesMin1 = setCtx.getExitBlock().addInstr(
+            new SubInstr(
+                numPropNames,
+                ConstValue.getConst(1)
             )
         );
 
@@ -966,17 +970,16 @@ function stmtToIR(context)
         // Create a phi node for the current property index
         var propIndex = testCtx.entryBlock.addInstr(
             new PhiInstr(
-                [ConstValue.getConst(0)],
+                [numPropNamesMin1],
                 [setCtx.getExitBlock()]
             )
         );
 
         // Test that the current property index is valid
         var testVal = testCtx.entryBlock.addInstr(
-            new CompInstr(
-                CompOp.LT,
+            new GteInstr(
                 propIndex,
-                numPropNames                
+                ConstValue.getConst(0)
             )
         );
       
@@ -1027,9 +1030,9 @@ function stmtToIR(context)
             incrLocals
         );
 
-        // Compute the current property index + 1
+        // Compute the current property index - 1
         var incrVal = incrContext.entryBlock.addInstr(
-            new AddInstr(
+            new SubInstr(
                 propIndex,
                 ConstValue.getConst(1)
             )

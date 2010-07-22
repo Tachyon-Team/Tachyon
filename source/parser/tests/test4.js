@@ -1,5 +1,6 @@
 function f(x)
 {
+    /*
     for (var i = 0; i < 10; ++i)
     {
         while (true)
@@ -9,15 +10,14 @@ function f(x)
     }
 
     print(i);
+    */
 
-    //print(!x);
-
-    /*
+    
     for (var v in lst)
     {
         print(v);
     }
-    */
+    
 
     /*
     var e = 3;
