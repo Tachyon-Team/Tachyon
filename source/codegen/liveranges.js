@@ -9,8 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: weigh down exception blocks in block ordering
-
 /**
 Produce a linear order for the blocks in a CFG
 */
@@ -22,6 +20,7 @@ function orderBlocks(cfg)
         cfg.blocks[i].regAlloc = {
             numForwBranch   : 0,    // Number of forward branches to this block
             numBackBranch   : 0,    // Number of backward branches to this block
+            numExcpBranch   : 0,    // Number of exception branches to this block
             loopIndex       : -1,   // Loop identifier index
             loopDepth       : 0,    // Loop nesting depth
             loopHeader      : null, // For loop ends, corresponding loop header
@@ -64,6 +63,12 @@ function orderBlocks(cfg)
         visited[block.blockId] = true;
         active[block.blockId] = true;
 
+        // Get the branch instruction at the end of the block
+        var branchInstr = block.getLastInstr();
+
+        // If the branch can throw to an exception handler, get its throw target
+        var throwTarget = (branchInstr instanceof ThrowInstr)? branchInstr.getThrowTarget():null;
+
         // For each successor
         for (var i = 0; i < block.succs.length; ++i)
         {
@@ -91,6 +96,13 @@ function orderBlocks(cfg)
             {
                 // Increment the number of forward branches to the block
                 succ.regAlloc.numForwBranch++;
+            }
+
+            // If this is the throw target of the block
+            if (succ === throwTarget)
+            {
+                // Increment the number of exception branches to the block
+                succ.regAlloc.numExcpBranch++;
             }
         }
     }
@@ -141,7 +153,9 @@ function orderBlocks(cfg)
     // Function to compute a block's weight for the block ordering
     function blockWeight(block)
     {
-        return block.regAlloc.loopDepth;
+        // Loop nesting increases the weight
+        // Exception handlers get weighed down
+        return (block.regAlloc.loopDepth) - (5 * block.regAlloc.numExcpBranch);
     }
 
     // Assign a weight to each block
@@ -207,7 +221,7 @@ function orderBlocks(cfg)
             block.regAlloc.loopHeader.regAlloc.lastLoopEnd = block;
     }
 
-    /*
+
     print('Loop depth:');
     for (var i = 0; i < cfg.blocks.length; ++i)
     {
@@ -223,7 +237,7 @@ function orderBlocks(cfg)
         print(blockOrder[i].getBlockName());
         
     }
-    */
+    
 
     // Return the produced block order and the block information computed
     return blockOrder
@@ -354,8 +368,6 @@ function liveIntervals(cfg, order)
     for (var i = order.length - 1; i >= 0; --i)
     {
         var block = order[i];
-
-        print('Cur block: ' + block.getBlockName());
 
         // Variable for the currently live set
         var live = [];

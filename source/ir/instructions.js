@@ -935,6 +935,14 @@ ThrowInstr.prototype.setThrowTarget = function (catchBlock)
 }
 
 /**
+Get the target block of the throw instruction
+*/
+ThrowInstr.prototype.getThrowTarget = function ()
+{
+    return (this.targets.length > 0)? this.targets[0]:null;
+}
+
+/**
 Make a shallow copy of the instruction
 */
 ThrowInstr.prototype.copy = function ()
@@ -1012,6 +1020,14 @@ Set the target block of the throw instruction
 CallRefInstr.prototype.setThrowTarget = function (catchBlock)
 {
     this.targets = catchBlock? [this.targets[0], catchBlock]:[this.targets[0]];
+}
+
+/**
+Get the target block of the throw instruction
+*/
+CallRefInstr.prototype.getThrowTarget = function ()
+{
+    return (this.targets.length > 1)? this.targets[1]:null;
 }
 
 /**
