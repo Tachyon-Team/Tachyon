@@ -101,10 +101,16 @@ ConstValue.prototype.toString = function ()
     {
        return '"' + escapeJSString(this.value) + '"';
     }
-
     else if (this.isGlobalConst())
     {
         return 'global';
+    }
+    else if (this.value instanceof Function)
+    {
+        if (this.value.hasOwnProperty('name'))
+            return this.value.name;
+        else
+            return 'function';
     }
     else
     {
@@ -1090,7 +1096,7 @@ var GetCellInstr = GenericInstrMaker(
 @class Set the value stored in a mutable cell
 @augments IRInstr
 */
-var GetCellInstr = GenericInstrMaker(
+var PutCellInstr = GenericInstrMaker(
     'put_cell',
      2
 );
