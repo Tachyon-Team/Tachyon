@@ -700,7 +700,8 @@ allocator.interval.prototype.split = function (pos)
         // of a range in the parent.
         u = allocator.findPos(this.usePositions, true,
                               function (u) { return u.pos > pos; }); 
-        if (u) 
+
+        if (u !== null) 
         { 
             newUsePositions = this.usePositions.splice(u, 
                                    this.usePositions.length - u); 
@@ -724,13 +725,14 @@ allocator.interval.prototype.split = function (pos)
         // be part of the child.
         u = allocator.findPos(this.usePositions, true,
                               function (u) { return u.pos >= pos; }); 
-        if (u) 
+        if (u !== null) 
         { 
             newUsePositions = this.usePositions.splice(u, 
                                    this.usePositions.length - u); 
         }
 
     }
+
 
     // Create the new interval
     var next = allocator.interval(newranges, newUsePositions);
@@ -1210,7 +1212,8 @@ allocator.liveIntervals = function (cfg, order)
             {
                 // The output of the instruction starts being live here
                 instr.regAlloc.interval.setStartPos(instr.regAlloc.id);
-                instr.regAlloc.interval.addUsePos(instr.regAlloc.id);
+                instr.regAlloc.interval.addUsePos(instr.regAlloc.id,
+                    allocator.usePos.registerFlag.REQUIRED);
 
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
@@ -1233,7 +1236,8 @@ allocator.liveIntervals = function (cfg, order)
                     block.regAlloc.from,
                     instr.regAlloc.id
                 );
-                use.regAlloc.interval.addUsePos(instr.regAlloc.id);
+                use.regAlloc.interval.addUsePos(instr.regAlloc.id,
+                    allocator.usePos.registerFlag.REQUIRED);
 
                 //print( use.instrId + " from:" + block.regAlloc.from +
                 //       " to:" + instr.regAlloc.id);
@@ -1480,10 +1484,12 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
             
             current.reg = mems.newSlot();
 
+            // If a register is required, we split the interval
+            // just before its use
             nextRegPos = current.nextUse(0, regFlag.REQUIRED);
             if (nextRegPos !== Infinity)
             {
-                unhandledQueue.enqueue(current.split(nextRegPos));
+                unhandledQueue.enqueue(current.split(nextRegPos - 1));
             }
         } else 
         {
