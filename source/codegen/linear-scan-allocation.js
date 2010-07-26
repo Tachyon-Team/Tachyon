@@ -92,7 +92,7 @@ allocator.binSearch = function (a, value, cmpFct)
     }
 
 
-    if (value !== a[current])
+    if (cmpFct(value, a[current]) !== 0)
     {
         return null;
     } else
@@ -249,20 +249,46 @@ allocator.priorityQueue.prototype.cmpFunction =
         return (a-b);
     }; 
 
-/** Add a value to the priority queue   */ 
+/** Add a value to the priority queue. Two identical values
+    will be retrieved in FIFO order.
+  */ 
 allocator.priorityQueue.prototype.enqueue = function (value)
 {
-    var insertPos = allocator.binSearch(this.innerArray, 
-                                        value, 
-                                        this.cmpFunction);
-    if (insertPos)
+    var a = this.innerArray;
+    var maxIndex = this.innerArray.length;
+    var minIndex = 0;
+    var current  = (maxIndex + minIndex) >> 1;
+    var cmp = 0;
+    var i;
+
+    while (maxIndex !== minIndex)
     {
-        // Add the element at the current position
-        this.innerArray.splice(insertPos, 0, value);
-    } else
-    {
-        this.innerArray.push(value);
+        cmp = this.cmpFunction(value, a[current]);
+        if (cmp < 0)
+        {
+            maxIndex = current;
+        } else if (cmp === 0)
+        {
+            break;
+        } else
+        {
+            minIndex = current + 1;
+        }
+        current  = (maxIndex + minIndex) >> 1;
     }
+
+    // Maintain a FIFO order for equal values 
+    for (i=current; i < maxIndex; i++)
+    {
+        if (this.cmpFunction(a[i], a[current]) !== 0)
+        {
+            break;
+        }
+    }
+    current = i;
+
+    // Add the element at the current position
+    this.innerArray.splice(current, 0, value);
 };
 
 /** Remove the value with the highest priority from the priority queue   */ 
@@ -424,7 +450,7 @@ allocator.interval = function (ranges, usePositions)
     const NONE = allocator.usePos.registerFlag.NONE;
 
     var that = Object.create(allocator.interval.prototype);
-    that.ranges = ranges || that.ranges;
+    that.ranges = ranges || [];
     that.ranges.sort(function (r1,r2) { return r1.startPos - r2.startPos; });
 
     if (usePositions)
@@ -452,12 +478,14 @@ allocator.interval.id = 0;
 allocator.interval.prototype.usePositions = [];
 /** @private Disjoint set of all ranges representing the interval usage */ 
 allocator.interval.prototype.ranges = [];
-/** Allocated register */ 
+/** Allocated physical register or memory location */ 
 allocator.interval.prototype.reg    = null;
 /** Linked interval, for intervals that have been split */
 allocator.interval.prototype.next   = null;
 /** Unique identifier for this interval */
 allocator.interval.prototype.id     = 0;
+/** Virtual register */
+allocator.interval.prototype.vreg   = null;
 
 /** Returns the first starting position of all ranges */ 
 allocator.interval.prototype.startPos = function ()
@@ -508,8 +536,9 @@ allocator.interval.prototype.toString = function ()
         u.push(String(this.usePositions[i]));
     }
 
-    return "Interval { id:" + this.id + " ranges:( " + r.join(",") + 
-           " ) usePositions:( " + u.join(",") + " ) reg:'" + this.reg + "' }";
+    return "Interval { vreg:'" + this.vreg + "' ranges:( " + 
+           r.join(",") + " ) usePositions:( " + u.join(",") + " ) reg:'" + 
+           this.reg + "' }";
 };
 
 /** Tells if a given position is contained within one of the ranges 
@@ -525,7 +554,7 @@ allocator.interval.prototype.covers = function (pos, isInclusive)
     }
 
     var i;
-    for (i=0; i < this.ranges.length; i++)
+    for (i=0; i < this.ranges.length; ++i)
     {
         if (this.ranges[i].covers(pos, isInclusive))
         {
@@ -705,6 +734,7 @@ allocator.interval.prototype.split = function (pos)
 
     // Create the new interval
     var next = allocator.interval(newranges, newUsePositions);
+    next.vreg = this.vreg;
 
     // Intervals are linked together
     this.next = next;
@@ -772,7 +802,17 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
 */
 allocator.interval.prototype.addUsePos = function (pos, registerFlag)
 {
-    // TODO
+    // TODO: use positions should be sorted in a way that allows
+    //       constant time element adding
+    if ((this.usePositions.length > 0 && this.usePositions[0].pos > pos) ||
+        this.usePositions.length === 0)
+    { 
+        this.usePositions.unshift(allocator.usePos(pos, registerFlag));
+    } else
+    {
+        // TODO: We should insert at the right place
+        throw "addUsePos: positions not inserted in decreasing order";
+    }
 };
 
 /** Next used after or equal to given position, 
@@ -1023,7 +1063,7 @@ allocator.orderBlocks = function (cfg)
             block.regAlloc.loopHeader.regAlloc.lastLoopEnd = block;
     }
 
-
+    /*
     print('Loop depth:');
     for (var i = 0; i < cfg.blocks.length; ++i)
     {
@@ -1039,7 +1079,7 @@ allocator.orderBlocks = function (cfg)
         print(blockOrder[i].getBlockName());
         
     }
-    
+    */ 
 
     // Return the produced block order and the block information computed
     return blockOrder
@@ -1050,7 +1090,9 @@ Perform instruction numbering on a control flow graph
 */
 allocator.numberInstrs = function (cfg, order)
 {
-    var nextNo = 1;
+    var nextNo = 2;
+    var inc = 2;
+    var instrNb;
 
     // For each block in the order
     for (var i = 0; i < order.length; ++i)
@@ -1058,31 +1100,49 @@ allocator.numberInstrs = function (cfg, order)
         var block = order[i];
 
         // Set the operation number at the block start
-        block.regAlloc.from = nextNo++;
+        block.regAlloc.from = nextNo;
+        nextNo = nextNo + inc;
 
+        print(block.regAlloc.from + ": label " + block.label);
         for (var j = 0; j < block.instrs.length; ++j)
         {
             var instr = block.instrs[j];
 
+            // Conceptually, phi instructions all happen at the
+            // same time, so they should have the same instruction number
+            if (instr instanceof PhiInstr)
+            {
+                // Since they all appear at the beginning of the block,
+                // not incrementing should garantee an identical number
+                instrNb = nextNo;
+            } else
+            {
+                // We got a regular instruction
+                instrNb = nextNo;
+                nextNo = nextNo + inc;
+            }
+
             // Create a register allocation info object for the instruction and
             // assign the instruction an operation number
             instr.regAlloc = {
-                id : nextNo++,              // Operation number
+                id : instrNb,              // Operation number
                 interval : allocator.interval()   // Live interval
             }
+            instr.regAlloc.interval.vreg = instr;
 
-            //print(instr);
-            //print(instr.regAlloc.id);
+            print(instr.regAlloc.id + ":    " + " (" + instr.instrId + ") " +
+                  instr );
         }
 
-        // Set the operation number at the block end
-        block.regAlloc.to = nextNo++;
+        // Set the operation number at the block end to be the same
+        // as the last instruction
+        block.regAlloc.to = nextNo;
     }
 };
 //-----------------------------------------------------------------------------
 
 // Interval Calculation
-
+// TODO: call sites for fixed positions
 /**
 Compute the live intervals for the temporaries of a CFG
 */
@@ -1111,7 +1171,7 @@ allocator.liveIntervals = function (cfg, order)
             print('Last loop end: ' + succ.regAlloc.lastLoopEnd);
             */
 
-            // Add all live temps at the ssuccessor input to the live set
+            // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
 
             // For each instruction of the successor
@@ -1132,7 +1192,7 @@ allocator.liveIntervals = function (cfg, order)
         for (var j = 0; j < live.length; ++j)
         {
             var instr = live[j];
-
+           
             // Add a live range spanning this block to its interval
             instr.regAlloc.interval.addRange(
                 block.regAlloc.from,
@@ -1145,11 +1205,19 @@ allocator.liveIntervals = function (cfg, order)
         {
             var instr = block.instrs[j];
 
-            // The output of the instruction starts being live here
-            instr.regAlloc.interval.setStartPos(instr.regAlloc.id);
+            // For instruction having an output,
+            if (instr.hasDests())
+            {
+                // The output of the instruction starts being live here
+                instr.regAlloc.interval.setStartPos(instr.regAlloc.id);
+                instr.regAlloc.interval.addUsePos(instr.regAlloc.id);
 
-            // Remove the instruction from the live set
-            arraySetRem(live, instr);
+                //print( instr.instrId + " startPos: " + instr.regAlloc.id);
+                //print( "new interval: " + instr.regAlloc.interval);
+
+                // Remove the instruction from the live set
+                arraySetRem(live, instr);
+            }
 
             // For each input operand of the instruction
             for (var k = 0; k < instr.uses.length; ++k)
@@ -1160,10 +1228,16 @@ allocator.liveIntervals = function (cfg, order)
                     continue;
 
                 // Make the use live from the start of the block to this instruction
+                //print( use.regAlloc.interval);
                 use.regAlloc.interval.addRange(
                     block.regAlloc.from,
-                    block.regAlloc.to  
+                    instr.regAlloc.id
                 );
+                use.regAlloc.interval.addUsePos(instr.regAlloc.id);
+
+                //print( use.instrId + " from:" + block.regAlloc.from +
+                //       " to:" + instr.regAlloc.id);
+                //print( use.regAlloc.interval);
 
                 // Add this input operand to the live set
                 arraySetAdd(live, use);
@@ -1189,7 +1263,8 @@ allocator.liveIntervals = function (cfg, order)
         // If this block is a loop header
         if (lastLoopEnd)
         {
-            // For each temp in the live set at the block entry (live before the block)
+            // For each temp in the live set at the block entry 
+            // (live before the block)
             for (var j = 0; j < live.length; ++j)
             {
                 var instr = live[j];
@@ -1216,10 +1291,11 @@ allocator.liveIntervals = function (cfg, order)
         for (var j = 0; j < block.instrs.length; ++j)
         {
             var instr = block.instrs[j];
-            print(instr.regAlloc.id);
-
-            liveRanges[instr.regAlloc.id] = instr.regAlloc.interval;
-
+            instr.regAlloc.interval.vreg = instr.instrId;
+            if (instr.regAlloc.interval.rangeNb() > 0)
+            {
+                liveRanges.push(instr.regAlloc.interval);
+            }
         }
     }
     return liveRanges;
@@ -1230,21 +1306,26 @@ allocator.liveIntervals = function (cfg, order)
 // Register allocation
 
 /** 
-    Assign a physical register or memory location to every interval
+    Assign a physical register or memory location to every interval.
 
-    @param pregs     list of available physical registers
-    @param unhandled list of unassigned intervals sorted by decreasing
-                     start positions
-    @param mems      list of memory locations used for spilling
+    The mems object should have a newSlot() method returning 
+    a new memory location for spilling.
+
+    @param {Array} pregs     list of available physical registers
+    @param {Array} unhandled list of unassigned intervals
+    @param {Object} mems     object allocating memory locations used 
+                             for spilling
+    @param {Array} fixed     list of intervals where pregs are unavailable
 */ 
-allocator.linearScan = function (pregs, unhandled, mems)
+allocator.linearScan = function (pregs, unhandled, mems, fixed)
 {
     //       Interval registers are indexes into the pregs array during
     //       the iteration, but are replaced by their pregs object
     //       at the end.
    
-    // Queue of all unhandled intervals, sorted by start position
-    var unhandledQueue = allocator.priorityQueue(unhandled,
+    // Queue of all unhandled intervals, sorted by start position,
+    // using a copy of unhandled
+    var unhandledQueue = allocator.priorityQueue(unhandled.slice(0),
         function (it1, it2)
         {
             return (it1.startPos() - it2.startPos());
@@ -1267,6 +1348,17 @@ allocator.linearScan = function (pregs, unhandled, mems)
     // Instruction numbers where an interval uses the register
     // the next time inside a range
     var nextUsePos = new Array(pregs.length);
+
+    // Initialize fixed if undefined
+    if(!fixed)
+    {
+        fixed = [];
+        fixed.length = pregs.length;
+        for (i=0; i < pregs.length; ++i)
+        {
+            fixed[i] = allocator.interval(); 
+        }
+    }
 
     // Iteration vars
     var current, position, it, i;
@@ -1295,8 +1387,21 @@ allocator.linearScan = function (pregs, unhandled, mems)
         for (i=0; i < inactiveSet.length(); ++i)
         {
             it = inactiveSet.values[i];
-            freeUntilPos[it.reg] = it.nextIntersection(current);
+            freeUntilPos[it.reg] = Math.min(it.nextIntersection(current),
+                                            freeUntilPos[it.reg]);
         }
+
+        // Note: Paper did not consider the occurence of fixed interval
+        //       in the regular case
+        // For fixed interval, register is available until next
+        // intersection with current
+        /*
+        for (i=0; i < fixed.length; ++i)
+        {
+            it = fixed[i];
+            freeUntilPos[i] = Math.min(it.nextIntersection(current),
+                                       freeUntilPos[i]);
+        }*/
 
         reg = allocator.max(freeUntilPos).index;
         
@@ -1326,7 +1431,7 @@ allocator.linearScan = function (pregs, unhandled, mems)
         const regFlag = allocator.usePos.registerFlag;
 
         // Iteration vars
-        var it, i, reg, max, pos, nextRegPos, next;
+        var it, i, reg, max, pos, nextRegPos, next, fixedPos;
 
         
         // Reset nextUsePos for all physical registers 
@@ -1343,13 +1448,13 @@ allocator.linearScan = function (pregs, unhandled, mems)
         }
        
         // TODO: We might want to create a nextUseIntersection()
-        //       so that its complexity is not quadratic 
+        //       so that its complexity is not quadratic on use positions 
         // For each inactive, find the next use intersecting with current 
         for (i=0; i < inactiveSet.length(); ++i)
         {
             it = inactiveSet.values[i];
             next = it.nextUse(current.startPos());
-            while ( next !== Infinity || !current.covers(next))
+            while (!(next === Infinity || current.covers(next)))
             {
                 next  = it.nextUse(next+1);
             }
@@ -1359,6 +1464,7 @@ allocator.linearScan = function (pregs, unhandled, mems)
         max = allocator.max(nextUsePos);
         reg = max.index;
         pos = max.value;
+
 
         // If first use of current is equal to pos,
         // we should split the other interval, according to the paper.
@@ -1400,9 +1506,15 @@ allocator.linearScan = function (pregs, unhandled, mems)
                     unhandledQueue.enqueue(it.split(position)); 
                 }
             }
-
-            // TODO: Eventually support Fixed intervals 
-            
+           
+            /*
+            fixedPos = current.nextIntersection(fixed[reg]); 
+            if (fixedPos !== Infinity)
+            {
+                // The register has a fixed interval, covering a part 
+                // of current, we need to split
+                unhandledQueue.enqueue(current.split(fixedPos));
+            }*/
         }
     };
 
@@ -1420,7 +1532,6 @@ allocator.linearScan = function (pregs, unhandled, mems)
         
         current  = unhandledQueue.dequeue();
         position = current.startPos();
-
 
         // check for intervals in active that are handled or inactive
         for (i=0; i < activeSet.length(); ++i)

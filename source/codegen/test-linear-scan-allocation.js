@@ -529,5 +529,42 @@ test.assert = function (bool, message)
 
 // Full Register Allocation
 (function () {
+    var filename = 'parser/tests/test4.js';
+    var port = new File_input_port(filename);
+    var p = new Parser(new Scanner(port), true);
+    var ast = p.parse();
+    var normalized_ast = ast_normalize(ast);
 
-})();
+    //pp(normalized_ast); // pretty-print AST
+    //print('\n');
+
+    ir = unitToIR(normalized_ast);
+
+    //print(ir);
+
+    var cfg = ir.childFuncs[0].virginIR;
+    var order = allocator.orderBlocks(cfg);
+    allocator.numberInstrs(cfg, order);
+    var liveRanges = allocator.liveIntervals(cfg, order);
+
+    var mems = { slots:[], 
+                 newSlot:function () 
+                         { 
+                            var s = "slot" + this.slots.length; 
+                            this.slots.push(s);
+                            return s;
+                         } 
+                   };
+
+    for (var i=0; i<liveRanges.length; ++i)
+    {
+        print(i + ": " + liveRanges[i] + ",");
+    }
+
+    allocator.linearScan(["EAX", "EBX"], liveRanges, mems);
+
+    for (var i=0; i<liveRanges.length; ++i)
+    {
+        print(i + ": " + liveRanges[i] + ",");
+    }
+});
