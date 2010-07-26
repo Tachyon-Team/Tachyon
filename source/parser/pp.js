@@ -184,7 +184,10 @@ function pp_indent(ast, indent)
     else if (ast instanceof CatchPart)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "CatchPart");
-        pp_id(ast.id, indent, "id");
+
+        // TODO: temporary fix until catch scope issues are fixed
+        //pp_id(ast.id, indent, "id");
+
         pp_asts(indent, "statement", [ast.statement]);
     }
     else if (ast instanceof DebuggerStatement)

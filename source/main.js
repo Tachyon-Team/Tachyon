@@ -36,5 +36,5 @@ function testIR()
 
 }
 
-//testIR();
+testIR();
 

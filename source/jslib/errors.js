@@ -15,6 +15,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // JS provides no way to set this internal property
 // Need a custom function to do it
 
+// TODO: PROBLEM:
+// name property of constructors, can we change this somehow? property not writable
+// one possible fix is to use eval to generate the constructor...
+
 /**
 Function to create an error constructor function
 */

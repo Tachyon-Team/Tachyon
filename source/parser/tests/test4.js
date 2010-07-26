@@ -1,9 +1,11 @@
 function f(x)
 {
+    /*
     if (x < 2)
         return x;
     else
         return f(x-1) + f(x-2);
+    */
 
     /*
     for (var i = 0; i < 10; ++i)
@@ -30,13 +32,8 @@ function f(x)
         print(v);
     }
     */
-    
 
     /*
-    var e = 3;
-
-    function g() { e; }
-
     try
     {
         throw 'foo';
@@ -44,8 +41,19 @@ function f(x)
     catch (e)
     {
     }
+    */
 
-    print(e);
+    /*
+    while (true)
+    {
+        try
+        {
+            break foo;
+        }
+        catch (e)
+        {
+        }
+    }
     */
 
     /*

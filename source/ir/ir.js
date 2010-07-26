@@ -15,10 +15,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: handle arguments object
 
-// TODO: throw exception if break/continue to invalid label?
-// throwToIR w/ throw value?
-// SyntaxError object, calling ctor as function creates new object
-
 // TODO: fix scope of catch variable
 
 // TODO: use id directly (unique) instead of variable name?
@@ -1087,11 +1083,25 @@ function stmtToIR(context)
         var newContext = context.pursue(context.astNode);
         newContext.bridge();
 
-        // Add the new context to the list corresponding to this label
-        context.contMap.getItem(label).push(newContext);
+        // If there is a continue list for this label
+        if (context.contMap.hasItem(label))
+        {
+            // Add the new context to the list corresponding to this label
+            context.contMap.getItem(label).push(newContext);
 
-        // Terminate the current context, no instructions go after this
-        context.terminate();
+            // Terminate the current context, no instructions go after this
+            context.terminate();
+        }
+        else
+        {
+            // Generate code to throw a syntax error
+            errorToIR(
+                context,
+                newContext,
+                SyntaxError,
+                'continue with invalid context'
+            );
+        }
     }
 
     else if (astStmt instanceof BreakStatement)
@@ -1103,11 +1113,25 @@ function stmtToIR(context)
         var newContext = context.pursue(context.astNode);
         newContext.bridge();
 
-        // Add the new context to the list corresponding to this label
-        context.breakMap.getItem(label).push(newContext);
+        // If there is a break list for this label
+        if (context.breakMap.hasItem(label))
+        {
+            // Add the new context to the list corresponding to this label
+            context.breakMap.getItem(label).push(newContext);
 
-        // Terminate the current context, no instructions go after this
-        context.terminate();
+            // Terminate the current context, no instructions go after this
+            context.terminate();
+        }
+        else
+        {
+            // Generate code to throw a syntax error
+            errorToIR(
+                context,
+                newContext,
+                SyntaxError,
+                'break with invalid context'
+            );
+        }
     }
 
     else if (astStmt instanceof ReturnStatement)
@@ -1347,18 +1371,8 @@ function stmtToIR(context)
         var throwContext = context.pursue(astStmt.expr);
         exprToIR(throwContext);
 
-        // Add a throw instruction
-        throwContext.getExitBlock().addInstr(new ThrowInstr(throwContext.getOutValue()));
-
-        // If this is an intraprocedural throw
-        if (context.throwList)
-        {
-            // Add the context to the list of throw contexts
-            context.throwList.push(throwContext);
-        }
-
-        // Terminate the current context, no instructions go after this
-        context.terminate();
+        // Generate a throw instruction
+        throwToIR(context, throwContext, throwContext.getOutValue());
     }
 
     else if (astStmt instanceof TryStatement)
@@ -1400,11 +1414,13 @@ function stmtToIR(context)
 
         // Create a new context for the catch statement
         var catchCtx = context.branch(
-            astStmt.catch_part,
+            astStmt.catch_part.statement,
             catchBlock,
             catchLocals
         );
 
+        // TODO: disabled until catch scope issues are fixed in parser
+        /*
         // Create a new shared map for the catch block
         catchCtx.sharedMap = context.sharedMap.copy();
 
@@ -1413,7 +1429,8 @@ function stmtToIR(context)
         var catchCell = catchBlock.addInstr(new MakeCellInstr());
         catchBlock.addInstr(new PutCellInstr(catchCell, catchVal));
         catchCtx.sharedMap.setItem(astStmt.id.toString(), catchCell);
-        
+        */
+
         // Compile the catch statement
         stmtToIR(catchCtx);
 
@@ -2606,6 +2623,68 @@ function refToIR(context)
 
     // The variable value is the output value
     context.setOutput(curContext.entryBlock, varValue);
+}
+
+/**
+Generate a throw instruction with a given exception value
+@param throwCtx context after which to throw the exception
+@param excVal exception value to throw
+*/
+function throwToIR(context, throwCtx, excVal)
+{
+    // Add a throw instruction
+    throwCtx.getExitBlock().addInstr(
+        new ThrowInstr(excVal)
+    );
+
+    // If this is an intraprocedural throw
+    if (context.throwList)
+    {
+        // Add the context to the list of throw contexts
+        context.throwList.push(throwCtx);
+    }
+
+    // Terminate the throw context, no instructions go after this
+    context.terminate();
+}
+
+/**
+Generate an exception throw with a given error class constructor
+@param throwCtx context after which to throw the exception
+@param excVal exception value to throw
+*/
+function errorToIR(context, throwCtx, errorCtor, errorMsg)
+{
+    // Create a block for the call continuation
+    var contBlock = context.cfg.getNewBlock('exc_cont');
+
+    // Create an error object exception
+    var excVal = throwCtx.getExitBlock().addInstr(
+        new ConstructRefInstr(
+            ConstValue.getConst(errorCtor),
+            [ConstValue.getConst(errorMsg)],
+            contBlock
+        ),
+        'excVal'
+    );
+
+    // Set the new context output to the call continuation block
+    throwCtx.setOutput(contBlock);
+
+    // Add a throw instruction
+    throwCtx.getExitBlock().addInstr(
+        new ThrowInstr(excVal)
+    );
+
+    // If this is an intraprocedural throw
+    if (context.throwList)
+    {
+        // Add the context to the list of throw contexts
+        context.throwList.push(throwCtx);
+    }
+
+    // Terminate the throw context, no instructions go after this
+    context.terminate();
 }
 
 /**
