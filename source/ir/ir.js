@@ -1230,8 +1230,7 @@ function stmtToIR(context)
 
                 // Compare the testvalue with the switch value
                 var testVal = curTestCtx.getExitBlock().addInstr(
-                    new CompInstr(
-                        CompOp.SEQ,
+                    new SeqInstr(
                         curTestCtx.getOutValue(),
                         switchCtx.getOutValue()
                     )
@@ -1336,7 +1335,7 @@ function stmtToIR(context)
         else
         {
             // Add the last test context to the break context list
-            brkCtxList.add(nextTestCtx);
+            brkCtxList.push(nextTestCtx);
         }
 
         // Add the last clause context to the break context list
@@ -2086,6 +2085,26 @@ function opToIR(context)
 
             // Set the second argument's output value as the output
             context.setOutput(argsContext.getExitBlock(), argVals[1]);
+        }
+        break;
+
+        // If this is the unary minus operator
+        case '- x':
+        { 
+            // Compile the argument values
+            var argsContext = context.pursue(exprs);
+            var argVals = exprListToIR(argsContext);
+
+            // Subtract the argument value from the constant 0
+            var opVal = argsContext.getExitBlock().addInstr(
+                new SubInstr(
+                    ConstValue.getConst(0),
+                    argVals[0]
+                )
+            );
+
+            // Set the subtraction's output value as the output
+            context.setOutput(argsContext.getExitBlock(), opVal);
         }
         break;
 
