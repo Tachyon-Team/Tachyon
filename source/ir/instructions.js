@@ -20,6 +20,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: by default, some instructions should have VOID type output, eg: if, other branch instructions
 
+// TODO: add types to default toString
+
 //=============================================================================
 // IR Core
 //
@@ -27,60 +29,40 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //
 //=============================================================================
 
-// IR value type enumeration
-IRType =
-{
-    VOID:       0,  // No output value
-    BOXED:      1,  // Boxed value type
-    POINTER:    2,  // Unboxed pointer
-    INT8:       3,  // Unboxed int8
-    INT16:      4,  // Unboxed int16
-    INT32:      5,  // Unboxed int32
-    INT64:      6,  // Unboxed int64
-    FLOAT32:    7,  // Unboxed float32
-    FLOAT64:    8   // Unboxed float64
-};
-
 /**
-Get the name of an IR type
+@class IR type representation object
 */
-function getIRTypeName(tp)
+function IRTypeObj(name, size)
 {
-    switch (tp)
-    {
-        case IRType.VOID:       return 'void';  break;
-        case IRType.BOXED:      return 'boxt';  break;
-        case IRType.POINTER:    return 'ptrt';  break;
-        case IRType.INT8:       return 'i8';    break;
-        case IRType.INT16:      return 'i16';   break;
-        case IRType.INT32:      return 'i32';   break;
-        case IRType.INT64:      return 'i64';   break;
-        case IRType.FLOAT32:    return 'f32';   break;
-        case IRType.FLOAT64:    return 'f64';   break;
-    }
+    /**
+    Name of this type
+    @field
+    */
+    this.name = name;
+
+    /**
+    Type size in bytes
+    @field
+    */
+    this.size = size;
 }
 
-/**
-Get the size of an IR type in bytes
-*/
-function getIRTypeSize()
+// IR value type enumeration
+IRType =
 {
     // TODO: boxed and pointer type sizes are actually platform-dependent
     // Need code get appropriate size for the platform
 
-    switch (tp)
-    {
-        case IRType.VOID:       return '0'; break;
-        case IRType.BOXED:      return '8'; break;
-        case IRType.POINTER:    return '8'; break;
-        case IRType.INT8:       return '1'; break;
-        case IRType.INT16:      return '2'; break;
-        case IRType.INT32:      return '4'; break;
-        case IRType.INT64:      return '8'; break;
-        case IRType.FLOAT32:    return '4'; break;
-        case IRType.FLOAT64:    return '8'; break;
-    }
-}
+    VOID:       new IRTypeObj('void', 0),   // No output value
+    BOXED:      new IRTypeObj('box' , 8),   // Boxed value type
+    POINTER:    new IRTypeObj('ptr' , 8),   // Unboxed pointer
+    INT8:       new IRTypeObj('i8'  , 1),   // Unboxed int8
+    INT16:      new IRTypeObj('i16' , 2),   // Unboxed int16
+    INT32:      new IRTypeObj('i32' , 4),   // Unboxed int32
+    INT64:      new IRTypeObj('i64' , 8),   // Unboxed int64
+    FLOAT32:    new IRTypeObj('f32' , 4),   // Unboxed float32
+    FLOAT64:    new IRTypeObj('f64' , 8)    // Unboxed float64
+};
 
 /**
 @class Base class for all IR values
@@ -352,14 +334,91 @@ IRInstr.prototype.replDest = function (oldDest, newDest)
 };
 
 /**
-Function to generate a typed instruction constructor using a closure
+Function to generate type-parameterized instruction constructor using a closure
 @param mnemonic mnemonic name of the instruction
+@param typeSpecs array of valid type parameter tuples
 @param inTypes array of input value types
 @param outType output value type
 @param protoObj prototype object for the instruction
 */
-function TypedInstrMaker(mnemonic, inTypes, outType, protoObj)
-{    
+function TypedInstrMaker(
+    mnemonic,
+    typeSpecs,
+    inTypes,
+    outType,
+    protoObj
+)
+{
+    // If no type specifications were specified, add an empty one
+    if (typeSpecs.length == 0)
+        typeSpecs = [[]];
+
+    // Get the number of type parameters
+    var numTypeParams = typeSpecs[0].length;
+
+    // Create lists for the input and output type specifications
+    var inTypeSpecs = [];
+    var outTypeSpecs = [];
+
+    // Create lists for the mnemonic instruction names
+    var mnemonicNames = [];
+
+    // For each type parameter specification
+    for (var i = 0; i < typeSpecs.length; ++i)
+    {
+        // Get this type parameter specification
+        var typeSpec = typeSpecs[i];
+
+        // Ensure all specifications have the same length
+        assert (
+            typeSpec.length == numTypeParams,
+            'invalid type parameter specification'
+        );
+
+        // Build the input type array in function of the type parameters
+        var inTypeSpec = [];
+        for (var j = 0; j < inTypes.length; ++j)
+        {
+            var type = inTypes[j];
+
+            // Ensure that type parameter indices are valid
+            assert (
+                typeof type != 'number' || type < numTypeParams,
+                'invalid type parameter index in input types'
+            );
+
+            if (typeof type == 'number')
+                type = typeSpec[type];
+
+            inTypeSpec.push(type);
+        }
+
+        // Ensure that type parameter indices are valid
+        assert (
+           typeof outType != 'number' || outType < numTypeParams,
+           'invalid type parameter index in output types'
+        );
+
+        // Set the output type in function of the type parameters
+        var outTypeSpec = (typeof outType == 'number')? typeSpec[outType]:outType;
+
+        // Add the input and output type specifications to the lists
+        inTypeSpecs.push(inTypeSpec);
+        outTypeSpecs.push(outTypeSpec);
+
+        // Set the mnemonic name for this type parameter specification
+        var mnemName = mnemonic;
+        for (var j = 0; j < numTypeParams; ++j)
+        {
+            var type = typeSpec[j];
+            if (type !== IRType.BOXED || numTypeParams > 0)
+                mnemName += '_' + type.name;
+        }
+
+        // Add the mnemonic name to the list
+        mnemonicNames.push(mnemName);
+    }
+
     /**
     Instruction constructor function instance, implemented as a closure
     */
@@ -368,44 +427,81 @@ function TypedInstrMaker(mnemonic, inTypes, outType, protoObj)
         // Put the arguments into an array
         if (inputs instanceof Array)
         {
-            var inputArray = inputs;
+            var typeParams = inputs.slice(0, numTypeParams);
+            var inputValues = inputs.slice(numTypeParams);
         }
         else
         {
-            var inputArray = [];
-            for (var i = 0; i < arguments.length; ++i)
-                inputArray.push(arguments[i]);
+
+            var typeParams = [];
+            var inputValues = [];
+            for (var i = 0; i < numTypeParams; ++i)
+                typeParams.push(arguments[i]);
+            for (var i = numTypeParams; i < arguments.length; ++i)
+                inputValues.push(arguments[i]);
         }
 
         // Ensure that the argument count is valid
         assert (
-            inputArray.length == inTypes.length,
-            'invalid argument count (' + inputArray.length + ') to "' +
-            mnemonic + '" instruction constructor'
+            typeParams != undefined ||
+            inputValues != undefined ||
+            typeParams.length == numTypeParams ||
+            inputValues.length == inTypes.length,
+            'invalid argument count (' + (typeParams.length + inputValues.length) +
+             ') to "' + mnemonic + '" instruction constructor'
         );
 
-        // Ensure that each argument is valid
-        for (var i = 0; i < inputArray.length; ++i)
+        // Find the type specification from the type parameters
+        var specIndex = -1;
+        SPEC_LOOP:
+        for (var i = 0; i < typeSpecs.length; ++i)
+        {
+            var typeSpec = typeSpecs[i];
+
+            for (var j = 0; j < typeParams.length; ++j)
+                if (typeSpec[j] !== typeParams[j])
+                    continue SPEC_LOOP;
+
+            specIndex = i;
+            break;
+        }
+        assert (
+            specIndex != -1,
+            'type parameters to ' + mnemonic + ' constructor do not match any ' +
+            'type specification'
+        );
+
+        // Get the input types for the instruction
+        var inTypes = inTypeSpecs[specIndex].slice(0);
+
+        // Set the mnemonic name of the instruction
+        this.mnemonic = mnemonicNames[specIndex];
+
+        // Ensure that each input value is valid
+        for (var i = 0; i < inputValues.length; ++i)
         {
             assert (
-                inputArray[i] instanceof IRValue,
-                'argument ' + i + ' to "' + mnemonic + 
-                '" instruction constructor is not valid IR value'
+                inputValues[i] instanceof IRValue,
+                'argument ' + i + ' to "' + this.mnemonic + 
+                '" instruction constructor is not a valid IR value'
             );       
 
             assert (
-                inputArray[i].type === inTypes[i],
-                'argument ' + i + ' to "' + mnemonic + 
-                '" instruction constructor does not have valid output type' +
-                '(' + getIRTypeName(inputArray[i].type) + ')'
+                inputValues[i].type === inTypes[i],
+                'argument ' + i + ' to "' + this.mnemonic + 
+                '" instruction constructor does not have valid output type ' +
+                '(' + inputValues[i].type.name + ')'
             );
         }
 
-        // Set the mnemonic name for the instruction
-        this.mnemonic = mnemonic;
+        // Set the output type for the instruction
+        this.type = outTypeSpecs[specIndex];
 
         // Copy the uses of the instruction      
-        this.uses = inputArray.slice(0);
+        this.uses = inputValues.slice(0);
+
+        // Copy the type parameters of the instruction
+        this.typeParams = typeParams.slice(0);
     }
     
     // If no prototype object was specified, create an IRInstr instance
@@ -415,9 +511,6 @@ function TypedInstrMaker(mnemonic, inTypes, outType, protoObj)
     // Set the constructor for the new instruction
     InstrConstr.prototype = protoObj;
 
-    // Store the output type for the instruction
-    InstrConstr.prototype.type = outType;
-
     /**
     Generic instruction shallow copy function
     */
@@ -426,7 +519,7 @@ function TypedInstrMaker(mnemonic, inTypes, outType, protoObj)
         // Return a new instruction with the same uses
         return this.baseCopy(
             new InstrConstr(
-                this.uses.slice(0)
+                this.typeParams.slice(0).concat(this.uses.slice(0))
             )
         );
     };
@@ -448,8 +541,9 @@ function GenericInstrMaker(mnemonic, numInputs, protoObj)
         inTypes.push(IRType.BOXED);
 
     return TypedInstrMaker(
-        mnemonic, 
-        inTypes, 
+        mnemonic,
+        [],
+        inTypes,
         IRType.BOXED,
         protoObj
     );
@@ -1248,234 +1342,229 @@ var NewArrayInstr = GenericInstrMaker(
 //=============================================================================
 
 /**
-@class Instruction to load a boxed value
+@class Instruction to load a value from memory
 @augments IRInstr
 */
-var LoadBoxInstr = TypedInstrMaker(
-    'load_box', 
+var LoadInstr = TypedInstrMaker(
+    'load',
+    [
+        [IRType.BOXED],
+        [IRType.POINTER],
+        [IRType.INT16],
+        [IRType.INT32],
+        [IRType.FLOAT64]
+    ], 
     [IRType.POINTER], 
-    IRType.BOXED
+    0
 );
 
 /**
-@class Instruction to load a pointer value
+@class Instruction to store a value to memory
 @augments IRInstr
 */
-var LoadPtrInstr = TypedInstrMaker(
-    'load_ptr', 
-    [IRType.POINTER], 
-    IRType.POINTER
-);
-
-/**
-@class Instruction to load an int32 value
-@augments IRInstr
-*/
-var LoadI32Instr = TypedInstrMaker(
-    'load_i32', 
-    [IRType.POINTER],
-    IRType.I32
-);
-
-/**
-@class Instruction to load a float64 value
-@augments IRInstr
-*/
-var LoadF64Instr = TypedInstrMaker(
-    'load_f64', 
-    [IRType.POINTER],
-    IRType.F64
-);
-
-/**
-@class Instruction to store a boxed value
-@augments IRInstr
-*/
-var StoreBoxInstr = TypedInstrMaker(
-    'store_box', 
-    [IRType.POINTER, IRType.BOXED],
+var StoreInstr = TypedInstrMaker(
+    'store',
+    [
+        [IRType.BOXED],
+        [IRType.POINTER],
+        [IRType.INT16],
+        [IRType.INT32],
+        [IRType.FLOAT64]
+    ], 
+    [IRType.POINTER, 0], 
     IRType.VOID
 );
 
 /**
-@class Instruction to store a pointer value
+@class Instruction to unbox a value
 @augments IRInstr
 */
-var StorePtrInstr = TypedInstrMaker(
-    'store_ptr',
-    [IRType.POINTER, IRType.POINTER],
-    IRType.VOID
-);
-
-/**
-@class Instruction to store an int32 value
-@augments IRInstr
-*/
-var StoreI32Instr = TypedInstrMaker(
-    'store_i32',
-    [IRType.POINTER, IRType.INT32],
-    IRType.VOID
-);
-
-/**
-@class Instruction to store a float64 value
-@augments IRInstr
-*/
-var StoreF64Instr = TypedInstrMaker(
-    'store_f64',
-    [IRType.POINTER, IRType.FLOAT64],
-    IRType.VOID
-);
-
-/**
-@class Instruction to unbox an int32 value
-@augments IRInstr
-*/
-var UnboxI32Instr = TypedInstrMaker(
-    'unbox_i32', 
+var UnboxInstr = TypedInstrMaker(
+    'unbox', 
+    [
+        [IRType.POINTER],
+        [IRType.INT32]
+    ],
     [IRType.BOXED], 
-    IRType.INT32
+    0
 );
 
 /**
-@class Instruction to unbox a pointer value
+@class Instruction to box a value
 @augments IRInstr
 */
-var UnboxPtrInstr = TypedInstrMaker(
-    'unbox_ptr', 
-    [IRType.BOXED], 
-    IRType.POINTER
-);
-
-/**
-@class Instruction to box an int32 value
-@augments IRInstr
-*/
-var BoxI32Instr = TypedInstrMaker(
-    'box_i32', 
-    [IRType.INT32], 
+var BoxInstr = TypedInstrMaker(
+    'box', 
+    [
+        [IRType.POINTER],
+        [IRType.INT32]
+    ],
+    [0], 
     IRType.BOXED
 );
 
 /**
-@class Instruction to box a pointer value
+@class Instruction to convert between different integer types
 @augments IRInstr
 */
-var BoxPtrInstr = TypedInstrMaker(
-    'box_ptr', 
-    [IRType.POINTER],
-    IRType.BOXED
+var IntCastInstr = TypedInstrMaker(
+    'icast', 
+    [
+        [IRType.INT16, IRType.INT32],
+        [IRType.INT32, IRType.INT16]
+    ],
+    [0],
+    1
 );
 
 /**
-@class Instruction to convert int32 values into float64 values
+@class Instruction to convert integer values to floating-point
 @augments IRInstr
 */
-var I32ToF64Instr = TypedInstrMaker(
-    'i32_to_f64', 
-    [IRType.INT32], 
+var IntToFPInstr = TypedInstrMaker(
+    'itof', 
+    [],
+    [IRType.INT32],
     IRType.FLOAT64
 );
 
 /**
-@class Instruction to convert float64 values into int32 values
+@class Instruction to convert floating-point values to integer
 @augments IRInstr
 */
-var F64ToI32Instr = TypedInstrMaker(
-    'f64_to_i32', 
-    [IRType.FLOAT32], 
+var IntToFPInstr = TypedInstrMaker(
+    'ftoi', 
+    [],
+    [IRType.FLOAT64],
     IRType.INT32
 );
 
 /**
-@class Instruction to add int32 values without overflow handling
+@class Instruction to add integer values without overflow handling
 @augments IRInstr
 */
-var AddI32Instr = TypedInstrMaker(
-    'add_i32', 
-    [IRType.INT32, IRType.INT32], 
-    IRType.INT32
+var IntAddInstr = TypedInstrMaker(
+    'add',
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
-@class Instruction to subtract int32 values without overflow handling
+@class Instruction to subtract integer values without overflow handling
 @augments IRInstr
 */
-var SubI32Instr = TypedInstrMaker(
-    'sub_i32', 
-    [IRType.INT32, IRType.INT32], 
-    IRType.INT32
+var IntSubInstr = TypedInstrMaker(
+    'sub', 
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
-@class Instruction to multiply int32 values without overflow handling
+@class Instruction to multiply integer values without overflow handling
 @augments IRInstr
 */
-var MulI32Instr = TypedInstrMaker(
-    'mul_i32', 
-    [IRType.INT32, IRType.INT32], 
-    IRType.INT32
+var IntMulInstr = TypedInstrMaker(
+    'mul', 
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
-@class Instruction to divide int32 values
+@class Instruction to divide integer values
 @augments IRInstr
 */
-var DivI32Instr = TypedInstrMaker(
-    'div_i32', 
-    [IRType.INT32, IRType.INT32], 
-    IRType.INT32
+var IntDivInstr = TypedInstrMaker(
+    'div', 
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
-@class Instruction to compute the modulo of int32 values
+@class Instruction to compute the modulo of integer values
 @augments IRInstr
 */
-var ModI32Instr = TypedInstrMaker(
-    'mod_i32', 
-    [IRType.INT32, IRType.INT32], 
-    IRType.INT32
+var IntModInstr = TypedInstrMaker(
+    'mod', 
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
 @class Instruction to add float64 values
 @augments IRInstr
 */
-var AddF64Instr = TypedInstrMaker(
-    'add_f64', 
-    [IRType.FLOAT64, IRType.FLOAT64], 
-    IRType.FLOAT64
+var FPAddInstr = TypedInstrMaker(
+    'add_f64',
+    [
+        [IRType.FLOAT64]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
 @class Instruction to subtract float64 values
 @augments IRInstr
 */
-var SubF64Instr = TypedInstrMaker(
-    'sub_f64', 
-    [IRType.FLOAT64, IRType.FLOAT64], 
-    IRType.FLOAT64
+var FPSubInstr = TypedInstrMaker(
+    'sub', 
+    [
+        [IRType.FLOAT64]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
 @class Instruction to multiply float64 values
 @augments IRInstr
 */
-var MulF64Instr = TypedInstrMaker(
-    'mul_f64', 
-    [IRType.FLOAT64, IRType.FLOAT64], 
-    IRType.FLOAT64
+var FPMulInstr = TypedInstrMaker(
+    'mul', 
+    [
+        [IRType.FLOAT64]
+    ],
+    [0, 0], 
+    0
 );
 
 /**
 @class Instruction to divide float64 values
 @augments IRInstr
 */
-var DivF64Instr = TypedInstrMaker(
-    'div_f64', 
-    [IRType.FLOAT64, IRType.FLOAT64], 
-    IRType.FLOAT64
+var FPDivInstr = TypedInstrMaker(
+    'div', 
+    [
+        [IRType.FLOAT64]
+    ],
+    [0, 0], 
+    0
 );
+
+
+
+
+
 
 
 
@@ -1486,34 +1575,65 @@ var DivF64Instr = TypedInstrMaker(
 //
 
 /**
-@class Instruction to compute the bitwise NOT of int32 values
+@class Instruction to compute the bitwise NOT of integer values
 @augments IRInstr
 */
-var NotI32Instr = TypedInstrMaker(
-    'not_i32', 
-    [IRType.INT32], 
-    IRType.INT32
+var IntNotInstr = TypedInstrMaker(
+    'not', 
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0], 
+    0
 );
 
 /**
-@class Instruction to compute the bitwise AND of int32 values
+@class Instruction to compute the bitwise AND of integer values
 @augments IRInstr
 */
-var AndI32Instr = TypedInstrMaker(
-    'and_i32',
-    [IRType.INT32, IRType.INT32],
-    IRType.INT32
+var IntAndInstr = TypedInstrMaker(
+    'and',
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0],
+    0
 );
 
 /**
-@class Instruction to compute the bitwise OR of int32 values
+@class Instruction to compute the bitwise OR of integer values
 @augments IRInstr
 */
-var AndI32Instr = TypedInstrMaker(
-    'or_i32',
-    [IRType.INT32, IRType.INT32],
-    IRType.INT32
+var IntOrInstr = TypedInstrMaker(
+    'or',
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
 );
+
+/**
+@class Instruction to compute the bitwise XOR of integer values
+@augments IRInstr
+*/
+var IntXorInstr = TypedInstrMaker(
+    'xor',
+    [
+        [IRType.INT16],
+        [IRType.INT32]
+    ],
+    [0, 0], 
+    0
+);
+
+
+
+
+
 
 
 
@@ -1527,6 +1647,16 @@ var AndI32Instr = TypedInstrMaker(
 // OvfInstrMaker?
 // int add, sub, mul
 // only needed on int32 for now
+
+
+
+
+var i1 = new UnboxInstr(IRType.POINTER, ConstValue.getConst(1));
+
+print (i1 instanceof IRInstr);
+
+var i2 = new LoadInstr(IRType.INT32, i1);
+
 
 
 
