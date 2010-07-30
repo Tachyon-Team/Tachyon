@@ -1989,32 +1989,421 @@ var IUrsftInstr = TypedInstrMaker(
 );
 
 //====================================================
-// TODO: comparison instructions?
-// specialized if branch instructions?
+// Comparison instructions
 //====================================================
 
-// Comparisons will return boolean values (int8)
-// - Need int comps, float comps, pointer comps
-// - Int and pointer are largely the same...
-// - What about lt, gt, different for signed vs. unsigned?
-// Can implement specialized if statement that takes int8 as input
+/**
+@class Instruction to perform a less-than comparison on integer values
+@augments IRInstr
+*/
+var ILtInstr = TypedInstrMaker(
+    'ilt',
+    [
+        [IRType.POINTER, IRType.POINTER],
+        [IRType.UINT16, IRType.UINT16],
+        [IRType.UINT32, IRType.UINT32],
+        [IRType.INT16, IRType.INT16],
+        [IRType.INT32, IRType.INT32]
+    ],
+    IRType.INT8
+);
 
+/**
+@class Instruction to perform a less-than-or-equal comparison on integer values
+@augments IRInstr
+*/
+var ILteInstr = TypedInstrMaker(
+    'ilte',
+    [
+        [IRType.POINTER, IRType.POINTER],
+        [IRType.UINT16, IRType.UINT16],
+        [IRType.UINT32, IRType.UINT32],
+        [IRType.INT16, IRType.INT16],
+        [IRType.INT32, IRType.INT32]
+    ],
+    IRType.INT8
+);
 
+/**
+@class Instruction to perform a greater-than comparison on integer values
+@augments IRInstr
+*/
+var IGtInstr = TypedInstrMaker(
+    'igt',
+    [
+        [IRType.POINTER, IRType.POINTER],
+        [IRType.UINT16, IRType.UINT16],
+        [IRType.UINT32, IRType.UINT32],
+        [IRType.INT16, IRType.INT16],
+        [IRType.INT32, IRType.INT32]
+    ],
+    IRType.INT8
+);
 
-// TODO: probably want unsigned integer types too...
-// Same instructions, different types
-// Update int cast
+/**
+@class Instruction to perform a greater-than-or-equal comparison on integer values
+@augments IRInstr
+*/
+var IGteInstr = TypedInstrMaker(
+    'igte',
+    [
+        [IRType.POINTER, IRType.POINTER],
+        [IRType.UINT16, IRType.UINT16],
+        [IRType.UINT32, IRType.UINT32],
+        [IRType.INT16, IRType.INT16],
+        [IRType.INT32, IRType.INT32]
+    ],
+    IRType.INT8
+);
 
+/**
+@class Instruction to perform an equality comparison on integer values
+@augments IRInstr
+*/
+var IEqInstr = TypedInstrMaker(
+    'ieq',
+    [
+        [IRType.POINTER, IRType.POINTER],
+        [IRType.UINT16, IRType.UINT16],
+        [IRType.UINT32, IRType.UINT32],
+        [IRType.INT16, IRType.INT16],
+        [IRType.INT32, IRType.INT32]
+    ],
+    IRType.INT8
+);
 
-// ILtInstr, IGtInstr, LTE, GTE, EQ, NEQ
-// Support pointers too
+/**
+@class Instruction to perform an inequality comparison on integer values
+@augments IRInstr
+*/
+var INeqInstr = TypedInstrMaker(
+    'ineq',
+    [
+        [IRType.POINTER, IRType.POINTER],
+        [IRType.UINT16, IRType.UINT16],
+        [IRType.UINT32, IRType.UINT32],
+        [IRType.INT16, IRType.INT16],
+        [IRType.INT32, IRType.INT32]
+    ],
+    IRType.INT8
+);
 
+/**
+@class Instruction to perform a less-than comparison on floating-point values
+@augments IRInstr
+*/
+var FLtInstr = TypedInstrMaker(
+    'flt',
+    [
+        [IRType.FLOAT64, IRType.FLOAT64]
+    ],
+    IRType.INT8
+);
+
+/**
+@class Instruction to perform a less-than-or-equal comparison on floating-point values
+@augments IRInstr
+*/
+var FLteInstr = TypedInstrMaker(
+    'flte',
+    [
+        [IRType.FLOAT64, IRType.FLOAT64]
+    ],
+    IRType.INT8
+);
+
+/**
+@class Instruction to perform a greater-than comparison on floating-point values
+@augments IRInstr
+*/
+var FGtInstr = TypedInstrMaker(
+    'fgt',
+    [
+        [IRType.FLOAT64, IRType.FLOAT64]
+    ],
+    IRType.INT8
+);
+
+/**
+@class Instruction to perform a greater-than-or-equal comparison on floating-point values
+@augments IRInstr
+*/
+var FGteInstr = TypedInstrMaker(
+    'fgte',
+    [
+        [IRType.FLOAT64, IRType.FLOAT64]
+    ],
+    IRType.INT8
+);
+
+/**
+@class Instruction to perform an equality comparison on floating-point values
+@augments IRInstr
+*/
+var FEqInstr = TypedInstrMaker(
+    'feq',
+    [
+        [IRType.FLOAT64, IRType.FLOAT64]
+    ],
+    IRType.INT8
+);
+
+/**
+@class Instruction to perform an inequality comparison on floating-point values
+@augments IRInstr
+*/
+var FNeqInstr = TypedInstrMaker(
+    'fneq',
+    [
+        [IRType.FLOAT64, IRType.FLOAT64]
+    ],
+    IRType.INT8
+);
+
+//====================================================
+// Branch instructions
+//====================================================
+
+// TODO: Can implement specialized if statement that takes int8 as input
 
 
 // TODO: OvfArithOp?
 // OvfInstrMaker?
 // int add, sub, mul
 // only needed on int32 for now
+
+// These branch statements can have... 
+// - Allowable input type patterns
+// - Matching output types
+// - Branch targets
+//   - In our case, we need two, this number is fixed
+//
+// Can use TypedInstrMaker as starting point
+// - Code TypedBranchInstrMaker
+// - If good enough, replace?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// TODO:
+// Differences:
+// - Assume two target arguments
+// - Targets indicated in toString
+// - protoObj is BranchInstr
+// - Could modify BranchInstr to have a better toString
+
+
+
+
+/**
+Function to generate typed branch instruction constructors using closures
+@param mnemonic mnemonic name of the instruction
+@param inTypeSpecs list of arrays of input value type
+@param outTypeSpecs list of output value types
+@param protoObj prototype object for the instruction
+*/
+function TypedBranchInstrMaker(
+    mnemonic,
+    inTypeSpecs,
+    outTypeSpecs,
+    protoObj
+)
+{
+    // Ensure that the input type specifications are valid
+    assert (
+        inTypeSpecs instanceof Array,
+        'invalid input type specifications specified'
+    );
+
+    // If only one output type specification is present
+    if (!(outTypeSpecs instanceof Array))
+    {
+        // Copy the output type for each input type specification
+        var outType = outTypeSpecs;
+        outTypeSpecs = [];
+        for (var i = 0; i < inTypeSpecs.length; ++i)
+            outTypeSpecs.push(outType);
+    }
+    else
+    {
+        assert (
+            inTypeSpecs.length == outTypeSpecs.length,
+            'the number of input and output type specifications must match'
+        );
+    }
+
+    // Create lists for the mnemonic instruction names
+    var mnemonicNames = [];
+
+    // For each input type specification
+    for (var i = 0; i < inTypeSpecs.length; ++i)
+    {
+        // Get this type parameter specification
+        var typeSpec = inTypeSpecs[i];
+
+        // Verify if all types in the specification are the same
+        var firstType = typeSpec.length? typeSpec[0]:null;
+        var allSame = true;
+        for (var j = 0; j < typeSpec.length; ++j)
+        {
+            var type = typeSpec[j];
+    
+            // Ensure that the type is valid
+            assert (
+                type instanceof IRTypeObj,
+                'invalid type in type specification'
+            );
+
+            if (type !== firstType)            
+                allSame = false;
+        }
+
+        // Set the mnemonic name for this type parameter specification
+        var mnemName = mnemonic;
+
+        // If all input types are the same
+        if (allSame)
+        {
+            // If there is a first type and it is not boxed
+            if (firstType !== null && firstType !== IRType.BOXED)
+            {
+                // Append the input type to the name
+                mnemName += '_' + firstType.name;
+            }
+        }
+        else
+        {
+            // Append all input types to the name
+            for (var j = 0; j < typeSpec.length; ++j)
+                mnemName += '_' + typeSpec[j].name;
+        }
+
+        // Add the mnemonic name to the list
+        mnemonicNames.push(mnemName);
+    }
+
+    // For each output type specification
+    for (var i = 0; i < outTypeSpecs.length; ++i)
+    {
+        var type = outTypeSpecs[i];
+
+        // Ensure that the type is valid
+        assert (
+            type instanceof IRTypeObj,
+            'invalid type in type specification'
+        );
+    }
+
+    /**
+    Instruction constructor function instance, implemented as a closure
+    */
+    function InstrConstr(inputs)
+    {
+        // Put the arguments into an array
+        if (inputs instanceof Array)
+        {
+            var inputValues = inputs;
+        }
+        else
+        {
+            var inputValues = [];
+            for (var i = 0; i < arguments.length; ++i)
+                inputValues.push(arguments[i]);
+        }
+
+        // Find the type specification from the input value types
+        var specIndex = -1;
+        SPEC_LOOP:
+        for (var i = 0; i < inTypeSpecs.length; ++i)
+        {
+            var inTypeSpec = inTypeSpecs[i];
+
+            // If the number of input values does not match the spec length, continue
+            if (inputValues.length != typeSpec.length)
+                continue SPEC_LOOP;
+
+            // For each input value
+            for (var j = 0; j < inputValues.length; ++j)
+            {
+                var inputVal = inputValues[j];
+
+                // Ensure that this input value is valid
+                assert (
+                    inputVal instanceof IRValue,
+                    'argument ' + j + ' to "' + mnemonic + 
+                    '" instruction constructor is not a valid IR value'
+                );
+
+                // If the input value type does not match that of the spec, continue
+                if (inputVal.type !== inTypeSpec[j])
+                    continue SPEC_LOOP;
+            }
+
+            // The spec was found, break otu of the loop
+            specIndex = i;
+            break;
+        }
+        assert (
+            specIndex != -1,
+            'input values to ' + mnemonic + ' constructor do not match any ' +
+            'type specification'
+        );
+
+        // Set the mnemonic name of the instruction
+        this.mnemonic = mnemonicNames[specIndex];
+
+        // Set the output type for the instruction
+        this.type = outTypeSpecs[specIndex];
+
+        // Copy the uses of the instruction      
+        this.uses = inputValues.slice(0);
+    }
+    
+    // TODO
+
+    // If no prototype object was specified, create an IRInstr instance
+    if (!protoObj)
+        protoObj = new IRInstr();
+
+    // Set the constructor for the new instruction
+    InstrConstr.prototype = protoObj;
+
+    /**
+    Generic instruction shallow copy function
+    */
+    InstrConstr.prototype.copy = function ()
+    {
+        // Return a new instruction with the same uses
+        return this.baseCopy(new InstrConstr(this.uses.slice(0)));
+    };
+
+    // Return the new constructor instance
+    return InstrConstr;
+}
+
+
+
+
+
+
+
+
 
 
 
