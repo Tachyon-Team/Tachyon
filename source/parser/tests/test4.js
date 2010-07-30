@@ -1,6 +1,6 @@
 function f(c1, c2)
 {
-
+    
     var v = -1;
 
     switch (c1)
@@ -24,7 +24,7 @@ function f(c1, c2)
     }
 
     print(v);
-
+    
 
     /*
     if (x < 2)
@@ -62,6 +62,8 @@ function f(c1, c2)
     /*
     try
     {
+        print(f);
+
         throw 'foo';
     }
     catch (e)

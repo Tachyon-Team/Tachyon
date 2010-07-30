@@ -18,10 +18,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: should instructions have write, branch, etc. flags? eliminate BranchInstr?
 
-// TODO: by default, some instructions should have VOID type output, eg: if, other branch instructions
-
-// TODO: add types to default toString
-
 //=============================================================================
 // IR Core
 //
@@ -537,8 +533,6 @@ function TypeParamInstrMaker(
     protoObj
 )
 {
-    print(mnemonic);
-
     // If no type specifications were specified, add an empty one
     if (typeSpecs.length == 0)
         typeSpecs = [[]];
@@ -595,8 +589,6 @@ function TypeParamInstrMaker(
         // Add the input and output type specifications to the lists
         inTypeSpecs.push(inTypeSpec);
         outTypeSpecs.push(outTypeSpec);
-
-        print(typeSpec);
 
         // Set the mnemonic name for this type parameter specification
         var mnemName = mnemonic;
@@ -1180,8 +1172,35 @@ BranchInstr.prototype = new IRInstr();
 
 /**
 By default, branch instructions produce no output
+@field
 */
 BranchInstr.prototype.type = IRType.VOID;
+
+/**
+Branch target names, not defined by default
+@field
+*/
+BranchInstr.prototype.targetNames = [];
+
+/**
+Default toString function for branch instructions
+*/
+BranchInstr.prototype.toString = function ()
+{
+    // Get the default toString output for the instruction and its uses
+    var output = IRInstr.prototype.toString.apply(this);
+
+    // For each branch target
+    for (var i = 0; i < this.targets.length; ++i)
+    {
+        output += 
+            (this.targetNames.length? (' ' + this.targetNames[i]):'') + 
+            ' ' + this.targets[i].getBlockName()
+        ;
+    }
+
+    return output;
+}
 
 /**
 @class Unconditional jump instruction
@@ -1189,6 +1208,9 @@ BranchInstr.prototype.type = IRType.VOID;
 */
 function JumpInstr(targetBlock)
 {
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'jump'
+
     /**
     Target basic block
     @field
@@ -1196,14 +1218,6 @@ function JumpInstr(targetBlock)
     this.targets = [targetBlock];
 }
 JumpInstr.prototype = new BranchInstr();
-
-/**
-Obtain a string representation
-*/
-JumpInstr.prototype.toString = function()
-{
-    return "jump " + this.targets[0].getBlockName();
-};
 
 /**
 Make a shallow copy of the instruction
@@ -1220,6 +1234,9 @@ JumpInstr.prototype.copy = function ()
 */
 function IfInstr(testVal, trueBlock, falseBlock)
 {
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'if';
+
     /**
     Test value for the branch condition
     @field
@@ -1235,15 +1252,10 @@ function IfInstr(testVal, trueBlock, falseBlock)
 IfInstr.prototype = new BranchInstr();
 
 /**
-Obtain a string representation
+Branch target name for the if instruction
+@field
 */
-IfInstr.prototype.toString = function()
-{
-    return  "if " + this.uses[0].getValName() +
-            " then " + this.targets[0].getBlockName() +
-            " else " + this.targets[1].getBlockName()
-    ;
-};
+IfInstr.prototype.targetNames = ['then', 'else'];
 
 /**
 Make a shallow copy of the instruction
@@ -1305,17 +1317,10 @@ function ThrowInstr(excVal, catchBlock)
 ThrowInstr.prototype = new BranchInstr();
 
 /**
-Produce a string representation of the throw instruction
+Branch target name for the throw instruction
+@field
 */
-ThrowInstr.prototype.toString = function ()
-{
-    var output = IRInstr.prototype.toString.apply(this);
-
-    if (this.targets[0])
-        output += ' to ' + this.targets[0].getBlockName();
-
-    return output;
-};
+ThrowInstr.prototype.targetNames = ['to'];
 
 /**
 Set the target block of the throw instruction
@@ -1376,23 +1381,15 @@ CallRefInstr.prototype = new ThrowInstr();
 
 /**
 Call instructions produce boxed values
+@field
 */
 CallRefInstr.prototype.type = IRType.BOXED;
 
 /**
-Produce a string representation of the call instruction
+Branch target name for the call instruction
+@field
 */
-CallRefInstr.prototype.toString = function ()
-{
-    var output = IRInstr.prototype.toString.apply(this);
-
-    if (this.targets[1])
-        output += ' throws ' + this.targets[1].getBlockName();
-
-    output += ' continue ' + this.targets[0].getBlockName();
-
-    return output;
-};
+CallRefInstr.prototype.targetNames = ['continue', 'throw'];
 
 /**
 Make a shallow copy of the instruction
@@ -1580,6 +1577,7 @@ var LoadInstr = TypeParamInstrMaker(
     [
         [IRType.BOXED],
         [IRType.POINTER],
+        [IRType.INT8],
         [IRType.INT16],
         [IRType.INT32],
         [IRType.FLOAT64]
@@ -1597,6 +1595,7 @@ var StoreInstr = TypeParamInstrMaker(
     [
         [IRType.BOXED],
         [IRType.POINTER],
+        [IRType.INT8],
         [IRType.INT16],
         [IRType.INT32],
         [IRType.FLOAT64]
@@ -2164,64 +2163,19 @@ var FNeqInstr = TypedInstrMaker(
 // Branch instructions
 //====================================================
 
-// TODO: Can implement specialized if statement that takes int8 as input
-
-
-// TODO: OvfArithOp?
-// OvfInstrMaker?
-// int add, sub, mul
-// only needed on int32 for now
-
-// These branch statements can have... 
-// - Allowable input type patterns
-// - Matching output types
-// - Branch targets
-//   - In our case, we need two, this number is fixed
-//
-// Can use TypedInstrMaker as starting point
-// - Code TypedBranchInstrMaker
-// - If good enough, replace?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// TODO:
-// Differences:
-// - Assume two target arguments
-// - Targets indicated in toString
-// - protoObj is BranchInstr
-// - Could modify BranchInstr to have a better toString
-
-
-
-
 /**
 Function to generate typed branch instruction constructors using closures
 @param mnemonic mnemonic name of the instruction
 @param inTypeSpecs list of arrays of input value type
 @param outTypeSpecs list of output value types
+@param branchNames list of branch target names
 @param protoObj prototype object for the instruction
 */
 function TypedBranchInstrMaker(
     mnemonic,
     inTypeSpecs,
     outTypeSpecs,
+    branchNames,
     protoObj
 )
 {
@@ -2267,7 +2221,7 @@ function TypedBranchInstrMaker(
             // Ensure that the type is valid
             assert (
                 type instanceof IRTypeObj,
-                'invalid type in type specification'
+                'invalid type in input type specification'
             );
 
             if (type !== firstType)            
@@ -2306,9 +2260,12 @@ function TypedBranchInstrMaker(
         // Ensure that the type is valid
         assert (
             type instanceof IRTypeObj,
-            'invalid type in type specification'
+            'invalid type in output type specification'
         );
     }
+
+    // Get the number of branches
+    var numBranches = branchNames.length;
 
     /**
     Instruction constructor function instance, implemented as a closure
@@ -2318,14 +2275,35 @@ function TypedBranchInstrMaker(
         // Put the arguments into an array
         if (inputs instanceof Array)
         {
-            var inputValues = inputs;
+            var inputValues = inputs.slice(0, inputs.length - numBranches);
+            var targets = inputs.slice(inputs.length - numBranches, numBranches);
         }
         else
         {
             var inputValues = [];
-            for (var i = 0; i < arguments.length; ++i)
+            for (var i = 0; i < arguments.length - numBranches; ++i)
                 inputValues.push(arguments[i]);
+            var targets = [];
+            for (var i = arguments.length - numBranches; i < arguments.length; ++i)
+                targets.push(arguments[i]);
         }
+
+        // Ensure that the right number of branch targets were specified
+        assert (
+            targets.length == numBranches,
+            'must specify ' + numBranches + ' branch targets to ' + mnemonic + ' constructor'
+        );
+
+        // Ensure that the branch targets are valid
+        targets.forEach(
+            function (t)
+            {
+                assert (
+                    t instanceof BasicBlock,
+                    'invalid branch target passed to ' + mnemonic + ' constructor'
+                );
+            }
+        );
 
         // Find the type specification from the input value types
         var specIndex = -1;
@@ -2371,64 +2349,97 @@ function TypedBranchInstrMaker(
         // Set the output type for the instruction
         this.type = outTypeSpecs[specIndex];
 
-        // Copy the uses of the instruction      
+        // Store the uses of the instruction      
         this.uses = inputValues.slice(0);
-    }
-    
-    // TODO
 
-    // If no prototype object was specified, create an IRInstr instance
+        // Store the branch targets
+        this.targets = targets;
+    }
+
+    // If no prototype object was specified, create a BranchInstr instance
     if (!protoObj)
-        protoObj = new IRInstr();
+        protoObj = new BranchInstr();
 
     // Set the constructor for the new instruction
     InstrConstr.prototype = protoObj;
+
+    // Store the branch target names
+    InstrConstr.prototype.targetNames = branchNames;
 
     /**
     Generic instruction shallow copy function
     */
     InstrConstr.prototype.copy = function ()
     {
-        // Return a new instruction with the same uses
-        return this.baseCopy(new InstrConstr(this.uses.slice(0)));
+        // Return a new instruction with the same uses and targets
+        return this.baseCopy(
+            new InstrConstr(
+                this.uses.slice(0).concat(this.targets.slice(0))
+            )
+        );
     };
 
     // Return the new constructor instance
     return InstrConstr;
 }
 
+/**
+@class Specialized if instruction taking only booleans as input
+@augments BranchInstr
+*/
+var IfBoolInstr = TypedBranchInstrMaker(
+    'if',
+    [
+        [IRType.INT8]
+    ],
+    IRType.VOID,
+    ['then', 'else']
+);
 
+/**
+@class Instruction to add integer values with overflow handling
+@augments BranchInstr
+*/
+var IAddOvfInstr = TypedBranchInstrMaker(
+    'add_ovf',
+    [
+        [IRType.INT32, IRType.INT32]
+    ],
+    [
+        IRType.INT32
+    ],
+    ['normal', 'overflow']
+);
 
+/**
+@class Instruction to subtract integer values with overflow handling
+@augments BranchInstr
+*/
+var ISubOvfInstr = TypedBranchInstrMaker(
+    'sub_ovf',
+    [
+        [IRType.INT32, IRType.INT32]
+    ],
+    [
+        IRType.INT32
+    ],
+    ['normal', 'overflow']
+);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-// Test code
-//
-
-
-var i1 = new UnboxInstr(IRType.POINTER, ConstValue.getConst(1));
-var i2 = new LoadInstr(IRType.INT32, i1);
-
-print(i1);
-print(i2);
-
-
+/**
+@class Instruction to multiply integer values with overflow handling
+@augments BranchInstr
+*/
+var IMulOvfInstr = TypedBranchInstrMaker(
+    'mul_ovf',
+    [
+        [IRType.INT32, IRType.INT32]
+    ],
+    [
+        IRType.INT32
+    ],
+    ['normal', 'overflow']
+);
 
 //=============================================================================
 // Low-Level IR (LIR)
@@ -2442,6 +2453,7 @@ print(i2);
 //=============================================================================
 
 // TODO: complete this section
+// Is LIR actually needed?
 
 // TODO: LIR instructions, even closer to machine arch? Not SSA?
 
