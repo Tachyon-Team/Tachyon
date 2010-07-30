@@ -1640,7 +1640,7 @@ var BoxInstr = TypeParamInstrMaker(
 @class Instruction to convert between different integer types
 @augments IRInstr
 */
-var IntCastInstr = TypeParamInstrMaker(
+var ICastInstr = TypeParamInstrMaker(
     'icast', 
     [
         [IRType.UINT16, IRType.INT16],
@@ -1658,7 +1658,7 @@ var IntCastInstr = TypeParamInstrMaker(
 @class Instruction to convert integer values to floating-point
 @augments IRInstr
 */
-var IntToFPInstr = TypeParamInstrMaker(
+var IToFPInstr = TypeParamInstrMaker(
     'itof', 
     [],
     [IRType.INT32],
@@ -1669,7 +1669,7 @@ var IntToFPInstr = TypeParamInstrMaker(
 @class Instruction to convert floating-point values to integer
 @augments IRInstr
 */
-var IntToFPInstr = TypeParamInstrMaker(
+var FPToIInstr = TypeParamInstrMaker(
     'ftoi', 
     [],
     [IRType.FLOAT64],
