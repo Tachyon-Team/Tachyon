@@ -236,7 +236,7 @@ IRInstr.prototype.toString = function ()
 
     // If this instruction's value is read, print its output name
     if (this.hasDests())
-        output += this.getValName() + ' = ';
+        output += this.type.name + ' ' + this.getValName() + ' = ';
 
     output += this.mnemonic + (this.uses.length? ' ':'');
 
@@ -758,6 +758,15 @@ function PhiInstr(values, preds)
         'must have one predecessor for each phi use'
     );
 
+    // Ensure that all values have the same type
+    for (var i = 1; i < values.length; ++i)
+    {
+        assert (
+            values[i].type === values[i-1].type,
+            'all phi input values must have the same type'
+        )
+    }
+
     // Set the mnemonic name for this instruction
     this.mnemonic = "phi";
 
@@ -772,6 +781,12 @@ function PhiInstr(values, preds)
     @field
     */
     this.preds = preds;
+
+    /**
+    Phi node type, equal to the input values type
+    @field
+    */
+    this.type = this.uses.length? this.uses[0].type:IRType.VOID;
 }
 PhiInstr.prototype = new IRInstr();
 
@@ -784,7 +799,7 @@ PhiInstr.prototype.toString = function ()
 
     // If this instruction's value is read, print its output name
     if (this.hasDests())
-        output += this.getValName() + ' = ';
+        output += this.type.name + ' ' + this.getValName() + ' = ';
 
     output += this.mnemonic + ' ';
 
@@ -811,6 +826,20 @@ PhiInstr.prototype.addIncoming = function (value, pred)
         pred !== undefined,
         'must specify predecessor block'
     );
+
+    // If there are already inputs
+    if (this.uses.length)
+    {
+        assert (
+            value.type === this.uses[0].type,
+            'all phi inputs must have the same type'       
+        );
+    }
+    else
+    {
+        // Set the phi node type
+        this.type = value.type;
+    }
 
     this.uses.push(value);
     this.preds.push(pred);
@@ -871,7 +900,7 @@ Get a string representation of the argument instruction
 */
 ArgValInstr.prototype.toString = function ()
 {
-    return this.outName + ' = ' + this.mnemonic;
+    return this.type.name + ' ' + this.outName + ' = ' + this.mnemonic;
 }
 
 /**
@@ -2029,4 +2058,13 @@ print(i2);
 
 // TODO: MoveInstr? LIR only
 // No SSA output
+
+
+
+
+
+
+
+
+
 
