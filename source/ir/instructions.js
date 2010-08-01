@@ -2260,7 +2260,7 @@ function TypedBranchInstrMaker(
         if (inputs instanceof Array)
         {
             var inputValues = inputs.slice(0, inputs.length - numBranches);
-            var targets = inputs.slice(inputs.length - numBranches, numBranches);
+            var targets = inputs.slice(inputs.length - numBranches, inputs.length);
         }
         else
         {
