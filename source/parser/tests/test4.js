@@ -1,6 +1,18 @@
 function f(c1, c2)
 {
-    
+
+    var i1 = iir.unbox(IRType.INT32, c1);
+    var i2 = iir.unbox(IRType.INT32, c1);
+
+    var s = iir.iadd(i1, i2);
+
+    return iir.box(IRType.INT32, s);
+
+
+    //iir.iadd(c1, c2);
+
+
+    /*
     var v = -1;
 
     switch (c1)
@@ -24,7 +36,7 @@ function f(c1, c2)
     }
 
     print(v);
-    
+    */
 
     /*
     if (x < 2)

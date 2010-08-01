@@ -1270,27 +1270,11 @@ IfInstr.prototype.copy = function ()
 @class Function return instruction
 @augments BranchInstr
 */
-function RetInstr(retVal)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'ret';
-
-    /**
-    Return value, can be undefined
-    @field
-    */
-    this.uses = [retVal];
-}
-RetInstr.prototype = new BranchInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-RetInstr.prototype.copy = function ()
-{
-    var newInstr = new RetInstr(this.uses[0]);
-    return this.baseCopy(newInstr);
-};
+var RetInstr = GenericInstrMaker(
+    'ret',
+     1,
+    new BranchInstr()
+);
 
 /**
 @class Exception throw to exception handler. Handler may be left undefined for

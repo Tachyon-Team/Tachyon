@@ -1547,7 +1547,6 @@ function exprToIR(context)
             'nested function not found for function expression'
         );
 
-
         // Create a list for the closure variable values
         var closVals = [];
 
@@ -1613,9 +1612,22 @@ function exprToIR(context)
 
     else if (astExpr instanceof CallExpr)
     {
+        // If this is an inline IR instruction
+        if (isInlineIR(astExpr))
+        {
+            // Generate the inline IR instruction
+            genInlineIR(context);
+
+            // Exit early
+            return;
+        }
+
         // Compile the function argument list
         var argsContext = context.pursue(astExpr.args);
         var argVals = exprListToIR(argsContext);
+
+        // Get a reference to the function expression
+        var fnExpr = astExpr.fn;
 
         // Variable for the function value
         var funcVal;
@@ -1627,10 +1639,10 @@ function exprToIR(context)
         var lastContext;
 
         // If the function expression is of the form x[y]
-        if (astExpr.fn instanceof OpExpr && astExpr.fn.op == 'x [ y ]')
+        if (fnExpr instanceof OpExpr && fnExpr == 'x [ y ]')
         {
-            var thisExpr = astExpr.fn.exprs[0];
-            var idxExpr = astExpr.fn.exprs[1];
+            var thisExpr = fnExpr.exprs[0];
+            var idxExpr = fnExpr.exprs[1];
     
             // Generate code for the "this" expression
             var thisContext = argsContext.pursue(thisExpr);
@@ -1656,7 +1668,7 @@ function exprToIR(context)
         else
         {
             // Generate code for the statement
-            var funcContext = argsContext.pursue(astExpr.fn);
+            var funcContext = argsContext.pursue(fnExpr);
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
@@ -2891,5 +2903,91 @@ function mergeLoopEntry(
         if (!exitBlock.hasBranch())
             exitBlock.addInstr(new JumpInstr(entryBlock));
     }
+}
+
+/**
+Test if a call expression is an inline IR instruction
+*/
+function isInlineIR(callExpr)
+{
+    var fnExpr = callExpr.fn;
+
+    return (
+        fnExpr instanceof OpExpr && 
+        fnExpr.op == 'x [ y ]' &&
+        fnExpr.exprs[0] instanceof Ref && 
+        fnExpr.exprs[0].id.toString() == 'iir'
+    );
+}
+
+/**
+Generate an inline IR instruction
+*/
+function genInlineIR(context, branches)
+{
+
+
+    // TODO: deal with type arguments...
+    // Deal with when evaluating x [ y ] expressions?
+    // Probably don't want, don't want to apply phi nodes to types, etc.
+    // Will need special arg evaluation when IIR is enabled
+    // Only first arg can be type param ***
+
+    // Ensure that a valid expression was passed
+    assert (
+        context.astNode instanceof CallExpr && isInlineIR(context.astNode),
+        'invalid inline IR expression'
+    );
+
+    // Get a reference to the function expression
+    var fnExpr = context.astNode.fn;
+
+    // Get a the call arguments
+    var args = context.astNode.args.slice(0);
+
+    // Create a list for the instruction arguments
+    var instrArgs = [];
+
+    // If the first argument is an IR type
+    if (
+        args.length > 0 && 
+        args[0] instanceof OpExpr &&
+        args[0].op == 'x [ y ]' &&
+        args[0].exprs[0] instanceof Ref &&
+        args[0].exprs[0].id.toString() == 'IRType'
+    )
+    {
+        // Get a reference to the IR type object
+        var typeName = args[0].exprs[1].value;
+        var typeObj = IRType[typeName];
+
+        // Remove the first argument from the list
+        args.shift();
+
+        // Add the type object to the instruction arguments
+        instrArgs.push(typeObj);
+    }
+
+    // Compile the function argument list
+    var argsContext = context.pursue(args);
+    var argVals = exprListToIR(argsContext);
+    instrArgs = instrArgs.concat(argVals);
+
+    // If branch targets were specified, add them to the instruction arguments
+    if (branches)
+        instrArgs = instrArgs.concat(branches);
+
+    // Get a reference to the instruction constructor
+    var instrName = fnExpr.exprs[1].value;
+    var instrCtor = iir[instrName];
+
+    // Create the new instruction
+    var newInstr = new instrCtor(instrArgs);
+
+    // Add the new instruction to the current basic block
+    argsContext.getExitBlock().addInstr(newInstr);
+
+    // Set the new instruction as the output
+    context.setOutput(argsContext.getExitBlock(), newInstr);
 }
 
