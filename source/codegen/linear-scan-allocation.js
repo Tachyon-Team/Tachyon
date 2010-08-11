@@ -589,6 +589,14 @@ allocator.interval.prototype.nextIntersection = function (interval)
         rs2 = temprs;
     }
 
+    // Test for empty intervals, because if either one of the interval
+    // is empty they cannot intersect
+    if (rs1.length === 0 || 
+        rs2.length === 0)
+    {
+        return Infinity;
+    }
+
     // Start from further startPosition,
     // since the other cannot intersect
     // before the start of an interval
@@ -1212,8 +1220,9 @@ allocator.liveIntervals = function (cfg, order)
             {
                 // The output of the instruction starts being live here
                 instr.regAlloc.interval.setStartPos(instr.regAlloc.id);
-                instr.regAlloc.interval.addUsePos(instr.regAlloc.id,
-                    allocator.usePos.registerFlag.REQUIRED);
+                instr.regAlloc.interval.addUsePos(instr.regAlloc.id);
+                    // TODO: Check in which cases we might need the required flag
+                    //allocator.usePos.registerFlag.REQUIRED);
 
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
@@ -1236,8 +1245,8 @@ allocator.liveIntervals = function (cfg, order)
                     block.regAlloc.from,
                     instr.regAlloc.id
                 );
-                use.regAlloc.interval.addUsePos(instr.regAlloc.id,
-                    allocator.usePos.registerFlag.REQUIRED);
+                use.regAlloc.interval.addUsePos(instr.regAlloc.id);
+                    //allocator.usePos.registerFlag.REQUIRED);
 
                 //print( use.instrId + " from:" + block.regAlloc.from +
                 //       " to:" + instr.regAlloc.id);
@@ -1354,7 +1363,7 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
     var nextUsePos = new Array(pregs.length);
 
     // Initialize fixed if undefined
-    if(!fixed)
+    if(fixed === undefined)
     {
         fixed = [];
         fixed.length = pregs.length;
@@ -1399,13 +1408,12 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
         //       in the regular case
         // For fixed interval, register is available until next
         // intersection with current
-        /*
         for (i=0; i < fixed.length; ++i)
         {
             it = fixed[i];
             freeUntilPos[i] = Math.min(it.nextIntersection(current),
                                        freeUntilPos[i]);
-        }*/
+        }
 
         reg = allocator.max(freeUntilPos).index;
         
@@ -1513,14 +1521,13 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
                 }
             }
            
-            /*
             fixedPos = current.nextIntersection(fixed[reg]); 
             if (fixedPos !== Infinity)
             {
                 // The register has a fixed interval, covering a part 
                 // of current, we need to split
                 unhandledQueue.enqueue(current.split(fixedPos));
-            }*/
+            }
         }
     };
 
