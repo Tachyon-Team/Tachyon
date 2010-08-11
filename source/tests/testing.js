@@ -2,154 +2,111 @@
 @fileOverview
 Unit testing framework implementation.
 
-@author
-Maxime Chevalier-Boisvert
-
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-/**
-@class Base class for test cases
-*/
-function TestCase(testName, testFunc)
+/** @namespace for all tests */
+var tests = tests || {};
+
+/** Root test function */
+tests.run = function (catchError, testName)
 {
-    /**
-    Function to perform this unit test
-    NOTE: tests should return true if they succeed, false otherwise
-    */
-    this.runTest = testFunc;
 
-    /**
-    Unit test name
-    @field
-    */
-    this.testName = testName;
-}
+    // TODO: Handle test nested test suite name
+    var suiteName = (testName !== undefined) ? testName.split(".")[0] : undefined;
+    var caseName = (testName !== undefined) ? testName.split(".")[1] : undefined;
 
-/**
-@class Test suite class
-*/
-function TestSuite(suiteName)
-{
-    /**
-    Run this test suite
-    */
-    this.runSuite = function ()
+    var p;
+    var failedNb = 0; 
+    for (p in this)
     {
-        print(
-            'Running test suite: ' + this.suiteName + ' (' +
-            this.testCases.length + ' ' + 
-            pluralize('test', this.testCases.length) + ')'
-        );
-
-        var failCount = 0;
-
-        for (var i = 0; i < this.testCases.length; ++i)
+        if (this.hasOwnProperty(p) && 
+            typeof this[p] !== "function" &&
+            (suiteName === undefined || suiteName === p))
         {
-            var testCase = this.testCases[i];
+            failedNb += this[p].run(catchError, p, caseName);
+        } 
+    }
 
-            print('Running test: ' + testCase.testName);
-
-            var output = testCase.runTest();
-
-            if (output === true)
-            {
-                print('PASSED');
-            }
-            else
-            {
-                // If the test returned an output string, print it
-                if (typeof output == 'string')
-                    print ('*** FAILED: ' + output);
-                else
-                    print('*** FAILED ***');
-
-                failCount++;
-            }
-        }
-
-        if (failCount > 0)
-            print('WARNING: ' + failCount + ' test ' + pluralize('case', failCount) + ' failed');
-        else
-            print('All test cases passed');
-
-        return failCount;
-    };
-
-    /**
-    Add a test to the suite
-    */
-    this.addTest = function (test)
+    if (failedNb > 0)
     {
-        if (this.testCases.length == 0)
-            this.testCases = [test];
-        else
-            this.testCases.push(test);
-    };
+        print("WARNING: " + failedNb + pluralize(" test", failedNb) + " failed");
+    } else
+    {
+        print("All tests passed.");
+    }
+};
 
-    /**
-    Unit test name
-    @field
-    */
-    this.suiteName = suiteName;
-
-    /**
-    List of test suites
-    @field
-    */
-    this.testCases = [];
-}
-
-/**
-@class Class to orchestrate the unit testing process
-*/
-function TestManager()
+/** @class Test suite */
+tests.testSuite = function () 
 {
-    /**
-    Run all unit tests
-    */
-    this.runTests = function ()
+    var that = Object.create(tests.testSuite.prototype);
+    return that;
+};
+
+/** run all tests cases and nested test suites for this test suite */
+tests.testSuite.prototype.run = function (catchError, suiteName, caseName)
+{
+    var p;
+    var result;
+    var failedNb = 0;
+    var exception;
+    for (p in this)
     {
-        print('Running ' + this.testSuites.length + ' test ' + pluralize('suite', this.testSuites.length) + '\n');
-
-        var failSuiteCount = 0;
-
-        for (var i = 0; i < this.testSuites.length; ++i)
+        if (this.hasOwnProperty(p) && 
+            typeof this[p] === "function" &&
+            p !== "run" &&
+            p !== "setup" &&
+            p !== "teardown" &&
+            (caseName === undefined || caseName === p))
         {
-            var testSuite = this.testSuites[i];
+            result = true;
+            if (catchError)
+            {
+                try
+                {
+                    if (this["setup"] !== undefined)
+                    {
+                        this.setup();
+                    }
+                    this[p]();
+                    if (this["teardown"] !== undefined)
+                    {
+                        this.teardown();
+                    }
+                } catch (e)
+                {
+                    exception = e;
+                    result = false; 
+                    failedNb++;
+                }
+            } else
+            {
+                // Useful for debugging failing tests
+                if (this["setup"] !== undefined)
+                {
+                    this.setup();
+                }
+                this[p]();
+                if (this["teardown"] !== undefined)
+                {
+                    this.teardown();
+                }
+            }
+            if (!result)
+            {
+                print(suiteName +"." + p + " FAILED with exception:");
+                print("\t" + exception);
+            }
+        } else if (this.hasOwnProperty(p) &&
+                   tests.testSuite.prototype.isPrototypeOf(this[p]))
+        {
+            failedNb = failedNb + this[p].run(catchError, suiteName + "." + p,
+                                              caseName);
+        } 
+    }
 
-            var failTestCount = testSuite.runSuite();
-
-            if (failTestCount > 0)
-                ++failSuiteCount;
-
-            print('');
-        }
-
-        if (failSuiteCount > 0)
-            print('WARNING: ' + failSuiteCount + ' test ' + pluralize('suite', failSuiteCount) + ' failed');
-        else
-            print('All test suites passed');
-
-        print('');
-    };
-
-    /**
-    Add a test suite
-    */
-    this.addSuite = function (suite)
-    {
-        this.testSuites.push(suite);
-    };
-
-    /**
-    List of test suites
-    @field
-    */
-    this.testSuites = [];
-}
-
-// Global test manager instance
-testManager = new TestManager();
+    return failedNb;
+};
 
