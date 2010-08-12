@@ -36,6 +36,7 @@ TEST_SPEC_SRCS =            \
     tests/testing.js        \
     tests/utility.js        \
     codegen/tests/*.js      \
+    ir/tests/*.js           \
     tests/testmain.js
 
 # Main target source files
@@ -63,5 +64,5 @@ test:
 	$(JSVM) $(TEST_SRCS)
 
 doc: $(SRCS)
-	jsdoc -d=../doc/source $(ALL_SRCS)
+	jsdoc -d=../doc/source $(MAIN_SRCS)
 
