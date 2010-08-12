@@ -195,3 +195,19 @@ print('CFG2 VALID: ' + cfg2.validate());
 print("done");
 */
 
+/*
+func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
+
+cfg = new ControlFlowGraph(func);
+
+entry = cfg.getEntryBlock();
+
+var i1 = new UnboxInstr(IRType.POINTER, ConstValue.getConst(1));
+var i2 = new LoadInstr(IRType.INT32, i1);
+var i3 = new IAddOvfInstr(i2, i2, entry, entry);
+
+print(i1);
+print(i2);
+print(i3);
+*/
+

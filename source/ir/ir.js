@@ -19,6 +19,11 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: use id directly (unique) instead of variable name?
 
+// TODO: consider adding bool value conversion, eliminating untyped if?
+
+// TODO: consider unifying 3 typed instr. makers
+// - Can still return different closure function for constructor
+
 /**
 Convert an AST code unit into IR functions
 */
@@ -645,24 +650,36 @@ function stmtToIR(context)
         // Could possibly have custom tokey conversion... Or no conversion,
         // getprop_val already implies complex underlying algorithm, unlike if test
 
+        // If the test expression is an inline conditional IR instruction
+        if (isCondInlineIR(astStmt))
+        {
+            // Generate the inline IR instruction
+            genCondInlineIR(context);
+
+            // Exit early
+            return;
+        }
+
         // Compile the test expression
         var testContext = context.pursue(astStmt.expr);        
         exprToIR(testContext);
 
-        // Compile the true statement
+        // Create a context for the true statement
         var trueContext = context.branch(
             astStmt.statements[0],
             context.cfg.getNewBlock('if_true'),
-            context.localMap.copy()
+            testContext.localMap.copy()
         );
-        stmtToIR(trueContext);
 
         // Create a context for the false statement
         var falseContext = context.branch(
             astStmt.statements[1]? astStmt.statements[1]:null,
             context.cfg.getNewBlock('if_false'),
-            context.localMap.copy()
+            testContext.localMap.copy()
         );
+
+        // Compile the true statement
+        stmtToIR(trueContext);
 
         // Compile the false statement, if it is defined
         if (astStmt.statements.length > 1)
@@ -1230,8 +1247,7 @@ function stmtToIR(context)
 
                 // Compare the testvalue with the switch value
                 var testVal = curTestCtx.getExitBlock().addInstr(
-                    new CompInstr(
-                        CompOp.SEQ,
+                    new SeqInstr(
                         curTestCtx.getOutValue(),
                         switchCtx.getOutValue()
                     )
@@ -1336,7 +1352,7 @@ function stmtToIR(context)
         else
         {
             // Add the last test context to the break context list
-            brkCtxList.add(nextTestCtx);
+            brkCtxList.push(nextTestCtx);
         }
 
         // Add the last clause context to the break context list
@@ -1548,7 +1564,6 @@ function exprToIR(context)
             'nested function not found for function expression'
         );
 
-
         // Create a list for the closure variable values
         var closVals = [];
 
@@ -1614,9 +1629,22 @@ function exprToIR(context)
 
     else if (astExpr instanceof CallExpr)
     {
+        // If this is an inline IR instruction
+        if (isInlineIR(astExpr))
+        {
+            // Generate the inline IR instruction
+            genInlineIR(context);
+
+            // Exit early
+            return;
+        }
+
         // Compile the function argument list
         var argsContext = context.pursue(astExpr.args);
         var argVals = exprListToIR(argsContext);
+
+        // Get a reference to the function expression
+        var fnExpr = astExpr.fn;
 
         // Variable for the function value
         var funcVal;
@@ -1628,10 +1656,10 @@ function exprToIR(context)
         var lastContext;
 
         // If the function expression is of the form x[y]
-        if (astExpr.fn instanceof OpExpr && astExpr.fn.op == 'x [ y ]')
+        if (fnExpr instanceof OpExpr && fnExpr == 'x [ y ]')
         {
-            var thisExpr = astExpr.fn.exprs[0];
-            var idxExpr = astExpr.fn.exprs[1];
+            var thisExpr = fnExpr.exprs[0];
+            var idxExpr = fnExpr.exprs[1];
     
             // Generate code for the "this" expression
             var thisContext = argsContext.pursue(thisExpr);
@@ -1657,7 +1685,7 @@ function exprToIR(context)
         else
         {
             // Generate code for the statement
-            var funcContext = argsContext.pursue(astExpr.fn);
+            var funcContext = argsContext.pursue(fnExpr);
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
@@ -2086,6 +2114,26 @@ function opToIR(context)
 
             // Set the second argument's output value as the output
             context.setOutput(argsContext.getExitBlock(), argVals[1]);
+        }
+        break;
+
+        // If this is the unary minus operator
+        case '- x':
+        { 
+            // Compile the argument values
+            var argsContext = context.pursue(exprs);
+            var argVals = exprListToIR(argsContext);
+
+            // Subtract the argument value from the constant 0
+            var opVal = argsContext.getExitBlock().addInstr(
+                new SubInstr(
+                    ConstValue.getConst(0),
+                    argVals[0]
+                )
+            );
+
+            // Set the subtraction's output value as the output
+            context.setOutput(argsContext.getExitBlock(), opVal);
         }
         break;
 
@@ -2872,5 +2920,203 @@ function mergeLoopEntry(
         if (!exitBlock.hasBranch())
             exitBlock.addInstr(new JumpInstr(entryBlock));
     }
+}
+
+/**
+Test if a call expression is an inline IR instruction
+*/
+function isInlineIR(callExpr)
+{
+    var fnExpr = callExpr.fn;
+
+    return (
+        fnExpr instanceof OpExpr && 
+        fnExpr.op == 'x [ y ]' &&
+        fnExpr.exprs[0] instanceof Ref && 
+        fnExpr.exprs[0].id.toString() == 'iir'
+    );
+}
+
+/**
+Generate an inline IR instruction
+*/
+function genInlineIR(context, branches)
+{
+    // Ensure that a valid expression was passed
+    assert (
+        context.astNode instanceof CallExpr && isInlineIR(context.astNode),
+        'invalid inline IR expression'
+    );
+
+    // Get a reference to the function expression
+    var fnExpr = context.astNode.fn;
+
+    // Get a the call arguments
+    var args = context.astNode.args.slice(0);
+
+    // Create a list for the instruction arguments
+    var instrArgs = [];
+
+    // If the first argument is an IR type
+    if (
+        args.length > 0 && 
+        args[0] instanceof OpExpr &&
+        args[0].op == 'x [ y ]' &&
+        args[0].exprs[0] instanceof Ref &&
+        args[0].exprs[0].id.toString() == 'IRType'
+    )
+    {
+        // Get a reference to the IR type object
+        var typeName = args[0].exprs[1].value;
+        var typeObj = IRType[typeName];
+
+        // Remove the first argument from the list
+        args.shift();
+
+        // Add the type object to the instruction arguments
+        instrArgs.push(typeObj);
+    }
+
+    // Compile the function argument list
+    var argsContext = context.pursue(args);
+    var argVals = exprListToIR(argsContext);
+    instrArgs = instrArgs.concat(argVals);
+
+    // If branch targets were specified, add them to the instruction arguments
+    if (branches)
+        instrArgs = instrArgs.concat(branches);
+
+    // Get a reference to the instruction constructor
+    var instrName = fnExpr.exprs[1].value;
+    var instrCtor = iir[instrName];
+
+    // Create the new instruction
+    var newInstr = new instrCtor(instrArgs);
+
+    // Add the new instruction to the current basic block
+    argsContext.getExitBlock().addInstr(newInstr);
+
+    // Set the new instruction as the output
+    context.setOutput(argsContext.getExitBlock(), newInstr);
+}
+
+/**
+Test if an if statement is a conditional inline IR instruction
+*/
+function isCondInlineIR(ifStmt)
+{
+    return (
+        isInlineIR(ifStmt.expr) 
+        ||
+        (
+            ifStmt.expr instanceof OpExpr &&
+            ifStmt.expr.op == 'x = y' &&
+            ifStmt.expr.exprs[0] instanceof Ref &&
+            isInlineIR(ifStmt.expr.exprs[1])
+        )
+    );
+}
+
+/**
+Generate a conditional inline IR instruction
+*/
+function genCondInlineIR(context)
+{
+    // Ensure that a valid statement was passed
+    assert (
+        context.astNode instanceof IfStatement && isCondInlineIR(context.astNode),
+        'invalid conditional inline IR expression'
+    );
+
+    // Get a reference to the if statement
+    var astStmt = context.astNode;
+
+    // Create basic blocks for the true and false branches
+    var trueBlock = context.cfg.getNewBlock('iir_true');
+    var falseBlock = context.cfg.getNewBlock('iir_false');
+
+    // If this is an inline IR instruction with value assignment
+    if (
+        astStmt.expr instanceof OpExpr &&
+        astStmt.expr.op == 'x = y' &&
+        astStmt.expr.exprs[0] instanceof Ref &&
+        isInlineIR(astStmt.expr.exprs[1])
+    )
+    {
+        // Compile the inline IR instruction
+        var testContext = context.pursue(astStmt.expr.exprs[1]);
+        genInlineIR(testContext, [trueBlock, falseBlock]);
+
+        // Store the IIR instruction output value
+        var iirValue = testContext.getOutValue();
+
+        // Create a context for the true assignment
+        var trueAssgCtx = context.branch(
+            astStmt.expr.exprs[0],
+            trueBlock,
+            testContext.localMap.copy()
+        );
+
+        // Create a context for the false assignment
+        var falseAssgCtx = context.branch(
+            astStmt.expr.exprs[0],
+            falseBlock,
+            testContext.localMap.copy()
+        );
+
+        // Assign the value on both branches
+        assgToIR(trueAssgCtx, iirValue);
+        assgToIR(falseAssgCtx, iirValue);
+
+        // Pursue the assignment context for the true statement
+        var trueContext = trueAssgCtx.pursue(
+            astStmt.statements[0]
+        );
+
+        // Pursue the assignment context for the false statement
+        var falseContext = falseAssgCtx.pursue(
+            astStmt.statements[1]? astStmt.statements[1]:null
+        );
+    }
+    else
+    {
+        // Compile the inline IR instruction
+        var testContext = context.pursue(astStmt.expr);
+        genInlineIR(testContext, [trueBlock, falseBlock]);
+
+        // Create a context for the true statement
+        var trueContext = context.branch(
+            astStmt.statements[0],
+            trueBlock,
+            testContext.localMap.copy()
+        );
+
+        // Create a context for the false statement
+        var falseContext = context.branch(
+            astStmt.statements[1]? astStmt.statements[1]:null,
+            falseBlock,
+            testContext.localMap.copy()
+        );
+    }
+
+    // Compile the true statement
+    stmtToIR(trueContext);
+
+    // Compile the false statement, if it is defined
+    if (astStmt.statements.length > 1)
+        stmtToIR(falseContext);
+    else
+        falseContext.bridge();
+
+    // Merge the local maps using phi nodes
+    var joinBlock = mergeContexts(
+        [trueContext, falseContext],
+        context.localMap,
+        context.cfg,
+        'iir_join'
+    );
+
+    // Set the exit block to be the join block
+    context.setOutput(joinBlock);
 }
 

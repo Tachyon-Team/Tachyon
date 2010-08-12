@@ -1,5 +1,58 @@
-function f(x)
+function f(c1, c2)
 {
+
+    var i1 = iir.unbox(IRType.INT32, c1);
+    var i2 = iir.unbox(IRType.INT32, c1);
+
+    /*
+    var s = iir.iadd(i1, i2);
+
+    return iir.box(IRType.INT32, s);
+    */
+
+    
+    var a;
+    if (a = iir.add_ovf(i1, i2))
+    {
+        var v = iir.box(IRType.INT32, a);
+        return v; 
+    }
+    else
+    {
+    }
+    
+
+    //iir.iadd(c1, c2);
+
+
+
+
+    /*
+    var v = -1;
+
+    switch (c1)
+    {
+        case 0:
+        v = 0;
+        
+        if (c2)
+            break;
+
+        v = 0.5;
+
+        case 1:
+        print(v);
+        v = 1;
+        break;
+
+        case 2:
+        v = 2;
+        break;
+    }
+
+    print(v);
+    */
+
     /*
     if (x < 2)
         return x;
@@ -36,6 +89,8 @@ function f(x)
     /*
     try
     {
+        print(f);
+
         throw 'foo';
     }
     catch (e)
