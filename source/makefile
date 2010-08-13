@@ -3,12 +3,7 @@ JSVM = d8 --allow_natives_syntax
 
 # Base program source files
 BASE_SRCS =                 \
-    utility/debug.js        \
-    utility/modules.js      \
-    utility/arrays.js       \
-    utility/hashmap.js      \
-    utility/linkedlist.js   \
-    utility/strings.js      \
+    utility/*.js            \
     parser/misc.js          \
     parser/scanner.js       \
     parser/parser.js        \
@@ -37,6 +32,7 @@ TEST_SPEC_SRCS =            \
     tests/utility.js        \
     codegen/tests/*.js      \
     ir/tests/*.js           \
+    utility/tests/*.js      \
     tests/testmain.js
 
 # Main target source files

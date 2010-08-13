@@ -91,3 +91,60 @@ function arraySetEqual(arr1, arr2)
     return true;
 }
 
+/** 
+Returns an iterator for this array. An optional filter may be used
+taking an element of the array and returning true if the value satisfies
+the condition.
+*/
+function arrayIterator(a, filter)
+{
+    if (filter === undefined)
+    {
+        filter = function (item) { return true; };
+    }
+
+    var it = Object.create(arrayIterator.prototype);
+    it.index = -1;
+    it.arr = a;
+    it.filter = filter;
+    it.next();
+    return it;
+}
+
+/** Tells whether all items have been visited */
+arrayIterator.prototype.end = function ()
+{
+    return this.index >= this.arr.length;
+};
+
+/** Move iterator to the next item */
+arrayIterator.prototype.next = function ()
+{
+    this.index++;
+    while (!this.end() &&
+           !this.filter(this.arr[this.index]))
+    {
+        this.index++;
+    }
+};
+
+/** Returns the current item being visited */
+arrayIterator.prototype.get = function ()
+{
+    return this.arr[this.index];
+};
+
+/** Returns a new array with the result of func applied to every item */
+arrayMap = function (arr, func)
+{
+    var i = 0;
+    var arr2 = [];
+    arr2.length = arr.length;
+    
+    for (i=0; i<arr.length; ++i)
+    {
+        arr2[i] = func(arr[i]);
+    }
+
+    return arr2;
+}
