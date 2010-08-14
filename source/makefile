@@ -14,6 +14,7 @@ BASE_SRCS =                 \
     ir/inline.js            \
     ir/cfg.js               \
     ir/functions.js         \
+    ir/handlers.js          \
     ir/ir.js                \
     codegen/asm.js          \
     codegen/asm-x86.js      \
