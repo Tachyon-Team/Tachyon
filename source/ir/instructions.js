@@ -17,6 +17,12 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // - May want a "write" or "side effect" flag
 
 // TODO: should instructions have write, branch, etc. flags? eliminate BranchInstr?
+// - Probably want to keep BranchInstr, integrate into IR core
+
+// TODO: consider adding bool value conversion, eliminating untyped if?
+
+// TODO: unify 3 instruction maker functions?
+// - Can still return different closure function for constructor
 
 //=============================================================================
 // IR Core
@@ -332,6 +338,355 @@ IRInstr.prototype.replDest = function (oldDest, newDest)
             this.dests[i] = newdest;
     }
 };
+
+
+
+
+
+
+
+// TODO
+
+/**
+Function to generate typed instruction constructors using closures
+@param mnemonic mnemonic name of the instruction
+@param typeParSpecs list of type parameter specifications
+@param inTypeSpecs list of arrays of input value type
+@param outTypeSpecs list of output value types
+@param branchNames list of branch target names
+@param protoObj prototype object for the instruction
+*/
+function TypedInstrMakerBeta(
+    mnemonic,
+    typeParSpecs,
+    inTypeSpecs,
+    outTypeSpecs,
+    branchNames,
+    protoObj
+)
+{
+    // If only one input type specification is present
+    if (!(outTypeSpecs instanceof Array))
+    {
+        assert (
+            typeParSpecs instanceof Array,
+            'invalid type parameter specifications'
+        );
+
+        // Copy the input type for each type param specification
+        var inType = inTypeSpecs;
+        inTypeSpecs = [];
+        for (var i = 0; i < typeParSpecs.length; ++i)
+            inTypeSpecs.push(inType);
+    }
+    else
+    {
+        assert (
+            typeParSpecs.length == inTypeSpecs.length,
+            'the number of type parameter and input type specifications must match'
+        );
+    }
+
+    // If only one output type specification is present
+    if (!(outTypeSpecs instanceof Array))
+    {
+        // Copy the output type for each input type specification
+        var outType = outTypeSpecs;
+        outTypeSpecs = [];
+        for (var i = 0; i < inTypeSpecs.length; ++i)
+            outTypeSpecs.push(outType);
+    }
+    else
+    {
+        assert (
+            inTypeSpecs.length == outTypeSpecs.length,
+            'the number of input and output type specifications must match'
+        );
+    }
+
+    // Validate input type specifications
+    for (var i = 0; i < inTypeSpecs.length; ++i)
+    {
+        var typeSpec = inTypeSpecs[i];
+        for (var j = 0; j < typeSpec.length; ++j)
+        {
+            assert (
+                typeSpec[j] instanceof IRTypeObj,
+                'invalid type in type specification'
+            );
+        }
+    }
+
+    // Validate output type specifications
+    for (var i = 0; i < outTypeSpecs.length; ++i)
+    {
+        assert (
+            outTypeSpecs[i] instanceof IRTypeObj,
+            'invalid type in type specification'
+        );
+    }
+
+    // Create lists for the mnemonic instruction names
+    var mnemonicNames = [];
+
+    // If type parameter specifications are provided
+    if (typeParSpecs)
+    {
+        // Ensure that the type parameter specifications are in an array
+        assert (
+            typeParSpecs instanceof Array,
+            'invalid type parameter specifications array'
+        );
+
+        // Get the number of type parameters
+        var numTypeParams = typeParSpecs[0].length;
+
+        // For each type parameter specification
+        for (var i = 0; i < typeParSpecs.length; ++i)
+        {
+            // Get this type parameter specification
+            var typeSpec = typeParSpecs[i];
+
+            // Ensure all specifications have the same length
+            assert (
+                typeSpec.length == numTypeParams,
+                'invalid type parameter specification'
+            );
+
+            // Set the mnemonic name for this type parameter specification
+            var mnemName = mnemonic;
+            for (var j = 0; j < numTypeParams; ++j)
+            {
+                var type = typeSpec[j];
+
+                assert (
+                    type instanceof IRTypeObj,
+                    'invalid type in type specification'
+                );
+
+                if (type !== IRType.BOXED || numTypeParams > 0)
+                    mnemName += '_' + type.name;
+            }
+
+            // Add the mnemonic name to the list
+            mnemonicNames.push(mnemName);
+        }
+    }
+
+    // Otherwise, no type parameter specifications are provided
+    else
+    {
+        // For each input type specification
+        for (var i = 0; i < inTypeSpecs.length; ++i)
+        {
+            // Get this type parameter specification
+            var typeSpec = inTypeSpecs[i];
+
+            // Verify if all types in the specification are the same
+            var firstType = typeSpec.length? typeSpec[0]:null;
+            var allSame = true;
+            for (var j = 0; j < typeSpec.length; ++j)
+            {
+                if (typeSpec[j] !== firstType)            
+                    allSame = false;
+            }
+
+            // Set the mnemonic name for this type parameter specification
+            var mnemName = mnemonic;
+
+            // If all input types are the same
+            if (allSame)
+            {
+                // If there is a first type and it is not boxed
+                if (firstType !== null && firstType !== IRType.BOXED)
+                {
+                    // Append the input type to the name
+                    mnemName += '_' + firstType.name;
+                }
+            }
+            else
+            {
+                // Append all input types to the name
+                for (var j = 0; j < typeSpec.length; ++j)
+                    mnemName += '_' + typeSpec[j].name;
+            }
+
+            // Add the mnemonic name to the list
+            mnemonicNames.push(mnemName);
+        }
+    }
+
+    /**
+    Parse instruction constructor arguments
+    */
+    function parseArgs(argArray, typeParams, inputValues, branchTargets)
+    {
+        var curIndex = 0;
+
+        // Extract type parameters, if any
+        for (; curIndex < argArray.length && argArray[curIndex] instanceof IRTypeObj; ++curIndex)
+            typeParams.push(argArray[curIndex]);
+
+        // Extract input values, if any
+        for (; curIndex < argArray.length && argArray[curIndex] instanceof IRValue; ++curIndex)
+            inputValues.push(argArray[curIndex]);
+
+        // Extract branch targets, if any
+        for (; curIndex < argArray.length && argArray[curIndex] instanceof BasicBlock; ++curIndex)
+            branchTargets.push(argArray[curIndex]);
+
+        assert (
+            curIndex == argArray.length,
+            'invalid arguments passed to ' + mnemonic + ' constructor'
+        );
+    }
+
+    /**
+    Find a type parameter or input type specification
+    */
+    function findSpec(typeSpec, specArray)
+    {
+        var specIndex = -1;
+
+        // Find the type specification from the type values
+        SPEC_LOOP:
+        for (var i = 0; i < specArray.length; ++i)
+        {
+            var curSpec = specArray[i];
+
+            // If the number of type values does not match the spec length, continue
+            if (typeSpec.length != curSpec.length)
+                continue SPEC_LOOP;
+
+            // If any type value does not match, continue
+            for (var j = 0; j < typeSpec.length; ++j)
+            {
+                if (typeSpec[j] !== curSpec[j])
+                    continue SPEC_LOOP;
+            }
+
+            // The spec was found, break out of the loop
+            specIndex = i;
+            break;
+        }
+
+        assert (
+            specIndex != -1,
+            'invalid type specification passed to ' + mnemonic + ' constructor'
+        );
+
+        return specIndex;
+    }
+
+    /**
+    Instruction constructor function instance, implemented as a closure
+    */
+    function InstrConstr(inputs)
+    {
+        // Parse the input arguments
+        var typeParams = [];
+        var inputValues = [];
+        var branchTargets = [];
+        if (inputs instanceof Array)
+            parseArgs(inputs, typeParams, inputValues, branchTargets);
+        else
+            parseArgs(arguments, typeParams, inputValues, branchTargets);
+
+        // If type parameters are to be used
+        if (typeParSpecs)
+        {
+            // Find the type specifications based on the type parameters
+            var specIndex = findSpec(typeParams, typeParSpecs);
+   
+            // Store the type parameters of the instruction
+            this.typeParams = typeParams;
+        }
+        else
+        {
+            // Find the type specifications based on the input value types
+            var specIndex = findSpec(
+                inputValues.map(function (val) { val.type; }), 
+                inTypeSpecs
+            );
+        }
+
+        // Set the mnemonic name of the instruction
+        this.mnemonic = mnemonicNames[specIndex];
+
+        // Set the output type for the instruction
+        this.type = outTypeSpecs[specIndex];
+
+        // Store the uses of the instruction
+        this.uses = inputValues.slice(0);
+
+        // If this is a branch instruction
+        if (branchNames)
+        {
+            // Ensure that the right number of branch targets were specified
+            assert (
+                branchTargets.length == branchNames.length,
+                'must specify ' + branchNames.length + ' branch targets to ' + mnemonic + ' constructor'
+            );
+
+            // Ensure that the branch targets are valid
+            branchTargets.forEach(
+                function (t)
+                {
+                    assert (
+                        t instanceof BasicBlock,
+                        'invalid branch target passed to ' + mnemonic + ' constructor'
+                    );
+                }
+            );
+
+            // Store the branch targets
+            this.targets = targets;
+        }
+    }
+
+    // If no prototype object was specified, create one
+    if (!protoObj)
+    {
+        if (branchNames)
+            protoObj = new BranchInstr();
+        else
+            protoObj = new IRInstr();
+    }
+
+    // Set the constructor for the new instruction
+    InstrConstr.prototype = protoObj;
+
+    // Store the branch target names
+    InstrConstr.prototype.targetNames = branchNames;
+
+    /**
+    Generic instruction shallow copy function
+    */
+    InstrConstr.prototype.copy = function ()
+    {
+        // Setup the copy arguments
+        var copyArgs = [];
+        if (this.typeParams) copyArgs = copyArgs.concat(this.typeParams.slice(0));
+        copyArgs = copyArgs.concat(this.uses.slice(0));
+        if (this.targets) copyArgs = copyArgs.concat(this.targets.slice(0));
+
+        // Return a new instruction with the same type parameters, uses and targets
+        return this.baseCopy(new InstrConstr(copyArgs));
+    };
+
+    // Return the new constructor instance
+    return InstrConstr;
+}
+
+
+
+
+
+
+
+
+
+
 
 /**
 Function to generate typed instruction constructors using closures

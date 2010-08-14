@@ -12,17 +12,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: Explain result of translation in function description comments 
 
 // TODO: handle eval
-
 // TODO: handle arguments object
-
 // TODO: fix scope of catch variable
-
 // TODO: use id directly (unique) instead of variable name?
 
 // TODO: consider adding bool value conversion, eliminating untyped if?
 
-// TODO: consider unifying 3 typed instr. makers
-// - Can still return different closure function for constructor
+// TODO: do not add phi nodes when one typed value defined and all other paths undefined
 
 /**
 Convert an AST code unit into IR functions
