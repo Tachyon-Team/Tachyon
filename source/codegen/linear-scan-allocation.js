@@ -1275,8 +1275,17 @@ allocator.liveIntervals = function (cfg, order)
                     block.regAlloc.from,
                     instr.regAlloc.id
                 );
-                use.regAlloc.interval.addUsePos(instr.regAlloc.id);
-                    //allocator.usePos.registerFlag.REQUIRED);
+
+                if ( instr instanceof RetInstr)
+                {
+
+                    use.regAlloc.interval.addUsePos(instr.regAlloc.id,
+                                        allocator.usePos.registerFlag.REQUIRED);
+                } else
+                {
+                    use.regAlloc.interval.addUsePos(instr.regAlloc.id);
+                }
+
 
                 //print( use.instrId + " from:" + block.regAlloc.from +
                 //       " to:" + instr.regAlloc.id);
