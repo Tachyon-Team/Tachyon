@@ -482,6 +482,8 @@ allocator.interval.prototype.ranges = [];
 allocator.interval.prototype.reg    = null;
 /** Linked interval, for intervals that have been split */
 allocator.interval.prototype.next   = null;
+/** Linked interval, for intervals that have been split */
+allocator.interval.prototype.previous   = null;
 /** Unique identifier for this interval */
 allocator.interval.prototype.id     = 0;
 /** Virtual register */
@@ -541,25 +543,32 @@ allocator.interval.prototype.toString = function ()
            this.reg + "' }";
 };
 
-/** Tells if a given position is contained within one of the ranges 
+/** Tells if a given position is contained within one of the ranges
+    of this interval or one of the child interval.
     @param {Number} pos position number
     @param {Boolean} isInclusive true if the start position 
                      boundary of a range should be included.
 */ 
 allocator.interval.prototype.covers = function (pos, isInclusive)
 {
+    var interval = this;
+
     if (isInclusive === undefined)
     {
         isInclusive = true;
     }
 
-    var i;
-    for (i=0; i < this.ranges.length; ++i)
+    while (interval !== null)
     {
-        if (this.ranges[i].covers(pos, isInclusive))
+        var i;
+        for (i=0; i < interval.ranges.length; ++i)
         {
-            return true;
+            if (interval.ranges[i].covers(pos, isInclusive))
+            {
+                return true;
+            }
         }
+        interval = interval.next;
     }
     return false;
 };
@@ -748,6 +757,7 @@ allocator.interval.prototype.split = function (pos)
 
     // Intervals are linked together
     this.next = next;
+    next.previous = this;
     return next;
 };
 
@@ -855,6 +865,26 @@ allocator.interval.prototype.nextUse = function (pos, registerFlag)
     {
         return this.usePositions[i].pos;
     }
+};
+
+/** 
+    Returns the physical register or memory location assigned
+    at a specific position on the interval.
+    @param {Number} pos
+*/
+allocator.interval.prototype.regAtPos = function (pos)
+{
+    var interval = this;
+    while (interval !== null)
+    {
+        if (pos >= interval.startPos() && pos <= interval.endPos())
+        {
+            return interval.reg;
+        }
+        interval = interval.next;
+    } 
+
+    return null;
 };
 
 //-----------------------------------------------------------------------------
@@ -1363,7 +1393,7 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
     var nextUsePos = new Array(pregs.length);
 
     // Initialize fixed if undefined
-    if(fixed === undefined)
+    if(fixed === undefined || fixed.length !== pregs.length)
     {
         fixed = [];
         fixed.length = pregs.length;
@@ -1613,3 +1643,250 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
         assignRegister(it);
     }
 };
+
+/** 
+    Assign registers and memory location to each instruction. Register
+    allocation must have been done before calling assign.
+
+    @param cfg          Control Flow Graph 
+*/
+allocator.assign = function (cfg)
+{
+    var it, instr, opndIt, opnds, dest, pos, opnd;
+    for (it = cfg.getInstrIterator(); !it.end(); it.next())
+    {
+        instr = it.get();
+        opnds = []; 
+        dest  = null; 
+        pos = instr.regAlloc.id;
+
+        for (opndIt = instr.getOpndIterator(); !opndIt.end(); opndIt.next())
+        {
+            opnd = opndIt.get(); 
+            if (opnd instanceof IRInstr)
+            {
+                opnds.push(opnd.regAlloc.interval.regAtPos(pos));
+            } else 
+            {
+                opnds.push(opnd);
+            }
+        }
+
+        if (instr.hasDests())
+        {
+            dest = instr.regAlloc.interval.regAtPos(pos);
+        }
+
+        instr.regAlloc.opnds = opnds;
+        instr.regAlloc.dest = dest;
+    }
+};
+
+/** 
+    Resolve location differences introduced by splitting during
+    register allocation and replace Phi instructions by equivalent 
+    Move instructions.
+    @param cfg          Control Flow Graph 
+    @param intervals    Intervals after register allocation
+    @param order        A Linear order of all the basic blocks
+*/
+allocator.resolve = function (cfg, intervals, order)
+{
+    function liveAtBegin (succ)
+    {
+        var pos = succ.regAlloc.from;
+        return function (interval) { return interval.covers(pos); };
+    };
+    function withinBounds(pos, block)
+    {
+        return pos >= block.regAlloc.from && pos <= block.regAlloc.to;
+    };
+    
+    var edgeIt, intervalIt, moveIt, blockIt, edge, moveFrom, moveTo;
+    var interval;
+    var moves = [];
+    var pos, offset, blockOffset;
+    var mapping;
+    var insertFct;
+    var insertIndex;
+
+    // Insert Moves at split positions
+    for (intervalIt = arrayIterator(intervals); 
+         !intervalIt.end(); 
+         intervalIt.next())
+    {
+        interval = intervalIt.get();
+        while (interval !== null)
+        {
+            if (interval.previous !== null)
+            {
+                moves.push([interval.previous.endPos(),
+                            new MoveInstr(interval.previous.reg,
+                                          interval.reg)]);
+            }
+            interval = interval.next;
+        }
+    }
+    moves.sort(function (a,b) { return a[0] - b[0]; });
+
+    print(moves);
+
+    moveIt = arrayIterator(moves);
+    blockIt = arrayIterator(order); 
+
+    offset = 0;
+    blockOffset = 1;
+    while (!moveIt.end() && !blockIt.end())
+    {
+        blockOffset = blockIt.get().regAlloc.from;
+
+        if (withinBounds(moveIt.get()[0], blockIt.get()))
+        {
+            // Position is the displacement from the beginning of the block
+            // divided by 2 because instruction are even-numbered.
+            // We remove 1 to take into account that the first instruction
+            // has a position greater than the beginning of the block.
+            // Finally, the offset is used to compensate previously inserted
+            // instructions in the same block.
+            pos = Math.ceil((moveIt.get()[0] - blockOffset) / 2) - 1 + offset;
+            blockIt.get().addInstr(moveIt.get()[1], "", pos);
+            offset++;
+            moveIt.next();
+        } else
+        {
+            blockIt.next();
+            offset = 0;
+        }
+    }
+
+    // Resolve differences introduced by splitting in different
+    // basic blocks
+    for (edgeIt = cfg.getEdgeIterator(); !edgeIt.end(); edgeIt.next())
+    {
+        mapping = allocator.mapping();
+        edge = edgeIt.get();
+        for (intervalIt = arrayIterator(intervals, liveAtBegin(edge.succ));
+             !intervalIt.end(); intervalIt.next())
+        {
+            // TODO: Handle Phi functions
+            
+            moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
+            moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from);
+
+
+            if (moveFrom !== moveTo)
+            {
+               print(intervalIt.get());
+               print("Move from:" + moveFrom + " to:" + moveTo);
+               mapping.add(moveFrom, moveTo);
+            }
+        }
+
+        // Order and insert moves
+        if (edge.pred.succs.length === 1)
+        {
+            // Predecessor has only a successor, insert moves at
+            // the end of predecessor
+            insertFct = function (move) { edge.pred.addInstr(move); };
+
+        } else if (edge.succ.preds.length === 1)
+        {
+            // Successor has only a predecessor, insert moves
+            // at the beginning of successor
+            insertFct = function (move) 
+                        { 
+                            edge.succ.addInstr(move,"", insertIndex++);
+                        };
+            insertIndex = 0;
+
+        } else
+        {
+            // We need to introduce an additional block to insert
+            // the move instructions
+            throw "TODO";
+        }
+        mapping.orderAndInsertMoves(insertFct);
+    }
+};
+
+/** @private Mapping to order move instructions */
+allocator.mapping = function ()
+{
+    var that = Object.create(allocator.mapping.prototype);
+    that.read = {};
+    that.write = {};
+    return that;
+};
+
+allocator.mapping.prototype.add = function (from, to)
+{
+    var mov = new MoveInstr(from, to);
+
+    if (this.read[from] === undefined)
+    {
+        this.read[from] = [];
+    }
+    this.read[from].push(mov);
+
+    if (this.write[from] === undefined)
+    {
+        this.write[from] = null;
+    }
+
+    if (this.read[to] === undefined)
+    {
+        this.read[to] = [];
+    }
+
+    if (this.write[to] !== null && this.write[to] !== undefined)
+    {
+        error("Multiple moves to the same destination");
+    }
+    this.write[to] = mov;
+};
+
+allocator.mapping.prototype.orderAndInsertMoves = function (insertFct)
+{
+    var regName;
+    var g = graph.adjencyList();
+    var i;
+    var readValue;
+    var writeValue;
+    var moveIt;
+
+    for (regName in this.read)
+    {
+        if (!this.read.hasOwnProperty(regName)) 
+        {
+            continue;
+        }
+        readValue = this.read[regName];
+        writeValue = this.write[regName];
+        if (readValue.length > 0)
+        {
+            for (i=0; i < readValue.length; ++i)
+            {
+                if (writeValue !== null)
+                {
+                    g.addEdge(readValue[i], writeValue); 
+                } else
+                {
+                    g.addNode(readValue[i]);
+                }
+            }
+        } else if (writeValue !== null)
+        {
+            g.addNode(writeValue);
+        }
+    }
+
+    for (moveIt = g.getNodeIterator("topologicalSort"); 
+        !moveIt.end();
+        moveIt.next())
+    {
+        print("Inserting: " + moveIt.get());
+        insertFct(moveIt.get());
+    }
+};
+
+

@@ -202,9 +202,6 @@ function stmtListToIRFunc(
             localMap.addItem(symName, ConstValue.getConst(undefined));
     }
 
-    // Variable for the next anonymous function name
-    var nextAnonNum = 0;
-
     // For each nested function
     for (var i in nestedFuncs)
     {
@@ -220,7 +217,7 @@ function stmtListToIRFunc(
         }
         else
         {
-            nestFuncName = 'anon_' + nextAnonNum++;
+            nestFuncName = 'anon_' + (stmtListToIRFunc.nextAnonNum)++;
             nestFuncExpr = nestFuncAst;
         }
 
@@ -315,6 +312,7 @@ function stmtListToIRFunc(
     // Return the new function
     return newFunc;
 }
+stmtListToIRFunc.nextAnonNum = 0;
 
 /**
 @class IR Conversion context

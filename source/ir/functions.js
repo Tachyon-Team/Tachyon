@@ -138,6 +138,29 @@ IRFunction.prototype.addChildFunc = function (func)
     func.parentFunc = this;
 };
 
+/** 
+Returns a list of all nested functions in posfix order
+*/
+IRFunction.prototype.getChildrenList = function ()
+{
+    var list = [];
+    this.getChildrenListHelper(list);
+    return list;
+};
+
+/**
+@private
+Helper function for getChildrenList
+*/
+IRFunction.prototype.getChildrenListHelper = function (list)
+{
+    var i;
+    for (i=0; i<this.childFuncs.length; ++i)
+    {
+        this.childFuncs[i].getChildrenListHelper(list);    
+    }
+    list.push(this);
+};
 /*
 func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
 

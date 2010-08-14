@@ -334,6 +334,36 @@ IRInstr.prototype.replDest = function (oldDest, newDest)
 };
 
 /**
+Returns an operand iterator.  Iterates through operands from left to right.
+*/
+IRInstr.prototype.getOpndIterator = function ()
+{
+    var it = Object.create(this.getOpndIterator.prototype);
+    it.index = -1;
+    it.opnds = this.uses;
+    it.next();
+    return it;
+};
+
+/** Tells whether all operands have been visited */
+IRInstr.prototype.getOpndIterator.prototype.end = function ()
+{
+    return this.index >= this.opnds.length;
+};
+
+/** Move iterator to the next item */
+IRInstr.prototype.getOpndIterator.prototype.next = function ()
+{
+    this.index++;
+};
+
+/** Returns the current operand being visited */
+IRInstr.prototype.getOpndIterator.prototype.get = function ()
+{
+    return this.opnds[this.index];
+};
+
+/**
 Function to generate typed instruction constructors using closures
 @param mnemonic mnemonic name of the instruction
 @param inTypeSpecs list of arrays of input value type
@@ -477,7 +507,7 @@ function TypedInstrMaker(
                     continue SPEC_LOOP;
             }
 
-            // The spec was found, break otu of the loop
+            // The spec was found, break out of the loop
             specIndex = i;
             break;
         }
@@ -2453,3 +2483,44 @@ var IMulOvfInstr = TypedBranchInstrMaker(
 
 
 
+
+/**
+@class Move a value between two registers or between a register and a memory 
+       location. This kind of LIR instruction should only appear after 
+       register allocation.
+@augments IRInstr
+*/
+function MoveInstr(from, to)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = "move";
+
+    /**
+    Inputs to the move instruction
+    @field
+    */
+    this.uses = [from, to];
+}
+MoveInstr.prototype = new IRInstr();
+
+/**
+Produce a string representation of the move instruction
+*/
+MoveInstr.prototype.toString = function ()
+{
+    var output = "";
+
+    output += this.mnemonic + ' ';
+
+    for (i = 0; i < this.uses.length; ++i)
+    {
+        output += this.uses[i];
+
+        if (i != this.uses.length - 1)
+        {
+            output += ", ";
+        }
+    }
+
+    return output;
+};

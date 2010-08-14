@@ -6,8 +6,6 @@ Tests for linear scan register allocation.
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
-var tests = tests || {};
-
 (function () { // local namespace
 
     tests.linearScan = tests.testSuite();

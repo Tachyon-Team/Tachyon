@@ -1006,8 +1006,8 @@ ControlFlowGraph.prototype.getBlockIterator = function (type)
     }
 
     var it = Object.create(this.getBlockIterator.prototype);
-    it.index = 0;
-
+    it.index = -1;
+    it.next();
 
     if (type === "basic")
     {
@@ -1095,8 +1095,9 @@ ControlFlowGraph.prototype.getInstrIterator.prototype.get = function ()
 ControlFlowGraph.prototype.getEdgeIterator = function ()
 {
     var it = Object.create(this.getEdgeIterator.prototype); 
-    it.succIndex = 0;
+    it.succIndex = -1;
     it.blockIt = this.getBlockIterator();
+    it.next();
     return it;
 };
 
@@ -1431,8 +1432,9 @@ BasicBlock.prototype.remSucc = function (succ)
 BasicBlock.prototype.getInstrIterator = function ()
 {
     var it = Object.create(this.getInstrIterator.prototype);
-    it.index = 0;
+    it.index = -1;
     it.instrs = this.instrs;
+    it.next();
     return it;
 };
 

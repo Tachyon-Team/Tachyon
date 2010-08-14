@@ -66,27 +66,31 @@ graph.adjencyList.prototype.node.prototype.toString = function ()
 graph.adjencyList.prototype.addEdge = function (from, to)
 {
     var fromPos, toPos;
+
+    this.addNode(from);
+    this.addNode(to);
     
     fromPos = this.nodeLookup[from];
-    if (fromPos === undefined)
-    {
-        fromPos = this.nodes.length;
-        this.nodeLookup[from] = fromPos;
-        this.nodes.push(this.node(fromPos));
-        this.objectLookup.push(from);
-    }
-
     toPos = this.nodeLookup[to];
-    if (toPos === undefined)
-    {
-        toPos = this.nodes.length;
-        this.nodeLookup[to] = toPos;
-        this.nodes.push(this.node(toPos));
-        this.objectLookup.push(to);
-    }
 
     this.nodes[fromPos].outgoing.push(toPos); 
     this.nodes[toPos].incoming.push(fromPos); 
+};
+
+/** 
+    Add a node to the graph. Does nothing if the node is already present.
+*/
+graph.adjencyList.prototype.addNode = function (node)
+{
+    
+    var nodePos = this.nodeLookup[node];
+    if (nodePos === undefined)
+    {
+        nodePos = this.nodes.length;
+        this.nodeLookup[node] = nodePos;
+        this.nodes.push(this.node(nodePos));
+        this.objectLookup.push(node);
+    }
 };
 
 /** @private returns the node numbers in a topological order */
@@ -117,6 +121,7 @@ graph.adjencyList.prototype.topologicalSort = function ()
     {
         tovisit.push(nodeIt.get());
     }
+
 
     while (tovisit.length !== 0)
     {
