@@ -279,26 +279,6 @@ function numberInstrs(cfg, order)
 }
 
 
-// TODO: live range computation
-// Typed intervals, depending on temp type
-// One interval can be assigned one or two physical registers (eg: 64 bit vals, lo/hi)
-// Intervals have a list of range [from, to[
-
-/*
-The use positions of an interval store the id numbers of operations where the according
-virtual register is used. This information is required later on to decide which interval is
-split and spilled when no more registers are available, and when a spilled interval must be
-reloaded into a register.
-
-Each use position has a flag use_kind denoting whether a register is required at this
-position or not: If the use position must have a register, the register allocator must
-guarantee that the interval has a register assigned at this position. If the interval was spilled
-to memory before this position, it is reloaded to a register. If the use position should have a
-register, then the interval may be spilled. This allows the modeling of machine instructions
-of the IA-32 architecture that can handle memory operands.
-*/
-
-
 /**
 @class Represents the live interval of a temporary, with lifetime holes
 */

@@ -989,6 +989,143 @@ ControlFlowGraph.prototype.validate = function ()
     return true;
 };
 
+/** Returns a block iterator. Depending on the given type, the order of
+    visited blocks might have certain properties.
+
+    basic: blocks might be returned in any order
+    strict: Predecessor blocks always appear before their successors and
+            blocks part of a loop are contiguous
+
+    @param {String} type 
+ */ 
+ControlFlowGraph.prototype.getBlockIterator = function (type)
+{
+    if (type === undefined)
+    {
+        type = "basic";
+    }
+
+    var it = Object.create(this.getBlockIterator.prototype);
+    it.index = 0;
+
+
+    if (type === "basic")
+    {
+        it.blocks = this.blocks;
+    } else if (type === "strict")
+    {
+        // TODO: Migrate allocator.orderBlocks here
+        error("strict mode unimplemented");
+
+        // TODO: When asked for a strict iterator, try to update the previous
+        //       calculated order instead of computing it from scratch.
+    } else 
+    {
+        error("unrecognized option: '" + type + "'");
+    }
+
+    return it;
+};
+
+/** Test whether the iterator has visited all blocks of the cfg */
+ControlFlowGraph.prototype.getBlockIterator.prototype.end = function ()
+{
+    return this.index >= this.blocks.length;
+};
+
+/** Move the iterator to the next item */
+ControlFlowGraph.prototype.getBlockIterator.prototype.next = function ()
+{
+    this.index++;
+};
+
+/** Returns the current item being visited */
+ControlFlowGraph.prototype.getBlockIterator.prototype.get = function ()
+{
+    return this.blocks[this.index];
+};
+
+
+/** Returns an instruction iterator. Depending on the given type, the order of
+    visited instructions might have certain properties.
+
+    basic: instructions might be returned in any order
+    strict: instructions part of predecessor blocks always appear before 
+            instructions part of their successors and
+            instructions part of a loop are always contiguous
+
+    @param {String} type 
+ */ 
+ControlFlowGraph.prototype.getInstrIterator = function (type)
+{
+    var it = Object.create(this.getInstrIterator.prototype);
+    it.blockIt = this.getBlockIterator(type);
+    it.instrIt = it.blockIt.get().getInstrIterator();
+    return it;
+};
+
+/** Test whether the iterator has visited all instructions of the cfg */
+ControlFlowGraph.prototype.getInstrIterator.prototype.end = function ()
+{
+    return this.blockIt.end() && this.instrIt.end();
+};
+
+/** Move the iterator to the next item */
+ControlFlowGraph.prototype.getInstrIterator.prototype.next = function ()
+{
+    this.instrIt.next();
+    if (this.instrIt.end())
+    {
+        this.blockIt.next();
+        if (!this.blockIt.end())
+        {
+            this.instrIt = this.blockIt.get().getInstrIterator();
+        }
+    }
+};
+
+/** Returns the current item being visited */
+ControlFlowGraph.prototype.getInstrIterator.prototype.get = function ()
+{
+    return this.instrIt.get();
+};
+
+
+/** Returns an edge iterator.  Edges might be returned in any order. */
+ControlFlowGraph.prototype.getEdgeIterator = function ()
+{
+    var it = Object.create(this.getEdgeIterator.prototype); 
+    it.succIndex = 0;
+    it.blockIt = this.getBlockIterator();
+    return it;
+};
+
+/** Test whether the iterator has visited all edges of the cfg */
+ControlFlowGraph.prototype.getEdgeIterator.prototype.end = function ()
+{
+    return this.blockIt.end(); 
+};
+
+/** Move the iterator to the next item */
+ControlFlowGraph.prototype.getEdgeIterator.prototype.next = function ()
+{
+    this.succIndex++; 
+
+    while (!this.blockIt.end() && 
+           this.succIndex >= this.blockIt.get().succs.length)
+    {
+        this.blockIt.next();
+        this.succIndex = 0;
+    }
+};
+
+/** Returns the current item being visited */
+ControlFlowGraph.prototype.getEdgeIterator.prototype.get = function ()
+{
+    return {pred:this.blockIt.get(), 
+            succ:this.blockIt.get().succs[this.succIndex]};
+};
+
 /**
 @class Class to represent a basic block
 */
@@ -1290,3 +1427,29 @@ BasicBlock.prototype.remSucc = function (succ)
     arraySetRem(this.succs, succ);
 };
 
+/** Returns instructions in their order of appearance. */
+BasicBlock.prototype.getInstrIterator = function ()
+{
+    var it = Object.create(this.getInstrIterator.prototype);
+    it.index = 0;
+    it.instrs = this.instrs;
+    return it;
+};
+
+/** Test whether the iterator has visited all instructions of the block */
+BasicBlock.prototype.getInstrIterator.prototype.end = function ()
+{
+    return this.index >= this.instrs.length;
+};
+
+/** Move the iterator to the next item */
+BasicBlock.prototype.getInstrIterator.prototype.next = function ()
+{
+    this.index++;
+};
+
+/** Returns the current item being visited */
+BasicBlock.prototype.getInstrIterator.prototype.get = function ()
+{
+    return this.instrs[this.index];
+};

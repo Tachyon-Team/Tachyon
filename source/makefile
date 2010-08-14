@@ -24,6 +24,7 @@ BASE_SRCS =                 \
     codegen/asm.js          \
     codegen/asm-x86.js      \
     codegen/liveranges.js   \
+    codegen/linear-scan-allocation.js   \
     jslib/errors.js
 
 # Main-specific source files
@@ -35,6 +36,8 @@ MAIN_SPEC_SRCS =            \
 TEST_SPEC_SRCS =            \
     tests/testing.js        \
     tests/utility.js        \
+    codegen/tests/*.js      \
+    ir/tests/*.js           \
     tests/testmain.js
 
 # Main target source files
@@ -62,5 +65,5 @@ test:
 	$(JSVM) $(TEST_SRCS)
 
 doc: $(SRCS)
-	jsdoc -d=../doc/source $(ALL_SRCS)
+	jsdoc -d=../doc/source $(MAIN_SRCS)
 
