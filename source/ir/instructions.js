@@ -1262,13 +1262,16 @@ PhiInstr.prototype.copy = function ()
 @class Function argument value instruction
 @augments IRInstr
 */
-function ArgValInstr(argName)
+function ArgValInstr(argName, argIndex)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = 'arg';
 
     // Set the output name as the argument name
     this.outName = argName;
+
+    // Set the argument index
+    this.argIndex = argIndex;
 }
 ArgValInstr.prototype = new IRInstr();
 
@@ -1277,7 +1280,8 @@ Get a string representation of the argument instruction
 */
 ArgValInstr.prototype.toString = function ()
 {
-    return this.type.name + ' ' + this.outName + ' = ' + this.mnemonic;
+    return this.type.name + ' ' + this.outName + ' = ' +
+         this.mnemonic + ' ' + this.argIndex;
 }
 
 /**

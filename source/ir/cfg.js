@@ -80,7 +80,7 @@ function ControlFlowGraph(ownerFunc)
     var that = this;
     function addArg(argName)
     {
-        var argInstr = new ArgValInstr(argName);
+        var argInstr = new ArgValInstr(argName, that.argVals.length);
         that.argVals.push(argInstr);
         that.entry.addInstr(argInstr, argName);
     }
