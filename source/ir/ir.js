@@ -230,6 +230,21 @@ function stmtListToIRFunc(
         // If the nested function is a function declaration
         if (nestFuncAst instanceof FunctionDeclaration)
         {
+            // Create a list for the closure variable values
+            var closVals = [];
+
+            // For each closure variable of the new function
+            for (var i = 0; i < nestFunc.closVars.length; ++i)
+            {
+                var symName = nestFunc.closVars[i];
+
+                // Add the variable to the closure variable values
+                closVals.push(sharedMap.getItem(symName));
+            }
+
+            // Create a closure for the function
+            var closVal = entryBlock.addInstr(new MakeClosInstr(nestFunc, closVals));
+
             // If the current function is a unit level function
             if (astNode instanceof Program)
             {
@@ -238,27 +253,12 @@ function stmtListToIRFunc(
                     new PutPropValInstr(
                         ConstValue.globalConst,
                         ConstValue.getConst(nestFuncName),
-                        nestFunc
+                        closVal
                     )
                 );
             }
             else
             {
-                // Create a list for the closure variable values
-                var closVals = [];
-
-                // For each closure variable of the new function
-                for (var i = 0; i < nestFunc.closVars.length; ++i)
-                {
-                    var symName = nestFunc.closVars[i];
-
-                    // Add the variable to the closure variable values
-                    closVals.push(sharedMap.getItem(symName));
-                }
-
-                // Create a closure for the function
-                var closVal = entryBlock.addInstr(new MakeClosInstr(nestFunc, closVals));
-
                 // Map the function name to the closure in the local variable map
                 localMap.setItem(nestFuncName, closVal);
             }
@@ -310,6 +310,10 @@ function stmtListToIRFunc(
     // Return the new function
     return newFunc;
 }
+
+/**
+Next number to be assigned to an anonymous function
+*/
 stmtListToIRFunc.nextAnonNum = 0;
 
 /**
