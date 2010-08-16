@@ -10,34 +10,39 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
+Test suite for utility code
+*/
+tests.utility = tests.testSuite();
+
+/**
 Test of JS string escaping code
 */
-function strEscapeTest()
+tests.utility.strEscape = function()
 {
     str1 = 'foo\f\v\b\r\nbar\"\'\ubbbb\\bif\u0aaabuz\tfoo'
     str2 = escapeJSString(str1);
     str3 = 'foo\\f\\v\\b\\r\\nbar\\"\\\'\\ubbbb\\\\bif\\u0aaabuz\\tfoo';
 
-    return str2 == str3;
+    assert (str2 == str3);
 }
 
 /**
 Test of text indenting code
 */
-function strIndentTest()
+tests.utility.strIndent = function()
 {
     str1 = 'foo\nbar\n'
     str2 = indentText(str1, '\t');
     str3 = '\tfoo\n\tbar\n';
 
-    return str2 == str3;
+    assert (str2 == str3);
 }
 
 /**
 Test of the hash map functionality
 @field
 */
-function hashMapTest()
+tests.utility.hashMap = function ()
 {
     var NUM_ELEMS = 400;
     var REM_ELEMS = 370;
@@ -66,7 +71,7 @@ function hashMapTest()
             map.remItem(keyList[idx]);
 
             if (map.hasItem(keyList[idx]))
-                return 'removed item still in table';
+                throw 'removed item still in table';
 
             remList.push(itemList[idx]);
 
@@ -77,10 +82,10 @@ function hashMapTest()
         for (var i = 0; i < keyList.length; ++i)
         {
             if (!map.hasItem(keyList[i]))
-                return 'item not found in table';
+                throw 'item not found in table';
 
             if (map.getItem(keyList[i]) != itemList[i])
-                return 'item extracted does not match item inserted';
+                throw 'item extracted does not match item inserted';
         }
 
         for (var i = 0; i < remList.length; ++i)
@@ -91,21 +96,5 @@ function hashMapTest()
             map.addItem(keyList[keyList.length - 1], itemList[keyList.length - 1]);
         }
     }
-
-    return true;
-}
-
-/**
-Test suite for utility code
-*/
-function makeUtilitySuite()
-{
-    suite = new TestSuite('utility code');
-
-    suite.addTest(new TestCase('JS string escaping', strEscapeTest));
-    suite.addTest(new TestCase('Text indenting', strIndentTest));
-    suite.addTest(new TestCase('Hash map functionality', hashMapTest));
-
-    return suite;
 }
 

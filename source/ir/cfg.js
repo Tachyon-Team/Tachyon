@@ -798,20 +798,20 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Verify that the block has this CFG as its parent
         if (block.parentCFG !== this)
-            return 'parent CFG link broken';
+            throw 'parent CFG link broken';
 
         // Verify that our predecessors have us as a successor
         for (var j = 0; j < block.preds.length; ++j)
         {
             if (!arraySetHas(block.preds[j].succs, block))
-                return 'predecessor missing successor link to:\n' + block;
+                throw 'predecessor missing successor link to:\n' + block;
         }
 
         // Verify that our successors have us as a predecessor
         for (var j = 0; j < block.succs.length; ++j)
         {
             if (!arraySetHas(block.succs[j].preds, block))
-                return 'successor missing predecessor link to:\n' + block;
+                throw 'successor missing predecessor link to:\n' + block;
         }
 
         // Get a reference to the last instruction in the block
@@ -819,15 +819,15 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Verify that the block is terminated with a branch instruction
         if (!(lastInstr instanceof BranchInstr))
-            return 'block does not terminate in a branch:\n' + block;
+            throw 'block does not terminate in a branch:\n' + block;
 
         // Verify that the branch targets match our successor set
         if (block.succs.length != lastInstr.targets.length)
-            return 'successors do not match branch targets';
+            throw 'successors do not match branch targets';
         for (var j = 0; j < block.succs.length; ++j)
         {
             if (!arraySetHas(lastInstr.targets, block.succs[j]))
-                return 'successors do not match branch targets';
+                throw 'successors do not match branch targets';
         }
 
         // For each instruction in the block
@@ -837,46 +837,46 @@ ControlFlowGraph.prototype.validate = function ()
 
             // Verify that the instruction has this block as its parent
             if (instr.parentBlock !== block)
-                return 'parent block link broken:\n' + instr;
+                throw 'parent block link broken:\n' + instr;
 
             // If this is a phi instruction
             if (instr instanceof PhiInstr)
             {
                 // Verify that it appears at the start of the block
                 if (j != 0 && !(block.instrs[j-1] instanceof PhiInstr))
-                   return 'phi node after non-phi instruction';
+                   throw 'phi node after non-phi instruction';
 
                 // Verify that each immediate predecessor has a corresponding use
                 for (var k = 0; k < block.preds.length; ++k)
                     if (!arraySetHas(instr.preds, block.preds[k]))
-                        return 'phi node does not cover all immediate predecessors';
+                        throw 'phi node does not cover all immediate predecessors';
 
                 // Verify that there is exactly one predecessor for each use
                 if (instr.preds.length != instr.uses.length)
-                    return 'phi node does not have one predecessor for each use';
+                    throw 'phi node does not have one predecessor for each use';
 
                 // Verify that there are no more phi uses than block predecessors
                 if (instr.preds.length != block.preds.length)
-                    return 'phi node has more uses than predecessors';
+                    throw 'phi node has more uses than predecessors';
             }
 
             // Verify that no branches appear before the last instruction
             if (instr instanceof BranchInstr && j != block.instrs.length - 1)
-                return 'branch before last block instruction';
+                throw 'branch before last block instruction';
 
             // Verify that our uses have us as a dest
             for (var k = 0; k < instr.uses.length; ++k)
             {
                 if (instr.uses[k] instanceof IRInstr)
                     if (!arraySetHas(instr.uses[k].dests, instr))
-                        return 'use missing dest link:\n' + instr.uses[k];
+                        throw 'use missing dest link:\n' + instr.uses[k];
             }
 
             // Verify that our dests have us as a use
             for (var k = 0; k < instr.dests.length; ++k)
             {
                 if (!arraySetHas(instr.dests[k].uses, instr))
-                    return 'dest missing use link:\n' + instr.dests[k] + ' using ' + instr;
+                    throw 'dest missing use link:\n' + instr.dests[k] + ' using ' + instr;
             }
         }
     }
@@ -971,12 +971,12 @@ ControlFlowGraph.prototype.validate = function ()
                 {
                     var phiPred = instr.preds[k];
                     if (!arraySetHas(mustReachOut[phiPred.blockId], use))
-                        return 'phi node uses non-reaching value';
+                        throw 'phi node uses non-reaching value';
                 }
                 else
                 {
                     if (!arraySetHas(mustReachCur, use))
-                        return 'instr uses non-reaching value\n' + use;
+                        throw 'instr uses non-reaching value\n' + use;
                 }
             }
 
@@ -989,7 +989,8 @@ ControlFlowGraph.prototype.validate = function ()
     return true;
 };
 
-/** Returns a block iterator. Depending on the given type, the order of
+/** 
+    Returns a block iterator. Depending on the given type, the order of
     visited blocks might have certain properties.
 
     basic: blocks might be returned in any order
@@ -1027,35 +1028,41 @@ ControlFlowGraph.prototype.getBlockIterator = function (type)
     return it;
 };
 
-/** Test whether the iterator has visited all blocks of the cfg */
+/** 
+Test whether the iterator has visited all blocks of the cfg 
+*/
 ControlFlowGraph.prototype.getBlockIterator.prototype.end = function ()
 {
     return this.index >= this.blocks.length;
 };
 
-/** Move the iterator to the next item */
+/** 
+Move the iterator to the next item 
+*/
 ControlFlowGraph.prototype.getBlockIterator.prototype.next = function ()
 {
     this.index++;
 };
 
-/** Returns the current item being visited */
+/** 
+Returns the current item being visited 
+*/
 ControlFlowGraph.prototype.getBlockIterator.prototype.get = function ()
 {
     return this.blocks[this.index];
 };
 
+/** 
+Returns an instruction iterator. Depending on the given type, the order of
+visited instructions might have certain properties.
 
-/** Returns an instruction iterator. Depending on the given type, the order of
-    visited instructions might have certain properties.
+basic: instructions might be returned in any order
+strict: instructions part of predecessor blocks always appear before 
+        instructions part of their successors and
+        instructions part of a loop are always contiguous
 
-    basic: instructions might be returned in any order
-    strict: instructions part of predecessor blocks always appear before 
-            instructions part of their successors and
-            instructions part of a loop are always contiguous
-
-    @param {String} type 
- */ 
+@param {String} type 
+*/ 
 ControlFlowGraph.prototype.getInstrIterator = function (type)
 {
     var it = Object.create(this.getInstrIterator.prototype);
@@ -1070,7 +1077,9 @@ ControlFlowGraph.prototype.getInstrIterator.prototype.end = function ()
     return this.blockIt.end() && this.instrIt.end();
 };
 
-/** Move the iterator to the next item */
+/**
+Move the iterator to the next item
+*/
 ControlFlowGraph.prototype.getInstrIterator.prototype.next = function ()
 {
     this.instrIt.next();
@@ -1084,14 +1093,17 @@ ControlFlowGraph.prototype.getInstrIterator.prototype.next = function ()
     }
 };
 
-/** Returns the current item being visited */
+/**
+Returns the current item being visited
+*/
 ControlFlowGraph.prototype.getInstrIterator.prototype.get = function ()
 {
     return this.instrIt.get();
 };
 
-
-/** Returns an edge iterator.  Edges might be returned in any order. */
+/**
+Returns an edge iterator.  Edges might be returned in any order.
+*/
 ControlFlowGraph.prototype.getEdgeIterator = function ()
 {
     var it = Object.create(this.getEdgeIterator.prototype); 
@@ -1101,13 +1113,17 @@ ControlFlowGraph.prototype.getEdgeIterator = function ()
     return it;
 };
 
-/** Test whether the iterator has visited all edges of the cfg */
+/**
+Test whether the iterator has visited all edges of the cfg
+*/
 ControlFlowGraph.prototype.getEdgeIterator.prototype.end = function ()
 {
     return this.blockIt.end(); 
 };
 
-/** Move the iterator to the next item */
+/**
+Move the iterator to the next item
+*/
 ControlFlowGraph.prototype.getEdgeIterator.prototype.next = function ()
 {
     this.succIndex++; 
@@ -1120,7 +1136,9 @@ ControlFlowGraph.prototype.getEdgeIterator.prototype.next = function ()
     }
 };
 
-/** Returns the current item being visited */
+/**
+Returns the current item being visited
+*/
 ControlFlowGraph.prototype.getEdgeIterator.prototype.get = function ()
 {
     return {pred:this.blockIt.get(), 
@@ -1428,7 +1446,9 @@ BasicBlock.prototype.remSucc = function (succ)
     arraySetRem(this.succs, succ);
 };
 
-/** Returns instructions in their order of appearance. */
+/** 
+Returns instructions in their order of appearance.
+*/
 BasicBlock.prototype.getInstrIterator = function ()
 {
     var it = Object.create(this.getInstrIterator.prototype);
@@ -1438,20 +1458,27 @@ BasicBlock.prototype.getInstrIterator = function ()
     return it;
 };
 
-/** Test whether the iterator has visited all instructions of the block */
+/**
+Test whether the iterator has visited all instructions of the block
+*/
 BasicBlock.prototype.getInstrIterator.prototype.end = function ()
 {
     return this.index >= this.instrs.length;
 };
 
-/** Move the iterator to the next item */
+/**
+Move the iterator to the next item
+*/
 BasicBlock.prototype.getInstrIterator.prototype.next = function ()
 {
     this.index++;
 };
 
-/** Returns the current item being visited */
+/**
+Returns the current item being visited
+*/
 BasicBlock.prototype.getInstrIterator.prototype.get = function ()
 {
     return this.instrs[this.index];
 };
+

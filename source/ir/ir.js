@@ -295,15 +295,17 @@ function stmtListToIRFunc(
     cfg.simplify();
     
     // Run a validation test on the CFG
-    var validation = cfg.validate();
-
-    // Ensure that the CFG is valid
-    assert (
-        validation == true,
-        'Invalid CFG for function "' + funcName + '":\n' + 
-        validation + '\n' +
-        cfg.toString()
-    );
+    try
+    {
+        cfg.validate();
+    }
+    catch (e)
+    {
+        error(
+            'Invalid CFG for function "' + funcName + '":\n' + 
+            e + '\n' + cfg.toString()
+        );
+    }
 
     // Return the new function
     return newFunc;

@@ -2829,16 +2829,6 @@ var IMulOvfInstr = TypedBranchInstrMaker(
 // TODO: MoveInstr? LIR only
 // No SSA output
 
-
-
-
-
-
-
-
-
-
-
 /**
 @class Move a value between two registers or between a register and a memory 
        location. This kind of LIR instruction should only appear after 
@@ -2879,3 +2869,4 @@ MoveInstr.prototype.toString = function ()
 
     return output;
 };
+

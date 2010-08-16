@@ -79,7 +79,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         this.instrs.push(ins);
         r1.addInstr(ins);
 
-        ins = new PhiInstr([l1.instrs[0], r1.instrs[0]], [l1, r1]);
+        ins = new PhiInstr([l1.instrs[0], r1.instrs[0]], [l2, r1]);
         this.instrs.push(ins);
         merge.addInstr(ins);
 
@@ -100,7 +100,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         this.instrs.push(ins);
         merge.addInstr(ins);
 
-
         ins = new LsftInstr(ConstValue.getConst(1), 
                             ConstValue.getConst(2));
         this.instrs.push(ins);
@@ -113,7 +112,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
                        {pred:l1, succ:l2},
                        {pred:l2, succ:merge},
                        {pred:r1, succ:merge} ];
-
     };
 
     t.blockIterator = function ()
@@ -125,7 +123,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         assert(this.blocks.length === 0);
     };
-
     
     t.instructionIterator = function ()
     {
