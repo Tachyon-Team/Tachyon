@@ -274,6 +274,14 @@ function HashMap(hashFunc, equalFunc)
     };
 
     /**
+    Get an iterator for this hash map
+    */
+    this.getItr = function ()
+    {
+        return new HashMap.Iterator(this, 0);
+    }
+
+    /**
     Erase all contained items
     */
     this.clear = function ()
@@ -380,5 +388,80 @@ function HashMap(hashFunc, equalFunc)
     @field
     */
     this.equalFunc = equalFunc;
+}
+
+/**
+@class Hash map iterator
+*/
+HashMap.Iterator = function (hashMap, slotIndex)
+{
+    /**
+    Associated hash map
+    @field
+    */
+    this.map = hashMap;
+
+    /**
+    Current hash map slot
+    @field
+    */
+    this.index = slotIndex;
+
+    // Move to the next non-free slot
+    this.nextFullSlot();
+}
+HashMap.Iterator.prototype = {};
+
+/**
+Move the current index to the next non-free slot
+*/
+HashMap.Iterator.prototype.nextFullSlot = function ()
+{
+    while (
+        this.index < this.map.array.length &&
+        this.map.array[this.index] === freeHashKey
+    )
+        this.index += 2;
+}
+
+/**
+Test if the iterator is at a valid position
+*/
+HashMap.Iterator.prototype.valid = function ()
+{
+    return (this.index < this.map.array.length);
+}
+
+/**
+Move to the next list item
+*/
+HashMap.Iterator.prototype.next = function ()
+{
+    assert (
+        this.valid(),
+        'cannot move to next list item, iterator not valid'
+    );
+
+    // Move to the next slot
+    this.index += 2;
+
+    // Move to the first non-free slot found
+    this.nextFullSlot();
+}
+
+/**
+Get the current list item
+*/
+HashMap.Iterator.prototype.get = function ()
+{
+    assert (
+        this.valid(),
+        'cannot get current list item, iterator not valid'
+    );
+
+    return { 
+        key: this.map.array[this.index],  
+        value: this.map.array[this.index + 1] 
+    }
 }
 
