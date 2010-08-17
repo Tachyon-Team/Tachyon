@@ -1486,10 +1486,6 @@ var NewArrayInstr = UntypedInstrMaker(
 //
 //=============================================================================
 
-// TODO: toboolean instruction?
-// - Should this be part of MIR or HIR?
-//   - Perhaps better in MIR?
-
 //====================================================
 // Memory access instructions
 //====================================================
@@ -1580,6 +1576,19 @@ var BoxInstr = TypedInstrMaker(
         [IRType.INT32]
     ], 
     IRType.BOXED
+);
+
+/**
+@class Instruction to evaluate the boolean value of a boxed value
+@augments IRInstr
+*/
+var ToBoolInstr = TypedInstrMaker(
+    'tobool',
+    undefined,
+    [
+        [IRType.BOXED]
+    ],
+    IRType.INT8
 );
 
 /**
