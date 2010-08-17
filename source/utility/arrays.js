@@ -148,3 +148,50 @@ arrayMap = function (arr, func)
 
     return arr2;
 }
+
+/**
+    @class
+    Iterates over an array.
+
+    @param {Array} a array to iterate over
+
+    @augments Iterator
+*/
+function ArrayIterator(a)
+{
+    assertNew(this);
+
+    /** @private */
+    this.a = a;
+
+    /** @private */
+    this.index = 0;
+
+    return this;
+};
+
+ArrayIterator.prototype = new Iterator();
+
+/** Move iterator to the next item */
+ArrayIterator.prototype.next = function ()
+{
+    this.index++;
+};
+
+/** Ensure iterator is still on a valid item.  Ex: Not at the end */
+ArrayIterator.prototype.valid = function ()
+{
+    return this.index < this.a.length;
+};
+
+/** Returns the current item */
+ArrayIterator.prototype.get = function ()
+{
+    return this.a[this.index];
+};
+
+
+
+
+
+

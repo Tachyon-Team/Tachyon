@@ -6,6 +6,7 @@ Tests for graph data structure.
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
+
 (function () { // local namespace
     tests.graph = tests.testSuite();
     tests.graph.adjencyList = tests.testSuite();

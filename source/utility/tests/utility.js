@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Test suite for utility code
 */
-tests.utility = tests.testSuite();
+tests.utility = tests.utility || tests.testSuite();
 
 /**
 Test of JS string escaping code
