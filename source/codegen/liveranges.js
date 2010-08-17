@@ -324,9 +324,9 @@ Interval.prototype.addRange = function (from, to)
     this.ranges.addBefore(newRange, itr);
 
     // If there is a next range
-    if (itr.isValid())
+    if (itr.valid())
     {
-        var nextRange = itr.getItem();
+        var nextRange = itr.get();
 
         // If this range and the next should be merged
         if (newRange.to >= nextRange.from)

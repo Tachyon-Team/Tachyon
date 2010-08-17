@@ -92,6 +92,11 @@ function ControlFlowGraph(ownerFunc)
     var argNames = this.ownerFunc.getArgNames();
     for (var i = 0; i < argNames.length; ++i)
         addArg(argNames[i]);
+
+    // Add the global object value
+    var globalObj = new GetGlobalInstr(this.argVals[1])
+    this.argVals.push(globalObj);
+    this.entry.addInstr(globalObj, 'global');
 }
 ControlFlowGraph.prototype = {};
 
@@ -472,6 +477,14 @@ ControlFlowGraph.prototype.getArgVal = function (index)
     assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
 
     return this.argVals[index + 3];
+};
+
+/**
+Get the global object value
+*/
+ControlFlowGraph.prototype.getGlobalObj = function ()
+{
+    return this.argVals[this.argVals.length - 1];
 };
 
 /**

@@ -49,7 +49,7 @@ LinkedList.prototype.toString = function ()
 /**
 Get an iterator to the list
 */
-LinkedList.prototype.iterator = function ()
+LinkedList.prototype.getItr = function ()
 {
     return new LinkedList.Iterator(this.first);
 }
@@ -184,7 +184,7 @@ Remove an elemement at an iterator's position
 LinkedList.prototype.remItr = function (itr)
 {
     assert (
-        itr.isValid(),
+        itr.valid(),
         'cannot remove item at iterator, iterator not valid'
     );
 
@@ -203,9 +203,9 @@ Find an element matching a comparison criteria
 */
 LinkedList.prototype.find = function (item, compFunc)
 {
-    for (var itr = this.iterator(); itr.isValid(); itr.next())
+    for (var itr = this.getItr(); itr.valid(); itr.next())
     {
-        if (compFunc(item, itr.getItem()))
+        if (compFunc(item, itr.get()))
             break;
     }
 
@@ -278,7 +278,7 @@ LinkedList.Iterator.prototype = {};
 /**
 Test if the iterator is at a valid position
 */
-LinkedList.Iterator.prototype.isValid = function ()
+LinkedList.Iterator.prototype.valid = function ()
 {
     return (this.current !== null);
 }
@@ -289,7 +289,7 @@ Move to the next list item
 LinkedList.Iterator.prototype.next = function ()
 {
     assert (
-        this.isValid(),
+        this.valid(),
         'cannot move to next list item, iterator not valid'
     );
 
@@ -300,10 +300,10 @@ LinkedList.Iterator.prototype.next = function ()
 /**
 Get the current list item
 */
-LinkedList.Iterator.prototype.getItem = function ()
+LinkedList.Iterator.prototype.get = function ()
 {
     assert (
-        this.isValid(),
+        this.valid(),
         'cannot get current list item, iterator not valid'
     );
 
@@ -319,14 +319,14 @@ list.addFirst(0);
 list.addLast(3);
 
 list.addSorted(0.5, function (i1, i2) { return i1 < i2; });
-*/
 
-/*
+
+
 var list = LinkedList.fromArray([0,1,2,3,4]);
 
-for (var itr = list.iterator(); itr.isValid(); itr.next())
+for (var itr = list.getItr(); itr.valid(); itr.next())
 {
-    var cur = itr.getItem();
+    var cur = itr.get();
 
     print(cur);
 }

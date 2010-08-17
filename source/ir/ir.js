@@ -243,7 +243,13 @@ function stmtListToIRFunc(
             }
 
             // Create a closure for the function
-            var closVal = entryBlock.addInstr(new MakeClosInstr(nestFunc, closVals));
+            var closVal = entryBlock.addInstr(
+                new MakeClosInstr(
+                    nestFunc,
+                    cfg.getGlobalObj(),
+                    closVals
+                )
+            );
 
             // If the current function is a unit level function
             if (astNode instanceof Program)
@@ -251,7 +257,7 @@ function stmtListToIRFunc(
                 // Bind the nested function name in the global environment
                 entryBlock.addInstr(
                     new PutPropValInstr(
-                        ConstValue.globalConst,
+                        cfg.getGlobalObj(),
                         ConstValue.getConst(nestFuncName),
                         closVal
                     )
@@ -1578,7 +1584,7 @@ function exprToIR(context)
 
         // Create a closure for the function
         var closVal = context.entryBlock.addInstr(
-            new MakeClosInstr(nestFunc, closVals)
+            new MakeClosInstr(nestFunc, context.cfg.getGlobalObj(), closVals)
         );
 
         // Set the output to the new closure
@@ -1690,7 +1696,7 @@ function exprToIR(context)
             funcVal = funcContext.getOutValue();
 
             // The this value is the global object
-            thisVal = ConstValue.globalConst;
+            thisVal = context.cfg.getGlobalObj();
 
             lastContext = funcContext;
         }
@@ -2331,7 +2337,7 @@ function assgToIR(context, rhsVal)
                 // Get the value from the global object
                 lhsVal = varContext.entryBlock.addInstr(
                     new GetPropValInstr(
-                        ConstValue.globalConst,
+                        context.cfg.getGlobalObj(),
                         ConstValue.getConst(symName)
                     )
                 );
@@ -2375,7 +2381,7 @@ function assgToIR(context, rhsVal)
             // Get the value from the global object
             varContext.entryBlock.addInstr(
                 new PutPropValInstr(
-                    ConstValue.globalConst,
+                    context.cfg.getGlobalObj(),
                     ConstValue.getConst(symName),
                     rhsValAssg
                 )
@@ -2594,7 +2600,7 @@ function refToIR(context)
         // Get the value from the global object
         varValueVar = varContext.entryBlock.addInstr(
             new GetPropValInstr(
-                ConstValue.globalConst,
+                context.cfg.getGlobalObj(),
                 ConstValue.getConst(symName)
             )
         );
