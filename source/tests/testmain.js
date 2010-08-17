@@ -11,5 +11,5 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 var testsEnabled = true;
 if (testsEnabled)
 {
-    tests.run(false);
+    tests.run(false, undefined, true);
 }
