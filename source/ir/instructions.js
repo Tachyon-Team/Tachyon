@@ -114,10 +114,6 @@ ConstValue.prototype.toString = function ()
     {
        return '"' + escapeJSString(this.value) + '"';
     }
-    else if (this.isGlobalConst())
-    {
-        return 'global';
-    }
     else if (this.value instanceof Function)
     {
         if (this.value.hasOwnProperty('name'))
@@ -146,27 +142,9 @@ ConstValue.prototype.isIntConst = function ()
 }
 
 /**
-Global object reference constant
-*/
-ConstValue.prototype.isGlobalConst = function ()
-{
-    return this.value === ConstValue.globalConstVal;
-}
-
-/**
 Map of values to IR constants
 */
 ConstValue.constMap = new HashMap();
-
-/**
-Global object constant value
-*/
-ConstValue.globalConstVal = {};
-
-/**
-Global object reference constant
-*/
-ConstValue.globalConst = new ConstValue(ConstValue.globalConstVal);
 
 /**
 Get the unique constant instance for a given value
@@ -1865,16 +1843,16 @@ var PutCellInstr = GenericInstrMaker(
 @class Closure creation with closure variable arguments
 @augments IRInstr
 */
-function MakeClosInstr(funcVal, varVals)
+function MakeClosInstr(funcVal, globalObj, varVals)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = 'make_clos';
 
     /**
-    Function value and closure variable values
+    Function value, global object, and closure variable values
     @field
     */
-    this.uses = [funcVal].concat(varVals);
+    this.uses = [funcVal, globalObj].concat(varVals);
 }
 MakeClosInstr.prototype = new IRInstr();
 
@@ -1883,9 +1861,23 @@ Make a shallow copy of the instruction
 */
 MakeClosInstr.prototype.copy = function ()
 {
-    var newInstr = new MakeClosInstr(this.uses[0], this.uses.slice[1]);
-    return this.baseCopy(newInstr);
+    return this.baseCopy(
+        new MakeClosInstr(
+            this.uses[0],
+            this.uses[1],
+            this.uses.slice[2]
+        )
+    );
 };
+
+/**
+@class Get the global value stored in a closure
+@augments IRInstr
+*/
+var GetGlobalInstr = GenericInstrMaker(
+    'get_global',
+     1
+);
 
 /**
 @class Get the value stored in a closure variable
