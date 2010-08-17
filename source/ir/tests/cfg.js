@@ -116,7 +116,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
     t.blockIterator = function ()
     {
-        for (var it = this.cfg.getBlockIterator(); !it.end(); it.next())
+        for (var it = this.cfg.getBlockItr(); it.valid(); it.next())
         {
             arraySetRem(this.blocks, it.get());
         }
@@ -126,7 +126,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
     
     t.instructionIterator = function ()
     {
-        for (var it = this.cfg.getInstrIterator(); !it.end(); it.next())
+        for (var it = this.cfg.getInstrItr(); it.valid(); it.next())
         {
             arraySetRem(this.instrs, it.get());
         }
@@ -160,7 +160,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         var edgeNumber = this.edges.length;
         var count = 0;
-        for (var it = this.cfg.getEdgeIterator(); !it.end(); it.next())
+        for (var it = this.cfg.getEdgeItr(); it.valid(); it.next())
         {
             remove(this.edges, it.get());
             count++;

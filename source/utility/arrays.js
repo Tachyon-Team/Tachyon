@@ -91,60 +91,49 @@ function arraySetEqual(arr1, arr2)
     return true;
 }
 
-/** 
-Returns an iterator for this array. An optional filter may be used
-taking an element of the array and returning true if the value satisfies
-the condition.
+/**
+    @class
+    Iterates over an array.
+
+    @param {Array} a array to iterate over
+
+    @augments Iterator
 */
-function arrayIterator(a, filter)
+function ArrayIterator(a)
 {
-    if (filter === undefined)
-    {
-        filter = function (item) { return true; };
-    }
+    assertNew(this);
 
-    var it = Object.create(arrayIterator.prototype);
-    it.index = -1;
-    it.arr = a;
-    it.filter = filter;
-    it.next();
-    return it;
-}
+    /** @private */
+    this.a = a;
 
-/** Tells whether all items have been visited */
-arrayIterator.prototype.end = function ()
-{
-    return this.index >= this.arr.length;
+    /** @private */
+    this.index = 0;
+
+    return this;
 };
+
+ArrayIterator.prototype = new Iterator();
 
 /** Move iterator to the next item */
-arrayIterator.prototype.next = function ()
+ArrayIterator.prototype.next = function ()
 {
     this.index++;
-    while (!this.end() &&
-           !this.filter(this.arr[this.index]))
-    {
-        this.index++;
-    }
 };
 
-/** Returns the current item being visited */
-arrayIterator.prototype.get = function ()
+/** Ensure iterator is still on a valid item.  Ex: Not at the end */
+ArrayIterator.prototype.valid = function ()
 {
-    return this.arr[this.index];
+    return this.index < this.a.length;
 };
 
-/** Returns a new array with the result of func applied to every item */
-arrayMap = function (arr, func)
+/** Returns the current item */
+ArrayIterator.prototype.get = function ()
 {
-    var i = 0;
-    var arr2 = [];
-    arr2.length = arr.length;
-    
-    for (i=0; i<arr.length; ++i)
-    {
-        arr2[i] = func(arr[i]);
-    }
+    return this.a[this.index];
+};
 
-    return arr2;
-}
+
+
+
+
+

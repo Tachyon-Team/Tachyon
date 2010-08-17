@@ -1662,14 +1662,14 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
 allocator.assign = function (cfg)
 {
     var it, instr, opndIt, opnds, dest, pos, opnd;
-    for (it = cfg.getInstrIterator(); !it.end(); it.next())
+    for (it = cfg.getInstrItr(); it.valid(); it.next())
     {
         instr = it.get();
         opnds = []; 
         dest  = null; 
         pos = instr.regAlloc.id;
 
-        for (opndIt = instr.getOpndIterator(); !opndIt.end(); opndIt.next())
+        for (opndIt = instr.getOpndItr(); opndIt.valid(); opndIt.next())
         {
             opnd = opndIt.get(); 
             if (opnd instanceof IRInstr)
@@ -1720,8 +1720,8 @@ allocator.resolve = function (cfg, intervals, order)
     var insertIndex;
 
     // Insert Moves at split positions
-    for (intervalIt = arrayIterator(intervals); 
-         !intervalIt.end(); 
+    for (intervalIt = new ArrayIterator(intervals); 
+         intervalIt.valid(); 
          intervalIt.next())
     {
         interval = intervalIt.get();
@@ -1740,12 +1740,12 @@ allocator.resolve = function (cfg, intervals, order)
 
     print(moves);
 
-    moveIt = arrayIterator(moves);
-    blockIt = arrayIterator(order); 
+    moveIt = new ArrayIterator(moves);
+    blockIt = new ArrayIterator(order); 
 
     offset = 0;
     blockOffset = 1;
-    while (!moveIt.end() && !blockIt.end())
+    while (moveIt.valid() && blockIt.valid())
     {
         blockOffset = blockIt.get().regAlloc.from;
 
@@ -1770,12 +1770,14 @@ allocator.resolve = function (cfg, intervals, order)
 
     // Resolve differences introduced by splitting in different
     // basic blocks
-    for (edgeIt = cfg.getEdgeIterator(); !edgeIt.end(); edgeIt.next())
+    for (edgeIt = cfg.getEdgeItr(); edgeIt.valid(); edgeIt.next())
     {
         mapping = allocator.mapping();
         edge = edgeIt.get();
-        for (intervalIt = arrayIterator(intervals, liveAtBegin(edge.succ));
-             !intervalIt.end(); intervalIt.next())
+        for (intervalIt = new FilterIterator(new ArrayIterator(intervals, 
+                                                 liveAtBegin(edge.succ)));
+             intervalIt.valid(); 
+             intervalIt.next())
         {
             // TODO: Handle Phi functions
             
@@ -1889,8 +1891,8 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct)
         }
     }
 
-    for (moveIt = g.getNodeIterator("topologicalSort"); 
-        !moveIt.end();
+    for (moveIt = g.getNodeItr("topologicalSort"); 
+        moveIt.valid();
         moveIt.next())
     {
         print("Inserting: " + moveIt.get());

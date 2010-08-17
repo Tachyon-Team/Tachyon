@@ -6,6 +6,7 @@ Tests for graph data structure.
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
+
 (function () { // local namespace
     tests.graph = tests.testSuite();
     tests.graph.adjencyList = tests.testSuite();
@@ -25,8 +26,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         this.g.addEdge(1, 2);
 
         expectedOrder.reverse();
-        for (nodeIt = this.g.getNodeIterator("topologicalSort");
-             !nodeIt.end();
+        for (nodeIt = this.g.getNodeItr("topologicalSort");
+             nodeIt.valid();
              nodeIt.next())
         {
            assert(expectedOrder.pop() === nodeIt.get()); 
@@ -44,8 +45,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         this.g.addEdge("A", "B");
 
         expectedOrder.reverse();
-        for (nodeIt = this.g.getNodeIterator("topologicalSort");
-             !nodeIt.end();
+        for (nodeIt = this.g.getNodeItr("topologicalSort");
+             nodeIt.valid();
              nodeIt.next())
         {
            assert(expectedOrder.pop() === nodeIt.get()); 

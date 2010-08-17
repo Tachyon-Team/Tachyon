@@ -3,7 +3,14 @@ JSVM = d8 --allow_natives_syntax
 
 # Base program source files
 BASE_SRCS =                 \
-    utility/*.js            \
+    utility/debug.js        \
+    utility/iterators.js    \
+    utility/graph.js        \
+    utility/arrays.js       \
+    utility/hashmap.js      \
+    utility/linkedlist.js   \
+    utility/strings.js      \
+    utility/modules.js      \
     parser/misc.js          \
     parser/scanner.js       \
     parser/parser.js        \

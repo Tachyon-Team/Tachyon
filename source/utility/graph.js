@@ -97,7 +97,7 @@ graph.adjencyList.prototype.addNode = function (node)
 graph.adjencyList.prototype.topologicalSort = function ()
 {
     // Make a copy of all nodes
-    var nodes = arrayMap(this.nodes, function (node) { return node.copy(); });
+    var nodes = this.nodes.map(function (node) { return node.copy(); });
     var sorted = [];
     var tovisit = [];
     var nodeIt;
@@ -115,8 +115,8 @@ graph.adjencyList.prototype.topologicalSort = function ()
     }
 
     // Initialize tovisit with every node with no incoming edge
-    for (nodeIt = arrayIterator(nodes, noIncomingEdge); 
-         !nodeIt.end(); 
+    for (nodeIt = new FilterIterator(new ArrayIterator(nodes), noIncomingEdge); 
+         nodeIt.valid(); 
          nodeIt.next())
     {
         tovisit.push(nodeIt.get());
@@ -141,8 +141,8 @@ graph.adjencyList.prototype.topologicalSort = function ()
     }
 
     // Ensure the graph contains no cycle
-    for (nodeIt = arrayIterator(nodes, hasEdge); 
-         !nodeIt.end(); 
+    for (nodeIt = new FilterIterator(new ArrayIterator(nodes), hasEdge); 
+         nodeIt.valid(); 
          nodeIt.next())
     {
         error("Graph contains a cycle");
@@ -162,7 +162,7 @@ graph.adjencyList.prototype.topologicalSort = function ()
 
 
 */
-graph.adjencyList.prototype.getNodeIterator = function (type)
+graph.adjencyList.prototype.getNodeItr = function (type)
 {
     if (type === undefined)
     {
@@ -171,26 +171,26 @@ graph.adjencyList.prototype.getNodeIterator = function (type)
 
     assert(type === "topologicalSort", 
            "unsupported iterator type:'" + type + "'");
-    var it = Object.create(this.getNodeIterator.prototype); 
-    it.index = -1;
-    it.nodes = this.topologicalSort();
+    var it = Object.create(this.getNodeItr.prototype); 
+    it.it = new ArrayIterator(this.topologicalSort());
     it.graph = this;
-    it.next();
     return it;
 };
 
+graph.adjencyList.prototype.getNodeItr.prototype = new Iterator();
+
 /** Tells whether all items have been visited */
-graph.adjencyList.prototype.getNodeIterator.prototype.end = function ()
+graph.adjencyList.prototype.getNodeItr.prototype.valid = function ()
 {
-    return this.index >= this.nodes.length;
+    return this.it.valid();
 };
 /** Move iterator to the next item */
-graph.adjencyList.prototype.getNodeIterator.prototype.next = function ()
+graph.adjencyList.prototype.getNodeItr.prototype.next = function ()
 {
-    this.index++;
+    return this.it.next();
 };
 /** Return the current item */
-graph.adjencyList.prototype.getNodeIterator.prototype.get = function ()
+graph.adjencyList.prototype.getNodeItr.prototype.get = function ()
 {
-    return this.graph.objectLookup[this.nodes[this.index]]; 
+    return this.graph.objectLookup[this.it.get()]; 
 };

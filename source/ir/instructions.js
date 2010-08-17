@@ -314,37 +314,9 @@ IRInstr.prototype.replDest = function (oldDest, newDest)
 /**
 Returns an operand iterator.  Iterates through operands from left to right.
 */
-IRInstr.prototype.getOpndIterator = function ()
+IRInstr.prototype.getOpndItr = function ()
 {
-    var it = Object.create(this.getOpndIterator.prototype);
-    it.index = -1;
-    it.opnds = this.uses;
-    it.next();
-    return it;
-};
-
-/** 
-Tells whether all operands have been visited
-*/
-IRInstr.prototype.getOpndIterator.prototype.end = function ()
-{
-    return this.index >= this.opnds.length;
-};
-
-/**
-Move iterator to the next item
-*/
-IRInstr.prototype.getOpndIterator.prototype.next = function ()
-{
-    this.index++;
-};
-
-/** 
-Returns the current operand being visited 
-*/
-IRInstr.prototype.getOpndIterator.prototype.get = function ()
-{
-    return this.opnds[this.index];
+    return new ArrayIterator(this.uses);
 };
 
 /**
