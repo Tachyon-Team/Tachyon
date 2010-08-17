@@ -12,5 +12,5 @@ var testsEnabled = true;
 
 if (testsEnabled)
 {
-    tests.run(false);
+    tests.run(false, undefined, true);
 }
