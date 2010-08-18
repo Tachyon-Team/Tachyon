@@ -19,7 +19,7 @@ function f(c1, c2)
 
 
 
-    /*
+    
     var i1 = iir.unbox(IRType.INT32, c1);
     var i2 = iir.unbox(IRType.INT32, c1);
     
@@ -37,7 +37,7 @@ function f(c1, c2)
     }
     
     print(v);
-    */
+    
 
 
 

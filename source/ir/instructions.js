@@ -128,9 +128,17 @@ ConstValue.prototype.getValName = ConstValue.prototype.toString;
 /**
 Test if a constant is an integer
 */
-ConstValue.prototype.isIntConst = function ()
+ConstValue.prototype.isInt = function ()
 {
     return this.value - Math.floor(this.value) == 0;
+}
+
+/**
+Test if a constant is the undefined constant
+*/
+ConstValue.prototype.isUndef = function ()
+{
+    return this.value === undefined;
 }
 
 /**

@@ -2804,7 +2804,7 @@ function mergeContexts(
             var value = values[j];
             if (value !== firstVal)
                 allEqual = false;
-            if (value === ConstValue.getConst(undefined))
+            if (value instanceof ConstValue && value.isUndef())
                 numUndef++;
             if (value.type !== IRType.BOXED)
                 numTyped++;            
@@ -2935,7 +2935,8 @@ function mergeLoopEntry(
         var numTyped = 0;
         for (var j = 0; j < phiNode.uses.length; ++j)
         {
-            if (phiNode.uses[j] === ConstValue.getConst(undefined))
+            var useValue = phiNode.uses[j];
+            if (useValue instanceof ConstValue && useValue.isUndef())
                 numUndef++;
             if (phiNode.uses[j].type != IRType.BOXED)
                 numTyped++;
@@ -2947,7 +2948,7 @@ function mergeLoopEntry(
             var context = contexts[j];
             var varValue = context.localMap.getItem(varName);
 
-            if (varValue === ConstValue.getConst(undefined))
+            if (varValue instanceof ConstValue && varValue.isUndef())
                 numUndef++;
             if (varValue.type != IRType.BOXED)
                 numTyped++;
