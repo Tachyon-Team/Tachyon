@@ -16,8 +16,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // Some operators can have side effects
 // - May want a "write" or "side effect" flag
 
-// TODO: consider adding bool value conversion, eliminating untyped if?
-
 //=============================================================================
 // IR Core
 //

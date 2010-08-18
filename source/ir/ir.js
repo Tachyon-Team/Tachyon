@@ -19,6 +19,11 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: consider adding bool value conversion, eliminating untyped if?
 
 // TODO: do not add phi nodes when one typed value defined and all other paths undefined
+// - To be added in regular merge code
+// - What about loop merge?
+//   - Must declare typed init vars before loop
+//   - Ok if declaring var inside loop and using it afterwards in loop only
+// - Can have same rule for loop merge
 
 /**
 Convert an AST code unit into IR functions
@@ -2789,15 +2794,31 @@ function mergeContexts(
             preds.push(context.exitBlock);
         }
 
-        // Test if all incoming values are the same
+        // Compute properties of the input values
         var firstVal = values[0];
         var allEqual = true;
+        var numUndef = 0;
+        var numTyped = 0;
         for (var j = 0; j < values.length; ++j)
-            if (values[j] !== firstVal)
+        {
+            var value = values[j];
+            if (value !== firstVal)
                 allEqual = false;
+            if (value === ConstValue.getConst(undefined))
+                numUndef++;
+            if (value.type !== IRType.BOXED)
+                numTyped++;            
+        }
+
+        // If there is a mix of typed and undefined values
+        if (numTyped > 0 && numUndef > 0 && numTyped + numUndef == values.length)
+        {
+            // Set the merge value to undefined
+            mergeMap.addItem(varName, ConstValue.getConst(undefined));
+        }
 
         // If not all incoming values are the same
-        if (!allEqual)
+        else if (!allEqual)
         {
             // Create a phi node for this variable
             var phiNode = new PhiInstr(values, preds);
@@ -2808,6 +2829,8 @@ function mergeContexts(
             // Add the phi node to the merge map
             mergeMap.addItem(varName, phiNode);
         }
+
+        // Otherwise, all values are the same
         else
         {
             // Add the value directly to the merge map
@@ -2907,11 +2930,39 @@ function mergeLoopEntry(
         var varName = localVars[i];
         var phiNode = entryLocals.getItem(varName);
 
-        // Add an incoming value for every context
+        // Compute properties of the current incoming values
+        var numUndef = 0;
+        var numTyped = 0;
+        for (var j = 0; j < phiNode.uses.length; ++j)
+        {
+            if (phiNode.uses[j] === ConstValue.getConst(undefined))
+                numUndef++;
+            if (phiNode.uses[j].type != IRType.BOXED)
+                numTyped++;
+        }
+
+        // For each incoming context
         for (var j = 0; j < contexts.length; ++j)
         {
             var context = contexts[j];
             var varValue = context.localMap.getItem(varName);
+
+            if (varValue === ConstValue.getConst(undefined))
+                numUndef++;
+            if (varValue.type != IRType.BOXED)
+                numTyped++;
+
+            // If there would be a mix of typed and undefined values
+            if (numTyped > 0 && numUndef > 0 && numTyped + numUndef == phiNode.uses.length + 1)
+            {
+                // Replace the phi node by the undefined value
+                entryLocals.setItem(varName, ConstValue.getConst(undefined));
+
+                // Abort the merge for this variable
+                break;
+            }
+
+            // Add an incoming value for this context
             phiNode.addIncoming(varValue, context.getExitBlock());
         }
     }

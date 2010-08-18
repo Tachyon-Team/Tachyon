@@ -5,26 +5,40 @@ function f(c1, c2)
     var i1 = iir.unbox(IRType.INT32, c1);
     var i2 = iir.unbox(IRType.INT32, c1);
     
-    var a;
-    if (a = iir.add_ovf(i1, i2))
+    var v = i2;
+    while (true)
     {
-        var v = iir.box(IRType.INT32, a);
-        return v; 
+        var v = i1;
+        print(v);
     }
-    else
-    {
-    }
+
+    print(v);
     */
 
 
-    if (true)
+
+
+
+    /*
+    var i1 = iir.unbox(IRType.INT32, c1);
+    var i2 = iir.unbox(IRType.INT32, c1);
+    
+    var a;
+    if (a = iir.add_ovf(i1, i2))
     {
-        v = 1;        
+        //var v = iir.box(IRType.INT32, a);
+        //return v;
+
+        var v = i1;
     }
     else
     {
-        v = 2;
+        var v = i2;
     }
+    
+    print(v);
+    */
+
 
 
 
