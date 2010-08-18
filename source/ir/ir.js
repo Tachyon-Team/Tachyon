@@ -11,19 +11,12 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: handle eval
-// TODO: handle arguments object
+// TODO: handle eval -> free vars contains 'arguments'
+// TODO: handle arguments object -> free vars contains 'arguments'
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: consider adding bool value conversion, eliminating untyped if?
-
-// TODO: do not add phi nodes when one typed value defined and all other paths undefined
-// - To be added in regular merge code
-// - What about loop merge?
-//   - Must declare typed init vars before loop
-//   - Ok if declaring var inside loop and using it afterwards in loop only
-// - Can have same rule for loop merge
+// TODO: consider eliminating untyped if?
 
 /**
 Convert an AST code unit into IR functions

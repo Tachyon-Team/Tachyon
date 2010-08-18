@@ -9,10 +9,7 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// May need to build custom instructions for some things
-// - add_i32 with overflow path
-// - might actually need platform-specific code
-//
+// TODO:
 // Some operators can have side effects
 // - May want a "write" or "side effect" flag
 
