@@ -39,10 +39,14 @@ tests.utility.strIndent = function()
 }
 
 /**
-Test of the hash map functionality
-@field
+Test suite for the hash map code
 */
-tests.utility.hashMap = function ()
+tests.utility.hashMap = tests.testSuite();
+
+/**
+Test of hash map consistency
+*/
+tests.utility.hashMap.consistency = function ()
 {
     var NUM_ELEMS = 400;
     var REM_ELEMS = 370;
@@ -95,6 +99,73 @@ tests.utility.hashMap = function ()
 
             map.addItem(keyList[keyList.length - 1], itemList[keyList.length - 1]);
         }
+    }
+}
+
+/**
+Test of hash map iterators
+*/
+tests.utility.hashMap.consistency = function ()
+{
+    var input = [1,2,3,4,55];
+
+    var map = new HashMap();
+
+    for (var i = 0; i < input.length; ++i)
+        map.addItem(input[i], input[i]);
+
+    var output = [];
+
+    for (var itr = map.getItr(); itr.valid(); itr.next())
+    {
+        var cur = itr.get();
+
+        assert(cur.key === cur.value);
+
+        output.push(cur.key);
+    }
+
+    assert (
+        input.toString() == output.sort().toString(),
+        'did not get all heap values during iteration'
+    );
+}
+
+/**
+Test suite for the linked list code
+*/
+tests.utility.linkedList = tests.testSuite();
+
+/**
+Test of linked list insertion
+*/
+tests.utility.linkedList.insert = function ()
+{
+    var list = new LinkedList();
+
+    list.addFirst(1);
+    list.addLast(2);
+    list.addFirst(0);
+    list.addLast(3);
+
+    list.addSorted(0.5, function (i1, i2) { return i1 < i2; });
+
+    assert (list == '(0,0.5,1,2,3)');
+}
+
+/**
+Test of linked list iteration
+*/
+tests.utility.linkedList.iterator = function ()
+{
+    var array = [0,1,2,3,4];
+    var list = LinkedList.fromArray(array);
+
+    var idx = 0;
+    var itr = list.getItr();
+    for (; itr.valid(); itr.next(), idx++)
+    {
+        assert (itr.get() === array[idx]);
     }
 }
 

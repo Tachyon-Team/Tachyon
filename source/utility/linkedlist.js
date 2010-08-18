@@ -310,28 +310,3 @@ LinkedList.Iterator.prototype.get = function ()
     return this.current.item;
 }
 
-/*
-var list = new LinkedList();
-
-list.addFirst(1);
-list.addLast(2);
-list.addFirst(0);
-list.addLast(3);
-
-list.addSorted(0.5, function (i1, i2) { return i1 < i2; });
-
-
-
-var list = LinkedList.fromArray([0,1,2,3,4]);
-
-for (var itr = list.getItr(); itr.valid(); itr.next())
-{
-    var cur = itr.get();
-
-    print(cur);
-}
-
-print(list);
-print(list.toArray());
-*/
-

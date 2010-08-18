@@ -9,14 +9,9 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// May need to build custom instructions for some things
-// - add_i32 with overflow path
-// - might actually need platform-specific code
-//
+// TODO:
 // Some operators can have side effects
 // - May want a "write" or "side effect" flag
-
-// TODO: consider adding bool value conversion, eliminating untyped if?
 
 //=============================================================================
 // IR Core
@@ -130,9 +125,17 @@ ConstValue.prototype.getValName = ConstValue.prototype.toString;
 /**
 Test if a constant is an integer
 */
-ConstValue.prototype.isIntConst = function ()
+ConstValue.prototype.isInt = function ()
 {
     return this.value - Math.floor(this.value) == 0;
+}
+
+/**
+Test if a constant is the undefined constant
+*/
+ConstValue.prototype.isUndef = function ()
+{
+    return this.value === undefined;
 }
 
 /**
