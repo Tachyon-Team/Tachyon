@@ -103,7 +103,7 @@ ControlFlowGraph.prototype = {};
 /**
 Construct a string representation
 */
-ControlFlowGraph.prototype.toString = function ()
+ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
 {
     var output = "";
 
@@ -111,7 +111,7 @@ ControlFlowGraph.prototype.toString = function ()
     {
         var block = this.blocks[i];
 
-        output += block;
+        output += block.toString(outFormatFn, inFormatFn);
 
         if (block !== this.blocks[this.blocks.length - 1])
             output += "\n\n";
@@ -1196,7 +1196,7 @@ BasicBlock.prototype = {};
 /**
 Produce a string representation
 */
-BasicBlock.prototype.toString = function ()
+BasicBlock.prototype.toString = function (outFormatFn, inFormatFn)
 {
     var output = this.getBlockName() + ':\n';
 
@@ -1204,7 +1204,7 @@ BasicBlock.prototype.toString = function ()
     {
         var instr = this.instrs[i];
 
-        output += instr + ';';
+        output += instr.toString(outFormatFn, inFormatFn) + ';';
 
         if (instr !== this.instrs[this.instrs.length - 1])
             output += '\n';

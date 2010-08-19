@@ -60,7 +60,7 @@ IRFunction.prototype = new IRValue();
 /**
 Produce a string representation of an IR function
 */
-IRFunction.prototype.toString = function ()
+IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
 {
     var output = 'function ' + this.funcName + '(';
 
@@ -86,10 +86,24 @@ IRFunction.prototype.toString = function ()
 
     for (var i = 0; i < this.childFuncs.length; ++i)
     {
-        output += indentText(this.childFuncs[i].toString(), '    ') + '\n\n';
+        output += indentText(
+            this.childFuncs[i].toString(
+                blockOrderFn,
+                outFormatFn,
+                inFormatFn
+            ), 
+            '    '
+        ) + '\n\n';
     }
 
-    output += indentText(this.virginIR.toString(), '    ');
+    output += indentText(
+        this.virginIR.toString(
+            blockOrderFn,
+            outFormatFn,
+            inFormatFn
+        ),
+        '    '
+    );
 
     output += '\n}';
 
