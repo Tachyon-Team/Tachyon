@@ -90,9 +90,6 @@ function ast_walk_statement(ast, ctx)
         ast.statement = ctx.walk_statement(ast.statement);
         return ast;
     }
-    /*
-     * The ForVarStatement case is eliminated in pass2.
-     *
     else if (ast instanceof ForVarStatement)
     {
         for (var i=ast.decls.length-1; i>=0; i--)
@@ -105,7 +102,6 @@ function ast_walk_statement(ast, ctx)
         ast.statement = ctx.walk_statement(ast.statement);
         return ast;
     }
-    */
     else if (ast instanceof ForInStatement)
     {
         ast.lhs_expr = ctx.walk_expr(ast.lhs_expr);
@@ -113,9 +109,6 @@ function ast_walk_statement(ast, ctx)
         ast.statement = ctx.walk_statement(ast.statement);
         return ast;
     }
-    /*
-     * The ForVarInStatement case is eliminated in pass2.
-     *
     else if (ast instanceof ForVarInStatement)
     {
         ast.initializer = ctx.walk_expr(ast.initializer);
@@ -123,7 +116,6 @@ function ast_walk_statement(ast, ctx)
         ast.statement = ctx.walk_statement(ast.statement);
         return ast;
     }
-    */
     else if (ast instanceof ContinueStatement)
     {
         return ast;

@@ -2481,6 +2481,17 @@ function assgToIR(context, rhsVal)
             var curContext = varContext;
         }
 
+        // If the assignment value is not a function argument
+        if (!(rhsValAssg instanceof ArgValInstr))
+        {
+            // If the value already has a name, release it
+            if (rhsValAssg.outName)
+                context.cfg.freeInstrName(rhsValAssg);
+
+            // Assign the lhs variable name to the instruction
+            context.cfg.assignInstrName(rhsValAssg, symName);
+        }
+
         // The value of the right expression is the assignment expression's value
         context.setOutput(curContext.entryBlock, rhsValAssg);
     }

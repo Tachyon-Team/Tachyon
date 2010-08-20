@@ -1139,7 +1139,9 @@ var InstOfInstr = UntypedInstrMaker(
 */
 var PutPropValInstr = UntypedInstrMaker(
     'put_prop_val',
-     3
+     3,
+    undefined,
+    true
 );
 
 /**
@@ -1405,7 +1407,9 @@ var GetCellInstr = UntypedInstrMaker(
 */
 var PutCellInstr = UntypedInstrMaker(
     'put_cell',
-     2
+     2,
+    undefined,
+    true
 );
 
 /**
@@ -1462,8 +1466,10 @@ var GetClosInstr = UntypedInstrMaker(
 @augments IRInstr
 */
 var PutClosInstr = UntypedInstrMaker(
-    'put_clos',
-     3
+   'put_clos',
+    3,
+    undefined,
+    true
 );
 
 /**

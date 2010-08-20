@@ -310,10 +310,10 @@ ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
     {
         var idx = 1;
 
-        while (arraySetHas(this.instrNames, outName + idx))
+        while (arraySetHas(this.instrNames, outName + '_' + idx))
             idx++;
 
-        instr.outName = outName + idx;
+        instr.outName = outName + '_' + idx;
     }
 
     arraySetAdd(this.instrNames, instr.outName);
@@ -346,10 +346,10 @@ ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
     {
         var idx = 1;
 
-        while (arraySetHas(this.blockNames, labelName + idx))
+        while (arraySetHas(this.blockNames, labelName + '_' + idx))
             idx++;
 
-        block.label = labelName + idx;
+        block.label = labelName + '_' + idx;
     }
 
     arraySetAdd(this.blockNames, block.label);
