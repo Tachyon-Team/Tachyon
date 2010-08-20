@@ -397,4 +397,48 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         assert(it3.reg === "slot0");
     };
 
+    //  Case 6: it3 spilled to multiple memory slots...
+    //   Pos    0     1     2      3      4      5      6
+    //   it1    +-----------*--------------------*-----+
+    //   it2    +----+                           +-----+ 
+    //   it3          +-------------------*------------+
+    //   it4                +--------------------*-----+
+    t.possiblymultipleslotspill = function ()
+    {
+
+        var it1 = interval([range(0,6)], [usePos(0, NONE),
+                                      usePos(2, NONE),
+                                      usePos(5, NONE),
+                                      usePos(6, NONE)]);  
+
+        var it2 = interval([range(0,1), range(5,6)], 
+                           [usePos(0, NONE),
+                            usePos(1, NONE),
+                            usePos(6, NONE)]);  
+        var it3 = interval([range(1,6)], 
+                           [usePos(1, NONE),
+                            usePos(4, NONE),
+                            usePos(6, NONE)]);  
+        var it4 = interval([range(2,6)], 
+                           [usePos(2, NONE),
+                            usePos(5, NONE),
+                            usePos(6, NONE)]);  
+
+        allocator.linearScan(t.pregs, [it1, it2, it3, it4], t.mems);
+
+        assert(it1.reg === "REG1" || it1.reg === "REG2");
+        assert(it2.reg === "REG1" || it2.reg === "REG2");
+        assert(it1.reg !== it2.reg);
+        assert(it3.reg === it2.reg);
+        assert(it3.next.reg === "slot0");
+        assert(it3.next.next.reg === "slot0");
+        assert(it2.next.reg === "slot1");
+        assert(it4.reg === it3.reg);
+
+        assert(it1.next === null);
+        assert(it2.next.next === null);
+        assert(it3.next.next.next === null);
+        assert(it4.next === null);
+    };
+
 })(); // end of local namespace

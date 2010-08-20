@@ -661,6 +661,7 @@ allocator.interval.prototype.split = function (pos)
     var i, r, range, newrange, u;
     var newranges = [];
     var newUsePositions = [];
+    var newInterval;
 
     // There is no splitting to be done at the beginning 
     // of an interval
@@ -709,7 +710,7 @@ allocator.interval.prototype.split = function (pos)
             newranges.push(this.ranges[i]);
         }
 
-        // remove from the ranges of the initial
+        // remove from the ranges ranges that have been moved
         this.ranges.length = r + 1;
 
         // Move all the use positions after position
@@ -720,6 +721,8 @@ allocator.interval.prototype.split = function (pos)
 
         if (u !== null) 
         { 
+            // Move all the remaining use positions in the next
+            // interval
             newUsePositions = this.usePositions.splice(u, 
                                    this.usePositions.length - u); 
         }
@@ -744,6 +747,8 @@ allocator.interval.prototype.split = function (pos)
                               function (u) { return u.pos >= pos; }); 
         if (u !== null) 
         { 
+            // Move all the remaining use positions in the next
+            // interval
             newUsePositions = this.usePositions.splice(u, 
                                    this.usePositions.length - u); 
         }
@@ -752,13 +757,21 @@ allocator.interval.prototype.split = function (pos)
 
 
     // Create the new interval
-    var next = allocator.interval(newranges, newUsePositions);
-    next.vreg = this.vreg;
+    newInterval = allocator.interval(newranges, newUsePositions);
+    newInterval.vreg = this.vreg;
 
-    // Intervals are linked together
-    this.next = next;
-    next.previous = this;
-    return next;
+    // In some cases, an interval might be split again before the 
+    // last split position. Let's insert the new interval in-between.
+    if (this.next !== null)
+    {
+        this.next.previous = newInterval;
+        newInterval.next = this.next;
+    }
+
+    this.next = newInterval;
+    newInterval.previous = this;
+
+    return newInterval;
 };
 
 /** Set the start position of the interval */
@@ -1131,7 +1144,7 @@ Perform instruction numbering on a control flow graph
 allocator.numberInstrs = function (cfg, order)
 {
     var nextNo = 2;
-    var inc = 2;
+    var inc = allocator.numberInstrs.inc;
     var instrNb;
 
     // For each block in the order
@@ -1155,6 +1168,14 @@ allocator.numberInstrs = function (cfg, order)
                 // Since they all appear at the beginning of the block,
                 // not incrementing should garantee an identical number
                 instrNb = nextNo;
+            } else if (instr instanceof CallRefInstr)
+            {
+                // For calls, we need to increment by twice the value
+                // to later separate arguments use position from return value
+                // use position so that a fixed interval can be introduced
+                // between the two.
+                instrNb = nextNo + inc;
+                nextNo = nextNo + 2*inc;
             } else
             {
                 // We got a regular instruction
@@ -1179,6 +1200,8 @@ allocator.numberInstrs = function (cfg, order)
         block.regAlloc.to = nextNo;
     }
 };
+// Increment number between instructions
+allocator.numberInstrs.inc = 2;
 //-----------------------------------------------------------------------------
 
 // Interval Calculation
@@ -1188,6 +1211,8 @@ Compute the live intervals for the temporaries of a CFG
 */
 allocator.liveIntervals = function (cfg, order)
 {
+    var pos, it;
+
     // For each block in the order, in reverse order
     for (var i = order.length - 1; i >= 0; --i)
     {
@@ -1271,19 +1296,34 @@ allocator.liveIntervals = function (cfg, order)
 
                 // Make the use live from the start of the block to this instruction
                 //print( use.regAlloc.interval);
-                use.regAlloc.interval.addRange(
-                    block.regAlloc.from,
-                    instr.regAlloc.id
-                );
+
+                if (instr instanceof CallRefInstr)
+                {
+                    // For calls, we separate argument position from return
+                    // position to later introduce a fixed interval between 
+                    // the two
+                    pos = instr.regAlloc.id - allocator.numberInstrs.inc;
+                    use.regAlloc.interval.addRange(
+                        block.regAlloc.from,
+                        pos
+                    );
+                } else
+                {
+                    pos = instr.regAlloc.id;
+                    use.regAlloc.interval.addRange(
+                        block.regAlloc.from,
+                        pos
+                    );
+                }
 
                 if ( instr instanceof RetInstr)
                 {
 
-                    use.regAlloc.interval.addUsePos(instr.regAlloc.id,
+                    use.regAlloc.interval.addUsePos(pos,
                                         allocator.usePos.registerFlag.REQUIRED);
                 } else
                 {
-                    use.regAlloc.interval.addUsePos(instr.regAlloc.id);
+                    use.regAlloc.interval.addUsePos(pos);
                 }
 
 
@@ -1334,8 +1374,8 @@ allocator.liveIntervals = function (cfg, order)
     }
 
 
-    var liveRanges = [];
-    // Extract live ranges
+    var liveIntervals = [];
+    // Extract live intervals
     for (var i = 0; i < order.length; ++i)
     {
         var block = order[i];
@@ -1346,12 +1386,37 @@ allocator.liveIntervals = function (cfg, order)
             instr.regAlloc.interval.vreg = instr.instrId;
             if (instr.regAlloc.interval.rangeNb() > 0)
             {
-                liveRanges.push(instr.regAlloc.interval);
+                liveIntervals.push(instr.regAlloc.interval);
             }
         }
     }
-    return liveRanges;
+    return liveIntervals;
 };
+
+allocator.fixedIntervals = function (cfg, physicalRegs)
+{
+
+    var fixed = physicalRegs.map(function () { return allocator.interval(); });
+    var it;
+    var argPos;
+    var addFixed;
+
+    for (it = cfg.getInstrItr(); it.valid(); it.next())
+    {
+        if (it.get() instanceof CallRefInstr)
+        {
+            // Add a fixed interval between the arguments position
+            // and the return value position
+            argPos = it.get().regAlloc.id - allocator.numberInstrs.inc; 
+            addFixed = function (interval) 
+                       { 
+                           interval.addRange(argPos, argPos + 1); 
+                       };
+            fixed.map(addFixed);
+        }
+    }
+    return fixed;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -1412,6 +1477,40 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
         }
     }
 
+    /** @ignore */
+    function assignRegister(it)
+    {
+        if (typeof it.reg === "number")
+        {
+            it.reg = pregs[it.reg];
+        }
+    }
+
+    /** @ignore */
+    function assignSpillSlot(it)
+    {
+        var slot = null;
+        var previous = it.previous;
+
+        while(previous !== null)
+        {
+            if (typeof previous.reg !== "number")
+            {
+                // We have found an existing spill slot,
+                // let's reuse it
+                slot = previous.reg;
+                break;
+            }
+            previous = previous.previous;
+        }
+
+        if (slot === null)
+        {
+            slot = mems.newSlot();
+        }
+
+        it.reg = slot;
+    }
     // Iteration vars
     var current, position, it, i;
 
@@ -1456,7 +1555,10 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
 
         reg = allocator.max(freeUntilPos).index;
         
-        if (freeUntilPos[reg] === 0)
+        // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
+        // is free for a part of current.  This way it handles 
+        // a fixed interval starting at the same position as current
+        if (freeUntilPos[reg] <= current.startPos())
         {
             // No register available without spilling
             return false;
@@ -1483,7 +1585,6 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
 
         // Iteration vars
         var it, i, reg, max, pos, nextRegPos, next, fixedPos;
-
         
         // Reset nextUsePos for all physical registers 
         for (i=0; i < nextUsePos.length; ++i)
@@ -1509,13 +1610,23 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
             {
                 next  = it.nextUse(next+1);
             }
-            nextUsePos[it.reg] = next;
+            nextUsePos[it.reg] = Math.min(next, nextUsePos[it.reg]);
+        }
+
+        // Again, algorithm in paper did not really address the 
+        // fixed interval completely so we will say that 
+        // fixed intervals are used at the beginning of their 
+        // intersection with current
+        for (i=0; i < fixed.length; ++i)
+        {
+            it = fixed[i];
+            nextUsePos[i] = Math.min(it.nextIntersection(current),
+                                     nextUsePos[i]);
         }
 
         max = allocator.max(nextUsePos);
         reg = max.index;
         pos = max.value;
-
 
         // If first use of current is equal to pos,
         // we should split the other interval, according to the paper.
@@ -1528,8 +1639,7 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
         {
             // All other intervals are used before current
             // so it is best to spill current itself
-            
-            current.reg = mems.newSlot();
+            assignSpillSlot(current);
 
             // If a register is required, we split the interval
             // just before its use
@@ -1570,14 +1680,6 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
         }
     };
 
-    /** @ignore */
-    function assignRegister(it)
-    {
-        if (typeof it.reg === "number")
-        {
-            it.reg = pregs[it.reg];
-        }
-    }
 
     while (unhandledQueue.length() > 0)
     {
@@ -1625,7 +1727,9 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
             allocateBlockedReg(current, position);
         }
 
-        if (current.reg !== null) 
+        // If current has been assigned to a register
+        // add it to actives
+        if (typeof current.reg  === "number") 
         {
             activeSet.add(current);
         }
@@ -1668,13 +1772,21 @@ allocator.assign = function (cfg)
         opnds = []; 
         dest  = null; 
         pos = instr.regAlloc.id;
+        opndPos = pos - allocator.numberInstrs.inc;
 
         for (opndIt = instr.getOpndItr(); opndIt.valid(); opndIt.next())
         {
             opnd = opndIt.get(); 
+
             if (opnd instanceof IRInstr)
             {
-                opnds.push(opnd.regAlloc.interval.regAtPos(pos));
+                if (instr instanceof CallRefInstr)
+                {
+                    opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
+                } else                 
+                {
+                    opnds.push(opnd.regAlloc.interval.regAtPos(pos));
+                }
             } else 
             {
                 opnds.push(opnd);
@@ -1727,7 +1839,9 @@ allocator.resolve = function (cfg, intervals, order)
         interval = intervalIt.get();
         while (interval !== null)
         {
-            if (interval.previous !== null)
+            
+            if (interval.previous !== null &&
+                interval.previous.reg !== interval.reg)
             {
                 moves.push([interval.previous.endPos(),
                             new MoveInstr(interval.previous.reg,
