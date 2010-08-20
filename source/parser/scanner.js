@@ -624,7 +624,6 @@ Scanner.prototype.valued_token = function (cat, value, start_pos)
     return new Token(cat, value, loc);
 };
 
-
 function Token(cat, value, loc)
 {
     this.cat   = cat;

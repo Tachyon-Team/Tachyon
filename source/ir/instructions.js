@@ -1591,6 +1591,25 @@ var BoxInstr = TypedInstrMaker(
 );
 
 /**
+@class Instruction to perform a raw data extraction on a boxed value
+@augments IRInstr
+*/
+var RawUnboxInstr = TypedInstrMaker(
+    'raw_unbox', 
+    [
+        [IRType.POINTER],
+        [IRType.INT32],
+        [IRType.INT64],
+    ],
+    [IRType.BOXED], 
+    [
+        IRType.POINTER,
+        IRType.INT32,
+        IRType.INT64
+    ]
+);
+
+/**
 @class Instruction to evaluate the boolean value of a boxed value
 @augments IRInstr
 */

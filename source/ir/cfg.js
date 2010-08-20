@@ -89,7 +89,7 @@ function ControlFlowGraph(ownerFunc)
     addArg('this');
     addArg('funcObj');
     addArg('argObj');
-    var argNames = this.ownerFunc.getArgNames();
+    var argNames = this.ownerFunc.argVars;
     for (var i = 0; i < argNames.length; ++i)
         addArg(argNames[i]);
 

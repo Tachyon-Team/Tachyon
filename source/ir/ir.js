@@ -11,12 +11,18 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: handle eval -> free vars contains 'arguments'
-// TODO: handle arguments object -> free vars contains 'arguments'
+// TODO: handle eval -> free vars contain 'eval'
+// - Make all local vars shared cells
+// - Need to store params in shared cells too
+
+// TODO: handle arguments object -> free vars contain 'arguments'
+
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
 // TODO: consider eliminating untyped if?
+
+// TODO: try making assignment dest temp have appropriate var name
 
 /**
 Convert an AST code unit into IR functions
@@ -101,9 +107,9 @@ function stmtListToIRFunc(
 )
 {
     // Extract the argument names
-    var argNames = [];
+    var argVars = [];
     for (var i in params)
-        argNames.push(params[i].toString());
+        argVars.push(params[i].toString());
 
     // Extract the closure variable names
     var closVars = [];
@@ -113,11 +119,17 @@ function stmtListToIRFunc(
     // Create a new function object for the function
     var newFunc = new IRFunction(
         funcName,
-        argNames,
+        argVars,
         closVars,
         parentFunc,
         astNode
     );
+
+    // Verify if the function may be using the arguments object or eval
+    if (astNode.usesArguments)
+        newFunc.usesArguments = true;
+    if (astNode.usesEval)
+        newFunc.usesEval = true;
 
     // Create a new CFG for the function
     var cfg = new ControlFlowGraph(newFunc);
@@ -182,7 +194,7 @@ function stmtListToIRFunc(
         {
             // Put the argument value in the corresponding mutable cell
             var mutCell = sharedMap.getItem(symName);
-            entryBlock.addInstr(PutCellInstr(mutCell, cfg.getArgVal(i)));
+            entryBlock.addInstr(new PutCellInstr(mutCell, cfg.getArgVal(i)));
         }
     }
 
@@ -2593,7 +2605,7 @@ function refToIR(context)
     }
 
     // If the variable is global
-    if (astExpr.id.scope instanceof Program)
+    if (astExpr.id.scope instanceof Program && symName != 'arguments')
     {
         // Get the value from the global object
         varValueVar = varContext.entryBlock.addInstr(
