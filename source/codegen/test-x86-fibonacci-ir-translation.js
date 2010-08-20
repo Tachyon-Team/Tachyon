@@ -50,11 +50,11 @@ a.ir_lt = function (opnds, dest)
     {
         this.
         mov(opnds[0], dest). 
-        cmp(dest, opnds[1]); // TODO: Check the order of the args for cmp
+        cmp(dest, opnds[1]); 
     } else
     {
         this.
-        cmp(opnds[0], opnds[1]); // TODO: Check the order of the args for cmp
+        cmp(opnds[1], opnds[0]);
     }
 
     this.
@@ -138,6 +138,8 @@ a.ir_get_prop_addr = function (opnds, dest)
     const obj = opnds[0];
     const key = opnds[1];
 
+    // TODO: Ensure key is not a memory location
+
     var loop = this.labelObj();
     var end = this.labelObj();
     var notFound = this.labelObj();
@@ -178,6 +180,8 @@ a.ir_put_prop_val = function (opnds, dest)
     const key = opnds[1];
     const value = opnds[2];
 
+    // TODO: Ensure key and value is are not memory locations
+
     var loop = this.labelObj();
     var found = this.labelObj();
 
@@ -204,7 +208,7 @@ a.ir_dump_global_object = function ()
     const SELF = this.labelObj();
     this.
     label(globalLabel).
-    call(SELF).label(SELF).pop(EAX).add($(5),EAX).ret().
+    ir_call_self().
     gen32(0); // Length
     
     for (var i=0; i < globalSize; ++i)
@@ -218,8 +222,29 @@ a.ir_dump_global_object = function ()
     return this;
 };
 
-a.ir_arg = function (opnds, dest)
+a.ir_call_self = function ()
 {
+    const SELF = this.labelObj();
+
+    this.
+    call(SELF).
+    label(SELF).
+    pop(EAX).
+    add($(5),EAX).
+    ret();
+
+    return this;
+};
+
+a.ir_arg = function (opnds, dest, argIndex)
+{
+    if (dest === null)
+    {
+        return this;
+    }
+
+    
+
     return this;
 };
 
@@ -233,8 +258,14 @@ a.ir_call = function (opnds, dest, continue_label)
     return this;
 };
 
-a.ir_make_clos = function (opnds, dest)
+a.ir_make_clos = function (opnds, dest, fctLabel)
 {
+    this.
+    mov(EAX, scratch).
+    call(fctLabel).
+    mov(EAX, dest).
+    mov(scratch, EAX);
+
     return this;
 };
 
@@ -287,7 +318,7 @@ label(mainLabel).
 ir_put_prop_val([global, $(1), $(23)]).
 ir_put_prop_val([global, $(2), $(42)]).
 ir_put_prop_val([global, $(1), $(66)]).
-ir_get_prop_val([global, $(3)], EAX).
+ir_get_prop_val([global, $(1)], EAX).
 //ir_get_prop_addr([global, $(1)], EAX).
 //mov(mem(G_NEXT_OFFSET,global), EAX).
 
