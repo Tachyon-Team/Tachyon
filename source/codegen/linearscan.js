@@ -480,6 +480,8 @@ allocator.interval.prototype.usePositions = [];
 allocator.interval.prototype.ranges = [];
 /** Allocated physical register or memory location */ 
 allocator.interval.prototype.reg    = null;
+/** Register hint for allocation */
+allocator.interval.prototype.regHint = null;
 /** Linked interval, for intervals that have been split */
 allocator.interval.prototype.next   = null;
 /** Linked interval, for intervals that have been split */
@@ -1281,6 +1283,14 @@ allocator.liveIntervals = function (cfg, order)
 
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
+                if (instr instanceof CallRefInstr)
+                {
+                    // TODO: Make the regHint parametrizable
+                    instr.regAlloc.interval.regHint = 0;
+                } else if (instr instanceof ArgValInstr)
+                {
+                    instr.regAlloc.interval.regHint = instr.argIndex;
+                }
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
@@ -1307,8 +1317,18 @@ allocator.liveIntervals = function (cfg, order)
                         block.regAlloc.from,
                         pos
                     );
+                    // TODO: Make number of regHint parametrizable
+                    if (k < 3)
+                    {
+                        use.regAlloc.interval.regHint = k;
+                    }
                 } else
                 {
+                    if (instr instanceof RetInstr)
+                    {
+                        // TODO: Make the regHint parametrizable
+                        instr.regAlloc.interval.regHint = 0;
+                    } 
                     pos = instr.regAlloc.id;
                     use.regAlloc.interval.addRange(
                         block.regAlloc.from,
@@ -1552,8 +1572,15 @@ allocator.linearScan = function (pregs, unhandled, mems, fixed)
             freeUntilPos[i] = Math.min(it.nextIntersection(current),
                                        freeUntilPos[i]);
         }
-
-        reg = allocator.max(freeUntilPos).index;
+            
+        if (current.regHint !== null && 
+            freeUntilPos[current.regHint] > current.startPos())
+        {
+            reg = current.regHint;
+        } else
+        {
+            reg = allocator.max(freeUntilPos).index;
+        }
         
         // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
         // is free for a part of current.  This way it handles 
