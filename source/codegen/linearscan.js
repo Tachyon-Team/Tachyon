@@ -1143,7 +1143,7 @@ allocator.numberInstrs = function (cfg, order)
         block.regAlloc.from = nextNo;
         nextNo = nextNo + inc;
 
-        print(block.regAlloc.from + ": label " + block.label);
+        //print(block.regAlloc.from + ": label " + block.label);
         for (var j = 0; j < block.instrs.length; ++j)
         {
             var instr = block.instrs[j];
@@ -1170,8 +1170,8 @@ allocator.numberInstrs = function (cfg, order)
             }
             instr.regAlloc.interval.vreg = instr;
 
-            print(instr.regAlloc.id + ":    " + " (" + instr.instrId + ") " +
-                  instr );
+            //print(instr.regAlloc.id + ":    " + " (" + instr.instrId + ") " +
+            //      instr );
         }
 
         // Set the operation number at the block end to be the same
@@ -1738,7 +1738,6 @@ allocator.resolve = function (cfg, intervals, order)
     }
     moves.sort(function (a,b) { return a[0] - b[0]; });
 
-    print(moves);
 
     moveIt = new ArrayIterator(moves);
     blockIt = new ArrayIterator(order); 
@@ -1774,8 +1773,8 @@ allocator.resolve = function (cfg, intervals, order)
     {
         mapping = allocator.mapping();
         edge = edgeIt.get();
-        for (intervalIt = new FilterIterator(new ArrayIterator(intervals, 
-                                                 liveAtBegin(edge.succ)));
+        for (intervalIt = new FilterIterator(new ArrayIterator(intervals), 
+                                                 liveAtBegin(edge.succ));
              intervalIt.valid(); 
              intervalIt.next())
         {
@@ -1787,8 +1786,8 @@ allocator.resolve = function (cfg, intervals, order)
 
             if (moveFrom !== moveTo)
             {
-               print(intervalIt.get());
-               print("Move from:" + moveFrom + " to:" + moveTo);
+               //print(intervalIt.get());
+               //print("Move from:" + moveFrom + " to:" + moveTo);
                mapping.add(moveFrom, moveTo);
             }
         }
@@ -1895,7 +1894,6 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct)
         moveIt.valid();
         moveIt.next())
     {
-        print("Inserting: " + moveIt.get());
         insertFct(moveIt.get());
     }
 };
