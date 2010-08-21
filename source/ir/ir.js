@@ -11,18 +11,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: handle eval -> free vars contain 'eval'
+// TODO: handle eval
 // - Make all local vars shared cells
 // - Need to store params in shared cells too
-
-// TODO: handle arguments object -> free vars contain 'arguments'
 
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
 // TODO: consider eliminating untyped if?
-
-// TODO: try making assignment dest temp have appropriate var name
 
 /**
 Convert an AST code unit into IR functions
@@ -2481,8 +2477,8 @@ function assgToIR(context, rhsVal)
             var curContext = varContext;
         }
 
-        // If the assignment value is not a function argument
-        if (!(rhsValAssg instanceof ArgValInstr))
+        // If the assignment value is and instruction, but not a function argument
+        if (rhsValAssg instanceof IRInstr && !(rhsValAssg instanceof ArgValInstr))
         {
             // If the value already has a name, release it
             if (rhsValAssg.outName)
@@ -2840,7 +2836,7 @@ function mergeContexts(
             var phiNode = new PhiInstr(values, preds);
 
             // Add the phi node to the merge block
-            mergeBlock.addInstr(phiNode);
+            mergeBlock.addInstr(phiNode, varName);
 
             // Add the phi node to the merge map
             mergeMap.addItem(varName, phiNode);
@@ -2910,7 +2906,7 @@ function createLoopEntry(
             [context.localMap.getItem(varName)],
             [context.entryBlock]
         );
-        loopEntry.addInstr(phiNode);
+        loopEntry.addInstr(phiNode, varName);
         entryLocals.setItem(varName, phiNode);
     }
 

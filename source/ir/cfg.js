@@ -258,6 +258,8 @@ Assign a free id number to an instruction
 */
 ControlFlowGraph.prototype.assignInstrId = function (instr)
 {
+    assert (instr instanceof IRInstr);
+
     if (this.freeInstrIds.length > 0)
         instr.instrId = this.freeInstrIds.pop();
     else
@@ -269,6 +271,8 @@ Free an instruction id number
 */
 ControlFlowGraph.prototype.freeInstrId = function (instr)
 {
+    assert (instr instanceof IRInstr);
+
     this.freeInstrIds.push(instr.instrId);
 };
 
@@ -277,6 +281,8 @@ Assign a free id number to a basic block
 */
 ControlFlowGraph.prototype.assignBlockId = function (block)
 {
+    assert (block instanceof BasicBlock);
+
     if (this.freeBlockIds.length > 0)
         block.blockId = this.freeBlockIds.pop();
     else
@@ -288,6 +294,8 @@ Free a block id number
 */
 ControlFlowGraph.prototype.freeBlockId = function (block)
 {
+    assert (block instanceof BasicBlock);
+
     this.freeBlockIds.push(block.blockId);
 };
 
@@ -296,6 +304,8 @@ Assign a free output name to an instruction
 */
 ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
 {
+    assert (instr instanceof IRInstr);
+
     if (outName == undefined || outName == '')
     {
         instr.outName = '';
@@ -324,6 +334,8 @@ Free an instruction output name
 */
 ControlFlowGraph.prototype.freeInstrName = function (instr)
 {
+    assert (instr instanceof IRInstr);
+
     arraySetRem(this.instrNames, instr.outName);
 };
 
@@ -332,6 +344,8 @@ Assign a free label name to a block
 */
 ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
 {
+    assert (block instanceof BasicBlock);
+
     if (labelName == undefined || labelName == '')
     {
         block.label = '';
@@ -360,6 +374,8 @@ Free a block label name
 */
 ControlFlowGraph.prototype.freeBlockName = function (block)
 {
+    assert (block instanceof BasicBlock);
+
     arraySetRem(this.blockNames, block.label);
 };
 

@@ -1,5 +1,6 @@
 function f(c1, c2)
 {
+    
     var v = 6;
 
     k = c1;
@@ -10,6 +11,7 @@ function f(c1, c2)
     c1 = z + 2;
 
     print(y);
+    
 
     /*
     arguments[1] = 5;
