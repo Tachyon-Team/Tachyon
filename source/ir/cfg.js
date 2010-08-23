@@ -492,7 +492,7 @@ ControlFlowGraph.prototype.getArgVal = function (index)
 {
     assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
 
-    return this.argVals[index + 3];
+    return this.argVals[index + 2];
 };
 
 /**
