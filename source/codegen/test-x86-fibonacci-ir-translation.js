@@ -3,6 +3,8 @@ const reg = a.register;
 const ESP = reg.esp;
 const EAX = reg.eax;
 const EBX = reg.ebx;
+const ECX = reg.ecx;
+const EDX = reg.edx;
 const $ = a.immediateValue;
 const mem = a.memory;
 
@@ -10,6 +12,7 @@ const mem = a.memory;
 const TRUE = $(1);
 const FALSE = $(0);
 const NULL = $(0);
+const UNDEFINED = $(0);
 
 const scratch = reg.edi;
 const global = reg.esi;
@@ -28,6 +31,9 @@ var globalSize = 3;       // Maximum number of entries global
 const globalLabel = a.labelObj("GLOBAL_PRELUDE"); // Label for the position of global
 const mainLabel = a.labelObj("MAIN");
 
+
+const physRegs = [EAX, EBX, ECX, EDX]; 
+
 // Assumptions:
 // - dest is always a register
 
@@ -40,6 +46,25 @@ function processOpnds(opnds)
     return;
 };
 
+function neg(opnd)
+{
+    assert(opnd.type === x86.type.IMM_VAL);
+    return $(-opnd.value);
+};
+
+a.xchg = function (opnd1, opnd2)
+{
+    assert(!(opnd1.type === x86.type.MEM &&
+             opnd2.type === x86.type.MEM));
+
+    assert(!opnd1.type === x86.type.IMM_VAL);
+    assert(!opnd2.type === x86.type.IMM_VAL);
+    
+    this.
+    xor(opnd1, opnd2).
+    xor(opnd2, opnd1).
+    xor(opnd1, opnd2);
+};
 
 a.ir_lt = function (opnds, dest)
 {
@@ -78,18 +103,47 @@ a["ir_if"] = function (opnds, trueLabel, falseLabel)
 
 a.ir_sub = function (opnds, dest)
 {
-    this.
-    mov(opnds[0], dest).
-    sub(opnds[1], dest);
-
+    if (opnds[1] === dest && opnds[0].type !== x86.type.IMM_VAL)
+    {
+        this.
+        xchg(opnds[1], opnds[0]).
+        sub(opnds[1], dest).
+        xchg(opnds[1], opnds[0]);
+    } else if (opnds[1] === dest && opnds[0].type === x86.type.IMM_VAL)
+    {
+        this.
+        mov(opnds[0], scratch).
+        sub(opnds[1], scratch).
+        mov(scratch, opnds[1]);
+    } else if (opnds[0] === dest)
+    {
+        this.
+        sub(opnds[1], dest);
+    } else
+    {
+        this.
+        mov(opnds[0], dest).
+        sub(opnds[1], dest);
+    }
     return this;
 };
 
 a.ir_add = function (opnds, dest)
 {
-    this.
-    mov(opnds[0], dest).
-    add(opnds[1], dest);
+    if (opnds[1] === dest)
+    {
+        this.
+        add(opnds[0], dest);
+    } else if (opnds[0] === dest)
+    {
+        this.
+        add(opnds[1], dest);
+    } else
+    {
+        this.
+        mov(opnds[0], dest).
+        add(opnds[1], dest);
+    }
 
     return this;
 };
@@ -243,6 +297,11 @@ a.ir_arg = function (opnds, dest, argIndex)
         return this;
     }
 
+    if (dest !== physRegs[argIndex])
+    {
+        error("ir_arg: dest register '" + dest + 
+              "' unexpected for argument index '" + argIndex + "'");
+    }
     
 
     return this;
@@ -250,11 +309,17 @@ a.ir_arg = function (opnds, dest, argIndex)
 
 a.ir_ret = function (opnds, dest)
 {
+    if (opnds[0] !== EAX)
+    {
+        this.mov(opnds[0], EAX);
+    }
     return this;
 };
 
 a.ir_call = function (opnds, dest, continue_label)
 {
+    
+
     return this;
 };
 
@@ -319,8 +384,9 @@ ir_put_prop_val([global, $(1), $(23)]).
 ir_put_prop_val([global, $(2), $(42)]).
 ir_put_prop_val([global, $(1), $(66)]).
 ir_get_prop_val([global, $(1)], EAX).
-//ir_get_prop_addr([global, $(1)], EAX).
-//mov(mem(G_NEXT_OFFSET,global), EAX).
+mov($(2), EAX).
+mov($(5), EBX).
+ir_sub([EAX, EBX], EAX).
 
 ret();
 
