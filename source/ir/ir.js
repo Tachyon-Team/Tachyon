@@ -11,8 +11,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: Explain result of translation in function description comments 
 
-// TODO: handle eval -> free vars contains 'arguments'
-// TODO: handle arguments object -> free vars contains 'arguments'
+// TODO: handle eval
+// - Make all local vars shared cells
+// - Need to store params in shared cells too
+
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
@@ -101,9 +103,9 @@ function stmtListToIRFunc(
 )
 {
     // Extract the argument names
-    var argNames = [];
+    var argVars = [];
     for (var i in params)
-        argNames.push(params[i].toString());
+        argVars.push(params[i].toString());
 
     // Extract the closure variable names
     var closVars = [];
@@ -113,11 +115,17 @@ function stmtListToIRFunc(
     // Create a new function object for the function
     var newFunc = new IRFunction(
         funcName,
-        argNames,
+        argVars,
         closVars,
         parentFunc,
         astNode
     );
+
+    // Verify if the function may be using the arguments object or eval
+    if (astNode.usesArguments)
+        newFunc.usesArguments = true;
+    if (astNode.usesEval)
+        newFunc.usesEval = true;
 
     // Create a new CFG for the function
     var cfg = new ControlFlowGraph(newFunc);
@@ -182,7 +190,7 @@ function stmtListToIRFunc(
         {
             // Put the argument value in the corresponding mutable cell
             var mutCell = sharedMap.getItem(symName);
-            entryBlock.addInstr(PutCellInstr(mutCell, cfg.getArgVal(i)));
+            entryBlock.addInstr(new PutCellInstr(mutCell, cfg.getArgVal(i)));
         }
     }
 
@@ -2469,6 +2477,17 @@ function assgToIR(context, rhsVal)
             var curContext = varContext;
         }
 
+        // If the assignment value is and instruction, but not a function argument
+        if (rhsValAssg instanceof IRInstr && !(rhsValAssg instanceof ArgValInstr))
+        {
+            // If the value already has a name, release it
+            if (rhsValAssg.outName)
+                context.cfg.freeInstrName(rhsValAssg);
+
+            // Assign the lhs variable name to the instruction
+            context.cfg.assignInstrName(rhsValAssg, symName);
+        }
+
         // The value of the right expression is the assignment expression's value
         context.setOutput(curContext.entryBlock, rhsValAssg);
     }
@@ -2593,7 +2612,7 @@ function refToIR(context)
     }
 
     // If the variable is global
-    if (astExpr.id.scope instanceof Program)
+    if (astExpr.id.scope instanceof Program && symName != 'arguments')
     {
         // Get the value from the global object
         varValueVar = varContext.entryBlock.addInstr(
@@ -2817,7 +2836,7 @@ function mergeContexts(
             var phiNode = new PhiInstr(values, preds);
 
             // Add the phi node to the merge block
-            mergeBlock.addInstr(phiNode);
+            mergeBlock.addInstr(phiNode, varName);
 
             // Add the phi node to the merge map
             mergeMap.addItem(varName, phiNode);
@@ -2887,7 +2906,7 @@ function createLoopEntry(
             [context.localMap.getItem(varName)],
             [context.entryBlock]
         );
-        loopEntry.addInstr(phiNode);
+        loopEntry.addInstr(phiNode, varName);
         entryLocals.setItem(varName, phiNode);
     }
 

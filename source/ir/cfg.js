@@ -76,6 +76,10 @@ function ControlFlowGraph(ownerFunc)
     // Create the entry block
     this.entry = this.getNewBlock('entry');
 
+    // TODO: move argument management code to IR generation
+    // - Want some of these to be removed by optimizations
+    // - Simplify CFG copying
+
     // Function to add an argument instruction to the entry block
     var that = this;
     function addArg(argName)
@@ -86,15 +90,19 @@ function ControlFlowGraph(ownerFunc)
     }
 
     // Add the function arguments
-    addArg('this');
     addArg('funcObj');
-    addArg('argObj');
-    var argNames = this.ownerFunc.getArgNames();
+    addArg('this');
+    var argNames = this.ownerFunc.argVars;
     for (var i = 0; i < argNames.length; ++i)
         addArg(argNames[i]);
 
+    // Add the argument object value
+    var argObj = new MakeArgObjInstr(this.argVals[0]);
+    this.argVals.push(argObj);
+    this.entry.addInstr(argObj, 'argObj');
+
     // Add the global object value
-    var globalObj = new GetGlobalInstr(this.argVals[1])
+    var globalObj = new GetGlobalInstr(this.argVals[0]);
     this.argVals.push(globalObj);
     this.entry.addInstr(globalObj, 'global');
 }
@@ -103,7 +111,7 @@ ControlFlowGraph.prototype = {};
 /**
 Construct a string representation
 */
-ControlFlowGraph.prototype.toString = function ()
+ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
 {
     var output = "";
 
@@ -111,7 +119,7 @@ ControlFlowGraph.prototype.toString = function ()
     {
         var block = this.blocks[i];
 
-        output += block;
+        output += block.toString(outFormatFn, inFormatFn);
 
         if (block !== this.blocks[this.blocks.length - 1])
             output += "\n\n";
@@ -258,6 +266,8 @@ Assign a free id number to an instruction
 */
 ControlFlowGraph.prototype.assignInstrId = function (instr)
 {
+    assert (instr instanceof IRInstr);
+
     if (this.freeInstrIds.length > 0)
         instr.instrId = this.freeInstrIds.pop();
     else
@@ -269,6 +279,8 @@ Free an instruction id number
 */
 ControlFlowGraph.prototype.freeInstrId = function (instr)
 {
+    assert (instr instanceof IRInstr);
+
     this.freeInstrIds.push(instr.instrId);
 };
 
@@ -277,6 +289,8 @@ Assign a free id number to a basic block
 */
 ControlFlowGraph.prototype.assignBlockId = function (block)
 {
+    assert (block instanceof BasicBlock);
+
     if (this.freeBlockIds.length > 0)
         block.blockId = this.freeBlockIds.pop();
     else
@@ -288,6 +302,8 @@ Free a block id number
 */
 ControlFlowGraph.prototype.freeBlockId = function (block)
 {
+    assert (block instanceof BasicBlock);
+
     this.freeBlockIds.push(block.blockId);
 };
 
@@ -296,6 +312,8 @@ Assign a free output name to an instruction
 */
 ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
 {
+    assert (instr instanceof IRInstr);
+
     if (outName == undefined || outName == '')
     {
         instr.outName = '';
@@ -310,10 +328,10 @@ ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
     {
         var idx = 1;
 
-        while (arraySetHas(this.instrNames, outName + idx))
+        while (arraySetHas(this.instrNames, outName + '_' + idx))
             idx++;
 
-        instr.outName = outName + idx;
+        instr.outName = outName + '_' + idx;
     }
 
     arraySetAdd(this.instrNames, instr.outName);
@@ -324,6 +342,8 @@ Free an instruction output name
 */
 ControlFlowGraph.prototype.freeInstrName = function (instr)
 {
+    assert (instr instanceof IRInstr);
+
     arraySetRem(this.instrNames, instr.outName);
 };
 
@@ -332,6 +352,8 @@ Assign a free label name to a block
 */
 ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
 {
+    assert (block instanceof BasicBlock);
+
     if (labelName == undefined || labelName == '')
     {
         block.label = '';
@@ -346,10 +368,10 @@ ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
     {
         var idx = 1;
 
-        while (arraySetHas(this.blockNames, labelName + idx))
+        while (arraySetHas(this.blockNames, labelName + '_' + idx))
             idx++;
 
-        block.label = labelName + idx;
+        block.label = labelName + '_' + idx;
     }
 
     arraySetAdd(this.blockNames, block.label);
@@ -360,6 +382,8 @@ Free a block label name
 */
 ControlFlowGraph.prototype.freeBlockName = function (block)
 {
+    assert (block instanceof BasicBlock);
+
     arraySetRem(this.blockNames, block.label);
 };
 
@@ -446,27 +470,19 @@ ControlFlowGraph.prototype.remBlock = function (block)
 };
 
 /**
-Get the this argument value
+Get the function object value
 */
-ControlFlowGraph.prototype.getThisArg = function ()
+ControlFlowGraph.prototype.getFuncObj = function ()
 {
     return this.argVals[0];
 };
 
 /**
-Get the function object value
+Get the this argument value
 */
-ControlFlowGraph.prototype.getFuncObj = function ()
+ControlFlowGraph.prototype.getThisArg = function ()
 {
     return this.argVals[1];
-};
-
-/**
-Get the argument object value
-*/
-ControlFlowGraph.prototype.getArgObj = function ()
-{
-    return this.argVals[2];
 };
 
 /**
@@ -477,6 +493,14 @@ ControlFlowGraph.prototype.getArgVal = function (index)
     assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
 
     return this.argVals[index + 3];
+};
+
+/**
+Get the argument object value
+*/
+ControlFlowGraph.prototype.getArgObj = function ()
+{
+    return this.argVals[this.argVals.length - 2];
 };
 
 /**
@@ -1196,7 +1220,7 @@ BasicBlock.prototype = {};
 /**
 Produce a string representation
 */
-BasicBlock.prototype.toString = function ()
+BasicBlock.prototype.toString = function (outFormatFn, inFormatFn)
 {
     var output = this.getBlockName() + ':\n';
 
@@ -1204,7 +1228,7 @@ BasicBlock.prototype.toString = function ()
     {
         var instr = this.instrs[i];
 
-        output += instr + ';';
+        output += instr.toString(outFormatFn, inFormatFn) + ';';
 
         if (instr !== this.instrs[this.instrs.length - 1])
             output += '\n';

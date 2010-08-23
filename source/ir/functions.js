@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Intermediate representation function
 */
-function IRFunction(funcName, argNames, closVars, parentFunc, astNode)
+function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
 {
     /**
     Function name
@@ -21,10 +21,10 @@ function IRFunction(funcName, argNames, closVars, parentFunc, astNode)
     this.funcName = funcName;
 
     /**
-    Argument name list
+    Argument variable list
     @field
     */
-    this.argNames = argNames;
+    this.argVars = argVars;
 
     /**
     Closure variable name list
@@ -54,21 +54,33 @@ function IRFunction(funcName, argNames, closVars, parentFunc, astNode)
     @field
     */
     this.parentFunc = null;
+
+    /**
+    Flag to indicate that this function may use the arguments object
+    @field
+    */
+    this.usesArguments = false;
+
+    /**
+    Flag to indicate that this function may use eval
+    @field
+    */
+    this.usesEval = false;
 }
 IRFunction.prototype = new IRValue();
 
 /**
 Produce a string representation of an IR function
 */
-IRFunction.prototype.toString = function ()
+IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
 {
     var output = 'function ' + this.funcName + '(';
 
-    for (var i = 0; i < this.argNames.length; ++i)
+    for (var i = 0; i < this.argVars.length; ++i)
     {
-        output += this.argNames[i];
+        output += this.argVars[i];
 
-        if (i != this.argNames.length - 1)
+        if (i != this.argVars.length - 1)
             output += ', ';
     }
 
@@ -86,10 +98,24 @@ IRFunction.prototype.toString = function ()
 
     for (var i = 0; i < this.childFuncs.length; ++i)
     {
-        output += indentText(this.childFuncs[i].toString(), '    ') + '\n\n';
+        output += indentText(
+            this.childFuncs[i].toString(
+                blockOrderFn,
+                outFormatFn,
+                inFormatFn
+            ), 
+            '    '
+        ) + '\n\n';
     }
 
-    output += indentText(this.virginIR.toString(), '    ');
+    output += indentText(
+        this.virginIR.toString(
+            blockOrderFn,
+            outFormatFn,
+            inFormatFn
+        ),
+        '    '
+    );
 
     output += '\n}';
 
@@ -113,19 +139,11 @@ IRFunction.prototype.copy = function ()
 }
 
 /**
-Get the argument names
-*/
-IRFunction.prototype.getArgNames = function()
-{
-    return this.argNames;
-};
-
-/**
 Get the default number of function arguments
 */
 IRFunction.prototype.getNumArgs = function ()
 {
-    return this.argNames.length;
+    return this.argVars.length;
 };
 
 /**

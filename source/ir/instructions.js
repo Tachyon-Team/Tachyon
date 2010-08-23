@@ -205,15 +205,38 @@ function IRInstr()
 IRInstr.prototype = new IRValue();
 
 /**
+Default output string formatting function
+*/
+IRInstr.defOutFormat = function (val)
+{
+    return val.type.name + ' ' + val.getValName();
+}
+
+/**
+Default input string formatting function
+*/
+IRInstr.defInFormat = function (val)
+{
+    return val.getValName();
+}
+
+/**
 Produce a string representation of this instruction
 */
-IRInstr.prototype.toString = function ()
+IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
+    // If no formatting functions were specified, use the default ones
+    if (!outFormatFn)
+        outFormatFn = IRInstr.defOutFormat;
+    if (!inFormatFn)
+        inFormatFn = IRInstr.defInFormat;
+
+    // Create a string for the output
     var output = "";
 
-    // If this instruction's value is read, print its output name
-    if (this.hasDests())
-        output += this.type.name + ' ' + this.getValName() + ' = ';
+    // If this instruction has a non-void output print its output name
+    if (this.type != IRType.VOID)
+        output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + (this.uses.length? ' ':'');
 
@@ -224,7 +247,7 @@ IRInstr.prototype.toString = function ()
         if (!(ins instanceof IRValue))
             output += '***invalid value***';
         else
-            output += ins.getValName();
+            output += inFormatFn(ins);
 
         if (i != this.uses.length - 1)
             output += ", ";
@@ -351,10 +374,10 @@ BranchInstr.prototype.targetNames = [];
 /**
 Default toString function for branch instructions
 */
-BranchInstr.prototype.toString = function ()
+BranchInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // Get the default toString output for the instruction and its uses
-    var output = IRInstr.prototype.toString.apply(this);
+    var output = IRInstr.prototype.toString.apply(this, outFormatFn, inFormatFn);
 
     // For each branch target
     for (var i = 0; i < this.targets.length; ++i)
@@ -415,13 +438,19 @@ PhiInstr.prototype = new IRInstr();
 /**
 Produce a string representation of the phi instruction
 */
-PhiInstr.prototype.toString = function ()
+PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
+    // If no formatting functions were specified, use the default ones
+    if (!outFormatFn)
+        outFormatFn = IRInstr.defOutFormat;
+    if (!inFormatFn)
+        inFormatFn = IRInstr.defInFormat;
+
     var output = "";
 
     // If this instruction's value is read, print its output name
     if (this.hasDests())
-        output += this.type.name + ' ' + this.getValName() + ' = ';
+        output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + ' ';
 
@@ -430,7 +459,7 @@ PhiInstr.prototype.toString = function ()
         var ins = this.uses[i];
         var pred = this.preds[i];
 
-        output += '[' + ins.getValName() + ' ' + pred.getBlockName() + ']';
+        output += '[' + inFormatFn(ins) + ' ' + pred.getBlockName() + ']';
 
         if (i != this.uses.length - 1)
             output += ", ";
@@ -833,7 +862,7 @@ Function to generate generic untyped instruction constructors using closures
 @param numInputs number of input operands
 @param protoObj prototype object instance, new IRInstr instance by default
 */
-function UntypedInstrMaker(mnemonic, numInputs, branchNames, protoObj)
+function UntypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoObj)
 {
     var inTypes = [];
     for (var i = 0; i < numInputs; ++i)
@@ -843,7 +872,7 @@ function UntypedInstrMaker(mnemonic, numInputs, branchNames, protoObj)
         mnemonic,
         undefined,
         [inTypes],
-        IRType.BOXED,
+        voidOutput? IRType.VOID:IRType.BOXED,
         branchNames,
         protoObj
     );
@@ -877,10 +906,15 @@ ArgValInstr.prototype = new IRInstr();
 /**
 Get a string representation of the argument instruction
 */
-ArgValInstr.prototype.toString = function ()
+ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
-    return this.type.name + ' ' + this.outName + ' = ' +
-         this.mnemonic + ' ' + this.argIndex;
+    // Get the default toString output for the instruction
+    var output = IRInstr.prototype.toString.apply(this, outFormatFn, inFormatFn);
+
+    // Add the argument index to the output
+    output += ' ' + this.argIndex;
+
+    return output;
 }
 
 /**
@@ -1105,7 +1139,9 @@ var InstOfInstr = UntypedInstrMaker(
 */
 var PutPropValInstr = UntypedInstrMaker(
     'put_prop_val',
-     3
+     3,
+    undefined,
+    true
 );
 
 /**
@@ -1151,7 +1187,8 @@ var GetPropNamesInstr = UntypedInstrMaker(
 var JumpInstr = UntypedInstrMaker(
     'jump',
      0,
-    [undefined]
+    [undefined],
+    true
 );
 
 /**
@@ -1161,7 +1198,8 @@ var JumpInstr = UntypedInstrMaker(
 var IfInstr = UntypedInstrMaker(
     'if',
     1,
-    ['then', 'else']
+    ['then', 'else'],
+    true
 );
 
 /**
@@ -1172,6 +1210,7 @@ var RetInstr = UntypedInstrMaker(
     'ret',
      1,
     undefined,
+    true,
     new BranchInstr()
 );
 
@@ -1345,6 +1384,15 @@ ConstructRefInstr.prototype.copy = function ()
 };
 
 /**
+@class Argument object creation
+@augments IRInstr
+*/
+var MakeArgObjInstr = UntypedInstrMaker(
+    'make_arg_obj',
+     1
+);
+
+/**
 @class Mutable cell creation
 @augments IRInstr
 */
@@ -1368,7 +1416,9 @@ var GetCellInstr = UntypedInstrMaker(
 */
 var PutCellInstr = UntypedInstrMaker(
     'put_cell',
-     2
+     2,
+    undefined,
+    true
 );
 
 /**
@@ -1425,8 +1475,10 @@ var GetClosInstr = UntypedInstrMaker(
 @augments IRInstr
 */
 var PutClosInstr = UntypedInstrMaker(
-    'put_clos',
-     3
+   'put_clos',
+    3,
+    undefined,
+    true
 );
 
 /**
@@ -1551,6 +1603,25 @@ var BoxInstr = TypedInstrMaker(
         [IRType.INT32]
     ], 
     IRType.BOXED
+);
+
+/**
+@class Instruction to perform a raw data extraction on a boxed value
+@augments IRInstr
+*/
+var RawUnboxInstr = TypedInstrMaker(
+    'raw_unbox', 
+    [
+        [IRType.POINTER],
+        [IRType.INT32],
+        [IRType.INT64],
+    ],
+    [IRType.BOXED], 
+    [
+        IRType.POINTER,
+        IRType.INT32,
+        IRType.INT64
+    ]
 );
 
 /**
