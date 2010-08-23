@@ -1384,6 +1384,15 @@ ConstructRefInstr.prototype.copy = function ()
 };
 
 /**
+@class Argument object creation
+@augments IRInstr
+*/
+var MakeArgObjInstr = UntypedInstrMaker(
+    'make_arg_obj',
+     1
+);
+
+/**
 @class Mutable cell creation
 @augments IRInstr
 */

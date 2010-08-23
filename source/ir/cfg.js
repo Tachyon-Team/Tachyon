@@ -76,6 +76,10 @@ function ControlFlowGraph(ownerFunc)
     // Create the entry block
     this.entry = this.getNewBlock('entry');
 
+    // TODO: move argument management code to IR generation
+    // - Want some of these to be removed by optimizations
+    // - Simplify CFG copying
+
     // Function to add an argument instruction to the entry block
     var that = this;
     function addArg(argName)
@@ -86,15 +90,19 @@ function ControlFlowGraph(ownerFunc)
     }
 
     // Add the function arguments
-    addArg('this');
     addArg('funcObj');
-    addArg('argObj');
+    addArg('this');
     var argNames = this.ownerFunc.argVars;
     for (var i = 0; i < argNames.length; ++i)
         addArg(argNames[i]);
 
+    // Add the argument object value
+    var argObj = new MakeArgObjInstr(this.argVals[0]);
+    this.argVals.push(argObj);
+    this.entry.addInstr(argObj, 'argObj');
+
     // Add the global object value
-    var globalObj = new GetGlobalInstr(this.argVals[1])
+    var globalObj = new GetGlobalInstr(this.argVals[0]);
     this.argVals.push(globalObj);
     this.entry.addInstr(globalObj, 'global');
 }
@@ -462,27 +470,19 @@ ControlFlowGraph.prototype.remBlock = function (block)
 };
 
 /**
-Get the this argument value
+Get the function object value
 */
-ControlFlowGraph.prototype.getThisArg = function ()
+ControlFlowGraph.prototype.getFuncObj = function ()
 {
     return this.argVals[0];
 };
 
 /**
-Get the function object value
+Get the this argument value
 */
-ControlFlowGraph.prototype.getFuncObj = function ()
+ControlFlowGraph.prototype.getThisArg = function ()
 {
     return this.argVals[1];
-};
-
-/**
-Get the argument object value
-*/
-ControlFlowGraph.prototype.getArgObj = function ()
-{
-    return this.argVals[2];
 };
 
 /**
@@ -493,6 +493,14 @@ ControlFlowGraph.prototype.getArgVal = function (index)
     assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
 
     return this.argVals[index + 3];
+};
+
+/**
+Get the argument object value
+*/
+ControlFlowGraph.prototype.getArgObj = function ()
+{
+    return this.argVals[this.argVals.length - 2];
 };
 
 /**
