@@ -136,6 +136,14 @@ function stmtListToIRFunc(
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
 
+    // Add an instruction to get the function object argument
+    var funcObj = new ArgValInstr('funcObj', 0);
+    entryBlock.addInstr(funcObj, 'funcObj');
+
+    // Add an instruction to get the this value argument
+    var thisVal = new ArgValInstr('thisVal', 1);
+    entryBlock.addInstr(thisVal, 'this');
+
     // Create a map for the closure and escaping variable mutable cells
     var sharedMap = new HashMap();
 
@@ -146,7 +154,7 @@ function stmtListToIRFunc(
 
         // Get the corresponding mutable cell from the closure
         var closCell = entryBlock.addInstr(
-            new GetClosInstr(cfg.getFuncObj(), ConstValue.getConst(i))
+            new GetClosInstr(funcObj, ConstValue.getConst(i))
         );
 
         // Add the mutable cell to the shared variable map
@@ -172,27 +180,37 @@ function stmtListToIRFunc(
     // Create a map for the local variable storage locations
     var localMap = new HashMap();
 
-    // Add the arguments object to the variable map
-    localMap.addItem('arguments', cfg.getArgObj());
-
     // For each function argument
     for (var i = 0; i < params.length; ++i)
     {
         var symName = params[i].toString();
 
-        // If there is no entry in the shared map
+        // Create an instruction to get the argument value
+        var argVal = new ArgValInstr(symName, 2 + i);
+        entryBlock.addInstr(argVal, symName);
+
+        // If there is no entry in the shared map                    context.globalObj
         if (!sharedMap.hasItem(symName))
         {
             // Add the argument value directly to the local map
-            localMap.addItem(symName, cfg.getArgVal(i));
+            localMap.addItem(symName, argVal);
         }
         else
         {
             // Put the argument value in the corresponding mutable cell
             var mutCell = sharedMap.getItem(symName);
-            entryBlock.addInstr(new PutCellInstr(mutCell, cfg.getArgVal(i)));
+            entryBlock.addInstr(new PutCellInstr(mutCell, argVal));
         }
     }
+
+    // Create the arguments object and add it to the variable map
+    var argObj = new MakeArgObjInstr(funcObj);
+    entryBlock.addInstr(argObj, 'argObj');
+    localMap.addItem('arguments', argObj);
+
+    // Add an instruction to get the global object from the function object
+    var globalObj = new GetGlobalInstr(funcObj);
+    entryBlock.addInstr(globalObj, 'global');
 
     // For each local variable declaration
     for (var i in localVars)
@@ -252,7 +270,7 @@ function stmtListToIRFunc(
             var closVal = entryBlock.addInstr(
                 new MakeClosInstr(
                     nestFunc,
-                    cfg.getGlobalObj(),
+                    globalObj,
                     closVals
                 )
             );
@@ -263,7 +281,7 @@ function stmtListToIRFunc(
                 // Bind the nested function name in the global environment
                 entryBlock.addInstr(
                     new PutPropValInstr(
-                        cfg.getGlobalObj(),
+                        globalObj,
                         ConstValue.getConst(nestFuncName),
                         closVal
                     )
@@ -287,7 +305,10 @@ function stmtListToIRFunc(
         new HashMap(),
         new HashMap(),
         null,
-        cfg
+        cfg,
+        funcObj,
+        thisVal,
+        globalObj
     );
     stmtListToIR(bodyContext);
 
@@ -340,7 +361,10 @@ function IRConvContext(
     breakMap, 
     contMap,
     throwList,
-    cfg
+    cfg,
+    funcObj,
+    thisVal,
+    globalObj
 )
 {
     // Ensure that the arguments are valid
@@ -379,6 +403,18 @@ function IRConvContext(
     assert (
         cfg !== undefined && cfg instanceof ControlFlowGraph,
         'CFG not defined or invalid in IR conversion context'
+    );
+    assert (
+        funcObj instanceof IRValue,
+        'invalid function object in IR conversion context'
+    );
+    assert (
+        thisVal instanceof IRValue,
+        'invalid this value in IR conversion context'
+    );
+    assert (
+        globalObj instanceof IRValue,
+        'invalid global object in IR conversion context'
     );
 
     /**
@@ -434,6 +470,24 @@ function IRConvContext(
     @field
     */
     this.cfg = cfg;
+
+    /**
+    Function object value
+    @field
+    */
+    this.funcObj = funcObj;
+
+    /**
+    This argument value
+    @field
+    */
+    this.thisVal = thisVal;
+
+    /**
+    Global object instance
+    @field
+    */
+    this.globalObj = globalObj;
 
     /**
     Current basic block at the output
@@ -542,7 +596,10 @@ IRConvContext.prototype.pursue = function (astNode)
         this.breakMap,
         this.contMap,
         this.throwList,
-        this.cfg
+        this.cfg,
+        this.funcObj,
+        this.thisVal,
+        this.globalObj
     );
 };
 
@@ -564,7 +621,10 @@ IRConvContext.prototype.branch = function (
         this.breakMap,
         this.contMap,
         this.throwList,
-        this.cfg
+        this.cfg,
+        this.funcObj,
+        this.thisVal,
+        this.globalObj
     );
 };
 
@@ -1278,17 +1338,12 @@ function stmtToIR(context)
                 curTestCtx.getExitBlock().remBranch();
 
                 // Create a new context for the clause statements
-                var stmtCtx = new IRConvContext(
+                var stmtCtx = context.branch(
                     clause.statements,
                     caseEntry,
-                    context.withVal,
-                    caseLocals,
-                    context.sharedMap,
-                    breakMap,
-                    context.contMap,
-                    context.throwList,
-                    context.cfg
+                    caseLocals
                 );
+                stmtCtx.breakMap = breakMap;
 
                 // Generate code for the statement
                 stmtListToIR(stmtCtx);
@@ -1590,7 +1645,7 @@ function exprToIR(context)
 
         // Create a closure for the function
         var closVal = context.entryBlock.addInstr(
-            new MakeClosInstr(nestFunc, context.cfg.getGlobalObj(), closVals)
+            new MakeClosInstr(nestFunc, context.globalObj, closVals)
         );
 
         // Set the output to the new closure
@@ -1702,7 +1757,7 @@ function exprToIR(context)
             funcVal = funcContext.getOutValue();
 
             // The this value is the global object
-            thisVal = context.cfg.getGlobalObj();
+            thisVal = context.globalObj;
 
             lastContext = funcContext;
         }
@@ -1831,7 +1886,7 @@ function exprToIR(context)
         // Set the value of the this argument as output
         context.setOutput(
             context.entryBlock,
-            context.cfg.getThisArg()
+            context.thisVal
         );
     }
 
@@ -2343,7 +2398,7 @@ function assgToIR(context, rhsVal)
                 // Get the value from the global object
                 lhsVal = varContext.entryBlock.addInstr(
                     new GetPropValInstr(
-                        context.cfg.getGlobalObj(),
+                        context.globalObj,
                         ConstValue.getConst(symName)
                     )
                 );
@@ -2387,7 +2442,7 @@ function assgToIR(context, rhsVal)
             // Get the value from the global object
             varContext.entryBlock.addInstr(
                 new PutPropValInstr(
-                    context.cfg.getGlobalObj(),
+                    context.globalObj,
                     ConstValue.getConst(symName),
                     rhsValAssg
                 )
@@ -2617,7 +2672,7 @@ function refToIR(context)
         // Get the value from the global object
         varValueVar = varContext.entryBlock.addInstr(
             new GetPropValInstr(
-                context.cfg.getGlobalObj(),
+                context.globalObj,
                 ConstValue.getConst(symName)
             )
         );
@@ -2920,7 +2975,10 @@ function createLoopEntry(
         breakMap,
         contMap,
         context.throwList,
-        context.cfg
+        context.cfg,
+        context.funcObj,
+        context.thisVal,
+        context.globalObj
     );
 }
 

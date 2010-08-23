@@ -6,14 +6,18 @@ Tests for cfg representation.
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
+
 (function () { // local namespace
     tests.cfg = tests.testSuite();
 
     var t = tests.cfg;
     t.setup = function ()
     {
-        var func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 
-                                   'foo\nbar\nbif');
+        var func = new IRFunction(
+            'foobar', 
+            ['foo', 'bar', 'bif'], 
+            'foo\nbar\nbif'
+        );
 
         this.cfg = new ControlFlowGraph(func);
 
@@ -25,85 +29,137 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         this.blocks = [entry, l1, l2, r1, merge];
 
-        this.instrs = [];
+        var instrs = []
+        this.instrs = instrs;
         var ins;
     
-        ins = new AddInstr(ConstValue.getConst(1), ConstValue.getConst(2));
-        this.instrs.push(ins);
-        entry.addInstr(ins);
+        function addInstr(instr, block, outName, index)
+        {
+            instrs.push(instr);
+            block.addInstr(instr, outName, index);
+        }
 
-        ins = new IfInstr(ConstValue.getConst(true), l1, r1);
-        this.instrs.push(ins);
-        entry.addInstr(ins);
+        // Entry block
+        addInstr(
+            new AddInstr(
+                ConstValue.getConst(1),
+                ConstValue.getConst(2)
+            ),
+            entry
+        );
+        addInstr(
+            new IfInstr(
+                ConstValue.getConst(true), 
+                l1, 
+                r1
+            ),
+            entry
+        );
 
-        ins = new AddInstr(ConstValue.getConst(1), ConstValue.getConst(2));
-        this.instrs.push(ins);
-        l1.addInstr(ins, 'eee');
+        // L1 block
+        addInstr(
+            new AddInstr(
+                ConstValue.getConst(1), 
+                ConstValue.getConst(2)
+            ),
+            l1
+        );
+        addInstr(
+            new GetPropValInstr(
+                ConstValue.getConst(null), 
+                ConstValue.getConst(2)
+            ),
+            l1
+        );
+        addInstr(
+            new JumpInstr(l2),
+            l1
+        );
 
-        ins = new GetPropValInstr(this.cfg.getThisArg(), 
-                                  ConstValue.getConst(2));
-        this.instrs.push(ins);
-        l1.addInstr(ins);
+        // L2 block
+        addInstr(
+            new PhiInstr(
+                [l1.instrs[1]],
+                [l1]
+            ),
+            l2
+        );
+        addInstr(
+            new ModInstr(
+                l1.instrs[1],
+                ConstValue.getConst(7)
+            ),
+            l2
+        );
+        addInstr(
+            new AddInstr(
+                ConstValue.getConst(3),
+                ConstValue.getConst(4)
+            ),
+            l2
+        );
+        addInstr(
+            new SubInstr(
+                ConstValue.getConst(3),
+                ConstValue.getConst(4)
+            ),
+            l2
+        );
+        addInstr(
+            new JumpInstr(merge),
+            l2
+        );
 
-        ins = new JumpInstr(l2);
-        this.instrs.push(ins);
-        l1.addInstr(ins);
+        // R1 block
+        addInstr(
+            new MulInstr(
+                ConstValue.getConst(7),
+                ConstValue.getConst(8)
+            ),
+            r1
+        );
+        addInstr(
+            new JumpInstr(merge),
+            r1
+        );
 
-        ins = new PhiInstr([l1.instrs[1]], [l1]);
-        this.instrs.push(ins);
-        l2.addInstr(ins);
-
-        ins = new ModInstr(l1.instrs[1], ConstValue.getConst(7));
-        this.instrs.push(ins);
-        l2.addInstr(ins);
-        
-        ins = new AddInstr(ConstValue.getConst(3), 
-                                 ConstValue.getConst(4));
-        this.instrs.push(ins);
-        l2.addInstr(ins);
-
-        ins = new SubInstr(ConstValue.getConst(3), 
-                                 ConstValue.getConst(4));
-        this.instrs.push(ins);
-        l2.addInstr(ins);
-
-        ins = new JumpInstr(merge);
-        this.instrs.push(ins);
-        l2.addInstr(ins);
-
-        ins = new MulInstr(ConstValue.getConst(7), ConstValue.getConst(8));
-        this.instrs.push(ins);
-        r1.addInstr(ins, 'eee');
-
-        ins = new JumpInstr(merge);
-        this.instrs.push(ins);
-        r1.addInstr(ins);
-
-        ins = new PhiInstr([l1.instrs[0], r1.instrs[0]], [l2, r1]);
-        this.instrs.push(ins);
-        merge.addInstr(ins);
-
-        ins = new PutPropValInstr(entry.instrs[0], 
-                           ConstValue.getConst('foo'), ConstValue.getConst(2));
-        this.instrs.push(ins);
-        merge.addInstr(ins);
-
-        ins = new LogNotInstr(merge.instrs[0]);
-        this.instrs.push(ins);
-        merge.addInstr(ins);
-
-        ins = new LogNotInstr(merge.instrs[2]);
-        this.instrs.push(ins);
-        merge.addInstr(ins);
-
-        ins = new RetInstr(ConstValue.getConst(undefined));
-        this.instrs.push(ins);
-        merge.addInstr(ins);
-
-        ins = new LsftInstr(ConstValue.getConst(1), 
-                            ConstValue.getConst(2));
-        this.instrs.push(ins);
-        merge.addInstr(ins, 'foo', 1);
+        // Merge block
+        addInstr(
+            new PhiInstr(
+                [l1.instrs[0], r1.instrs[0]],
+                [l2, r1]
+            ),
+            merge
+        );
+        addInstr(
+            new PutPropValInstr(
+                entry.instrs[0], 
+                ConstValue.getConst('foo'),
+                ConstValue.getConst(2)
+            ),
+            merge
+        );
+        addInstr(
+            new LogNotInstr(merge.instrs[0]),
+            merge
+        );
+        addInstr(
+            new LogNotInstr(merge.instrs[2]),
+            merge
+        );
+        addInstr(
+            new RetInstr(ConstValue.getConst(undefined)),
+            merge
+        );
+        addInstr(
+            new LsftInstr(
+                ConstValue.getConst(1), 
+                ConstValue.getConst(2)
+            ),
+            merge,
+            'foo',
+            1
+        );
 
         this.cfg.validate();
         

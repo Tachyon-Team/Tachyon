@@ -62,49 +62,10 @@ function ControlFlowGraph(ownerFunc)
     this.ownerFunc = ownerFunc;
 
     /**
-    Entry basic block, created on CFG creation
+    Entry basic block
     @field
     */
     this.entry = null;
-
-    /**
-    Function argument values
-    @field
-    */
-    this.argVals = [];
-
-    // Create the entry block
-    this.entry = this.getNewBlock('entry');
-
-    // TODO: move argument management code to IR generation
-    // - Want some of these to be removed by optimizations
-    // - Simplify CFG copying
-
-    // Function to add an argument instruction to the entry block
-    var that = this;
-    function addArg(argName)
-    {
-        var argInstr = new ArgValInstr(argName, that.argVals.length);
-        that.argVals.push(argInstr);
-        that.entry.addInstr(argInstr, argName);
-    }
-
-    // Add the function arguments
-    addArg('funcObj');
-    addArg('this');
-    var argNames = this.ownerFunc.argVars;
-    for (var i = 0; i < argNames.length; ++i)
-        addArg(argNames[i]);
-
-    // Add the argument object value
-    var argObj = new MakeArgObjInstr(this.argVals[0]);
-    this.argVals.push(argObj);
-    this.entry.addInstr(argObj, 'argObj');
-
-    // Add the global object value
-    var globalObj = new GetGlobalInstr(this.argVals[0]);
-    this.argVals.push(globalObj);
-    this.entry.addInstr(globalObj, 'global');
 }
 ControlFlowGraph.prototype = {};
 
@@ -161,7 +122,7 @@ ControlFlowGraph.prototype.copy = function ()
         // Create a copy of the block
         var newBlock = block.copy(newCFG);
 
-        // If this is the entry block, set the entry block for the new CFG
+        // If this block is the entry, store the new CFG's entry
         if (block === this.entry)
             newCFG.entry = newBlock;
 
@@ -183,10 +144,6 @@ ControlFlowGraph.prototype.copy = function ()
             newInstr.dests = instr.dests.slice(0);
         }
     }
-
-    // Map the function arguments
-    for (var i = 0; i < this.argVals.length; ++i)
-        newCFG.argVals[i] = instrMap[this.argVals[i].instrId];
 
     // For each new basic block
     for (var i = 0; i < newCFG.blocks.length; ++i)
@@ -244,17 +201,6 @@ ControlFlowGraph.prototype.copy = function ()
                 }
             }
         }
-    }
-
-    // Remap the function argument dests
-    for (var i = 0; i < this.argVals.length; ++i)
-    {
-        var dests = this.argVals[i].dests;
-        for (var j = 0; j < dests.length; ++j)
-        {
-            var dest = dests[j];
-            newCFG.argVals[i].addDest(instrMap[dest.instrId]);
-        }      
     }
 
     // Return the new CFG
@@ -410,6 +356,10 @@ Get the entry block for this CFG
 */
 ControlFlowGraph.prototype.getEntryBlock = function ()
 {
+    // If there is no entry block yet, create one
+    if (!this.entry)
+        this.entry = this.getNewBlock('entry');
+
     return this.entry;
 };
 
@@ -467,48 +417,6 @@ ControlFlowGraph.prototype.remBlock = function (block)
 
     // Free this block's label name
     this.freeBlockName(block);
-};
-
-/**
-Get the function object value
-*/
-ControlFlowGraph.prototype.getFuncObj = function ()
-{
-    return this.argVals[0];
-};
-
-/**
-Get the this argument value
-*/
-ControlFlowGraph.prototype.getThisArg = function ()
-{
-    return this.argVals[1];
-};
-
-/**
-Get a function argument value
-*/
-ControlFlowGraph.prototype.getArgVal = function (index)
-{
-    assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
-
-    return this.argVals[index + 2];
-};
-
-/**
-Get the argument object value
-*/
-ControlFlowGraph.prototype.getArgObj = function ()
-{
-    return this.argVals[this.argVals.length - 2];
-};
-
-/**
-Get the global object value
-*/
-ControlFlowGraph.prototype.getGlobalObj = function ()
-{
-    return this.argVals[this.argVals.length - 1];
 };
 
 /**
@@ -837,16 +745,30 @@ ControlFlowGraph.prototype.validate = function ()
         if (block.parentCFG !== this)
             throw 'parent CFG link broken';
 
-        // Verify that our predecessors have us as a successor
+        // For each predecessor
         for (var j = 0; j < block.preds.length; ++j)
         {
+            var pred = block.preds[j];
+            
+            // Verify that the predecessor is a basic block
+            if (!(pred instanceof BasicBlock))
+                throw 'predecessor is not valid basic block for:\n' + block;
+
+            // Verify that our predecessors have us as a successor
             if (!arraySetHas(block.preds[j].succs, block))
                 throw 'predecessor missing successor link to:\n' + block;
         }
 
-        // Verify that our successors have us as a predecessor
+        // For each successor
         for (var j = 0; j < block.succs.length; ++j)
         {
+            var succ = block.succs[j];
+
+            // Verify that the successor is a basic block
+            if (!(succ instanceof BasicBlock))
+                throw 'successor is not valid basic block for:\n' + block;            
+
+            // Verify that our successors have us as a predecessor
             if (!arraySetHas(block.succs[j].preds, block))
                 throw 'successor missing predecessor link to:\n' + block;
         }
