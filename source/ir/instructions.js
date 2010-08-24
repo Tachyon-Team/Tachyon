@@ -1374,7 +1374,7 @@ Make a shallow copy of the instruction
 ConstructRefInstr.prototype.copy = function ()
 {
     return this.baseCopy(
-        ConstructRefInstr(
+        new ConstructRefInstr(
             this.uses[0],
             this.uses.slice[1],
             this.targets[0],

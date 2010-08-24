@@ -28,11 +28,20 @@ var EOF = -1;
 
 function File_input_port(filename)
 {
-    this.filename = filename;
-    this.content  = read_file(filename);
-    this.pos      = 0;
+    return new String_input_port(
+        read_file(filename),
+        filename
+    );
+}
 
-    // method read_char()
+function String_input_port(content, filename)
+{
+    if (filename === undefined)
+        filename = '<string>';
+
+    this.filename = filename;
+    this.content = content;
+    this.pos = 0;
 
     this.read_char = function ()
     {
@@ -41,7 +50,7 @@ function File_input_port(filename)
             return content.charCodeAt(this.pos++);
         else
             return EOF;
-    };
+    }
 }
 
 function String_output_port(init)

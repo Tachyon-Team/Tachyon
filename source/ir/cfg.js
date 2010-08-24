@@ -167,7 +167,7 @@ ControlFlowGraph.prototype.copy = function ()
             for (var k = 0; k < instr.uses.length; ++k)
             {
                 var use = instr.uses[k];
-                if (instrMap[use.instrId] != undefined)
+                if (use instanceof IRInstr)
                     instr.uses[k] = instrMap[use.instrId];                    
             }
 
@@ -175,7 +175,7 @@ ControlFlowGraph.prototype.copy = function ()
             for (var k = 0; k < instr.dests.length; ++k)
             {
                 var dest = instr.dests[k];
-                if (instrMap[dest.instrId] != undefined)
+                if (dest instanceof IRInstr)
                     instr.dests[k] = instrMap[dest.instrId];                  
             }
 
@@ -368,7 +368,7 @@ Remove a basic block from this CFG
 */
 ControlFlowGraph.prototype.remBlock = function (block)
 {
-    print('Removing block: ' + block.label);
+    //print('Removing block: ' + block.label);
 
     // Remove this block from the successors of our predecessors
     for (var i = 0; i < block.preds.length; ++i)
@@ -1301,7 +1301,7 @@ Remove an instruction from this basic block by index
 */
 BasicBlock.prototype.remInstrAtIndex = function (index)
 {
-    print('Removing instr: ' + this.instrs[index]);
+    //print('Removing instr: ' + this.instrs[index]);
 
     // Get a reference to the instruction
     var instr = this.instrs[index]
