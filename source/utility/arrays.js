@@ -44,9 +44,11 @@ function arraySetRem(array, val)
             array[i] = array[array.length - 1];
             array.pop();
 
-            return;
+            return val;
         }
     }
+
+    return null;
 }
 
 /**
