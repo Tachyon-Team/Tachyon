@@ -1960,7 +1960,26 @@ allocator.resolve = function (cfg, intervals, order)
     }
 };
 
-/** @private Mapping to order move instructions */
+/** 
+    @private Mapping to order move instructions 
+
+    Since move instructions read from only one register and 
+    write only in one register and the same register cannot
+    be the target of multiple moves, the graph of dependencies
+    between move instructions should have the following properties:
+
+    1. No nested cycles
+    2. Each cycle is independent, i.e. no node part of a cycle
+       has a dependency towards a node part of another cycle
+    3. A cycle might be either simple (no path exist between
+       a node part of the cycle and one not part of it)
+       or has a leading 'arm' of nodes not part of it
+
+    Note: The vocabulary used might not corresponds to the 
+          correct terminology of graph theory. In the meantime,
+          it might be useful to revisit it.
+
+*/
 allocator.mapping = function ()
 {
     var that = Object.create(allocator.mapping.prototype);
@@ -1996,14 +2015,23 @@ allocator.mapping.prototype.add = function (from, to)
     this.write[to] = mov;
 };
 
-allocator.mapping.prototype.orderAndInsertMoves = function (insertFct)
+allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 {
+
+    // TODO: We might want to use the Gabow's or Tarjan's algorithm
+    // for finding the strongly connected components of the graph instead
+
     var regName;
     var g = graph.adjencyList();
     var i;
     var readValue;
     var writeValue;
     var moveIt;
+    var cycle;
+    var cycles = [];
+    var cycleIt;
+    var move;
+    var tempMove;
 
     for (regName in this.read)
     {
@@ -2031,11 +2059,48 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct)
         }
     }
 
+    cycle = g.removeCycle(true); 
+    while (cycle !== null)
+    {
+        cycles.push(cycle);
+        cycle = g.removeCycle(true);
+    }
+
     for (moveIt = g.getNodeItr("topologicalSort"); 
         moveIt.valid();
         moveIt.next())
     {
         insertFct(moveIt.get());
+    }
+
+    if (cycles.length > 0)
+    {
+        assert(temp !== undefined, 
+               "A temporary memory location should be provided");
+
+        for (cycleIt = new ArrayIterator(cycles);
+             cycleIt.valid();
+             cycleIt.next())
+        {
+            // Break the cycle by moving the first value to a temporary
+            // location
+            move = cycleIt.get().pop();
+            insertFct(new MoveInstr(move.uses[0], temp));
+
+            // Store the last move
+            moveTemp = new MoveInstr(temp, move.uses[1]);
+            
+            // Insert all other moves
+            while (move !== undefined)
+            {
+                insertFct(cycleIt.get().pop());
+                move = cycleIt.get().pop();
+            }
+
+            // Insert the last move
+            insertFct(moveTemp);
+        }
+
     }
 };
 

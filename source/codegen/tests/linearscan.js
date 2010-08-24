@@ -441,4 +441,31 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         assert(it4.next === null);
     };
 
+
+    // Mappings tests
+    t.mappingBasic = function ()
+    {
+        var map = allocator.mapping();
+        var moves = [];
+        var temp = "slot0";
+
+        function insertMove(move)
+        {
+            moves.push(move);
+        };
+
+        map.add("A", "B");
+        map.add("B", "A");
+
+        map.add("A", "C");
+        map.add("C", "D");
+
+        map.orderAndInsertMoves(insertMove, temp);
+
+        // NOTE: this test cannot fail, but it is kept as an 
+        // example
+        //print(moves);
+
+    };
+
 })(); // end of local namespace
