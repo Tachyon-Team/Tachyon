@@ -1,6 +1,7 @@
 var a = new x86.Assembler(x86.target.x86);
 const reg = a.register;
 const ESP = reg.esp;
+const EBP = reg.ebp;
 const EAX = reg.eax;
 const EBX = reg.ebx;
 const ECX = reg.ecx;
@@ -14,8 +15,10 @@ const FALSE = $(0);
 const NULL = $(0);
 const UNDEFINED = $(0);
 
+const STRINGS = {"f":$(0)};
+
 const scratch = reg.edi;
-const global = reg.esi;
+const stack = reg.esp;
 
 const G_NEXT_OFFSET = 0;  // Offset for the cell containing 
                           // the next empty entry offset
@@ -33,6 +36,22 @@ const mainLabel = a.labelObj("MAIN");
 
 
 const physRegs = [EAX, EBX, ECX, EDX]; 
+
+var FIB       = a.labelObj("FIB");
+var BASE_CASE = a.labelObj("BASE_CASE");
+var RECURSION = a.labelObj("RECURSION");
+var MAIN      = a.labelObj("MAIN");
+
+var found = a.labelObj("FOUND");
+var ret = a.labelObj("RETURN");
+var call_cont = a.labelObj("call_cont");
+var call_cont1 = a.labelObj("call_cont1");
+var call_cont2 = a.labelObj("call_cont2");
+var call_cont3 = a.labelObj("call_cont3");
+var if_false = a.labelObj("if_false");
+var if_true = a.labelObj("if_true");
+
+a.codeBlock.bigEndian = false;
 
 // Assumptions:
 // - dest is always a register
@@ -91,10 +110,10 @@ a.ir_lt = function (opnds, dest)
     return this;
 };
 
-a["ir_if"] = function (opnds, trueLabel, falseLabel)
+a.ir_if = function (opnds, trueLabel, falseLabel)
 {
     this.
-    cmp(opnds[0], TRUE).
+    cmp(TRUE, opnds[0]).
     je(trueLabel).
     jmp(falseLabel);
 
@@ -154,8 +173,6 @@ a.ir_get_prop_val = function (opnds, dest)
 
     var cont = this.labelObj();
 
-    assert(obj === global);
-
     this.
     /*
     mov($(0), dest).
@@ -199,12 +216,11 @@ a.ir_get_prop_addr = function (opnds, dest)
     var notFound = this.labelObj();
     var cont = this.labelObj();
 
-    assert(obj === global);
-
     this.
     mov(obj, scratch).
     add($(G_FIRST_OFFSET), scratch). // Retrieve address of first element
-    add(mem(G_NEXT_OFFSET, obj), scratch). // Retrieve beginning of next
+    add(mem(G_NEXT_OFFSET - G_FIRST_OFFSET, scratch), 
+        scratch). // Retrieve beginning of next
     sub($(G_ENTRY_LENGTH), scratch).       // Move to last element
 
     label(loop).                        // Loop from end to beginning
@@ -239,8 +255,6 @@ a.ir_put_prop_val = function (opnds, dest)
     var loop = this.labelObj();
     var found = this.labelObj();
 
-    assert(obj === global);
-
     this.
     ir_get_prop_addr(opnds, scratch).
     cmp(NULL, scratch).
@@ -249,7 +263,7 @@ a.ir_put_prop_val = function (opnds, dest)
     add($(G_FIRST_OFFSET), scratch).          // Retrieve address of first element
     add(mem(G_NEXT_OFFSET, obj), scratch). // Retrieve address of next element 
     // Inc entry nb
-    add($(G_ENTRY_LENGTH), mem(G_NEXT_OFFSET, global), G_NEXT_OFFSET_WIDTH). 
+    add($(G_ENTRY_LENGTH), mem(G_NEXT_OFFSET, obj), G_NEXT_OFFSET_WIDTH). 
     mov(key, mem(G_KEY_OFFSET, scratch), G_KEY_WIDTH).     // Add entry key
     label(found).                          
     mov(value, mem(G_VALUE_OFFSET, scratch), G_VALUE_WIDTH); // Add/Update the entry value
@@ -259,7 +273,6 @@ a.ir_put_prop_val = function (opnds, dest)
 
 a.ir_dump_global_object = function ()
 {
-    const SELF = this.labelObj();
     this.
     label(globalLabel).
     ir_call_self().
@@ -276,16 +289,21 @@ a.ir_dump_global_object = function ()
     return this;
 };
 
-a.ir_call_self = function ()
+a.ir_call_self = function (offset)
 {
+    if (offset === undefined)
+    {
+        offset = 5;
+    }
     const SELF = this.labelObj();
 
     this.
     call(SELF).
     label(SELF).
     pop(EAX).
-    add($(5),EAX).
-    ret();
+    add($(offset),EAX).
+    ret().
+    genListing("ADDR RETRIEVAL");
 
     return this;
 };
@@ -307,52 +325,187 @@ a.ir_arg = function (opnds, dest, argIndex)
     return this;
 };
 
-a.ir_ret = function (opnds, dest)
+a.ir_ret = function (opnds, dest, spillNb)
 {
+    if (spillNb === undefined)
+    {
+       spillNb = 0; 
+    }
+
+    this.add($(spillNb*4), stack);
+
     if (opnds[0] !== EAX)
     {
         this.mov(opnds[0], EAX);
     }
+   
+    //this.mov(mem(0,stack), EBX);
+    //this.jmp(EBX);
+    this.ret();
     return this;
 };
 
 a.ir_call = function (opnds, dest, continue_label)
 {
-    
+    var spillNb = opnds.length - 4;
+    var offset = 1;
+    var i;
+    const that = this;
+
+    if (spillNb < 0)
+    {
+        spillNb = 0;
+    }
+
+    offset = (spillNb) * 4;
+
+    // Move arguments in the right registers
+    var map = allocator.mapping();
+
+    for (i=0; i < 4 && i < opnds.length; ++i)
+    {
+
+        if (opnds[i] !== physRegs[i])
+        {
+            map.add(opnds[i], physRegs[i]);
+        }
+    }
+
+    map.orderAndInsertMoves( function (move)
+                             {
+                                that.mov(move.uses[0], move.uses[1]);
+                             }, scratch);
+
+    // Add extra arguments on the stack
+    if (spillNb > 0)
+    {
+        // TODO
+    }
+
+    this.
+    // Add stack frame descriptor space
+    // TODO
+
+    // Add return address
+    /*
+    mov(EAX, scratch).
+    ir_call_self(15).
+    mov(EAX, mem(-(offset), stack)).
+    mov(scratch, EAX).
+    */
+
+    // Decrement stack pointer
+    sub($(offset), stack).
+
+    // Call function address
+    call(EAX).
+
+    // Remove return address and extra args
+    add($(offset), stack).
+
+    // Jump to continue_label
+    jmp(continue_label);
 
     return this;
 };
 
-a.ir_make_clos = function (opnds, dest, fctLabel)
+a.ir_func_prelude = function (prelude_label)
 {
+    // Add the call self instructions to retrieve
+    // the address of the function
     this.
-    mov(EAX, scratch).
-    call(fctLabel).
-    mov(EAX, dest).
-    mov(scratch, EAX);
+    label(prelude_label).
+    ir_call_self(9).
+    
+    // Reserve space for the global object associated
+    // with this function
+    gen32(0).
+    genListing("FUNC GLOBAL OBJ");
+
+
+    return this;
+};
+
+a.ir_func_init = function (spillNb)
+{
+    if (spillNb === undefined)
+    {
+        spillNb = 0;
+    }
+
+    this.sub($(spillNb*4), stack);
+    return this;
+};
+
+a.ir_make_arg_obj = function (opnds, dest)
+{
+    assert(dest === null);
+    // For now, let's ignore the argument object
+
+    return this;
+};
+
+a.ir_make_clos = function (opnds, dest)
+{
+    assert(opnds[0].type === asm.type.LBL);
+
+    if (dest === EAX)
+    {
+        this.
+        call(opnds[0]).
+        mov(opnds[1], mem(-4, EAX));
+    } else 
+    {
+        this.
+        mov(EAX, scratch).
+        call(opnds[0]).
+        mov(EAX, dest).
+        mov(scratch, EAX).
+        mov(dest, scratch).
+
+        // Store the global object in the function prelude
+        mov(opnds[1], mem(-4, scratch));
+    }
 
     return this;
 };
 
 a.ir_get_global = function (opnds, dest)
 {
-    this.
-    mov(global, dest);
+
+    if (opnds[0].type === x86.type.REG)
+    {
+        this.
+        mov(mem(-4, opnds[0]), dest);
+    } else if (opnds[0].type === x86.type.MEM)
+    {
+        this.
+        mov(opnds[0], scratch).
+        mov(mem(-4, scratch), dest);
+    }
 
     return this;
 };
 
 a.ir_init = function ()
 {
+    var ret = this.labelObj("MAIN RET");
 
     this.
     genListing("INIT").
     // Move global object address in global register 
     call(globalLabel).
-    mov(EAX, global).
+    mov(EAX, EBX).
 
-    // Jump to the main section
-    jmp(mainLabel). 
+    // Setup the main function
+    ir_make_clos([MAIN, EBX], EAX).
+
+    // Call the main function
+    ir_call([EAX, EBX], EAX, ret).
+
+    // Return from the main function
+    label(ret).
+    ret().
 
     // Add the global object dump at the end of the init section
     ir_dump_global_object();
@@ -361,32 +514,68 @@ a.ir_init = function ()
 };
 
 
-a.ir_func_prelude = function (prelude_label, body_label)
-{
-
-    return this;
-};
-
-
-
-var FIB       = a.labelObj("FIB");
-var BASE_CASE = a.labelObj("BASE_CASE");
-var RECURSION = a.labelObj("RECURSION");
-
-var found = a.labelObj("FOUND");
-
-a.codeBlock.bigEndian = false;
 
 a.
 ir_init().
-label(mainLabel).
-ir_put_prop_val([global, $(1), $(23)]).
-ir_put_prop_val([global, $(2), $(42)]).
-ir_put_prop_val([global, $(1), $(66)]).
-ir_get_prop_val([global, $(1)], EAX).
-mov($(2), EAX).
-mov($(5), EBX).
-ir_sub([EAX, EBX], EAX).
+
+// Fibonacci function 
+ir_func_prelude(FIB).
+ir_func_init(3).
+    // Body
+    ir_arg([], EAX, 0).
+    ir_arg([], ECX, 2).
+    ir_make_arg_obj([EAX], null).
+    ir_get_global([EAX], EBX).
+    ir_lt([ECX, $(2)], EAX).
+    ir_if([EAX], if_true, if_false).
+
+label(if_false).
+    ir_sub([ECX, $(1)], EAX).
+    ir_get_prop_val([EBX, STRINGS["f"]], EDX).
+    mov(EBX, mem(4, stack)).
+    mov(ECX, mem(0, stack)).
+    ir_call([EDX, EBX, EAX], EAX, call_cont2).
+
+label(call_cont2).
+    ir_sub([mem(0, stack), $(2)], ECX).
+    ir_get_prop_val([mem(4, stack), STRINGS["f"]], EBX).
+    mov(EAX, mem(8, stack)).
+    ir_call([EBX, mem(4,stack), ECX], EAX, call_cont3).
+
+label(call_cont3).
+    ir_add([mem(8,stack), EAX], EAX).
+    ir_ret([EAX], null, 3).
+
+label(if_true).
+    mov(ECX, mem(0,stack)).
+    mov(mem(0,stack), EAX).
+    ir_ret([EAX], null, 3).
+
+// Main function
+ir_func_prelude(MAIN).
+ir_func_init(1).
+    // Body
+    ir_arg([], EAX, 0).
+    ir_make_arg_obj([EAX], null).
+    ir_get_global([EAX], EBX).
+    ir_make_clos([FIB, EBX], EAX).
+    ir_put_prop_val([EBX, STRINGS["f"], EAX]).
+    ir_get_prop_val([EBX, STRINGS["f"]], EAX).
+    mov(EBX, mem(0, stack)).
+    ir_call([EAX, EBX, $(40)], EAX, call_cont).
+label(call_cont).
+    // TODO: Add print
+    ir_ret([EAX], null, 1).
+
+//ir_get_global([EAX], EAX).
+//mov(global, EAX).
+//ir_put_prop_val([global, $(1), $(23)]).
+//ir_put_prop_val([global, $(2), $(42)]).
+//ir_put_prop_val([global, $(1), $(66)]).
+//ir_get_prop_val([global, $(1)], EAX).
+//mov($(2), EAX).
+//mov($(5), EBX).
+//ir_sub([EAX, EBX], EAX).
 
 ret();
 
