@@ -38,10 +38,10 @@ function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
     this.astNode = astNode;
 
     /**
-    Virgin, unoptimized IR CFG
+    Virgin, unoptimized CFG
     @field
     */
-    this.virginIR = null;
+    this.virginCFG = null;
 
     /**
     List of child (nested) functions
@@ -109,7 +109,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     }
 
     output += indentText(
-        this.virginIR.toString(
+        this.virginCFG.toString(
             blockOrderFn,
             outFormatFn,
             inFormatFn
@@ -143,19 +143,39 @@ IRFunction.prototype.copy = function ()
         this.astNode
     );
 
-    newFunc.virginIR = this.virginIR.copy();
+    newFunc.virginCFG = this.virginCFG.copy();
 
     this.childFuncs.forEach(
         function (child)
         {
             newFunc.addChildFunc(child.copy());
         }
-    );  
+    );
 
     newFunc.usesArguments = this.usesArguments;
     newFunc.usesEval = this.usesEval;
 
     return newFunc;
+}
+
+/**
+Validate the function and its children
+*/
+IRFunction.prototype.validate = function ()
+{
+    // Validate the control-flow graph
+    this.virginCFG.validate();
+
+    // Validate the child functions
+    this.childFuncs.forEach(
+        function (child)
+        {
+            child.validate();
+        }
+    );
+
+    // The function is valid
+    return true;
 }
 
 /**
@@ -182,21 +202,20 @@ Returns a list of all nested functions in posfix order
 IRFunction.prototype.getChildrenList = function ()
 {
     var list = [];
-    this.getChildrenListHelper(list);
-    return list;
-};
 
-/**
-@private
-Helper function for getChildrenList
-*/
-IRFunction.prototype.getChildrenListHelper = function (list)
-{
-    var i;
-    for (i=0; i<this.childFuncs.length; ++i)
+    function getChildren(func)
     {
-        this.childFuncs[i].getChildrenListHelper(list);    
+        func.childFuncs.forEach(
+            function (child)
+            {
+                getChildren(child);
+            }
+        );
+        list.push(func);
     }
-    list.push(this);
+
+    getChildren(this);
+
+    return list;
 };
 

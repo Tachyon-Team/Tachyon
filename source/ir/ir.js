@@ -20,6 +20,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: consider eliminating untyped if?
 
+// TODO: handle getters / setters
+// - Look at ECMA spec again...
+
 /**
 Convert an AST code unit into IR functions
 */
@@ -131,7 +134,7 @@ function stmtListToIRFunc(
     var cfg = new ControlFlowGraph(newFunc);
 
     // Set the CFG for the function
-    newFunc.virginIR = cfg;
+    newFunc.virginCFG = cfg;
 
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();

@@ -42,8 +42,8 @@ tests.ir.helpers.testSource = function (sourceStr)
     // Copy the resulting function
     ir.copy();
 
-    // Validate the CFG
-    ir.virginIR.validate();
+    // Validate the function
+    ir.validate();
 
     // Return the generated IR for further testing
     return ir;
@@ -195,9 +195,50 @@ tests.ir.closFunc = function ()
                                                 \
                 bar();                          \
                 print(v);                       \
-                                                \
             }                                   \
         "
     );
+}
+
+/**
+Arguments object
+*/
+tests.ir.argsObj = function ()
+{
+    var ir = tests.ir.helpers.testSource(
+        "                                       \
+            function foo(a0, a1)                \
+            {                                   \
+                arguments[0] = 3;               \
+                                                \
+                function bar()                  \
+                {                               \
+                    a1 = 2;                     \
+                    print(a0);                  \
+                }                               \
+                                                \
+                bar();                          \
+                print(a0);                      \
+            }                                   \
+        "
+    );
+
+    // Ensure that there are no direct references to argument values
+    var flist = ir.getChildrenList();
+    for (var i = 0; i < flist.length; ++i)
+    {
+        for (var it = flist[i].virginCFG.getInstrItr(); it.valid(); it.next())
+        {
+            var instr = it.get();
+            for (var j = 0; j < instr.uses.length; ++j)
+            {
+                assert (
+                    instr.uses[j].getValName() != 'a0' && 
+                    instr.uses[j].getValName() != 'a1',
+                    'argument values should not be used directly'
+                );
+            }
+        }
+    }
 }
 
