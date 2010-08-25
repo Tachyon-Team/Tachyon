@@ -15,9 +15,10 @@ function f(c1, c2)
     */
 
 
-    
+    /*
     var i1 = iir.unbox(IRType.INT32, c1);
     var i2 = iir.unbox(IRType.INT32, c2);
+
     
     var a;
     if (a = iir.add_ovf(i1, i2))
@@ -25,6 +26,7 @@ function f(c1, c2)
         //var v = iir.box(IRType.INT32, a);
         //return v;
 
+        print(i1);
         var v = i1;
     }
     else
@@ -33,7 +35,7 @@ function f(c1, c2)
     }
     
     print(v);
-    
+    */
 
 
 

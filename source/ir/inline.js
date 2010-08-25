@@ -15,8 +15,10 @@ Object containing IR instructions usable inline inside functions
 iir =
 {
     // Memory management
-    load        : LoadInstr,
-    store       : StoreInstr,
+    raw_load    : RawLoadInstr,
+    obj_load    : ObjLoadInstr,
+    raw_store   : RawStoreInstr,
+    obj_store   : ObjStoreInstr,
 
     // Type conversion
     unbox       : UnboxInstr,

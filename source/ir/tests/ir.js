@@ -235,6 +235,29 @@ tests.ir.fibFunc = function ()
 }
 
 /**
+Nested if and return statements in a function
+*/
+tests.ir.ifRetFunc = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                           \
+            function foo()                          \
+            {                                       \
+                if (true)                           \
+                {                                   \
+                    var v = foo;                    \
+                                                    \
+                    if (true)                       \
+                        return 0;                   \
+                    else                            \
+                        return 0;                   \
+                }                                   \
+            }                                       \
+        "
+    );
+}
+
+/**
 Constructor function
 */
 tests.ir.ctorFunc = function ()

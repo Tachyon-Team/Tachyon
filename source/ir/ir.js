@@ -189,7 +189,7 @@ function stmtListToIRFunc(
         var argVal = new ArgValInstr(symName, 2 + i);
         entryBlock.addInstr(argVal, symName);
 
-        // If there is no entry in the shared map                    context.globalObj
+        // If there is no entry in the shared map
         if (!sharedMap.hasItem(symName))
         {
             // Add the argument value directly to the local map
@@ -283,7 +283,7 @@ function stmtListToIRFunc(
             }
 
             // Create a closure for the function
-            var closVal = entryBlock.addInstr(
+            var closVal = bodyContext.addInstr(
                 new MakeClosInstr(
                     nestFunc,
                     globalObj,
@@ -330,6 +330,8 @@ function stmtListToIRFunc(
     // Simplify the CFG
     cfg.simplify();
     
+    //print('');
+
     // Run a validation test on the CFG
     try
     {
@@ -1242,12 +1244,21 @@ function stmtToIR(context)
 
     else if (astStmt instanceof ReturnStatement)
     {
-        // Compile the return expression
-        var retContext = context.pursue(astStmt.expr);
-        exprToIR(retContext);
+        // If there is a return expression
+        if (astStmt.expr)
+        {
+            // Compile the return expression
+            var retContext = context.pursue(astStmt.expr);
+            exprToIR(retContext);
 
-        // Add a return instruction
-        retContext.addInstr(new RetInstr(retContext.getOutValue()));
+            // Return the expression value
+            retContext.addInstr(new RetInstr(retContext.getOutValue()));
+        }
+        else
+        {
+            // Return the undefined constant
+            context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+        }
 
         // Indicate that there is no continuation for this context
         context.terminate();

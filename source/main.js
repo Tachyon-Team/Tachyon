@@ -12,7 +12,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    var filename = 'parser/tests/test4.js';
+    //var filename = 'parser/tests/test4.js';
+    var filename = 'ir/handlers.js';
     var port = new File_input_port(filename);
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();

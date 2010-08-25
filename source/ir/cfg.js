@@ -398,10 +398,17 @@ ControlFlowGraph.prototype.remBlock = function (block)
                 // If this is a reference to the block
                 if (instr.preds[k] === block)
                 {
+                    // Get the corresponding use
+                    var use = instr.uses[k];
+
                     // Remove this value
                     instr.preds.splice(k, 1);
                     instr.uses.splice(k, 1);
-                    
+
+                    // If the value is no longer used, remove the dest link
+                    if (!arraySetHas(instr.uses, use))
+                        use.remDest(instr);                    
+
                     // Move back to the previous index
                     k--;
                 }
@@ -514,6 +521,8 @@ ControlFlowGraph.prototype.simplify = function ()
                     if (Vj instanceof IRInstr)
                         Vj.addDest(dest);
                 }
+                if (Vj instanceof IRInstr)
+                    Vj.remDest(phiNode);
 
                 // Remove the phi node
                 phiNode.parentBlock.remInstr(phiNode);
@@ -539,6 +548,8 @@ ControlFlowGraph.prototype.simplify = function ()
                 block !== this.entry
             )
             {
+                //print('eliminating block with no predecessors: ' + block.getBlockName());
+
                 // Remove the block from the CFG
                 this.remBlock(block);
 
@@ -559,6 +570,8 @@ ControlFlowGraph.prototype.simplify = function ()
                 !(block.getLastInstr() instanceof ThrowInstr)
             )
             {
+                //print('merging block with one dest: ' + block.getBlockName());
+
                 var succ = block.succs[0];
 
                 // Remove the final branch instruction
