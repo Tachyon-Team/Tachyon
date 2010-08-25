@@ -50,6 +50,24 @@ tests.ir.helpers.testSource = function (sourceStr)
 }
 
 /**
+Apply a function to each instruction in an IR function and its sub-functions
+*/
+tests.ir.helpers.forEachInstr = function (ir, instrFunc)
+{
+    // Get the list of all functions in the tree
+    var flist = ir.getChildrenList();
+
+    // Apply the function to each instruction of each function
+    for (var i = 0; i < flist.length; ++i)
+    {
+        for (var it = flist[i].virginCFG.getInstrItr(); it.valid(); it.next())
+        {
+            instrFunc(it.get());
+        }
+    }
+}
+
+/**
 Object literal expression
 */
 tests.ir.objectExpr = function ()
@@ -101,6 +119,26 @@ tests.ir.whileStmt = function ()
 }
 
 /**
+Do-while loop statement
+*/
+tests.ir.doWhileStmt = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            do                                  \
+            {                                   \
+                print(v);                       \
+                                                \
+                if (t)                          \
+                    break;                      \
+                else                            \
+                    continue;                   \
+            } while (v);                        \
+        "
+    );
+}
+
+/**
 For loop statement
 */
 tests.ir.forStmt = function ()
@@ -138,6 +176,43 @@ tests.ir.switchStmt = function ()
                 return 0;                       \
             }                                   \
         "
+    );
+}
+
+/**
+With statement
+*/
+tests.ir.withStmt = function ()
+{
+    var ir = tests.ir.helpers.testSource(
+        "                                       \
+            function foo(obj, x, y)             \
+            {                                   \
+                with (obj)                      \
+                {                               \
+                    x = 3;                      \
+                    print(y);                   \
+                }                               \
+            }                                   \
+        "
+    );
+
+    // Ensure that there are get and put property instructions in the IR
+    var hasGet = false;
+    var hasPut = false;
+    tests.ir.helpers.forEachInstr(
+        ir,
+        function (instr)
+        {
+            if (instr instanceof GetPropValInstr)
+                hasGet = true;
+            if (instr instanceof PutPropValInstr)
+                hasPut = true;
+        }
+    );
+    assert (
+        hasGet && hasPut,
+        'With statement code missing get or put property instruction'
     );
 }
 
@@ -224,12 +299,10 @@ tests.ir.argsObj = function ()
     );
 
     // Ensure that there are no direct references to argument values
-    var flist = ir.getChildrenList();
-    for (var i = 0; i < flist.length; ++i)
-    {
-        for (var it = flist[i].virginCFG.getInstrItr(); it.valid(); it.next())
+    tests.ir.helpers.forEachInstr(
+        ir,
+        function (instr)
         {
-            var instr = it.get();
             for (var j = 0; j < instr.uses.length; ++j)
             {
                 assert (
@@ -239,6 +312,6 @@ tests.ir.argsObj = function ()
                 );
             }
         }
-    }
+    );
 }
 

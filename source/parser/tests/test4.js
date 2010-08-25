@@ -1,27 +1,5 @@
 function f(c1, c2)
 {
-    
-    var v = 6;
-
-    k = c1;
-
-    var y = c1++;
-    var z = c1++;
-
-    c1 = z + 2;
-
-    print(y);
-    
-    
-
-    /*
-    arguments[1] = 5;
-
-    c1 = 3;
-
-    print(c1);
-    */
-
     /*
     var i1 = iir.unbox(IRType.INT32, c1);
     var i2 = iir.unbox(IRType.INT32, c1);
@@ -37,7 +15,7 @@ function f(c1, c2)
     */
 
 
-    /*    
+    
     var i1 = iir.unbox(IRType.INT32, c1);
     var i2 = iir.unbox(IRType.INT32, c2);
     
@@ -55,7 +33,7 @@ function f(c1, c2)
     }
     
     print(v);
-    */
+    
 
 
 

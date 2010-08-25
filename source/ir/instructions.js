@@ -1134,53 +1134,6 @@ var InstOfInstr = UntypedInstrMaker(
 );
 
 /**
-@class Property set with value for field name
-@augments IRInstr
-*/
-var PutPropValInstr = UntypedInstrMaker(
-    'put_prop_val',
-     3,
-    undefined,
-    true
-);
-
-/**
-@class Property get with value for field name
-@augments IRInstr
-*/
-var GetPropValInstr = UntypedInstrMaker(
-    'get_prop_val',
-     2
-);
-
-/**
-@class Property deletion with value for field name
-@augments IRInstr
-*/
-var DelPropValInstr = UntypedInstrMaker(
-    'del_prop_val',
-     2
-);
-
-/**
-@class Property test with value for field name
-@augments IRInstr
-*/
-var HasPropValInstr = UntypedInstrMaker(
-    'has_prop_val',
-     2
-);
-
-/**
-@class Instruction to get an array containing the property names of an object
-@augments IRInstr
-*/
-var GetPropNamesInstr = UntypedInstrMaker(
-    'get_prop_names',
-     1
-);
-
-/**
 @class Instruction to get an array containing the property names of an object
 @augments IRInstr
 */
@@ -1330,6 +1283,14 @@ CallRefInstr.prototype.copy = function ()
 };
 
 /**
+Set the continue block of the call instruction
+*/
+CallRefInstr.prototype.setContTarget = function (contBlock)
+{
+    this.targets[0] = contBlock;
+}
+
+/**
 Set the target block of the throw instruction
 */
 CallRefInstr.prototype.setThrowTarget = function (catchBlock)
@@ -1382,6 +1343,116 @@ ConstructRefInstr.prototype.copy = function ()
         )
     );
 };
+
+/**
+@class Property set with value for field name
+@augments CallRefInstr
+*/
+function PutPropValInstr(object, propName, propVal, contBlock, catchBlock)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'put_prop_val';
+
+    /**
+    Object, property name and propery value
+    @field
+    */
+    this.uses = [object, propName, propVal];
+
+    /**
+    Catch block and continue block for the exception handler
+    @field
+    */
+    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
+}
+PutPropValInstr.prototype = new CallRefInstr();
+
+/**
+Put instructions produce no output value
+@field
+*/
+PutPropValInstr.prototype.type = IRType.VOID;
+
+/**
+Make a shallow copy of the instruction
+*/
+PutPropValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new PutPropValInstr(
+            this.uses[0],
+            this.uses[1],
+            this.uses[2],
+            this.targets[0],
+            this.targets[1]
+        )
+    );
+};
+
+/**
+@class Property get with value for field name
+@augments CallRefInstr
+*/
+function GetPropValInstr(object, propName, contBlock, catchBlock)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'get_prop_val';
+
+    /**
+    Object and property name
+    @field
+    */
+    this.uses = [object, propName];
+
+    /**
+    Catch block and continue block for the exception handler
+    @field
+    */
+    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
+}
+GetPropValInstr.prototype = new CallRefInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+GetPropValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new GetPropValInstr(
+            this.uses[0],
+            this.uses[1],
+            this.targets[0],
+            this.targets[1]
+        )
+    );
+};
+
+/**
+@class Property deletion with value for field name
+@augments IRInstr
+*/
+var DelPropValInstr = UntypedInstrMaker(
+    'del_prop_val',
+     2
+);
+
+/**
+@class Property test with value for field name
+@augments IRInstr
+*/
+var HasPropValInstr = UntypedInstrMaker(
+    'has_prop_val',
+     2
+);
+
+/**
+@class Instruction to get an array containing the property names of an object
+@augments IRInstr
+*/
+var GetPropNamesInstr = UntypedInstrMaker(
+    'get_prop_names',
+     1
+);
 
 /**
 @class Argument object creation

@@ -67,12 +67,9 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         addInstr(
             new GetPropValInstr(
                 ConstValue.getConst(null), 
-                ConstValue.getConst(2)
+                ConstValue.getConst(2),
+                l2
             ),
-            l1
-        );
-        addInstr(
-            new JumpInstr(l2),
             l1
         );
 
@@ -132,19 +129,11 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             merge
         );
         addInstr(
-            new PutPropValInstr(
-                entry.instrs[0], 
-                ConstValue.getConst('foo'),
-                ConstValue.getConst(2)
-            ),
-            merge
-        );
-        addInstr(
             new LogNotInstr(merge.instrs[0]),
             merge
         );
         addInstr(
-            new LogNotInstr(merge.instrs[2]),
+            new LogNotInstr(merge.instrs[1]),
             merge
         );
         addInstr(
