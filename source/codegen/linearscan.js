@@ -1801,7 +1801,7 @@ allocator.assign = function (cfg)
         pos = instr.regAlloc.id;
         opndPos = pos - allocator.numberInstrs.inc;
 
-        for (opndIt = instr.getOpndItr(); opndIt.valid(); opndIt.next())
+        for (opndIt = instr.getUseItr(); opndIt.valid(); opndIt.next())
         {
             opnd = opndIt.get(); 
 

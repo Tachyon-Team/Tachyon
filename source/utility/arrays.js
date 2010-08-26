@@ -134,8 +134,3 @@ ArrayIterator.prototype.get = function ()
     return this.a[this.index];
 };
 
-
-
-
-
-
