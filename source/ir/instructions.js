@@ -13,6 +13,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // Some operators can have side effects
 // - May want a "write" or "side effect" flag
 
+// TODO:
+// May want MIR iflt, ifgt, ifeq, etc.
+
 //=============================================================================
 // IR Core
 //
@@ -37,27 +40,60 @@ function IRTypeObj(name, size)
     */
     this.size = size;
 }
+IRTypeObj.prototype = {};
+
+/**
+Obtain a string representation of an IR type
+*/
+IRTypeObj.prototype.toString = function ()
+{
+    return this.name;
+}
+
+// TODO: boxed and pointer type sizes are actually platform-dependent
+// Need code get appropriate size for the platform
+
+// Size of a pointer on the current platform
+PLATFORM_PTR_SIZE = 8;
 
 // IR value type enumeration
 IRType =
 {
-    // TODO: boxed and pointer type sizes are actually platform-dependent
-    // Need code get appropriate size for the platform
+    // Type given when there is no output value
+    VOID:       new IRTypeObj('void', 0),
 
-    VOID:       new IRTypeObj('void', 0),   // No output value
-    BOXED:      new IRTypeObj('box' , 8),   // Boxed value type
-    POINTER:    new IRTypeObj('ptr' , 8),   // Unboxed pointer
-    UINT8:      new IRTypeObj('u8'  , 1),   // Unboxed uint8
-    UINT16:     new IRTypeObj('u16' , 2),   // Unboxed uint16
-    UINT32:     new IRTypeObj('u32' , 4),   // Unboxed uint32
-    UINT64:     new IRTypeObj('u64' , 8),   // Unboxed uint64
-    INT8:       new IRTypeObj('i8'  , 1),   // Unboxed int8
-    INT16:      new IRTypeObj('i16' , 2),   // Unboxed int16
-    INT32:      new IRTypeObj('i32' , 4),   // Unboxed int32
-    INT64:      new IRTypeObj('i64' , 8),   // Unboxed int64
-    FLOAT32:    new IRTypeObj('f32' , 4),   // Unboxed float32
-    FLOAT64:    new IRTypeObj('f64' , 8)    // Unboxed float64
+    // Boxed value type
+    BOXED:      new IRTypeObj('box', PLATFORM_PTR_SIZE),
+
+    // Pointer to an object's start address
+    OBJPTR:     new IRTypeObj('objptr', PLATFORM_PTR_SIZE),
+
+    // Raw pointer to any memory address
+    RAWPTR:     new IRTypeObj('rawptr', PLATFORM_PTR_SIZE),
+
+    // Unboxed unsigned integer types
+    UINT8:      new IRTypeObj('u8'  , 1),
+    UINT16:     new IRTypeObj('u16' , 2),
+    UINT32:     new IRTypeObj('u32' , 4),
+    UINT64:     new IRTypeObj('u64' , 8),
+
+    // Unboxed signed integer types
+    INT8:       new IRTypeObj('i8'  , 1),
+    INT16:      new IRTypeObj('i16' , 2),
+    INT32:      new IRTypeObj('i32' , 4),
+    INT64:      new IRTypeObj('i64' , 8),
+
+    // Floating-point types
+    FLOAT32:    new IRTypeObj('f32' , 4),
+    FLOAT64:    new IRTypeObj('f64' , 8)
 };
+
+// Int type of width corresponding a pointer on this platform
+IRType.PLATFORM_INT =
+    PLATFORM_PTR_SIZE == 4?
+    IRType.INT32:
+    IRType.INT64
+;
 
 /**
 @class Base class for all IR values
@@ -448,8 +484,8 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     var output = "";
 
-    // If this instruction's value is read, print its output name
-    if (this.hasDests())
+    // If this instruction's type is not void, print its output name
+    if (this.type != IRType.VOID)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + ' ';
@@ -560,8 +596,8 @@ function TypedInstrMaker(
     {
         assert (
             !typeParSpecs || typeParSpecs.length == inTypeSpecs.length,
-            'when type parameter specifications are provided, the number of \
-            type parameter and input type specifications must match'
+            'when type parameter specifications are provided, the number of ' +
+            'type parameter and input type specifications must match'
         );
     }
 
@@ -590,7 +626,7 @@ function TypedInstrMaker(
         {
             assert (
                 typeSpec[j] instanceof IRTypeObj,
-                'invalid type in type specification'
+                'invalid type in input type specification for ' + mnemonic
             );
         }
     }
@@ -600,7 +636,7 @@ function TypedInstrMaker(
     {
         assert (
             outTypeSpecs[i] instanceof IRTypeObj,
-            'invalid type in type specification'
+            'invalid type in output type specification for ' + mnemonic
         );
     }
 
@@ -1134,53 +1170,6 @@ var InstOfInstr = UntypedInstrMaker(
 );
 
 /**
-@class Property set with value for field name
-@augments IRInstr
-*/
-var PutPropValInstr = UntypedInstrMaker(
-    'put_prop_val',
-     3,
-    undefined,
-    true
-);
-
-/**
-@class Property get with value for field name
-@augments IRInstr
-*/
-var GetPropValInstr = UntypedInstrMaker(
-    'get_prop_val',
-     2
-);
-
-/**
-@class Property deletion with value for field name
-@augments IRInstr
-*/
-var DelPropValInstr = UntypedInstrMaker(
-    'del_prop_val',
-     2
-);
-
-/**
-@class Property test with value for field name
-@augments IRInstr
-*/
-var HasPropValInstr = UntypedInstrMaker(
-    'has_prop_val',
-     2
-);
-
-/**
-@class Instruction to get an array containing the property names of an object
-@augments IRInstr
-*/
-var GetPropNamesInstr = UntypedInstrMaker(
-    'get_prop_names',
-     1
-);
-
-/**
 @class Instruction to get an array containing the property names of an object
 @augments IRInstr
 */
@@ -1330,6 +1319,14 @@ CallRefInstr.prototype.copy = function ()
 };
 
 /**
+Set the continue block of the call instruction
+*/
+CallRefInstr.prototype.setContTarget = function (contBlock)
+{
+    this.targets[0] = contBlock;
+}
+
+/**
 Set the target block of the throw instruction
 */
 CallRefInstr.prototype.setThrowTarget = function (catchBlock)
@@ -1374,7 +1371,7 @@ Make a shallow copy of the instruction
 ConstructRefInstr.prototype.copy = function ()
 {
     return this.baseCopy(
-        ConstructRefInstr(
+        new ConstructRefInstr(
             this.uses[0],
             this.uses.slice[1],
             this.targets[0],
@@ -1382,6 +1379,116 @@ ConstructRefInstr.prototype.copy = function ()
         )
     );
 };
+
+/**
+@class Property set with value for field name
+@augments CallRefInstr
+*/
+function PutPropValInstr(object, propName, propVal, contBlock, catchBlock)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'put_prop_val';
+
+    /**
+    Object, property name and propery value
+    @field
+    */
+    this.uses = [object, propName, propVal];
+
+    /**
+    Catch block and continue block for the exception handler
+    @field
+    */
+    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
+}
+PutPropValInstr.prototype = new CallRefInstr();
+
+/**
+Put instructions produce no output value
+@field
+*/
+PutPropValInstr.prototype.type = IRType.VOID;
+
+/**
+Make a shallow copy of the instruction
+*/
+PutPropValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new PutPropValInstr(
+            this.uses[0],
+            this.uses[1],
+            this.uses[2],
+            this.targets[0],
+            this.targets[1]
+        )
+    );
+};
+
+/**
+@class Property get with value for field name
+@augments CallRefInstr
+*/
+function GetPropValInstr(object, propName, contBlock, catchBlock)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'get_prop_val';
+
+    /**
+    Object and property name
+    @field
+    */
+    this.uses = [object, propName];
+
+    /**
+    Catch block and continue block for the exception handler
+    @field
+    */
+    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
+}
+GetPropValInstr.prototype = new CallRefInstr();
+
+/**
+Make a shallow copy of the instruction
+*/
+GetPropValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new GetPropValInstr(
+            this.uses[0],
+            this.uses[1],
+            this.targets[0],
+            this.targets[1]
+        )
+    );
+};
+
+/**
+@class Property deletion with value for field name
+@augments IRInstr
+*/
+var DelPropValInstr = UntypedInstrMaker(
+    'del_prop_val',
+     2
+);
+
+/**
+@class Property test with value for field name
+@augments IRInstr
+*/
+var HasPropValInstr = UntypedInstrMaker(
+    'has_prop_val',
+     2
+);
+
+/**
+@class Instruction to get an array containing the property names of an object
+@augments IRInstr
+*/
+var GetPropNamesInstr = UntypedInstrMaker(
+    'get_prop_names',
+     1
+);
 
 /**
 @class Argument object creation
@@ -1518,51 +1625,117 @@ var NewArrayInstr = UntypedInstrMaker(
 //====================================================
 
 /**
-@class Instruction to load a value from memory
+@class Instruction to load a value using a raw memory pointer
 @augments IRInstr
 */
-var LoadInstr = TypedInstrMaker(
-    'load',
+var RawLoadInstr = TypedInstrMaker(
+    'raw_load',
     [
         [IRType.BOXED],
-        [IRType.POINTER],
+        [IRType.OBJPTR],
+        [IRType.RAWPTR],
         [IRType.INT8],
         [IRType.INT16],
         [IRType.INT32],
+        [IRType.INT64],
         [IRType.FLOAT64]
-    ], 
-    [IRType.POINTER], 
+    ],
+    [IRType.RAWPTR, IRType.INT32],
     [
         IRType.BOXED,
-        IRType.POINTER,
+        IRType.OBJPTR,
+        IRType.RAWPTR,
         IRType.INT8,
         IRType.INT16,
         IRType.INT32,
+        IRType.INT64,
         IRType.FLOAT64
     ]
 );
 
 /**
-@class Instruction to store a value to memory
+@class Instruction to load a value using an object pointer
 @augments IRInstr
 */
-var StoreInstr = TypedInstrMaker(
-    'store',
+var ObjLoadInstr = TypedInstrMaker(
+    'obj_load',
     [
         [IRType.BOXED],
-        [IRType.POINTER],
+        [IRType.OBJPTR],
+        [IRType.RAWPTR],
         [IRType.INT8],
         [IRType.INT16],
         [IRType.INT32],
+        [IRType.INT64],
+        [IRType.FLOAT64]
+    ],
+    [IRType.OBJPTR, IRType.INT32],
+    [
+        IRType.BOXED,
+        IRType.OBJPTR,
+        IRType.RAWPTR,
+        IRType.INT8,
+        IRType.INT16,
+        IRType.INT32,
+        IRType.INT64,
+        IRType.FLOAT64
+    ]
+);
+
+/**
+@class Instruction to store a value using a raw memory pointer
+@augments IRInstr
+*/
+var RawStoreInstr = TypedInstrMaker(
+    'raw_store',
+    [
+        [IRType.BOXED],
+        [IRType.OBJPTR],
+        [IRType.RAWPTR],
+        [IRType.INT8],
+        [IRType.INT16],
+        [IRType.INT32],
+        [IRType.INT64],
         [IRType.FLOAT64]
     ],
     [
-        [IRType.POINTER, IRType.BOXED],
-        [IRType.POINTER, IRType.POINTER],
-        [IRType.POINTER, IRType.INT8],
-        [IRType.POINTER, IRType.INT16],
-        [IRType.POINTER, IRType.INT32],
-        [IRType.POINTER, IRType.FLOAT64]
+        [IRType.OBJPTR, IRType.INT32, IRType.BOXED],
+        [IRType.OBJPTR, IRType.INT32, IRType.OBJPTR],
+        [IRType.OBJPTR, IRType.INT32, IRType.RAWPTR],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT8],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT16],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT32],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT64],
+        [IRType.OBJPTR, IRType.INT32, IRType.FLOAT64]
+    ],
+    IRType.VOID
+);
+
+/**
+@class Instruction to store a value using an object pointer
+@augments IRInstr
+*/
+var ObjStoreInstr = TypedInstrMaker(
+    'obj_store',
+    [
+        [IRType.BOXED],
+        [IRType.OBJPTR],
+        [IRType.RAWPTR],
+        [IRType.INT8],
+        [IRType.INT16],
+        [IRType.INT32],
+        [IRType.INT64],
+        [IRType.FLOAT64]
+    ],
+    [
+        [IRType.OBJPTR, IRType.INT32, IRType.BOXED],
+        [IRType.OBJPTR, IRType.INT32, IRType.OBJPTR],
+        [IRType.OBJPTR, IRType.INT32, IRType.RAWPTR],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT8],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT16],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT32],
+        [IRType.OBJPTR, IRType.INT32, IRType.INT64],
+        [IRType.OBJPTR, IRType.INT32, IRType.FLOAT64]
     ],
     IRType.VOID
 );
@@ -1576,15 +1749,15 @@ var StoreInstr = TypedInstrMaker(
 @augments IRInstr
 */
 var UnboxInstr = TypedInstrMaker(
-    'unbox', 
+    'unbox',
     [
-        [IRType.POINTER],
-        [IRType.INT32]
+        [IRType.OBJPTR],
+        [IRType.PLATFORM_INT]
     ],
     [IRType.BOXED], 
     [
-        IRType.POINTER,
-        IRType.INT32
+        IRType.OBJPTR,
+        IRType.PLATFORM_INT
     ]
 );
 
@@ -1595,12 +1768,12 @@ var UnboxInstr = TypedInstrMaker(
 var BoxInstr = TypedInstrMaker(
     'box', 
     [
-        [IRType.POINTER],
-        [IRType.INT32]
+        [IRType.OBJPTR],
+        [IRType.PLATFORM_INT]
     ],
     [
-        [IRType.POINTER],
-        [IRType.INT32]
+        [IRType.OBJPTR],
+        [IRType.PLATFORM_INT]
     ], 
     IRType.BOXED
 );
@@ -1610,17 +1783,15 @@ var BoxInstr = TypedInstrMaker(
 @augments IRInstr
 */
 var RawUnboxInstr = TypedInstrMaker(
-    'raw_unbox', 
+    'raw_unbox',
     [
-        [IRType.POINTER],
-        [IRType.INT32],
-        [IRType.INT64],
+        [IRType.RAWPTR],
+        [IRType.PLATFORM_INT],
     ],
     [IRType.BOXED], 
     [
-        IRType.POINTER,
-        IRType.INT32,
-        IRType.INT64
+        IRType.RAWPTR,
+        IRType.PLATFORM_INT
     ]
 );
 
@@ -1648,8 +1819,10 @@ var ICastInstr = TypedInstrMaker(
         [IRType.UINT32, IRType.INT32],
         [IRType.INT16, IRType.INT32],
         [IRType.INT32, IRType.INT16],
-        [IRType.INT32, IRType.POINTER],
-        [IRType.POINTER, IRType.INT32]
+        [IRType.INT32, IRType.INT64],
+        [IRType.INT64, IRType.INT32],
+        [IRType.PLATFORM_INT, IRType.RAWPTR],
+        [IRType.RAWPTR, IRType.PLATFORM_INT]
     ],
     [
         [IRType.UINT16],
@@ -1657,15 +1830,19 @@ var ICastInstr = TypedInstrMaker(
         [IRType.INT16],
         [IRType.INT32],
         [IRType.INT32],
-        [IRType.POINTER]
+        [IRType.INT64],
+        [IRType.PLATFORM_INT],
+        [IRType.RAWPTR]
     ],
     [
         IRType.INT16,
         IRType.INT32,
         IRType.INT32,
         IRType.INT16,
-        IRType.POINTER,
-        IRType.INT32
+        IRType.INT64,
+        IRType.INT32,
+        IRType.RAWPTR,
+        IRType.PLATFORM_INT
     ]
 );
 
@@ -1676,9 +1853,9 @@ var ICastInstr = TypedInstrMaker(
 var IToFPInstr = TypedInstrMaker(
     'itof',
     [
-        [IRType.INT32, IRType.FLOAT64],
+        [IRType.PLATFORM_INT, IRType.FLOAT64],
     ],
-    [IRType.INT32],
+    [IRType.PLATFORM_INT],
     IRType.FLOAT64
 );
 
@@ -1689,10 +1866,10 @@ var IToFPInstr = TypedInstrMaker(
 var FPToIInstr = TypedInstrMaker(
     'ftoi',
     [
-        [IRType.FLOAT64, IRType.INT32],
+        [IRType.FLOAT64, IRType.PLATFORM_INT],
     ],
     [IRType.FLOAT64],
-    IRType.INT32
+    IRType.PLATFORM_INT
 );
 
 //====================================================
@@ -1707,18 +1884,20 @@ var IAddInstr = TypedInstrMaker(
     'add',
     undefined,
     [
-        [IRType.POINTER, IRType.INT32],
+        [IRType.RAWPTR, IRType.PLATFORM_INT],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
-        IRType.POINTER,
+        IRType.RAWPTR,
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1730,20 +1909,22 @@ var ISubInstr = TypedInstrMaker(
     'sub',
     undefined,
     [
-        [IRType.POINTER, IRType.INT32],
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.PLATFORM_INT],
+        [IRType.RAWPTR, IRType.RAWPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
-        IRType.POINTER,
-        IRType.INT32,
+        IRType.RAWPTR,
+        IRType.PLATFORM_INT,
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1758,13 +1939,15 @@ var IMulInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1779,13 +1962,15 @@ var IDivInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1800,13 +1985,15 @@ var IModInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1838,7 +2025,6 @@ var FSubInstr = TypedInstrMaker(
     [
         IRType.FLOAT64
     ]
-
 );
 
 /**
@@ -1886,13 +2072,15 @@ var INotInstr = TypedInstrMaker(
         [IRType.UINT16],
         [IRType.UINT32],
         [IRType.INT16],
-        [IRType.INT32]
+        [IRType.INT32],
+        [IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1907,13 +2095,15 @@ var IAndInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1928,13 +2118,15 @@ var IOrInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1949,13 +2141,15 @@ var IXorInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1970,13 +2164,15 @@ var ILsftInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -1991,13 +2187,15 @@ var IRsftInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -2012,13 +2210,15 @@ var IUrsftInstr = TypedInstrMaker(
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     [
         IRType.UINT16,
         IRType.UINT32,
         IRType.INT16,
-        IRType.INT32
+        IRType.INT32,
+        IRType.INT64
     ]
 );
 
@@ -2034,11 +2234,12 @@ var ILtInstr = TypedInstrMaker(
     'ilt',
     undefined,
     [
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.RAWPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     IRType.INT8
 );
@@ -2051,11 +2252,12 @@ var ILteInstr = TypedInstrMaker(
     'ilte',
     undefined,
     [
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.RAWPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     IRType.INT8
 );
@@ -2068,11 +2270,12 @@ var IGtInstr = TypedInstrMaker(
     'igt',
     undefined,
     [
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.RAWPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     IRType.INT8
 );
@@ -2085,11 +2288,12 @@ var IGteInstr = TypedInstrMaker(
     'igte',
     undefined,
     [
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.RAWPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     IRType.INT8
 );
@@ -2102,11 +2306,13 @@ var IEqInstr = TypedInstrMaker(
     'ieq',
     undefined,
     [
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.RAWPTR],
+        [IRType.OBJPTR, IRType.OBJPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     IRType.INT8
 );
@@ -2119,11 +2325,13 @@ var INeqInstr = TypedInstrMaker(
     'ineq',
     undefined,
     [
-        [IRType.POINTER, IRType.POINTER],
+        [IRType.RAWPTR, IRType.RAWPTR],
+        [IRType.OBJPTR, IRType.OBJPTR],
         [IRType.UINT16, IRType.UINT16],
         [IRType.UINT32, IRType.UINT32],
         [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32]
+        [IRType.INT32, IRType.INT32],
+        [IRType.INT64, IRType.INT64]
     ],
     IRType.INT8
 );
@@ -2232,10 +2440,10 @@ var IAddOvfInstr = TypedInstrMaker(
     'add_ovf',
     undefined,
     [
-        [IRType.INT32, IRType.INT32]
+        [IRType.PLATFORM_INT, IRType.PLATFORM_INT]
     ],
     [
-        IRType.INT32
+        IRType.PLATFORM_INT
     ],
     ['normal', 'overflow']
 );
@@ -2248,10 +2456,10 @@ var ISubOvfInstr = TypedInstrMaker(
     'sub_ovf',
     undefined,
     [
-        [IRType.INT32, IRType.INT32]
+        [IRType.PLATFORM_INT, IRType.PLATFORM_INT]
     ],
     [
-        IRType.INT32
+        IRType.PLATFORM_INT
     ],
     ['normal', 'overflow']
 );
@@ -2264,10 +2472,10 @@ var IMulOvfInstr = TypedInstrMaker(
     'mul_ovf',
     undefined,
     [
-        [IRType.INT32, IRType.INT32]
+        [IRType.PLATFORM_INT, IRType.PLATFORM_INT]
     ],
     [
-        IRType.INT32
+        IRType.PLATFORM_INT
     ],
     ['normal', 'overflow']
 );

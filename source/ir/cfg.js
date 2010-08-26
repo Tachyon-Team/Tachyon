@@ -62,49 +62,10 @@ function ControlFlowGraph(ownerFunc)
     this.ownerFunc = ownerFunc;
 
     /**
-    Entry basic block, created on CFG creation
+    Entry basic block
     @field
     */
     this.entry = null;
-
-    /**
-    Function argument values
-    @field
-    */
-    this.argVals = [];
-
-    // Create the entry block
-    this.entry = this.getNewBlock('entry');
-
-    // TODO: move argument management code to IR generation
-    // - Want some of these to be removed by optimizations
-    // - Simplify CFG copying
-
-    // Function to add an argument instruction to the entry block
-    var that = this;
-    function addArg(argName)
-    {
-        var argInstr = new ArgValInstr(argName, that.argVals.length);
-        that.argVals.push(argInstr);
-        that.entry.addInstr(argInstr, argName);
-    }
-
-    // Add the function arguments
-    addArg('funcObj');
-    addArg('this');
-    var argNames = this.ownerFunc.argVars;
-    for (var i = 0; i < argNames.length; ++i)
-        addArg(argNames[i]);
-
-    // Add the argument object value
-    var argObj = new MakeArgObjInstr(this.argVals[0]);
-    this.argVals.push(argObj);
-    this.entry.addInstr(argObj, 'argObj');
-
-    // Add the global object value
-    var globalObj = new GetGlobalInstr(this.argVals[0]);
-    this.argVals.push(globalObj);
-    this.entry.addInstr(globalObj, 'global');
 }
 ControlFlowGraph.prototype = {};
 
@@ -161,7 +122,7 @@ ControlFlowGraph.prototype.copy = function ()
         // Create a copy of the block
         var newBlock = block.copy(newCFG);
 
-        // If this is the entry block, set the entry block for the new CFG
+        // If this block is the entry, store the new CFG's entry
         if (block === this.entry)
             newCFG.entry = newBlock;
 
@@ -183,10 +144,6 @@ ControlFlowGraph.prototype.copy = function ()
             newInstr.dests = instr.dests.slice(0);
         }
     }
-
-    // Map the function arguments
-    for (var i = 0; i < this.argVals.length; ++i)
-        newCFG.argVals[i] = instrMap[this.argVals[i].instrId];
 
     // For each new basic block
     for (var i = 0; i < newCFG.blocks.length; ++i)
@@ -210,7 +167,7 @@ ControlFlowGraph.prototype.copy = function ()
             for (var k = 0; k < instr.uses.length; ++k)
             {
                 var use = instr.uses[k];
-                if (instrMap[use.instrId] != undefined)
+                if (use instanceof IRInstr)
                     instr.uses[k] = instrMap[use.instrId];                    
             }
 
@@ -218,7 +175,7 @@ ControlFlowGraph.prototype.copy = function ()
             for (var k = 0; k < instr.dests.length; ++k)
             {
                 var dest = instr.dests[k];
-                if (instrMap[dest.instrId] != undefined)
+                if (dest instanceof IRInstr)
                     instr.dests[k] = instrMap[dest.instrId];                  
             }
 
@@ -244,17 +201,6 @@ ControlFlowGraph.prototype.copy = function ()
                 }
             }
         }
-    }
-
-    // Remap the function argument dests
-    for (var i = 0; i < this.argVals.length; ++i)
-    {
-        var dests = this.argVals[i].dests;
-        for (var j = 0; j < dests.length; ++j)
-        {
-            var dest = dests[j];
-            newCFG.argVals[i].addDest(instrMap[dest.instrId]);
-        }      
     }
 
     // Return the new CFG
@@ -410,6 +356,10 @@ Get the entry block for this CFG
 */
 ControlFlowGraph.prototype.getEntryBlock = function ()
 {
+    // If there is no entry block yet, create one
+    if (!this.entry)
+        this.entry = this.getNewBlock('entry');
+
     return this.entry;
 };
 
@@ -418,7 +368,7 @@ Remove a basic block from this CFG
 */
 ControlFlowGraph.prototype.remBlock = function (block)
 {
-    print('Removing block: ' + block.label);
+    //print('Removing block: ' + block.label);
 
     // Remove this block from the successors of our predecessors
     for (var i = 0; i < block.preds.length; ++i)
@@ -448,10 +398,17 @@ ControlFlowGraph.prototype.remBlock = function (block)
                 // If this is a reference to the block
                 if (instr.preds[k] === block)
                 {
+                    // Get the corresponding use
+                    var use = instr.uses[k];
+
                     // Remove this value
                     instr.preds.splice(k, 1);
                     instr.uses.splice(k, 1);
-                    
+
+                    // If the value is no longer used, remove the dest link
+                    if (!arraySetHas(instr.uses, use))
+                        use.remDest(instr);                    
+
                     // Move back to the previous index
                     k--;
                 }
@@ -467,48 +424,6 @@ ControlFlowGraph.prototype.remBlock = function (block)
 
     // Free this block's label name
     this.freeBlockName(block);
-};
-
-/**
-Get the function object value
-*/
-ControlFlowGraph.prototype.getFuncObj = function ()
-{
-    return this.argVals[0];
-};
-
-/**
-Get the this argument value
-*/
-ControlFlowGraph.prototype.getThisArg = function ()
-{
-    return this.argVals[1];
-};
-
-/**
-Get a function argument value
-*/
-ControlFlowGraph.prototype.getArgVal = function (index)
-{
-    assert (index < this.ownerFunc.getNumArgs(), 'invalid argument index');
-
-    return this.argVals[index + 2];
-};
-
-/**
-Get the argument object value
-*/
-ControlFlowGraph.prototype.getArgObj = function ()
-{
-    return this.argVals[this.argVals.length - 2];
-};
-
-/**
-Get the global object value
-*/
-ControlFlowGraph.prototype.getGlobalObj = function ()
-{
-    return this.argVals[this.argVals.length - 1];
 };
 
 /**
@@ -606,6 +521,8 @@ ControlFlowGraph.prototype.simplify = function ()
                     if (Vj instanceof IRInstr)
                         Vj.addDest(dest);
                 }
+                if (Vj instanceof IRInstr)
+                    Vj.remDest(phiNode);
 
                 // Remove the phi node
                 phiNode.parentBlock.remInstr(phiNode);
@@ -631,6 +548,8 @@ ControlFlowGraph.prototype.simplify = function ()
                 block !== this.entry
             )
             {
+                //print('eliminating block with no predecessors: ' + block.getBlockName());
+
                 // Remove the block from the CFG
                 this.remBlock(block);
 
@@ -651,6 +570,8 @@ ControlFlowGraph.prototype.simplify = function ()
                 !(block.getLastInstr() instanceof ThrowInstr)
             )
             {
+                //print('merging block with one dest: ' + block.getBlockName());
+
                 var succ = block.succs[0];
 
                 // Remove the final branch instruction
@@ -837,16 +758,30 @@ ControlFlowGraph.prototype.validate = function ()
         if (block.parentCFG !== this)
             throw 'parent CFG link broken';
 
-        // Verify that our predecessors have us as a successor
+        // For each predecessor
         for (var j = 0; j < block.preds.length; ++j)
         {
+            var pred = block.preds[j];
+            
+            // Verify that the predecessor is a basic block
+            if (!(pred instanceof BasicBlock))
+                throw 'predecessor is not valid basic block for:\n' + block;
+
+            // Verify that our predecessors have us as a successor
             if (!arraySetHas(block.preds[j].succs, block))
                 throw 'predecessor missing successor link to:\n' + block;
         }
 
-        // Verify that our successors have us as a predecessor
+        // For each successor
         for (var j = 0; j < block.succs.length; ++j)
         {
+            var succ = block.succs[j];
+
+            // Verify that the successor is a basic block
+            if (!(succ instanceof BasicBlock))
+                throw 'successor is not valid basic block for:\n' + block;            
+
+            // Verify that our successors have us as a predecessor
             if (!arraySetHas(block.succs[j].preds, block))
                 throw 'successor missing predecessor link to:\n' + block;
         }
@@ -1379,7 +1314,7 @@ Remove an instruction from this basic block by index
 */
 BasicBlock.prototype.remInstrAtIndex = function (index)
 {
-    print('Removing instr: ' + this.instrs[index]);
+    //print('Removing instr: ' + this.instrs[index]);
 
     // Get a reference to the instruction
     var instr = this.instrs[index]

@@ -38,10 +38,10 @@ function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
     this.astNode = astNode;
 
     /**
-    Virgin, unoptimized IR CFG
+    Virgin, unoptimized CFG
     @field
     */
-    this.virginIR = null;
+    this.virginCFG = null;
 
     /**
     List of child (nested) functions
@@ -109,7 +109,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     }
 
     output += indentText(
-        this.virginIR.toString(
+        this.virginCFG.toString(
             blockOrderFn,
             outFormatFn,
             inFormatFn
@@ -135,7 +135,47 @@ Create a deep copy of the function
 */
 IRFunction.prototype.copy = function ()
 {
-    // TODO
+    var newFunc = new IRFunction(
+        this.funcName,
+        this.argVars,
+        this.closVars,
+        this.parentFunc,
+        this.astNode
+    );
+
+    newFunc.virginCFG = this.virginCFG.copy();
+
+    this.childFuncs.forEach(
+        function (child)
+        {
+            newFunc.addChildFunc(child.copy());
+        }
+    );
+
+    newFunc.usesArguments = this.usesArguments;
+    newFunc.usesEval = this.usesEval;
+
+    return newFunc;
+}
+
+/**
+Validate the function and its children
+*/
+IRFunction.prototype.validate = function ()
+{
+    // Validate the control-flow graph
+    this.virginCFG.validate();
+
+    // Validate the child functions
+    this.childFuncs.forEach(
+        function (child)
+        {
+            child.validate();
+        }
+    );
+
+    // The function is valid
+    return true;
 }
 
 /**
@@ -162,93 +202,20 @@ Returns a list of all nested functions in posfix order
 IRFunction.prototype.getChildrenList = function ()
 {
     var list = [];
-    this.getChildrenListHelper(list);
+
+    function getChildren(func)
+    {
+        func.childFuncs.forEach(
+            function (child)
+            {
+                getChildren(child);
+            }
+        );
+        list.push(func);
+    }
+
+    getChildren(this);
+
     return list;
 };
-
-/**
-@private
-Helper function for getChildrenList
-*/
-IRFunction.prototype.getChildrenListHelper = function (list)
-{
-    var i;
-    for (i=0; i<this.childFuncs.length; ++i)
-    {
-        this.childFuncs[i].getChildrenListHelper(list);    
-    }
-    list.push(this);
-};
-/*
-func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
-
-cfg = new ControlFlowGraph(func);
-
-entry = cfg.getEntryBlock();
-l1 = cfg.getNewBlock('left');
-l2 = cfg.getNewBlock('left');
-r1 = cfg.getNewBlock('right');
-merge = cfg.getNewBlock('merge');
-
-entry.addInstr(new AddInstr(ConstValue.getConst(1), ConstValue.getConst(2)));
-entry.addInstr(new IfInstr(ConstValue.getConst(true), l1, r1));
-
-l1.addInstr(new AddInstr(ConstValue.getConst(1), ConstValue.getConst(2)), 'eee');
-l1.addInstr(new GetPropValInstr(cfg.getThisArg(), ConstValue.getConst(2)));
-l1.addInstr(new JumpInstr(l2));
-
-l2.addInstr(new PhiInstr([l1.instrs[1]], [l1]));
-l2.addInstr(new ModInstr(l1.instrs[1], ConstValue.getConst(7)));
-l2.addInstr(new AddInstr(ConstValue.getConst(3), ConstValue.getConst(4)));
-l2.addInstr(new SubInstr(ConstValue.getConst(3), ConstValue.getConst(4)));
-l2.addInstr(new JumpInstr(merge));
-
-r1.addInstr(new MulInstr(ConstValue.getConst(7), ConstValue.getConst(8)), 'eee');
-r1.addInstr(new JumpInstr(merge));
-
-merge.addInstr(new PhiInstr([l1.instrs[0], r1.instrs[0]], [l1, r1]));
-merge.addInstr(new PutPropValInstr(entry.instrs[0], ConstValue.getConst('foo'), ConstValue.getConst(2)));
-merge.addInstr(new LogNotInstr(merge.instrs[0]));
-merge.addInstr(new LogNotInstr(merge.instrs[2]));
-merge.addInstr(new RetInstr(ConstValue.getConst(undefined)));
-
-merge.addInstr(new LsftInstr(ConstValue.getConst(1), ConstValue.getConst(2)), 'foo', 1);
-
-print('ORIGINAL CFG: \n-------------\n');
-
-print(cfg + '\n');
-
-cfg.simplify();
-
-print('SIMPLIFIED CFG: \n---------------\n');
-
-print(cfg + '\n');
-
-cfg2 = cfg.copy();
-
-print('COPY OF CFG: \n---------------\n');
-
-print(cfg2 + '\n');
-
-print('CFG1 VALID: ' + cfg.validate());
-print('CFG2 VALID: ' + cfg2.validate());
-
-print("done");
-*/
-
-/*
-func = new IRFunction('foobar', ['foo', 'bar', 'bif'], 'foo\nbar\nbif');
-
-cfg = new ControlFlowGraph(func);
-
-entry = cfg.getEntryBlock();
-
-var i1 = new UnboxInstr(IRType.POINTER, ConstValue.getConst(1));
-var i2 = new LoadInstr(IRType.INT32, i1);
-var i3 = new IAddOvfInstr(i2, i2, entry, entry);
-
-print(i1);
-print(i2);
-print(i3);
-*/
 

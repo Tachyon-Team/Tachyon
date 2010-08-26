@@ -542,7 +542,7 @@ test.assert = function (bool, message)
 
     //print(ir);
 
-    var cfg = ir.childFuncs[0].virginIR;
+    var cfg = ir.childFuncs[0].virginCFG;
     var order = allocator.orderBlocks(cfg);
     allocator.numberInstrs(cfg, order);
     var liveRanges = allocator.liveIntervals(cfg, order);

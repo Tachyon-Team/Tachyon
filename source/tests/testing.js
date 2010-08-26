@@ -46,14 +46,13 @@ var tests = tests || {};
     Root test function to run all known test suites.
     @param {Boolean} catchError Fail on test case exceptions or continue 
     @param {String} testName Specific test to run
-    @param {Boolean} displayTestNamesOnSuccess Display test names when they succeed or not
+    @param {Boolean} verbose Display test names when they succeed or not
 */
-tests.run = function (catchError, testName, displayTestNamesOnSuccess)
+tests.run = function (catchError, testName, verbose)
 {
-
-    if (displayTestNamesOnSuccess === undefined)
+    if (verbose === undefined)
     {
-        displayTestNamesOnSuccess = false;
+        verbose = false;
     }
 
     // TODO: Handle test nested test suite name
@@ -68,7 +67,7 @@ tests.run = function (catchError, testName, displayTestNamesOnSuccess)
             typeof this[p] !== "function" &&
             (suiteName === undefined || suiteName === p))
         {
-            failedNb += this[p].run(catchError, p, caseName, displayTestNamesOnSuccess);
+            failedNb += this[p].run(catchError, p, caseName, verbose);
         } 
     }
 
@@ -89,7 +88,7 @@ tests.testSuite = function ()
 };
 
 /** run all tests cases and nested test suites for this test suite */
-tests.testSuite.prototype.run = function (catchError, suiteName, caseName, displayTestNamesOnSuccess)
+tests.testSuite.prototype.run = function (catchError, suiteName, caseName, verbose)
 {
     function runTestCase(suite, caseName)
     {
@@ -140,8 +139,12 @@ tests.testSuite.prototype.run = function (catchError, suiteName, caseName, displ
             if (!result)
             {
                 print(suiteName +"." + p + " FAILED with exception:");
-                print("\t" + exception);
-            } else if (displayTestNamesOnSuccess)
+                
+                if (exception.stack)
+                    print(indentText(exception.stack.toString(), "\t"));
+                else
+                    print("\t" + exception);
+            } else if (verbose)
             {
                 print(suiteName +"." + p + " : ok");
             }
@@ -149,7 +152,7 @@ tests.testSuite.prototype.run = function (catchError, suiteName, caseName, displ
                    tests.testSuite.prototype.isPrototypeOf(this[p]))
         {
             failedNb = failedNb + this[p].run(catchError, suiteName + "." + p,
-                                              caseName, displayTestNamesOnSuccess);
+                                              caseName, verbose);
         } 
     }
 

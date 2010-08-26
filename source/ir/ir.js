@@ -131,10 +131,18 @@ function stmtListToIRFunc(
     var cfg = new ControlFlowGraph(newFunc);
 
     // Set the CFG for the function
-    newFunc.virginIR = cfg;
+    newFunc.virginCFG = cfg;
 
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
+
+    // Add an instruction to get the function object argument
+    var funcObj = new ArgValInstr('funcObj', 0);
+    entryBlock.addInstr(funcObj, 'funcObj');
+
+    // Add an instruction to get the this value argument
+    var thisVal = new ArgValInstr('thisVal', 1);
+    entryBlock.addInstr(thisVal, 'this');
 
     // Create a map for the closure and escaping variable mutable cells
     var sharedMap = new HashMap();
@@ -146,7 +154,7 @@ function stmtListToIRFunc(
 
         // Get the corresponding mutable cell from the closure
         var closCell = entryBlock.addInstr(
-            new GetClosInstr(cfg.getFuncObj(), ConstValue.getConst(i))
+            new GetClosInstr(funcObj, ConstValue.getConst(i))
         );
 
         // Add the mutable cell to the shared variable map
@@ -172,27 +180,37 @@ function stmtListToIRFunc(
     // Create a map for the local variable storage locations
     var localMap = new HashMap();
 
-    // Add the arguments object to the variable map
-    localMap.addItem('arguments', cfg.getArgObj());
-
     // For each function argument
     for (var i = 0; i < params.length; ++i)
     {
         var symName = params[i].toString();
 
+        // Create an instruction to get the argument value
+        var argVal = new ArgValInstr(symName, 2 + i);
+        entryBlock.addInstr(argVal, symName);
+
         // If there is no entry in the shared map
         if (!sharedMap.hasItem(symName))
         {
             // Add the argument value directly to the local map
-            localMap.addItem(symName, cfg.getArgVal(i));
+            localMap.addItem(symName, argVal);
         }
         else
         {
             // Put the argument value in the corresponding mutable cell
             var mutCell = sharedMap.getItem(symName);
-            entryBlock.addInstr(new PutCellInstr(mutCell, cfg.getArgVal(i)));
+            entryBlock.addInstr(new PutCellInstr(mutCell, argVal));
         }
     }
+
+    // Create the arguments object and add it to the variable map
+    var argObj = new MakeArgObjInstr(funcObj);
+    entryBlock.addInstr(argObj, 'argObj');
+    localMap.addItem('arguments', argObj);
+
+    // Add an instruction to get the global object from the function object
+    var globalObj = new GetGlobalInstr(funcObj);
+    entryBlock.addInstr(globalObj, 'global');
 
     // For each local variable declaration
     for (var i in localVars)
@@ -203,6 +221,22 @@ function stmtListToIRFunc(
         if (!sharedMap.hasItem(symName) && !localMap.hasItem(symName))
             localMap.addItem(symName, ConstValue.getConst(undefined));
     }
+
+    // Create a context for the function body
+    var bodyContext = new IRConvContext(
+        bodyStmts, 
+        entryBlock,
+        null,
+        localMap,
+        sharedMap,
+        new HashMap(),
+        new HashMap(),
+        null,
+        cfg,
+        funcObj,
+        thisVal,
+        globalObj
+    );
 
     // For each nested function
     for (var i in nestedFuncs)
@@ -249,10 +283,10 @@ function stmtListToIRFunc(
             }
 
             // Create a closure for the function
-            var closVal = entryBlock.addInstr(
+            var closVal = bodyContext.addInstr(
                 new MakeClosInstr(
                     nestFunc,
-                    cfg.getGlobalObj(),
+                    globalObj,
                     closVals
                 )
             );
@@ -261,9 +295,10 @@ function stmtListToIRFunc(
             if (astNode instanceof Program)
             {
                 // Bind the nested function name in the global environment
-                entryBlock.addInstr(
+                insertCallIR(
+                    bodyContext,
                     new PutPropValInstr(
-                        cfg.getGlobalObj(),
+                        globalObj,
                         ConstValue.getConst(nestFuncName),
                         closVal
                     )
@@ -278,24 +313,13 @@ function stmtListToIRFunc(
     }
 
     // Generate code for the function body
-    var bodyContext = new IRConvContext(
-        bodyStmts, 
-        entryBlock,
-        null,
-        localMap,
-        sharedMap,
-        new HashMap(),
-        new HashMap(),
-        null,
-        cfg
-    );
     stmtListToIR(bodyContext);
 
     // If the context is not terminated
     if (!bodyContext.isTerminated())
     {
         // Add a return undefined instruction to the exit block
-        bodyContext.getExitBlock().addInstr(
+        bodyContext.addInstr(
             new RetInstr(ConstValue.getConst(undefined))
         );
     }
@@ -306,6 +330,8 @@ function stmtListToIRFunc(
     // Simplify the CFG
     cfg.simplify();
     
+    //print('');
+
     // Run a validation test on the CFG
     try
     {
@@ -340,7 +366,10 @@ function IRConvContext(
     breakMap, 
     contMap,
     throwList,
-    cfg
+    cfg,
+    funcObj,
+    thisVal,
+    globalObj
 )
 {
     // Ensure that the arguments are valid
@@ -379,6 +408,18 @@ function IRConvContext(
     assert (
         cfg !== undefined && cfg instanceof ControlFlowGraph,
         'CFG not defined or invalid in IR conversion context'
+    );
+    assert (
+        funcObj instanceof IRValue,
+        'invalid function object in IR conversion context'
+    );
+    assert (
+        thisVal instanceof IRValue,
+        'invalid this value in IR conversion context'
+    );
+    assert (
+        globalObj instanceof IRValue,
+        'invalid global object in IR conversion context'
     );
 
     /**
@@ -434,6 +475,24 @@ function IRConvContext(
     @field
     */
     this.cfg = cfg;
+
+    /**
+    Function object value
+    @field
+    */
+    this.funcObj = funcObj;
+
+    /**
+    This argument value
+    @field
+    */
+    this.thisVal = thisVal;
+
+    /**
+    Global object instance
+    @field
+    */
+    this.globalObj = globalObj;
 
     /**
     Current basic block at the output
@@ -542,7 +601,10 @@ IRConvContext.prototype.pursue = function (astNode)
         this.breakMap,
         this.contMap,
         this.throwList,
-        this.cfg
+        this.cfg,
+        this.funcObj,
+        this.thisVal,
+        this.globalObj
     );
 };
 
@@ -564,9 +626,24 @@ IRConvContext.prototype.branch = function (
         this.breakMap,
         this.contMap,
         this.throwList,
-        this.cfg
+        this.cfg,
+        this.funcObj,
+        this.thisVal,
+        this.globalObj
     );
 };
+
+/**
+Add an instruction at the end of the current block of this context
+*/
+IRConvContext.prototype.addInstr = function (instr, outName)
+{
+    var insBlock = this.exitBlock? this.exitBlock:this.entryBlock;
+
+    insBlock.addInstr(instr, outName);
+
+    return instr;
+}
 
 /**
 Convert a statement list to IR code
@@ -708,7 +785,7 @@ function stmtToIR(context)
         );
 
         // Create the if branching instruction
-        testContext.getExitBlock().addInstr(
+        testContext.addInstr(
             new IfInstr(
                 testContext.getOutValue(),
                 trueContext.entryBlock,
@@ -790,7 +867,7 @@ function stmtToIR(context)
         );
 
         // Add a jump from the entry block to the loop entry
-        context.entryBlock.addInstr(new JumpInstr(bodyContext.entryBlock));
+        context.addInstr(new JumpInstr(bodyContext.entryBlock));
 
         // Set the exit block to be the join block
         context.setOutput(loopExit);
@@ -857,7 +934,7 @@ function stmtToIR(context)
         );       
 
         // Add a jump from the entry block to the loop entry
-        context.entryBlock.addInstr(new JumpInstr(testContext.entryBlock));
+        context.addInstr(new JumpInstr(testContext.entryBlock));
 
         // Set the exit block to be the join block
         context.setOutput(loopExit);
@@ -945,7 +1022,7 @@ function stmtToIR(context)
         );       
 
         // Add a jump from the entry block to the loop entry
-        context.entryBlock.addInstr(new JumpInstr(testContext.entryBlock));
+        initContext.addInstr(new JumpInstr(testContext.entryBlock));
 
         // Set the exit block to be the join block
         context.setOutput(loopExit);
@@ -958,20 +1035,21 @@ function stmtToIR(context)
         exprToIR(setCtx);
 
         // Get the property names of the set object
-        var propNameArr = setCtx.getExitBlock().addInstr(
+        var propNameArr = setCtx.addInstr(
             new GetPropNamesInstr(
                 setCtx.getOutValue()
             )
         );
 
         // Get the length of the property name array minus one
-        var numPropNames = setCtx.getExitBlock().addInstr(
+        var numPropNames = insertCallIR(
+            setCtx,
             new GetPropValInstr(
                 propNameArr,
                 ConstValue.getConst('length')
             )
         );
-        var numPropNamesMin1 = setCtx.getExitBlock().addInstr(
+        var numPropNamesMin1 = setCtx.addInstr(
             new SubInstr(
                 numPropNames,
                 ConstValue.getConst(1)
@@ -993,7 +1071,7 @@ function stmtToIR(context)
         );
 
         // Create a phi node for the current property index
-        var propIndex = testCtx.entryBlock.addInstr(
+        var propIndex = testCtx.addInstr(
             new PhiInstr(
                 [numPropNamesMin1],
                 [setCtx.getExitBlock()]
@@ -1001,7 +1079,7 @@ function stmtToIR(context)
         );
 
         // Test that the current property index is valid
-        var testVal = testCtx.entryBlock.addInstr(
+        var testVal = testCtx.addInstr(
             new GteInstr(
                 propIndex,
                 ConstValue.getConst(0)
@@ -1019,7 +1097,8 @@ function stmtToIR(context)
         );
         
         // Get the current property
-        var curPropName = bodyCtx.entryBlock.addInstr(
+        var curPropName = insertCallIR(
+            bodyCtx,
             new GetPropValInstr(
                 propNameArr,
                 propIndex
@@ -1056,7 +1135,7 @@ function stmtToIR(context)
         );
 
         // Compute the current property index - 1
-        var incrVal = incrContext.entryBlock.addInstr(
+        var incrVal = incrContext.addInstr(
             new SubInstr(
                 propIndex,
                 ConstValue.getConst(1)
@@ -1097,7 +1176,7 @@ function stmtToIR(context)
         );       
 
         // Add a jump from the entry block to the loop entry
-        setCtx.entryBlock.addInstr(new JumpInstr(testCtx.entryBlock));
+        setCtx.addInstr(new JumpInstr(testCtx.entryBlock));
 
         // Set the exit block to be the join block
         context.setOutput(loopExit);
@@ -1165,12 +1244,21 @@ function stmtToIR(context)
 
     else if (astStmt instanceof ReturnStatement)
     {
-        // Compile the return expression
-        var retContext = context.pursue(astStmt.expr);
-        exprToIR(retContext);
+        // If there is a return expression
+        if (astStmt.expr)
+        {
+            // Compile the return expression
+            var retContext = context.pursue(astStmt.expr);
+            exprToIR(retContext);
 
-        // Add a return instruction
-        retContext.getExitBlock().addInstr(new RetInstr(retContext.getOutValue()));
+            // Return the expression value
+            retContext.addInstr(new RetInstr(retContext.getOutValue()));
+        }
+        else
+        {
+            // Return the undefined constant
+            context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+        }
 
         // Indicate that there is no continuation for this context
         context.terminate();
@@ -1224,7 +1312,7 @@ function stmtToIR(context)
         );
 
         // Make the entry jump to the first test
-        context.entryBlock.addInstr(new JumpInstr(nextTestCtx.entryBlock));
+        context.addInstr(new JumpInstr(nextTestCtx.entryBlock));
 
         // Variable for the previous clause statements context
         var prevStmtCtx = null;
@@ -1258,7 +1346,7 @@ function stmtToIR(context)
                 exprToIR(curTestCtx);
 
                 // Compare the testvalue with the switch value
-                var testVal = curTestCtx.getExitBlock().addInstr(
+                var testVal = curTestCtx.addInstr(
                     new SeqInstr(
                         curTestCtx.getOutValue(),
                         switchCtx.getOutValue()
@@ -1278,17 +1366,12 @@ function stmtToIR(context)
                 curTestCtx.getExitBlock().remBranch();
 
                 // Create a new context for the clause statements
-                var stmtCtx = new IRConvContext(
+                var stmtCtx = context.branch(
                     clause.statements,
                     caseEntry,
-                    context.withVal,
-                    caseLocals,
-                    context.sharedMap,
-                    breakMap,
-                    context.contMap,
-                    context.throwList,
-                    context.cfg
+                    caseLocals
                 );
+                stmtCtx.breakMap = breakMap;
 
                 // Generate code for the statement
                 stmtListToIR(stmtCtx);
@@ -1336,7 +1419,7 @@ function stmtToIR(context)
             }
 
             // Add the if test instruction
-            curTestCtx.getExitBlock().addInstr(
+            curTestCtx.addInstr(
                 new IfInstr(
                     testVal,
                     stmtCtx.entryBlock,
@@ -1589,8 +1672,8 @@ function exprToIR(context)
         }
 
         // Create a closure for the function
-        var closVal = context.entryBlock.addInstr(
-            new MakeClosInstr(nestFunc, context.cfg.getGlobalObj(), closVals)
+        var closVal = context.addInstr(
+            new MakeClosInstr(nestFunc, context.globalObj, closVals)
         );
 
         // Set the output to the new closure
@@ -1617,7 +1700,7 @@ function exprToIR(context)
         var contBlock = context.cfg.getNewBlock('call_cont');
 
         // Create the construct instruction
-        var exprVal = funcContext.getExitBlock().addInstr(
+        var exprVal = funcContext.addInstr(
             new ConstructRefInstr(
                 funcContext.getOutValue(),
                 argVals,
@@ -1682,7 +1765,8 @@ function exprToIR(context)
             exprToIR(idxContext);
 
             // Get the function property from the object
-            funcVal = idxContext.getExitBlock().addInstr(
+            funcVal = insertCallIR(
+                idxContext,
                 new GetPropValInstr(
                     thisContext.getOutValue(),
                     idxContext.getOutValue()
@@ -1702,16 +1786,14 @@ function exprToIR(context)
             funcVal = funcContext.getOutValue();
 
             // The this value is the global object
-            thisVal = context.cfg.getGlobalObj();
+            thisVal = context.globalObj;
 
             lastContext = funcContext;
         }
 
-        // Create a basic block for the call continuation
-        var contBlock = context.cfg.getNewBlock('call_cont');
-
         // Create the call instruction
-        var exprVal = lastContext.getExitBlock().addInstr(
+        var exprVal = insertCallIR(
+            lastContext,
             new CallRefInstr(
                 funcVal,
                 thisVal,
@@ -1720,18 +1802,8 @@ function exprToIR(context)
             )
         );
 
-        // If we are in a try block
-        if (context.throwList)
-        {
-            // Bridge the last context
-            lastContext.bridge();
-
-            // Add the new context to the list of throw contexts
-            context.throwList.push(lastContext);
-        }
-
         // Set the output
-        context.setOutput(contBlock, exprVal);
+        context.setOutput(lastContext.getExitBlock(), exprVal);
     }
 
     // Constant values
@@ -1763,12 +1835,13 @@ function exprToIR(context)
         var elemVals = exprListToIR(elemCtx);
 
         // Create a new array
-        var newArray = elemCtx.getExitBlock().addInstr(new NewArrayInstr());
+        var newArray = elemCtx.addInstr(new NewArrayInstr());
 
         // Set the value of each element in the new array
         for (var i = 0; i < elemVals.length; ++i)
         {
-            elemCtx.getExitBlock().addInstr(
+            insertCallIR(
+                elemCtx,
                 new PutPropValInstr(
                     newArray,
                     ConstValue.getConst(i),
@@ -1796,7 +1869,7 @@ function exprToIR(context)
         var valVals = exprListToIR(valCtx);
 
         // Create a new object
-        var newObject = valCtx.getExitBlock().addInstr(new NewObjectInstr());
+        var newObject = valCtx.addInstr(new NewObjectInstr());
 
         // Set the value of each property in the new object
         for (var i = 0; i < propNames.length; ++i)
@@ -1804,7 +1877,8 @@ function exprToIR(context)
             var propName = nameVals[i];
             var propValue = valVals[i];
 
-            valCtx.getExitBlock().addInstr(
+            insertCallIR(
+                valCtx,
                 new PutPropValInstr(
                     newObject,
                     propName,
@@ -1831,7 +1905,7 @@ function exprToIR(context)
         // Set the value of the this argument as output
         context.setOutput(
             context.entryBlock,
-            context.cfg.getThisArg()
+            context.thisVal
         );
     }
 
@@ -1868,7 +1942,7 @@ function opToIR(context)
         exprToIR(fstContext);
         
         // Compute the incremented value
-        var postVal = fstContext.getExitBlock().addInstr(
+        var postVal = fstContext.addInstr(
             new instrClass(
                 fstContext.getOutValue(),
                 ConstValue.getConst(1)
@@ -1897,7 +1971,7 @@ function opToIR(context)
             exprToIR(rhsContext);
 
             // Compute the added value
-            var addVal = rhsContext.getExitBlock().addInstr(
+            var addVal = rhsContext.addInstr(
                 new instrClass(
                     lhsVal,
                     rhsContext.getOutValue()
@@ -1923,7 +1997,7 @@ function opToIR(context)
         var argVals = exprListToIR(argsContext);
 
         // Create the appropriate operator instruction
-        var opVal = argsContext.getExitBlock().addInstr(
+        var opVal = argsContext.addInstr(
             new instrClass(argVals)
         );
 
@@ -1979,7 +2053,7 @@ function opToIR(context)
             falseBlock.addInstr(new JumpInstr(joinBlock));
 
             // Create the first if branching instruction
-            fstContext.getExitBlock().addInstr(
+            fstContext.addInstr(
                 new IfInstr(
                     fstContext.getOutValue(),
                     secContext.entryBlock,
@@ -1988,7 +2062,7 @@ function opToIR(context)
             );
 
             // Create the second if branching instruction
-            secContext.getExitBlock().addInstr(
+            secContext.addInstr(
                 new IfInstr(
                     secContext.getOutValue(),
                     trueBlock,
@@ -2034,7 +2108,7 @@ function opToIR(context)
             falseBlock.addInstr(new JumpInstr(joinBlock));
 
             // Create the first if branching instruction
-            fstContext.getExitBlock().addInstr(
+            fstContext.addInstr(
                 new IfInstr(
                     fstContext.getOutValue(),
                     trueBlock,
@@ -2043,7 +2117,7 @@ function opToIR(context)
             );
 
             // Create the second if branching instruction
-            secContext.getExitBlock().addInstr(
+            secContext.addInstr(
                 new IfInstr(
                     secContext.getOutValue(),
                     trueBlock,
@@ -2088,7 +2162,7 @@ function opToIR(context)
             exprToIR(falseContext);
 
             // Create the if branching instruction
-            testContext.getExitBlock().addInstr(
+            testContext.addInstr(
                 new IfInstr(
                     testContext.getOutValue(),
                     trueContext.entryBlock,
@@ -2137,7 +2211,7 @@ function opToIR(context)
             var argVals = exprListToIR(argsContext);
 
             // Subtract the argument value from the constant 0
-            var opVal = argsContext.getExitBlock().addInstr(
+            var opVal = argsContext.addInstr(
                 new SubInstr(
                     ConstValue.getConst(0),
                     argVals[0]
@@ -2145,6 +2219,24 @@ function opToIR(context)
             );
 
             // Set the subtraction's output value as the output
+            context.setOutput(argsContext.getExitBlock(), opVal);
+        }
+        break;
+
+        // If this is the object indexing operator
+        case 'x [ y ]':
+        {
+            // Compile the argument values
+            var argsContext = context.pursue(exprs);
+            var argVals = exprListToIR(argsContext);
+
+            // Create the appropriate operator instruction
+            var opVal = insertCallIR(
+                argsContext,
+                new GetPropValInstr(argVals[0], argVals[1])
+            );
+
+            // Set the operator's output value as the output
             context.setOutput(argsContext.getExitBlock(), opVal);
         }
         break;
@@ -2261,10 +2353,6 @@ function opToIR(context)
         opGen(InstOfInstr);
         break;
 
-        case 'x [ y ]':
-        opGen(GetPropValInstr);
-        break;
-
         default:
         {
             assert (false, 'Unsupported AST operation "' + op + '"');
@@ -2296,7 +2384,7 @@ function assgToIR(context, rhsVal)
         if (context.withVal)
         {
             // Add a has-property test on the object for the symbol name
-            var hasTestVal = context.entryBlock.addInstr(
+            var hasTestVal = context.addInstr(
                 new HasPropValInstr(
                     context.withVal,
                     ConstValue.getConst(symName)                
@@ -2318,7 +2406,7 @@ function assgToIR(context, rhsVal)
             );
 
             // Add the if branch expression
-            context.entryBlock.addInstr(
+            context.addInstr(
                 new IfInstr(
                     hasTestVal,
                     propContext.entryBlock,
@@ -2341,9 +2429,10 @@ function assgToIR(context, rhsVal)
             if (leftExpr.id.scope instanceof Program)
             {
                 // Get the value from the global object
-                lhsVal = varContext.entryBlock.addInstr(
+                lhsVal = insertCallIR(
+                    varContext,
                     new GetPropValInstr(
-                        context.cfg.getGlobalObj(),
+                        context.globalObj,
                         ConstValue.getConst(symName)
                     )
                 );
@@ -2356,7 +2445,7 @@ function assgToIR(context, rhsVal)
                 var cellValue = context.sharedMap.getItem(symName);
 
                 // Get the value in the mutable cell
-                lhsVal = varContext.entryBlock.addInstr(
+                lhsVal = varContext.addInstr(
                     new GetCellInstr(cellValue)
                 );   
             }
@@ -2385,9 +2474,10 @@ function assgToIR(context, rhsVal)
         if (leftExpr.id.scope instanceof Program)
         {
             // Get the value from the global object
-            varContext.entryBlock.addInstr(
+            insertCallIR(
+                varContext,
                 new PutPropValInstr(
-                    context.cfg.getGlobalObj(),
+                    context.globalObj,
                     ConstValue.getConst(symName),
                     rhsValAssg
                 )
@@ -2401,7 +2491,7 @@ function assgToIR(context, rhsVal)
             var cellValue = context.sharedMap.getItem(symName);
 
             // Set the value in the mutable cell
-            varContext.entryBlock.addInstr(
+            varContext.addInstr(
                 new PutCellInstr(cellValue, rhsValAssg)
             );   
         }
@@ -2423,7 +2513,8 @@ function assgToIR(context, rhsVal)
                 var lhsVal;
 
                 // Get the value in the with object
-                lhsVal = propContext.entryBlock.addInstr(
+                lhsVal = insertCallIR(
+                    propContext,
                     new GetPropValInstr(
                         context.withVal,
                         ConstValue.getConst(symName)
@@ -2444,7 +2535,8 @@ function assgToIR(context, rhsVal)
             }
 
             // Set the value in the with object
-            propContext.entryBlock.addInstr(
+            insertCallIR(
+                propContext,
                 new PutPropValInstr(
                     context.withVal,
                     ConstValue.getConst(symName),
@@ -2516,7 +2608,8 @@ function assgToIR(context, rhsVal)
             var lhsVal;
 
             // Get the property's current value
-            lhsVal = curContext.entryBlock.addInstr(
+            lhsVal = insertCallIR(
+                curContext,
                 new GetPropValInstr(
                     objContext.getOutValue(),
                     idxContext.getOutValue()
@@ -2533,7 +2626,8 @@ function assgToIR(context, rhsVal)
         }
 
         // Set the property to the right expression's value
-        curContext.entryBlock.addInstr(
+        insertCallIR(
+            curContext,
             new PutPropValInstr(
                 objContext.getOutValue(),
                 idxContext.getOutValue(),
@@ -2576,7 +2670,7 @@ function refToIR(context)
     if (context.withVal)
     {
         // Add a has-property test on the object for the symbol name
-        var hasTestVal = context.entryBlock.addInstr(
+        var hasTestVal = context.addInstr(
             new HasPropValInstr(
                 context.withVal,
                 ConstValue.getConst(symName)                
@@ -2598,7 +2692,7 @@ function refToIR(context)
         );
 
         // Add the if branch expression
-        context.entryBlock.addInstr(
+        context.addInstr(
             new IfInstr(
                 hasTestVal,
                 propContext.entryBlock,
@@ -2615,9 +2709,10 @@ function refToIR(context)
     if (astExpr.id.scope instanceof Program && symName != 'arguments')
     {
         // Get the value from the global object
-        varValueVar = varContext.entryBlock.addInstr(
+        varValueVar = insertCallIR(
+            varContext,
             new GetPropValInstr(
-                context.cfg.getGlobalObj(),
+                context.globalObj,
                 ConstValue.getConst(symName)
             )
         );
@@ -2630,7 +2725,7 @@ function refToIR(context)
         var cellValue = context.sharedMap.getItem(symName);
 
         // Get the value from the mutable cell
-        varValueVar = varContext.entryBlock.addInstr(
+        varValueVar = varContext.addInstr(
             new GetCellInstr(cellValue)
         );
     }
@@ -2651,7 +2746,8 @@ function refToIR(context)
     if (context.withVal)
     {
         // Get the value in the with object
-        var varValueProp = propContext.entryBlock.addInstr(
+        var varValueProp = insertCallIR(
+            propContext,
             new GetPropValInstr(
                 context.withVal,
                 ConstValue.getConst(symName)
@@ -2697,6 +2793,47 @@ function refToIR(context)
 }
 
 /**
+Insert a call instruction in a given context, connect it with its continue 
+and throw targets and produce a new context
+*/
+function insertCallIR(context, instr)
+{
+    // Create a basic block for the call continuation
+    var contBlock = context.cfg.getNewBlock(instr.mnemonic + '_cont');
+
+    // Set the continue target for the instruction
+    instr.setContTarget(contBlock);
+
+    // Add the call instruction to the current context
+    var insBlock = 
+        context.exitBlock? 
+        context.getExitBlock():
+        context.entryBlock
+    ;
+    insBlock.addInstr(instr);
+
+    // If we are in a try block
+    if (context.throwList)
+    {
+        // Create a new context and bridge it
+        var newCtx = context.pursue(null);
+        newCtx.bridge();
+
+        // Add the new context to the list of throw contexts
+        context.throwList.push(newCtx);
+    }
+
+    // Hijack the context to use the continue block
+    if (context.exitBlock)
+        context.exitBlock = contBlock;
+    else
+        context.entryBlock = contBlock;
+
+    // Return the instruction value
+    return instr;
+}
+
+/**
 Generate a throw instruction with a given exception value
 @param throwCtx context after which to throw the exception
 @param excVal exception value to throw
@@ -2704,7 +2841,7 @@ Generate a throw instruction with a given exception value
 function throwToIR(context, throwCtx, excVal)
 {
     // Add a throw instruction
-    throwCtx.getExitBlock().addInstr(
+    throwCtx.addInstr(
         new ThrowInstr(excVal)
     );
 
@@ -2730,7 +2867,7 @@ function errorToIR(context, throwCtx, errorCtor, errorMsg)
     var contBlock = context.cfg.getNewBlock('exc_cont');
 
     // Create an error object exception
-    var excVal = throwCtx.getExitBlock().addInstr(
+    var excVal = throwCtx.addInstr(
         new ConstructRefInstr(
             ConstValue.getConst(errorCtor),
             [ConstValue.getConst(errorMsg)],
@@ -2743,7 +2880,7 @@ function errorToIR(context, throwCtx, errorCtor, errorMsg)
     throwCtx.setOutput(contBlock);
 
     // Add a throw instruction
-    throwCtx.getExitBlock().addInstr(
+    throwCtx.addInstr(
         new ThrowInstr(excVal)
     );
 
@@ -2857,7 +2994,7 @@ function mergeContexts(
 
         // Make the block jump to the merge block
         if (!context.getExitBlock().hasBranch())
-            context.getExitBlock().addInstr(new JumpInstr(mergeBlock));
+            context.addInstr(new JumpInstr(mergeBlock));
     }
 
     // Return the merge block
@@ -2920,7 +3057,10 @@ function createLoopEntry(
         breakMap,
         contMap,
         context.throwList,
-        context.cfg
+        context.cfg,
+        context.funcObj,
+        context.thisVal,
+        context.globalObj
     );
 }
 
@@ -3064,7 +3204,7 @@ function genInlineIR(context, branches)
     var newInstr = new instrCtor(instrArgs);
 
     // Add the new instruction to the current basic block
-    argsContext.getExitBlock().addInstr(newInstr);
+    argsContext.addInstr(newInstr);
 
     // Set the new instruction as the output
     context.setOutput(argsContext.getExitBlock(), newInstr);
