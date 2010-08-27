@@ -623,344 +623,44 @@ PhiInstr.prototype.copy = function ()
 };
 
 /**
-Function to generate typed instruction constructors using closures
-@param mnemonic mnemonic name of the instruction
-@param typeParSpecs list of type parameter specifications
-@param inTypeSpecs list of arrays of input value type
-@param outTypeSpecs list of output value types
-@param branchNames list of branch target names
-@param protoObj prototype object for the instruction
+@class Function argument value instruction
+@augments IRInstr
 */
-function TypedInstrMaker(
-    mnemonic,
-    typeParSpecs,
-    inTypeSpecs,
-    outTypeSpecs,
-    branchNames,
-    protoObj
-)
+function ArgValInstr(argName, argIndex)
 {
-    // If only one input type specification is present
-    if (inTypeSpecs instanceof Array && !(inTypeSpecs[0] instanceof Array))
-    {
-        assert (
-            typeParSpecs instanceof Array,
-            'invalid type parameter specifications'
-        );
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'arg';
 
-        // Copy the input type for each type param specification
-        var inType = inTypeSpecs;
-        inTypeSpecs = [];
-        for (var i = 0; i < typeParSpecs.length; ++i)
-            inTypeSpecs.push(inType);
-    }
-    else
-    {
-        assert (
-            !typeParSpecs || typeParSpecs.length == inTypeSpecs.length,
-            'when type parameter specifications are provided, the number of ' +
-            'type parameter and input type specifications must match'
-        );
-    }
+    // Set the output name as the argument name
+    this.outName = argName;
 
-    // If only one output type specification is present
-    if (!(outTypeSpecs instanceof Array))
-    {
-        // Copy the output type for each input type specification
-        var outType = outTypeSpecs;
-        outTypeSpecs = [];
-        for (var i = 0; i < inTypeSpecs.length; ++i)
-            outTypeSpecs.push(outType);
-    }
-    else
-    {
-        assert (
-            inTypeSpecs.length == outTypeSpecs.length,
-            'the number of input and output type specifications must match'
-        );
-    }
+    // Set the argument index
+    this.argIndex = argIndex;
+}
+ArgValInstr.prototype = new IRInstr();
 
-    // Validate input type specifications
-    for (var i = 0; i < inTypeSpecs.length; ++i)
-    {
-        var typeSpec = inTypeSpecs[i];
-        for (var j = 0; j < typeSpec.length; ++j)
-        {
-            assert (
-                typeSpec[j] instanceof IRTypeObj,
-                'invalid type in input type specification for ' + mnemonic
-            );
-        }
-    }
+/**
+Get a string representation of the argument instruction
+*/
+ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
+{
+    // Get the default toString output for the instruction
+    var output = IRInstr.prototype.toString.apply(this, outFormatFn, inFormatFn);
 
-    // Validate output type specifications
-    for (var i = 0; i < outTypeSpecs.length; ++i)
-    {
-        assert (
-            outTypeSpecs[i] instanceof IRTypeObj,
-            'invalid type in output type specification for ' + mnemonic
-        );
-    }
+    // Add the argument index to the output
+    output += ' ' + this.argIndex;
 
-    // Create lists for the mnemonic instruction names
-    var mnemonicNames = [];
-
-    // If type parameter specifications are provided
-    if (typeParSpecs)
-    {
-        // Ensure that the type parameter specifications are in an array
-        assert (
-            typeParSpecs instanceof Array,
-            'invalid type parameter specifications array'
-        );
-
-        // Get the number of type parameters
-        var numTypeParams = typeParSpecs[0].length;
-
-        // For each type parameter specification
-        for (var i = 0; i < typeParSpecs.length; ++i)
-        {
-            // Get this type parameter specification
-            var typeSpec = typeParSpecs[i];
-
-            // Ensure all specifications have the same length
-            assert (
-                typeSpec.length == numTypeParams,
-                'invalid type parameter specification'
-            );
-
-            // Set the mnemonic name for this type parameter specification
-            var mnemName = mnemonic;
-            for (var j = 0; j < numTypeParams; ++j)
-            {
-                var type = typeSpec[j];
-
-                assert (
-                    type instanceof IRTypeObj,
-                    'invalid type in type specification'
-                );
-
-                if (type !== IRType.BOXED || numTypeParams > 0)
-                    mnemName += '_' + type.name;
-            }
-
-            // Add the mnemonic name to the list
-            mnemonicNames.push(mnemName);
-        }
-    }
-
-    // Otherwise, no type parameter specifications are provided
-    else
-    {
-        // For each input type specification
-        for (var i = 0; i < inTypeSpecs.length; ++i)
-        {
-            // Get this type parameter specification
-            var typeSpec = inTypeSpecs[i];
-
-            // Verify if all types in the specification are the same
-            var firstType = typeSpec.length? typeSpec[0]:null;
-            var allSame = true;
-            for (var j = 0; j < typeSpec.length; ++j)
-            {
-                if (typeSpec[j] !== firstType)            
-                    allSame = false;
-            }
-
-            // Set the mnemonic name for this type parameter specification
-            var mnemName = mnemonic;
-
-            // If all input types are the same
-            if (allSame)
-            {
-                // If there is a first type and it is not boxed
-                if (firstType !== null && firstType !== IRType.BOXED)
-                {
-                    // Append the input type to the name
-                    mnemName += '_' + firstType.name;
-                }
-            }
-            else
-            {
-                // Append all input types to the name
-                for (var j = 0; j < typeSpec.length; ++j)
-                    mnemName += '_' + typeSpec[j].name;
-            }
-
-            // Add the mnemonic name to the list
-            mnemonicNames.push(mnemName);
-        }
-    }
-
-    /**
-    Parse instruction constructor arguments
-    */
-    function parseArgs(argArray, typeParams, inputVals, branchTargets)
-    {
-        var curIndex = 0;
-
-        // Extract type parameters, if any
-        for (; curIndex < argArray.length && argArray[curIndex] instanceof IRTypeObj; ++curIndex)
-            typeParams.push(argArray[curIndex]);
-
-        // Extract input values, if any
-        for (; curIndex < argArray.length && argArray[curIndex] instanceof IRValue; ++curIndex)
-            inputVals.push(argArray[curIndex]);
-
-        // Extract branch targets, if any
-        for (; curIndex < argArray.length && argArray[curIndex] instanceof BasicBlock; ++curIndex)
-            branchTargets.push(argArray[curIndex]);
-
-        assert (
-            curIndex == argArray.length,
-            'invalid arguments passed to ' + mnemonic + ' constructor'
-        );
-    }
-
-    /**
-    Find a type parameter or input type specification
-    */
-    function findSpec(typeSpec, specArray)
-    {
-        var specIndex = -1;
-
-        // Find the type specification from the type values
-        SPEC_LOOP:
-        for (var i = 0; i < specArray.length; ++i)
-        {
-            var curSpec = specArray[i];
-
-            // If the number of type values does not match the spec length, continue
-            if (typeSpec.length != curSpec.length)
-                continue SPEC_LOOP;
-
-            // If any type value does not match, continue
-            for (var j = 0; j < typeSpec.length; ++j)
-            {
-                if (typeSpec[j] !== curSpec[j])
-                    continue SPEC_LOOP;
-            }
-
-            // The spec was found, break out of the loop
-            specIndex = i;
-            break;
-        }
-
-        assert (
-            specIndex != -1,
-            'invalid type specification passed to ' + mnemonic + ' constructor'
-        );
-
-        return specIndex;
-    }
-
-    /**
-    Instruction constructor function instance, implemented as a closure
-    */
-    function InstrConstr(inputs)
-    {
-        // Parse the input arguments
-        var typeParams = [];
-        var inputVals = [];
-        var branchTargets = [];
-        if (inputs instanceof Array)
-            parseArgs(inputs, typeParams, inputVals, branchTargets);
-        else
-            parseArgs(arguments, typeParams, inputVals, branchTargets);
-
-        // If type parameters are to be used
-        if (typeParSpecs)
-        {
-            // Find the type specifications based on the type parameters
-            var specIndex = findSpec(typeParams, typeParSpecs);
-   
-            // Store the type parameters of the instruction
-            this.typeParams = typeParams;
-        }
-        else
-        {
-            // Find the type specifications based on the input value types
-            var specIndex = findSpec(
-                inputVals.map(function (val) { return val.type; }), 
-                inTypeSpecs
-            );
-        }
-
-        // Set the mnemonic name of the instruction
-        this.mnemonic = mnemonicNames[specIndex];
-
-        // Set the output type for the instruction
-        this.type = outTypeSpecs[specIndex];
-
-        // Store the uses of the instruction
-        this.uses = inputVals.slice(0);
-
-        // If this is a branch instruction
-        if (branchNames)
-        {
-            // Ensure that the right number of branch targets were specified
-            assert (
-                branchTargets.length == branchNames.length,
-                'must specify ' + branchNames.length + ' branch targets to ' + mnemonic + ' constructor'
-            );
-
-            // Ensure that the branch targets are valid
-            branchTargets.forEach(
-                function (t)
-                {
-                    assert (
-                        t instanceof BasicBlock,
-                        'invalid branch target passed to ' + mnemonic + ' constructor'
-                    );
-                }
-            );
-
-            // Store the branch targets
-            this.targets = branchTargets;
-        }
-    }
-
-    // If no prototype object was specified, create one
-    if (!protoObj)
-    {
-        if (branchNames)
-            protoObj = new BranchInstr();
-        else
-            protoObj = new IRInstr();
-    }
-
-    // Set the constructor for the new instruction
-    InstrConstr.prototype = protoObj;
-
-    // Store the branch target names
-    InstrConstr.prototype.targetNames = branchNames;
-
-    /**
-    Generic instruction shallow copy function
-    */
-    InstrConstr.prototype.copy = function ()
-    {
-        // Setup the copy arguments
-        var copyArgs = [];
-        if (this.typeParams) copyArgs = copyArgs.concat(this.typeParams.slice(0));
-        copyArgs = copyArgs.concat(this.uses.slice(0));
-        if (this.targets) copyArgs = copyArgs.concat(this.targets.slice(0));
-
-        // Return a new instruction with the same type parameters, uses and targets
-        return this.baseCopy(new InstrConstr(copyArgs));
-    };
-
-    // Return the new constructor instance
-    return InstrConstr;
+    return output;
 }
 
-
-
-
-
-
-
-
+/**
+Make a shallow copy of the instruction
+*/
+ArgValInstr.prototype.copy = function ()
+{
+    var newInstr = new ArgValInstr(this.outName);
+    return this.baseCopy(newInstr);
+};
 
 /**
 Function to generate instruction constructors using closures
@@ -1141,22 +841,9 @@ function instrMaker(
 }
 
 /**
-Function to validate the type paramers count of an instruction
+Function to validate the length of an input array
 */
-instrMaker.validNumParams = function (typeParams, numExpected)
-{
-    assert (
-        typeParams.length == numExpected,
-        'got ' + typeParams.length + 
-        pluralize(' type parameter', typeParams.length) + 
-        ', expected ' + numExpected
-    );
-}
-
-/**
-Function to validate the argument count of an instruction
-*/
-instrMaker.validNumInputs = function (inputVals, minExpected, maxExpected)
+instrMaker.validCount = function (name, array, minExpected, maxExpected)
 {
     if (maxExpected === undefined)
         maxExpected = minExpected;
@@ -1170,11 +857,35 @@ instrMaker.validNumInputs = function (inputVals, minExpected, maxExpected)
         expectedStr = minExpected + ' or more'
 
     assert (
-        inputVals.length >= minExpected && inputVals.length <= maxExpected,
-        'got ' + inputVals.length + 
-        pluralize(' argument', inputVals.length) + 
+        array.length >= minExpected && array.length <= maxExpected,
+        'got ' + array.length + ' ' +
+        pluralize(name, array.length) + 
         ', expected ' + expectedStr
     );
+}
+
+/**
+Function to validate the type paramers count of an instruction
+*/
+instrMaker.validNumParams = function (typeParams, minExpected, maxExpected)
+{
+    instrMaker.validCount('type parameter', typeParams, minExpected, maxExpected);
+}
+
+/**
+Function to validate the argument count of an instruction
+*/
+instrMaker.validNumInputs = function (inputVals, minExpected, maxExpected)
+{
+    instrMaker.validCount('input value', inputVals, minExpected, maxExpected);
+}
+
+/**
+Function to validate the branch targets of an instruction
+*/
+instrMaker.validNumBranches = function (branchTargets, minExpected, maxExpected)
+{
+    instrMaker.validCount('branch target', branchTargets, minExpected, maxExpected);
 }
 
 /**
@@ -1235,62 +946,11 @@ function untypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoOb
 }
 
 //=============================================================================
-// High-Level IR (HIR)
 //
-// Untyped, abstract operations on implicitly boxed values.
-// Close to the original JavaScript language semantics.
+// High-Level instructions, these operate only on boxed values
 //
 //=============================================================================
 
-/**
-@class Function argument value instruction
-@augments IRInstr
-*/
-function ArgValInstr(argName, argIndex)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'arg';
-
-    // Set the output name as the argument name
-    this.outName = argName;
-
-    // Set the argument index
-    this.argIndex = argIndex;
-}
-ArgValInstr.prototype = new IRInstr();
-
-/**
-Get a string representation of the argument instruction
-*/
-ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
-{
-    // Get the default toString output for the instruction
-    var output = IRInstr.prototype.toString.apply(this, outFormatFn, inFormatFn);
-
-    // Add the argument index to the output
-    output += ' ' + this.argIndex;
-
-    return output;
-}
-
-/**
-Make a shallow copy of the instruction
-*/
-ArgValInstr.prototype.copy = function ()
-{
-    var newInstr = new ArgValInstr(this.outName);
-    return this.baseCopy(newInstr);
-};
-
-
-
-
-
-
-
-
-
-// TODO: this instruction has no typed equivalend, like Neq, Nseq
 /**
 @class Logical negation instruction
 @augments IRInstr
@@ -1318,105 +978,6 @@ var InstOfInstr = untypedInstrMaker(
      2
 );
 
-
-
-
-
-
-
-
-
-
-
-/**
-@class Instruction to get an array containing the property names of an object
-@augments IRInstr
-*/
-var JumpInstr = untypedInstrMaker(
-    'jump',
-     0,
-    [undefined],
-    true
-);
-
-/**
-@class If conditional test instruction
-@augments BranchInstr
-*/
-var IfInstr = untypedInstrMaker(
-    'if',
-    1,
-    ['then', 'else'],
-    true
-);
-
-/**
-@class Function return instruction
-@augments BranchInstr
-*/
-var RetInstr = untypedInstrMaker(
-    'ret',
-     1,
-    undefined,
-    true,
-    new BranchInstr()
-);
-
-/**
-@class Exception throw to exception handler. Handler may be left undefined for
-interprocedural throw.
-@augments BranchInstr
-*/
-function ThrowInstr(excVal, catchBlock)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'throw';
-
-    /**
-    Exception value to be thrown
-    @field
-    */
-    this.uses = [excVal];
-
-    /**
-    Catch block for this throw, may be empty (no targets) if unspecified
-    @field
-    */
-    this.targets = catchBlock? [catchBlock]:[];
-}
-ThrowInstr.prototype = new BranchInstr();
-
-/**
-Branch target name for the throw instruction
-@field
-*/
-ThrowInstr.prototype.targetNames = ['to'];
-
-/**
-Set the target block of the throw instruction
-*/
-ThrowInstr.prototype.setThrowTarget = function (catchBlock)
-{
-    this.targets = catchBlock? [catchBlock]:[];
-}
-
-/**
-Get the target block of the throw instruction
-*/
-ThrowInstr.prototype.getThrowTarget = function ()
-{
-    return (this.targets.length > 0)? this.targets[0]:null;
-}
-
-/**
-Make a shallow copy of the instruction
-*/
-ThrowInstr.prototype.copy = function ()
-{
-    var newInstr = new ThrowInstr(this.uses[0], this.targets[0]);
-    return this.baseCopy(newInstr);
-};
-
 /**
 @class Exception value catch
 @augments IRInstr
@@ -1425,202 +986,6 @@ var CatchInstr = untypedInstrMaker(
     'catch',
      0
 );
-
-/**
-@class Call with function object reference
-@augments ThrowInstr
-*/
-function CallRefInstr(funcVal, thisVal, paramVals, contBlock, catchBlock)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'call';
-
-    /**
-    Function value, this value and parameter values
-    @field
-    */
-    this.uses = [funcVal, thisVal].concat(paramVals);
-
-    /**
-    Catch block and continue block for the exception handler
-    @field
-    */
-    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
-}
-CallRefInstr.prototype = new ThrowInstr();
-
-/**
-Call instructions produce boxed values
-@field
-*/
-CallRefInstr.prototype.type = IRType.BOXED;
-
-/**
-Branch target name for the call instruction
-@field
-*/
-CallRefInstr.prototype.targetNames = ['continue', 'throw'];
-
-/**
-Make a shallow copy of the instruction
-*/
-CallRefInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new CallRefInstr(
-            this.uses[0],
-            this.uses[1], 
-            this.uses.slice[2],
-            this.targets[0],
-            this.targets[1]
-        )
-    );
-};
-
-/**
-Set the continue block of the call instruction
-*/
-CallRefInstr.prototype.setContTarget = function (contBlock)
-{
-    this.targets[0] = contBlock;
-}
-
-/**
-Set the target block of the throw instruction
-*/
-CallRefInstr.prototype.setThrowTarget = function (catchBlock)
-{
-    this.targets = catchBlock? [this.targets[0], catchBlock]:[this.targets[0]];
-}
-
-/**
-Get the target block of the throw instruction
-*/
-CallRefInstr.prototype.getThrowTarget = function ()
-{
-    return (this.targets.length > 1)? this.targets[1]:null;
-}
-
-/**
-@class Constructor call with function object reference
-@augments CallRefInstr
-*/
-function ConstructRefInstr(funcVal, paramVals, contBlock, catchBlock)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'construct';
-
-    /**
-    Function value and parameter values
-    @field
-    */
-    this.uses = [funcVal].concat(paramVals);
-
-    /**
-    Catch block and continue block for the exception handler
-    @field
-    */
-    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
-}
-ConstructRefInstr.prototype = new CallRefInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-ConstructRefInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new ConstructRefInstr(
-            this.uses[0],
-            this.uses.slice[1],
-            this.targets[0],
-            this.targets[1]
-        )
-    );
-};
-
-/**
-@class Property set with value for field name
-@augments CallRefInstr
-*/
-function PutPropValInstr(object, propName, propVal, contBlock, catchBlock)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'put_prop_val';
-
-    /**
-    Object, property name and propery value
-    @field
-    */
-    this.uses = [object, propName, propVal];
-
-    /**
-    Catch block and continue block for the exception handler
-    @field
-    */
-    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
-}
-PutPropValInstr.prototype = new CallRefInstr();
-
-/**
-Put instructions produce no output value
-@field
-*/
-PutPropValInstr.prototype.type = IRType.VOID;
-
-/**
-Make a shallow copy of the instruction
-*/
-PutPropValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new PutPropValInstr(
-            this.uses[0],
-            this.uses[1],
-            this.uses[2],
-            this.targets[0],
-            this.targets[1]
-        )
-    );
-};
-
-/**
-@class Property get with value for field name
-@augments CallRefInstr
-*/
-function GetPropValInstr(object, propName, contBlock, catchBlock)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'get_prop_val';
-
-    /**
-    Object and property name
-    @field
-    */
-    this.uses = [object, propName];
-
-    /**
-    Catch block and continue block for the exception handler
-    @field
-    */
-    this.targets = catchBlock? [contBlock, catchBlock]:[contBlock];
-}
-GetPropValInstr.prototype = new CallRefInstr();
-
-/**
-Make a shallow copy of the instruction
-*/
-GetPropValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new GetPropValInstr(
-            this.uses[0],
-            this.uses[1],
-            this.targets[0],
-            this.targets[1]
-        )
-    );
-};
 
 /**
 @class Property deletion with value for field name
@@ -1748,67 +1113,662 @@ var NewArrayInstr = untypedInstrMaker(
 );
 
 //=============================================================================
-// Medium-Level IR (MIR)
 //
-// Introduction of specialized instruction forms.
-// Type-specialized instruction variants.
-//
-// Introduction of a pointer type.
-// Access to memory representation.
-// Calculation of memory offsets directly.
-// Store and load instructions.
-// Still machine agnostic, no machine-specific instructions or reg. alloc.
+// Arithmetic operations without overflow handling
 //
 //=============================================================================
 
-//====================================================
-// Memory access instructions
-//====================================================
-
 /**
-@class Instruction to load a value from memory
+@class Base class for arithmetic instructions
 @augments IRInstr
 */
-var LoadInstr = instrMaker(
-    'load',
+ArithInstr = function ()
+{
+}
+ArithInstr.prototype = new IRInstr();
+
+/**
+Default initialization function for arithmetic instructions
+*/
+ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2);
+
+    assert (
+        (inputVals[0].type === IRType.BOXED ||
+         inputVals[0].type.isNumberType())
+        &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types'
+    );
+    
+    this.type = inputVals[0].type;
+}
+
+/**
+@class Addition instruction
+@augments ArithInstr
+*/
+var AddInstr = instrMaker(
+    'add',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 2);
+
         assert (
-            inputVals[0].type.isPtrType(),
-            'the first input must be a pointer'
+            (inputVals[0].type === IRType.RAWPTR &&
+             inputVals[1].type === IRType.PLATFORM_INT)
+            ||
+            (
+                (inputVals[0].type === IRType.BOXED ||
+                 inputVals[0].type.isNumberType())
+                &&
+                inputVals[1].type === inputVals[0].type
+            ),
+            'invalid input types'
         );
-        instrMaker.validType(inputVals[1], IRType.INT32);
         
-        this.type = typeParams[0];
-    }
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
 );
 
 /**
-@class Instruction to store a value to memory
-@augments IRInstr
+@class Subtraction instruction
+@augments ArithInstr
 */
-var StoreInstr = instrMaker(
-    'load',
+var SubInstr = instrMaker(
+    'sub',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 3);
+        instrMaker.validNumInputs(inputVals, 2);
+
         assert (
-            inputVals[0].type.isPtrType(),
-            'the first input must be a pointer'
+            (inputVals[0].type === IRType.RAWPTR &&
+             inputVals[1].type === IRType.PLATFORM_INT)
+            ||
+            (inputVals[0].type === IRType.RAWPTR &&
+             inputVals[1].type === IRType.RAWPTR)
+            ||
+            (
+                (inputVals[0].type === IRType.BOXED ||
+                 inputVals[0].type.isNumberType())
+                &&
+                inputVals[1].type === inputVals[0].type
+            ),
+            'invalid input types'
         );
-        instrMaker.validType(inputVals[1], IRType.INT32);
-        instrMaker.validType(inputVals[2], typeParams[0]);
+        
+        if (
+            inputVals[0].type === IRType.RAWPTR && 
+            inputVals[1].type === IRType.RAWPTR
+        )
+            this.type = IRType.PLATFORM_INT
+        else
+            this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Multiplication instruction
+@augments ArithInstr
+*/
+var MulInstr = instrMaker(
+    'mul',
+    undefined,
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Division instruction
+@augments ArithInstr
+*/
+var DivInstr = instrMaker(
+    'div',
+    undefined,
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Modulo instruction
+@augments ArithInstr
+*/
+var ModInstr = instrMaker(
+    'mod',
+    undefined,
+    undefined,
+    new ArithInstr()
+);
+
+//=============================================================================
+//
+// Arithmetic operations with overflow handling
+//
+//=============================================================================
+
+/**
+@class Base class for arithmetic instructions with overflow handling
+@augments IRInstr
+*/
+ArithOvfInstr = function ()
+{
+}
+ArithOvfInstr.prototype = new IRInstr();
+
+/**
+Default initialization function for arithmetic instructions w/ overflow
+*/
+ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2);
+    assert (
+        inputVals[0].type === IRType.PLATFORM_INT &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types'
+    );
+    
+    this.type = inputVals[0].type;
+}
+
+/**
+@class Instruction to add integer values with overflow handling
+@augments ArithOvfInstr
+*/
+var AddOvfInstr = instrMaker(
+    'add_ovf',
+    undefined,
+    ['normal', 'overflow'],
+    new ArithOvfInstr()
+);
+
+/**
+@class Instruction to subtract integer values with overflow handling
+@augments ArithOvfInstr
+*/
+var SubOvfInstr = instrMaker(
+    'sub_ovf',
+    undefined,
+    ['normal', 'overflow'],
+    new ArithOvfInstr()
+);
+
+/**
+@class Instruction to multiply integer values with overflow handling
+@augments ArithOvfInstr
+*/
+var MulOvfInstr = instrMaker(
+    'mul_ovf',
+    undefined,
+    ['normal', 'overflow'],
+    new ArithOvfInstr()
+);
+
+//=============================================================================
+//
+// Bitwise operations
+//
+//=============================================================================
+
+/**
+@class Base class for bitwise operation instructions
+@augments IRInstr
+*/
+BitOpInstr = function ()
+{
+}
+BitOpInstr.prototype = new IRInstr();
+
+/**
+Default initialization function for bitwise operation instructions
+*/
+BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2);
+
+    assert (
+        (inputVals[0].type === IRType.BOXED ||
+         inputVals[0].type.isIntType())
+        &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types'
+    );
+    
+    this.type = inputVals[0].type;
+}
+
+/**
+@class Bitwise NOT instruction
+@augments BitOpInstr
+*/
+var NotInstr = instrMaker(
+    'not',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1);
+
+        assert (
+            (inputVals[0].type === IRType.BOXED ||
+            inputVals[0].type.isIntType()),
+            'invalid input type'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new BitOpInstr()
+);
+
+/**
+@class Bitwise AND instruction
+@augments BitOpInstr
+*/
+var AndInstr = instrMaker(
+    'and',
+    undefined,
+    undefined,
+    new BitOpInstr()
+);
+
+/**
+@class Bitwise OR instruction
+@augments BitOpInstr
+*/
+var OrInstr = instrMaker(
+    'or',
+    undefined,
+    undefined,
+    new BitOpInstr()
+);
+
+/**
+@class Bitwise XOR instruction
+@augments BitOpInstr
+*/
+var XorInstr = instrMaker(
+    'xor',
+    undefined,
+    undefined,
+    new BitOpInstr()
+);
+
+/**
+@class Left shift instruction
+@augments BitOpInstr
+*/
+var LsftInstr = instrMaker(
+    'lsft',
+    undefined,
+    undefined,
+    new BitOpInstr()
+);
+
+/**
+@class Right shift instruction
+@augments BitOpInstr
+*/
+var RsftInstr = instrMaker(
+    'rsft',
+    undefined,
+    undefined,
+    new BitOpInstr()
+);
+
+/**
+@class Unsigned right shift instruction
+@augments BitOpInstr
+*/
+var UrsftInstr = instrMaker(
+    'ursft',
+    undefined,
+    undefined,
+    new BitOpInstr()
+);
+
+//=============================================================================
+//
+// Comparison instructions
+//
+//=============================================================================
+
+/**
+@class Base class for comparison instructions
+@augments IRInstr
+*/
+CompInstr = function ()
+{
+}
+CompInstr.prototype = new IRInstr();
+
+/**
+Default initialization function for comparison instructions
+*/
+CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2);
+
+    assert (
+        (inputVals[0].type === IRType.BOXED ||
+         inputVals[0].type.isNumberType())
+        &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types'
+    );
+    
+    if (inputVals[0].type === IRType.BOXED)
+        this.type = IRType.BOXED;
+    else
+        this.type = IRType.INT8;
+}
+
+/**
+@class Less-than comparison instruction
+@augments CompInstr
+*/
+var LtInstr = instrMaker(
+    'lt',
+    undefined,
+    undefined,
+    new CompInstr()
+);
+
+/**
+@class Less-than-or-equal comparison instruction
+@augments CompInstr
+*/
+var LteInstr = instrMaker(
+    'lte',
+    undefined,
+    undefined,
+    new CompInstr()
+);
+
+/**
+@class Greater-than comparison instruction
+@augments CompInstr
+*/
+var GtInstr = instrMaker(
+    'gt',
+    undefined,
+    undefined,
+    new CompInstr()
+);
+
+/**
+@class Greater-than-or-equal comparison instruction
+@augments CompInstr
+*/
+var GteInstr = instrMaker(
+    'gte',
+    undefined,
+    undefined,
+    new CompInstr()
+);
+
+/**
+@class Equality comparison instruction
+@augments CompInstr
+*/
+var EqInstr = instrMaker(
+    'eq',
+    undefined,
+    undefined,
+    new CompInstr()
+);
+
+/**
+@class Inequality comparison instruction
+@augments CompInstr
+*/
+var NeqInstr = instrMaker(
+    'neq',
+    undefined,
+    undefined,
+    new CompInstr()
+);
+
+/**
+@class Strict-equality comparison instruction
+@augments CompInstr
+*/
+var SeqInstr = untypedInstrMaker(
+    'seq',
+     2,
+    undefined,
+    false,
+    new CompInstr()
+);
+
+/**
+@class Strict-inequality comparison instruction
+@augments CompInstr
+*/
+var NseqInstr = untypedInstrMaker(
+    'nseq',
+     2,
+    undefined,
+    false,
+    new CompInstr()
+);
+
+//=============================================================================
+//
+// Branching instructions
+//
+//=============================================================================
+
+/**
+@class Unconditional jump instruction
+@augments BranchInstr
+*/
+var JumpInstr = untypedInstrMaker(
+    'jump',
+     0,
+    [undefined],
+    true
+);
+
+/**
+@class Function return instruction
+@augments BranchInstr
+*/
+var RetInstr = untypedInstrMaker(
+    'ret',
+     1,
+    undefined,
+    true,
+    new BranchInstr()
+);
+
+/**
+@class If branching instruction
+@augments BranchInstr
+*/
+var IfInstr = instrMaker(
+    'if',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1);
+        assert (
+            inputVals[0].type === IRType.BOXED ||
+            inputVals[0].type === IRType.INT8,
+            'input must be boxed or int8'
+        );
+        instrMaker.validNumBranches(branchTargets, 2);
         
         this.type = IRType.VOID;
-    }
+    },
+    ['then', 'else']
 );
 
-//====================================================
+//=============================================================================
+//
+// Exception-producing and call instructions
+//
+//=============================================================================
+
+/**
+@class Base class for exception-producing instructions
+@augments BranchInstr
+*/
+ExceptInstr = function ()
+{
+}
+ExceptInstr.prototype = new BranchInstr();
+
+/**
+Set the target block of the exception-producing instruction
+*/
+ExceptInstr.prototype.setThrowTarget = function (catchBlock)
+{
+    this.targets[0] = catchBlock;
+}
+
+/**
+Get the target block of the exception-producing instruction
+*/
+ExceptInstr.prototype.getThrowTarget = function ()
+{
+    return this.targets[0]? this.targets[0]:null;
+}
+
+/**
+@class Exception throw to exception handler. Handler may be left undefined for
+interprocedural throw.
+@augments ExceptInstr
+*/
+var ThrowInstr = instrMaker(
+    'throw',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 1);
+        
+        this.type = IRType.VOID;
+    },
+    ['to'],
+    new ExceptInstr()
+);
+
+/**
+@class Base class for call instructions
+@augments ExceptInstr
+*/
+CallInstr = function ()
+{
+}
+CallInstr.prototype = new ExceptInstr();
+
+/**
+Set the continue block of the call instruction
+*/
+CallInstr.prototype.setContTarget = function (contBlock)
+{
+    this.targets[0] = contBlock;
+}
+
+/**
+Set the throw target block of the call instruction
+*/
+CallInstr.prototype.setThrowTarget = function (catchBlock)
+{
+    this.targets = catchBlock? [this.targets[0], catchBlock]:[this.targets[0]];
+}
+
+/**
+Get the throw target block of the call instruction
+*/
+CallInstr.prototype.getThrowTarget = function ()
+{
+    return (this.targets.length > 1)? this.targets[1]:null;
+}
+
+/**
+@class Call with function object reference
+@augments ExceptInstr
+*/
+var CallRefInstr = instrMaker(
+    'call',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, Infinity);
+        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.BOXED;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
+@class Constructor call with function object reference
+@augments CallInstr
+*/
+var ConstructRefInstr = instrMaker(
+    'construct',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1, Infinity);
+        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.BOXED;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
+@class Property set with value for field name
+@augments CallInstr
+*/
+var PutPropValInstr = instrMaker(
+    'put_prop_val',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3);
+        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validType(inputVals[2], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.VOID;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
+@class Property get with value for field name
+@augments CallInstr
+*/
+var GetPropValInstr = instrMaker(
+    'get_prop_val',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2);
+        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.BOXED;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+//=============================================================================
+//
 // Type conversion instructions
-//====================================================
+//
+//=============================================================================
 
 /**
 @class Instruction to unbox a value
@@ -1948,410 +1908,58 @@ var FPToIInstr = instrMaker(
     }
 );
 
-//====================================================
-// Arithmetic operations w/o overflow handling
-//====================================================
-
-/**
-@class Base class for arithmetic instructions
-@augments IRInstr
-*/
-ArithInstr = function ()
-{
-}
-ArithInstr.prototype = new IRInstr();
-
-/**
-Default initialization function for arithmetic instructions
-*/
-ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
-{
-    instrMaker.validNumInputs(inputVals, 2);
-
-    assert (
-        (inputVals[0].type === IRType.BOXED ||
-         inputVals[0].type.isNumberType())
-        &&
-        inputVals[1].type === inputVals[0].type,
-        'invalid input types'
-    );
-    
-    this.type = inputVals[0].type;
-}
-
-// TODO: replace regular add instruction
-var AddInstr = instrMaker(
-    'add',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 2);
-
-        assert (
-            (inputVals[0].type === IRType.RAWPTR &&
-             inputVals[1].type === IRType.PLATFORM_INT)
-            ||
-            (
-                (inputVals[0].type === IRType.BOXED ||
-                 inputVals[0].type.isNumberType())
-                &&
-                inputVals[1].type === inputVals[0].type
-            ),
-            'invalid input types'
-        );
-        
-        this.type = inputVals[0].type;
-    },
-    undefined,
-    new ArithInstr()
-);
-
-// TODO: replace regular sub instruction
-var SubInstr = instrMaker(
-    'sub',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 2);
-
-        assert (
-            (inputVals[0].type === IRType.RAWPTR &&
-             inputVals[1].type === IRType.PLATFORM_INT)
-            ||
-            (inputVals[0].type === IRType.RAWPTR &&
-             inputVals[1].type === IRType.RAWPTR)
-            ||
-            (
-                (inputVals[0].type === IRType.BOXED ||
-                 inputVals[0].type.isNumberType())
-                &&
-                inputVals[1].type === inputVals[0].type
-            ),
-            'invalid input types'
-        );
-        
-        if (
-            inputVals[0].type === IRType.RAWPTR && 
-            inputVals[1].type === IRType.RAWPTR
-        )
-            this.type = IRType.PLATFORM_INT
-        else
-            this.type = inputVals[0].type;
-    },
-    undefined,
-    new ArithInstr()
-);
-
-// TODO: replace regular mul instruction
-var MulInstr = instrMaker(
-    'mul',
-    undefined,
-    undefined,
-    new ArithInstr()
-);
-
-// TODO: replace regular div instruction
-var DivInstr = instrMaker(
-    'div',
-    undefined,
-    undefined,
-    new ArithInstr()
-);
-
-// TODO: replace regular mod instruction
-var ModInstr = instrMaker(
-    'mod',
-    undefined,
-    undefined,
-    new ArithInstr()
-);
-
-//====================================================
-// Bitwise operations
-//====================================================
-
-/**
-@class Base class for bitwise operation instructions
-@augments IRInstr
-*/
-BitOpInstr = function ()
-{
-}
-BitOpInstr.prototype = new IRInstr();
-
-/**
-Default initialization function for bitwise operation instructions
-*/
-BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
-{
-    instrMaker.validNumInputs(inputVals, 2);
-
-    assert (
-        (inputVals[0].type === IRType.BOXED ||
-         inputVals[0].type.isIntType())
-        &&
-        inputVals[1].type === inputVals[0].type,
-        'invalid input types'
-    );
-    
-    this.type = inputVals[0].type;
-}
-
-// TODO: replace regular instruction
-var NotInstr = instrMaker(
-    'not',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 1);
-
-        assert (
-            (inputVals[0].type === IRType.BOXED ||
-            inputVals[0].type.isIntType()),
-            'invalid input type'
-        );
-        
-        this.type = inputVals[0].type;
-    },
-    undefined,
-    new BitOpInstr()
-);
-
-// TODO: replace regular instruction
-var AndInstr = instrMaker(
-    'and',
-    undefined,
-    undefined,
-    new BitOpInstr()
-);
-
-// TODO: replace regular instruction
-var OrInstr = instrMaker(
-    'or',
-    undefined,
-    undefined,
-    new BitOpInstr()
-);
-
-// TODO: replace regular instruction
-var XorInstr = instrMaker(
-    'xor',
-    undefined,
-    undefined,
-    new BitOpInstr()
-);
-
-// TODO: replace regular instruction
-var LsftInstr = instrMaker(
-    'lsft',
-    undefined,
-    undefined,
-    new BitOpInstr()
-);
-
-// TODO: replace regular instruction
-var RsftInstr = instrMaker(
-    'rsft',
-    undefined,
-    undefined,
-    new BitOpInstr()
-);
-
-// TODO: replace regular instruction
-var UrsftInstr = instrMaker(
-    'ursft',
-    undefined,
-    undefined,
-    new BitOpInstr()
-);
-
-//====================================================
-// Comparison instructions
-//====================================================
-
-/**
-@class Base class for comparison instructions
-@augments IRInstr
-*/
-CompInstr = function ()
-{
-}
-CompInstr.prototype = new IRInstr();
-
-/**
-Default initialization function for comparison instructions
-*/
-CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
-{
-    instrMaker.validNumInputs(inputVals, 2);
-
-    assert (
-        (inputVals[0].type === IRType.BOXED ||
-         inputVals[0].type.isNumberType())
-        &&
-        inputVals[1].type === inputVals[0].type,
-        'invalid input types'
-    );
-    
-    if (inputVals[0].type === IRType.BOXED)
-        this.type = IRType.BOXED;
-    else
-        this.type = IRType.INT8;
-}
-
-// TODO: replace regular instruction
-var LtInstr = instrMaker(
-    'lt',
-    undefined,
-    undefined,
-    new CompInstr()
-);
-
-// TODO: replace regular instruction
-var LteInstr = instrMaker(
-    'lte',
-    undefined,
-    undefined,
-    new CompInstr()
-);
-
-// TODO: replace regular instruction
-var GtInstr = instrMaker(
-    'gt',
-    undefined,
-    undefined,
-    new CompInstr()
-);
-
-// TODO: replace regular instruction
-var GteInstr = instrMaker(
-    'gte',
-    undefined,
-    undefined,
-    new CompInstr()
-);
-
-// TODO: replace regular instruction
-var EqInstr = instrMaker(
-    'eq',
-    undefined,
-    undefined,
-    new CompInstr()
-);
-
-// TODO: replace regular instruction
-var NeqInstr = instrMaker(
-    'neq',
-    undefined,
-    undefined,
-    new CompInstr()
-);
-
-/**
-@class Strict-equality comparison instruction
-@augments IRInstr
-*/
-var SeqInstr = untypedInstrMaker(
-    'seq',
-     2,
-    undefined,
-    false,
-    new CompInstr()
-);
-
-/**
-@class Strict-inequality comparison instruction
-@augments IRInstr
-*/
-var NseqInstr = untypedInstrMaker(
-    'nseq',
-     2,
-    undefined,
-    false,
-    new CompInstr()
-);
-
-//====================================================
-// Branch instructions
-//====================================================
-
-/**
-@class Specialized if instruction taking only booleans as input
-@augments BranchInstr
-*/
-var IfBoolInstr = TypedInstrMaker(
-    'if',
-    undefined,
-    [
-        [IRType.INT8]
-    ],
-    IRType.VOID,
-    ['then', 'else']
-);
-
-/**
-@class Instruction to add integer values with overflow handling
-@augments BranchInstr
-*/
-var IAddOvfInstr = TypedInstrMaker(
-    'add_ovf',
-    undefined,
-    [
-        [IRType.PLATFORM_INT, IRType.PLATFORM_INT]
-    ],
-    [
-        IRType.PLATFORM_INT
-    ],
-    ['normal', 'overflow']
-);
-
-/**
-@class Instruction to subtract integer values with overflow handling
-@augments BranchInstr
-*/
-var ISubOvfInstr = TypedInstrMaker(
-    'sub_ovf',
-    undefined,
-    [
-        [IRType.PLATFORM_INT, IRType.PLATFORM_INT]
-    ],
-    [
-        IRType.PLATFORM_INT
-    ],
-    ['normal', 'overflow']
-);
-
-/**
-@class Instruction to multiply integer values with overflow handling
-@augments BranchInstr
-*/
-var IMulOvfInstr = TypedInstrMaker(
-    'mul_ovf',
-    undefined,
-    [
-        [IRType.PLATFORM_INT, IRType.PLATFORM_INT]
-    ],
-    [
-        IRType.PLATFORM_INT
-    ],
-    ['normal', 'overflow']
-);
-
 //=============================================================================
-// Low-Level IR (LIR)
 //
-// Introduction of a pointer type.
-// Access to memory representation.
-// Calculation of memory offsets directly.
-// Store and load instructions.
-// Still machine agnostic. No machine-specific instructions or reg. alloc.
+// Memory access instructions
 //
 //=============================================================================
 
-// TODO: complete this section
-// Is LIR actually needed?
+/**
+@class Instruction to load a value from memory
+@augments IRInstr
+*/
+var LoadInstr = instrMaker(
+    'load',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumParams(typeParams, 1);
+        instrMaker.validNumInputs(inputVals, 2);
+        assert (
+            inputVals[0].type.isPtrType(),
+            'the first input must be a pointer'
+        );
+        instrMaker.validType(inputVals[1], IRType.INT32);
+        
+        this.type = typeParams[0];
+    }
+);
 
-// TODO: LIR instructions, even closer to machine arch? Not SSA?
+/**
+@class Instruction to store a value to memory
+@augments IRInstr
+*/
+var StoreInstr = instrMaker(
+    'load',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumParams(typeParams, 1);
+        instrMaker.validNumInputs(inputVals, 3);
+        assert (
+            inputVals[0].type.isPtrType(),
+            'the first input must be a pointer'
+        );
+        instrMaker.validType(inputVals[1], IRType.INT32);
+        instrMaker.validType(inputVals[2], typeParams[0]);
+        
+        this.type = IRType.VOID;
+    }
+);
 
-// TODO: MoveInstr? LIR only
-// No SSA output
+//=============================================================================
+//
+// Low-Level IR instructions (LIR)
+//
+//=============================================================================
 
 /**
 @class Move a value between two registers or between a register and a memory 

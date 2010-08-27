@@ -562,12 +562,12 @@ ControlFlowGraph.prototype.simplify = function ()
             //
 
             // If this block has only one successor, which has only one predecessor
-            // and the block is not terminated by a throw instruction
+            // and the block is not terminated by an exception-producing instruction
             else if (
                 block.succs.length == 1 && 
                 block.succs[0].preds.length == 1 &&
                 block !== block.succs[0] &&
-                !(block.getLastInstr() instanceof ThrowInstr)
+                !(block.getLastInstr() instanceof ExceptInstr)
             )
             {
                 //print('merging block with one dest: ' + block.getBlockName());
@@ -657,11 +657,11 @@ ControlFlowGraph.prototype.simplify = function ()
             //
 
             // If this block has only one successor, no instructions but a branch, 
-            // and the block is not terminated by a throw instruction
+            // and the block is not terminated by an exception-producing instruction
             else if (
                 block.succs.length == 1 && 
                 block.instrs.length == 1 &&
-                !(block.getLastInstr() instanceof ThrowInstr)
+                !(block.getLastInstr() instanceof ExceptInstr)
             )
             {
                 var succ = block.succs[0];

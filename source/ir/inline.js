@@ -26,9 +26,8 @@ iir =
     ftoi        : FPToIInstr,
 
     // Branch instructions
-    ifb         : IfBoolInstr,
-    add_ovf     : IAddOvfInstr,
-    sub_ovf     : ISubOvfInstr,
-    mul_ovf     : IMulOvfInstr    
+    add_ovf     : AddOvfInstr,
+    sub_ovf     : SubOvfInstr,
+    mul_ovf     : MulOvfInstr    
 }
 
