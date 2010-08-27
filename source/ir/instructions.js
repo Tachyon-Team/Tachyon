@@ -1282,51 +1282,15 @@ ArgValInstr.prototype.copy = function ()
     return this.baseCopy(newInstr);
 };
 
-/**
-@class Arithmetic add instruction
-@augments IRInstr
-*/
-var AddInstr = untypedInstrMaker(
-    'add',
-     2
-);
 
-/**
-@class Arithmetic subtraction instruction
-@augments IRInstr
-*/
-var SubInstr = untypedInstrMaker(
-    'sub',
-     2
-);
 
-/**
-@class Arithmetic multiply instruction
-@augments IRInstr
-*/
-var MulInstr = untypedInstrMaker(
-    'mul',
-     2
-);
 
-/**
-@class Arithmetic divide instruction
-@augments IRInstr
-*/
-var DivInstr = untypedInstrMaker(
-    'div',
-     2
-);
 
-/**
-@class Arithmetic modulo instruction
-@augments IRInstr
-*/
-var ModInstr = untypedInstrMaker(
-    'mod',
-     2
-);
 
+
+
+
+// TODO: this instruction has no typed equivalend, like Neq, Nseq
 /**
 @class Logical negation instruction
 @augments IRInstr
@@ -1334,141 +1298,6 @@ var ModInstr = untypedInstrMaker(
 var LogNotInstr = untypedInstrMaker(
     'not',
      1
-);
-
-/**
-@class Bitwise NOT instruction
-@augments IRInstr
-*/
-var BitNotInstr = untypedInstrMaker(
-    'not',
-     1
-);
-
-/**
-@class Bitwise AND instruction
-@augments IRInstr
-*/
-var BitAndInstr = untypedInstrMaker(
-    'and',
-     2
-);
-
-/**
-@class Bitwise AND instruction
-@augments IRInstr
-*/
-var BitOrInstr = untypedInstrMaker(
-    'and',
-     2
-);
-
-/**
-@class Bitwise XOR instruction
-@augments IRInstr
-*/
-var BitXorInstr = untypedInstrMaker(
-    'xor',
-     2
-);
-
-/**
-@class Left shift instruction
-@augments IRInstr
-*/
-var LsftInstr = untypedInstrMaker(
-    'lsft',
-     2
-);
-
-/**
-@class Right shift instruction
-@augments IRInstr
-*/
-var RsftInstr = untypedInstrMaker(
-    'rsft',
-     2
-);
-
-/**
-@class Unsigned right shift instruction
-@augments IRInstr
-*/
-var UrsftInstr = untypedInstrMaker(
-    'ursft',
-     2
-);
-
-/**
-@class Less-than comparison instruction
-@augments IRInstr
-*/
-var LtInstr = untypedInstrMaker(
-    'lt',
-     2
-);
-
-/**
-@class Less-than-or-equal comparison instruction
-@augments IRInstr
-*/
-var LteInstr = untypedInstrMaker(
-    'lte',
-     2
-);
-
-/**
-@class Greater-than comparison instruction
-@augments IRInstr
-*/
-var GtInstr = untypedInstrMaker(
-    'gt',
-     2
-);
-
-/**
-@class Greater-than-or-equal comparison instruction
-@augments IRInstr
-*/
-var GteInstr = untypedInstrMaker(
-    'gte',
-     2
-);
-
-/**
-@class Equality comparison instruction
-@augments IRInstr
-*/
-var EqInstr = untypedInstrMaker(
-    'eq',
-     2
-);
-
-/**
-@class Inequality comparison instruction
-@augments IRInstr
-*/
-var NeqInstr = untypedInstrMaker(
-    'neq',
-     2
-);
-
-/**
-@class Strict-equality comparison instruction
-@augments IRInstr
-*/
-var SeqInstr = untypedInstrMaker(
-    'seq',
-     2
-);
-
-/**
-@class Strict-inequality comparison instruction
-@augments IRInstr
-*/
-var NseqInstr = untypedInstrMaker(
-    'nseq',
-     2
 );
 
 /**
@@ -1488,6 +1317,16 @@ var InstOfInstr = untypedInstrMaker(
     'instanceof',
      2
 );
+
+
+
+
+
+
+
+
+
+
 
 /**
 @class Instruction to get an array containing the property names of an object
@@ -2225,189 +2064,8 @@ var ModInstr = instrMaker(
     new ArithInstr()
 );
 
-/**
-@class Instruction to add integer values without overflow handling
-@augments IRInstr
-*/
-var IAddInstr = TypedInstrMaker(
-    'add',
-    undefined,
-    [
-        [IRType.RAWPTR, IRType.PLATFORM_INT],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.RAWPTR,
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to subtract integer values without overflow handling
-@augments IRInstr
-*/
-var ISubInstr = TypedInstrMaker(
-    'sub',
-    undefined,
-    [
-        [IRType.RAWPTR, IRType.PLATFORM_INT],
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.RAWPTR,
-        IRType.PLATFORM_INT,
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to multiply integer values without overflow handling
-@augments IRInstr
-*/
-var IMulInstr = TypedInstrMaker(
-    'mul',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to divide integer values
-@augments IRInstr
-*/
-var IDivInstr = TypedInstrMaker(
-    'div',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the modulo of integer values
-@augments IRInstr
-*/
-var IModInstr = TypedInstrMaker(
-    'mod',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to add float64 values
-@augments IRInstr
-*/
-var FAddInstr = TypedInstrMaker(
-    'add',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64],
-    ],
-    [
-        IRType.FLOAT64
-    ]
-);
-
-/**
-@class Instruction to subtract float64 values
-@augments IRInstr
-*/
-var FSubInstr = TypedInstrMaker(
-    'sub',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64],
-    ],
-    [
-        IRType.FLOAT64
-    ]
-);
-
-/**
-@class Instruction to multiply float64 values
-@augments IRInstr
-*/
-var FMulInstr = TypedInstrMaker(
-    'mul',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64],
-    ],
-    [
-        IRType.FLOAT64
-    ]
-);
-
-/**
-@class Instruction to divide float64 values
-@augments IRInstr
-*/
-var FDivInstr = TypedInstrMaker(
-    'div',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64],
-    ],
-    [
-        IRType.FLOAT64
-    ]
-);
-
 //====================================================
-// Bitwise integer operations
+// Bitwise operations
 //====================================================
 
 /**
@@ -2504,174 +2162,6 @@ var UrsftInstr = instrMaker(
     new BitOpInstr()
 );
 
-
-
-
-
-
-
-
-/**
-@class Instruction to compute the bitwise NOT of integer values
-@augments IRInstr
-*/
-var INotInstr = TypedInstrMaker(
-    'not',
-    undefined,
-    [
-        [IRType.UINT16],
-        [IRType.UINT32],
-        [IRType.INT16],
-        [IRType.INT32],
-        [IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the bitwise AND of integer values
-@augments IRInstr
-*/
-var IAndInstr = TypedInstrMaker(
-    'and',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the bitwise OR of integer values
-@augments IRInstr
-*/
-var IOrInstr = TypedInstrMaker(
-    'or',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the bitwise XOR of integer values
-@augments IRInstr
-*/
-var IXorInstr = TypedInstrMaker(
-    'xor',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the left shift of integer values
-@augments IRInstr
-*/
-var ILsftInstr = TypedInstrMaker(
-    'lsft',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the right shift of integer values
-@augments IRInstr
-*/
-var IRsftInstr = TypedInstrMaker(
-    'rsft',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
-/**
-@class Instruction to compute the unsigned right shift of integer values
-@augments IRInstr
-*/
-var IUrsftInstr = TypedInstrMaker(
-    'ursft',
-    undefined,
-    [
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    [
-        IRType.UINT16,
-        IRType.UINT32,
-        IRType.INT16,
-        IRType.INT32,
-        IRType.INT64
-    ]
-);
-
 //====================================================
 // Comparison instructions
 //====================================================
@@ -2754,196 +2244,28 @@ var NeqInstr = instrMaker(
     new CompInstr()
 );
 
-// TODO: keep untyped seq and nseq, make them descend from CompInstr
-
-
-
 /**
-@class Instruction to perform a less-than comparison on integer values
+@class Strict-equality comparison instruction
 @augments IRInstr
 */
-var ILtInstr = TypedInstrMaker(
-    'ilt',
+var SeqInstr = untypedInstrMaker(
+    'seq',
+     2,
     undefined,
-    [
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    IRType.INT8
+    false,
+    new CompInstr()
 );
 
 /**
-@class Instruction to perform a less-than-or-equal comparison on integer values
+@class Strict-inequality comparison instruction
 @augments IRInstr
 */
-var ILteInstr = TypedInstrMaker(
-    'ilte',
+var NseqInstr = untypedInstrMaker(
+    'nseq',
+     2,
     undefined,
-    [
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform a greater-than comparison on integer values
-@augments IRInstr
-*/
-var IGtInstr = TypedInstrMaker(
-    'igt',
-    undefined,
-    [
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform a greater-than-or-equal comparison on integer values
-@augments IRInstr
-*/
-var IGteInstr = TypedInstrMaker(
-    'igte',
-    undefined,
-    [
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform an equality comparison on integer values
-@augments IRInstr
-*/
-var IEqInstr = TypedInstrMaker(
-    'ieq',
-    undefined,
-    [
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.OBJPTR, IRType.OBJPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform an inequality comparison on integer values
-@augments IRInstr
-*/
-var INeqInstr = TypedInstrMaker(
-    'ineq',
-    undefined,
-    [
-        [IRType.RAWPTR, IRType.RAWPTR],
-        [IRType.OBJPTR, IRType.OBJPTR],
-        [IRType.UINT16, IRType.UINT16],
-        [IRType.UINT32, IRType.UINT32],
-        [IRType.INT16, IRType.INT16],
-        [IRType.INT32, IRType.INT32],
-        [IRType.INT64, IRType.INT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform a less-than comparison on floating-point values
-@augments IRInstr
-*/
-var FLtInstr = TypedInstrMaker(
-    'flt',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform a less-than-or-equal comparison on floating-point values
-@augments IRInstr
-*/
-var FLteInstr = TypedInstrMaker(
-    'flte',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform a greater-than comparison on floating-point values
-@augments IRInstr
-*/
-var FGtInstr = TypedInstrMaker(
-    'fgt',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform a greater-than-or-equal comparison on floating-point values
-@augments IRInstr
-*/
-var FGteInstr = TypedInstrMaker(
-    'fgte',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform an equality comparison on floating-point values
-@augments IRInstr
-*/
-var FEqInstr = TypedInstrMaker(
-    'feq',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64]
-    ],
-    IRType.INT8
-);
-
-/**
-@class Instruction to perform an inequality comparison on floating-point values
-@augments IRInstr
-*/
-var FNeqInstr = TypedInstrMaker(
-    'fneq',
-    undefined,
-    [
-        [IRType.FLOAT64, IRType.FLOAT64]
-    ],
-    IRType.INT8
+    false,
+    new CompInstr()
 );
 
 //====================================================

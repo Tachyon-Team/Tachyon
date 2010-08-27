@@ -25,40 +25,6 @@ iir =
     itof        : IToFPInstr,
     ftoi        : FPToIInstr,
 
-    // Arithmetic operations w/o overflow handling
-    iadd        : IAddInstr,
-    isub        : ISubInstr,
-    imul        : IMulInstr,
-    idiv        : IDivInstr,
-    imod        : IModInstr,
-    fadd        : FAddInstr,
-    fsub        : FSubInstr,
-    fmul        : FMulInstr,
-    fdiv        : FDivInstr,
-
-    // Bitwise integer operations
-    inot        : INotInstr,
-    iand        : IAndInstr,
-    ior         : IOrInstr,
-    ixor        : IXorInstr,
-    ilsft       : ILsftInstr,
-    irsft       : IRsftInstr,
-    iursft      : IUrsftInstr,
-
-    // Comparison instructions
-    ilt         : ILtInstr,
-    ilte        : ILteInstr,
-    igt         : IGtInstr,
-    igte        : IGteInstr,
-    ieq         : IEqInstr,
-    ineq        : INeqInstr,
-    flt         : FLtInstr,
-    flte        : FLteInstr,
-    fgt         : FGtInstr,
-    fgte        : FGteInstr,
-    feq         : FEqInstr,
-    fneq        : FNeqInstr,
-
     // Branch instructions
     ifb         : IfBoolInstr,
     add_ovf     : IAddOvfInstr,

@@ -2284,19 +2284,19 @@ function opToIR(context)
         break;
 
         case '~ x':
-        opGen(BitNotInstr);
+        opGen(NotInstr);
         break;
 
         case 'x & y':
-        opGen(BitAndInstr);
+        opGen(AndInstr);
         break;
 
         case 'x | y':
-        opGen(BitOrInstr);
+        opGen(OrInstr);
         break;
 
         case 'x ^ y':
-        opGen(BitXorInstr);
+        opGen(XorInstr);
         break;
 
         case 'x << y':
