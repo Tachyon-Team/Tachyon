@@ -19,7 +19,12 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: inlining specialization
 
+// TODO: implement callHandlerInstr
+// - handler IRFunction object
+// - arguments (IRValue)
 
+// TODO: parse handlers.js here
+// Beware of metacircularity!
 
 function lowerIRUnit(irUnit)
 {
