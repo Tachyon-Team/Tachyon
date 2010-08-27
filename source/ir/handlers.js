@@ -106,6 +106,13 @@ function GetPropValHandler(obj, propName)
     return undefined;
     */
 
+
+    var v1 = iir.unbox(IRType.PLATFORM_INT, obj);
+    var v2 = iir.unbox(IRType.PLATFORM_INT, propName);
+    var v3 = v1 + v2;
+
+
+    /*
     // Compute the hash for the property
     // Boxed value, may be a string or an int
     var propHash = iir.unbox(IRType.PLATFORM_INT, computeHash(propName));
@@ -117,10 +124,10 @@ function GetPropValHandler(obj, propName)
         var objPtr = iir.unbox(IRType.OBJPTR, obj);
 
         // Get a pointer to the hash table
-        var tblPtr = iir.obj_load(IRType.OBJPTR, objPtr, OBJ_HASH_PTR_OFFSET);
+        var tblPtr = iir.load(IRType.OBJPTR, objPtr, OBJ_HASH_PTR_OFFSET);
 
         // Get the size of the hash table
-        var tblSize = iir.obj_load(IRType.PLATFORM_INT, objPtr, OBJ_HASH_SIZE_OFFSET);
+        var tblSize = iir.load(IRType.PLATFORM_INT, objPtr, OBJ_HASH_SIZE_OFFSET);
 
         // Get the hash table index for this hash value
         var hashIndex = iir.imod(propHash, tblSize);
@@ -131,7 +138,7 @@ function GetPropValHandler(obj, propName)
             // Get the key value at this hash slot
             //var keyVal = iir.obj_load(IRType.BOXED, tblPtr, iir.imul(hashIndex, OBJ_HASH_ENTRY_SIZE));
 
-            /*
+            
             // If this is the key we want
             if (keyVal === propName)
             {
@@ -152,12 +159,13 @@ function GetPropValHandler(obj, propName)
 
             // Move to the next hash table slot
             hashIndex = (hashIndex + OBJ_HASH_ENTRY_SIZE) % tblSize;
-            */
+            
         }
 
         // Move up in the prototype chain
-        var obj = iir.obj_load(IRType.BOXED, objPtr, OBJ_PROTO_PTR_OFFSET);
+        var obj = iir.load(IRType.BOXED, objPtr, OBJ_PROTO_PTR_OFFSET);
     }
+    */
 
     // Property not found
     return undefined;

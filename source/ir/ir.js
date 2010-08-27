@@ -285,9 +285,7 @@ function stmtListToIRFunc(
             // Create a closure for the function
             var closVal = bodyContext.addInstr(
                 new MakeClosInstr(
-                    nestFunc,
-                    globalObj,
-                    closVals
+                    [nestFunc, globalObj].concat(closVals)
                 )
             );
 
