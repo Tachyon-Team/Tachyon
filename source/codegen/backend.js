@@ -179,8 +179,9 @@ backend.listing = function (codeBlock)
 backend.execute = function (codeBlock)
 {
     var block = codeBlock.assembleToMachineCodeBlock(); // assemble it
-    print(execMachineCodeBlock(block)); // execute the code generated
+    var x = execMachineCodeBlock(block); // execute the code generated
     freeMachineCodeBlock(block);
+    return x;
 };
 
 

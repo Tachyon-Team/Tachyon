@@ -41,6 +41,7 @@ TEST_SPEC_SRCS =            \
     utility/tests/*.js      \
     ir/tests/*.js           \
     codegen/tests/*.js      \
+    programs/tests/*.js      \
     tests/testmain.js
 
 # Main target source files

@@ -964,7 +964,7 @@ allocator.orderBlocks = function (cfg)
         var branchInstr = block.getLastInstr();
 
         // If the branch can throw to an exception handler, get its throw target
-        var throwTarget = (branchInstr instanceof ThrowInstr)? branchInstr.getThrowTarget():null;
+        var throwTarget = (branchInstr instanceof ExceptInstr)? branchInstr.getThrowTarget():null;
 
         // For each successor
         for (var i = 0; i < block.succs.length; ++i)
@@ -1170,7 +1170,7 @@ allocator.numberInstrs = function (cfg, order)
                 // Since they all appear at the beginning of the block,
                 // not incrementing should garantee an identical number
                 instrNb = nextNo;
-            } else if (instr instanceof CallRefInstr)
+            } else if (instr instanceof CallInstr)
             {
                 // For calls, we need to increment by twice the value
                 // to later separate arguments use position from return value
@@ -1283,7 +1283,7 @@ allocator.liveIntervals = function (cfg, order)
 
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
-                if (instr instanceof CallRefInstr)
+                if (instr instanceof CallInstr)
                 {
                     // TODO: Make the regHint parametrizable
                     instr.regAlloc.interval.regHint = 0;
@@ -1307,7 +1307,7 @@ allocator.liveIntervals = function (cfg, order)
                 // Make the use live from the start of the block to this instruction
                 //print( use.regAlloc.interval);
 
-                if (instr instanceof CallRefInstr)
+                if (instr instanceof CallInstr)
                 {
                     // For calls, we separate argument position from return
                     // position to later introduce a fixed interval between 
@@ -1433,7 +1433,7 @@ allocator.fixedIntervals = function (cfg, physicalRegs)
 
     for (it = cfg.getInstrItr(); it.valid(); it.next())
     {
-        if (it.get() instanceof CallRefInstr)
+        if (it.get() instanceof CallInstr)
         {
             // Add a fixed interval between the arguments position
             // and the return value position
@@ -1817,7 +1817,7 @@ allocator.assign = function (cfg)
 
             if (opnd instanceof IRInstr)
             {
-                if (instr instanceof CallRefInstr)
+                if (instr instanceof CallInstr)
                 {
                     opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
                 } else                 
