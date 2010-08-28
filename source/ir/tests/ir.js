@@ -99,6 +99,19 @@ tests.ir.arrayExpr = function ()
 }
 
 /**
+Arithmetic expressions
+*/
+tests.ir.arithExprs = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            var o = a + b * (c - d) % (e / f);  \
+            print(o);                           \
+        "
+    );
+}
+
+/**
 While loop statement
 */
 tests.ir.whileStmt = function ()

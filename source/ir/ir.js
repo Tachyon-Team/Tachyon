@@ -285,9 +285,7 @@ function stmtListToIRFunc(
             // Create a closure for the function
             var closVal = bodyContext.addInstr(
                 new MakeClosInstr(
-                    nestFunc,
-                    globalObj,
-                    closVals
+                    [nestFunc, globalObj].concat(closVals)
                 )
             );
 
@@ -1696,30 +1694,16 @@ function exprToIR(context)
         var funcContext = argsContext.pursue(astExpr.expr);
         exprToIR(funcContext);
 
-        // Create a basic block for the call continuation
-        var contBlock = context.cfg.getNewBlock('call_cont');
-
-        // Create the construct instruction
-        var exprVal = funcContext.addInstr(
+        // Create the call instruction
+        var exprVal = insertCallIR(
+            funcContext,
             new ConstructRefInstr(
-                funcContext.getOutValue(),
-                argVals,
-                contBlock
+                [funcContext.getOutValue()].concat(argVals)
             )
         );
 
-        // If we are in a try block
-        if (context.throwList)
-        {
-            // Bridge the last context
-            funcContext.bridge();
-
-            // Add the new context to the list of throw contexts
-            context.throwList.push(funcContext);
-        }
-
         // Set the output
-        context.setOutput(contBlock, exprVal);
+        context.setOutput(funcContext.getExitBlock(), exprVal);
     }
 
     else if (astExpr instanceof CallExpr)
@@ -1795,10 +1779,7 @@ function exprToIR(context)
         var exprVal = insertCallIR(
             lastContext,
             new CallRefInstr(
-                funcVal,
-                thisVal,
-                argVals,
-                contBlock
+                [funcVal, thisVal].concat(argVals)
             )
         );
 
@@ -2286,19 +2267,19 @@ function opToIR(context)
         break;
 
         case '~ x':
-        opGen(BitNotInstr);
+        opGen(NotInstr);
         break;
 
         case 'x & y':
-        opGen(BitAndInstr);
+        opGen(AndInstr);
         break;
 
         case 'x | y':
-        opGen(BitOrInstr);
+        opGen(OrInstr);
         break;
 
         case 'x ^ y':
-        opGen(BitXorInstr);
+        opGen(XorInstr);
         break;
 
         case 'x << y':
@@ -2869,8 +2850,8 @@ function errorToIR(context, throwCtx, errorCtor, errorMsg)
     // Create an error object exception
     var excVal = throwCtx.addInstr(
         new ConstructRefInstr(
-            ConstValue.getConst(errorCtor),
-            [ConstValue.getConst(errorMsg)],
+            ConstValue.getConst(errorCtor), 
+            ConstValue.getConst(errorMsg),
             contBlock
         ),
         'excVal'
