@@ -1341,6 +1341,16 @@ allocator.liveIntervals = function (cfg, order)
 
                     use.regAlloc.interval.addUsePos(pos,
                                         allocator.usePos.registerFlag.REQUIRED);
+                } else if ( instr instanceof GetPropValInstr)
+                {
+
+                    use.regAlloc.interval.addUsePos(pos,
+                                        allocator.usePos.registerFlag.REQUIRED);
+                } else if ( instr instanceof PutPropValInstr)
+                {
+
+                    use.regAlloc.interval.addUsePos(pos,
+                                        allocator.usePos.registerFlag.REQUIRED);
                 } else
                 {
                     use.regAlloc.interval.addUsePos(pos);
