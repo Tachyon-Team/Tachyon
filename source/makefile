@@ -26,6 +26,8 @@ BASE_SRCS =                 \
     codegen/asm.js          \
     codegen/asm-x86.js      \
     codegen/linearscan.js   \
+    codegen/backend.js      \
+    codegen/ir-to-asm-x86.js\
     jslib/errors.js
 
 # Main-specific source files
