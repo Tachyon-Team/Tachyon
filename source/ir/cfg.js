@@ -1078,7 +1078,7 @@ Ensure iterator is still on a valid item.  Ex: Not at the end
 */
 ControlFlowGraph.prototype.getEdgeItr.prototype.valid = function ()
 {
-    return this.predIt.valid(); 
+    return this.predIt.valid() && this.succIt.valid(); 
 };
 
 /**
