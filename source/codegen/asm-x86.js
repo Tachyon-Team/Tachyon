@@ -275,6 +275,17 @@ x86.Assembler.prototype.immediateValue.prototype = x86.Assembler.obj();
 /** x86 object type */
 x86.Assembler.prototype.immediateValue.prototype.type  = x86.type.IMM_VAL;
 
+x86.Assembler.prototype.immediateValue.prototype.toString = function (verbose)
+{
+    if (verbose === true && this.__proto__ !== undefined)
+    {
+        return this.__proto__.toString(true); 
+    } else
+    {
+        return String(this.value);
+    }
+};
+
 /** 
     Returns a new memory object. Note: the lower case constructor
     means new is not necessary to create an object of this class.
@@ -313,6 +324,21 @@ x86.Assembler.prototype.memory = function ( disp, base, index, scale )
 };
 x86.Assembler.prototype.memory.prototype        = x86.Assembler.obj();
 x86.Assembler.prototype.memory.prototype.type   = x86.type.MEM;
+
+x86.Assembler.prototype.memory.prototype.toString = function (verbose)
+{
+    if (verbose === true && this.__proto__ !== undefined)
+    {
+        return this.__proto__.toString(true); 
+    } else
+    {
+        return "mem(" + 
+               (this.disp !== 0 ? this.disp + "," : "") +
+                this.base + 
+               (this.index !== null ? "," + this.index : "") +
+               (this.scale !== 0 ? "," + this.scale : "") + ")";
+    }
+};
 
 /** @private Undocumented until found useful */
 x86.Assembler.prototype.global = function ( name, offset )
@@ -354,6 +380,17 @@ x86.Assembler.prototype.register = function ( name, value )
 };
 x86.Assembler.prototype.register.prototype = x86.Assembler.obj();
 x86.Assembler.prototype.register.prototype.type = x86.type.REG;
+
+x86.Assembler.prototype.register.prototype.toString = function (verbose)
+{
+    if (verbose === true && this.__proto__ !== undefined)
+    {
+        return this.__proto__.toString(true); 
+    } else
+    {
+        return this.name.toUpperCase();
+    }
+};
 
 /** @private cache of registers */
 x86.Assembler.prototype.register.registers = [];
