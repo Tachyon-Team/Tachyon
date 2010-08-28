@@ -12,30 +12,21 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    //var filename = 'parser/tests/test4.js';
-    var filename = 'ir/handlers.js';
+    var filename = 'parser/tests/testfib.js';
     var port = new File_input_port(filename);
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();
     var normalized_ast = ast_normalize(ast);
+    
+    var ir = unitToIR(normalized_ast);
 
-    pp(normalized_ast); // pretty-print AST
-    print('\n');
+    //pp(normalized_ast); // pretty-print AST
+    //print('\n');
 
-    ir = unitToIR(normalized_ast);
-
-    print(ir);
-
-    /*
-    var cfg = ir.childFuncs[0].virginCFG;
-    var order = orderBlocks(cfg);
-    numberInstrs(cfg, order);
-    liveIntervals(cfg, order);
-    */
-
-
-
-}
+    var codeblock = backend.compile(ir, print);
+    print(backend.listing(codeblock));
+    backend.execute(codeblock);
+};
 
 testIR();
 
