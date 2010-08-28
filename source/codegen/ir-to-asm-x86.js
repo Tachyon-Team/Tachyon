@@ -313,6 +313,8 @@ irToAsm.translator.prototype.ir_get_prop_val = function (opnds, instr)
 {
     const obj = opnds[0];
     const dest = instr.regAlloc.dest;
+    const targets = instr.targets; 
+    const continue_label = this.label(targets[0]);
 
     if (dest === null)
     {
@@ -329,8 +331,8 @@ irToAsm.translator.prototype.ir_get_prop_val = function (opnds, instr)
     mov(mem(G_VALUE_OFFSET, irToAsm.config.scratch), irToAsm.config.scratch).
 
     label(cont).
-    mov(irToAsm.config.scratch, dest);
-
+    mov(irToAsm.config.scratch, dest).
+    jmp(continue_label);
 
 };
 
@@ -376,6 +378,8 @@ irToAsm.translator.prototype.ir_put_prop_val = function (opnds, instr)
     const obj = opnds[0];
     const key = opnds[1];
     const value = opnds[2];
+    const targets = instr.targets; 
+    const continue_label = this.label(targets[0]);
 
     var loop = this.asm.labelObj();
     var found = this.asm.labelObj();
@@ -392,7 +396,8 @@ irToAsm.translator.prototype.ir_put_prop_val = function (opnds, instr)
     add($(G_ENTRY_LENGTH), mem(G_NEXT_OFFSET, obj), G_NEXT_OFFSET_WIDTH). 
     mov(key, mem(G_KEY_OFFSET, irToAsm.config.scratch), G_KEY_WIDTH).     // Add entry key
     label(found).                          
-    mov(value, mem(G_VALUE_OFFSET, irToAsm.config.scratch), G_VALUE_WIDTH); // Add/Update the entry value
+    mov(value, mem(G_VALUE_OFFSET, irToAsm.config.scratch), G_VALUE_WIDTH). // Add/Update the entry value
+    jmp(continue_label);
 
 };
 
