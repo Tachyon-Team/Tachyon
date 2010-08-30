@@ -23,6 +23,7 @@ BASE_SRCS =                 \
     ir/functions.js         \
     ir/handlers.js          \
     ir/ir.js                \
+    ir/lowering.js          \
     codegen/asm.js          \
     codegen/asm-x86.js      \
     codegen/linearscan.js   \

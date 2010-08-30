@@ -18,13 +18,18 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: consider eliminating untyped if?
+// TODO: Introduce tachyon code compilation flag in context?
+// - Allows IIR, uses named constants
+// - Need to give constant values a type
 
 /**
-Convert an AST code unit into IR functions
+Translate an AST code unit into IR functions
+@astUnit AST of the source unit to translate
+@tachyonSrc Flag to indicate whether we are compiling tachyon code
 */
 function unitToIR(
-    astUnit
+    astUnit,
+    tachyonSrc
 )
 {
     //
@@ -55,7 +60,8 @@ function unitToIR(
         [],
         astUnit.funcs,
         astUnit.block.statements,
-        astUnit
+        astUnit,
+        tachyonSrc
     );
 }
 
@@ -65,7 +71,8 @@ Convert an AST function into an IR function
 function funcToIR(
     funcName,
     parentFunc,
-    astFunc
+    astFunc,
+    tachyonSrc
 )
 {
     // Ensure that the top-level AST is a program
@@ -82,7 +89,8 @@ function funcToIR(
         astFunc.esc_vars,
         astFunc.funcs,
         astFunc.body,
-        astFunc
+        astFunc,
+        tachyonSrc
     );
 }
 
@@ -99,9 +107,14 @@ function stmtListToIRFunc(
     escapeVars,
     nestedFuncs,
     bodyStmts,
-    astNode
+    astNode,
+    tachyonSrc
 )
 {
+    // If the tachyon source flag is left undefined, set it to false
+    if (tachyonSrc === undefined)
+        tachyonSrc = false;
+
     // Extract the argument names
     var argVars = [];
     for (var i in params)
@@ -235,7 +248,8 @@ function stmtListToIRFunc(
         cfg,
         funcObj,
         thisVal,
-        globalObj
+        globalObj,
+        tachyonSrc
     );
 
     // For each nested function
@@ -261,7 +275,8 @@ function stmtListToIRFunc(
         var nestFunc = funcToIR(
             nestFuncName,
             newFunc,
-            nestFuncExpr
+            nestFuncExpr,
+            tachyonSrc
         );
         
         // Make the new function a child of the function being compiled
@@ -367,7 +382,8 @@ function IRConvContext(
     cfg,
     funcObj,
     thisVal,
-    globalObj
+    globalObj,
+    tachyonSrc
 )
 {
     // Ensure that the arguments are valid
@@ -418,6 +434,10 @@ function IRConvContext(
     assert (
         globalObj instanceof IRValue,
         'invalid global object in IR conversion context'
+    );
+    assert (
+        typeof tachyonSrc === 'boolean',
+        'tachyon source flag unspecified in IR conversion context'
     );
 
     /**
@@ -503,6 +523,12 @@ function IRConvContext(
     @field
     */
     this.outValue = undefined;
+
+    /**
+    Flag to indicate that we are compiling tachyon code
+    @field
+    */
+    this.tachyonSrc = tachyonSrc;
 }
 IRConvContext.prototype = {};
 
@@ -602,7 +628,8 @@ IRConvContext.prototype.pursue = function (astNode)
         this.cfg,
         this.funcObj,
         this.thisVal,
-        this.globalObj
+        this.globalObj,
+        this.tachyonSrc
     );
 };
 
@@ -627,7 +654,8 @@ IRConvContext.prototype.branch = function (
         this.cfg,
         this.funcObj,
         this.thisVal,
-        this.globalObj
+        this.globalObj,
+        this.tachyonSrc
     );
 };
 
@@ -738,7 +766,7 @@ function stmtToIR(context)
         // getprop_val already implies complex underlying algorithm, unlike if test
 
         // If the test expression is an inline conditional IR instruction
-        if (isCondInlineIR(astStmt))
+        if (context.tachyonSrc && isCondInlineIR(astStmt))
         {
             // Generate the inline IR instruction
             genCondInlineIR(context);
@@ -1697,7 +1725,7 @@ function exprToIR(context)
         // Create the call instruction
         var exprVal = insertCallIR(
             funcContext,
-            new ConstructRefInstr(
+            new ConstructInstr(
                 [funcContext.getOutValue()].concat(argVals)
             )
         );
@@ -1709,7 +1737,7 @@ function exprToIR(context)
     else if (astExpr instanceof CallExpr)
     {
         // If this is an inline IR instruction
-        if (isInlineIR(astExpr))
+        if (context.tachyonSrc && isInlineIR(astExpr))
         {
             // Generate the inline IR instruction
             genInlineIR(context);
@@ -1778,7 +1806,7 @@ function exprToIR(context)
         // Create the call instruction
         var exprVal = insertCallIR(
             lastContext,
-            new CallRefInstr(
+            new CallFuncInstr(
                 [funcVal, thisVal].concat(argVals)
             )
         );
@@ -2849,7 +2877,7 @@ function errorToIR(context, throwCtx, errorCtor, errorMsg)
 
     // Create an error object exception
     var excVal = throwCtx.addInstr(
-        new ConstructRefInstr(
+        new ConstructInstr(
             ConstValue.getConst(errorCtor), 
             ConstValue.getConst(errorMsg),
             contBlock
@@ -3041,7 +3069,8 @@ function createLoopEntry(
         context.cfg,
         context.funcObj,
         context.thisVal,
-        context.globalObj
+        context.globalObj,
+        context.tachyonSrc
     );
 }
 

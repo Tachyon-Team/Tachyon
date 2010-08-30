@@ -25,16 +25,13 @@ Parse a source code string, copy the resulting IR and validate it
 tests.ir.helpers.testSource = function (sourceStr)
 {
     // Parse the source string
-    var port = new String_input_port(sourceStr);
-    var p = new Parser(new Scanner(port), true);
-    var ast = p.parse();
-    var normalized_ast = ast_normalize(ast);
+    var ast = parse_src_str(sourceStr);
 
     // Translate the AST to IR
-    var ir = unitToIR(normalized_ast);
+    var ir = unitToIR(ast);
 
     /*
-    pp(normalized_ast); // pretty-print AST
+    pp(ast); // pretty-print AST
     print('\n');
     print(ir);
     */
@@ -42,7 +39,13 @@ tests.ir.helpers.testSource = function (sourceStr)
     // Copy the resulting function
     ir.copy();
 
-    // Validate the function
+    // Validate the IR
+    ir.validate();
+
+    // Perform lowering on the IR
+    lowerIRFunc(ir);
+
+    // Validate the IR
     ir.validate();
 
     // Return the generated IR for further testing
@@ -217,9 +220,11 @@ tests.ir.withStmt = function ()
         ir,
         function (instr)
         {
-            if (instr instanceof GetPropValInstr)
+            if (instr instanceof CallHandlerInstr && 
+                instr.uses[0].funcName == 'get_prop_val')
                 hasGet = true;
-            if (instr instanceof PutPropValInstr)
+            if (instr instanceof CallHandlerInstr && 
+                instr.uses[0].funcName == 'put_prop_val')
                 hasPut = true;
         }
     );

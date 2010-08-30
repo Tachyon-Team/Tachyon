@@ -16,6 +16,19 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
 
+// TODO: implement typed constants
+// TODO: implement system to register named constants
+//
+// ConstValue.getConst(val, type)
+// - Internally, use map of values, then map of types to constants
+//
+// ConstValue.regNamedConst(name, val, type)
+// - Uses getConst internally
+// ConstValue.getNamedConst(name)
+// - Map of names to constant objects
+//
+
+
 //=============================================================================
 // IR Core
 //
@@ -182,13 +195,19 @@ function IRValue()
 @class Represents constant values in the IR
 @augments IRValue
 */
-function ConstValue(value)
+function ConstValue(value, type)
 {
     /**
     Value of the constant
     @field
     */
     this.value = value;
+
+    /**
+    Type of the constant
+    @field
+    */
+    this.type = type;
 }
 ConstValue.prototype = new IRValue();
 
@@ -237,22 +256,77 @@ ConstValue.prototype.isUndef = function ()
 }
 
 /**
-Map of values to IR constants
+Map of values to maps of types to IR constants
 */
 ConstValue.constMap = new HashMap();
 
 /**
 Get the unique constant instance for a given value
 */
-ConstValue.getConst = function (value)
+ConstValue.getConst = function (value, type)
 {
+    // The default type is boxed
+    if (type === undefined)
+        type = IRType.BOXED;
+
+    // If there is no type map for this value
     if (!ConstValue.constMap.hasItem(value))
     {
-        ConstValue.constMap.addItem(value, new ConstValue(value));
+        // Create a new hash map to map types to constants
+        var typeMap = new HashMap();
+        ConstValue.constMap.addItem(value, typeMap);
+    }
+    else
+    {
+        var typeMap = ConstValue.constMap.getItem(value);
     }
 
-    return ConstValue.constMap.getItem(value);
+    // If there is no constant for this type
+    if (!typeMap.hasItem(type))
+    {
+        // Create a new constant with the specified type
+        var constant = new ConstValue(value, type);
+        typeMap.addItem(type, constant);
+    }
+    else
+    {
+        var constant = typeMap.getItem(type);
+    }
+
+    // Return the constant
+    return constant;
 };
+
+/**
+Map of names to IR constants
+*/
+ConstValue.nameMap = new HashMap();
+
+/**
+Register a named IR constant
+*/
+ConstValue.regNamedConst = function (name, val, type)
+{
+    assert (
+        typeof name == 'string',
+        'constant names must be strings'
+    );
+
+    var constant = ConstValue.getConst(val, type);
+
+    ConstValue.nameMap.addItem(name, constant);
+}
+
+/**
+Lookup a named IR constant
+*/
+ConstValue.getNamedConst = function (name)
+{
+    if (!ConstValue.hasItem(name))
+        return undefined;
+
+    return ConstValue.getItem(name);        
+}
 
 /**
 @class Base class for all IR instructions
@@ -293,6 +367,12 @@ function IRInstr()
     @field
     */
     this.dests = [];
+
+    /**
+    Potential branch target basic blocks
+    @field
+    */
+    this.targets = [];
 
     /**
     Parent basic block
@@ -336,11 +416,14 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     if (this.type != IRType.VOID)
         output += outFormatFn(this) + ' = ';
 
-    output += this.mnemonic + (this.uses.length? ' ':'');
+    output += this.mnemonic;
 
+    // For each use
     for (i = 0; i < this.uses.length; ++i)
     {
         var ins = this.uses[i];
+
+        output += ' ';
 
         if (!(ins instanceof IRValue))
             output += '***invalid value***';
@@ -348,7 +431,16 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
             output += inFormatFn(ins);
 
         if (i != this.uses.length - 1)
-            output += ", ";
+            output += ",";
+    }
+
+    // For each branch target
+    for (var i = 0; i < this.targets.length; ++i)
+    {
+        output += 
+            (this.targetNames[i]? (' ' + this.targetNames[i]):'') + 
+            ' ' + this.targets[i].getBlockName()
+        ;
     }
 
     return output;
@@ -444,49 +536,11 @@ IRInstr.prototype.getUseItr = function ()
 };
 
 /**
-@class Base class for branching instructions.
-@augments IRInstr
+Test if this instruction is a branch
 */
-function BranchInstr()
+IRInstr.prototype.isBranch = function ()
 {
-    /**
-    Potential branch target basic blocks
-    @field
-    */
-    this.targets = [];
-}
-BranchInstr.prototype = new IRInstr();
-
-/**
-By default, branch instructions produce no output
-@field
-*/
-BranchInstr.prototype.type = IRType.VOID;
-
-/**
-Branch target names, not defined by default
-@field
-*/
-BranchInstr.prototype.targetNames = [];
-
-/**
-Default toString function for branch instructions
-*/
-BranchInstr.prototype.toString = function (outFormatFn, inFormatFn)
-{
-    // Get the default toString output for the instruction and its uses
-    var output = IRInstr.prototype.toString.apply(this, outFormatFn, inFormatFn);
-
-    // For each branch target
-    for (var i = 0; i < this.targets.length; ++i)
-    {
-        output += 
-            (this.targetNames[i]? (' ' + this.targetNames[i]):'') + 
-            ' ' + this.targets[i].getBlockName()
-        ;
-    }
-
-    return output;
+    return (this.targets.length > 0);
 }
 
 /**
@@ -801,12 +855,7 @@ function instrMaker(
 
     // If no prototype object was specified, create one
     if (!protoObj)
-    {
-        if (branchNames)
-            protoObj = new BranchInstr();
-        else
-            protoObj = new IRInstr();
-    }
+        protoObj = new IRInstr();
 
     // Set the prototype for the new instruction
     InstrConstr.prototype = protoObj;
@@ -851,7 +900,7 @@ instrMaker.validCount = function (name, array, minExpected, maxExpected)
     var expectedStr;
     if (minExpected == maxExpected)
         expectedStr = String(minExpected);
-    else if (maxExpected === Infinity)
+    else if (maxExpected != Infinity)
         expectedStr = 'between ' + minExpected + ' and ' + maxExpected;
     else
         expectedStr = minExpected + ' or more'
@@ -1563,7 +1612,7 @@ var NseqInstr = untypedInstrMaker(
 
 /**
 @class Unconditional jump instruction
-@augments BranchInstr
+@augments IRInstr
 */
 var JumpInstr = untypedInstrMaker(
     'jump',
@@ -1574,19 +1623,26 @@ var JumpInstr = untypedInstrMaker(
 
 /**
 @class Function return instruction
-@augments BranchInstr
+@augments IRInstr
 */
 var RetInstr = untypedInstrMaker(
     'ret',
      1,
     undefined,
-    true,
-    new BranchInstr()
+    true
 );
 
 /**
+Ret instructions are always branch instructions
+*/
+RetInstr.prototype.isBranch = function ()
+{
+    return true;
+}
+
+/**
 @class If branching instruction
-@augments BranchInstr
+@augments IRInstr
 */
 var IfInstr = instrMaker(
     'if',
@@ -1613,12 +1669,12 @@ var IfInstr = instrMaker(
 
 /**
 @class Base class for exception-producing instructions
-@augments BranchInstr
+@augments IRInstr
 */
 ExceptInstr = function ()
 {
 }
-ExceptInstr.prototype = new BranchInstr();
+ExceptInstr.prototype = new IRInstr();
 
 /**
 Set the target block of the exception-producing instruction
@@ -1656,6 +1712,14 @@ var ThrowInstr = instrMaker(
 );
 
 /**
+Throw instructions are always branch instructions
+*/
+ThrowInstr.prototype.isBranch = function ()
+{
+    return true; 
+}
+
+/**
 @class Base class for call instructions
 @augments ExceptInstr
 */
@@ -1670,6 +1734,9 @@ Set the continue block of the call instruction
 CallInstr.prototype.setContTarget = function (contBlock)
 {
     this.targets[0] = contBlock;
+
+    while (!this.targets[this.targets.length-1])
+        this.targets.pop();
 }
 
 /**
@@ -1678,6 +1745,9 @@ Set the throw target block of the call instruction
 CallInstr.prototype.setThrowTarget = function (catchBlock)
 {
     this.targets = catchBlock? [this.targets[0], catchBlock]:[this.targets[0]];
+
+    while (!this.targets[this.targets.length-1])
+        this.targets.pop();
 }
 
 /**
@@ -1689,10 +1759,10 @@ CallInstr.prototype.getThrowTarget = function ()
 }
 
 /**
-@class Call with function object reference
-@augments ExceptInstr
+@class Function call instruction
+@augments CallInstr
 */
-var CallRefInstr = instrMaker(
+var CallFuncInstr = instrMaker(
     'call',
     function (typeParams, inputVals, branchTargets)
     {
@@ -1711,12 +1781,33 @@ var CallRefInstr = instrMaker(
 @class Constructor call with function object reference
 @augments CallInstr
 */
-var ConstructRefInstr = instrMaker(
+var ConstructInstr = instrMaker(
     'construct',
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 1, Infinity);
         instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.BOXED;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
+@class Direct handler function call
+@augments CallInstr
+*/
+var CallHandlerInstr = instrMaker(
+    'call_hdlr',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1, Infinity);
+        assert (
+            inputVals[0] instanceof IRFunction,
+            'expected handler function'
+        );
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
         this.type = IRType.BOXED;

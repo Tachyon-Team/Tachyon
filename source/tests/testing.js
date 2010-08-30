@@ -143,7 +143,7 @@ tests.testSuite.prototype.run = function (catchError, suiteName, caseName, verbo
                 if (exception.stack)
                     print(indentText(exception.stack.toString(), "\t"));
                 else
-                    print("\t" + exception);
+                    print(indentText(exception.toString(), "\t"));
             } else if (verbose)
             {
                 print(suiteName +"." + p + " : ok");

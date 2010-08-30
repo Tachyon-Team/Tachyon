@@ -10,43 +10,42 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 
-
-// TODO: toboolean/boolval instr/handler?
-// - Boxed input, bool output
+// TODO: handler input/output type annotation
 // - Not all handlers have untyped in/out...
 
-
-// TODO
-function BoxIsInt(v)
-{
-}
-
-
-// TODO
-function BoxIsDouble(v)
-{
-}
-
-
+/*
+// Make special instructions and handlers for common utility code:
+// TODO: BoxIsInt
+// TODO: BoxIsDouble
 // TODO: BoxIsString
+*/
 
+
+// TODO: implement handlers
+function make_clos() {}
+function put_clos() {}
+function get_clos() {}
+function get_global() {}
+function make_arg_obj() {}
+function get_prop_val() {}
+function put_prop_val() {}
+
+function sub() {}
 
 
 /**
 Handler function for the HIR add instruction
 */
-/*
-function AddHandler(v1, v2)
+function add(v1, v2)
 {
     "tachyon:handler";
 
 }
-*/
 
 /**
 Handler for the HIR get_prop_val instruction
 */
-function GetPropValHandler(obj, propName)
+function get_prop_val(obj, propName)
 {
     "tachyon:handler";    
 

@@ -44,6 +44,11 @@ function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
     this.virginCFG = null;
 
     /**
+    Final, optimized CFG
+    */
+    this.finalCFG = null;
+
+    /**
     List of child (nested) functions
     @field
     */
@@ -108,8 +113,10 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
         ) + '\n\n';
     }
 
+    var cfg = this.finalCFG? this.finalCFG:this.virginCFG;
+
     output += indentText(
-        this.virginCFG.toString(
+        cfg.toString(
             blockOrderFn,
             outFormatFn,
             inFormatFn
@@ -163,8 +170,12 @@ Validate the function and its children
 */
 IRFunction.prototype.validate = function ()
 {
-    // Validate the control-flow graph
+    // Validate the original control-flow graph
     this.virginCFG.validate();
+
+    // Validate the final control-flow graph
+    if (this.finalCFG)
+        this.finalCFG.validate();
 
     // Validate the child functions
     this.childFuncs.forEach(

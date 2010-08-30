@@ -97,4 +97,26 @@ function String_output_port(init)
     this.write_string(init);
 }
 
+//-----------------------------------------------------------------------------
+
+function parse_src_file(filename)
+{
+    var port = new File_input_port(filename);
+    var p = new Parser(new Scanner(port), true);
+    var ast = p.parse();
+    var normalized_ast = ast_normalize(ast);
+
+    return normalized_ast;
+}
+
+function parse_src_str(str)
+{
+    var port = new String_input_port(str);
+    var p = new Parser(new Scanner(port), true);
+    var ast = p.parse();
+    var normalized_ast = ast_normalize(ast);
+
+    return normalized_ast;
+}
+
 //=============================================================================

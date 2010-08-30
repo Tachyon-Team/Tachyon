@@ -1,9 +1,14 @@
 function f(c1, c2)
 {
-    /*
-    var i1 = iir.unbox(IRType.INT32, c1);
-    var i2 = iir.unbox(IRType.INT32, c1);
+    //print(v);
+
     
+    var i1 = iir.unbox(IRType.PLATFORM_INT, c1);
+    var i2 = iir.unbox(IRType.PLATFORM_INT, c2);
+    
+    c1 + c2;
+
+    /*
     var v = i2;
     while (true)
     {

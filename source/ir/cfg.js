@@ -76,13 +76,15 @@ ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFor
 {
     var output = "";
 
-    for (var i = 0; i < this.blocks.length; ++i)
+    var blockList = blockOrderFn? blockOrderFn(this.blocks):this.blocks;
+
+    for (var i = 0; i < blockList.length; ++i)
     {
-        var block = this.blocks[i];
+        var block = blockList[i];
 
         output += block.toString(outFormatFn, inFormatFn);
 
-        if (block !== this.blocks[this.blocks.length - 1])
+        if (block !== blockList[blockList.length - 1])
             output += "\n\n";
     }
 
@@ -191,7 +193,7 @@ ControlFlowGraph.prototype.copy = function ()
             }
 
             // Otherwise, if this is a branch instruction
-            else if (instr instanceof BranchInstr)
+            else if (instr.isBranch())
             {
                 // Remap the target blocks
                 for (var k = 0; k < instr.targets.length; ++k)
@@ -790,7 +792,7 @@ ControlFlowGraph.prototype.validate = function ()
         var lastInstr = block.instrs[block.instrs.length - 1];
 
         // Verify that the block is terminated with a branch instruction
-        if (!(lastInstr instanceof BranchInstr))
+        if (!(lastInstr.isBranch()))
             throw 'block does not terminate in a branch:\n' + block;
 
         // Verify that the branch targets match our successor set
@@ -833,7 +835,7 @@ ControlFlowGraph.prototype.validate = function ()
             }
 
             // Verify that no branches appear before the last instruction
-            if (instr instanceof BranchInstr && j != block.instrs.length - 1)
+            if (instr.isBranch() && j != block.instrs.length - 1)
                 throw 'branch before last block instruction';
 
             // Verify that our uses have us as a dest
@@ -841,14 +843,22 @@ ControlFlowGraph.prototype.validate = function ()
             {
                 if (instr.uses[k] instanceof IRInstr)
                     if (!arraySetHas(instr.uses[k].dests, instr))
-                        throw 'use missing dest link:\n' + instr.uses[k];
+                        throw 'missing dest link, from:\n' + 
+                            instr.uses[k] + 
+                            '\nto:\n' +
+                            instr
+                        ;
             }
 
             // Verify that our dests have us as a use
             for (var k = 0; k < instr.dests.length; ++k)
             {
                 if (!arraySetHas(instr.dests[k].uses, instr))
-                    throw 'dest missing use link:\n' + instr.dests[k] + ' using ' + instr;
+                    throw 'missing use link, from:\n' + 
+                        instr.dests[k] +
+                        '\nto:\n:' + 
+                        instr
+                    ;
             }
         }
     }
@@ -981,14 +991,16 @@ ControlFlowGraph.prototype.getBlockItr = function (type)
     if (type === "basic")
     {
         return new ArrayIterator(this.blocks);
-    } else if (type === "strict")
+    } 
+    else if (type === "strict")
     {
         // TODO: Migrate allocator.orderBlocks here
         error("strict mode unimplemented");
 
         // TODO: When asked for a strict iterator, try to update the previous
         //       calculated order instead of computing it from scratch.
-    } else 
+    } 
+    else 
     {
         error("unrecognized option: '" + type + "'");
     }
@@ -1037,7 +1049,8 @@ ControlFlowGraph.prototype.getInstrItr.prototype.next = function ()
         if (this.blockIt.valid())
         {
             this.instrIt = this.blockIt.get().getInstrItr();
-        } else
+        } 
+        else
         {
             break;
         }
@@ -1064,7 +1077,8 @@ ControlFlowGraph.prototype.getEdgeItr = function ()
     if (it.predIt.valid())
     {
         it.succIt = new ArrayIterator(it.predIt.get().succs);
-    } else
+    }
+    else
     {
         it.succIt = null;
     }
@@ -1108,6 +1122,39 @@ ControlFlowGraph.prototype.getEdgeItr.prototype.get = function ()
 {
     return {pred:this.predIt.get(), succ:this.succIt.get()};
 };
+
+/**
+Add an instruction before the iterator position
+*/
+ControlFlowGraph.prototype.addInstr = function (instrItr, newInstr)
+{
+    var block = instrItr.get().parentBlock;
+    var index = instrItr.instrIt.getIndex();
+
+    block.addInstr(newInstr, undefined, index);
+}
+
+/**
+Remove an instruction from the CFG
+*/
+ControlFlowGraph.prototype.remInstr = function (instrItr)
+{
+    var block = instrItr.get().parentBlock;
+    var index = instrItr.instrIt.getIndex();
+
+    block.remInstrAtIndex(index);
+}
+
+/**
+Replace an instruction by another
+*/
+ControlFlowGraph.prototype.replInstr = function (instrItr, newInstr)
+{
+    var block = instrItr.get().parentBlock;
+    var index = instrItr.instrIt.getIndex();
+
+    block.replInstrAtIndex(newInstr, index);
+}
 
 /**
 @class Class to represent a basic block
@@ -1256,7 +1303,7 @@ BasicBlock.prototype.addInstr = function(instr, outName, index)
     }
 
     // If this is a branch instruction
-    if (instr instanceof BranchInstr)
+    if (instr.isBranch())
     {
         // For each possible destination of this instruction
         for (var i = 0; i < instr.targets.length; ++i)
@@ -1274,19 +1321,8 @@ BasicBlock.prototype.addInstr = function(instr, outName, index)
     // Set the parent block for the instruction
     instr.parentBlock = this;
 
-    // If we are inserting at the end of the block
-    if (index == this.instrs.length)
-    {
-        // Add the instruction to the end of the list
-        this.instrs.push(instr);
-    }
-    else
-    {
-        // Insert the instruction before the index
-        var ls = this.instrs.slice(0, index);
-        var rs = this.instrs.slice(index, this.instrs.length + 1);
-        this.instrs = ls.concat(instr, rs);
-    }
+    // Insert the instruction before the index
+    this.instrs.splice(index, 0, instr);
 
     // Assign an id number to the instruction
     this.parentCFG.assignInstrId(instr);
@@ -1328,7 +1364,7 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
             instr.uses[i].remDest(instr);
 
     // If this is a branch instruction
-    if (instr instanceof BranchInstr)
+    if (instr.isBranch())
     {
         // For each possible destination of this instruction
         for (var i = 0; i < instr.targets.length; ++i)
@@ -1351,11 +1387,32 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 };
 
 /**
+Replace an instruction from this basic block by index
+*/
+BasicBlock.prototype.replInstrAtIndex = function (newInstr, index)
+{
+    var oldInstr = this.instrs[index];
+
+    // Replace uses of the old instruction
+    for (var i = 0; i < oldInstr.dests.length; ++i)
+    {
+        oldInstr.dests[i].replUse(oldInstr, newInstr);
+        newInstr.addDest(oldInstr.dests[i]);
+    }
+
+    // Remove the old instruction
+    this.remInstrAtIndex(index);
+
+    // Add the new instruction
+    this.addInstr(newInstr, oldInstr.outName, index);
+}
+
+/**
 Test if this block is terminated by a branch instruction
 */
 BasicBlock.prototype.hasBranch = function ()
 {
-    return this.instrs.length > 0 && this.getLastInstr() instanceof BranchInstr;
+    return this.instrs.length > 0 && this.getLastInstr().isBranch();
 }
 
 /**
@@ -1417,3 +1474,4 @@ BasicBlock.prototype.getInstrItr = function ()
 {
     return new ArrayIterator(this.instrs);
 };
+

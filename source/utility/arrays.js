@@ -97,18 +97,22 @@ function arraySetEqual(arr1, arr2)
     @class
     Iterates over an array.
 
-    @param {Array} a array to iterate over
+    @param {Array} array array to iterate over
 
     @augments Iterator
 */
-function ArrayIterator(a)
+function ArrayIterator(array)
 {
     assertNew(this);
 
-    /** @private */
-    this.a = a;
+    /**
+    @private
+    */
+    this.array = array;
 
-    /** @private */
+    /**
+    @private
+    */
     this.index = 0;
 
     return this;
@@ -116,21 +120,36 @@ function ArrayIterator(a)
 
 ArrayIterator.prototype = new Iterator();
 
-/** Move iterator to the next item */
+/** 
+Move iterator to the next item
+*/
 ArrayIterator.prototype.next = function ()
 {
     this.index++;
 };
 
-/** Ensure iterator is still on a valid item.  Ex: Not at the end */
+/**
+Ensure iterator is still on a valid item.  Ex: Not at the end
+*/
 ArrayIterator.prototype.valid = function ()
 {
-    return this.index < this.a.length;
+    return this.index < this.array.length;
 };
 
-/** Returns the current item */
+/**
+Returns the current item
+*/
 ArrayIterator.prototype.get = function ()
 {
-    return this.a[this.index];
+    return this.array[this.index];
+};
+
+/**
+Get the index of the current item. This is needed to implement
+some operations on array iterators efficiently.
+*/
+ArrayIterator.prototype.getIndex = function ()
+{
+    return this.index;
 };
 
