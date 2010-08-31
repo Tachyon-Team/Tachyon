@@ -1,12 +1,17 @@
 function f(c1, c2)
 {
-    //print(v);
+
+
+
 
     
+    /*
     var i1 = iir.unbox(IRType.PLATFORM_INT, c1);
     var i2 = iir.unbox(IRType.PLATFORM_INT, c2);
     
-    c1 + c2;
+    var r = i1 + i2 * FOOBAR;
+    print(r);
+    */
 
     /*
     var v = i2;

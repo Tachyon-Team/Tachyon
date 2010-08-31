@@ -16,19 +16,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
 
-// TODO: implement typed constants
-// TODO: implement system to register named constants
-//
-// ConstValue.getConst(val, type)
-// - Internally, use map of values, then map of types to constants
-//
-// ConstValue.regNamedConst(name, val, type)
-// - Uses getConst internally
-// ConstValue.getNamedConst(name)
-// - Map of names to constant objects
-//
-
-
 //=============================================================================
 // IR Core
 //
@@ -312,6 +299,24 @@ ConstValue.regNamedConst = function (name, val, type)
         'constant names must be strings'
     );
 
+    assert (
+        !ConstValue.nameMap.hasItem(name),
+        'named constant already registered: ' + name
+    );
+
+    // Ensure that the name is valid
+    // TODO: use JS regexes once supported
+    for (var i = 0; i < name.length; ++i)
+    {
+        var ch = name.charCodeAt(i);
+        assert (
+            ch == 95 ||                 // _
+            (ch >= 65 && ch <= 90) ||   // A-Z
+            (ch >= 48 && ch <= 57),     // 0-9
+            'invalid constant name'
+        );
+    }
+
     var constant = ConstValue.getConst(val, type);
 
     ConstValue.nameMap.addItem(name, constant);
@@ -322,10 +327,10 @@ Lookup a named IR constant
 */
 ConstValue.getNamedConst = function (name)
 {
-    if (!ConstValue.hasItem(name))
+    if (!ConstValue.nameMap.hasItem(name))
         return undefined;
 
-    return ConstValue.getItem(name);        
+    return ConstValue.nameMap.getItem(name);        
 }
 
 /**
@@ -728,8 +733,7 @@ function instrMaker(
     mnemonic,
     initFunc,
     branchNames,
-    protoObj,
-    nameFunc
+    protoObj
 )
 {
     /**
@@ -836,8 +840,9 @@ function instrMaker(
             throw errorStr;
         }
 
-        // Call the name setting function
-        this.nameFunc(typeParams, inputVals);
+        // If the mnemonic name is not set, call the name setting function
+        if (this.mnemonic === '')
+            setName.apply(this, [typeParams, inputVals]);
 
         // Store the type parameters of the instruction
         this.typeParams = typeParams;
@@ -867,8 +872,6 @@ function instrMaker(
     if (initFunc)
         InstrConstr.prototype.initFunc = initFunc;
 
-    // Store the name setting function
-    InstrConstr.prototype.nameFunc = nameFunc? nameFunc:setName;
 
     /**
     Generic instruction shallow copy function
@@ -1763,9 +1766,11 @@ CallInstr.prototype.getThrowTarget = function ()
 @augments CallInstr
 */
 var CallFuncInstr = instrMaker(
-    'call',
+    undefined,
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'call';
+
         instrMaker.validNumInputs(inputVals, 2, Infinity);
         instrMaker.validType(inputVals[0], IRType.BOXED);
         instrMaker.validType(inputVals[1], IRType.BOXED);
@@ -1782,9 +1787,11 @@ var CallFuncInstr = instrMaker(
 @augments CallInstr
 */
 var ConstructInstr = instrMaker(
-    'construct',
+    undefined,
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'construct';
+
         instrMaker.validNumInputs(inputVals, 1, Infinity);
         instrMaker.validType(inputVals[1], IRType.BOXED);
         instrMaker.validNumBranches(branchTargets, 0, 2);
@@ -1800,9 +1807,11 @@ var ConstructInstr = instrMaker(
 @augments CallInstr
 */
 var CallHandlerInstr = instrMaker(
-    'call_hdlr',
+    undefined,
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'call_hdlr';
+
         instrMaker.validNumInputs(inputVals, 1, Infinity);
         assert (
             inputVals[0] instanceof IRFunction,
@@ -1872,7 +1881,9 @@ var UnboxInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.OBJPTR || typeParams[0] === IRType.PLATFORM_INT,
+            typeParams[0] === IRType.OBJPTR ||
+            typeParams[0] === IRType.INT32  ||
+            typeParams[0] === IRType.PLATFORM_INT,
             'type parameter should be object pointer or platform int'
         );
         instrMaker.validType(inputVals[0], IRType.BOXED);

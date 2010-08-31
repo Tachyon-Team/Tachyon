@@ -134,7 +134,7 @@ Return the IR value name for this function
 */
 IRFunction.prototype.getValName = function ()
 {
-    return '<func' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
+    return '<fn' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
 }
 
 /**

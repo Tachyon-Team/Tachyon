@@ -18,10 +18,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: Introduce tachyon code compilation flag in context?
-// - Allows IIR, uses named constants
-// - Need to give constant values a type
-
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
@@ -2717,14 +2713,24 @@ function refToIR(context)
     // If the variable is global
     if (astExpr.id.scope instanceof Program && symName != 'arguments')
     {
-        // Get the value from the global object
-        varValueVar = insertCallIR(
-            varContext,
-            new GetPropValInstr(
-                context.globalObj,
-                ConstValue.getConst(symName)
-            )
-        );
+        // If we are compiling tachyon code and there is a named constant
+        // with this name
+        if (context.tachyonSrc && ConstValue.getNamedConst(symName))
+        {
+            // Use the value of the named constant
+            varValueVar = ConstValue.getNamedConst(symName);            
+        }
+        else
+        {
+            // Get the value from the global object
+            varValueVar = insertCallIR(
+                varContext,
+                new GetPropValInstr(
+                    context.globalObj,
+                    ConstValue.getConst(symName)
+                )
+            );
+        }
     }
 
     // Otherwise, if this variable is a shared closure variable

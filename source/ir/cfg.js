@@ -9,6 +9,9 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+// TODO: code for inlining at call site?
+// Should perhaps implement in different file?
+
 /**
 @class Class to represent control-flow graph
 */
@@ -1108,7 +1111,8 @@ ControlFlowGraph.prototype.getEdgeItr.prototype.next = function ()
         if (this.predIt.valid())
         {
             this.succIt = new ArrayIterator(this.predIt.get().succs);
-        } else
+        }
+        else
         {
             break;
         }

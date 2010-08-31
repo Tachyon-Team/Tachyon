@@ -12,6 +12,38 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: inlining specialization
 
+// TODO: move to relevant file, object model implementation
+ConstValue.regNamedConst(
+    'OBJ_PROTO_PTR_OFFSET',
+    4,
+    IRType.INT32
+);
+ConstValue.regNamedConst(
+    'OBJ_HASH_PTR_OFFSET',
+    ConstValue.getNamedConst('OBJ_PROTO_PTR_OFFSET').value + IRType.OBJPTR.size,
+    IRType.INT32
+);
+ConstValue.regNamedConst(
+    'OBJ_HASH_SIZE_OFFSET',
+    ConstValue.getNamedConst('OBJ_HASH_PTR_OFFSET').value + IRType.OBJPTR.size,
+    IRType.INT32
+);
+ConstValue.regNamedConst(
+    'OBJ_HASH_ENTRY_SIZE',
+    16,
+    IRType.INT32
+);
+ConstValue.regNamedConst(
+    'OBJ_HASH_KEY_SIZE',
+    8,
+    IRType.INT32
+);
+ConstValue.regNamedConst(
+    'OBJ_HASH_EMPTY_KEY',
+    0,
+    IRType.BOXED
+);
+
 /**
 Perform IR lowering on a function and its subfunctions
 */
@@ -130,6 +162,11 @@ function compHandlers()
 
         // Perform IR lowering on the handler
         lowerIRFunc(func);
+
+        // Validate the resulting handler code
+        func.validate();
+
+        print(func);
     }
 }
 
