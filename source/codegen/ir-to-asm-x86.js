@@ -35,9 +35,10 @@ const G_VALUE_OFFSET = 4; // Value offset is 4 (key length is 4 bytes)
 const G_VALUE_WIDTH = 32;
 const G_ENTRY_LENGTH = 8; // Key (4 bytes) Value (4 bytes)
 
+/** @namespace */
 irToAsm.config = {};
 
-// Constant values 
+// Constant values
 irToAsm.config.TRUE  = $(1); 
 irToAsm.config.FALSE = $(0);
 irToAsm.config.NULL  = $(0);
@@ -52,16 +53,57 @@ irToAsm.config.scratch = EDI;
 //       using EBP instead of ESP
 irToAsm.config.stack   = ESP;
 irToAsm.config.context = EDX;
-irToAsm.config.funcObjReg = EAX;
-irToAsm.config.thisObjReg = EBX;
-irToAsm.config.argsReg    = [ECX];
 
 
+// Registers available for register allocation.
+irToAsm.config.physReg    = [EAX, EBX, ECX, EDX];
 
+// Reserved registers are indexes into the physReg array
+
+// Register index for call's return value
+irToAsm.config.retValReg = 0;
+// Registers for the corresponding CallInstr operands. The first
+// operands will be assigned those registers in their order of 
+// appearance. The remaining operands will be passed on the stack.
+// The first position corresponds to arg 0 index, the second to arg 1, etc.
+irToAsm.config.argsReg    = [0, 1, 2];
+
+
+// TODO: Would we want to have distinct caller and callee save registers?
+
+// Target
+irToAsm.config.target = x86.target.x86;
+
+/**
+@class
+Returns an object allocating stack slots for spilling during
+register allocation.
+*/
+irToAsm.spillAllocator = function ()
+{
+    var that = Object.create(irToAsm.spillAllocator.prototype);
+    that.slots = [];
+    return that;
+};
+/** Returns a new assembly memory object */
+irToAsm.spillAllocator.prototype.newSlot = function ()
+{
+    // Memory is byte addressed
+    var offset = (this.slots.length * irToAsm.config.stack.width())/8;
+    var s = mem(offset, irToAsm.config.stack);
+    this.slots.push(s);
+    return s;
+};
+
+
+/** 
+@class
+Returns a new translator object to translate IR to Assembly.
+*/
 irToAsm.translator = function ()
 {
     var that = Object.create(irToAsm.translator.prototype);
-    that.asm = new x86.Assembler(x86.target.x86);
+    that.asm = new x86.Assembler(irToAsm.config.target);
     that.asm.codeBlock.bigEndian = false;
     that.strings = {};
     that.stringNb = 0;
@@ -76,7 +118,10 @@ irToAsm.translator.prototype.asm = null;
 /** @private known strings so far */
 irToAsm.translator.prototype.strings = {};
 irToAsm.translator.prototype.stringNb = 0;
-/** generate the corresponding assembly code for this list of blocks */
+/** 
+Generate the corresponding assembly code for the function in the order
+specified in blockList.
+*/
 irToAsm.translator.prototype.genFunc = function (fct, blockList)
 {
     const that = this;
@@ -443,15 +488,15 @@ irToAsm.translator.prototype.ir_arg = function (opnds, instr)
 {
     const dest = instr.regAlloc.dest;
     const argIndex = instr.argIndex;
+    var reg;
 
     if (dest === null)
     {
         return;
     }
 
-    if ((dest !== irToAsm.config.funcObjReg && argIndex === 0) ||
-        (dest !== irToAsm.config.thisObjReg && argIndex === 1) ||
-        (dest !== irToAsm.config.argsReg[argIndex - 2] && argIndex >= 2))
+    reg = irToAsm.config.physReg[irToAsm.config.argsReg[argIndex]];
+    if (dest !== reg)
     {
         error("ir_arg: dest register '" + dest + 
               "' unexpected for argument index '" + argIndex + "'");
@@ -487,6 +532,7 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
     var offset = 1;
     var i;
     var continue_label = this.label(targets[0], targets[0].label);
+    var reg;
 
     if (spillNb < 0)
     {
@@ -498,22 +544,13 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
     // Move arguments in the right registers
     var map = allocator.mapping();
 
-    if (opnds[0] !== irToAsm.config.funcObjReg)
-    {
-        map.add(opnds[0], irToAsm.config.funcObjReg);
-    }
-    
-    if (opnds[1] !== irToAsm.config.thisObjReg)
-    {
-        map.add(opnds[1], irToAsm.config.thisObjReg);
-    }
-
-    for (i=2; i < 3 && i < opnds.length; ++i)
+    for (i=0; i < irToAsm.config.argsReg.length && i < opnds.length; ++i)
     {
 
-        if (opnds[i] !== irToAsm.config.argsReg[i - 2])
+        reg = irToAsm.config.physReg[irToAsm.config.argsReg[i]];
+        if (opnds[i] !== reg)
         {
-            map.add(opnds[i], irToAsm.config.argsReg[i - 2]);
+            map.add(opnds[i], reg);
         }
     }
 

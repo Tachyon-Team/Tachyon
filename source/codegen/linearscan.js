@@ -1211,7 +1211,7 @@ allocator.numberInstrs.inc = 2;
 /**
 Compute the live intervals for the temporaries of a CFG
 */
-allocator.liveIntervals = function (cfg, order)
+allocator.liveIntervals = function (cfg, order, config)
 {
     var pos, it;
 
@@ -1285,11 +1285,11 @@ allocator.liveIntervals = function (cfg, order)
                 //print( "new interval: " + instr.regAlloc.interval);
                 if (instr instanceof CallInstr)
                 {
-                    // TODO: Make the regHint parametrizable
-                    instr.regAlloc.interval.regHint = 0;
+                    instr.regAlloc.interval.regHint = config.retValReg;
                 } else if (instr instanceof ArgValInstr)
                 {
-                    instr.regAlloc.interval.regHint = instr.argIndex;
+                    instr.regAlloc.interval.regHint = 
+                        config.argsReg[instr.argIndex];
                 }
 
                 // Remove the instruction from the live set
@@ -1317,17 +1317,15 @@ allocator.liveIntervals = function (cfg, order)
                         block.regAlloc.from,
                         pos
                     );
-                    // TODO: Make number of regHint parametrizable
-                    if (k < 3)
+                    if (k < config.argsReg.length)
                     {
-                        use.regAlloc.interval.regHint = k;
+                        use.regAlloc.interval.regHint = config.argsReg[k];
                     }
                 } else
                 {
                     if (instr instanceof RetInstr)
                     {
-                        // TODO: Make the regHint parametrizable
-                        instr.regAlloc.interval.regHint = 0;
+                        instr.regAlloc.interval.regHint = config.retValReg;
                     } 
                     pos = instr.regAlloc.id;
                     use.regAlloc.interval.addRange(
@@ -1423,10 +1421,10 @@ allocator.liveIntervals = function (cfg, order)
     return liveIntervals;
 };
 
-allocator.fixedIntervals = function (cfg, physicalRegs)
+allocator.fixedIntervals = function (cfg, config)
 {
-
-    var fixed = physicalRegs.map(function () { return allocator.interval(); });
+    const physReg = config.physReg;
+    var fixed = physReg.map(function () { return allocator.interval(); });
     var it;
     var argPos;
     var addFixed;
@@ -1458,17 +1456,20 @@ allocator.fixedIntervals = function (cfg, physicalRegs)
     The mems object should have a newSlot() method returning 
     a new memory location for spilling.
 
-    @param {Array} pregs     list of available physical registers
+    @param {Object} config   configuration containing platform specific
+                             register information
     @param {Array} unhandled list of unassigned intervals
     @param {Object} mems     object allocating memory locations used 
                              for spilling
-    @param {Array} fixed     list of intervals where pregs are unavailable
+    @param {Array} fixed     list of intervals where registers
+                             are unavailable
 */ 
-allocator.linearScan = function (pregs, unhandled, mems, fixed)
+allocator.linearScan = function (config, unhandled, mems, fixed)
 {
     //       Interval registers are indexes into the pregs array during
-    //       the iteration, but are replaced by their pregs object
+    //       allocation, but are replaced by their pregs object
     //       at the end.
+    const pregs = config.physReg;
    
     // Queue of all unhandled intervals, sorted by start position,
     // using a copy of unhandled
