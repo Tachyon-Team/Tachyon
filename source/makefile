@@ -18,11 +18,12 @@ BASE_SRCS =                 \
     parser/ast-passes.js    \
     platform/memory.js      \
     ir/instructions.js      \
-    ir/inline.js            \
+    ir/iir.js               \
     ir/cfg.js               \
     ir/functions.js         \
     ir/handlers.js          \
     ir/ir.js                \
+    ir/inlining.js          \
     ir/lowering.js          \
     codegen/asm.js          \
     codegen/asm-x86.js      \

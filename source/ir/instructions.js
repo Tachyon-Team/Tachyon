@@ -1745,6 +1745,14 @@ CallInstr.prototype.setContTarget = function (contBlock)
 }
 
 /**
+Get the continuation target block of the call instruction
+*/
+CallInstr.prototype.getContTarget = function ()
+{
+    return (this.targets.length > 0)? this.targets[0]:null;
+}
+
+/**
 Set the throw target block of the call instruction
 */
 CallInstr.prototype.setThrowTarget = function (catchBlock)

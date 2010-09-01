@@ -369,6 +369,32 @@ ControlFlowGraph.prototype.getEntryBlock = function ()
 };
 
 /**
+Add a basic block to the CFG
+*/
+ControlFlowGraph.prototype.addBlock = function (block)
+{
+    // Assign a name and id to each instruction of the block
+    for (var i = 0; i < block.instrs.length; ++i)
+    {
+        var instr = block.instrs[i];
+        this.assignInstrId(instr);
+        this.assignInstrName(instr, instr.outName);
+    }
+
+    // Set the block's parent CFG
+    block.parentCFG = this;
+
+    // Add the block to our block list
+    this.blocks.push(block);
+
+    // Assign an id number to this block
+    this.assignBlockId(block);
+
+    // Assign a name to the block
+    this.assignBlockName(block, block.getBlockName());
+}
+
+/**
 Remove a basic block from this CFG
 */
 ControlFlowGraph.prototype.remBlock = function (block)
