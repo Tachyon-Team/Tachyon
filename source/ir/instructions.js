@@ -12,6 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO:
 // Some operators can have side effects
 // - May want a "write" or "side effect" flag
+// - May want hasSideEffects() method?
 
 // TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
@@ -977,6 +978,7 @@ function untypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoOb
 {
     function initFunc(typeParams, inputVals, branchTargets)
     {
+        instrMaker.validNumInputs(inputVals, numInputs);
         instrMaker.allValsBoxed(inputVals);
 
         assert (
@@ -1152,7 +1154,7 @@ var PutClosInstr = untypedInstrMaker(
 */
 var NewObjectInstr = untypedInstrMaker(
     'new_object',
-     0
+     1
 );
 
 /**
@@ -1792,7 +1794,8 @@ var ConstructInstr = instrMaker(
     {
         this.mnemonic = 'construct';
 
-        instrMaker.validNumInputs(inputVals, 1, Infinity);
+        instrMaker.validNumInputs(inputVals, 2, Infinity);
+        instrMaker.validType(inputVals[0], IRType.BOXED);
         instrMaker.validType(inputVals[1], IRType.BOXED);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
@@ -1851,6 +1854,25 @@ var PutPropValInstr = instrMaker(
 */
 var GetPropValInstr = instrMaker(
     'get_prop_val',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2);
+        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.BOXED;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
+@class Throw an error with the specified constructor and message
+@augments CallInstr
+*/
+var ThrowErrorInstr = instrMaker(
+    'throw_error',
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 2);

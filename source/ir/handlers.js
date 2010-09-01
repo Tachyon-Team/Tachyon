@@ -19,6 +19,22 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: BoxIsDouble
 // TODO: BoxIsString
 // TODO: isGetterSetter?
+
+Perhaps a better option would be to enable direct "cross-linking" of
+handler code. Enable handlers to call each other without defining IR
+instructions?
+- Requires special "cross-linking" pass
+- Could be special flag to lowering pass
+  - Replace global function calls by other handler calls, if available?
+  - Potential problem, if coding GC code, not technically a handler?
+
+
+Probably want all tachyon code to cross-link together?
+- Problem: some functions will have non-boxed return types
+  - This info is needed for cross-linking
+  - Need to parse/translate the functions to know this
+
+
 */
 
 
@@ -41,6 +57,9 @@ Handler function for the HIR add instruction
 function add(v1, v2)
 {
     "tachyon:handler";
+
+
+    // TODO: implement also
 
 }
 
@@ -74,13 +93,21 @@ function get_prop_val(obj, propName)
         while (true)
         {
             // Get the key value at this hash slot
-            var keyVal = iir.load(IRType.BOXED, tblPtr, hashIndex * OBJ_HASH_ENTRY_SIZE);
+            var keyVal = iir.load(
+                IRType.BOXED,
+                tblPtr,
+                hashIndex * OBJ_HASH_ENTRY_SIZE
+            );
 
             // If this is the key we want
             if (keyVal === propName)
             {
                 // Load the property value
-                var propVal = load(IRType.BOXED, tblPointer, hashIndex * OBJ_HASH_ENTRY_SIZE + OBJ_HASH_KEY_SIZE);
+                var propVal = load(
+                    IRType.BOXED, 
+                    tblPointer, 
+                    hashIndex * OBJ_HASH_ENTRY_SIZE + OBJ_HASH_KEY_SIZE
+                );
 
                 if (isGetterSetter(propVal))
                     return callGetter(obj, propVal);

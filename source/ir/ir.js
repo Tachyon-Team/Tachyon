@@ -18,6 +18,20 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
+// TODO: look into doing typed if insertion at code gen time?
+// - Does it make sense, code gen wise?
+// - Probably faster to do these things early on than with replacement?
+
+
+
+// TODO: Move these definitions
+// Implement Object prototype object (15.2.4)
+ConstValue.regNamedConst('OBJECT_PROTOTYPE', {});
+ConstValue.regNamedConst('FUNCTION_PROTOTYPE', {});
+ConstValue.regNamedConst('TYPE_ERROR_CTOR', {});
+
+
+
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
@@ -547,6 +561,23 @@ IRConvContext.prototype.setOutput = function (exitBlock, outValue)
 
     this.outValue = outValue;
 };
+
+/**
+Stitch the last block of a non-linear code sequence into the current context
+*/
+IRConvContext.prototype.splice = function (contBlock)
+{
+    // Ensure that the arguments are valid
+    assert (
+        contBlock !== undefined,
+        'continuation block not defined for IR conversion context splice'
+    );
+
+    if (this.exitBlock)
+        this.exitBlock = contBlock;
+    else
+        this.entryBlock = contBlock;
+}
 
 /**
 Terminate a context so it cannot be pursued
@@ -1719,11 +1750,10 @@ function exprToIR(context)
         exprToIR(funcContext);
 
         // Create the call instruction
-        var exprVal = insertCallIR(
+        var exprVal = insertConstructIR(
             funcContext,
-            new ConstructInstr(
-                [funcContext.getOutValue()].concat(argVals)
-            )
+            funcContext.getOutValue(),
+            argVals
         );
 
         // Set the output
@@ -1874,7 +1904,11 @@ function exprToIR(context)
         var valVals = exprListToIR(valCtx);
 
         // Create a new object
-        var newObject = valCtx.addInstr(new NewObjectInstr());
+        var newObject = valCtx.addInstr(
+            new NewObjectInstr(
+                ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+            )
+        );
 
         // Set the value of each property in the new object
         for (var i = 0; i < propNames.length; ++i)
@@ -2808,11 +2842,152 @@ function refToIR(context)
 }
 
 /**
+Insert a construct instruction in a given context, connect it with its
+continue and throw targets, produce the related object creation code, and
+splice this into the current context
+*/
+function insertConstructIR(context, funcVal, argVals)
+{
+    // Get the function's prototype field
+    var funcProto = insertCallIR(
+        context,
+        new GetPropValInstr(
+            funcVal,
+            ConstValue.getConst('prototype')
+        )
+    );
+
+    // If the prototype field is an object, otherwise, use the object prototype
+    var protoIsObj = context.cfg.getNewBlock('proto_is_obj');
+    var protoNotObj = context.cfg.getNewBlock('proto_not_obj');
+    var protoMerge = context.cfg.getNewBlock('proto_merge');
+    var testVal = context.addInstr(
+        new InstOfInstr(
+            funcProto,
+            ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+        )
+    );
+    context.addInstr(
+        new IfInstr(
+            testVal,
+            protoIsObj,
+            protoNotObj
+        )
+    );
+    protoIsObj.addInstr(new JumpInstr(protoMerge));
+    protoNotObj.addInstr(new JumpInstr(protoMerge));
+    var protoVal = protoMerge.addInstr(
+        new PhiInstr(
+            [
+                funcProto,
+                ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+            ],
+            [
+                protoIsObj, 
+                protoNotObj
+            ]
+        ),
+        'proto_val'
+    );
+    context.splice(protoMerge);
+    
+    // Create a new object
+    var newObj = context.addInstr(
+        new NewObjectInstr(protoVal)
+    );
+    
+
+    // Create the cnostructor call instruction
+    var retVal = insertCallIR(
+        context,
+        new ConstructInstr(
+            [funcVal, newObj].concat(argVals)
+        )
+    );
+
+    // If the return value is an object, use it, otherwise use the new object
+    var retIsObj = context.cfg.getNewBlock('ret_is_obj');
+    var retNotObj = context.cfg.getNewBlock('ret_not_obj');
+    var retMerge = context.cfg.getNewBlock('ret_merge');
+    var testVal = context.addInstr(
+        new InstOfInstr(
+            retVal,
+            ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+        )
+    );
+    context.addInstr(
+        new IfInstr(
+            testVal,
+            retIsObj,
+            retNotObj
+        )
+    );
+    retIsObj.addInstr(new JumpInstr(retMerge));
+    retNotObj.addInstr(new JumpInstr(retMerge));
+    var objVal = retMerge.addInstr(
+        new PhiInstr(
+            [
+                retVal,
+                newObj
+            ],
+            [
+                retIsObj, 
+                retNotObj
+            ]
+        ),
+        'obj_val'
+    );
+    context.splice(retMerge);
+
+    // Return the newly created object
+    return objVal;
+}
+
+/**
 Insert a call instruction in a given context, connect it with its continue 
-and throw targets and produce a new context
+and throw targets and splice this into the current context
 */
 function insertCallIR(context, instr)
 {
+    // If this is a function or constructor call
+    if (instr instanceof CallFuncInstr || instr instanceof ConstructInstr)
+    {
+        // Create basic blocks for function and non-function cases
+        var errorCtx = context.branch(
+            null,
+            context.cfg.getNewBlock('callee_not_func'),
+            context.localMap.copy()
+        );
+        var contBlock = context.cfg.getNewBlock('callee_is_func');
+
+        // Test if the callee value is a function
+        var testVal = context.addInstr(
+            new InstOfInstr(
+                instr.uses[0],
+                ConstValue.getNamedConst('FUNCTION_PROTOTYPE')
+            )
+        );
+        context.addInstr(
+            new IfInstr(
+                testVal,
+                contBlock,
+                errorCtx.entryBlock
+            )
+        );    
+
+        // Generate code to throw a type error
+        insertCallIR(
+            errorCtx,
+            new ThrowErrorInstr(
+                ConstValue.getNamedConst('TYPE_ERROR_CTOR'),
+                ConstValue.getConst('callee is not a function')
+            )
+        );
+        errorCtx.addInstr(new JumpInstr(contBlock));
+
+        context.splice(contBlock);
+    }
+
     // Create a basic block for the call continuation
     var contBlock = context.cfg.getNewBlock(instr.mnemonic + '_cont');
 
@@ -2820,12 +2995,7 @@ function insertCallIR(context, instr)
     instr.setContTarget(contBlock);
 
     // Add the call instruction to the current context
-    var insBlock = 
-        context.exitBlock? 
-        context.getExitBlock():
-        context.entryBlock
-    ;
-    insBlock.addInstr(instr);
+    context.addInstr(instr);
 
     // If we are in a try block
     if (context.throwList)
@@ -2838,11 +3008,8 @@ function insertCallIR(context, instr)
         context.throwList.push(newCtx);
     }
 
-    // Hijack the context to use the continue block
-    if (context.exitBlock)
-        context.exitBlock = contBlock;
-    else
-        context.entryBlock = contBlock;
+    // Splice the context to use the continue block
+    context.splice(contBlock);
 
     // Return the instruction value
     return instr;
@@ -2878,21 +3045,12 @@ Generate an exception throw with a given error class constructor
 */
 function errorToIR(context, throwCtx, errorCtor, errorMsg)
 {
-    // Create a block for the call continuation
-    var contBlock = context.cfg.getNewBlock('exc_cont');
-
     // Create an error object exception
-    var excVal = throwCtx.addInstr(
-        new ConstructInstr(
-            ConstValue.getConst(errorCtor), 
-            ConstValue.getConst(errorMsg),
-            contBlock
-        ),
-        'excVal'
+    var excVal = insertConstructIR(
+        throwCtx,
+        ConstValue.getConst(errorCtor),
+        [ConstValue.getConst(errorMsg)]
     );
-
-    // Set the new context output to the call continuation block
-    throwCtx.setOutput(contBlock);
 
     // Add a throw instruction
     throwCtx.addInstr(

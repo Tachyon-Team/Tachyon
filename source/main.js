@@ -19,13 +19,13 @@ function testIR()
     //pp(ast); // pretty-print AST
     //print('\n');
     
-    /*
+    
     print(ir);
 
     lowerIRFunc(ir);
 
     print(ir);
-    */
+    
 
     /*
     var codeblock = backend.compile(ir, print);
