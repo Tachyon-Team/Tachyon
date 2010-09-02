@@ -867,9 +867,14 @@ ControlFlowGraph.prototype.validate = function ()
             if (instr.isBranch() && j != block.instrs.length - 1)
                 throw 'branch before last block instruction';
 
-            // Verify that our uses have us as a dest
+            // For each use of this instruction
             for (var k = 0; k < instr.uses.length; ++k)
             {
+                // Verify that the use is valid
+                if (!(instr.uses[k] instanceof IRValue))
+                    throw 'invalid use found';
+
+                // Verify that our uses have us as a dest
                 if (instr.uses[k] instanceof IRInstr)
                     if (!arraySetHas(instr.uses[k].dests, instr))
                         throw 'missing dest link, from:\n' + 
@@ -879,9 +884,14 @@ ControlFlowGraph.prototype.validate = function ()
                         ;
             }
 
-            // Verify that our dests have us as a use
+            // For each dest of this instruction
             for (var k = 0; k < instr.dests.length; ++k)
             {
+                // Verify that the dest is valid
+                if (!(instr.dests[k] instanceof IRValue))
+                    throw 'invalid dest found';
+
+                // Verify that our dests have us as a use
                 if (!arraySetHas(instr.dests[k].uses, instr))
                     throw 'missing use link, from:\n' + 
                         instr.dests[k] +

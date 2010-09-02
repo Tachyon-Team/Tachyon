@@ -72,7 +72,7 @@ function inlineCall(callInstr, calleeFunc)
     var resBlock = callerCFG.getNewBlock('call_res');
 
     // Create a phi node for the return value resolution
-    var phiRes = resBlock.addInstr(new PhiNode([], []));
+    var phiRes = resBlock.addInstr(new PhiInstr([], []));
 
     // For each callee block
     for (var itr = calleeCFG.getBlockItr(); itr.valid(); itr.next())
@@ -125,12 +125,23 @@ function inlineCall(callInstr, calleeFunc)
         if (instr instanceof ArgValInstr)
         {
             // Replace uses of this instruction by the argument value
-            for (var j = 0; j < instr.dests; ++j)
+            for (var j = 0; j < instr.dests.length; ++j)
             {
-                instr.dests[j].replUse(
-                    instr, 
-                    callInstr.uses[instr.argIndex]
+                var dest = instr.dests[j];
+
+                var argVal = 
+                    instr.argIndex < callInstr.uses.length?
+                    callInstr.uses[instr.argIndex]:
+                    ConstValue.getConst(undefined)
+                ;
+
+                dest.replUse(
+                    instr,
+                    argVal
                 );
+
+                if (argVal instanceof IRInstr)
+                    argVal.addDest(dest);
             }
 
             // Remove the instruction
@@ -139,25 +150,44 @@ function inlineCall(callInstr, calleeFunc)
         }
     }
 
+    // Get a reference to the call block
+    var callBlock = callInstr.parentBlock;
 
+    // If the call is in the middle of a basic block
+    if (!contTarget)
+    {
+        // Find the index of the call instruction
+        for (var ci = 0; callBlock.instrs[ci] !== callInstr; ++ci);
 
-    /*
-    Make call res block jump to continuation block
-    - If handler call in middle of block, need to move all instrs after the call
-      to the resolution block
-    */
+        // Move all instructions after the call to the resolution block
+        for (var i = 0; i < callBlock.instrs.length - ci - 1; ++i)
+        {
+            var instr = callBlock.instrs[ci + 1];
+            callBlock.remInstrAtIndex(ci + 1);
+            resBlock.addInstr(instr, instr.outName);
+        }
+    }
 
-    /*
-    Replace the call instruction by a jump to callee entry block
+    // Otherwise, the call is at the end of a basic block
+    else
+    {
+        // Make res block jump to cont block
+        resBlock.addInstr(new JumpInstr(contTarget));
+    }
 
-    Replace uses of the call by uses of the resolution phi
-    */
+    // Replace uses of the return value by uses of the resolution phi
+    for (var i = 0; i < callInstr.dests.length; ++i)
+    {
+        callinstr.dests[i].replUse(
+            callInstr,
+            phiRes
+        );
+    }
 
-
-
-
-
-
-
+    // Replace the call instruction by a jump to the callee entry block
+    callBlock.replInstrAtIndex(
+        new JumpInstr(calleeCFG.entry),
+        callBlock.instrs.length - 1  
+    );
 }
 

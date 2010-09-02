@@ -718,8 +718,9 @@ Make a shallow copy of the instruction
 */
 ArgValInstr.prototype.copy = function ()
 {
-    var newInstr = new ArgValInstr(this.outName);
-    return this.baseCopy(newInstr);
+    return this.baseCopy(
+        new ArgValInstr(this.outName, this.argIndex)
+    );
 };
 
 /**

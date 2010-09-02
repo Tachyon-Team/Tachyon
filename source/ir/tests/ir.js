@@ -356,3 +356,57 @@ tests.ir.argsObj = function ()
     );
 }
 
+/**
+Inlining of function calls
+*/
+tests.ir.inlining = function ()
+{
+    var ir = tests.ir.helpers.testSource(
+        "                                       \
+            function foo()                      \
+            {                                   \
+                bar(1);                         \
+            }                                   \
+                                                \
+            function bar(a0)                    \
+            {                                   \
+                print(a0);                      \
+            }                                   \
+        "
+    );
+
+    // Find the bar call instruction
+    var callInstr;
+    tests.ir.helpers.forEachInstr(
+        ir,
+        function (instr)
+        {
+            if (
+                instr instanceof CallFuncInstr &&
+                instr.parentBlock.parentCFG.ownerFunc.funcName == 'foo'
+            )
+            {
+                callInstr = instr;
+            }
+        }
+    );
+
+    // Find the bar function
+    var barFunc;
+    ir.getChildrenList().forEach(
+        function (func)
+        {
+            if (func.funcName == 'bar')
+                barFunc = func;
+        }
+    );
+
+    // Inline the bar call
+    inlineCall(callInstr, barFunc);
+
+    //print(ir);
+
+    // Validate the resulting IR
+    ir.validate();
+}
+
