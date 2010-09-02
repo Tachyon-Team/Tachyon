@@ -17,6 +17,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
 
+// TODO: no support for 64 bit integers on 32 bit machines
+
+// TODO: need object pointer? have boxed value already
+
 //=============================================================================
 // IR Core
 //

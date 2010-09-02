@@ -50,6 +50,28 @@ function put_prop_val() {}
 function sub() {}
 function neq() {}
 
+// TODO: scrap call_handler
+
+// TODO: rename to primitives.js
+
+// TODO: auto static link functions with non-boxed in/out
+
+// TODO: unify constants with compile-time-binding-resolution?
+// - Compiler constants are the same for everybody, leave as now
+// - Constants such as object prototype should be in "execution context"
+//   - Context access instruction, get_ctx_val "", set_ctx_val ""
+//   - No need to create before compilation?
+
+/**
+Annotations:
+
+static
+inline
+arg types
+return type
+
+*/
+
 
 /**
 Handler function for the HIR add instruction
@@ -68,7 +90,7 @@ Handler for the HIR get_prop_val instruction
 */
 function get_prop_val(obj, propName)
 {
-    "tachyon:handler";    
+    "tachyon:handler";
 
     // Compute the hash for the property
     // Boxed value, may be a string or an int

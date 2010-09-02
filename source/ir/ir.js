@@ -23,13 +23,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // - Probably faster to do these things early on than with replacement?
 
 
-
+// TODO: different execution environment/context for each compiled program
 // TODO: Move these definitions
 // Implement Object prototype object (15.2.4)
 ConstValue.regNamedConst('OBJECT_PROTOTYPE', {});
 ConstValue.regNamedConst('FUNCTION_PROTOTYPE', {});
 ConstValue.regNamedConst('TYPE_ERROR_CTOR', {});
-
+// Global object
 
 
 /**
