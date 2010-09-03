@@ -1819,29 +1819,6 @@ var ConstructInstr = instrMaker(
 );
 
 /**
-@class Direct handler function call
-@augments CallInstr
-*/
-var CallHandlerInstr = instrMaker(
-    undefined,
-    function (typeParams, inputVals, branchTargets)
-    {
-        this.mnemonic = 'call_hdlr';
-
-        instrMaker.validNumInputs(inputVals, 1, Infinity);
-        assert (
-            inputVals[0] instanceof IRFunction,
-            'expected handler function'
-        );
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.BOXED;
-    },
-    ['continue', 'throw'],
-    new CallInstr()
-);
-
-/**
 @class Property set with value for field name
 @augments CallInstr
 */

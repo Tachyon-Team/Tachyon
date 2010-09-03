@@ -9,36 +9,13 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-
-// TODO: handler input/output type annotation
-// - Not all handlers have untyped in/out...
-
-/*
-// Make special instructions and handlers for common utility code:
+// Make special functions for common utility code:
 // TODO: BoxIsInt
 // TODO: BoxIsDouble
 // TODO: BoxIsString
 // TODO: isGetterSetter?
 
-Perhaps a better option would be to enable direct "cross-linking" of
-handler code. Enable handlers to call each other without defining IR
-instructions?
-- Requires special "cross-linking" pass
-- Could be special flag to lowering pass
-  - Replace global function calls by other handler calls, if available?
-  - Potential problem, if coding GC code, not technically a handler?
-
-
-Probably want all tachyon code to cross-link together?
-- Problem: some functions will have non-boxed return types
-  - This info is needed for cross-linking
-  - Need to parse/translate the functions to know this
-
-
-*/
-
-
-// TODO: implement handlers
+// TODO: implement the following primitives
 function make_clos() {}
 function put_clos() {}
 function get_clos() {}
@@ -46,43 +23,19 @@ function get_global() {}
 function make_arg_obj() {}
 function get_prop_val() {}
 function put_prop_val() {}
-
 function sub() {}
+function mul() {}
+function div() {}
+function mod() {}
+function eq() {}
 function neq() {}
-
-// TODO: scrap call_handler
-
-// TODO: rename to primitives.js
-
-// TODO: auto static link functions with non-boxed in/out
-
-// TODO: unify constants with compile-time-binding-resolution?
-// - Compiler constants are the same for everybody, leave as now
-// - Constants such as object prototype should be in "execution context"
-//   - Context access instruction, get_ctx_val "", set_ctx_val ""
-//   - No need to create before compilation?
-
-/**
-Annotations:
-
-static
-inline
-arg types
-return type
-
-*/
-
 
 /**
 Handler function for the HIR add instruction
 */
 function add(v1, v2)
 {
-    "tachyon:handler";
-
-
-    // TODO: implement also
-
+    // TODO: implement
 }
 
 /**
@@ -90,14 +43,12 @@ Handler for the HIR get_prop_val instruction
 */
 function get_prop_val(obj, propName)
 {
-    "tachyon:handler";
-
     // Compute the hash for the property
     // Boxed value, may be a string or an int
     var propHash = iir.unbox(IRType.INT32, computeHash(propName));
 
     // Until we reach the end of the prototype chain
-    while (obj != null)
+    do
     {
         // Get a pointer to the object
         var objPtr = iir.unbox(IRType.OBJPTR, obj);
@@ -149,7 +100,8 @@ function get_prop_val(obj, propName)
 
         // Move up in the prototype chain
         var obj = iir.load(IRType.BOXED, objPtr, OBJ_PROTO_PTR_OFFSET);
-    }    
+
+    } while (obj != null);
 
     // Property not found
     return undefined;

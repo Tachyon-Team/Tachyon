@@ -14,37 +14,10 @@ Inline an IR function at a call site
 */
 function inlineCall(callInstr, calleeFunc)
 {
-    /*
-    TODO
-
-    Copy the callee function's CFG [X]
-
-    Add blocks from callee CFG to caller CFG [X]
-
-    Create call resolution block [X]
-
-    Replace all rets by jump to call resolution [X]
-    - Need phi node for ret value in res block
-
-    Potentially add throw target to all throw instructions [X]
-
-    Replace arg instrs in entry block by call instruction args? [X]
-    - Remove instrs, replace dests
-
-    Make call res block jump to continuation block
-    - If handler call in middle of block, need to move all instrs after the call
-      to the resolution block
-
-    Replace the call instruction by a jump to callee entry block
-
-    Replace uses of the call by uses of the resolution phi
-    */
-
     // Ensure that the call site is valid
     assert (
         callInstr instanceof CallFuncInstr ||
-        callInstr instanceof ConstructInstr ||
-        callInstr instanceof CallHandlerInstr,
+        callInstr instanceof ConstructInstr,
         'call site must be call instruction'
     );
 
@@ -53,10 +26,6 @@ function inlineCall(callInstr, calleeFunc)
         !calleeFunc.usesArguments,
         'callee function uses arguments object'
     );
-
-    //
-    // TODO: handlers have no this value, func obj args
-    //
 
     // Get the call instruction's continuation and throw target
     var contTarget = callInstr.getContTarget();

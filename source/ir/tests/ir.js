@@ -220,10 +220,10 @@ tests.ir.withStmt = function ()
         ir,
         function (instr)
         {
-            if (instr instanceof CallHandlerInstr && 
+            if (instr instanceof CallFuncInstr && 
                 instr.uses[0].funcName == 'get_prop_val')
                 hasGet = true;
-            if (instr instanceof CallHandlerInstr && 
+            if (instr instanceof CallFuncInstr && 
                 instr.uses[0].funcName == 'put_prop_val')
                 hasPut = true;
         }

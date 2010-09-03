@@ -10,7 +10,78 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: inlining specialization
+/*
+// TODO
+Perhaps a better option would be to enable direct "cross-linking" of
+handler code. Enable handlers to call each other without defining IR
+instructions?
+- Requires special "cross-linking" pass
+- Could be special flag to lowering pass
+  - Replace global function calls by other handler calls, if available?
+  - Potential problem, if coding GC code, not technically a handler?
+
+Probably want all tachyon code to cross-link together?
+- Problem: some functions will have non-boxed return types
+  - This info is needed for cross-linking
+  - Need to parse/translate the functions to know this
+*/
+
+// TODO: function input/output type annotation
+// - Not all handlers have untyped in/out...
+// - Functions should have input/output type
+// - ArgValInstr should take type
+// - Ret instruction type needs to be validated in IR gen
+
+// TODO: auto static link functions with non-boxed in/out
+
+// TODO: unify constants with compile-time-binding-resolution?
+// - Compiler constants are the same for everybody, leave as now
+// - Constants such as object prototype should be in "execution context"
+//   - Context access instruction, get_ctx_val "", set_ctx_val ""
+//   - No need to create before compilation?
+
+/**
+// TODO
+Annotations:
+
+static
+inline
+arg types
+return type
+*/
+
+/*
+
+Function to parse JavaScript file ASTs, get signature info
+- Do we want to pre-create function objects too?
+- Not strictly necessary, could link at lowering stage?
+- Create object with static bindings
+  - Needed during IR translation, possibly lowering
+- Named constants could also be static bindings?
+  - regStaticBinding(name, irvalue)
+
+regBinding
+getBinding(name)
+- Can return func or other IR value
+- If we get func, can set call output type from func type
+
+Can have one object for tachyon static bindings
+- Fit all of the tachyon static bindings in there
+
+Generating a typed call, eg: to ThrowError function
+getStaticFunc(funcName), gets function object
+- Can then create call/construct as desired
+- Requires function object to be available
+
+When generating code for calls,
+For tachyon code, always try to find matching static func
+
+PROBLEM: if linking at lowering time, cannot turn getpropval into 
+static link?
+- Calls must be resolved, or marked as static during IR gen
+- Can pre-create func obj during pre-parsing, reuse during IR gen if already created***
+
+*/
 
 // TODO: move to relevant file, object model implementation
 ConstValue.regNamedConst(
@@ -43,6 +114,8 @@ ConstValue.regNamedConst(
     0,
     IRType.BOXED
 );
+
+// TODO: inlining specialization
 
 /**
 Perform IR lowering on a function and its subfunctions
@@ -99,8 +172,13 @@ function lowerIRCFG(cfg)
             var handler = handlerMap[instr.mnemonic];
 
             // Create a call instruction            
-            var callInstr = new CallHandlerInstr(
-                [handler].concat(instr.uses).concat(instr.targets)
+            var callInstr = new CallFuncInstr(
+                [
+                    handler,
+                    ConstValue.getConst(undefined) // TODO: get global obj from context?
+                ]
+                .concat(instr.uses)
+                .concat(instr.targets)
             );
             
             // Replace the instruction by the call
@@ -115,12 +193,12 @@ Map of instruction names to handlers
 var handlerMap = {}
 
 /**
-Compile the handler source code to enable IR lowering
+Compile the primitives source code to enable IR lowering
 */
-function compHandlers()
+function compPrimitives()
 {
     // Parse the handler source code
-    var ast = parse_src_file('ir/handlers.js'); 
+    var ast = parse_src_file('ir/primitives.js'); 
     var ir = unitToIR(ast, true);
 
     //print(ir);
@@ -140,26 +218,6 @@ function compHandlers()
     {
         var func = handlerMap[handlerName];
 
-        // TODO: PROBLEM, if a handler calls another handler, can't
-        // Directly inline it unless its lowering is complete
-
-        // Need to do lowering of handlers on demand?
-        // - Not necessarily, do inlining/optimization in later pass
-
-        // TODO: PROBLEM, what about other functions that are called, to be inlined?
-        // eg: IsBoxInt
-        // Could be considered a handler call?
-        // Could define the parsed functions as constants?
-        // - Requires separate file for all these helper functions
-        // - Should really just be other handlers
-
-        // Don't really want handlers to do a global function lookup...
-        // Could only look among other handlers when handlers make a global
-        // Function call???
-        // - Unintuitive and annoying
-        // - Just make special instructions when needed!
-        //   - More consistent, already have annotated/verified type info
-
         // Perform IR lowering on the handler
         lowerIRFunc(func);
 
@@ -170,6 +228,6 @@ function compHandlers()
     }
 }
 
-// Compile the handlers
-compHandlers();
+// Compile the primitives
+compPrimitives()
 
