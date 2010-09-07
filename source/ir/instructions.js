@@ -17,9 +17,41 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
 
+
+
 // TODO: no support for 64 bit integers on 32 bit machines
+// - Note this somewhere in comments
+
+
+
 
 // TODO: need object pointer? have boxed value already
+
+// TODO: PROBLEM:
+// Boxing object pointer... Which tag to put isn't obvious
+// Would need to specify tag
+
+// TODO: PROBLEM:
+// Using load or store with boxed value requires compensating for tag
+
+/*
+Could try always operating on boxed values:
+- Load/store with offset still works
+- Requires masking tag OR specifying tag in load operation
+  - An optimizer phase could possibly add the tag
+- Design load instruction to accept pint tag parameter?
+  - Keep it first or last?
+  - If first, have constant for unknown/unspecified tag
+
+
+Masking tag:
+- Ptr AND 111111...000
+- Ptr XOR 000000...tag
+
+*/
+
+
+
 
 //=============================================================================
 // IR Core

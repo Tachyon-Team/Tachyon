@@ -57,9 +57,6 @@ staticEnv.regBinding(
 // TODO: inlining specialization
 // - Just use the inline annotation!
 
-// TODO: implement get_ctx_var
-// - eliminate getNamedConst
-
 /**
 Perform IR lowering on a function and its subfunctions
 */

@@ -27,6 +27,10 @@ ConstValue.regNamedConst('FUNCTION_PROTOTYPE', {});
 ConstValue.regNamedConst('TYPE_ERROR_CTOR', {});
 // TODO: Global object constant? No, put in context
 
+// TODO: implement get_ctx_var, set_ctx_var
+// - eliminate getNamedConst
+
+
 
 /**
 Translate an AST code unit into IR functions

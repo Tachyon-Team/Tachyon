@@ -9,9 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: code for inlining at call site?
-// Should perhaps implement in different file?
-
 /**
 @class Class to represent control-flow graph
 */
