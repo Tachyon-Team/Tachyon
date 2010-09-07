@@ -10,112 +10,55 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-/*
-// TODO
-Perhaps a better option would be to enable direct "cross-linking" of
-handler code. Enable handlers to call each other without defining IR
-instructions?
-- Requires special "cross-linking" pass
-- Could be special flag to lowering pass
-  - Replace global function calls by other handler calls, if available?
-  - Potential problem, if coding GC code, not technically a handler?
-
-Probably want all tachyon code to cross-link together?
-- Problem: some functions will have non-boxed return types
-  - This info is needed for cross-linking
-  - Need to parse/translate the functions to know this
-*/
-
-// TODO: function input/output type annotation
-// - Not all handlers have untyped in/out...
-// - Functions should have input/output type
-// - ArgValInstr should take type
-// - Ret instruction type needs to be validated in IR gen
-
-// TODO: auto static link functions with non-boxed in/out
-
-// TODO: unify constants with compile-time-binding-resolution?
-// - Compiler constants are the same for everybody, leave as now
-// - Constants such as object prototype should be in "execution context"
-//   - Context access instruction, get_ctx_val "", set_ctx_val ""
-//   - No need to create before compilation?
-
-/**
-// TODO
-Annotations:
-
-static
-inline
-arg types
-return type
-*/
-
-/*
-
-Function to parse JavaScript file ASTs, get signature info
-- Do we want to pre-create function objects too?
-- Not strictly necessary, could link at lowering stage?
-- Create object with static bindings
-  - Needed during IR translation, possibly lowering
-- Named constants could also be static bindings?
-  - regStaticBinding(name, irvalue)
-
-regBinding
-getBinding(name)
-- Can return func or other IR value
-- If we get func, can set call output type from func type
-
-Can have one object for tachyon static bindings
-- Fit all of the tachyon static bindings in there
-
-Generating a typed call, eg: to ThrowError function
-getStaticFunc(funcName), gets function object
-- Can then create call/construct as desired
-- Requires function object to be available
-
-When generating code for calls,
-For tachyon code, always try to find matching static func
-
-PROBLEM: if linking at lowering time, cannot turn getpropval into 
-static link?
-- Calls must be resolved, or marked as static during IR gen
-- Can pre-create func obj during pre-parsing, reuse during IR gen if already created***
-
-*/
-
 // TODO: move to relevant file, object model implementation
-ConstValue.regNamedConst(
+staticEnv.regBinding(
     'OBJ_PROTO_PTR_OFFSET',
-    4,
-    IRType.INT32
+    ConstValue.getConst(
+        4,
+        IRType.i32
+    )
 );
-ConstValue.regNamedConst(
+staticEnv.regBinding(
     'OBJ_HASH_PTR_OFFSET',
-    ConstValue.getNamedConst('OBJ_PROTO_PTR_OFFSET').value + IRType.OBJPTR.size,
-    IRType.INT32
+    ConstValue.getConst(
+        staticEnv.getBinding('OBJ_PROTO_PTR_OFFSET').value + IRType.optr.size,
+        IRType.i32
+    )
 );
-ConstValue.regNamedConst(
+staticEnv.regBinding(
     'OBJ_HASH_SIZE_OFFSET',
-    ConstValue.getNamedConst('OBJ_HASH_PTR_OFFSET').value + IRType.OBJPTR.size,
-    IRType.INT32
+    ConstValue.getConst(
+        staticEnv.getBinding('OBJ_HASH_PTR_OFFSET').value + IRType.optr.size,
+        IRType.i32
+    )
 );
-ConstValue.regNamedConst(
+staticEnv.regBinding(
     'OBJ_HASH_ENTRY_SIZE',
-    16,
-    IRType.INT32
+    ConstValue.getConst(
+        16,
+        IRType.i32
+    )
 );
-ConstValue.regNamedConst(
+staticEnv.regBinding(
     'OBJ_HASH_KEY_SIZE',
-    8,
-    IRType.INT32
+    ConstValue.getConst(
+        8,
+        IRType.i32
+    )
 );
-ConstValue.regNamedConst(
+staticEnv.regBinding(
     'OBJ_HASH_EMPTY_KEY',
-    0,
-    IRType.BOXED
+    ConstValue.getConst(
+        0,
+        IRType.box
+    )
 );
 
 // TODO: inlining specialization
+// - Just use the inline annotation!
+
+// TODO: implement get_ctx_var
+// - eliminate getNamedConst
 
 /**
 Perform IR lowering on a function and its subfunctions
@@ -146,7 +89,7 @@ function lowerIRCFG(cfg)
         // Test if some instruction uses are boxed values
         var usesBoxed = false
         for (var i = 0; i < instr.uses.length; ++i)
-            if (instr.uses[i].type === IRType.BOXED)
+            if (instr.uses[i].type === IRType.box)
                 usesBoxed = true;
 
         // If this is an untyped if instruction
@@ -199,6 +142,11 @@ function compPrimitives()
 {
     // Parse the handler source code
     var ast = parse_src_file('ir/primitives.js'); 
+
+    // Parse static bindings in the unit
+    staticEnv.parseUnit(ast);
+
+    // Generate IR from the AST
     var ir = unitToIR(ast, true);
 
     //print(ir);

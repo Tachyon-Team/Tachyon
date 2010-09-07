@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Intermediate representation function
 */
-function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
+function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, astNode)
 {
     /**
     Function name
@@ -31,6 +31,18 @@ function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
     @field
     */
     this.closVars = closVars;
+
+    /**
+    Argument types
+    @field
+    */
+    this.argTypes = argTypes;
+
+    /**
+    Return type
+    @field
+    */
+    this.retType = retType;
 
     /**
     AST node corresponding to the function
@@ -71,6 +83,30 @@ function IRFunction(funcName, argVars, closVars, parentFunc, astNode)
     @field
     */
     this.usesEval = false;
+
+    /**
+    Flag to indicate that this function should be statically linked
+    @field
+    */
+    this.staticLink = false;
+
+    /**
+    Flag to indicate that this function should be inlined
+    @field
+    */
+    this.inline = false;
+
+    // If the argument or return types are undefined, make them boxed
+    if (!this.argTypes)
+    {
+        this.argTypes = [];
+        for (var i = 0; i < argVars.length; ++i)
+            this.argTypes.push(IRType.box);
+    }
+    if (!this.retType)
+    {
+        this.retType = IRType.box;
+    }
 }
 IRFunction.prototype = new IRValue();
 
@@ -79,11 +115,11 @@ Produce a string representation of an IR function
 */
 IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
 {
-    var output = 'function ' + this.funcName + '(';
+    var output = this.retType + ' function ' + this.funcName + '(';
 
     for (var i = 0; i < this.argVars.length; ++i)
     {
-        output += this.argVars[i];
+        output += this.argTypes[i] + ' ' + this.argVars[i];
 
         if (i != this.argVars.length - 1)
             output += ', ';
@@ -146,6 +182,8 @@ IRFunction.prototype.copy = function ()
         this.funcName,
         this.argVars,
         this.closVars,
+        this.argTypes.slice(0),
+        this.retType,
         this.parentFunc,
         this.astNode
     );
@@ -161,6 +199,8 @@ IRFunction.prototype.copy = function ()
 
     newFunc.usesArguments = this.usesArguments;
     newFunc.usesEval = this.usesEval;
+    newFunc.staticLink = this.staticLink;
+    newFunc.inline = this.inline;
 
     return newFunc;
 }

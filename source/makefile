@@ -21,6 +21,7 @@ BASE_SRCS =                 \
     ir/iir.js               \
     ir/cfg.js               \
     ir/functions.js         \
+    ir/static.js            \
     ir/ir.js                \
     ir/inlining.js          \
     ir/primitives.js        \

@@ -62,8 +62,8 @@ IRTypeObj.prototype.isPtrType = function ()
 {
     switch (this)
     {
-        case IRType.RAWPTR:
-        case IRType.OBJPTR:
+        case IRType.rptr:
+        case IRType.optr:
         return true;
 
         default:
@@ -78,14 +78,14 @@ IRTypeObj.prototype.isIntType = function ()
 {
     switch (this)
     {
-        case IRType.UINT8:
-        case IRType.UINT16:
-        case IRType.UINT32:
-        case IRType.UINT64:
-        case IRType.INT8:
-        case IRType.INT16:
-        case IRType.INT32:
-        case IRType.INT64:
+        case IRType.u8:
+        case IRType.u16:
+        case IRType.u32:
+        case IRType.u64:
+        case IRType.i8:
+        case IRType.i16:
+        case IRType.i32:
+        case IRType.i64:
         return true;
 
         default:
@@ -100,8 +100,8 @@ IRTypeObj.prototype.isFPType = function ()
 {
     switch (this)
     {
-        case IRType.FLOAT32:
-        case IRType.FLOAT64:
+        case IRType.f32:
+        case IRType.f64:
         return true;
 
         default:
@@ -127,39 +127,39 @@ PLATFORM_PTR_SIZE = 8;
 IRType =
 {
     // Type given when there is no output value
-    VOID:       new IRTypeObj('void', 0),
+    void:   new IRTypeObj('void', 0),
 
     // Boxed value type
-    BOXED:      new IRTypeObj('box', PLATFORM_PTR_SIZE),
+    box:    new IRTypeObj('box', PLATFORM_PTR_SIZE),
 
     // Pointer to an object's start address
-    OBJPTR:     new IRTypeObj('objptr', PLATFORM_PTR_SIZE),
+    optr: new IRTypeObj('optr', PLATFORM_PTR_SIZE),
 
     // Raw pointer to any memory address
-    RAWPTR:     new IRTypeObj('rawptr', PLATFORM_PTR_SIZE),
+    rptr: new IRTypeObj('rptr', PLATFORM_PTR_SIZE),
 
     // Unboxed unsigned integer types
-    UINT8:      new IRTypeObj('u8'  , 1),
-    UINT16:     new IRTypeObj('u16' , 2),
-    UINT32:     new IRTypeObj('u32' , 4),
-    UINT64:     new IRTypeObj('u64' , 8),
+    u8:     new IRTypeObj('u8'  , 1),
+    u16:    new IRTypeObj('u16' , 2),
+    u32:    new IRTypeObj('u32' , 4),
+    u64:    new IRTypeObj('u64' , 8),
 
     // Unboxed signed integer types
-    INT8:       new IRTypeObj('i8'  , 1),
-    INT16:      new IRTypeObj('i16' , 2),
-    INT32:      new IRTypeObj('i32' , 4),
-    INT64:      new IRTypeObj('i64' , 8),
+    i8:     new IRTypeObj('i8'  , 1),
+    i16:    new IRTypeObj('i16' , 2),
+    i32:    new IRTypeObj('i32' , 4),
+    i64:    new IRTypeObj('i64' , 8),
 
     // Floating-point types
-    FLOAT32:    new IRTypeObj('f32' , 4),
-    FLOAT64:    new IRTypeObj('f64' , 8)
+    f32:    new IRTypeObj('f32' , 4),
+    f64:    new IRTypeObj('f64' , 8)
 };
 
 // Int type of width corresponding a pointer on this platform
-IRType.PLATFORM_INT =
+IRType.pint =
     PLATFORM_PTR_SIZE == 4?
-    IRType.INT32:
-    IRType.INT64
+    IRType.i32:
+    IRType.i64
 ;
 
 /**
@@ -180,7 +180,7 @@ function IRValue()
     /**
     By default, all IR values have the boxed type
     */
-    this.type = IRType.BOXED;
+    this.type = IRType.box;
 }
 
 /**
@@ -259,7 +259,7 @@ ConstValue.getConst = function (value, type)
 {
     // The default type is boxed
     if (type === undefined)
-        type = IRType.BOXED;
+        type = IRType.box;
 
     // If there is no type map for this value
     if (!ConstValue.constMap.hasItem(value))
@@ -423,7 +423,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction has a non-void output print its output name
-    if (this.type != IRType.VOID)
+    if (this.type != IRType.void)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic;
@@ -593,7 +593,7 @@ function PhiInstr(values, preds)
     Phi node type, equal to the input values type
     @field
     */
-    this.type = this.uses.length? this.uses[0].type:IRType.VOID;
+    this.type = this.uses.length? this.uses[0].type:IRType.void;
 }
 PhiInstr.prototype = new IRInstr();
 
@@ -611,7 +611,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction's type is not void, print its output name
-    if (this.type != IRType.VOID)
+    if (this.type != IRType.void)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + ' ';
@@ -690,7 +690,7 @@ PhiInstr.prototype.copy = function ()
 @class Function argument value instruction
 @augments IRInstr
 */
-function ArgValInstr(argName, argIndex)
+function ArgValInstr(type, argName, argIndex)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = 'arg';
@@ -700,6 +700,9 @@ function ArgValInstr(argName, argIndex)
 
     // Set the argument index
     this.argIndex = argIndex;
+
+    // Set the argument type
+    this.type = type; 
 }
 ArgValInstr.prototype = new IRInstr();
 
@@ -723,7 +726,11 @@ Make a shallow copy of the instruction
 ArgValInstr.prototype.copy = function ()
 {
     return this.baseCopy(
-        new ArgValInstr(this.outName, this.argIndex)
+        new ArgValInstr(
+            this.type,
+            this.outName,
+            this.argIndex
+        )
     );
 };
 
@@ -800,7 +807,7 @@ function instrMaker(
             if (allSame)
             {
                 // If there is a first type and it is not boxed
-                if (firstType !== null && firstType !== IRType.BOXED)
+                if (firstType !== null && firstType !== IRType.box)
                 {
                     // Append the input type to the name
                     this.mnemonic += '_' + firstType.name;
@@ -955,7 +962,7 @@ instrMaker.allValsBoxed = function (inputVals)
         function (val)
         {
             assert (
-                val.type === IRType.BOXED,
+                val.type === IRType.box,
                 'all input values must be boxed'
             );
         }
@@ -992,7 +999,7 @@ function untypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoOb
             'invalid number of branch targets specified'
         );
 
-        this.type = voidOutput? IRType.VOID:IRType.BOXED;
+        this.type = voidOutput? IRType.void:IRType.box;
     }
 
     return instrMaker(
@@ -1121,6 +1128,10 @@ var MakeClosInstr = instrMaker(
     {
         instrMaker.allValsBoxed(inputVals);
         instrMaker.validNumInputs(inputVals, 2, Infinity);
+        assert(
+            inputVals[0] instanceof IRFunction,
+            'expected function as first argument'
+        );
     }
 );
 
@@ -1194,7 +1205,7 @@ ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     instrMaker.validNumInputs(inputVals, 2);
 
     assert (
-        (inputVals[0].type === IRType.BOXED ||
+        (inputVals[0].type === IRType.box ||
          inputVals[0].type.isNumberType())
         &&
         inputVals[1].type === inputVals[0].type,
@@ -1215,11 +1226,11 @@ var AddInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 2);
 
         assert (
-            (inputVals[0].type === IRType.RAWPTR &&
-             inputVals[1].type === IRType.PLATFORM_INT)
+            (inputVals[0].type === IRType.rptr &&
+             inputVals[1].type === IRType.pint)
             ||
             (
-                (inputVals[0].type === IRType.BOXED ||
+                (inputVals[0].type === IRType.box ||
                  inputVals[0].type.isNumberType())
                 &&
                 inputVals[1].type === inputVals[0].type
@@ -1244,14 +1255,14 @@ var SubInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 2);
 
         assert (
-            (inputVals[0].type === IRType.RAWPTR &&
-             inputVals[1].type === IRType.PLATFORM_INT)
+            (inputVals[0].type === IRType.rptr &&
+             inputVals[1].type === IRType.pint)
             ||
-            (inputVals[0].type === IRType.RAWPTR &&
-             inputVals[1].type === IRType.RAWPTR)
+            (inputVals[0].type === IRType.rptr &&
+             inputVals[1].type === IRType.rptr)
             ||
             (
-                (inputVals[0].type === IRType.BOXED ||
+                (inputVals[0].type === IRType.box ||
                  inputVals[0].type.isNumberType())
                 &&
                 inputVals[1].type === inputVals[0].type
@@ -1260,10 +1271,10 @@ var SubInstr = instrMaker(
         );
         
         if (
-            inputVals[0].type === IRType.RAWPTR && 
-            inputVals[1].type === IRType.RAWPTR
+            inputVals[0].type === IRType.rptr && 
+            inputVals[1].type === IRType.rptr
         )
-            this.type = IRType.PLATFORM_INT
+            this.type = IRType.pint
         else
             this.type = inputVals[0].type;
     },
@@ -1326,7 +1337,7 @@ ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTarget
 {
     instrMaker.validNumInputs(inputVals, 2);
     assert (
-        inputVals[0].type === IRType.PLATFORM_INT &&
+        inputVals[0].type === IRType.pint &&
         inputVals[1].type === inputVals[0].type,
         'invalid input types'
     );
@@ -1390,7 +1401,7 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     instrMaker.validNumInputs(inputVals, 2);
 
     assert (
-        (inputVals[0].type === IRType.BOXED ||
+        (inputVals[0].type === IRType.box ||
          inputVals[0].type.isIntType())
         &&
         inputVals[1].type === inputVals[0].type,
@@ -1411,7 +1422,7 @@ var NotInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 1);
 
         assert (
-            (inputVals[0].type === IRType.BOXED ||
+            (inputVals[0].type === IRType.box ||
             inputVals[0].type.isIntType()),
             'invalid input type'
         );
@@ -1511,17 +1522,17 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     instrMaker.validNumInputs(inputVals, 2);
 
     assert (
-        (inputVals[0].type === IRType.BOXED ||
+        (inputVals[0].type === IRType.box ||
          inputVals[0].type.isNumberType())
         &&
         inputVals[1].type === inputVals[0].type,
         'invalid input types'
     );
     
-    if (inputVals[0].type === IRType.BOXED)
-        this.type = IRType.BOXED;
+    if (inputVals[0].type === IRType.box)
+        this.type = IRType.box;
     else
-        this.type = IRType.INT8;
+        this.type = IRType.i8;
 }
 
 /**
@@ -1635,11 +1646,14 @@ var JumpInstr = untypedInstrMaker(
 @class Function return instruction
 @augments IRInstr
 */
-var RetInstr = untypedInstrMaker(
+var RetInstr = instrMaker(
     'ret',
-     1,
-    undefined,
-    true
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1);
+        
+        this.type = IRType.void;
+    }
 );
 
 /**
@@ -1660,13 +1674,13 @@ var IfInstr = instrMaker(
     {
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            inputVals[0].type === IRType.BOXED ||
-            inputVals[0].type === IRType.INT8,
+            inputVals[0].type === IRType.box ||
+            inputVals[0].type === IRType.i8,
             'input must be boxed or int8'
         );
         instrMaker.validNumBranches(branchTargets, 2);
         
-        this.type = IRType.VOID;
+        this.type = IRType.void;
     },
     ['then', 'else']
 );
@@ -1712,10 +1726,10 @@ var ThrowInstr = instrMaker(
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 1);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 1);
         
-        this.type = IRType.VOID;
+        this.type = IRType.void;
     },
     ['to'],
     new ExceptInstr()
@@ -1787,11 +1801,14 @@ var CallFuncInstr = instrMaker(
         this.mnemonic = 'call';
 
         instrMaker.validNumInputs(inputVals, 2, Infinity);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
-        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
+        instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.BOXED;
+
+        if (inputVals[0].retType instanceof IRTypeObj)
+            this.type = inputVals[0].retType;
+        else
+            this.type = IRType.box;
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -1808,11 +1825,11 @@ var ConstructInstr = instrMaker(
         this.mnemonic = 'construct';
 
         instrMaker.validNumInputs(inputVals, 2, Infinity);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
-        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
+        instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
-        this.type = IRType.BOXED;
+        this.type = IRType.box;
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -1827,12 +1844,12 @@ var PutPropValInstr = instrMaker(
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 3);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
-        instrMaker.validType(inputVals[1], IRType.BOXED);
-        instrMaker.validType(inputVals[2], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
+        instrMaker.validType(inputVals[1], IRType.box);
+        instrMaker.validType(inputVals[2], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
-        this.type = IRType.VOID;
+        this.type = IRType.void;
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -1847,30 +1864,11 @@ var GetPropValInstr = instrMaker(
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
-        instrMaker.validType(inputVals[1], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
+        instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
-        this.type = IRType.BOXED;
-    },
-    ['continue', 'throw'],
-    new CallInstr()
-);
-
-/**
-@class Throw an error with the specified constructor and message
-@augments CallInstr
-*/
-var ThrowErrorInstr = instrMaker(
-    'throw_error',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
-        instrMaker.validType(inputVals[1], IRType.BOXED);
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.BOXED;
+        this.type = IRType.box;
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -1893,12 +1891,12 @@ var UnboxInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.OBJPTR ||
-            typeParams[0] === IRType.INT32  ||
-            typeParams[0] === IRType.PLATFORM_INT,
+            typeParams[0] === IRType.optr ||
+            typeParams[0] === IRType.i32  ||
+            typeParams[0] === IRType.pint,
             'type parameter should be object pointer or platform int'
         );
-        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
         
         this.type = typeParams[0];
     }
@@ -1915,12 +1913,12 @@ var BoxInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.OBJPTR || typeParams[0] === IRType.PLATFORM_INT,
+            typeParams[0] === IRType.optr || typeParams[0] === IRType.pint,
             'type parameter should be object pointer or platform int'
         );
         instrMaker.validType(inputVals[0], typeParams[0]);
 
-        this.type = IRType.BOXED;
+        this.type = IRType.box;
     }
 );
 
@@ -1935,10 +1933,10 @@ var RawUnboxInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.RAWPTR || typeParams[0] === IRType.PLATFORM_INT,
+            typeParams[0] === IRType.rptr || typeParams[0] === IRType.pint,
             'type parameter should be raw pointer or platform int'
         );
-        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
         
         this.type = typeParams[0];
     }
@@ -1953,9 +1951,9 @@ var ToBoolInstr = instrMaker(
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 1);
-        instrMaker.validType(inputVals[0], IRType.BOXED);
+        instrMaker.validType(inputVals[0], IRType.box);
         
-        this.type = IRType.INT8;
+        this.type = IRType.i8;
     }
 );
 
@@ -1970,8 +1968,8 @@ var ICastInstr = instrMaker(
         instrMaker.validNumParams(inputVals, 2);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            (typeParams[0].isIntType() || typeParams[0] === IRType.RAWPTR) &&
-            (typeParams[1].isIntType() || typeParams[1] === IRType.RAWPTR),
+            (typeParams[0].isIntType() || typeParams[0] === IRType.rptr) &&
+            (typeParams[1].isIntType() || typeParams[1] === IRType.rptr),
             'type parameters must be integer or raw pointer'
         );
         instrMaker.validType(inputVals[0], typeParams[0]);
@@ -1991,8 +1989,8 @@ var IToFPInstr = instrMaker(
         instrMaker.validNumParams(inputVals, 2);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.PLATFORM_INT &&
-            typeParams[1] === IRType.FLOAT64,
+            typeParams[0] === IRType.pint &&
+            typeParams[1] === IRType.f64,
             'invalid type parameters'
         );
         instrMaker.validType(inputVals[0], typeParams[0]);
@@ -2012,8 +2010,8 @@ var FPToIInstr = instrMaker(
         instrMaker.validNumParams(inputVals, 2);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.FLOAT64 &&
-            typeParams[1] === IRType.PLATFORM_INT,
+            typeParams[0] === IRType.f64 &&
+            typeParams[1] === IRType.pint,
             'invalid type parameters'
         );
         instrMaker.validType(inputVals[0], typeParams[0]);
@@ -2042,7 +2040,7 @@ var LoadInstr = instrMaker(
             inputVals[0].type.isPtrType(),
             'the first input must be a pointer'
         );
-        instrMaker.validType(inputVals[1], IRType.INT32);
+        instrMaker.validType(inputVals[1], IRType.i32);
         
         this.type = typeParams[0];
     }
@@ -2062,10 +2060,10 @@ var StoreInstr = instrMaker(
             inputVals[0].type.isPtrType(),
             'the first input must be a pointer'
         );
-        instrMaker.validType(inputVals[1], IRType.INT32);
+        instrMaker.validType(inputVals[1], IRType.i32);
         instrMaker.validType(inputVals[2], typeParams[0]);
         
-        this.type = IRType.VOID;
+        this.type = IRType.void;
     }
 );
 

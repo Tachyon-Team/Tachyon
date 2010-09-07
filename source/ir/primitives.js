@@ -15,6 +15,16 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: BoxIsString
 // TODO: isGetterSetter?
 
+/**
+Throw an exception with a given constructor
+*/
+function throwError(errorCtor, message)
+{
+    "tachyon:static";
+
+    throw new errorCtor(message);
+}
+
 // TODO: implement the following primitives
 function make_clos() {}
 function put_clos() {}
@@ -39,25 +49,37 @@ function add(v1, v2)
 }
 
 /**
+Compute a hash value for a property name or index
+*/
+function computeHash(propName)
+{
+    "tachyon:inline";
+    "tachyon:ret i32";
+
+    // TODO: implement way of returning typed constants
+    return OBJ_HASH_PTR_OFFSET;
+}
+
+/**
 Handler for the HIR get_prop_val instruction
 */
 function get_prop_val(obj, propName)
 {
     // Compute the hash for the property
     // Boxed value, may be a string or an int
-    var propHash = iir.unbox(IRType.INT32, computeHash(propName));
+    var propHash = computeHash(propName);
 
     // Until we reach the end of the prototype chain
     do
     {
         // Get a pointer to the object
-        var objPtr = iir.unbox(IRType.OBJPTR, obj);
+        var objPtr = iir.unbox(IRType.optr, obj);
 
         // Get a pointer to the hash table
-        var tblPtr = iir.load(IRType.OBJPTR, objPtr, OBJ_HASH_PTR_OFFSET);
+        var tblPtr = iir.load(IRType.optr, objPtr, OBJ_HASH_PTR_OFFSET);
 
         // Get the size of the hash table
-        var tblSize = iir.load(IRType.INT32, objPtr, OBJ_HASH_SIZE_OFFSET);
+        var tblSize = iir.load(IRType.i32, objPtr, OBJ_HASH_SIZE_OFFSET);
 
         // Get the hash table index for this hash value
         var hashIndex = propHash % tblSize;
@@ -67,7 +89,7 @@ function get_prop_val(obj, propName)
         {
             // Get the key value at this hash slot
             var keyVal = iir.load(
-                IRType.BOXED,
+                IRType.box,
                 tblPtr,
                 hashIndex * OBJ_HASH_ENTRY_SIZE
             );
@@ -77,7 +99,7 @@ function get_prop_val(obj, propName)
             {
                 // Load the property value
                 var propVal = load(
-                    IRType.BOXED, 
+                    IRType.box, 
                     tblPointer, 
                     hashIndex * OBJ_HASH_ENTRY_SIZE + OBJ_HASH_KEY_SIZE
                 );
@@ -99,7 +121,7 @@ function get_prop_val(obj, propName)
         }
 
         // Move up in the prototype chain
-        var obj = iir.load(IRType.BOXED, objPtr, OBJ_PROTO_PTR_OFFSET);
+        var obj = iir.load(IRType.box, objPtr, OBJ_PROTO_PTR_OFFSET);
 
     } while (obj != null);
 

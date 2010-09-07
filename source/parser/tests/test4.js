@@ -1,13 +1,8 @@
 function f(c1, c2)
-{
-
-
-
-
-    
+{    
     /*
-    var i1 = iir.unbox(IRType.PLATFORM_INT, c1);
-    var i2 = iir.unbox(IRType.PLATFORM_INT, c2);
+    var i1 = iir.unbox(IRType.pint, c1);
+    var i2 = iir.unbox(IRType.pint, c2);
     
     var r = i1 + i2 * FOOBAR;
     print(r);
@@ -26,8 +21,8 @@ function f(c1, c2)
 
 
     /*
-    var i1 = iir.unbox(IRType.INT32, c1);
-    var i2 = iir.unbox(IRType.INT32, c2);
+    var i1 = iir.unbox(IRType.i32, c1);
+    var i2 = iir.unbox(IRType.i32, c2);
 
     
     var a;

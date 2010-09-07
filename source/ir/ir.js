@@ -18,11 +18,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: look into doing typed if insertion at code gen time?
-// - Does it make sense, code gen wise?
-// - Probably faster to do these things early on than with replacement?
-
-
 // TODO: different execution environment/context for each compiled program
 // TODO: Move these definitions
 // TODO: exec context
@@ -30,7 +25,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 ConstValue.regNamedConst('OBJECT_PROTOTYPE', {});
 ConstValue.regNamedConst('FUNCTION_PROTOTYPE', {});
 ConstValue.regNamedConst('TYPE_ERROR_CTOR', {});
-// TODO: Global object
+// TODO: Global object constant? No, put in context
 
 
 /**
@@ -67,8 +62,6 @@ function unitToIR(
         [],
         [],
         [],
-        [],
-        [],
         astUnit.funcs,
         astUnit.block.statements,
         astUnit,
@@ -93,9 +86,7 @@ function funcToIR(
     return stmtListToIRFunc(
         funcName, 
         parentFunc,
-        astFunc.params,
         astFunc.vars,
-        astFunc.free_vars,
         astFunc.clos_vars,
         astFunc.esc_vars,
         astFunc.funcs,
@@ -111,10 +102,8 @@ Convert an AST statement list into an IR function
 function stmtListToIRFunc(
     funcName, 
     parentFunc,
-    params,
     localVars,
     freeVars,
-    closureVars,
     escapeVars,
     nestedFuncs,
     bodyStmts,
@@ -126,30 +115,12 @@ function stmtListToIRFunc(
     if (tachyonSrc === undefined)
         tachyonSrc = false;
 
-    // Extract the argument names
-    var argVars = [];
-    for (var i in params)
-        argVars.push(params[i].toString());
-
-    // Extract the closure variable names
-    var closVars = [];
-    for (var i in closureVars)
-        closVars.push(closureVars[i].toString());
-
     // Create a new function object for the function
-    var newFunc = new IRFunction(
+    var newFunc = getIRFuncObj(
         funcName,
-        argVars,
-        closVars,
         parentFunc,
         astNode
     );
-
-    // Verify if the function may be using the arguments object or eval
-    if (astNode.usesArguments)
-        newFunc.usesArguments = true;
-    if (astNode.usesEval)
-        newFunc.usesEval = true;
 
     // Create a new CFG for the function
     var cfg = new ControlFlowGraph(newFunc);
@@ -161,20 +132,20 @@ function stmtListToIRFunc(
     var entryBlock = cfg.getEntryBlock();
 
     // Add an instruction to get the function object argument
-    var funcObj = new ArgValInstr('funcObj', 0);
+    var funcObj = new ArgValInstr(IRType.box, 'funcObj', 0);
     entryBlock.addInstr(funcObj, 'funcObj');
 
     // Add an instruction to get the this value argument
-    var thisVal = new ArgValInstr('thisVal', 1);
+    var thisVal = new ArgValInstr(IRType.box, 'thisVal', 1);
     entryBlock.addInstr(thisVal, 'this');
 
     // Create a map for the closure and escaping variable mutable cells
     var sharedMap = new HashMap();
 
     // For each closure variable
-    for (var i = 0; i < closVars.length; ++i)
+    for (var i = 0; i < newFunc.closVars.length; ++i)
     {
-        var symName = closVars[i];
+        var symName = newFunc.closVars[i];
 
         // Get the corresponding mutable cell from the closure
         var closCell = entryBlock.addInstr(
@@ -205,12 +176,12 @@ function stmtListToIRFunc(
     var localMap = new HashMap();
 
     // For each function argument
-    for (var i = 0; i < params.length; ++i)
+    for (var i = 0; i < newFunc.argVars.length; ++i)
     {
-        var symName = params[i].toString();
+        var symName = newFunc.argVars[i].toString();
 
         // Create an instruction to get the argument value
-        var argVal = new ArgValInstr(symName, 2 + i);
+        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, 2 + i);
         entryBlock.addInstr(argVal, symName);
 
         // If there is no entry in the shared map
@@ -342,6 +313,11 @@ function stmtListToIRFunc(
     // If the context is not terminated
     if (!bodyContext.isTerminated())
     {
+        assert (
+            newFunc.retType === IRType.box,
+            'functions with non-boxed return types must return a value'
+        )
+
         // Add a return undefined instruction to the exit block
         bodyContext.addInstr(
             new RetInstr(ConstValue.getConst(undefined))
@@ -377,6 +353,146 @@ function stmtListToIRFunc(
 Next number to be assigned to an anonymous function
 */
 stmtListToIRFunc.nextAnonNum = 0;
+
+/**
+Create or get the IR function object for an AST node
+*/
+function getIRFuncObj(
+    funcName, 
+    parentFunc, 
+    astNode
+)
+{
+    // If a function object already exists, return it
+    if (astNode.irFunc)
+        return astNode.irFunc;
+
+    // Create arrays for the argument and closure variables
+    var argVars = [];
+    var closVars = [];
+
+    // If this is a top-level program node
+    if (astNode instanceof Program)
+    {
+        // Nothing for now
+    }
+
+    // If this is a function expression
+    else if (astNode instanceof FunctionExpr)
+    {
+        // Extract the argument names
+        for (var i in astNode.params)
+            argVars.push(astNode.params[i].toString());
+
+        // Extract the closure variable names
+        for (var i in astNode.clos_vars)
+            closVars.push(astNode.clos_vars[i].toString());
+    }
+
+    // Create a new function object for the function
+    var newFunc = new IRFunction(
+        funcName,
+        argVars,
+        closVars,
+        undefined,
+        undefined,
+        parentFunc,
+        astNode
+    );
+
+    // Verify if the function may be using the arguments object or eval
+    if (astNode.usesArguments)
+        newFunc.usesArguments = true;
+    if (astNode.usesEval)
+        newFunc.usesEval = true;
+
+    // TODO: temporary, manually extract function prologue annotations
+    var annotations = [];
+    var bodyStmts = 
+        (astNode instanceof FunctionExpr)?
+        astNode.body:
+        astNode.block.statements        
+    ;
+    for (var i = 0; i < bodyStmts.length; ++i)
+    {
+        var stmt = bodyStmts[i];
+
+        if (
+            stmt instanceof ExprStatement && 
+            stmt.expr instanceof Literal &&
+            typeof stmt.expr.value === 'string'
+        )
+        {
+            annotations.push(stmt.expr.value);
+        }
+    }
+
+    // For each annotation
+    for (var i = 0; i < annotations.length; ++i)
+    {
+        var annotation = annotations[i];
+
+        var tokens = annotation.split(':');
+        if (tokens.length < 2 || tokens[0] != 'tachyon')
+            continue;
+
+        var tokens = tokens[1].split(' ');
+        
+        // If this is a static linkage annotation
+        if (tokens.length == 1 && tokens[0] == 'static')
+        {
+            newFunc.staticLink = true;
+        }
+
+        // If this is an inline annotation
+        else if (tokens.length == 1 && tokens[0] == 'inline')
+        {
+            newFunc.inline = true;
+        }
+
+        // If this is an argument type annotation (eg: arg <arg_name> <type>)
+        else if (tokens.length == 3 && tokens[0] == 'arg')
+        {
+            var argName = tokens[1];
+            var type = IRType[tokens[2]];
+
+            var argNo = -1;
+            for (var i = 0; i < newFunc.argVars.length; ++i)
+            {
+                if (newFunc.argVars[i].toString() == argName)
+                {
+                    argNo = i;
+                    break;
+                }
+            }
+
+            if (argNo == -1)
+                throw 'invalid argument number in argument type annotation';
+
+            if (!type)
+                throw 'invalid type in argument type annotation';
+
+            newFunc.argTypes[argNo] = type;
+        }
+
+        // If this is a return type annotation (eg: ret <type>)
+        else if (tokens.length == 2 && tokens[0] == 'ret')
+        {
+            var type = IRType[tokens[1]];
+
+            if (!type)
+                throw 'invalid type in return type annotation';
+
+            newFunc.retType = type;
+        }
+    }
+
+    // Store a reference to the new object in the AST node
+    astNode.irFunc = newFunc;
+
+    // Return the new function object
+    return newFunc;
+}
 
 /**
 @class IR Conversion context
@@ -1305,11 +1421,23 @@ function stmtToIR(context)
             var retContext = context.pursue(astStmt.expr);
             exprToIR(retContext);
 
+            // Ensure that the type of the returned value is valid
+            assert (
+                retContext.getOutValue().type === context.cfg.ownerFunc.retType,
+                'returned value type must match function return type'
+            );
+
             // Return the expression value
             retContext.addInstr(new RetInstr(retContext.getOutValue()));
         }
         else
         {
+            // Ensure that the function has a boxed return type
+            assert (
+                context.cfg.ownerFunc.retType === IRType.box,
+                'functions with non-boxed return types cannot return undefined'
+            );
+
             // Return the undefined constant
             context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
         }
@@ -2748,12 +2876,12 @@ function refToIR(context)
     // If the variable is global
     if (astExpr.id.scope instanceof Program && symName != 'arguments')
     {
-        // If we are compiling tachyon code and there is a named constant
-        // with this name
-        if (context.tachyonSrc && ConstValue.getNamedConst(symName))
+        // If we are compiling tachyon code and there is a named static
+        // binding with this name
+        if (context.tachyonSrc && staticEnv.hasBinding(symName))
         {
-            // Use the value of the named constant
-            varValueVar = ConstValue.getNamedConst(symName);            
+            // Use the value of the binding
+            varValueVar = staticEnv.getBinding(symName);
         }
         else
         {
@@ -2951,7 +3079,10 @@ and throw targets and splice this into the current context
 function insertCallIR(context, instr)
 {
     // If this is a function or constructor call
-    if (instr instanceof CallFuncInstr || instr instanceof ConstructInstr)
+    if (
+        (instr instanceof CallFuncInstr || instr instanceof ConstructInstr) &&
+        !(instr.uses[0] instanceof IRFunction)
+    )
     {
         // Create basic blocks for function and non-function cases
         var errorCtx = context.branch(
@@ -2979,9 +3110,13 @@ function insertCallIR(context, instr)
         // Generate code to throw a type error
         insertCallIR(
             errorCtx,
-            new ThrowErrorInstr(
-                ConstValue.getNamedConst('TYPE_ERROR_CTOR'),
-                ConstValue.getConst('callee is not a function')
+            new CallFuncInstr(
+                [
+                    staticEnv.getBinding('throwError'),
+                    context.globalObj,
+                    ConstValue.getNamedConst('TYPE_ERROR_CTOR'),
+                    ConstValue.getConst('callee is not a function')                    
+                ]
             )
         );
         errorCtx.addInstr(new JumpInstr(contBlock));
@@ -3129,7 +3264,7 @@ function mergeContexts(
                 allEqual = false;
             if (value instanceof ConstValue && value.isUndef())
                 numUndef++;
-            if (value.type !== IRType.BOXED)
+            if (value.type !== IRType.box)
                 numTyped++;            
         }
 
@@ -3265,7 +3400,7 @@ function mergeLoopEntry(
             var useValue = phiNode.uses[j];
             if (useValue instanceof ConstValue && useValue.isUndef())
                 numUndef++;
-            if (phiNode.uses[j].type != IRType.BOXED)
+            if (phiNode.uses[j].type != IRType.box)
                 numTyped++;
         }
 
@@ -3277,7 +3412,7 @@ function mergeLoopEntry(
 
             if (varValue instanceof ConstValue && varValue.isUndef())
                 numUndef++;
-            if (varValue.type != IRType.BOXED)
+            if (varValue.type != IRType.box)
                 numTyped++;
 
             // If there would be a mix of typed and undefined values
