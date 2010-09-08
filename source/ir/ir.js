@@ -438,6 +438,7 @@ function getIRFuncObj(
         else if (tokens.length == 1 && tokens[0] == 'inline')
         {
             newFunc.inline = true;
+            newFunc.staticLink = true;
         }
 
         // If this is an argument type annotation (eg: arg <arg_name> <type>)
@@ -455,6 +456,10 @@ function getIRFuncObj(
                     break;
                 }
             }
+
+            if (type !== IRType.box && newFunc.usesArguments)
+                throw 'functions taking non-boxed arguments cannot ' + 
+                    'use the arguments object';
 
             if (argNo == -1)
                 throw 'invalid argument number in argument type annotation';

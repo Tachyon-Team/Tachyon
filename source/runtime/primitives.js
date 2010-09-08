@@ -9,27 +9,29 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// Make special functions for common utility code:
-// TODO: BoxIsInt
-// TODO: BoxIsDouble
-// TODO: BoxIsString
-// TODO: isGetterSetter?
+/**
+Test if a boxed value has a specific type
+*/
+function boxHasTag(boxVal, tagVal)
+{
+    "tachyon:inline";
+    "tachyon:arg tagVal pint";
+    "tachyon:ret i8";
+
+    // Mask and compare the tag
+    return (boxVal & BOX_TAG_MASK) == tagVal;
+}
 
 /**
-Test if a boxed value is an integer
+Test if a boxed value is integer
 */
-function BoxIsInt(boxVal)
+function boxIsInt(boxVal)
 {
     "tachyon:inline";
     "tachyon:ret i8";
 
-    // TODO: boxVal AND 00000...111 == tag?
-
-    // TODO: allow bitwise arithmetic directly between boxed values and pint
-    // - Get rid of raw unbox to pint
-    // - Possibly, get rid of raw unbox completely
-
-    return iir.constant(IRType.i8, 0);
+    // Test if the value has the int tag
+    return boxHasTag(boxVal, BOX_TAG_INT);
 }
 
 /**
@@ -52,15 +54,64 @@ function sub() {}
 function mul() {}
 function div() {}
 function mod() {}
-function eq() {}
 function neq() {}
 
 /**
-Handler function for the HIR add instruction
+Implementation of HIR eq instruction
+*/
+function eq(v1, v2)
+{
+    // TODO
+}
+
+/**
+Implementation of the HIR add instruction
 */
 function add(v1, v2)
 {
-    // TODO: implement
+    //"tachyon:inline";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // TODO: overflow handling: need to create FP objects
+
+        var i1 = iir.unbox(IRType.pint, v1);
+        var i2 = iir.unbox(IRType.pint, v2);
+
+        var r = i1 + i2;
+
+        return iir.box(IRType.pint, r);
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+    }
+}
+
+/**
+Implementation of the HIR sub instruction
+*/
+function sub(v1, v2)
+{
+    //"tachyon:inline";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // TODO: overflow handling: need to create FP objects
+
+        var i1 = iir.unbox(IRType.pint, v1);
+        var i2 = iir.unbox(IRType.pint, v2);
+
+        var r = i1 - i2;
+
+        return iir.box(IRType.pint, r);
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+    }
 }
 
 /**
@@ -76,7 +127,7 @@ function computeHash(propName)
 }
 
 /**
-Handler for the HIR put_prop_val instruction
+Implementation of the HIR put_prop_val instruction
 */
 function put_prop_val(obj, propName)
 {
@@ -84,7 +135,7 @@ function put_prop_val(obj, propName)
 }
 
 /**
-Handler for the HIR get_prop_val instruction
+Implementation of the HIR get_prop_val instruction
 */
 function get_prop_val(obj, propName)
 {
@@ -95,14 +146,11 @@ function get_prop_val(obj, propName)
     // Until we reach the end of the prototype chain
     do
     {
-        // Get a pointer to the object
-        var objPtr = iir.unbox(IRType.optr, obj);
-
         // Get a pointer to the hash table
-        var tblPtr = iir.load(IRType.optr, objPtr, OBJ_HASH_PTR_OFFSET);
+        var tblPtr = iir.load(IRType.box, obj, OBJ_HASH_PTR_OFFSET);
 
         // Get the size of the hash table
-        var tblSize = iir.load(IRType.i32, objPtr, OBJ_HASH_SIZE_OFFSET);
+        var tblSize = iir.load(IRType.i32, obj, OBJ_HASH_SIZE_OFFSET);
 
         // Get the hash table index for this hash value
         var hashIndex = propHash % tblSize;
@@ -144,7 +192,7 @@ function get_prop_val(obj, propName)
         }
 
         // Move up in the prototype chain
-        var obj = iir.load(IRType.box, objPtr, OBJ_PROTO_PTR_OFFSET);
+        var obj = iir.load(IRType.box, obj, OBJ_PROTO_PTR_OFFSET);
 
     } while (obj != null);
 

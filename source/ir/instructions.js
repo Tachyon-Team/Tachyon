@@ -16,41 +16,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
+// May want specialized test for mask? intel test
+// - Takes mask, compares result to 0
+// - ifmask <mask> <value>, tests if result is value
+// May want low-level load without masking
+// - type, offset, index, multiplier
 
-
-
-
-
-// TODO: no support for 64 bit integers on 32 bit machines
-// - Note this somewhere in comments
-
-
-
-
-// TODO: need object pointer? have boxed value already
-
-// TODO: PROBLEM:
-// Boxing object pointer... Which tag to put isn't obvious
-// Would need to specify tag
-
-// TODO: PROBLEM:
-// Using load or store with boxed value requires compensating for tag
-
-/*
-Could try always operating on boxed values:
-- Load/store with offset still works
-- Requires masking tag OR specifying tag in load operation
-  - An optimizer phase could possibly add the tag
-- Design load instruction to accept pint tag parameter?
-  - Keep it first or last?
-  - If first, have constant for unknown/unspecified tag
-
-Masking tag:
-- Ptr AND 111111...000
-*/
-
-
-
+// TODO: separate instruction initFunc from validFunc?
+// instr.validate()
 
 //=============================================================================
 // IR Core
@@ -94,7 +67,7 @@ IRTypeObj.prototype.isPtrType = function ()
     switch (this)
     {
         case IRType.rptr:
-        case IRType.optr:
+        case IRType.box:
         return true;
 
         default:
@@ -131,7 +104,6 @@ IRTypeObj.prototype.isFPType = function ()
 {
     switch (this)
     {
-        case IRType.f32:
         case IRType.f64:
         return true;
 
@@ -152,7 +124,7 @@ IRTypeObj.prototype.isNumberType = function ()
 // Need code get appropriate size for the platform
 
 // Size of a pointer on the current platform
-PLATFORM_PTR_SIZE = 8;
+PLATFORM_PTR_SIZE = 4;
 
 // IR value type enumeration
 IRType =
@@ -161,10 +133,8 @@ IRType =
     none:   new IRTypeObj('none', 0),
 
     // Boxed value type
+    // Contains an immediate integer or an object pointer, and a tag
     box:    new IRTypeObj('box' , PLATFORM_PTR_SIZE),
-
-    // Pointer to an object's start address
-    optr:   new IRTypeObj('optr', PLATFORM_PTR_SIZE),
 
     // Raw pointer to any memory address
     rptr:   new IRTypeObj('rptr', PLATFORM_PTR_SIZE),
@@ -182,16 +152,26 @@ IRType =
     i64:    new IRTypeObj('i64' , 8),
 
     // Floating-point types
-    f32:    new IRTypeObj('f32' , 4),
     f64:    new IRTypeObj('f64' , 8)
 };
 
-// Int type of width corresponding a pointer on this platform
-IRType.pint =
-    PLATFORM_PTR_SIZE == 4?
-    IRType.i32:
-    IRType.i64
-;
+// If we are on a 32-bit platform
+if (PLATFORM_PTR_SIZE == 4)
+{
+    // Int type of width corresponding a pointer on this platform
+    IRType.pint = IRType.i32;
+
+    // No support for 64-bit integer types on 32-bit platforms
+    delete IRType.i64;
+    delete IRType.u64;
+}
+
+// Otherwise, we are on a 64-bit platform
+else
+{
+    // Int type of width corresponding a pointer on this platform
+    IRType.pint = IRType.i64;
+}
 
 /**
 @class Base class for all IR values
@@ -220,6 +200,18 @@ function IRValue()
 */
 function ConstValue(value, type)
 {
+    // Ensure that the specified value is valid
+    assert (
+        !type.isIntType() || 
+        (typeof value == 'number' && Math.floor(value) == value),
+        'integer constants require integer values'
+    );
+    assert (
+        !type.isFPType() || 
+        (typeof value == 'number'),
+        'floating-point constants require number values'
+    );  
+
     /**
     Value of the constant
     @field
@@ -887,7 +879,6 @@ function instrMaker(
     if (initFunc)
         InstrConstr.prototype.initFunc = initFunc;
 
-
     /**
     Generic instruction shallow copy function
     */
@@ -1403,14 +1394,19 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     instrMaker.validNumInputs(inputVals, 2);
 
     assert (
-        (inputVals[0].type === IRType.box ||
-         inputVals[0].type.isIntType())
-        &&
-        inputVals[1].type === inputVals[0].type,
+        (
+            inputVals[0].type === IRType.box
+            &&
+            (inputVals[1].type === IRType.box ||
+            inputVals[1].type === IRType.pint)
+        )
+        ||
+        (inputVals[0].type.isIntType() &&
+         inputVals[1].type === inputVals[0].type),
         'invalid input types'
     );
     
-    this.type = inputVals[0].type;
+    this.type = inputVals[1].type;
 }
 
 /**
@@ -1893,10 +1889,8 @@ var UnboxInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.optr ||
-            typeParams[0] === IRType.i32  ||
             typeParams[0] === IRType.pint,
-            'type parameter should be object pointer or platform int'
+            'type parameter should be platform int'
         );
         instrMaker.validType(inputVals[0], IRType.box);
         
@@ -1915,32 +1909,12 @@ var BoxInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.optr || typeParams[0] === IRType.pint,
-            'type parameter should be object pointer or platform int'
+            typeParams[0] === IRType.pint,
+            'type parameter should be platform int'
         );
         instrMaker.validType(inputVals[0], typeParams[0]);
 
         this.type = IRType.box;
-    }
-);
-
-/**
-@class Instruction to perform a raw data extraction on a boxed value
-@augments IRInstr
-*/
-var RawUnboxInstr = instrMaker(
-    'raw_unbox',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 1);
-        assert (
-            typeParams[0] === IRType.rptr || typeParams[0] === IRType.pint,
-            'type parameter should be raw pointer or platform int'
-        );
-        instrMaker.validType(inputVals[0], IRType.box);
-        
-        this.type = typeParams[0];
     }
 );
 
