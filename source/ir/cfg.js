@@ -892,7 +892,7 @@ ControlFlowGraph.prototype.validate = function ()
                 if (!arraySetHas(instr.dests[k].uses, instr))
                     throw 'missing use link, from:\n' + 
                         instr.dests[k] +
-                        '\nto:\n:' + 
+                        '\nto:\n' + 
                         instr
                     ;
             }

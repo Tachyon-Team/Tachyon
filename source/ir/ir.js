@@ -18,20 +18,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: different execution environment/context for each compiled program
-// TODO: Move these definitions
-// TODO: exec context
-// Implement Object prototype object (15.2.4)
-ConstValue.regNamedConst('OBJECT_PROTOTYPE', {});
-ConstValue.regNamedConst('FUNCTION_PROTOTYPE', {});
-ConstValue.regNamedConst('TYPE_ERROR_CTOR', {});
-// TODO: Global object constant? No, put in context
-
-// TODO: implement get_ctx_var, set_ctx_var
-// - eliminate getNamedConst
-
-
-
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
@@ -2036,10 +2022,16 @@ function exprToIR(context)
         var valCtx = nameCtx.pursue(propValues);
         var valVals = exprListToIR(valCtx);
 
+        // Find the object prototype object in the context
+        var objProto = insertContextReadIR(
+            valCtx, 
+            'OBJECT_PROTOTYPE'
+        );
+
         // Create a new object
         var newObject = valCtx.addInstr(
             new NewObjectInstr(
-                ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+                objProto
             )
         );
 
@@ -2975,6 +2967,35 @@ function refToIR(context)
 }
 
 /**
+Insert a read from the runtime context
+*/
+function insertContextReadIR(context, varName)
+{
+    // Get a pointer to the context object
+    var ctxPtr = context.addInstr(
+        new GetCtxInstr()
+    );
+
+    // Get the corresponding context variable
+    var ctxVar = contextLayout.getVar(varName);
+
+    // Read the variable from the context object
+    var readVal = context.addInstr(
+        new LoadInstr(
+            ctxVar.type,
+            ctxPtr,
+            ConstValue.getConst(
+                ctxVar.offset,
+                IRType.i32
+            )
+        )
+    );
+
+    // Return the value read
+    return readVal;
+}
+
+/**
 Insert a construct instruction in a given context, connect it with its
 continue and throw targets, produce the related object creation code, and
 splice this into the current context
@@ -2990,6 +3011,12 @@ function insertConstructIR(context, funcVal, argVals)
         )
     );
 
+    // Find the object prototype object in the context
+    var objProto = insertContextReadIR(
+        context, 
+        'OBJECT_PROTOTYPE'
+    );
+
     // If the prototype field is an object, otherwise, use the object prototype
     var protoIsObj = context.cfg.getNewBlock('proto_is_obj');
     var protoNotObj = context.cfg.getNewBlock('proto_not_obj');
@@ -2997,7 +3024,7 @@ function insertConstructIR(context, funcVal, argVals)
     var testVal = context.addInstr(
         new InstOfInstr(
             funcProto,
-            ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+            objProto
         )
     );
     context.addInstr(
@@ -3013,7 +3040,7 @@ function insertConstructIR(context, funcVal, argVals)
         new PhiInstr(
             [
                 funcProto,
-                ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+                objProto
             ],
             [
                 protoIsObj, 
@@ -3029,7 +3056,6 @@ function insertConstructIR(context, funcVal, argVals)
         new NewObjectInstr(protoVal)
     );
     
-
     // Create the cnostructor call instruction
     var retVal = insertCallIR(
         context,
@@ -3045,7 +3071,7 @@ function insertConstructIR(context, funcVal, argVals)
     var testVal = context.addInstr(
         new InstOfInstr(
             retVal,
-            ConstValue.getNamedConst('OBJECT_PROTOTYPE')
+            objProto
         )
     );
     context.addInstr(
@@ -3096,11 +3122,17 @@ function insertCallIR(context, instr)
         );
         var contBlock = context.cfg.getNewBlock('callee_is_func');
 
+        // Find the function prototype object in the context
+        var funcProto = insertContextReadIR(
+            context, 
+            'FUNCTION_PROTOTYPE'
+        );
+
         // Test if the callee value is a function
         var testVal = context.addInstr(
             new InstOfInstr(
                 instr.uses[0],
-                ConstValue.getNamedConst('FUNCTION_PROTOTYPE')
+                funcProto
             )
         );
         context.addInstr(
@@ -3111,6 +3143,12 @@ function insertCallIR(context, instr)
             )
         );    
 
+        // Find the type error constructor in the context
+        var errorCtor = insertContextReadIR(
+            errorCtx, 
+            'TYPE_ERROR_CTOR'
+        );
+
         // Generate code to throw a type error
         insertCallIR(
             errorCtx,
@@ -3118,7 +3156,7 @@ function insertCallIR(context, instr)
                 [
                     staticEnv.getBinding('throwError'),
                     context.globalObj,
-                    ConstValue.getNamedConst('TYPE_ERROR_CTOR'),
+                    errorCtor,
                     ConstValue.getConst('callee is not a function')                    
                 ]
             )
@@ -3514,14 +3552,15 @@ function genInlineIR(context, branches)
     var instrName = fnExpr.exprs[1].value;
     var instrCtor = iir[instrName];
 
-    // Create the new instruction
-    var newInstr = new instrCtor(instrArgs);
+    // Create the new instruction or value
+    var newVal = new instrCtor(instrArgs);
 
-    // Add the new instruction to the current basic block
-    argsContext.addInstr(newInstr);
+    // If the value is an instruction, add it to the current basic block
+    if (newVal instanceof IRInstr) 
+        argsContext.addInstr(newVal);
 
     // Set the new instruction as the output
-    context.setOutput(argsContext.getExitBlock(), newInstr);
+    context.setOutput(argsContext.getExitBlock(), newVal);
 }
 
 /**

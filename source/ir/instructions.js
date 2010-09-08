@@ -19,6 +19,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 
 
+
+
 // TODO: no support for 64 bit integers on 32 bit machines
 // - Note this somewhere in comments
 
@@ -43,11 +45,8 @@ Could try always operating on boxed values:
   - Keep it first or last?
   - If first, have constant for unknown/unspecified tag
 
-
 Masking tag:
 - Ptr AND 111111...000
-- Ptr XOR 000000...tag
-
 */
 
 
@@ -159,16 +158,16 @@ PLATFORM_PTR_SIZE = 8;
 IRType =
 {
     // Type given when there is no output value
-    void:   new IRTypeObj('void', 0),
+    none:   new IRTypeObj('none', 0),
 
     // Boxed value type
-    box:    new IRTypeObj('box', PLATFORM_PTR_SIZE),
+    box:    new IRTypeObj('box' , PLATFORM_PTR_SIZE),
 
     // Pointer to an object's start address
-    optr: new IRTypeObj('optr', PLATFORM_PTR_SIZE),
+    optr:   new IRTypeObj('optr', PLATFORM_PTR_SIZE),
 
     // Raw pointer to any memory address
-    rptr: new IRTypeObj('rptr', PLATFORM_PTR_SIZE),
+    rptr:   new IRTypeObj('rptr', PLATFORM_PTR_SIZE),
 
     // Unboxed unsigned integer types
     u8:     new IRTypeObj('u8'  , 1),
@@ -322,55 +321,6 @@ ConstValue.getConst = function (value, type)
 };
 
 /**
-Map of names to IR constants
-*/
-ConstValue.nameMap = new HashMap();
-
-/**
-Register a named IR constant
-*/
-ConstValue.regNamedConst = function (name, val, type)
-{
-    assert (
-        typeof name == 'string',
-        'constant names must be strings'
-    );
-
-    assert (
-        !ConstValue.nameMap.hasItem(name),
-        'named constant already registered: ' + name
-    );
-
-    // Ensure that the name is valid
-    // TODO: use JS regexes once supported
-    for (var i = 0; i < name.length; ++i)
-    {
-        var ch = name.charCodeAt(i);
-        assert (
-            ch == 95 ||                 // _
-            (ch >= 65 && ch <= 90) ||   // A-Z
-            (ch >= 48 && ch <= 57),     // 0-9
-            'invalid constant name'
-        );
-    }
-
-    var constant = ConstValue.getConst(val, type);
-
-    ConstValue.nameMap.addItem(name, constant);
-}
-
-/**
-Lookup a named IR constant
-*/
-ConstValue.getNamedConst = function (name)
-{
-    if (!ConstValue.nameMap.hasItem(name))
-        return undefined;
-
-    return ConstValue.nameMap.getItem(name);        
-}
-
-/**
 @class Base class for all IR instructions
 */
 function IRInstr()
@@ -455,7 +405,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction has a non-void output print its output name
-    if (this.type != IRType.void)
+    if (this.type != IRType.none)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic;
@@ -625,7 +575,7 @@ function PhiInstr(values, preds)
     Phi node type, equal to the input values type
     @field
     */
-    this.type = this.uses.length? this.uses[0].type:IRType.void;
+    this.type = this.uses.length? this.uses[0].type:IRType.none;
 }
 PhiInstr.prototype = new IRInstr();
 
@@ -643,7 +593,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction's type is not void, print its output name
-    if (this.type != IRType.void)
+    if (this.type != IRType.none)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + ' ';
@@ -661,6 +611,26 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     return output;
 };
+
+/**
+Replace a predecessor block by another, keeping the corresponding use
+*/
+PhiInstr.prototype.replPred = function (oldPred, newPred)
+{
+    for (var i = 0; i < this.preds.length; ++i)
+    {
+        if (this.preds[i] === oldPred)
+        {
+            this.preds[i] = newPred;
+            return;
+        }
+    }
+
+    assert (
+        false,
+        'cannot replace pred, invalid pred'
+    );
+}
 
 /**
 Add an incoming value to a phi node
@@ -1031,7 +1001,7 @@ function untypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoOb
             'invalid number of branch targets specified'
         );
 
-        this.type = voidOutput? IRType.void:IRType.box;
+        this.type = voidOutput? IRType.none:IRType.box;
     }
 
     return instrMaker(
@@ -1684,7 +1654,7 @@ var RetInstr = instrMaker(
     {
         instrMaker.validNumInputs(inputVals, 1);
         
-        this.type = IRType.void;
+        this.type = IRType.none;
     }
 );
 
@@ -1712,7 +1682,7 @@ var IfInstr = instrMaker(
         );
         instrMaker.validNumBranches(branchTargets, 2);
         
-        this.type = IRType.void;
+        this.type = IRType.none;
     },
     ['then', 'else']
 );
@@ -1761,7 +1731,7 @@ var ThrowInstr = instrMaker(
         instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 1);
         
-        this.type = IRType.void;
+        this.type = IRType.none;
     },
     ['to'],
     new ExceptInstr()
@@ -1881,7 +1851,7 @@ var PutPropValInstr = instrMaker(
         instrMaker.validType(inputVals[2], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
-        this.type = IRType.void;
+        this.type = IRType.none;
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -2095,7 +2065,36 @@ var StoreInstr = instrMaker(
         instrMaker.validType(inputVals[1], IRType.i32);
         instrMaker.validType(inputVals[2], typeParams[0]);
         
-        this.type = IRType.void;
+        this.type = IRType.none;
+    }
+);
+
+/**
+@class Instruction to get a pointer to the current runtime context
+@augments IRInstr
+*/
+var GetCtxInstr = instrMaker(
+    'get_ctx',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0);
+        
+        this.type = IRType.rptr;
+    }
+);
+
+/**
+@class Instruction to set the runtime context pointer
+@augments IRInstr
+*/
+var SetCtxInstr = instrMaker(
+    'set_ctx',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validType(inputVals[0], IRType.rptr);
+        
+        this.type = IRType.none;
     }
 );
 

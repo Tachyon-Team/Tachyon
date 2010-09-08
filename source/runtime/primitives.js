@@ -16,6 +16,23 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: isGetterSetter?
 
 /**
+Test if a boxed value is an integer
+*/
+function BoxIsInt(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret i8";
+
+    // TODO: boxVal AND 00000...111 == tag?
+
+    // TODO: allow bitwise arithmetic directly between boxed values and pint
+    // - Get rid of raw unbox to pint
+    // - Possibly, get rid of raw unbox completely
+
+    return iir.constant(IRType.i8, 0);
+}
+
+/**
 Throw an exception with a given constructor
 */
 function throwError(errorCtor, message)
@@ -31,8 +48,6 @@ function put_clos() {}
 function get_clos() {}
 function get_global() {}
 function make_arg_obj() {}
-function get_prop_val() {}
-function put_prop_val() {}
 function sub() {}
 function mul() {}
 function div() {}
@@ -56,8 +71,16 @@ function computeHash(propName)
     "tachyon:inline";
     "tachyon:ret i32";
 
-    // TODO: implement way of returning typed constants
-    return OBJ_HASH_PTR_OFFSET;
+    // TODO
+    return iir.constant(IRType.i32, 0);
+}
+
+/**
+Handler for the HIR put_prop_val instruction
+*/
+function put_prop_val(obj, propName)
+{
+    // TODO
 }
 
 /**

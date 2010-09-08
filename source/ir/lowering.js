@@ -10,53 +10,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// TODO: move to relevant file, object model implementation
-staticEnv.regBinding(
-    'OBJ_PROTO_PTR_OFFSET',
-    ConstValue.getConst(
-        4,
-        IRType.i32
-    )
-);
-staticEnv.regBinding(
-    'OBJ_HASH_PTR_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('OBJ_PROTO_PTR_OFFSET').value + IRType.optr.size,
-        IRType.i32
-    )
-);
-staticEnv.regBinding(
-    'OBJ_HASH_SIZE_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('OBJ_HASH_PTR_OFFSET').value + IRType.optr.size,
-        IRType.i32
-    )
-);
-staticEnv.regBinding(
-    'OBJ_HASH_ENTRY_SIZE',
-    ConstValue.getConst(
-        16,
-        IRType.i32
-    )
-);
-staticEnv.regBinding(
-    'OBJ_HASH_KEY_SIZE',
-    ConstValue.getConst(
-        8,
-        IRType.i32
-    )
-);
-staticEnv.regBinding(
-    'OBJ_HASH_EMPTY_KEY',
-    ConstValue.getConst(
-        0,
-        IRType.box
-    )
-);
-
-// TODO: inlining specialization
-// - Just use the inline annotation!
-
 /**
 Perform IR lowering on a function and its subfunctions
 */
@@ -106,15 +59,16 @@ function lowerIRCFG(cfg)
             itr.next();
         }
 
-        // If this instruction should be translated into a handler call
-        else if (usesBoxed && handlerMap[instr.mnemonic])
+        // If this instruction should be translated into a primitive call
+        else if (usesBoxed && primitiveMap[instr.mnemonic])
         {
-            var handler = handlerMap[instr.mnemonic];
+            // Get a reference to the primitive function
+            var primFunc = primitiveMap[instr.mnemonic];
 
             // Create a call instruction            
             var callInstr = new CallFuncInstr(
                 [
-                    handler,
+                    primFunc,
                     ConstValue.getConst(undefined) // TODO: get global obj from context?
                 ]
                 .concat(instr.uses)
@@ -123,14 +77,29 @@ function lowerIRCFG(cfg)
             
             // Replace the instruction by the call
             cfg.replInstr(itr, callInstr);
+
+            var instr = itr.get();
+        }
+
+        // If this is a function call to a known function
+        if (instr instanceof CallInstr && instr.uses[0] instanceof IRFunction)
+        {
+            var calleeFunc = instr.uses[0]
+
+            // If the callee is marked inline and is inlinable
+            if (calleeFunc.inline && isInlinable(calleeFunc))
+            {
+                // Inline the call
+                inlineCall(instr, calleeFunc);
+            }
         }
     }
 }
 
 /**
-Map of instruction names to handlers
+Map of instruction names to primitive functions
 */
-var handlerMap = {}
+var primitiveMap = {}
 
 /**
 Compile the primitives source code to enable IR lowering
@@ -138,7 +107,7 @@ Compile the primitives source code to enable IR lowering
 function compPrimitives()
 {
     // Parse the handler source code
-    var ast = parse_src_file('ir/primitives.js'); 
+    var ast = parse_src_file('runtime/primitives.js'); 
 
     // Parse static bindings in the unit
     staticEnv.parseUnit(ast);
@@ -146,33 +115,34 @@ function compPrimitives()
     // Generate IR from the AST
     var ir = unitToIR(ast, true);
 
-    //print(ir);
-
     // For each function in the IR
     var funcList = ir.getChildrenList();
     for (var i = 0; i < funcList.length; ++i)
     {
         var func = funcList[i];
 
-        // Add the function to the handler map
-        handlerMap[func.funcName] = func;
+        if (!func.funcName)
+            continue;
+
+        // Add the function to the primitive map
+        primitiveMap[func.funcName] = func;
     }
 
     // For each handler
-    for (var handlerName in handlerMap)
+    for (var handlerName in primitiveMap)
     {
-        var func = handlerMap[handlerName];
+        var func = primitiveMap[handlerName];
 
         // Perform IR lowering on the handler
         lowerIRFunc(func);
 
+        print(func);
+
         // Validate the resulting handler code
         func.validate();
-
-        print(func);
     }
 }
 
-// Compile the primitives
+// Compile the IR primitives
 compPrimitives()
 

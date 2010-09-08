@@ -17,14 +17,15 @@ BASE_SRCS =                 \
     parser/pp.js            \
     parser/ast-passes.js    \
     platform/memory.js      \
+    ir/static.js            \
     ir/instructions.js      \
     ir/iir.js               \
     ir/cfg.js               \
     ir/functions.js         \
-    ir/static.js            \
     ir/ir.js                \
     ir/inlining.js          \
-    ir/primitives.js        \
+    runtime/context.js      \
+    runtime/objects.js      \
     ir/lowering.js          \
     codegen/asm.js          \
     codegen/asm-x86.js      \
@@ -43,8 +44,9 @@ TEST_SPEC_SRCS =            \
     tests/testing.js        \
     utility/tests/*.js      \
     ir/tests/*.js           \
+    runtime/tests/*.js      \
     codegen/tests/*.js      \
-    programs/tests/*.js      \
+    programs/tests/*.js     \
     tests/testmain.js
 
 # Main target source files
