@@ -2976,6 +2976,7 @@ function insertContextReadIR(context, varName)
         new GetCtxInstr()
     );
 
+    /*
     // Get the corresponding context variable
     var ctxVar = contextLayout.getVar(varName);
 
@@ -2993,6 +2994,9 @@ function insertContextReadIR(context, varName)
 
     // Return the value read
     return readVal;
+    */
+
+    return ConstValue.getConst(1);
 }
 
 /**
