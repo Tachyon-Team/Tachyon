@@ -33,35 +33,35 @@ staticEnv.regBinding(
     'OBJ_PROTO_PTR_OFFSET',
     ConstValue.getConst(
         4,
-        IRType.i32
+        IRType.pint
     )
 );
 staticEnv.regBinding(
     'OBJ_HASH_PTR_OFFSET',
     ConstValue.getConst(
         staticEnv.getBinding('OBJ_PROTO_PTR_OFFSET').value + IRType.box.size,
-        IRType.i32
+        IRType.pint
     )
 );
 staticEnv.regBinding(
     'OBJ_HASH_SIZE_OFFSET',
     ConstValue.getConst(
         staticEnv.getBinding('OBJ_HASH_PTR_OFFSET').value + IRType.box.size,
-        IRType.i32
+        IRType.pint
     )
 );
 staticEnv.regBinding(
     'OBJ_HASH_ENTRY_SIZE',
     ConstValue.getConst(
         16,
-        IRType.i32
+        IRType.pint
     )
 );
 staticEnv.regBinding(
     'OBJ_HASH_KEY_SIZE',
     ConstValue.getConst(
         8,
-        IRType.i32
+        IRType.pint
     )
 );
 staticEnv.regBinding(

@@ -153,7 +153,10 @@ function get_prop_val(obj, propName)
 {
     // Compute the hash for the property
     // Boxed value, may be a string or an int
-    var propHash = computeHash(propName);
+    var propHash = iir.icast(
+        IRType.pint, 
+        computeHash(propName)
+    );
 
     // Until we reach the end of the prototype chain
     do
@@ -162,7 +165,14 @@ function get_prop_val(obj, propName)
         var tblPtr = iir.load(IRType.box, obj, OBJ_HASH_PTR_OFFSET);
 
         // Get the size of the hash table
-        var tblSize = iir.load(IRType.i32, obj, OBJ_HASH_SIZE_OFFSET);
+        var tblSize = iir.icast(
+            IRType.pint,
+            iir.load(
+                IRType.i32,
+                obj, 
+                OBJ_HASH_SIZE_OFFSET
+            )
+        );
 
         // Get the hash table index for this hash value
         var hashIndex = propHash % tblSize;

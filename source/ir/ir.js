@@ -193,9 +193,11 @@ function stmtListToIRFunc(
     entryBlock.addInstr(argObj, 'argObj');
     localMap.addItem('arguments', argObj);
 
-    // Add an instruction to get the global object from the function object
-    var globalObj = new GetGlobalInstr(funcObj);
-    entryBlock.addInstr(globalObj, 'global');
+    // Read the global object from the context
+    var globalObj = insertContextReadIR(
+        entryBlock,
+        'GLOBAL_OBJECT'
+    );
 
     // For each local variable declaration
     for (var i in localVars)

@@ -25,13 +25,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
-// TODO: load/store offset same size as pointer
-
-// TODO: function to extract tag bits
-// - Explicitly subtract tag bits in load
-
 // Keep both load/store with and without mask
-// - RawLoad? w/ 
+// - RawLoad? w/
 //      - No masking,
 //      - base_ptr + offset + index + multiplier
 
@@ -134,7 +129,7 @@ IRTypeObj.prototype.isNumberType = function ()
 // Need code get appropriate size for the platform
 
 // Size of a pointer on the current platform
-PLATFORM_PTR_SIZE = 4;
+PLATFORM_PTR_SIZE = 8;
 
 // IR value type enumeration
 IRType =
@@ -1951,16 +1946,18 @@ var ICastInstr = instrMaker(
     'icast',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 2);
+        instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            (typeParams[0].isIntType() || typeParams[0] === IRType.rptr) &&
-            (typeParams[1].isIntType() || typeParams[1] === IRType.rptr),
+            (inputVals[0].type.isIntType() || 
+             inputVals[0].type === IRType.rptr) 
+            &&
+            (typeParams[0].isIntType() ||
+             typeParams[0] === IRType.rptr),
             'type parameters must be integer or raw pointer'
         );
-        instrMaker.validType(inputVals[0], typeParams[0]);
         
-        this.type = typeParams[1];
+        this.type = typeParams[0];
     }
 );
 
@@ -1972,16 +1969,15 @@ var IToFPInstr = instrMaker(
     'itof',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 2);
+        instrMaker.validNumParams(inputVals, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.pint &&
-            typeParams[1] === IRType.f64,
+            inputVals[0].type === IRType.pint &&
+            typeParams[0] === IRType.f64,
             'invalid type parameters'
         );
-        instrMaker.validType(inputVals[0], typeParams[0]);
         
-        this.type = typeParams[1];
+        this.type = typeParams[0];
     }
 );
 
@@ -1993,16 +1989,15 @@ var FPToIInstr = instrMaker(
     'ftoi',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 2);
+        instrMaker.validNumParams(inputVals, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            typeParams[0] === IRType.f64 &&
-            typeParams[1] === IRType.pint,
+            typeParams[0].type === IRType.f64 &&
+            typeParams[0] === IRType.pint,
             'invalid type parameters'
         );
-        instrMaker.validType(inputVals[0], typeParams[0]);
         
-        this.type = typeParams[1];
+        this.type = typeParams[0];
     }
 );
 
@@ -2026,7 +2021,7 @@ var LoadInstr = instrMaker(
             inputVals[0].type.isPtrType(),
             'the first input must be a pointer'
         );
-        instrMaker.validType(inputVals[1], IRType.i32);
+        instrMaker.validType(inputVals[1], IRType.pint);
         
         this.type = typeParams[0];
     }
@@ -2046,7 +2041,7 @@ var StoreInstr = instrMaker(
             inputVals[0].type.isPtrType(),
             'the first input must be a pointer'
         );
-        instrMaker.validType(inputVals[1], IRType.i32);
+        instrMaker.validType(inputVals[1], IRType.pint);
         instrMaker.validType(inputVals[2], typeParams[0]);
         
         this.type = IRType.none;
