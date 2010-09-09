@@ -1,9 +1,10 @@
-function f(c1, c2)
+function fib(n)
 {
-    1 + 2;
-
-
-}
-
-//print(f(20));
+    if (n < 2)
+        return n;
+    else
+        return fib(n-1) + fib(n-2);
+}              
+                                        
+      
 

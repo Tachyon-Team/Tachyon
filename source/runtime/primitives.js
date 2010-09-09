@@ -10,6 +10,18 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
+Get the tag of a boxed value
+*/
+function getBoxTag(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret pint";
+
+    // Mask the tag
+    return boxVal & BOX_TAG_MASK;
+}
+
+/**
 Test if a boxed value has a specific type
 */
 function boxHasTag(boxVal, tagVal)
@@ -18,8 +30,8 @@ function boxHasTag(boxVal, tagVal)
     "tachyon:arg tagVal pint";
     "tachyon:ret i8";
 
-    // Mask and compare the tag
-    return (boxVal & BOX_TAG_MASK) == tagVal;
+    // Compare the tag
+    return getBoxTag(boxVal) == tagVal;
 }
 
 /**
@@ -69,7 +81,7 @@ Implementation of the HIR add instruction
 */
 function add(v1, v2)
 {
-    //"tachyon:inline";
+    "tachyon:inline";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -94,7 +106,7 @@ Implementation of the HIR sub instruction
 */
 function sub(v1, v2)
 {
-    //"tachyon:inline";
+    "tachyon:inline";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))

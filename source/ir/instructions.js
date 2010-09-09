@@ -25,6 +25,16 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
+// TODO: load/store offset same size as pointer
+
+// TODO: function to extract tag bits
+// - Explicitly subtract tag bits in load
+
+// Keep both load/store with and without mask
+// - RawLoad? w/ 
+//      - No masking,
+//      - base_ptr + offset + index + multiplier
+
 //=============================================================================
 // IR Core
 //

@@ -89,6 +89,8 @@ function lowerIRCFG(cfg)
             // If the callee is marked inline and is inlinable
             if (calleeFunc.inline && isInlinable(calleeFunc))
             {
+                //print('inlining: ' + calleeFunc.funcName);
+
                 // Inline the call
                 inlineCall(instr, calleeFunc);
             }
@@ -134,7 +136,7 @@ function compPrimitives()
         var func = primitiveMap[handlerName];
 
         // Perform IR lowering on the handler
-        lowerIRFunc(func);
+        //lowerIRFunc(func);
 
         print(func);
 

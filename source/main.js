@@ -14,17 +14,39 @@ function testIR()
 {
     var ast = parse_src_file('parser/tests/test4.js');
     var ir = unitToIR(ast, true);
-
-    //pp(ast); // pretty-print AST
-    //print('\n');
-    
     
     print(ir);
 
     lowerIRFunc(ir);
 
     print(ir);
+
+    ir.validate();    
     
+
+
+    /*
+    // Parse the source string
+    var ast = parse_src_file('parser/tests/test4.js');
+
+    // Translate the AST to IR
+    var ir = unitToIR(ast);
+
+    // Copy the resulting function
+    ir.copy();
+
+    // Validate the IR
+    ir.validate();
+
+    // Perform lowering on the IR
+    lowerIRFunc(ir);
+
+    // Validate the IR
+    ir.validate();
+    */
+
+
+
 
     /*
     var codeblock = backend.compile(ir, print);

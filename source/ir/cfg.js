@@ -721,7 +721,7 @@ ControlFlowGraph.prototype.simplify = function ()
                             continue PRED_LOOP;
                     }
 
-                    //print('*** simplifying ***');
+                    //print('simplifying no instructions, single successor: ' + block.getBlockName());
 
                     // Remove the predecessor from our predecessor list
                     arraySetRem(block.preds, pred);
@@ -740,7 +740,7 @@ ControlFlowGraph.prototype.simplify = function ()
                             pred.succs[k] = succ;
 
                     // Add the predecessor as a predecessor of the successor
-                    succ.preds.push(pred);
+                    arraySetAdd(succ.preds, pred);
 
                     // For each instruction of the successor
                     for (var k = 0; k < succ.instrs.length; ++k)
@@ -797,7 +797,8 @@ ControlFlowGraph.prototype.validate = function ()
 
             // Verify that our predecessors have us as a successor
             if (!arraySetHas(block.preds[j].succs, block))
-                throw 'predecessor missing successor link to:\n' + block;
+                throw 'predecessor:\n' +  block.preds[j] + 
+                    '\nmissing successor link to:\n' + block;
         }
 
         // For each successor
@@ -822,12 +823,15 @@ ControlFlowGraph.prototype.validate = function ()
             throw 'block does not terminate in a branch:\n' + block;
 
         // Verify that the branch targets match our successor set
-        if (block.succs.length != lastInstr.targets.length)
-            throw 'successors do not match branch targets';
         for (var j = 0; j < block.succs.length; ++j)
         {
             if (!arraySetHas(lastInstr.targets, block.succs[j]))
-                throw 'successors do not match branch targets';
+                throw 'successors do not match branch targets for:\n' + block;
+        }
+        for (var j = 0; j < lastInstr.targets.length; ++j)
+        {
+            if (!arraySetHas(block.succs, lastInstr.targets[j]))
+                throw 'successors do not match branch targets for:\n' + block;
         }
 
         // For each instruction in the block
@@ -849,7 +853,8 @@ ControlFlowGraph.prototype.validate = function ()
                 // Verify that each immediate predecessor has a corresponding use
                 for (var k = 0; k < block.preds.length; ++k)
                     if (!arraySetHas(instr.preds, block.preds[k]))
-                        throw 'phi node does not cover all immediate predecessors';
+                        throw 'phi node does not cover all immediate ' +
+                            'predecessors:\n' + instr;
 
                 // Verify that there is exactly one predecessor for each use
                 if (instr.preds.length != instr.uses.length)

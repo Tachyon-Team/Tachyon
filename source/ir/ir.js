@@ -300,14 +300,9 @@ function stmtListToIRFunc(
     // Generate code for the function body
     stmtListToIR(bodyContext);
 
-    // If the context is not terminated
-    if (!bodyContext.isTerminated())
+    // If the context is not terminated and this function has a boxed return value
+    if (!bodyContext.isTerminated() && newFunc.retType === IRType.box)
     {
-        assert (
-            newFunc.retType === IRType.box,
-            'functions with non-boxed return types must return a value'
-        )
-
         // Add a return undefined instruction to the exit block
         bodyContext.addInstr(
             new RetInstr(ConstValue.getConst(undefined))
@@ -1186,7 +1181,7 @@ function stmtToIR(context)
             )
         );       
 
-        // Add a jump from the entry block to the loop entry
+        // Add a jump from the init exit to the loop entry
         initContext.addInstr(new JumpInstr(testContext.entryBlock));
 
         // Set the exit block to be the join block
@@ -1488,8 +1483,8 @@ function stmtToIR(context)
             switchCtx.localMap.copy()
         );
 
-        // Make the entry jump to the first test
-        context.addInstr(new JumpInstr(nextTestCtx.entryBlock));
+        // Jump to the first test
+        switchCtx.addInstr(new JumpInstr(nextTestCtx.entryBlock));
 
         // Variable for the previous clause statements context
         var prevStmtCtx = null;
@@ -3401,7 +3396,7 @@ function createLoopEntry(
         var varName = localVars[i];
         var phiNode = new PhiInstr(
             [context.localMap.getItem(varName)],
-            [context.entryBlock]
+            [context.exitBlock? context.exitBlock:context.entryBlock]
         );
         loopEntry.addInstr(phiNode, varName);
         entryLocals.setItem(varName, phiNode);
@@ -3472,6 +3467,9 @@ function mergeLoopEntry(
                 // Replace the phi node by the undefined value
                 entryLocals.setItem(varName, ConstValue.getConst(undefined));
 
+                // Remove the phi node
+                entryBlock.remInstr(phiNode);
+
                 // Abort the merge for this variable
                 break;
             }
@@ -3528,8 +3526,8 @@ function genInlineIR(context, branches)
     // Create a list for the instruction arguments
     var instrArgs = [];
 
-    // If the first argument is an IR type
-    if (
+    // While the first argument is an IR type
+    while (
         args.length > 0 && 
         args[0] instanceof OpExpr &&
         args[0].op == 'x [ y ]' &&

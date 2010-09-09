@@ -54,7 +54,7 @@ function inlineCall(callInstr, calleeFunc)
     var resBlock = callerCFG.getNewBlock('call_res');
 
     // Create a phi node for the return value resolution
-    var phiRes = resBlock.addInstr(new PhiInstr([], []));
+    var phiRes = resBlock.addInstr(new PhiInstr([], []), 'phires');
 
     // For each callee block
     for (var itr = calleeCFG.getBlockItr(); itr.valid(); itr.next())
@@ -142,12 +142,34 @@ function inlineCall(callInstr, calleeFunc)
         for (var ci = 0; callBlock.instrs[ci] !== callInstr; ++ci);
 
         // Move all instructions after the call to the resolution block
-        for (var i = 0; i < callBlock.instrs.length - ci - 1; ++i)
+        while (callBlock.instrs.length - 1 > ci)
         {
             var instr = callBlock.instrs[ci + 1];
             callBlock.remInstrAtIndex(ci + 1);
             resBlock.addInstr(instr, instr.outName);
         }
+
+
+
+        // For each successor of the resolution block
+        for (var i = 0; i < resBlock.succs.length; ++i)
+        {
+            var succ = resBlock.succs[i];
+
+            // For each phi instruction
+            for (var j = 0; j < succ.instrs.length; ++j)
+            {
+                var instr = succ.instrs[j];
+
+                if (!(instr instanceof PhiInstr))
+                    continue;
+
+                instr.replPred(callBlock, resBlock);
+            }
+        }
+
+
+
     }
 
     // Otherwise, the call is at the end of a basic block
@@ -155,35 +177,40 @@ function inlineCall(callInstr, calleeFunc)
     {
         // Make the resolution block jump to the continuation block
         resBlock.addInstr(new JumpInstr(contTarget));
-    }
 
-    // Replace the call block by the res block as a continuation predecessor
-    contTarget.remPred(callBlock);
-    contTarget.addPred(resBlock);
-    for (var i = 0; i < contTarget.instrs.length; ++i)
-    {
-        var instr = contTarget.instrs[i];
+        // Replace the call block by the res block as a continuation predecessor
+        contTarget.remPred(callBlock);
+        contTarget.addPred(resBlock);
+        for (var i = 0; i < contTarget.instrs.length; ++i)
+        {
+            var instr = contTarget.instrs[i];
 
-        if (!(instr instanceof PhiInstr))
-            continue;
+            if (!(instr instanceof PhiInstr))
+                continue;
 
-        instr.replPred(callBlock, resBlock);
+            instr.replPred(callBlock, resBlock);
+        }
     }
 
     // Replace uses of the return value by uses of the resolution phi
     for (var i = 0; i < callInstr.dests.length; ++i)
     {
-        callInstr.dests[i].replUse(
+        var dest = callInstr.dests[i];
+
+        dest.replUse(
             callInstr,
             phiRes
         );
+
         phiRes.addDest(
-            callInstr.dests[i]
+            dest
         );
     }
 
     // Replace the call instruction by a jump to the callee entry block
-    callBlock.remBranch();
+    callBlock.remInstrAtIndex(
+        callBlock.instrs.length - 1
+    );
     callBlock.addInstr(
         new JumpInstr(calleeCFG.entry)
     );
