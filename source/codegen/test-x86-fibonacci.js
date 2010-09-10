@@ -3,6 +3,8 @@ const reg = a.register;
 const ESP = reg.esp;
 const EAX = reg.eax;
 const EBX = reg.ebx;
+const ECX = reg.ecx;
+const EDX = reg.edx;
 const $   = a.immediateValue;
 const mem = a.memory;
 const _   = function (reg) { return mem(0,reg); };
@@ -15,8 +17,19 @@ var RECURSION = a.labelObj("RECURSION");
 
 a.codeBlock.bigEndian = false;
 
+// In cdecl calling convention, registers ebx, esi, edi, and ebp
+// are callee-save
+
 a.
+
+push(EBX).  // Save EBX
+
 mov($(40), EAX).
+
+call(FIB).
+
+pop(EBX).   // Restore EBX
+ret().
 
 label(FIB).
     cmp($(2), EAX).
@@ -40,10 +53,18 @@ label(RECURSION).
     add(EBX, EAX).
     ret();
 
+
+
+
 a.codeBlock.assemble();
 
 print(a.codeBlock.listingString());
 
 var block = a.codeBlock.assembleToMachineCodeBlock(); // assemble it
-print(execMachineCodeBlock(block)); // execute the code generated
+
+var result = execMachineCodeBlock(block); // execute the code generated
+
+print('result: ' + result);
+
 freeMachineCodeBlock(block);
+

@@ -79,23 +79,6 @@ v8::Handle<v8::Value> WriteFile(const v8::Arguments& args)
   return v8::Undefined();
 }
 
-
-/*---------------------------------------------------------------------------*/
-
-
-/* OS dependent settings for dynamic code generation */
-
-
-#ifdef linux
-#define USE_MMAP_FOR_CODE
-#endif
-
-
-#ifdef __APPLE__
-/* just use malloc */
-#endif
-
-
 /*---------------------------------------------------------------------------*/
 
 
@@ -128,26 +111,11 @@ typedef union
 
 #define CAST(type,val) ((type)(val))
 
-
-#ifdef USE_MMAP_FOR_CODE
-#define NEED_sys_mman_h
-#else
-#ifdef USE_MPROTECT_FOR_CODE
-#define NEED_sys_mman_h
-#endif
-#endif
-
-
-#ifdef NEED_sys_mman_h
 #include <sys/mman.h>
-#endif
-
 
 uint8_t *alloc_machine_code_block(int size)
 {
   void *p;
-
-#ifdef USE_MMAP_FOR_CODE
 
   p = mmap(0,
            size,
@@ -156,35 +124,13 @@ uint8_t *alloc_machine_code_block(int size)
            -1,
            0);
 
-#else
-
-  p = malloc(size);
-
-#endif
-
-#ifdef USE_MPROTECT_FOR_CODE
-
-  mprotect(p, size, PROT_READ|PROT_WRITE|PROT_EXEC);
-
-#endif
-
   return CAST(uint8_t*, p);
 }
 
-
 void free_machine_code_block(uint8_t *code, int size)
 {
-#ifdef USE_MMAP_FOR_CODE
-
   munmap(code, size);
-
-#else
-
-  free(code);
-
-#endif
 }
-
 
 /*---------------------------------------------------------------------------*/
 
@@ -269,8 +215,9 @@ v8::Handle<v8::Value> ExecMachineCodeBlock(const v8::Arguments& args)
       data_to_fn_ptr_caster ptr;
 
       ptr.data_ptr = block;
-
-      word result = ptr.fn_ptr(&rtc); /* execute the code */
+    
+      // execute the code
+      word result = ptr.fn_ptr(&rtc);
 
       return v8::Number::New(result);
     }

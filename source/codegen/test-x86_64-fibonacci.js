@@ -18,7 +18,15 @@ var RECURSION = a.labelObj("RECURSION");
 a.codeBlock.bigEndian = false;
 
 a.
-mov($(10), RAX).
+
+push(RBX).  // Save RBX
+
+mov($(40), RAX).
+
+call(FIB).
+
+pop(RBX).   // Restore RBX
+ret().
 
 label(FIB).
     cmp($(2), RAX).
@@ -48,6 +56,6 @@ print(a.codeBlock.listingString());
 
 // For now, v8 cannot be run in 64 bits mode so REX prefixes
 // keep being interpreted as DEC instructions
-//var block = a.codeBlock.assembleToMachineCodeBlock(); // assemble it
-//print(execMachineCodeBlock(block)); // execute the code generated
-//freeMachineCodeBlock(block);
+var block = a.codeBlock.assembleToMachineCodeBlock(); // assemble it
+print(execMachineCodeBlock(block)); // execute the code generated
+freeMachineCodeBlock(block);
