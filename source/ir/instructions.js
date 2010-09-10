@@ -31,6 +31,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //      - base_ptr + offset + index + multiplier
 
 //=============================================================================
+//
 // IR Core
 //
 // Implementation of the foundational logic of the IR instructions.
@@ -215,7 +216,11 @@ function ConstValue(value, type)
         !type.isFPType() || 
         (typeof value == 'number'),
         'floating-point constants require number values'
-    );  
+    );
+    assert (
+        (type === IRType.box) || (typeof value != 'string'),
+        'string-valued constants must have box type'
+    );
 
     /**
     Value of the constant
