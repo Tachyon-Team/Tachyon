@@ -104,6 +104,44 @@ function ContextLayout()
         locked = true;
     }
 }
+ContextLayout.prototype = {}
+
+/**
+Generate an instruction to read a variable from the context
+*/
+ContextLayout.prototype.genCtxLoad = function (ctxPtr, varName)
+{
+    // Get the corresponding context variable
+    var ctxVar = contextLayout.getVar(varName);
+
+    return new LoadInstr(
+        ctxVar.type,
+        ctxPtr,
+        ConstValue.getConst(
+            ctxVar.offset,
+            IRType.pint
+        )
+    );
+}
+
+/**
+Generate an instruction to write a variable to the context
+*/
+ContextLayout.prototype.genCtxStore = function (ctxPtr, varName, newVal)
+{
+    // Get the corresponding context variable
+    var ctxVar = contextLayout.getVar(varName);
+
+    return new StoreInstr(
+        ctxVar.type,
+        ctxPtr,
+        ConstValue.getConst(
+            ctxVar.offset,
+            IRType.pint
+        ),
+        newVal
+    );
+}
 
 /**
 Global context layout object

@@ -47,6 +47,18 @@ function boxIsInt(boxVal)
 }
 
 /**
+Test if a boxed value is an object
+*/
+function boxIsObj(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret i8";
+
+    // Compare the tag
+    return getBoxTag(boxVal) >= BOX_TAG_ARRAY;;
+}
+
+/**
 Throw an exception with a given constructor
 */
 function throwError(errorCtor, message)
@@ -60,13 +72,19 @@ function throwError(errorCtor, message)
 function make_clos() {}
 function put_clos() {}
 function get_clos() {}
-function get_global() {}
 function make_arg_obj() {}
-function sub() {}
 function mul() {}
 function div() {}
 function mod() {}
 function neq() {}
+
+/**
+Implementation of HIR less-than instruction
+*/
+function lt(v1, v2)
+{
+    // TODO
+}
 
 /**
 Implementation of HIR eq instruction
@@ -86,14 +104,17 @@ function add(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // TODO: overflow handling: need to create FP objects
-
-        var i1 = iir.unbox(IRType.pint, v1);
-        var i2 = iir.unbox(IRType.pint, v2);
-
-        var r = i1 + i2;
-
-        return iir.box(IRType.pint, r);
+        // Attempt an add with overflow check
+        var intResult;
+        if (intResult = iir.add_ovf(v1, v2))
+        {
+            // If there is no overflow, return the result
+            return intResult;
+        }
+        else
+        {
+            // TODO: overflow handling: need to create FP objects
+        }
     }
     else
     {
@@ -111,14 +132,17 @@ function sub(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // TODO: overflow handling: need to create FP objects
-
-        var i1 = iir.unbox(IRType.pint, v1);
-        var i2 = iir.unbox(IRType.pint, v2);
-
-        var r = i1 - i2;
-
-        return iir.box(IRType.pint, r);
+        // Attempt a subtract with overflow check
+        var intResult;
+        if (intResult = iir.sub_ovf(v1, v2))
+        {
+            // If there is no overflow, return the result
+            return intResult;
+        }
+        else
+        {
+            // TODO: overflow handling: need to create FP objects
+        }    
     }
     else
     {

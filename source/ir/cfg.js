@@ -994,12 +994,14 @@ ControlFlowGraph.prototype.validate = function ()
                 {
                     var phiPred = instr.preds[k];
                     if (!arraySetHas(mustReachOut[phiPred.blockId], use))
-                        throw 'phi node uses non-reaching value';
+                        throw 'phi node:\n' + instr +
+                            '\nuses non-reaching value:\n' + use;
                 }
                 else
                 {
                     if (!arraySetHas(mustReachCur, use))
-                        throw 'instr uses non-reaching value\n' + use;
+                        throw 'instruction:\n' + instr +
+                            '\nuses non-reaching value:\n' + use;
                 }
             }
 

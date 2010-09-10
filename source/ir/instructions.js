@@ -19,16 +19,17 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // May want specialized test for mask? intel test
 // - Takes mask, compares result to 0
 // - ifmask <mask> <value>, tests if result is value
+
+// TODO:
 // May want low-level load without masking
 // - type, offset, index, multiplier
-
-// TODO: separate instruction initFunc from validFunc?
-// instr.validate()
-
 // Keep both load/store with and without mask
 // - RawLoad? w/
 //      - No masking,
 //      - base_ptr + offset + index + multiplier
+
+// TODO: separate instruction initFunc from validFunc?
+// instr.validate()
 
 //=============================================================================
 //
@@ -269,7 +270,15 @@ Test if a constant is an integer
 */
 ConstValue.prototype.isInt = function ()
 {
-    return this.value - Math.floor(this.value) == 0;
+    return (this.value == Math.floor(this.value));
+}
+
+/**
+Test if a constant is a number
+*/
+ConstValue.prototype.isNumber = function ()
+{
+    return (typeof this.value == 'number');
 }
 
 /**
@@ -1130,21 +1139,12 @@ var MakeClosInstr = instrMaker(
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.allValsBoxed(inputVals);
-        instrMaker.validNumInputs(inputVals, 2, Infinity);
+        instrMaker.validNumInputs(inputVals, 1, Infinity);
         assert(
             inputVals[0] instanceof IRFunction,
             'expected function as first argument'
         );
     }
-);
-
-/**
-@class Get the global value stored in a closure
-@augments IRInstr
-*/
-var GetGlobalInstr = untypedInstrMaker(
-    'get_global',
-     1
 );
 
 /**
@@ -1340,8 +1340,11 @@ ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTarget
 {
     instrMaker.validNumInputs(inputVals, 2);
     assert (
-        inputVals[0].type === IRType.pint &&
-        inputVals[1].type === inputVals[0].type,
+        (inputVals[0].type === IRType.pint &&
+         inputVals[1].type === inputVals[0].type)
+        ||
+        (inputVals[0].type === IRType.box &&
+         inputVals[1].type === inputVals[0].type),
         'invalid input types'
     );
     
@@ -2037,7 +2040,7 @@ var LoadInstr = instrMaker(
 @augments IRInstr
 */
 var StoreInstr = instrMaker(
-    'load',
+    'store',
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumParams(typeParams, 1);

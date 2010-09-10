@@ -129,6 +129,51 @@ function stmtListToIRFunc(
     var thisVal = new ArgValInstr(IRType.box, 'thisVal', 1);
     entryBlock.addInstr(thisVal, 'this');
 
+    // Create a map for the local variable storage locations
+    var localMap = new HashMap();
+
+    // For each function argument
+    for (var i = 0; i < newFunc.argVars.length; ++i)
+    {
+        var symName = newFunc.argVars[i].toString();
+
+        // Create an instruction to get the argument value
+        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, 2 + i);
+        entryBlock.addInstr(argVal, symName);
+
+        // Add the argument value to the local map
+        localMap.addItem(symName, argVal);
+    }
+
+    // For each local variable declaration
+    for (var i in localVars)
+    {
+        var symName = localVars[i].toString();
+
+        // If there is no local map entry for this variable
+        if (!localMap.hasItem(symName))
+        {
+            // Add an undefined value to the local map
+            localMap.addItem(symName, ConstValue.getConst(undefined));
+        }
+    }
+
+    // Read the global object from the context
+    var globalObj = insertContextReadIR(
+        entryBlock,
+        'GLOBAL_OBJECT',
+        'global'
+    );
+
+    // If the function uses the arguments object
+    if (newFunc.usesArguments)
+    {
+        // Create the arguments object and add it to the variable map
+        var argObj = new MakeArgObjInstr(funcObj);
+        entryBlock.addInstr(argObj, 'argObj');
+        localMap.setItem('arguments', argObj);
+    }
+
     // Create a map for the closure and escaping variable mutable cells
     var sharedMap = new HashMap();
 
@@ -159,54 +204,19 @@ function stmtListToIRFunc(
 
             // Map the variable to the mutable cell
             sharedMap.addItem(symName, newCell);
+
+            // If there is a local map entry for this symbol
+            if (localMap.hasItem(symName))
+            {
+                // Put the current value of the symbol into the cell
+                entryBlock.addInstr(
+                    new PutCellInstr(newCell, localMap.getItem(symName))
+                );
+
+                // Remove the ysmbol from the local map
+                localMap.remItem(symName);
+            }
         }
-    }
-
-    // Create a map for the local variable storage locations
-    var localMap = new HashMap();
-
-    // For each function argument
-    for (var i = 0; i < newFunc.argVars.length; ++i)
-    {
-        var symName = newFunc.argVars[i].toString();
-
-        // Create an instruction to get the argument value
-        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, 2 + i);
-        entryBlock.addInstr(argVal, symName);
-
-        // If there is no entry in the shared map
-        if (!sharedMap.hasItem(symName))
-        {
-            // Add the argument value directly to the local map
-            localMap.addItem(symName, argVal);
-        }
-        else
-        {
-            // Put the argument value in the corresponding mutable cell
-            var mutCell = sharedMap.getItem(symName);
-            entryBlock.addInstr(new PutCellInstr(mutCell, argVal));
-        }
-    }
-
-    // Create the arguments object and add it to the variable map
-    var argObj = new MakeArgObjInstr(funcObj);
-    entryBlock.addInstr(argObj, 'argObj');
-    localMap.addItem('arguments', argObj);
-
-    // Read the global object from the context
-    var globalObj = insertContextReadIR(
-        entryBlock,
-        'GLOBAL_OBJECT'
-    );
-
-    // For each local variable declaration
-    for (var i in localVars)
-    {
-        var symName = localVars[i].toString();
-
-        // If there is no shared map or local map entry, add an undefined value
-        if (!sharedMap.hasItem(symName) && !localMap.hasItem(symName))
-            localMap.addItem(symName, ConstValue.getConst(undefined));
     }
 
     // Create a context for the function body
@@ -274,7 +284,7 @@ function stmtListToIRFunc(
             // Create a closure for the function
             var closVal = bodyContext.addInstr(
                 new MakeClosInstr(
-                    [nestFunc, globalObj].concat(closVals)
+                    [nestFunc].concat(closVals)
                 )
             );
 
@@ -890,17 +900,6 @@ function stmtToIR(context)
 
     else if (astStmt instanceof IfStatement)
     {
-        // TODO: conversion to boolean, need ToBoolean()
-        // False is: null, undefined, 0, NaN, ''
-        // Could implement tobool instruction? Or leave this as detail for lower level conversion
-        //
-        // PROBABLY best to have explicit conversions which get removed later
-        // These map to inlinable functions which have different cases for each type
-        //
-        // What about indexing and ToString!? We don't actually want a string!
-        // Could possibly have custom tokey conversion... Or no conversion,
-        // getprop_val already implies complex underlying algorithm, unlike if test
-
         // If the test expression is an inline conditional IR instruction
         if (context.tachyonSrc && isCondInlineIR(astStmt))
         {
@@ -2971,26 +2970,20 @@ function refToIR(context)
 /**
 Insert a read from the runtime context
 */
-function insertContextReadIR(context, varName)
+function insertContextReadIR(context, varName, outName)
 {
     // Get a pointer to the context object
     var ctxPtr = context.addInstr(
         new GetCtxInstr()
     );
 
-    // Get the corresponding context variable
-    var ctxVar = contextLayout.getVar(varName);
-
     // Read the variable from the context object
     var readVal = context.addInstr(
-        new LoadInstr(
-            ctxVar.type,
-            ctxPtr,
-            ConstValue.getConst(
-                ctxVar.offset,
-                IRType.pint
-            )
-        )
+        contextLayout.genCtxLoad(
+            ctxPtr, 
+            varName
+        ),
+        outName
     );
 
     // Return the value read

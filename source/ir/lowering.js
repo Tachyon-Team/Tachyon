@@ -31,6 +31,21 @@ Perform IR lowering on a control-flow graph
 */
 function lowerIRCFG(cfg)
 {
+    // For each instruction of the entry block
+    for (var itr = cfg.getEntryBlock().getInstrItr(); itr.valid(); itr.next())
+    {
+        var instr = itr.get();
+
+        if (instr.outName == 'global')
+            var globalObj = instr;
+    }
+
+    // Ensure that the global object was found
+    assert (
+        globalObj,
+        'global object not found in lowering'
+    );
+
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {
@@ -69,7 +84,7 @@ function lowerIRCFG(cfg)
             var callInstr = new CallFuncInstr(
                 [
                     primFunc,
-                    ConstValue.getConst(undefined) // TODO: get global obj from context?
+                    globalObj
                 ]
                 .concat(instr.uses)
                 .concat(instr.targets)
@@ -96,6 +111,9 @@ function lowerIRCFG(cfg)
             }
         }
     }
+
+    // Simplify the lowered CFG
+    cfg.simplify();
 }
 
 /**
@@ -136,7 +154,7 @@ function compPrimitives()
         var func = primitiveMap[handlerName];
 
         // Perform IR lowering on the handler
-        //lowerIRFunc(func);
+        lowerIRFunc(func);
 
         print(func);
 
