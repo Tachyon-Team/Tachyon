@@ -59,6 +59,30 @@ function boxIsObj(boxVal)
 }
 
 /**
+Test if a boxed value is a function
+*/
+function boxIsFunc(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret i8";
+
+    // Compare the tag
+    return getRefTag(boxVal) == TAG_FUNCTION;
+}
+
+/**
+Test if a boxed value is an array
+*/
+function boxIsArray(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret i8";
+
+    // Compare the tag
+    return getRefTag(boxVal) == TAG_ARRAY;
+}
+
+/**
 Throw an exception with a given constructor
 */
 function throwError(errorCtor, message)
@@ -78,10 +102,23 @@ function mod() {}
 function neq() {}
 
 /**
+Implementation of the HIR tobool instruction
+*/
+function tobool(boxVal)
+{
+    "tachyon:ret i8";
+
+    // TODO
+    return iir.constant(IRType.i8, 0);
+}
+
+/**
 Implementation of HIR less-than instruction
 */
 function lt(v1, v2)
 {
+    //"tachyon:inline";
+
     // TODO
 }
 
@@ -90,6 +127,8 @@ Implementation of HIR eq instruction
 */
 function eq(v1, v2)
 {
+    //"tachyon:inline";
+
     // TODO
 }
 

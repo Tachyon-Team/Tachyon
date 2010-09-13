@@ -26,12 +26,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
-// TODO:
-// Some operators can have side effects
-// - May want a "write" or "side effect" flag
-// - May want hasSideEffects() method?
-// - Dead instruction removal in simplify()?
-
 //=============================================================================
 //
 // IR Core
@@ -377,6 +371,12 @@ function IRInstr()
     @field
     */
     this.targets = [];
+
+    /**
+    Flag to indicate that this instruction has side effects
+    @field
+    */
+    this.sideEffects = false;
 
     /**
     Parent basic block
@@ -999,7 +999,14 @@ Function to generate generic untyped instruction constructors using closures
 @param numInputs number of input operands
 @param protoObj prototype object instance, new IRInstr instance by default
 */
-function untypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoObj)
+function untypedInstrMaker(
+    mnemonic, 
+    numInputs, 
+    branchNames,
+    voidOutput,
+    sideEffects,
+    protoObj
+)
 {
     function initFunc(typeParams, inputVals, branchTargets)
     {
@@ -1013,6 +1020,8 @@ function untypedInstrMaker(mnemonic, numInputs, branchNames, voidOutput, protoOb
         );
 
         this.type = voidOutput? IRType.none:IRType.box;
+
+        this.sideEffects = (sideEffects !== undefined);
     }
 
     return instrMaker(
@@ -1067,15 +1076,6 @@ var CatchInstr = untypedInstrMaker(
 );
 
 /**
-@class Property deletion with value for field name
-@augments IRInstr
-*/
-var DelPropValInstr = untypedInstrMaker(
-    'del_prop_val',
-     2
-);
-
-/**
 @class Property test with value for field name
 @augments IRInstr
 */
@@ -1091,6 +1091,18 @@ var HasPropValInstr = untypedInstrMaker(
 var GetPropNamesInstr = untypedInstrMaker(
     'get_prop_names',
      1
+);
+
+/**
+@class Property deletion with value for field name
+@augments IRInstr
+*/
+var DelPropValInstr = untypedInstrMaker(
+    'del_prop_val',
+     2,
+    undefined,
+    true,
+    true
 );
 
 /**
@@ -1128,6 +1140,7 @@ var PutCellInstr = untypedInstrMaker(
     'put_cell',
      2,
     undefined,
+    true,
     true
 );
 
@@ -1165,6 +1178,7 @@ var PutClosInstr = untypedInstrMaker(
    'put_clos',
     3,
     undefined,
+    true,
     true
 );
 
@@ -1765,6 +1779,11 @@ CallInstr = function ()
 CallInstr.prototype = new ExceptInstr();
 
 /**
+By default, conservatively assume that all calls have side effects
+*/
+CallInstr.prototype.sideEffects = true;
+
+/**
 Set the continue block of the call instruction
 */
 CallInstr.prototype.setContTarget = function (contBlock)
@@ -2054,6 +2073,8 @@ var StoreInstr = instrMaker(
         instrMaker.validType(inputVals[2], typeParams[0]);
         
         this.type = IRType.none;
+
+        this.sideEffects = true;
     }
 );
 
@@ -2083,6 +2104,8 @@ var SetCtxInstr = instrMaker(
         instrMaker.validType(inputVals[0], IRType.rptr);
         
         this.type = IRType.none;
+
+        this.sideEffects = true;
     }
 );
 

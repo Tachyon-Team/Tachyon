@@ -567,6 +567,28 @@ ControlFlowGraph.prototype.simplify = function ()
             var block = this.blocks[i];
 
             //
+            // Eliminate dead instructions
+            //
+
+            // For each instruction in this block
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                var instr = block.instrs[j];
+
+                // If the instruction's value is not used and the instruction
+                // has no side effects and is not a branch
+                if (
+                    instr.dests.length == 0 &&
+                    instr.sideEffects == false &&
+                    instr.isBranch() == false
+                )
+                {
+                    // Remove the instruction
+                    block.remInstrAtIndex(j);
+                }
+            }
+
+            //
             // Eliminate blocks with no predecessors
             //
 

@@ -3006,20 +3006,19 @@ function insertConstructIR(context, funcVal, argVals)
         )
     );
 
-    // Find the object prototype object in the context
-    var objProto = insertContextReadIR(
-        context, 
-        'OBJECT_PROTOTYPE'
-    );
-
-    // If the prototype field is an object, otherwise, use the object prototype
+    // If the prototype field is an object use it, otherwise, use the
+    // object prototype object
     var protoIsObj = context.cfg.getNewBlock('proto_is_obj');
     var protoNotObj = context.cfg.getNewBlock('proto_not_obj');
-    var protoMerge = context.cfg.getNewBlock('proto_merge');
-    var testVal = context.addInstr(
-        new InstOfInstr(
-            funcProto,
-            objProto
+    var protoMerge = context.cfg.getNewBlock('proto_merge');   
+    var testVal = insertCallIR(
+        context,
+        new CallFuncInstr(
+            [
+                staticEnv.getBinding('boxIsFunc'),
+                context.globalObj,
+                funcProto
+            ]
         )
     );
     context.addInstr(
@@ -3028,6 +3027,10 @@ function insertConstructIR(context, funcVal, argVals)
             protoIsObj,
             protoNotObj
         )
+    );
+    var objProto = insertContextReadIR(
+        protoNotObj, 
+        'OBJECT_PROTOTYPE'
     );
     protoIsObj.addInstr(new JumpInstr(protoMerge));
     protoNotObj.addInstr(new JumpInstr(protoMerge));
@@ -3063,10 +3066,14 @@ function insertConstructIR(context, funcVal, argVals)
     var retIsObj = context.cfg.getNewBlock('ret_is_obj');
     var retNotObj = context.cfg.getNewBlock('ret_not_obj');
     var retMerge = context.cfg.getNewBlock('ret_merge');
-    var testVal = context.addInstr(
-        new InstOfInstr(
-            retVal,
-            objProto
+    var testVal = insertCallIR(
+        context,
+        new CallFuncInstr(
+            [
+                staticEnv.getBinding('boxIsObj'),
+                context.globalObj,
+                retVal
+            ]
         )
     );
     context.addInstr(
@@ -3117,17 +3124,15 @@ function insertCallIR(context, instr)
         );
         var contBlock = context.cfg.getNewBlock('callee_is_func');
 
-        // Find the function prototype object in the context
-        var funcProto = insertContextReadIR(
-            context, 
-            'FUNCTION_PROTOTYPE'
-        );
-
         // Test if the callee value is a function
-        var testVal = context.addInstr(
-            new InstOfInstr(
-                instr.uses[0],
-                funcProto
+        var testVal = insertCallIR(
+            context,
+            new CallFuncInstr(
+                [
+                    staticEnv.getBinding('boxIsFunc'),
+                    context.globalObj,
+                    instr.uses[0]
+                ]
             )
         );
         context.addInstr(

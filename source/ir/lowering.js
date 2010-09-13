@@ -31,8 +31,11 @@ Perform IR lowering on a control-flow graph
 */
 function lowerIRCFG(cfg)
 {
+    // Get the entry block
+    var entry = cfg.getEntryBlock();
+
     // For each instruction of the entry block
-    for (var itr = cfg.getEntryBlock().getInstrItr(); itr.valid(); itr.next())
+    for (var itr = entry.getInstrItr(); itr.valid(); itr.next())
     {
         var instr = itr.get();
 
@@ -40,11 +43,17 @@ function lowerIRCFG(cfg)
             var globalObj = instr;
     }
 
-    // Ensure that the global object was found
-    assert (
-        globalObj,
-        'global object not found in lowering'
-    );
+    // If the global object was not found
+    if (!globalObj)
+    {
+        // Load the global object from the context
+        var ctxPtr = new GetCtxInstr();
+        var globalObj = contextLayout.genCtxLoad(ctxPtr, 'GLOBAL_OBJECT');
+
+        // Add the new instructions at the end of the entry block
+        entry.addInstr(ctxPtr, 'ctx', entry.instrs.length - 1);
+        entry.addInstr(globalObj, 'global', entry.instrs.length - 1);
+    }
 
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
