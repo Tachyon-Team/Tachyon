@@ -16,21 +16,52 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // These constants should have type platform-int, matching the box type size
 //
 // Tags needed:
-// - immediate int      X----X000   0
+// - immediate int      X-----X00   0
 // - object             X----X111   7
 // - function obj       X----X110   6
 // - array obj          X----X101   5
-// - float              X----X100   4
-// - string             X----X011   3
-// - constants          X----X010   2
-//   - bool/null/undef    
+// - float              X----X011   3
+// - string             X----X010   2
 // - other              X----X001   1
-//   - (getter-setter, hash table, etc.)
+//   - constants (true/false/null/undef)
+//   - other heap objects (getter-setter, hash table, etc.)
+//
+// Immediate integer tags have only two tag bits so they can be used directly
+// in 32-bit array indexing. The resulting immediate integers have 30 
+// effective usable bits.
+//
 //=============================================================================
 
-// Mask used to extract tags
+// Number of integer tag bits
 staticEnv.regBinding(
-    'BOX_TAG_MASK',
+    'TAG_NUM_BITS_INT',
+    ConstValue.getConst(
+        2,
+        IRType.pint
+    )
+);
+
+// Number of reference tag bits
+staticEnv.regBinding(
+    'TAG_NUM_BITS_REF',
+    ConstValue.getConst(
+        2,
+        IRType.pint
+    )
+);
+
+// Mask used to extract immediate integer tags
+staticEnv.regBinding(
+    'TAG_INT_MASK',
+    ConstValue.getConst(
+        3,
+        IRType.pint
+    )
+);
+
+// Mask used to extract reference tags
+staticEnv.regBinding(
+    'TAG_REF_MASK',
     ConstValue.getConst(
         7,
         IRType.pint
@@ -39,7 +70,7 @@ staticEnv.regBinding(
 
 // Tag for immediate integers
 staticEnv.regBinding(
-    'BOX_TAG_INT',
+    'TAG_INT',
     ConstValue.getConst(
         0,
         IRType.pint
@@ -48,7 +79,7 @@ staticEnv.regBinding(
 
 // Tag for objects
 staticEnv.regBinding(
-    'BOX_TAG_OBJECT',
+    'TAG_OBJECT',
     ConstValue.getConst(
         7,
         IRType.pint
@@ -57,7 +88,7 @@ staticEnv.regBinding(
 
 // Tag for objects
 staticEnv.regBinding(
-    'BOX_TAG_FUNCTION',
+    'TAG_FUNCTION',
     ConstValue.getConst(
         6,
         IRType.pint
@@ -66,7 +97,7 @@ staticEnv.regBinding(
 
 // Tag for objects
 staticEnv.regBinding(
-    'BOX_TAG_ARRAY',
+    'TAG_ARRAY',
     ConstValue.getConst(
         5,
         IRType.pint

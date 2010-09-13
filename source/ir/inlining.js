@@ -149,8 +149,6 @@ function inlineCall(callInstr, calleeFunc)
             resBlock.addInstr(instr, instr.outName);
         }
 
-
-
         // For each successor of the resolution block
         for (var i = 0; i < resBlock.succs.length; ++i)
         {
@@ -167,9 +165,6 @@ function inlineCall(callInstr, calleeFunc)
                 instr.replPred(callBlock, resBlock);
             }
         }
-
-
-
     }
 
     // Otherwise, the call is at the end of a basic block

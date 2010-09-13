@@ -10,11 +10,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // TODO:
-// Some operators can have side effects
-// - May want a "write" or "side effect" flag
-// - May want hasSideEffects() method?
-
-// TODO:
 // May want MIR iflt, ifgt, ifeq, etc.
 // May want specialized test for mask? intel test
 // - Takes mask, compares result to 0
@@ -30,6 +25,12 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
+
+// TODO:
+// Some operators can have side effects
+// - May want a "write" or "side effect" flag
+// - May want hasSideEffects() method?
+// - Dead instruction removal in simplify()?
 
 //=============================================================================
 //

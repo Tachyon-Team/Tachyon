@@ -1201,6 +1201,60 @@ ControlFlowGraph.prototype.replInstr = function (instrItr, newInstr)
 }
 
 /**
+Insert a new block along the edge in between two blocks.
+*/
+ControlFlowGraph.prototype.insertOnEdge = function (edgeItr, block)
+{
+    var edge = edgeItr.get();
+
+    this.insertBetween(edge.pred, edge.succ, block);
+}
+
+/**
+Insert a new block in between two blocks.
+*/
+ControlFlowGraph.prototype.insertBetween = function (pred, succ, block)
+{
+    // Unlink the predecessor and successor
+    succ.remPred(pred);
+    pred.remSucc(succ);
+
+    // Link the predecessor and the new block
+    pred.addSucc(block);
+    block.addPred(pred);
+
+    // Make the new block jump to the successor
+    block.addInstr(new JumpInstr(succ));
+
+    // Ensure that the predecessor has a branch instruction
+    assert (
+        pred.hasBranch(),
+        'predecessor has no branch instruction'
+    );
+
+    // Get the branch instruction of the predecessor
+    var branch = pred.getLastInstr();
+
+    // Update the branch instruction targets
+    for (var i = 0; i < branch.targets.length; ++i)
+    {
+        if (branch.targets[i] === succ)
+            branch.targets[i] = block;
+    }
+
+    // Update the phi node predecessors
+    for (var i = 0; i < succ.instrs.length; ++i)
+    {
+        var instr = succ.instrs[i];
+
+        if (!(instr instanceof PhiInstr))
+            continue;
+
+        instr.replPred(pred, block);
+    }
+}
+
+/**
 @class Class to represent a basic block
 */
 function BasicBlock(cfg)

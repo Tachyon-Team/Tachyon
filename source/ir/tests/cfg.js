@@ -11,6 +11,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
     tests.cfg = tests.testSuite();
 
     var t = tests.cfg;
+
     t.setup = function ()
     {
         var func = new IRFunction(
@@ -29,10 +30,9 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         this.blocks = [entry, l1, l2, r1, merge];
 
-        var instrs = []
+        var instrs = [];
         this.instrs = instrs;
-        var ins;
-    
+            
         function addInstr(instr, block, outName, index)
         {
             instrs.push(instr);
@@ -212,5 +212,36 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         }
         assert(this.edges.length === 0 && count === edgeNumber);
     };
+
+    t.insertOnEdge = function ()
+    {
+        var edgeItr = this.cfg.getEdgeItr();
+
+        while (true)
+        {
+            var edge = edgeItr.get();
+
+            if (
+                edge.pred === this.edges[0].pred &&
+                edge.succ === this.edges[0].succ
+            )
+                break;
+
+            edgeItr.next();
+        }
+        
+        var block = this.cfg.getNewBlock('ins_block');
+
+        block.addInstr(
+            new ModInstr(
+                ConstValue.getConst(1),
+                ConstValue.getConst(2)
+            )
+        );
+        
+        this.cfg.insertOnEdge(edgeItr, block);
+
+        this.cfg.validate();
+    }
 
 })(); // end of local namespace

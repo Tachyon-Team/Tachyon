@@ -10,19 +10,19 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
-Get the tag of a boxed value
+Get the reference tag of a boxed value
 */
-function getBoxTag(boxVal)
+function getRefTag(boxVal)
 {
     "tachyon:inline";
     "tachyon:ret pint";
 
     // Mask the tag
-    return boxVal & BOX_TAG_MASK;
+    return boxVal & TAG_REF_MASK;
 }
 
 /**
-Test if a boxed value has a specific type
+Test if a boxed value has a specific reference tag
 */
 function boxHasTag(boxVal, tagVal)
 {
@@ -31,7 +31,7 @@ function boxHasTag(boxVal, tagVal)
     "tachyon:ret i8";
 
     // Compare the tag
-    return getBoxTag(boxVal) == tagVal;
+    return getRefTag(boxVal) == tagVal;
 }
 
 /**
@@ -43,7 +43,7 @@ function boxIsInt(boxVal)
     "tachyon:ret i8";
 
     // Test if the value has the int tag
-    return boxHasTag(boxVal, BOX_TAG_INT);
+    return (boxVal & TAG_INT_MASK) == TAG_INT;
 }
 
 /**
@@ -55,7 +55,7 @@ function boxIsObj(boxVal)
     "tachyon:ret i8";
 
     // Compare the tag
-    return getBoxTag(boxVal) >= BOX_TAG_ARRAY;;
+    return getRefTag(boxVal) >= TAG_ARRAY;
 }
 
 /**
@@ -73,7 +73,6 @@ function make_clos() {}
 function put_clos() {}
 function get_clos() {}
 function make_arg_obj() {}
-function mul() {}
 function div() {}
 function mod() {}
 function neq() {}
@@ -109,6 +108,7 @@ function add(v1, v2)
         if (intResult = iir.add_ovf(v1, v2))
         {
             // If there is no overflow, return the result
+            // No normalization necessary
             return intResult;
         }
         else
@@ -137,7 +137,37 @@ function sub(v1, v2)
         if (intResult = iir.sub_ovf(v1, v2))
         {
             // If there is no overflow, return the result
+            // No normalization necessary
             return intResult;
+        }
+        else
+        {
+            // TODO: overflow handling: need to create FP objects
+        }    
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+    }
+}
+
+/**
+Implementation of the HIR mul instruction
+*/
+function mul(v1, v2)
+{
+    "tachyon:inline";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Attempt a multiply with overflow check
+        var intResult;
+        if (intResult = iir.mul_ovf(v1, v2))
+        {
+            // If there is no overflow, return the result
+            // Normalize by shifting right by the number of integer tag bits
+            return iir.box(IRType.pint, intResult >> TAG_NUM_BITS_INT);
         }
         else
         {
@@ -175,6 +205,8 @@ Implementation of the HIR get_prop_val instruction
 */
 function get_prop_val(obj, propName)
 {
+    // TODO: throw error if not object
+
     // Compute the hash for the property
     // Boxed value, may be a string or an int
     var propHash = iir.icast(
