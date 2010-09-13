@@ -77,7 +77,7 @@ staticEnv.regBinding(
     )
 );
 
-// Tag for objects
+// Tag for plain objects
 staticEnv.regBinding(
     'TAG_OBJECT',
     ConstValue.getConst(
@@ -86,7 +86,7 @@ staticEnv.regBinding(
     )
 );
 
-// Tag for objects
+// Tag for function objects
 staticEnv.regBinding(
     'TAG_FUNCTION',
     ConstValue.getConst(
@@ -95,11 +95,86 @@ staticEnv.regBinding(
     )
 );
 
-// Tag for objects
+// Tag for array objects
 staticEnv.regBinding(
     'TAG_ARRAY',
     ConstValue.getConst(
         5,
+        IRType.pint
+    )
+);
+
+// Tag for floating-point values
+staticEnv.regBinding(
+    'TAG_FLOAT',
+    ConstValue.getConst(
+        3,
+        IRType.pint
+    )
+);
+
+// Tag for strings
+staticEnv.regBinding(
+    'TAG_STRINGS',
+    ConstValue.getConst(
+        2,
+        IRType.pint
+    )
+);
+
+// Tag for other values
+staticEnv.regBinding(
+    'TAG_OTHER',
+    ConstValue.getConst(
+        1,
+        IRType.pint
+    )
+);
+
+//=============================================================================
+//
+// JavaScript constant values
+//
+// Each constant has a specific bit-pattern:
+// - true       000--0|00|001   1
+// - false      000--0|01|001   9
+// - null       000--0|10|001   17
+// - undefined  000--0|11|001   25
+//
+//=============================================================================
+
+// Bit pattern for the true constant
+staticEnv.regBinding(
+    'BIT_PATTERN_TRUE',
+    ConstValue.getConst(
+        1,
+        IRType.pint
+    )
+);
+
+// Bit pattern for the false constant
+staticEnv.regBinding(
+    'BIT_PATTERN_FALSE',
+    ConstValue.getConst(
+        9,
+        IRType.pint
+    )
+);
+
+// Bit pattern for the null constant
+staticEnv.regBinding(
+    'BIT_PATTERN_NULL',
+    ConstValue.getConst(
+        17,
+        IRType.pint
+    )
+);
+
+// Bit pattern for the undefined constant
+staticEnv.regBinding(
+    'BIT_PATTERN_UNDEF',
+    ConstValue.getConst(
+        25,
         IRType.pint
     )
 );
@@ -112,9 +187,18 @@ staticEnv.regBinding(
 
 // Offset of the protype pointer
 staticEnv.regBinding(
-    'OBJ_PROTO_PTR_OFFSET',
+    'OBJ_HEADER_SIZE',
     ConstValue.getConst(
         4,
+        IRType.pint
+    )
+);
+
+// Offset of the protype pointer
+staticEnv.regBinding(
+    'OBJ_PROTO_PTR_OFFSET',
+    ConstValue.getConst(
+        staticEnv.getBinding('OBJ_HEADER_SIZE').value,
         IRType.pint
     )
 );
@@ -170,6 +254,48 @@ staticEnv.regBinding(
     ConstValue.getConst(
         0,
         IRType.box
+    )
+);
+
+//=============================================================================
+//
+// String memory layout constants
+//
+//=============================================================================
+
+// Offset of the protype pointer
+staticEnv.regBinding(
+    'STR_CODE_UNIT_SIZE',
+    ConstValue.getConst(
+        IRType.u16.size,
+        IRType.pint
+    )
+);
+
+// Offset of the protype pointer
+staticEnv.regBinding(
+    'STR_HEADER_SIZE',
+    ConstValue.getConst(
+        4,
+        IRType.pint
+    )
+);
+
+// Offset of the protype pointer
+staticEnv.regBinding(
+    'STR_LEN_OFFSET',
+    ConstValue.getConst(
+        staticEnv.getBinding('STR_HEADER_SIZE').value,
+        IRType.pint
+    )
+);
+
+// Offset of string data
+staticEnv.regBinding(
+    'STR_DATA_OFFSET',
+    ConstValue.getConst(
+        staticEnv.getBinding('STR_LEN_OFFSET').value + IRType.i32.size,
+        IRType.pint
     )
 );
 

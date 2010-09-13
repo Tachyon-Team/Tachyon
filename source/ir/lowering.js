@@ -70,8 +70,14 @@ function lowerIRCFG(cfg)
         if (usesBoxed && instr instanceof IfInstr)
         {
             // Create a boolean conversion instruction
-            var toBoolInstr = new ToBoolInstr(instr.uses[0]);
-            
+            var toBoolInstr = new CallFuncInstr(
+                [
+                    primitiveMap["boxToBool"],
+                    globalObj,
+                    instr.uses[0]
+                ]
+            );
+
             // Replace the if instruction by a typed if
             var ifBoolInstr = new IfInstr([toBoolInstr].concat(instr.targets));
             cfg.replInstr(itr, ifBoolInstr);
@@ -79,12 +85,11 @@ function lowerIRCFG(cfg)
             // Add the instruction before the if
             cfg.addInstr(itr, toBoolInstr);
 
-            // Move past the new instruction
-            itr.next();
+            var instr = itr.get();
         }
 
         // If this instruction should be translated into a primitive call
-        else if (usesBoxed && primitiveMap[instr.mnemonic])
+        if (usesBoxed && primitiveMap[instr.mnemonic])
         {
             // Get a reference to the primitive function
             var primFunc = primitiveMap[instr.mnemonic];

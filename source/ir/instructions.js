@@ -1952,21 +1952,6 @@ var BoxInstr = instrMaker(
 );
 
 /**
-@class Instruction to evaluate the boolean value of a boxed value
-@augments IRInstr
-*/
-var ToBoolInstr = instrMaker(
-    'tobool',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 1);
-        instrMaker.validType(inputVals[0], IRType.box);
-        
-        this.type = IRType.i8;
-    }
-);
-
-/**
 @class Instruction to convert between different integer types
 @augments IRInstr
 */
@@ -1978,9 +1963,11 @@ var ICastInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 1);
         assert (
             (inputVals[0].type.isIntType() || 
+             inputVals[0].type === IRType.box ||
              inputVals[0].type === IRType.rptr) 
             &&
             (typeParams[0].isIntType() ||
+             typeParams[0] === IRType.box ||
              typeParams[0] === IRType.rptr),
             'type parameters must be integer or raw pointer'
         );

@@ -585,6 +585,9 @@ ControlFlowGraph.prototype.simplify = function ()
                 {
                     // Remove the instruction
                     block.remInstrAtIndex(j);
+
+                    // Set the simplified flag
+                    simplified = true;
                 }
             }
 
