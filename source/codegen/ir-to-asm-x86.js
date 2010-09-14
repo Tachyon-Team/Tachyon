@@ -733,7 +733,26 @@ irToAsm.translator.prototype.init = function (mainFct)
     assert(globalObjReg !== retValReg, 
            "Invalid register permutation for argsIndex");
 
+
+    var i;
+
     this.label(mainFct, "<func MAIN>");
+
+    // Let's preserve all registers from the caller
+    // except xAX (used for return value)
+    if (this.asm.is64bitMode())
+    {
+        for (i=1; i < 16; ++i)
+        {
+            this.asm.push(reg.reg64(i));
+        }
+    } else
+    {
+        for (i=1; i < 8; ++i)
+        {
+            this.asm.push(reg.reg32(i));
+        }
+    }
 
     this.asm.
     genListing("INIT").
@@ -757,8 +776,24 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     // Return from the main function
     this.asm.
-    label(ret).
-    ret();
+    label(ret);
+
+    // Let's restore all registers for the caller
+    // except xAX (used for return value)
+    if (this.asm.is64bitMode())
+    {
+        for (i=15; i >= 1; --i)
+        {
+            this.asm.pop(reg.reg64(i));
+        }
+    } else
+    {
+        for (i=7; i >= 1; --i)
+        {
+            this.asm.pop(reg.reg32(i));
+        }
+    }
+    this.asm.ret();
 
     // Add the global object dump at the end of the init section
     this.dump_global_object();
