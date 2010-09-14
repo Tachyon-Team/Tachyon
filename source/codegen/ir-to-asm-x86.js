@@ -58,15 +58,24 @@ irToAsm.config.context = EDX;
 // Registers available for register allocation.
 irToAsm.config.physReg    = [EAX, EBX, ECX, EDX];
 
-// Reserved registers are indexes into the physReg array
+// Reserved registers are indexes into the physReg array since the 
+// register allocation algorithm assumes an index into the physReg
+// array to stay platform-independent.
 
 // Register index for call's return value
-irToAsm.config.retValReg = 0;
+irToAsm.config.retValIndex = 0;
 // Registers for the corresponding CallInstr operands. The first
 // operands will be assigned those registers in their order of 
 // appearance. The remaining operands will be passed on the stack.
 // The first position corresponds to arg 0 index, the second to arg 1, etc.
-irToAsm.config.argsReg    = [0, 1, 2];
+irToAsm.config.argsIndex    = [0, 1, 2];
+
+// For convenience in the ir-to-asm code, references to registers
+// are derived from the argsIndex
+irToAsm.config.retValReg = irToAsm.config.physReg[irToAsm.config.retValIndex];
+irToAsm.config.argsReg = 
+    irToAsm.config.argsIndex.map( 
+        function (index) { return irToAsm.config.physReg[index]; });
 
 
 // TODO: Would we want to have distinct caller and callee save registers?
@@ -413,8 +422,12 @@ irToAsm.translator.prototype.get_prop_addr = function (opnds, dest)
     label(end).
     mov(irToAsm.config.NULL, irToAsm.config.scratch).        // no value found
 
-    label(cont).
-    mov(irToAsm.config.scratch, dest);
+    label(cont);
+
+    if (irToAsm.config.scratch !== dest)
+    {
+        this.asm.mov(irToAsm.config.scratch, dest);
+    }
 
 };
 
@@ -473,12 +486,13 @@ irToAsm.translator.prototype.call_self = function (offset)
         offset = 5;
     }
     const SELF = this.asm.labelObj();
+    const retValReg = irToAsm.config.retValReg;
 
     this.asm.
     call(SELF).
     label(SELF).
-    pop(EAX).
-    add($(offset),EAX).
+    pop(retValReg).
+    add($(offset),retValReg).
     ret().
     genListing("ADDR RETRIEVAL");
 
@@ -495,7 +509,7 @@ irToAsm.translator.prototype.ir_arg = function (opnds, instr)
         return;
     }
 
-    reg = irToAsm.config.physReg[irToAsm.config.argsReg[argIndex]];
+    reg = irToAsm.config.physReg[irToAsm.config.argsIndex[argIndex]];
     if (dest !== reg)
     {
         error("ir_arg: dest register '" + dest + 
@@ -509,12 +523,14 @@ irToAsm.translator.prototype.ir_ret = function (opnds, instr)
 {
     const dest = instr.regAlloc.dest;
     const spillNb = this.fct.regAlloc.spillNb;
+    const refByteLength = irToAsm.config.stack.width() / 8;
+    const retValReg = irToAsm.config.retValReg;
 
-    this.asm.add($(spillNb*4), irToAsm.config.stack);
+    this.asm.add($(spillNb*refByteLength), irToAsm.config.stack);
 
-    if (opnds[0] !== EAX)
+    if (opnds[0] !== retValReg)
     {
-        this.asm.mov(opnds[0], EAX);
+        this.asm.mov(opnds[0], retValReg);
     }
    
     //this.asm.mov(mem(0,irToAsm.config.stack), EBX);
@@ -527,8 +543,10 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
     const dest = instr.regAlloc.dest;
     const targets = instr.targets;
     const that = this;
+    const refByteLength = irToAsm.config.stack.width() / 8;
+    const funcObjReg = irToAsm.config.argsReg[0];
 
-    var spillNb = opnds.length - 4;
+    var spillNb = opnds.length - refByteLength;
     var offset = 1;
     var i;
     var continue_label = this.label(targets[0], targets[0].label);
@@ -539,15 +557,15 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
         spillNb = 0;
     }
 
-    offset = (spillNb) * 4;
+    offset = (spillNb) * refByteLength;
 
     // Move arguments in the right registers
     var map = allocator.mapping();
 
-    for (i=0; i < irToAsm.config.argsReg.length && i < opnds.length; ++i)
+    for (i=0; i < irToAsm.config.argsIndex.length && i < opnds.length; ++i)
     {
 
-        reg = irToAsm.config.physReg[irToAsm.config.argsReg[i]];
+        reg = irToAsm.config.argsReg[i];
         if (opnds[i] !== reg)
         {
             map.add(opnds[i], reg);
@@ -585,7 +603,7 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
     sub($(offset), irToAsm.config.stack).
 
     // Call function address
-    call(EAX).
+    call(funcObjReg).
 
     // Remove return address and extra args
     add($(offset), irToAsm.config.stack).
@@ -615,9 +633,10 @@ irToAsm.translator.prototype.func_prelude = function (prelude_label)
 
 irToAsm.translator.prototype.func_init = function ()
 {
+    const byteLength = irToAsm.config.stack.width() / 8;
     var spillNb = this.fct.regAlloc.spillNb;
 
-    this.asm.sub($(spillNb*4), irToAsm.config.stack);
+    this.asm.sub($(spillNb*byteLength), irToAsm.config.stack);
 };
 
 irToAsm.translator.prototype.ir_make_arg_obj = function (opnds, instr)
@@ -631,6 +650,7 @@ irToAsm.translator.prototype.ir_make_arg_obj = function (opnds, instr)
 irToAsm.translator.prototype.ir_make_clos = function (opnds, instr)
 {
     const dest = instr.regAlloc.dest;
+    const retValReg = irToAsm.config.retValReg;
 
     if (dest === null)
     {
@@ -639,20 +659,34 @@ irToAsm.translator.prototype.ir_make_clos = function (opnds, instr)
 
     assert(opnds[0] instanceof IRFunction); 
 
+    assert(opnds[1].type === x86.type.REG);
+
     var fctLabel = this.label(opnds[0]);
 
-    if (dest === EAX)
+    if (dest === retValReg)
     {
+        if (opnds[1] === retValReg)
+        {
+            this.asm.mov(opnds[1], scratch);
+        }
         this.asm.
-        call(fctLabel).
-        mov(opnds[1], mem(-4, EAX));
+        call(fctLabel);
+
+        // Store the global object in the function prelude
+        if (opnds[1] === retValReg)
+        {
+            this.asm.mov(scratch, mem(-4, retValReg));
+        } else
+        {
+            this.asm.mov(opnds[1], mem(-4, retValReg));
+        }
     } else 
     {
         this.asm.
-        mov(EAX, irToAsm.config.scratch).
+        mov(retValReg, irToAsm.config.scratch).
         call(fctLabel).
-        mov(EAX, dest).
-        mov(irToAsm.config.scratch, EAX).
+        mov(retValReg, dest).
+        mov(irToAsm.config.scratch, retValReg).
         mov(dest, irToAsm.config.scratch).
 
         // Store the global object in the function prelude
@@ -685,25 +719,41 @@ irToAsm.translator.prototype.ir_get_global = function (opnds, instr)
 
 irToAsm.translator.prototype.init = function (mainFct)
 {
+    const stack = irToAsm.config.stack;
+
+    const retValReg = irToAsm.config.retValReg;
+    const globalObjReg = irToAsm.config.argsReg[1];
+
     const ret = this.asm.labelObj("MAIN RET");
-    const fakeInstr1 = {regAlloc:{dest:EAX}};
+    const fakeInstr1 = {regAlloc:{dest:retValReg}};
 
     const fakeBlock = {irToAsm:{label:ret}};
-    const fakeInstr2 = {regAlloc:{dest:EAX}, targets:[fakeBlock]};
+    const fakeInstr2 = {regAlloc:{dest:retValReg}, targets:[fakeBlock]};
+
+    assert(globalObjReg !== retValReg, 
+           "Invalid register permutation for argsIndex");
 
     this.label(mainFct, "<func MAIN>");
 
     this.asm.
     genListing("INIT").
-    // Move global object address in global register 
     call(this.globalLabel).
-    mov(EAX, EBX);
+
+    // We need to preserve the global object for the ir_call 
+    sub($(4), stack).
+    mov(retValReg, mem(0,stack)).
+    mov(retValReg, globalObjReg);
 
     // Setup the main function
-    this.ir_make_clos([mainFct, EBX], fakeInstr1);
+    this.ir_make_clos([mainFct, globalObjReg], fakeInstr1);
+
+    // Retrieve the global object and restore stack to its original pos
+    this.asm.
+    mov(mem(0, stack), globalObjReg).
+    add($(4), stack);
 
     // Call the main function
-    this.ir_call([EAX, EBX], fakeInstr2);
+    this.ir_call([retValReg, globalObjReg], fakeInstr2);
 
     // Return from the main function
     this.asm.

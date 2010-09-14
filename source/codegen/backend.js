@@ -60,6 +60,9 @@ backend.compile = function (ir, print)
         print();
         */
 
+        cfg.simplify();
+        print(cfg);
+    
         print("******* Before register allocation *******");
         var block;
         var tab = "\t";

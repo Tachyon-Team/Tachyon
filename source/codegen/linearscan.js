@@ -1285,11 +1285,11 @@ allocator.liveIntervals = function (cfg, order, config)
                 //print( "new interval: " + instr.regAlloc.interval);
                 if (instr instanceof CallInstr)
                 {
-                    instr.regAlloc.interval.regHint = config.retValReg;
+                    instr.regAlloc.interval.regHint = config.retValIndex;
                 } else if (instr instanceof ArgValInstr)
                 {
                     instr.regAlloc.interval.regHint = 
-                        config.argsReg[instr.argIndex];
+                        config.argsIndex[instr.argIndex];
                 }
 
                 // Remove the instruction from the live set
@@ -1317,15 +1317,15 @@ allocator.liveIntervals = function (cfg, order, config)
                         block.regAlloc.from,
                         pos
                     );
-                    if (k < config.argsReg.length)
+                    if (k < config.argsIndex.length)
                     {
-                        use.regAlloc.interval.regHint = config.argsReg[k];
+                        use.regAlloc.interval.regHint = config.argsIndex[k];
                     }
                 } else
                 {
                     if (instr instanceof RetInstr)
                     {
-                        instr.regAlloc.interval.regHint = config.retValReg;
+                        instr.regAlloc.interval.regHint = config.retValIndex;
                     } 
                     pos = instr.regAlloc.id;
                     use.regAlloc.interval.addRange(
