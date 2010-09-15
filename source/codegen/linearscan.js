@@ -490,6 +490,8 @@ allocator.interval.prototype.previous   = null;
 allocator.interval.prototype.id     = 0;
 /** Virtual register */
 allocator.interval.prototype.vreg   = null;
+/** Instruction defining the interval */
+allocator.interval.prototype.instr  = null;
 
 /** Returns the first starting position of all ranges */ 
 allocator.interval.prototype.startPos = function ()
@@ -1148,20 +1150,22 @@ allocator.numberInstrs = function (cfg, order)
     var nextNo = 2;
     var inc = allocator.numberInstrs.inc;
     var instrNb;
+    var i,j, block, instr;
 
     // For each block in the order
-    for (var i = 0; i < order.length; ++i)
+    for (i = 0; i < order.length; ++i)
     {
-        var block = order[i];
+        block = order[i];
 
         // Set the operation number at the block start
         block.regAlloc.from = nextNo;
-        nextNo = nextNo + inc;
 
-        //print(block.regAlloc.from + ": label " + block.label);
-        for (var j = 0; j < block.instrs.length; ++j)
+        // All phi instructions happen at the same time at the beginning of the
+        // block so they should have the same instruction number as the beginning 
+        // of the block
+        for (j = 0; j < block.instrs.length; ++j)
         {
-            var instr = block.instrs[j];
+            instr = block.instrs[j];
 
             // Conceptually, phi instructions all happen at the
             // same time, so they should have the same instruction number
@@ -1170,7 +1174,29 @@ allocator.numberInstrs = function (cfg, order)
                 // Since they all appear at the beginning of the block,
                 // not incrementing should garantee an identical number
                 instrNb = nextNo;
-            } else if (instr instanceof CallInstr)
+
+                // Create a register allocation info object for the instruction and
+                // assign the instruction an operation number
+                instr.regAlloc = {
+                    id : instrNb,              // Operation number
+                    interval : allocator.interval()   // Live interval
+                }
+                instr.regAlloc.interval.instr = instr;
+            } else
+            {
+                break;
+            }   
+        }
+
+        nextNo = nextNo + inc;
+
+        //print(block.regAlloc.from + ": label " + block.label);
+        // Handle the remaining instructions
+        for (; j < block.instrs.length; ++j)
+        {
+            instr = block.instrs[j];
+
+            if (instr instanceof CallInstr)
             {
                 // For calls, we need to increment by twice the value
                 // to later separate arguments use position from return value
@@ -1191,7 +1217,7 @@ allocator.numberInstrs = function (cfg, order)
                 id : instrNb,              // Operation number
                 interval : allocator.interval()   // Live interval
             }
-            instr.regAlloc.interval.vreg = instr;
+            instr.regAlloc.interval.instr = instr;
 
             //print(instr.regAlloc.id + ":    " + " (" + instr.instrId + ") " +
             //      instr );
@@ -1251,7 +1277,10 @@ allocator.liveIntervals = function (cfg, order, config)
                     break;
 
                 // Add the phi node's input from this block to the live set
-                arraySetAdd(live, instr.getIncoming(block));
+                if (!instr.getIncoming(block) instanceof ConstValue)
+                {
+                    arraySetAdd(live, instr.getIncoming(block));
+                }
             }
         }
         
@@ -1868,6 +1897,7 @@ allocator.resolve = function (cfg, intervals, order)
     var mapping;
     var insertFct;
     var insertIndex;
+    var opnd;
 
     // Insert Moves at split positions
     for (intervalIt = new ArrayIterator(intervals); 
@@ -1930,9 +1960,25 @@ allocator.resolve = function (cfg, intervals, order)
              intervalIt.valid(); 
              intervalIt.next())
         {
-            // TODO: Handle Phi functions
-            
-            moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
+            if (intervalIt.get().startPos() === edge.succ.regAlloc.from)
+            {
+                assert(intervalIt.get().instr instanceof PhiInstr);
+
+                // We got a Phi instruction
+                opnd = intervalIt.get().instr.getIncoming(edge.pred);
+                if (opnd instanceof ConstValue)
+                {
+                    moveFrom = opnd;
+                } else
+                {
+                    moveFrom = opnd.regAlloc.interval.regAtPos(edge.pred.regAlloc.to);
+                }
+            } else
+            {
+                // We got a regular instruction
+                moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
+            }
+
             moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from);
 
 
@@ -1949,7 +1995,16 @@ allocator.resolve = function (cfg, intervals, order)
         {
             // Predecessor has only a successor, insert moves at
             // the end of predecessor
-            insertFct = function (move) { edge.pred.addInstr(move); };
+            insertFct = function (move) 
+            { 
+                if (edge.pred.hasBranch())
+                {
+                    edge.pred.addInstr(move, "", edge.pred.instrs.length - 1); 
+                } else
+                {
+                    edge.pred.addInstr(move); 
+                }
+            };
 
         } else if (edge.succ.preds.length === 1)
         {

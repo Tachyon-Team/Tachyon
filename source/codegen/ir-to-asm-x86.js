@@ -207,7 +207,11 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 
             if (instr instanceof MoveInstr)
             {
-                this.asm.mov(instr.uses[0], instr.uses[1]);
+                opnds = instr.uses.map(replace);
+                this.asm.mov(opnds[0], opnds[1]);
+            } else if (instr instanceof PhiInstr)
+            {
+                // ignore
             } else
             {
                 // Replace constants by immediate values
@@ -275,6 +279,19 @@ irToAsm.translator.prototype.ir_lt = function (opnds, instr)
         return;
     }
 
+    if (opnds[0].type === x86.type.IMM_VAL &&
+        opnds[1].type === x86.type.IMM_VAL)
+    {
+        if (opnds[0].value < opnds[1].value)
+        {
+            this.asm.mov(irToAsm.config.TRUE, dest);
+        } else
+        {
+            this.asm.mov(irToAsm.config.FALSE, dest);
+        }
+        return;
+    }
+
     var cont = this.asm.labelObj();
 
     if (opnds[0].type === x86.type.MEM &&
@@ -307,6 +324,15 @@ irToAsm.translator.prototype.ir_if = function (opnds, instr)
     cmp(irToAsm.config.TRUE, opnds[0]).
     je(true_label).
     jmp(false_label);
+
+};
+
+irToAsm.translator.prototype.ir_jump = function (opnds, instr)
+{
+    const targets = instr.targets;
+    var target = this.label(targets[0]);
+
+    this.asm.jmp(target);
 
 };
 

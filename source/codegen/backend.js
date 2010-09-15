@@ -44,24 +44,11 @@ backend.compile = function (ir, print)
 
         cfg = fcts[k].virginCFG;
 
+        cfg.simplify();
+
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order);
-        liveIntervals = allocator.liveIntervals(cfg, order, irToAsm.config);
-        fixedIntervals = allocator.fixedIntervals(cfg, irToAsm.config);
 
-        mems = irToAsm.spillAllocator();
-
-        /*
-        // Print intervals before allocation
-        for (i=0; i<liveIntervals.length; ++i)
-        {
-            print(i + ": " + liveIntervals[i] + ",");
-        }
-        print();
-        */
-
-        cfg.simplify();
-        print(cfg);
     
         print("******* Before register allocation *******");
         var block;
@@ -77,6 +64,20 @@ backend.compile = function (ir, print)
                 print(instr.regAlloc.id + ":" + tab + " (" + instr.instrId + ") " + instr );
             }
         }
+
+        liveIntervals = allocator.liveIntervals(cfg, order, irToAsm.config);
+        fixedIntervals = allocator.fixedIntervals(cfg, irToAsm.config);
+
+        /*
+        // Print intervals before allocation
+        for (i=0; i<liveIntervals.length; ++i)
+        {
+            print(i + ": " + liveIntervals[i] + ",");
+        }
+        print();
+        */
+
+        mems = irToAsm.spillAllocator();
 
         allocator.linearScan(irToAsm.config, 
                              liveIntervals, 
