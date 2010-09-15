@@ -55,5 +55,11 @@ function testIR()
     */
 };
 
+// Initialize Tachyon
+initialize();
+
 testIR();
+
+// Uninitialize Tachyon
+uninitialize();
 

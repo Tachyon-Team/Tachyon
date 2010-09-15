@@ -455,11 +455,11 @@ function getIRFuncObj(
             var type = IRType[tokens[2]];
 
             var argNo = -1;
-            for (var i = 0; i < newFunc.argVars.length; ++i)
+            for (var j = 0; j < newFunc.argVars.length; ++j)
             {
-                if (newFunc.argVars[i].toString() == argName)
+                if (newFunc.argVars[j].toString() == argName)
                 {
-                    argNo = i;
+                    argNo = j;
                     break;
                 }
             }

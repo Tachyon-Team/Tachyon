@@ -15,6 +15,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //
 //=============================================================================
 
+// TODO: possible trick, OR of both values, test if zero int tag
+// Test if two values are boxed integers at once
+
 /**
 Get the reference tag of a boxed value
 */
@@ -409,11 +412,81 @@ function computeHash(key)
 /**
 Implementation of the HIR put_prop_val instruction
 */
-function put_prop_val(obj, propName)
+function put_prop_val(obj, propName, propVal)
 {
     //
     // TODO
     //
+
+    // TODO: assert object
+
+    // TODO: find if getter-setter exists?
+
+
+
+    // Compute the hash for the property
+    // Boxed value, may be a string or an int
+    var propHash = computeHash(propName);
+
+    // Get a pointer to the hash table
+    var tblPtr = iir.load(IRType.box, obj, OBJ_HASH_PTR_OFFSET);
+
+    // Get the size of the hash table
+    var tblSize = iir.icast(
+        IRType.pint,
+        iir.load(
+            IRType.i32,
+            obj, 
+            OBJ_HASH_SIZE_OFFSET
+        )
+    );
+
+    // Get the hash table index for this hash value
+    var hashIndex = propHash % tblSize;
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the key value at this hash slot
+        var keyVal = iir.load(
+            IRType.box,
+            tblPtr,
+            hashIndex * OBJ_HASH_ENTRY_SIZE
+        );
+
+        // If this is the key we want or an empty slot
+        if (keyVal === propName)
+        {
+
+            // TODO: Set prop val
+            /*
+            // Load the property value
+            var propVal = load(
+                    IRType.box, 
+                    tblPointer, 
+                    hashIndex * OBJ_HASH_ENTRY_SIZE + OBJ_HASH_KEY_SIZE
+            );
+            */
+
+            break;
+        }
+
+        // Otherwise, if we have reached an empty slot
+        else if (keyVal === OBJ_HASH_EMPTY_KEY)
+        {
+            // TODO: set prop val
+
+            // TODO: increment item count
+
+            // TODO: test if resizing is needed
+
+
+            break;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = (hashIndex + OBJ_HASH_ENTRY_SIZE) % tblSize;
+    }
 }
 
 /**
@@ -468,10 +541,14 @@ function get_prop_val(obj, propName)
                     hashIndex * OBJ_HASH_ENTRY_SIZE + OBJ_HASH_KEY_SIZE
                 );
 
+                /*
                 if (isGetterSetter(propVal))
                     return callGetter(obj, propVal);
                 else 
                     return propVal;
+                */
+                // TODO
+                return propVal
             }
 
             // Otherwise, if we have reached an empty slot

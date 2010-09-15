@@ -37,7 +37,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class IR type representation object
 */
-function IRTypeObj(name, size)
+function IRType(name, size)
 {
     /**
     Name of this type
@@ -51,12 +51,12 @@ function IRTypeObj(name, size)
     */
     this.size = size;
 }
-IRTypeObj.prototype = {};
+IRType.prototype = {};
 
 /**
 Obtain a string representation of an IR type
 */
-IRTypeObj.prototype.toString = function ()
+IRType.prototype.toString = function ()
 {
     return this.name;
 }
@@ -64,7 +64,7 @@ IRTypeObj.prototype.toString = function ()
 /**
 Test if the type is a pointer type
 */
-IRTypeObj.prototype.isPtrType = function ()
+IRType.prototype.isPtrType = function ()
 {
     switch (this)
     {
@@ -80,7 +80,7 @@ IRTypeObj.prototype.isPtrType = function ()
 /**
 Test if the type is an integer type
 */
-IRTypeObj.prototype.isIntType = function ()
+IRType.prototype.isIntType = function ()
 {
     switch (this)
     {
@@ -102,7 +102,7 @@ IRTypeObj.prototype.isIntType = function ()
 /**
 Test if the type is a floating-point type
 */
-IRTypeObj.prototype.isFPType = function ()
+IRType.prototype.isFPType = function ()
 {
     switch (this)
     {
@@ -117,7 +117,7 @@ IRTypeObj.prototype.isFPType = function ()
 /**
 Test if the type is an integer or floating-point type
 */
-IRTypeObj.prototype.isNumberType = function ()
+IRType.prototype.isNumberType = function ()
 {
     return this.isIntType() || this.isFPType();
 }
@@ -128,34 +128,30 @@ IRTypeObj.prototype.isNumberType = function ()
 // Size of a pointer on the current platform
 PLATFORM_PTR_SIZE = 8;
 
-// IR value type enumeration
-IRType =
-{
-    // Type given when there is no output value
-    none:   new IRTypeObj('none', 0),
+// Type given when there is no output value
+IRType.none = new IRType('none', 0),
 
-    // Boxed value type
-    // Contains an immediate integer or an object pointer, and a tag
-    box:    new IRTypeObj('box' , PLATFORM_PTR_SIZE),
+// Boxed value type
+// Contains an immediate integer or an object pointer, and a tag
+IRType.box  = new IRType('box' , PLATFORM_PTR_SIZE),
 
-    // Raw pointer to any memory address
-    rptr:   new IRTypeObj('rptr', PLATFORM_PTR_SIZE),
+// Raw pointer to any memory address
+IRType.rptr = new IRType('rptr', PLATFORM_PTR_SIZE),
 
-    // Unboxed unsigned integer types
-    u8:     new IRTypeObj('u8'  , 1),
-    u16:    new IRTypeObj('u16' , 2),
-    u32:    new IRTypeObj('u32' , 4),
-    u64:    new IRTypeObj('u64' , 8),
+// Unboxed unsigned integer types
+IRType.u8   = new IRType('u8'  , 1),
+IRType.u16  = new IRType('u16' , 2),
+IRType.u32  = new IRType('u32' , 4),
+IRType.u64  = new IRType('u64' , 8),
 
-    // Unboxed signed integer types
-    i8:     new IRTypeObj('i8'  , 1),
-    i16:    new IRTypeObj('i16' , 2),
-    i32:    new IRTypeObj('i32' , 4),
-    i64:    new IRTypeObj('i64' , 8),
+// Unboxed signed integer types
+IRType.i8   = new IRType('i8'  , 1),
+IRType.i16  = new IRType('i16' , 2),
+IRType.i32  = new IRType('i32' , 4),
+IRType.i64  = new IRType('i64' , 8),
 
-    // Floating-point types
-    f64:    new IRTypeObj('f64' , 8)
-};
+// Floating-point types
+IRType.f64  = new IRType('f64' , 8)
 
 // If we are on a 32-bit platform
 if (PLATFORM_PTR_SIZE == 4)
@@ -771,7 +767,7 @@ function instrMaker(
         var curIndex = 0;
 
         // Extract type parameters, if any
-        for (; curIndex < argArray.length && argArray[curIndex] instanceof IRTypeObj; ++curIndex)
+        for (; curIndex < argArray.length && argArray[curIndex] instanceof IRType; ++curIndex)
             typeParams.push(argArray[curIndex]);
 
         // Extract input values, if any
@@ -1836,7 +1832,7 @@ var CallFuncInstr = instrMaker(
         instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
 
-        if (inputVals[0].retType instanceof IRTypeObj)
+        if (inputVals[0].retType instanceof IRType)
             this.type = inputVals[0].retType;
         else
             this.type = IRType.box;
@@ -2058,7 +2054,7 @@ var StoreInstr = instrMaker(
         );
         instrMaker.validType(inputVals[1], IRType.pint);
         instrMaker.validType(inputVals[2], typeParams[0]);
-        
+   
         this.type = IRType.none;
 
         this.sideEffects = true;

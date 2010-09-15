@@ -24,15 +24,17 @@ BASE_SRCS =                 \
     ir/functions.js         \
     ir/ir.js                \
     ir/inlining.js          \
+    ir/lowering.js          \
+    runtime/memlayout.js    \
     runtime/context.js      \
     runtime/objects.js      \
-    ir/lowering.js          \
     codegen/asm.js          \
     codegen/asm-x86.js      \
     codegen/linearscan.js   \
     codegen/backend.js      \
     codegen/ir-to-asm-x86.js\
-    jslib/errors.js
+    jslib/errors.js         \
+    init.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =            \

@@ -177,6 +177,3 @@ function compPrimitives()
     }
 }
 
-// Compile the IR primitives
-compPrimitives()
-

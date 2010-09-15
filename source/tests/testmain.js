@@ -6,11 +6,12 @@ Entry point for the testing mode.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-// Flag to enable or disable unit tests
-// NOTE: will be useful to enable unit testing through the command-line
-var testsEnabled = true;
+// Initialize Tachyon
+initialize();
 
-if (testsEnabled)
-{
-    tests.run(true, undefined, true);
-}
+// Run all unit tests
+tests.run(true, undefined, true);
+
+// Uninitialize Tachyon
+uninitialize();
+
