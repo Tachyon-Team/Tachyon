@@ -185,77 +185,77 @@ staticEnv.regBinding(
 //
 //=============================================================================
 
-// Offset of the protype pointer
-staticEnv.regBinding(
-    'OBJ_HEADER_SIZE',
-    ConstValue.getConst(
-        4,
-        IRType.pint
-    )
+/**
+Hash table entry layout object
+*/
+var hashEntryLayout = new ObjectLayout('hashentry');
+
+// Hash table key
+hashEntryLayout.addField(
+    'key',
+    IRType.box
 );
 
-// Offset of the protype pointer
-staticEnv.regBinding(
-    'OBJ_PROTO_PTR_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('OBJ_HEADER_SIZE').value,
-        IRType.pint
-    )
+// Hash table value
+hashEntryLayout.addField(
+    'val',
+    IRType.box
 );
 
-// Offset of the hash table
-staticEnv.regBinding(
-    'OBJ_HASH_PTR_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('OBJ_PROTO_PTR_OFFSET').value + IRType.box.size,
-        IRType.pint
-    )
+// Finalize the hash table entry layout
+hashEntryLayout.finalize();
+
+/**
+Hash table entry layout object
+*/
+var hashTblLayout = new ObjectLayout('hashtbl');
+
+//
+// TODO: header
+//
+
+// Hash table key
+hashTblLayout.addField(
+    'tbl',
+    hashEntryLayout,
+    undefined,
+    Infinity
 );
 
-// Offset of the hash table size
-staticEnv.regBinding(
-    'OBJ_HASH_SIZE_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('OBJ_HASH_PTR_OFFSET').value + IRType.box.size,
-        IRType.pint
-    )
+// Finalize the hash table layout and generate accessors
+hashTblLayout.finalize();
+hashTblLayout.genMethods();
+
+/**
+Object layout object
+*/
+var objLayout = new ObjectLayout('obj');
+
+//
+// TODO: header
+//
+
+// Prototype reference
+objLayout.addField(
+    'proto',
+    IRType.box
 );
 
-// Size of a basic object
-staticEnv.regBinding(
-    'OBJ_SIZE',
-    ConstValue.getConst(
-        staticEnv.getBinding('OBJ_HASH_SIZE_OFFSET').value + IRType.i32.size,
-        IRType.pint
-    )
+// Hash table
+objLayout.addField(
+    'tbl',
+    IRType.box
 );
 
-// Size of a hash table entry
-staticEnv.regBinding(
-    'OBJ_HASH_ENTRY_SIZE',
-    ConstValue.getConst(
-        16,
-        IRType.pint
-    )
+// Hash table size
+objLayout.addField(
+    'tblsize',
+    IRType.i32
 );
 
-// Size of a hash table key
-staticEnv.regBinding(
-    'OBJ_HASH_KEY_SIZE',
-    ConstValue.getConst(
-        8,
-        IRType.pint
-    )
-);
-
-// Value of the empty-slot hash table key
-staticEnv.regBinding(
-    'OBJ_HASH_EMPTY_KEY',
-    ConstValue.getConst(
-        0,
-        IRType.box
-    )
-);
+// Finalize the object layout and generate accessors
+objLayout.finalize();
+objLayout.genMethods();
 
 //=============================================================================
 //
@@ -263,39 +263,30 @@ staticEnv.regBinding(
 //
 //=============================================================================
 
-// Offset of the protype pointer
-staticEnv.regBinding(
-    'STR_CODE_UNIT_SIZE',
-    ConstValue.getConst(
-        IRType.u16.size,
-        IRType.pint
-    )
+/**
+String layout object
+*/
+var strLayout = new ObjectLayout('str');
+
+//
+// TODO: header
+//
+
+// Global object
+strLayout.addField(
+    'len',
+    IRType.i32
 );
 
-// Offset of the protype pointer
-staticEnv.regBinding(
-    'STR_HEADER_SIZE',
-    ConstValue.getConst(
-        4,
-        IRType.pint
-    )
+// Object prototype object
+strLayout.addField(
+    'data',
+    IRType.u16,
+    undefined,
+    Infinity
 );
 
-// Offset of the protype pointer
-staticEnv.regBinding(
-    'STR_LEN_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('STR_HEADER_SIZE').value,
-        IRType.pint
-    )
-);
-
-// Offset of string data
-staticEnv.regBinding(
-    'STR_DATA_OFFSET',
-    ConstValue.getConst(
-        staticEnv.getBinding('STR_LEN_OFFSET').value + IRType.i32.size,
-        IRType.pint
-    )
-);
+// Finalize the string layout and generate accessors
+strLayout.finalize();
+strLayout.genMethods();
 

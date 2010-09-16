@@ -126,7 +126,7 @@ IRType.prototype.isNumberType = function ()
 // Need code get appropriate size for the platform
 
 // Size of a pointer on the current platform
-PLATFORM_PTR_SIZE = 8;
+PLATFORM_PTR_SIZE = 4;
 
 // Type given when there is no output value
 IRType.none = new IRType('none', 0),
@@ -759,6 +759,11 @@ function instrMaker(
     protoObj
 )
 {
+    assert (
+        mnemonic,
+        'mnemonic name not specified for instruction'
+    );
+
     /**
     Parse instruction constructor arguments
     */
@@ -1822,7 +1827,7 @@ CallInstr.prototype.getThrowTarget = function ()
 @augments CallInstr
 */
 var CallFuncInstr = instrMaker(
-    undefined,
+    'call',
     function (typeParams, inputVals, branchTargets)
     {
         this.mnemonic = 'call';
@@ -1846,7 +1851,7 @@ var CallFuncInstr = instrMaker(
 @augments CallInstr
 */
 var ConstructInstr = instrMaker(
-    undefined,
+    'construct',
     function (typeParams, inputVals, branchTargets)
     {
         this.mnemonic = 'construct';

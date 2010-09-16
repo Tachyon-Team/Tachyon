@@ -129,6 +129,11 @@ Map of layout names to object layouts
 ObjectLayout.layoutMap = {};
 
 /**
+Source code for generated layout functions
+*/
+ObjectLayout.sourceStr = '';
+
+/**
 Get the current size of an object using this layout
 */
 ObjectLayout.prototype.getSize = function (typeSize)
@@ -142,7 +147,7 @@ ObjectLayout.prototype.getSize = function (typeSize)
 
     assert (
         typeSize || lastField.numElems &&
-        !(typeSize && lastField.numElems),
+        !(typeSize && lastField.numElems == Infinity),
         'must specify type size for variable-length layouts'
     );
     
@@ -180,9 +185,9 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
         numElems = 1;
 
     assert (
-        !(numElems === undefined && 
+        !(numElems === Infinity && 
           this.fields.length > 0 &&
-          this.fields[this.fields.length-1].numElems === undefined),
+          this.fields[this.fields.length-1].numElems === Infinity),
         'only the last field can have variable length'
     );
 
@@ -285,54 +290,9 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
     return { offset:curOffset, type:curType };
 }
 
-// TODO: gen load, gen store?
-
-
-
-
-/**
-Run-time context layout object
-*/
-var ctxLayout = new ObjectLayout('ctx');
-
-// Global object
-ctxLayout.addField(
-    'globalObj',
-    IRType.box
-);
-
-// Object prototype object
-ctxLayout.addField(
-    'objProto',
-    IRType.box
-);
-
-// Function prototype object
-ctxLayout.addField(
-    'funcProto',
-    IRType.box
-);
-
-// Type error constructor
-ctxLayout.addField(
-    'typeError',
-    IRType.box
-);
-
-// Finalize the context layout
-ctxLayout.finalize();
-
-
-
-
-
-//ctxLayout.genMethods();
-
-
 /**
 Generate functions to manipulate a given layout
 */
-/*
 ObjectLayout.prototype.genMethods = function ()
 {
     assert (
@@ -340,138 +300,125 @@ ObjectLayout.prototype.genMethods = function ()
         'layout must be finalized before generating methods'
     );
 
+    // Source string to store the generated code
+    var sourceStr = '';
+
     //
-    //Generate a function from a source string
+    // TODO: allocator function
+    // PROBLEM: will need to call function to allocate object
+    // Solution: parse generated code at the same time as primitives
     //
-    function genIRFunc(sourceStr)
+
+    // Generate code for the accessor functions for a given layout
+    function genAccessFuncs(
+        curLayout, 
+        nameStr, 
+        argStr, 
+        numArgs,
+        proStr, 
+        offsetStr
+    )
     {
-        // Parse the source string
-        var ast = parse_src_str(sourceStr);
-
-        // Translate the AST to IR
-        var ir = unitToIR(ast, true);
-
-        // Lower the IR
-        lowerIRFunc(ir);
-
-        // Validate the IR
-        ir.validate();
-
-        // Return the IR of the function
-        return ir.childFuncs[0];
-    }
-
-    // For each field
-    for (var fname in this.fieldMap)
-    {
-        // Get the field specification for this field
-        var spec = this.fieldMap[fname];
-
-        //
-        // TODO: allocator function
-        // PROBLEM: will need to call function to allocate object
-        //
-
-        // Generate code for the getter function
-        var getterStr = "";
-        getterStr += "function " + this.name + "_get_" + fname;
-        getterStr += "(objPtr" + (spec.numElems? ", index":"") + ")";
-        getterStr += "{";
-        getterStr += "\"tachyon:inline\";";
-        getterStr += "\"tachyon:arg objPtr " + this.ptrType + "\";";
-        if (spec.numElems)
-            getterStr += "\"tachyon:arg index pint\";"
-        if (spec.type instanceof ObjectLayout)
+        // For each field
+        for (var fname in curLayout.fieldMap)
         {
-            getterStr += "\"tachyon:ret rptr\";";
-            getterStr += "var offset = iir.constant(IRType.pint, " + spec.offset + ");"
-            if (spec.numElems)
-                getterStr += "offset += index * " + spec.type.size(spec.type.typeSize) + ";";
-            getterStr += "return objPtr + offset;"
-        }
-        else
-        {
-            getterStr += "\"tachyon:ret " + spec.type + "\";";
-            getterStr += "var offset = iir.constant(IRType.pint, " + spec.offset + ");"
-            if (spec.numElems)
-                getterStr += "offset += index * " + spec.type.size + ";";
-            getterStr += "return iir.load(IRType." + spec.type + ", objPtr, offset);";
-        }
-        getterStr += "}";
+            // Get the field specification for this field
+            var spec = curLayout.fieldMap[fname];
 
-        // Generate IR for the getter function
-        var getterFunc = genIRFunc(getterStr);
+            // Generate code for this field and sub-fields
+            genAccessField(
+                spec, 
+                nameStr, 
+                argStr, 
+                numArgs, 
+                proStr, 
+                offsetStr
+            );
+        }        
 
-        // Register the getter function
-        staticEnv.regBinding(getterFunc.funcName, getterFunc);
-
-        // If there can be a setter for this field
-        if (spec.type instanceof IRType)
-        {
-            // Generate code for the getter function
-            var setterStr = "";
-            setterStr += "function " + this.name + "_set_" + fname;
-            setterStr += "(objPtr" + (spec.numElems? ", index":"") + ", value)";
-            setterStr += "{";
-            setterStr += "\"tachyon:inline\";";
-            setterStr += "\"tachyon:arg objPtr " + this.ptrType + "\";";
-            if (spec.numElems)
-                setterStr += "\"tachyon:arg index pint\";"
-            setterStr += "\"tachyon:arg value " + spec.type + "\";"
-            setterStr += "var offset = iir.constant(IRType.pint, " + spec.offset + ");"
-            if (spec.numElems)
-                setterStr += "offset += index * " + spec.type.size + ";";
-            setterStr += "iir.store(IRType." + spec.type + ", objPtr, offset, value);";
-            setterStr += "}";
-
-            // Generate IR for the setter function
-            var setterFunc = genIRFunc(setterStr);
-           
-            // Register the setter function
-            staticEnv.regBinding(setterFunc.funcName, setterFunc);
-        }
-    }
-}
-*/
-
-/**
-Generate an instruction to read a variable from the context
-*/
-/*
-ContextLayout.prototype.genCtxLoad = function (ctxPtr, varName)
-{
-    // Get the corresponding context variable
-    var ctxVar = contextLayout.getVar(varName);
-
-    return new LoadInstr(
-        ctxVar.type,
-        ctxPtr,
-        ConstValue.getConst(
-            ctxVar.offset,
-            IRType.pint
+        // Generate code for a given field and sub-fields
+        function genAccessField(
+            spec, 
+            nameStr, 
+            argStr,
+            numArgs,
+            proStr,
+            offsetStr
         )
-    );
-}
-*/
+        {
+            // Add the field name to the name string
+            nameStr += '_' + fname;
 
-/**
-Generate an instruction to write a variable to the context
-*/
-/*
-ContextLayout.prototype.genCtxStore = function (ctxPtr, varName, newVal)
-{
-    // Get the corresponding context variable
-    var ctxVar = contextLayout.getVar(varName);
+            // Add the field offset to the current offset
+            offsetStr += 'offset += iir.constant(IRType.pint, ' + spec.offset + ');\n';
 
-    return new StoreInstr(
-        ctxVar.type,
-        ctxPtr,
-        ConstValue.getConst(
-            ctxVar.offset,
-            IRType.pint
-        ),
-        newVal
+            // If there are many elements, or a variable number of elements
+            if (spec.numElems != 1)
+            {
+                // Create an index variable for this field
+                var idxVar = 'idx' + (numArgs - 1);
+                numArgs += 1;
+                proStr += '"tachyon:arg ' + idxVar + ' pint";\n';
+
+                // Integrate the index argument in the computation
+                argStr += ', ' + idxVar;
+                offsetStr +=
+                    'offset += iir.constant(IRType.pint, ' + spec.elemSize +
+                    ') * ' + idxVar + ';\n'
+                ;
+            }
+
+            // If there can't be accessors for this field
+            if (spec.type instanceof ObjectLayout)
+            {
+                // Recurse on the layout
+                genAccessFuncs(
+                    spec.type,
+                    nameStr, 
+                    argStr, 
+                    numArgs, 
+                    proStr, 
+                    offsetStr
+                );
+
+                // Do not generate accessor methods
+                return;
+            }
+
+            // Generate the getter method
+            sourceStr += 'function get_' + nameStr + '(' + argStr + ')\n';
+            sourceStr += '{\n';
+            sourceStr += indentText(proStr);
+            sourceStr += '\t"tachyon:ret ' + spec.type + '";\n';
+            sourceStr += indentText(offsetStr);
+            sourceStr += '\treturn iir.load(IRType.' + spec.type + ', obj, offset);\n';
+            sourceStr += '}\n';
+            sourceStr += '\n';
+
+            // Generate the setter method
+            sourceStr += 'function set_' + nameStr + '(' + argStr + ', val)\n';
+            sourceStr += '{\n';
+            sourceStr += indentText(proStr);
+            sourceStr += '\t"tachyon:arg val ' + spec.type + '";\n';
+            sourceStr += indentText(offsetStr);
+            sourceStr += '\tiir.store(IRType.' + spec.type + ', obj, offset, val);\n';
+            sourceStr += '}\n';
+            sourceStr += '\n';
+        }
+    }
+
+    // Generate the getter and setter functions
+    genAccessFuncs(
+        this, 
+        this.name, 
+        'obj', 
+        1,
+        '"tachyon:arg obj ' + this.ptrType + '";\n' +
+        '"tachyon:inline";\n',
+        'var offset = iir.constant(IRType.pint, 0);\n'
     );
+
+    // Append the generated code to the object layout source string
+    ObjectLayout.sourceStr += sourceStr;
 }
-*/
 

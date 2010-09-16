@@ -25,7 +25,7 @@ BASE_SRCS =                 \
     ir/ir.js                \
     ir/inlining.js          \
     ir/lowering.js          \
-    runtime/memlayout.js    \
+    runtime/objlayout.js    \
     runtime/context.js      \
     runtime/objects.js      \
     codegen/asm.js          \

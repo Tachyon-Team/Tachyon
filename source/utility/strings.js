@@ -111,6 +111,9 @@ Indent each line of a text string
 */
 function indentText(inputStr, indentStr)
 {
+    if (!indentStr)
+        indentStr = '\t';
+
     var chars = [];
 
     if (inputStr.length > 0)

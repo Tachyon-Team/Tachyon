@@ -160,8 +160,8 @@ function stmtListToIRFunc(
 
     // Read the global object from the context
     var globalObj = insertContextReadIR(
-        entryBlock,
-        'GLOBAL_OBJECT',
+        entryBlock, 
+        ['globalobj'], 
         'global'
     );
 
@@ -486,6 +486,12 @@ function getIRFuncObj(
                 throw 'invalid type in return type annotation';
 
             newFunc.retType = type;
+        }
+
+        // Otherwise, if the annotation was not recognized
+        else
+        {
+            throw 'unrecognized annotation: "' + annotation + '"';
         }
     }
 
@@ -2026,7 +2032,7 @@ function exprToIR(context)
         // Find the object prototype object in the context
         var objProto = insertContextReadIR(
             valCtx, 
-            'OBJECT_PROTOTYPE'
+            ['objproto']
         );
 
         // Create a new object
@@ -2970,18 +2976,22 @@ function refToIR(context)
 /**
 Insert a read from the runtime context
 */
-function insertContextReadIR(context, varName, outName)
+function insertContextReadIR(context, query, outName)
 {
     // Get a pointer to the context object
     var ctxPtr = context.addInstr(
         new GetCtxInstr()
     );
 
+    // Generate IR to access the field
+    var field = ctxLayout.genfieldAccessIR(context, query);
+
     // Read the variable from the context object
     var readVal = context.addInstr(
-        contextLayout.genCtxLoad(
+        new LoadInstr(
+            field.type,
             ctxPtr, 
-            varName
+            field.offset
         ),
         outName
     );
@@ -3030,7 +3040,7 @@ function insertConstructIR(context, funcVal, argVals)
     );
     var objProto = insertContextReadIR(
         protoNotObj, 
-        'OBJECT_PROTOTYPE'
+        ['objproto']
     );
     protoIsObj.addInstr(new JumpInstr(protoMerge));
     protoNotObj.addInstr(new JumpInstr(protoMerge));
@@ -3146,7 +3156,7 @@ function insertCallIR(context, instr)
         // Find the type error constructor in the context
         var errorCtor = insertContextReadIR(
             errorCtx, 
-            'TYPE_ERROR_CTOR'
+            ['typeerror']
         );
 
         // Generate code to throw a type error

@@ -10,168 +10,37 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
-Represents a context variable
+Run-time context layout object
 */
-function ContextVar(name, type, offset)
-{
-    /**
-    Variable name
-    @field
-    */
-    this.name = name;
-
-    /**
-    Variable type
-    @field
-    */
-    this.type = type;
-
-    /**
-    Memory offset
-    @field
-    */
-    this.offset = offset;
-}
-
-/**
-Represents the memory layout of context objects
-*/
-function ContextLayout()
-{
-    /**
-    Current size of context objects
-    */
-    var curSize = 0;
-
-    /**
-    Map of variable names to variable objects
-    */
-    var varMap = {};
-
-    /**
-    Indicates if new variables cannot be registered
-    */
-    var locked = false;
-
-    /**
-    Get the current size of context objects
-    */
-    this.getSize = function ()
-    {
-        return curSize;
-    }
-
-    /**
-    Register a context variable
-    */
-    this.regVar = function(name, type)
-    {
-        assert (
-            varMap[name] === undefined,
-            'context variable already registered: "' + name + '"'
-        );
-
-        assert (
-            !locked,
-            'context layout is locked'
-        );
-
-        // TODO: alignment of context variables?
-        var offset = curSize;
-        curSize += type.size;
-
-        varMap[name] = new ContextVar(name, type, offset);
-    }
-
-    /**
-    Get a context variable object
-    */
-    this.getVar = function (name)
-    {
-        assert (
-            varMap[name] !== undefined,
-            'context variable not found: "' + name + '"'
-        );
-
-        return varMap[name];
-    }
-
-    /**
-    Lock the context layout so that its size can no longer change
-    */
-    this.lock = function ()
-    {
-        locked = true;
-    }
-}
-ContextLayout.prototype = {}
-
-/**
-Generate an instruction to read a variable from the context
-*/
-ContextLayout.prototype.genCtxLoad = function (ctxPtr, varName)
-{
-    // Get the corresponding context variable
-    var ctxVar = contextLayout.getVar(varName);
-
-    return new LoadInstr(
-        ctxVar.type,
-        ctxPtr,
-        ConstValue.getConst(
-            ctxVar.offset,
-            IRType.pint
-        )
-    );
-}
-
-/**
-Generate an instruction to write a variable to the context
-*/
-ContextLayout.prototype.genCtxStore = function (ctxPtr, varName, newVal)
-{
-    // Get the corresponding context variable
-    var ctxVar = contextLayout.getVar(varName);
-
-    return new StoreInstr(
-        ctxVar.type,
-        ctxPtr,
-        ConstValue.getConst(
-            ctxVar.offset,
-            IRType.pint
-        ),
-        newVal
-    );
-}
-
-/**
-Global context layout object
-*/
-var contextLayout = new ContextLayout();
+var ctxLayout = new ObjectLayout('ctx', IRType.rptr);
 
 // Global object
-contextLayout.regVar(
-    'GLOBAL_OBJECT',
+ctxLayout.addField(
+    'globalobj',
     IRType.box
 );
 
 // Object prototype object
-contextLayout.regVar(
-    'OBJECT_PROTOTYPE',
+ctxLayout.addField(
+    'objproto',
     IRType.box
 );
 
 // Function prototype object
-contextLayout.regVar(
-    'FUNCTION_PROTOTYPE',
+ctxLayout.addField(
+    'funcproto',
     IRType.box
 );
 
 // Type error constructor
-contextLayout.regVar(
-    'TYPE_ERROR_CTOR',
+ctxLayout.addField(
+    'typeerror',
     IRType.box
 );
 
-// Lock the context layout
-contextLayout.lock();
+// Finalize the context layout
+ctxLayout.finalize();
+
+// Generate accessor methods
+ctxLayout.genMethods();
 

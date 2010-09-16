@@ -31,30 +31,6 @@ Perform IR lowering on a control-flow graph
 */
 function lowerIRCFG(cfg)
 {
-    // Get the entry block
-    var entry = cfg.getEntryBlock();
-
-    // For each instruction of the entry block
-    for (var itr = entry.getInstrItr(); itr.valid(); itr.next())
-    {
-        var instr = itr.get();
-
-        if (instr.outName == 'global')
-            var globalObj = instr;
-    }
-
-    // If the global object was not found
-    if (!globalObj)
-    {
-        // Load the global object from the context
-        var ctxPtr = new GetCtxInstr();
-        var globalObj = contextLayout.genCtxLoad(ctxPtr, 'GLOBAL_OBJECT');
-
-        // Add the new instructions at the end of the entry block
-        entry.addInstr(ctxPtr, 'ctx', entry.instrs.length - 1);
-        entry.addInstr(globalObj, 'global', entry.instrs.length - 1);
-    }
-
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {
@@ -73,7 +49,7 @@ function lowerIRCFG(cfg)
             var toBoolInstr = new CallFuncInstr(
                 [
                     primitiveMap["boxToBool"],
-                    globalObj,
+                    ConstValue.getConst(undefined),
                     instr.uses[0]
                 ]
             );
@@ -94,11 +70,11 @@ function lowerIRCFG(cfg)
             // Get a reference to the primitive function
             var primFunc = primitiveMap[instr.mnemonic];
 
-            // Create a call instruction            
+            // Create a call instruction  
             var callInstr = new CallFuncInstr(
                 [
                     primFunc,
-                    globalObj
+                    ConstValue.getConst(undefined)
                 ]
                 .concat(instr.uses)
                 .concat(instr.targets)
@@ -140,40 +116,51 @@ Compile the primitives source code to enable IR lowering
 */
 function compPrimitives()
 {
-    // Parse the handler source code
-    var ast = parse_src_file('runtime/primitives.js'); 
+    // Build a list of the ASTs of the primitive code
+    var astList = [
+        // Generated code for the memory objects
+        parse_src_str(ObjectLayout.sourceStr),
+        // Source code for the primitives
+        parse_src_file('runtime/primitives.js'),
+    ];
 
-    // Parse static bindings in the unit
-    staticEnv.parseUnit(ast);
-
-    // Generate IR from the AST
-    var ir = unitToIR(ast, true);
-
-    // For each function in the IR
-    var funcList = ir.getChildrenList();
-    for (var i = 0; i < funcList.length; ++i)
+    // For each AST
+    for (var i = 0; i < astList.length; ++i)
     {
-        var func = funcList[i];
+        var ast = astList[i];
 
-        if (!func.funcName)
-            continue;
-
-        // Add the function to the primitive map
-        primitiveMap[func.funcName] = func;
+        // Parse static bindings in the unit
+        staticEnv.parseUnit(ast);
     }
 
-    // For each handler
-    for (var handlerName in primitiveMap)
+    // For each AST
+    for (var i = 0; i < astList.length; ++i)
     {
-        var func = primitiveMap[handlerName];
+        var ast = astList[i];
 
-        // Perform IR lowering on the handler
-        lowerIRFunc(func);
+        // Generate IR from the AST
+        var ir = unitToIR(ast, true);
 
-        print(func);
+        // For each function in the IR
+        var funcList = ir.getChildrenList();
+        for (var j = 0; j < funcList.length; ++j)
+        {
+            var func = funcList[j];
 
-        // Validate the resulting handler code
-        func.validate();
+            if (!func.funcName)
+                continue;
+
+            // Add the function to the primitive map
+            primitiveMap[func.funcName] = func;
+
+            // Perform IR lowering on the primitive
+            lowerIRFunc(func);
+
+            print(func);
+
+            // Validate the resulting code
+            func.validate();
+        }
     }
 }
 
