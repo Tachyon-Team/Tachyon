@@ -50,6 +50,16 @@ function FieldSpec(name, type, typeSize, numElems, offset)
     this.typeSize = typeSize;
 
     /**
+    Size of an element of this field
+    @field
+    */
+    this.elemSize = 
+        (type instanceof IRType)?
+        type.size:
+        this.type.getSize(typeSize)
+    ;
+
+    /**
     Number of elements in this field
     Undefined if variable count
     @field
@@ -68,6 +78,15 @@ function FieldSpec(name, type, typeSize, numElems, offset)
 */
 function ObjectLayout(name, ptrType)
 {
+    // Ensure that no layout with this name exists
+    assert (
+        !ObjectLayout.layoutMap[name],
+        'an object layout with this name already exists'
+    );
+
+    // Store the layout in the layout map
+    ObjectLayout.layoutMap[name] = this;
+
     // If no pointer type is specified, use the boxed type
     if (!ptrType)
         ptrType = IRType.box;
@@ -105,31 +124,33 @@ function ObjectLayout(name, ptrType)
 ObjectLayout.prototype = {}
 
 /**
+Map of layout names to object layouts
+*/
+ObjectLayout.layoutMap = {};
+
+/**
 Get the current size of an object using this layout
 */
 ObjectLayout.prototype.getSize = function (typeSize)
 {
+    // If there are no fields, the size is 0
+    if (this.fields.length == 0)
+        return 0;
+
+    // Get the last field of the layout
+    var lastField = this.fields[this.fields.length - 1];
+
     assert (
         typeSize || lastField.numElems &&
         !(typeSize && lastField.numElems),
         'must specify type size for variable-length layouts'
     );
-
-    // Get the last field of the layout
-    var lastField = this.fields[this.fields.length - 1];
-    
-    // Compute the size of one element of this field
-    var elemSize =
-        (lastField.type instanceof ObjectLayout)?
-        lastField.type.size:
-        lastField.type.getSize(typeSize)
-    ;
     
     // Get the number of elements in the last field
     var numElems = typeSize? typeSize:lastField.numElems;
 
     // Compute the total size of the object
-    var size = lastField.offset + elemSize * numElems;
+    var size = lastField.offset + lastField.elemSize * numElems;
 
     // Return the object size
     return size;
@@ -155,6 +176,9 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
         'object layout is finalized'
     );
 
+    if (type instanceof IRType && numElems === undefined)
+        numElems = 1;
+
     assert (
         !(numElems === undefined && 
           this.fields.length > 0 &&
@@ -171,7 +195,7 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
     else
     {
         // Compute the offset to be after the last field
-        var offset = this.size();
+        var offset = this.getSize();
     }
 
     //
@@ -210,8 +234,105 @@ ObjectLayout.prototype.finalize = function ()
 }
 
 /**
+Generate the offset computation to access a given field or sub-field
+@arg query list of field name strings and index values
+*/
+ObjectLayout.prototype.genfieldAccessIR = function (context, query)
+{
+    assert (
+        query.length > 0,
+        'empty field access query'
+    );
+
+    // Declare a variable for the current offset value
+    var curOffset = ConstValue.getConst(0, IRType.pint);
+
+    // Initialize the current type
+    var curType = this;
+
+    // For each element of the query
+    for (var i = 0; i < query.length; ++i)
+    {
+        var fieldName = query[i];
+        var spec = curType.fieldMap[fieldName];
+
+        // Move to the layout of the field, if applicable
+        var curType = spec.type;
+
+        assert (
+            spec instanceof FieldSpec,
+            'no field spec for field: "' + fieldName + '"'
+        );
+
+        // Add the field offset to the total offset
+        var fieldOffset = ConstValue.getConst(spec.offset, IRType.pint);
+        curOffset = context.addInstr(new AddInstr(curOffset, fieldOffset));
+        
+        // If an index is supplied
+        if (query[i+1] instanceof IRValue)
+        {
+            var fieldIndex = query[i+1];
+            ++i;
+
+            // Add the index offset to the total offset
+            var fieldSize = ConstValue.getConst(spec.elemSize, IRType.pint);
+            var idxOffset = context.addInstr(new MulInstr(fieldSize, fieldIndex));
+            context.addInstr(new AddInstr(curOffset, idxOffset));
+        }
+    }
+
+    // Return the computed offset value
+    return { offset:curOffset, type:curType };
+}
+
+// TODO: gen load, gen store?
+
+
+
+
+/**
+Run-time context layout object
+*/
+var ctxLayout = new ObjectLayout('ctx');
+
+// Global object
+ctxLayout.addField(
+    'globalObj',
+    IRType.box
+);
+
+// Object prototype object
+ctxLayout.addField(
+    'objProto',
+    IRType.box
+);
+
+// Function prototype object
+ctxLayout.addField(
+    'funcProto',
+    IRType.box
+);
+
+// Type error constructor
+ctxLayout.addField(
+    'typeError',
+    IRType.box
+);
+
+// Finalize the context layout
+ctxLayout.finalize();
+
+
+
+
+
+//ctxLayout.genMethods();
+
+
+/**
 Generate functions to manipulate a given layout
 */
+/*
 ObjectLayout.prototype.genMethods = function ()
 {
     assert (
@@ -219,9 +340,9 @@ ObjectLayout.prototype.genMethods = function ()
         'layout must be finalized before generating methods'
     );
 
-    /**
-    Generate a function from a source string
-    */
+    //
+    //Generate a function from a source string
+    //
     function genIRFunc(sourceStr)
     {
         // Parse the source string
@@ -311,26 +432,7 @@ ObjectLayout.prototype.genMethods = function ()
         }
     }
 }
-
-//
-// TODO
-//
-
-
-var ctxLayout = new ObjectLayout('ctx');
-
-
-ctxLayout.addField(
-    'len',
-    IRType.i32
-);
-
-
-ctxLayout.finalize();
-
-
-//ctxLayout.genMethods();
-
+*/
 
 /**
 Generate an instruction to read a variable from the context

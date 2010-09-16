@@ -14,9 +14,6 @@ Initialize the resources required by the Tachyon VM.
 */
 function initialize()
 {
-    // TODO: delay compilation of layout methods into compPrimitives
-    ctxLayout.genMethods();
-
     // Compile the IR primitives
     compPrimitives()
 }
