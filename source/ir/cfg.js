@@ -74,9 +74,38 @@ Construct a string representation
 */
 ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
 {
-    var output = "";
+    // Function to order blocks according to a depth-first traversal
+    function DFSOrder(blocks)
+    {
+        var unvisited = blocks.slice(0);
+        var stack = [blocks[0]];
+        var order = [];
 
-    var blockList = blockOrderFn? blockOrderFn(this.blocks):this.blocks;
+        while (stack.length > 0)
+        {
+            var b = stack.pop();
+
+            order.push(b);
+            arraySetRem(unvisited, b);
+
+            for (var i = b.succs.length - 1; i >= 0; --i)
+                if (arraySetHas(unvisited, b.succs[i]))
+                    stack.push(b.succs[i]);
+        }
+
+        order = order.concat(unvisited);
+
+        return order;
+    }
+
+    // If no ordering function is supplied, use the depth-first order
+    if (!blockOrderFn)
+        blockOrderFn = DFSOrder;
+
+    // Order the blocks according to the supplied ordering function
+    var blockList = blockOrderFn(this.blocks);
+
+    var output = "";
 
     for (var i = 0; i < blockList.length; ++i)
     {
@@ -1339,6 +1368,18 @@ BasicBlock.prototype.toString = function (outFormatFn, inFormatFn)
             output += '\n';
     }
 
+    /*
+    // Print predecessors
+    output += '\npreds: ';
+    for (var i = 0; i < this.preds.length; ++i)
+        output += this.preds[i].getBlockName() + ((i != this.preds.length - 1)? ', ':'');
+
+    // Print successors
+    output += '\nsuccs: ';
+    for (var i = 0; i < this.succs.length; ++i)
+        output += this.succs[i].getBlockName() + ((i != this.succs.length - 1)? ', ':'');
+    */
+
     return output;
 };
 
@@ -1512,22 +1553,25 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 /**
 Replace an instruction from this basic block by index
 */
-BasicBlock.prototype.replInstrAtIndex = function (newInstr, index)
+BasicBlock.prototype.replInstrAtIndex = function (newVal, index)
 {
     var oldInstr = this.instrs[index];
 
     // Replace uses of the old instruction
     for (var i = 0; i < oldInstr.dests.length; ++i)
     {
-        oldInstr.dests[i].replUse(oldInstr, newInstr);
-        newInstr.addDest(oldInstr.dests[i]);
+        oldInstr.dests[i].replUse(oldInstr, newVal);
+
+        if (newVal instanceof IRInstr)
+            newVal.addDest(oldInstr.dests[i]);
     }
 
     // Remove the old instruction
     this.remInstrAtIndex(index);
 
-    // Add the new instruction
-    this.addInstr(newInstr, oldInstr.outName, index);
+    // If the new value is an instruction, add it in place of the old one
+    if (newVal instanceof IRInstr)
+        this.addInstr(newVal, oldInstr.outName, index);
 }
 
 /**

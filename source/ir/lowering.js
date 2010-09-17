@@ -102,6 +102,9 @@ function lowerIRCFG(cfg)
         }
     }
 
+    // Perform constant propagation on the CFG
+    constProp(cfg);
+
     // Simplify the lowered CFG
     cfg.simplify();
 }

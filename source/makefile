@@ -23,6 +23,7 @@ BASE_SRCS =                 \
     ir/cfg.js               \
     ir/functions.js         \
     ir/ir.js                \
+    ir/constprop.js         \
     ir/inlining.js          \
     ir/lowering.js          \
     runtime/objlayout.js    \
