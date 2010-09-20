@@ -621,6 +621,46 @@ ControlFlowGraph.prototype.simplify = function ()
             }
 
             //
+            // Eliminate blocks of the form:
+            // t = phi x1,x2,x3
+            // if t b1 b2
+            //
+
+            // If this block contains only an if instruction using the
+            // value of an immediateluy preceding phi
+            if (
+                block.instrs.length == 2 &&
+                block.instrs[0] instanceof PhiInstr &&
+                block.instrs[1] instanceof IfInstr &&
+                block.instrs[1].uses[0] === block.instrs[0]
+            )
+            {
+                
+                var phiInstr = block.instrs[0];
+                var ifInstr = block.instrs[1];
+
+                for (var j = 0; j < phiInstr.preds.length; ++j)
+                {
+                    var pred = phiInstr.preds[j];
+                    var use = phiInstr.uses[j];
+
+                    /*
+                    if (pred.instrs[pred.instrs.length - 1] instanceof JumpInstr)
+                    {
+                        pred.replInstrAtIndex(
+                            pred.instrs.length - 1,
+                            new IfInstr(
+                                use,
+                                ifInstr.targets[0],
+                                ifInstr.targets[1]
+                            )
+                        );
+                    }
+                    */
+                }              
+            }
+
+            //
             // Eliminate blocks with no predecessors
             //
 
@@ -1251,7 +1291,7 @@ ControlFlowGraph.prototype.replInstr = function (instrItr, newInstr)
     var block = instrItr.get().parentBlock;
     var index = instrItr.instrIt.getIndex();
 
-    block.replInstrAtIndex(newInstr, index);
+    block.replInstrAtIndex(index, newInstr);
 }
 
 /**
@@ -1559,8 +1599,18 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 /**
 Replace an instruction from this basic block by index
 */
-BasicBlock.prototype.replInstrAtIndex = function (newVal, index)
+BasicBlock.prototype.replInstrAtIndex = function (index, newVal)
 {
+    assert (
+        index < this.instrs.length,
+        'invalid instruction index'
+    );
+
+    assert (
+        newVal instanceof IRValue,
+        'invalid replacement value'
+    );
+
     // Get a reference to the old instruction
     var oldInstr = this.instrs[index];
 

@@ -79,8 +79,8 @@ function inlineCall(callInstr, calleeFunc)
 
             // Replace the return instruction by a jump
             block.replInstrAtIndex(
-                new JumpInstr(resBlock),
-                block.instrs.length - 1
+                block.instrs.length - 1,
+                new JumpInstr(resBlock)
             );
         }
 
@@ -110,6 +110,8 @@ function inlineCall(callInstr, calleeFunc)
             for (var j = 0; j < instr.dests.length; ++j)
             {
                 var dest = instr.dests[j];
+
+                //print(calleeFunc);
 
                 var argVal = 
                     instr.argIndex < callInstr.uses.length?

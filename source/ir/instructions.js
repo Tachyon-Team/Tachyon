@@ -313,6 +313,14 @@ ConstValue.prototype.isNumber = function ()
 }
 
 /**
+Test if a constant is a string
+*/
+ConstValue.prototype.isString = function ()
+{
+    return (typeof this.value == 'string');
+}
+
+/**
 Test if a constant is the undefined constant
 */
 ConstValue.prototype.isUndef = function ()

@@ -188,7 +188,7 @@ function constProp(cfg)
                 ++numConsts;
 
                 // Replace the instruction by the constant value
-                block.replInstrAtIndex(val, j);
+                block.replInstrAtIndex(j, val);
                 --j;
             }
 
@@ -198,12 +198,12 @@ function constProp(cfg)
                 // If only one if branch is reachable, replace the if by a jump
                 if (!isReachable(instr.targets[1]))
                 {
-                    block.replInstrAtIndex(new JumpInstr(instr.targets[0]), j);
+                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
                     ++numBranches;
                 }
                 else if (!isReachable(instr.targets[0]))
                 {
-                    block.replInstrAtIndex(new JumpInstr(instr.targets[1]), j);
+                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
                     ++numBranches;
                 }
             }
@@ -222,19 +222,31 @@ function constProp(cfg)
 
 PhiInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 {
-    //
-    // TODO: evaluate phi functions
-    // Take reachability of preds into account
-    //
+    var curVal;
 
+    // For each incoming value
+    for (var i = 0; i < this.uses.length; ++i)
+    {
+        var useVal = getValue(this.uses[i]);
+        var pred = this.preds[i];
 
+        // If this predecessor is not reachable, ignore its value
+        if (!isReachable(pred))
+            continue;
 
+        // If any use is still top, the current value is unknown
+        if (useVal === TOP)
+            return TOP;
 
+        // If not all uses have the same value, return the non-constant value
+        if (useVal != curVal && curVal != undefined)
+            return BOT;
 
+        curVal = useVal;
+    }
 
-
-    
-    return BOT;
+    // All uses have the same constant value
+    return curVal;
 }
 
 ArithInstr.genConstEval = function (opFunc)
@@ -518,42 +530,87 @@ NeqInstr.prototype.constEval = CompInstr.genConstEval(
     }
 );
 
-IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+function constEvalBool(val)
 {
-    // TODO: extract boolean eval for boxtobool...
-
-    var test = getValue(this.uses[0]);
-
     // If the test is a constant
-    if (test instanceof ConstValue)
+    if (val instanceof ConstValue)
     {
         // If the test evaluates to true
         if (
-            test === true ||
-            (test.isNumber() && test.value != 0)
+            val.value === true ||
+            (val.isNumber() && val.value != 0) ||
+            (val.isString() && val.value != '')
         )
         {
-            // Add the true branch to the work list
-            cfgWorkList.push(this.targets[0]);
-            return;
+            return ConstValue.getConst(true);
         }
 
         // If the test evaluates to false
         else if (
-            test.value === false ||
-            test.value === null ||
-            test.value === undefined ||
-            test.value == 0
+            val.value === false ||
+            val.value === null ||
+            val.value === undefined ||
+            val.value == 0 ||
+            val.value == ''
         )
         {
-            // Add the false branch to the work list
-            cfgWorkList.push(this.targets[1]);
-            return;
+            return ConstValue.getConst(true);
         }
     }
 
+    // Return the non-constant value
+    return BOT;
+}
+
+CallFuncInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+{
+    // If this is a call to boxToBool
+    if (this.uses[0] instanceof IRFunction && 
+        this.uses[0].funcName == 'boxToBool')
+    {
+        // Evaluate the boolean value
+        var boolVal = constEvalBool(this.uses[this.uses.length-1]);
+
+        if (boolVal instanceof ConstValue)
+        {
+            return ConstValue.getConst(
+                boolVal.value? 1:0,
+                this.type
+            );
+        }
+    }
+
+    // Add all branch targets to the CFG work list
+    for (var i = 0; i < this.targets.length; ++i)
+        if (this.targets[i])
+            cfgWorkList.push(this.targets[i]);
+
+    return BOT;
+}
+
+IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+{
+    // Evaluate the test value
+    var test = constEvalBool(getValue(this.uses[0]));
+
+    // If the test is a constant
+    if (test.value === true)
+    {
+        // Add the true branch to the work list
+        cfgWorkList.push(this.targets[0]);
+        return;
+    }
+
+    // If the test evaluates to false
+    else if (test.value === false)
+    {
+        // Add the false branch to the work list
+        cfgWorkList.push(this.targets[1]);
+        return;
+    }
+
     // If test is non-constant, both branches are reachable
-    if (test !== TOP)
+    else if (test !== TOP)
     {
         cfgWorkList.push(this.targets[0]);
         cfgWorkList.push(this.targets[1]);
