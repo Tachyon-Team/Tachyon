@@ -33,19 +33,21 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //=============================================================================
 
 // Number of integer tag bits
+var TAG_NUM_BITS_INT = 2;
 staticEnv.regBinding(
     'TAG_NUM_BITS_INT',
     ConstValue.getConst(
-        2,
+        TAG_NUM_BITS_INT,
         IRType.pint
     )
 );
 
 // Number of reference tag bits
+var TAG_NUM_BITS_REF = 3;
 staticEnv.regBinding(
     'TAG_NUM_BITS_REF',
     ConstValue.getConst(
-        2,
+        TAG_NUM_BITS_REF,
         IRType.pint
     )
 );
