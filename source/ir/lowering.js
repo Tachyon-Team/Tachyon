@@ -107,6 +107,19 @@ function lowerIRCFG(cfg)
 
     // Simplify the lowered CFG
     cfg.simplify();
+
+    // For each instructon in the CFG
+    for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
+    {
+        var instr = itr.get();
+
+        // If any instruction reads or writes from memory, annotate the
+        // function as reading or writing memory
+        if (instr.writesMem)
+            cfg.ownerFunc.writesMem = true;
+        if (instr.readsMem)
+            cfg.ownerFunc.readsMem = true;
+    }
 }
 
 /**

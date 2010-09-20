@@ -73,28 +73,40 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     this.parentFunc = null;
 
     /**
-    Flag to indicate that this function may use the arguments object
+    Flag indicating that this function may use the arguments object
     @field
     */
     this.usesArguments = false;
 
     /**
-    Flag to indicate that this function may use eval
+    Flag indicating that this function may use eval
     @field
     */
     this.usesEval = false;
 
     /**
-    Flag to indicate that this function should be statically linked
+    Flag indicating that this function should be statically linked
     @field
     */
     this.staticLink = false;
 
     /**
-    Flag to indicate that this function should be inlined
+    Flag indicating that this function should be inlined
     @field
     */
     this.inline = false;
+
+    /**
+    Flag indicating that the function reads from memory
+    @field
+    */
+    this.readsMem = true;
+
+    /**
+    Flag indicating that the function writes to memory
+    @field
+    */
+    this.writesMem = true;
 
     // If the argument or return types are undefined, make them boxed
     if (!this.argTypes)
@@ -201,6 +213,8 @@ IRFunction.prototype.copy = function ()
     newFunc.usesEval = this.usesEval;
     newFunc.staticLink = this.staticLink;
     newFunc.inline = this.inline;
+    newFunc.readsMem = this.readsMem;
+    newFunc.writesMem = this.writesMem;
 
     return newFunc;
 }

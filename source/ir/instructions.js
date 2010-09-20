@@ -50,6 +50,28 @@ function IRType(name, size)
     @field
     */
     this.size = size;
+
+    /**
+    Type size in bits
+    @field
+    */
+    this.numBits = size * 8;
+
+    // If this is a signed integer type
+    if (name[0] == 'i')
+    {
+        // Compute min and max values: [-2^(N-1), 2^(N-1) - 1]
+        this.minVal = -Math.pow(2, this.numBits - 1);
+        this.maxVal = Math.pow(2, this.numBits - 1) - 1;
+    }
+
+    // If this is an unsigned integer type
+    if (name[0] == 'u')
+    {
+        // Compute min and max values: [0, 2^N - 1]
+        this.minVal = 0;
+        this.maxVal = Math.pow(2, this.numBits) - 1;
+    }
 }
 IRType.prototype = {};
 
@@ -64,7 +86,7 @@ IRType.prototype.toString = function ()
 /**
 Test if the type is a pointer type
 */
-IRType.prototype.isPtrType = function ()
+IRType.prototype.isPtr = function ()
 {
     switch (this)
     {
@@ -80,7 +102,7 @@ IRType.prototype.isPtrType = function ()
 /**
 Test if the type is an integer type
 */
-IRType.prototype.isIntType = function ()
+IRType.prototype.isInt = function ()
 {
     switch (this)
     {
@@ -100,9 +122,27 @@ IRType.prototype.isIntType = function ()
 }
 
 /**
+Test if the type is an unsigned integer type
+*/
+IRType.prototype.isUnsigned = function ()
+{
+    switch (this)
+    {
+        case IRType.u8:
+        case IRType.u16:
+        case IRType.u32:
+        case IRType.u64:
+        return true;
+
+        default:
+        return false;
+    }
+}
+
+/**
 Test if the type is a floating-point type
 */
-IRType.prototype.isFPType = function ()
+IRType.prototype.isFP = function ()
 {
     switch (this)
     {
@@ -117,9 +157,9 @@ IRType.prototype.isFPType = function ()
 /**
 Test if the type is an integer or floating-point type
 */
-IRType.prototype.isNumberType = function ()
+IRType.prototype.isNumber = function ()
 {
-    return this.isIntType() || this.isFPType();
+    return this.isInt() || this.isFP();
 }
 
 // TODO: boxed and pointer type sizes are actually platform-dependent
@@ -200,12 +240,12 @@ function ConstValue(value, type)
 {
     // Ensure that the specified value is valid
     assert (
-        !type.isIntType() || 
+        !type.isInt() || 
         (typeof value == 'number' && Math.floor(value) == value),
         'integer constants require integer values'
     );
     assert (
-        !type.isFPType() || 
+        !type.isFP() || 
         (typeof value == 'number'),
         'floating-point constants require number values'
     );
@@ -369,10 +409,16 @@ function IRInstr()
     this.targets = [];
 
     /**
-    Flag to indicate that this instruction has side effects
+    Flag to indicate that this instruction writes to memory
     @field
     */
-    this.sideEffects = false;
+    this.writesMem = false;
+
+    /**
+    Flag to indicate that this instruction reads from memory
+    @field
+    */
+    this.readsMem = false;
 
     /**
     Parent basic block
@@ -638,6 +684,34 @@ PhiInstr.prototype.replPred = function (oldPred, newPred)
         false,
         'cannot replace pred, invalid pred'
     );
+}
+
+/**
+Remove a phi predecessor and the corresponding use
+*/
+PhiInstr.prototype.remPred = function (pred)
+{
+    // For each predecessor of the phi node
+    for (var k = 0; k < this.preds.length; ++k)
+    {
+        // If this is a reference to the block
+        if (this.preds[k] === pred)
+        {
+            // Get the corresponding use
+            var use = this.uses[k];
+
+            // Remove this value
+            this.preds.splice(k, 1);
+            this.uses.splice(k, 1);
+
+            // If the value is no longer used, remove the dest link
+            if (!arraySetHas(this.uses, use) && use instanceof IRInstr)
+                use.remDest(this);
+
+            // Break out of this loop
+            break;
+        }
+    }
 }
 
 /**
@@ -1005,7 +1079,8 @@ function untypedInstrMaker(
     numInputs, 
     branchNames,
     voidOutput,
-    sideEffects,
+    writesMem,
+    readsMem,
     protoObj
 )
 {
@@ -1022,7 +1097,8 @@ function untypedInstrMaker(
 
         this.type = voidOutput? IRType.none:IRType.box;
 
-        this.sideEffects = (sideEffects !== undefined);
+        this.writesMem = (writesMem !== undefined);
+        this.readsMem = (readsMem !== undefined);
     }
 
     return instrMaker(
@@ -1082,7 +1158,11 @@ var CatchInstr = untypedInstrMaker(
 */
 var HasPropValInstr = untypedInstrMaker(
     'has_prop_val',
-     2
+     2,
+    undefined,
+    false,
+    false,
+    true
 );
 
 /**
@@ -1091,7 +1171,11 @@ var HasPropValInstr = untypedInstrMaker(
 */
 var GetPropNamesInstr = untypedInstrMaker(
     'get_prop_names',
-     1
+     1,
+    undefined,
+    false,
+    false,
+    true
 );
 
 /**
@@ -1102,6 +1186,7 @@ var DelPropValInstr = untypedInstrMaker(
     'del_prop_val',
      2,
     undefined,
+    true,
     true,
     true
 );
@@ -1130,7 +1215,11 @@ var MakeCellInstr = untypedInstrMaker(
 */
 var GetCellInstr = untypedInstrMaker(
     'get_cell',
-     1
+     1,
+    undefined,
+    false,
+    false,
+    true
 );
 
 /**
@@ -1142,7 +1231,8 @@ var PutCellInstr = untypedInstrMaker(
      2,
     undefined,
     true,
-    true
+    true,
+    false
 );
 
 /**
@@ -1168,7 +1258,11 @@ var MakeClosInstr = instrMaker(
 */
 var GetClosInstr = untypedInstrMaker(
     'get_clos',
-     2
+     2,
+    undefined,
+    false,
+    false,
+    true
 );
 
 /**
@@ -1180,7 +1274,8 @@ var PutClosInstr = untypedInstrMaker(
     3,
     undefined,
     true,
-    true
+    true,
+    false
 );
 
 /**
@@ -1225,7 +1320,7 @@ ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 
     assert (
         (inputVals[0].type === IRType.box ||
-         inputVals[0].type.isNumberType())
+         inputVals[0].type.isNumber())
         &&
         inputVals[1].type === inputVals[0].type,
         'invalid input types'
@@ -1250,7 +1345,7 @@ var AddInstr = instrMaker(
             ||
             (
                 (inputVals[0].type === IRType.box ||
-                 inputVals[0].type.isNumberType())
+                 inputVals[0].type.isNumber())
                 &&
                 inputVals[1].type === inputVals[0].type
             ),
@@ -1282,7 +1377,7 @@ var SubInstr = instrMaker(
             ||
             (
                 (inputVals[0].type === IRType.box ||
-                 inputVals[0].type.isNumberType())
+                 inputVals[0].type.isNumber())
                 &&
                 inputVals[1].type === inputVals[0].type
             ),
@@ -1430,7 +1525,7 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
             inputVals[1].type === IRType.pint)
         )
         ||
-        (inputVals[0].type.isIntType() &&
+        (inputVals[0].type.isInt() &&
          inputVals[1].type === inputVals[0].type),
         'invalid input types'
     );
@@ -1450,7 +1545,7 @@ var NotInstr = instrMaker(
 
         assert (
             (inputVals[0].type === IRType.box ||
-            inputVals[0].type.isIntType()),
+            inputVals[0].type.isInt()),
             'invalid input type'
         );
         
@@ -1550,7 +1645,7 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 
     assert (
         (inputVals[0].type === IRType.box ||
-         inputVals[0].type.isNumberType())
+         inputVals[0].type.isNumber())
         &&
         inputVals[1].type === inputVals[0].type,
         'invalid input types'
@@ -1780,9 +1875,10 @@ CallInstr = function ()
 CallInstr.prototype = new ExceptInstr();
 
 /**
-By default, conservatively assume that all calls have side effects
+By default, conservatively assume all calls read and write to/from memory
 */
-CallInstr.prototype.sideEffects = true;
+CallInstr.prototype.writesMem = true;
+CallInstr.prototype.readsMem = true;
 
 /**
 Set the continue block of the call instruction
@@ -1841,6 +1937,12 @@ var CallFuncInstr = instrMaker(
             this.type = inputVals[0].retType;
         else
             this.type = IRType.box;
+
+        if (inputVals[0] instanceof IRFunction)
+        {
+            this.readsMem = inputVals[0].readsMem;
+            this.writesMem = inputVals[0].writesMem;
+        }
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -1862,6 +1964,12 @@ var ConstructInstr = instrMaker(
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
         this.type = IRType.box;
+
+        if (inputVals[0] instanceof IRFunction)
+        {
+            this.readsMem = inputVals[0].readsMem;
+            this.writesMem = inputVals[0].writesMem;
+        }
     },
     ['continue', 'throw'],
     new CallInstr()
@@ -1905,6 +2013,11 @@ var GetPropValInstr = instrMaker(
     ['continue', 'throw'],
     new CallInstr()
 );
+
+/**
+The get-property instruction does not write to memory
+*/
+GetPropValInstr.prototype.writesMem = false;
 
 //=============================================================================
 //
@@ -1963,11 +2076,11 @@ var ICastInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 1);
         assert (
-            (inputVals[0].type.isIntType() || 
+            (inputVals[0].type.isInt() || 
              inputVals[0].type === IRType.box ||
              inputVals[0].type === IRType.rptr) 
             &&
-            (typeParams[0].isIntType() ||
+            (typeParams[0].isInt() ||
              typeParams[0] === IRType.box ||
              typeParams[0] === IRType.rptr),
             'type parameters must be integer or raw pointer'
@@ -2034,12 +2147,14 @@ var LoadInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 2);
         assert (
-            inputVals[0].type.isPtrType(),
+            inputVals[0].type.isPtr(),
             'the first input must be a pointer'
         );
         instrMaker.validType(inputVals[1], IRType.pint);
         
         this.type = typeParams[0];
+
+        this.readsMem = true;
     }
 );
 
@@ -2054,7 +2169,7 @@ var StoreInstr = instrMaker(
         instrMaker.validNumParams(typeParams, 1);
         instrMaker.validNumInputs(inputVals, 3);
         assert (
-            inputVals[0].type.isPtrType(),
+            inputVals[0].type.isPtr(),
             'the first input must be a pointer'
         );
         instrMaker.validType(inputVals[1], IRType.pint);
@@ -2062,7 +2177,7 @@ var StoreInstr = instrMaker(
    
         this.type = IRType.none;
 
-        this.sideEffects = true;
+        this.writesMem = true;
     }
 );
 
@@ -2077,6 +2192,8 @@ var GetCtxInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 0);
         
         this.type = IRType.rptr;
+
+        this.readsMem = true;
     }
 );
 
@@ -2093,7 +2210,7 @@ var SetCtxInstr = instrMaker(
         
         this.type = IRType.none;
 
-        this.sideEffects = true;
+        this.writesMem = true;
     }
 );
 

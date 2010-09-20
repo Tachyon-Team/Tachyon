@@ -463,7 +463,7 @@ ControlFlowGraph.prototype.remBlock = function (block)
                     instr.uses.splice(k, 1);
 
                     // If the value is no longer used, remove the dest link
-                    if (!arraySetHas(instr.uses, use))
+                    if (!arraySetHas(instr.uses, use) && use instanceof IRInstr)
                         use.remDest(instr);                    
 
                     // Move back to the previous index
@@ -608,7 +608,7 @@ ControlFlowGraph.prototype.simplify = function ()
                 // has no side effects and is not a branch
                 if (
                     instr.dests.length == 0 &&
-                    instr.sideEffects == false &&
+                    instr.writesMem == false &&
                     instr.isBranch() == false
                 )
                 {
@@ -1444,8 +1444,14 @@ Insert an instruction into the block
 @param outName output name of the instruction
 @param index before which to insert the new instruction
 */
-BasicBlock.prototype.addInstr = function(instr, outName, index)
+BasicBlock.prototype.addInstr = function (instr, outName, index)
 {
+    // Ensure that the instruction is valid
+    assert (
+        instr instanceof IRInstr,
+        'cannot add non-instruction value to basic block'
+    );
+
     // If the index is undefined, insert at the end of the block
     if (index == undefined)
         index = this.instrs.length;
@@ -1555,23 +1561,109 @@ Replace an instruction from this basic block by index
 */
 BasicBlock.prototype.replInstrAtIndex = function (newVal, index)
 {
+    // Get a reference to the old instruction
     var oldInstr = this.instrs[index];
+
+    // Remove reverse edges from all uses to this instruction
+    for (var i = 0; i < oldInstr.uses.length; ++i)
+        if (oldInstr.uses[i] instanceof IRInstr)
+            oldInstr.uses[i].remDest(oldInstr);
 
     // Replace uses of the old instruction
     for (var i = 0; i < oldInstr.dests.length; ++i)
     {
-        oldInstr.dests[i].replUse(oldInstr, newVal);
+        var dest = oldInstr.dests[i];
+
+        dest.replUse(oldInstr, newVal);
 
         if (newVal instanceof IRInstr)
-            newVal.addDest(oldInstr.dests[i]);
+            newVal.addDest(dest);
     }
 
-    // Remove the old instruction
-    this.remInstrAtIndex(index);
-
-    // If the new value is an instruction, add it in place of the old one
+    // If the new value is an instruction
     if (newVal instanceof IRInstr)
-        this.addInstr(newVal, oldInstr.outName, index);
+    {
+        // Replace the instruction in the list
+        this.instrs[index] = newVal;
+
+        // For all uses
+        for (var i = 0; i < newVal.uses.length; ++i)
+        {
+            var use = newVal.uses[i];
+
+            // If this use is an instruction, add a reverse dest edge
+            if (use instanceof IRInstr)
+                use.addDest(newVal);
+        }
+
+        // Ensure that a branch is not replaced by a non-branch or vice-versa
+        assert (
+            oldInstr.isBranch() == newVal.isBranch(),
+            'branches must be replaced by branches'
+        );
+
+        // If this is a branch instruction
+        if (oldInstr.isBranch())
+        {
+            // For each possible target of the old instruction
+            for (var i = 0; i < oldInstr.targets.length; ++i)
+            {
+                var target = oldInstr.targets[i];
+
+                // If the new branch does not have this target
+                if (!arraySetHas(newVal.targets, target))
+                {
+                    // Remove the predecessor-successor link
+                    this.remSucc(target);
+                    target.remPred(this);
+
+                    // Remove phi node predecessor links
+                    for (var j = 0; j < target.instrs.length; ++j)
+                    {
+                        var instr = target.instrs[j];
+
+                        if (!(instr instanceof PhiInstr))
+                            break;
+
+                        instr.remPred(this);
+                    }
+                }
+            }
+
+            // For each possible target of the new instruction
+            for (var i = 0; i < newVal.targets.length; ++i)
+            {
+                var target = newVal.targets[i];
+
+                // Add a successor-predecessor link
+                this.addSucc(target);
+                target.addPred(this);
+            }
+        }
+
+        // Reuse the old instruction's name and instruction id
+        newVal.instrId = oldInstr.instrId;
+        newVal.outName = oldInstr.outName;
+
+        // Set the parent block for the instruction
+        newVal.parentBlock = this;
+    }
+
+    // The new value is not an instruction
+    else
+    {
+        // Remove the instruction from the list
+        this.instrs.splice(index, 1);
+
+        assert (
+            !oldInstr.isBranch(),
+            'cannot replace a branch by a non-instruction value'
+        );
+
+        // Free the old instruction's id number and output name
+        this.parentCFG.freeInstrId(oldInstr);
+        this.parentCFG.freeInstrName(oldInstr);
+    }
 }
 
 /**
