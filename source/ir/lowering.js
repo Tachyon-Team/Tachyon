@@ -108,6 +108,9 @@ function lowerIRCFG(cfg)
     // Simplify the lowered CFG
     cfg.simplify();
 
+    // Validate the CFG
+    cfg.validate();
+
     // For each instructon in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {

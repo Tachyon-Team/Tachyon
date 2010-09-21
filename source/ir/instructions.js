@@ -555,6 +555,11 @@ Add a new destination
 */
 IRInstr.prototype.addDest = function (dest)
 {
+    assert (
+        dest instanceof IRValue,
+        'invalid dest value'
+    );
+
     if (this.dests.length == 0)
         this.dests = [dest];
     else
@@ -574,6 +579,11 @@ Replace a destination
 */
 IRInstr.prototype.replDest = function (oldDest, newDest)
 {
+    assert (
+        newDest instanceof IRValue,
+        'invalid replacement dest value'
+    );
+
     for (var i = 0; i < this.dests.length; ++i)
     {
         if (this.dests[i] === oldDest)

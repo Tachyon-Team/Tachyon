@@ -112,6 +112,7 @@ function inlineCall(callInstr, calleeFunc)
                 var dest = instr.dests[j];
 
                 //print(calleeFunc);
+                //calleeFunc.validate();
 
                 var argVal = 
                     instr.argIndex < callInstr.uses.length?

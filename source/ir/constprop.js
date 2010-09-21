@@ -157,10 +157,6 @@ function constProp(cfg)
         return BOT;
     }
     
-    //
-    // TODO: integrate some peephole patterns into evalInstr?
-    //
-
     var numConsts = 0;
     var numBranches = 0;
 
@@ -181,8 +177,24 @@ function constProp(cfg)
             // Get the value for this instruction
             var val = getValue(instr);
 
+            // If this is an if instruction
+            if (instr instanceof IfInstr)
+            {
+                // If only one if branch is reachable, replace the if by a jump
+                if (val instanceof ConstValue && val.value === true)
+                {
+                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
+                    ++numBranches;
+                }
+                else if (val instanceof ConstValue && val.value === false)
+                {
+                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
+                    ++numBranches;
+                }
+            }
+
             // If there is a constant value for this instruction
-            if (val instanceof ConstValue)
+            else if (val instanceof ConstValue)
             {
                 //print(instr);
                 ++numConsts;
@@ -191,27 +203,11 @@ function constProp(cfg)
                 block.replInstrAtIndex(j, val);
                 --j;
             }
-
-            // If this is an if instruction
-            else if (instr instanceof IfInstr)
-            {
-                // If only one if branch is reachable, replace the if by a jump
-                if (!isReachable(instr.targets[1]))
-                {
-                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
-                    ++numBranches;
-                }
-                else if (!isReachable(instr.targets[0]))
-                {
-                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
-                    ++numBranches;
-                }
-            }
         }
     }
 
-    print('Constants found: ' + numConsts);
-    print('Branches found: ' + numBranches);
+    //print('Constants found: ' + numConsts);
+    //print('Branches found: ' + numBranches);
 }
 
 //=============================================================================
@@ -554,7 +550,7 @@ function constEvalBool(val)
             val.value == ''
         )
         {
-            return ConstValue.getConst(true);
+            return ConstValue.getConst(false);
         }
     }
 
@@ -598,7 +594,6 @@ IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
     {
         // Add the true branch to the work list
         cfgWorkList.push(this.targets[0]);
-        return;
     }
 
     // If the test evaluates to false
@@ -606,14 +601,16 @@ IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
     {
         // Add the false branch to the work list
         cfgWorkList.push(this.targets[1]);
-        return;
     }
 
     // If test is non-constant, both branches are reachable
-    else if (test !== TOP)
+    else if (test === BOT)
     {
         cfgWorkList.push(this.targets[0]);
         cfgWorkList.push(this.targets[1]);
     }
+
+    // Return the test value
+    return test;
 }
 

@@ -85,12 +85,14 @@ ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFor
         {
             var b = stack.pop();
 
+            if (arraySetHas(order, b))
+                continue;
+
             order.push(b);
             arraySetRem(unvisited, b);
 
             for (var i = b.succs.length - 1; i >= 0; --i)
-                if (arraySetHas(unvisited, b.succs[i]))
-                    stack.push(b.succs[i]);
+                stack.push(b.succs[i]);
         }
 
         order = order.concat(unvisited);
@@ -113,7 +115,7 @@ ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFor
 
         output += block.toString(outFormatFn, inFormatFn);
 
-        if (block !== blockList[blockList.length - 1])
+        if (i !== blockList.length - 1)
             output += "\n\n";
     }
 
@@ -206,8 +208,7 @@ ControlFlowGraph.prototype.copy = function ()
             for (var k = 0; k < instr.dests.length; ++k)
             {
                 var dest = instr.dests[k];
-                if (dest instanceof IRInstr)
-                    instr.dests[k] = instrMap[dest.instrId];                  
+                instr.dests[k] = instrMap[dest.instrId];
             }
 
             // If this is a phi instruction
@@ -430,7 +431,7 @@ ControlFlowGraph.prototype.remBlock = function (block)
     // Remove this block from the successors of our predecessors
     for (var i = 0; i < block.preds.length; ++i)
         block.preds[i].remSucc(this);
-
+    
     // Remove this block from the predecessors of our successors
     for (var i = 0; i < block.succs.length; ++i)
         block.succs[i].remPred(block);
@@ -472,6 +473,7 @@ ControlFlowGraph.prototype.remBlock = function (block)
             }
         }
     }
+    
 
     // Remove the block from the list
     arraySetRem(this.blocks, block);
@@ -625,26 +627,28 @@ ControlFlowGraph.prototype.simplify = function ()
             // t = phi x1,x2,x3
             // if t b1 b2
             //
-
+ 
             // If this block contains only an if instruction using the
-            // value of an immediateluy preceding phi
+            // value of an immediately preceding phi
             if (
                 block.instrs.length == 2 &&
                 block.instrs[0] instanceof PhiInstr &&
+                block.instrs[0].dests.length == 1 &&
                 block.instrs[1] instanceof IfInstr &&
                 block.instrs[1].uses[0] === block.instrs[0]
             )
             {
-                
                 var phiInstr = block.instrs[0];
                 var ifInstr = block.instrs[1];
 
-                for (var j = 0; j < phiInstr.preds.length; ++j)
-                {
-                    var pred = phiInstr.preds[j];
-                    var use = phiInstr.uses[j];
+                var phiPreds = phiInstr.preds.slice(0);
+                var phiUses = phiInstr.uses.slice(0);
 
-                    /*
+                for (var j = 0; j < phiPreds.length; ++j)
+                {
+                    var pred = phiPreds[j];
+                    var use = phiUses[j];
+
                     if (pred.instrs[pred.instrs.length - 1] instanceof JumpInstr)
                     {
                         pred.replInstrAtIndex(
@@ -656,21 +660,24 @@ ControlFlowGraph.prototype.simplify = function ()
                             )
                         );
                     }
-                    */
-                }              
+                }
             }
-
+            
             //
             // Eliminate blocks with no predecessors
             //
 
             // If this block has no predecessors, and it is not the entry block
-            if (
+            else if (
                 block.preds.length == 0 &&
                 block !== this.entry
             )
             {
                 //print('eliminating block with no predecessors: ' + block.getBlockName());
+
+                // Remove all instructions in the block
+                while (block.instrs.length > 0)
+                    block.remInstrAtIndex(0);
 
                 // Remove the block from the CFG
                 this.remBlock(block);
@@ -707,10 +714,11 @@ ControlFlowGraph.prototype.simplify = function ()
                     // If the instruction is a phi node
                     if (instr instanceof PhiInstr)
                     {
-                        // Ensure that this phi node has only one use
+                        // Ensure that this phi node has only one predecessor
                         assert (
-                            instr.uses.length == 1, 
-                            'phi node in merged block should have only one use'
+                            instr.preds.length == 1, 
+                            'phi node in merged block should have one pred:\n' + 
+                            instr
                         );
 
                         var phiIn = instr.uses[0];
@@ -758,7 +766,8 @@ ControlFlowGraph.prototype.simplify = function ()
                         // For each predecessor of the phi node
                         for (var l = 0; l < phiPreds.length; ++l)
                         {
-                            // If this is a reference to the successor, make it a reference to the predecessor instead
+                            // If this is a reference to the successor, make 
+                            // it a reference to the predecessor instead
                             if (phiPreds[l] === succ)
                                 phiPreds[l] = block;
                         }
@@ -782,6 +791,7 @@ ControlFlowGraph.prototype.simplify = function ()
             // and the block is not terminated by an exception-producing instruction
             else if (
                 block.succs.length == 1 && 
+                block.succs[0] !== block &&
                 block.instrs.length == 1 &&
                 !(block.getLastInstr() instanceof ExceptInstr)
             )
@@ -966,12 +976,18 @@ ControlFlowGraph.prototype.validate = function ()
             // For each use of this instruction
             for (var k = 0; k < instr.uses.length; ++k)
             {
+                var use = instr.uses[k];
+
                 // Verify that the use is valid
-                if (!(instr.uses[k] instanceof IRValue))
+                if (!(use instanceof IRValue))
                     throw 'invalid use found';
 
+                // Verify that the use is in this CFG
+                if (use instanceof IRInstr && use.parentBlock.parentCFG != this)
+                    throw 'use not in CFG';
+
                 // Verify that our uses have us as a dest
-                if (instr.uses[k] instanceof IRInstr)
+                if (use instanceof IRInstr)
                     if (!arraySetHas(instr.uses[k].dests, instr))
                         throw 'missing dest link, from:\n' + 
                             instr.uses[k] + 
@@ -983,12 +999,18 @@ ControlFlowGraph.prototype.validate = function ()
             // For each dest of this instruction
             for (var k = 0; k < instr.dests.length; ++k)
             {
+                var dest = instr.dests[k];
+
                 // Verify that the dest is valid
-                if (!(instr.dests[k] instanceof IRValue))
+                if (!(dest instanceof IRValue))
                     throw 'invalid dest found';
 
+                // Verify that the dest is in this CFG
+                if (dest.parentBlock.parentCFG != this)
+                    throw 'dest not in CFG';
+
                 // Verify that our dests have us as a use
-                if (!arraySetHas(instr.dests[k].uses, instr))
+                if (!arraySetHas(dest.uses, instr))
                     throw 'missing use link, from:\n' + 
                         instr.dests[k] +
                         '\nto:\n' + 
@@ -1489,7 +1511,7 @@ BasicBlock.prototype.addInstr = function (instr, outName, index)
     // Ensure that the instruction is valid
     assert (
         instr instanceof IRInstr,
-        'cannot add non-instruction value to basic block'
+        'cannot add non-instruction to basic block'
     );
 
     // If the index is undefined, insert at the end of the block
@@ -1586,6 +1608,19 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 
             // Remove the incoming edge to the potential target block
             target.remPred(this);
+
+            // For each instruction of the target
+            for (var j = 0; j < target.instrs.length; ++j)
+            {
+                var tinstr = target.instrs[j];
+                
+                // If the instruction is not a phi node, stop
+                if (!(tinstr instanceof PhiInstr))
+                    break;
+
+                // Remove the phi predecessor
+                tinstr.remPred(this);
+            }
         }
     }
 
