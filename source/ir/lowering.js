@@ -171,15 +171,21 @@ function compPrimitives()
 
             // Add the function to the primitive map
             primitiveMap[func.funcName] = func;
-
-            // Perform IR lowering on the primitive
-            lowerIRFunc(func);
-
-            print(func);
-
-            // Validate the resulting code
-            func.validate();
         }
+    }
+
+    // For each primitive
+    for (var funcName in primitiveMap)
+    {
+        var func = primitiveMap[funcName];
+
+        // Perform IR lowering on the primitive
+        lowerIRFunc(func);
+
+        print(func);
+
+        // Validate the resulting code
+        func.validate();
     }
 }
 

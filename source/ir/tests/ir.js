@@ -172,6 +172,26 @@ tests.ir.forStmt = function ()
 }
 
 /**
+Infinite loop
+*/
+tests.ir.infiniteLoop = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            function foo()                      \
+            {                                   \
+                var i = 0;                      \
+                while (true)                    \
+                {                               \
+                    ++i;                        \
+                }                               \
+                print(i);                       \
+            }                                   \
+        "
+    );
+}
+
+/**
 Switch statement
 */
 tests.ir.switchStmt = function ()

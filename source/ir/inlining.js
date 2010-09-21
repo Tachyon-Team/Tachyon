@@ -141,21 +141,10 @@ function inlineCall(callInstr, calleeFunc)
     // If the call is in the middle of a basic block
     if (!contTarget)
     {
-        // Find the index of the call instruction
-        for (var ci = 0; callBlock.instrs[ci] !== callInstr; ++ci);
-
-        // Move all instructions after the call to the resolution block
-        while (callBlock.instrs.length - 1 > ci)
+        // For each successor of the call block
+        for (var i = 0; i < callBlock.succs.length; ++i)
         {
-            var instr = callBlock.instrs[ci + 1];
-            callBlock.remInstrAtIndex(ci + 1);
-            resBlock.addInstr(instr, instr.outName);
-        }
-
-        // For each successor of the resolution block
-        for (var i = 0; i < resBlock.succs.length; ++i)
-        {
-            var succ = resBlock.succs[i];
+            var succ = callBlock.succs[i];
 
             // For each phi instruction
             for (var j = 0; j < succ.instrs.length; ++j)
@@ -165,8 +154,20 @@ function inlineCall(callInstr, calleeFunc)
                 if (!(instr instanceof PhiInstr))
                     continue;
 
+                // Make the new phi predecessor the resolution block
                 instr.replPred(callBlock, resBlock);
             }
+        }
+
+        // Find the index of the call instruction
+        for (var ci = 0; callBlock.instrs[ci] !== callInstr; ++ci);
+
+        // Move all instructions after the call to the resolution block
+        while (callBlock.instrs.length - 1 > ci)
+        {
+            var instr = callBlock.instrs[ci + 1];
+            callBlock.remInstrAtIndex(ci + 1);
+            resBlock.addInstr(instr, instr.outName);
         }
     }
 

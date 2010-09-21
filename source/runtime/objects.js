@@ -255,9 +255,32 @@ objLayout.addField(
     IRType.i32
 );
 
+// Hash table size
+objLayout.addField(
+    'numprops',
+    IRType.i32
+);
+
 // Finalize the object layout and generate accessors
 objLayout.finalize();
 objLayout.genMethods();
+
+
+
+// TODO: define constant for initial hash map size
+
+// TODO: define constants for hash map min and max load factors 
+/*
+// Bit pattern for the undefined constant
+staticEnv.regBinding(
+    'BIT_PATTERN_UNDEF',
+    ConstValue.getConst(
+        25,
+        IRType.pint
+    )
+);
+*/
+
 
 //=============================================================================
 //

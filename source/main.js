@@ -23,30 +23,7 @@ function testIR()
 
     ir.validate();    
     
-
-
-    /*
-    // Parse the source string
-    var ast = parse_src_file('parser/tests/test4.js');
-
-    // Translate the AST to IR
-    var ir = unitToIR(ast);
-
-    // Copy the resulting function
-    ir.copy();
-
-    // Validate the IR
-    ir.validate();
-
-    // Perform lowering on the IR
-    lowerIRFunc(ir);
-
-    // Validate the IR
-    ir.validate();
-    */
-
-
-
+    printInstrNames(ir);
 
     /*
     var codeblock = backend.compile(ir, print);
@@ -54,6 +31,52 @@ function testIR()
     backend.execute(codeblock);
     */
 };
+
+function printInstrNames(ir)
+{
+    var workList = ir.getChildrenList();
+    
+    var visited = []
+
+    var mnemList = [];
+
+    while (workList.length > 0)
+    {
+        var func = workList.pop();
+
+        if (arraySetHas(visited, func))
+            continue;
+
+        if (func.funcName == 'get_prop_val' || 
+            func.funcName == 'put_prop_val')
+            continue;
+
+        for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
+        {
+            var instr = itr.get();
+
+            arraySetAdd(mnemList, instr.mnemonic);
+
+            for (var useItr = instr.getUseItr(); useItr.valid(); useItr.next())
+            {
+                var use = useItr.get();
+
+                if (use instanceof IRFunction)
+                    workList = workList.concat(use.getChildrenList());
+            }
+        }
+
+        arraySetAdd(visited, func);
+    }
+
+    mnemList.sort();
+
+    print('Total instruction variants: ' + mnemList.length);
+    for (var i = 0; i < mnemList.length; ++i)
+    {
+        print(mnemList[i]);
+    }
+}
 
 // Initialize Tachyon
 initialize();

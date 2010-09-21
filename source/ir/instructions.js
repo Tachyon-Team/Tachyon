@@ -1951,15 +1951,23 @@ var CallFuncInstr = instrMaker(
         instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
 
-        if (inputVals[0].retType instanceof IRType)
-            this.type = inputVals[0].retType;
-        else
-            this.type = IRType.box;
-
         if (inputVals[0] instanceof IRFunction)
         {
             this.readsMem = inputVals[0].readsMem;
             this.writesMem = inputVals[0].writesMem;
+            this.type = inputVals[0].retType;
+        }
+        else
+        {
+            for (var i = 2; i < inputVals.length; ++i)
+            {
+                assert (
+                    inputVals[0].type === IRType.box,
+                    'indirect calls can only take boxed values as input'
+                );
+            }
+
+            this.type = IRType.box;
         }
     },
     ['continue', 'throw'],
@@ -1987,6 +1995,16 @@ var ConstructInstr = instrMaker(
         {
             this.readsMem = inputVals[0].readsMem;
             this.writesMem = inputVals[0].writesMem;
+        }
+        else
+        {
+            for (var i = 2; i < inputVals.length; ++i)
+            {
+                assert (
+                    inputVals[0].type === IRType.box,
+                    'indirect calls can only take boxed values as input'
+                );
+            }
         }
     },
     ['continue', 'throw'],

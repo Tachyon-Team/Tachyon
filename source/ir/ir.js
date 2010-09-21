@@ -3314,14 +3314,12 @@ function mergeContexts(
             var value = values[j];
             if (value !== firstVal)
                 allEqual = false;
-            if (value instanceof ConstValue && value.isUndef())
-                numUndef++;
             if (value.type !== IRType.box)
                 numTyped++;            
         }
 
         // If there is a mix of typed and undefined values
-        if (numTyped > 0 && numUndef > 0 && numTyped + numUndef == values.length)
+        if (numTyped > 0 && numTyped != values.length)
         {
             // Set the merge value to undefined
             mergeMap.addItem(varName, ConstValue.getConst(undefined));

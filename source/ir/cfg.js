@@ -828,7 +828,7 @@ ControlFlowGraph.prototype.simplify = function ()
                     //print('simplifying no instructions, single successor: ' + block.getBlockName());
 
                     // Remove the predecessor from our predecessor list
-                    arraySetRem(block.preds, pred);
+                    block.remPred(pred);
 
                     // Get the predecessor's branch instruction
                     var branchInstr = pred.getLastInstr();
@@ -839,12 +839,11 @@ ControlFlowGraph.prototype.simplify = function ()
                             branchInstr.targets[k] = succ;
 
                     // Replace the predecessor's successor block by the successor
-                    for (var k = 0; k < pred.succs.length; ++k)
-                        if (pred.succs[k] === block)
-                            pred.succs[k] = succ;
+                    pred.remSucc(block);
+                    pred.addSucc(succ);
 
                     // Add the predecessor as a predecessor of the successor
-                    arraySetAdd(succ.preds, pred);
+                    succ.addPred(pred);
 
                     // For each instruction of the successor
                     for (var k = 0; k < succ.instrs.length; ++k)

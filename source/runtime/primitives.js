@@ -15,9 +15,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //
 //=============================================================================
 
-// TODO: possible trick, OR of both values, test if zero int tag
-// Test if two values are boxed integers at once
-
 /**
 Get the reference tag of a boxed value
 */
@@ -101,29 +98,37 @@ function boxToBool(boxVal)
     // Get an integer-typed value for input
     var boxInt = iir.icast(IRType.pint, boxVal);
 
-    // If the value is false, undefined, null or 0
-    if (boxInt == BIT_PATTERN_FALSE ||
-        boxInt == BIT_PATTERN_UNDEF ||
-        boxInt == BIT_PATTERN_NULL ||
-        boxInt == iir.constant(IRType.pint, 0)
-    )
-    {
-        // Return a false boolean
-        return iir.constant(IRType.i8, 0);
-    }
-
-    // If the value is true or a nonzero integer
-    else if (
-        boxInt == BIT_PATTERN_TRUE ||
-        boxIsInt(boxVal)
-    )
-    {
-        // Return a true boolean
+    if (boxInt == BIT_PATTERN_TRUE)
         return iir.constant(IRType.i8, 1);
+
+    else if (boxInt == BIT_PATTERN_FALSE)
+        return iir.constant(IRType.i8, 0);
+
+    else if (boxInt == BIT_PATTERN_UNDEF)
+        return iir.constant(IRType.i8, 0);
+
+    else if (boxInt == BIT_PATTERN_NULL)
+        return iir.constant(IRType.i8, 0);
+
+    else if (boxIsInt(boxVal))
+    { 
+        if (boxInt != iir.constant(IRType.pint, 0))
+            return iir.constant(IRType.i8, 1);
+        else
+            return iir.constant(IRType.i8, 0);
     }
 
-    // TODO: handle other cases
-    return iir.constant(IRType.i8, 0);
+    else if (boxIsString(boxVal))
+    {
+        var len = iir.icast(IRType.pint, str_get_len(boxVal));
+
+        if (len != iir.constant(IRType.pint, 0))
+            return iir.constant(IRType.i8, 1);
+        else
+            return iir.constant(IRType.i8, 0);
+    }
+
+    return iir.constant(IRType.i8, 1);
 }
 
 //=============================================================================
@@ -149,6 +154,7 @@ function throwError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
+function new_object() {}
 function make_clos() {}
 function put_clos() {}
 function get_clos() {}
@@ -156,6 +162,7 @@ function make_arg_obj() {}
 function div() {}
 function mod() {}
 function neq() {}
+function not() {}
 
 /**
 Implementation of HIR less-than instruction
@@ -376,25 +383,21 @@ function put_prop_val(obj, propName, propVal)
     // TODO: assert object
 
     // TODO: find if getter-setter exists?
+    // Requires first looking up the entry in the whole prototype chain...
 
 
-    /*
 
     // Compute the hash for the property
     // Boxed value, may be a string or an int
     var propHash = computeHash(propName);
 
     // Get a pointer to the hash table
-    var tblPtr = iir.load(IRType.box, obj, OBJ_HASH_PTR_OFFSET);
+    var tblPtr = get_obj_tbl(obj);
 
     // Get the size of the hash table
     var tblSize = iir.icast(
         IRType.pint,
-        iir.load(
-            IRType.i32,
-            obj, 
-            OBJ_HASH_SIZE_OFFSET
-        )
+        get_obj_tblsize(obj)
     );
 
     // Get the hash table index for this hash value
@@ -404,46 +407,44 @@ function put_prop_val(obj, propName, propVal)
     while (true)
     {
         // Get the key value at this hash slot
-        var keyVal = iir.load(
-            IRType.box,
-            tblPtr,
-            hashIndex * OBJ_HASH_ENTRY_SIZE
-        );
+        var keyVal = get_hashtbl_tbl_key(tblPtr, hashIndex);
 
-        // If this is the key we want or an empty slot
+        // If this is the key we want
         if (keyVal === propName)
         {
+            // Set the corresponding property value
+            set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
 
-            // TODO: Set prop val
-            
-            // Load the property value
-            var propVal = load(
-                    IRType.box, 
-                    tblPointer, 
-                    hashIndex * OBJ_HASH_ENTRY_SIZE + OBJ_HASH_KEY_SIZE
-            );
-            
-
+            // Break out of the loop
             break;
         }
 
         // Otherwise, if we have reached an empty slot
         else if (keyVal === OBJ_HASH_EMPTY_KEY)
         {
-            // TODO: set prop val
+            // Set the corresponding property value
+            set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
 
-            // TODO: increment item count
+            // Get the number of properties and increment it
+            var numProps = get_obj_numprops(obj);
+            numProps += iir.constant(IRType.i32, 1);
+            set_obj_numprops(obj, numProps);
 
-            // TODO: test if resizing is needed
 
 
+            //
+            // TODO: test if hash table resizing is needed
+            //
+
+
+
+            // Break out of the loop
             break;
         }
 
         // Move to the next hash table slot
-        hashIndex = (hashIndex + OBJ_HASH_ENTRY_SIZE) % tblSize;
+        hashIndex = (hashIndex + iir.constant(IRType.pint, 1)) % tblSize;
     }
-    */
 }
 
 /**
@@ -492,6 +493,7 @@ function get_prop_val(obj, propName)
                 else 
                     return propVal;
                 */
+
                 // TODO
                 return propVal
             }

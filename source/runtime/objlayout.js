@@ -305,8 +305,6 @@ ObjectLayout.prototype.genMethods = function ()
 
     //
     // TODO: allocator function
-    // PROBLEM: will need to call function to allocate object
-    // Solution: parse generated code at the same time as primitives
     //
 
     // Generate code for the accessor functions for a given layout
