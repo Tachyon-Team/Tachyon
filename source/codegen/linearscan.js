@@ -1176,11 +1176,12 @@ allocator.numberInstrs = function (cfg, order)
                 instrNb = nextNo;
 
                 // Create a register allocation info object for the instruction and
-                // assign the instruction an operation number
-                instr.regAlloc = {
-                    id : instrNb,              // Operation number
-                    interval : allocator.interval()   // Live interval
-                }
+                // assign the instruction an operation number.
+                // The regAlloc object is specific to the instance.
+                instr.regAlloc = Object.create(instr.regAlloc);
+
+                instr.regAlloc.id = instrNb; // Operation number
+                instr.regAlloc.interval = allocator.interval(); // Live interval
                 instr.regAlloc.interval.instr = instr;
             } else
             {
@@ -1196,9 +1197,10 @@ allocator.numberInstrs = function (cfg, order)
         {
             instr = block.instrs[j];
 
-            if (instr instanceof CallInstr)
+            if (instr.regAlloc.useSuppRegs === true)
             {
-                // For calls, we need to increment by twice the value
+                // For instructions using supplementary registers, 
+                // we need to increment by twice the value
                 // to later separate arguments use position from return value
                 // use position so that a fixed interval can be introduced
                 // between the two.
@@ -1212,13 +1214,13 @@ allocator.numberInstrs = function (cfg, order)
             }
 
             // Create a register allocation info object for the instruction and
-            // assign the instruction an operation number
-            instr.regAlloc = {
-                id : instrNb,              // Operation number
-                interval : allocator.interval()   // Live interval
-            }
-            instr.regAlloc.interval.instr = instr;
+            // assign the instruction an operation number.
+            // The regAlloc object is specific to the instance.
+            instr.regAlloc = Object.create(instr.regAlloc);
 
+            instr.regAlloc.id = instrNb; // Operation number
+            instr.regAlloc.interval = allocator.interval(); // Live interval
+            instr.regAlloc.interval.instr = instr;
             //print(instr.regAlloc.id + ":    " + " (" + instr.instrId + ") " +
             //      instr );
         }
@@ -1312,14 +1314,8 @@ allocator.liveIntervals = function (cfg, order, config)
 
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
-                if (instr instanceof CallInstr)
-                {
-                    instr.regAlloc.interval.regHint = config.retValIndex;
-                } else if (instr instanceof ArgValInstr)
-                {
-                    instr.regAlloc.interval.regHint = 
-                        config.argsIndex[instr.argIndex];
-                }
+                instr.regAlloc.interval.regHint = 
+                    instr.regAlloc.retValRegHint(instr, config);
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
@@ -1333,12 +1329,14 @@ allocator.liveIntervals = function (cfg, order, config)
                 if (!(use instanceof IRInstr))
                     continue;
 
-                // Make the use live from the start of the block to this instruction
+                // Make the use live from the start of the block to this 
+                // instruction
                 //print( use.regAlloc.interval);
 
-                if (instr instanceof CallInstr)
+                if (instr.regAlloc.useSuppRegs === true)
                 {
-                    // For calls, we separate argument position from return
+                    // For instructions using supplementary registers, 
+                    // we separate argument position from return
                     // position to later introduce a fixed interval between 
                     // the two
                     pos = instr.regAlloc.id - allocator.numberInstrs.inc;
@@ -1346,16 +1344,8 @@ allocator.liveIntervals = function (cfg, order, config)
                         block.regAlloc.from,
                         pos
                     );
-                    if (k < config.argsIndex.length)
-                    {
-                        use.regAlloc.interval.regHint = config.argsIndex[k];
-                    }
                 } else
                 {
-                    if (instr instanceof RetInstr)
-                    {
-                        instr.regAlloc.interval.regHint = config.retValIndex;
-                    } 
                     pos = instr.regAlloc.id;
                     use.regAlloc.interval.addRange(
                         block.regAlloc.from,
@@ -1363,17 +1353,10 @@ allocator.liveIntervals = function (cfg, order, config)
                     );
                 }
 
-                if ( instr instanceof RetInstr)
-                {
+                use.regAlloc.interval.regHint = 
+                    instr.regAlloc.opndsRegHint(instr, config, k);
 
-                    use.regAlloc.interval.addUsePos(pos,
-                                        allocator.usePos.registerFlag.REQUIRED);
-                } else if ( instr instanceof GetPropValInstr)
-                {
-
-                    use.regAlloc.interval.addUsePos(pos,
-                                        allocator.usePos.registerFlag.REQUIRED);
-                } else if ( instr instanceof PutPropValInstr)
+                if (instr.regAlloc.opndsRegRequired)
                 {
 
                     use.regAlloc.interval.addUsePos(pos,
@@ -1460,16 +1443,16 @@ allocator.fixedIntervals = function (cfg, config)
 
     for (it = cfg.getInstrItr(); it.valid(); it.next())
     {
-        if (it.get() instanceof CallInstr)
+        if (it.get().regAlloc.useSuppRegs === true)
         {
             // Add a fixed interval between the arguments position
             // and the return value position
             argPos = it.get().regAlloc.id - allocator.numberInstrs.inc; 
-            addFixed = function (interval) 
+            addFixed = function (index) 
                        { 
-                           interval.addRange(argPos, argPos + 1); 
+                           fixed[index].addRange(argPos, argPos + 1); 
                        };
-            fixed.map(addFixed);
+            it.get().regAlloc.usedRegisters(it.get(), config).forEach(addFixed);
         }
     }
     return fixed;
@@ -1847,7 +1830,7 @@ allocator.assign = function (cfg)
 
             if (opnd instanceof IRInstr)
             {
-                if (instr instanceof CallInstr)
+                if (instr.regAlloc.useSuppRegs === true)
                 {
                     opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
                 } else                 
