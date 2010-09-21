@@ -303,9 +303,63 @@ ObjectLayout.prototype.genMethods = function ()
     // Source string to store the generated code
     var sourceStr = '';
 
-    //
-    // TODO: allocator function
-    //
+    // Get a reference to the last field
+    var lastField = this.fields[this.fields.length-1];
+
+    // Get the number of elements in the last field
+    var numElems = lastField.numElems;
+
+    // If the number of elements is not variable
+    if (numElems !== Infinity)
+    {
+        // Compute the object size
+        var objSize = lastField.offset + lastField.elemSize * numElems;
+
+        // Generate code for the size function
+        sourceStr += 'function get_size_' + this.name + '()\n';
+        sourceStr += '{\n';
+        sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:ret pint";\n';
+        sourceStr += '\treturn iir.constant(IRType.pint, ' + objSize + ');\n';
+        sourceStr += '}\n';
+        sourceStr += '\n';
+
+        // Generate code for the allocation function
+        sourceStr += 'function alloc_' + this.name + '()\n';
+        sourceStr += '{\n';
+        sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
+        sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
+        sourceStr += '\treturn iir.icast(IRType.' + this.ptrType + ', ptr);\n';
+        sourceStr += '}\n';
+        sourceStr += '\n';
+    }
+    else
+    {
+        // Generate code for the size function
+        sourceStr += 'function get_size_' + this.name + '(size)\n';
+        sourceStr += '{\n';
+        sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:arg size pint";\n';
+        sourceStr += '\t"tachyon:ret pint";\n';
+        sourceStr += '\tvar baseSize = iir.constant(IRType.pint, ' + lastField.offset + ');\n';
+        sourceStr += '\tvar elemSize = iir.constant(IRType.pint, ' + lastField.elemSize + ');\n';
+        sourceStr += '\tvar objSize = baseSize + elemSize * size;\n';
+        sourceStr += '\treturn objSize;\n';
+        sourceStr += '}\n';
+        sourceStr += '\n';
+
+        // Generate code for the allocation function
+        sourceStr += 'function alloc_' + this.name + '(size)\n';
+        sourceStr += '{\n';
+        sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:arg size pint";\n';
+        sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
+        sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
+        sourceStr += '\treturn iir.icast(IRType.' + this.ptrType + ', ptr);\n';
+        sourceStr += '}\n';
+        sourceStr += '\n';
+    }
 
     // Generate code for the accessor functions for a given layout
     function genAccessFuncs(

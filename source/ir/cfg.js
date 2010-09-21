@@ -922,7 +922,7 @@ ControlFlowGraph.prototype.validate = function ()
         var lastInstr = block.instrs[block.instrs.length - 1];
 
         // Verify that the block is terminated with a branch instruction
-        if (!(lastInstr.isBranch()))
+        if (!lastInstr || !(lastInstr.isBranch()))
             throw 'block does not terminate in a branch:\n' + block;
 
         // Verify that the branch targets match our successor set

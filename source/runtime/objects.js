@@ -135,6 +135,21 @@ staticEnv.regBinding(
 
 //=============================================================================
 //
+// GC and memory management constants
+//
+//=============================================================================
+
+// Alignment for heap allocation
+staticEnv.regBinding(
+    'HEAP_ALIGN',
+    ConstValue.getConst(
+        8,
+        IRType.pint
+    )
+);
+
+//=============================================================================
+//
 // JavaScript constant values
 //
 // Each constant has a specific bit-pattern:
@@ -183,7 +198,7 @@ staticEnv.regBinding(
 
 //=============================================================================
 //
-// Object memory layout constants
+// Object memory layout
 //
 //=============================================================================
 
@@ -265,26 +280,34 @@ objLayout.addField(
 objLayout.finalize();
 objLayout.genMethods();
 
-
-
-// TODO: define constant for initial hash map size
-
-// TODO: define constants for hash map min and max load factors 
-/*
-// Bit pattern for the undefined constant
+// Initial hash map size
 staticEnv.regBinding(
-    'BIT_PATTERN_UNDEF',
+    'HASH_MAP_INIT_SIZE',
     ConstValue.getConst(
-        25,
+        10,
         IRType.pint
     )
 );
-*/
 
+// Hash map max load factor (num/denum)
+staticEnv.regBinding(
+    'HASH_MAP_MAX_LOAD_NUM',
+    ConstValue.getConst(
+        3,
+        IRType.pint
+    )
+);
+staticEnv.regBinding(
+    'HASH_MAP_MAX_LOAD_DENUM',
+    ConstValue.getConst(
+        5,
+        IRType.pint
+    )
+);
 
 //=============================================================================
 //
-// String memory layout constants
+// String memory layout
 //
 //=============================================================================
 

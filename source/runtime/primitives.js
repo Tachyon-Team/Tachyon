@@ -133,9 +133,41 @@ function boxToBool(boxVal)
 
 //=============================================================================
 //
-// Miscellaneous utility functions
+// Utility functions
 //
 //=============================================================================
+
+/**
+Allocate a memory block of a given size on the heap
+*/
+function heapAlloc(size)
+{
+    "tachyon:arg size pint";
+    "tachyon:ret rptr";
+
+    // Get a pointer to the context
+    var ctx = iir.get_ctx();
+
+    // Get the current allocation pointer
+    var allocPtr = get_ctx_allocptr();
+
+    // Increment the allocation pointer by the object size
+    var nextPtr = allocPtr + size;
+
+    // Align the next allocation pointer
+    var rem = iir.icast(IRType.pint, nextPtr) % HEAP_ALIGN;
+    if (rem != iir.constant(IRType.pint, 0))
+    {
+        var pad = HEAP_ALIGN - rem;
+        nextPtr += pad;
+    }
+    
+    // Update the allocation pointer in the context object
+    set_ctx_allocptr(nextPtr);
+
+    // Allocate the object at the current position
+    return allocPtr;
+}
 
 /**
 Throw an exception with a given constructor
@@ -376,16 +408,10 @@ Implementation of the HIR put_prop_val instruction
 */
 function put_prop_val(obj, propName, propVal)
 {
-    //
-    // TODO
-    //
-
-    // TODO: assert object
+    // TODO: assert object is passed? toObject?
 
     // TODO: find if getter-setter exists?
     // Requires first looking up the entry in the whole prototype chain...
-
-
 
     // Compute the hash for the property
     // Boxed value, may be a string or an int
@@ -429,14 +455,17 @@ function put_prop_val(obj, propName, propVal)
             var numProps = get_obj_numprops(obj);
             numProps += iir.constant(IRType.i32, 1);
             set_obj_numprops(obj, numProps);
+            numProps = iir.icast(IRType.pint, numProps);
 
-
-
-            //
-            // TODO: test if hash table resizing is needed
-            //
-
-
+            // Test if resizing of the hash map is needed
+            // numProps > ratio * tblSize
+            // numProps > num/denum * tblSize
+            // numProps / num > tblSize / denum
+            if (numProps / HASH_MAP_MAX_LOAD_NUM >
+                tblSize / HASH_MAP_MAX_LOAD_DENUM)
+            {
+                // TODO: realloc hash table, rehash all properties
+            }
 
             // Break out of the loop
             break;

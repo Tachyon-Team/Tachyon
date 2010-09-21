@@ -21,6 +21,10 @@ iir =
     load        : LoadInstr,
     store       : StoreInstr,
 
+    // Run-time context access
+    get_ctx     : GetCtxInstr,
+    set_ctx     : SetCtxInstr,
+
     // Type conversion
     unbox       : UnboxInstr,
     box         : BoxInstr,

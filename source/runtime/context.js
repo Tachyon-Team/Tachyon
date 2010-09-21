@@ -38,6 +38,12 @@ ctxLayout.addField(
     IRType.box
 );
 
+// Heap allocation pointer
+ctxLayout.addField(
+    'allocptr',
+    IRType.rptr
+);
+
 // Finalize the context layout
 ctxLayout.finalize();
 
