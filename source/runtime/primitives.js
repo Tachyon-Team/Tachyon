@@ -16,6 +16,43 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //=============================================================================
 
 /**
+Box an integer value
+*/
+function boxInt(intVal)
+{
+    "tachyon:inline";
+    "tachyon:arg intVal pint";
+
+    // Box the integer
+    return iir.icast(IRType.box, intVal << TAG_NUM_BITS_INT);
+}
+
+/**
+Unbox an integer value
+*/
+function unboxInt(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret pint";
+
+    // Box the integer
+    return iir.icast(IRType.pint, boxVal) >> TAG_NUM_BITS_INT;
+}
+
+/**
+Box a reference value
+*/
+function boxRef(rawPtr, tagVal)
+{
+    "tachyon:inline";
+    "tachyon:arg rawPtr rptr";
+    "tachyon:arg tagVal pint";
+
+    // Box the raw pointer
+    return iir.icast(IRType.box, (intVal << TAG_NUM_BITS_REF) | tagVal);
+}
+
+/**
 Get the reference tag of a boxed value
 */
 function getRefTag(boxVal)
@@ -186,7 +223,6 @@ function throwError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
-function new_object() {}
 function make_clos() {}
 function put_clos() {}
 function get_clos() {}
@@ -195,6 +231,27 @@ function div() {}
 function mod() {}
 function neq() {}
 function not() {}
+
+/**
+Create a new object with no properties
+*/
+function new_object()
+{
+    /*
+    // Allocate space for an object
+    var objPtr = alloc_obj();
+
+    // Allocate space for a hash table
+    var tblPtr = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+
+    //
+    // TODO: init object and hash table
+    //
+
+    // Box and return the object pointer
+    return boxRef(objPtr, TAG_OBJECT);
+    */
+}
 
 /**
 Implementation of HIR less-than instruction
@@ -341,7 +398,7 @@ function mul(v1, v2)
         {
             // If there is no overflow, return the result
             // Normalize by shifting right by the number of integer tag bits
-            return iir.box(IRType.pint, intResult >> TAG_NUM_BITS_INT);
+            return boxInt(IRType.pint, intResult >> TAG_NUM_BITS_INT);
         }
         else
         {

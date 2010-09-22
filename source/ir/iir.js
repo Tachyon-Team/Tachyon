@@ -26,8 +26,6 @@ iir =
     set_ctx     : SetCtxInstr,
 
     // Type conversion
-    unbox       : UnboxInstr,
-    box         : BoxInstr,
     icast       : ICastInstr,
     itof        : IToFPInstr,
     ftoi        : FPToIInstr,

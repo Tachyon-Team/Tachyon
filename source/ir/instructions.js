@@ -2062,46 +2062,6 @@ GetPropValInstr.prototype.writesMem = false;
 //=============================================================================
 
 /**
-@class Instruction to unbox a value
-@augments IRInstr
-*/
-var UnboxInstr = instrMaker(
-    'unbox',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 1);
-        assert (
-            typeParams[0] === IRType.pint,
-            'type parameter should be platform int'
-        );
-        instrMaker.validType(inputVals[0], IRType.box);
-        
-        this.type = typeParams[0];
-    }
-);
-
-/**
-@class Instruction to box a value
-@augments IRInstr
-*/
-var BoxInstr = instrMaker(
-    'box',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 1);
-        assert (
-            typeParams[0] === IRType.pint,
-            'type parameter should be platform int'
-        );
-        instrMaker.validType(inputVals[0], typeParams[0]);
-
-        this.type = IRType.box;
-    }
-);
-
-/**
 @class Instruction to convert between different integer types
 @augments IRInstr
 */
