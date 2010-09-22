@@ -47,7 +47,8 @@ function printInstrNames(ir)
         if (arraySetHas(visited, func))
             continue;
 
-        if (func.funcName == 'get_prop_val' || 
+        if (func.funcName == 'new_object' ||
+            func.funcName == 'get_prop_val' || 
             func.funcName == 'put_prop_val')
             continue;
 

@@ -237,20 +237,33 @@ Create a new object with no properties
 */
 function new_object()
 {
-    /*
     // Allocate space for an object
-    var objPtr = alloc_obj();
+    var obj = boxRef(alloc_obj(), TAG_OBJECT);
 
     // Allocate space for a hash table
-    var tblPtr = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+    var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
 
-    //
-    // TODO: init object and hash table
-    //
+    // Initialize the prototype object
+    var ctx = iir.get_ctx();
+    set_obj_proto(get_ctx_objproto(ctx));
 
-    // Box and return the object pointer
-    return boxRef(objPtr, TAG_OBJECT);
-    */
+    // Initialize the hash table pointer, size and number of properties
+    set_obj_hashtbl(obj, hashtbl);
+    set_obj_tblsize(obj, HASH_MAP_INIT_SIZE);
+    set_obj_numprops(obj, iir.constant(IRType.i32, 0));
+
+    // Initialize the hash table
+    for (
+        var i = iir.constant(IRType.pint, 0); 
+        i < HASH_MAP_INIT_SIZE; 
+        i += iir.constant(IRType.pint, 1)
+    )
+    {
+        set_hashtbl_tbl_key(hashtbl, i, undefined);
+    }
+
+    // Return the object reference
+    return obj;
 }
 
 /**
@@ -445,7 +458,7 @@ function computeHash(key)
         )
         {
             var ch = iir.icast(
-                IRType.pint,                
+                IRType.pint,
                 get_str_data(key, i)
             );
 
@@ -503,7 +516,7 @@ function put_prop_val(obj, propName, propVal)
         }
 
         // Otherwise, if we have reached an empty slot
-        else if (keyVal === OBJ_HASH_EMPTY_KEY)
+        else if (keyVal === undefined)
         {
             // Set the corresponding property value
             set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
@@ -585,7 +598,7 @@ function get_prop_val(obj, propName)
             }
 
             // Otherwise, if we have reached an empty slot
-            else if (keyVal === OBJ_HASH_EMPTY_KEY)
+            else if (keyVal === undefined)
             {
                 break;
             }
