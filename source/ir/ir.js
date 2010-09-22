@@ -324,8 +324,8 @@ function stmtListToIRFunc(
     //print(cfg);
     //print('');
 
-    // Simplify the CFG
-    cfg.simplify();
+    // Simplify the CFG using peephole patterns
+    applyPatternsCFG(cfg);
     
     //print('');
 
@@ -1017,8 +1017,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testContext.getOutValue(),
                 bodyContext.entryBlock,
@@ -1091,8 +1090,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testContext.getOutValue(),
                 bodyContext.entryBlock,
@@ -1179,8 +1177,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testContext.getOutValue(),
                 bodyContext.entryBlock,
@@ -1247,7 +1244,7 @@ function stmtToIR(context)
 
         // Test that the current property index is valid
         var testVal = testCtx.addInstr(
-            new GteInstr(
+            new GeInstr(
                 propIndex,
                 ConstValue.getConst(0)
             )
@@ -1333,8 +1330,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testCtx.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testVal,
                 bodyCtx.entryBlock,
@@ -1541,9 +1537,6 @@ function stmtToIR(context)
                     'switch_case_' + i
                 );
 
-                // Remove the branch introduced by the merge
-                curTestCtx.getExitBlock().remBranch();
-
                 // Create a new context for the clause statements
                 var stmtCtx = context.branch(
                     clause.statements,
@@ -1554,6 +1547,15 @@ function stmtToIR(context)
 
                 // Generate code for the statement
                 stmtListToIR(stmtCtx);
+
+                // Replace the merge branch by an if instruction
+                curTestCtx.getExitBlock().replBranch(
+                    new IfInstr(
+                        testVal,
+                        stmtCtx.entryBlock,
+                        nextTestCtx.entryBlock
+                    )
+                );
             }
 
             // Otherwise, this is the default case
@@ -1595,16 +1597,16 @@ function stmtToIR(context)
                         stmtCtx.entryBlock
                     );
                 }
-            }
 
-            // Add the if test instruction
-            curTestCtx.addInstr(
-                new IfInstr(
-                    testVal,
-                    stmtCtx.entryBlock,
-                    nextTestCtx.entryBlock
-                )
-            );
+                // Add the if test instruction
+                curTestCtx.addInstr(
+                    new IfInstr(
+                        testVal,
+                        stmtCtx.entryBlock,
+                        nextTestCtx.entryBlock
+                    )
+                );
+            }
 
             // Update the previous statement context
             prevStmtCtx = stmtCtx;
@@ -2489,7 +2491,7 @@ function opToIR(context)
         break;
 
         case 'x <= y':
-        opGen(LteInstr);
+        opGen(LeInstr);
         break;
 
         case 'x > y':
@@ -2497,7 +2499,7 @@ function opToIR(context)
         break;
 
         case 'x >= y':
-        opGen(GteInstr);
+        opGen(GeInstr);
         break;
 
         case 'x == y':
@@ -2505,7 +2507,7 @@ function opToIR(context)
         break;
 
         case 'x != y':
-        opGen(NeqInstr);
+        opGen(NeInstr);
         break;
 
         case 'x === y':
@@ -3693,4 +3695,3 @@ function genCondInlineIR(context)
     // Set the exit block to be the join block
     context.setOutput(joinBlock);
 }
-

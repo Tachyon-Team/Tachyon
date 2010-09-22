@@ -105,8 +105,8 @@ function lowerIRCFG(cfg)
     // Perform constant propagation on the CFG
     constProp(cfg);
 
-    // Simplify the lowered CFG
-    cfg.simplify();
+    // Apply peephole optimization patterns to the CFG
+    applyPatternsCFG(cfg);
 
     // Validate the CFG
     cfg.validate();
@@ -188,4 +188,3 @@ function compPrimitives()
         func.validate();
     }
 }
-

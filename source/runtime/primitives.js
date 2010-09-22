@@ -157,7 +157,7 @@ function boxToBool(boxVal)
 
     else if (boxIsString(boxVal))
     {
-        var len = iir.icast(IRType.pint, str_get_len(boxVal));
+        var len = iir.icast(IRType.pint, get_str_len(boxVal));
 
         if (len != iir.constant(IRType.pint, 0))
             return iir.constant(IRType.i8, 1);
@@ -229,13 +229,13 @@ function get_clos() {}
 function make_arg_obj() {}
 function div() {}
 function mod() {}
-function neq() {}
+function ne() {}
 function not() {}
 
 /**
 Create a new object with no properties
 */
-function new_object()
+function new_object(proto)
 {
     // Allocate space for an object
     var obj = boxRef(alloc_obj(), TAG_OBJECT);
@@ -244,8 +244,7 @@ function new_object()
     var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
 
     // Initialize the prototype object
-    var ctx = iir.get_ctx();
-    set_obj_proto(get_ctx_objproto(ctx));
+    set_obj_proto(obj, proto);
 
     // Initialize the hash table pointer, size and number of properties
     set_obj_hashtbl(obj, hashtbl);
@@ -411,7 +410,7 @@ function mul(v1, v2)
         {
             // If there is no overflow, return the result
             // Normalize by shifting right by the number of integer tag bits
-            return boxInt(IRType.pint, intResult >> TAG_NUM_BITS_INT);
+            return iir.icast(IRType.box, intResult >> TAG_NUM_BITS_INT);
         }
         else
         {
@@ -615,4 +614,3 @@ function get_prop_val(obj, propName)
     // Property not found
     return undefined;
 }
-

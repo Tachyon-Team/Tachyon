@@ -474,7 +474,6 @@ ControlFlowGraph.prototype.remBlock = function (block)
         }
     }
     
-
     // Remove the block from the list
     arraySetRem(this.blocks, block);
 
@@ -483,392 +482,6 @@ ControlFlowGraph.prototype.remBlock = function (block)
 
     // Free this block's label name
     this.freeBlockName(block);
-};
-
-/**
-Simplify the CFG
-*/
-ControlFlowGraph.prototype.simplify = function ()
-{
-    // Build a list of phi nodes in the CFG
-    var phiNodes = [];
-    for (var i = 0; i < this.blocks.length; ++i)
-    {
-        var block = this.blocks[i];
-        for (var j = 0; j < block.instrs.length; ++j)
-        {
-            var instr = block.instrs[j];
-            if (instr instanceof PhiInstr)
-                phiNodes.push(instr);
-        }
-    }
-
-    // Iterate until the simplification is complete
-    for (;;)
-    {
-        // No simplifications made in this iteration yet
-        var simplified = false;
-
-        //
-        // Iteratively eliminate phi nodes
-        //
-        // Delete all phi-assignments of the form:
-        // Vi <- phi(...Vi...Vi...)
-        //
-        // If a phi-assignment has the form:
-        // Vi <- phi(...Vi...Vj...Vi...Vj...)
-        // 0 or more Vi and 1 or more Vj
-        //
-        // Then delete the assignment and rename
-        // all occurences of Vi to Vj
-        //
-
-        // Copy the list of phi nodes in the CFG
-        var phiCopies = phiNodes.slice(0);
-
-        // For each phi node
-        for (var i = 0; i < phiCopies.length; ++i)
-        {
-            var phiNode = phiCopies[i];
-
-            var numVi = 0;
-            var numVj = 0;
-            var Vj = null;
-
-            // Count the kinds of uses of the phi node
-            for (var j = 0; j < phiNode.uses.length; ++j)
-            {
-                var use = phiNode.uses[j];
-
-                if (use === phiNode)
-                {
-                    numVi++;
-                }
-                else if (use === Vj || Vj === null)
-                {
-                    numVj++;
-                    Vj = use;
-                }
-            }
-
-            // If this phi node has the form:
-            // Vi <- phi(...Vi...Vi...)
-            if (numVi == phiNode.uses.length)
-            {
-                //print('Removing: ' + phiNode);
-
-                // Remove the phi node
-                phiNode.parentBlock.remInstr(phiNode);
-                arraySetRem(phiNodes, phiNode);
-
-                // Set the simplified flag
-                simplified = true;
-            }
-            
-            // If this phi-assignment has the form:
-            // Vi <- phi(...Vi...Vj...Vi...Vj...)
-            // 0 or more Vi and 1 or more Vj
-            else if (numVi + numVj == phiNode.uses.length)        
-            {
-                //print('Renaming: ' + phiNode);
-
-                // Rename all occurences of Vi to Vj
-                for (var k = 0; k < phiNode.dests.length; ++k)
-                {
-                    var dest = phiNode.dests[k];
-                    dest.replUse(phiNode, Vj);
-                    if (Vj instanceof IRInstr)
-                        Vj.addDest(dest);
-                }
-                if (Vj instanceof IRInstr)
-                    Vj.remDest(phiNode);
-
-                // Remove the phi node
-                phiNode.parentBlock.remInstr(phiNode);
-                arraySetRem(phiNodes, phiNode);
-
-                // Set the simplified flag
-                simplified = true;
-            }
-        }
-
-        // For each block in the CFG
-        for (var i = 0; i < this.blocks.length; ++i)
-        {
-            var block = this.blocks[i];
-
-            //
-            // Eliminate dead instructions
-            //
-
-            // For each instruction in this block
-            for (var j = 0; j < block.instrs.length; ++j)
-            {
-                var instr = block.instrs[j];
-
-                // If the instruction's value is not used and the instruction
-                // has no side effects and is not a branch
-                if (
-                    instr.dests.length == 0 &&
-                    instr.writesMem == false &&
-                    instr.isBranch() == false
-                )
-                {
-                    // Remove the instruction
-                    block.remInstrAtIndex(j);
-
-                    // Set the simplified flag
-                    simplified = true;
-                }
-            }
-
-            //
-            // Eliminate blocks of the form:
-            // t = phi x1,x2,x3
-            // if t b1 b2
-            //
- 
-            // If this block contains only an if instruction using the
-            // value of an immediately preceding phi
-            if (
-                block.instrs.length == 2 &&
-                block.instrs[0] instanceof PhiInstr &&
-                block.instrs[0].dests.length == 1 &&
-                block.instrs[1] instanceof IfInstr &&
-                block.instrs[1].uses[0] === block.instrs[0]
-            )
-            {
-                var phiInstr = block.instrs[0];
-                var ifInstr = block.instrs[1];
-
-                var phiPreds = phiInstr.preds.slice(0);
-                var phiUses = phiInstr.uses.slice(0);
-
-                for (var j = 0; j < phiPreds.length; ++j)
-                {
-                    var pred = phiPreds[j];
-                    var use = phiUses[j];
-
-                    if (pred.instrs[pred.instrs.length - 1] instanceof JumpInstr)
-                    {
-                        pred.replInstrAtIndex(
-                            pred.instrs.length - 1,
-                            new IfInstr(
-                                use,
-                                ifInstr.targets[0],
-                                ifInstr.targets[1]
-                            )
-                        );
-                    }
-                }
-            }
-            
-            //
-            // Eliminate blocks with no predecessors
-            //
-
-            // If this block has no predecessors, and it is not the entry block
-            else if (
-                block.preds.length == 0 &&
-                block !== this.entry
-            )
-            {
-                //print('eliminating block with no predecessors: ' + block.getBlockName());
-
-                // Remove all instructions in the block
-                while (block.instrs.length > 0)
-                    block.remInstrAtIndex(0);
-
-                // Remove the block from the CFG
-                this.remBlock(block);
-
-                // Set the simplified flag
-                simplified = true;
-            }
-
-            //
-            // Merge blocks with only one destination
-            //
-
-            // If this block has only one successor, which has only one predecessor
-            // and the block is not terminated by an exception-producing instruction
-            else if (
-                block.succs.length == 1 && 
-                block.succs[0].preds.length == 1 &&
-                block !== block.succs[0] &&
-                !(block.getLastInstr() instanceof ExceptInstr)
-            )
-            {
-                //print('merging block with one dest: ' + block.getBlockName());
-
-                var succ = block.succs[0];
-
-                // Remove the final branch instruction
-                block.remInstrAtIndex(block.instrs.length - 1);                    
-
-                // For each instruction of the successor
-                for (var j = 0; j < succ.instrs.length; ++j)
-                {
-                    var instr = succ.instrs[j];
-                    
-                    // If the instruction is a phi node
-                    if (instr instanceof PhiInstr)
-                    {
-                        // Ensure that this phi node has only one predecessor
-                        assert (
-                            instr.preds.length == 1, 
-                            'phi node in merged block should have one pred:\n' + 
-                            instr
-                        );
-
-                        var phiIn = instr.uses[0];
-
-                        // Remove the edge from the use to the phi node
-                        if (phiIn instanceof IRInstr)
-                            phiIn.remDest(instr);
-
-                        // For each dest of the phi node
-                        for (var k = 0; k < instr.dests.length; ++k)
-                        {
-                            // Replace all uses of the phi by uses of its input
-                            instr.dests[k].replUse(instr, phiIn);
-                            if (phiIn instanceof IRInstr)
-                                phiIn.addDest(instr.dests[k]);
-                        }
-                    }
-                    else
-                    {
-                        // Add the instruction to the predecessor
-                        block.addInstr(instr);
-                    }
-                }
-
-                //print('Number of succ succs: ' + succ.succs.length);
-
-                // For each successor of the successor
-                for (var j = 0; j < succ.succs.length; ++j)
-                {
-                    var succSucc = succ.succs[j];
-
-                    // For each instruction of the successor's successor
-                    for (var k = 0; k < succSucc.instrs.length; ++k)
-                    {
-                        var instr = succSucc.instrs[k];
-                        
-                        // If the instruction is not a phi node, stop
-                        if (!(instr instanceof PhiInstr))
-                            break;
-
-                        var phiPreds = instr.preds;
-
-                        //print('Fixing up phi node: ' + instr);
-
-                        // For each predecessor of the phi node
-                        for (var l = 0; l < phiPreds.length; ++l)
-                        {
-                            // If this is a reference to the successor, make 
-                            // it a reference to the predecessor instead
-                            if (phiPreds[l] === succ)
-                                phiPreds[l] = block;
-                        }
-
-                        //print('Fixed up: ' + instr);
-                    }
-                }
-
-                // Remove the successor block from the CFG
-                this.remBlock(succ);
-
-                // Set the simplified flag
-                simplified = true;
-            }
-
-            //
-            // Jump over blocks with no instructions and a single successor
-            //
-
-            // If this block has only one successor, no instructions but a branch, 
-            // and the block is not terminated by an exception-producing instruction
-            else if (
-                block.succs.length == 1 && 
-                block.succs[0] !== block &&
-                block.instrs.length == 1 &&
-                !(block.getLastInstr() instanceof ExceptInstr)
-            )
-            {
-                var succ = block.succs[0];
-            
-                //print('got block: ' + block.getBlockName());
-
-                // Copy the predecessor list for this block
-                var preds = block.preds.slice(0);
-
-                // For each predecessor
-                PRED_LOOP:
-                for (var j = 0; j < preds.length; ++j)
-                {
-                    var pred = preds[j];
-
-                    //print('got pred: ' + pred.getBlockName());
-
-                    // For each instruction of the successor
-                    for (var k = 0; k < succ.instrs.length; ++k)
-                    {
-                        var instr = succ.instrs[k];
-
-                        // If this instruction is not a phi node, stop
-                        if (!(instr instanceof PhiInstr))
-                            break;                        
-
-                        // If the phi node already has this predecessor, skip the predecessor
-                        if (arraySetHas(instr.preds, pred))
-                            continue PRED_LOOP;
-                    }
-
-                    //print('simplifying no instructions, single successor: ' + block.getBlockName());
-
-                    // Remove the predecessor from our predecessor list
-                    block.remPred(pred);
-
-                    // Get the predecessor's branch instruction
-                    var branchInstr = pred.getLastInstr();
-
-                    // Replace the predecessor's branch target by the successor
-                    for (var k = 0; k < branchInstr.targets.length; ++k)
-                        if (branchInstr.targets[k] === block)
-                            branchInstr.targets[k] = succ;
-
-                    // Replace the predecessor's successor block by the successor
-                    pred.remSucc(block);
-                    pred.addSucc(succ);
-
-                    // Add the predecessor as a predecessor of the successor
-                    succ.addPred(pred);
-
-                    // For each instruction of the successor
-                    for (var k = 0; k < succ.instrs.length; ++k)
-                    {
-                        var instr = succ.instrs[k];
-
-                        // If this instruction is not a phi node, stop
-                        if (!(instr instanceof PhiInstr))
-                            break;
-
-                        // Add an incoming value for the predecessor
-                        var inVal = instr.getIncoming(block);
-                        instr.addIncoming(inVal, pred);
-                    }
-
-                    // Set the simplified flag
-                    simplified = true;
-                }
-            }
-        }
-
-        // If no simplifications occurred, stop
-        if (simplified == false)
-            break;
-    }
 };
 
 /**
@@ -956,8 +569,9 @@ ControlFlowGraph.prototype.validate = function ()
                 // Verify that each immediate predecessor has a corresponding use
                 for (var k = 0; k < block.preds.length; ++k)
                     if (!arraySetHas(instr.preds, block.preds[k]))
-                        throw 'phi node does not cover all immediate ' +
-                            'predecessors:\n' + instr;
+                        throw 'phi node:\n' + instr + '\ndoes not cover ' +
+                            'immediate predecessor:\n' + 
+                            block.preds[k].getBlockName();
 
                 // Verify that there is exactly one predecessor for each use
                 if (instr.preds.length != instr.uses.length)
@@ -1115,7 +729,8 @@ ControlFlowGraph.prototype.validate = function ()
                 else
                 {
                     if (!arraySetHas(mustReachCur, use))
-                        throw 'instruction:\n' + instr +
+                        throw 'instruction:\n' + instr + '\nin block:\n' + 
+                            instr.parentBlock.getBlockName() +
                             '\nuses non-reaching value:\n' + use;
                 }
             }
@@ -1759,13 +1374,20 @@ BasicBlock.prototype.hasBranch = function ()
 }
 
 /**
-Remove the branch instruction terminating a block
+Replace the branch instruction terminating a block
 */
-BasicBlock.prototype.remBranch = function ()
+BasicBlock.prototype.replBranch = function (newBranch)
 {
-    assert (this.hasBranch(), 'cannot remove branch, none present');
+    assert (
+        this.hasBranch(), 'cannot remove branch, none present'
+    );
 
-    this.remInstrAtIndex(this.instrs.length - 1);
+    assert (
+        newBranch.isBranch(),
+        'cannot replace branch by non-branch'
+    );
+
+    this.replInstrAtIndex(this.instrs.length - 1, newBranch);
 }
 
 /**
@@ -1817,4 +1439,3 @@ BasicBlock.prototype.getInstrItr = function ()
 {
     return new ArrayIterator(this.instrs);
 };
-

@@ -26,6 +26,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
+// TODO: HIRAdd vs MIRAdd, etc.?
+
+// TODO: rename gte -> gt, lte -> le, neq -> ne
+
 //=============================================================================
 //
 // IR Core
@@ -276,6 +280,10 @@ ConstValue.prototype.toString = function ()
     if (typeof this.value == 'string')
     {
        return '"' + escapeJSString(this.value) + '"';
+    }
+    else if (typeof this.value == 'number')
+    {
+        return this.type + ':' + String(this.value);
     }
     else if (this.value instanceof Function)
     {
@@ -709,6 +717,8 @@ Remove a phi predecessor and the corresponding use
 */
 PhiInstr.prototype.remPred = function (pred)
 {
+    //print('Removing pred for: ' + this);
+
     // For each predecessor of the phi node
     for (var k = 0; k < this.preds.length; ++k)
     {
@@ -1690,8 +1700,8 @@ var LtInstr = instrMaker(
 @class Less-than-or-equal comparison instruction
 @augments CompInstr
 */
-var LteInstr = instrMaker(
-    'lte',
+var LeInstr = instrMaker(
+    'le',
     undefined,
     undefined,
     new CompInstr()
@@ -1712,8 +1722,8 @@ var GtInstr = instrMaker(
 @class Greater-than-or-equal comparison instruction
 @augments CompInstr
 */
-var GteInstr = instrMaker(
-    'gte',
+var GeInstr = instrMaker(
+    'ge',
     undefined,
     undefined,
     new CompInstr()
@@ -1734,8 +1744,8 @@ var EqInstr = instrMaker(
 @class Inequality comparison instruction
 @augments CompInstr
 */
-var NeqInstr = instrMaker(
-    'neq',
+var NeInstr = instrMaker(
+    'ne',
     undefined,
     undefined,
     new CompInstr()
