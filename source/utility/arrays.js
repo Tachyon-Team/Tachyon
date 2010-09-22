@@ -94,6 +94,41 @@ function arraySetEqual(arr1, arr2)
 }
 
 /**
+Generate an array with integer values between
+from and to
+*/
+function arrayRange(from, to, step)
+{
+    var a = [];
+    var i, j;
+
+    if (to === undefined && step === undefined)
+    {
+        to = from;
+        from = 0;
+    }
+
+    if (step === undefined)
+    {
+        step = 1;
+    }
+
+    
+    assert(from >= 0);
+    assert(to > from);
+    assert(step > 0);
+
+    j=0;
+    for (i=from; i < to; i+=step)
+    {
+        a[j] = i;
+        j += 1;
+    }
+
+    return a;
+}
+
+/**
     @class
     Iterates over an array.
 

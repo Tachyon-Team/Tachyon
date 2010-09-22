@@ -1001,7 +1001,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
             {
                 x86.assert((base.isr32() || (base.isr64() && 
                             this.is64bitMode())),
-                           "invalid width base register",
+                           "invalid width base register ",
                            base); 
                 // If needed emit REX.B (Extension of the ModR/M r/m field,
                 // SIB base field, or Opcode reg field
@@ -1012,7 +1012,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
                 {
                     x86.assert((base.isr32() ? index.isr32() : index.isr64()),
                            "index register must have the"+
-                           " same width as base",
+                           " same width as base ",
                            reg2);        
                     rex += ((index.field() >> 3) << 1);
                 }
@@ -1020,7 +1020,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
             break;
 
         default:
-            x86.error("unknown operand", opnd);
+            x86.error("unknown operand '", opnd, "'");
     }
 
     this.opndSizeOverridePrefix(width); 

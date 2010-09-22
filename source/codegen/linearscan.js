@@ -490,6 +490,8 @@ allocator.interval.prototype.previous   = null;
 allocator.interval.prototype.id     = 0;
 /** Virtual register */
 allocator.interval.prototype.vreg   = null;
+/** Instruction defining the interval */
+allocator.interval.prototype.instr  = null;
 
 /** Returns the first starting position of all ranges */ 
 allocator.interval.prototype.startPos = function ()
@@ -1148,20 +1150,22 @@ allocator.numberInstrs = function (cfg, order)
     var nextNo = 2;
     var inc = allocator.numberInstrs.inc;
     var instrNb;
+    var i,j, block, instr;
 
     // For each block in the order
-    for (var i = 0; i < order.length; ++i)
+    for (i = 0; i < order.length; ++i)
     {
-        var block = order[i];
+        block = order[i];
 
         // Set the operation number at the block start
         block.regAlloc.from = nextNo;
-        nextNo = nextNo + inc;
 
-        //print(block.regAlloc.from + ": label " + block.label);
-        for (var j = 0; j < block.instrs.length; ++j)
+        // All phi instructions happen at the same time at the beginning of the
+        // block so they should have the same instruction number as the beginning 
+        // of the block
+        for (j = 0; j < block.instrs.length; ++j)
         {
-            var instr = block.instrs[j];
+            instr = block.instrs[j];
 
             // Conceptually, phi instructions all happen at the
             // same time, so they should have the same instruction number
@@ -1170,9 +1174,33 @@ allocator.numberInstrs = function (cfg, order)
                 // Since they all appear at the beginning of the block,
                 // not incrementing should garantee an identical number
                 instrNb = nextNo;
-            } else if (instr instanceof CallInstr)
+
+                // Create a register allocation info object for the instruction and
+                // assign the instruction an operation number.
+                // The regAlloc object is specific to the instance.
+                instr.regAlloc = Object.create(instr.regAlloc);
+
+                instr.regAlloc.id = instrNb; // Operation number
+                instr.regAlloc.interval = allocator.interval(); // Live interval
+                instr.regAlloc.interval.instr = instr;
+            } else
             {
-                // For calls, we need to increment by twice the value
+                break;
+            }   
+        }
+
+        nextNo = nextNo + inc;
+
+        //print(block.regAlloc.from + ": label " + block.label);
+        // Handle the remaining instructions
+        for (; j < block.instrs.length; ++j)
+        {
+            instr = block.instrs[j];
+
+            if (instr.regAlloc.useSuppRegs === true)
+            {
+                // For instructions using supplementary registers, 
+                // we need to increment by twice the value
                 // to later separate arguments use position from return value
                 // use position so that a fixed interval can be introduced
                 // between the two.
@@ -1186,13 +1214,13 @@ allocator.numberInstrs = function (cfg, order)
             }
 
             // Create a register allocation info object for the instruction and
-            // assign the instruction an operation number
-            instr.regAlloc = {
-                id : instrNb,              // Operation number
-                interval : allocator.interval()   // Live interval
-            }
-            instr.regAlloc.interval.vreg = instr;
+            // assign the instruction an operation number.
+            // The regAlloc object is specific to the instance.
+            instr.regAlloc = Object.create(instr.regAlloc);
 
+            instr.regAlloc.id = instrNb; // Operation number
+            instr.regAlloc.interval = allocator.interval(); // Live interval
+            instr.regAlloc.interval.instr = instr;
             //print(instr.regAlloc.id + ":    " + " (" + instr.instrId + ") " +
             //      instr );
         }
@@ -1211,7 +1239,7 @@ allocator.numberInstrs.inc = 2;
 /**
 Compute the live intervals for the temporaries of a CFG
 */
-allocator.liveIntervals = function (cfg, order)
+allocator.liveIntervals = function (cfg, order, config)
 {
     var pos, it;
 
@@ -1251,7 +1279,10 @@ allocator.liveIntervals = function (cfg, order)
                     break;
 
                 // Add the phi node's input from this block to the live set
-                arraySetAdd(live, instr.getIncoming(block));
+                if (!instr.getIncoming(block) instanceof ConstValue)
+                {
+                    arraySetAdd(live, instr.getIncoming(block));
+                }
             }
         }
         
@@ -1283,14 +1314,8 @@ allocator.liveIntervals = function (cfg, order)
 
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
-                if (instr instanceof CallInstr)
-                {
-                    // TODO: Make the regHint parametrizable
-                    instr.regAlloc.interval.regHint = 0;
-                } else if (instr instanceof ArgValInstr)
-                {
-                    instr.regAlloc.interval.regHint = instr.argIndex;
-                }
+                instr.regAlloc.interval.regHint = 
+                    instr.regAlloc.retValRegHint(instr, config);
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
@@ -1304,12 +1329,14 @@ allocator.liveIntervals = function (cfg, order)
                 if (!(use instanceof IRInstr))
                     continue;
 
-                // Make the use live from the start of the block to this instruction
+                // Make the use live from the start of the block to this 
+                // instruction
                 //print( use.regAlloc.interval);
 
-                if (instr instanceof CallInstr)
+                if (instr.regAlloc.useSuppRegs === true)
                 {
-                    // For calls, we separate argument position from return
+                    // For instructions using supplementary registers, 
+                    // we separate argument position from return
                     // position to later introduce a fixed interval between 
                     // the two
                     pos = instr.regAlloc.id - allocator.numberInstrs.inc;
@@ -1317,18 +1344,8 @@ allocator.liveIntervals = function (cfg, order)
                         block.regAlloc.from,
                         pos
                     );
-                    // TODO: Make number of regHint parametrizable
-                    if (k < 3)
-                    {
-                        use.regAlloc.interval.regHint = k;
-                    }
                 } else
                 {
-                    if (instr instanceof RetInstr)
-                    {
-                        // TODO: Make the regHint parametrizable
-                        instr.regAlloc.interval.regHint = 0;
-                    } 
                     pos = instr.regAlloc.id;
                     use.regAlloc.interval.addRange(
                         block.regAlloc.from,
@@ -1336,17 +1353,10 @@ allocator.liveIntervals = function (cfg, order)
                     );
                 }
 
-                if ( instr instanceof RetInstr)
-                {
+                use.regAlloc.interval.regHint = 
+                    instr.regAlloc.opndsRegHint(instr, config, k);
 
-                    use.regAlloc.interval.addUsePos(pos,
-                                        allocator.usePos.registerFlag.REQUIRED);
-                } else if ( instr instanceof GetPropValInstr)
-                {
-
-                    use.regAlloc.interval.addUsePos(pos,
-                                        allocator.usePos.registerFlag.REQUIRED);
-                } else if ( instr instanceof PutPropValInstr)
+                if (instr.regAlloc.opndsRegRequired)
                 {
 
                     use.regAlloc.interval.addUsePos(pos,
@@ -1423,26 +1433,26 @@ allocator.liveIntervals = function (cfg, order)
     return liveIntervals;
 };
 
-allocator.fixedIntervals = function (cfg, physicalRegs)
+allocator.fixedIntervals = function (cfg, config)
 {
-
-    var fixed = physicalRegs.map(function () { return allocator.interval(); });
+    const physReg = config.physReg;
+    var fixed = physReg.map(function () { return allocator.interval(); });
     var it;
     var argPos;
     var addFixed;
 
     for (it = cfg.getInstrItr(); it.valid(); it.next())
     {
-        if (it.get() instanceof CallInstr)
+        if (it.get().regAlloc.useSuppRegs === true)
         {
             // Add a fixed interval between the arguments position
             // and the return value position
             argPos = it.get().regAlloc.id - allocator.numberInstrs.inc; 
-            addFixed = function (interval) 
+            addFixed = function (index) 
                        { 
-                           interval.addRange(argPos, argPos + 1); 
+                           fixed[index].addRange(argPos, argPos + 1); 
                        };
-            fixed.map(addFixed);
+            it.get().regAlloc.usedRegisters(it.get(), config).forEach(addFixed);
         }
     }
     return fixed;
@@ -1458,17 +1468,20 @@ allocator.fixedIntervals = function (cfg, physicalRegs)
     The mems object should have a newSlot() method returning 
     a new memory location for spilling.
 
-    @param {Array} pregs     list of available physical registers
+    @param {Object} config   configuration containing platform specific
+                             register information
     @param {Array} unhandled list of unassigned intervals
     @param {Object} mems     object allocating memory locations used 
                              for spilling
-    @param {Array} fixed     list of intervals where pregs are unavailable
+    @param {Array} fixed     list of intervals where registers
+                             are unavailable
 */ 
-allocator.linearScan = function (pregs, unhandled, mems, fixed)
+allocator.linearScan = function (config, unhandled, mems, fixed)
 {
     //       Interval registers are indexes into the pregs array during
-    //       the iteration, but are replaced by their pregs object
+    //       allocation, but are replaced by their pregs object
     //       at the end.
+    const pregs = config.physReg;
    
     // Queue of all unhandled intervals, sorted by start position,
     // using a copy of unhandled
@@ -1817,7 +1830,7 @@ allocator.assign = function (cfg)
 
             if (opnd instanceof IRInstr)
             {
-                if (instr instanceof CallInstr)
+                if (instr.regAlloc.useSuppRegs === true)
                 {
                     opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
                 } else                 
@@ -1867,6 +1880,7 @@ allocator.resolve = function (cfg, intervals, order)
     var mapping;
     var insertFct;
     var insertIndex;
+    var opnd;
 
     // Insert Moves at split positions
     for (intervalIt = new ArrayIterator(intervals); 
@@ -1929,9 +1943,25 @@ allocator.resolve = function (cfg, intervals, order)
              intervalIt.valid(); 
              intervalIt.next())
         {
-            // TODO: Handle Phi functions
-            
-            moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
+            if (intervalIt.get().startPos() === edge.succ.regAlloc.from)
+            {
+                assert(intervalIt.get().instr instanceof PhiInstr);
+
+                // We got a Phi instruction
+                opnd = intervalIt.get().instr.getIncoming(edge.pred);
+                if (opnd instanceof ConstValue)
+                {
+                    moveFrom = opnd;
+                } else
+                {
+                    moveFrom = opnd.regAlloc.interval.regAtPos(edge.pred.regAlloc.to);
+                }
+            } else
+            {
+                // We got a regular instruction
+                moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
+            }
+
             moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from);
 
 
@@ -1948,7 +1978,16 @@ allocator.resolve = function (cfg, intervals, order)
         {
             // Predecessor has only a successor, insert moves at
             // the end of predecessor
-            insertFct = function (move) { edge.pred.addInstr(move); };
+            insertFct = function (move) 
+            { 
+                if (edge.pred.hasBranch())
+                {
+                    edge.pred.addInstr(move, "", edge.pred.instrs.length - 1); 
+                } else
+                {
+                    edge.pred.addInstr(move); 
+                }
+            };
 
         } else if (edge.succ.preds.length === 1)
         {

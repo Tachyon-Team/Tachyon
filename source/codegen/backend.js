@@ -7,7 +7,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace */
-var backend = {};
+var backend = backend || {};
 
 /**
     Returns a code block representing the compiled code.
@@ -25,7 +25,6 @@ backend.compile = function (ir, print)
 
     var cfg, order, liveIntervals, mems;
     var i, k, next, tab;
-    var pregs = [reg.eax, reg.ebx, reg.ecx, reg.edx];
     var fixedIntervals;
     var fcts = ir.getChildrenList();
 
@@ -45,30 +44,12 @@ backend.compile = function (ir, print)
 
         cfg = fcts[k].virginCFG;
 
+        cfg.simplify();
+
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order);
-        liveIntervals = allocator.liveIntervals(cfg, order);
-        fixedIntervals = allocator.fixedIntervals(cfg, pregs);
 
-        mems = { slots:[], 
-                     newSlot:function () 
-                             { 
-                                var offset = this.slots.length * 4;
-                                var s = mem(offset, irToAsm.config.stack);
-                                this.slots.push(s);
-                                return s;
-                             } 
-                       };
-
-        /*
-        // Print intervals before allocation
-        for (i=0; i<liveIntervals.length; ++i)
-        {
-            print(i + ": " + liveIntervals[i] + ",");
-        }
-        print();
-        */
-
+    
         print("******* Before register allocation *******");
         var block;
         var tab = "\t";
@@ -84,7 +65,24 @@ backend.compile = function (ir, print)
             }
         }
 
-        allocator.linearScan(pregs, liveIntervals, mems, fixedIntervals);
+        liveIntervals = allocator.liveIntervals(cfg, order, irToAsm.config);
+        fixedIntervals = allocator.fixedIntervals(cfg, irToAsm.config);
+
+        /*
+        // Print intervals before allocation
+        for (i=0; i<liveIntervals.length; ++i)
+        {
+            print(i + ": " + liveIntervals[i] + ",");
+        }
+        print();
+        */
+
+        mems = irToAsm.spillAllocator();
+
+        allocator.linearScan(irToAsm.config, 
+                             liveIntervals, 
+                             mems, 
+                             fixedIntervals);
 
         /*
         // Print intervals after allocation
