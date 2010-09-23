@@ -20,8 +20,19 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 // TODO: implement delete x operator and matching unit test
 // PROBLEM: this can involve a long lookup chain of the form a.b.c
+// - Just eval left and right parts of top level index expr
+// - If no index expr, try deleting on global
 // PROBLEM: special behavior inside with context
+// - Deletes on with object if property present, otherwise deletes on global
 // PROBLEM: special behavior with local variables
+// - Does nothing for local variables
+// Use delPropVal primitive
+
+// TODO: before fetching from global object, add hasPropVal test
+// Implement conditional error throw mechanism?
+
+// TODO: global var statements should result in assignment of undefined
+// to property in global object at the beginning of the unit's code
 
 /**
 Translate an AST code unit into IR functions
@@ -3109,11 +3120,20 @@ function insertErrorIR(context, errorName, errorMsg)
     var errorCtor;
     switch (errorName)
     {
-        case 'TypeError':
-        errorCtor = insertContextReadIR(context, ['typeerror']);
+        case 'RangeError':
+        errorCtor = insertContextReadIR(context, ['rangeerror']);
+        break;
+        case 'ReferenceError':
+        errorCtor = insertContextReadIR(context, ['referror']);
         break;
         case 'SyntaxError':
         errorCtor = insertContextReadIR(context, ['syntaxerror']);
+        break;
+        case 'TypeError':
+        errorCtor = insertContextReadIR(context, ['typeerror']);
+        break;
+        case 'URIError':
+        errorCtor = insertContextReadIR(context, ['urierror']);
         break;
     }
     assert (
