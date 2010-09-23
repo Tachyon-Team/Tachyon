@@ -97,6 +97,12 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     this.inline = false;
 
     /**
+    Flag indicating that this function cannot throw exceptions
+    @field
+    */
+    this.noThrow = false;
+
+    /**
     Flag indicating that the function reads from memory
     @field
     */
@@ -213,6 +219,7 @@ IRFunction.prototype.copy = function ()
     newFunc.usesEval = this.usesEval;
     newFunc.staticLink = this.staticLink;
     newFunc.inline = this.inline;
+    newFunc.noThrow = this.noThrow;
     newFunc.readsMem = this.readsMem;
     newFunc.writesMem = this.writesMem;
 
@@ -283,4 +290,3 @@ IRFunction.prototype.getChildrenList = function ()
 
     return list;
 };
-

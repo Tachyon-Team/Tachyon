@@ -65,11 +65,14 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             l1
         );
         addInstr(
-            new GetPropValInstr(
-                ConstValue.getConst(null), 
-                ConstValue.getConst(2),
-                l2
+            new SubInstr(
+                ConstValue.getConst(-1), 
+                ConstValue.getConst(2)
             ),
+            l1
+        );
+        addInstr(
+            new JumpInstr(l2),
             l1
         );
 

@@ -130,6 +130,7 @@ Convert a boxed value to a one-byte boolean value
 */
 function boxToBool(boxVal)
 {
+    "tachyon:static";
     "tachyon:ret i8";
 
     // Get an integer-typed value for input
@@ -179,6 +180,7 @@ Allocate a memory block of a given size on the heap
 */
 function heapAlloc(size)
 {
+    "tachyon:static";
     "tachyon:arg size pint";
     "tachyon:ret rptr";
 
@@ -223,20 +225,39 @@ function throwError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
-function make_clos() {}
-function put_clos() {}
-function get_clos() {}
-function make_arg_obj() {}
-function div() {}
-function mod() {}
-function ne() {}
-function not() {}
+function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; }
+function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; }
+function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; }
+function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; }
+function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; }
+function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; }
+function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; }
+function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; }
+function makeCell() { "tachyon:static"; "tachyon:nothrow"; }
+function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; }
+function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; }
+function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; }
+function newArray() { "tachyon:static"; "tachyon:nothrow"; }
+function div() { "tachyon:static"; "tachyon:nothrow"; }
+function mod() { "tachyon:static"; "tachyon:nothrow"; }
+function not() { "tachyon:static"; "tachyon:nothrow"; }
+function and() { "tachyon:static"; "tachyon:nothrow"; }
+function or() { "tachyon:static"; "tachyon:nothrow"; }
+function xor() { "tachyon:static"; "tachyon:nothrow"; }
+function lsft() { "tachyon:static"; "tachyon:nothrow"; }
+function rsft() { "tachyon:static"; "tachyon:nothrow"; }
+function ursft() { "tachyon:static"; "tachyon:nothrow"; }
+function ne() { "tachyon:static"; "tachyon:nothrow"; }
+function nseq() { "tachyon:static"; "tachyon:nothrow"; }
 
 /**
 Create a new object with no properties
 */
-function new_object(proto)
+function newObject(proto)
 {
+    "tachyon:static";
+    "tachyon:nothrow";
+
     // Allocate space for an object
     var obj = boxRef(alloc_obj(), TAG_OBJECT);
 
@@ -473,10 +494,12 @@ function computeHash(key)
 }
 
 /**
-Implementation of the HIR put_prop_val instruction
+Set a property on an object
 */
-function put_prop_val(obj, propName, propVal)
+function putPropVal(obj, propName, propVal)
 {
+    "tachyon:static";
+
     // TODO: assert object is passed? toObject?
 
     // TODO: find if getter-setter exists?
@@ -546,10 +569,12 @@ function put_prop_val(obj, propName, propVal)
 }
 
 /**
-Implementation of the HIR get_prop_val instruction
+Get a property from an object
 */
-function get_prop_val(obj, propName)
+function getPropVal(obj, propName)
 {
+    "tachyon:static";
+
     // TODO: throw error if not object
     // - Maybe not, should never happen in practice... toObject
     // - What we actually want is a debug assertion

@@ -30,7 +30,11 @@ iir =
     itof        : IToFPInstr,
     ftoi        : FPToIInstr,
 
-    // Branch instructions
+    //
+    // TODO: add arithmetic, bitwise, comparison instructions
+    //
+
+    // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,
     sub_ovf     : SubOvfInstr,
     mul_ovf     : MulOvfInstr

@@ -241,10 +241,10 @@ tests.ir.withStmt = function ()
         function (instr)
         {
             if (instr instanceof CallFuncInstr && 
-                instr.uses[0].funcName == 'get_prop_val')
+                instr.uses[0].funcName == 'getPropVal')
                 hasGet = true;
             if (instr instanceof CallFuncInstr && 
-                instr.uses[0].funcName == 'put_prop_val')
+                instr.uses[0].funcName == 'putPropVal')
                 hasPut = true;
         }
     );
@@ -429,4 +429,3 @@ tests.ir.inlining = function ()
     // Validate the resulting IR
     ir.validate();
 }
-
