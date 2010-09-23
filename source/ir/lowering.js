@@ -48,7 +48,7 @@ function lowerIRCFG(cfg)
             // Create a boolean conversion instruction
             var toBoolInstr = new CallFuncInstr(
                 [
-                    primitiveMap["boxToBool"],
+                    staticEnv.getBinding('boxToBool'),
                     ConstValue.getConst(undefined),
                     instr.uses[0]
                 ]
@@ -60,28 +60,6 @@ function lowerIRCFG(cfg)
 
             // Add the instruction before the if
             cfg.addInstr(itr, toBoolInstr);
-
-            var instr = itr.get();
-        }
-
-        // If this instruction should be translated into a primitive call
-        if (usesBoxed && primitiveMap[instr.mnemonic])
-        {
-            // Get a reference to the primitive function
-            var primFunc = primitiveMap[instr.mnemonic];
-
-            // Create a call instruction  
-            var callInstr = new CallFuncInstr(
-                [
-                    primFunc,
-                    ConstValue.getConst(undefined)
-                ]
-                .concat(instr.uses)
-                .concat(instr.targets)
-            );
-            
-            // Replace the instruction by the call
-            cfg.replInstr(itr, callInstr);
 
             var instr = itr.get();
         }
@@ -126,11 +104,6 @@ function lowerIRCFG(cfg)
 }
 
 /**
-Map of instruction names to primitive functions
-*/
-var primitiveMap = {}
-
-/**
 Compile the primitives source code to enable IR lowering
 */
 function compPrimitives()
@@ -142,6 +115,9 @@ function compPrimitives()
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
     ];
+
+    // List of IR functions for the primitive code
+    var irList = [];
 
     // For each AST
     for (var i = 0; i < astList.length; ++i)
@@ -160,31 +136,20 @@ function compPrimitives()
         // Generate IR from the AST
         var ir = unitToIR(ast, true);
 
-        // For each function in the IR
-        var funcList = ir.getChildrenList();
-        for (var j = 0; j < funcList.length; ++j)
-        {
-            var func = funcList[j];
-
-            if (!func.funcName)
-                continue;
-
-            // Add the function to the primitive map
-            primitiveMap[func.funcName] = func;
-        }
+        irList.push(ir);
     }
 
-    // For each primitive
-    for (var funcName in primitiveMap)
+    // For each IR
+    for (var i = 0; i < irList.length; ++i)
     {
-        var func = primitiveMap[funcName];
+        var ir = irList[i];
 
-        // Perform IR lowering on the primitive
-        lowerIRFunc(func);
+        // Perform IR lowering on the primitives
+        lowerIRFunc(ir);
 
-        print(func);
+        print(ir);
 
         // Validate the resulting code
-        func.validate();
+        ir.validate();
     }
 }

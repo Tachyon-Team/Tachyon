@@ -26,10 +26,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
-// TODO: Eliminate untyped instructions, replace by calls to primitive
-// TODO: Eliminate put_prop_val, get_prop_val instructions
-// TODO: Eliminate untyped instruction maker
-
 //=============================================================================
 //
 // IR Core
@@ -1096,81 +1092,6 @@ instrMaker.validType = function (value, expectedType)
     );
 }
 
-/**
-Function to generate generic untyped instruction constructors using closures
-@param mnemonic mnemonic name for the instruction
-@param numInputs number of input operands
-@param protoObj prototype object instance, new IRInstr instance by default
-*/
-function untypedInstrMaker(
-    mnemonic, 
-    numInputs, 
-    branchNames,
-    voidOutput,
-    writesMem,
-    readsMem,
-    protoObj
-)
-{
-    function initFunc(typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, numInputs);
-        instrMaker.allValsBoxed(inputVals);
-
-        assert (
-            (branchTargets.length == 0 && !branchNames) ||
-            (branchTargets.length == branchNames.length),
-            'invalid number of branch targets specified'
-        );
-
-        this.type = voidOutput? IRType.none:IRType.box;
-
-        this.writesMem = (writesMem !== undefined);
-        this.readsMem = (readsMem !== undefined);
-    }
-
-    return instrMaker(
-        mnemonic,
-        initFunc,
-        branchNames,
-        protoObj,
-        undefined
-    );
-}
-
-//=============================================================================
-//
-// High-Level instructions, these operate only on boxed values
-//
-//=============================================================================
-
-/**
-@class Logical negation instruction
-@augments IRInstr
-*/
-var LogNotInstr = untypedInstrMaker(
-    'not',
-     1
-);
-
-/**
-@class Type query instruction
-@augments IRInstr
-*/
-var TypeOfInstr = untypedInstrMaker(
-    'typeof',
-     1
-);
-
-/**
-@class Instance/class query instruction
-@augments IRInstr
-*/
-var InstOfInstr = untypedInstrMaker(
-    'instanceof',
-     2
-);
-
 //=============================================================================
 //
 // Arithmetic operations without overflow handling
@@ -1595,30 +1516,6 @@ var NeInstr = instrMaker(
     'ne',
     undefined,
     undefined,
-    new CompInstr()
-);
-
-/**
-@class Strict-equality comparison instruction
-@augments CompInstr
-*/
-var SeqInstr = untypedInstrMaker(
-    'seq',
-     2,
-    undefined,
-    false,
-    new CompInstr()
-);
-
-/**
-@class Strict-inequality comparison instruction
-@augments CompInstr
-*/
-var NseqInstr = untypedInstrMaker(
-    'nseq',
-     2,
-    undefined,
-    false,
     new CompInstr()
 );
 

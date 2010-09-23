@@ -132,11 +132,11 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             merge
         );
         addInstr(
-            new LogNotInstr(merge.instrs[0]),
+            new NotInstr(merge.instrs[0]),
             merge
         );
         addInstr(
-            new LogNotInstr(merge.instrs[1]),
+            new NotInstr(merge.instrs[1]),
             merge
         );
         addInstr(

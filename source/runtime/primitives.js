@@ -261,16 +261,19 @@ function newObject(proto)
     // Allocate space for an object
     var obj = boxRef(alloc_obj(), TAG_OBJECT);
 
-    // Allocate space for a hash table
-    var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
-
     // Initialize the prototype object
     set_obj_proto(obj, proto);
 
-    // Initialize the hash table pointer, size and number of properties
-    set_obj_hashtbl(obj, hashtbl);
+    // Initialize the hash table size and number of properties
     set_obj_tblsize(obj, HASH_MAP_INIT_SIZE);
     set_obj_numprops(obj, iir.constant(IRType.i32, 0));
+
+    // Initialize the hash table pointer to null to prevent GC errors
+    set_obj_hashtbl(obj, null);
+
+    // Allocate space for a hash table and set the hash table reference
+    var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
+    set_obj_hashtbl(obj, hashtbl);
 
     // Initialize the hash table
     for (
@@ -296,13 +299,8 @@ function lt(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Get integer-typed values for v1 and v2
-        // Note that this does not unbox the values
-        var i1 = iir.icast(IRType.pint, v1);
-        var i2 = iir.icast(IRType.pint, v2);
-
-        // Compare the immediate integers directly
-        return (i1 < i2)? true:false;
+        // Compare the immediate integers directly without unboxing them
+        return iir.lt(v1, v2)? true:false;
     }
     else
     {
@@ -320,13 +318,8 @@ function eq(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Get integer-typed values for v1 and v2
-        // Note that this does not unbox the values
-        var i1 = iir.icast(IRType.pint, v1);
-        var i2 = iir.icast(IRType.pint, v2);
-
-        // Compare the immediate integers directly
-        return (i1 == i2)? true:false;
+        // Compare the immediate integers directly without unboxing them
+        return iir.eq(v1, v2)? true:false;
     }
     else
     {
@@ -348,12 +341,10 @@ function seq(v1, v2)
     }
     else
     {
-        // Get the raw bit-patterns of the boxed values
-        var i1 = iir.icast(IRType.pint, v1);
-        var i2 = iir.icast(IRType.pint, v2);
-
-        // Compare the raw bit-patterns directly
-        return (i1 == i2)? true:false;
+        // Compare the boxed value directly without unboxing them
+        // This will compare for equality of reference in the case of
+        // references and compare immediate integers directly
+        return iir.eq(v1, v2)? true:false;
     }
 }
 
@@ -458,8 +449,8 @@ function computeHash(key)
     // If the property is integer
     if (boxIsInt(key))
     {
-        // Cast the key to an integer value
-        return iir.icast(IRType.pint, key);
+        // Unbox the key
+        return unboxInt(key);
     }
 
     // Otherwise, the key is a string
