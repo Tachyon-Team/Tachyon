@@ -32,6 +32,12 @@ ctxLayout.addField(
     IRType.box
 );
 
+// Syntax error constructor
+ctxLayout.addField(
+    'syntaxerror',
+    IRType.box
+);
+
 // Type error constructor
 ctxLayout.addField(
     'typeerror',

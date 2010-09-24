@@ -18,6 +18,22 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
+// TODO: implement delete x operator and matching unit test
+// PROBLEM: this can involve a long lookup chain of the form a.b.c
+// - Just eval left and right parts of top level index expr
+// - If no index expr, try deleting on global
+// PROBLEM: special behavior inside with context
+// - Deletes on with object if property present, otherwise deletes on global
+// PROBLEM: special behavior with local variables
+// - Does nothing for local variables
+// Use delPropVal primitive
+
+// TODO: before fetching from global object, add hasPropVal test
+// Implement conditional error throw mechanism?
+
+// TODO: global var statements should result in assignment of undefined
+// to property in global object at the beginning of the unit's code
+
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
@@ -169,8 +185,11 @@ function stmtListToIRFunc(
     if (newFunc.usesArguments)
     {
         // Create the arguments object and add it to the variable map
-        var argObj = new MakeArgObjInstr(funcObj);
-        entryBlock.addInstr(argObj, 'argObj');
+        var argObj = insertPrimCallIR(
+            entryBlock, 
+            'makeArgObj', 
+            [funcObj]
+        );
         localMap.setItem('arguments', argObj);
     }
 
@@ -183,8 +202,10 @@ function stmtListToIRFunc(
         var symName = newFunc.closVars[i];
 
         // Get the corresponding mutable cell from the closure
-        var closCell = entryBlock.addInstr(
-            new GetClosInstr(funcObj, ConstValue.getConst(i))
+        var closCell = insertPrimCallIR(
+            entryBlock, 
+            'getClos', 
+            [funcObj, ConstValue.getConst(i)]
         );
 
         // Add the mutable cell to the shared variable map
@@ -200,7 +221,11 @@ function stmtListToIRFunc(
         if (!sharedMap.hasItem(symName))
         {
             // Create a new mutable cell for this variable
-            var newCell = entryBlock.addInstr(new MakeCellInstr());
+            var newCell = insertPrimCallIR(
+                entryBlock,
+                'makeCell', 
+                []
+            );
 
             // Map the variable to the mutable cell
             sharedMap.addItem(symName, newCell);
@@ -209,8 +234,10 @@ function stmtListToIRFunc(
             if (localMap.hasItem(symName))
             {
                 // Put the current value of the symbol into the cell
-                entryBlock.addInstr(
-                    new PutCellInstr(newCell, localMap.getItem(symName))
+                insertPrimCallIR(
+                    entryBlock,
+                    'putCell',
+                    [newCell, localMap.getItem(symName)]
                 );
 
                 // Remove the ysmbol from the local map
@@ -282,23 +309,30 @@ function stmtListToIRFunc(
             }
 
             // Create a closure for the function
-            var closVal = bodyContext.addInstr(
-                new MakeClosInstr(
-                    [nestFunc].concat(closVals)
-                )
+            var closVal = insertPrimCallIR(
+                bodyContext, 
+                'makeClos', 
+                [nestFunc]
             );
+
+            // Write the closure variables into the closure
+            for (var i = 0; i < closVals.length; ++i)
+            {
+                insertPrimCallIR(
+                    bodyContext, 
+                    'putClos', 
+                    [ConstValue.getConst(i), closVals[i]]
+                );
+            }
 
             // If the current function is a unit level function
             if (astNode instanceof Program)
             {
-                // Bind the nested function name in the global environment
-                insertCallIR(
-                    bodyContext,
-                    new PutPropValInstr(
-                        globalObj,
-                        ConstValue.getConst(nestFuncName),
-                        closVal
-                    )
+                // Bind the nested function name in the global environment              
+                insertPrimCallIR(
+                    bodyContext, 
+                    'putPropVal', 
+                    [globalObj, ConstValue.getConst(nestFuncName), closVal]
                 );
             }
             else
@@ -324,8 +358,8 @@ function stmtListToIRFunc(
     //print(cfg);
     //print('');
 
-    // Simplify the CFG
-    cfg.simplify();
+    // Simplify the CFG using peephole patterns
+    applyPatternsCFG(cfg);
     
     //print('');
 
@@ -446,6 +480,12 @@ function getIRFuncObj(
         {
             newFunc.inline = true;
             newFunc.staticLink = true;
+        }
+
+        // If this is a no throw annotation
+        else if (tokens.length == 1 && tokens[0] == 'nothrow')
+        {
+            newFunc.noThrow = true;
         }
 
         // If this is an argument type annotation (eg: arg <arg_name> <type>)
@@ -1017,8 +1057,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testContext.getOutValue(),
                 bodyContext.entryBlock,
@@ -1091,8 +1130,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testContext.getOutValue(),
                 bodyContext.entryBlock,
@@ -1179,8 +1217,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testContext.getOutValue(),
                 bodyContext.entryBlock,
@@ -1201,20 +1238,18 @@ function stmtToIR(context)
         var setCtx = context.pursue(astStmt.set_expr);
         exprToIR(setCtx);
 
-        // Get the property names of the set object
-        var propNameArr = setCtx.addInstr(
-            new GetPropNamesInstr(
-                setCtx.getOutValue()
-            )
+        // Get the property names of the set object        
+        var propNameArr = insertPrimCallIR(
+            setCtx, 
+            'getPropNames', 
+            [setCtx.getOutValue()]
         );
 
         // Get the length of the property name array minus one
-        var numPropNames = insertCallIR(
-            setCtx,
-            new GetPropValInstr(
-                propNameArr,
-                ConstValue.getConst('length')
-            )
+        var numPropNames = insertPrimCallIR(
+            setCtx, 
+            'getPropVal', 
+            [propNameArr, ConstValue.getConst('length')]
         );
         var numPropNamesMin1 = setCtx.addInstr(
             new SubInstr(
@@ -1247,7 +1282,7 @@ function stmtToIR(context)
 
         // Test that the current property index is valid
         var testVal = testCtx.addInstr(
-            new GteInstr(
+            new GeInstr(
                 propIndex,
                 ConstValue.getConst(0)
             )
@@ -1264,12 +1299,10 @@ function stmtToIR(context)
         );
         
         // Get the current property
-        var curPropName = insertCallIR(
-            bodyCtx,
-            new GetPropValInstr(
-                propNameArr,
-                propIndex
-            )
+        var curPropName = insertPrimCallIR(
+            bodyCtx, 
+            'getPropVal', 
+            [propNameArr, propIndex]
         );
         
         // Assign the current prop name to LHS expr
@@ -1333,8 +1366,7 @@ function stmtToIR(context)
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
         var testExit = testCtx.getExitBlock();
-        testExit.remBranch();
-        testExit.addInstr(
+        testExit.replBranch(
             new IfInstr(
                 testVal,
                 bodyCtx.entryBlock,
@@ -1354,13 +1386,13 @@ function stmtToIR(context)
         // Get the label, if one was specified
         var label = astStmt.label? astStmt.label.toString():'';
 
-        // Create a new context and bridge it
-        var newContext = context.pursue(context.astNode);
-        newContext.bridge();
-
         // If there is a continue list for this label
         if (context.contMap.hasItem(label))
         {
+            // Create a new context and bridge it
+            var newContext = context.pursue(context.astNode);
+            newContext.bridge();
+
             // Add the new context to the list corresponding to this label
             context.contMap.getItem(label).push(newContext);
 
@@ -1370,12 +1402,14 @@ function stmtToIR(context)
         else
         {
             // Generate code to throw a syntax error
-            errorToIR(
-                context,
-                newContext,
-                SyntaxError,
-                'continue with invalid context'
+            insertErrorIR(
+                context, 
+                'SyntaxError', 
+                'continue with invalid label'
             );
+
+            // Set the context output
+            context.setOutput(context.entryBlock);
         }
     }
 
@@ -1384,13 +1418,13 @@ function stmtToIR(context)
         // Get the label, if one was specified
         var label = astStmt.label? astStmt.label.toString():'';
 
-        // Create a new context and bridge it
-        var newContext = context.pursue(context.astNode);
-        newContext.bridge();
-
         // If there is a break list for this label
         if (context.breakMap.hasItem(label))
         {
+            // Create a new context and bridge it
+            var newContext = context.pursue(context.astNode);
+            newContext.bridge();
+
             // Add the new context to the list corresponding to this label
             context.breakMap.getItem(label).push(newContext);
 
@@ -1400,12 +1434,14 @@ function stmtToIR(context)
         else
         {
             // Generate code to throw a syntax error
-            errorToIR(
-                context,
-                newContext,
-                SyntaxError,
-                'break with invalid context'
+            insertErrorIR(
+                context, 
+                'SyntaxError', 
+                'break with invalid label'
             );
+
+            // Set the context output
+            context.setOutput(context.entryBlock);
         }
     }
 
@@ -1525,11 +1561,10 @@ function stmtToIR(context)
                 exprToIR(curTestCtx);
 
                 // Compare the testvalue with the switch value
-                var testVal = curTestCtx.addInstr(
-                    new SeqInstr(
-                        curTestCtx.getOutValue(),
-                        switchCtx.getOutValue()
-                    )
+                var testVal = insertPrimCallIR(
+                    curTestCtx, 
+                    'seq', 
+                    [curTestCtx.getOutValue(), switchCtx.getOutValue()]
                 );
 
                 // Merge the incoming contexts
@@ -1541,9 +1576,6 @@ function stmtToIR(context)
                     'switch_case_' + i
                 );
 
-                // Remove the branch introduced by the merge
-                curTestCtx.getExitBlock().remBranch();
-
                 // Create a new context for the clause statements
                 var stmtCtx = context.branch(
                     clause.statements,
@@ -1554,6 +1586,15 @@ function stmtToIR(context)
 
                 // Generate code for the statement
                 stmtListToIR(stmtCtx);
+
+                // Replace the merge branch by an if instruction
+                curTestCtx.getExitBlock().replBranch(
+                    new IfInstr(
+                        testVal,
+                        stmtCtx.entryBlock,
+                        nextTestCtx.entryBlock
+                    )
+                );
             }
 
             // Otherwise, this is the default case
@@ -1595,16 +1636,16 @@ function stmtToIR(context)
                         stmtCtx.entryBlock
                     );
                 }
-            }
 
-            // Add the if test instruction
-            curTestCtx.addInstr(
-                new IfInstr(
-                    testVal,
-                    stmtCtx.entryBlock,
-                    nextTestCtx.entryBlock
-                )
-            );
+                // Add the if test instruction
+                curTestCtx.addInstr(
+                    new IfInstr(
+                        testVal,
+                        stmtCtx.entryBlock,
+                        nextTestCtx.entryBlock
+                    )
+                );
+            }
 
             // Update the previous statement context
             prevStmtCtx = stmtCtx;
@@ -1851,9 +1892,21 @@ function exprToIR(context)
         }
 
         // Create a closure for the function
-        var closVal = context.addInstr(
-            new MakeClosInstr(nestFunc, context.globalObj, closVals)
+        var closVal = insertPrimCallIR(
+            context, 
+            'makeClos', 
+            [nestFunc]
         );
+
+        // Write the closure variables into the closure
+        for (var i = 0; i < closVals.length; ++i)
+        {
+            insertPrimCallIR(
+                context, 
+                'putClos', 
+                [ConstValue.getConst(i), closVals[i]]
+            );
+        }
 
         // Set the output to the new closure
         context.setOutput(context.entryBlock, closVal);
@@ -1929,12 +1982,10 @@ function exprToIR(context)
             exprToIR(idxContext);
 
             // Get the function property from the object
-            funcVal = insertCallIR(
-                idxContext,
-                new GetPropValInstr(
-                    thisContext.getOutValue(),
-                    idxContext.getOutValue()
-                )
+            funcVal = insertPrimCallIR(
+                idxContext, 
+                'getPropVal', 
+                [thisContext.getOutValue(), idxContext.getOutValue()]
             );
 
             // The this value is the result of the this expression evaluation
@@ -1996,18 +2047,19 @@ function exprToIR(context)
         var elemVals = exprListToIR(elemCtx);
 
         // Create a new array
-        var newArray = elemCtx.addInstr(new NewArrayInstr());
+        var newArray = insertPrimCallIR(
+            elemCtx, 
+            'newArray', 
+            []
+        );
 
         // Set the value of each element in the new array
         for (var i = 0; i < elemVals.length; ++i)
         {
-            insertCallIR(
-                elemCtx,
-                new PutPropValInstr(
-                    newArray,
-                    ConstValue.getConst(i),
-                    elemVals[i]
-                )
+            insertPrimCallIR(
+                elemCtx, 
+                'putPropVal', 
+                [newArray, ConstValue.getConst(i), elemVals[i]]
             );
         }
         
@@ -2036,10 +2088,10 @@ function exprToIR(context)
         );
 
         // Create a new object
-        var newObject = valCtx.addInstr(
-            new NewObjectInstr(
-                objProto
-            )
+        var newObject = insertPrimCallIR(
+            valCtx, 
+            'newObject', 
+            [objProto]
         );
 
         // Set the value of each property in the new object
@@ -2048,13 +2100,10 @@ function exprToIR(context)
             var propName = nameVals[i];
             var propValue = valVals[i];
 
-            insertCallIR(
-                valCtx,
-                new PutPropValInstr(
-                    newObject,
-                    propName,
-                    propValue
-                )
+            insertPrimCallIR(
+                valCtx, 
+                'putPropVal', 
+                [newObject, propName, propValue]
             );
         }
         
@@ -2103,7 +2152,7 @@ function opToIR(context)
     var exprs = context.astNode.exprs;
 
     // Function to generate code for pre/post increment/decrement operations
-    function prePostGen(instrClass, post)
+    function prePostGen(primName, instrClass, post)
     {
         // Get the variable expression
         var varExpr = exprs[0];
@@ -2113,11 +2162,11 @@ function opToIR(context)
         exprToIR(fstContext);
         
         // Compute the incremented value
-        var postVal = fstContext.addInstr(
-            new instrClass(
-                fstContext.getOutValue(),
-                ConstValue.getConst(1)
-            )
+        var postVal = makeOp(
+            fstContext,
+            primName,
+            instrClass,
+            [fstContext.getOutValue(), ConstValue.getConst(1)]
         );
     
         // Assign the incremented value to the variable
@@ -2132,7 +2181,7 @@ function opToIR(context)
     }
 
     // Function to generate code for composite assignment expressions
-    function compAssgGen(instrClass)
+    function compAssgGen(primName, instrClass)
     {
         // Function to implement the operator code gen
         function opFunc(context, lhsVal)
@@ -2142,11 +2191,11 @@ function opToIR(context)
             exprToIR(rhsContext);
 
             // Compute the added value
-            var addVal = rhsContext.addInstr(
-                new instrClass(
-                    lhsVal,
-                    rhsContext.getOutValue()
-                )
+            var addVal = makeOp(
+                rhsContext, 
+                primName, 
+                instrClass,
+                [lhsVal, rhsContext.getOutValue()]
             );
 
             context.setOutput(rhsContext.getExitBlock(), addVal);
@@ -2161,19 +2210,51 @@ function opToIR(context)
     }
 
     // Function to generate code for generic unary/binary operators
-    function opGen(instrClass)
+    function opGen(primName, instrClass)
     {
         // Compile the argument values
         var argsContext = context.pursue(exprs);
         var argVals = exprListToIR(argsContext);
 
         // Create the appropriate operator instruction
-        var opVal = argsContext.addInstr(
-            new instrClass(argVals)
-        );
+        var opVal = makeOp(argsContext, primName, instrClass, argVals);
 
         // Set the operator's output value as the output
         context.setOutput(argsContext.getExitBlock(), opVal);
+    }
+
+    // Function to create either a primitive call or a machine instruction
+    // depending on the argument types
+    function makeOp(context, primName, instrClass, argVals)
+    {
+        // Test if all arguments are boxed
+        var allBoxed = true;
+        for (var i = 0; i < argVals.length; ++i)
+            if (argVals[i].type != IRType.box)
+                allBoxed = false;
+
+        // If all values are boxed
+        if (allBoxed)
+        {
+            // Create the primitive call
+           var opVal = insertPrimCallIR(
+                context,
+                primName, 
+                argVals
+            );
+        }
+        else
+        {
+            if (!instrClass)
+                throw 'operator cannot operate on typed values: ' + primName;
+
+            // Create the machine instruction
+            var opVal = context.addInstr(
+                new instrClass(argVals)
+            );
+        }
+
+        return opVal;
     }
 
     // Switch on the operator
@@ -2382,11 +2463,11 @@ function opToIR(context)
             var argVals = exprListToIR(argsContext);
 
             // Subtract the argument value from the constant 0
-            var opVal = argsContext.addInstr(
-                new SubInstr(
-                    ConstValue.getConst(0),
-                    argVals[0]
-                )
+            var opVal = makeOp(
+                argsContext,
+                'sub',
+                SubInstr,
+                [ConstValue.getConst(0, argVals[0].type), argVals[0]]
             );
 
             // Set the subtraction's output value as the output
@@ -2402,9 +2483,10 @@ function opToIR(context)
             var argVals = exprListToIR(argsContext);
 
             // Create the appropriate operator instruction
-            var opVal = insertCallIR(
-                argsContext,
-                new GetPropValInstr(argVals[0], argVals[1])
+            var opVal = insertPrimCallIR(
+                argsContext, 
+                'getPropVal', 
+                [argVals[0], argVals[1]]
             );
 
             // Set the operator's output value as the output
@@ -2413,115 +2495,159 @@ function opToIR(context)
         break;
 
         case '++ x':
-        prePostGen(AddInstr, false);
+        prePostGen('add', AddInstr, false);
         break;
 
         case '-- x':
-        prePostGen(SubInstr, false);
+        prePostGen('sub', SubInstr, false);
         break;
 
         case 'x ++':
-        prePostGen(AddInstr, true);     
+        prePostGen('add', AddInstr, true);     
         break;
 
         case '-- x':
-        prePostGen(SubInstr, true);           
+        prePostGen('sub', SubInstr, true);           
         break;
 
         case 'x += y':
-        compAssgGen(AddInstr);
+        compAssgGen('add', AddInstr);
+        break;
+
+        case 'x -= y':
+        compAssgGen('sub', SubInstr);
+        break;
+
+        case 'x *= y':
+        compAssgGen('mul', MulInstr);
+        break;
+
+        case 'x /= y':
+        compAssgGen('div', DivInstr);
+        break;
+
+        case 'x %= y':
+        compAssgGen('mod', ModInstr);
+        break;
+
+        case '~= x':
+        compAssgGen('not', NotInstr);
+        break;
+
+        case 'x &= y':
+        compAssgGen('and', AndInstr);
+        break;
+
+        case 'x |= y':
+        compAssgGen('or', OrInstr);
+        break;
+
+        case 'x ^= y':
+        compAssgGen('xor', XorInstr);
+        break;
+
+        case 'x <<= y':
+        compAssgGen('lsft', LsftInstr);
+        break;
+
+        case 'x >>= y':
+        compAssgGen('rsft', RsftInstr);
+        break;
+
+        case 'x >>>= y':
+        compAssgGen('ursft', UrsftInstr);
         break;
 
         case 'x + y':
-        opGen(AddInstr);
+        opGen('add', AddInstr);
         break;
 
         case 'x - y':
-        opGen(SubInstr);
+        opGen('sub', SubInstr);
         break;
 
         case 'x * y':
-        opGen(MulInstr);
+        opGen('mul', MulInstr);
         break;
 
         case 'x / y':
-        opGen(DivInstr);
+        opGen('div', DivInstr);
         break;
 
         case 'x % y':
-        opGen(ModInstr);
+        opGen('mod', ModInstr);
         break;
 
         case '! x':
-        opGen(LogNotInstr);
+        opGen('logNot');
         break;
 
         case '~ x':
-        opGen(NotInstr);
+        opGen('not', NotInstr);
         break;
 
         case 'x & y':
-        opGen(AndInstr);
+        opGen('and', AndInstr);
         break;
 
         case 'x | y':
-        opGen(OrInstr);
+        opGen('or', OrInstr);
         break;
 
         case 'x ^ y':
-        opGen(XorInstr);
+        opGen('xor', XorInstr);
         break;
 
         case 'x << y':
-        opGen(LsftInstr);
+        opGen('lsft', LsftInstr);
         break;
 
         case 'x >> y':
-        opGen(RsftInstr);
+        opGen('rsft', RsftInstr);
         break;
 
         case 'x >>> y':
-        opGen(UrsftInstr);
+        opGen('ursft', UrsftInstr);
         break;
 
         case 'x < y':
-        opGen(LtInstr);
+        opGen('lt', LtInstr);
         break;
 
         case 'x <= y':
-        opGen(LteInstr);
+        opGen('le', LeInstr);
         break;
 
         case 'x > y':
-        opGen(GtInstr);
+        opGen('gt', GtInstr);
         break;
 
         case 'x >= y':
-        opGen(GteInstr);
+        opGen('ge', GeInstr);
         break;
 
         case 'x == y':
-        opGen(EqInstr);
+        opGen('eq', EqInstr);
         break;
 
         case 'x != y':
-        opGen(NeqInstr);
+        opGen('ne', NeInstr);
         break;
 
         case 'x === y':
-        opGen(SeqInstr);
+        opGen('seq');
         break;
 
         case 'x !== y':
-        opGen(NseqInstr);
+        opGen('nseq');
         break;
 
         case 'typeof x':
-        opGen(TypeOfInstr);
+        opGen('typeOf');
         break;
 
         case 'x instanceof y':
-        opGen(InstOfInstr);
+        opGen('instanceOf');
         break;
 
         default:
@@ -2555,11 +2681,10 @@ function assgToIR(context, rhsVal)
         if (context.withVal)
         {
             // Add a has-property test on the object for the symbol name
-            var hasTestVal = context.addInstr(
-                new HasPropValInstr(
-                    context.withVal,
-                    ConstValue.getConst(symName)                
-                )
+            var hasTestVal = insertPrimCallIR(
+                context, 
+                'hasPropVal', 
+                [context.withVal, ConstValue.getConst(symName)]
             );
 
             // Context for the case where the with object has the property
@@ -2600,12 +2725,10 @@ function assgToIR(context, rhsVal)
             if (leftExpr.id.scope instanceof Program)
             {
                 // Get the value from the global object
-                lhsVal = insertCallIR(
-                    varContext,
-                    new GetPropValInstr(
-                        context.globalObj,
-                        ConstValue.getConst(symName)
-                    )
+                lhsVal = insertPrimCallIR(
+                    varContext, 
+                    'getPropVal', 
+                    [context.globalObj, ConstValue.getConst(symName)]
                 );
             }
 
@@ -2616,9 +2739,11 @@ function assgToIR(context, rhsVal)
                 var cellValue = context.sharedMap.getItem(symName);
 
                 // Get the value in the mutable cell
-                lhsVal = varContext.addInstr(
-                    new GetCellInstr(cellValue)
-                );   
+                lhsVal = insertPrimCallIR(
+                    varContext,
+                    'getCell',
+                    [cellValue]
+                );
             }
 
             // Otherwise, the variable is local
@@ -2644,14 +2769,11 @@ function assgToIR(context, rhsVal)
         // If the variable is global
         if (leftExpr.id.scope instanceof Program)
         {
-            // Get the value from the global object
-            insertCallIR(
-                varContext,
-                new PutPropValInstr(
-                    context.globalObj,
-                    ConstValue.getConst(symName),
-                    rhsValAssg
-                )
+            // Set the value in the global object
+            insertPrimCallIR(
+                varContext, 
+                'putPropVal', 
+                [context.globalObj, ConstValue.getConst(symName), rhsValAssg]
             );
         }
 
@@ -2662,9 +2784,11 @@ function assgToIR(context, rhsVal)
             var cellValue = context.sharedMap.getItem(symName);
 
             // Set the value in the mutable cell
-            varContext.addInstr(
-                new PutCellInstr(cellValue, rhsValAssg)
-            );   
+            insertPrimCallIR(
+                varContext,
+                'putCell',
+                [cellValue, rhsValAssg]
+            );
         }
 
         // Otherwise, the variable is local
@@ -2684,12 +2808,10 @@ function assgToIR(context, rhsVal)
                 var lhsVal;
 
                 // Get the value in the with object
-                lhsVal = insertCallIR(
-                    propContext,
-                    new GetPropValInstr(
-                        context.withVal,
-                        ConstValue.getConst(symName)
-                    )
+                lhsVal = insertPrimCallIR(
+                    propContext, 
+                    'getPropVal', 
+                    [context.withVal, ConstValue.getConst(symName)]
                 );
 
                 // Update the RHS value according to the specified function
@@ -2706,13 +2828,10 @@ function assgToIR(context, rhsVal)
             }
 
             // Set the value in the with object
-            insertCallIR(
-                propContext,
-                new PutPropValInstr(
-                    context.withVal,
-                    ConstValue.getConst(symName),
-                    rhsValAssg
-                )
+            insertPrimCallIR(
+                propContext, 
+                'putPropVal', 
+                [context.withVal, ConstValue.getConst(symName), rhsValAssg]
             );
 
             // Bridge the prop and var contexts
@@ -2779,13 +2898,11 @@ function assgToIR(context, rhsVal)
             var lhsVal;
 
             // Get the property's current value
-            lhsVal = insertCallIR(
-                curContext,
-                new GetPropValInstr(
-                    objContext.getOutValue(),
-                    idxContext.getOutValue()
-                )
-            ); 
+            lhsVal = insertPrimCallIR(
+                curContext, 
+                'getPropVal', 
+                [objContext.getOutValue(), idxContext.getOutValue()]
+            );
 
             // Update the RHS value according to the specified function
             var funcCtx = curContext.pursue(context.astNode);
@@ -2797,13 +2914,10 @@ function assgToIR(context, rhsVal)
         }
 
         // Set the property to the right expression's value
-        insertCallIR(
-            curContext,
-            new PutPropValInstr(
-                objContext.getOutValue(),
-                idxContext.getOutValue(),
-                rhsVal
-            )
+        insertPrimCallIR(
+            curContext, 
+            'putPropVal', 
+            [objContext.getOutValue(), idxContext.getOutValue(), rhsVal]
         );
 
         // The value of the right expression is the assignment expression's value
@@ -2841,11 +2955,10 @@ function refToIR(context)
     if (context.withVal)
     {
         // Add a has-property test on the object for the symbol name
-        var hasTestVal = context.addInstr(
-            new HasPropValInstr(
-                context.withVal,
-                ConstValue.getConst(symName)                
-            )
+        var hasTestVal = insertPrimCallIR(
+            context,
+            'hasPropVal',
+            [context.withVal, ConstValue.getConst(symName)]
         );
 
         // Context for the case where the with object has the property
@@ -2889,12 +3002,10 @@ function refToIR(context)
         else
         {
             // Get the value from the global object
-            varValueVar = insertCallIR(
-                varContext,
-                new GetPropValInstr(
-                    context.globalObj,
-                    ConstValue.getConst(symName)
-                )
+            varValueVar = insertPrimCallIR(
+                varContext, 
+                'getPropVal', 
+                [context.globalObj, ConstValue.getConst(symName)]
             );
         }
     }
@@ -2906,8 +3017,10 @@ function refToIR(context)
         var cellValue = context.sharedMap.getItem(symName);
 
         // Get the value from the mutable cell
-        varValueVar = varContext.addInstr(
-            new GetCellInstr(cellValue)
+        varValueVar = insertPrimCallIR(
+            varContext,
+            'getCell',
+            [cellValue]
         );
     }
 
@@ -2927,12 +3040,10 @@ function refToIR(context)
     if (context.withVal)
     {
         // Get the value in the with object
-        var varValueProp = insertCallIR(
-            propContext,
-            new GetPropValInstr(
-                context.withVal,
-                ConstValue.getConst(symName)
-            )
+        var varValueProp = insertPrimCallIR(
+            propContext, 
+            'getPropVal', 
+            [context.withVal, ConstValue.getConst(symName)]
         );
 
         // Bridge the prop and var contexts
@@ -3001,6 +3112,67 @@ function insertContextReadIR(context, query, outName)
 }
 
 /**
+Throw an error object containing an error message
+*/
+function insertErrorIR(context, errorName, errorMsg)
+{
+    // Find the error contructor
+    var errorCtor;
+    switch (errorName)
+    {
+        case 'RangeError':
+        errorCtor = insertContextReadIR(context, ['rangeerror']);
+        break;
+        case 'ReferenceError':
+        errorCtor = insertContextReadIR(context, ['referror']);
+        break;
+        case 'SyntaxError':
+        errorCtor = insertContextReadIR(context, ['syntaxerror']);
+        break;
+        case 'TypeError':
+        errorCtor = insertContextReadIR(context, ['typeerror']);
+        break;
+        case 'URIError':
+        errorCtor = insertContextReadIR(context, ['urierror']);
+        break;
+    }
+    assert (
+        errorCtor,
+        'error constructor not found for: "' + errorName + '"'
+    );
+
+    // Insert a call to the error constructor
+    insertPrimCallIR(
+        context, 
+        'throwError', 
+        [
+            errorCtor, 
+            ConstValue.getConst(undefined),
+            ConstValue.getConst(errorMsg)
+        ]
+    );
+}
+
+/**
+Insert a call to a primitive function
+*/
+function insertPrimCallIR(context, primName, argVals)
+{
+    // Get the static binding for the primitive function
+    var primFunc = staticEnv.getBinding(primName);
+
+    // Insert the function call
+    var retVal = insertCallIR(
+        context,
+        new CallFuncInstr(
+            [primFunc, ConstValue.getConst(undefined)].concat(argVals)
+        )
+    );
+
+    return retVal;
+}
+
+/**
 Insert a construct instruction in a given context, connect it with its
 continue and throw targets, produce the related object creation code, and
 splice this into the current context
@@ -3008,12 +3180,10 @@ splice this into the current context
 function insertConstructIR(context, funcVal, argVals)
 {
     // Get the function's prototype field
-    var funcProto = insertCallIR(
+    var funcProto = insertPrimCallIR(
         context,
-        new GetPropValInstr(
-            funcVal,
-            ConstValue.getConst('prototype')
-        )
+        'getPropVal', 
+        [funcVal, ConstValue.getConst('prototype')]
     );
 
     // If the prototype field is an object use it, otherwise, use the
@@ -3060,8 +3230,10 @@ function insertConstructIR(context, funcVal, argVals)
     context.splice(protoMerge);
     
     // Create a new object
-    var newObj = context.addInstr(
-        new NewObjectInstr(protoVal)
+    var newObj = insertPrimCallIR(
+        context, 
+        'newObject', 
+        [protoVal]
     );
     
     // Create the cnostructor call instruction
@@ -3120,11 +3292,8 @@ and throw targets and splice this into the current context
 */
 function insertCallIR(context, instr)
 {
-    // If this is a function or constructor call
-    if (
-        (instr instanceof CallFuncInstr || instr instanceof ConstructInstr) &&
-        !(instr.uses[0] instanceof IRFunction)
-    )
+    // If this is not a direct function call
+    if (!(instr.uses[0] instanceof IRFunction))
     {
         // Create basic blocks for function and non-function cases
         var errorCtx = context.branch(
@@ -3153,51 +3322,49 @@ function insertCallIR(context, instr)
             )
         );    
 
-        // Find the type error constructor in the context
-        var errorCtor = insertContextReadIR(
+        // Generate code to throw a type error
+        insertErrorIR(
             errorCtx, 
-            ['typeerror']
+            'TypeError', 
+            'callee is not a function'
         );
 
-        // Generate code to throw a type error
-        insertCallIR(
-            errorCtx,
-            new CallFuncInstr(
-                [
-                    staticEnv.getBinding('throwError'),
-                    context.globalObj,
-                    errorCtor,
-                    ConstValue.getConst('callee is not a function')                    
-                ]
-            )
-        );
         errorCtx.addInstr(new JumpInstr(contBlock));
 
         context.splice(contBlock);
     }
 
-    // Create a basic block for the call continuation
-    var contBlock = context.cfg.getNewBlock(instr.mnemonic + '_cont');
-
-    // Set the continue target for the instruction
-    instr.setContTarget(contBlock);
-
-    // Add the call instruction to the current context
-    context.addInstr(instr);
-
-    // If we are in a try block
-    if (context.throwList)
+    // If this call may throw exceptions
+    if (!(instr.uses[0] instanceof IRFunction) || !instr.uses[0].noThrow)
     {
-        // Create a new context and bridge it
-        var newCtx = context.pursue(null);
-        newCtx.bridge();
+        // Create a basic block for the call continuation
+        var contBlock = context.cfg.getNewBlock(instr.mnemonic + '_cont');
 
-        // Add the new context to the list of throw contexts
-        context.throwList.push(newCtx);
+        // Set the continue target for the instruction
+        instr.setContTarget(contBlock);
+
+        // If we are in a try block
+        if (context.throwList)
+        {
+            // Create a new context and bridge it
+            var newCtx = context.pursue(null);
+            newCtx.bridge();
+
+            // Add the new context to the list of throw contexts
+            context.throwList.push(newCtx);
+        }
+
+        // Add the call instruction to the current context
+        context.addInstr(instr);
+
+        // Splice the context to use the continue block
+        context.splice(contBlock);
     }
-
-    // Splice the context to use the continue block
-    context.splice(contBlock);
+    else
+    {
+        // Add the call instruction to the current context
+        context.addInstr(instr);
+    }
 
     // Return the instruction value
     return instr;
@@ -3210,36 +3377,6 @@ Generate a throw instruction with a given exception value
 */
 function throwToIR(context, throwCtx, excVal)
 {
-    // Add a throw instruction
-    throwCtx.addInstr(
-        new ThrowInstr(excVal)
-    );
-
-    // If this is an intraprocedural throw
-    if (context.throwList)
-    {
-        // Add the context to the list of throw contexts
-        context.throwList.push(throwCtx);
-    }
-
-    // Terminate the throw context, no instructions go after this
-    context.terminate();
-}
-
-/**
-Generate an exception throw with a given error class constructor
-@param throwCtx context after which to throw the exception
-@param excVal exception value to throw
-*/
-function errorToIR(context, throwCtx, errorCtor, errorMsg)
-{
-    // Create an error object exception
-    var excVal = insertConstructIR(
-        throwCtx,
-        ConstValue.getConst(errorCtor),
-        [ConstValue.getConst(errorMsg)]
-    );
-
     // Add a throw instruction
     throwCtx.addInstr(
         new ThrowInstr(excVal)
@@ -3458,6 +3595,11 @@ function mergeLoopEntry(
         for (var j = 0; j < contexts.length; ++j)
         {
             var context = contexts[j];
+
+            // If this context is terminated, skip it
+            if (context.isTerminated())
+                continue;
+
             var varValue = context.localMap.getItem(varName);
 
             if (varValue instanceof ConstValue && varValue.isUndef())
@@ -3487,6 +3629,10 @@ function mergeLoopEntry(
     for (var j = 0; j < contexts.length; ++j)
     {
         var context = contexts[j];
+
+        // If this context is terminated, skip it
+        if (context.isTerminated())
+            continue;
 
         var exitBlock = context.getExitBlock();
 
@@ -3693,4 +3839,3 @@ function genCondInlineIR(context)
     // Set the exit block to be the join block
     context.setOutput(joinBlock);
 }
-

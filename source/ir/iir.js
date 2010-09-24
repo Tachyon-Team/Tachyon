@@ -30,10 +30,34 @@ iir =
     itof        : IToFPInstr,
     ftoi        : FPToIInstr,
 
-    // Branch instructions
+    // Arithmetic instructions
+    add         : AddInstr,
+    sub         : SubInstr,
+    mul         : MulInstr,
+    div         : DivInstr,
+    mod         : ModInstr,
+
+    // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,
     sub_ovf     : SubOvfInstr,
-    mul_ovf     : MulOvfInstr
+    mul_ovf     : MulOvfInstr,
+
+    // Bitwise instructions
+    not         : NotInstr,
+    and         : AndInstr,
+    or          : OrInstr,
+    xor         : XorInstr,
+    lsft        : LsftInstr,
+    rsft        : RsftInstr,
+    ursft       : UrsftInstr,
+
+    // Comparison instructions
+    lt          : LtInstr,
+    le          : LeInstr,
+    gt          : GtInstr,
+    ge          : GeInstr,
+    eq          : EqInstr,
+    ne          : NeInstr
 }
 
 /**

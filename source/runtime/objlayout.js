@@ -261,13 +261,13 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
         var fieldName = query[i];
         var spec = curType.fieldMap[fieldName];
 
-        // Move to the layout of the field, if applicable
-        var curType = spec.type;
-
         assert (
             spec instanceof FieldSpec,
-            'no field spec for field: "' + fieldName + '"'
+            'field not found: "' + fieldName + '"'
         );
+
+        // Move to the layout of the field, if applicable
+        var curType = spec.type;
 
         // Add the field offset to the total offset
         var fieldOffset = ConstValue.getConst(spec.offset, IRType.pint);

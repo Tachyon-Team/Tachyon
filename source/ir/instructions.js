@@ -277,6 +277,10 @@ ConstValue.prototype.toString = function ()
     {
        return '"' + escapeJSString(this.value) + '"';
     }
+    else if (typeof this.value == 'number')
+    {
+        return this.type + ':' + String(this.value);
+    }
     else if (this.value instanceof Function)
     {
         if (this.value.hasOwnProperty('name'))
@@ -709,6 +713,8 @@ Remove a phi predecessor and the corresponding use
 */
 PhiInstr.prototype.remPred = function (pred)
 {
+    //print('Removing pred for: ' + this);
+
     // For each predecessor of the phi node
     for (var k = 0; k < this.preds.length; ++k)
     {
@@ -1086,234 +1092,6 @@ instrMaker.validType = function (value, expectedType)
     );
 }
 
-/**
-Function to generate generic untyped instruction constructors using closures
-@param mnemonic mnemonic name for the instruction
-@param numInputs number of input operands
-@param protoObj prototype object instance, new IRInstr instance by default
-*/
-function untypedInstrMaker(
-    mnemonic, 
-    numInputs, 
-    branchNames,
-    voidOutput,
-    writesMem,
-    readsMem,
-    protoObj
-)
-{
-    function initFunc(typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, numInputs);
-        instrMaker.allValsBoxed(inputVals);
-
-        assert (
-            (branchTargets.length == 0 && !branchNames) ||
-            (branchTargets.length == branchNames.length),
-            'invalid number of branch targets specified'
-        );
-
-        this.type = voidOutput? IRType.none:IRType.box;
-
-        this.writesMem = (writesMem !== undefined);
-        this.readsMem = (readsMem !== undefined);
-    }
-
-    return instrMaker(
-        mnemonic,
-        initFunc,
-        branchNames,
-        protoObj,
-        undefined
-    );
-}
-
-//=============================================================================
-//
-// High-Level instructions, these operate only on boxed values
-//
-//=============================================================================
-
-/**
-@class Logical negation instruction
-@augments IRInstr
-*/
-var LogNotInstr = untypedInstrMaker(
-    'not',
-     1
-);
-
-/**
-@class Type query instruction
-@augments IRInstr
-*/
-var TypeOfInstr = untypedInstrMaker(
-    'typeof',
-     1
-);
-
-/**
-@class Instance/class query instruction
-@augments IRInstr
-*/
-var InstOfInstr = untypedInstrMaker(
-    'instanceof',
-     2
-);
-
-/**
-@class Exception value catch
-@augments IRInstr
-*/
-var CatchInstr = untypedInstrMaker(
-    'catch',
-     0
-);
-
-/**
-@class Property test with value for field name
-@augments IRInstr
-*/
-var HasPropValInstr = untypedInstrMaker(
-    'has_prop_val',
-     2,
-    undefined,
-    false,
-    false,
-    true
-);
-
-/**
-@class Instruction to get an array containing the property names of an object
-@augments IRInstr
-*/
-var GetPropNamesInstr = untypedInstrMaker(
-    'get_prop_names',
-     1,
-    undefined,
-    false,
-    false,
-    true
-);
-
-/**
-@class Property deletion with value for field name
-@augments IRInstr
-*/
-var DelPropValInstr = untypedInstrMaker(
-    'del_prop_val',
-     2,
-    undefined,
-    true,
-    true,
-    true
-);
-
-/**
-@class Argument object creation
-@augments IRInstr
-*/
-var MakeArgObjInstr = untypedInstrMaker(
-    'make_arg_obj',
-     1
-);
-
-/**
-@class Mutable cell creation
-@augments IRInstr
-*/
-var MakeCellInstr = untypedInstrMaker(
-    'make_cell',
-     0
-);
-
-/**
-@class Get the value stored in a mutable cell
-@augments IRInstr
-*/
-var GetCellInstr = untypedInstrMaker(
-    'get_cell',
-     1,
-    undefined,
-    false,
-    false,
-    true
-);
-
-/**
-@class Set the value stored in a mutable cell
-@augments IRInstr
-*/
-var PutCellInstr = untypedInstrMaker(
-    'put_cell',
-     2,
-    undefined,
-    true,
-    true,
-    false
-);
-
-/**
-@class Closure creation with closure variable arguments
-@augments IRInstr
-*/
-var MakeClosInstr = instrMaker(
-    'make_clos',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.allValsBoxed(inputVals);
-        instrMaker.validNumInputs(inputVals, 1, Infinity);
-        assert(
-            inputVals[0] instanceof IRFunction,
-            'expected function as first argument'
-        );
-    }
-);
-
-/**
-@class Get the value stored in a closure variable
-@augments IRInstr
-*/
-var GetClosInstr = untypedInstrMaker(
-    'get_clos',
-     2,
-    undefined,
-    false,
-    false,
-    true
-);
-
-/**
-@class Set the value stored in a closure variable
-@augments IRInstr
-*/
-var PutClosInstr = untypedInstrMaker(
-   'put_clos',
-    3,
-    undefined,
-    true,
-    true,
-    false
-);
-
-/**
-@class Instruction to create a new, empty object
-@augments IRInstr
-*/
-var NewObjectInstr = untypedInstrMaker(
-    'new_object',
-     1
-);
-
-/**
-@class Instruction to create a new, empty array
-@augments IRInstr
-*/
-var NewArrayInstr = untypedInstrMaker(
-    'new_array',
-     0
-);
-
 //=============================================================================
 //
 // Arithmetic operations without overflow handling
@@ -1690,8 +1468,8 @@ var LtInstr = instrMaker(
 @class Less-than-or-equal comparison instruction
 @augments CompInstr
 */
-var LteInstr = instrMaker(
-    'lte',
+var LeInstr = instrMaker(
+    'le',
     undefined,
     undefined,
     new CompInstr()
@@ -1712,8 +1490,8 @@ var GtInstr = instrMaker(
 @class Greater-than-or-equal comparison instruction
 @augments CompInstr
 */
-var GteInstr = instrMaker(
-    'gte',
+var GeInstr = instrMaker(
+    'ge',
     undefined,
     undefined,
     new CompInstr()
@@ -1734,34 +1512,10 @@ var EqInstr = instrMaker(
 @class Inequality comparison instruction
 @augments CompInstr
 */
-var NeqInstr = instrMaker(
-    'neq',
+var NeInstr = instrMaker(
+    'ne',
     undefined,
     undefined,
-    new CompInstr()
-);
-
-/**
-@class Strict-equality comparison instruction
-@augments CompInstr
-*/
-var SeqInstr = untypedInstrMaker(
-    'seq',
-     2,
-    undefined,
-    false,
-    new CompInstr()
-);
-
-/**
-@class Strict-inequality comparison instruction
-@augments CompInstr
-*/
-var NseqInstr = untypedInstrMaker(
-    'nseq',
-     2,
-    undefined,
-    false,
     new CompInstr()
 );
 
@@ -1775,12 +1529,21 @@ var NseqInstr = untypedInstrMaker(
 @class Unconditional jump instruction
 @augments IRInstr
 */
-var JumpInstr = untypedInstrMaker(
+var JumpInstr = instrMaker(
     'jump',
-     0,
-    [undefined],
-    true
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0);
+        
+        this.type = IRType.none;
+    },
+    [undefined]
 );
+
+/**
+Jump instructions are always branch instructions
+*/
+JumpInstr.prototype.isBranch = function () { return true; }
 
 /**
 @class Function return instruction
@@ -1799,10 +1562,7 @@ var RetInstr = instrMaker(
 /**
 Ret instructions are always branch instructions
 */
-RetInstr.prototype.isBranch = function ()
-{
-    return true;
-}
+RetInstr.prototype.isBranch = function () { return true; }
 
 /**
 @class If branching instruction
@@ -1882,6 +1642,18 @@ ThrowInstr.prototype.isBranch = function ()
 {
     return true; 
 }
+
+/**
+@class Exception value catch
+@augments IRInstr
+*/
+var CatchInstr = instrMaker(
+    'catch',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0);
+    }
+);
 
 /**
 @class Base class for call instructions
@@ -2010,50 +1782,6 @@ var ConstructInstr = instrMaker(
     ['continue', 'throw'],
     new CallInstr()
 );
-
-/**
-@class Property set with value for field name
-@augments CallInstr
-*/
-var PutPropValInstr = instrMaker(
-    'put_prop_val',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 3);
-        instrMaker.validType(inputVals[0], IRType.box);
-        instrMaker.validType(inputVals[1], IRType.box);
-        instrMaker.validType(inputVals[2], IRType.box);
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.none;
-    },
-    ['continue', 'throw'],
-    new CallInstr()
-);
-
-/**
-@class Property get with value for field name
-@augments CallInstr
-*/
-var GetPropValInstr = instrMaker(
-    'get_prop_val',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.box);
-        instrMaker.validType(inputVals[1], IRType.box);
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.box;
-    },
-    ['continue', 'throw'],
-    new CallInstr()
-);
-
-/**
-The get-property instruction does not write to memory
-*/
-GetPropValInstr.prototype.writesMem = false;
 
 //=============================================================================
 //

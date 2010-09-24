@@ -47,8 +47,9 @@ function printInstrNames(ir)
         if (arraySetHas(visited, func))
             continue;
 
-        if (func.funcName == 'get_prop_val' || 
-            func.funcName == 'put_prop_val')
+        if (func.funcName == 'newObject' ||
+            func.funcName == 'getPropVal' || 
+            func.funcName == 'putPropVal')
             continue;
 
         for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())

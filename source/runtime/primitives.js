@@ -130,6 +130,7 @@ Convert a boxed value to a one-byte boolean value
 */
 function boxToBool(boxVal)
 {
+    "tachyon:static";
     "tachyon:ret i8";
 
     // Get an integer-typed value for input
@@ -157,7 +158,7 @@ function boxToBool(boxVal)
 
     else if (boxIsString(boxVal))
     {
-        var len = iir.icast(IRType.pint, str_get_len(boxVal));
+        var len = iir.icast(IRType.pint, get_str_len(boxVal));
 
         if (len != iir.constant(IRType.pint, 0))
             return iir.constant(IRType.i8, 1);
@@ -179,6 +180,7 @@ Allocate a memory block of a given size on the heap
 */
 function heapAlloc(size)
 {
+    "tachyon:static";
     "tachyon:arg size pint";
     "tachyon:ret rptr";
 
@@ -223,34 +225,68 @@ function throwError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
-function make_clos() {}
-function put_clos() {}
-function get_clos() {}
-function make_arg_obj() {}
-function div() {}
-function mod() {}
-function neq() {}
-function not() {}
+function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; }
+function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; }
+function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; }
+function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; }
+function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; }
+function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; }
+function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; }
+function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; }
+function makeCell() { "tachyon:static"; "tachyon:nothrow"; }
+function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; }
+function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; }
+function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; }
+function newArray() { "tachyon:static"; "tachyon:nothrow"; }
+function div() { "tachyon:static"; "tachyon:nothrow"; }
+function mod() { "tachyon:static"; "tachyon:nothrow"; }
+function not() { "tachyon:static"; "tachyon:nothrow"; }
+function and() { "tachyon:static"; "tachyon:nothrow"; }
+function or() { "tachyon:static"; "tachyon:nothrow"; }
+function xor() { "tachyon:static"; "tachyon:nothrow"; }
+function lsft() { "tachyon:static"; "tachyon:nothrow"; }
+function rsft() { "tachyon:static"; "tachyon:nothrow"; }
+function ursft() { "tachyon:static"; "tachyon:nothrow"; }
+function ne() { "tachyon:static"; "tachyon:nothrow"; }
+function nseq() { "tachyon:static"; "tachyon:nothrow"; }
 
 /**
 Create a new object with no properties
 */
-function new_object()
+function newObject(proto)
 {
-    /*
+    "tachyon:static";
+    "tachyon:nothrow";
+
     // Allocate space for an object
-    var objPtr = alloc_obj();
+    var obj = boxRef(alloc_obj(), TAG_OBJECT);
 
-    // Allocate space for a hash table
-    var tblPtr = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+    // Initialize the prototype object
+    set_obj_proto(obj, proto);
 
-    //
-    // TODO: init object and hash table
-    //
+    // Initialize the hash table size and number of properties
+    set_obj_tblsize(obj, HASH_MAP_INIT_SIZE);
+    set_obj_numprops(obj, iir.constant(IRType.i32, 0));
 
-    // Box and return the object pointer
-    return boxRef(objPtr, TAG_OBJECT);
-    */
+    // Initialize the hash table pointer to null to prevent GC errors
+    set_obj_hashtbl(obj, null);
+
+    // Allocate space for a hash table and set the hash table reference
+    var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
+    set_obj_hashtbl(obj, hashtbl);
+
+    // Initialize the hash table
+    for (
+        var i = iir.constant(IRType.pint, 0); 
+        i < HASH_MAP_INIT_SIZE; 
+        i += iir.constant(IRType.pint, 1)
+    )
+    {
+        set_hashtbl_tbl_key(hashtbl, i, undefined);
+    }
+
+    // Return the object reference
+    return obj;
 }
 
 /**
@@ -263,13 +299,8 @@ function lt(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Get integer-typed values for v1 and v2
-        // Note that this does not unbox the values
-        var i1 = iir.icast(IRType.pint, v1);
-        var i2 = iir.icast(IRType.pint, v2);
-
-        // Compare the immediate integers directly
-        return (i1 < i2)? true:false;
+        // Compare the immediate integers directly without unboxing them
+        return iir.lt(v1, v2)? true:false;
     }
     else
     {
@@ -287,13 +318,8 @@ function eq(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Get integer-typed values for v1 and v2
-        // Note that this does not unbox the values
-        var i1 = iir.icast(IRType.pint, v1);
-        var i2 = iir.icast(IRType.pint, v2);
-
-        // Compare the immediate integers directly
-        return (i1 == i2)? true:false;
+        // Compare the immediate integers directly without unboxing them
+        return iir.eq(v1, v2)? true:false;
     }
     else
     {
@@ -315,12 +341,10 @@ function seq(v1, v2)
     }
     else
     {
-        // Get the raw bit-patterns of the boxed values
-        var i1 = iir.icast(IRType.pint, v1);
-        var i2 = iir.icast(IRType.pint, v2);
-
-        // Compare the raw bit-patterns directly
-        return (i1 == i2)? true:false;
+        // Compare the boxed value directly without unboxing them
+        // This will compare for equality of reference in the case of
+        // references and compare immediate integers directly
+        return iir.eq(v1, v2)? true:false;
     }
 }
 
@@ -398,7 +422,7 @@ function mul(v1, v2)
         {
             // If there is no overflow, return the result
             // Normalize by shifting right by the number of integer tag bits
-            return boxInt(IRType.pint, intResult >> TAG_NUM_BITS_INT);
+            return iir.icast(IRType.box, intResult >> TAG_NUM_BITS_INT);
         }
         else
         {
@@ -425,8 +449,8 @@ function computeHash(key)
     // If the property is integer
     if (boxIsInt(key))
     {
-        // Cast the key to an integer value
-        return iir.icast(IRType.pint, key);
+        // Unbox the key
+        return unboxInt(key);
     }
 
     // Otherwise, the key is a string
@@ -445,7 +469,7 @@ function computeHash(key)
         )
         {
             var ch = iir.icast(
-                IRType.pint,                
+                IRType.pint,
                 get_str_data(key, i)
             );
 
@@ -461,10 +485,12 @@ function computeHash(key)
 }
 
 /**
-Implementation of the HIR put_prop_val instruction
+Set a property on an object
 */
-function put_prop_val(obj, propName, propVal)
+function putPropVal(obj, propName, propVal)
 {
+    "tachyon:static";
+
     // TODO: assert object is passed? toObject?
 
     // TODO: find if getter-setter exists?
@@ -503,7 +529,7 @@ function put_prop_val(obj, propName, propVal)
         }
 
         // Otherwise, if we have reached an empty slot
-        else if (keyVal === OBJ_HASH_EMPTY_KEY)
+        else if (keyVal === undefined)
         {
             // Set the corresponding property value
             set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
@@ -534,10 +560,12 @@ function put_prop_val(obj, propName, propVal)
 }
 
 /**
-Implementation of the HIR get_prop_val instruction
+Get a property from an object
 */
-function get_prop_val(obj, propName)
+function getPropVal(obj, propName)
 {
+    "tachyon:static";
+
     // TODO: throw error if not object
     // - Maybe not, should never happen in practice... toObject
     // - What we actually want is a debug assertion
@@ -585,7 +613,7 @@ function get_prop_val(obj, propName)
             }
 
             // Otherwise, if we have reached an empty slot
-            else if (keyVal === OBJ_HASH_EMPTY_KEY)
+            else if (keyVal === undefined)
             {
                 break;
             }
@@ -602,4 +630,3 @@ function get_prop_val(obj, propName)
     // Property not found
     return undefined;
 }
-

@@ -479,7 +479,7 @@ LtInstr.prototype.constEval = CompInstr.genConstEval(
     }
 );
 
-LteInstr.prototype.constEval = CompInstr.genConstEval(
+LeInstr.prototype.constEval = CompInstr.genConstEval(
     function (v0, v1)
     {
         if ((typeof v0 != 'number' && typeof v0 != 'string') ||
@@ -501,7 +501,7 @@ GtInstr.prototype.constEval = CompInstr.genConstEval(
     }
 );
 
-GteInstr.prototype.constEval = CompInstr.genConstEval(
+GeInstr.prototype.constEval = CompInstr.genConstEval(
     function (v0, v1)
     {
         if ((typeof v0 != 'number' && typeof v0 != 'string') ||
@@ -519,7 +519,7 @@ EqInstr.prototype.constEval = CompInstr.genConstEval(
     }
 );
 
-NeqInstr.prototype.constEval = CompInstr.genConstEval(
+NeInstr.prototype.constEval = CompInstr.genConstEval(
     function (v0, v1)
     {
         return v0 != v1;
@@ -613,4 +613,3 @@ IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
     // Return the test value
     return test;
 }
-

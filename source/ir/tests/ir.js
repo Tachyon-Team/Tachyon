@@ -115,6 +115,33 @@ tests.ir.arithExprs = function ()
 }
 
 /**
+Assignment operators
+*/
+tests.ir.assignExprs = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            var a = 1;                          \
+            var b = 2;                          \
+            var c;                              \
+            c = a;                              \
+            c += a;                             \
+            c -= a;                             \
+            c *= a;                             \
+            c /= a;                             \
+            c %= a;                             \
+            c &= a;                             \
+            c |= a;                             \
+            c ^= a;                             \
+            c <<= a;                            \
+            c >>= a;                            \
+            c >>>= a;                           \
+            print(c);                           \
+        "
+    );
+}
+
+/**
 While loop statement
 */
 tests.ir.whileStmt = function ()
@@ -167,6 +194,28 @@ tests.ir.forStmt = function ()
             }                                   \
                                                 \
             print(i);                           \
+        "
+    );
+}
+
+/**
+Continue and break labels
+*/
+tests.ir.loopLabels = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            while (true)                        \
+            {                                   \
+                if (i == 0)                     \
+                    continue;                   \
+                else if (i == 1)                \
+                    continue foo;               \
+                else if (i == 2)                \
+                    break;                      \
+                else                            \
+                    break foo;                  \
+            }                                   \
         "
     );
 }
@@ -241,10 +290,10 @@ tests.ir.withStmt = function ()
         function (instr)
         {
             if (instr instanceof CallFuncInstr && 
-                instr.uses[0].funcName == 'get_prop_val')
+                instr.uses[0].funcName == 'getPropVal')
                 hasGet = true;
             if (instr instanceof CallFuncInstr && 
-                instr.uses[0].funcName == 'put_prop_val')
+                instr.uses[0].funcName == 'putPropVal')
                 hasPut = true;
         }
     );
@@ -288,7 +337,7 @@ tests.ir.ifRetFunc = function ()
                     if (true)                       \
                         return 0;                   \
                     else                            \
-                        return 0;                   \
+                        return 1;                   \
                 }                                   \
             }                                       \
         "
@@ -429,4 +478,3 @@ tests.ir.inlining = function ()
     // Validate the resulting IR
     ir.validate();
 }
-
