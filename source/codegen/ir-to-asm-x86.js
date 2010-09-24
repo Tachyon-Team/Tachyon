@@ -42,11 +42,11 @@ irToAsm.config.scratch = EDI;
 // TODO: replace stack handling in ir_call and ir_ret to allow
 //       using EBP instead of ESP
 irToAsm.config.stack   = ESP;
-irToAsm.config.context = EDX;
+irToAsm.config.context = ESI;
 
 
 // Registers available for register allocation.
-irToAsm.config.physReg    = [EAX, EBX, ECX, EDX];
+irToAsm.config.physReg    = [EAX, EBX, ECX, EDX, EBP];
 
 // Reserved registers are indexes into the physReg array since the 
 // register allocation algorithm assumes an index into the physReg
@@ -109,6 +109,7 @@ irToAsm.translator = function ()
     that.fct = null;
 
     that.globalLabel = that.asm.labelObj("GLOBAL_PRELUDE");
+    that.contextLabel = that.asm.labelObj("CONTEXT_PRELUDE");
 
     if (that.asm.is64bitMode())
     {
@@ -541,6 +542,25 @@ irToAsm.translator.prototype.dump_global_object = function ()
     
 };
 
+irToAsm.translator.prototype.dump_context_object = function ()
+{
+    this.asm.
+    label(this.contextLabel);
+
+    this.call_self();
+
+    if (this.asm.is64bitMode())
+    {
+        this.asm.gen64(0).gen64(0).gen64(0);
+    } else
+    {
+        this.asm.gen32(0).gen32(0).gen32(0);
+    }
+   
+    this.asm.genListing("CONTEXT_OBJECT");
+    
+};
+
 irToAsm.translator.prototype.call_self = function (offset)
 {
     if (offset === undefined)
@@ -791,6 +811,7 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     const retValReg = irToAsm.config.retValReg;
     const globalObjReg = irToAsm.config.argsReg[1];
+    const contextObjReg = irToAsm.config.context;
 
     const ret = this.asm.labelObj("MAIN RET");
     const fakeInstr1 = {regAlloc:{dest:retValReg}};
@@ -839,6 +860,12 @@ irToAsm.translator.prototype.init = function (mainFct)
     mov(mem(0, stack), globalObjReg).
     add($(this.REG_BYTE_WIDTH), stack);
 
+    // Initialise the context object with the global object
+    // in the first slot
+    call(this.contextLabel).
+    mov(retValReg, contextObjReg). 
+    mov(globalObjReg, mem(0, contextObjReg)).
+
     // Call the main function
     this.ir_call([retValReg, globalObjReg], fakeInstr2);
 
@@ -865,6 +892,8 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     // Add the global object dump at the end of the init section
     this.dump_global_object();
+    // Add the context object dump right after the global object
+    this.dump_context_object();
 
 };
 

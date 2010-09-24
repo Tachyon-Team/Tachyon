@@ -182,7 +182,7 @@ function compPrimitives()
         // Perform IR lowering on the primitive
         lowerIRFunc(func);
 
-        print(func);
+        //print(func);
 
         // Validate the resulting code
         func.validate();
