@@ -1407,9 +1407,6 @@ function stmtToIR(context)
                 'SyntaxError', 
                 'continue with invalid label'
             );
-
-            // Set the context output
-            context.setOutput(context.entryBlock);
         }
     }
 
@@ -1439,9 +1436,6 @@ function stmtToIR(context)
                 'SyntaxError', 
                 'break with invalid label'
             );
-
-            // Set the context output
-            context.setOutput(context.entryBlock);
         }
     }
 
@@ -3141,16 +3135,22 @@ function insertErrorIR(context, errorName, errorMsg)
         'error constructor not found for: "' + errorName + '"'
     );
 
+    // Create a new context from which to throw the exception
+    var throwCtx = context.pursue(null);
+
     // Insert a call to the error constructor
-    insertPrimCallIR(
-        context, 
-        'throwError', 
+    var excVal = insertPrimCallIR(
+        throwCtx, 
+        'makeError', 
         [
-            errorCtor, 
+            errorCtor,
             ConstValue.getConst(undefined),
             ConstValue.getConst(errorMsg)
         ]
     );
+
+    // Throw the error created
+    throwToIR(context, throwCtx, excVal);
 }
 
 /**
@@ -3328,8 +3328,6 @@ function insertCallIR(context, instr)
             'TypeError', 
             'callee is not a function'
         );
-
-        errorCtx.addInstr(new JumpInstr(contBlock));
 
         context.splice(contBlock);
     }

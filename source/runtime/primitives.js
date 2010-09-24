@@ -209,13 +209,14 @@ function heapAlloc(size)
 }
 
 /**
-Throw an exception with a given constructor
+Create an exception with a given constructor
 */
-function throwError(errorCtor, message)
+function makeError(errorCtor, message)
 {
     "tachyon:static";
+    "tachyon:nothrow";
 
-    throw new errorCtor(message);
+    return new errorCtor(message);
 }
 
 //=============================================================================
