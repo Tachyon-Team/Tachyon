@@ -25,6 +25,7 @@ BASE_SRCS =                 \
     ir/ir.js                \
     ir/optpatterns.js       \
     ir/constprop.js         \
+    ir/commelim.js          \
     ir/inlining.js          \
     ir/lowering.js          \
     runtime/objlayout.js    \
