@@ -12,7 +12,7 @@ var backend = backend || {};
 /**
     Returns a code block representing the compiled code.
 */
-backend.compile = function (ir, print)
+backend.compile = function (ir, print, primitives)
 {
     if (print === undefined)
     {
@@ -27,6 +27,11 @@ backend.compile = function (ir, print)
     var i, k, next, tab;
     var fixedIntervals;
     var fcts = ir.getChildrenList();
+
+    if (primitives !== undefined)
+    {
+        fcts = primitives.concat(fcts);
+    }
 
 
     translator.init(ir);
@@ -104,7 +109,7 @@ backend.compile = function (ir, print)
         allocator.assign(cfg); 
     
         // SSA form deconstruction and linear scan resolution 
-        allocator.resolve(cfg, liveIntervals, order);
+        order = allocator.resolve(cfg, liveIntervals, order);
 
 
         print("******* After register allocation *******");
@@ -135,8 +140,14 @@ backend.compile = function (ir, print)
                           + instr.mnemonic + " " 
                           + instr.regAlloc.opnds[0].funcName 
                           + " " + instr.regAlloc.opnds.slice(1));
-                }
-                else 
+                } else if (instr instanceof CallInstr && instr.regAlloc.opnds[0] instanceof IRFunction)
+                {
+                    print(instr.regAlloc.id + ": " + tab + 
+                          (instr.regAlloc.dest !== null ? 
+                           instr.regAlloc.dest + " = " : "") 
+                          +  instr.mnemonic + " <" + instr.regAlloc.opnds[0].funcName + ">, " +
+                          instr.regAlloc.opnds.slice(1));
+                } else 
                 {
                     print(instr.regAlloc.id + ": " + tab + 
                           (instr.regAlloc.dest !== null ? 
@@ -154,10 +165,10 @@ backend.compile = function (ir, print)
         print();
 
         // Translate from IR to ASM
-        translator.genFunc(fcts[k], order);
+        //translator.genFunc(fcts[k], order);
     }
 
-    translator.asm.codeBlock.assemble();
+    //translator.asm.codeBlock.assemble();
     return translator.asm.codeBlock;
 };
 
@@ -180,6 +191,53 @@ backend.execute = function (codeBlock)
     var x = execMachineCodeBlock(block); // execute the code generated
     freeMachineCodeBlock(block);
     return x;
+};
+
+/**
+    Returns the list of primitive functions used in a given IR.
+*/
+backend.usedPrimitives = function (ir)
+{
+    var workList = ir.getChildrenList();
+    var visited = [];
+    var primitives = [];
+
+
+    while (workList.length > 0)
+    {
+        var func = workList.pop();
+
+        if (arraySetHas(visited, func))
+            continue;
+
+        if (func.funcName == 'get_prop_val' || 
+            func.funcName == 'put_prop_val')
+            continue;
+
+        for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
+        {
+            var instr = itr.get();
+
+
+            for (var useItr = instr.getUseItr(); useItr.valid(); useItr.next())
+            {
+                var use = useItr.get();
+
+                if (use instanceof IRFunction)
+                {
+                    workList = workList.concat(use.getChildrenList());
+                    if (use.funcName in primitiveMap)
+                    {
+                        primitives.push(use);
+                    }
+                }
+            }
+        }
+
+        arraySetAdd(visited, func);
+    }
+
+    return primitives;
 };
 
 

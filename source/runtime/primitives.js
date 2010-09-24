@@ -213,7 +213,7 @@ function throwError(errorCtor, message)
 {
     "tachyon:static";
 
-    throw new errorCtor(message);
+    //throw new errorCtor(message);
 }
 
 //=============================================================================

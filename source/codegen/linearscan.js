@@ -916,20 +916,50 @@ allocator.orderBlocks = function (cfg)
     // Initialize the register allocation information for this block
     for (var i = 0; i < cfg.blocks.length; ++i)
     {
-        cfg.blocks[i].regAlloc = {
-            numForwBranch   : 0,    // Number of forward branches to this block
-            numBackBranch   : 0,    // Number of backward branches to this block
-            numExcpBranch   : 0,    // Number of exception branches to this block
-            loopIndex       : -1,   // Loop identifier index
-            loopDepth       : 0,    // Loop nesting depth
-            loopHeader      : null, // For loop ends, corresponding loop header
-            lastLoopEnd     : null, // For loop headers, last corresponding loop end block
-            loops           : [],   // For loop blocks, loops to which it belongs
-            weight          : 0,    // Weight of a block in the block ordering
-            from            : -1,   // Operation number at the start of the block
-            to              : -1,   // Operation number at the end of the block
-            liveIn          : null  // Live set at the block entry
-        };
+        if (cfg.blocks[i].regAlloc === undefined)
+        {
+            cfg.blocks[i].regAlloc = {
+                // Number of forward branches to this block
+                numForwBranch   : 0,    
+                // Number of backward branches to this block
+                numBackBranch   : 0,    
+                // Number of exception branches to this block
+                numExcpBranch   : 0,    
+
+                // Loop identifier index
+                loopIndex       : -1,   
+                // Loop nesting depth
+                loopDepth       : 0,    
+                // For loop ends, corresponding loop header
+                loopHeader      : null, 
+                // For loop headers, last corresponding loop end block
+                lastLoopEnd     : null, 
+                // For loop blocks, loops to which it belongs
+                loops           : [],   
+
+                // Weight of a block in the block ordering
+                weight          : 0,    
+                // Operation number at the start of the block
+                from            : -1,   
+                // Operation number at the end of the block
+                to              : -1,   
+                // Live set at the block entry
+                liveIn          : null  
+            };
+        } else
+        {
+            cfg.blocks[i].regAlloc.numForwBranch   = 0;    
+            cfg.blocks[i].regAlloc.numBackBranch   = 0;    
+            cfg.blocks[i].regAlloc.numExcpBranch   = 0;    
+
+            cfg.blocks[i].regAlloc.loopIndex       = -1;   
+            cfg.blocks[i].regAlloc.loopDepth       = 0;    
+            cfg.blocks[i].regAlloc.loopHeader      = null; 
+            cfg.blocks[i].regAlloc.lastLoopEnd     = null; 
+            cfg.blocks[i].regAlloc.loops           = [];   
+
+            cfg.blocks[i].regAlloc.weight          = 0;    
+        }
     }
 
     // Next loop index to assign
@@ -1881,6 +1911,9 @@ allocator.resolve = function (cfg, intervals, order)
     var insertFct;
     var insertIndex;
     var opnd;
+    var newblock;
+    var blocksToInsert = [];
+    var insertIt;
 
     // Insert Moves at split positions
     for (intervalIt = new ArrayIterator(intervals); 
@@ -1973,6 +2006,11 @@ allocator.resolve = function (cfg, intervals, order)
             }
         }
 
+        if (mapping.length === 0)
+        {
+            continue;
+        }
+
         // Order and insert moves
         if (edge.pred.succs.length === 1)
         {
@@ -2003,10 +2041,32 @@ allocator.resolve = function (cfg, intervals, order)
         {
             // We need to introduce an additional block to insert
             // the move instructions
-            throw "TODO";
+            //print("Inserting block between '" + edge.pred.getBlockName() + 
+            //      "' and '" + edge.succ.getBlockName() + "'");
+            //print(mapping.toString());
+            newblock = cfg.getNewBlock("ssa_dec");
+            blocksToInsert.push({edge:edge, block:newblock});
+
+            insertFct = function (move) 
+                        { 
+                            newblock.addInstr(move,"", insertIndex++);
+                        };
+            insertIndex = 0;
         }
         mapping.orderAndInsertMoves(insertFct);
     }
+
+    for (insertIt = new ArrayIterator(blocksToInsert);
+         insertIt.valid();
+         insertIt.next())
+    {
+        cfg.insertBetween(insertIt.get().edge.pred,
+                          insertIt.get().edge.succ,
+                          insertIt.get().block);
+    }
+
+    // Reorder blocks, taking into account the new blocks inserted
+    return allocator.orderBlocks(cfg);
 };
 
 /** 
@@ -2034,6 +2094,7 @@ allocator.mapping = function ()
     var that = Object.create(allocator.mapping.prototype);
     that.read = {};
     that.write = {};
+    that.length = 0;
     return that;
 };
 
@@ -2062,6 +2123,8 @@ allocator.mapping.prototype.add = function (from, to)
         error("Multiple moves to the same destination");
     }
     this.write[to] = mov;
+
+    this.length++;
 };
 
 allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
@@ -2152,5 +2215,25 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 
     }
 };
+
+allocator.mapping.prototype.toString = function ()
+{
+    var i;
+    var s = "";
+
+    for (p in this.read)
+    {
+        if (this.read.hasOwnProperty(p))
+        {
+            for(i=0; i < this.read[p].length; ++i)
+            {
+                s += this.read[p][i] + "\n";
+            }
+        }
+    }
+
+    return s;
+};
+
 
 
