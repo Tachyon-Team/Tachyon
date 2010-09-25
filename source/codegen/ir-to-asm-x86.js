@@ -862,9 +862,10 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     // Initialise the context object with the global object
     // in the first slot
+    this.asm.
     call(this.contextLabel).
     mov(retValReg, contextObjReg). 
-    mov(globalObjReg, mem(0, contextObjReg)).
+    mov(globalObjReg, mem(0, contextObjReg));
 
     // Call the main function
     this.ir_call([retValReg, globalObjReg], fakeInstr2);
