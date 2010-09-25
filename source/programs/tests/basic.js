@@ -21,7 +21,7 @@ tests.basic.main = function ()
     var primitives = backend.usedPrimitives(ir);
 
     //var codeblock = backend.compile(ir);
-    var codeblock = backend.compile(ir, print, primitives);
+    var codeblock = backend.compile(ir, undefined, primitives);
     //print(backend.listing(codeblock));
     //var x = backend.execute(codeblock);
     //assert(x === 20, "Invalid return value: " + x);

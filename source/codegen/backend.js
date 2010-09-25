@@ -112,6 +112,13 @@ backend.compile = function (ir, print, primitives)
 
         print("******* After register allocation *******");
 
+        function opndsToString(opnds)
+        {
+            return opnds.map(
+                   function (opnd) { if (opnd instanceof IRFunction) 
+                   { return "<" + opnd.funcName + ">";} else { return opnd.toString(); }});
+        };
+
         for (i=0; i < order.length; ++i)
         {
             block = order[i]; 
@@ -145,8 +152,7 @@ backend.compile = function (ir, print, primitives)
                     print(instr.regAlloc.id + ": " + tab + 
                           (instr.regAlloc.dest !== null ? 
                            instr.regAlloc.dest + " = " : "") 
-                          +  instr.mnemonic + " <" + instr.regAlloc.opnds[0].funcName + ">, " +
-                          instr.regAlloc.opnds.slice(1));
+                          +  instr.mnemonic + " " + opndsToString(instr.regAlloc.opnds));
                 } else 
                 {
                     print(instr.regAlloc.id + ": " + tab + 
@@ -210,8 +216,9 @@ backend.usedPrimitives = function (ir)
         if (arraySetHas(visited, func))
             continue;
 
-        if (func.funcName == 'get_prop_val' || 
-            func.funcName == 'put_prop_val')
+        if (func.funcName == "getPropVal" || 
+            func.funcName == "putPropVal" || 
+            func.funcName == "newObject")
             continue;
 
         for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
@@ -225,10 +232,15 @@ backend.usedPrimitives = function (ir)
 
                 if (use instanceof IRFunction)
                 {
+                    if (use.funcName == "getPropVal" || 
+                        use.funcName == "putPropVal" || 
+                        use.funcName == "newObject")
+                        continue;
+
                     workList = workList.concat(use.getChildrenList());
-                    if (use.funcName in primitiveMap)
+                    if (use.funcName in backend.primitiveMap)
                     {
-                        primitives.push(use);
+                        arraySetAdd(primitives, use);
                     }
                 }
             }
@@ -240,5 +252,6 @@ backend.usedPrimitives = function (ir)
     return primitives;
 };
 
+backend.primitiveMap = {};
 
 

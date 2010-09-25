@@ -152,4 +152,6 @@ function compPrimitives()
         // Validate the resulting code
         ir.validate();
     }
+
+    return irList;
 }
