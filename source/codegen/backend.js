@@ -49,8 +49,6 @@ backend.compile = function (ir, print, primitives)
 
         cfg = fcts[k].virginCFG;
 
-        cfg.simplify();
-
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order);
 
@@ -124,6 +122,7 @@ backend.compile = function (ir, print, primitives)
                 if (instr instanceof MoveInstr)
                 {
                     print("  " + tab + instr);
+                /*
                 } else if (instr instanceof ArgValInstr)
                 {
                     if (instr.regAlloc.dest === null)
@@ -140,6 +139,7 @@ backend.compile = function (ir, print, primitives)
                           + instr.mnemonic + " " 
                           + instr.regAlloc.opnds[0].funcName 
                           + " " + instr.regAlloc.opnds.slice(1));
+                */
                 } else if (instr instanceof CallInstr && instr.regAlloc.opnds[0] instanceof IRFunction)
                 {
                     print(instr.regAlloc.id + ": " + tab + 

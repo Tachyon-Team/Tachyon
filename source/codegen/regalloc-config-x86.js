@@ -86,13 +86,13 @@ ArgValInstr.prototype.regAlloc.retValRegHint = function (instr, config)
 /**
 *   Allocation information for get property instructions 
 */
-GetPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
+//GetPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
 
-GetPropValInstr.prototype.regAlloc.opndsRegRequired = true;
+//GetPropValInstr.prototype.regAlloc.opndsRegRequired = true;
 
 /**
 *   Allocation information for put property instructions 
 */
-PutPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
+//PutPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
 
-PutPropValInstr.prototype.regAlloc.opndsRegRequired = true;
+//PutPropValInstr.prototype.regAlloc.opndsRegRequired = true;
