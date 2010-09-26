@@ -3195,7 +3195,7 @@ function insertConstructIR(context, funcVal, argVals)
         context,
         new CallFuncInstr(
             [
-                staticEnv.getBinding('boxIsFunc'),
+                staticEnv.getBinding('boxIsObj'),
                 context.globalObj,
                 funcProto
             ]
