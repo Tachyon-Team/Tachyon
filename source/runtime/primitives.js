@@ -64,7 +64,7 @@ function getRefTag(boxVal)
     "tachyon:nothrow";
     "tachyon:ret pint";
 
-    // Mask the tag
+    // Mask out the non-tag part
     return boxVal & TAG_REF_MASK;
 }
 
@@ -78,7 +78,7 @@ function boxHasTag(boxVal, tagVal)
     "tachyon:arg tagVal pint";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) == tagVal;
 }
 
@@ -104,7 +104,7 @@ function boxIsObj(boxVal)
     "tachyon:nothrow";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) >= TAG_ARRAY;
 }
 
@@ -117,7 +117,7 @@ function boxIsFunc(boxVal)
     "tachyon:nothrow";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) == TAG_FUNCTION;
 }
 
@@ -130,8 +130,34 @@ function boxIsArray(boxVal)
     "tachyon:nothrow";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) == TAG_ARRAY;
+}
+
+/**
+Test if a boxed value is a floating-point value
+*/
+function boxIsFloat(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i8";
+
+    // Compare the reference tag
+    return getRefTag(boxVal) == TAG_FLOAT;
+}
+
+/**
+Test if a boxed value is a string
+*/
+function boxIsString(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i8";
+
+    // Compare the reference tag
+    return getRefTag(boxVal) == TAG_STRING;
 }
 
 /**
@@ -345,7 +371,7 @@ Implementation of HIR strict-equality instruction
 */
 function seq(v1, v2)
 {
-    "tachyon:inline"
+    "tachyon:inline";
     "tachyon:nothrow";
 
     // If both values are floating-point
@@ -492,8 +518,7 @@ function computeHash(key)
 
             hashCode =
                 (hashCode * iir.constant(IRType.pint, 256) + ch) %
-                iir.constant(IRType.pint, 426870919)
-            ;
+                iir.constant(IRType.pint, 426870919);
         }
 
         // Return the computed hash code
@@ -626,7 +651,7 @@ function getPropVal(obj, propName)
                 */
 
                 // TODO
-                return propVal
+                return propVal;
             }
 
             // Otherwise, if we have reached an empty slot

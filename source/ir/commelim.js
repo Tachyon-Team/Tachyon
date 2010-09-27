@@ -130,6 +130,9 @@ Could avoid ever recomputing this information. Do fixed-point once only.
 Can then add instrs to work list that have more than one in equiv class.
 
 
+***PROBLEM: if two instrs use load p, 4, it doesn't mean they're using the
+same value....
+
 */
 
 /**
@@ -137,21 +140,106 @@ Perform common/redundant code elimination on a CFG
 */
 function commElim(cfg)
 {
-    // Value number array, indexed by instruction id
-    var valNos = [];
+    // PROBLEM: what if an instruction uses itself?
+    // Need its own value number to compute its value number hash
+    // Can cause infinite recursion
+    // Also have deep recursion problem
+
+    // Could compute value numbers using fixed point
+    // Create array of val nums for instructions, init all at 0?
+    // Initially, all uses seem the same, all have number 0, used in hash computation
+    // Eventually, computed hashes become distinct, resulting val nums distinct    
+
+    // Hashing function for IR values        
+    function hashFunc(val)
+    {
+        var hash = 0;
+
+        if (val instanceof IRInstr)
+        {
+            var mnem = val.mnemonic;
+            for (var i = 0; i < mnem.length; ++i)
+                hash = (hash << 1) + mnem.charCodeAt(i);
+
+            for (var i = 0; i < val.uses.length; ++i)
+                if (val.uses[i] !== val)
+                    hash = (hash << 1) + getValNo(val.uses[i]);
+        }
+        else
+        {
+            var vname = val.getValName();
+            for (var i = 0; i < vname.length; ++i)
+                hash = (hash << 1) + vname.charCodeAt(i);
+        }
+
+        return hash;
+    }
+
+    // Equality function for IR values
+    function equalFunc(val1, val2)
+    {
+        if (val1 instanceof IRInstr && val2 instanceof IRInstr)
+        {
+            if (val1.mnemonic != val2.mnemonic)
+                return false;
+
+            if (val1.uses.length != val2.uses.length)
+                return false;
+
+            for (var i = 0; i < val1.uses.length; ++i)
+                if (getValNo(val1.uses[i]) != getValNo(val2.uses[i]))
+                    return false;
+        }
+        else
+        {
+            if (val1 != val2)
+                return false;
+        }
+
+        return true;
+    }
+
+    // Value number hash map, indexed by IR values
+    var valNoHash = new HashMap(hashFunc, equalFunc);
+
+    // Value number cache, indexed by IR values
+    var valNoCache = new HashMap();
 
     // Function to get a value number for an instruction
-    function getValNo(instr)
+    function getValNo(val)
     {
+        // If the value number is already computed, return it
+        if (valNoCache.hasItem(val))
+            return valNoCache.getItem(val);
 
+        // If this value matches an existing value number, get that number
+        // otherwise, assign it a new value number
+        if (valNoHash.hasItem(val))
+        {
+            var valNo = valNoHash.getItem(val);
+        }
+        else
+        {
+            var valNo = valNoHash.numItems;
+            valNoHash.setItem(val, valNo);
+        }
 
+        // Store the value number in the value number cache
+        valNoCache.setItem(val, valNo);
 
-
-
-
-
-
+        return valNo;
     }
+
+
+    /*
+    for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
+        print(itr.get() + " ==> " + getValNo(itr.get()));
+    */
+
+
+
+
+
 
     // Sets of values reaching the exit basic blocks, indexed by instruction id
     var mustReachOut = [];

@@ -90,6 +90,9 @@ function lowerIRCFG(cfg)
 
     //print('\n' + cfg + '\n');
 
+    // Perform common subexpression elimination on the CFG
+    commElim(cfg);
+
     // Validate the CFG
     cfg.validate();
 

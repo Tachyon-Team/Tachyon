@@ -117,7 +117,7 @@ staticEnv.regBinding(
 
 // Tag for strings
 staticEnv.regBinding(
-    'TAG_STRINGS',
+    'TAG_STRING',
     ConstValue.getConst(
         2,
         IRType.pint
