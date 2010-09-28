@@ -126,9 +126,7 @@ e and f can get same equivalence class
 
 Could avoid ever recomputing this information. Do fixed-point once only.
 
-
 Can then add instrs to work list that have more than one in equiv class.
-
 
 ***PROBLEM: if two instrs use load p, 4, it doesn't mean they're using the
 same value....
@@ -141,8 +139,12 @@ Must do FP of must reach...
 /**
 Perform common/redundant code elimination on a CFG
 */
-function commElim(cfg)
+function commElim(cfg, maxItrs)
 {
+    // If no maximum iteration count was specified, there is no limit
+    if (!maxItrs)
+        maxItrs = Infinity;
+
     // Hashing function for IR values        
     function hashFunc(val)
     {
@@ -181,6 +183,13 @@ function commElim(cfg)
                 return false;
 
         /*
+        print('equal 1: ' + val1);
+        print('equal 2: ' + val2);
+        print('hash 1: ' + hashFunc(val1));
+        print('hash 2: ' + hashFunc(val2));
+        */
+
+        /*
         for (var i = 0; i < val1.targets.length; ++i)
             if (val1.targets[i] !== val2.targets[i])
                 return false;
@@ -198,15 +207,15 @@ function commElim(cfg)
     // Value number hash map, indexed by IR values
     var valNoHash = new HashMap(hashFunc, equalFunc);
 
-    // Value number cache, indexed by IR values
-    var valNoCache = new HashMap();
+    // Value number cache, indexed by instruction id
+    var valNoCache = [];
 
     // Function to get a value number for an instruction
     function getValNo(val)
     {
         // If the value number is already computed, return it
-        if (valNoCache.hasItem(val))
-            return valNoCache.getItem(val);
+        if (valNoCache[val.instrId])
+            return valNoCache[val.instrId];
 
         // If this value matches an existing value number, get that number
         // otherwise, assign it a new value number
@@ -218,11 +227,11 @@ function commElim(cfg)
         else
         {
             var valNo = valNoHash.numItems;
-            valNoHash.setItem(val, valNo);
+            valNoHash.addItem(val, valNo);
         }
 
         // Store the value number in the value number cache
-        valNoCache.setItem(val, valNo);
+        valNoCache[val.instrId] = valNo;
 
         return valNo;
     }
@@ -234,141 +243,159 @@ function commElim(cfg)
     print('********************\n');
     */
 
-    // Value reaching an instruction, indexed by instruction id
-    var reachInstr = [];
+    // Flag to indicate a change occurred
+    var changed = true;
 
-    // Sets of values reaching the exit basic blocks, indexed by block id
-    var mustReachOut = [];
-
-    // Compute the set of all definitions in the CFG
-    var fullReachSet = [];
-    for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
-        fullReachSet.push(itr.get());
-
-    // Initialize the reaching def sets for all blocks
-    for (var i = 0; i < cfg.blocks.length; ++i)
+    for (var itrCount = 0; changed && itrCount < maxItrs; ++itrCount)
     {
-        var block = cfg.blocks[i];
-        mustReachOut[block.blockId] = fullReachSet;
-    }
+        //print('******************ITR*****************');
 
-    // Work list of CFG blocks to examine
-    var workList = [cfg.entry];
+        // No changes in this iteration yet
+        changed = false;
 
-    // Until the work list is empty
-    while (workList.length != 0)
-    {
-        var block = workList.pop();
+        // Reset the value number hash and cache
+        valNoHash.clear();
+        valNoCache = [];
 
-        // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
-        for (var i = 0; i < block.preds.length; ++i)
+        // Value reaching an instruction, indexed by instruction id
+        var reachInstr = [];
+
+        // Sets of values reaching the exit basic blocks, indexed by block id
+        var mustReachOut = [];
+
+        // Compute the set of all definitions in the CFG
+        var fullReachSet = [];
+        for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
+            fullReachSet.push(itr.get());
+
+        // Initialize the reaching def sets for all blocks
+        for (var i = 0; i < cfg.blocks.length; ++i)
         {
-            var pred = block.preds[i];
-            mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
+            var block = cfg.blocks[i];
+            mustReachOut[block.blockId] = fullReachSet;
         }
 
-        // For each instruction
-        INSTR_LOOP:
-        for (var i = 0; i < block.instrs.length; ++i)
+        // Work list of CFG blocks to examine
+        var workList = [cfg.entry];
+
+        // Until the work list is empty
+        while (workList.length != 0)
         {
-            var instr = block.instrs[i];
+            var block = workList.pop();
 
-            // Get the value number for this instruction
-            var valNo = getValNo(instr);            
-
-            // If this instruction writes memory, kill any reaching instruction
-            // that reads memory, except get_ctx
-            if (instr.writesMem)
+            // Compute the must and may reach sets at this block's entry
+            var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+            for (var i = 0; i < block.preds.length; ++i)
             {
+                var pred = block.preds[i];
+                mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
+            }
+
+            // For each instruction
+            INSTR_LOOP:
+            for (var i = 0; i < block.instrs.length; ++i)
+            {
+                var instr = block.instrs[i];
+
+                // Get the value number for this instruction
+                var valNo = getValNo(instr);            
+
+                // If this instruction writes memory, kill any reaching instruction
+                // that reads memory, except get_ctx
+                if (instr.writesMem)
+                {
+                    for (var j = 0; j < mustReachCur.length; ++j)
+                    {
+                        var rinstr = mustReachCur[j];
+                        if (rinstr.readsMem && !(rinstr instanceof GetCtxInstr))
+                        {
+                            mustReachCur.splice(j, 1);
+                            --j;
+                        }
+                    }
+                }
+
+                // If this is a set_ctx instruction, kill any reaching get_ctx
+                if (instr instanceof SetCtxInstr)
+                {
+                    for (var j = 0; j < mustReachCur.length; ++j)
+                    {
+                        if (mustReachCur[j] instanceof GetCtxInstr)
+                        {
+                            mustReachCur.splice(j, 1);
+                            --j;
+                        }
+                    }
+                }
+
+                // If an instruction with the same value number must reach this
                 for (var j = 0; j < mustReachCur.length; ++j)
                 {
                     var rinstr = mustReachCur[j];
-                    if (rinstr.readsMem && !(rinstr instanceof GetCtxInstr))
+                    if (getValNo(rinstr) == valNo)
                     {
-                        mustReachCur.splice(j, 1);
-                        --j;
+                        // Note that the instruction reaches here
+                        reachInstr[instr.instrId] = rinstr;
+
+                        // Don't add the current instruction to the reach set
+                        continue INSTR_LOOP;
                     }
                 }
-            }
 
-            // If this is a set_ctx instruction, kill any reaching get_ctx
-            if (instr instanceof SetCtxInstr)
+                // Add the instruction to the set of reaching values
+                arraySetAdd(mustReachCur, instr);
+            }
+            
+            // If the must reach set has changed for this block
+            if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]))
             {
-                for (var j = 0; j < mustReachCur.length; ++j)
-                {
-                    if (mustReachCur[j] instanceof GetCtxInstr)
-                    {
-                        mustReachCur.splice(j, 1);
-                        --j;
-                    }
-                }
+                // Update the sets for this block
+                mustReachOut[block.blockId] = mustReachCur;
+
+                // Add the successors of this block to the work list
+                for (var i = 0; i < block.succs.length; ++i)
+                    workList.push(block.succs[i]);
             }
-
-            // If an instruction with the same value number must reach this
-            for (var j = 0; j < mustReachCur.length; ++j)
-            {
-                var rinstr = mustReachCur[j];
-                if (getValNo(rinstr) == valNo)
-                {
-                    // Note that the instruction reaches here
-                    reachInstr[instr.instrId] = rinstr;
-
-                    // Don't add the current instruction to the reach set
-                    continue INSTR_LOOP;
-                }
-            }
-
-            // Add the instruction to the set of reaching values
-            arraySetAdd(mustReachCur, instr);
         }
-        
-        // If the must reach set has changed for this block
-        if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]))
+
+        // TODO: if instruction removed, value no longer avail for replacement
+        // Can test if removed on tentative replacement... remSet ***
+
+        // TODO: beware, can replace call, but no other branch instrs
+        // May also need to add jump to continue block if replacing call
+        // Start by not replacing any branch instrs ***
+        // PROBLEM: did call instr reach us from exception branch? if so, no can do!
+
+        // For each instruction in the CFG
+        for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
         {
-            // Update the sets for this block
-            mustReachOut[block.blockId] = mustReachCur;
+            var instr = itr.get();
 
-            // Add the successors of this block to the work list
-            for (var i = 0; i < block.succs.length; ++i)
-                workList.push(block.succs[i]);
-        }
-    }
+            var rinstr = reachInstr[instr.instrId];
 
-    // TODO: if instruction removed, value no longer avail for replacement
-    // Can test if removed on tentative replacement... remSet ***
-
-    // TODO: beware, can replace call, but no other branch instrs
-    // May also need to add jump to continue block if replacing call
-    // Start by not replacing any branch instrs ***
-    // PROBLEM: did call instr reach us from exception branch? if so, no can do!
-
-    // For each instruction in the CFG
-    for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
-    {
-        var instr = itr.get();
-
-        var rinstr = reachInstr[instr.instrId];
-
-        // If the instruction is not a branch and there is a replacement
-        if (!instr.isBranch() && rinstr)
-        {
-            /*
-            print('********************');
-            print(instr);
-            print(rinstr);
-            */
-
-            // Replace uses of the instruction
-            for (var i = 0; i < instr.dests.length; ++i)
+            // If the instruction is not a branch and there is a replacement
+            if (!instr.isBranch() && rinstr)
             {
-                var dest = instr.dests[i];
-                dest.replUse(instr, rinstr);
-                rinstr.addDest(dest);
-            }
+                /*                
+                print('********************');
+                print(instr);
+                print(rinstr);
+                */
 
-            // Remove the instruction
-            cfg.remInstr(itr, rinstr);
+                // Replace uses of the instruction
+                for (var i = 0; i < instr.dests.length; ++i)
+                {
+                    var dest = instr.dests[i];
+                    dest.replUse(instr, rinstr);
+                    rinstr.addDest(dest);
+                }
+
+                // Remove the instruction
+                cfg.remInstr(itr, rinstr);
+
+                // Set the changed flag
+                changed = true;
+            }
         }
     }
 }
