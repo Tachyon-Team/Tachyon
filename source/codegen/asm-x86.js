@@ -1509,7 +1509,7 @@ x86.Assembler.prototype.pushPop = function (opnd, isPop)
     {
         that.opndPrefix(0,0,opnd,false); // prefix (width is implicit)
         if(isPop) { that.gen8(0x8f); } else { that.gen8(0xff); } // opcode
-        that.opndModRMSIB((isPop? 0 : 6), opnd);
+        that.opndModRMSIB((isPop ? 0 : 6), opnd);
         listing();
     }
 
@@ -1526,6 +1526,64 @@ x86.Assembler.prototype.pushPop = function (opnd, isPop)
     return this;
 };
 
+/**
+    @private
+    encoding of inc/dec instructions
+*/
+x86.Assembler.prototype.incDec = function (opnd, isInc, width)
+{
+    const that = this;
+
+    /** @ignore generate listing */
+    function listing(width)
+    {
+        if (that.useListing) 
+        {
+            that.genListing(x86.instrFormat((isInc ? "inc" : "dec"), 
+                                             x86.widthSuffix(width),
+                                             opnd));
+        }
+    }
+
+    /** @ignore special case when the destination is a register */
+    function register()
+    {
+        // No rex prefix should be used since inc or dec
+        // opcode are used as rex prefixes
+        that.
+        gen8( (isInc ? 0x40 : 0x48) + (7 & opnd.field()) );
+        listing(opnd.width());
+    }
+
+    /** @ignore general case */
+    function general(width)
+    {
+        that.opndPrefixOpnd(width, opnd);
+        that.
+        gen8((width === 8) ? 0xfe : 0xff).  // opcode
+        opndModRMSIB((isInc ? 0 : 1),opnd); // ModR/M
+        listing(width);
+    }
+
+    x86.assert((opnd.type === x86.type.REG) ? 
+            (!width || (opnd.width() === width)) : width,
+            "missing or inconsistent operand width '", width, "'");
+
+    if (opnd.type === x86.type.REG)
+    {
+        if (opnd.width() === 64)
+        {
+            general(opnd.width());
+        } else 
+        {
+            register();
+        }
+    } else // opnd.type !== x86.type.REG
+    {
+        general(width);
+    }
+    return this;
+};
 
 x86.opcode = {};
 // Escape opcode
@@ -1812,6 +1870,18 @@ x86.Assembler.prototype.push = function (opnd)
 x86.Assembler.prototype.pop  = function (opnd) 
 { 
     return this.pushPop(opnd, true); 
+};
+
+/** Can be chained. */
+x86.Assembler.prototype.inc  = function (opnd, width) 
+{ 
+    return this.incDec(opnd, true, width); 
+};
+
+/** Can be chained. */
+x86.Assembler.prototype.dec  = function (opnd, width) 
+{ 
+    return this.incDec(opnd, false, width); 
 };
 
 x86.Assembler.prototype.lea  = function (src, dest)
