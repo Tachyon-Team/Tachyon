@@ -29,10 +29,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // Use delPropVal primitive
 
 // TODO: before fetching from global object, add hasPropVal test
-// Implement conditional error throw mechanism?
-
-// TODO: global var statements should result in assignment of undefined
-// to property in global object at the beginning of the unit's code
+// Need to throw error on test fail
+// Implement conditional error throw IR gen mechanism?
 
 /**
 Translate an AST code unit into IR functions
@@ -65,7 +63,7 @@ function unitToIR(
     return stmtListToIRFunc(
         '',
         null,
-        [],
+        astUnit.vars,
         [],
         [],
         astUnit.funcs,
@@ -325,21 +323,26 @@ function stmtListToIRFunc(
                 );
             }
 
-            // If the current function is a unit level function
-            if (astNode instanceof Program)
-            {
-                // Bind the nested function name in the global environment              
-                insertPrimCallIR(
-                    bodyContext, 
-                    'putPropVal', 
-                    [globalObj, ConstValue.getConst(nestFuncName), closVal]
-                );
-            }
-            else
-            {
-                // Map the function name to the closure in the local variable map
-                localMap.setItem(nestFuncName, closVal);
-            }
+            // Map the function name to the closure in the local variable map
+            localMap.setItem(nestFuncName, closVal);
+        }
+    }
+
+    // If the current function is a unit level function
+    if (astNode instanceof Program)
+    {
+        // For each variable in the local variable map
+        for (var itr = localMap.getItr(); itr.valid(); itr.next())
+        {
+            var varName = itr.get().key;
+            var varVal = itr.get().value;
+
+            // Bind the variable's initial value in the global environment
+            insertPrimCallIR(
+                bodyContext, 
+                'putPropVal', 
+                [globalObj, ConstValue.getConst(varName), varVal]
+            );
         }
     }
 

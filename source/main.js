@@ -15,6 +15,8 @@ function testIR()
     var ast = parse_src_file('parser/tests/test4.js');
     var ir = unitToIR(ast, true);
     
+    pp(ast);
+
     print(ir);
 
     lowerIRFunc(ir);
