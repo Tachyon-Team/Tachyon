@@ -675,7 +675,7 @@ ControlFlowGraph.prototype.validate = function ()
         // For each instruction
         for (var i = 0; i < block.instrs.length; ++i)
         {
-            // Add the instruction to both sets of reaching values
+            // Add the instruction to the set of reaching values
             var instr = block.instrs[i];
             arraySetAdd(mustReachCur, instr);
         }
