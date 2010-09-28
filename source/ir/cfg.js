@@ -72,7 +72,7 @@ ControlFlowGraph.prototype = {};
 /**
 Construct a string representation
 */
-ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
+ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn, lnPfxFormatFn)
 {
     // Function to order blocks according to a depth-first traversal
     function DFSOrder(blocks)
@@ -104,6 +104,9 @@ ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFor
     if (!blockOrderFn)
         blockOrderFn = DFSOrder;
 
+    if (!lnPfxFormatFn)
+        lnPfxFormatFn = function () { return ""; };
+
     // Order the blocks according to the supplied ordering function
     var blockList = blockOrderFn(this.blocks);
 
@@ -113,7 +116,7 @@ ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFor
     {
         var block = blockList[i];
 
-        output += block.toString(outFormatFn, inFormatFn);
+        output += block.toString(outFormatFn, inFormatFn, lnPfxFormatFn);
 
         if (i !== blockList.length - 1)
             output += "\n\n";
@@ -1030,15 +1033,15 @@ BasicBlock.prototype = {};
 /**
 Produce a string representation
 */
-BasicBlock.prototype.toString = function (outFormatFn, inFormatFn)
+BasicBlock.prototype.toString = function (outFormatFn, inFormatFn, lnPfxFormatFn)
 {
-    var output = this.getBlockName() + ':\n';
+    var output = lnPfxFormatFn(this) + this.getBlockName() + ':\n';
 
     for (var i = 0; i < this.instrs.length; ++i)
     {
         var instr = this.instrs[i];
 
-        output += instr.toString(outFormatFn, inFormatFn) + ';';
+        output += lnPfxFormatFn(instr) + instr.toString(outFormatFn, inFormatFn, lnPfxFormatFn) + ';';
 
         if (instr !== this.instrs[this.instrs.length - 1])
             output += '\n';

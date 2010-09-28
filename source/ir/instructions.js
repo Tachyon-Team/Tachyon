@@ -443,17 +443,25 @@ IRInstr.prototype = new IRValue();
 /**
 Default output string formatting function
 */
-IRInstr.defOutFormat = function (val)
+IRInstr.defOutFormat = function (instr)
 {
-    return val.type.name + ' ' + val.getValName();
+    return instr.type.name + ' ' + instr.getValName();
 }
 
 /**
 Default input string formatting function
 */
-IRInstr.defInFormat = function (val)
+IRInstr.defInFormat = function (instr, pos)
 {
-    return val.getValName();
+    output = "";
+    ins = instr.uses[pos];
+
+    if (!(ins instanceof IRValue))
+        output += "***invalid value***";
+    else
+        output += ins.getValName();
+
+    return output;
 }
 
 /**
@@ -479,14 +487,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     // For each use
     for (i = 0; i < this.uses.length; ++i)
     {
-        var ins = this.uses[i];
-
-        output += ' ';
-
-        if (!(ins instanceof IRValue))
-            output += '***invalid value***';
-        else
-            output += inFormatFn(ins);
+        output += " " + inFormatFn(this, i);
 
         if (i != this.uses.length - 1)
             output += ",";
@@ -666,6 +667,13 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     if (!inFormatFn)
         inFormatFn = IRInstr.defInFormat;
 
+    var phiInFormatFn = function (instr, pos)
+    {
+        var pred = instr.preds[pos];
+
+        return '[' + inFormatFn(instr, pos) + ' ' + pred.getBlockName() + ']';
+    }
+
     var output = "";
 
     // If this instruction's type is not void, print its output name
@@ -676,10 +684,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     for (i = 0; i < this.uses.length; ++i)
     {
-        var ins = this.uses[i];
-        var pred = this.preds[i];
-
-        output += '[' + inFormatFn(ins) + ' ' + pred.getBlockName() + ']';
+        output += phiInFormatFn(this, i);
 
         if (i != this.uses.length - 1)
             output += ", ";
@@ -820,7 +825,7 @@ Get a string representation of the argument instruction
 ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // Get the default toString output for the instruction
-    var output = IRInstr.prototype.toString.apply(this, outFormatFn, inFormatFn);
+    var output = IRInstr.prototype.toString.apply(this, [outFormatFn, inFormatFn]);
 
     // Add the argument index to the output
     output += ' ' + this.argIndex;
