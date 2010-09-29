@@ -1612,6 +1612,38 @@ x86.opcode.jgeRel8    = 0x7d;
 x86.opcode.jleRel8    = 0x7e;
 x86.opcode.jgRel8     = 0x7f;
 
+// Conditional move opcodes
+x86.opcode.cmovo      = 0x40;
+x86.opcode.cmovno     = 0x41;
+x86.opcode.cmovb      = 0x42;
+x86.opcode.cmovc      = x86.opcode.cmovb;
+x86.opcode.cmovnae    = x86.opcode.cmovb;
+x86.opcode.cmovnb     = 0x43;
+x86.opcode.cmovnc     = x86.opcode.cmovnb;
+x86.opcode.cmovae     = x86.opcode.cmovnb;
+x86.opcode.cmovz      = 0x44;
+x86.opcode.cmove      = x86.opcode.cmovz;
+x86.opcode.cmovnz     = 0x45;
+x86.opcode.cmovne     = x86.opcode.cmovnz;
+x86.opcode.cmovbe     = 0x46;
+x86.opcode.cmovna     = x86.opcode.cmovbe;
+x86.opcode.cmovnbe    = 0x47;
+x86.opcode.cmova      = x86.opcode.cmovnbe;
+x86.opcode.cmovs      = 0x48;
+x86.opcode.cmovns     = 0x49;
+x86.opcode.cmovp      = 0x4a;
+x86.opcode.cmovpe     = x86.opcode.cmovp;
+x86.opcode.cmovnp     = 0x4b;
+x86.opcode.cmovpo     = x86.opcode.cmovnp;
+x86.opcode.cmovl      = 0x4c;
+x86.opcode.cmovnge    = x86.opcode.cmovl;
+x86.opcode.cmovnl     = 0x4d;
+x86.opcode.cmovge     = x86.opcode.cmovnl;
+x86.opcode.cmovle     = 0x4e;
+x86.opcode.cmovng     = x86.opcode.cmovle;
+x86.opcode.cmovnle    = 0x4f;
+x86.opcode.cmovg      = x86.opcode.cmovg;
+
 /** Adds a label to the code stream. Can be chained. */
 x86.Assembler.prototype.label = function (lbl)
 { 
@@ -1841,7 +1873,10 @@ x86.Assembler.prototype.xor = function (src, dest, width)
 { 
     return this.op(6, "xor",dest,src,width); 
 };
-/** Can be chained. 
+/** Can be chained. Note: src and dest are inverted compared to 
+    the intel syntax. Therefore, cmp(src, dest) will set the flags
+    OF<>SF iff dest < src.
+
     @param src
     @param dest
     @param {Number} width optional 
@@ -1965,6 +2000,31 @@ x86.Assembler.prototype.test = function (src, dest, width)
     return this;
 };
 
+/** Can be chained */
+x86.Assembler.prototype.cmoveGeneral  = function (op, mnemonic, src, dest)
+{
+    x86.assert(dest.type === x86.type.REG,
+               "'dest' argument should be a register, instead received ", dest);
+    x86.assert(!dest.isr8(),
+               "'dest' argument should not be an 8 bit register");
+    x86.assert(src.type === x86.type.MEM || src.type === x86.type.REG,
+               "'src' argument should be a memory or a register operand," +
+               " instead received ", dest);
+
+    this.opndPrefixRegOpnd(dest, src);
+    this.gen8(x86.opcode.esc);
+    this.gen8(op); // opcode
+    this.opndModRMSIBRegOpnd(dest, src);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat(mnemonic, 
+                                        x86.regWidthSuffix(dest),
+                                        dest,
+                                        src));
+    }
+    return this;
+};
 
 /** Can be chained.
     @param {x86.Assembler#register or label } opnd1
@@ -2098,5 +2158,184 @@ x86.Assembler.prototype.jg = function (label, offset)
     return this.jumpLabel(x86.opcode.jgRel8, "jg", label, offset); 
 };
 
+/** Can be chained */
+x86.Assembler.prototype.cmovo = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovo, "cmovo", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovno = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovno, "cmovno", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovb  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovb, "cmovb", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovc  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovc, "cmovc", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnae= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovna, "cmovna", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnb = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnb, "cmovnb", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnc = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnc, "cmovnc", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovae = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovae, "cmovae", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovz  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovz, "cmovz", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmove  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmove, "cmove", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnz = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnz, "cmovnz", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovne = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovne, "cmovne", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovbe = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovbe, "cmovbe", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovna = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovna, "cmovna", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnbe= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnb, "cmovnb", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmova  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmova, "cmova", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovs  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovs, "cmovs", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovns = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovns, "cmovns", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovp  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovp, "cmovp", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovpe = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovpe, "cmovpe", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnp = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnp, "cmovnp", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovpo = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovpo, "cmovpo", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovl  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovl, "cmovl", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnge= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovng, "cmovng", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnl = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnl, "cmovnl", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovge = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovge, "cmovge", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovle = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovle, "cmovle", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovng = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovng, "cmovng", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnle= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnl, "cmovnl", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovg  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovg, "cmovg", src, dest);
+};
 
 
