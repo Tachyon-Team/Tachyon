@@ -52,7 +52,7 @@ function boxRef(rawPtr, tagVal)
     "tachyon:arg tagVal pint";
 
     // Box the raw pointer
-    return iir.icast(IRType.box, (intVal << TAG_NUM_BITS_REF) | tagVal);
+    return iir.icast(IRType.box, (rawPtr & ~TAG_REF_MASK) | tagVal);
 }
 
 /**

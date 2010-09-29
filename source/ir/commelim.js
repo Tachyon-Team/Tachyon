@@ -321,6 +321,11 @@ function commElim(cfg, maxItrs)
                         var rinstr = mustReachCur[j];
                         if (rinstr.readsMem && !(rinstr instanceof GetCtxInstr))
                         {
+                            /*
+                            print('killing: ' + rinstr);
+                            print('with: ' + instr);
+                            */
+
                             mustReachCur.splice(j, 1);
                             --j;
                         }
@@ -385,15 +390,11 @@ function commElim(cfg, maxItrs)
 
             var rinstr = reachInstr[instr.instrId];
 
-            /*
-            if (instr instanceof CallFuncInstr && rinstr)
-                print('call could be replaced: ' + instr);
-            */
-
-            // If the instruction is not a branch and there is a replacement
-            if (!instr.isBranch() && rinstr)
+            // If the instruction is a call or a non-branch instruction and 
+            // there is a replacement
+            if ((instr instanceof CallInstr || !instr.isBranch()) && rinstr)
             {
-                /*              
+                /*
                 print('********************');
                 print(instr);
                 print(rinstr);
@@ -409,6 +410,11 @@ function commElim(cfg, maxItrs)
 
                 // Remove the instruction
                 cfg.remInstr(itr, rinstr);
+
+                // If this is a call instruction in a branch position,
+                // add a jump to the call continuation block
+                if (instr instanceof CallInstr && instr.isBranch())
+                    cfg.addInstr(itr, new JumpInstr(instr.getContTarget()));
 
                 // Set the changed flag
                 changed = true;
