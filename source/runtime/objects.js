@@ -161,37 +161,41 @@ staticEnv.regBinding(
 //=============================================================================
 
 // Bit pattern for the true constant
+var BIT_PATTERN_TRUE = 1;
 staticEnv.regBinding(
     'BIT_PATTERN_TRUE',
     ConstValue.getConst(
-        1,
+        BIT_PATTERN_TRUE,
         IRType.pint
     )
 );
 
 // Bit pattern for the false constant
+var BIT_PATTERN_FALSE = 9;
 staticEnv.regBinding(
     'BIT_PATTERN_FALSE',
     ConstValue.getConst(
-        9,
+        BIT_PATTERN_FALSE,
         IRType.pint
     )
 );
 
 // Bit pattern for the null constant
+var BIT_PATTERN_NULL = 17;
 staticEnv.regBinding(
     'BIT_PATTERN_NULL',
     ConstValue.getConst(
-        17,
+        BIT_PATTERN_NULL,
         IRType.pint
     )
 );
 
 // Bit pattern for the undefined constant
+var BIT_PATTERN_UNDEF = 25;
 staticEnv.regBinding(
     'BIT_PATTERN_UNDEF',
     ConstValue.getConst(
-        25,
+        BIT_PATTERN_UNDEF,
         IRType.pint
     )
 );
