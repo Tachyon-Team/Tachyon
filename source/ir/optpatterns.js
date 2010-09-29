@@ -25,6 +25,8 @@ function applyPatternsCFG(cfg, maxItrs)
     // Repeat until no more changes occur or the max iteration count is reached
     for (var itrCount = 0; changed && itrCount < maxItrs; ++itrCount)
     {
+        //print('*** itr ' + itrCount);
+
         // No changes in this iteration yet
         changed = false;
 
@@ -51,9 +53,6 @@ Apply block-level optimization patterns to a block
 */
 function applyPatternsBlock(cfg, block)
 {
-    // Flag to indicate the CFG was changed
-    var changed = false;
-
     //
     // Eliminate blocks of the form:
     // t = phi x1,x2,x3
@@ -76,6 +75,9 @@ function applyPatternsBlock(cfg, block)
         var phiPreds = phiInstr.preds.slice(0);
         var phiUses = phiInstr.uses.slice(0);
 
+        // Flag to indicate the CFG was changed
+        var changed = false;
+
         for (var j = 0; j < phiPreds.length; ++j)
         {
             var pred = phiPreds[j];
@@ -83,8 +85,9 @@ function applyPatternsBlock(cfg, block)
 
             if (pred.instrs[pred.instrs.length - 1] instanceof JumpInstr)
             {
-                //print('eliminating phi node pred...');
+                //print('eliminating phi node pred for ' + phiInstr + ' in ' + block.getBlockName());
 
+                // Replace the jump by an if instruction
                 pred.replInstrAtIndex(
                     pred.instrs.length - 1,
                     new IfInstr(
@@ -94,10 +97,31 @@ function applyPatternsBlock(cfg, block)
                     )
                 );
 
+                // For each if target. add an incoming phi value for the
+                // predecessor block matching that of the current block
+                for (var k = 0; k < ifInstr.targets.length; ++k)
+                {
+                    var target = ifInstr.targets[k];
+
+                    for (var l = 0; l < target.instrs.length; ++l)
+                    {
+                        var instr = target.instrs[l];
+
+                        if (!(instr instanceof PhiInstr))
+                            break;
+
+                        var inc = instr.getIncoming(block);
+                        instr.addIncoming(inc, pred);
+                    }
+                }
+
                 // Set the changed flag
                 changed = true;
             }
         }
+
+        if (changed)
+            return true;
     }
 
     //
@@ -105,7 +129,7 @@ function applyPatternsBlock(cfg, block)
     //
 
     // If this block has no predecessors, and it is not the entry block
-    else if (
+    if (
         block.preds.length == 0 &&
         block !== cfg.entry
     )
@@ -119,8 +143,8 @@ function applyPatternsBlock(cfg, block)
         // Remove the block from the CFG
         cfg.remBlock(block);
 
-        // Set the changed flag
-        changed = true;
+        // The CFG was changed
+        return true;
     }
 
     //
@@ -129,7 +153,7 @@ function applyPatternsBlock(cfg, block)
 
     // If this block has only one successor, which has only one predecessor
     // and the block is not terminated by an exception-producing instruction
-    else if (
+    if (
         block.succs.length == 1 && 
         block.succs[0].preds.length == 1 &&
         block !== block.succs[0] &&
@@ -210,8 +234,8 @@ function applyPatternsBlock(cfg, block)
         // Remove the successor block from the CFG
         cfg.remBlock(succ);
 
-        // Set the changed flag
-        changed = true;
+        // The CFG was changed
+        return true;
     }
 
     //
@@ -220,7 +244,7 @@ function applyPatternsBlock(cfg, block)
 
     // If this block has only one successor, no instructions but a branch, 
     // and the block is not terminated by an exception-producing instruction
-    else if (
+    if (
         block.succs.length == 1 && 
         block.succs[0] !== block &&
         block.instrs.length == 1 &&
@@ -233,6 +257,9 @@ function applyPatternsBlock(cfg, block)
 
         // Copy the predecessor list for this block
         var preds = block.preds.slice(0);
+
+        // Flag to indicate the CFG was changed
+        var changed = false;
 
         // For each predecessor
         PRED_LOOP:
@@ -293,11 +320,17 @@ function applyPatternsBlock(cfg, block)
             // Set the changed flag
             changed = true;
         }
+
+        if (changed)
+            return true;
     }
 
     // If no block-level patterns applied
     else
     {
+        // Flag to indicate the CFG was changed
+        var changed = false;
+
         // For each instruction of the block
         for (var i = 0; i < block.instrs.length; ++i)
         {
@@ -306,14 +339,16 @@ function applyPatternsBlock(cfg, block)
             // Apply instruction-level patterns to this instruction
             var result = applyPatternsInstr(cfg, block, instr, i);
 
-            // If changes occurred, set the flag
             if (result)
                 changed = true;
         }
+
+        if (changed)
+            return true;
     }
 
-    // Return whether the CFG has been changed or not
-    return changed;
+    // The CFG was not changed
+    return false;
 }
 
 /**
@@ -329,6 +364,8 @@ function applyPatternsInstr(cfg, block, instr, index)
         instr.isBranch() == false
     )
     {
+        //print('Removing dead: ' + instr);
+
         // Remove the instruction
         block.remInstrAtIndex(index);
 
@@ -373,7 +410,7 @@ function applyPatternsInstr(cfg, block, instr, index)
         // Vi <- phi(...Vi...Vi...)
         if (numVi == instr.uses.length)
         {
-            //print('Removing: ' + instr);
+            //print('Removing phi: ' + instr);
 
             // Remove the phi node
             block.remInstr(instr);
@@ -387,7 +424,7 @@ function applyPatternsInstr(cfg, block, instr, index)
         // 0 or more Vi and 1 or more Vj
         else if (numVi + numVj == instr.uses.length)        
         {
-            //print('Renaming: ' + instr);
+            //print('Renaming phi: ' + instr);
 
             // Rename all occurences of Vi to Vj
             for (var k = 0; k < instr.dests.length; ++k)

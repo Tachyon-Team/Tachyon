@@ -83,8 +83,15 @@ function lowerIRCFG(cfg)
     // Perform constant propagation on the CFG
     constProp(cfg);
 
+    //print('\n' + cfg + '\n');
+
     // Apply peephole optimization patterns to the CFG
     applyPatternsCFG(cfg);
+
+    //print('\n' + cfg + '\n');
+
+    // Perform common subexpression elimination on the CFG
+    commElim(cfg);
 
     // Validate the CFG
     cfg.validate();
@@ -97,7 +104,10 @@ function lowerIRCFG(cfg)
         // If any instruction reads or writes from memory, annotate the
         // function as reading or writing memory
         if (instr.writesMem)
+        {
+            //print('******' + cfg.ownerFunc.funcName + ' writes mem: ' + instr);
             cfg.ownerFunc.writesMem = true;
+        }
         if (instr.readsMem)
             cfg.ownerFunc.readsMem = true;
     }

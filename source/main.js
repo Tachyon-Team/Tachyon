@@ -13,6 +13,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function testIR()
 {
     var ast = parse_src_file('parser/tests/test4.js');
+
+    pp(ast);
+
     var ir = unitToIR(ast, true);
     
     print(ir);

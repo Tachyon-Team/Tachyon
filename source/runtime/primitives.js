@@ -21,6 +21,7 @@ Box an integer value
 function boxInt(intVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:arg intVal pint";
 
     // Box the integer
@@ -33,6 +34,7 @@ Unbox an integer value
 function unboxInt(boxVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:ret pint";
 
     // Box the integer
@@ -45,11 +47,12 @@ Box a reference value
 function boxRef(rawPtr, tagVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:arg rawPtr rptr";
     "tachyon:arg tagVal pint";
 
     // Box the raw pointer
-    return iir.icast(IRType.box, (intVal << TAG_NUM_BITS_REF) | tagVal);
+    return iir.icast(IRType.box, (rawPtr & ~TAG_REF_MASK) | tagVal);
 }
 
 /**
@@ -58,9 +61,10 @@ Get the reference tag of a boxed value
 function getRefTag(boxVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:ret pint";
 
-    // Mask the tag
+    // Mask out the non-tag part
     return boxVal & TAG_REF_MASK;
 }
 
@@ -70,10 +74,11 @@ Test if a boxed value has a specific reference tag
 function boxHasTag(boxVal, tagVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:arg tagVal pint";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) == tagVal;
 }
 
@@ -83,6 +88,7 @@ Test if a boxed value is integer
 function boxIsInt(boxVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:ret i8";
 
     // Test if the value has the int tag
@@ -95,9 +101,10 @@ Test if a boxed value is an object
 function boxIsObj(boxVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) >= TAG_ARRAY;
 }
 
@@ -107,9 +114,10 @@ Test if a boxed value is a function
 function boxIsFunc(boxVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) == TAG_FUNCTION;
 }
 
@@ -119,10 +127,37 @@ Test if a boxed value is an array
 function boxIsArray(boxVal)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
     "tachyon:ret i8";
 
-    // Compare the tag
+    // Compare the reference tag
     return getRefTag(boxVal) == TAG_ARRAY;
+}
+
+/**
+Test if a boxed value is a floating-point value
+*/
+function boxIsFloat(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i8";
+
+    // Compare the reference tag
+    return getRefTag(boxVal) == TAG_FLOAT;
+}
+
+/**
+Test if a boxed value is a string
+*/
+function boxIsString(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i8";
+
+    // Compare the reference tag
+    return getRefTag(boxVal) == TAG_STRING;
 }
 
 /**
@@ -131,6 +166,7 @@ Convert a boxed value to a one-byte boolean value
 function boxToBool(boxVal)
 {
     "tachyon:static";
+    "tachyon:nothrow";
     "tachyon:ret i8";
 
     // Get an integer-typed value for input
@@ -296,6 +332,7 @@ Implementation of HIR less-than instruction
 function lt(v1, v2)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -315,6 +352,7 @@ Implementation of HIR eq instruction
 function eq(v1, v2)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -333,7 +371,8 @@ Implementation of HIR strict-equality instruction
 */
 function seq(v1, v2)
 {
-    "tachyon:inline"
+    "tachyon:inline";
+    "tachyon:nothrow";
 
     // If both values are floating-point
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
@@ -355,6 +394,7 @@ Implementation of the HIR add instruction
 function add(v1, v2)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -384,6 +424,7 @@ Implementation of the HIR sub instruction
 function sub(v1, v2)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -413,6 +454,7 @@ Implementation of the HIR mul instruction
 function mul(v1, v2)
 {
     "tachyon:inline";
+    "tachyon:nothrow";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -476,8 +518,7 @@ function computeHash(key)
 
             hashCode =
                 (hashCode * iir.constant(IRType.pint, 256) + ch) %
-                iir.constant(IRType.pint, 426870919)
-            ;
+                iir.constant(IRType.pint, 426870919);
         }
 
         // Return the computed hash code
@@ -610,7 +651,7 @@ function getPropVal(obj, propName)
                 */
 
                 // TODO
-                return propVal
+                return propVal;
             }
 
             // Otherwise, if we have reached an empty slot

@@ -1320,7 +1320,8 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 
     assert (
         (
-            inputVals[0].type === IRType.box
+            (inputVals[0].type === IRType.box ||
+            inputVals[0].type === IRType.rptr)
             &&
             (inputVals[1].type === IRType.box ||
             inputVals[1].type === IRType.pint)
