@@ -2036,6 +2036,8 @@ x86.Assembler.prototype.jmp = function (opnd1, opnd2)
     {
         case x86.type.REG: 
             return this.jumpGeneral(4, opnd1); 
+        case x86.type.MEM: 
+            return this.jumpGeneral(4, opnd1); 
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
         default:
