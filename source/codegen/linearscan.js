@@ -1625,20 +1625,35 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             freeUntilPos[i] = Math.min(it.nextIntersection(current),
                                        freeUntilPos[i]);
         }
-            
-        if (current.regHint !== null && 
+        
+        if (current.regHint !== null && typeof current.regHint === "number" &&
             freeUntilPos[current.regHint] > current.startPos())
         {
+            // If the register hint is an index into the register
+            // available for allocation, use it if it is free
             reg = current.regHint;
-        } else
+        } else if (current.regHint !== null && 
+                   typeof current.regHint !== "number")
         {
+            // If the register hint is not a number, use it as is, so
+            // register unavailable for allocation might still be used directly.
+            reg = current.regHint; 
+        } else {
+            // Either no register hint was given or the register is not
+            // available, use one of the availables
             reg = allocator.max(freeUntilPos).index;
         }
         
         // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
         // is free for a part of current.  This way it handles 
         // a fixed interval starting at the same position as current
-        if (freeUntilPos[reg] <= current.startPos())
+        if (typeof reg !== "number")
+        {
+            // Always succeed when a register not available for allocation
+            // is used
+            current.reg = reg;
+            return true;
+        } else if(freeUntilPos[reg] <= current.startPos())
         {
             // No register available without spilling
             return false;
