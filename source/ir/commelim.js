@@ -291,6 +291,18 @@ function commElim(cfg, maxItrs)
                 mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
             }
 
+            // Remove return values flowing through exception edges
+            for (var i = 0; i < mustReachCur.length; ++i)
+            {
+                var instr = mustReachCur[i];
+                if (instr instanceof CallFuncInstr && 
+                    instr.getThrowTarget() === block)
+                {
+                    mustReachCur.splice(i, 1);
+                    --i;
+                }
+            }
+
             // For each instruction
             INSTR_LOOP:
             for (var i = 0; i < block.instrs.length; ++i)
@@ -373,10 +385,15 @@ function commElim(cfg, maxItrs)
 
             var rinstr = reachInstr[instr.instrId];
 
+            /*
+            if (instr instanceof CallFuncInstr && rinstr)
+                print('call could be replaced: ' + instr);
+            */
+
             // If the instruction is not a branch and there is a replacement
             if (!instr.isBranch() && rinstr)
             {
-                /*                
+                /*              
                 print('********************');
                 print(instr);
                 print(rinstr);

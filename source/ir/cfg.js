@@ -672,6 +672,18 @@ ControlFlowGraph.prototype.validate = function ()
             mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
         }
 
+        // Remove return values flowing through exception edges
+        for (var i = 0; i < mustReachCur.length; ++i)
+        {
+            var instr = mustReachCur[i];
+            if (instr instanceof CallFuncInstr && 
+                instr.getThrowTarget() === block)
+            {
+                mustReachCur.splice(i, 1);
+                --i;
+            }
+        }
+
         // For each instruction
         for (var i = 0; i < block.instrs.length; ++i)
         {
