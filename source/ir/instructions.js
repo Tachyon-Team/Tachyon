@@ -333,6 +333,49 @@ ConstValue.prototype.isUndef = function ()
 }
 
 /**
+Get the immediate value (bit pattern) of a constant
+*/
+ConstValue.prototype.getImmValue = function ()
+{
+    if (this.isInt())
+    {
+        if (this.type === IRType.box)
+        {
+            return (this.value << TAG_NUM_BITS_INT);
+        }
+        else if (this.type.isInt())
+        {
+            return this.value;
+        }
+    }
+
+    if (this.value === true)
+    {
+        return BIT_PATTERN_FALSE << TAG_NUM_BITS_REF;
+    }
+
+    if (this.value === false)
+    {
+        return BIT_PATTERN_FALSE << TAG_NUM_BITS_REF;
+    }
+
+    if (this.value === undefined)
+    {
+        return BIT_PATTERN_UNDEF << TAG_NUM_BITS_REF;
+    }
+
+    if (this.value === null)
+    {
+        return BIT_PATTERN_NULL << TAG_NUM_BITS_REF;
+    }
+
+    assert (
+        false,
+        'cannot get bits for: ' + this.type
+    );
+}
+
+/**
 Map of values to maps of types to IR constants
 */
 ConstValue.constMap = new HashMap();
