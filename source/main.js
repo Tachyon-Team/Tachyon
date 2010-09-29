@@ -13,10 +13,11 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function testIR()
 {
     var ast = parse_src_file('parser/tests/test4.js');
-    var ir = unitToIR(ast, true);
-    
+
     pp(ast);
 
+    var ir = unitToIR(ast, true);
+    
     print(ir);
 
     lowerIRFunc(ir);

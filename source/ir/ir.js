@@ -18,16 +18,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: implement delete x operator and matching unit test
-// PROBLEM: this can involve a long lookup chain of the form a.b.c
-// - Just eval left and right parts of top level index expr
-// - If no index expr, try deleting on global
-// PROBLEM: special behavior inside with context
-// - Deletes on with object if property present, otherwise deletes on global
-// PROBLEM: special behavior with local variables
-// - Does nothing for local variables
-// Use delPropVal primitive
-
 // TODO: before fetching from global object, add hasPropVal test
 // Need to throw error on test fail
 // Implement conditional error throw IR gen mechanism?
@@ -2488,6 +2478,164 @@ function opToIR(context)
 
             // Set the operator's output value as the output
             context.setOutput(argsContext.getExitBlock(), opVal);
+        }
+        break;
+
+        // If this is a field deletion
+        case 'delete x':
+        {
+            // Get a reference to the field expression
+            var fieldExpr = exprs[0];
+
+            // If the op is a field indexing
+            if (fieldExpr instanceof OpExpr && fieldExpr.op == 'x [ y ]')
+            {
+                // Compile the argument values
+                var argsContext = context.pursue(fieldExpr.exprs);
+                var argVals = exprListToIR(argsContext);
+
+                // Create the appropriate operator instruction
+                var opVal = insertPrimCallIR(
+                    argsContext, 
+                    'delPropVal', 
+                    [argVals[0], argVals[1]]
+                );
+
+                // Set the operator's output value as the output
+                context.setOutput(argsContext.getExitBlock(), opVal);
+            }
+
+            // Otherwise, if the op is a variable
+            else if (fieldExpr instanceof Ref)
+            {
+                // Get the variable name
+                var varName = fieldExpr.id.toString();
+
+                // If there is a local variable with this name
+                if (context.localMap.hasItem(varName) ||
+                    context.sharedMap.hasItem(varName))
+                {
+                    // Do nothing
+                    context.setOutput(
+                        context.entryBlock, 
+                        ConstValue.getConst(true)
+                    );
+                }
+
+                // Otherwise, for the global variable case
+                else
+                {
+                    // Declare variables for the operator value
+                    var opValueObj;
+                    var opValueGlob;
+
+                    // If we are within a with block
+                    if (context.withVal)
+                    {
+                        // Add a has-property test on the object for the symbol name
+                        var hasTestVal = insertPrimCallIR(
+                            context,
+                            'hasPropVal',
+                            [context.withVal, ConstValue.getConst(varName)]
+                        );
+
+                        // Context for the case where the with object has the property
+                        var objContext = context.branch(
+                            null,
+                            context.cfg.getNewBlock('with_obj'),
+                            context.localMap.copy()
+                        );
+
+                        // Context for the case where the object doesn't have the property
+                        var globContext = context.branch(
+                            null,
+                            context.cfg.getNewBlock('with_glob'),
+                            context.localMap.copy()
+                        );
+
+                        // Add the if branch expression
+                        context.addInstr(
+                            new IfInstr(
+                                hasTestVal,
+                                objContext.entryBlock,
+                                globContext.entryBlock
+                            )
+                        );
+                    }
+                    else
+                    {
+                        var globContext = context;
+                    }
+
+                    // Delete the property from the global object
+                    opValueGlob = insertPrimCallIR(
+                        globContext, 
+                        'delPropVal', 
+                        [context.globalObj, ConstValue.getConst(varName)]
+                    );
+
+                    // If we are within a with block
+                    if (context.withVal)
+                    {
+                        // Delete the property from the with object
+                        var opValueObj = insertPrimCallIR(
+                            objContext, 
+                            'delPropVal', 
+                            [context.withVal, ConstValue.getConst(varName)]
+                        );
+
+                        // Bridge the prop and var contexts
+                        objContext.bridge();
+                        globContext.bridge();
+
+                        // Merge the local maps using phi nodes
+                        var joinBlock = mergeContexts(
+                            [objContext, globContext],
+                            context.localMap,
+                            context.cfg,
+                            'with_join'
+                        );
+
+                        // Create a phi node to merge the output values
+                        var varValue = joinBlock.addInstr(
+                            new PhiInstr(
+                                [opValueGlob, opValueObj],
+                                [globContext.getExitBlock(), objContext.getExitBlock()]
+                            )
+                        );
+
+                        // Create a new context for the join block
+                        var curContext = context.branch(
+                            context.astNode,
+                            joinBlock,
+                            context.localMap
+                        );
+                    }
+                    else
+                    {
+                        // Use the value and context from the global case
+                        var curContext = globContext;
+                        var opValue = opValueGlob;
+                    }
+
+                    // The operator value is the output value
+                    context.setOutput(curContext.entryBlock, opValue);
+                }
+            }
+
+            // Otherwise, for any other kind of expression
+            else
+            {
+                // Evaluate the field expression
+                var fieldCtx = context.pursue(fieldExpr);
+                exprListToIR(fieldCtx);
+
+                // Set the output to the true constant
+                context.setOutput(
+                    fieldCtx.getExitBlock(), 
+                    ConstValue.getConst(true)
+                );
+            }
         }
         break;
 
