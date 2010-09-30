@@ -96,6 +96,10 @@ function lowerIRCFG(cfg)
     // Validate the CFG
     cfg.validate();
 
+    // Assume that the function does not read or write from/to memory
+    cfg.ownerFunc.writesMem = false;
+    cfg.ownerFunc.readsMem = false;
+
     // For each instructon in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {
@@ -111,6 +115,9 @@ function lowerIRCFG(cfg)
         if (instr.readsMem)
             cfg.ownerFunc.readsMem = true;
     }
+
+    //if (!cfg.ownerFunc.writesMem)
+    //    print('############ DOES NOT WRITE MEM: ' + cfg.ownerFunc.funcName);
 }
 
 /**

@@ -370,22 +370,22 @@ ConstValue.prototype.getImmValue = function ()
 
     if (this.value === true)
     {
-        return BIT_PATTERN_FALSE << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_TRUE;
     }
 
     if (this.value === false)
     {
-        return BIT_PATTERN_FALSE << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_FALSE;
     }
 
     if (this.value === undefined)
     {
-        return BIT_PATTERN_UNDEF << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_UNDEF;
     }
 
     if (this.value === null)
     {
-        return BIT_PATTERN_NULL << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_NULL;
     }
 
     assert (
