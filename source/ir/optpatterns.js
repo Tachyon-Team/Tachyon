@@ -360,7 +360,7 @@ function applyPatternsInstr(cfg, block, instr, index)
     // has no side effects and is not a branch
     if (
         instr.dests.length == 0 &&
-        instr.writesMem == false &&
+        instr.writesMem() == false &&
         instr.isBranch() == false
     )
     {

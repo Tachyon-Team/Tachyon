@@ -483,18 +483,6 @@ function IRInstr()
     this.targets = [];
 
     /**
-    Flag to indicate that this instruction writes to memory
-    @field
-    */
-    this.writesMem = false;
-
-    /**
-    Flag to indicate that this instruction reads from memory
-    @field
-    */
-    this.readsMem = false;
-
-    /**
     Parent basic block
     @field
     */
@@ -671,6 +659,22 @@ Test if this instruction is a branch
 IRInstr.prototype.isBranch = function ()
 {
     return (this.targets.length > 0);
+}
+
+/**
+Test if this instruction writes to memory
+*/
+IRInstr.prototype.writesMem = function ()
+{
+    return false;
+}
+
+/**
+Test if this instruction reads from memory
+*/
+IRInstr.prototype.readsMem = function ()
+{
+    return false;
 }
 
 /**
@@ -1730,8 +1734,8 @@ CallInstr.prototype = new ExceptInstr();
 /**
 By default, conservatively assume all calls read and write to/from memory
 */
-CallInstr.prototype.writesMem = true;
-CallInstr.prototype.readsMem = true;
+CallInstr.prototype.writesMem = function () { return true; }
+CallInstr.prototype.readsMem = function () { return true; }
 
 /**
 Set the continue block of the call instruction
@@ -1788,8 +1792,6 @@ var CallFuncInstr = instrMaker(
 
         if (inputVals[0] instanceof IRFunction)
         {
-            this.readsMem = inputVals[0].readsMem;
-            this.writesMem = inputVals[0].writesMem;
             this.type = inputVals[0].retType;
         }
         else
@@ -1810,6 +1812,28 @@ var CallFuncInstr = instrMaker(
 );
 
 /**
+Test if a call instruction writes to memory
+*/
+CallFuncInstr.prototype.writesMem = function ()
+{
+    if (this.uses[0] instanceof IRFunction)
+        return this.uses[0].writesMem;
+    else
+        return true;
+}
+
+/**
+Test if a call instruction reads from memory
+*/
+CallFuncInstr.prototype.readsMem = function ()
+{
+    if (this.uses[0] instanceof IRFunction)
+        return this.uses[0].readsMem;
+    else
+        return true;
+}
+
+/**
 @class Constructor call with function object reference
 @augments CallInstr
 */
@@ -1826,20 +1850,12 @@ var ConstructInstr = instrMaker(
         
         this.type = IRType.box;
 
-        if (inputVals[0] instanceof IRFunction)
+        for (var i = 2; i < inputVals.length; ++i)
         {
-            this.readsMem = inputVals[0].readsMem;
-            this.writesMem = inputVals[0].writesMem;
-        }
-        else
-        {
-            for (var i = 2; i < inputVals.length; ++i)
-            {
-                assert (
-                    inputVals[0].type === IRType.box,
-                    'indirect calls can only take boxed values as input'
-                );
-            }
+            assert (
+                inputVals[0].type === IRType.box,
+                'constructor calls can only take boxed values as input'
+            );
         }
     },
     ['continue', 'throw'],
@@ -1940,10 +1956,13 @@ var LoadInstr = instrMaker(
         instrMaker.validType(inputVals[1], IRType.pint);
         
         this.type = typeParams[0];
-
-        this.readsMem = true;
     }
 );
+
+/**
+Load instructions always read from memory
+*/
+LoadInstr.prototype.readsMem = function () { return true; }
 
 /**
 @class Instruction to store a value to memory
@@ -1963,10 +1982,13 @@ var StoreInstr = instrMaker(
         instrMaker.validType(inputVals[2], typeParams[0]);
    
         this.type = IRType.none;
-
-        this.writesMem = true;
     }
 );
+
+/**
+Store instructions always write to memory
+*/
+StoreInstr.prototype.writesMem = function () { return true; }
 
 /**
 @class Instruction to get a pointer to the current runtime context
@@ -1979,10 +2001,13 @@ var GetCtxInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 0);
         
         this.type = IRType.rptr;
-
-        this.readsMem = true;
     }
 );
+
+/**
+Get context instructions always read from memory
+*/
+GetCtxInstr.prototype.readsMem = function () { return true; }
 
 /**
 @class Instruction to set the runtime context pointer
@@ -1996,10 +2021,13 @@ var SetCtxInstr = instrMaker(
         instrMaker.validType(inputVals[0], IRType.rptr);
         
         this.type = IRType.none;
-
-        this.writesMem = true;
     }
 );
+
+/**
+Set context instructions always write to memory
+*/
+SetCtxInstr.prototype.writesMem = function () { return true; }
 
 //=============================================================================
 //

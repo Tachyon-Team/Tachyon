@@ -314,12 +314,12 @@ function commElim(cfg, maxItrs)
 
                 // If this instruction writes memory, kill any reaching instruction
                 // that reads memory, except get_ctx
-                if (instr.writesMem)
+                if (instr.writesMem())
                 {
                     for (var j = 0; j < mustReachCur.length; ++j)
                     {
                         var rinstr = mustReachCur[j];
-                        if (rinstr.readsMem && !(rinstr instanceof GetCtxInstr))
+                        if (rinstr.readsMem() && !(rinstr instanceof GetCtxInstr))
                         {
                             /*
                             print('killing: ' + rinstr);
@@ -414,7 +414,16 @@ function commElim(cfg, maxItrs)
                 // If this is a call instruction in a branch position,
                 // add a jump to the call continuation block
                 if (instr instanceof CallInstr && instr.isBranch())
-                    cfg.addInstr(itr, new JumpInstr(instr.getContTarget()));
+                {
+                    //print('*** replacing call: ' + instr);
+                    //print('*** by: ' + rinstr);
+                    var callBlock = instr.parentBlock;
+                    callBlock.addInstr(
+                        new JumpInstr(instr.getContTarget()),
+                        undefined,
+                        callBlock.instrs.length - 1
+                    );
+                }
 
                 // Set the changed flag
                 changed = true;

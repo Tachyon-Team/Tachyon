@@ -107,12 +107,12 @@ function lowerIRCFG(cfg)
 
         // If any instruction reads or writes from memory, annotate the
         // function as reading or writing memory
-        if (instr.writesMem)
+        if (instr.writesMem())
         {
             //print('******' + cfg.ownerFunc.funcName + ' writes mem: ' + instr);
             cfg.ownerFunc.writesMem = true;
         }
-        if (instr.readsMem)
+        if (instr.readsMem())
             cfg.ownerFunc.readsMem = true;
     }
 
