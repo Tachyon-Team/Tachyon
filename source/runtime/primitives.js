@@ -252,7 +252,8 @@ function makeError(errorCtor, message)
     "tachyon:static";
     "tachyon:nothrow";
 
-    //throw new errorCtor(message);
+    //return new errorCtor(message);
+    return UNDEFINED;
 }
 
 //=============================================================================
@@ -262,30 +263,30 @@ function makeError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
-function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; }
-function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; }
-function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; }
-function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; }
-function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; }
-function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; }
-function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; }
-function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; }
-function makeCell() { "tachyon:static"; "tachyon:nothrow"; }
-function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; }
-function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; }
-function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; }
-function newArray() { "tachyon:static"; "tachyon:nothrow"; }
-function div() { "tachyon:static"; "tachyon:nothrow"; }
-function mod() { "tachyon:static"; "tachyon:nothrow"; }
-function not() { "tachyon:static"; "tachyon:nothrow"; }
-function and() { "tachyon:static"; "tachyon:nothrow"; }
-function or() { "tachyon:static"; "tachyon:nothrow"; }
-function xor() { "tachyon:static"; "tachyon:nothrow"; }
-function lsft() { "tachyon:static"; "tachyon:nothrow"; }
-function rsft() { "tachyon:static"; "tachyon:nothrow"; }
-function ursft() { "tachyon:static"; "tachyon:nothrow"; }
-function ne() { "tachyon:static"; "tachyon:nothrow"; }
-function nseq() { "tachyon:static"; "tachyon:nothrow"; }
+function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function makeCell() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function newArray() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function div() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function mod() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function not() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function and() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function or() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function xor() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function lsft() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function rsft() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function ursft() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function ne() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function nseq() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties
@@ -306,11 +307,11 @@ function newObject(proto)
     set_obj_numprops(obj, iir.constant(IRType.i32, 0));
 
     // Initialize the hash table pointer to null to prevent GC errors
-    set_obj_hashtbl(obj, null);
+    set_obj_tbl(obj, null);
 
     // Allocate space for a hash table and set the hash table reference
     var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
-    set_obj_hashtbl(obj, hashtbl);
+    set_obj_tbl(obj, hashtbl);
 
     // Initialize the hash table
     for (
@@ -319,7 +320,7 @@ function newObject(proto)
         i += iir.constant(IRType.pint, 1)
     )
     {
-        set_hashtbl_tbl_key(hashtbl, i, undefined);
+        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
     }
 
     // Return the object reference
@@ -343,6 +344,7 @@ function lt(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
     }
 }
 
@@ -363,6 +365,7 @@ function eq(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
     }
 }
 
@@ -378,6 +381,7 @@ function seq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
+        return UNDEFINED;
     }
     else
     {
@@ -410,11 +414,13 @@ function add(v1, v2)
         else
         {
             // TODO: overflow handling: need to create FP objects
+            return UNDEFINED;
         }
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
     }
 }
 
@@ -440,11 +446,13 @@ function sub(v1, v2)
         else
         {
             // TODO: overflow handling: need to create FP objects
+            return UNDEFINED;
         }    
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
     }
 }
 
@@ -470,11 +478,13 @@ function mul(v1, v2)
         else
         {
             // TODO: overflow handling: need to create FP objects
+            return UNDEFINED;
         }    
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
     }
 }
 
@@ -571,7 +581,7 @@ function putPropVal(obj, propName, propVal)
         }
 
         // Otherwise, if we have reached an empty slot
-        else if (keyVal === undefined)
+        else if (keyVal === UNDEFINED)
         {
             // Set the corresponding property value
             set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
@@ -655,7 +665,7 @@ function getPropVal(obj, propName)
             }
 
             // Otherwise, if we have reached an empty slot
-            else if (keyVal === undefined)
+            else if (keyVal === UNDEFINED)
             {
                 break;
             }
@@ -670,5 +680,5 @@ function getPropVal(obj, propName)
     } while (obj != null);
 
     // Property not found
-    return undefined;
+    return UNDEFINED;
 }

@@ -57,23 +57,42 @@ function IRType(name, size)
     */
     this.numBits = size * 8;
 
-    // If this is a signed integer type
-    if (name[0] == 'i')
+    // If this is an integer type
+    if (name[0] == 'i' || name[0] == 'u')
     {
-        // Compute min and max values: [-2^(N-1), 2^(N-1) - 1]
-        this.minVal = -Math.pow(2, this.numBits - 1);
-        this.maxVal = Math.pow(2, this.numBits - 1) - 1;
-    }
-
-    // If this is an unsigned integer type
-    if (name[0] == 'u')
-    {
-        // Compute min and max values: [0, 2^N - 1]
-        this.minVal = 0;
-        this.maxVal = Math.pow(2, this.numBits) - 1;
+        // Compute the available range
+        var range = IRType.getIntRange(this.numBits, name[0] == 'u');
+        this.minVal = range.minVal;
+        this.maxVal = range.maxVal;
     }
 }
 IRType.prototype = {};
+
+/**
+Calculate the range of values an integer variable can store 
+*/
+IRType.getIntRange = function (numBits, unsigned)
+{
+    // If this is an unsigned integer type
+    if (unsigned)
+    {
+        // Compute min and max values: [0, 2^N - 1]
+        return { 
+            minVal : 0, 
+            maxVal : Math.pow(2, numBits) - 1 
+        };
+    }
+
+    // If this is a signed integer type
+    else
+    {
+        // Compute min and max values: [-2^(N-1), 2^(N-1) - 1]
+        return {
+            minVal : -Math.pow(2, numBits - 1),
+            maxVal : Math.pow(2, numBits - 1) - 1
+        };
+    }
+}
 
 /**
 Obtain a string representation of an IR type
@@ -351,22 +370,22 @@ ConstValue.prototype.getImmValue = function ()
 
     if (this.value === true)
     {
-        return BIT_PATTERN_FALSE << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_TRUE;
     }
 
     if (this.value === false)
     {
-        return BIT_PATTERN_FALSE << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_FALSE;
     }
 
     if (this.value === undefined)
     {
-        return BIT_PATTERN_UNDEF << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_UNDEF;
     }
 
     if (this.value === null)
     {
-        return BIT_PATTERN_NULL << TAG_NUM_BITS_REF;
+        return BIT_PATTERN_NULL;
     }
 
     assert (

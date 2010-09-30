@@ -200,6 +200,15 @@ staticEnv.regBinding(
     )
 );
 
+// Undefined constant
+staticEnv.regBinding(
+    'UNDEFINED',
+    ConstValue.getConst(
+        undefined,
+        IRType.box
+    )
+);
+
 //=============================================================================
 //
 // Object memory layout
