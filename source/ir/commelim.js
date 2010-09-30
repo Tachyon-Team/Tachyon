@@ -415,7 +415,7 @@ function commElim(cfg, maxItrs)
                 // add a jump to the call continuation block
                 if (instr instanceof CallInstr && instr.isBranch())
                 {
-                    //print('*** replacing call: ' + instr);
+                    //print('*** replacing branch call: ' + instr);
                     //print('*** by: ' + rinstr);
                     var callBlock = instr.parentBlock;
                     callBlock.addInstr(

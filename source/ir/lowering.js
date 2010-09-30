@@ -113,7 +113,10 @@ function lowerIRCFG(cfg)
             cfg.ownerFunc.writesMem = true;
         }
         if (instr.readsMem())
+        {
+            //print('******' + cfg.ownerFunc.funcName + ' reads mem: ' + instr);
             cfg.ownerFunc.readsMem = true;
+        }
     }
 
     //if (!cfg.ownerFunc.writesMem)

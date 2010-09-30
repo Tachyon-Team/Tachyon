@@ -18,10 +18,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: fix scope of catch variable
 // TODO: use id directly (unique) instead of variable name?
 
-// TODO: before fetching from global object, add hasPropVal test
-// Need to throw error on test fail
-// Implement conditional error throw IR gen mechanism?
-
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
@@ -3146,6 +3142,21 @@ function refToIR(context)
         }
         else
         {
+            // Test if the property exists on the global object
+            var testVal = insertPrimCallIR(
+                varContext, 
+                'hasPropVal', 
+                [context.globalObj, ConstValue.getConst(symName)]
+            );
+
+            // Throw an error if the property does not exist
+            insertCondErrorIR(
+                varContext, 
+                testVal, 
+                'ReferenceError',
+                symName + ' is not defined globally'
+            );
+
             // Get the value from the global object
             varValueVar = insertPrimCallIR(
                 varContext, 
@@ -3254,6 +3265,41 @@ function insertContextReadIR(context, query, outName)
 
     // Return the value read
     return readVal;
+}
+
+/**
+Throw an error object containing an error message if a test fails
+*/
+function insertCondErrorIR(context, testVal, errorName, errorMsg)
+{
+    // Create a basic block for the non-error case
+    var contBlock = context.cfg.getNewBlock('test_success');
+
+    // Create a context for the error case
+    var errorCtx = context.branch(
+        null,
+        context.cfg.getNewBlock('test_fail'),
+        context.localMap.copy()
+    );
+
+    // Branch based on the test value
+    context.addInstr(
+        new IfInstr(
+            testVal,
+            contBlock,
+            errorCtx.entryBlock
+        )
+    );    
+
+    // Generate code to throw an error
+    insertErrorIR(
+        errorCtx, 
+        errorName, 
+        errorMsg
+    );
+
+    // Splice the non-error block into the context
+    context.splice(contBlock);
 }
 
 /**
@@ -3446,14 +3492,6 @@ function insertCallIR(context, instr)
     // If this is not a direct function call
     if (!(instr.uses[0] instanceof IRFunction))
     {
-        // Create basic blocks for function and non-function cases
-        var errorCtx = context.branch(
-            null,
-            context.cfg.getNewBlock('callee_not_func'),
-            context.localMap.copy()
-        );
-        var contBlock = context.cfg.getNewBlock('callee_is_func');
-
         // Test if the callee value is a function
         var testVal = insertCallIR(
             context,
@@ -3465,22 +3503,14 @@ function insertCallIR(context, instr)
                 ]
             )
         );
-        context.addInstr(
-            new IfInstr(
-                testVal,
-                contBlock,
-                errorCtx.entryBlock
-            )
-        );    
 
-        // Generate code to throw a type error
-        insertErrorIR(
-            errorCtx, 
-            'TypeError', 
+        // Throw an error if the callee is not a function
+        insertCondErrorIR(
+            context, 
+            testVal, 
+            'TypeError',
             'callee is not a function'
         );
-
-        context.splice(contBlock);
     }
 
     // If this call may throw exceptions

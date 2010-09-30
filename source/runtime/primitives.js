@@ -265,7 +265,7 @@ function makeError(errorCtor, message)
 // TODO: implement the following primitives
 function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return true; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }

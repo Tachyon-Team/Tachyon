@@ -32,6 +32,18 @@ ctxLayout.addField(
     IRType.box
 );
 
+// Range error constructor
+ctxLayout.addField(
+    'rangeerror',
+    IRType.box
+);
+
+// Reference error constructor
+ctxLayout.addField(
+    'referror',
+    IRType.box
+);
+
 // Syntax error constructor
 ctxLayout.addField(
     'syntaxerror',
@@ -41,6 +53,12 @@ ctxLayout.addField(
 // Type error constructor
 ctxLayout.addField(
     'typeerror',
+    IRType.box
+);
+
+// URI error constructor
+ctxLayout.addField(
+    'urierror',
     IRType.box
 );
 
