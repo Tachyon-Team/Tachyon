@@ -110,6 +110,8 @@ irToAsm.translator = function ()
 
     that.globalLabel = that.asm.labelObj("GLOBAL_PRELUDE");
     that.contextLabel = that.asm.labelObj("CONTEXT_PRELUDE");
+    that.putPropValLabel = that.asm.labelObj("PUT_PROP");
+    that.getPropValLabel = that.asm.labelObj("GET_PROP");
 
     if (that.asm.is64bitMode())
     {
@@ -406,100 +408,98 @@ irToAsm.translator.prototype.ir_add = function (opnds, instr)
     }
 
 };
-
-irToAsm.translator.prototype.ir_get_prop_val = function (opnds, instr)
+irToAsm.translator.prototype.get_prop_val = function ()
 {
-    const obj = opnds[0];
-    const dest = instr.regAlloc.dest;
-    const targets = instr.targets; 
-    const continue_label = this.label(targets[0]);
+    assert(irToAsm.config.physReg.length >= 4);
+    assert(value !== irToAsm.config.retValReg);
 
-    if (dest === null)
-    {
-        return;
-    }
+    const obj = irToAsm.config.physReg[0];
+    const key = irToAsm.config.physReg[1];
+    const value = irToAsm.config.physReg[2];
+    const addr = irToAsm.config.physReg[3];
 
-    var cont = this.asm.labelObj();
+    const cont = this.asm.labelObj();
 
-    this.get_prop_addr(opnds, irToAsm.config.scratch);
+    this.asm.label(this.getPropValLabel);
+
+    this.get_prop_addr(obj, key, addr);
 
     this.asm.
-    cmp(irToAsm.config.NULL, irToAsm.config.scratch).
+    cmp(irToAsm.config.NULL, addr).
+    mov($((new ConstValue(undefined, IRType.box)).getImmValue()), 
+          irToAsm.config.retValReg).
     je(cont).
-    mov(mem(this.G_VALUE_OFFSET, irToAsm.config.scratch), irToAsm.config.scratch).
-
+    // The following instruction causes a bus error only
+    // when addr is not a valid address
+    //cmovne(mem(this.G_VALUE_OFFSET, addr), irToAsm.config.retValReg).
+    mov(mem(this.G_VALUE_OFFSET,addr), irToAsm.config.retValReg).
     label(cont).
-    mov(irToAsm.config.scratch, dest).
-    jmp(continue_label);
+    ret();
 
 };
 
-irToAsm.translator.prototype.get_prop_addr = function (opnds, dest)
+irToAsm.translator.prototype.get_prop_addr = function (obj, key, addr)
 {
-    const obj = opnds[0];
-    const key = opnds[1];
-
     var loop = this.asm.labelObj();
     var end = this.asm.labelObj();
     var notFound = this.asm.labelObj();
     var cont = this.asm.labelObj();
 
     this.asm.
-    mov(obj, irToAsm.config.scratch).
-    add($(this.G_FIRST_OFFSET), irToAsm.config.scratch). // Retrieve address of first element
-    add(mem(this.G_NEXT_OFFSET - this.G_FIRST_OFFSET, irToAsm.config.scratch), 
-        irToAsm.config.scratch). // Retrieve beginning of next
-    sub($(this.G_ENTRY_LENGTH), irToAsm.config.scratch).       // Move to last element
+    mov(obj, addr).
+    add($(this.G_FIRST_OFFSET), addr). // Retrieve address of first element
+    add(mem(this.G_NEXT_OFFSET - this.G_FIRST_OFFSET, addr), 
+        addr). // Retrieve beginning of next
+    sub($(this.G_ENTRY_LENGTH), addr).       // Move to last element
 
     label(loop).                        // Loop from end to beginning
-    sub($(this.G_FIRST_OFFSET), irToAsm.config.scratch).
-    cmp(obj, irToAsm.config.scratch).           
+    sub($(this.G_FIRST_OFFSET), addr).
+    cmp(obj, addr).           
     jl(end).
 
-    add($(this.G_FIRST_OFFSET), irToAsm.config.scratch).       // Address of current item
-    cmp(key, mem(this.G_KEY_OFFSET, irToAsm.config.scratch), this.G_KEY_WIDTH).   // global[index] === key ?
+    add($(this.G_FIRST_OFFSET), addr).       // Address of current item
+    cmp(key, mem(this.G_KEY_OFFSET, addr), 
+        this.G_KEY_WIDTH).   // global[index] === key ?
     je(cont).                         // Item found on equal!
 
-    sub($(this.G_ENTRY_LENGTH), irToAsm.config.scratch).      // move to next value
+    sub($(this.G_ENTRY_LENGTH), addr).      // move to next value
     jmp(loop).
 
     label(end).
-    mov(irToAsm.config.NULL, irToAsm.config.scratch).        // no value found
+    mov(irToAsm.config.NULL, addr).        // no value found
 
     label(cont);
-
-    if (irToAsm.config.scratch !== dest)
-    {
-        this.asm.mov(irToAsm.config.scratch, dest);
-    }
-
 };
 
-irToAsm.translator.prototype.ir_put_prop_val = function (opnds, instr)
+irToAsm.translator.prototype.put_prop_val = function ()
 {
-    const obj = opnds[0];
-    const key = opnds[1];
-    const value = opnds[2];
-    const targets = instr.targets; 
-    const continue_label = this.label(targets[0]);
+    assert(irToAsm.config.physReg.length >= 4);
+
+    const obj = irToAsm.config.physReg[0];
+    const key = irToAsm.config.physReg[1];
+    const value = irToAsm.config.physReg[2];
+    const addr = irToAsm.config.physReg[3];
 
     var loop = this.asm.labelObj();
     var found = this.asm.labelObj();
 
-    this.get_prop_addr(opnds, irToAsm.config.scratch);
+    this.asm.label(this.putPropValLabel);
 
+    this.get_prop_addr(obj, key, addr);
+    
     this.asm.
-    cmp(irToAsm.config.NULL, irToAsm.config.scratch).
+    cmp(irToAsm.config.NULL, addr).
     jne(found).
-    mov(obj, irToAsm.config.scratch).
-    add($(this.G_FIRST_OFFSET), irToAsm.config.scratch).          // Retrieve address of first element
-    add(mem(this.G_NEXT_OFFSET, obj), irToAsm.config.scratch). // Retrieve address of next element 
+    mov(obj, addr).
+    add($(this.G_FIRST_OFFSET), addr).          // Retrieve address of first element
+    add(mem(this.G_NEXT_OFFSET, obj), addr). // Retrieve address of next element 
     // Inc entry nb
     add($(this.G_ENTRY_LENGTH), mem(this.G_NEXT_OFFSET, obj), this.G_NEXT_OFFSET_WIDTH). 
-    mov(key, mem(this.G_KEY_OFFSET, irToAsm.config.scratch), this.G_KEY_WIDTH).     // Add entry key
+    mov(key, mem(this.G_KEY_OFFSET, addr), this.G_KEY_WIDTH).     // Add entry key
     label(found).                          
-    mov(value, mem(this.G_VALUE_OFFSET, irToAsm.config.scratch), this.G_VALUE_WIDTH). // Add/Update the entry value
-    jmp(continue_label);
+    mov(value, mem(this.G_VALUE_OFFSET, addr), this.G_VALUE_WIDTH). // Add/Update the entry value
+    mov(value, irToAsm.config.retValReg).
+    ret();
 
 };
 
@@ -596,25 +596,6 @@ irToAsm.translator.prototype.ir_arg = function (opnds, instr)
 
 };
 
-irToAsm.translator.prototype.ir_ret = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    const spillNb = this.fct.regAlloc.spillNb;
-    const refByteLength = irToAsm.config.stack.width() / 8;
-    const retValReg = irToAsm.config.retValReg;
-
-    this.asm.add($(spillNb*refByteLength), irToAsm.config.stack);
-
-    if (opnds[0] !== retValReg)
-    {
-        this.asm.mov(opnds[0], retValReg);
-    }
-   
-    //this.asm.mov(mem(0,irToAsm.config.stack), EBX);
-    //this.asm.jmp(EBX);
-    this.asm.ret();
-};
-
 irToAsm.translator.prototype.ir_call = function (opnds, instr)
 {
     const dest = instr.regAlloc.dest;
@@ -662,19 +643,6 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
     }
 
     this.asm.
-    // Add stack frame descriptor space
-    // TODO
-
-    // Add return address
-    /*
-    mov(EAX, irToAsm.config.scratch);
-
-    this.call_self(15).
-
-    this.asm.
-    mov(EAX, mem(-(offset), irToAsm.config.stack)).
-    mov(irToAsm.config.scratch, EAX).
-    */
 
     // Move pointers on top of extra args
     sub($(offset), irToAsm.config.stack).
@@ -696,30 +664,18 @@ irToAsm.translator.prototype.func_prelude = function (prelude_label)
     // the address of the function
     this.asm.
     label(prelude_label);
-    
-    this.call_self(9);
-    
-    // Reserve space for the global object associated
-    // with this function
-    if (this.asm.is64bitMode())
-    {
-        this.asm.gen64(0);
-    } else
-    {
-        this.asm.gen32(0);
-    }
 
-    this.asm.genListing("FUNC GLOBAL OBJ");
-
-
+    this.call_self();
 };
 
 irToAsm.translator.prototype.func_init = function ()
 {
     const byteLength = irToAsm.config.stack.width() / 8;
     var spillNb = this.fct.regAlloc.spillNb;
-
-    this.asm.sub($(spillNb*byteLength), irToAsm.config.stack);
+    if (spillNb > 0)
+    {
+        this.asm.sub($(spillNb*byteLength), irToAsm.config.stack);
+    }
 };
 
 irToAsm.translator.prototype.ir_make_arg_obj = function (opnds, instr)
@@ -859,12 +815,20 @@ irToAsm.translator.prototype.init = function (mainFct)
             this.asm.pop(reg.reg32(i));
         }
     }
+
     this.asm.ret();
 
     // Add the global object dump at the end of the init section
     this.dump_global_object();
+
     // Add the context object dump right after the global object
     this.dump_context_object();
+
+    // Add the get property value code here
+    this.get_prop_val();
+
+    // Add the put property value code here
+    this.put_prop_val();
 };
 
 /* code generation for each ir instruction */
@@ -880,49 +844,80 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
 
 AddInstr.prototype.genCode = function (tltor, opnds)
 {
+    const dest = this.regAlloc.dest;
+
+    if (this.uses[0] instanceof ConstValue &&
+        this.uses[1] instanceof ConstValue)
+    {
+        // If the two operands are constants, directly assign
+        // the sum of the operands to the register
+        tltor.asm.mov($(opnds[0].value + opnds[1].value), dest);
+    }
 
 };
 
 //SubInstr
+
 //MulInstr
+
 //DivInstr
+
 //ModInstr
+
 //AddOvfInstr
+
 SubOvfInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 //MulOvfInstr
+
 //NotInstr
+
 AndInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 //OrInstr
+
 //XorInstr
+
 //LsftInstr
+
 //RsftInstr
+
 //UrsftInstr
+
 //CompInstr
+
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 //LeInstr
+
 //GtInstr
+
 //GeInstr
+
 EqInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 NeInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 JumpInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 RetInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
@@ -942,39 +937,163 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.jmp(mem(-refByteLength, ESP)); 
 
 };
+
 IfInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 ThrowInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 //CatchInstr
+
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
+    const dest = this.regAlloc.dest;
 
+    var funcName;
+    var i;
+
+    assert(dest === irToAsm.config.retValReg || 
+           dest === null);
+
+    if (opnds[0] instanceof IRFunction)
+    {
+        // Special cases for some static functions until 
+        // we have proper support for object allocation
+        name = opnds[0].funcName;
+        if (name === "makeClos")
+        {
+            assert(this.uses[1].isUndef() &&
+                   opnds[2] instanceof IRFunction);
+
+            // Implicitly returns the function address
+            // in return value register
+            tltor.asm.call(tltor.label(opnds[2]));
+        } else if (name === "getPropVal")
+        {
+            // Move arguments in the right registers
+            var map = allocator.mapping();
+
+            for (i = 2; i < 4; ++i)
+            {
+                if (opnds[i] !== irToAsm.config.physReg[i-2])
+                {
+                    map.add(opnds[i], irToAsm.config.physReg[i-2]);
+                }
+            }
+
+            map.orderAndInsertMoves( function (move)
+                                     {
+                                        tltor.asm.mov(move.uses[0], move.uses[1]);
+                                     }, irToAsm.config.physReg[3]);
+
+            // Implicitly returns the property value
+            // in return value register
+            tltor.asm.call(tltor.getPropValLabel);
+        } else if (name === "putPropVal")
+        {
+            // Move arguments in the right registers
+            var map = allocator.mapping();
+
+            for (i = 2; i < 5; ++i)
+            {
+                if (opnds[i] !== irToAsm.config.physReg[i-2])
+                {
+                    map.add(opnds[i], irToAsm.config.physReg[i-2]);
+                }
+            }
+
+            map.orderAndInsertMoves( function (move)
+                                     {
+                                        tltor.asm.mov(move.uses[0], move.uses[1]);
+                                     }, irToAsm.config.physReg[3]);
+
+            // Implicitly returns the property value
+            // in return value register
+            tltor.asm.call(tltor.putPropValLabel);
+        } else
+        {
+            error("Unknown static function '" + name + "'");
+        }
+
+
+    } else if (opnds[0].type === x86.type.REG || 
+               opnds[0].type === x86.type.MEM)
+    {
+        // Regular function call
+
+    } else
+    {
+        error("Invalid CallInstr function operand '" + opnds[0] + "'");
+    }
 };
+
 //ConstructInstr
+
 ICastInstr.prototype.genCode = function (tltor, opnds)
 {
 
 };
+
 //IToFPInstr
+
 //FPToIInstr
+
 LoadInstr.prototype.genCode = function (tltor, opnds)
 {
+    const dest = this.regAlloc.dest;
+
+    // Boxed return value case
+    assert(this.type === IRType.box);
+
+    if (opnds[0].type === x86.type.REG &&
+        opnds[1].type === x86.type.REG)
+    {
+        assert(this.uses[0].type === IRType.rptr &&
+               this.uses[1].type.isInt());
+
+        //   Displacement in a register case 
+        if (opnds[1] !== dest)
+        {
+            tltor.asm.mov(opnds[1], dest);
+        }
+
+        tltor.asm.
+        add(opnds[0], dest).
+        mov(mem(0, dest), dest);
+
+    } else if (opnds[0].type === x86.type.REG &&
+               opnds[1].type === x86.type.IMM_VAL)
+    {
+        assert(this.uses[0].type === IRType.rptr &&
+               this.uses[1].type.isInt());
+
+        //   Constant displacement
+        tltor.asm.mov(mem(opnds[1].value, opnds[0]), dest);
+    }
+
 
 };
+
 //StoreInstr
+
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
     // No op
 };
+
 //SetCtxInstr
+
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {
+    assert(!(opnds[0].type === x86.type.MEM &&
+             opnds[1].type === x86.type.MEM));
 
+    tltor.asm.mov(opnds[0], opnds[1]);
 };
 
 
