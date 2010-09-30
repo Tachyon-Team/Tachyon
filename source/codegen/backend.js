@@ -27,6 +27,7 @@ backend.compile = function (ir, print, primitives)
     var i, k, next, tab;
     var fixedIntervals;
     var fcts = ir.getChildrenList();
+    var startIndex = 0;
 
     if (primitives !== undefined)
     {
@@ -53,7 +54,7 @@ backend.compile = function (ir, print, primitives)
         allocator.numberInstrs(cfg, order);
 
     
-        print("******* Before register allocation *******");
+        print("******* Before register allocation ******");
         var block;
         var tab = "\t";
         var instr;
@@ -151,19 +152,26 @@ backend.compile = function (ir, print, primitives)
         print(cfg.toString(function () { return order; }, outFormatFn, inFormatFn,
                            lnPfxFormatFn));
 
-        print("*****************************************");
 
         fcts[k].regAlloc.spillNb = mems.slots.length;
 
-        print("Allocation info:");
+        // Translate from IR to ASM
+        translator.genFunc(fcts[k], order);
+
+        //translator.asm.codeBlock.assemble();
+        //print("******* Listing *************************");
+        //print(translator.asm.codeBlock.listingString(startIndex));
+        //startIndex = translator.asm.codeBlock.code.length;
+        print("*****************************************");
         print("Number of spills: " + fcts[k].regAlloc.spillNb);
         print();
-
-        // Translate from IR to ASM
-        //translator.genFunc(fcts[k], order);
     }
 
-    //translator.asm.codeBlock.assemble();
+
+    // Add the initialization code at the beginning
+    // and reassemble
+    translator.asm.codeBlock.assemble();
+
     return translator.asm.codeBlock;
 };
 

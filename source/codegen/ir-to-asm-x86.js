@@ -158,7 +158,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 {
     const that = this;
 
-    // Maintain the function object throughoutt the translation
+    // Maintain the function object throughout the translation
     // to have to information from register allocation 
     this.fct = fct;
 
@@ -169,15 +169,12 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 
     function replace(opnd)
     {
-        if (opnd instanceof ConstValue && opnd.isInt())
-        {
-            return $(opnd.value);
-        } else if (opnd instanceof ConstValue && opnd.isUndef())
-        {
-            return irToAsm.config.UNDEFINED;
-        } else if (opnd instanceof ConstValue && typeof opnd.value === "string" )
+        if (opnd instanceof ConstValue && typeof opnd.value === "string" )
         {
             return $(that.stringValue(opnd.value));
+        } else if (opnd instanceof ConstValue)
+        {
+            return $(opnd.getImmValue());
         } else 
         {
             return opnd;
@@ -209,16 +206,14 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
             if (instr instanceof MoveInstr)
             {
                 opnds = instr.uses.map(replace);
-                this.asm.mov(opnds[0], opnds[1]);
-            } else if (instr instanceof PhiInstr)
-            {
-                // ignore
+                instr.genCode(this, opnds);
             } else
             {
                 // Replace constants by immediate values
                 opnds = instr.regAlloc.opnds.map(replace);
 
-                this["ir_" + instr.mnemonic](opnds, instr);
+                assert(instr.genCode !== undefined);
+                instr.genCode(this, opnds);
             }
         }
 
@@ -810,22 +805,10 @@ irToAsm.translator.prototype.init = function (mainFct)
     const stack = irToAsm.config.stack;
 
     const retValReg = irToAsm.config.retValReg;
-    const globalObjReg = irToAsm.config.argsReg[1];
     const contextObjReg = irToAsm.config.context;
-
-    const ret = this.asm.labelObj("MAIN RET");
-    const fakeInstr1 = {regAlloc:{dest:retValReg}};
-
-    const fakeBlock = {irToAsm:{label:ret}};
-    const fakeInstr2 = {regAlloc:{dest:retValReg}, targets:[fakeBlock]};
-
-    assert(globalObjReg !== retValReg, 
-           "Invalid register permutation for argsIndex");
-
 
     var i;
 
-    this.label(mainFct, "<func MAIN>");
 
     // Let's preserve all registers from the caller
     // except xAX (used for return value)
@@ -845,34 +828,21 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     this.asm.
     genListing("INIT").
-    call(this.globalLabel).
 
-    // We need to preserve the global object for the ir_call 
-    sub($(this.REG_BYTE_WIDTH), stack).
-    mov(retValReg, mem(0,stack)).
-    mov(retValReg, globalObjReg);
-
-    // Setup the main function
-    this.ir_make_clos([mainFct, globalObjReg], fakeInstr1);
-
-    // Retrieve the global object and restore stack to its original pos
-    this.asm.
-    mov(mem(0, stack), globalObjReg).
-    add($(this.REG_BYTE_WIDTH), stack);
-
-    // Initialise the context object with the global object
-    // in the first slot
-    this.asm.
+    // Initialise the context object
     call(this.contextLabel).
     mov(retValReg, contextObjReg). 
-    mov(globalObjReg, mem(0, contextObjReg));
+
+    call(this.globalLabel).
+
+    // Save global object in context
+    mov(retValReg, mem(0, contextObjReg)).
+
+    // Retrieve the main function address
+    call(this.label(mainFct, "<func MAIN>")).
 
     // Call the main function
-    this.ir_call([retValReg, globalObjReg], fakeInstr2);
-
-    // Return from the main function
-    this.asm.
-    label(ret);
+    call(retValReg);
 
     // Let's restore all registers for the caller
     // except xAX (used for return value)
@@ -895,6 +865,115 @@ irToAsm.translator.prototype.init = function (mainFct)
     this.dump_global_object();
     // Add the context object dump right after the global object
     this.dump_context_object();
+};
+
+/* code generation for each ir instruction */
+PhiInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Do nothing
+};
+
+ArgValInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+
+AddInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+
+//SubInstr
+//MulInstr
+//DivInstr
+//ModInstr
+//AddOvfInstr
+SubOvfInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//MulOvfInstr
+//NotInstr
+AndInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//OrInstr
+//XorInstr
+//LsftInstr
+//RsftInstr
+//UrsftInstr
+//CompInstr
+LtInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//LeInstr
+//GtInstr
+//GeInstr
+EqInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+NeInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+JumpInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+RetInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+    const offset = tltor.fct.regAlloc.spillNb + 1;
+    const refByteLength = irToAsm.config.stack.width() / 8;
+    const retValReg = irToAsm.config.retValReg;
+
+    // Remove all spilled values and return address from stack
+    tltor.asm.add($(offset*refByteLength), irToAsm.config.stack);
+
+    if (opnds[0] !== retValReg)
+    {
+        tltor.asm.mov(opnds[0], retValReg);
+    }
+  
+    // Return address is just under the stack pointer
+    tltor.asm.jmp(mem(-refByteLength, ESP)); 
+
+};
+IfInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+ThrowInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//CatchInstr
+CallInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//ConstructInstr
+ICastInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//IToFPInstr
+//FPToIInstr
+LoadInstr.prototype.genCode = function (tltor, opnds)
+{
+
+};
+//StoreInstr
+GetCtxInstr.prototype.genCode = function (tltor, opnds)
+{
+    // No op
+};
+//SetCtxInstr
+MoveInstr.prototype.genCode = function (tltor, opnds)
+{
 
 };
 
