@@ -26,8 +26,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
-// TODO: comparison instructions should all return i8 ***
-
 //=============================================================================
 //
 // IR Core
@@ -322,19 +320,19 @@ Returns the constant's string representation directly.
 ConstValue.prototype.getValName = ConstValue.prototype.toString;
 
 /**
-Test if a constant is an integer
-*/
-ConstValue.prototype.isInt = function ()
-{
-    return (this.value == Math.floor(this.value));
-}
-
-/**
 Test if a constant is a number
 */
 ConstValue.prototype.isNumber = function ()
 {
     return (typeof this.value == 'number');
+}
+
+/**
+Test if a constant is an integer
+*/
+ConstValue.prototype.isInt = function ()
+{
+    return (this.isNumber() && this.value == Math.floor(this.value));
 }
 
 /**
@@ -1521,10 +1519,7 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
         'invalid input types'
     );
     
-    if (inputVals[0].type === IRType.box)
-        this.type = IRType.box;
-    else
-        this.type = IRType.i8;
+    this.type = IRType.i8;
 }
 
 /**

@@ -335,7 +335,7 @@ function lt(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    return iir.lt(v1, v2);
+    return iir.lt(v1, v2)? true:false;
     /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
