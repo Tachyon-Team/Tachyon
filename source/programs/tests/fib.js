@@ -20,7 +20,8 @@ tests.fib.main = function ()
     var ir = unitToIR(normalized_ast);
 
     //var codeblock = backend.compile(ir);
-    var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
+    //var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
+    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));
     
     //print(backend.listing(codeblock));
     var x = backend.execute(codeblock);

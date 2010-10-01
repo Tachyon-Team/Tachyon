@@ -1,8 +1,8 @@
-function f(x)
+function fib(x)
 {
     if (x < 2)
         return x;
     else
-        return f(x-1) + f(x-2);
+        return fib(x-1) + fib(x-2);
 }
-return f(20);
+return fib(20);
