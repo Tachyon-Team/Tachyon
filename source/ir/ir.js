@@ -1440,7 +1440,8 @@ function stmtToIR(context)
             // Ensure that the type of the returned value is valid
             assert (
                 retContext.getOutValue().type === context.cfg.ownerFunc.retType,
-                'returned value type must match function return type'
+                'returned value type must match function return type in "' +
+                context.cfg.ownerFunc.funcName + '"'
             );
 
             // Return the expression value

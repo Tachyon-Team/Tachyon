@@ -26,6 +26,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
+// TODO: comparison instructions should all return i8 ***
+
 //=============================================================================
 //
 // IR Core

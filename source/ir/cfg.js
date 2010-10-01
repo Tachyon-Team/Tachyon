@@ -1053,7 +1053,7 @@ BasicBlock.prototype.toString = function (outFormatFn, inFormatFn, lnPfxFormatFn
     {
         var instr = this.instrs[i];
 
-        output += lnPfxFormatFn(instr) + instr.toString(outFormatFn, inFormatFn, lnPfxFormatFn) + ';';
+        output += lnPfxFormatFn(instr) + instr.toString(outFormatFn, inFormatFn) + ';';
 
         if (instr !== this.instrs[this.instrs.length - 1])
             output += '\n';
