@@ -34,8 +34,13 @@ backend.compile = function (ir, print, primitives)
         fcts = primitives.concat(fcts);
     }
 
-
     translator.init(ir);
+    translator.definitions();
+    //translator.asm.codeBlock.assemble();
+    //print("******* Definitions *********************");
+    //print(translator.asm.codeBlock.listingString(startIndex));
+    //startIndex = translator.asm.codeBlock.code.length;
+    //print("*****************************************");
 
     // For each function, order blocks, allocate registers, translate to 
     // assembly and generate code 

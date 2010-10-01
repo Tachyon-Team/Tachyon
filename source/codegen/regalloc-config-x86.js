@@ -80,7 +80,13 @@ ArgValInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
 ArgValInstr.prototype.regAlloc.retValRegHint = function (instr, config)
 {
-    return config.argsIndex[instr.argIndex];
+    if (instr.argIndex < config.argsIndex.length)
+    {
+        return config.argsIndex[instr.argIndex];
+    } else 
+    {
+        return null;
+    }
 };
 
 /**
