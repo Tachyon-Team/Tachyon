@@ -3143,7 +3143,6 @@ function refToIR(context)
         }
         else
         {
-            /*
             // Test if the property exists on the global object
             var testVal = insertPrimCallIR(
                 varContext, 
@@ -3158,7 +3157,6 @@ function refToIR(context)
                 'ReferenceError',
                 symName + ' is not defined globally'
             );
-            */
 
             // Get the value from the global object
             varValueVar = insertPrimCallIR(
