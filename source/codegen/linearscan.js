@@ -1347,6 +1347,7 @@ allocator.liveIntervals = function (cfg, order, config)
                 instr.regAlloc.interval.regHint = 
                     instr.regAlloc.retValRegHint(instr, config);
 
+
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
             }
@@ -1512,7 +1513,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
     //       allocation, but are replaced by their pregs object
     //       at the end.
     const pregs = config.physReg;
-   
+    
     // Queue of all unhandled intervals, sorted by start position,
     // using a copy of unhandled
     var unhandledQueue = allocator.priorityQueue(unhandled.slice(0),
@@ -1625,20 +1626,37 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             freeUntilPos[i] = Math.min(it.nextIntersection(current),
                                        freeUntilPos[i]);
         }
-            
-        if (current.regHint !== null && 
+
+
+        
+        if (current.regHint !== null && typeof current.regHint === "number" &&
             freeUntilPos[current.regHint] > current.startPos())
         {
+            // If the register hint is an index into the register
+            // available for allocation, use it if it is free
             reg = current.regHint;
-        } else
+        } else if (current.regHint !== null && 
+                   typeof current.regHint !== "number")
         {
+            // If the register hint is not a number, use it as is, so
+            // register unavailable for allocation might still be used directly.
+            reg = current.regHint; 
+        } else {
+            // Either no register hint was given or the register is not
+            // available, use one of the availables
             reg = allocator.max(freeUntilPos).index;
         }
         
         // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
         // is free for a part of current.  This way it handles 
         // a fixed interval starting at the same position as current
-        if (freeUntilPos[reg] <= current.startPos())
+        if (typeof reg !== "number")
+        {
+            // Always succeed when a register not available for allocation
+            // is used
+            current.reg = reg;
+            return true;
+        } else if(freeUntilPos[reg] <= current.startPos())
         {
             // No register available without spilling
             return false;
@@ -1767,10 +1785,12 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         current  = unhandledQueue.dequeue();
         position = current.startPos();
 
+        var values = activeSet.values.slice(0);
+
         // check for intervals in active that are handled or inactive
-        for (i=0; i < activeSet.length(); ++i)
+        for (i=0; i < values.length; ++i)
         {
-            it = activeSet.values[i];
+            it = values[i];
 
             if (it.endPos() <= position)
             {
@@ -1784,10 +1804,13 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             }
         }
 
+
+        var values = inactiveSet.values.slice(0);
+
         // check for intervals in inactive that are handled or active
-        for (i=0; i < inactiveSet.length(); ++i)
+        for (i=0; i < values.length; ++i)
         {
-            it = inactiveSet.values[i];
+            it = values[i];
 
             if (it.endPos() < position)
             {
@@ -1902,6 +1925,26 @@ allocator.resolve = function (cfg, intervals, order)
     {
         return pos >= block.regAlloc.from && pos <= block.regAlloc.to;
     };
+
+    function insertInstr(block, instr, pos)
+    {
+        var itr = block.getInstrItr();
+        var insertPos = 0; 
+
+        for (; itr.valid(); itr.next())
+        {
+            if (itr.get().regAlloc !== undefined &&
+                itr.get().regAlloc.id >= pos)
+            {
+                break;
+            } else
+            {
+                insertPos++;
+            }
+        }
+        
+        block.addInstr(instr, "", insertPos);
+    };
     
     var edgeIt, intervalIt, moveIt, blockIt, edge, moveFrom, moveTo;
     var interval;
@@ -1940,28 +1983,21 @@ allocator.resolve = function (cfg, intervals, order)
     moveIt = new ArrayIterator(moves);
     blockIt = new ArrayIterator(order); 
 
-    offset = 0;
-    blockOffset = 1;
     while (moveIt.valid() && blockIt.valid())
     {
         blockOffset = blockIt.get().regAlloc.from;
 
         if (withinBounds(moveIt.get()[0], blockIt.get()))
         {
-            // Position is the displacement from the beginning of the block
-            // divided by 2 because instruction are even-numbered.
-            // We remove 1 to take into account that the first instruction
-            // has a position greater than the beginning of the block.
-            // Finally, the offset is used to compensate previously inserted
-            // instructions in the same block.
-            pos = Math.ceil((moveIt.get()[0] - blockOffset) / 2) - 1 + offset;
-            blockIt.get().addInstr(moveIt.get()[1], "", pos);
-            offset++;
+            // We do a linear search since the correspondance between
+            // the insertion index and the instruction position varies
+            // since some instructions occupies more than 2 positions 
+            // (i.e. calls)
+            insertInstr(blockIt.get(), moveIt.get()[1], moveIt.get()[0]);
             moveIt.next();
         } else
         {
             blockIt.next();
-            offset = 0;
         }
     }
 

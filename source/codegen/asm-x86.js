@@ -200,7 +200,10 @@ x86.Assembler.prototype._genImmNum = function (k, width)
     /** @ignore */
     function signedLo32(k) 
     {
-        return ((k + 0x80000000) & 0xffffffff) - 0x80000000;
+        // Javascript performs bitwise operations on
+        // values already coerced to signed 32 bits, therefore
+        // we only need to retrieve the bits
+        return (k & 0xffffffff);
     };
 
     /** @ignore */
@@ -1509,7 +1512,7 @@ x86.Assembler.prototype.pushPop = function (opnd, isPop)
     {
         that.opndPrefix(0,0,opnd,false); // prefix (width is implicit)
         if(isPop) { that.gen8(0x8f); } else { that.gen8(0xff); } // opcode
-        that.opndModRMSIB((isPop? 0 : 6), opnd);
+        that.opndModRMSIB((isPop ? 0 : 6), opnd);
         listing();
     }
 
@@ -1526,6 +1529,64 @@ x86.Assembler.prototype.pushPop = function (opnd, isPop)
     return this;
 };
 
+/**
+    @private
+    encoding of inc/dec instructions
+*/
+x86.Assembler.prototype.incDec = function (opnd, isInc, width)
+{
+    const that = this;
+
+    /** @ignore generate listing */
+    function listing(width)
+    {
+        if (that.useListing) 
+        {
+            that.genListing(x86.instrFormat((isInc ? "inc" : "dec"), 
+                                             x86.widthSuffix(width),
+                                             opnd));
+        }
+    }
+
+    /** @ignore special case when the destination is a register */
+    function register()
+    {
+        // No rex prefix should be used since inc or dec
+        // opcode are used as rex prefixes
+        that.
+        gen8( (isInc ? 0x40 : 0x48) + (7 & opnd.field()) );
+        listing(opnd.width());
+    }
+
+    /** @ignore general case */
+    function general(width)
+    {
+        that.opndPrefixOpnd(width, opnd);
+        that.
+        gen8((width === 8) ? 0xfe : 0xff).  // opcode
+        opndModRMSIB((isInc ? 0 : 1),opnd); // ModR/M
+        listing(width);
+    }
+
+    x86.assert((opnd.type === x86.type.REG) ? 
+            (!width || (opnd.width() === width)) : width,
+            "missing or inconsistent operand width '", width, "'");
+
+    if (opnd.type === x86.type.REG)
+    {
+        if (opnd.width() === 64)
+        {
+            general(opnd.width());
+        } else 
+        {
+            register();
+        }
+    } else // opnd.type !== x86.type.REG
+    {
+        general(width);
+    }
+    return this;
+};
 
 x86.opcode = {};
 // Escape opcode
@@ -1553,6 +1614,38 @@ x86.opcode.jlRel8     = 0x7c;
 x86.opcode.jgeRel8    = 0x7d;
 x86.opcode.jleRel8    = 0x7e;
 x86.opcode.jgRel8     = 0x7f;
+
+// Conditional move opcodes
+x86.opcode.cmovo      = 0x40;
+x86.opcode.cmovno     = 0x41;
+x86.opcode.cmovb      = 0x42;
+x86.opcode.cmovc      = x86.opcode.cmovb;
+x86.opcode.cmovnae    = x86.opcode.cmovb;
+x86.opcode.cmovnb     = 0x43;
+x86.opcode.cmovnc     = x86.opcode.cmovnb;
+x86.opcode.cmovae     = x86.opcode.cmovnb;
+x86.opcode.cmovz      = 0x44;
+x86.opcode.cmove      = x86.opcode.cmovz;
+x86.opcode.cmovnz     = 0x45;
+x86.opcode.cmovne     = x86.opcode.cmovnz;
+x86.opcode.cmovbe     = 0x46;
+x86.opcode.cmovna     = x86.opcode.cmovbe;
+x86.opcode.cmovnbe    = 0x47;
+x86.opcode.cmova      = x86.opcode.cmovnbe;
+x86.opcode.cmovs      = 0x48;
+x86.opcode.cmovns     = 0x49;
+x86.opcode.cmovp      = 0x4a;
+x86.opcode.cmovpe     = x86.opcode.cmovp;
+x86.opcode.cmovnp     = 0x4b;
+x86.opcode.cmovpo     = x86.opcode.cmovnp;
+x86.opcode.cmovl      = 0x4c;
+x86.opcode.cmovnge    = x86.opcode.cmovl;
+x86.opcode.cmovnl     = 0x4d;
+x86.opcode.cmovge     = x86.opcode.cmovnl;
+x86.opcode.cmovle     = 0x4e;
+x86.opcode.cmovng     = x86.opcode.cmovle;
+x86.opcode.cmovnle    = 0x4f;
+x86.opcode.cmovg      = x86.opcode.cmovg;
 
 /** Adds a label to the code stream. Can be chained. */
 x86.Assembler.prototype.label = function (lbl)
@@ -1783,7 +1876,10 @@ x86.Assembler.prototype.xor = function (src, dest, width)
 { 
     return this.op(6, "xor",dest,src,width); 
 };
-/** Can be chained. 
+/** Can be chained. Note: src and dest are inverted compared to 
+    the intel syntax. Therefore, cmp(src, dest) will set the flags
+    OF<>SF iff dest < src.
+
     @param src
     @param dest
     @param {Number} width optional 
@@ -1812,6 +1908,18 @@ x86.Assembler.prototype.push = function (opnd)
 x86.Assembler.prototype.pop  = function (opnd) 
 { 
     return this.pushPop(opnd, true); 
+};
+
+/** Can be chained. */
+x86.Assembler.prototype.inc  = function (opnd, width) 
+{ 
+    return this.incDec(opnd, true, width); 
+};
+
+/** Can be chained. */
+x86.Assembler.prototype.dec  = function (opnd, width) 
+{ 
+    return this.incDec(opnd, false, width); 
 };
 
 x86.Assembler.prototype.lea  = function (src, dest)
@@ -1895,6 +2003,31 @@ x86.Assembler.prototype.test = function (src, dest, width)
     return this;
 };
 
+/** Can be chained */
+x86.Assembler.prototype.cmoveGeneral  = function (op, mnemonic, src, dest)
+{
+    x86.assert(dest.type === x86.type.REG,
+               "'dest' argument should be a register, instead received ", dest);
+    x86.assert(!dest.isr8(),
+               "'dest' argument should not be an 8 bit register");
+    x86.assert(src.type === x86.type.MEM || src.type === x86.type.REG,
+               "'src' argument should be a memory or a register operand," +
+               " instead received ", dest);
+
+    this.opndPrefixRegOpnd(dest, src);
+    this.gen8(x86.opcode.esc);
+    this.gen8(op); // opcode
+    this.opndModRMSIBRegOpnd(dest, src);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat(mnemonic, 
+                                        x86.regWidthSuffix(dest),
+                                        dest,
+                                        src));
+    }
+    return this;
+};
 
 /** Can be chained.
     @param {x86.Assembler#register or label } opnd1
@@ -1905,6 +2038,8 @@ x86.Assembler.prototype.jmp = function (opnd1, opnd2)
     switch (opnd1.type)
     {
         case x86.type.REG: 
+            return this.jumpGeneral(4, opnd1); 
+        case x86.type.MEM: 
             return this.jumpGeneral(4, opnd1); 
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
@@ -2028,5 +2163,184 @@ x86.Assembler.prototype.jg = function (label, offset)
     return this.jumpLabel(x86.opcode.jgRel8, "jg", label, offset); 
 };
 
+/** Can be chained */
+x86.Assembler.prototype.cmovo = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovo, "cmovo", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovno = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovno, "cmovno", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovb  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovb, "cmovb", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovc  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovc, "cmovc", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnae= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovna, "cmovna", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnb = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnb, "cmovnb", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnc = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnc, "cmovnc", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovae = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovae, "cmovae", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovz  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovz, "cmovz", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmove  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmove, "cmove", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnz = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnz, "cmovnz", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovne = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovne, "cmovne", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovbe = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovbe, "cmovbe", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovna = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovna, "cmovna", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnbe= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnb, "cmovnb", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmova  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmova, "cmova", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovs  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovs, "cmovs", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovns = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovns, "cmovns", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovp  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovp, "cmovp", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovpe = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovpe, "cmovpe", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnp = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnp, "cmovnp", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovpo = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovpo, "cmovpo", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovl  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovl, "cmovl", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnge= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovng, "cmovng", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnl = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnl, "cmovnl", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovge = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovge, "cmovge", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovle = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovle, "cmovle", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovng = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovng, "cmovng", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovnle= function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovnl, "cmovnl", src, dest);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.cmovg  = function (src, dest)
+{
+    return this.cmoveGeneral(x86.opcode.cmovg, "cmovg", src, dest);
+};
 
 

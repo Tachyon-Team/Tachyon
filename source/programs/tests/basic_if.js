@@ -22,8 +22,8 @@ tests.basic_if.main = function ()
 
     //var codeblock = backend.compile(ir);
     var codeblock = backend.compile(ir, undefined, primitives);
-    //print(backend.listing(codeblock));
-    //var x = backend.execute(codeblock);
-    //assert(x === 2, "Invalid return value: " + x);
+    print(backend.listing(codeblock));
+    var x = backend.execute(codeblock);
+    assert(x === (2 << 2), "Invalid return value: " + x);
 
 };

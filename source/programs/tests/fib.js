@@ -18,11 +18,12 @@ tests.fib.main = function ()
     var normalized_ast = ast_normalize(ast);
     
     var ir = unitToIR(normalized_ast);
-   
+
     //var codeblock = backend.compile(ir);
     var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
+    
     //print(backend.listing(codeblock));
-    //var x = backend.execute(codeblock);
-    //assert(x === 6765, "Invalid return value: " + x);
+    var x = backend.execute(codeblock);
+    assert(x === (6765 << 2), "Invalid return value: " + x);
 
 };

@@ -80,7 +80,13 @@ ArgValInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
 ArgValInstr.prototype.regAlloc.retValRegHint = function (instr, config)
 {
-    return config.argsIndex[instr.argIndex];
+    if (instr.argIndex < config.argsIndex.length)
+    {
+        return config.argsIndex[instr.argIndex];
+    } else 
+    {
+        return null;
+    }
 };
 
 /**
@@ -96,3 +102,14 @@ ArgValInstr.prototype.regAlloc.retValRegHint = function (instr, config)
 //PutPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
 
 //PutPropValInstr.prototype.regAlloc.opndsRegRequired = true;
+
+/**
+*   Allocation information for get context instructions 
+*/
+GetCtxInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+GetCtxInstr.prototype.regAlloc.retValRegHint = function (instr, config)
+{
+    return config.context;
+};
+

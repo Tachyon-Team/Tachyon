@@ -330,7 +330,7 @@ asm.CodeBlock.prototype.listing.prototype.type = asm.type.LST;
   
    Precondition: Code Block must have been assembled
 */
-asm.CodeBlock.prototype.listingString = function ()
+asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
 {
     // Constants controlling the output layout
     const textCol   = 32;
@@ -382,9 +382,14 @@ asm.CodeBlock.prototype.listingString = function ()
     var pos = this.startPos;
     var col = 0;
     
-    for (var i=0; i < this.code.length; i++)
+    for (var i=0; i < (toIndex || this.code.length); i++)
     {
-        if (typeof this.code[i] === "number")
+        if (typeof this.code[i] === "number" && i < fromIndex)
+        {
+            // skip to next
+            index++;
+            pos++;
+        } else if (typeof this.code[i] === "number")
         {
             // The previous line was full, print the new position
             if (col === 0 || col >= (textCol - byteWidth))
@@ -399,6 +404,9 @@ asm.CodeBlock.prototype.listingString = function ()
             pos++;
             col = col + byteWidth;
 
+        } else if (this.code[i].type === asm.type.LST && i < fromIndex)
+        {
+            // do nothing 
         } else if (this.code[i].type === asm.type.LST)
         {
 
@@ -810,3 +818,13 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
 
     return block;
 };
+
+/** Returns the number of bytes in the code block */
+asm.CodeBlock.prototype.byteNb = function ()
+{
+    var nb = 0;
+
+    this.code.forEach(function (o) { if (typeof o === "number") { nb++} });
+
+    return nb;
+}

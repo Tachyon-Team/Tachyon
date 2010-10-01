@@ -27,14 +27,20 @@ backend.compile = function (ir, print, primitives)
     var i, k, next, tab;
     var fixedIntervals;
     var fcts = ir.getChildrenList();
+    var startIndex = 0;
 
     if (primitives !== undefined)
     {
         fcts = primitives.concat(fcts);
     }
 
-
     translator.init(ir);
+    translator.definitions();
+    //translator.asm.codeBlock.assemble();
+    //print("******* Definitions *********************");
+    //print(translator.asm.codeBlock.listingString(startIndex));
+    //startIndex = translator.asm.codeBlock.code.length;
+    //print("*****************************************");
 
     // For each function, order blocks, allocate registers, translate to 
     // assembly and generate code 
@@ -53,20 +59,39 @@ backend.compile = function (ir, print, primitives)
         allocator.numberInstrs(cfg, order);
 
     
-        print("******* Before register allocation *******");
+        print("******* Before register allocation ******");
         var block;
         var tab = "\t";
         var instr;
-        for (i=0; i < order.length; ++i)
+
+        function lnPfxFormatFn(obj)
         {
-            block = order[i]; 
-            print(block.regAlloc.from + ": label " + block.label);
-            for (var instrIt = block.getInstrItr(); instrIt.valid(); instrIt.next())
+            if (obj instanceof BasicBlock)
             {
-                instr = instrIt.get();
-                print(instr.regAlloc.id + ":" + tab + " (" + instr.instrId + ") " + instr );
-            }
+                if (obj.regAlloc.from === -1)
+                {
+                    return "   ";
+                } else
+                {
+                    return obj.regAlloc.from + ": ";
+                }
+            } else if (obj instanceof IRInstr)
+            {
+                if (obj.regAlloc.id === undefined)
+                {
+                    return "    \t";
+                } else
+                {
+                    return obj.regAlloc.id + ": \t";
+                }
+            } else
+            {
+                return "";
+            }   
         }
+
+        print(cfg.toString(function () { return order; }, undefined, undefined, 
+                           lnPfxFormatFn));
 
         liveIntervals = allocator.liveIntervals(cfg, order, irToAsm.config);
         fixedIntervals = allocator.fixedIntervals(cfg, irToAsm.config);
@@ -112,69 +137,46 @@ backend.compile = function (ir, print, primitives)
 
         print("******* After register allocation *******");
 
-        function opndsToString(opnds)
+        function inFormatFn(instr, pos)
         {
-            return opnds.map(
-                   function (opnd) { if (opnd instanceof IRFunction) 
-                   { return "<" + opnd.funcName + ">";} else { return opnd.toString(); }});
-        };
-
-        for (i=0; i < order.length; ++i)
-        {
-            block = order[i]; 
-            print(block.regAlloc.from + ": label " + block.label);
-            for (var instrIt = block.getInstrItr(); instrIt.valid(); instrIt.next())
+            opnd = instr.regAlloc.opnds[pos];
+            if (opnd instanceof IRValue)
             {
-                instr = instrIt.get();
-                if (instr instanceof MoveInstr)
-                {
-                    print("  " + tab + instr);
-                /*
-                } else if (instr instanceof ArgValInstr)
-                {
-                    if (instr.regAlloc.dest === null)
-                    {
-                        continue;
-                    }
-                    print(instr.regAlloc.id + ": " + tab + instr.regAlloc.dest 
-                          + " = " + instr.mnemonic + " " + instr.argIndex );
-                } else if (instr instanceof MakeClosInstr)
-                {
-                     
-                    print(instr.regAlloc.id + ": " + tab 
-                          + instr.regAlloc.dest + " = " 
-                          + instr.mnemonic + " " 
-                          + instr.regAlloc.opnds[0].funcName 
-                          + " " + instr.regAlloc.opnds.slice(1));
-                */
-                } else if (instr instanceof CallInstr && instr.regAlloc.opnds[0] instanceof IRFunction)
-                {
-                    print(instr.regAlloc.id + ": " + tab + 
-                          (instr.regAlloc.dest !== null ? 
-                           instr.regAlloc.dest + " = " : "") 
-                          +  instr.mnemonic + " " + opndsToString(instr.regAlloc.opnds));
-                } else 
-                {
-                    print(instr.regAlloc.id + ": " + tab + 
-                          (instr.regAlloc.dest !== null ? 
-                           instr.regAlloc.dest + " = " : "") 
-                          +  instr.mnemonic + " " + instr.regAlloc.opnds );
-                }
+                return opnd.getValName();
+            } else
+            {
+                return String(opnd);
             }
         }
-        print("*****************************************");
+
+        function outFormatFn(instr)
+        {
+            return String(instr.regAlloc.dest);
+        }
+
+        print(cfg.toString(function () { return order; }, outFormatFn, inFormatFn,
+                           lnPfxFormatFn));
+
 
         fcts[k].regAlloc.spillNb = mems.slots.length;
 
-        print("Allocation info:");
+        // Translate from IR to ASM
+        translator.genFunc(fcts[k], order);
+
+        //translator.asm.codeBlock.assemble();
+        //print("******* Listing *************************");
+        //print(translator.asm.codeBlock.listingString(startIndex));
+        //startIndex = translator.asm.codeBlock.code.length;
+        print("*****************************************");
         print("Number of spills: " + fcts[k].regAlloc.spillNb);
         print();
-
-        // Translate from IR to ASM
-        //translator.genFunc(fcts[k], order);
     }
 
-    //translator.asm.codeBlock.assemble();
+
+    // Add the initialization code at the beginning
+    // and reassemble
+    translator.asm.codeBlock.assemble();
+
     return translator.asm.codeBlock;
 };
 
