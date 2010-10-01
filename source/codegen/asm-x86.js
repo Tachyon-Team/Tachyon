@@ -201,8 +201,8 @@ x86.Assembler.prototype._genImmNum = function (k, width)
     function signedLo32(k) 
     {
         // Javascript performs bitwise operations on
-        // values converted to signed 32 bits, therefore
-        // we only need to mask
+        // values already coerced to signed 32 bits, therefore
+        // we only need to retrieve the bits
         return (k & 0xffffffff);
     };
 
