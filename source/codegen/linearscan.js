@@ -1983,29 +1983,21 @@ allocator.resolve = function (cfg, intervals, order)
     moveIt = new ArrayIterator(moves);
     blockIt = new ArrayIterator(order); 
 
-    offset = 0;
-    blockOffset = 1;
     while (moveIt.valid() && blockIt.valid())
     {
         blockOffset = blockIt.get().regAlloc.from;
 
         if (withinBounds(moveIt.get()[0], blockIt.get()))
         {
-            // Position is the displacement from the beginning of the block
-            // divided by 2 because instruction are even-numbered.
-            // We remove 1 to take into account that the first instruction
-            // has a position greater than the beginning of the block.
-            // Finally, the offset is used to compensate previously inserted
-            // instructions in the same block.
-            //pos = Math.ceil((moveIt.get()[0] - blockOffset) / 2) - 1 + offset;
-            //blockIt.get().addInstr(moveIt.get()[1], "", pos);
+            // We do a linear search since the correspondance between
+            // the insertion index and the instruction position varies
+            // since some instructions occupies more than 2 positions 
+            // (i.e. calls)
             insertInstr(blockIt.get(), moveIt.get()[1], moveIt.get()[0]);
-            offset++;
             moveIt.next();
         } else
         {
             blockIt.next();
-            offset = 0;
         }
     }
 
