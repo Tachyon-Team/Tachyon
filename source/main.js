@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    var ast = parse_src_file('parser/tests/test4.js');
+    var ast = parse_src_file('programs/fib.js');
 
     pp(ast);
 

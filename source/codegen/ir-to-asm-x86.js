@@ -847,6 +847,19 @@ irToAsm.translator.prototype.definitions = function ()
     this.put_prop_val();
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* code generation for each ir instruction */
 PhiInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1082,12 +1095,9 @@ AndInstr.prototype.genCode = function (tltor, opnds)
 
 //UrsftInstr
 
-//CompInstr
-
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
-    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
 
     if ((opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM) ||
@@ -1097,19 +1107,33 @@ LtInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.
         mov(opnds[1], dest).
         cmp(opnds[0], dest);
-    } else if (opnds[0].type === x86.type.IMM_VAL)
+    } 
+    else if (opnds[0].type === x86.type.IMM_VAL)
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
-    } else
+    } 
+    else
     {
         tltor.asm.cmp(opnds[1], opnds[0]);
     }
 
+    /*
+    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
+
     tltor.asm.
     mov($(immFalse), dest).
     cmovl(tltor.ctxImmTrue, dest);
+    */
+
+    var trueLabel = tltor.asm.labelObj();
+
+    tltor.asm.
+    mov($(1), dest).
+    jl(trueLabel).
+    mov($(0), dest).
+    label(trueLabel)
 };
 
 //LeInstr
@@ -1121,15 +1145,16 @@ LtInstr.prototype.genCode = function (tltor, opnds)
 EqInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
-    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
 
     if (opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) 
     {
         tltor.asm.test(opnds[1], opnds[1]);
-    } else if (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0)
+    } 
+    else if (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0)
     {
         tltor.asm.test(opnds[0], opnds[0]);
-    } else if ((opnds[0].type === x86.type.MEM &&
+    } 
+    else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
                (opnds[0].type === x86.type.IMM_VAL &&
                opnds[1].type === x86.type.IMM_VAL))
@@ -1137,21 +1162,71 @@ EqInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
-    } else if (opnds[1].type === x86.type.IMM_VAL)
+    } 
+    else if (opnds[1].type === x86.type.IMM_VAL)
     {
         tltor.asm.cmp(opnds[1], opnds[0]);
-    } else
+    }
+    else
     {
         tltor.asm.cmp(opnds[0], opnds[1]);
     }
 
+    /*
+    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
+
     tltor.asm.
     mov($(immFalse), dest).
     cmove(tltor.ctxImmTrue, dest);
+    */
 
+    var trueLabel = tltor.asm.labelObj();
+
+    tltor.asm.
+    mov($(1), dest).
+    je(trueLabel).
+    mov($(0), dest).
+    label(trueLabel)
 };
 
-NeInstr.prototype.genCode = EqInstr.prototype.genCode;
+NeInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if (opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) 
+    {
+        tltor.asm.test(opnds[1], opnds[1]);
+    } 
+    else if (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0)
+    {
+        tltor.asm.test(opnds[0], opnds[0]);
+    } 
+    else if ((opnds[0].type === x86.type.MEM &&
+               opnds[1].type === x86.type.MEM) ||
+               (opnds[0].type === x86.type.IMM_VAL &&
+               opnds[1].type === x86.type.IMM_VAL))
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
+    } 
+    else if (opnds[1].type === x86.type.IMM_VAL)
+    {
+        tltor.asm.cmp(opnds[1], opnds[0]);
+    }
+    else
+    {
+        tltor.asm.cmp(opnds[0], opnds[1]);
+    }
+
+    var trueLabel = tltor.asm.labelObj();
+
+    tltor.asm.
+    mov($(1), dest).
+    jne(trueLabel).
+    mov($(0), dest).
+    label(trueLabel)
+};
 
 JumpInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1179,8 +1254,7 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     }
   
     // Return address is just under the stack pointer
-    tltor.asm.ret(); 
-
+    tltor.asm.ret();
 };
 
 IfInstr.prototype.genCode = function (tltor, opnds)
@@ -1188,10 +1262,17 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     const trueLabel = tltor.label(this.targets[0], this.targets[0].label);
     const falseLabel = tltor.label(this.targets[1], this.targets[1].label);
 
+    /*
     const immTrue = (new ConstValue(true, IRType.none)).getImmValue();
 
     tltor.asm.
     cmp($(immTrue), opnds[0]).
+    je(trueLabel).
+    jmp(falseLabel);
+    */
+
+    tltor.asm.
+    cmp($(1), opnds[0]).
     je(trueLabel).
     jmp(falseLabel);
 };
@@ -1463,11 +1544,24 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-//ConstructInstr
+ConstructInstr.prototype.genCode = CallFuncInstr.prototype.genCode;
 
 ICastInstr.prototype.genCode = function (tltor, opnds)
 {
+    // TODO: for now, move from input to output
+    // Eventually, should always use same register... noop
 
+    const dest = this.regAlloc.dest;
+
+    if (opnds[0] === dest)
+    {
+        // Do nothing
+    }
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest);
+    }
 };
 
 //IToFPInstr
@@ -1508,8 +1602,6 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.mov(mem(opnds[1].value, opnds[0]), dest);
         }
     }
-
-
 };
 
 //StoreInstr
@@ -1528,6 +1620,5 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
 
     tltor.asm.mov(opnds[0], opnds[1]);
 };
-
 
 })(); // end of local namespace

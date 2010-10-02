@@ -10,14 +10,11 @@ tests.fib = tests.testSuite();
 
 tests.fib.main = function ()
 {
-
-    var filename = 'programs/fib.js';
-    var port = new File_input_port(filename);
-    var p = new Parser(new Scanner(port), true);
-    var ast = p.parse();
-    var normalized_ast = ast_normalize(ast);
+    var ast = parse_src_file('programs/fib.js');
     
-    var ir = unitToIR(normalized_ast);
+    var ir = unitToIR(ast);
+
+    //lowerIRFunc(ir);
 
     //var codeblock = backend.compile(ir);
     //var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
@@ -26,5 +23,4 @@ tests.fib.main = function ()
     //print(backend.listing(codeblock));
     var x = backend.execute(codeblock);
     assert(x === (6765 << 2), "Invalid return value: " + x);
-
 };
