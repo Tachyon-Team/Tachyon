@@ -14,13 +14,13 @@ tests.fib.main = function ()
     
     var ir = unitToIR(ast);
 
-    //lowerIRFunc(ir);
+    lowerIRFunc(ir);
 
     //var codeblock = backend.compile(ir);
     //var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
-    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));
-    
-    //print(backend.listing(codeblock));
+    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
+    print(backend.listing(codeblock));
+
     var x = backend.execute(codeblock);
     assert(x === (6765 << 2), "Invalid return value: " + x);
 };

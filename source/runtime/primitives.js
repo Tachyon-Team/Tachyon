@@ -117,8 +117,13 @@ function boxIsFunc(boxVal)
     "tachyon:nothrow";
     "tachyon:ret i8";
 
+    /* TODO
     // Compare the reference tag
     return getRefTag(boxVal) == TAG_FUNCTION;
+    */
+
+    // FIXME: for now, function pointers not boxed, this will not work
+    return iir.constant(IRType.i8, 1);
 }
 
 /**
