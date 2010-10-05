@@ -375,13 +375,8 @@ function commElim(cfg, maxItrs)
             }
         }
 
-        // TODO: if instruction removed, value no longer avail for replacement
-        // Can test if removed on tentative replacement... remSet ***
-
-        // TODO: beware, can replace call, but no other branch instrs
-        // May also need to add jump to continue block if replacing call
-        // Start by not replacing any branch instrs ***
-        // PROBLEM: did call instr reach us from exception branch? if so, no can do!
+        // Set or removed/replaced instructions
+        var remSet = [];
 
         // For each instruction in the CFG
         for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
@@ -391,8 +386,9 @@ function commElim(cfg, maxItrs)
             var rinstr = reachInstr[instr.instrId];
 
             // If the instruction is a call or a non-branch instruction and 
-            // there is a replacement
-            if ((instr instanceof CallInstr || !instr.isBranch()) && rinstr)
+            // there is a replacement, which was not previously removed
+            if ((instr instanceof CallInstr || !instr.isBranch()) && 
+                rinstr && !arraySetHas(remSet, rinstr))
             {
                 /*
                 print('********************');
@@ -424,6 +420,9 @@ function commElim(cfg, maxItrs)
                         callBlock.instrs.length - 1
                     );
                 }
+
+                // Add the instruction to the set of removed instructions
+                arraySetAdd(remSet, instr);
 
                 // Set the changed flag
                 changed = true;
