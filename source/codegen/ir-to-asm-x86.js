@@ -860,6 +860,10 @@ irToAsm.translator.prototype.definitions = function ()
 
 
 
+
+
+
+
 /* code generation for each ir instruction */
 PhiInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -892,7 +896,6 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     // Offset to the argument on the stack
     const spoffset = (regAllocSpillNb + callSiteSpillIndex + 1) * refByteNb;
 
-
     // Stack pointer
     const stack = irToAsm.config.stack;
 
@@ -908,7 +911,8 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
         assert(argsReg[argIndex] === dest,
                "ir_arg: dest register '" + dest + 
                "' unexpected for argument index '" + argIndex + "'");
-    } else
+    } 
+    else
     {
         // The argument is on the stack
         tltor.asm.
@@ -1085,11 +1089,69 @@ AndInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-//OrInstr
+OrInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if ((opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) ||
+        (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0))
+    {
+        tltor.asm.xor(dest, dest);
+    } 
+    else if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+    } 
+    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    {
+        tltor.asm.or(opnds[1], dest);
+    }
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    {
+        tltor.asm.or(opnds[0], dest);
+    } 
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        or(opnds[1], dest);
+    }
+};
 
 //XorInstr
 
-//LsftInstr
+/* TODO: left shift instruction, use x86 SAL
+   SAL may require reserving the CL register
+LsftInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if (opnds[1].value == 0)
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+    } 
+    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    {
+        tltor.asm.sal(opnds[1], dest);
+    }
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    {
+        tltor.asm.sal(opnds[0], dest);
+    } 
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        sal(opnds[1], dest);
+    }
+};
+*/
 
 //RsftInstr
 
