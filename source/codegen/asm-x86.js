@@ -2434,8 +2434,9 @@ x86.Assembler.prototype.ror = function (src, dest, width)
     return this.shift(1, "ror", src, dest, width); 
 };
 
-/** Can be chained */
-x86.Assembler.prototype.not = function (dest, width)
+/** @private */
+x86.Assembler.prototype.oneOpnd = 
+function (opcode, opcodeExt, mnemonic, dest, width)
 {
     x86.assert((dest.type === x86.type.REG) ? 
             (!width || (dest.width() === width)) : width,
@@ -2443,19 +2444,43 @@ x86.Assembler.prototype.not = function (dest, width)
 
     width = (dest.type === x86.type.REG) ? dest.width() : width;
 
-    var opcode = 0xf6 +                    // base opcode
+    var opcode = opcode +                    // base opcode
                  ((width === 8) ? 0 : 1);
 
     this.opndPrefixOpnd(width, dest);
     this.gen8(opcode);
-    this.opndModRMSIB(2, dest);
+    this.opndModRMSIB(opcodeExt, dest);
 
     if (this.useListing) 
     {
-        this.genListing(x86.instrFormat("not", 
+        this.genListing(x86.instrFormat(mnemonic, 
                                         x86.widthSuffix(width),
                                         dest));
     }
    
     return this;
+};
+
+/** Can be chained */
+x86.Assembler.prototype.not = function (dest, width)
+{
+    return this.oneOpnd(0xf6, 2, "not", dest, width);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.mul = function (dest, width)
+{
+    return this.oneOpnd(0xf6, 4, "mul", dest, width);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.div = function (dest, width)
+{
+    return this.oneOpnd(0xf6, 6, "div", dest, width);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.idiv = function (dest, width)
+{
+    return this.oneOpnd(0xf6, 7, "idiv", dest, width);
 };
