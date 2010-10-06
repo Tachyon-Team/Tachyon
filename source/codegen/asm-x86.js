@@ -2414,6 +2414,15 @@ x86.Assembler.prototype.sar = function (src, dest, width)
 };
 
 /** Can be chained */
+x86.Assembler.prototype.shl = x86.Assembler.prototype.sal;
+
+/** Can be chained */
+x86.Assembler.prototype.shr = function (src, dest, width)
+{
+    return this.shift(5, "shr", src, dest, width); 
+};
+
+/** Can be chained */
 x86.Assembler.prototype.rol = function (src, dest, width)
 {
     return this.shift(0, "rol", src, dest, width); 
