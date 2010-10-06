@@ -1952,15 +1952,21 @@ x86.Assembler.prototype.test = function (src, dest, width)
     const that = this;
     const k = src.value;
 
-    x86.assert(src.type !== x86.type.REG,
-               "'src' as a register is not supported yet");  
-    x86.assert(src.type === x86.type.IMM_VAL,
-               "'src' is should be an immediate value instead of", src);  
+    x86.assert(src.type === x86.type.IMM_VAL || src.type === x86.type.REG,
+               "'src' should be an immediate value or a register instead of ", 
+               src);  
+
+    x86.assert(dest.type === x86.type.REG || dest.type === x86.type.MEM,
+               "'dest' should be a register or a memory location instead of ",
+               dest);
 
     x86.assert((dest.type === x86.type.REG) ?
                 ((width === undefined) || (dest.width() === width)) :
-                (width !== undefined),
+                ((src.type === x86.type.REG) ?
+                 ((width === undefined) || (src.width() === width)) :
+                 (width !== undefined)),
                "missing or inconsistent operand width");
+
 
     function listing(width, n)
     {
@@ -1971,34 +1977,46 @@ x86.Assembler.prototype.test = function (src, dest, width)
                                              dest,
                                              that.immediateValue(n)));
         }
-    }
+    };
 
-    function accumulator(width)
+    function accumulatorImm(width)
     {
         that.opndSizeOverridePrefix(width);
         that.gen8((width === 8) ? 0xa8 : 0xa9); // opcode 
         listing(width, that.genImmNum(k, width)); 
-    }
+    };
 
-    function general(width)
+    function generalImm(width)
     {
-        that.opndPrefixOpnd(width, opnd);  
-        that.gen8((width === 8) ? 0xf6 : 0xf7);
+        that.opndPrefixOpnd(width, dest);  
+        that.gen8((width === 8) ? 0xf6 : 0xf7); // opcode
+        that.opndModRMSIB(0, dest); 
         listing(width, that.genImmNum(k, width));
-    }
+    };
 
-    if (dest.type === x86.type.REG)
+    function generalReg(width)
     {
-        if (dest.field() === 0)
-        {
-            accumulator(dest.width());
-        } else
-        {
-            general(dest.width());
-        } 
-    } else
+        that.opndPrefixOpnd(width, dest);
+        that.gen8((width === 8) ? 0x84 : 0x85); // opcode
+        that.opndModRMSIBRegOpnd(src, dest);
+        that.genListing(x86.instrFormat("test",
+                                        x86.widthSuffix(width),
+                                        dest,
+                                        src));
+    };
+
+    if (dest.type === x86.type.REG && 
+        dest.field() === 0 &&
+        src.type === x86.type.IMM_VAL)
     {
-        general(width);
+        accumulatorImm(dest.width());
+    } else if (dest.type === x86.type.REG && 
+               src.type === x86.type.IMM_VAL)
+    {
+        generalImm(dest.width());
+    } else if (src.type === x86.type.REG)
+    {
+        generalReg(src.width());
     }
     return this;
 };
