@@ -2361,7 +2361,7 @@ x86.Assembler.prototype.cmovg  = function (src, dest)
     return this.cmoveGeneral(x86.opcode.cmovg, "cmovg", src, dest);
 };
 
-
+/** @private */
 x86.Assembler.prototype.shift = 
 function (opcodeExt, mnemonic, src, dest, width)
 {
@@ -2432,4 +2432,30 @@ x86.Assembler.prototype.rol = function (src, dest, width)
 x86.Assembler.prototype.ror = function (src, dest, width)
 {
     return this.shift(1, "ror", src, dest, width); 
+};
+
+/** Can be chained */
+x86.Assembler.prototype.not = function (dest, width)
+{
+    x86.assert((dest.type === x86.type.REG) ? 
+            (!width || (dest.width() === width)) : width,
+            "missing or inconsistent operand width", width);
+
+    width = (dest.type === x86.type.REG) ? dest.width() : width;
+
+    var opcode = 0xf6 +                    // base opcode
+                 ((width === 8) ? 0 : 1);
+
+    this.opndPrefixOpnd(width, dest);
+    this.gen8(opcode);
+    this.opndModRMSIB(2, dest);
+
+    if (this.useListing) 
+    {
+        this.genListing(x86.instrFormat("not", 
+                                        x86.widthSuffix(width),
+                                        dest));
+    }
+   
+    return this;
 };
