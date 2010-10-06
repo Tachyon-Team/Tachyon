@@ -2362,3 +2362,65 @@ x86.Assembler.prototype.cmovg  = function (src, dest)
 };
 
 
+x86.Assembler.prototype.shift = 
+function (opcodeExt, mnemonic, src, dest, width)
+{
+    x86.assert(src.type === x86.type.IMM_VAL,
+               "'src' argument should be an immediate value instead of ",
+               src);
+
+    x86.assert((dest.type === x86.type.REG) ? 
+            (!width || (dest.width() === width)) : width,
+            "missing or inconsistent operand width", width);
+
+    width = (dest.type === x86.type.REG) ? dest.width() : width;
+
+    var k = src.value;
+
+    var opcode = 0xc0 +                    // base opcode
+                 ((width === 8) ? 0 : 1) + 
+                 ((k === 1) ? 0x10 : 0);                 
+
+    this.opndPrefixOpnd(width, dest);
+    this.gen8(opcode);
+    this.opndModRMSIB(opcodeExt, dest);
+
+    if (k > 1)
+    {
+        this.gen8(k);
+    }
+
+    if (this.useListing) 
+    {
+        this.genListing(x86.instrFormat(mnemonic, 
+                                        x86.widthSuffix(width),
+                                        dest,
+                                        this.immediateValue(k)));
+    }
+   
+    return this;
+};
+
+/** Can be chained */
+x86.Assembler.prototype.sal = function (src, dest, width)
+{
+    return this.shift(4, "sal", src, dest, width); 
+};
+
+/** Can be chained */
+x86.Assembler.prototype.sar = function (src, dest, width)
+{
+    return this.shift(7, "sar", src, dest, width); 
+};
+
+/** Can be chained */
+x86.Assembler.prototype.rol = function (src, dest, width)
+{
+    return this.shift(0, "rol", src, dest, width); 
+};
+
+/** Can be chained */
+x86.Assembler.prototype.ror = function (src, dest, width)
+{
+    return this.shift(1, "ror", src, dest, width); 
+};
