@@ -933,23 +933,71 @@ AddInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
-    if (this.uses[0] instanceof ConstValue &&
-        this.uses[1] instanceof ConstValue)
+    if (opnds[0] !== dest)
     {
-        // If the two operands are constants, directly assign
-        // the sum of the operands to the register
-        tltor.asm.mov($(opnds[0].value + opnds[1].value), dest);
+        tltor.asm.mov(opnds[0], dest);
     }
-
+   
+    tltor.asm.add(opnds[1], dest);
 };
 
-//SubInstr
+SubInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Register used for the return value
+    const dest = this.regAlloc.dest;
 
-//MulInstr
+    if (opnds[0] !== dest)
+    {
+        tltor.asm.mov(opnds[0], dest);
+    }
+   
+    tltor.asm.sub(opnds[1], dest);
+};
 
-//DivInstr
+/* TODO: missing instruction mul
+MulInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Register used for the return value
+    const dest = this.regAlloc.dest;
 
-//ModInstr
+    if (opnds[0] !== dest)
+    {
+        tltor.asm.mov(opnds[0], dest);
+    }
+   
+    tltor.asm.mul(opnds[1], dest);
+};
+*/
+
+/* TODO: missing instruction div
+DivInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Register used for the return value
+    const dest = this.regAlloc.dest;
+
+    if (opnds[0] !== dest)
+    {
+        tltor.asm.mov(opnds[0], dest);
+    }
+   
+    tltor.asm.div(opnds[1], dest);
+};
+*/
+
+/* TODO: missing instruction div
+ModInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Register used for the return value
+    const dest = this.regAlloc.dest;
+
+    if (opnds[0] !== dest)
+    {
+        tltor.asm.mov(opnds[0], dest);
+    }
+   
+    tltor.asm.div(opnds[1], dest);
+};
+*/
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1034,11 +1082,13 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.sub(opnds[1], dest);
         }
 
-    } else if (opnds[0] === opnds[1])
+    } 
+    else if (opnds[0] === opnds[1])
     {
         // Operands are the same, put a zero in the destination register
         tltor.asm.xor(dest, dest); 
-    } else if (opnds[1].type === x86.type.REG && 
+    } 
+    else if (opnds[1].type === x86.type.REG && 
                opnds[1] === dest)
     {
         // Operands are inverted with regard to x86 notation 
@@ -1049,7 +1099,8 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
         mov(opnds[1], mem(-refByteNb, stack)).
         mov(opnds[0], dest).
         sub(mem(-refByteNb, stack), dest);
-    } else
+    }
+    else
     {
         if (opnds[0] !== dest)
         {
@@ -1196,7 +1247,34 @@ LtInstr.prototype.genCode = function (tltor, opnds)
 
 //LeInstr
 
-//GtInstr
+GtInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if ((opnds[0].type === x86.type.MEM &&
+        opnds[1].type === x86.type.MEM) ||
+        (opnds[0].type === x86.type.IMM_VAL &&
+        opnds[1].type === x86.type.IMM_VAL))
+    {
+        tltor.asm.
+        mov(opnds[1], dest).
+        cmp(opnds[0], dest);
+    } 
+    else if (opnds[0].type === x86.type.IMM_VAL)
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
+    } 
+    else
+    {
+        tltor.asm.cmp(opnds[1], opnds[0]);
+    }
+
+    tltor.asm.
+    mov(tltor.falseVal, dest).
+    cmovg(tltor.trueVal, dest);
+};
 
 //GeInstr
 
