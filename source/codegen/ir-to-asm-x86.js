@@ -145,8 +145,16 @@ irToAsm.translator = function ()
         that.REG_BYTE_WIDTH = 4;
     }
 
+    /*
     that.ctxImmTrue  = mem(1 * that.REG_BYTE_WIDTH, irToAsm.config.context);
     that.ctxImmFalse = mem(2 * that.REG_BYTE_WIDTH, irToAsm.config.context);
+    */
+
+    // Use the context register value as a true (nonzero) boolean
+    that.trueVal = irToAsm.config.context;
+
+    // The false boolean must be 0
+    that.falseVal = $(0);
 
     return that;
 };
@@ -1181,21 +1189,9 @@ LtInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.cmp(opnds[1], opnds[0]);
     }
 
-    /*
-    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
-
     tltor.asm.
-    mov($(immFalse), dest).
-    cmovl(tltor.ctxImmTrue, dest);
-    */
-
-    var trueLabel = tltor.asm.labelObj();
-
-    tltor.asm.
-    mov($(1), dest).
-    jl(trueLabel).
-    mov($(0), dest).
-    label(trueLabel)
+    mov(tltor.falseVal, dest).
+    cmovl(tltor.trueVal, dest);
 };
 
 //LeInstr
@@ -1234,21 +1230,9 @@ EqInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.cmp(opnds[0], opnds[1]);
     }
 
-    /*
-    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
-
     tltor.asm.
-    mov($(immFalse), dest).
-    cmove(tltor.ctxImmTrue, dest);
-    */
-
-    var trueLabel = tltor.asm.labelObj();
-
-    tltor.asm.
-    mov($(1), dest).
-    je(trueLabel).
-    mov($(0), dest).
-    label(trueLabel)
+    mov(tltor.falseVal, dest).
+    cmove(tltor.trueVal, dest);
 };
 
 NeInstr.prototype.genCode = function (tltor, opnds)
@@ -1281,13 +1265,9 @@ NeInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.cmp(opnds[0], opnds[1]);
     }
 
-    var trueLabel = tltor.asm.labelObj();
-
     tltor.asm.
-    mov($(1), dest).
-    jne(trueLabel).
-    mov($(0), dest).
-    label(trueLabel)
+    mov(tltor.falseVal, dest).
+    cmovne(tltor.trueVal, dest);
 };
 
 JumpInstr.prototype.genCode = function (tltor, opnds)
@@ -1324,19 +1304,17 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     const trueLabel = tltor.label(this.targets[0], this.targets[0].label);
     const falseLabel = tltor.label(this.targets[1], this.targets[1].label);
 
-    /*
-    const immTrue = (new ConstValue(true, IRType.none)).getImmValue();
-
     tltor.asm.
-    cmp($(immTrue), opnds[0]).
-    je(trueLabel).
-    jmp(falseLabel);
+    cmp($(0), opnds[0]).
+    je(falseLabel).
+    jmp(trueLabel);    
+
+    /* TODO: test with register operand not supported?
+    tltor.asm.
+    test(opnds[0], opnds[0]).
+    je(falseLabel).
+    jmp(trueLabel);
     */
-
-    tltor.asm.
-    cmp($(1), opnds[0]).
-    je(trueLabel).
-    jmp(falseLabel);
 };
 
 // For now, acts as a return 

@@ -76,7 +76,7 @@ function boxHasTag(boxVal, tagVal)
     "tachyon:inline";
     "tachyon:nothrow";
     "tachyon:arg tagVal pint";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) == tagVal;
@@ -89,7 +89,7 @@ function boxIsInt(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Test if the value has the int tag
     return (boxVal & TAG_INT_MASK) == TAG_INT;
@@ -102,7 +102,7 @@ function boxIsObj(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) >= TAG_ARRAY;
@@ -115,7 +115,7 @@ function boxIsFunc(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     /* TODO
     // Compare the reference tag
@@ -123,7 +123,7 @@ function boxIsFunc(boxVal)
     */
 
     // FIXME: for now, function pointers not boxed, this will not work
-    return iir.constant(IRType.i8, 1);
+    return iir.constant(IRType.bool, 1);
 }
 
 /**
@@ -133,7 +133,7 @@ function boxIsArray(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) == TAG_ARRAY;
@@ -146,7 +146,7 @@ function boxIsFloat(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) == TAG_FLOAT;
@@ -159,7 +159,7 @@ function boxIsString(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) == TAG_STRING;
@@ -172,29 +172,29 @@ function boxToBool(boxVal)
 {
     "tachyon:static";
     "tachyon:nothrow";
-    "tachyon:ret i8";
+    "tachyon:ret bool";
 
     // Get an integer-typed value for input
     var boxInt = iir.icast(IRType.pint, boxVal);
 
     if (boxInt == BIT_PATTERN_TRUE)
-        return iir.constant(IRType.i8, 1);
+        return iir.constant(IRType.bool, 1);
 
     else if (boxInt == BIT_PATTERN_FALSE)
-        return iir.constant(IRType.i8, 0);
+        return iir.constant(IRType.bool, 0);
 
     else if (boxInt == BIT_PATTERN_UNDEF)
-        return iir.constant(IRType.i8, 0);
+        return iir.constant(IRType.bool, 0);
 
     else if (boxInt == BIT_PATTERN_NULL)
-        return iir.constant(IRType.i8, 0);
+        return iir.constant(IRType.bool, 0);
 
     else if (boxIsInt(boxVal))
     { 
         if (boxInt != iir.constant(IRType.pint, 0))
-            return iir.constant(IRType.i8, 1);
+            return iir.constant(IRType.bool, 1);
         else
-            return iir.constant(IRType.i8, 0);
+            return iir.constant(IRType.bool, 0);
     }
 
     else if (boxIsString(boxVal))
@@ -202,12 +202,12 @@ function boxToBool(boxVal)
         var len = iir.icast(IRType.pint, get_str_len(boxVal));
 
         if (len != iir.constant(IRType.pint, 0))
-            return iir.constant(IRType.i8, 1);
+            return iir.constant(IRType.bool, 1);
         else
-            return iir.constant(IRType.i8, 0);
+            return iir.constant(IRType.bool, 0);
     }
 
-    return iir.constant(IRType.i8, 1);
+    return iir.constant(IRType.bool, 1);
 }
 
 //=============================================================================
@@ -408,6 +408,7 @@ function add(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
+    
     var intResult;
     if (intResult = iir.add_ovf(v1, v2))
     {
@@ -416,6 +417,7 @@ function add(v1, v2)
     {
         return UNDEFINED;
     }
+    
 
     // TODO: ensure that boxIsInt is valid
 
@@ -441,7 +443,8 @@ function add(v1, v2)
     {
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
-    }*/
+    }
+    */
 }
 
 /**
