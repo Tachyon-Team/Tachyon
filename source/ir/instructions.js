@@ -23,6 +23,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //      - No masking,
 //      - base_ptr + offset + index + multiplier
 
+// TODO: cast type in load instruction, load as?
+
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
 
@@ -197,6 +199,9 @@ IRType.box  = new IRType('box' , PLATFORM_PTR_SIZE),
 // Raw pointer to any memory address
 IRType.rptr = new IRType('rptr', PLATFORM_PTR_SIZE),
 
+// Boolean type
+IRType.bool = new IRType('bool', PLATFORM_PTR_SIZE),
+
 // Unboxed unsigned integer types
 IRType.u8   = new IRType('u8'  , 1),
 IRType.u16  = new IRType('u16' , 2),
@@ -259,19 +264,22 @@ function ConstValue(value, type)
 {
     // Ensure that the specified value is valid
     assert (
-        !type.isInt() || 
-        (typeof value == 'number' && Math.floor(value) == value),
+        !(type.isInt() && 
+        (typeof value != 'number' || Math.floor(value) != value)),
         'integer constants require integer values'
     );
     assert (
-        !type.isFP() || 
-        (typeof value == 'number'),
+        !(type.isFP() && typeof value != 'number'),
         'floating-point constants require number values'
     );
     assert (
-        (type === IRType.box) || (typeof value != 'string'),
+        !(typeof value == 'string' && type !== IRType.box),
         'string-valued constants must have box type'
     );
+    assert (
+        !(type === IRType.bool && value != 0 && value != 1),
+        'boolean constants must be 0 or 1'
+    );        
 
     /**
     Value of the constant
@@ -366,6 +374,11 @@ ConstValue.prototype.getImmValue = function ()
         {
             return this.value;
         }
+    }
+
+    if (this.type === IRType.bool)
+    {
+        return this.value;
     }
 
     if (this.value === true)
@@ -1519,7 +1532,7 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
         'invalid input types'
     );
     
-    this.type = IRType.i8;
+    this.type = IRType.bool;
 }
 
 /**
@@ -1644,8 +1657,8 @@ var IfInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 1);
         assert (
             inputVals[0].type === IRType.box ||
-            inputVals[0].type === IRType.i8,
-            'input must be boxed or int8'
+            inputVals[0].type === IRType.bool,
+            'input must be boxed or bool'
         );
         instrMaker.validNumBranches(branchTargets, 2);
         
