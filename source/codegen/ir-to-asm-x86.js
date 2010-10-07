@@ -930,7 +930,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
 
 AddInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Register used for the return value
+    // Register used for the output value
     const dest = this.regAlloc.dest;
 
     if (opnds[0] !== dest)
@@ -943,7 +943,7 @@ AddInstr.prototype.genCode = function (tltor, opnds)
 
 SubInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Register used for the return value
+    // Register used for the output value
     const dest = this.regAlloc.dest;
 
     if (opnds[0] !== dest)
@@ -954,10 +954,9 @@ SubInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.sub(opnds[1], dest);
 };
 
-/* TODO: missing instruction mul
 MulInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Register used for the return value
+    // Register used for the output value
     const dest = this.regAlloc.dest;
 
     if (opnds[0] !== dest)
@@ -965,11 +964,13 @@ MulInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.mov(opnds[0], dest);
     }
    
+    //
+    // TODO: use signed multiply for signed output
+    //
+
     tltor.asm.mul(opnds[1], dest);
 };
-*/
 
-/* TODO: missing instruction div
 DivInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the return value
@@ -980,11 +981,18 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.mov(opnds[0], dest);
     }
    
-    tltor.asm.div(opnds[1], dest);
+    // If the output should be unsigned, use unsigned divide, otherwise
+    // use signed divide 
+    if (this.type.isUnsigned())
+    {
+        tltor.asm.div(opnds[1], dest);
+    }
+    else
+    {
+        tltor.asm.idiv(opnds[1], dest);
+    }
 };
-*/
 
-/* TODO: missing instruction div
 ModInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the return value
@@ -995,9 +1003,17 @@ ModInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.mov(opnds[0], dest);
     }
    
-    tltor.asm.div(opnds[1], dest);
+    // If the output should be unsigned, use unsigned divide, otherwise
+    // use signed divide 
+    if (this.type.isUnsigned())
+    {
+        tltor.asm.div(opnds[1], dest);
+    }
+    else
+    {
+        tltor.asm.idiv(opnds[1], dest);
+    }
 };
-*/
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1031,11 +1047,13 @@ AddOvfInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.add(opnds[1], dest);
         }
 
-    } else if (opnds[1].type === x86.type.REG && 
+    } 
+    else if (opnds[1].type === x86.type.REG && 
                opnds[1] === dest)
     {
         tltor.asm.add(opnds[0], dest);
-    } else
+    } 
+    else
     {
         if (opnds[0] !== dest)
         {
@@ -1117,8 +1135,19 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
 };
 
 //MulOvfInstr
+//TODO: use imul instruction
 
-//NotInstr
+NotInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if (dest != opnds[0])
+    {
+        tltor.asm.mov(opnds[0], dest);
+    }
+
+    tltor.asm.and(dest);
+};
 
 AndInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1182,8 +1211,6 @@ OrInstr.prototype.genCode = function (tltor, opnds)
 
 //XorInstr
 
-/* TODO: left shift instruction, use x86 SAL
-   SAL may require reserving the CL register
 LsftInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
@@ -1210,11 +1237,36 @@ LsftInstr.prototype.genCode = function (tltor, opnds)
         sal(opnds[1], dest);
     }
 };
-*/
 
-//RsftInstr
+RsftInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
 
-//UrsftInstr
+    if (opnds[1].value == 0)
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+    } 
+    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    {
+        tltor.asm.sar(opnds[1], dest);
+    }
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    {
+        tltor.asm.sar(opnds[0], dest);
+    } 
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        sar(opnds[1], dest);
+    }
+};
+
+// TODO: UrsftInstr
+// Use logical shift
 
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
