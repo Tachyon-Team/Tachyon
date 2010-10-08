@@ -653,6 +653,7 @@ function putPropVal(obj, propName, propVal)
 /**
 Get a property from an object
 */
+/*
 function getPropVal(obj, propName)
 {
     "tachyon:static";
@@ -664,6 +665,88 @@ function getPropVal(obj, propName)
     // Compute the hash for the property
     // Boxed value, may be a string or an int
     var propHash = computeHash(propName);
+
+    // Until we reach the end of the prototype chain
+    do
+    {
+        // Get a pointer to the hash table
+        var tblPtr = get_obj_tbl(obj);
+
+        // Get the size of the hash table
+        var tblSize = iir.icast(
+            IRType.pint,
+            get_obj_tblsize(obj)
+        );
+
+        // Get the hash table index for this hash value
+        var hashIndex = propHash % tblSize;
+
+        // Until the key is found, or a free slot is encountered
+        while (true)
+        {
+            // Get the key value at this hash slot
+            var keyVal = get_hashtbl_tbl_key(tblPtr, hashIndex);
+
+            // If this is the key we want
+            if (keyVal === propName)
+            {
+                // Load the property value
+                var propVal = get_hashtbl_tbl_val(tblPtr, hashIndex);
+                
+                //if (isGetterSetter(propVal))
+                //    return callGetter(obj, propVal);
+                //else 
+                //    return propVal;
+
+                // TODO
+                return propVal;
+            }
+
+            // Otherwise, if we have reached an empty slot
+            else if (keyVal === UNDEFINED)
+            {
+                break;
+            }
+
+            // Move to the next hash table slot
+            hashIndex = (hashIndex + iir.constant(IRType.pint, 1)) % tblSize;
+        }
+
+        // Move up in the prototype chain
+        var obj = get_obj_proto(obj);
+
+    } while (obj != null);
+
+    // Property not found
+    return UNDEFINED;
+}
+*/
+
+//
+// TODO:
+//
+// - getProp(hash) inlinable function
+// - putProp(hash) inlinable function
+//
+// - getGlobal
+// - getGlobalFunc
+//
+// These should probably take prop name string hashes
+// PROBLEM: hash computation method is not yet compiled...
+// Need a backup method to compute the same hash...
+// Use the default hash table method for now
+//
+// TODO: when loading global, give IR temp appropriate name string...
+// - Avoid confusion when using prop hashes for lookup!
+// - Will still need to pass key
+
+/**
+Get a property from an object
+*/
+function getProp(obj, propName, propHash)
+{
+    "tachyon:inline";
+    "tachyon:arg propHash pint";
 
     // Until we reach the end of the prototype chain
     do
@@ -718,6 +801,88 @@ function getPropVal(obj, propName)
 
     } while (obj != null);
 
-    // Property not found
-    return UNDEFINED;
+    // Property not found, return a special bit pattern
+    return iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND);
 }
+
+/**
+Get a property from an object
+*/
+function getPropVal(obj, propName)
+{
+    "tachyon:static";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Compute the hash for the property
+    // Boxed value, may be a string or an int
+    var propHash = computeHash(propName);
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property isn't defined
+    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    {
+        // Return the undefined value
+        return UNDEFINED;
+    }
+}
+
+/**
+Get a property value from the global object
+*/
+function getGlobal(obj, propName, propHash)
+{
+    "tachyon:static";
+    "tachyon:arg propHash pint";
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property isn't defined
+    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    {
+        // Throw a ReferenceError exception
+        throw makeError(ReferenceError, "global property not defined" + propName);
+    }
+
+    // Return the property
+    return prop;
+}
+
+/**
+Get a function property from the global object
+*/
+function getGlobalFunc(obj, propName, propHash)
+{
+    "tachyon:static";
+    "tachyon:arg propHash pint";
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property is a function
+    if (boxIsFunc(prop))
+    {
+        // Return the function property
+        return prop;
+    }
+    else
+    {
+        // If the property isn't defined
+        if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+        {
+            // Throw a ReferenceError exception
+            throw makeError(ReferenceError, "global property not defined" + propName);
+        }
+        else
+        {
+            // Throw a TypeError exception
+            throw makeError(TypeError, "global property is not a function" + propName);
+        }
+    }
+}
+

@@ -401,6 +401,8 @@ ConstValue.prototype.getImmValue = function ()
         return BIT_PATTERN_NULL;
     }
 
+
+
     assert (
         false,
         'cannot get bits for: ' + this.type

@@ -498,7 +498,7 @@ function getIRFuncObj(
                     'use the arguments object';
 
             if (argNo == -1)
-                throw 'invalid argument number in argument type annotation';
+                throw 'invalid argument name in argument type annotation';
 
             if (!type)
                 throw 'invalid type in argument type annotation';
