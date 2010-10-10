@@ -1502,16 +1502,23 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         const name = opnds[0].funcName;
         if (name === "makeClos")
         {
-            assert(this.uses[1].isUndef() &&
-                   opnds[2] instanceof IRFunction);
+            assert(
+                this.uses[1].isUndef() && opnds[2] instanceof IRFunction,
+                'invalid uses for call to makeClos'
+            );
 
             // Implicitly returns the function address
             // in return value register
             tltor.asm.call(tltor.label(opnds[2]));
-        } else if (name === "getPropVal")
+        } 
+        else if (
+            name === "getPropVal" ||
+            name === "getGlobal" ||
+            name === "getGlobalFunc"                
+        )
         {
             // Make sure we have space for a scratch register
-            assert(avbleRegNb > 2);
+            assert(avbleRegNb > 2, 'not enough scratch registers');
 
             // Move arguments in the right registers, skipping
             // the function address and the 'this' reference
@@ -1534,7 +1541,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Implicitly returns the property value
             // in return value register
             tltor.asm.call(tltor.getPropValLabel);
-        } else if (name === "putPropVal")
+        } 
+        else if (name === "putPropVal")
         {
             // Make sure we have space for a scratch register
             assert(avbleRegNb > 3);
@@ -1560,7 +1568,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Implicitly returns the property value
             // in return value register
             tltor.asm.call(tltor.putPropValLabel);
-        } else if (name === "boxIsFunc")
+        } 
+        else if (name === "boxIsFunc")
         {
             // TODO: Make the proper call to the primitive
 
@@ -1569,7 +1578,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
             tltor.asm.
             mov($(immTrue), dest);
-        } else if (name === "makeError")
+        } 
+        else if (name === "makeError")
         {
             // TODO: Make the proper call to the primitive
             // Ignore for now, simply return undefined
@@ -1578,7 +1588,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
             tltor.asm.
             mov($(immUndefined), dest);
-        } else
+        } 
+        else
         {
             const primLbl = tltor.label(this.uses[0], this.uses[0].label);
 

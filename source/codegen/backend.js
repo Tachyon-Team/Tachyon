@@ -218,8 +218,10 @@ backend.usedPrimitives = function (ir)
         if (arraySetHas(visited, func))
             continue;
 
-        if (func.funcName == "getPropVal" || 
-            func.funcName == "putPropVal" || 
+        if (func.funcName == "putPropVal" ||
+            func.funcName == "getPropVal" || 
+            func.funcName == "getGlobal" ||
+            func.funcName == "getGlobalFunc" || 
             func.funcName == "newObject")
             continue;
 
@@ -234,8 +236,10 @@ backend.usedPrimitives = function (ir)
 
                 if (use instanceof IRFunction)
                 {
-                    if (use.funcName == "getPropVal" || 
-                        use.funcName == "putPropVal" || 
+                    if (use.funcName == "putPropVal" || 
+                        use.funcName == "getPropVal" || 
+                        use.funcName == "getGlobal" ||
+                        use.funcName == "getGlobalFunc" ||
                         use.funcName == "newObject")
                         continue;
 
