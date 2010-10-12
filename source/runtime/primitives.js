@@ -270,7 +270,6 @@ function makeError(errorCtor, message)
 // TODO: implement the following primitives
 function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return true; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -653,96 +652,6 @@ function putPropVal(obj, propName, propVal)
 /**
 Get a property from an object
 */
-/*
-function getPropVal(obj, propName)
-{
-    "tachyon:static";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Compute the hash for the property
-    // Boxed value, may be a string or an int
-    var propHash = computeHash(propName);
-
-    // Until we reach the end of the prototype chain
-    do
-    {
-        // Get a pointer to the hash table
-        var tblPtr = get_obj_tbl(obj);
-
-        // Get the size of the hash table
-        var tblSize = iir.icast(
-            IRType.pint,
-            get_obj_tblsize(obj)
-        );
-
-        // Get the hash table index for this hash value
-        var hashIndex = propHash % tblSize;
-
-        // Until the key is found, or a free slot is encountered
-        while (true)
-        {
-            // Get the key value at this hash slot
-            var keyVal = get_hashtbl_tbl_key(tblPtr, hashIndex);
-
-            // If this is the key we want
-            if (keyVal === propName)
-            {
-                // Load the property value
-                var propVal = get_hashtbl_tbl_val(tblPtr, hashIndex);
-                
-                //if (isGetterSetter(propVal))
-                //    return callGetter(obj, propVal);
-                //else 
-                //    return propVal;
-
-                // TODO
-                return propVal;
-            }
-
-            // Otherwise, if we have reached an empty slot
-            else if (keyVal === UNDEFINED)
-            {
-                break;
-            }
-
-            // Move to the next hash table slot
-            hashIndex = (hashIndex + iir.constant(IRType.pint, 1)) % tblSize;
-        }
-
-        // Move up in the prototype chain
-        var obj = get_obj_proto(obj);
-
-    } while (obj != null);
-
-    // Property not found
-    return UNDEFINED;
-}
-*/
-
-//
-// TODO:
-//
-// - getProp(hash) inlinable function
-// - putProp(hash) inlinable function
-//
-// - getGlobal
-// - getGlobalFunc
-//
-// These should probably take prop name string hashes
-// PROBLEM: hash computation method is not yet compiled...
-// Need a backup method to compute the same hash...
-// Use the default hash table method for now
-//
-// TODO: when loading global, give IR temp appropriate name string...
-// - Avoid confusion when using prop hashes for lookup!
-// - Will still need to pass key
-
-/**
-Get a property from an object
-*/
 function getProp(obj, propName, propHash)
 {
     "tachyon:inline";
@@ -803,6 +712,29 @@ function getProp(obj, propName, propHash)
 
     // Property not found, return a special bit pattern
     return iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND);
+}
+
+/**
+Get a property from an object
+*/
+function hasPropVal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:ret bool";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Compute the hash for the property
+    // Boxed value, may be a string or an int
+    var propHash = computeHash(propName);
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // Test if the property was found
+    return (iir.icast(IRType.pint, prop) != BIT_PATTERN_NOT_FOUND);
 }
 
 /**
