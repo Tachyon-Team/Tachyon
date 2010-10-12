@@ -1434,17 +1434,23 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     const trueLabel = tltor.label(this.targets[0], this.targets[0].label);
     const falseLabel = tltor.label(this.targets[1], this.targets[1].label);
 
-    tltor.asm.
-    cmp($(0), opnds[0]).
-    je(falseLabel).
-    jmp(trueLabel);    
-
-    /* TODO: test with register operand not supported?
-    tltor.asm.
-    test(opnds[0], opnds[0]).
-    je(falseLabel).
-    jmp(trueLabel);
-    */
+    // If the operand is in a register
+    if (opnds[0].type === x86.type.REG)
+    {
+        // Use the test instruction
+        tltor.asm.
+        test(opnds[0], opnds[0]).
+        je(falseLabel).
+        jmp(trueLabel);
+    }
+    else
+    {
+        // Use the compare instruction
+        tltor.asm.
+        cmp($(0), opnds[0]).
+        je(falseLabel).
+        jmp(trueLabel);
+    }
 };
 
 // For now, acts as a return 
