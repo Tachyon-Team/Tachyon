@@ -11,6 +11,7 @@ BASE_SRCS =                 \
     utility/linkedlist.js   \
     utility/strings.js      \
     utility/modules.js      \
+    utility/misc.js         \
     parser/misc.js          \
     parser/scanner.js       \
     parser/parser.js        \
@@ -46,13 +47,13 @@ MAIN_SPEC_SRCS =            \
 
 # Test-specific source files
 # Insert unit test files between testing.js and testmain.js
-TEST_SPEC_SRCS =            \
-    tests/testing.js        \
-    utility/tests/*.js      \
-    ir/tests/*.js           \
-    runtime/tests/*.js      \
-    codegen/tests/*.js      \
-    programs/tests/fib.js   \
+TEST_SPEC_SRCS =                \
+    tests/testing.js            \
+    utility/tests/*.js          \
+    ir/tests/*.js               \
+    runtime/tests/*.js          \
+    codegen/tests/*.js          \
+    programs/tests/fib.js       \
     tests/testmain.js
 
 # Main target source files

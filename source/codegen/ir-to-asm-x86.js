@@ -24,7 +24,6 @@ const EDI = reg.edi;
 const $   = x86.Assembler.prototype.immediateValue;
 const mem = x86.Assembler.prototype.memory;
 
-
 /** @namespace */
 irToAsm.config = {};
 
@@ -43,7 +42,6 @@ irToAsm.config.scratch = EDI;
 //       using EBP instead of ESP
 irToAsm.config.stack   = ESP;
 irToAsm.config.context = ESI;
-
 
 // Registers available for register allocation.
 irToAsm.config.physReg    = [EAX, EBX, ECX, EDX, EBP];
@@ -93,7 +91,6 @@ irToAsm.spillAllocator.prototype.newSlot = function ()
     this.slots.push(s);
     return s;
 };
-
 
 /** 
 @class
@@ -145,11 +142,6 @@ irToAsm.translator = function ()
         that.REG_BYTE_WIDTH = 4;
     }
 
-    /*
-    that.ctxImmTrue  = mem(1 * that.REG_BYTE_WIDTH, irToAsm.config.context);
-    that.ctxImmFalse = mem(2 * that.REG_BYTE_WIDTH, irToAsm.config.context);
-    */
-
     // Use the context register value as a true (nonzero) boolean
     that.trueVal = irToAsm.config.context;
 
@@ -158,11 +150,13 @@ irToAsm.translator = function ()
 
     return that;
 };
+
 /** @private assembler object */
 irToAsm.translator.prototype.asm = null;
 /** @private known strings so far */
 irToAsm.translator.prototype.strings = {};
 irToAsm.translator.prototype.stringNb = 0;
+
 /** 
 Generate the corresponding assembly code for the function in the order
 specified in blockList.
@@ -278,7 +272,7 @@ irToAsm.translator.prototype.stringValue = function (s)
     return value;
 };
 
-
+/*
 irToAsm.translator.prototype.ir_lt = function (opnds, instr)
 {
     const dest = instr.regAlloc.dest;
@@ -419,6 +413,8 @@ irToAsm.translator.prototype.ir_add = function (opnds, instr)
     }
 
 };
+*/
+
 irToAsm.translator.prototype.get_prop_val = function ()
 {
     assert(irToAsm.config.physReg.length >= 4);
@@ -591,6 +587,7 @@ irToAsm.translator.prototype.call_self = function (offset)
 
 };
 
+/*
 irToAsm.translator.prototype.ir_arg = function (opnds, instr)
 {
     const dest = instr.regAlloc.dest;
@@ -673,6 +670,7 @@ irToAsm.translator.prototype.ir_call = function (opnds, instr)
     jmp(continue_label);
 
 };
+*/
 
 irToAsm.translator.prototype.func_prelude = function (prelude_label)
 {
@@ -959,16 +957,49 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the output value
     const dest = this.regAlloc.dest;
 
-    if (opnds[0] !== dest)
+    // If an unsigned integer result is expected
+    if (this.type.isUnsigned())
     {
-        tltor.asm.mov(opnds[0], dest);
-    }
-   
-    //
-    // TODO: use signed multiply for signed output
-    //
+        // If the right operand is a power of 2
+        if (opnds[1].type === x86.type.IMM_VAL && isPowerOf2(opnds[1].value))
+        {
+            var root2 = Math.sqrt(opnds[1].value);
 
-    tltor.asm.mul(opnds[1], dest);
+            // Use the unsigned left shift
+            if (opnds[0] !== dest)
+                tltor.asm.mov(opnds[0], dest);
+            tltor.asm.shl($(root2), dest);
+        }
+
+        // If the left operand is a power of 2
+        if (opnds[0].type === x86.type.IMM_VAL && isPowerOf2(opnds[0].value))
+        {
+            var root2 = Math.sqrt(opnds[0].value);
+
+            // Use the unsigned left shift
+            if (opnds[1] !== dest)
+                tltor.asm.mov(opnds[1], dest);
+            tltor.asm.shl($(root2), dest);
+        }
+
+        // For the general case
+        else
+        {
+            // Use unsigned multiplication
+            if (opnds[0] !== dest)
+                tltor.asm.mov(opnds[0], dest);
+            tltor.asm.mul(opnds[1], dest);
+        }
+    }
+
+    // Otherwise, a signed result is expected
+    else
+    {
+        //
+        // TODO: use signed multiply (imul) for signed output
+        //
+        throw 'signed integer multiply not yet supported';
+    }
 };
 
 DivInstr.prototype.genCode = function (tltor, opnds)
@@ -1017,7 +1048,6 @@ ModInstr.prototype.genCode = function (tltor, opnds)
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {
-
     const dest = this.regAlloc.dest;
     const stack = irToAsm.config.stack;
     const refByteNb = stack.width() / 8;
@@ -1049,7 +1079,7 @@ AddOvfInstr.prototype.genCode = function (tltor, opnds)
 
     } 
     else if (opnds[1].type === x86.type.REG && 
-               opnds[1] === dest)
+             opnds[1] === dest)
     {
         tltor.asm.add(opnds[0], dest);
     } 
@@ -1095,11 +1125,11 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
         if (opnds[1].value === 1)
         {
             tltor.asm.dec(dest);
-        } else
+        } 
+        else
         {
             tltor.asm.sub(opnds[1], dest);
         }
-
     } 
     else if (opnds[0] === opnds[1])
     {
@@ -1157,19 +1187,23 @@ AndInstr.prototype.genCode = function (tltor, opnds)
         (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0))
     {
         tltor.asm.xor(dest, dest);
-    } else if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
+    } 
+    else if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
     {
         if (opnds[0] !== dest)
         {
             tltor.asm.mov(opnds[0], dest);
         }
-    } else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    } 
+    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
     {
         tltor.asm.and(opnds[1], dest);
-    } else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    } 
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
     {
         tltor.asm.and(opnds[0], dest);
-    } else
+    } 
+    else
     {
         tltor.asm.
         mov(opnds[0], dest).
@@ -1791,7 +1825,7 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-//StoreInstr
+// TODO: StoreInstr.prototype.genCode = function (tltor, opnds)
 
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {

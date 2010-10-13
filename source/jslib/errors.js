@@ -71,14 +71,17 @@ function makeErrorCtor(errorName, protoParent)
 /**
 Constructor function for error objects
 */
+/*
 var Error = makeErrorCtor(
     'Error',
     Object.prototype
 );
+*/
 
 /**
 ToString function of the error prototype object
 */
+/*
 Error.prototype.toString = function ()
 {
     if (this.message === undefined)
@@ -88,6 +91,7 @@ Error.prototype.toString = function ()
 
     return name + ': ' + this.message;
 }
+*/
 
 /*
 @class RangeError
@@ -95,10 +99,12 @@ Error.prototype.toString = function ()
 15.11.6.2 RangeError
 Indicates a numeric value has exceeded the allowable range. 
 */
+/*
 var RangeError = makeErrorCtor(
     'RangeError',
     Error.prototype
 );
+*/
 
 /*
 @class ReferenceError
@@ -106,10 +112,12 @@ var RangeError = makeErrorCtor(
 15.11.6.3 ReferenceError
 Indicate that an invalid reference value has been detected.
 */
+/*
 var ReferenceError = makeErrorCtor(
     'ReferenceError',
     Error.prototype
 );
+*/
 
 /**
 @class SyntaxError
@@ -117,10 +125,12 @@ var ReferenceError = makeErrorCtor(
 15.11.6.4 SyntaxError
 Indicates that a parsing error has occurred.
 */
+/*
 var SyntaxError = makeErrorCtor(
     'SyntaxError',
     Error.prototype
 );
+*/
 
 /**
 @class TypeError
@@ -128,10 +138,12 @@ var SyntaxError = makeErrorCtor(
 15.11.6.5 TypeError
 Indicates the actual type of an operand is different than the expected type.
 */
+/*
 var TypeError = makeErrorCtor(
     'TypeError',
     Error.prototype
 );
+*/
 
 /**
 @class URIError
@@ -140,8 +152,10 @@ var TypeError = makeErrorCtor(
 Indicates that one of the global URI handling functions was used in a way
 that is incompatible with its definition.
 */
+/*
 var URIError = makeErrorCtor(
     'URIError',
     Error.prototype
 );
+*/
 

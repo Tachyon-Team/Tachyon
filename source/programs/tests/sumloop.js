@@ -6,11 +6,11 @@ Fibonacci implementation to test the whole compiler.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-tests.fib = tests.testSuite();
+tests.sumloop = tests.testSuite();
 
-tests.fib.main = function ()
+tests.sumloop.main = function ()
 {
-    var ast = parse_src_file('programs/fib.js');
+    var ast = parse_src_file('programs/sumloop.js');
     
     var ir = unitToIR(ast);
 
@@ -29,6 +29,6 @@ tests.fib.main = function ()
     var timeS = (endTimeMs - startTimeMs) / 1000;
     print('time: ' + timeS + ' s');
 
-    assert(x === (6765 << 2), "Invalid return value: " + x);
+    assert(x === (45 << 2), "Invalid return value: " + x);
 };
 

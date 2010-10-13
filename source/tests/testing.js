@@ -125,16 +125,18 @@ tests.testSuite.prototype.run = function (catchError, suiteName, caseName, verbo
                 try
                 {
                     runTestCase(this, p);
-                } catch (e)
+                } 
+                catch (e)
                 {
                     exception = e;
                     result = false; 
                     failedNb++;
                 }
-            } else
+            } 
+            else
             {
                 // Useful for debugging failing tests
-                    runTestCase(this, p);
+                runTestCase(this, p);
             }
             if (!result)
             {
@@ -144,7 +146,8 @@ tests.testSuite.prototype.run = function (catchError, suiteName, caseName, verbo
                     print(indentText(exception.stack.toString(), "\t"));
                 else
                     print(indentText(exception.toString(), "\t"));
-            } else if (verbose)
+            } 
+            else if (verbose)
             {
                 print(suiteName +"." + p + " : ok");
             }

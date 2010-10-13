@@ -1309,7 +1309,7 @@ allocator.liveIntervals = function (cfg, order, config)
                     break;
 
                 // Add the phi node's input from this block to the live set
-                if (!instr.getIncoming(block) instanceof ConstValue)
+                if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
                     arraySetAdd(live, instr.getIncoming(block));
                 }
