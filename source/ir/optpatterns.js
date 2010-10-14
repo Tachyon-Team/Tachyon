@@ -445,19 +445,26 @@ function applyPatternsInstr(cfg, block, instr, index)
         }
     }
 
-
-
-
     //
-    // TODO: Strength reduction patterns
+    // Strength reduction patterns
     //
 
+    // If this is a modulo of a power of 2
+    if (instr instanceof ModInstr && 
+        instr.uses[1] instanceof ConstValue &&
+        instr.uses[1].isInt() &&
+        isPowerOf2(instr.uses[1].value))
+    {
+        //
+        // TODO
+        //
+    }
 
+    // TODO: mul opts, mul ovf opts
 
+    // TODO: div by power of 2 opts
 
-
-
-
+    // TODO: remove added optimizations from back-end code
 
     // No changes were made
     return false;
