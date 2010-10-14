@@ -1286,19 +1286,6 @@ allocator.liveIntervals = function (cfg, order, config)
         {
             var succ = block.succs[j];
 
-            // If this is a loop header, skip it
-            if (succ.regAlloc.lastLoopEnd)
-                continue;
-
-            /*
-            print('Succ: ' + succ.getBlockName());
-            print('Block id: ' + succ.blockId);
-            print('Last loop end: ' + succ.regAlloc.lastLoopEnd);
-            */
-
-            // Add all live temps at the successor input to the live set
-            live = arraySetUnion(live, succ.regAlloc.liveIn);
-
             // For each instruction of the successor
             for (var k = 0; k < succ.instrs.length; ++k)
             {
@@ -1308,13 +1295,19 @@ allocator.liveIntervals = function (cfg, order, config)
                 if (!(instr instanceof PhiInstr))
                     break;
 
-
                 // Add the phi node's input from this block to the live set
                 if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
                     arraySetAdd(live, instr.getIncoming(block));
                 }
             }
+
+            // If this is a loop header, skip it
+            if (succ.regAlloc.lastLoopEnd)
+                continue;            
+
+            // Add all live temps at the successor input to the live set
+            live = arraySetUnion(live, succ.regAlloc.liveIn);
         }
         
         // For each instruction in the live set
@@ -1415,16 +1408,14 @@ allocator.liveIntervals = function (cfg, order, config)
             }
         }
 
-        // For each instruction of the block
+        // Remove all phi instructions of this block from the live set
         for (var j = 0; j < block.instrs.length; ++j)
         {
             var instr = block.instrs[j];
 
-            // If this is not a phi instruction, stop
             if (!(instr instanceof PhiInstr))
                 break;
 
-            // Remove the phi function from the live set
             arraySetRem(live, instr);
         }
 
@@ -1451,7 +1442,6 @@ allocator.liveIntervals = function (cfg, order, config)
         // Store the live temp set at the block entry
         block.regAlloc.liveIn = live;
     }
-
 
     var liveIntervals = [];
     // Extract live intervals

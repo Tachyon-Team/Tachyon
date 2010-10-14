@@ -339,9 +339,6 @@ function lt(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    return iir.lt(v1, v2)? true:false;
-
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -353,7 +350,6 @@ function lt(v1, v2)
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
     }
-    */
 }
 
 /**
@@ -408,20 +404,6 @@ function add(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    
-    var intResult;
-    if (intResult = iir.add_ovf(v1, v2))
-    {
-        return intResult;
-    } else
-    {
-        return UNDEFINED;
-    }
-    
-
-    // TODO: ensure that boxIsInt is valid
-
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -444,7 +426,6 @@ function add(v1, v2)
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
     }
-    */
 }
 
 /**
@@ -454,22 +435,7 @@ function sub(v1, v2)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-
-    // Attempt a subtract with overflow check
-    var intResult;
-    if (intResult = iir.sub_ovf(v1, v2))
-    {
-        // If there is no overflow, return the result
-        // No normalization necessary
-        return intResult;
-    }
-    else
-    {
-        // TODO: overflow handling: need to create FP objects
-        return UNDEFINED;
-    }    
-
-    /*
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -491,7 +457,7 @@ function sub(v1, v2)
     {
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
-    }*/
+    }
 }
 
 /**

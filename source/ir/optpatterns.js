@@ -445,6 +445,20 @@ function applyPatternsInstr(cfg, block, instr, index)
         }
     }
 
+
+
+
+    //
+    // TODO: Strength reduction patterns
+    //
+
+
+
+
+
+
+
+
     // No changes were made
     return false;
 }

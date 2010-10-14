@@ -1136,8 +1136,7 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
         // Operands are the same, put a zero in the destination register
         tltor.asm.xor(dest, dest); 
     } 
-    else if (opnds[1].type === x86.type.REG && 
-               opnds[1] === dest)
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
     {
         // Operands are inverted with regard to x86 notation 
 
@@ -1479,9 +1478,12 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     }
     else
     {
+        print(this);
+        print(opnds[0]);
+
         // Use the compare instruction
         tltor.asm.
-        cmp($(0), opnds[0]).
+        cmp($(0), opnds[0], this.uses[0].type.numBits).
         je(falseLabel).
         jmp(trueLabel);
     }
