@@ -1308,8 +1308,9 @@ allocator.liveIntervals = function (cfg, order, config)
                 if (!(instr instanceof PhiInstr))
                     break;
 
+
                 // Add the phi node's input from this block to the live set
-                if (!instr.getIncoming(block) instanceof ConstValue)
+                if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
                     arraySetAdd(live, instr.getIncoming(block));
                 }
@@ -1350,6 +1351,13 @@ allocator.liveIntervals = function (cfg, order, config)
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
+            }
+
+            // Input operands for phi instructions are added to the live set
+            // when traversing successors
+            if (instr instanceof PhiInstr)
+            {
+                continue;
             }
 
             // For each input operand of the instruction
@@ -1646,7 +1654,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             // available, use one of the availables
             reg = allocator.max(freeUntilPos).index;
         }
-        
+
         // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
         // is free for a part of current.  This way it handles 
         // a fixed interval starting at the same position as current
