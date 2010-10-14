@@ -1047,6 +1047,9 @@ Produce a string representation
 */
 BasicBlock.prototype.toString = function (outFormatFn, inFormatFn, lnPfxFormatFn)
 {
+    if (!lnPfxFormatFn)
+        lnPfxFormatFn = function() { return ''; }
+
     var output = lnPfxFormatFn(this) + this.getBlockName() + ':\n';
 
     for (var i = 0; i < this.instrs.length; ++i)

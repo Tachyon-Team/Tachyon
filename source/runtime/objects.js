@@ -150,13 +150,14 @@ staticEnv.regBinding(
 
 //=============================================================================
 //
-// JavaScript constant values
+// JavaScript constant values and misc. constants
 //
 // Each constant has a specific bit-pattern:
-// - true       000--0|00|001   1
-// - false      000--0|01|001   9
-// - null       000--0|10|001   17
-// - undefined  000--0|11|001   25
+// - true       000--0|000|001  1
+// - false      000--0|001|001  9
+// - null       000--0|010|001  17
+// - undefined  000--0|011|001  25
+// - not found  000--0|100|001  33
 //
 //=============================================================================
 
@@ -196,6 +197,16 @@ staticEnv.regBinding(
     'BIT_PATTERN_UNDEF',
     ConstValue.getConst(
         BIT_PATTERN_UNDEF,
+        IRType.pint
+    )
+);
+
+// Bit pattern for the not found constant
+var BIT_PATTERN_NOT_FOUND = 33;
+staticEnv.regBinding(
+    'BIT_PATTERN_NOT_FOUND',
+    ConstValue.getConst(
+        BIT_PATTERN_NOT_FOUND,
         IRType.pint
     )
 );

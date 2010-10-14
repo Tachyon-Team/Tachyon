@@ -26,7 +26,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             {
                 obj[method]();
                 flag = true;
-            } catch (e)
+            } 
+            catch (e)
             {
                 assertExceptionEqual("unimplemented", e);
             }
@@ -74,8 +75,5 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         assert(!it.valid());
     };
-
-    
-    
 
 })(); // end of local namespace 

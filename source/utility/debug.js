@@ -12,12 +12,19 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /** Throw an exception with message and args */
 function error(message)
 {
-    var err = message;
+    var errMsg = message;
     for (var i=1; i<arguments.length; ++i)
     {
-        err += arguments[i];
+        errMsg += arguments[i];
     }
-    throw err;
+
+    var errObj = new Error(errMsg);
+
+    // If we are running within V8, capture a stack trace
+    if (Error.captureStackTrace)
+        Error.captureStackTrace(errObj, error)
+
+    throw errObj;
 };
 
 /** Ensure a boolean condition is met, otherwise throw an exception */
@@ -49,24 +56,17 @@ function assertNew(obj)
 };
 
 /** 
-    Ensure a received exception is equal to an expected exception , 
-    otherwise rethrow the exception. If the expected exception is an object,
-    it must implements an isEqual method with an exception object parameter.
+    Ensure a received exception is equal to an expected exception, 
+    otherwise rethrow the exception.
 */
 function assertExceptionEqual(expected, received)
 {
-    if (typeof expected !== "object")
+    var exMsg = expected.message? expected.message:expected.toString();
+    var reMsg = received.message? received.message:received.toString();
+
+    if (exMsg !== reMsg)
     {
-        if (received !== expected)
-        {
-            throw received;
-        }
-    } else
-    {
-        if (!expected.isEqual(received))
-        {
-           throw received; 
-        }
+        throw received;
     }
 }
 

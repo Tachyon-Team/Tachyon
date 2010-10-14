@@ -270,7 +270,6 @@ function makeError(errorCtor, message)
 // TODO: implement the following primitives
 function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function hasPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return true; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -653,17 +652,10 @@ function putPropVal(obj, propName, propVal)
 /**
 Get a property from an object
 */
-function getPropVal(obj, propName)
+function getProp(obj, propName, propHash)
 {
-    "tachyon:static";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Compute the hash for the property
-    // Boxed value, may be a string or an int
-    var propHash = computeHash(propName);
+    "tachyon:inline";
+    "tachyon:arg propHash pint";
 
     // Until we reach the end of the prototype chain
     do
@@ -718,6 +710,111 @@ function getPropVal(obj, propName)
 
     } while (obj != null);
 
-    // Property not found
-    return UNDEFINED;
+    // Property not found, return a special bit pattern
+    return iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND);
 }
+
+/**
+Get a property from an object
+*/
+function hasPropVal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:ret bool";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Compute the hash for the property
+    // Boxed value, may be a string or an int
+    var propHash = computeHash(propName);
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // Test if the property was found
+    return (iir.icast(IRType.pint, prop) != BIT_PATTERN_NOT_FOUND);
+}
+
+/**
+Get a property from an object
+*/
+function getPropVal(obj, propName)
+{
+    "tachyon:static";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Compute the hash for the property
+    // Boxed value, may be a string or an int
+    var propHash = computeHash(propName);
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property isn't defined
+    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    {
+        // Return the undefined value
+        return UNDEFINED;
+    }
+}
+
+/**
+Get a property value from the global object
+*/
+function getGlobal(obj, propName, propHash)
+{
+    "tachyon:static";
+    "tachyon:arg propHash pint";
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property isn't defined
+    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    {
+        // Throw a ReferenceError exception
+        throw makeError(ReferenceError, "global property not defined" + propName);
+    }
+
+    // Return the property
+    return prop;
+}
+
+/**
+Get a function property from the global object
+*/
+function getGlobalFunc(obj, propName, propHash)
+{
+    "tachyon:static";
+    "tachyon:arg propHash pint";
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property is a function
+    if (boxIsFunc(prop))
+    {
+        // Return the function property
+        return prop;
+    }
+    else
+    {
+        // If the property isn't defined
+        if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+        {
+            // Throw a ReferenceError exception
+            throw makeError(ReferenceError, "global property not defined" + propName);
+        }
+        else
+        {
+            // Throw a TypeError exception
+            throw makeError(TypeError, "global property is not a function" + propName);
+        }
+    }
+}
+

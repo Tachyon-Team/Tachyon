@@ -235,6 +235,7 @@ function stmtListToIRFunc(
         bodyStmts, 
         entryBlock,
         null,
+        null,
         localMap,
         sharedMap,
         new HashMap(),
@@ -498,7 +499,7 @@ function getIRFuncObj(
                     'use the arguments object';
 
             if (argNo == -1)
-                throw 'invalid argument number in argument type annotation';
+                throw 'invalid argument name in argument type annotation';
 
             if (!type)
                 throw 'invalid type in argument type annotation';
@@ -537,6 +538,7 @@ function getIRFuncObj(
 function IRConvContext(
     astNode, 
     entryBlock,
+    ctxNode,
     withVal, 
     localMap,
     sharedMap,
@@ -558,6 +560,10 @@ function IRConvContext(
     assert (
         entryBlock !== undefined && entryBlock instanceof BasicBlock,
         'entry block not defined or invalid in IR conversion context'
+    );
+    assert (
+        ctxNode !== undefined,
+        'context ast node not defined in IR conversion context'
     );
     assert (
         withVal !== undefined,
@@ -615,6 +621,12 @@ function IRConvContext(
     @field
     */
     this.entryBlock = entryBlock;
+
+    /**
+    Context AST node
+    @field
+    */
+    this.ctxNode = ctxNode;
 
     /**
     With context value
@@ -800,6 +812,7 @@ IRConvContext.prototype.pursue = function (astNode)
     return new IRConvContext(
         astNode,
         (this.exitBlock !== undefined)? this.exitBlock:this.entryBlock,
+        this.ctxNode,
         this.withVal,
         this.localMap,
         this.sharedMap,
@@ -826,6 +839,7 @@ IRConvContext.prototype.branch = function (
     return new IRConvContext(
         astNode,
         entryBlock,
+        this.ctxNode,
         this.withVal,
         localMap,
         this.sharedMap,
@@ -1981,6 +1995,7 @@ function exprToIR(context)
         {
             // Generate code for the statement
             var funcContext = argsContext.pursue(fnExpr);
+            funcContext.ctxNode = astExpr;
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
@@ -3143,6 +3158,48 @@ function refToIR(context)
         }
         else
         {
+            // Compute the hash of the symbol
+            var symHashVal = ConstValue.getConst(
+                defHashFunc(symName),
+                IRType.pint
+            );
+
+            // If this is a global function lookup
+            if (context.ctxNode instanceof CallExpr)
+            {
+                // Get a function value from the global object
+                varValueVar = insertPrimCallIR(
+                    varContext, 
+                    'getGlobalFunc', 
+                    [
+                        context.globalObj, 
+                        ConstValue.getConst(symName),
+                        symHashVal
+                    ]
+                );
+            }
+            else
+            {
+                // Get the value from the global object
+                varValueVar = insertPrimCallIR(
+                    varContext, 
+                    'getGlobal', 
+                    [
+                        context.globalObj, 
+                        ConstValue.getConst(symName),
+                        symHashVal
+                    ]
+                );
+            }
+
+            // If the value already has a name, release it
+            if (varValueVar.outName)
+                context.cfg.freeInstrName(rhsValAssg);
+
+            // Assign the symbol name to the instruction
+            context.cfg.assignInstrName(varValueVar, symName);
+
+            /*
             // Test if the property exists on the global object
             var testVal = insertPrimCallIR(
                 varContext, 
@@ -3152,7 +3209,7 @@ function refToIR(context)
 
             // Throw an error if the property does not exist
             insertCondErrorIR(
-                varContext, 
+                varContext,
                 testVal, 
                 'ReferenceError',
                 symName + ' is not defined globally'
@@ -3164,6 +3221,8 @@ function refToIR(context)
                 'getPropVal', 
                 [context.globalObj, ConstValue.getConst(symName)]
             );
+            */
+
         }
     }
 
@@ -3727,6 +3786,7 @@ function createLoopEntry(
     return new IRConvContext(
         entryNode,
         loopEntry,
+        context.ctxNode,
         context.withVal,
         entryLocals.copy(),
         context.sharedMap,
