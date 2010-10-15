@@ -449,22 +449,74 @@ function applyPatternsInstr(cfg, block, instr, index)
     // Strength reduction patterns
     //
 
+    // If this is a multiplication
+    if (instr instanceof MulInstr)
+    {
+        // If the left operand is a power of 2
+        if (instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].isInt() &&
+            isPowerOf2(instr.uses[1].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replInstrAtIndex(
+                index,
+                new LsftInstr(
+                    instr.uses[0],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[1].value),
+                        instr.type
+                    )
+                )
+            );
+        }
+
+        // If the right operand is a power of 2
+        else if (instr.uses[0] instanceof ConstValue &&
+                 instr.uses[0].isInt() &&
+                 isPowerOf2(instr.uses[0].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replInstrAtIndex(
+                index,
+                new LsftInstr(
+                    instr.uses[1],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[0].value),
+                        instr.type
+                    )
+                )
+            );
+        }
+    }
+
+
+    // TODO: mul ovf opts (mul by power of 2)
+
+    // TODO: div by a constant opts
+
+    // TODO: remove added optimizations from back-end code
+
+
+
+
     // If this is a modulo of a power of 2
     if (instr instanceof ModInstr && 
         instr.uses[1] instanceof ConstValue &&
         instr.uses[1].isInt() &&
         isPowerOf2(instr.uses[1].value))
     {
-        //
-        // TODO
-        //
+        // Replace the modulo by a bitwise AND instruction
+        block.replInstrAtIndex(
+            index,
+            new AndInstr(
+                instr.uses[0],
+                ConstValue.getConst(
+                    instr.uses[1].value - 1,
+                    instr.type
+                )
+            )
+        );
     }
-
-    // TODO: mul opts, mul ovf opts
-
-    // TODO: div by power of 2 opts
-
-    // TODO: remove added optimizations from back-end code
 
     // No changes were made
     return false;
