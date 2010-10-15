@@ -1377,6 +1377,17 @@ var MulOvfInstr = instrMaker(
     new ArithOvfInstr()
 );
 
+/**
+@class Instruction to left-shift integer values with overflow handling
+@augments ArithOvfInstr
+*/
+var LsftOvfInstr = instrMaker(
+    'lsft_ovf',
+    undefined,
+    ['normal', 'overflow'],
+    new ArithOvfInstr()
+);
+
 //=============================================================================
 //
 // Bitwise operations

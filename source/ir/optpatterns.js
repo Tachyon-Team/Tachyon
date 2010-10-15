@@ -489,15 +489,68 @@ function applyPatternsInstr(cfg, block, instr, index)
         }
     }
 
+    // If this is a multiplication with overflow handling
+    if (instr instanceof MulOvfInstr)
+    {
+        // If the left operand is a power of 2
+        if (instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].isInt() &&
+            isPowerOf2(instr.uses[1].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replBranch(
+                new LsftOvfInstr(
+                    instr.uses[0],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[1].value),
+                        instr.type
+                    ),
+                    instr.targets[0],
+                    instr.targets[1]
+                )
+            );
+        }
 
-    // TODO: mul ovf opts (mul by power of 2)
+        // If the right operand is a power of 2
+        else if (instr.uses[0] instanceof ConstValue &&
+                 instr.uses[0].isInt() &&
+                 isPowerOf2(instr.uses[0].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replBranch(
+                new LsftOvfInstr(
+                    instr.uses[1],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[0].value),
+                        instr.type
+                    ),
+                    instr.targets[0],
+                    instr.targets[1]
+                )
+            );
+        }
+    }
 
-    // TODO: div by a constant opts
 
     // TODO: remove added optimizations from back-end code
 
+    // TODO: div by a constant opts
+
+    // If this is a division instruction by an integer constant
+    if (instr instanceof DivInstr &&
+        instr.uses[1] instanceof ConstValue &&
+        instr.uses[1].isInt())
+    {
+        //
+        // TODO
+        //
+
+        // PROBLEM: can't access the high bits of imul from the front-end...
 
 
+
+
+    }
 
     // If this is a modulo of a power of 2
     if (instr instanceof ModInstr && 
