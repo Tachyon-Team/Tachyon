@@ -125,6 +125,66 @@ function applyPatternsBlock(cfg, block)
     }
 
     //
+    // Aggregate phi nodes used only by other phi nodes
+    //
+
+    // If this block contains only a phi node used only by another phi node
+    if (
+        block.instrs.length == 2 &&
+        block.instrs[0] instanceof PhiInstr &&
+        block.instrs[0].dests.length == 1 &&
+        block.instrs[1] instanceof JumpInstr &&
+        block.instrs[0].dests.length == 1 &&
+        block.instrs[0].dests[0] instanceof PhiInstr
+    )
+    {
+        var origPhi = block.instrs[0];
+        var destPhi = origPhi.dests[0];
+        var destBlock = block.succs[0];
+
+        // Flag to indicate the CFG was changed
+        var changed = false;
+
+        // For each incoming value of the origin phi
+        for (var i = 0; i < origPhi.uses.length; ++i)
+        {
+            var use = origPhi.uses[i];
+            var pred = origPhi.preds[i];
+
+            // If the destination block has this predecessor, skip it
+            if (arraySetHas(destBlock.preds, pred))
+                continue;
+
+            // Remove the phi and block predecessor-successor links
+            origPhi.remPred(pred);
+            block.remPred(pred);
+            pred.remSucc(block);
+
+            // Make the pred branch to the dest block
+            var branch = pred.getLastInstr();
+            for (var j = 0; j < branch.targets.length; ++j)
+                if (branch.targets[j] === block)
+                    branch.targets[j] = destBlock;
+
+            // Add a new incoming value to the dest phi
+            destPhi.addIncoming(use, pred);
+
+            // Add the block predecessor-successor links
+            destBlock.addPred(pred);
+            pred.addSucc(destBlock);
+
+            // Move back one phi predecessor index
+            --i;
+
+            // Set the changed flag
+            changed = true;
+        }
+
+        if (changed)
+            return true;
+    }
+
+    //
     // Eliminate blocks with no predecessors
     //
 
@@ -468,6 +528,9 @@ function applyPatternsInstr(cfg, block, instr, index)
                     )
                 )
             );
+
+            // A change was made
+            return true;
         }
 
         // If the right operand is a power of 2
@@ -486,6 +549,9 @@ function applyPatternsInstr(cfg, block, instr, index)
                     )
                 )
             );
+
+            // A change was made
+            return true;
         }
     }
 
@@ -509,6 +575,9 @@ function applyPatternsInstr(cfg, block, instr, index)
                     instr.targets[1]
                 )
             );
+
+            // A change was made
+            return true;
         }
 
         // If the right operand is a power of 2
@@ -528,28 +597,10 @@ function applyPatternsInstr(cfg, block, instr, index)
                     instr.targets[1]
                 )
             );
+
+            // A change was made
+            return true;
         }
-    }
-
-
-    // TODO: remove added optimizations from back-end code
-
-    // TODO: div by a constant opts
-
-    // If this is a division instruction by an integer constant
-    if (instr instanceof DivInstr &&
-        instr.uses[1] instanceof ConstValue &&
-        instr.uses[1].isInt())
-    {
-        //
-        // TODO
-        //
-
-        // PROBLEM: can't access the high bits of imul from the front-end...
-
-
-
-
     }
 
     // If this is a division by a power of 2
@@ -570,6 +621,9 @@ function applyPatternsInstr(cfg, block, instr, index)
                 )
             )
         );
+
+        // A change was made
+        return true;
     }
 
     // If this is a modulo of a power of 2
@@ -589,8 +643,12 @@ function applyPatternsInstr(cfg, block, instr, index)
                 )
             )
         );
+
+        // A change was made
+        return true;
     }
 
     // No changes were made
     return false;
 }
+

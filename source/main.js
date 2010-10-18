@@ -12,9 +12,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    //var ast = parse_src_file('programs/fib.js');
-
-    var ast = parse_src_str('function foo(a,b) { return iir.div(a, 4); }');
+    var ast = parse_src_file('programs/fib.js');
+    //var ast = parse_src_str('function foo(a,b) { return iir.div(a, 4); }');
 
     pp(ast);
 
@@ -86,11 +85,21 @@ function printInstrNames(ir)
     }
 }
 
-// Initialize Tachyon
-initialize();
+try 
+{
+    // Initialize Tachyon
+    initialize();
 
-testIR();
+    testIR();
 
-// Uninitialize Tachyon
-uninitialize();
+    // Uninitialize Tachyon
+    uninitialize();
+}
+catch (e)
+{
+    if (e.stack)
+        print(e.stack);
+    else
+        print(e);
+}
 
