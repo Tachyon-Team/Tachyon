@@ -14,7 +14,7 @@ function testIR()
 {
     //var ast = parse_src_file('programs/fib.js');
 
-    var ast = parse_src_str('function foo(a,b) { return a % 4; }');
+    var ast = parse_src_str('function foo(a,b) { return iir.div(a, 4); }');
 
     pp(ast);
 

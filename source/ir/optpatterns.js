@@ -552,6 +552,26 @@ function applyPatternsInstr(cfg, block, instr, index)
 
     }
 
+    // If this is a division by a power of 2
+    if (instr instanceof DivInstr && 
+        instr.uses[1] instanceof ConstValue &&
+        instr.uses[1].isInt() &&
+        isPowerOf2(instr.uses[1].value))
+    {
+        // Replace the division by a right shift
+        var shiftInstr = instr.type.isUnsigned()? UrsftInstr:RsftInstr;
+        block.replInstrAtIndex(
+            index,
+            new shiftInstr(
+                instr.uses[0],
+                ConstValue.getConst(
+                    highestBit(instr.uses[1].value),
+                    instr.type
+                )
+            )
+        );
+    }
+
     // If this is a modulo of a power of 2
     if (instr instanceof ModInstr && 
         instr.uses[1] instanceof ConstValue &&
