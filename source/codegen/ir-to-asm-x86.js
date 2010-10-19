@@ -1103,12 +1103,17 @@ LtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.numBits);
     }
+
+    print('producing mov/cmov');
+    print(dest);
 
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovl(tltor.trueVal, dest);
+
+    print('done');
 };
 
 //LeInstr
@@ -1259,9 +1264,6 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     }
     else
     {
-        print(this);
-        print(opnds[0]);
-
         // Use the compare instruction
         tltor.asm.
         cmp($(0), opnds[0], this.uses[0].type.numBits).

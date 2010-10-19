@@ -133,9 +133,9 @@ function applyPatternsBlock(cfg, block)
         block.instrs.length == 2 &&
         block.instrs[0] instanceof PhiInstr &&
         block.instrs[0].dests.length == 1 &&
+        block.instrs[0].dests[0] instanceof PhiInstr &&
         block.instrs[1] instanceof JumpInstr &&
-        block.instrs[0].dests.length == 1 &&
-        block.instrs[0].dests[0] instanceof PhiInstr
+        block.succs[0].instrs[0] === block.instrs[0].dests[0]
     )
     {
         var origPhi = block.instrs[0];
@@ -179,10 +179,9 @@ function applyPatternsBlock(cfg, block)
             // Set the changed flag
             changed = true;
         }
-
-        if (changed)
-            return true;
     }
+
+
 
 
     //

@@ -339,6 +339,7 @@ function lt(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
+    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -347,9 +348,44 @@ function lt(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        // Call a function for the general case
+        return ltGeneral(v1, v2);
     }
+    */
+
+
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.lt(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = ltGeneral(v1, v2);
+    }
+
+    return tv? true:false;
+}
+
+/**
+Non-inline case for less-than HIR instruction
+*/
+function ltGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+    return iir.constant(IRType.bool, 0);
+
+    /*
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    // TODO
+
+    return UNDEFINED;
+    */
 }
 
 /**

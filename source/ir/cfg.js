@@ -582,7 +582,8 @@ ControlFlowGraph.prototype.validate = function ()
 
                 // Verify that there are no more phi uses than block predecessors
                 if (instr.preds.length != block.preds.length)
-                    throw 'phi node has more uses than predecessors';
+                    throw 'phi node has more uses than predecessors:\n' +
+                        instr;
             }
 
             // Verify that no branches appear before the last instruction
@@ -659,7 +660,7 @@ ControlFlowGraph.prototype.validate = function ()
     for (var i = 0; i < this.blocks.length; ++i)
     {
         var block = this.blocks[i];
-        mustReachOut[block.blockId] = fullReachSet.slice(0);
+        mustReachOut[block.blockId] = fullReachSet;
     }
 
     // Until the work list is empty
@@ -668,7 +669,7 @@ ControlFlowGraph.prototype.validate = function ()
         var block = workList.pop();
 
         // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+        var mustReachCur = (block.preds.length > 0)? fullReachSet:[];
         for (var i = 0; i < block.preds.length; ++i)
         {
             var pred = block.preds[i];
