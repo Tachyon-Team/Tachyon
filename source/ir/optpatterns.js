@@ -10,6 +10,15 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+//
+// TODO: refactor block patterns so that CFG is never left in inconsistent state
+// This way the CFG can be validated before and after each pattern
+//
+
+//
+// TODO: eliminate neutral operations such as adding 0 to a value
+//
+
 /**
 Apply peephole optimization patterns to a CFG
 */
@@ -53,77 +62,6 @@ Apply block-level optimization patterns to a block
 */
 function applyPatternsBlock(cfg, block)
 {
-    //
-    // Eliminate blocks of the form:
-    // t = phi x1,x2,x3
-    // if t b1 b2
-    //
-
-    // If this block contains only an if instruction using the
-    // value of an immediately preceding phi
-    if (
-        block.instrs.length == 2 &&
-        block.instrs[0] instanceof PhiInstr &&
-        block.instrs[0].dests.length == 1 &&
-        block.instrs[1] instanceof IfInstr &&
-        block.instrs[1].uses[0] === block.instrs[0]
-    )
-    {
-        var phiInstr = block.instrs[0];
-        var ifInstr = block.instrs[1];
-
-        var phiPreds = phiInstr.preds.slice(0);
-        var phiUses = phiInstr.uses.slice(0);
-
-        // Flag to indicate the CFG was changed
-        var changed = false;
-
-        for (var j = 0; j < phiPreds.length; ++j)
-        {
-            var pred = phiPreds[j];
-            var use = phiUses[j];
-
-            if (pred.instrs[pred.instrs.length - 1] instanceof JumpInstr)
-            {
-                //print('eliminating phi node pred for ' + phiInstr + ' in ' + block.getBlockName());
-
-                // Replace the jump by an if instruction
-                pred.replInstrAtIndex(
-                    pred.instrs.length - 1,
-                    new IfInstr(
-                        use,
-                        ifInstr.targets[0],
-                        ifInstr.targets[1]
-                    )
-                );
-
-                // For each if target. add an incoming phi value for the
-                // predecessor block matching that of the current block
-                for (var k = 0; k < ifInstr.targets.length; ++k)
-                {
-                    var target = ifInstr.targets[k];
-
-                    for (var l = 0; l < target.instrs.length; ++l)
-                    {
-                        var instr = target.instrs[l];
-
-                        if (!(instr instanceof PhiInstr))
-                            break;
-
-                        var inc = instr.getIncoming(block);
-                        instr.addIncoming(inc, pred);
-                    }
-                }
-
-                // Set the changed flag
-                changed = true;
-            }
-        }
-
-        if (changed)
-            return true;
-    }
-
     //
     // Aggregate phi nodes used only by other phi nodes
     //
@@ -181,42 +119,149 @@ function applyPatternsBlock(cfg, block)
         }
     }
 
-
-
-
     //
-    // Precompute boolean values in phi nodes?
-    //
-
-
-
-    // TODO:
-    // PROBLEM: 
-    //
-    // In the case of lt, gt, etc, complex case is non-inlined function call
-    // This will still show up in the phi node.
-    //
-    // Would be best making complex case also produce boolean value (non-boxed)
-    // Can box boolean just before return from lt function.
-    //
-    // Still need pattern for doing direct jump for if of phi
+    // Eliminate blocks of the form:
+    // t = phi x1,x2,x3
+    // [t = call <boxToBool> t]
+    // if t b1 b2
     //
 
+    // If this block contains only an if instruction using the
+    // value of an immediately preceding phi
+    if (block.instrs[0] instanceof PhiInstr &&
+        block.instrs[0].dests.length == 1 &&
+        (
+            (block.instrs.length == 2 &&
+             block.instrs[1] instanceof IfInstr &&
+             block.instrs[1].uses[0] === block.instrs[0])
+            ||
+            (block.instrs.length == 3 &&
+             block.instrs[1] instanceof CallFuncInstr &&
+             block.instrs[1].uses[0] === staticEnv.getBinding('boxToBool') &&
+             block.instrs[1].uses[2] === block.instrs[0] &&
+             block.instrs[2] instanceof IfInstr &&
+             block.instrs[2].uses[0] === block.instrs[1])
+        )
+    )
+    {        
+        var phiInstr = block.instrs[0];
+        var phiPreds = phiInstr.preds.slice(0);
+        var phiUses = phiInstr.uses.slice(0);
 
+        if (block.instrs.length == 2)
+        {
+            var ifInstr = block.instrs[1];
+        }
+        else
+        {
+            var boxToBool = block.instrs[1];
+            var ifInstr = block.instrs[2];
+        }
 
+        var trueTarget = ifInstr.targets[0];
+        var falseTarget = ifInstr.targets[1]
 
+        // Flag to indicate the CFG was changed
+        var changed = false;
 
+        // For each phi predecessor
+        for (var j = 0; j < phiPreds.length; ++j)
+        {
+            var pred = phiPreds[j];
+            var use = phiUses[j];
 
+            var predBranch = pred.getLastInstr();
 
+            // Attempt to evaluate the truth value of the use
+            var truthVal = constEvalBool(use);
 
+            // If a truth value could be evaluated
+            if (truthVal != BOT)
+            {
+                // We know which target the predecessor should jump to
+                var ifTarget = ifInstr.targets[truthVal.value? 0:1];
 
+                // If the predecessor doesn't already jump to the target                      
+                if (!arraySetHas(pred.succs, ifTarget))
+                {
+                    pred.remSucc(block);
 
+                    // Make the predecessor jump to the right target
+                    for (var k = 0; k < predBranch.targets.length; ++k)
+                    {
+                        if (predBranch.targets[k] === block)
+                            predBranch.targets[k] = ifTarget;
 
+                        pred.addSucc(predBranch.targets[k]);
+                    }
 
+                    // Add the predecessor to the if target block
+                    ifTarget.addPred(pred);
 
+                    // Remove the phi and block predecessor
+                    block.remPred(pred);
+                    phiInstr.remPred(pred);
+                    
+                    // Add incoming phi values for the predecessor block
+                    // matching that of the current block
+                    for (var l = 0; l < ifTarget.instrs.length; ++l)
+                    {
+                        var instr = ifTarget.instrs[l];
 
+                        if (!(instr instanceof PhiInstr))
+                            break;
 
+                        var inc = instr.getIncoming(block);
+                        instr.addIncoming(inc, pred);
+                    }
 
+                    // Set the changed flag
+                    changed = true;
+                }
+            }
+
+            // Otherwise, if the predecessor branch is a jump and there is
+            // no call to boxToBool
+            else if (predBranch instanceof JumpInstr && !boxToBool)
+            {
+                //print('eliminating phi node pred for ' + phiInstr + ' in ' + block.getBlockName());
+
+                // Replace the jump by an if instruction
+                pred.replInstrAtIndex(
+                    pred.instrs.length - 1,
+                    new IfInstr(
+                        use,
+                        ifInstr.targets[0],
+                        ifInstr.targets[1]
+                    )
+                );
+
+                // For each if target. add an incoming phi value for the
+                // predecessor block matching that of the current block
+                for (var k = 0; k < ifInstr.targets.length; ++k)
+                {
+                    var target = ifInstr.targets[k];
+
+                    for (var l = 0; l < target.instrs.length; ++l)
+                    {
+                        var instr = target.instrs[l];
+
+                        if (!(instr instanceof PhiInstr))
+                            break;
+
+                        var inc = instr.getIncoming(block);
+                        instr.addIncoming(inc, pred);
+                    }
+                }
+
+                // Set the changed flag
+                changed = true;
+            }
+        }
+
+        if (changed)
+            return true;
+    }
 
     //
     // Eliminate blocks with no predecessors

@@ -353,7 +353,7 @@ function lt(v1, v2)
     }
     */
 
-
+    // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
@@ -376,16 +376,10 @@ function ltGeneral(v1, v2)
     "tachyon:static";
     "tachyon:nothrow";
     "tachyon:ret bool";
-    return iir.constant(IRType.bool, 0);
-
-    /*
-    "tachyon:static";
-    "tachyon:nothrow";
 
     // TODO
 
-    return UNDEFINED;
-    */
+    return iir.constant(IRType.bool, 0);
 }
 
 /**
