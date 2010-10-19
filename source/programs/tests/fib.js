@@ -12,7 +12,7 @@ tests.fib.main = function ()
 {
     var ast = parse_src_file('programs/fib.js');
     
-    var ir = unitToIR(ast);
+    var ir = unitToIR(ast, true);
 
     lowerIRFunc(ir);
 

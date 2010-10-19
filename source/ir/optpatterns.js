@@ -184,6 +184,41 @@ function applyPatternsBlock(cfg, block)
             return true;
     }
 
+
+    //
+    // Precompute boolean values in phi nodes?
+    //
+
+
+
+    // TODO:
+    // PROBLEM: 
+    //
+    // In the case of lt, gt, etc, complex case is non-inlined function call
+    // This will still show up in the phi node.
+    //
+    // Would be best making complex case also produce boolean value (non-boxed)
+    // Can box boolean just before return from lt function.
+    //
+    // Still need pattern for doing direct jump for if of phi
+    //
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     //
     // Eliminate blocks with no predecessors
     //

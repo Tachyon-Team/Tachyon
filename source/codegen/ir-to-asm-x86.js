@@ -92,6 +92,12 @@ irToAsm.spillAllocator.prototype.newSlot = function ()
     return s;
 };
 
+//=============================================================================
+//
+// IR translator class definition
+//
+//=============================================================================
+
 /** 
 @class
 Returns a new translator object to translate IR to Assembly.
@@ -272,149 +278,6 @@ irToAsm.translator.prototype.stringValue = function (s)
     return value;
 };
 
-/*
-irToAsm.translator.prototype.ir_lt = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[0].type === x86.type.IMM_VAL &&
-        opnds[1].type === x86.type.IMM_VAL)
-    {
-        if (opnds[0].value < opnds[1].value)
-        {
-            this.asm.mov(irToAsm.config.TRUE, dest);
-        } else
-        {
-            this.asm.mov(irToAsm.config.FALSE, dest);
-        }
-        return;
-    }
-
-    var cont = this.asm.labelObj();
-
-    if (opnds[0].type === x86.type.MEM &&
-        opnds[1].type === x86.type.MEM)
-    {
-        this.asm.
-        mov(opnds[0], dest). 
-        cmp(dest, opnds[1]); 
-    } else
-    {
-        this.asm.
-        cmp(opnds[1], opnds[0]);
-    }
-
-    this.asm.
-    mov(irToAsm.config.TRUE, dest).
-    jl(cont).
-    mov(irToAsm.config.FALSE, dest).
-    label(cont);
-
-};
-
-irToAsm.translator.prototype.ir_if = function (opnds, instr)
-{
-    const targets = instr.targets;
-    var true_label = this.label(targets[0]);
-    var false_label = this.label(targets[1]);
-
-    this.asm.
-    cmp(irToAsm.config.TRUE, opnds[0]).
-    je(true_label).
-    jmp(false_label);
-
-};
-
-irToAsm.translator.prototype.ir_jump = function (opnds, instr)
-{
-    const targets = instr.targets;
-    var target = this.label(targets[0]);
-
-    this.asm.jmp(target);
-
-};
-
-irToAsm.translator.prototype.ir_sub = function (opnds, instr)
-{
-    const that = this;
-    const dest = instr.regAlloc.dest;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    function xchg(opnd1, opnd2)
-    {
-        assert(!(opnd1.type === x86.type.MEM &&
-                 opnd2.type === x86.type.MEM));
-
-        assert(!opnd1.type === x86.type.IMM_VAL);
-        assert(!opnd2.type === x86.type.IMM_VAL);
-        
-        that.asm.
-        xor(opnd1, opnd2).
-        xor(opnd2, opnd1).
-        xor(opnd1, opnd2);
-    };
-
-    if (opnds[1] === dest && opnds[0].type !== x86.type.IMM_VAL)
-    {
-        xchg(opnds[1], opnds[0]);
-
-        this.asm.sub(opnds[1], dest);
-
-        xchg(opnds[1], opnds[0]);
-    } else if (opnds[1] === dest && opnds[0].type === x86.type.IMM_VAL)
-    {
-        this.asm.
-        mov(opnds[0], irToAsm.config.scratch).
-        sub(opnds[1], irToAsm.config.scratch).
-        mov(irToAsm.config.scratch, opnds[1]);
-    } else if (opnds[0] === dest)
-    {
-        this.asm.
-        sub(opnds[1], dest);
-    } else
-    {
-        this.asm.
-        mov(opnds[0], dest).
-        sub(opnds[1], dest);
-    }
-};
-
-irToAsm.translator.prototype.ir_add = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[1] === dest)
-    {
-        this.asm.
-        add(opnds[0], dest);
-    } else if (opnds[0] === dest)
-    {
-        this.asm.
-        add(opnds[1], dest);
-    } else
-    {
-        this.asm.
-        mov(opnds[0], dest).
-        add(opnds[1], dest);
-    }
-
-};
-*/
-
 irToAsm.translator.prototype.get_prop_val = function ()
 {
     assert(irToAsm.config.physReg.length >= 4);
@@ -586,91 +449,6 @@ irToAsm.translator.prototype.call_self = function (offset)
     genListing("ADDR RETRIEVAL");
 
 };
-
-/*
-irToAsm.translator.prototype.ir_arg = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    const argIndex = instr.argIndex;
-    var reg;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    reg = irToAsm.config.physReg[irToAsm.config.argsIndex[argIndex]];
-    if (dest !== reg)
-    {
-        error("ir_arg: dest register '" + dest + 
-              "' unexpected for argument index '" + argIndex + "'");
-    }
-    
-
-};
-
-irToAsm.translator.prototype.ir_call = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    const targets = instr.targets;
-    const that = this;
-    const refByteNb = irToAsm.config.stack.width() / 8;
-    const funcObjReg = irToAsm.config.argsReg[0];
-
-    var spillNb = opnds.length - refByteNb;
-    var offset = 1;
-    var i;
-    var continue_label = this.label(targets[0], targets[0].label);
-    var reg;
-
-    if (spillNb < 0)
-    {
-        spillNb = 0;
-    }
-
-    offset = (spillNb) * refByteNb;
-
-    // Move arguments in the right registers
-    var map = allocator.mapping();
-
-    for (i=0; i < irToAsm.config.argsIndex.length && i < opnds.length; ++i)
-    {
-
-        reg = irToAsm.config.argsReg[i];
-        if (opnds[i] !== reg)
-        {
-            map.add(opnds[i], reg);
-        }
-    }
-
-    map.orderAndInsertMoves( function (move)
-                             {
-                                that.asm.mov(move.uses[0], move.uses[1]);
-                             }, irToAsm.config.scratch);
-   
-
-    // Add extra arguments on the stack
-    if (spillNb > 0)
-    {
-        error("TODO");
-    }
-
-    this.asm.
-
-    // Move pointers on top of extra args
-    sub($(offset), irToAsm.config.stack).
-
-    // Call function address
-    call(funcObjReg).
-
-    // Remove return address and extra args
-    add($(offset), irToAsm.config.stack).
-
-    // Jump to continue_label
-    jmp(continue_label);
-
-};
-*/
 
 irToAsm.translator.prototype.func_prelude = function (prelude_label)
 {
@@ -853,22 +631,11 @@ irToAsm.translator.prototype.definitions = function ()
     this.put_prop_val();
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//=============================================================================
+//
+// Translation of IR instructions to x86 machine code
+//
+//=============================================================================
 
 /* code generation for each ir instruction */
 PhiInstr.prototype.genCode = function (tltor, opnds)
@@ -960,36 +727,10 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     // If an unsigned integer result is expected
     if (this.type.isUnsigned())
     {
-        // If the right operand is a power of 2
-        if (opnds[1].type === x86.type.IMM_VAL && isPowerOf2(opnds[1].value))
-        {
-            var root2 = Math.sqrt(opnds[1].value);
-
-            // Use the unsigned left shift
-            if (opnds[0] !== dest)
-                tltor.asm.mov(opnds[0], dest);
-            tltor.asm.shl($(root2), dest);
-        }
-
-        // If the left operand is a power of 2
-        if (opnds[0].type === x86.type.IMM_VAL && isPowerOf2(opnds[0].value))
-        {
-            var root2 = Math.sqrt(opnds[0].value);
-
-            // Use the unsigned left shift
-            if (opnds[1] !== dest)
-                tltor.asm.mov(opnds[1], dest);
-            tltor.asm.shl($(root2), dest);
-        }
-
-        // For the general case
-        else
-        {
-            // Use unsigned multiplication
-            if (opnds[0] !== dest)
-                tltor.asm.mov(opnds[0], dest);
-            tltor.asm.mul(opnds[1], dest);
-        }
+        // Use unsigned multiplication
+        if (opnds[0] !== dest)
+            tltor.asm.mov(opnds[0], dest);
+        tltor.asm.mul(opnds[1], dest);
     }
 
     // Otherwise, a signed result is expected
@@ -1166,6 +907,42 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
 //MulOvfInstr
 //TODO: use imul instruction
 
+LsftOvfInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+    const normalTarget = this.targets[0];
+    const overflowTarget = this.targets[1];
+
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[0].value % 256;
+    else
+        shiftAmt = opnds[0]
+
+    if (shiftAmt.value == 0)
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+    } 
+    else if (opnds[0] === dest)
+    {
+        tltor.asm.sal(shiftAmt, dest);
+    }
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        sal(shiftAmt, dest);
+    }
+
+    // Handle jump to exception
+    tltor.asm.
+    jno(tltor.label(normalTarget, normalTarget.label)).
+    jmp(tltor.label(overflowTarget, overflowTarget.label));
+};
+
 NotInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
@@ -1248,26 +1025,28 @@ LsftInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[1].value == 0)
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[0].value % 256;
+    else
+        shiftAmt = opnds[0]
+
+    if (shiftAmt.value == 0)
     {
         if (opnds[0] !== dest)
         {
             tltor.asm.mov(opnds[0], dest);
         }
     } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    else if (opnds[0] === dest)
     {
-        tltor.asm.sal(opnds[1], dest);
+        tltor.asm.sal(shiftAmt, dest);
     }
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.sal(opnds[0], dest);
-    } 
     else
     {
         tltor.asm.
         mov(opnds[0], dest).
-        sal(opnds[1], dest);
+        sal(shiftAmt, dest);
     }
 };
 
@@ -1275,31 +1054,33 @@ RsftInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[1].value == 0)
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[0].value % 256;
+    else
+        shiftAmt = opnds[0]
+
+    if (shiftAmt.value == 0)
     {
         if (opnds[0] !== dest)
         {
             tltor.asm.mov(opnds[0], dest);
         }
     } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    else if (opnds[0] === dest)
     {
-        tltor.asm.sar(opnds[1], dest);
+        tltor.asm.sar(shiftAmt, dest);
     }
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.sar(opnds[0], dest);
-    } 
     else
     {
         tltor.asm.
         mov(opnds[0], dest).
-        sar(opnds[1], dest);
+        sar(shiftAmt, dest);
     }
 };
 
 // TODO: UrsftInstr
-// Use logical shift
+// Use logical shift, shr
 
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
