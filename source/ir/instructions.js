@@ -63,36 +63,45 @@ function IRType(name, size)
     if (name[0] == 'i' || name[0] == 'u')
     {
         // Compute the available range
-        var range = IRType.getIntRange(this.numBits, name[0] == 'u');
-        this.minVal = range.minVal;
-        this.maxVal = range.maxVal;
+        this.minVal = IRType.getIntMin(this.numBits, name[0] == 'u');
+        this.maxVal = IRType.getIntMax(this.numBits, name[0] == 'u');
     }
 }
 IRType.prototype = {};
 
 /**
-Calculate the range of values an integer variable can store 
+Calculate the minimum value an integer variable can store
 */
-IRType.getIntRange = function (numBits, unsigned)
+IRType.getIntMin = function (numBits, unsigned)
 {
     // If this is an unsigned integer type
     if (unsigned)
     {
-        // Compute min and max values: [0, 2^N - 1]
-        return { 
-            minVal : 0, 
-            maxVal : Math.pow(2, numBits) - 1 
-        };
+        return 0;
     }
 
     // If this is a signed integer type
     else
     {
-        // Compute min and max values: [-2^(N-1), 2^(N-1) - 1]
-        return {
-            minVal : -Math.pow(2, numBits - 1),
-            maxVal : Math.pow(2, numBits - 1) - 1
-        };
+        return -Math.pow(2, numBits - 1);
+    }
+}
+
+/**
+Calculate the maximum value an integer variable can store
+*/
+IRType.getIntMax = function (numBits, unsigned)
+{
+    // If this is an unsigned integer type
+    if (unsigned)
+    {
+        return Math.pow(2, numBits) - 1;
+    }
+
+    // If this is a signed integer type
+    else
+    {
+        return Math.pow(2, numBits - 1) - 1;
     }
 }
 
@@ -344,6 +353,19 @@ ConstValue.prototype.isInt = function ()
 }
 
 /**
+Test if a constant is a boxed integer
+*/
+ConstValue.prototype.isBoxInt = function ()
+{
+    return (
+        this.type === IRType.box &&
+        this.isInt() && 
+        this.value >= IRType.getIntMin(BOX_NUM_BITS_INT) && 
+        this.value <= IRType.getIntMax(BOX_NUM_BITS_INT)
+    );
+}
+
+/**
 Test if a constant is a string
 */
 ConstValue.prototype.isString = function ()
@@ -360,20 +382,62 @@ ConstValue.prototype.isUndef = function ()
 }
 
 /**
+Get the tag bits associated with a constant
+*/
+ConstValue.prototype.getTagBits = function ()
+{
+    assert (
+        this.type === IRType.box,
+        'tag bits only applicable to boxed values'
+    );
+
+    if (this.value instanceof IRFunction)
+    {
+        return TAG_FUNCTION;
+    }
+
+    if (this.isBoxInt())
+    {
+        return TAG_INT;
+    }
+
+    if (this.isNumber())
+    {
+        return TAG_FLOAT;
+    }
+
+    if (typeof this.value == 'string')
+    {
+        return TAG_STRING;
+    }
+
+    if (this.value === true || 
+        this.value === false ||
+        this.value === null || 
+        this.value === undefined)
+    {
+        return TAG_OTHER;
+    }
+
+    assert (
+        false,
+        'cannot get tag bits for: ' + this
+    );
+}
+
+/**
 Get the immediate value (bit pattern) of a constant
 */
 ConstValue.prototype.getImmValue = function ()
 {
-    if (this.isInt())
+    if (this.isBoxInt())
     {
-        if (this.type === IRType.box)
-        {
-            return (this.value << TAG_NUM_BITS_INT);
-        }
-        else if (this.type.isInt())
-        {
-            return this.value;
-        }
+        return (this.value << TAG_NUM_BITS_INT);
+    }
+
+    if (this.type.isInt() && this.type !== IRType.box)
+    {
+        return this.value;
     }
 
     if (this.type === IRType.bool)
@@ -401,11 +465,9 @@ ConstValue.prototype.getImmValue = function ()
         return BIT_PATTERN_NULL;
     }
 
-
-
     assert (
         false,
-        'cannot get bits for: ' + this.type
+        'cannot get immediate bits for: ' + this
     );
 }
 

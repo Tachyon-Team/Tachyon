@@ -13,7 +13,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function testIR()
 {
     var ast = parse_src_file('programs/fib.js');
-    //var ast = parse_src_str('function foo(a,b) { return iir.div(a, 4); }');
+    //var ast = parse_src_str('function foo(a) { return a + "foo"; }');
 
     pp(ast);
 
@@ -33,6 +33,11 @@ function testIR()
     var codeblock = backend.compile(ir, print);
     print(backend.listing(codeblock));
     backend.execute(codeblock);
+    */
+
+    /*
+    var getGlobalFunc = staticEnv.getBinding('getGlobalFunc');
+    print(getGlobalFunc);
     */
 };
 

@@ -212,7 +212,7 @@ function constProp(cfg)
             // If there is a replacement instruction value for this instruction
             else if (val instanceof IRValue && val !== instr)
             {
-                print(instr + ' ==> ' + val);
+                //print(instr + ' ==> ' + val);
 
                 // Remap the dests to the replacement instruction
                 for (var k = 0; k < instr.dests.length; ++k)
@@ -369,7 +369,7 @@ ModInstr.prototype.constEval = ArithInstr.genConstEval(
     }
 );
 
-BitOpInstr.genConstEval = function (opFunc)
+BitOpInstr.genConstEval = function (opFunc, genFunc)
 {
     function constEval(getValue, isReachable, cfgWorkList)
     {
@@ -399,6 +399,11 @@ BitOpInstr.genConstEval = function (opFunc)
             }
         }
 
+        else if (genFunc)
+        {
+            return genFunc(this.uses[0], this.uses[1]);
+        }
+
         // By default, return the unknown value
         return BOT;
     }
@@ -410,6 +415,60 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 & v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u0.type === IRType.box &&
+            !u0.isBoxInt() &&
+            u1.type === IRType.pint && 
+            u1.value === TAG_REF_MASK)
+        {
+            return ConstValue.getConst(
+                u0.getTagBits(),
+                IRType.pint
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u0.type === IRType.box &&
+            !u1.isBoxInt() &&
+            u0.type === IRType.pint && 
+            u0.value === TAG_REF_MASK)
+        {
+            return ConstValue.getConst(
+                u1.getTagBits(),
+                IRType.pint
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u0.type === IRType.box &&
+            u1.type === IRType.pint && 
+            u1.value === TAG_INT_MASK)
+        {
+            return ConstValue.getConst(
+                u0.getTagBits() & TAG_INT_MASK,
+                IRType.pint
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u1.type === IRType.box &&
+            u0.type === IRType.pint && 
+            u0.value === TAG_INT_MASK)
+        {
+            return ConstValue.getConst(
+                u1.getTagBits() & TAG_INT_MASK,
+                IRType.pint
+            );
+        }
+
+        return BOT;
     }
 )
 
@@ -478,6 +537,11 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
                 this.type
             );
         }
+    }
+
+    else if (v0.type === this.type)
+    {
+        return v0;
     }
 
     return BOT;

@@ -42,6 +42,16 @@ staticEnv.regBinding(
     )
 );
 
+// Number of usable integer bits in a boxed integer
+var BOX_NUM_BITS_INT = IRType.pint.numBits - TAG_NUM_BITS_INT;
+staticEnv.regBinding(
+    'BOX_NUM_BITS_INT',
+    ConstValue.getConst(
+        BOX_NUM_BITS_INT,
+        IRType.pint
+    )
+);
+
 // Number of reference tag bits
 var TAG_NUM_BITS_REF = 3;
 staticEnv.regBinding(
@@ -53,82 +63,91 @@ staticEnv.regBinding(
 );
 
 // Mask used to extract immediate integer tags
+var TAG_INT_MASK = 3;
 staticEnv.regBinding(
     'TAG_INT_MASK',
     ConstValue.getConst(
-        3,
+        TAG_INT_MASK,
         IRType.pint
     )
 );
 
 // Mask used to extract reference tags
+var TAG_REF_MASK = 7;
 staticEnv.regBinding(
     'TAG_REF_MASK',
     ConstValue.getConst(
-        7,
+        TAG_REF_MASK,
         IRType.pint
     )
 );
 
 // Tag for immediate integers
+var TAG_INT = 0;
 staticEnv.regBinding(
     'TAG_INT',
     ConstValue.getConst(
-        0,
+        TAG_INT,
         IRType.pint
     )
 );
 
 // Tag for plain objects
+var TAG_OBJECT = 7;
 staticEnv.regBinding(
     'TAG_OBJECT',
     ConstValue.getConst(
-        7,
+        TAG_OBJECT,
         IRType.pint
     )
 );
 
 // Tag for function objects
+var TAG_FUNCTION = 6;
 staticEnv.regBinding(
     'TAG_FUNCTION',
     ConstValue.getConst(
-        6,
+        TAG_FUNCTION,
         IRType.pint
     )
 );
 
 // Tag for array objects
+var TAG_ARRAY = 5;
 staticEnv.regBinding(
     'TAG_ARRAY',
     ConstValue.getConst(
-        5,
+        TAG_ARRAY,
         IRType.pint
     )
 );
 
 // Tag for floating-point values
+var TAG_FLOAT = 3;
 staticEnv.regBinding(
     'TAG_FLOAT',
     ConstValue.getConst(
-        3,
+        TAG_FLOAT,
         IRType.pint
     )
 );
 
 // Tag for strings
+var TAG_STRING = 2;
 staticEnv.regBinding(
     'TAG_STRING',
     ConstValue.getConst(
-        2,
+        TAG_STRING,
         IRType.pint
     )
 );
 
 // Tag for other values
+var TAG_OTHER = 1;
 staticEnv.regBinding(
     'TAG_OTHER',
     ConstValue.getConst(
-        1,
+        TAG_OTHER,
         IRType.pint
     )
 );
