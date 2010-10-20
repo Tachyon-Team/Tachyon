@@ -139,7 +139,13 @@ function constProp(cfg)
         // If there is a const prop function for this instruction, use it
         if (instr.constEval)
         {
-            return instr.constEval(getValue, isReachable, cfgWorkList);
+            var val = instr.constEval(getValue, isReachable, cfgWorkList);
+
+            if (val instanceof IRInstr && 
+                instrVals[val.instrId] instanceof ConstValue)
+                return instrVals[val.instrId];
+
+            return val;
         }
 
         // Otherwise, if this instruction is a generic branch
@@ -196,12 +202,29 @@ function constProp(cfg)
             // If there is a constant value for this instruction
             else if (val instanceof ConstValue)
             {
-                //print(instr);
-                ++numConsts;
+                //print(instr + ' ==> ' + val);
 
                 // Replace the instruction by the constant value
                 block.replInstrAtIndex(j, val);
                 --j;
+            }
+
+            // If there is a replacement instruction value for this instruction
+            else if (val instanceof IRValue && val !== instr)
+            {
+                print(instr + ' ==> ' + val);
+
+                // Remap the dests to the replacement instruction
+                for (var k = 0; k < instr.dests.length; ++k)
+                {
+                    var dest = instr.dests[k];
+                    dest.replUse(instr, val);
+                    val.addDest(dest);
+                }
+
+                // Remove the instruction
+                block.remInstrAtIndex(j, val);
+                --j                
             }
         }
     }
@@ -245,7 +268,7 @@ PhiInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
     return curVal;
 }
 
-ArithInstr.genConstEval = function (opFunc)
+ArithInstr.genConstEval = function (opFunc, genFunc)
 {
     function constEval(getValue, isReachable, cfgWorkList)
     {
@@ -268,6 +291,10 @@ ArithInstr.genConstEval = function (opFunc)
                 );
             }
         }
+        else if (genFunc)
+        {
+            return genFunc(this.uses[0], this.uses[1]);
+        }
 
         // By default, return the unknown value
         return BOT;
@@ -280,6 +307,15 @@ AddInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 + v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue && u0.value == 0)
+            return u1;
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -294,6 +330,15 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 * v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue && u0.value == 1)
+            return u1;
+        if (u1 instanceof ConstValue && u1.value == 1)
+            return u0;
+
+        return BOT;
     }
 );
 

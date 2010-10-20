@@ -15,10 +15,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // This way the CFG can be validated before and after each pattern
 //
 
-//
-// TODO: eliminate neutral operations such as adding 0 to a value
-//
-
 /**
 Apply peephole optimization patterns to a CFG
 */
