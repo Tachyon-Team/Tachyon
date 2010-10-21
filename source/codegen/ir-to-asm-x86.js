@@ -37,14 +37,13 @@ irToAsm.config.UNDEFINED = $(0);
 irToAsm.config.maxGlobalEntries = 4;
 
 // Register configuration
-irToAsm.config.scratch = EDI;
 // TODO: replace stack handling in ir_call and ir_ret to allow
 //       using EBP instead of ESP
 irToAsm.config.stack   = ESP;
 irToAsm.config.context = ESI;
 
 // Registers available for register allocation.
-irToAsm.config.physReg    = [EAX, EBX, ECX, EDX, EBP];
+irToAsm.config.physReg    = [EAX, EBX, ECX, EDX, EBP, EDI];
 
 // Reserved registers are indexes into the physReg array since the 
 // register allocation algorithm assumes an index into the physReg
@@ -147,6 +146,10 @@ irToAsm.translator = function ()
 
     // The false boolean must be 0
     that.falseVal = $(0);
+
+    // Memory zone used as temporary for operations unable to use
+    // extra registers
+    that.temp = mem(3*that.REG_BYTE_WIDTH, irToAsm.config.context);
 
     return that;
 };
@@ -272,148 +275,6 @@ irToAsm.translator.prototype.stringValue = function (s)
     return value;
 };
 
-/*
-irToAsm.translator.prototype.ir_lt = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[0].type === x86.type.IMM_VAL &&
-        opnds[1].type === x86.type.IMM_VAL)
-    {
-        if (opnds[0].value < opnds[1].value)
-        {
-            this.asm.mov(irToAsm.config.TRUE, dest);
-        } else
-        {
-            this.asm.mov(irToAsm.config.FALSE, dest);
-        }
-        return;
-    }
-
-    var cont = this.asm.labelObj();
-
-    if (opnds[0].type === x86.type.MEM &&
-        opnds[1].type === x86.type.MEM)
-    {
-        this.asm.
-        mov(opnds[0], dest). 
-        cmp(dest, opnds[1]); 
-    } else
-    {
-        this.asm.
-        cmp(opnds[1], opnds[0]);
-    }
-
-    this.asm.
-    mov(irToAsm.config.TRUE, dest).
-    jl(cont).
-    mov(irToAsm.config.FALSE, dest).
-    label(cont);
-
-};
-
-irToAsm.translator.prototype.ir_if = function (opnds, instr)
-{
-    const targets = instr.targets;
-    var true_label = this.label(targets[0]);
-    var false_label = this.label(targets[1]);
-
-    this.asm.
-    cmp(irToAsm.config.TRUE, opnds[0]).
-    je(true_label).
-    jmp(false_label);
-
-};
-
-irToAsm.translator.prototype.ir_jump = function (opnds, instr)
-{
-    const targets = instr.targets;
-    var target = this.label(targets[0]);
-
-    this.asm.jmp(target);
-
-};
-
-irToAsm.translator.prototype.ir_sub = function (opnds, instr)
-{
-    const that = this;
-    const dest = instr.regAlloc.dest;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    function xchg(opnd1, opnd2)
-    {
-        assert(!(opnd1.type === x86.type.MEM &&
-                 opnd2.type === x86.type.MEM));
-
-        assert(!opnd1.type === x86.type.IMM_VAL);
-        assert(!opnd2.type === x86.type.IMM_VAL);
-        
-        that.asm.
-        xor(opnd1, opnd2).
-        xor(opnd2, opnd1).
-        xor(opnd1, opnd2);
-    };
-
-    if (opnds[1] === dest && opnds[0].type !== x86.type.IMM_VAL)
-    {
-        xchg(opnds[1], opnds[0]);
-
-        this.asm.sub(opnds[1], dest);
-
-        xchg(opnds[1], opnds[0]);
-    } else if (opnds[1] === dest && opnds[0].type === x86.type.IMM_VAL)
-    {
-        this.asm.
-        mov(opnds[0], irToAsm.config.scratch).
-        sub(opnds[1], irToAsm.config.scratch).
-        mov(irToAsm.config.scratch, opnds[1]);
-    } else if (opnds[0] === dest)
-    {
-        this.asm.
-        sub(opnds[1], dest);
-    } else
-    {
-        this.asm.
-        mov(opnds[0], dest).
-        sub(opnds[1], dest);
-    }
-};
-
-irToAsm.translator.prototype.ir_add = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[1] === dest)
-    {
-        this.asm.
-        add(opnds[0], dest);
-    } else if (opnds[0] === dest)
-    {
-        this.asm.
-        add(opnds[1], dest);
-    } else
-    {
-        this.asm.
-        mov(opnds[0], dest).
-        add(opnds[1], dest);
-    }
-
-};
-*/
 
 irToAsm.translator.prototype.get_prop_val = function ()
 {
@@ -556,12 +417,12 @@ irToAsm.translator.prototype.dump_context_object = function ()
 
     if (this.asm.is64bitMode())
     {
-        // Global object slot - True value - False value
-        this.asm.gen64(0).gen64(immTrue).gen64(immFalse);
+        // Global object slot - True value - False value - TEMP
+        this.asm.gen64(0).gen64(immTrue).gen64(immFalse).gen64(0);
     } else
     {
-        // Global object slot - True value - False value
-        this.asm.gen32(0).gen32(immTrue).gen32(immFalse);
+        // Global object slot - True value - False value - TEMP
+        this.asm.gen32(0).gen32(immTrue).gen32(immFalse).gen32(0);
     }
    
     this.asm.genListing("CONTEXT_OBJECT");
@@ -587,91 +448,6 @@ irToAsm.translator.prototype.call_self = function (offset)
 
 };
 
-/*
-irToAsm.translator.prototype.ir_arg = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    const argIndex = instr.argIndex;
-    var reg;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    reg = irToAsm.config.physReg[irToAsm.config.argsIndex[argIndex]];
-    if (dest !== reg)
-    {
-        error("ir_arg: dest register '" + dest + 
-              "' unexpected for argument index '" + argIndex + "'");
-    }
-    
-
-};
-
-irToAsm.translator.prototype.ir_call = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    const targets = instr.targets;
-    const that = this;
-    const refByteNb = irToAsm.config.stack.width() / 8;
-    const funcObjReg = irToAsm.config.argsReg[0];
-
-    var spillNb = opnds.length - refByteNb;
-    var offset = 1;
-    var i;
-    var continue_label = this.label(targets[0], targets[0].label);
-    var reg;
-
-    if (spillNb < 0)
-    {
-        spillNb = 0;
-    }
-
-    offset = (spillNb) * refByteNb;
-
-    // Move arguments in the right registers
-    var map = allocator.mapping();
-
-    for (i=0; i < irToAsm.config.argsIndex.length && i < opnds.length; ++i)
-    {
-
-        reg = irToAsm.config.argsReg[i];
-        if (opnds[i] !== reg)
-        {
-            map.add(opnds[i], reg);
-        }
-    }
-
-    map.orderAndInsertMoves( function (move)
-                             {
-                                that.asm.mov(move.uses[0], move.uses[1]);
-                             }, irToAsm.config.scratch);
-   
-
-    // Add extra arguments on the stack
-    if (spillNb > 0)
-    {
-        error("TODO");
-    }
-
-    this.asm.
-
-    // Move pointers on top of extra args
-    sub($(offset), irToAsm.config.stack).
-
-    // Call function address
-    call(funcObjReg).
-
-    // Remove return address and extra args
-    add($(offset), irToAsm.config.stack).
-
-    // Jump to continue_label
-    jmp(continue_label);
-
-};
-*/
-
 irToAsm.translator.prototype.func_prelude = function (prelude_label)
 {
     // Add the call self instructions to retrieve
@@ -694,84 +470,6 @@ irToAsm.translator.prototype.func_init = function ()
     {
         this.asm.sub($(spillNb*byteLength), irToAsm.config.stack);
     }
-};
-
-irToAsm.translator.prototype.ir_make_arg_obj = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    assert(dest === null);
-    // For now, let's ignore the argument object
-
-};
-
-irToAsm.translator.prototype.ir_make_clos = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-    const retValReg = irToAsm.config.retValReg;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    assert(opnds[0] instanceof IRFunction); 
-
-    assert(opnds[1].type === x86.type.REG);
-
-    var fctLabel = this.label(opnds[0]);
-
-    if (dest === retValReg)
-    {
-        if (opnds[1] === retValReg)
-        {
-            this.asm.mov(opnds[1], scratch);
-        }
-        this.asm.
-        call(fctLabel);
-
-        // Store the global object in the function prelude
-        if (opnds[1] === retValReg)
-        {
-            this.asm.mov(scratch, mem(-this.REG_BYTE_WIDTH, retValReg));
-        } else
-        {
-            this.asm.mov(opnds[1], mem(-this.REG_BYTE_WIDTH, retValReg));
-        }
-    } else 
-    {
-        this.asm.
-        mov(retValReg, irToAsm.config.scratch).
-        call(fctLabel).
-        mov(retValReg, dest).
-        mov(irToAsm.config.scratch, retValReg).
-        mov(dest, irToAsm.config.scratch).
-
-        // Store the global object in the function prelude
-        mov(opnds[1], mem(-this.REG_BYTE_WIDTH, irToAsm.config.scratch));
-    }
-
-};
-
-irToAsm.translator.prototype.ir_get_global = function (opnds, instr)
-{
-    const dest = instr.regAlloc.dest;
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[0].type === x86.type.REG)
-    {
-        this.asm.
-        mov(mem(-this.REG_BYTE_WIDTH, opnds[0]), dest);
-    } else if (opnds[0].type === x86.type.MEM)
-    {
-        this.asm.
-        mov(opnds[0], irToAsm.config.scratch).
-        mov(mem(-this.REG_BYTE_WIDTH, irToAsm.config.scratch), dest);
-    }
-
 };
 
 irToAsm.translator.prototype.init = function (mainFct)
@@ -896,11 +594,11 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     // Number of variables spilled during register allocation
     const regAllocSpillNb = tltor.fct.regAlloc.spillNb; 
 
-    // Index on the call site spill space
-    const callSiteSpillIndex = argIndex - argRegNb;
+    // Index on the call site argument space
+    const callSiteArgIndex = argIndex - argRegNb;
 
     // Offset to the argument on the stack
-    const spoffset = (regAllocSpillNb + callSiteSpillIndex + 1) * refByteNb;
+    const spoffset = (regAllocSpillNb + callSiteArgIndex + 1) * refByteNb;
 
     // Stack pointer
     const stack = irToAsm.config.stack;
@@ -915,7 +613,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     {
         // The argument is in a register
         assert(argsReg[argIndex] === dest,
-               "ir_arg: dest register '" + dest + 
+               "arg: dest register '" + dest + 
                "' unexpected for argument index '" + argIndex + "'");
     } 
     else
@@ -1142,11 +840,10 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
         // Operands are inverted with regard to x86 notation 
 
         // TODO: Change when register allocation spilling is done differently
-        // Move operand on stack
         tltor.asm.
-        mov(opnds[1], mem(-refByteNb, stack)).
+        mov(opnds[1], tltor.temp).
         mov(opnds[0], dest).
-        sub(mem(-refByteNb, stack), dest);
+        sub(tltor.temp, dest);
     }
     else
     {
@@ -1682,7 +1379,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         spillNb = (spillNb < 0) ? 0 : spillNb;
        
         // Stack pointer offset for all spilled operands
-        const spillOffset = (spillNb) * refByteNb;
+        const spillOffset = spillNb * refByteNb;
 
         // Iteration temporaries
 
@@ -1697,11 +1394,12 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         // Make sure it is not used to pass arguments
         assert(!(scratchIndex in irToAsm.config.argsIndex));
 
-
-        // Add extra arguments on the stack
-        if (spillNb > 0)
+        // Allocate space on stack for extra args
+        if (spillOffset > 0)
         {
-            for (i = argRegNb, spoffset = -spillOffset;
+            tltor.asm.sub($(spillOffset), stack);
+
+            for (i = argRegNb, spoffset = 0;
                  i < opndNb; 
                  ++i, spoffset += refByteNb)
             {
@@ -1729,6 +1427,17 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             reg = argsReg[i];
             if (opnds[i] !== reg)
             {
+                // Fix the offset since the stack pointer has been moved
+                if (opnds[i].type === x86.type.MEM)
+                {
+                    // Make a copy of the object with the same properties
+                    opnds[i] = Object.create(opnds[i]);
+
+                    // Adjust the offset to take the displacement of the stack pointer
+                    // into account
+                    opnds[i].disp += spillOffset;
+                }
+
                 map.add(opnds[i], reg);
             }
         }
@@ -1741,11 +1450,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
 
 
-        // Move pointers on top of extra args
-        if (spillOffset > 0)
-        {
-            tltor.asm.sub($(spillOffset), stack);
-        }
 
         // Call function address
         tltor.asm.call(funcObjReg);
