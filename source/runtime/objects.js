@@ -239,6 +239,15 @@ staticEnv.regBinding(
     )
 );
 
+// Null pointer constant
+staticEnv.regBinding(
+    'NULL_PTR',
+    ConstValue.getConst(
+        0,
+        IRType.rptr
+    )
+);
+
 //=============================================================================
 //
 // Object memory layout
@@ -363,13 +372,19 @@ var strLayout = new ObjectLayout('str');
 // TODO: header
 //
 
-// Global object
+// String length
 strLayout.addField(
     'len',
     IRType.i32
 );
 
-// Object prototype object
+// Precomputed hash code
+strLayout.addField(
+    'hash',
+    IRType.i32
+);
+
+// Character data (UTF-16)
 strLayout.addField(
     'data',
     IRType.u16,
