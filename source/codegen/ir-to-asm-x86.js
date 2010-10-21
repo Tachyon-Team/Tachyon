@@ -91,6 +91,12 @@ irToAsm.spillAllocator.prototype.newSlot = function ()
     return s;
 };
 
+//=============================================================================
+//
+// IR translator class definition
+//
+//=============================================================================
+
 /** 
 @class
 Returns a new translator object to translate IR to Assembly.
@@ -274,7 +280,6 @@ irToAsm.translator.prototype.stringValue = function (s)
 
     return value;
 };
-
 
 irToAsm.translator.prototype.get_prop_val = function ()
 {
@@ -551,22 +556,11 @@ irToAsm.translator.prototype.definitions = function ()
     this.put_prop_val();
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//=============================================================================
+//
+// Translation of IR instructions to x86 machine code
+//
+//=============================================================================
 
 /* code generation for each ir instruction */
 PhiInstr.prototype.genCode = function (tltor, opnds)
@@ -658,36 +652,10 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     // If an unsigned integer result is expected
     if (this.type.isUnsigned())
     {
-        // If the right operand is a power of 2
-        if (opnds[1].type === x86.type.IMM_VAL && isPowerOf2(opnds[1].value))
-        {
-            var root2 = Math.sqrt(opnds[1].value);
-
-            // Use the unsigned left shift
-            if (opnds[0] !== dest)
-                tltor.asm.mov(opnds[0], dest);
-            tltor.asm.shl($(root2), dest);
-        }
-
-        // If the left operand is a power of 2
-        if (opnds[0].type === x86.type.IMM_VAL && isPowerOf2(opnds[0].value))
-        {
-            var root2 = Math.sqrt(opnds[0].value);
-
-            // Use the unsigned left shift
-            if (opnds[1] !== dest)
-                tltor.asm.mov(opnds[1], dest);
-            tltor.asm.shl($(root2), dest);
-        }
-
-        // For the general case
-        else
-        {
-            // Use unsigned multiplication
-            if (opnds[0] !== dest)
-                tltor.asm.mov(opnds[0], dest);
-            tltor.asm.mul(opnds[1], dest);
-        }
+        // Use unsigned multiplication
+        if (opnds[0] !== dest)
+            tltor.asm.mov(opnds[0], dest);
+        tltor.asm.mul(opnds[1], dest);
     }
 
     // Otherwise, a signed result is expected
@@ -834,8 +802,7 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
         // Operands are the same, put a zero in the destination register
         tltor.asm.xor(dest, dest); 
     } 
-    else if (opnds[1].type === x86.type.REG && 
-               opnds[1] === dest)
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
     {
         // Operands are inverted with regard to x86 notation 
 
@@ -863,6 +830,42 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
 
 //MulOvfInstr
 //TODO: use imul instruction
+
+LsftOvfInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+    const normalTarget = this.targets[0];
+    const overflowTarget = this.targets[1];
+
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[0].value % 256;
+    else
+        shiftAmt = opnds[0]
+
+    if (shiftAmt.value == 0)
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+    } 
+    else if (opnds[0] === dest)
+    {
+        tltor.asm.sal(shiftAmt, dest);
+    }
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        sal(shiftAmt, dest);
+    }
+
+    // Handle jump to exception
+    tltor.asm.
+    jno(tltor.label(normalTarget, normalTarget.label)).
+    jmp(tltor.label(overflowTarget, overflowTarget.label));
+};
 
 NotInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -946,26 +949,28 @@ LsftInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[1].value == 0)
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[0].value % 256;
+    else
+        shiftAmt = opnds[0]
+
+    if (shiftAmt.value == 0)
     {
         if (opnds[0] !== dest)
         {
             tltor.asm.mov(opnds[0], dest);
         }
     } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    else if (opnds[0] === dest)
     {
-        tltor.asm.sal(opnds[1], dest);
+        tltor.asm.sal(shiftAmt, dest);
     }
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.sal(opnds[0], dest);
-    } 
     else
     {
         tltor.asm.
         mov(opnds[0], dest).
-        sal(opnds[1], dest);
+        sal(shiftAmt, dest);
     }
 };
 
@@ -973,31 +978,33 @@ RsftInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[1].value == 0)
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[0].value % 256;
+    else
+        shiftAmt = opnds[0]
+
+    if (shiftAmt.value == 0)
     {
         if (opnds[0] !== dest)
         {
             tltor.asm.mov(opnds[0], dest);
         }
     } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    else if (opnds[0] === dest)
     {
-        tltor.asm.sar(opnds[1], dest);
+        tltor.asm.sar(shiftAmt, dest);
     }
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.sar(opnds[0], dest);
-    } 
     else
     {
         tltor.asm.
         mov(opnds[0], dest).
-        sar(opnds[1], dest);
+        sar(shiftAmt, dest);
     }
 };
 
 // TODO: UrsftInstr
-// Use logical shift
+// Use logical shift, shr
 
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1020,12 +1027,17 @@ LtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.numBits);
     }
+
+    print('producing mov/cmov');
+    print(dest);
 
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovl(tltor.trueVal, dest);
+
+    print('done');
 };
 
 //LeInstr
@@ -1178,7 +1190,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     {
         // Use the compare instruction
         tltor.asm.
-        cmp($(0), opnds[0]).
+        cmp($(0), opnds[0], this.uses[0].type.numBits).
         je(falseLabel).
         jmp(trueLabel);
     }

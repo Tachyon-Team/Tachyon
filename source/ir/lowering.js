@@ -90,6 +90,9 @@ function lowerIRCFG(cfg)
 
     //print('\n' + cfg + '\n');
 
+    // Validate the CFG
+    cfg.validate();
+
     // Perform common subexpression elimination on the CFG
     commElim(cfg);
 
@@ -134,6 +137,8 @@ function compPrimitives()
         parse_src_str(ObjectLayout.sourceStr),
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
+        // Source code for the runtime initialization
+        parse_src_file('runtime/rtinit.js'), 
     ];
 
     // List of IR functions for the primitive code

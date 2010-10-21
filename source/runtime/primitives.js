@@ -339,21 +339,32 @@ function lt(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    return iir.lt(v1, v2)? true:false;
-
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.lt(v1, v2)? true:false;
+        var tv = iir.lt(v1, v2);
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        // Call a function for the general case
+        var tv = ltGeneral(v1, v2);
     }
-    */
+
+    return tv? true:false;
+}
+
+/**
+Non-inline case for HIR less-than instruction
+*/
+function ltGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+
+    // TODO
+    return iir.constant(IRType.bool, 0);
 }
 
 /**
@@ -408,20 +419,6 @@ function add(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    
-    var intResult;
-    if (intResult = iir.add_ovf(v1, v2))
-    {
-        return intResult;
-    } else
-    {
-        return UNDEFINED;
-    }
-    
-
-    // TODO: ensure that boxIsInt is valid
-
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -435,16 +432,39 @@ function add(v1, v2)
         }
         else
         {
-            // TODO: overflow handling: need to create FP objects
-            return UNDEFINED;
+            // Overflow handling: need to create FP objects
+            return addOverflow(v1, v2);
         }
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        // Call general case in separate (non-inlined) function
+        return addGeneral(v1, v2);
     }
-    */
+}
+
+/**
+Non-inline overflow case for HIR add instruction
+*/
+function addOverflow(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    // TODO
+    return UNDEFINED;
+}
+
+/**
+Non-inline general case for HIR add instruction
+*/
+function addGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    // TODO
+    return UNDEFINED;
 }
 
 /**
@@ -454,22 +474,7 @@ function sub(v1, v2)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-
-    // Attempt a subtract with overflow check
-    var intResult;
-    if (intResult = iir.sub_ovf(v1, v2))
-    {
-        // If there is no overflow, return the result
-        // No normalization necessary
-        return intResult;
-    }
-    else
-    {
-        // TODO: overflow handling: need to create FP objects
-        return UNDEFINED;
-    }    
-
-    /*
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -483,15 +488,39 @@ function sub(v1, v2)
         }
         else
         {
-            // TODO: overflow handling: need to create FP objects
-            return UNDEFINED;
-        }    
+            // Overflow handling: need to create FP objects
+            return subOverflow(v1, v2);
+        }
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
-    }*/
+        // Call general case in separate (non-inlined) function
+        return subGeneral(v1, v2);
+    }
+}
+
+/**
+Non-inline overflow case for HIR sub instruction
+*/
+function subOverflow(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    // TODO
+    return UNDEFINED;
+}
+
+/**
+Non-inline general case for HIR sub instruction
+*/
+function subGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    // TODO
+    return UNDEFINED;
 }
 
 /**

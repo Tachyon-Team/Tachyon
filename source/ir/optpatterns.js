@@ -10,6 +10,11 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+//
+// TODO: refactor block patterns so that CFG is never left in inconsistent state
+// This way the CFG can be validated before and after each pattern
+//
+
 /**
 Apply peephole optimization patterns to a CFG
 */
@@ -54,36 +59,166 @@ Apply block-level optimization patterns to a block
 function applyPatternsBlock(cfg, block)
 {
     //
+    // Aggregate phi nodes used only by other phi nodes
+    //
+
+    // If this block contains only a phi node used only by another phi node
+    if (
+        block.instrs.length == 2 &&
+        block.instrs[0] instanceof PhiInstr &&
+        block.instrs[0].dests.length == 1 &&
+        block.instrs[0].dests[0] instanceof PhiInstr &&
+        block.instrs[1] instanceof JumpInstr &&
+        block.succs[0].instrs[0] === block.instrs[0].dests[0]
+    )
+    {
+        var origPhi = block.instrs[0];
+        var destPhi = origPhi.dests[0];
+        var destBlock = block.succs[0];
+
+        // Flag to indicate the CFG was changed
+        var changed = false;
+
+        // For each incoming value of the origin phi
+        for (var i = 0; i < origPhi.uses.length; ++i)
+        {
+            var use = origPhi.uses[i];
+            var pred = origPhi.preds[i];
+
+            // If the destination block has this predecessor, skip it
+            if (arraySetHas(destBlock.preds, pred))
+                continue;
+
+            // Remove the phi and block predecessor-successor links
+            origPhi.remPred(pred);
+            block.remPred(pred);
+            pred.remSucc(block);
+
+            // Make the pred branch to the dest block
+            var branch = pred.getLastInstr();
+            for (var j = 0; j < branch.targets.length; ++j)
+                if (branch.targets[j] === block)
+                    branch.targets[j] = destBlock;
+
+            // Add a new incoming value to the dest phi
+            destPhi.addIncoming(use, pred);
+
+            // Add the block predecessor-successor links
+            destBlock.addPred(pred);
+            pred.addSucc(destBlock);
+
+            // Move back one phi predecessor index
+            --i;
+
+            // Set the changed flag
+            changed = true;
+        }
+    }
+
+    //
     // Eliminate blocks of the form:
     // t = phi x1,x2,x3
+    // [t = call <boxToBool> t]
     // if t b1 b2
     //
 
     // If this block contains only an if instruction using the
     // value of an immediately preceding phi
-    if (
-        block.instrs.length == 2 &&
-        block.instrs[0] instanceof PhiInstr &&
+    if (block.instrs[0] instanceof PhiInstr &&
         block.instrs[0].dests.length == 1 &&
-        block.instrs[1] instanceof IfInstr &&
-        block.instrs[1].uses[0] === block.instrs[0]
+        (
+            (block.instrs.length == 2 &&
+             block.instrs[1] instanceof IfInstr &&
+             block.instrs[1].uses[0] === block.instrs[0])
+            ||
+            (block.instrs.length == 3 &&
+             block.instrs[1] instanceof CallFuncInstr &&
+             block.instrs[1].uses[0] === staticEnv.getBinding('boxToBool') &&
+             block.instrs[1].uses[2] === block.instrs[0] &&
+             block.instrs[2] instanceof IfInstr &&
+             block.instrs[2].uses[0] === block.instrs[1])
+        )
     )
-    {
+    {        
         var phiInstr = block.instrs[0];
-        var ifInstr = block.instrs[1];
-
         var phiPreds = phiInstr.preds.slice(0);
         var phiUses = phiInstr.uses.slice(0);
+
+        if (block.instrs.length == 2)
+        {
+            var ifInstr = block.instrs[1];
+        }
+        else
+        {
+            var boxToBool = block.instrs[1];
+            var ifInstr = block.instrs[2];
+        }
+
+        var trueTarget = ifInstr.targets[0];
+        var falseTarget = ifInstr.targets[1]
 
         // Flag to indicate the CFG was changed
         var changed = false;
 
+        // For each phi predecessor
         for (var j = 0; j < phiPreds.length; ++j)
         {
             var pred = phiPreds[j];
             var use = phiUses[j];
 
-            if (pred.instrs[pred.instrs.length - 1] instanceof JumpInstr)
+            var predBranch = pred.getLastInstr();
+
+            // Attempt to evaluate the truth value of the use
+            var truthVal = constEvalBool(use);
+
+            // If a truth value could be evaluated
+            if (truthVal != BOT)
+            {
+                // We know which target the predecessor should jump to
+                var ifTarget = ifInstr.targets[truthVal.value? 0:1];
+
+                // If the predecessor doesn't already jump to the target                      
+                if (!arraySetHas(pred.succs, ifTarget))
+                {
+                    pred.remSucc(block);
+
+                    // Make the predecessor jump to the right target
+                    for (var k = 0; k < predBranch.targets.length; ++k)
+                    {
+                        if (predBranch.targets[k] === block)
+                            predBranch.targets[k] = ifTarget;
+
+                        pred.addSucc(predBranch.targets[k]);
+                    }
+
+                    // Add the predecessor to the if target block
+                    ifTarget.addPred(pred);
+
+                    // Remove the phi and block predecessor
+                    block.remPred(pred);
+                    phiInstr.remPred(pred);
+                    
+                    // Add incoming phi values for the predecessor block
+                    // matching that of the current block
+                    for (var l = 0; l < ifTarget.instrs.length; ++l)
+                    {
+                        var instr = ifTarget.instrs[l];
+
+                        if (!(instr instanceof PhiInstr))
+                            break;
+
+                        var inc = instr.getIncoming(block);
+                        instr.addIncoming(inc, pred);
+                    }
+
+                    // Set the changed flag
+                    changed = true;
+                }
+            }
+
+            // Otherwise, if the predecessor branch is a jump and there is
+            // no call to boxToBool
+            else if (predBranch instanceof JumpInstr && !boxToBool)
             {
                 //print('eliminating phi node pred for ' + phiInstr + ' in ' + block.getBlockName());
 
@@ -445,6 +580,150 @@ function applyPatternsInstr(cfg, block, instr, index)
         }
     }
 
+    //
+    // Strength reduction patterns
+    //
+
+    // If this is a multiplication
+    if (instr instanceof MulInstr)
+    {
+        // If the left operand is a power of 2
+        if (instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].isInt() &&
+            isPowerOf2(instr.uses[1].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replInstrAtIndex(
+                index,
+                new LsftInstr(
+                    instr.uses[0],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[1].value),
+                        instr.type
+                    )
+                )
+            );
+
+            // A change was made
+            return true;
+        }
+
+        // If the right operand is a power of 2
+        else if (instr.uses[0] instanceof ConstValue &&
+                 instr.uses[0].isInt() &&
+                 isPowerOf2(instr.uses[0].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replInstrAtIndex(
+                index,
+                new LsftInstr(
+                    instr.uses[1],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[0].value),
+                        instr.type
+                    )
+                )
+            );
+
+            // A change was made
+            return true;
+        }
+    }
+
+    // If this is a multiplication with overflow handling
+    if (instr instanceof MulOvfInstr)
+    {
+        // If the left operand is a power of 2
+        if (instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].isInt() &&
+            isPowerOf2(instr.uses[1].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replBranch(
+                new LsftOvfInstr(
+                    instr.uses[0],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[1].value),
+                        instr.type
+                    ),
+                    instr.targets[0],
+                    instr.targets[1]
+                )
+            );
+
+            // A change was made
+            return true;
+        }
+
+        // If the right operand is a power of 2
+        else if (instr.uses[0] instanceof ConstValue &&
+                 instr.uses[0].isInt() &&
+                 isPowerOf2(instr.uses[0].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replBranch(
+                new LsftOvfInstr(
+                    instr.uses[1],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[0].value),
+                        instr.type
+                    ),
+                    instr.targets[0],
+                    instr.targets[1]
+                )
+            );
+
+            // A change was made
+            return true;
+        }
+    }
+
+    // If this is a division by a power of 2
+    if (instr instanceof DivInstr && 
+        instr.uses[1] instanceof ConstValue &&
+        instr.uses[1].isInt() &&
+        isPowerOf2(instr.uses[1].value))
+    {
+        // Replace the division by a right shift
+        var shiftInstr = instr.type.isUnsigned()? UrsftInstr:RsftInstr;
+        block.replInstrAtIndex(
+            index,
+            new shiftInstr(
+                instr.uses[0],
+                ConstValue.getConst(
+                    highestBit(instr.uses[1].value),
+                    instr.type
+                )
+            )
+        );
+
+        // A change was made
+        return true;
+    }
+
+    // If this is a modulo of a power of 2
+    if (instr instanceof ModInstr && 
+        instr.uses[1] instanceof ConstValue &&
+        instr.uses[1].isInt() &&
+        isPowerOf2(instr.uses[1].value))
+    {
+        // Replace the modulo by a bitwise AND instruction
+        block.replInstrAtIndex(
+            index,
+            new AndInstr(
+                instr.uses[0],
+                ConstValue.getConst(
+                    instr.uses[1].value - 1,
+                    instr.type
+                )
+            )
+        );
+
+        // A change was made
+        return true;
+    }
+
     // No changes were made
     return false;
 }
+

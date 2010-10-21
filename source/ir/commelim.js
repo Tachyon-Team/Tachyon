@@ -246,9 +246,13 @@ function commElim(cfg, maxItrs)
     // Flag to indicate a change occurred
     var changed = true;
 
+    // Until no changes occur or the max iteration count is reached
     for (var itrCount = 0; changed && itrCount < maxItrs; ++itrCount)
     {
-        //print('******************ITR*****************');
+        /*
+        print('******************ITR*****************');
+        cfg.validate();
+        */
 
         // No changes in this iteration yet
         changed = false;
@@ -284,7 +288,7 @@ function commElim(cfg, maxItrs)
             var block = workList.pop();
 
             // Compute the must and may reach sets at this block's entry
-            var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+            var mustReachCur = (block.preds.length > 0)? fullReachSet:[];
             for (var i = 0; i < block.preds.length; ++i)
             {
                 var pred = block.preds[i];
@@ -345,6 +349,9 @@ function commElim(cfg, maxItrs)
                     }
                 }
 
+                // Unmark any previously found reaching instruction
+                reachInstr[instr.instrId] = undefined;
+
                 // If an instruction with the same value number must reach this
                 for (var j = 0; j < mustReachCur.length; ++j)
                 {
@@ -375,7 +382,7 @@ function commElim(cfg, maxItrs)
             }
         }
 
-        // Set or removed/replaced instructions
+        // Set of removed/replaced instructions
         var remSet = [];
 
         // For each instruction in the CFG
@@ -390,7 +397,7 @@ function commElim(cfg, maxItrs)
             if ((instr instanceof CallInstr || !instr.isBranch()) && 
                 rinstr && !arraySetHas(remSet, rinstr))
             {
-                /*
+                /*                
                 print('********************');
                 print(instr);
                 print(rinstr);
