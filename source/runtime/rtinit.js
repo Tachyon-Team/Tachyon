@@ -45,29 +45,48 @@ Function to allocate/get a reference to a string object containing the
 given string data
 @param strData pointer to raw UTF-16 string data
 */
-function getStringObj(strData)
+function getStringObj(strData, strLen)
 {
     "tachyon:static";
     "tachyon:arg strData rptr";
+    "tachyon:arg strLen pint";
 
     // Allocate a string object
-    var strObj = alloc_str();
+    var strObj = alloc_str(strLen);
 
+    // Set the string length in the string object
+    set_str_len(strObj, strLen);
 
-    //
-    // TODO
-    //
+    // Initialize the hash code to 0
+    var hashCode = iir.constant(IRType.pint, 0);
 
-    // Set:
-    // len
-    // hash
-    // data
+    // For each character, update the hash code
+    for (
+        var index = iir.constant(IRType.pint, 0);; 
+        index = index + iir.constant(IRType.pint, 1)
+    )
+    {
+        // Get the current character
+        var ch = iir.load(IRType.u16, strData, index);
 
-    // TODO: convert computeHash to use str data?
-    // TODO: want getHash function for hash table use...
+        // Copy the character into the string object
+        set_str_data(str, i, ch);
 
-    //var hashCode = computeHash(strObj);
+        // Convert the character value to the pint type
+        var ch = iir.icast(IRType.pint, ch);
 
+        // If this is the null terminator, break out of the loop
+        if (ch == iir.constant(IRType.pint, 0))
+            break;
+
+        // Update 
+        hashCode =
+            (hashCode * iir.constant(IRType.pint, 256) + ch) %
+            iir.constant(IRType.pint, 426870919);
+    }
+
+    // Set the hash code in the string object
+    set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 
     // Return a reference to the string object
     return strObj;

@@ -556,9 +556,9 @@ function mul(v1, v2)
 }
 
 /**
-Compute a hash value for a given string or index
+Get the hash value for a given string or integer key
 */
-function computeHash(key)
+function getHash(key)
 {
     "tachyon:inline";
     "tachyon:ret pint";
@@ -569,37 +569,15 @@ function computeHash(key)
     // If the property is integer
     if (boxIsInt(key))
     {
-        // Unbox the key
+        // Unbox the integer key
         return unboxInt(key);
     }
 
     // Otherwise, the key is a string
     else
     {
-        var hashCode = iir.constant(IRType.pint, 0);
-
-        // Read the string length
-        var strLen = get_str_len(key);
-
-        // For each character, update the hash code
-        for (
-            var i = iir.constant(IRType.pint, 0); 
-            i < strLen; 
-            i = i + iir.constant(IRType.pint, 1)
-        )
-        {
-            var ch = iir.icast(
-                IRType.pint,
-                get_str_data(key, i)
-            );
-
-            hashCode =
-                (hashCode * iir.constant(IRType.pint, 256) + ch) %
-                iir.constant(IRType.pint, 426870919);
-        }
-
-        // Return the computed hash code
-        return hashCode;
+        // Read the hash code from the string object
+        return iir.icast(IRType.pint, get_str_hash(key));
     }
 }
 
@@ -615,9 +593,9 @@ function putPropVal(obj, propName, propVal)
     // TODO: find if getter-setter exists?
     // Requires first looking up the entry in the whole prototype chain...
 
-    // Compute the hash for the property
+    // Get the hash code for the property
     // Boxed value, may be a string or an int
-    var propHash = computeHash(propName);
+    var propHash = getHash(propName);
 
     // Get a pointer to the hash table
     var tblPtr = get_obj_tbl(obj);
@@ -755,9 +733,9 @@ function hasPropVal(obj, propName)
     // - Maybe not, should never happen in practice... toObject
     // - What we actually want is a debug assertion
 
-    // Compute the hash for the property
+    // Get the hash code for the property
     // Boxed value, may be a string or an int
-    var propHash = computeHash(propName);
+    var propHash = getHash(propName);
 
     // Attempt to find the property on the object
     var prop = getProp(obj, propName, propHash);
@@ -777,9 +755,9 @@ function getPropVal(obj, propName)
     // - Maybe not, should never happen in practice... toObject
     // - What we actually want is a debug assertion
 
-    // Compute the hash for the property
+    // Get the hash code for the property
     // Boxed value, may be a string or an int
-    var propHash = computeHash(propName);
+    var propHash = getHash(propName);
 
     // Attempt to find the property on the object
     var prop = getProp(obj, propName, propHash);

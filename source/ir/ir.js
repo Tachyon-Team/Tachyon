@@ -1862,7 +1862,14 @@ function exprToIR(context)
     // Get a reference to the expression
     var astExpr = context.astNode;
 
-    if (astExpr instanceof FunctionExpr)
+    // If the expression is null (empty expression)
+    if (astExpr == null)
+    {
+        // Set the output to undefined
+        context.setOutput(context.entryBlock, ConstValue.getConst(undefined));
+    }
+
+    else if (astExpr instanceof FunctionExpr)
     {
         // Find the compiled nested function corresponding to this expression
         var curFunc = context.cfg.ownerFunc;
