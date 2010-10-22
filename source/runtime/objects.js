@@ -277,7 +277,7 @@ hashEntryLayout.finalize();
 /**
 Hash table entry layout object
 */
-var hashTblLayout = new ObjectLayout('hashtbl');
+var hashTblLayout = new ObjectLayout('hashtbl', IRType.box, 'TAG_OTHER');
 
 //
 // TODO: header
@@ -298,7 +298,7 @@ hashTblLayout.genMethods();
 /**
 Object layout object
 */
-var objLayout = new ObjectLayout('obj');
+var objLayout = new ObjectLayout('obj', IRType.box, 'TAG_OBJECT');
 
 //
 // TODO: header
@@ -366,7 +366,7 @@ staticEnv.regBinding(
 /**
 String layout object
 */
-var strLayout = new ObjectLayout('str');
+var strLayout = new ObjectLayout('str', IRType.box, 'TAG_STRING');
 
 //
 // TODO: header

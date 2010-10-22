@@ -502,7 +502,7 @@ function getIRFuncObj(
                 throw 'invalid argument name in argument type annotation';
 
             if (!type)
-                throw 'invalid type in argument type annotation';
+                throw 'invalid type in argument type annotation (' + funcName + ')';
 
             newFunc.argTypes[argNo] = type;
         }
@@ -1865,8 +1865,10 @@ function exprToIR(context)
     // If the expression is null (empty expression)
     if (astExpr == null)
     {
-        // Set the output to undefined
-        context.setOutput(context.entryBlock, ConstValue.getConst(undefined));
+        // Set the output to the true constant
+        // This works for empty expression statements and the case where
+        // the test expression of a for loop is not specified
+        context.setOutput(context.entryBlock, ConstValue.getConst(true));
     }
 
     else if (astExpr instanceof FunctionExpr)

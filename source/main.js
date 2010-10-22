@@ -35,9 +35,9 @@ function testIR()
     backend.execute(codeblock);
     */
 
-    /*
-    var getGlobalFunc = staticEnv.getBinding('getGlobalFunc');
-    print(getGlobalFunc);
+    /*    
+    var func = staticEnv.getBinding('getStrObj');
+    print(func);
     */
 };
 

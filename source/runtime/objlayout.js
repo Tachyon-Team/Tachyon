@@ -76,7 +76,7 @@ function FieldSpec(name, type, typeSize, numElems, offset)
 /**
 @class Represents the memory layout of allocatable objects
 */
-function ObjectLayout(name, ptrType)
+function ObjectLayout(name, ptrType, tagName)
 {
     // Ensure that no layout with this name exists
     assert (
@@ -84,12 +84,14 @@ function ObjectLayout(name, ptrType)
         'an object layout with this name already exists'
     );
 
+    // Ensure that a tag is specified for boxed references
+    assert (
+        !(ptrType === IRType.box && !tagName),
+        'tag name must be specified for boxed references'
+    );
+
     // Store the layout in the layout map
     ObjectLayout.layoutMap[name] = this;
-
-    // If no pointer type is specified, use the boxed type
-    if (!ptrType)
-        ptrType = IRType.box;
 
     /**
     Name of the layout
@@ -102,6 +104,12 @@ function ObjectLayout(name, ptrType)
     @field
     */
     this.ptrType = ptrType;
+
+    /**
+    Tag used to tag the object (for boxed references only)
+    @field
+    */
+    this.tagName = tagName;
 
     /**
     List of fields
@@ -249,6 +257,12 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
         'empty field access query'
     );
 
+    assert (
+        this.ptrType,
+        'cannot generate access IR for layout, pointer type unspecified (' +
+        this.name + ')'
+    );
+
     // Declare a variable for the current offset value
     var curOffset = ConstValue.getConst(0, IRType.pint);
 
@@ -300,6 +314,12 @@ ObjectLayout.prototype.genMethods = function ()
         'layout must be finalized before generating methods'
     );
 
+    assert (
+        this.ptrType,
+        'cannot generate methods for layout, pointer type unspecified (' +
+        this.name + ')'
+    );
+
     // Source string to store the generated code
     var sourceStr = '';
 
@@ -330,7 +350,10 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
-        sourceStr += '\treturn iir.icast(IRType.' + this.ptrType + ', ptr);\n';
+        if (this.ptrType === IRType.box)
+            sourceStr += '\treturn boxRef(ptr, ' + this.tagName + ');\n';
+        else
+            sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
     }
@@ -356,7 +379,10 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
-        sourceStr += '\treturn iir.icast(IRType.' + this.ptrType + ', ptr);\n';
+        if (this.ptrType === IRType.box)
+            sourceStr += '\treturn boxRef(ptr, ' + this.tagName + ');\n';
+        else
+            sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
     }

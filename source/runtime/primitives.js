@@ -301,7 +301,7 @@ function newObject(proto)
     "tachyon:nothrow";
 
     // Allocate space for an object
-    var obj = boxRef(alloc_obj(), TAG_OBJECT);
+    var obj = alloc_obj();
 
     // Initialize the prototype object
     set_obj_proto(obj, proto);

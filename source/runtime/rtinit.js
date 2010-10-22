@@ -41,54 +41,16 @@ function initHeap(heapPtr)
 }
 
 /**
-Function to allocate/get a reference to a string object containing the
-given string data
-@param strData pointer to raw UTF-16 string data
+Allocate/get a reference to a string object containing a given value
+@param fpVal 64 bit floating-point value
 */
-function getStringObj(strData, strLen)
+function getFloatObj(fpVal)
 {
     "tachyon:static";
-    "tachyon:arg strData rptr";
-    "tachyon:arg strLen pint";
+    "tachyon:arg fpVal f64";
 
-    // Allocate a string object
-    var strObj = alloc_str(strLen);
-
-    // Set the string length in the string object
-    set_str_len(strObj, strLen);
-
-    // Initialize the hash code to 0
-    var hashCode = iir.constant(IRType.pint, 0);
-
-    // For each character, update the hash code
-    for (
-        var index = iir.constant(IRType.pint, 0);; 
-        index = index + iir.constant(IRType.pint, 1)
-    )
-    {
-        // Get the current character
-        var ch = iir.load(IRType.u16, strData, index);
-
-        // Copy the character into the string object
-        set_str_data(str, i, ch);
-
-        // Convert the character value to the pint type
-        var ch = iir.icast(IRType.pint, ch);
-
-        // If this is the null terminator, break out of the loop
-        if (ch == iir.constant(IRType.pint, 0))
-            break;
-
-        // Update 
-        hashCode =
-            (hashCode * iir.constant(IRType.pint, 256) + ch) %
-            iir.constant(IRType.pint, 426870919);
-    }
-
-    // Set the hash code in the string object
-    set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
-
-    // Return a reference to the string object
-    return strObj;
+    //
+    // TODO
+    //
 }
 
