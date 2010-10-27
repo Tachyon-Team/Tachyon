@@ -314,7 +314,7 @@ function newObject(proto)
     set_obj_tbl(obj, null);
 
     // Allocate space for a hash table and set the hash table reference
-    var hashtbl = boxRef(alloc_hashtbl(HASH_MAP_INIT_SIZE), TAG_OTHER);
+    var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
     set_obj_tbl(obj, hashtbl);
 
     // Initialize the hash table

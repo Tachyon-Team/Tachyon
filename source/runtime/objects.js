@@ -283,7 +283,7 @@ var hashTblLayout = new ObjectLayout('hashtbl', IRType.box, 'TAG_OTHER');
 // TODO: header
 //
 
-// Hash table key
+// Hash table entries
 hashTblLayout.addField(
     'tbl',
     hashEntryLayout,
@@ -322,7 +322,7 @@ objLayout.addField(
     IRType.i32
 );
 
-// Hash table size
+// Number of properties
 objLayout.addField(
     'numprops',
     IRType.i32
@@ -336,7 +336,7 @@ objLayout.genMethods();
 staticEnv.regBinding(
     'HASH_MAP_INIT_SIZE',
     ConstValue.getConst(
-        10,
+        11,
         IRType.pint
     )
 );
@@ -395,4 +395,68 @@ strLayout.addField(
 // Finalize the string layout and generate accessors
 strLayout.finalize();
 strLayout.genMethods();
+
+//=============================================================================
+//
+// String table layout (hash consing)
+//
+//=============================================================================
+
+/**
+Hash table entry layout object
+*/
+var strTblLayout = new ObjectLayout('strtbl', IRType.box, 'TAG_OTHER');
+
+//
+// TODO: header
+//
+
+// String table size
+strTblLayout.addField(
+    'tblsize',
+    IRType.i32
+);
+
+// Number of strings
+strTblLayout.addField(
+    'numstrs',
+    IRType.i32
+);
+
+// String table entries
+strTblLayout.addField(
+    'tbl',
+    IRType.box,
+    undefined,
+    Infinity
+);
+
+// Finalize the string table layout and generate accessors
+strTblLayout.finalize();
+strTblLayout.genMethods();
+
+// Initial string table size
+staticEnv.regBinding(
+    'STR_TBL_INIT_SIZE',
+    ConstValue.getConst(
+        101,
+        IRType.pint
+    )
+);
+
+// String table max load factor (num/denum)
+staticEnv.regBinding(
+    'STR_TBL_MAX_LOAD_NUM',
+    ConstValue.getConst(
+        3,
+        IRType.pint
+    )
+);
+staticEnv.regBinding(
+    'STR_TBL_MAX_LOAD_DENUM',
+    ConstValue.getConst(
+        5,
+        IRType.pint
+    )
+);
 

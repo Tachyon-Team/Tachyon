@@ -19,7 +19,17 @@ function initStrTable()
     "tachyon:static";
 
 
+    // Allocate the string table object
+    var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
+
+
+
+
+
+    //
     // TODO
+    //
+
 }
 
 /**
