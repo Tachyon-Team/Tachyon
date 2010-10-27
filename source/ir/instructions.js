@@ -1882,6 +1882,23 @@ var CallFuncInstr = instrMaker(
 
         if (inputVals[0] instanceof IRFunction)
         {
+            assert (
+                inputVals.length  - 2 == inputVals[0].getNumArgs(),
+                'direct calls do not support variable argument counts, got ' +
+                (inputVals.length - 2) + ' arguments, expected ' + 
+                inputVals[0].getNumArgs() + ' (' + inputVals[0].funcName + ')'
+            );
+
+            for (var i = 2; i < inputVals.length; ++i)
+            {
+                assert (
+                    inputVals[i].type === inputVals[0].argTypes[i-2],
+                    'argument type does not match (' + 
+                    inputVals[0].argVars[i-2].toString() + ', ' +
+                    inputVals[0].funcName + ')'
+                );
+            }
+
             this.type = inputVals[0].retType;
         }
         else

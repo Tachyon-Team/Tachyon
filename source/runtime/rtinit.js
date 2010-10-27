@@ -21,6 +21,7 @@ function initHeap(heapPtr)
 
     // Treat first address as the address of context object and initialize
     // the allocation pointer
+    iir.set_ctx(heapPtr);
     set_ctx_allocptr(heapPtr, heapPtr);
 
     // Allocate the context object, incrementing the allocation pointer
@@ -35,6 +36,9 @@ function initHeap(heapPtr)
 
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
+
+    // Initialize the string table
+    initStrTable();
 
     // Return a pointer to the context object
     return ctxObj;

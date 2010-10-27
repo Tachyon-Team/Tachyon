@@ -18,18 +18,29 @@ function initStrTable()
 {
     "tachyon:static";
 
-
     // Allocate the string table object
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
+    // Initialize the hash table size and number of properties
+    set_strtbl_tblsize(strtbl, STR_TBL_INIT_SIZE);
+    set_strtbl_numstrs(strtbl, iir.constant(IRType.i32, 0));
+
+    // Initialize the string table
+    for (
+        var i = iir.constant(IRType.pint, 0); 
+        i < STR_TBL_INIT_SIZE; 
+        i += iir.constant(IRType.pint, 1)
+    )
+    {
+        set_strtbl_tbl(strtbl, i, UNDEFINED);
+    }
 
 
+    // Get a pointer to the context
+    var ctx = iir.get_ctx();
 
-
-    //
-    // TODO
-    //
-
+    // Set the string table reference in the context
+    set_ctx_strtbl(strtbl);
 }
 
 /**

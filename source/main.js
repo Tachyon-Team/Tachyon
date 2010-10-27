@@ -35,10 +35,10 @@ function testIR()
     backend.execute(codeblock);
     */
 
-    /*    
-    var func = staticEnv.getBinding('getStrObj');
+    
+    var func = staticEnv.getBinding('initStrTable');
     print(func);
-    */
+    
 };
 
 function printInstrNames(ir)

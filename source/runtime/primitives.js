@@ -229,7 +229,7 @@ function heapAlloc(size)
     var ctx = iir.get_ctx();
 
     // Get the current allocation pointer
-    var allocPtr = get_ctx_allocptr();
+    var allocPtr = get_ctx_allocptr(ctx);
 
     // Increment the allocation pointer by the object size
     var nextPtr = allocPtr + size;
@@ -243,7 +243,7 @@ function heapAlloc(size)
     }
     
     // Update the allocation pointer in the context object
-    set_ctx_allocptr(nextPtr);
+    set_ctx_allocptr(ctx, nextPtr);
 
     // Allocate the object at the current position
     return allocPtr;
@@ -280,17 +280,17 @@ function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFI
 function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function newArray() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function div() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function mod() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function not() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function and() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function or() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function xor() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function lsft() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function rsft() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function ursft() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function ne() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function nseq() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function div(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function mod(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function or(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function xor(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function lsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function rsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function ursft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function ne(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function nseq(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties

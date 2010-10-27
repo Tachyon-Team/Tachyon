@@ -306,7 +306,7 @@ function stmtListToIRFunc(
                 insertPrimCallIR(
                     bodyContext, 
                     'putClos', 
-                    [ConstValue.getConst(i), closVals[i]]
+                    [closVal, ConstValue.getConst(i), closVals[i]]
                 );
             }
 
@@ -1911,7 +1911,7 @@ function exprToIR(context)
             insertPrimCallIR(
                 context, 
                 'putClos', 
-                [ConstValue.getConst(i), closVals[i]]
+                [closVal, ConstValue.getConst(i), closVals[i]]
             );
         }
 
@@ -3410,7 +3410,6 @@ function insertErrorIR(context, errorName, errorMsg)
         'makeError', 
         [
             errorCtor,
-            ConstValue.getConst(undefined),
             ConstValue.getConst(errorMsg)
         ]
     );
