@@ -1889,6 +1889,114 @@ x86.Assembler.prototype.mov = function (src, dest, width)
     return this.op(17,"mov",dest,src,width); 
 };
 
+/** Generic move with value extension. Can be chained. 
+    @param src
+    @param dst
+    @param signExt perform signed extension or zero extension
+    @param {Number} width optional
+*/
+x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
+{
+    const that = this;
+
+    assert(
+        dst.type === x86.type.REG ||
+        src.type  === x86.type.REG ||
+        src.type  === x86.type.MEM,
+        'src must be reg or mem, dst must be reg'
+    );
+
+    srcWidth = src.width? src.width():width;
+
+    assert(
+        srcWidth < dst.width(),
+        'src width must be less than dst width'
+    );
+
+    /** @ignore generate the instruction */
+    function genOp(mnem, opb1, opb2, reg, opnd)
+    {
+        if (srcWidth == 32 && dst.width() == 64 && signExtend)
+            that.opndPrefixOpnd(32, opnd);
+
+        that.gen8(opb1);
+        if (opb2) that.gen8(opb2);
+
+        that.opndModRMSIBRegOpnd(reg, opnd);
+        
+        if (that.useListing)
+        {
+            that.genListing(
+                x86.instrFormat(
+                    mnem, 
+                    x86.widthSuffix(srcWidth) + x86.regWidthSuffix(reg), 
+                    reg, 
+                    opnd
+                )
+           );
+        }
+    }
+
+    if (srcWidth == 8 && signExt)
+    {
+        // 0F BE/r
+        genOp('movsx', 15, 190, dst, src);
+    }
+    else if (srcWidth == 16 && signExt)
+    {
+        // 0F BF/r
+        genOp('movsx', 15, 191, dst, src);
+    }
+    else if (srcWidth == 32 && dst.width() == 64 && signExtend)
+    {
+        // 63/r
+        genOp('movsxd', 99, undefined, dst, src);
+    }
+    else if (srcWidth == 8 && !signExt)
+    {
+        // 0F B6/r
+        genOp('movzx', 15, 182, dst, src);
+    }
+    else if (srcWidth == 16 && !signExt)
+    {
+        // 0F B7/r
+        genOp('movzx', 15, 183, dst, src);
+    }
+    else if (srcWidth == 32 && dst.width() == 64 && !signExt)
+    {
+        // 63/r
+        genOp('movsxd', 99, undefined, dst, src);
+    }
+    else
+    {
+        assert (
+            false,
+            'invalid operand combination'
+        )
+    }
+
+    return this;
+}
+
+/** Move with sign extension. Can be chained.
+    @param src
+    @param dst
+    @param {Number} width optional
+*/
+x86.Assembler.prototype.movsx = function (src, dst, width) 
+{ 
+    return this.movxx(src, dst, true, width);
+}
+
+/** Move with zero extension. Can be chained.
+    @param src
+    @param dst
+    @param {Number} width optional
+*/
+x86.Assembler.prototype.movzx = function (src, dst, width)
+{ 
+    return this.movxx(src, dst, false, width);
+};
 
 /** Can be chained. */
 x86.Assembler.prototype.push = function (opnd) 
