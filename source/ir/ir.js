@@ -3558,7 +3558,10 @@ and throw targets and splice this into the current context
 function insertCallIR(context, instr)
 {
     // If this is not a direct function call
-    if (!(instr.uses[0] instanceof IRFunction))
+    if (!(instr.uses[0] instanceof IRFunction) && 
+        !(instr.uses[0] instanceof CallFuncInstr &&
+          instr.uses[0].uses[0] === staticEnv.getBinding('getGlobalFunc'))
+    )
     {
         // Test if the callee value is a function
         var testVal = insertCallIR(

@@ -67,11 +67,11 @@ function constProp(cfg)
                 if (!(instr instanceof PhiInstr) && !firstVisit)
                     break;
 
-                // Evaluate the instruction for the first time
+                // Evaluate the instruction
                 instrVals[instr.instrId] = evalInstr(instr);
 
                 // For each dest of the instruction
-                for (var j = 0; j < instr.dests; ++j)
+                for (var j = 0; j < instr.dests.length; ++j)
                 {
                     var dest = instr.dests[j];
 

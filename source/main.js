@@ -14,8 +14,23 @@ function testIR()
 {
     var ast = parse_src_file('programs/fib.js');
     //var ast = parse_src_str('function foo(a) { return a + "foo"; }');
+    /*
+    var ast = parse_src_str(
+        '                                       \
+        function foo()                          \
+        {                                       \
+            for (                                       \
+                var i = iir.constant(IRType.pint, 0);   \
+                i < iir.constant(IRType.pint, 10);      \
+                i += iir.constant(IRType.pint, 1)       \
+            )                                           \
+            {                                   \
+            }                                   \
+        }                                       \
+        '
+    );*/
 
-    pp(ast);
+    //pp(ast);
 
     var ir = unitToIR(ast, true);
     
@@ -27,7 +42,7 @@ function testIR()
 
     ir.validate();    
     
-    printInstrNames(ir);
+    //printInstrNames(ir);
 
     /*
     var codeblock = backend.compile(ir, print);
@@ -36,7 +51,7 @@ function testIR()
     */
 
     
-    var func = staticEnv.getBinding('initStrTable');
+    var func = staticEnv.getBinding('newObject');
     print(func);
     
 };
