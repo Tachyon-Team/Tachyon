@@ -623,12 +623,33 @@ AddInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the output value
     const dest = this.regAlloc.dest;
 
-    if (opnds[0] !== dest)
+    if (opnds[0].type === x86.type.IMM_VAL && opnds[0].value === 1)
     {
-        tltor.asm.mov(opnds[0], dest);
+        if (opnds[1] !== dest)
+        {
+            tltor.asm.mov(opnds[1], dest);
+        }
+
+        tltor.asm.inc(dest);
+    }   
+    else if (opnds[1].type === x86.type.IMM_VAL && opnds[1].value === 1)
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+
+        tltor.asm.inc(dest);
     }
+    else
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
    
-    tltor.asm.add(opnds[1], dest);
+        tltor.asm.add(opnds[1], dest);
+    }
 };
 
 SubInstr.prototype.genCode = function (tltor, opnds)
@@ -636,12 +657,24 @@ SubInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the output value
     const dest = this.regAlloc.dest;
 
-    if (opnds[0] !== dest)
+    if (opnds[1].type === x86.type.IMM_VAL && opnds[1].value === 1)
     {
-        tltor.asm.mov(opnds[0], dest);
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+
+        tltor.asm.dec(dest);
     }
-   
-    tltor.asm.sub(opnds[1], dest);
+    else
+    {
+        if (opnds[0] !== dest)
+        {
+            tltor.asm.mov(opnds[0], dest);
+        }
+       
+        tltor.asm.sub(opnds[1], dest);
+    }
 };
 
 MulInstr.prototype.genCode = function (tltor, opnds)
@@ -738,11 +771,11 @@ AddOvfInstr.prototype.genCode = function (tltor, opnds)
         if (opnds[1].value === 1)
         {
             tltor.asm.inc(dest);
-        } else
+        } 
+        else
         {
             tltor.asm.add(opnds[1], dest);
         }
-
     } 
     else if (opnds[1].type === x86.type.REG && 
              opnds[1] === dest)
@@ -883,12 +916,7 @@ AndInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if ((opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) ||
-        (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0))
-    {
-        tltor.asm.xor(dest, dest);
-    } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
+    if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
     {
         if (opnds[0] !== dest)
         {
@@ -915,12 +943,7 @@ OrInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if ((opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) ||
-        (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0))
-    {
-        tltor.asm.xor(dest, dest);
-    } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
+    if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
     {
         if (opnds[0] !== dest)
         {

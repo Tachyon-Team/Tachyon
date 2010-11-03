@@ -401,7 +401,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
 
         else if (genFunc)
         {
-            return genFunc(this.uses[0], this.uses[1]);
+            return genFunc(this.uses[0], this.uses[1], this.type);
         }
 
         // By default, return the unknown value
@@ -416,8 +416,17 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     {
         return v0 & v1;
     },
-    function (u0, u1)
+    function (u0, u1, type)
     {
+        if ((u0 instanceof ConstValue && u0.value == 0) ||
+            (u1 instanceof ConstValue && u1.value == 0))
+        {
+            return ConstValue.getConst(
+                0,
+                type
+            );
+        }
+
         if (u0 instanceof ConstValue &&
             u1 instanceof ConstValue &&
             u0.type === IRType.box &&
@@ -476,6 +485,16 @@ OrInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 | v1;
+    },
+    function (u0, u1, type)
+    {
+        if (u0 instanceof ConstValue && u0.value == 0)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 )
 

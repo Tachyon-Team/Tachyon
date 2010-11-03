@@ -13,22 +13,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function testIR()
 {
     var ast = parse_src_file('programs/fib.js');
-    //var ast = parse_src_str('function foo(a) { return a + "foo"; }');
-    /*
-    var ast = parse_src_str(
-        '                                       \
-        function foo()                          \
-        {                                       \
-            for (                                       \
-                var i = iir.constant(IRType.pint, 0);   \
-                i < iir.constant(IRType.pint, 10);      \
-                i += iir.constant(IRType.pint, 1)       \
-            )                                           \
-            {                                   \
-            }                                   \
-        }                                       \
-        '
-    );*/
+    //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
 
     //pp(ast);
 
@@ -50,10 +35,10 @@ function testIR()
     backend.execute(codeblock);
     */
 
-    
+    /*
     var func = staticEnv.getBinding('newObject');
     print(func);
-    
+    */
 };
 
 function printInstrNames(ir)
