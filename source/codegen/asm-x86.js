@@ -1923,7 +1923,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
         if (opb2) that.gen8(opb2);
 
         that.opndModRMSIBRegOpnd(reg, opnd);
-        
+
         if (that.useListing)
         {
             that.genListing(
@@ -2566,19 +2566,70 @@ x86.Assembler.prototype.not = function (dest, width)
 };
 
 /** Can be chained */
-x86.Assembler.prototype.mul = function (dest, width)
+x86.Assembler.prototype.mul = function (src, width)
 {
-    return this.oneOpnd(0xf6, 4, "mul", dest, width);
+    return this.oneOpnd(0xf6, 4, "mul", src, width);
 };
 
 /** Can be chained */
-x86.Assembler.prototype.div = function (dest, width)
+x86.Assembler.prototype.imul = function (src, dst, imm, width)
 {
-    return this.oneOpnd(0xf6, 6, "div", dest, width);
+    /*
+    Multiple possible encodings for imul:
+
+    /7: 
+    Multiply reg EAX/RAX by specified src reg/mem, put result in EDX,EAX/RDX,RAX
+
+    /r:
+    Multiply src with reg/mem with dest reg, put result in dest reg
+
+    /r ib, /r iw, /r id:
+    Multiply src reg/mem with imm value, put result in dest reg
+    */
+
+    // If both a source and destination were specified
+    if (src && dst)
+    {
+        // For /r:
+        // this.opndModRMSIBRegOpnd(reg, opnd);
+
+
+        // If an immediate value was specified
+        if (imm)
+        {
+            // Write the imm value using genXX
+
+
+
+        }
+    }
+
+    // Otherwise, if only a source reg/mem location was specified
+    else
+    {
+        assert (
+            src,
+            'imul requires a source operand'
+        );
+
+        // For /5:
+        // return this.oneOpnd(0xf6, 5, "imul", src, width);
+    }
+
+    //
+    // TODO
+    //
+    throw 'imul not yet implemented';
 };
 
 /** Can be chained */
-x86.Assembler.prototype.idiv = function (dest, width)
+x86.Assembler.prototype.div = function (src, width)
 {
-    return this.oneOpnd(0xf6, 7, "idiv", dest, width);
+    return this.oneOpnd(0xf6, 6, "div", src, width);
+};
+
+/** Can be chained */
+x86.Assembler.prototype.idiv = function (src, width)
+{
+    return this.oneOpnd(0xf6, 7, "idiv", src, width);
 };

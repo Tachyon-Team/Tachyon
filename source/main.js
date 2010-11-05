@@ -27,7 +27,7 @@ function testIR()
 
     ir.validate();    
     
-    //printInstrNames(ir);
+    printInstrNames(ir);
 
     /*
     var codeblock = backend.compile(ir, print);

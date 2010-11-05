@@ -688,12 +688,22 @@ MulInstr.prototype.genCode = function (tltor, opnds)
         // Use unsigned multiplication
         if (opnds[0] !== dest)
             tltor.asm.mov(opnds[0], dest);
+
+        // TODO: fix this, x86 mul only takes one reg/mem operand
+        // Other operand is fixed to EAX/RAX
+        // Dest is fixed to EDX,EAX/RDX,RAX
+
         tltor.asm.mul(opnds[1], dest);
     }
 
     // Otherwise, a signed result is expected
     else
     {
+        //
+        // TODO: block appropriate registers for this instruction
+        // See what was done for DivInstr
+        //
+
         //
         // TODO: use signed multiply (imul) for signed output
         //
