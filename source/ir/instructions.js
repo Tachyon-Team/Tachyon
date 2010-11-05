@@ -63,47 +63,11 @@ function IRType(name, size)
     if (name[0] == 'i' || name[0] == 'u')
     {
         // Compute the available range
-        this.minVal = IRType.getIntMin(this.numBits, name[0] == 'u');
-        this.maxVal = IRType.getIntMax(this.numBits, name[0] == 'u');
+        this.minVal = getIntMin(this.numBits, name[0] == 'u');
+        this.maxVal = getIntMax(this.numBits, name[0] == 'u');
     }
 }
 IRType.prototype = {};
-
-/**
-Calculate the minimum value an integer variable can store
-*/
-IRType.getIntMin = function (numBits, unsigned)
-{
-    // If this is an unsigned integer type
-    if (unsigned)
-    {
-        return 0;
-    }
-
-    // If this is a signed integer type
-    else
-    {
-        return -Math.pow(2, numBits - 1);
-    }
-}
-
-/**
-Calculate the maximum value an integer variable can store
-*/
-IRType.getIntMax = function (numBits, unsigned)
-{
-    // If this is an unsigned integer type
-    if (unsigned)
-    {
-        return Math.pow(2, numBits) - 1;
-    }
-
-    // If this is a signed integer type
-    else
-    {
-        return Math.pow(2, numBits - 1) - 1;
-    }
-}
 
 /**
 Obtain a string representation of an IR type
@@ -360,8 +324,8 @@ ConstValue.prototype.isBoxInt = function ()
     return (
         this.type === IRType.box &&
         this.isInt() && 
-        this.value >= IRType.getIntMin(BOX_NUM_BITS_INT) && 
-        this.value <= IRType.getIntMax(BOX_NUM_BITS_INT)
+        this.value >= getIntMin(BOX_NUM_BITS_INT) && 
+        this.value <= getIntMax(BOX_NUM_BITS_INT)
     );
 }
 

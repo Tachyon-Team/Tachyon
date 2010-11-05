@@ -46,3 +46,41 @@ function highestBit(x)
     return ret;
 }
 
+/**
+Calculate the minimum value an integer variable can store. Signed
+values are assumed to use the 2s complement representation.
+*/
+function getIntMin(numBits, unsigned)
+{
+    // If this is an unsigned integer type
+    if (unsigned)
+    {
+        return 0;
+    }
+
+    // If this is a signed integer type
+    else
+    {
+        return -Math.pow(2, numBits - 1);
+    }
+}
+
+/**
+Calculate the maximum value an integer variable can store. Signed
+values are assumed to use the 2s complement representation.
+*/
+function getIntMax(numBits, unsigned)
+{
+    // If this is an unsigned integer type
+    if (unsigned)
+    {
+        return Math.pow(2, numBits) - 1;
+    }
+
+    // If this is a signed integer type
+    else
+    {
+        return Math.pow(2, numBits - 1) - 1;
+    }
+}
+

@@ -1897,8 +1897,6 @@ x86.Assembler.prototype.mov = function (src, dest, width)
 */
 x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
 {
-    const that = this;
-
     assert(
         dst.type === x86.type.REG ||
         src.type  === x86.type.REG ||
@@ -1914,6 +1912,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
     );
 
     /** @ignore generate the instruction */
+    const that = this;
     function genOp(mnem, opb1, opb2, reg, opnd)
     {
         if (srcWidth == 32 && dst.width() == 64 && signExtend)
@@ -2587,20 +2586,63 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
     Multiply src reg/mem with imm value, put result in dest reg
     */
 
+    /** @ignore Generate the opcode and the Mod RM encoding */
+    const that = this;
+    function genOp(opb1, opb2)
+    {
+        // Generate the opcode
+        that.gen8(opb1);
+        if (opb2) that.gen8(opb2);
+
+        // For /r:
+        that.opndModRMSIBRegOpnd(dst, src);
+    }
+
     // If both a source and destination were specified
     if (src && dst)
     {
-        // For /r:
-        // this.opndModRMSIBRegOpnd(reg, opnd);
-
-
         // If an immediate value was specified
         if (imm)
         {
-            // Write the imm value using genXX
+            assert (
+                imm.type === x86.type.IMM_VAL,
+                'immediate value must have immediate type'
+            );
 
+            // If the immediate value fits in an int8
+            if (imm.value >= getIntMin(8) &&
+                imm.value <= getIntMax(8))
+            {
+                // Generate the operation
+                genOp(0x6b);
+                
+                // Generate the immediate value
+                this.gen8(imm.value);
+            }
 
-
+            // If the immediate value fits in an int32
+            else if (imm.value >= getIntMin(32) &&
+                     imm.value <= getIntMax(32))
+            {
+                // Generate the operation
+                genOp(0x69);
+                
+                // Generate the immediate value
+                this.gen32(imm.value);
+            }
+            
+            else
+            {
+                assert (
+                    false,
+                    'immediate value does not fit in int32'
+                );
+            }
+        }
+        else
+        {
+            // Generate the opcode with no immediate value
+            genOp(0x0f, 0xaf);
         }
     }
 
@@ -2613,13 +2655,8 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
         );
 
         // For /5:
-        // return this.oneOpnd(0xf6, 5, "imul", src, width);
+        return this.oneOpnd(0xf6, 5, "imul", src, width);
     }
-
-    //
-    // TODO
-    //
-    throw 'imul not yet implemented';
 };
 
 /** Can be chained */
