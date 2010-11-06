@@ -2659,6 +2659,20 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
     }
 };
 
+
+/** Can be chained */
+x86.Assembler.prototype.cdq = function ()
+{
+    this.gen8(0x99);
+
+    if (this.useListing) 
+    {
+        this.genListing(x86.instrFormat('cdq'));
+    }
+
+    return this;
+};
+
 /** Can be chained */
 x86.Assembler.prototype.div = function (src, width)
 {

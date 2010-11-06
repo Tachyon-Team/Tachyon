@@ -731,8 +731,8 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         var divisor = opnds[1];
     }
 
-    // Clear our EDX (upper dividend bits)
-    tltor.asm.xor(EDX, EDX);
+    // Sign-extend EAX into EDX:EAX using CDQ
+    tltor.asm.cdq();
 
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
