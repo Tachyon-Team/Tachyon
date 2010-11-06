@@ -280,7 +280,6 @@ function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFI
 function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function newArray() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function div(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function mod(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -547,6 +546,30 @@ function mul(v1, v2)
             // TODO: overflow handling: need to create FP objects
             return UNDEFINED;
         }    
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+}
+
+/**
+Implementation of the HIR div instruction
+*/
+function div(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Shift the dividend by the number of integer tag bits
+        var v1 = iir.icast(IRType.box, v1 << TAG_NUM_BITS_INT);
+
+        // Perform a raw machine division
+        return iir.div(v1, v2);
     }
     else
     {

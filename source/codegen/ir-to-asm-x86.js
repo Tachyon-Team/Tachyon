@@ -43,7 +43,7 @@ irToAsm.config.stack   = ESP;
 irToAsm.config.context = ESI;
 
 // Registers available for register allocation.
-irToAsm.config.physReg    = [EAX, EBX, ECX, EDX, EBP, EDI];
+irToAsm.config.physReg = [EAX, EBX, ECX, EDX, EBP, EDI];
 
 // Reserved registers are indexes into the physReg array since the 
 // register allocation algorithm assumes an index into the physReg
@@ -714,15 +714,35 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the return value
     const dest = this.regAlloc.dest;
    
+    // Move the dividend to EAX if it isn't already in that register
+    if (opnds[0] !== EAX)
+    {
+        tltor.asm.mov(opnds[0], EAX);
+    }
+
+    // If the divisor is an immediate value, put it into EBX
+    if (opnds[1].type === x86.type.IMM_VAL)
+    {
+        tltor.asm.mov(opnds[1], EBX);
+        var divisor = EBX;
+    }
+    else
+    {
+        var divisor = opnds[1];
+    }
+
+    // Clear our EDX (upper dividend bits)
+    tltor.asm.xor(EDX, EDX);
+
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        tltor.asm.div(opnds[1], this.type.numBits);
+        tltor.asm.div(divisor, this.type.numBits);
     }
     else
     {
-        tltor.asm.idiv(opnds[1], this.type.numBits);
+        tltor.asm.idiv(divisor, this.type.numBits);
     }
 };
 
@@ -873,18 +893,11 @@ LsftOvfInstr.prototype.genCode = function (tltor, opnds)
 
     var shiftAmt;
     if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[0].value % 256;
+        shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[0]
+        shiftAmt = opnds[1]
 
-    if (shiftAmt.value == 0)
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-    } 
-    else if (opnds[0] === dest)
+    if (opnds[0] === dest)
     {
         tltor.asm.sal(shiftAmt, dest);
     }
@@ -975,18 +988,11 @@ LsftInstr.prototype.genCode = function (tltor, opnds)
 
     var shiftAmt;
     if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[0].value % 256;
+        shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[0]
+        shiftAmt = opnds[1]
 
-    if (shiftAmt.value == 0)
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-    } 
-    else if (opnds[0] === dest)
+    if (opnds[0] === dest)
     {
         tltor.asm.sal(shiftAmt, dest);
     }
@@ -1004,18 +1010,11 @@ RsftInstr.prototype.genCode = function (tltor, opnds)
 
     var shiftAmt;
     if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[0].value % 256;
+        shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[0]
+        shiftAmt = opnds[1]
 
-    if (shiftAmt.value == 0)
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-    } 
-    else if (opnds[0] === dest)
+    if (opnds[0] === dest)
     {
         tltor.asm.sar(shiftAmt, dest);
     }

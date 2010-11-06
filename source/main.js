@@ -12,8 +12,9 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    var ast = parse_src_file('programs/fib.js');
+    //var ast = parse_src_file('programs/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
+    var ast = parse_src_str('function foo(a, b) { return a / b; } return foo(6, 3);');
 
     //pp(ast);
 
@@ -29,11 +30,12 @@ function testIR()
     
     printInstrNames(ir);
 
-    /*
-    var codeblock = backend.compile(ir, print);
+    
+    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
     print(backend.listing(codeblock));
-    backend.execute(codeblock);
-    */
+    var result = backend.execute(codeblock);
+    print('result: ' + (result >> 2));
+
 
     /*
     var func = staticEnv.getBinding('newObject');

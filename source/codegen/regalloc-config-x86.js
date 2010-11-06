@@ -123,7 +123,8 @@ GetCtxInstr.prototype.regAlloc.outRegHint = function (instr, config)
 //
 // Signed idiv works in the same way
 //
-// Dividend is uses[0], it doesn't have a fixed register
+// Dividend is uses[0]
+// Divisor is uses[1], it doesn't have a fixed register
 //
 // Quotient (output) is EAX
 
@@ -154,7 +155,9 @@ DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
 DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
 {
-    // Operand 0 should be placed in EAX if possible
+    // TODO: PROBLEM: operand 1 MUST NOT be in EAX or EDX
+
+    // Operand 0 should be placed in EAX if possible (not guaranteed)
     if (position == 0) 
         return 0;
     else
@@ -170,7 +173,11 @@ DivInstr.prototype.regAlloc.outRegHint =  function (instr, config)
 DivInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
 { 
     // EAX and EDX are reserved by this instruction
-    return [0, 3]; 
+    // If the divisor is an integer constant, also reserve EBX
+    if (instr.uses[1] instanceof ConstValue && instr.uses[1].isBoxInt())
+        return [0,1,3];
+    else
+        return [0, 3];
 }
 
 // Extra registers must be reserved
