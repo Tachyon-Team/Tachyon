@@ -685,15 +685,13 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     // If an unsigned integer result is expected
     if (this.type.isUnsigned())
     {
-        // Use unsigned multiplication
-        if (opnds[0] !== dest)
-            tltor.asm.mov(opnds[0], dest);
+        // TODO: may want to be smarter here, whichever operand is not EAX/RAX
+        // should get passed as input
 
-        // TODO: fix this, x86 mul only takes one reg/mem operand
+        // x86 mul only takes one reg/mem operand
         // Other operand is fixed to EAX/RAX
         // Dest is fixed to EDX,EAX/RDX,RAX
-
-        tltor.asm.mul(opnds[1], dest);
+        tltor.asm.mul(opnds[1], this.type.numBits);
     }
 
     // Otherwise, a signed result is expected
@@ -715,21 +713,16 @@ DivInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the return value
     const dest = this.regAlloc.dest;
-
-    if (opnds[0] !== dest)
-    {
-        tltor.asm.mov(opnds[0], dest);
-    }
    
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        tltor.asm.div(opnds[1], dest);
+        tltor.asm.div(opnds[1], this.type.numBits);
     }
     else
     {
-        tltor.asm.idiv(opnds[1], dest);
+        tltor.asm.idiv(opnds[1], this.type.numBits);
     }
 };
 
@@ -738,20 +731,15 @@ ModInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
-    if (opnds[0] !== dest)
-    {
-        tltor.asm.mov(opnds[0], dest);
-    }
-   
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        tltor.asm.div(opnds[1], dest);
+        tltor.asm.div(opnds[1], this.type.numBits);
     }
     else
     {
-        tltor.asm.idiv(opnds[1], dest);
+        tltor.asm.idiv(opnds[1], this.type.numBits);
     }
 };
 
@@ -871,8 +859,11 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
     jmp(tltor.label(overflowTarget, overflowTarget.label));
 };
 
-//MulOvfInstr
-//TODO: use imul instruction
+MulOvfInstr.prototype.genCode = function (tltor, opnds)
+{
+    // TODO: use imul instruction
+    throw 'MulOvfInstr not yet implemented'
+}
 
 LsftOvfInstr.prototype.genCode = function (tltor, opnds)
 {

@@ -1339,7 +1339,7 @@ allocator.liveIntervals = function (cfg, order, config)
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
                 instr.regAlloc.interval.regHint = 
-                    instr.regAlloc.retValRegHint(instr, config);
+                    instr.regAlloc.outRegHint(instr, config);
 
 
                 // Remove the instruction from the live set

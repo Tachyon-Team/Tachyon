@@ -15,12 +15,11 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 IRValue.prototype.regAlloc = {
 
-
     /** Returns a register index preference for a given operand position */
     opndsRegHint:function (instr, config, position) { return null; },
 
-    /** Returns a register index preference for the return value */
-    retValRegHint:function (instr, config) { return null; },
+    /** Returns a register index preference for the output value */
+    outRegHint:function (instr, config) { return null; },
 
     /** Tells if operands of an instruction must be in registers */
     opndsRegRequired:false,
@@ -42,13 +41,14 @@ CallInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
     if (position < config.argsIndex.length)
     {
         return config.argsIndex[position];
-    } else
+    } 
+    else
     {
         return null;
     }
 };
 
-CallInstr.prototype.regAlloc.retValRegHint = function (instr, config)
+CallInstr.prototype.regAlloc.outRegHint = function (instr, config)
 {
     return config.retValIndex;
 };
@@ -78,12 +78,13 @@ RetInstr.prototype.regAlloc.opndsRegRequired = true;
 */
 ArgValInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-ArgValInstr.prototype.regAlloc.retValRegHint = function (instr, config)
+ArgValInstr.prototype.regAlloc.outRegHint = function (instr, config)
 {
     if (instr.argIndex < config.argsIndex.length)
     {
         return config.argsIndex[instr.argIndex];
-    } else 
+    } 
+    else 
     {
         return null;
     }
@@ -108,8 +109,91 @@ ArgValInstr.prototype.regAlloc.retValRegHint = function (instr, config)
 */
 GetCtxInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-GetCtxInstr.prototype.regAlloc.retValRegHint = function (instr, config)
+GetCtxInstr.prototype.regAlloc.outRegHint = function (instr, config)
 {
     return config.context;
 };
+
+
+
+
+
+// TODO: DivInstr
+// Unsigned div divides content of EDX:EAX by src and puts result in EAX:EDX
+//
+// Signed idiv works in the same way
+//
+// Dividend is uses[0], it doesn't have a fixed register
+//
+// Quotient (output) is EAX
+
+/*
+tu peux ajouter un opndsRegHint avec 0 comme index, ce qui correspond à EAX
+dans irToAsm.config.physReg = [EAX, EBX, ECX, EDX, EBP, EDI];
+
+ce n'est pas une garantie que l'operande soit placé dans EAX ***
+
+(10:07:45 PM) erick.lavoie: on peut s'arranger pour que ce soit le cas
+(10:08:08 PM) erick.lavoie: en bloquant EAX et EDX pour l'operation,
+(10:08:38 PM) erick.lavoie: ça garanti qu'on peut faire un move du registre de l'operande vers EAX s'il n'y est pas déjà
+(10:08:55 PM) erick.lavoie: donc ça devrait régler le problème de la contrainte sur l'operande
+
+en retournant l'index 0 (EAX) et l'index 3 (EDX) avec "usedRegisters"
+et en mettant useSuppRegs à true
+
+(10:11:11 PM) maximechevalierb@gmail.com/F69F3B26: ok, et j'imagine que le met le ret val hint pour la sortie
+(10:11:17 PM) erick.lavoie: oui
+(10:11:47 PM) maximechevalierb@gmail.com/F69F3B26: ca guaranti que ca va prendre la sortie dans le bon registre?
+(10:12:43 PM) erick.lavoie: le registre devrait être garanti si le registre est bloqué
+*/
+
+/**
+Allocation information for division instruction
+*/
+DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+{
+    // Operand 0 should be placed in EAX if possible
+    if (position == 0) 
+        return 0;
+    else
+        return null;
+}
+
+DivInstr.prototype.regAlloc.outRegHint =  function (instr, config)
+{ 
+    // The output will be in EAX
+    return 0; 
+}
+
+DivInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+{ 
+    // EAX and EDX are reserved by this instruction
+    return [0, 3]; 
+}
+
+// Extra registers must be reserved
+DivInstr.prototype.regAlloc.useSuppRegs = true;
+
+
+
+
+// TODO: ModInstr
+// Clone DivInstr and change output 
+// Remainder (output) is EDX
+
+// TODO: MulInstr
+// x86 *unsigned* mul only takes one reg/mem operand
+// Other operand is fixed to EAX/RAX
+// Dest is fixed to EDX,EAX/RDX,RAX
+//
+// Signed mul has flexible operands
+
+// TODO: MulOvfInstr
+// Same as MulInstr
+
+
+
+
 
