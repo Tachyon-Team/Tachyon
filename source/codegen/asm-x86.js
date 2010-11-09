@@ -300,8 +300,10 @@ x86.Assembler.prototype.memory = function ( disp, base, index, scale )
                "'base' argument should be a register");
     assert((index === undefined) || index.type === x86.type.REG,
                "'index' argument should be a register");
-    assert((scale === undefined) || typeof scale === "number",
-               "'scale' argument should be a number");
+    assert((scale === undefined) || 
+           (typeof scale === "number" &&
+            (scale === 1 || scale === 2 || scale === 4 || scale === 8)),
+               "'scale' argument should be 1,2,4 or 8");
 
     var that = Object.create(x86.Assembler.prototype.memory.prototype);
 
@@ -312,7 +314,7 @@ x86.Assembler.prototype.memory = function ( disp, base, index, scale )
     /** @private */
     that.index = index || null;
     /** @private */
-    that.scale = scale || 0;
+    that.scale = scale || 1;
     
     return that;
 };
@@ -330,7 +332,7 @@ x86.Assembler.prototype.memory.prototype.toString = function (verbose)
                (this.disp !== 0 ? this.disp + "," : "") +
                 this.base + 
                (this.index !== null ? "," + this.index : "") +
-               (this.scale !== 0 ? "," + this.scale : "") + ")";
+               (this.scale !== 1 ? "," + this.scale : "") + ")";
     }
 };
 
@@ -851,9 +853,9 @@ x86.opndFormatGNU = function (opnd)
                 return ((opnd.disp === 0) ? "" : opnd.disp) + "(" +
                         x86.opndFormatGNU(opnd.base) + 
                        ((opnd.index === null) ? 
-                            "" : ", " + x86.opndFormatGNU(opnd.index)) +
-                       ((opnd.index === null || opnd.scale === 0) ? 
-                            "" : opnd.scale.toString()) +
+                            "" : " + " + x86.opndFormatGNU(opnd.index)) +
+                       ((opnd.index === null || opnd.scale === 1) ? 
+                            "" : "*" + opnd.scale.toString()) +
                         ")"; 
             } else 
             {
@@ -1007,7 +1009,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
                     assert((base.isr32() ? index.isr32() : index.isr64()),
                            "index register must have the"+
                            " same width as base ",
-                           reg2);        
+                           base);        
                     rex += ((index.field() >> 3) << 1);
                 }
             }
