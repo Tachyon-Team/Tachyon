@@ -680,32 +680,65 @@ SubInstr.prototype.genCode = function (tltor, opnds)
 MulInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the output value
-    const dest = this.regAlloc.dest;
+    const dst = this.regAlloc.dest;
 
     // If an unsigned integer result is expected
     if (this.type.isUnsigned())
     {
-        // TODO: may want to be smarter here, whichever operand is not EAX/RAX
-        // should get passed as input
+        // Make sure that one of the operands is in EAX
+        if (opnds[0] === EAX)
+        {
+            var op1 = opnds[1];
+        }
+        else if (opnds[1] === EAX)
+        {
+            var op1 = opnds[0];
+        }
+        else
+        {
+            // Put operand 0 in eax
+            tltor.asm.mov(opnds[0], EAX);
+            var op1 = opnds[1];
+        }
+        
+        // If operand 1 is an immediate value, put it into EDX
+        if (op1.type === x86.type.IMM_VAL)
+        {
+            tltor.asm.mov(op1, EDX);
+            var op1 = EDX;
+        }
 
-        // x86 mul only takes one reg/mem operand
-        // Other operand is fixed to EAX/RAX
-        // Dest is fixed to EDX,EAX/RDX,RAX
-        tltor.asm.mul(opnds[1], this.type.numBits);
+        tltor.asm.mul(op1, this.type.numBits);
     }
 
     // Otherwise, a signed result is expected
     else
     {
-        //
-        // TODO: block appropriate registers for this instruction
-        // See what was done for DivInstr
-        //
+        if (opnds[0].type === x86.type.IMM_VAL)
+        {
+            tltor.asm.imul(opnds[1], dst, opnds[0], this.type.numBits);
+        }
 
-        //
-        // TODO: use signed multiply (imul) for signed output
-        //
-        throw 'signed integer multiply not yet supported';
+        else if (opnds[1].type === x86.type.IMM_VAL)
+        {
+            tltor.asm.imul(opnds[0], dst, opnds[1], this.type.numBits);
+        }
+
+        else if (opnds[0] === dst)
+        {
+            tltor.asm.imul(opnds[1], dst, undefined, this.type.numBits);
+        }
+
+        else if (opnds[1] === dst)
+        {
+            tltor.asm.imul(opnds[0], dst, undefined, this.type.numBits);
+        }
+
+        else
+        {
+            tltor.mov(opnds[0], dst);
+            tltor.asm.imul(opnds[1], dst, undefined, this.type.numBits);
+        }
     }
 };
 
@@ -713,22 +746,36 @@ DivInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the return value
     const dest = this.regAlloc.dest;
-   
-    // Move the dividend to EAX if it isn't already in that register
-    if (opnds[0] !== EAX)
+
+    // In the end, we want to have:
+    // - Dividend in EAX
+    // - Divisor NOT in EAX or EDX
+
+    var dvnd = opnds[0];
+    var dsor = opnds[1];
+
+    // If the divisor is in EAX or EDX
+    if (dsor === EAX || dsor === EDX)
     {
-        tltor.asm.mov(opnds[0], EAX);
+        // Swap the divisor with EBX
+        tltor.asm.xchg(dsor, EBX);
+
+        if (dvnd === EBX) dvnd = dsor;
+        dsor = EBX;
     }
 
-    // If the divisor is an immediate value, put it into EBX
-    if (opnds[1].type === x86.type.IMM_VAL)
+    // Otherwise, if the divisor is an immediate value, put it into EBX
+    else if (dsor.type === x86.type.IMM_VAL)
     {
-        tltor.asm.mov(opnds[1], EBX);
-        var divisor = EBX;
+        tltor.asm.mov(dsor, EBX);
+        dsor = EBX;
     }
-    else
+
+    // If the dividend is not in EAX, move it there
+    if (dvnd !== EAX)
     {
-        var divisor = opnds[1];
+        tltor.asm.mov(dvnd, EAX);
+        dvnd = EAX;
     }
 
     // Sign-extend EAX into EDX:EAX using CDQ
@@ -738,30 +785,16 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        tltor.asm.div(divisor, this.type.numBits);
+        tltor.asm.div(dsor, this.type.numBits);
     }
     else
     {
-        tltor.asm.idiv(divisor, this.type.numBits);
+        tltor.asm.idiv(dsor, this.type.numBits);
     }
 };
 
-ModInstr.prototype.genCode = function (tltor, opnds)
-{
-    // Register used for the return value
-    const dest = this.regAlloc.dest;
-
-    // If the output should be unsigned, use unsigned divide, otherwise
-    // use signed divide 
-    if (this.type.isUnsigned())
-    {
-        tltor.asm.div(opnds[1], this.type.numBits);
-    }
-    else
-    {
-        tltor.asm.idiv(opnds[1], this.type.numBits);
-    }
-};
+// Same code as division instruction, different register hint for output
+ModInstr.prototype.genCode = DivInstr.prototype.genCode;
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {

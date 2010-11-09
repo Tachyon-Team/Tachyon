@@ -114,40 +114,6 @@ GetCtxInstr.prototype.regAlloc.outRegHint = function (instr, config)
     return config.context;
 };
 
-
-
-
-
-// TODO: DivInstr
-// Unsigned div divides content of EDX:EAX by src and puts result in EAX:EDX
-//
-// Signed idiv works in the same way
-//
-// Dividend is uses[0]
-// Divisor is uses[1], it doesn't have a fixed register
-//
-// Quotient (output) is EAX
-
-/*
-tu peux ajouter un opndsRegHint avec 0 comme index, ce qui correspond à EAX
-dans irToAsm.config.physReg = [EAX, EBX, ECX, EDX, EBP, EDI];
-
-ce n'est pas une garantie que l'operande soit placé dans EAX ***
-
-(10:07:45 PM) erick.lavoie: on peut s'arranger pour que ce soit le cas
-(10:08:08 PM) erick.lavoie: en bloquant EAX et EDX pour l'operation,
-(10:08:38 PM) erick.lavoie: ça garanti qu'on peut faire un move du registre de l'operande vers EAX s'il n'y est pas déjà
-(10:08:55 PM) erick.lavoie: donc ça devrait régler le problème de la contrainte sur l'operande
-
-en retournant l'index 0 (EAX) et l'index 3 (EDX) avec "usedRegisters"
-et en mettant useSuppRegs à true
-
-(10:11:11 PM) maximechevalierb@gmail.com/F69F3B26: ok, et j'imagine que le met le ret val hint pour la sortie
-(10:11:17 PM) erick.lavoie: oui
-(10:11:47 PM) maximechevalierb@gmail.com/F69F3B26: ca guaranti que ca va prendre la sortie dans le bon registre?
-(10:12:43 PM) erick.lavoie: le registre devrait être garanti si le registre est bloqué
-*/
-
 /**
 Allocation information for division instruction
 */
@@ -155,8 +121,6 @@ DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
 DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
 {
-    // TODO: PROBLEM: operand 1 MUST NOT be in EAX or EDX
-
     // Operand 0 should be placed in EAX if possible (not guaranteed)
     if (position == 0) 
         return 0;
@@ -172,35 +136,65 @@ DivInstr.prototype.regAlloc.outRegHint =  function (instr, config)
 
 DivInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
 { 
-    // EAX and EDX are reserved by this instruction
-    // If the divisor is an integer constant, also reserve EBX
-    if (instr.uses[1] instanceof ConstValue && instr.uses[1].isBoxInt())
-        return [0,1,3];
-    else
-        return [0, 3];
+    // EDX:EAX are reserved for the dividend,
+    // EBX is reverved as a scratch register
+    return [0,1,3];
 }
 
 // Extra registers must be reserved
 DivInstr.prototype.regAlloc.useSuppRegs = true;
 
+/**
+Allocation information for modulo instruction
+*/
+ModInstr.prototype.regAlloc = Object.create(DivInstr.prototype.regAlloc);
 
+ModInstr.prototype.regAlloc.outRegHint =  function (instr, config)
+{ 
+    // The output will be in EDX
+    return 3; 
+}
 
+/**
+Allocation information for multiplication instruction
+*/
+MulInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-// TODO: ModInstr
-// Clone DivInstr and change output 
-// Remainder (output) is EDX
+MulInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+{
+    if (instr.type.isSigned())
+        return null;
 
-// TODO: MulInstr
-// x86 *unsigned* mul only takes one reg/mem operand
-// Other operand is fixed to EAX/RAX
-// Dest is fixed to EDX,EAX/RDX,RAX
-//
-// Signed mul has flexible operands
+    // Operand 0 should be placed in EAX if possible (not guaranteed)
+    if (position == 0) 
+        return 0;
+    else
+        return null;
+}
 
-// TODO: MulOvfInstr
-// Same as MulInstr
+MulInstr.prototype.regAlloc.outRegHint = function (instr, config)
+{
+    if (instr.type.isSigned())
+        return null;
 
+    // The output will be in EAX
+    return 0; 
+}
 
+MulInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+{
+    if (instr.type.isSigned())
+        return null;
+ 
+    // EDX:EAX are reserved for the multiplier,
+    return [0,3];
+}
 
+// Extra registers must be reserved
+MulInstr.prototype.regAlloc.useSuppRegs = true;
 
+/**
+Allocation information for multiplication with overflow instruction
+*/
+MulOvfInstr.prototype.regAlloc = Object.create(MulInstr.prototype.regAlloc);
 

@@ -1325,10 +1325,11 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
     {
         that.
         opndPrefixOpnd(width, dest); // prefix
+
         // opcode = #xb0-#xb7 (for 8 bit registers)
         //      or #xb8-#xbf (for 16/32/64 bit registers)
-        that.
-        gen8( ((width === 8) ? 0xb0 : 0xb8) + (7 & dest.field()) );
+        that.gen8( ((width === 8) ? 0xb0 : 0xb8) + (7 & dest.field()) );
+
         listing(width, that.genImmNum(k, width));
     }
 
@@ -1348,23 +1349,25 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
 
     if (dest.type === x86.type.REG)
     {
-        if (dest.width() === 64 &&
-            x86.isSigned32(k))
+        if (dest.width() === 64 && x86.isSigned32(k))
         {
             general(dest.width());
-        } else 
+        } 
+        else 
         {
             register(dest.width());
         }
-    } else // dest.type !== x86.type.REG
+    } 
+    else // dest.type !== x86.type.REG
     {
         general(width);
     }
+
     return this;
 };
 
 /** @private generic two operands instruction encoding */
-x86.Assembler.prototype.op    = function (op, mnemonic, dest, src, width) 
+x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width) 
 {
     // TODO: Add support for immediate label, see x86-mov 
     const that = this;
@@ -1813,14 +1816,14 @@ x86.Assembler.prototype.std = function ()
 */
 x86.Assembler.prototype.add = function (src, dest, width) 
 { 
-    return this.op(0, "add",dest,src,width); }
-;
+    return this.op(0, "add",dest,src,width); 
+};
 /** Can be chained. 
     @param src
     @param dest
     @param {Number} width optional 
 */
-x86.Assembler.prototype.or  = function (src, dest, width) 
+x86.Assembler.prototype.or = function (src, dest, width) 
 { 
     return this.op(1, "or", dest,src,width); 
 };
@@ -2588,16 +2591,38 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
     Multiply src reg/mem with imm value, put result in dest reg
     */
 
-    /** @ignore Generate the opcode and the Mod RM encoding */
     const that = this;
-    function genOp(opb1, opb2)
+
+    /** @ignore Generate the opcode and the ModRM encoding */
+    function genOp(opb1, opb2, genConst)
     {
+        // For /r:
+        that.opndPrefixRegOpnd(dst, src);
+
         // Generate the opcode
         that.gen8(opb1);
         if (opb2) that.gen8(opb2);
 
         // For /r:
         that.opndModRMSIBRegOpnd(dst, src);
+
+        // Generate the immediate value
+        if (imm)
+            genConst();
+
+        if (that.useListing) 
+        {
+            that.genListing(
+                x86.instrFormat(
+                    'imul', 
+                    x86.regWidthSuffix(dst),
+                    src,
+                    dst
+                ) 
+                +
+                (imm? (',' + x86.opndFormatGNU(imm)):'')
+            );
+        }
     }
 
     // If both a source and destination were specified
@@ -2616,10 +2641,7 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
                 imm.value <= getIntMax(8))
             {
                 // Generate the operation
-                genOp(0x6b);
-                
-                // Generate the immediate value
-                this.gen8(imm.value);
+                genOp(0x6b, undefined, function () { that.gen8(imm.value); });
             }
 
             // If the immediate value fits in an int32
@@ -2627,10 +2649,7 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
                      imm.value <= getIntMax(32))
             {
                 // Generate the operation
-                genOp(0x69);
-                
-                // Generate the immediate value
-                this.gen32(imm.value);
+                genOp(0x69, undefined, function () { that.gen32(imm.value); });
             }
             
             else
@@ -2661,7 +2680,6 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
     }
 };
 
-
 /** Can be chained */
 x86.Assembler.prototype.cdq = function ()
 {
@@ -2686,3 +2704,70 @@ x86.Assembler.prototype.idiv = function (src, width)
 {
     return this.oneOpnd(0xf6, 7, "idiv", src, width);
 };
+
+/** Can be chained */
+x86.Assembler.prototype.xchg = function (src, dst, width)
+{
+    width = src.width? src.width():(dst.width? dst.width():width);
+
+    assert (
+        width && (width == 32 || width == 64),
+        'only 32 and 64 bit encodings supported'
+    );
+
+    var that = this;
+
+    /** @ignore special case for swapping with EAX/RAX */
+    function genOp(dst)
+    {
+        that.opndPrefixOpnd(width, dst);
+
+        // opcode = 0x90 + register indicator
+        that.gen8(0x90 + (7 & dst.field()));
+
+        if (that.useListing)
+        {
+            that.genListing(
+                x86.instrFormat(
+                    'xchg',
+                    x86.regWidthSuffix(dst),
+                    src,
+                    (width == 32)? that.register.eax:that.register.rax
+                )
+            );
+        }
+    }
+
+    // If swapping with EAX/RAX
+    if (src.field() === 0)
+    {
+        genOp(dst);
+    }
+    else if (dst.field() === 0)
+    {
+        genOp(src);
+    }
+
+    // General case, /r encoding
+    else
+    {
+        this.opndPrefixRegOpnd(dst, src);
+        this.gen8(0x87);
+        this.opndModRMSIBRegOpnd(dst, src);
+        
+        if (that.useListing)
+        {
+            this.genListing(
+                x86.instrFormat(
+                    'xchg',
+                    x86.regWidthSuffix(dst),
+                    src,
+                    dst
+                )
+            );
+        }
+    }
+
+    return this;
+};
+

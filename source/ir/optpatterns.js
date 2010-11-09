@@ -588,28 +588,7 @@ function applyPatternsInstr(cfg, block, instr, index)
     if (instr instanceof MulInstr)
     {
         // If the left operand is a power of 2
-        if (instr.uses[1] instanceof ConstValue &&
-            instr.uses[1].isBoxInt() &&
-            isPowerOf2(instr.uses[1].value))
-        {
-            // Replace the multiplication by a left shift
-            block.replInstrAtIndex(
-                index,
-                new LsftInstr(
-                    instr.uses[0],
-                    ConstValue.getConst(
-                        highestBit(instr.uses[1].getImmValue()),
-                        instr.type
-                    )
-                )
-            );
-
-            // A change was made
-            return true;
-        }
-
-        // If the right operand is a power of 2
-        else if (instr.uses[0] instanceof ConstValue &&
+        if (instr.uses[0] instanceof ConstValue &&
                  instr.uses[0].isBoxInt() &&
                  isPowerOf2(instr.uses[0].value))
         {
@@ -620,7 +599,28 @@ function applyPatternsInstr(cfg, block, instr, index)
                     instr.uses[1],
                     ConstValue.getConst(
                         highestBit(instr.uses[0].getImmValue()),
-                        instr.type
+                        IRType.pint
+                    )
+                )
+            );
+
+            // A change was made
+            return true;
+        }
+
+        // If the right operand is a power of 2
+        else if (instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].isBoxInt() &&
+            isPowerOf2(instr.uses[1].value))
+        {
+            // Replace the multiplication by a left shift
+            block.replInstrAtIndex(
+                index,
+                new LsftInstr(
+                    instr.uses[0],
+                    ConstValue.getConst(
+                        highestBit(instr.uses[1].getImmValue()),
+                        IRType.pint
                     )
                 )
             );
@@ -644,7 +644,7 @@ function applyPatternsInstr(cfg, block, instr, index)
                     instr.uses[0],
                     ConstValue.getConst(
                         highestBit(instr.uses[1].getImmValue()),
-                        instr.type
+                        IRType.pint
                     ),
                     instr.targets[0],
                     instr.targets[1]
@@ -666,7 +666,7 @@ function applyPatternsInstr(cfg, block, instr, index)
                     instr.uses[1],
                     ConstValue.getConst(
                         highestBit(instr.uses[0].getImmValue()),
-                        instr.type
+                        IRType.pint
                     ),
                     instr.targets[0],
                     instr.targets[1]
