@@ -280,7 +280,7 @@ v8::Handle<v8::Value> freeMemoryBlock(const v8::Arguments& args)
 
 v8::Handle<v8::Value> getBlockAddress(const v8::Arguments& args)
 {
-    if (args.Length() < 1 && args.Length() > 2)
+    if (args.Length() < 1 || args.Length() > 2)
     {
         printf("Error in getBlockAddress -- 1 or 2 argument expected\n");
         exit(1);
