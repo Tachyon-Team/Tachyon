@@ -134,6 +134,24 @@ IRType.prototype.isUnsigned = function ()
 }
 
 /**
+Test if the type is a signed integer type
+*/
+IRType.prototype.isSigned = function ()
+{
+    switch (this)
+    {
+        case IRType.i8:
+        case IRType.i16:
+        case IRType.i32:
+        case IRType.i64:
+        return true;
+
+        default:
+        return false;
+    }
+}
+
+/**
 Test if the type is a floating-point type
 */
 IRType.prototype.isFP = function ()
