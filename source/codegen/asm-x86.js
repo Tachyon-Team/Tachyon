@@ -474,7 +474,7 @@ x86.Assembler.prototype.register.prototype.field = function ()
     return this.value & 0xF 
 };
 /** returns the width value of the register */
-x86.Assembler.prototype.register.prototype.width    = function () 
+x86.Assembler.prototype.register.prototype.width = function () 
 {
     if      (this.value < 16) { return 64;} 
     else if (this.value < 32) { return 32;}
@@ -483,6 +483,29 @@ x86.Assembler.prototype.register.prototype.width    = function ()
     else if (this.value < 80) { return 128;}
     else                      { return 8;}
 };
+/** returns the (sub)-register corresponding to the given width */
+x86.Assembler.prototype.register.prototype.subReg = function (width)
+{
+    var field = this.field();
+
+    const reg = x86.Assembler.prototype.register;
+
+    // Switch on the number of bits to store
+    switch (width)
+    {
+        case 64:
+        return reg.reg64(srcRegNo);
+
+        case 32:
+        return reg.reg32(srcRegNo);
+
+        case 16:
+        return reg.reg16(srcRegNo);
+
+        case 8:
+        return reg.reg8(srcRegNo);
+    }
+}
 
 /** Predefined register object */ 
 x86.Assembler.prototype.register.al = 

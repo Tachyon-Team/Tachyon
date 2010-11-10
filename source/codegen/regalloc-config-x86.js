@@ -198,3 +198,19 @@ Allocation information for multiplication with overflow instruction
 */
 MulOvfInstr.prototype.regAlloc = Object.create(MulInstr.prototype.regAlloc);
 
+/**
+Allocation information for store instruction
+*/
+LoadInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+// All operands must be in registers
+LoadInstr.prototype.regAlloc.opndsRegRequired = true;
+
+/**
+Allocation information for store instruction
+*/
+StoreInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+// All operands must be in registers
+StoreInstr.prototype.regAlloc.opndsRegRequired = true;
+

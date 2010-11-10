@@ -1563,41 +1563,153 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
 
 LoadInstr.prototype.genCode = function (tltor, opnds)
 {
-    const dest = this.regAlloc.dest;
+    /*
+    SIB = Scale, Index, Base
 
-    // Boxed return value case
-    if (this.type === IRType.box)
+    mem(disp, base, index, scale)
+
+    base    : register
+    disp    : immediate offset
+    index   : register              (optional)
+    scale   : applied to index reg  (optional)
+    - 1, 2, 4, 8
+    */
+
+    assert (
+        opnds[0].type === x86.type.REG,
+        'cannot use immediate values as pointers'
+    );
+
+    assert (
+        opnds[1].type === x86.type.REG || opnds[1].type === x86.type.IMM_VAL,
+        'cannot use memory locations as offsets'
+    );
+
+    const dst = this.regAlloc.dest;
+
+    // If the base pointer is a raw pointer
+    if (this.uses[0].type === IRType.rptr)
     {
+        var ptr = opnds[0];
+    }
+    else
+    {
+        // Mask out the tag bits
+        // ptr = ptr & ~TAG_REF_MASK
+        // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
+        tltor.asm.and(opnds[0], ~TAG_REF_MASK);
+    }
 
-        if (opnds[0].type === x86.type.REG &&
-            opnds[1].type === x86.type.REG)
+    // If the offset is a register
+    if (opnds[1].type === x86.type.REG)
+    {
+        // Use the index field
+        var memLoc = mem(0, opnds[0], opnds[1]);
+    }
+    else
+    {
+        // Use the displacement field
+        var memLoc = mem(opnds[1].value, opnds[0]);
+    }
+
+    // If the value we are loading needs to be extended
+    if (this.type.numBits < IRType.pint.numBits)
+    {
+        // If we are loading a signed value
+        if (this.type.isSigned())
         {
-            assert(this.uses[0].type === IRType.rptr &&
-                   this.uses[1].type.isInt());
-
-            //   Displacement in a register case 
-            if (opnds[1] !== dest)
-            {
-                tltor.asm.mov(opnds[1], dest);
-            }
-
-            tltor.asm.
-            add(opnds[0], dest).
-            mov(mem(0, dest), dest);
-
-        } else if (opnds[0].type === x86.type.REG &&
-                   opnds[1].type === x86.type.IMM_VAL)
-        {
-            assert(this.uses[0].type === IRType.rptr &&
-                   this.uses[1].type.isInt());
-
-            //   Constant displacement
-            tltor.asm.mov(mem(opnds[1].value, opnds[0]), dest);
+            // Sign-extend the value
+            tltor.asm.movsx(memLoc, dst, this.type.numBits);
         }
+        else
+        {
+            // Zero-extend the value
+            tltor.asm.movsz(memLoc, dst, this.type.numBits);
+        }
+    }
+    else
+    {
+        // Load the value directly
+        tltor.asm.mov(memLoc, dst, this.type.numBits);
     }
 };
 
-// TODO: StoreInstr.prototype.genCode = function (tltor, opnds)
+StoreInstr.prototype.genCode = function (tltor, opnds)
+{
+    /*
+    SIB = Scale, Index, Base
+
+    mem(disp, base, index, scale)
+
+    base    : register
+    disp    : immediate offset
+    index   : register              (optional)
+    scale   : applied to index reg  (optional)
+    - 1, 2, 4, 8
+    */
+
+    assert (
+        opnds[0].type === x86.type.REG,
+        'cannot use immediate values as pointers'
+    );
+
+    assert (
+        opnds[1].type === x86.type.REG || opnds[1].type === x86.type.IMM_VAL,
+        'cannot use memory locations as offsets'
+    );
+
+    assert (
+        opnds[2].type === x86.type.REG || opnds[2].type === x86.type.IMM_VAL,
+        'cannot perform store from memory to memory'
+    );
+
+    const dst = this.regAlloc.dest;
+
+    // If the base pointer is a raw pointer
+    if (this.uses[0].type === IRType.rptr)
+    {
+        var ptr = opnds[0];
+    }
+    else
+    {
+        // Mask out the tag bits
+        // ptr = ptr & ~TAG_REF_MASK
+        // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
+        tltor.asm.and(opnds[0], ~TAG_REF_MASK);
+    }
+
+    // If the offset is a register
+    if (opnds[1].type === x86.type.REG)
+    {
+        // Use the index field
+        var memLoc = mem(0, opnds[0], opnds[1]);
+    }
+    else
+    {
+        // Use the displacement field
+        var memLoc = mem(opnds[1].value, opnds[0]);
+    }
+
+    // Get the size of the value to be stored
+    var typeSize = this.uses[2].type.numBits;
+
+    // If the value to store is an immediate
+    if (opnds[2].type === x86.type.IMM_VAL)
+    {
+        // Store it directly
+        tltor.asm.mov(opnds[2], memLoc, typeSize);
+    }
+
+    // Otherwise, the value to store is in a register
+    else
+    {
+        // Get the register corresponding to the type size
+        var srcReg = opnds[2].subReg(typeSize);
+
+        // Store the value to memory
+        tltor.asm.mov(srcReg, memLoc, typeSize);
+    }
+}
 
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {

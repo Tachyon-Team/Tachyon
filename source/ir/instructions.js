@@ -21,7 +21,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // Keep both load/store with and without mask
 // - RawLoad? w/
 //      - No masking,
-//      - base_ptr + offset + index + multiplier
+//      - base_ptr + offset + index * multiplier
 
 // TODO: cast type in load instruction, load as?
 
