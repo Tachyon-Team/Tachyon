@@ -422,6 +422,11 @@ ConstValue.prototype.getImmValue = function ()
         return this.value;
     }
 
+    if (this.type === IRType.rptr)
+    {
+        return this.value;
+    }
+
     if (this.type === IRType.bool)
     {
         return this.value;

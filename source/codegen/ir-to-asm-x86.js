@@ -1716,7 +1716,10 @@ GetCtxInstr.prototype.genCode = function (tltor, opnds)
     // No op
 };
 
-//SetCtxInstr
+SetCtxInstr.prototype.genCode = function (tltor, opnds)
+{
+    tltor.asm.mov(opnds[0], irToAsm.config.context);
+}
 
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {

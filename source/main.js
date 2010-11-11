@@ -14,7 +14,31 @@ function testIR()
 {
     //var ast = parse_src_file('programs/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
-    var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
+    //var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
+
+
+    var memBlock = allocMemoryBlock(128);
+    
+    function getAddrInt(block, idx)
+    {
+        var blockAddr = getBlockAddress(memBlock, idx);
+
+        var addr = 0;
+        for (var i = blockAddr.length - 1; i >= 0; --i)
+            addr += addr * 256 + blockAddr[i];
+
+        return addr;
+    }
+
+    var blockAddr = getAddrInt(memBlock, 0);
+
+    print(blockAddr);
+
+    for (var i = 0; i < 128; ++i)
+        memBlock[i] = 0;
+    
+
+    var ast = parse_src_str('function foo() { iir.set_ctx(iir.constant(IRType.rptr,' + blockAddr + ')); iir.store(IRType.i32, iir.get_ctx(), iir.constant(IRType.i32, 0), iir.constant(IRType.i32, 16)); } return foo();');
 
     //pp(ast);
 
@@ -30,12 +54,13 @@ function testIR()
     
     printInstrNames(ir);
 
-    
     var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
     print(backend.listing(codeblock));
     var result = backend.execute(codeblock);
-    print('result: ' + (result >> 2));
 
+    print('result: ' + (result >> 2));
+    
+    
 
     /*
     var func = staticEnv.getBinding('newObject');
