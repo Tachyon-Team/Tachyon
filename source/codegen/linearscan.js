@@ -1175,7 +1175,7 @@ allocator.orderBlocks = function (cfg)
 /**
 Perform instruction numbering on a control flow graph
 */
-allocator.numberInstrs = function (cfg, order)
+allocator.numberInstrs = function (cfg, order, config)
 {
     var nextNo = 2;
     var inc = allocator.numberInstrs.inc;
@@ -1227,7 +1227,7 @@ allocator.numberInstrs = function (cfg, order)
         {
             instr = block.instrs[j];
 
-            if (instr.regAlloc.useSuppRegs === true)
+            if (instr.regAlloc.usedRegisters(instr, config))
             {
                 // For instructions using supplementary registers, 
                 // we need to increment by twice the value
@@ -1365,7 +1365,7 @@ allocator.liveIntervals = function (cfg, order, config)
                 // instruction
                 //print( use.regAlloc.interval);
 
-                if (instr.regAlloc.useSuppRegs === true)
+                if (instr.regAlloc.usedRegisters(instr, config))
                 {
                     // For instructions using supplementary registers, 
                     // we separate argument position from return
@@ -1472,7 +1472,7 @@ allocator.fixedIntervals = function (cfg, config)
 
     for (it = cfg.getInstrItr(); it.valid(); it.next())
     {
-        if (it.get().regAlloc.useSuppRegs === true)
+        if (it.get().regAlloc.usedRegisters(it.get(), config))
         {
             // Add a fixed interval between the arguments position
             // and the return value position
@@ -1864,7 +1864,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 
     @param cfg          Control Flow Graph 
 */
-allocator.assign = function (cfg)
+allocator.assign = function (cfg, config)
 {
     var it, instr, opndIt, opnds, dest, pos, opnd;
     for (it = cfg.getInstrItr(); it.valid(); it.next())
@@ -1881,7 +1881,7 @@ allocator.assign = function (cfg)
 
             if (opnd instanceof IRInstr)
             {
-                if (instr.regAlloc.useSuppRegs === true)
+                if (instr.regAlloc.usedRegisters(instr, config))
                 {
                     opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
                 } else                 

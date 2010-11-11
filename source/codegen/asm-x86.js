@@ -22,17 +22,6 @@ x86.target.x86    = 0;
 /** x86 64 bit target */
 x86.target.x86_64 = 1;
 
-/** Throw an exception with message and args */
-x86.error = function (message)
-{
-    var err = message;
-    for (var i=1; i<arguments.length; i++)
-    {
-        err += arguments[i];
-    }
-    throw "x86Error: " + err;
-};
-
 /** @namespace */
 x86.type = {};
 /** Generic x86 object */
@@ -490,20 +479,20 @@ x86.Assembler.prototype.register.prototype.subReg = function (width)
 
     const reg = x86.Assembler.prototype.register;
 
-    // Switch on the number of bits to store
+    // Switch on the number of bits
     switch (width)
     {
         case 64:
-        return reg.reg64(srcRegNo);
+        return reg.reg64(field);
 
         case 32:
-        return reg.reg32(srcRegNo);
+        return reg.reg32(field);
 
         case 16:
-        return reg.reg16(srcRegNo);
+        return reg.reg16(field);
 
         case 8:
-        return reg.reg8(srcRegNo);
+        return reg.reg8(field);
     }
 }
 
@@ -867,7 +856,7 @@ x86.opndFormatGNU = function (opnd)
             return "$" + String(opnd.value);
         case x86.type.IMM_LBL: 
             // TODO: Implement Immediate Label formatting
-            x86.error("Immediate label formatting unimplemented");
+            error("Immediate label formatting unimplemented");
         case x86.type.REG:
             return "%" + opnd.name;
         case x86.type.MEM:
@@ -1039,7 +1028,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
             break;
 
         default:
-            x86.error("unknown operand '", opnd, "'");
+            error("unknown operand '", opnd, "'");
     }
 
     this.opndSizeOverridePrefix(width); 
@@ -1090,7 +1079,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
 
         case x86.type.GLO:
             // TODO: Remove if not needed
-            x86.error("unimplemented for opnd of type global");
+            error("unimplemented for opnd of type global");
             break;
 
         case x86.type.MEM:
@@ -1175,7 +1164,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             break;
 
         default:
-            x86.error("unkown operand", opnd);
+            error("unkown operand", opnd);
     }
     return this;
 };
@@ -1446,7 +1435,7 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
         genOp(dest, src, false);
     } else 
     {
-        x86.error("invalid operand combination", dest, src);
+        error("invalid operand combination", dest, src);
     }
    return this;
 };
@@ -2187,7 +2176,7 @@ x86.Assembler.prototype.jmp = function (opnd1, opnd2)
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
         default:
-            x86.error("invalid operand type", opnd1.type); 
+            error("invalid operand type", opnd1.type); 
     } 
 };
 
@@ -2206,7 +2195,7 @@ x86.Assembler.prototype.call = function (opnd1, opnd2)
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.callRel32, "call",opnd1, opnd2);
         default:
-            x86.error("invalid operand type", opnd1.type); 
+            error("invalid operand type", opnd1.type); 
     } 
 };
 

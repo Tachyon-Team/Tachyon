@@ -14,6 +14,20 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // TODO: refactor block patterns so that CFG is never left in inconsistent state
 // This way the CFG can be validated before and after each pattern
 //
+// Implement patterns in separate function, add to a list of patterns
+//
+// Have possible validation test after each block pattern application
+//
+// Work incrementally, begin with empty list of patterns, add more,
+// see what breaks...
+//
+// Make pattern class, give patterns
+// - name
+// - func to print info when applying
+// - match test function
+// - apply func
+//
+// Works for instr level too?
 
 /**
 Apply peephole optimization patterns to a CFG
@@ -100,12 +114,30 @@ function applyPatternsBlock(cfg, block)
                 if (branch.targets[j] === block)
                     branch.targets[j] = destBlock;
 
-            // Add a new incoming value to the dest phi
-            destPhi.addIncoming(use, pred);
-
             // Add the block predecessor-successor links
             destBlock.addPred(pred);
             pred.addSucc(destBlock);
+
+            // Add a new incoming value to the dest phi
+            destPhi.addIncoming(use, pred);
+
+            /*
+            // For each other phi node in the block, give it an incoming
+            // value for this new predecessor
+            for (var j = 0; j < destBlock.instrs.length; ++j)
+            {
+                var instr = destBlock.instrs[j];
+
+                if (!(instr instanceof PhiInstr))
+                    break;
+
+                if (instr === origPhi)
+                    continue;
+
+                var inc = instr.getIncoming(block);
+                instr.addIncoming(inc, pred);
+            }
+            */
 
             // Move back one phi predecessor index
             --i;
@@ -113,6 +145,9 @@ function applyPatternsBlock(cfg, block)
             // Set the changed flag
             changed = true;
         }
+
+        if (changed)
+            return true;
     }
 
     //
@@ -165,6 +200,9 @@ function applyPatternsBlock(cfg, block)
         {
             var pred = phiPreds[j];
             var use = phiUses[j];
+
+            //print(block.getBlockName());
+            //print('pred: ' + pred.getBlockName());
 
             var predBranch = pred.getLastInstr();
 
@@ -271,12 +309,12 @@ function applyPatternsBlock(cfg, block)
     {
         //print('eliminating block with no predecessors: ' + block.getBlockName());
 
+        // Remove the block from the CFG
+        cfg.remBlock(block);
+
         // Remove all instructions in the block
         while (block.instrs.length > 0)
             block.remInstrAtIndex(0);
-
-        // Remove the block from the CFG
-        cfg.remBlock(block);
 
         // The CFG was changed
         return true;
@@ -388,7 +426,7 @@ function applyPatternsBlock(cfg, block)
     {
         var succ = block.succs[0];
     
-        //print('got block: ' + block.getBlockName());
+        //print('block w/ no instrs, 1 succ: ' + block.getBlockName());
 
         // Copy the predecessor list for this block
         var preds = block.preds.slice(0);
@@ -418,7 +456,7 @@ function applyPatternsBlock(cfg, block)
                     continue PRED_LOOP;
             }
 
-            //print('simplifying no instructions, single successor: ' + block.getBlockName());
+            //print('simplifying no instructions, single successor: ' + block.getBlockName() + ', succ: ' + succ.getBlockName());
 
             // Remove the predecessor from our predecessor list
             block.remPred(pred);
@@ -446,6 +484,10 @@ function applyPatternsBlock(cfg, block)
                 // If this instruction is not a phi node, stop
                 if (!(instr instanceof PhiInstr))
                     break;
+
+                assert(arraySetHas(succ.preds, block));
+                //print('succ instr: ' + instr);
+                //print('pred: ' + block.getBlockName());
 
                 // Add an incoming value for the predecessor
                 var inVal = instr.getIncoming(block);

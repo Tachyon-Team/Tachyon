@@ -241,6 +241,24 @@ tests.ir.infiniteLoop = function ()
 }
 
 /**
+Nested loops
+*/
+tests.ir.nestedLoops = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                           \
+            function nest()                         \
+            {                                       \
+                var v = 0;                          \
+                for (var i = 0; i < 10; ++i)        \
+                    for (var j = 0; j < 10; ++j)    \
+                        v = i + j;                  \
+            }                                       \
+        "
+    );
+}
+
+/**
 Switch statement
 */
 tests.ir.switchStmt = function ()

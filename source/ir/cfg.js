@@ -430,6 +430,7 @@ Remove a basic block from this CFG
 ControlFlowGraph.prototype.remBlock = function (block)
 {
     //print('Removing block: ' + block.label);
+    //print('num succs: ' + block.succs.length);
 
     // Remove this block from the successors of our predecessors
     for (var i = 0; i < block.preds.length; ++i)
@@ -443,6 +444,8 @@ ControlFlowGraph.prototype.remBlock = function (block)
     for (var i = 0; i < block.succs.length; ++i)
     {
         var succ = block.succs[i];
+
+        //print('succ: ' + succ.getBlockName());
 
         // For each instruction of the successor
         for (var j = 0; j < succ.instrs.length; ++j)

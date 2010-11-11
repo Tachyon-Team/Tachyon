@@ -914,8 +914,16 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
 
 MulOvfInstr.prototype.genCode = function (tltor, opnds)
 {
-    // TODO: use imul instruction
-    throw 'MulOvfInstr not yet implemented'
+    // Reuse the implementation of the multiplication without overflow
+    MulInstr.prototype.genCode.apply(this, [tltor, opnds]);
+
+    const normalTarget = this.targets[0];
+    const overflowTarget = this.targets[1];
+
+    // Handle jump to exception
+    tltor.asm.
+    jno(tltor.label(normalTarget, normalTarget.label)).
+    jmp(tltor.label(overflowTarget, overflowTarget.label));
 }
 
 LsftOvfInstr.prototype.genCode = function (tltor, opnds)
@@ -1597,7 +1605,7 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
         // Mask out the tag bits
         // ptr = ptr & ~TAG_REF_MASK
         // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
-        tltor.asm.and(opnds[0], ~TAG_REF_MASK);
+        tltor.asm.and($(~TAG_REF_MASK), opnds[0]);
     }
 
     // If the offset is a register
@@ -1675,7 +1683,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         // Mask out the tag bits
         // ptr = ptr & ~TAG_REF_MASK
         // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
-        tltor.asm.and(opnds[0], ~TAG_REF_MASK);
+        tltor.asm.and($(~TAG_REF_MASK), opnds[0]);
     }
 
     // If the offset is a register

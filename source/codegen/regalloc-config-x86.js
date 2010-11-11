@@ -24,10 +24,7 @@ IRValue.prototype.regAlloc = {
     /** Tells if operands of an instruction must be in registers */
     opndsRegRequired:false,
 
-    /** Tells if supplementary registers are used by the instruction */
-    useSuppRegs:false,
-
-    /** List all register indexes used by a given instruction */
+    /** List all register indices used by a given instruction */
     usedRegisters:function (instr, config) { return null; }
 };
 
@@ -52,8 +49,6 @@ CallInstr.prototype.regAlloc.outRegHint = function (instr, config)
 {
     return config.retValIndex;
 };
-
-CallInstr.prototype.regAlloc.useSuppRegs = true;
 
 CallInstr.prototype.regAlloc.usedRegisters = function (instr, config)
 {
@@ -141,9 +136,6 @@ DivInstr.prototype.regAlloc.usedRegisters = function (instr, config)
     return [0,1,3];
 }
 
-// Extra registers must be reserved
-DivInstr.prototype.regAlloc.useSuppRegs = true;
-
 /**
 Allocation information for modulo instruction
 */
@@ -189,9 +181,6 @@ MulInstr.prototype.regAlloc.usedRegisters = function (instr, config)
     // EDX:EAX are reserved for the multiplier,
     return [0,3];
 }
-
-// Extra registers must be reserved
-MulInstr.prototype.regAlloc.useSuppRegs = true;
 
 /**
 Allocation information for multiplication with overflow instruction

@@ -56,7 +56,7 @@ backend.compile = function (ir, print, primitives)
         cfg = fcts[k].virginCFG;
 
         order = allocator.orderBlocks(cfg);
-        allocator.numberInstrs(cfg, order);
+        allocator.numberInstrs(cfg, order, irToAsm.config);
 
     
         print("******* Before register allocation ******");
@@ -129,7 +129,7 @@ backend.compile = function (ir, print, primitives)
 
         // Add physical registers and memory location to operands
         // of every instruction
-        allocator.assign(cfg); 
+        allocator.assign(cfg, irToAsm.config); 
     
         // SSA form deconstruction and linear scan resolution 
         order = allocator.resolve(cfg, liveIntervals, order);
@@ -218,11 +218,9 @@ backend.usedPrimitives = function (ir)
         if (arraySetHas(visited, func))
             continue;
 
-        if (func.funcName == "putPropVal" ||
-            func.funcName == "getPropVal" || 
-            func.funcName == "getGlobal" ||
-            func.funcName == "getGlobalFunc" || 
-            func.funcName == "newObject")
+        if (//func.funcName == "putPropVal" ||
+            //func.funcName == "getGlobal" ||
+            func.funcName == "getGlobalFunc")
             continue;
 
         for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
@@ -236,11 +234,9 @@ backend.usedPrimitives = function (ir)
 
                 if (use instanceof IRFunction)
                 {
-                    if (use.funcName == "putPropVal" || 
-                        use.funcName == "getPropVal" || 
-                        use.funcName == "getGlobal" ||
-                        use.funcName == "getGlobalFunc" ||
-                        use.funcName == "newObject")
+                    if (//use.funcName == "putPropVal" || 
+                        //use.funcName == "getGlobal" ||
+                        use.funcName == "getGlobalFunc")
                         continue;
 
                     workList = workList.concat(use.getChildrenList());

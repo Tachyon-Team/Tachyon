@@ -828,6 +828,8 @@ Replace a predecessor block by another, keeping the corresponding use
 */
 PhiInstr.prototype.replPred = function (oldPred, newPred)
 {
+    //print('Replacing pred for: ' + this + ', ' + oldPred.getBlockName() + ', ' + newPred.getBlockName());
+
     for (var i = 0; i < this.preds.length; ++i)
     {
         if (this.preds[i] === oldPred)
@@ -848,7 +850,7 @@ Remove a phi predecessor and the corresponding use
 */
 PhiInstr.prototype.remPred = function (pred)
 {
-    //print('Removing pred for: ' + this);
+    //print('Removing pred for: ' + this + ', ' + pred.getBlockName());
 
     // For each predecessor of the phi node
     for (var k = 0; k < this.preds.length; ++k)
@@ -868,7 +870,7 @@ PhiInstr.prototype.remPred = function (pred)
                 use.remDest(this);
 
             // Break out of this loop
-            break;
+            return;
         }
     }
 }
