@@ -10,30 +10,45 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-//
-// TODO: refactor block patterns so that CFG is never left in inconsistent state
-// This way the CFG can be validated before and after each pattern
-//
-// Implement patterns in separate function, add to a list of patterns
-//
-// Have possible validation test after each block pattern application
-//
-// Work incrementally, begin with empty list of patterns, add more,
-// see what breaks...
-//
-// Make pattern class, give patterns
-// - name
-// - func to print info when applying
-// - match test function
-// - apply func
-//
-// Works for instr level too?
+/**
+Apply all peephole optimization patterns to a CFG
+*/
+function applyPatternsCFG(cfg, maxItrs)
+{
+    return applyPatternsListCFG(
+        blockPatterns,
+        cfg,
+        maxItrs,
+        false,
+        false
+    );
+}
+
+/**
+Remove all dead blocks from a CFG
+*/
+function remDeadBlocks(cfg)
+{
+    return applyPatternsListCFG(
+        [blockPatterns.remDead],
+        cfg,
+        Infinity,
+        false,
+        false
+    );
+}
 
 /**
 Apply peephole optimization patterns to a CFG
 */
-function applyPatternsCFG(cfg, maxItrs)
+function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
 {
+    if (printInfo)
+    {
+        print('Processing CFG of function "' + cfg.ownerFunc.funcName + '"');
+        //print(cfg);
+    }
+
     // If no maximum iteration count is set, there is no maximum
     if (!maxItrs)
         maxItrs = Infinity;
@@ -55,11 +70,21 @@ function applyPatternsCFG(cfg, maxItrs)
             var block = cfg.blocks[i];
 
             // Apply block-level patterns to the block
-            var result = applyPatternsBlock(cfg, block);
+            var result = applyPatternsBlock(blockPatterns, cfg, block, printInfo);
 
             // If any changes occurred, set the changed flag
             if (result)
                 changed = true;
+
+            // If the validation flag is on
+            if (validate)
+            {
+                // Remove any dead blocks
+                remDeadBlocks(cfg);
+
+                // Validate the CFG
+                cfg.validate();
+            }
         }
     }
 
@@ -68,113 +93,298 @@ function applyPatternsCFG(cfg, maxItrs)
 }
 
 /**
-Apply block-level optimization patterns to a block
+@class Optimization pattern applicable to a basic block or instruction
 */
-function applyPatternsBlock(cfg, block)
+function optPattern(
+    name,
+    matchFunc,
+    applyFunc
+)
 {
-    //
-    // Aggregate phi nodes used only by other phi nodes
-    //
+    /**
+    Optimization pattern name
+    @field
+    */
+    this.name = name;
 
-    // If this block contains only a phi node used only by another phi node
-    if (
-        block.instrs.length == 2 &&
-        block.instrs[0] instanceof PhiInstr &&
-        block.instrs[0].dests.length == 1 &&
-        block.instrs[0].dests[0] instanceof PhiInstr &&
-        block.instrs[1] instanceof JumpInstr &&
-        block.succs[0].instrs[0] === block.instrs[0].dests[0]
-    )
+    /**
+    Element match test method
+    @function
+    */
+    this.match = matchFunc;
+
+    /**
+    Pattetn application method
+    @function
+    */
+    this.apply = applyFunc;
+}
+
+/**
+List of block-level optimization patterns
+*/
+var blockPatterns = [];
+
+/**
+List of instruction-level optimization patterns
+*/
+var instrPatterns = [];
+
+/**
+Eliminate blocks with no predecessors
+*/
+blockPatterns.remDead = new optPattern(
+    'dead block elimination',
+    function match(cfg, block)
     {
-        var origPhi = block.instrs[0];
-        var destPhi = origPhi.dests[0];
-        var destBlock = block.succs[0];
+        // If this block has no predecessors, and it is not the entry block
+        return (
+            block.preds.length == 0 &&
+            block !== cfg.entry
+        );
+    },
+    function apply(cfg, block, printInfo)
+    {
+        // Remove the block from the CFG
+        cfg.remBlock(block);
+
+        // Remove all instructions in the block to
+        // clear use-dest links
+        while (block.instrs.length > 0)
+            block.remInstrAtIndex(0);
+
+        // The CFG was changed
+        return true;
+    }
+);
+blockPatterns.push(blockPatterns.remDead);
+
+/**
+Merge blocks with only one destination
+*/
+blockPatterns.predSuccMerge = new optPattern(
+    'predecessor-successor merge',
+    function match(cfg, block)
+    {
+        // If this block has only one successor, which has only one predecessor
+        // and the block is not terminated by an exception-producing instruction
+        return (
+            block.succs.length == 1 && 
+            block.succs[0].preds.length == 1 &&
+            block !== block.succs[0] &&
+            !(block.getLastInstr() instanceof ExceptInstr)
+        );
+    },
+    function apply(cfg, block, printInfo)
+    {
+        //print('merging block with one succ: ' + block.getBlockName());
+        //print('successor: ' + block.succs[0].getBlockName());
+
+        var succ = block.succs[0];
+
+        // For each instruction of the successor
+        for (var iIndex = 0; iIndex < succ.instrs.length; ++iIndex)
+        {
+            var instr = succ.instrs[iIndex];
+            
+            // If the instruction is a phi node
+            if (!(instr instanceof PhiInstr))
+                break
+ 
+            // Ensure that this phi node has only one predecessor
+            assert (
+                instr.preds.length == 1, 
+                'phi node in merged block should have one pred:\n' +
+                instr
+            );
+
+            var phiIn = instr.uses[0];
+
+            // Remove the edge from the use to the phi node
+            if (phiIn instanceof IRInstr)
+                phiIn.remDest(instr);
+
+            // For each dest of the phi node
+            for (var k = 0; k < instr.dests.length; ++k)
+            {
+                // Replace all uses of the phi by uses of its input
+                instr.dests[k].replUse(instr, phiIn);
+                if (phiIn instanceof IRInstr)
+                    phiIn.addDest(instr.dests[k]);
+            }
+        }
+
+        // Remove the final branch instruction from the predecessor
+        block.remInstrAtIndex(block.instrs.length - 1);
+
+        // For each non-phi instruction of the successor
+        for (; iIndex < succ.instrs.length; ++iIndex)
+        {
+            var instr = succ.instrs[iIndex];
+
+            // Add the instruction to the predecessor
+            block.addInstr(instr);
+        }
+
+        //print('Number of succ succs: ' + succ.succs.length);
+
+        // For each successor of the successor
+        for (var j = 0; j < succ.succs.length; ++j)
+        {
+            var succSucc = succ.succs[j];
+
+            // For each instruction of the successor's successor
+            for (var k = 0; k < succSucc.instrs.length; ++k)
+            {
+                var instr = succSucc.instrs[k];
+                
+                // If the instruction is not a phi node, stop
+                if (!(instr instanceof PhiInstr))
+                    break;
+
+                // Change references to the successor to references
+                // to the predecessor instead
+                instr.replPred(succ, block);
+            }
+        }
+
+        // Remove the successor block from the CFG
+        cfg.remBlock(succ);
+
+        // The CFG was changed
+        return true;
+    }
+);
+blockPatterns.push(blockPatterns.predSuccMerge);
+
+/**
+Jump over blocks with no instructions and a single successor
+*/
+blockPatterns.emptyBypass = new optPattern(
+    'empty block bypassing',
+    function match(cfg, block)
+    {
+        // If this block has only one successor, no instructions but a branch, 
+        // and the block is not terminated by an exception-producing instruction
+        return (
+            block.succs.length == 1 && 
+            block.succs[0] !== block &&
+            block.instrs.length == 1 &&
+            !(block.getLastInstr() instanceof ExceptInstr)
+        );
+    },
+    function apply(cfg, block, printInfo)
+    {
+        var succ = block.succs[0];
+    
+        //print('block w/ no instrs, 1 succ: ' + block.getBlockName());
+
+        // Copy the predecessor list for this block
+        var preds = block.preds.slice(0);
 
         // Flag to indicate the CFG was changed
         var changed = false;
 
-        // For each incoming value of the origin phi
-        for (var i = 0; i < origPhi.uses.length; ++i)
+        // For each predecessor
+        PRED_LOOP:
+        for (var j = 0; j < preds.length; ++j)
         {
-            var use = origPhi.uses[i];
-            var pred = origPhi.preds[i];
+            var pred = preds[j];
 
-            // If the destination block has this predecessor, skip it
-            if (arraySetHas(destBlock.preds, pred))
-                continue;
+            //print('got pred: ' + pred.getBlockName());
 
-            // Remove the phi and block predecessor-successor links
-            origPhi.remPred(pred);
-            block.remPred(pred);
-            pred.remSucc(block);
-
-            // Make the pred branch to the dest block
-            var branch = pred.getLastInstr();
-            for (var j = 0; j < branch.targets.length; ++j)
-                if (branch.targets[j] === block)
-                    branch.targets[j] = destBlock;
-
-            // Add the block predecessor-successor links
-            destBlock.addPred(pred);
-            pred.addSucc(destBlock);
-
-            // Add a new incoming value to the dest phi
-            destPhi.addIncoming(use, pred);
-
-            /*
-            // For each other phi node in the block, give it an incoming
-            // value for this new predecessor
-            for (var j = 0; j < destBlock.instrs.length; ++j)
+            // For each instruction of the successor
+            for (var k = 0; k < succ.instrs.length; ++k)
             {
-                var instr = destBlock.instrs[j];
+                var instr = succ.instrs[k];
 
+                // If this instruction is not a phi node, stop
+                if (!(instr instanceof PhiInstr))
+                    break;                        
+
+                // If the phi node already has this predecessor, skip the predecessor
+                if (arraySetHas(instr.preds, pred))
+                    continue PRED_LOOP;
+            }
+
+            //print('simplifying no instructions, single successor: ' + block.getBlockName() + ', succ: ' + succ.getBlockName());
+
+            // Remove the predecessor from our predecessor list
+            block.remPred(pred);
+
+            // Get the predecessor's branch instruction
+            var branchInstr = pred.getLastInstr();
+
+            // Replace the predecessor's branch target by the successor
+            for (var k = 0; k < branchInstr.targets.length; ++k)
+                if (branchInstr.targets[k] === block)
+                    branchInstr.targets[k] = succ;
+
+            // Replace the predecessor's successor block by the successor
+            pred.remSucc(block);
+            pred.addSucc(succ);
+
+            // Add the predecessor as a predecessor of the successor
+            succ.addPred(pred);
+
+            // For each instruction of the successor
+            for (var k = 0; k < succ.instrs.length; ++k)
+            {
+                var instr = succ.instrs[k];
+
+                // If this instruction is not a phi node, stop
                 if (!(instr instanceof PhiInstr))
                     break;
 
-                if (instr === origPhi)
-                    continue;
+                assert(arraySetHas(succ.preds, block));
+                //print('succ instr: ' + instr);
+                //print('pred: ' + block.getBlockName());
 
-                var inc = instr.getIncoming(block);
-                instr.addIncoming(inc, pred);
+                // Add an incoming value for the predecessor
+                var inVal = instr.getIncoming(block);
+                instr.addIncoming(inVal, pred);
             }
-            */
-
-            // Move back one phi predecessor index
-            --i;
 
             // Set the changed flag
             changed = true;
         }
 
-        if (changed)
-            return true;
+        return changed;
     }
+);
+blockPatterns.push(blockPatterns.emptyBypass);
 
-    //
-    // Eliminate blocks of the form:
-    // t = phi x1,x2,x3
-    // [t = call <boxToBool> t]
-    // if t b1 b2
-    //
-
-    // If this block contains only an if instruction using the
-    // value of an immediately preceding phi
-    if (block.instrs[0] instanceof PhiInstr &&
-        block.instrs[0].dests.length == 1 &&
-        (
-            (block.instrs.length == 2 &&
-             block.instrs[1] instanceof IfInstr &&
-             block.instrs[1].uses[0] === block.instrs[0])
-            ||
-            (block.instrs.length == 3 &&
-             block.instrs[1] instanceof CallFuncInstr &&
-             block.instrs[1].uses[0] === staticEnv.getBinding('boxToBool') &&
-             block.instrs[1].uses[2] === block.instrs[0] &&
-             block.instrs[2] instanceof IfInstr &&
-             block.instrs[2].uses[0] === block.instrs[1])
-        )
-    )
-    {        
+/**
+Eliminate blocks of the form:
+t = phi x1,x2,x3
+[t = call <boxToBool> t]
+if t b1 b2
+*/
+blockPatterns.boxToBoolElim = new optPattern(
+    'boxToBool elimination',
+    function match(cfg, block)
+    {
+        // If this block contains only an if instruction using the
+        // value of an immediately preceding phi
+        return (
+            block.instrs[0] instanceof PhiInstr &&
+            block.instrs[0].dests.length == 1 &&
+            (
+                (block.instrs.length == 2 &&
+                 block.instrs[1] instanceof IfInstr &&
+                 block.instrs[1].uses[0] === block.instrs[0])
+                ||
+                (block.instrs.length == 3 &&
+                 block.instrs[1] instanceof CallFuncInstr &&
+                 block.instrs[1].uses[0] === staticEnv.getBinding('boxToBool') &&
+                 block.instrs[1].uses[2] === block.instrs[0] &&
+                 block.instrs[2] instanceof IfInstr &&
+                 block.instrs[2].uses[0] === block.instrs[1])
+            )
+        );
+    },
+    function apply(cfg, block, printInfo)
+    {
         var phiInstr = block.instrs[0];
         var phiPreds = phiInstr.preds.slice(0);
         var phiUses = phiInstr.uses.slice(0);
@@ -293,217 +503,113 @@ function applyPatternsBlock(cfg, block)
             }
         }
 
-        if (changed)
-            return true;
+        return changed;
     }
+);
+blockPatterns.push(blockPatterns.boxToBoolElim);
 
-    //
-    // Eliminate blocks with no predecessors
-    //
-
-    // If this block has no predecessors, and it is not the entry block
-    if (
-        block.preds.length == 0 &&
-        block !== cfg.entry
-    )
+/**
+Aggregate phi nodes used only by other phi nodes
+*/
+blockPatterns.phiMerge = new optPattern(
+    'phi node aggregation',
+    function match(cfg, block)
     {
-        //print('eliminating block with no predecessors: ' + block.getBlockName());
-
-        // Remove the block from the CFG
-        cfg.remBlock(block);
-
-        // Remove all instructions in the block
-        while (block.instrs.length > 0)
-            block.remInstrAtIndex(0);
-
-        // The CFG was changed
-        return true;
-    }
-
-    //
-    // Merge blocks with only one destination
-    //
-
-    // If this block has only one successor, which has only one predecessor
-    // and the block is not terminated by an exception-producing instruction
-    if (
-        block.succs.length == 1 && 
-        block.succs[0].preds.length == 1 &&
-        block !== block.succs[0] &&
-        !(block.getLastInstr() instanceof ExceptInstr)
-    )
+        // If this block contains only a phi node used only by another phi node
+        return (
+            block.instrs.length == 2 &&
+            block.instrs[0] instanceof PhiInstr &&
+            block.instrs[0].dests.length == 1 &&
+            block.instrs[0].dests[0] instanceof PhiInstr &&
+            block.instrs[1] instanceof JumpInstr &&
+            block.succs[0].instrs[0] === block.instrs[0].dests[0]
+        );
+    },
+    function apply(cfg, block, printInfo)
     {
-        //print('merging block with one succ: ' + block.getBlockName());
-        //print('successor: ' + block.succs[0].getBlockName());
+        var origPhi = block.instrs[0];
+        var destPhi = origPhi.dests[0];
+        var destBlock = block.succs[0];
 
-        var succ = block.succs[0];
-
-        // For each instruction of the successor
-        for (var iIndex = 0; iIndex < succ.instrs.length; ++iIndex)
+        if (printInfo)
         {
-            var instr = succ.instrs[iIndex];
-            
-            // If the instruction is a phi node
-            if (!(instr instanceof PhiInstr))
-                break
- 
-            // Ensure that this phi node has only one predecessor
-            assert (
-                instr.preds.length == 1, 
-                'phi node in merged block should have one pred:\n' +
-                instr
-            );
-
-            var phiIn = instr.uses[0];
-
-            // Remove the edge from the use to the phi node
-            if (phiIn instanceof IRInstr)
-                phiIn.remDest(instr);
-
-            // For each dest of the phi node
-            for (var k = 0; k < instr.dests.length; ++k)
-            {
-                // Replace all uses of the phi by uses of its input
-                instr.dests[k].replUse(instr, phiIn);
-                if (phiIn instanceof IRInstr)
-                    phiIn.addDest(instr.dests[k]);
-            }
+            print('dest phi: ' + destPhi);
+            print('dest block: ' + destBlock.getBlockName());
         }
-
-        // Remove the final branch instruction from the predecessor
-        block.remInstrAtIndex(block.instrs.length - 1);
-
-        // For each non-phi instruction of the successor
-        for (; iIndex < succ.instrs.length; ++iIndex)
-        {
-            var instr = succ.instrs[iIndex];
-
-            // Add the instruction to the predecessor
-            block.addInstr(instr);
-        }
-
-        //print('Number of succ succs: ' + succ.succs.length);
-
-        // For each successor of the successor
-        for (var j = 0; j < succ.succs.length; ++j)
-        {
-            var succSucc = succ.succs[j];
-
-            // For each instruction of the successor's successor
-            for (var k = 0; k < succSucc.instrs.length; ++k)
-            {
-                var instr = succSucc.instrs[k];
-                
-                // If the instruction is not a phi node, stop
-                if (!(instr instanceof PhiInstr))
-                    break;
-
-                // Change references to the successor to references
-                // to the predecessor instead
-                instr.replPred(succ, block);
-            }
-        }
-
-        // Remove the successor block from the CFG
-        cfg.remBlock(succ);
-
-        // The CFG was changed
-        return true;
-    }
-
-    //
-    // Jump over blocks with no instructions and a single successor
-    //
-
-    // If this block has only one successor, no instructions but a branch, 
-    // and the block is not terminated by an exception-producing instruction
-    if (
-        block.succs.length == 1 && 
-        block.succs[0] !== block &&
-        block.instrs.length == 1 &&
-        !(block.getLastInstr() instanceof ExceptInstr)
-    )
-    {
-        var succ = block.succs[0];
-    
-        //print('block w/ no instrs, 1 succ: ' + block.getBlockName());
-
-        // Copy the predecessor list for this block
-        var preds = block.preds.slice(0);
 
         // Flag to indicate the CFG was changed
         var changed = false;
 
-        // For each predecessor
-        PRED_LOOP:
-        for (var j = 0; j < preds.length; ++j)
+        // For each incoming value of the origin phi
+        for (var i = 0; i < origPhi.uses.length; ++i)
         {
-            var pred = preds[j];
+            var use = origPhi.uses[i];
+            var pred = origPhi.preds[i];
 
-            //print('got pred: ' + pred.getBlockName());
+            // If the destination block has this predecessor, skip it
+            if (arraySetHas(destBlock.preds, pred))
+                continue;
 
-            // For each instruction of the successor
-            for (var k = 0; k < succ.instrs.length; ++k)
-            {
-                var instr = succ.instrs[k];
-
-                // If this instruction is not a phi node, stop
-                if (!(instr instanceof PhiInstr))
-                    break;                        
-
-                // If the phi node already has this predecessor, skip the predecessor
-                if (arraySetHas(instr.preds, pred))
-                    continue PRED_LOOP;
-            }
-
-            //print('simplifying no instructions, single successor: ' + block.getBlockName() + ', succ: ' + succ.getBlockName());
-
-            // Remove the predecessor from our predecessor list
+            // Remove the phi and block predecessor-successor links
+            origPhi.remPred(pred);
             block.remPred(pred);
-
-            // Get the predecessor's branch instruction
-            var branchInstr = pred.getLastInstr();
-
-            // Replace the predecessor's branch target by the successor
-            for (var k = 0; k < branchInstr.targets.length; ++k)
-                if (branchInstr.targets[k] === block)
-                    branchInstr.targets[k] = succ;
-
-            // Replace the predecessor's successor block by the successor
             pred.remSucc(block);
-            pred.addSucc(succ);
 
-            // Add the predecessor as a predecessor of the successor
-            succ.addPred(pred);
+            // Make the pred branch to the dest block
+            var branch = pred.getLastInstr();
+            for (var j = 0; j < branch.targets.length; ++j)
+                if (branch.targets[j] === block)
+                    branch.targets[j] = destBlock;
 
-            // For each instruction of the successor
-            for (var k = 0; k < succ.instrs.length; ++k)
+            // Add the block predecessor-successor links
+            destBlock.addPred(pred);
+            pred.addSucc(destBlock);
+
+            if (printInfo)
+                print('adding pred: ' + pred.getBlockName());
+
+            // Add a new incoming value to the dest phi
+            destPhi.addIncoming(use, pred);
+
+            // For each other phi node in the block, give it an incoming
+            // value for this new predecessor
+            for (var j = 0; j < destBlock.instrs.length; ++j)
             {
-                var instr = succ.instrs[k];
+                var instr = destBlock.instrs[j];
 
-                // If this instruction is not a phi node, stop
                 if (!(instr instanceof PhiInstr))
                     break;
 
-                assert(arraySetHas(succ.preds, block));
-                //print('succ instr: ' + instr);
-                //print('pred: ' + block.getBlockName());
+                if (instr === destPhi)
+                    continue;
 
-                // Add an incoming value for the predecessor
-                var inVal = instr.getIncoming(block);
-                instr.addIncoming(inVal, pred);
+                var inc = instr.getIncoming(block);
+                instr.addIncoming(inc, pred);
             }
+
+            // Move back one phi predecessor index
+            --i;
 
             // Set the changed flag
             changed = true;
         }
 
-        if (changed)
-            return true;
+        return changed;
     }
+);
+blockPatterns.push(blockPatterns.phiMerge);
 
-    // If no block-level patterns applied
-    else
+/**
+Instruction-level optimization patterns
+*/
+blockPatterns.instrPatterns = new optPattern(
+    'instruction-level patterns',
+    function match()
+    {
+        // Always match
+        return true;
+    },
+    function apply(cfg, block, printInfo)
     {
         // Flag to indicate the CFG was changed
         var changed = false;
@@ -520,8 +626,39 @@ function applyPatternsBlock(cfg, block)
                 changed = true;
         }
 
-        if (changed)
-            return true;
+        return changed;
+    }
+);
+blockPatterns.push(blockPatterns.instrPatterns);
+
+/**
+Apply block-level optimization patterns to a block
+*/
+function applyPatternsBlock(blockPatterns, cfg, block, printInfo)
+{
+    // For each block level pattern
+    for (var i = 0; i < blockPatterns.length; ++i)
+    {
+        var pattern = blockPatterns[i];
+
+        // If the pattern matches this block
+        if (pattern.match(cfg, block))
+        {
+            if (printInfo)
+            {
+                print(
+                    'Applying ' + pattern.name + ' to ' + 
+                    block.getBlockName()
+                );
+            }
+
+            // Try applying the pattern to the block
+            var res = pattern.apply(cfg, block, printInfo);
+
+            // If changes were made, the CFG was changed
+            if (res)
+                return true;
+        }
     }
 
     // The CFG was not changed

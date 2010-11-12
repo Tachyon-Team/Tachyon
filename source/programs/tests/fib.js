@@ -17,9 +17,9 @@ tests.fib.main = function ()
     lowerIRFunc(ir);
 
     //var codeblock = backend.compile(ir);
-    //var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
-    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
-    print(backend.listing(codeblock));
+    var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
+    //var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
+    //print(backend.listing(codeblock));
 
     var startTimeMs = new Date().getTime();
 

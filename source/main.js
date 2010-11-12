@@ -39,22 +39,10 @@ function testIR()
     );
     */
 
-    //var ast = parse_src_file('programs/fib.js');
+    var ast = parse_src_file('programs/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
     //var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
   
-    var ast = parse_src_str(
-        "                                           \
-            function nest()                         \
-            {                                       \
-                var v = 0;                          \
-                for (var i = 0; i < 10; ++i)        \
-                    for (var j = 0; j < 10; ++j)    \
-                        v = i;                      \
-            }                                       \
-        "
-    );
-
     //pp(ast);
 
     var ir = unitToIR(ast, true);

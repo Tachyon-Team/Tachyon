@@ -506,7 +506,7 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Verify that the block has this CFG as its parent
         if (block.parentCFG !== this)
-            throw 'parent CFG link broken';
+            error('parent CFG link broken');
 
         // For each predecessor
         for (var j = 0; j < block.preds.length; ++j)
@@ -515,12 +515,14 @@ ControlFlowGraph.prototype.validate = function ()
             
             // Verify that the predecessor is a basic block
             if (!(pred instanceof BasicBlock))
-                throw 'predecessor is not valid basic block for:\n' + block;
+                error('predecessor is not valid basic block for:\n' + block);
 
             // Verify that our predecessors have us as a successor
             if (!arraySetHas(block.preds[j].succs, block))
-                throw 'predecessor:\n' +  block.preds[j] + 
-                    '\nmissing successor link to:\n' + block;
+                error(
+                    'predecessor:\n' +  block.preds[j] + 
+                    '\nmissing successor link to:\n' + block
+                );
         }
 
         // For each successor
@@ -530,11 +532,15 @@ ControlFlowGraph.prototype.validate = function ()
 
             // Verify that the successor is a basic block
             if (!(succ instanceof BasicBlock))
-                throw 'successor is not valid basic block for:\n' + block;            
+                error(
+                    'successor is not valid basic block for:\n' + block
+                );
 
             // Verify that our successors have us as a predecessor
             if (!arraySetHas(block.succs[j].preds, block))
-                throw 'successor missing predecessor link to:\n' + block;
+                error(
+                    'successor missing predecessor link to:\n' + block
+                );
         }
 
         // Get a reference to the last instruction in the block
@@ -542,18 +548,24 @@ ControlFlowGraph.prototype.validate = function ()
 
         // Verify that the block is terminated with a branch instruction
         if (!lastInstr || !(lastInstr.isBranch()))
-            throw 'block does not terminate in a branch:\n' + block;
+            error(
+                'block does not terminate in a branch:\n' + block
+            );
 
         // Verify that the branch targets match our successor set
         for (var j = 0; j < block.succs.length; ++j)
         {
             if (!arraySetHas(lastInstr.targets, block.succs[j]))
-                throw 'successors do not match branch targets for:\n' + block;
+                error(
+                    'successors do not match branch targets for:\n' + block
+                );
         }
         for (var j = 0; j < lastInstr.targets.length; ++j)
         {
             if (!arraySetHas(block.succs, lastInstr.targets[j]))
-                throw 'successors do not match branch targets for:\n' + block;
+                error(
+                    'successors do not match branch targets for:\n' + block
+                );
         }
 
         // For each instruction in the block
@@ -563,35 +575,42 @@ ControlFlowGraph.prototype.validate = function ()
 
             // Verify that the instruction has this block as its parent
             if (instr.parentBlock !== block)
-                throw 'parent block link broken:\n' + instr;
+                error('parent block link broken:\n' + instr);
 
             // If this is a phi instruction
             if (instr instanceof PhiInstr)
             {
                 // Verify that it appears at the start of the block
                 if (j != 0 && !(block.instrs[j-1] instanceof PhiInstr))
-                   throw 'phi node after non-phi instruction';
+                   error('phi node after non-phi instruction');
 
                 // Verify that each immediate predecessor has a corresponding use
                 for (var k = 0; k < block.preds.length; ++k)
                     if (!arraySetHas(instr.preds, block.preds[k]))
-                        throw 'phi node:\n' + instr + '\ndoes not cover ' +
+                        error(
+                            'phi node:\n' + instr + '\ndoes not cover ' +
                             'immediate predecessor:\n' + 
-                            block.preds[k].getBlockName();
+                            block.preds[k].getBlockName()
+                        );
 
                 // Verify that there is exactly one predecessor for each use
                 if (instr.preds.length != instr.uses.length)
-                    throw 'phi node does not have one predecessor for each use';
+                    error(
+                        'phi node does not have one predecessor for each use'
+                    );
 
                 // Verify that there are no more phi uses than block predecessors
                 if (instr.preds.length != block.preds.length)
-                    throw 'phi node has more uses than predecessors:\n' +
-                        instr;
+                    error(
+                        'phi node:\n' + instr + '\nin:\n' +
+                        block.getBlockName() +
+                        '\nhas more uses than predecessors'
+                    );
             }
 
             // Verify that no branches appear before the last instruction
             if (instr.isBranch() && j != block.instrs.length - 1)
-                throw 'branch before last block instruction';
+                error('branch before last block instruction');
 
             // For each use of this instruction
             for (var k = 0; k < instr.uses.length; ++k)
@@ -600,20 +619,21 @@ ControlFlowGraph.prototype.validate = function ()
 
                 // Verify that the use is valid
                 if (!(use instanceof IRValue))
-                    throw 'invalid use found';
+                    error('invalid use found');
 
                 // Verify that the use is in this CFG
                 if (use instanceof IRInstr && use.parentBlock.parentCFG != this)
-                    throw 'use not in CFG';
+                    error('use not in CFG');
 
                 // Verify that our uses have us as a dest
                 if (use instanceof IRInstr)
                     if (!arraySetHas(instr.uses[k].dests, instr))
-                        throw 'missing dest link, from:\n' + 
+                        error(
+                            'missing dest link, from:\n' + 
                             instr.uses[k] + 
                             '\nto:\n' +
                             instr
-                        ;
+                        );
             }
 
             // For each dest of this instruction
@@ -623,19 +643,20 @@ ControlFlowGraph.prototype.validate = function ()
 
                 // Verify that the dest is valid
                 if (!(dest instanceof IRValue))
-                    throw 'invalid dest found';
+                    error('invalid dest found');
 
                 // Verify that the dest is in this CFG
                 if (dest.parentBlock.parentCFG != this)
-                    throw 'dest not in CFG';
+                    error('dest not in CFG');
 
                 // Verify that our dests have us as a use
                 if (!arraySetHas(dest.uses, instr))
-                    throw 'missing use link, from:\n' + 
+                    error(
+                        'missing use link, from:\n' + 
                         instr.dests[k] +
                         '\nto:\n' + 
                         instr
-                    ;
+                    );
             }
         }
     }
@@ -742,15 +763,19 @@ ControlFlowGraph.prototype.validate = function ()
                 {
                     var phiPred = instr.preds[k];
                     if (!arraySetHas(mustReachOut[phiPred.blockId], use))
-                        throw 'phi node:\n' + instr +
-                            '\nuses non-reaching value:\n' + use;
+                        error(
+                            'phi node:\n' + instr +
+                            '\nuses non-reaching value:\n' + use
+                        );
                 }
                 else
                 {
                     if (!arraySetHas(mustReachCur, use))
-                        throw 'instruction:\n' + instr + '\nin block:\n' + 
+                        error(
+                            'instruction:\n' + instr + '\nin block:\n' + 
                             instr.parentBlock.getBlockName() +
-                            '\nuses non-reaching value:\n' + use;
+                            '\nuses non-reaching value:\n' + use
+                        );
                 }
             }
 

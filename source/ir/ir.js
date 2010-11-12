@@ -348,6 +348,9 @@ function stmtListToIRFunc(
     //print(cfg);
     //print('');
 
+    // Remove dead blocks from the CFG
+    remDeadBlocks(cfg);
+
     // Simplify the CFG using peephole patterns
     applyPatternsCFG(cfg);
     

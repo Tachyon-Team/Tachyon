@@ -231,6 +231,9 @@ function constProp(cfg)
 
     //print('Constants found: ' + numConsts);
     //print('Branches found: ' + numBranches);
+
+    // Remove dead blocks from the CFG
+    remDeadBlocks(cfg);
 }
 
 //=============================================================================

@@ -1094,14 +1094,9 @@ LtInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.numBits);
     }
 
-    print('producing mov/cmov');
-    print(dest);
-
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovl(tltor.trueVal, dest);
-
-    print('done');
 };
 
 //LeInstr
@@ -1160,7 +1155,7 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (opnds[1].type === x86.type.IMM_VAL)
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.type.numBits);
     }
     else
     {
