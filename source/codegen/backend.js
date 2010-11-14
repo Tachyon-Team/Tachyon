@@ -220,13 +220,12 @@ backend.usedPrimitives = function (ir)
 
         if (//func.funcName == "putPropVal" ||
             //func.funcName == "getGlobal" ||
-            func.funcName == "getGlobalFunc")
+            /*false)//*/func.funcName == "getGlobalFunc")
             continue;
 
         for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
         {
             var instr = itr.get();
-
 
             for (var useItr = instr.getUseItr(); useItr.valid(); useItr.next())
             {
@@ -236,7 +235,7 @@ backend.usedPrimitives = function (ir)
                 {
                     if (//use.funcName == "putPropVal" || 
                         //use.funcName == "getGlobal" ||
-                        use.funcName == "getGlobalFunc")
+                        /*false)//*/use.funcName == "getGlobalFunc")
                         continue;
 
                     workList = workList.concat(use.getChildrenList());

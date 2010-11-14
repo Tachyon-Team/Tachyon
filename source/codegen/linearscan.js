@@ -1213,7 +1213,8 @@ allocator.numberInstrs = function (cfg, order, config)
                 instr.regAlloc.id = instrNb; // Operation number
                 instr.regAlloc.interval = allocator.interval(); // Live interval
                 instr.regAlloc.interval.instr = instr;
-            } else
+            } 
+            else
             {
                 break;
             }   
@@ -1236,7 +1237,8 @@ allocator.numberInstrs = function (cfg, order, config)
                 // between the two.
                 instrNb = nextNo + inc;
                 nextNo = nextNo + 2*inc;
-            } else
+            }
+            else
             {
                 // We got a regular instruction
                 instrNb = nextNo;
@@ -1376,7 +1378,8 @@ allocator.liveIntervals = function (cfg, order, config)
                         block.regAlloc.from,
                         pos
                     );
-                } else
+                } 
+                else
                 {
                     pos = instr.regAlloc.id;
                     use.regAlloc.interval.addRange(
@@ -1393,11 +1396,11 @@ allocator.liveIntervals = function (cfg, order, config)
 
                     use.regAlloc.interval.addUsePos(pos,
                                         allocator.usePos.registerFlag.REQUIRED);
-                } else
+                } 
+                else
                 {
                     use.regAlloc.interval.addUsePos(pos);
                 }
-
 
                 //print( use.instrId + " from:" + block.regAlloc.from +
                 //       " to:" + instr.regAlloc.id);
