@@ -9,12 +9,8 @@ function getPropDummy(obj, propName, propHash)
     while (true)
     {
         // Until the key is found, or a free slot is encountered
-        while (obj)
+        while (obj === propName)
         {
-            // If this is the key we want
-            if (obj === propName)
-            {
-            }
         }
 
         // Move up in the prototype chain

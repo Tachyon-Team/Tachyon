@@ -1280,6 +1280,8 @@ allocator.liveIntervals = function (cfg, order, config)
     {
         var block = order[i];
 
+        print('block: ' + block.getBlockName());
+
         // Variable for the currently live set
         var live = [];
 
@@ -1293,6 +1295,8 @@ allocator.liveIntervals = function (cfg, order, config)
             {
                 var instr = succ.instrs[k];
 
+                print('examining succ phi: ' + instr);
+
                 // If this is not a phi instruction, stop
                 if (!(instr instanceof PhiInstr))
                     break;
@@ -1300,6 +1304,8 @@ allocator.liveIntervals = function (cfg, order, config)
                 // Add the phi node's input from this block to the live set
                 if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
+                    print('making live phi inc: ' + instr.getIncoming(block));
+
                     arraySetAdd(live, instr.getIncoming(block));
                 }
             }
@@ -1317,6 +1323,8 @@ allocator.liveIntervals = function (cfg, order, config)
         {
             var instr = live[j];
            
+            print('adding range for: ' + instr);
+
             // Add a live range spanning this block to its interval
             instr.regAlloc.interval.addRange(
                 block.regAlloc.from,
@@ -1329,7 +1337,7 @@ allocator.liveIntervals = function (cfg, order, config)
         {
             var instr = block.instrs[j];
 
-            // For instruction having an output,
+            // For instruction having an output
             if (instr.hasDests())
             {
                 // The output of the instruction starts being live here
@@ -1343,9 +1351,10 @@ allocator.liveIntervals = function (cfg, order, config)
                 instr.regAlloc.interval.regHint = 
                     instr.regAlloc.outRegHint(instr, config);
 
-
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
+
+                print('killing: ' + instr);
             }
 
             // Input operands for phi instructions are added to the live set
@@ -1393,7 +1402,6 @@ allocator.liveIntervals = function (cfg, order, config)
 
                 if (instr.regAlloc.opndsRegRequired)
                 {
-
                     use.regAlloc.interval.addUsePos(pos,
                                         allocator.usePos.registerFlag.REQUIRED);
                 } 
@@ -1428,11 +1436,15 @@ allocator.liveIntervals = function (cfg, order, config)
         // If this block is a loop header
         if (lastLoopEnd)
         {
+            print('Loop header: ' + block.getBlockName());
+
             // For each temp in the live set at the block entry 
             // (live before the block)
             for (var j = 0; j < live.length; ++j)
             {
                 var instr = live[j];
+
+                print('Making live: ' + instr);
 
                 // Add a live range spanning the whole loop
                 instr.regAlloc.interval.addRange(
