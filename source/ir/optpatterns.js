@@ -15,13 +15,24 @@ Apply all peephole optimization patterns to a CFG
 */
 function applyPatternsCFG(cfg, maxItrs)
 {
-    return applyPatternsListCFG(
+    // If no maximum iteration count is set, there is no maximum
+    if (!maxItrs)
+        maxItrs = Infinity;
+
+    var numItrs = applyPatternsListCFG(
         blockPatterns,
         cfg,
         maxItrs,
         false,
         false
     );
+
+    // If the number of iterations is limited, and the limit was reached,
+    // apply dead block removal
+    if (maxItrs != Infinity && numItrs == maxItrs)
+        remDeadBlocks(cfg);
+
+    return numItrs;
 }
 
 /**
@@ -48,10 +59,6 @@ function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
         print('Processing CFG of function "' + cfg.ownerFunc.funcName + '"');
         //print(cfg);
     }
-
-    // If no maximum iteration count is set, there is no maximum
-    if (!maxItrs)
-        maxItrs = Infinity;
 
     // Flag to indicate that changes occurred in the CFG
     var changed = true;
