@@ -219,7 +219,7 @@ backend.usedPrimitives = function (ir)
             continue;
 
         if (//func.funcName == "putPropVal" ||
-            //func.funcName == "getGlobal" ||
+            //func.funcName == "getGlobal"  ||
             /*false)//*/func.funcName == "getGlobalFunc")
             continue;
 
@@ -234,7 +234,7 @@ backend.usedPrimitives = function (ir)
                 if (use instanceof IRFunction)
                 {
                     if (//use.funcName == "putPropVal" || 
-                        //use.funcName == "getGlobal" ||
+                        //use.funcName == "getGlobal"  ||
                         /*false)//*/use.funcName == "getGlobalFunc")
                         continue;
 

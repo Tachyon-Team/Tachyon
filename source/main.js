@@ -39,10 +39,14 @@ function testIR()
     );
     */
 
-    var ast = parse_src_file('programs/fib.js');
+    //var ast = parse_src_file('programs/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
     //var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
   
+
+    var ast = parse_src_file('programs/nestedloops.js');
+
+
     //pp(ast);
 
     var ir = unitToIR(ast, true);
@@ -55,16 +59,16 @@ function testIR()
 
     ir.validate();    
     
-    /*
+    
     var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
     print(backend.listing(codeblock));
     var result = backend.execute(codeblock);
 
     print('result: ' + (result >> 2));    
-    */
+    
 
-    /*    
-    var func = staticEnv.getBinding('getPropVal');
+    /*  
+    var func = staticEnv.getBinding('get_obj_proto');
     print(func);
     */
 
