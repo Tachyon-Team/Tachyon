@@ -315,6 +315,7 @@ AddInstr.prototype.constEval = ArithInstr.genConstEval(
     {
         if (u0 instanceof ConstValue && u0.value == 0)
             return u1;
+
         if (u1 instanceof ConstValue && u1.value == 0)
             return u0;
 
@@ -326,6 +327,13 @@ SubInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 - v1;
+    },
+    function (u0, u1)
+    {
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -338,8 +346,20 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
     {
         if (u0 instanceof ConstValue && u0.value == 1)
             return u1;
+
         if (u1 instanceof ConstValue && u1.value == 1)
             return u0;
+
+
+        if (((u0 instanceof ConstValue && u0.value == 0) || 
+             (u1 instanceof ConstValue && u1.value == 0)) &&
+            u1.type === u2.type)
+        {
+            return ConstValue.getConst(
+                0,
+                u0.type
+            );
+        }
 
         return BOT;
     }
@@ -359,6 +379,13 @@ DivInstr.prototype.constEval = ArithInstr.genConstEval(
         }
 
         return res;
+    },
+    function (u0, u1)
+    {
+        if (u1 instanceof ConstValue && u1.value == 1)
+            return u0;
+
+        return BOT;
     }
 );
 
