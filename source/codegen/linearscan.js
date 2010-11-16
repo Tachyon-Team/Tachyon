@@ -1280,6 +1280,7 @@ allocator.liveIntervals = function (cfg, order, config)
     {
         var block = order[i];
 
+        print();
         print('block: ' + block.getBlockName());
 
         // Variable for the currently live set
@@ -1289,6 +1290,8 @@ allocator.liveIntervals = function (cfg, order, config)
         for (var j = 0; j < block.succs.length; ++j)
         {
             var succ = block.succs[j];
+
+            print("succ:" + succ.getBlockName());
 
             // For each instruction of the successor
             for (var k = 0; k < succ.instrs.length; ++k)
@@ -1311,8 +1314,10 @@ allocator.liveIntervals = function (cfg, order, config)
             }
 
             // If this is a loop header, skip it
-            if (succ.regAlloc.lastLoopEnd)
+            if (succ.regAlloc.lastLoopEnd === block)
                 continue;            
+
+            print("Adding lives from:" + succ.getBlockName());
 
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
@@ -1436,7 +1441,7 @@ allocator.liveIntervals = function (cfg, order, config)
         // If this block is a loop header
         if (lastLoopEnd)
         {
-            print('Loop header: ' + block.getBlockName());
+            print('Loop header: ' + block.getBlockName() + " end: " + lastLoopEnd.getBlockName());
 
             // For each temp in the live set at the block entry 
             // (live before the block)
@@ -1444,7 +1449,7 @@ allocator.liveIntervals = function (cfg, order, config)
             {
                 var instr = live[j];
 
-                print('Making live: ' + instr);
+                print('Making live: ' + instr + " upto: " + lastLoopEnd.regAlloc.to);
 
                 // Add a live range spanning the whole loop
                 instr.regAlloc.interval.addRange(
@@ -2031,6 +2036,7 @@ allocator.resolve = function (cfg, intervals, order)
 
                 // We got a Phi instruction
                 opnd = intervalIt.get().instr.getIncoming(edge.pred);
+
                 if (opnd instanceof ConstValue)
                 {
                     moveFrom = opnd;
@@ -2043,6 +2049,7 @@ allocator.resolve = function (cfg, intervals, order)
                 // We got a regular instruction
                 moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
             }
+
 
             moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from);
 
