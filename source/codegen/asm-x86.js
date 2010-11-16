@@ -28,16 +28,12 @@ x86.type = {};
 x86.type.OBJ = "X86_OBJ";
 /** Immediate value */
 x86.type.IMM_VAL = "X86_IMMEDIATE_VALUE";
-/** Immediate label */
-x86.type.IMM_LBL = "X86_IMMEDIATE_LABEL"; 
+/** Link object */
+x86.type.LINK = "X86_LINK_OBJECT"; 
 /** Register */
 x86.type.REG = "X86_REGISTER"; 
 /** Memory access */
 x86.type.MEM = "X86_MEMORY";
-
-// TODO: Clean if not useful
-/** @private Might not be useful */
-x86.type.GLO = "X86_GLOBAL";
 
 /** @private test if num is a valid 8 bit signed value */
 x86.isSigned8 = function (num) { return (num >= -128 && num <= 127); };
@@ -235,6 +231,30 @@ x86.Assembler.prototype.genImmNum = function (k, width)
 
 
 /** 
+    Adds a required object to the code stream for linking later. 
+    
+    Can be chained.
+    @param           linkObj  The object to link to at this position.
+*/
+x86.Assembler.prototype.require = function (linkObj)
+{
+    this.codeBlock.genRequired(linkObj); 
+    return this;
+};
+
+/** 
+    Adds a provided object to the code stream for linking later.
+    
+    Can be chained.
+    @param linkObj The object to linking from at this position.
+*/
+x86.Assembler.prototype.provide = function (linkObj)
+{
+    this.codeBlock.genProvided(linkObj); 
+    return this;
+};
+
+/** 
     Returns a new immediate value object. Note: the lower case constructor
     means new is not necessary to create an object of this class 
 
@@ -325,18 +345,44 @@ x86.Assembler.prototype.memory.prototype.toString = function (verbose)
     }
 };
 
-/** @private Undocumented until found useful */
-x86.Assembler.prototype.global = function ( name, offset )
+x86.Assembler.prototype.linked = function (name, linkValue, width)
 {
-    var that = Object.create(x86.Assembler.prototype.global.prototype);
-    if (name)   { that.name   = name; };
-    if (offset) { that.offset = offset; };
+    var that = Object.create(x86.Assembler.prototype.linked.prototype);
+
+    assert(typeof(name) === "string", "'name' argument should be a string");
+    assert(typeof(linkValue) === "function", "'linkValue' argument should be a function");
+    assert(typeof(width) === "number", "'name' argument should be a string");
+
+    that.name = name;
+    that.linkValue = linkValue;
+    that.width = function () { return width; };
+
     return that;
 };
-x86.Assembler.prototype.global.prototype = x86.Assembler.obj();
-x86.Assembler.prototype.global.prototype.type   = x86.type.GLO;
-x86.Assembler.prototype.global.prototype.name   = null;
-x86.Assembler.prototype.global.prototype.offset = 0;
+
+x86.Assembler.prototype.linked.prototype        = x86.Assembler.obj();
+x86.Assembler.prototype.linked.prototype.type   = x86.type.LINK;
+
+x86.Assembler.prototype.linked.prototype.name   = "";
+x86.Assembler.prototype.linked.prototype.linkValue  = function () { error("'linkValue' not set"); };
+x86.Assembler.prototype.linked.prototype.width = function () { return 32; };
+x86.Assembler.prototype.linked.prototype.srcAddr = null;
+x86.Assembler.prototype.linked.prototype.setAddr = function (addr) { this.srcAddr = addr; };
+
+
+x86.Assembler.prototype.linked.prototype.toString = function (verbose)
+{
+    if (verbose === true && this.__proto__ !== undefined)
+    {
+        return this.__proto__.toString(true); 
+    } else
+    {
+        return "<" + this.name + ">";
+    }
+};
+
+
+
 
 /**
     Returns a new memory object. Note: the lower case constructor
@@ -854,9 +900,8 @@ x86.opndFormatGNU = function (opnd)
     {
         case x86.type.IMM_VAL: 
             return "$" + String(opnd.value);
-        case x86.type.IMM_LBL: 
-            // TODO: Implement Immediate Label formatting
-            error("Immediate label formatting unimplemented");
+        case x86.type.LINK: 
+            return "<" + opnd.name + ">";
         case x86.type.REG:
             return "%" + opnd.name;
         case x86.type.MEM:
@@ -873,8 +918,6 @@ x86.opndFormatGNU = function (opnd)
             {
                 return x86.offsetToString(opnd.disp);
             }
-        case x86.type.GLO:
-            return opnd.name + x86.offsetToString(opnd.offset);
         default:
             return opnd.toString();
     }
@@ -1000,7 +1043,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
             rex += (opnd.field() >> 3);
             break;
 
-        case x86.type.GLO:
+        case x86.type.LINK:
             break;
 
         case x86.type.MEM:
@@ -1077,9 +1120,8 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             this.gen8(0xc0 + modrm); // ModR/M
             break;
 
-        case x86.type.GLO:
-            // TODO: Remove if not needed
-            error("unimplemented for opnd of type global");
+        case x86.type.LINK:
+            x86.error("unimplemented for opnd of type LINK");
             break;
 
         case x86.type.MEM:
@@ -1750,6 +1792,39 @@ x86.Assembler.prototype.jumpLabel = function (opcode, mnemonic, label, offset)
     return this;
 };
 
+/** @private Generic jump to a linked address */
+x86.Assembler.prototype.jumpLink = function (opcode, mnemonic, linkObj)
+{
+    assert(linkObj.type === x86.type.LINK,
+           "invalid link object '", linkObj, "'");
+
+    assert(linkObj.width() === 32, "Invalid width " + linkObj.width());
+
+    switch (opcode)
+    {
+        case x86.opcode.jmpRel8:
+            this.
+            gen8(x86.opcode.jmpRel32);
+            break;
+        case x86.opcode.callRel32:
+            this.
+            gen8(opcode);
+            break;
+        default:
+            // opcode is for a conditional jump
+            this.
+            gen8(x86.opcode.esc).
+            gen8(opcode + 0x10);
+            break;
+    }
+
+    this.
+    require(linkObj).
+    genListing(
+        x86.instrFormat(mnemonic, x86.widthSuffix(linkObj.width()), linkObj));
+
+    return this;
+};
 /** @private jump for the general case */
 x86.Assembler.prototype.jumpGeneral = function (field, opnd)
 {
@@ -2173,6 +2248,8 @@ x86.Assembler.prototype.jmp = function (opnd1, opnd2)
             return this.jumpGeneral(4, opnd1); 
         case x86.type.MEM: 
             return this.jumpGeneral(4, opnd1); 
+        case x86.type.LINK:
+            return this.jumpLink(x86.opcode.jmpRel32, "jmp", opnd1); 
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
         default:
@@ -2192,6 +2269,8 @@ x86.Assembler.prototype.call = function (opnd1, opnd2)
             return this.jumpGeneral(2, opnd1); 
         case x86.type.MEM:
             return this.jumpGeneral(2, opnd1); 
+        case x86.type.LINK:
+            return this.jumpLink(x86.opcode.callRel32, "call", opnd1); 
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.callRel32, "call",opnd1, opnd2);
         default:
@@ -2782,4 +2861,6 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
 
     return this;
 };
+
+
 
