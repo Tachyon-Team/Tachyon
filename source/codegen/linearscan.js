@@ -1280,9 +1280,6 @@ allocator.liveIntervals = function (cfg, order, config)
     {
         var block = order[i];
 
-        print();
-        print('block: ' + block.getBlockName());
-
         // Variable for the currently live set
         var live = [];
 
@@ -1291,14 +1288,10 @@ allocator.liveIntervals = function (cfg, order, config)
         {
             var succ = block.succs[j];
 
-            print("succ:" + succ.getBlockName());
-
             // For each instruction of the successor
             for (var k = 0; k < succ.instrs.length; ++k)
             {
                 var instr = succ.instrs[k];
-
-                print('examining succ phi: ' + instr);
 
                 // If this is not a phi instruction, stop
                 if (!(instr instanceof PhiInstr))
@@ -1307,8 +1300,6 @@ allocator.liveIntervals = function (cfg, order, config)
                 // Add the phi node's input from this block to the live set
                 if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
-                    print('making live phi inc: ' + instr.getIncoming(block));
-
                     arraySetAdd(live, instr.getIncoming(block));
                 }
             }
@@ -1316,8 +1307,6 @@ allocator.liveIntervals = function (cfg, order, config)
             // If this is a loop header, skip it
             if (succ.regAlloc.lastLoopEnd === block)
                 continue;            
-
-            print("Adding lives from:" + succ.getBlockName());
 
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
@@ -1328,8 +1317,6 @@ allocator.liveIntervals = function (cfg, order, config)
         {
             var instr = live[j];
            
-            print('adding range for: ' + instr);
-
             // Add a live range spanning this block to its interval
             instr.regAlloc.interval.addRange(
                 block.regAlloc.from,
@@ -1359,7 +1346,6 @@ allocator.liveIntervals = function (cfg, order, config)
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
 
-                print('killing: ' + instr);
             }
 
             // Input operands for phi instructions are added to the live set
@@ -1441,15 +1427,11 @@ allocator.liveIntervals = function (cfg, order, config)
         // If this block is a loop header
         if (lastLoopEnd)
         {
-            print('Loop header: ' + block.getBlockName() + " end: " + lastLoopEnd.getBlockName());
-
             // For each temp in the live set at the block entry 
             // (live before the block)
             for (var j = 0; j < live.length; ++j)
             {
                 var instr = live[j];
-
-                print('Making live: ' + instr + " upto: " + lastLoopEnd.regAlloc.to);
 
                 // Add a live range spanning the whole loop
                 instr.regAlloc.interval.addRange(
@@ -1901,7 +1883,13 @@ allocator.assign = function (cfg, config)
 
             if (opnd instanceof IRInstr)
             {
-                if (instr.regAlloc.usedRegisters(instr, config))
+                if (instr instanceof PhiInstr)
+                {
+                    // For phi instructions, make sure we used the same 
+                    // register as used for SSA deconstruction
+                    opnds.push(opnd.regAlloc.interval.
+                              regAtPos(instr.preds[opndIt.index].regAlloc.to));
+                } else if (instr.regAlloc.usedRegisters(instr, config))
                 {
                     opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
                 } else                 
@@ -2056,8 +2044,6 @@ allocator.resolve = function (cfg, intervals, order)
 
             if (moveFrom !== moveTo)
             {
-               //print(intervalIt.get());
-               //print("Move from:" + moveFrom + " to:" + moveTo);
                mapping.add(moveFrom, moveTo);
             }
         }
@@ -2097,9 +2083,6 @@ allocator.resolve = function (cfg, intervals, order)
         {
             // We need to introduce an additional block to insert
             // the move instructions
-            //print("Inserting block between '" + edge.pred.getBlockName() + 
-            //      "' and '" + edge.succ.getBlockName() + "'");
-            //print(mapping.toString());
             newblock = cfg.getNewBlock("ssa_dec");
             blocksToInsert.push({edge:edge, block:newblock});
 
