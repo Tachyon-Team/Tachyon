@@ -1004,7 +1004,7 @@ OrInstr.prototype.genCode = function (tltor, opnds)
         {
             tltor.asm.mov(opnds[0], dest);
         }
-    } 
+    }
     else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
     {
         tltor.asm.or(opnds[1], dest);
@@ -1021,7 +1021,25 @@ OrInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-//XorInstr
+XorInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if (opnds[0].type === x86.type.REG && opnds[0] === dest)
+    {
+        tltor.asm.xor(opnds[1], dest);
+    }
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    {
+        tltor.asm.xor(opnds[0], dest);
+    } 
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        xor(opnds[1], dest);
+    }
+};
 
 LsftInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1055,6 +1073,7 @@ RsftInstr.prototype.genCode = function (tltor, opnds)
     else
         shiftAmt = opnds[1]
 
+    // Use the arithmetic right shift
     if (opnds[0] === dest)
     {
         tltor.asm.sar(shiftAmt, dest);
@@ -1067,8 +1086,28 @@ RsftInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-// TODO: UrsftInstr
-// Use logical shift, shr
+UrsftInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    var shiftAmt;
+    if (opnds[0].type == x86.type.IMM_VAL)
+        shiftAmt = opnds[1].value % 256;
+    else
+        shiftAmt = opnds[1]
+
+    // Use the logical right shift
+    if (opnds[0] === dest)
+    {
+        tltor.asm.shr(shiftAmt, dest);
+    }
+    else
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        shr(shiftAmt, dest);
+    }
+};
 
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1099,7 +1138,34 @@ LtInstr.prototype.genCode = function (tltor, opnds)
     cmovl(tltor.trueVal, dest);
 };
 
-//LeInstr
+LeInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if ((opnds[0].type === x86.type.MEM &&
+        opnds[1].type === x86.type.MEM) ||
+        (opnds[0].type === x86.type.IMM_VAL &&
+        opnds[1].type === x86.type.IMM_VAL))
+    {
+        tltor.asm.
+        mov(opnds[1], dest).
+        cmp(opnds[0], dest);
+    } 
+    else if (opnds[0].type === x86.type.IMM_VAL)
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
+    } 
+    else
+    {
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.numBits);
+    }
+
+    tltor.asm.
+    mov(tltor.falseVal, dest).
+    cmovle(tltor.trueVal, dest);
+};
 
 GtInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1130,7 +1196,34 @@ GtInstr.prototype.genCode = function (tltor, opnds)
     cmovg(tltor.trueVal, dest);
 };
 
-//GeInstr
+GeInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    if ((opnds[0].type === x86.type.MEM &&
+        opnds[1].type === x86.type.MEM) ||
+        (opnds[0].type === x86.type.IMM_VAL &&
+        opnds[1].type === x86.type.IMM_VAL))
+    {
+        tltor.asm.
+        mov(opnds[1], dest).
+        cmp(opnds[0], dest);
+    } 
+    else if (opnds[0].type === x86.type.IMM_VAL)
+    {
+        tltor.asm.
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
+    } 
+    else
+    {
+        tltor.asm.cmp(opnds[1], opnds[0]);
+    }
+
+    tltor.asm.
+    mov(tltor.falseVal, dest).
+    cmovge(tltor.trueVal, dest);
+};
 
 EqInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1444,7 +1537,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         // Index for the last argument passed in a register 
         const lastArgIndex = argRegNb - 1;
 
-
         // Number of operands that must be spilled at the call site
         var spillNb = opndNb - argRegNb;
         spillNb = (spillNb < 0) ? 0 : spillNb;
@@ -1488,7 +1580,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             }
         }
 
-
         // Move arguments in the right registers
         map = allocator.mapping();
 
@@ -1518,9 +1609,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                                     tltor.asm.
                                     mov(move.uses[0], move.uses[1]);
                                  }, scratch);
-
-
-
 
         // Call function address
         tltor.asm.call(funcObjReg);

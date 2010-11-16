@@ -2309,35 +2309,23 @@ function opToIR(context)
             // Create a block to join the contexts
             var joinBlock = context.cfg.getNewBlock('log_and_join');
 
-            // Create blocks for the true and false cases
-            var trueBlock = context.cfg.getNewBlock('log_and_true');
-            var falseBlock = context.cfg.getNewBlock('log_and_false');
-            trueBlock.addInstr(new JumpInstr(joinBlock));
-            falseBlock.addInstr(new JumpInstr(joinBlock));
-
-            // Create the first if branching instruction
+            // If the first expression evaluates to true, evaluate the second
             fstContext.addInstr(
                 new IfInstr(
                     fstContext.getOutValue(),
                     secContext.entryBlock,
-                    falseBlock
+                    joinBlock
                 )
             );
 
-            // Create the second if branching instruction
-            secContext.addInstr(
-                new IfInstr(
-                    secContext.getOutValue(),
-                    trueBlock,
-                    falseBlock
-                )
-            );
+            // Make the second context branch to the join block directly
+            secContext.addInstr(new JumpInstr(joinBlock));
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
                 new PhiInstr(
-                    [ConstValue.getConst(true), ConstValue.getConst(false)],
-                    [trueBlock, falseBlock]
+                    [fstContext.getOutValue(), secContext.getOutValue()],
+                    [fstContext.getExitBlock(), secContext.getExitBlock()]
                 )
             );
 
@@ -2364,35 +2352,23 @@ function opToIR(context)
             // Create a block to join the contexts
             var joinBlock = context.cfg.getNewBlock('log_or_join');
 
-            // Create blocks for the true and false cases
-            var trueBlock = context.cfg.getNewBlock('log_or_true');
-            var falseBlock = context.cfg.getNewBlock('log_or_false');
-            trueBlock.addInstr(new JumpInstr(joinBlock));
-            falseBlock.addInstr(new JumpInstr(joinBlock));
-
-            // Create the first if branching instruction
+            // If the first expression evaluates to false, evaluate the second
             fstContext.addInstr(
                 new IfInstr(
                     fstContext.getOutValue(),
-                    trueBlock,
+                    joinBlock,
                     secContext.entryBlock
                 )
             );
 
-            // Create the second if branching instruction
-            secContext.addInstr(
-                new IfInstr(
-                    secContext.getOutValue(),
-                    trueBlock,
-                    falseBlock
-                )
-            );
+            // Make the second context branch to the join block directly
+            secContext.addInstr(new JumpInstr(joinBlock));
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
                 new PhiInstr(
-                    [ConstValue.getConst(true), ConstValue.getConst(false)],
-                    [trueBlock, falseBlock]
+                    [fstContext.getOutValue(), secContext.getOutValue()],
+                    [fstContext.getExitBlock(), secContext.getExitBlock()]
                 )
             );
 
