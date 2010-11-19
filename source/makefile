@@ -4,6 +4,7 @@ JSVM = d8 --allow_natives_syntax
 # Base program source files
 BASE_SRCS =                         \
     utility/debug.js                \
+    utility/system.js               \
     utility/iterators.js            \
     utility/graph.js                \
     utility/arrays.js               \
@@ -44,39 +45,43 @@ BASE_SRCS =                         \
     init.js
 
 # Main-specific source files
-MAIN_SPEC_SRCS =            \
+MAIN_SPEC_SRCS =                    \
     main.js
 
 # Test-specific source files
 # Insert unit test files between testing.js and testmain.js
-TEST_SPEC_SRCS =                \
-    tests/testing.js            \
-    utility/tests/*.js          \
-    ir/tests/*.js               \
-    runtime/tests/*.js          \
-    codegen/tests/*.js          \
-    programs/tests/fib.js       \
+TEST_SPEC_SRCS =                    \
+    tests/testing.js                \
+    utility/tests/*.js              \
+    ir/tests/*.js                   \
+    runtime/tests/*.js              \
+    codegen/tests/*.js              \
+    programs/tests/fib.js           \
     tests/testmain.js
 
 # Main target source files
-MAIN_SRCS =                 \
-    $(BASE_SRCS)            \
+MAIN_SRCS =                         \
+    $(BASE_SRCS)                    \
     $(MAIN_SPEC_SRCS)
 
 # Test target source files
-TEST_SRCS =                 \
-    $(BASE_SRCS)            \
+TEST_SRCS =                         \
+    $(BASE_SRCS)                    \
     $(TEST_SPEC_SRCS)
 
 # Benchmarking target source files
-BENCH_SRCS =                \
-    bench/benchmarking.js   \
+BENCH_SRCS =                        \
+    utility/debug.js                \
+    utility/system.js               \
+    utility/xml.js                  \
+    utility/html.js                 \
+    bench/benchmarking.js           \
     bench/benchmain.js
 
 # All source files
-ALL_SRCS =                  \
-    $(BASE_SRCS)            \
-    $(MAIN_SPEC_SRCS)       \
+ALL_SRCS =                          \
+    $(BASE_SRCS)                    \
+    $(MAIN_SPEC_SRCS)               \
     $(TEST_SPEC_SRCS)
 
 all: run
@@ -88,7 +93,7 @@ test:
 	$(JSVM) $(TEST_SRCS)
 
 perf: 
-	$(JSVM) $(BENCH_SRCS)
+	$(JSVM) $(BENCH_SRCS) -- "bench/configs/time_benchs.json"
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)

@@ -1,0 +1,7 @@
+{ 
+    "dimList"   : [
+        { "id":"RunTime", "numRuns":3 }
+    ],
+    "benchDir"  : "source/programs/",
+    "benchList" : ["foo", "bar"]
+}

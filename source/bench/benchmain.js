@@ -11,21 +11,19 @@ Entry point function for the benchmarking code
 */
 function main()
 {
-    if (arguments.length == 1)
+    var args = command_line();
+
+    if (args.length == 0)
     {
-        /*
-        var filename = arguments[0];
-        */
-
-
-        /*
-        TODO: command-line arguments
-        Config file to load?
-        */
-
-
-
+        print('config file argument required');
+        return
     }
+
+    var configFile = args[0];
+
+    bench.loadConfig(configFile);
+
+
 }
 
 main();

@@ -13,13 +13,6 @@ function read_file(filename)
     return read(filename);
 }
 
-var command_line_arguments = arguments;
-
-function command_line()
-{
-    return command_line_arguments;
-}
-
 //-----------------------------------------------------------------------------
 
 // I/O.
