@@ -18,6 +18,12 @@ to be benchmarked.
 bench.Dimension = function (
 )
 {
+    /**
+    Flag indicating whether a dimension needs to be benchmarked in isolation.
+    False by default.
+    @field
+    */
+    this.benchAlone = false;
 }
 bench.Dimension.prototype = {};
 
@@ -65,7 +71,13 @@ bench.Dimension.RunTime = function (cfg)
     */
 
 
+    this.numDryRuns = 2;
 
+
+    this.numRuns = 10;
+
+
+    this.benchAlone = true;
 }
 bench.Dimension.RunTime.prototype = new bench.Dimension();
 
@@ -140,7 +152,9 @@ Here, each dimension has a "kind", an identifier (id field)
 
 
 
-
+/**
+Load a benchmarking configuration file
+*/
 bench.loadConfig = function (configFile)
 {
     print('Loading config file: "' + configFile + '"');
@@ -193,11 +207,4 @@ bench.loadConfig = function (configFile)
 
 
 }
-
-
-
-
-
-
-
 
