@@ -2,43 +2,45 @@
 JSVM = d8 --allow_natives_syntax
 
 # Base program source files
-BASE_SRCS =                 \
-    utility/debug.js        \
-    utility/iterators.js    \
-    utility/graph.js        \
-    utility/arrays.js       \
-    utility/hashmap.js      \
-    utility/linkedlist.js   \
-    utility/strings.js      \
-    utility/modules.js      \
-    utility/misc.js         \
-    parser/misc.js          \
-    parser/scanner.js       \
-    parser/parser.js        \
-    parser/pp.js            \
-    parser/ast-passes.js    \
-    platform/memory.js      \
-    ir/static.js            \
-    ir/instructions.js      \
-    ir/iir.js               \
-    ir/cfg.js               \
-    ir/functions.js         \
-    ir/ir.js                \
-    ir/optpatterns.js       \
-    ir/constprop.js         \
-    ir/commelim.js          \
-    ir/inlining.js          \
-    ir/lowering.js          \
-    runtime/objlayout.js    \
-    runtime/context.js      \
-    runtime/objects.js      \
-    codegen/asm.js          \
-    codegen/asm-x86.js      \
-    codegen/linearscan.js   \
-    codegen/backend.js      \
-    codegen/ir-to-asm-x86.js\
-    codegen/regalloc-config-x86.js\
-    jslib/errors.js         \
+BASE_SRCS =                         \
+    utility/debug.js                \
+    utility/iterators.js            \
+    utility/graph.js                \
+    utility/arrays.js               \
+    utility/hashmap.js              \
+    utility/linkedlist.js           \
+    utility/strings.js              \
+    utility/modules.js              \
+    utility/misc.js                 \
+    utility/xml.js                  \
+    utility/html.js                 \
+    parser/misc.js                  \
+    parser/scanner.js               \
+    parser/parser.js                \
+    parser/pp.js                    \
+    parser/ast-passes.js            \
+    platform/memory.js              \
+    ir/static.js                    \
+    ir/instructions.js              \
+    ir/iir.js                       \
+    ir/cfg.js                       \
+    ir/functions.js                 \
+    ir/ir.js                        \
+    ir/optpatterns.js               \
+    ir/constprop.js                 \
+    ir/commelim.js                  \
+    ir/inlining.js                  \
+    ir/lowering.js                  \
+    runtime/objlayout.js            \
+    runtime/context.js              \
+    runtime/objects.js              \
+    codegen/asm.js                  \
+    codegen/asm-x86.js              \
+    codegen/linearscan.js           \
+    codegen/backend.js              \
+    codegen/ir-to-asm-x86.js        \
+    codegen/regalloc-config-x86.js  \
+    jslib/errors.js                 \
     init.js
 
 # Main-specific source files
@@ -66,6 +68,11 @@ TEST_SRCS =                 \
     $(BASE_SRCS)            \
     $(TEST_SPEC_SRCS)
 
+# Benchmarking target source files
+BENCH_SRCS =                \
+    bench/benchmarking.js   \
+    bench/benchmain.js
+
 # All source files
 ALL_SRCS =                  \
     $(BASE_SRCS)            \
@@ -79,6 +86,9 @@ run:
 
 test: 
 	$(JSVM) $(TEST_SRCS)
+
+perf: 
+	$(JSVM) $(BENCH_SRCS)
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)

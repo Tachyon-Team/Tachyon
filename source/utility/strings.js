@@ -107,6 +107,58 @@ function escapeJSString(input)
 }
 
 /**
+Escape XML strings for output
+*/
+function escapeXMLString(input)
+{
+    var chars = [];
+
+    function pushStr(str)
+    {
+        for (var i = 0; i < str.length; ++i)
+            chars.push(str.charCodeAt(i));
+    }
+
+    for (var i = 0; i < input.length; ++i)
+    {
+        var charCode = input.charCodeAt(i);
+
+        switch (charCode)
+        {
+            // &
+            case 38:
+            pushStr('&amp;');
+            break;
+
+            // <
+            case 60:
+            pushStr('&lt;');
+            break;
+
+            // >
+            case 62:
+            pushStr('&gt;');
+            break;
+
+            // "
+            case 34:
+            pushStr('&quot;');
+            break;
+
+            // '
+            case 39:
+            pushStr('&apos;');
+            break;
+
+            default:
+            chars.push(charCode);
+        }
+    }
+
+    return String.fromCharCode.apply(null, chars);
+}
+
+/**
 Indent each line of a text string
 */
 function indentText(inputStr, indentStr)
