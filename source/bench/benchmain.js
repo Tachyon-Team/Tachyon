@@ -24,6 +24,9 @@ function main()
     bench.loadConfig(configFile);
 
 
+
+    // TODO: perform benchmarking!
+
 }
 
 main();

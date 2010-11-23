@@ -15,8 +15,7 @@ var bench = bench || {};
 @class Base class for benchmarking dimension. Represents a criteria
 to be benchmarked.
 */
-bench.Dimension = function (
-)
+bench.Dimension = function ()
 {
     /**
     Flag indicating whether a dimension needs to be benchmarked in isolation.
@@ -24,6 +23,19 @@ bench.Dimension = function (
     @field
     */
     this.benchAlone = false;
+
+    /**
+    Number of significant digits to keep in the final result.
+    By default, keep all digits.
+    @field
+    */
+    this.sigDigits = undefined;
+
+
+    /* TODO: fill in default params 
+    dataKind, 
+    sigDigits
+    */
 }
 bench.Dimension.prototype = {};
 
@@ -35,51 +47,84 @@ bench.Dimension.prototype.loadParams = function (cfg)
     // For each config parameter
     for (param in cfg)
     {
-        // If this is the id parameter, ignore it
-        if (param == 'id')
-        {
-            continue;
-        }
-        else
-        {
-            // Try to parse the parameter
-            var res = this.setParam(param, cfg[param]);
-
-            // If the parsing failed
-            if (!res)
-            {
-                error(
-                    'unknown or invalid config param: "' + param + '" (' +
-                    val + ') for ' + this.name + ' dimension'
-                );
-            }
-        }
+        // Try to parse the parameter
+        this.setParam(param, cfg[param]);
     }
 }
 
 /**
-@class Run-time benchmarking dimension
+Set the generic parameters for this dimension
 */
-bench.Dimension.RunTime = function (cfg)
+bench.Dimension.prototype.setParam = function (param, val)
 {
-    /* TODO: fill in default params 
-    numRuns,
-    numDryRuns, 
-    benchAlone, 
-    dataKind, 
-    sigDigits
+    switch (param)
+    {
+        // If this is the id parameter, ignore it
+        case 'id':
+        break;
+
+        case 'sigDigits':
+        {
+            assert (
+                val === undefined || 
+                (val >= 1 && Math.floor(val) === val),
+                'expected positive integer or undefined'
+            );
+
+            this.sigDigits = val;
+        }
+
+        default:
+        {
+            error(
+                'unknown config param: "' + param + '" (' +
+                val + ') for ' + this.name + ' dimension'
+            );
+        }   
+    }
+}
+
+/**
+Store the dimension parameters in a configuration object
+*/
+bench.Dimension.prototype.storeParams = function (obj)
+{
+    // Store the dimension id
+    obj.id = this.id;
+
+    obj.sigDigits = this.sigDigits;
+}
+
+/**
+@class Run-time benchmarking dimension
+@extends bench.Dimension
+*/
+bench.Dimension.RunTime = function ()
+{
+    /**
+    Number of dry (non-timing) runs to perform before timing
+    @field
     */
-
-
     this.numDryRuns = 2;
 
-
+    /**
+    Number of timing runs (excluding dry runs) to perform
+    @field
+    */
     this.numRuns = 10;
 
-
+    /**
+    This dimension must be measured alone
+    @field
+    */
     this.benchAlone = true;
 }
 bench.Dimension.RunTime.prototype = new bench.Dimension();
+
+/**
+Identifier for this construction, name of the constructor
+*/
+bench.Dimension.RunTime.prototype.id = 'RunTime';
 
 /**
 Name of the benchmarking dimension
@@ -93,18 +138,78 @@ bench.Dimension.RunTime.prototype.setParam = function (param, val)
 {
     switch (param)
     {
+        case 'numDryRuns':
+        {
+            assert (
+                val >= 1 && Math.floor(val) === val,
+                'expected positive integer'
+            );
+
+            this.numDryRuns = val;
+        }
+        break;
+
         case 'numRuns':
         {
-            if (typeof val !== 'number' || val < 1)
-                return false;
+            assert (
+                val >= 1 && Math.floor(val) === val,
+                'expected positive integer'
+            );
 
             this.numRuns = val;
         }
-        return true;
+        break;
 
+        // If the param is unknown, try using the default handler
         default:
-        return false;
+        {
+            var res = bench.Dimension.prototype.setParam.apply(
+                this, [param, val]
+            );
+        }
     }
+}
+
+/**
+Store the dimension parameters in a configuration object
+*/
+bench.Dimension.RunTime.prototype.storeParams = function (obj)
+{
+    var obj = {};
+
+    obj.numDryRuns = this.numDryRuns;
+    obj.numRuns = this.numRuns;
+
+    // Store the generic parameters for this dimension
+    bench.Dimension.prototype.setParam.apply(
+        this, [obj]
+    );
+
+    return obj;
+}
+
+/**
+Code to be executed before the benchmark is run
+*/
+bench.Dimension.RunTime.prototype.preRun = function ()
+{
+    // TODO: code to be executed before the benchmark is run, inside
+    // the benchmark's host VM
+
+    // TODO: store start time
+}
+
+/**
+Code to be executed after the benchmark is run
+*/
+bench.Dimension.RunTime.prototype.postRun = function ()
+{
+    // TODO: code to be executed after the benchmark is run, inside
+    // the benchmark's host VM
+
+    // TODO: store end time
+    // calc total time
+    // store output val
 }
 
 /**
@@ -122,32 +227,25 @@ List of benchmarks to test
 */
 bench.benchList = [];
 
+/**
+List of environments (VMs) to test
+*/
+bench.envList = []
 
 
 
 
 /*
-TODO: need to be able to specify set of benchmarks, platforms, dimensions
-to test against... use a config script?
-
-
 Specify:
 platforms to test,
 dimensions to benchmark
 - optional params for dimensions (defaults otherwise)
 
-
-
-
 For each dimension:
 - Want a loader function to parse/validate JSON data, fill in defaults
 - Want pre-run and post-run functions to gather data
 
-Here, each dimension has a "kind", an identifier (id field)
-
 */
-
-
 
 
 
@@ -181,6 +279,7 @@ bench.loadConfig = function (configFile)
                 // Load the configuration parameters for the dimension
                 dimObj.loadParams(dimCfg);
 
+                // Add the dimension to the list
                 bench.dimList.push(dimObj);
             }
         }
@@ -197,11 +296,14 @@ bench.loadConfig = function (configFile)
     // Store the list of benchmarks
     bench.benchList = cfg.benchList;
 
+    // Store the list of environments
+    bench.envList = cfg.envList;
 
-    print(bench.benchList);
+
     print(bench.benchDir);
+    print(bench.benchList);
     print(bench.dimList);
-
+    print(bench.envList);
 
 
 

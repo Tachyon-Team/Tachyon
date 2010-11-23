@@ -3,5 +3,7 @@
         { "id":"RunTime", "numRuns":3 }
     ],
     "benchDir"  : "source/programs/",
-    "benchList" : ["foo", "bar"]
+    "benchList" : ["foo", "bar"],
+    "envList"   : ["v8"]
 }
+
