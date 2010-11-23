@@ -31,11 +31,26 @@ bench.Dimension = function ()
     */
     this.sigDigits = undefined;
 
-
-    /* TODO: fill in default params 
-    dataKind, 
-    sigDigits
+    /**
+    Number of dry (non-measuring) runs to perform before measuring.
+    By default, no dry runs.
+    @field
     */
+    this.numDryRuns = 0;
+
+    /**
+    Number of measuring runs (excluding dry runs) to perform.
+    By default, one run.
+    @field
+    */
+    this.numRuns = 1;
+
+    /**
+    String describing the measurement units.
+    By default, no units
+    @field
+    */
+    this.units = '';
 }
 bench.Dimension.prototype = {};
 
@@ -74,70 +89,6 @@ bench.Dimension.prototype.setParam = function (param, val)
             this.sigDigits = val;
         }
 
-        default:
-        {
-            error(
-                'unknown config param: "' + param + '" (' +
-                val + ') for ' + this.name + ' dimension'
-            );
-        }   
-    }
-}
-
-/**
-Store the dimension parameters in a configuration object
-*/
-bench.Dimension.prototype.storeParams = function (obj)
-{
-    // Store the dimension id
-    obj.id = this.id;
-
-    obj.sigDigits = this.sigDigits;
-}
-
-/**
-@class Run-time benchmarking dimension
-@extends bench.Dimension
-*/
-bench.Dimension.RunTime = function ()
-{
-    /**
-    Number of dry (non-timing) runs to perform before timing
-    @field
-    */
-    this.numDryRuns = 2;
-
-    /**
-    Number of timing runs (excluding dry runs) to perform
-    @field
-    */
-    this.numRuns = 10;
-
-    /**
-    This dimension must be measured alone
-    @field
-    */
-    this.benchAlone = true;
-}
-bench.Dimension.RunTime.prototype = new bench.Dimension();
-
-/**
-Identifier for this construction, name of the constructor
-*/
-bench.Dimension.RunTime.prototype.id = 'RunTime';
-
-/**
-Name of the benchmarking dimension
-*/
-bench.Dimension.RunTime.prototype.name = 'running-time';
-
-/**
-Set the parameters for this dimension
-*/
-bench.Dimension.RunTime.prototype.setParam = function (param, val)
-{
-    switch (param)
-    {
         case 'numDryRuns':
         {
             assert (
@@ -160,6 +111,89 @@ bench.Dimension.RunTime.prototype.setParam = function (param, val)
         }
         break;
 
+        default:
+        {
+            error(
+                'unknown config param: "' + param + '" (' +
+                val + ') for ' + this.name + ' dimension'
+            );
+        }   
+    }
+}
+
+/**
+Store the dimension parameters in a configuration object
+*/
+bench.Dimension.prototype.storeParams = function (obj)
+{
+    // Store the dimension id
+    obj.id = this.id;
+
+    obj.sigDigits = this.sigDigits;
+
+    obj.numDryRuns = this.numDryRuns;
+    obj.numRuns = this.numRuns;
+}
+
+/**
+@class Run-time benchmarking dimension
+@extends bench.Dimension
+*/
+bench.Dimension.RunTime = function ()
+{
+    /**
+    Keep 3 significant digits by default.
+    @field
+    */
+    this.sigDigits = 3;
+
+    /**
+    Perform two dry runs by default.
+    @field
+    */
+    this.numDryRuns = 2;
+
+    /**
+    Perform 10 timing runs by default.
+    @field
+    */
+    this.numRuns = 10;
+
+    /**
+    This dimension must be measured alone
+    @field
+    */
+    this.benchAlone = true;
+
+    /**
+    The unit measured is the time in seconds
+    @field
+    */
+    this.units = 's';
+}
+bench.Dimension.RunTime.prototype = new bench.Dimension();
+
+/**
+Identifier for this construction, name of the constructor
+*/
+bench.Dimension.RunTime.prototype.id = 'RunTime';
+
+/**
+Name of the benchmarking dimension
+*/
+bench.Dimension.RunTime.prototype.name = 'running-time';
+
+/**
+Set the parameters for this dimension
+*/
+bench.Dimension.RunTime.prototype.setParam = function (param, val)
+{
+    switch (param)
+    {
+        //
+        // TODO: parse dimension-specific params here
+        //
+
         // If the param is unknown, try using the default handler
         default:
         {
@@ -177,8 +211,9 @@ bench.Dimension.RunTime.prototype.storeParams = function (obj)
 {
     var obj = {};
 
-    obj.numDryRuns = this.numDryRuns;
-    obj.numRuns = this.numRuns;
+    //
+    // TODO: store dimension-specific parameters here
+    //
 
     // Store the generic parameters for this dimension
     bench.Dimension.prototype.setParam.apply(
@@ -236,15 +271,25 @@ bench.envList = []
 
 
 /*
-Specify:
-platforms to test,
-dimensions to benchmark
-- optional params for dimensions (defaults otherwise)
+TODO: how do we store the output and config info?
+- Want JSON file to start
+- Output in dimension list?
+- Probably want output separate, not config param...
 
-For each dimension:
-- Want a loader function to parse/validate JSON data, fill in defaults
-- Want pre-run and post-run functions to gather data
+TODO: how do we run the benchmarks? in an external VM?
+- This may be necessary to run in Tachyon now
+- Need scripts to run with Tachyon inside V8
+- Can store benchmark and dimension(s) to test inside JSON file?
+- Output comes back in JSON file as well?
 
+TODO: design/write env/platform driver
+- Needs to do all pre-runs, run benchmark, post-runs
+- Sufficient iterations for all dimensions
+- Store output when done
+- Tricky part is how to run benchmark in Tachyon/V8
+
+TODO: assemble sample benchmark program?
+- start with fib benchmark, for simplicity
 */
 
 
@@ -304,7 +349,13 @@ bench.loadConfig = function (configFile)
     print(bench.benchList);
     print(bench.dimList);
     print(bench.envList);
+}
 
+/**
+Perform benchmarking
+*/
+bench.runBenchs = function ()
+{
 
 
 
