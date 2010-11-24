@@ -170,6 +170,23 @@ tests.utility.linkedList.iterator = function ()
 }
 
 /**
+Test of number formatting with significant digits
+*/
+tests.utility.fmtNumDecimals = function ()
+{
+    // TODO
+
+    /*
+    fmtNumSigDigits(10.35, 3);
+    fmtNumSigDigits(10, 3);
+
+    fmtNumSigDigits(-35.2, 3);
+
+    fmtNumSigDigits(Math.pow(142.23, 14), 3);
+    */
+}
+
+/**
 Test suite for XML/HTML code
 */
 tests.utility.xml = tests.testSuite();

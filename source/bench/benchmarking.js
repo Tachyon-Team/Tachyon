@@ -6,6 +6,43 @@ Benchmarking framework implementation.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
+/*
+TODO: eliminate numRuns, numDryRuns, benchAlone from dimension config
+
+TODO: v8 extension for shell commands
+- cmd string input,
+- return stdout in string
+
+TODO: how do we store the output and config info?
+- Want JSON file to start
+- Output in dimension list?
+- Probably want output separate, not config param...
+
+TODO: how do we run the benchmarks? in an external VM?
+- This may be necessary to run in Tachyon now
+- Need scripts to run with Tachyon inside V8
+- Can store benchmark and dimension(s) to test inside JSON file?
+- Output comes back in JSON file as well?
+- Reset VM between each benchmark, iteration ***
+  - shell command, bench id, config file
+
+TODO: design/write env/platform driver
+- Needs to do all pre-runs, run benchmark, post-runs
+- Sufficient iterations for all dimensions
+- Store output when done
+- Tricky part is how to run benchmark in Tachyon/V8
+- Support for pulling from git
+
+TODO: assemble sample benchmark program?
+- start with fib benchmark, for simplicity
+
+TODO: in benchmark description
+max number of runs to perform for this benchmark
+
+TODO: dump all in JSON file, do postprocessing separately
+*/
+
+
 /**
 Benchmarking namespace
 */
@@ -18,32 +55,11 @@ to be benchmarked.
 bench.Dimension = function ()
 {
     /**
-    Flag indicating whether a dimension needs to be benchmarked in isolation.
-    False by default.
+    Number of decimals to keep in the final result.
+    By default, keep all decimals.
     @field
     */
-    this.benchAlone = false;
-
-    /**
-    Number of significant digits to keep in the final result.
-    By default, keep all digits.
-    @field
-    */
-    this.sigDigits = undefined;
-
-    /**
-    Number of dry (non-measuring) runs to perform before measuring.
-    By default, no dry runs.
-    @field
-    */
-    this.numDryRuns = 0;
-
-    /**
-    Number of measuring runs (excluding dry runs) to perform.
-    By default, one run.
-    @field
-    */
-    this.numRuns = 1;
+    this.numDecimals = undefined;
 
     /**
     String describing the measurement units.
@@ -51,6 +67,12 @@ bench.Dimension = function ()
     @field
     */
     this.units = '';
+
+    /**
+    Array of output values gathered for this dimension.
+    @field
+    */
+    this.output = undefined;
 }
 bench.Dimension.prototype = {};
 
@@ -78,38 +100,15 @@ bench.Dimension.prototype.setParam = function (param, val)
         case 'id':
         break;
 
-        case 'sigDigits':
+        case 'numDecimals':
         {
             assert (
-                val === undefined || 
-                (val >= 1 && Math.floor(val) === val),
+                val === undefined || isPosInt(val),
                 'expected positive integer or undefined'
             );
 
-            this.sigDigits = val;
+            this.numDecimals = val;
         }
-
-        case 'numDryRuns':
-        {
-            assert (
-                val >= 1 && Math.floor(val) === val,
-                'expected positive integer'
-            );
-
-            this.numDryRuns = val;
-        }
-        break;
-
-        case 'numRuns':
-        {
-            assert (
-                val >= 1 && Math.floor(val) === val,
-                'expected positive integer'
-            );
-
-            this.numRuns = val;
-        }
-        break;
 
         default:
         {
@@ -129,11 +128,33 @@ bench.Dimension.prototype.storeParams = function (obj)
     // Store the dimension id
     obj.id = this.id;
 
-    obj.sigDigits = this.sigDigits;
-
-    obj.numDryRuns = this.numDryRuns;
-    obj.numRuns = this.numRuns;
+    // Store the number of decimals to keep
+    obj.numDecimals = this.numDecimals;
 }
+
+/**
+Get the geometric mean accross output values
+*/
+/*
+bench.Dimension.prototype.getOutMean = function ()
+{
+    assert (
+        a instanceof Array && a.length > 0,
+        'output must be array value'
+    );
+
+    var prod = 1;
+
+    for (var i = 0; i < this.output.length; ++i)
+    {
+        assert (typeof this.output[i] == 'number');
+
+        prod *= this.output[i];
+    }
+
+    return Math.pow(prod, 1 / this.output.length);
+}
+*/
 
 /**
 @class Run-time benchmarking dimension
@@ -142,28 +163,10 @@ bench.Dimension.prototype.storeParams = function (obj)
 bench.Dimension.RunTime = function ()
 {
     /**
-    Keep 3 significant digits by default.
+    Keep 2 decimals by default.
     @field
     */
-    this.sigDigits = 3;
-
-    /**
-    Perform two dry runs by default.
-    @field
-    */
-    this.numDryRuns = 2;
-
-    /**
-    Perform 10 timing runs by default.
-    @field
-    */
-    this.numRuns = 10;
-
-    /**
-    This dimension must be measured alone
-    @field
-    */
-    this.benchAlone = true;
+    this.numDecimals = 2;
 
     /**
     The unit measured is the time in seconds
@@ -228,10 +231,8 @@ Code to be executed before the benchmark is run
 */
 bench.Dimension.RunTime.prototype.preRun = function ()
 {
-    // TODO: code to be executed before the benchmark is run, inside
-    // the benchmark's host VM
-
-    // TODO: store start time
+    // Store the start time in ms
+    this.startTimeMs = new Date().getTime();
 }
 
 /**
@@ -239,13 +240,27 @@ Code to be executed after the benchmark is run
 */
 bench.Dimension.RunTime.prototype.postRun = function ()
 {
-    // TODO: code to be executed after the benchmark is run, inside
-    // the benchmark's host VM
+    // Get the end time in ms
+    var endTimeMs = new Date().getTime();
 
-    // TODO: store end time
-    // calc total time
-    // store output val
+    // Calculate the total time in seconds
+    var totalTimeS = (endTimeMs - this.startTimeMs) / 1000;
+
+    // TODO: output object?? addOutput function?
+
+    // Store the total time in the output values
+    this.addOutput(totalTimeS);
 }
+
+/**
+Number of dry (non-measuring) runs to perform before measuring.
+*/
+bench.numDryRuns = 0;
+
+/**
+Number of measuring runs (excluding dry runs) to perform.
+*/
+bench.numRuns = 1;
 
 /**
 List of benchmarking dimensions to measure
@@ -267,33 +282,25 @@ List of environments (VMs) to test
 */
 bench.envList = []
 
-
-
-
-/*
-TODO: how do we store the output and config info?
-- Want JSON file to start
-- Output in dimension list?
-- Probably want output separate, not config param...
-
-TODO: how do we run the benchmarks? in an external VM?
-- This may be necessary to run in Tachyon now
-- Need scripts to run with Tachyon inside V8
-- Can store benchmark and dimension(s) to test inside JSON file?
-- Output comes back in JSON file as well?
-
-TODO: design/write env/platform driver
-- Needs to do all pre-runs, run benchmark, post-runs
-- Sufficient iterations for all dimensions
-- Store output when done
-- Tricky part is how to run benchmark in Tachyon/V8
-
-TODO: assemble sample benchmark program?
-- start with fib benchmark, for simplicity
+/**
+Map of output gathered, per-environment, per-dimension
 */
+bench.output = {};
 
 
+// TODO:
+// bench.addOutput(env, dim, val)
 
+// TODO:
+// bench.loadOutput
+
+// TODO:
+// bench.storeOutput
+// need to store link name of cfg in this
+
+// TODO:
+// bench.storeConfig?
+// is this needed?
 
 /**
 Load a benchmarking configuration file
@@ -335,6 +342,12 @@ bench.loadConfig = function (configFile)
     // Parse JSON code from the config file
     var cfg = JSON.parse(read(configFile), reviver);
 
+    // Store the number of dry runs
+    bench.numDryRuns = cfg.numDryRuns;
+
+    // Store the number of measuring runs
+    bench.numRuns = cfg.numRuns;
+
     // Store the benchmarks director
     bench.benchDir = cfg.benchDir;
 
@@ -344,7 +357,8 @@ bench.loadConfig = function (configFile)
     // Store the list of environments
     bench.envList = cfg.envList;
 
-
+    print(bench.numDryRuns);
+    print(bench.numRuns);
     print(bench.benchDir);
     print(bench.benchList);
     print(bench.dimList);
@@ -357,7 +371,16 @@ Perform benchmarking
 bench.runBenchs = function ()
 {
 
+    // For each env
+        // For each ben
+            // For each dry run
+                // start child vm
+                    // load JSON output file
+                    // add output
+                    // write JSON output file
+            // For each run
+                // start child vm
 
-
+    // TODO: postRuns in reverse order of preRuns
 }
 

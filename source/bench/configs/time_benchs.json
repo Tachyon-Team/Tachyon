@@ -1,6 +1,8 @@
 { 
+    "numDryRuns":2,
+    "numRuns":10,
     "dimList"   : [
-        { "id":"RunTime", "numRuns":3 }
+        { "id":"RunTime" }
     ],
     "benchDir"  : "source/programs/",
     "benchList" : ["foo", "bar"],

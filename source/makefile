@@ -75,6 +75,7 @@ BENCH_SRCS =                        \
     utility/system.js               \
     utility/xml.js                  \
     utility/html.js                 \
+    utility/misc.js                 \
     bench/benchmarking.js           \
     bench/benchmain.js
 
