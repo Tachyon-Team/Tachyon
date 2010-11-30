@@ -20,18 +20,25 @@ a.codeBlock.bigEndian = false;
 // In cdecl calling convention, registers ebx, esi, edi, and ebp
 // are callee-save
 
+var lobj = a.linked("fib", 
+                    function (dstAddr) { var bytes = dstAddr
+                                                     .addOffset(4)
+                                                     .getAddrOffsetBytes(this.srcAddr);
+                                         return bytes;},
+                    32);
+               
 a.
 
 push(EBX).  // Save EBX
 
 mov($(40), EAX).
 
-call(FIB).
+call(lobj).
 
 pop(EBX).   // Restore EBX
 ret().
 
-label(FIB).
+provide(lobj).
     cmp($(2), EAX).
     jge(RECURSION).
 
@@ -41,13 +48,13 @@ label(BASE_CASE).
 label(RECURSION).
     push(EAX).
     add($(-1), EAX).
-    call(FIB).
+    call(lobj).
 
     mov(EAX, EBX).
     pop(EAX).
     push(EBX).
     add($(-2), EAX).
-    call(FIB).
+    call(lobj).
 
     pop(EBX).
     add(EBX, EAX).
@@ -62,9 +69,10 @@ print(a.codeBlock.listingString());
 
 var block = a.codeBlock.assembleToMachineCodeBlock(); // assemble it
 
+block.link();
+
 var result = execMachineCodeBlock(block); // execute the code generated
 
 print('result: ' + result);
 
 freeMachineCodeBlock(block);
-
