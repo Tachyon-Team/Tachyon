@@ -267,38 +267,69 @@ Perform benchmarking
 */
 bench.runBenchs = function ()
 {
+    //
+    // TODO: create initial JSON output file
+    //
+
     // For each platform
-    for (var i = 0; i < bench.platList.length; ++i)
+    for (var platIdx = 0; platIdx < bench.platList.length; ++platIdx)
     {
-        var plat = bench.platList[i];
+        var platform = bench.platList[platIdx];
 
         // For each benchmark
-        for (var j = 0; j < bench.benchList.length; ++j)
+        for (var benchIdx = 0; benchIdx < bench.benchList.length; ++benchIdx)
         {
-            var bench = bench.benchList[j];
+            var benchmark = bench.benchList[benchIdx];
 
             // For each dry run
             for (var dryRunIdx = 0; dryRunIdx < bench.numDryRuns; ++dryRunIdx)
             {
+                platform.callVM(
+                    {
+                        "dataFile"  :"test file.json",
+                        "platIdx"   : platIdx,
+                        "benchIdx"  : benchIdx,
+                        "testRun"   : false
+                    }
+                );
             }
 
             // For each test run
-            for (var testRunIdx = 0; testRunIdx < bench.numDryRuns; ++testRunIdx)
+            for (var testRunIdx = 0; testRunIdx < bench.numRuns; ++testRunIdx)
             {
+                platform.callVM(
+                    {
+                        "dataFile"  :"test file.json",
+                        "platIdx"   : platIdx,
+                        "benchIdx"  : benchIdx,
+                        "testRun"   : true
+                    }
+                );
             }
-
-
-
-            // For each dry run
-                // start child vm
-                    // add output
-            // For each run
-                // load JSON output file
-                // start child vm
-                // write JSON output file
-
-            // TODO: postRuns in reverse order of preRuns
         }
     }
+}
+
+/**
+Run one benchmark iteration under a given platform
+@param platIdx platform index
+@param benchIdx benchmark index
+@param testRun flag indicating that this is an actual test run
+*/
+bench.runBench = function (platIdx, benchIdx, testRun)
+{
+    // TODO: load data file
+    // Do this in main?
+
+    // TODO: postRuns in reverse order of preRuns
+
+    // TODO: store data file
+
+
+
+
+
+
+
 }
 
