@@ -6,11 +6,11 @@ Basic function to test the whole compiler.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-tests.basic = tests.testSuite();
+tests.basic_ret = tests.testSuite();
 
-tests.basic.main = function ()
+tests.basic_ret.main = function ()
 {
-    var filename = 'programs/basic.js';
+    var filename = 'programs/basic_ret/basic_ret.js';
     var port = new File_input_port(filename);
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();

@@ -169,3 +169,81 @@ tests.utility.linkedList.iterator = function ()
     }
 }
 
+/**
+Test of number formatting with significant digits
+*/
+tests.utility.fmtNumDecimals = function ()
+{
+    // TODO
+
+    /*
+    fmtNumSigDigits(10.35, 3);
+    fmtNumSigDigits(10, 3);
+
+    fmtNumSigDigits(-35.2, 3);
+
+    fmtNumSigDigits(Math.pow(142.23, 14), 3);
+    */
+}
+
+/**
+Test suite for XML/HTML code
+*/
+tests.utility.xml = tests.testSuite();
+
+/**
+Test of XML string escaping
+*/
+tests.utility.xml.strEscape = function ()
+{
+    var origStr = 'foo & bar <3 >3 "lol" \'lol\'';
+    var validStr = 'foo &amp; bar &lt;3 &gt;3 &quot;lol&quot; &apos;lol&apos;';
+
+    assert (escapeXMLString(origStr) === validStr);
+}
+
+/**
+Test of XML code generation
+*/
+tests.utility.xml.gendoc = function ()
+{
+    var xmlRoot = new XMLElement('doc');
+    var xmlDoc = new XMLDocument(xmlRoot);
+
+    var listElem = new XMLElement('list');
+    listElem.attribs.length = 3;
+    xmlRoot.addChild(listElem);
+
+    listElem.addChild(new XMLElement('foo', { val:1 }, true));
+    listElem.addChild(new XMLElement('foo', { val:2 }, true));
+    listElem.addChild(new XMLElement('foo', { val:3 }, true));
+
+    xmlRoot.addChild(new XMLText('text contents yo!'));
+
+    xmlRoot.addChild(new XMLElement('br', {}, true));
+
+    var str = xmlDoc.toString();
+
+    //print(str);
+}
+
+/**
+Test of HTML code generation
+*/
+tests.utility.xml.genhtml = function ()
+{
+    var page = new HTMLPage('The Test Page');
+
+    page.addContents(new HTMLHeader(1, 'foo'));
+    page.addContents(new HTMLHeader(2, 'bar'));
+    page.addContents(new HTMLSep());
+    page.addContents(new HTMLHeader(3, 'bif'));
+    page.addContents(new HTMLSep());
+
+    var str = page.toString();
+
+    //print(str);
+
+    //page.toFile('test.html');
+}
+

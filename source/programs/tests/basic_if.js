@@ -10,7 +10,7 @@ tests.basic_if = tests.testSuite();
 
 tests.basic_if.main = function ()
 {
-    var filename = 'programs/basic_if.js';
+    var filename = 'programs/basic_if/basic_if.js';
     var port = new File_input_port(filename);
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();

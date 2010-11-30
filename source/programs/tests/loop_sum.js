@@ -6,11 +6,11 @@ Fibonacci implementation to test the whole compiler.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-tests.sumloop = tests.testSuite();
+tests.loop_sum = tests.testSuite();
 
-tests.sumloop.main = function ()
+tests.loop_sum.main = function ()
 {
-    var ast = parse_src_file('programs/sumloop.js');
+    var ast = parse_src_file('programs/loop_sum/loop_sum.js');
     
     var ir = unitToIR(ast);
 

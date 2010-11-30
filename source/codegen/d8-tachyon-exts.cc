@@ -66,7 +66,7 @@ v8::Handle<v8::Value> writeFile(const v8::Arguments& args)
         FILE *out = fopen(filename, "w");
         if (out == NULL)
         {
-            printf("Error in WriteFile -- can't open file\n");
+            printf("Error in writeFile -- can't open file\n");
             exit(1);
         }
         else
@@ -77,6 +77,56 @@ v8::Handle<v8::Value> writeFile(const v8::Arguments& args)
     }
 
     return v8::Undefined();
+}
+
+v8::Handle<v8::Value> shellCommand(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in openPipe -- 1 argument expected\n");
+        exit(1);
+    }
+
+    v8::String::Utf8Value cmdStrObj(args[0]);  
+    const char* cmdStr = *cmdStrObj;
+
+    FILE* pipeFile = popen(cmdStr, "r");
+
+    if (!pipeFile)
+    {
+        printf("Error in openPipe -- failed to execute command \"%s\"\n", cmdStr);
+        exit(1);        
+    }
+
+    char buffer[255];
+
+    char* outStr = NULL;
+    size_t strLen = 0;
+
+    while (!feof(pipeFile))
+    {
+        int numRead = fread(buffer, 1, sizeof(buffer), pipeFile);
+
+        if (ferror(pipeFile))
+        {
+            printf("Error in openPipe -- failed to read output");
+            exit(1);        
+        }
+
+        outStr = (char*)realloc(outStr, strLen + numRead + 1);
+        memcpy(outStr + strLen, buffer, numRead);
+        strLen += numRead;
+    }
+
+    outStr[strLen] = '\0';
+
+    fclose(pipeFile);
+
+    v8::Local<v8::String> v8Str = v8::String::New(outStr);
+
+    delete [] outStr;
+
+    return v8Str;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -148,7 +198,7 @@ v8::Handle<v8::Value> allocMachineCodeBlock(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in AllocMachineCodeBlock -- 1 argument expected\n");
+        printf("Error in allocMachineCodeBlock -- 1 argument expected\n");
         exit(1);
     }
     else
@@ -173,7 +223,7 @@ v8::Handle<v8::Value> freeMachineCodeBlock(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in FreeMachineCodeBlock -- 1 argument expected\n");
+        printf("Error in freeMachineCodeBlock -- 1 argument expected\n");
         exit(1);
     }
     else
@@ -197,7 +247,7 @@ v8::Handle<v8::Value> execMachineCodeBlock(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in ExecMachineCodeBlock -- 1 argument expected\n");
+        printf("Error in execMachineCodeBlock -- 1 argument expected\n");
         exit(1);
     }
     else
@@ -234,7 +284,7 @@ v8::Handle<v8::Value> allocMemoryBlock(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in AllocMemoryBlock -- 1 argument expected\n");
+        printf("Error in allocMemoryBlock -- 1 argument expected\n");
         exit(1);
     }
     else
@@ -259,7 +309,7 @@ v8::Handle<v8::Value> freeMemoryBlock(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in FreeMemoryBlock -- 1 argument expected\n");
+        printf("Error in freeMemoryBlock -- 1 argument expected\n");
         exit(1);
     }
     else
@@ -337,6 +387,11 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("writeFile"), 
         v8::FunctionTemplate::New(writeFile)
+    );
+
+    global_template->Set(
+        v8::String::New("shellCommand"), 
+        v8::FunctionTemplate::New(shellCommand)
     );
 
     global_template->Set(

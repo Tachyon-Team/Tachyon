@@ -10,7 +10,7 @@ tests.basic_many_args = tests.testSuite();
 
 tests.basic_many_args.main = function ()
 {
-    var filename = 'programs/basic_many_args.js';
+    var filename = 'programs/basic_many_args/basic_many_args.js';
     var port = new File_input_port(filename);
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();

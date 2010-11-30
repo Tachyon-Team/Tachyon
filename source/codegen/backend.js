@@ -195,6 +195,11 @@ backend.listing = function (codeBlock)
 */
 backend.execute = function (codeBlock)
 {
+    // TODO: add support for list of arguments to function
+
+    // TODO: move assemble and free outside of here, do not want to do this
+    // at every execution
+
     var block = codeBlock.assembleToMachineCodeBlock(); // assemble it
     var x = execMachineCodeBlock(block); // execute the code generated
     freeMachineCodeBlock(block);
@@ -218,11 +223,6 @@ backend.usedPrimitives = function (ir)
         if (arraySetHas(visited, func))
             continue;
 
-        if (//func.funcName == "putPropVal" ||
-            //func.funcName == "getGlobal"  ||
-            /*false)//*/func.funcName == "getGlobalFunc")
-            continue;
-
         for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
         {
             var instr = itr.get();
@@ -233,11 +233,6 @@ backend.usedPrimitives = function (ir)
 
                 if (use instanceof IRFunction)
                 {
-                    if (//use.funcName == "putPropVal" || 
-                        //use.funcName == "getGlobal"  ||
-                        /*false)//*/use.funcName == "getGlobalFunc")
-                        continue;
-
                     workList = workList.concat(use.getChildrenList());
                     if (use.funcName in backend.primitiveMap)
                     {
@@ -254,5 +249,4 @@ backend.usedPrimitives = function (ir)
 };
 
 backend.primitiveMap = {};
-
 

@@ -287,8 +287,7 @@ function xor(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function lsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function rsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function ursft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function ne(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function nseq(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function logNot(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties
@@ -387,6 +386,27 @@ function eq(v1, v2)
 }
 
 /**
+Implementation of HIR ne instruction
+*/
+function ne(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.ne(v1, v2)? true:false;
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+}
+
+/**
 Implementation of HIR strict-equality instruction
 */
 function seq(v1, v2)
@@ -406,6 +426,29 @@ function seq(v1, v2)
         // This will compare for equality of reference in the case of
         // references and compare immediate integers directly
         return iir.eq(v1, v2)? true:false;
+    }
+}
+
+/**
+Implementation of HIR strict-inequality instruction
+*/
+function nseq(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are floating-point
+    if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
+    {
+        // TODO: implement FP case in separate(non-inlined) function
+        return UNDEFINED;
+    }
+    else
+    {
+        // Compare the boxed value directly without unboxing them
+        // This will compare for inequality of reference in the case of
+        // references and compare immediate integers directly
+        return iir.ne(v1, v2)? true:false;
     }
 }
 
@@ -760,7 +803,7 @@ function getProp(obj, propName, propHash)
         // Move up in the prototype chain
         var obj = get_obj_proto(obj);
 
-    } while (obj != null);
+    } while (obj !== null);
 
     // Property not found, return a special bit pattern
     return iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND);

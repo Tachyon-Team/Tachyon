@@ -10,15 +10,15 @@ tests.fib = tests.testSuite();
 
 tests.fib.main = function ()
 {
-    var ast = parse_src_file('programs/fib.js');
+    var ast = parse_src_file('programs/fib/fib.js');
     
     var ir = unitToIR(ast, true);
 
     lowerIRFunc(ir);
 
     //var codeblock = backend.compile(ir);
-    //var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
-    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
+    var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
+    //var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
     //print(backend.listing(codeblock));
 
     var startTimeMs = new Date().getTime();
