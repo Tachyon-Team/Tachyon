@@ -42,94 +42,61 @@ max number of runs to perform for this benchmark
 TODO: dump all in JSON file, do postprocessing separately
 */
 
+/**
+Path to the configuration file for this benchmarking run
+*/
+bench.cfgFile = '';
 
 /**
-Benchmarking namespace
+Number of dry (non-measuring) runs to perform before measuring.
 */
-var bench = bench || {};
+bench.numDryRuns = 0;
 
 /**
-@class Base class for benchmarking dimension. Represents a criteria
-to be benchmarked.
+Number of measuring runs (excluding dry runs) to perform.
 */
-bench.Dimension = function ()
+bench.numRuns = 1;
+
+/**
+List of platforms (VMs) to test
+*/
+bench.platList = []
+
+/**
+List of benchmarking dimensions to measure
+*/
+bench.dimList = [];
+
+/**
+Path to the directory containing the benchmarks
+*/
+bench.benchPath = '';
+
+/**
+List of benchmarks to test
+*/
+bench.benchList = [];
+
+/**
+Map of output gathered, per-environment, per-dimension
+*/
+bench.output = {};
+
+/**
+Add output for a given dimension of a given run
+*/
+bench.addOutput = function (env, dim, val)
 {
-    /**
-    Number of decimals to keep in the final result.
-    By default, keep all decimals.
-    @field
-    */
-    this.numDecimals = undefined;
+    // If there is no entry for this environment, create one
+    if (!bench.output[env.id])
+        bench.output[env.id] = {};
 
-    /**
-    String describing the measurement units.
-    By default, no units
-    @field
-    */
-    this.units = '';
+    // If there is no entry for this dimension, create one
+    if (!bench.output[env.id][dim.id])
+        bench.output[env.id][dim.id] = [];
 
-    /**
-    Array of output values gathered for this dimension.
-    @field
-    */
-    this.output = undefined;
-}
-bench.Dimension.prototype = {};
-
-/**
-Load configuration parameters for this dimension
-*/
-bench.Dimension.prototype.loadParams = function (cfg)
-{
-    // For each config parameter
-    for (param in cfg)
-    {
-        // Try to parse the parameter
-        this.setParam(param, cfg[param]);
-    }
-}
-
-/**
-Set the generic parameters for this dimension
-*/
-bench.Dimension.prototype.setParam = function (param, val)
-{
-    switch (param)
-    {
-        // If this is the id parameter, ignore it
-        case 'id':
-        break;
-
-        case 'numDecimals':
-        {
-            assert (
-                val === undefined || isPosInt(val),
-                'expected positive integer or undefined'
-            );
-
-            this.numDecimals = val;
-        }
-
-        default:
-        {
-            error(
-                'unknown config param: "' + param + '" (' +
-                val + ') for ' + this.name + ' dimension'
-            );
-        }   
-    }
-}
-
-/**
-Store the dimension parameters in a configuration object
-*/
-bench.Dimension.prototype.storeParams = function (obj)
-{
-    // Store the dimension id
-    obj.id = this.id;
-
-    // Store the number of decimals to keep
-    obj.numDecimals = this.numDecimals;
+    // Add the value to the output
+    bench.output[env.id][dim.id].push(val);
 }
 
 /**
@@ -157,182 +124,106 @@ bench.Dimension.prototype.getOutMean = function ()
 */
 
 /**
-@class Run-time benchmarking dimension
-@extends bench.Dimension
+Load the output accumulated up to this point
 */
-bench.Dimension.RunTime = function ()
+bench.loadOutput = function (outFile)
 {
-    /**
-    Keep 2 decimals by default.
-    @field
-    */
-    this.numDecimals = 2;
+    // Parse JSON code from the output file
+    var out = JSON.parse(read(outFile));
 
-    /**
-    The unit measured is the time in seconds
-    @field
-    */
-    this.units = 's';
-}
-bench.Dimension.RunTime.prototype = new bench.Dimension();
+    // Load the config file associated with the output data
+    bench.loadConfig(out.cfgFile);
 
-/**
-Identifier for this construction, name of the constructor
-*/
-bench.Dimension.RunTime.prototype.id = 'RunTime';
-
-/**
-Name of the benchmarking dimension
-*/
-bench.Dimension.RunTime.prototype.name = 'running-time';
-
-/**
-Set the parameters for this dimension
-*/
-bench.Dimension.RunTime.prototype.setParam = function (param, val)
-{
-    switch (param)
-    {
-        //
-        // TODO: parse dimension-specific params here
-        //
-
-        // If the param is unknown, try using the default handler
-        default:
-        {
-            var res = bench.Dimension.prototype.setParam.apply(
-                this, [param, val]
-            );
-        }
-    }
+    // Get the current output data
+    bench.output = out.output;
 }
 
 /**
-Store the dimension parameters in a configuration object
+Store the output accumulated up to this point
 */
-bench.Dimension.RunTime.prototype.storeParams = function (obj)
+bench.storeOutput = function (outFile)
 {
-    var obj = {};
+    // Create an object to contain the output data
+    var out = {
+        cfgFile: bench.cfgFile,
+        output: bench.output
+    };
 
-    //
-    // TODO: store dimension-specific parameters here
-    //
+    // Serialize the object into JSON code
+    var fileData = JSON.stringify(out);
 
-    // Store the generic parameters for this dimension
-    bench.Dimension.prototype.setParam.apply(
-        this, [obj]
-    );
-
-    return obj;
+    // Write the data to the output file
+    writeFile(outFile, fileData);
 }
-
-/**
-Code to be executed before the benchmark is run
-*/
-bench.Dimension.RunTime.prototype.preRun = function ()
-{
-    // Store the start time in ms
-    this.startTimeMs = new Date().getTime();
-}
-
-/**
-Code to be executed after the benchmark is run
-*/
-bench.Dimension.RunTime.prototype.postRun = function ()
-{
-    // Get the end time in ms
-    var endTimeMs = new Date().getTime();
-
-    // Calculate the total time in seconds
-    var totalTimeS = (endTimeMs - this.startTimeMs) / 1000;
-
-    // TODO: output object?? addOutput function?
-
-    // Store the total time in the output values
-    this.addOutput(totalTimeS);
-}
-
-/**
-Number of dry (non-measuring) runs to perform before measuring.
-*/
-bench.numDryRuns = 0;
-
-/**
-Number of measuring runs (excluding dry runs) to perform.
-*/
-bench.numRuns = 1;
-
-/**
-List of benchmarking dimensions to measure
-*/
-bench.dimList = [];
-
-/**
-Path to the directory containing the benchmarks
-*/
-bench.benchPath = '';
-
-/**
-List of benchmarks to test
-*/
-bench.benchList = [];
-
-/**
-List of environments (VMs) to test
-*/
-bench.envList = []
-
-/**
-Map of output gathered, per-environment, per-dimension
-*/
-bench.output = {};
-
-
-// TODO:
-// bench.addOutput(env, dim, val)
-
-// TODO:
-// bench.loadOutput
-
-// TODO:
-// bench.storeOutput
-// need to store link name of cfg in this
-
-// TODO:
-// bench.storeConfig?
-// is this needed?
 
 /**
 Load a benchmarking configuration file
 */
-bench.loadConfig = function (configFile)
+bench.loadConfig = function (cfgFile)
 {
-    print('Loading config file: "' + configFile + '"');
+    print('Loading cfg file: "' + cfgFile + '"');
 
     // Reviver function to parse the config
     function reviver(key, value)
     {
+        // Function to create an object from configuration parameters
+        function buildObj(cfgObj, baseObj)
+        {
+            // Try to find the corresponding constructor
+            var ctor = baseObj[cfgObj.id];
+
+            // Ensure that this is a valid constructor id
+            if (!ctor || !(ctor.prototype instanceof baseObj))
+                error('unknown dimension: "' + cfgObj.id + '"');
+
+            // Create an object from the constructor
+            var newObj = new ctor();
+
+            // Load the configuration parameters for the object
+            newObj.loadParams(cfgObj);
+
+            return newObj;
+        }
+
         if (key == 'dimList' && typeof value == 'object')
         {
             for (var idx in value)
             {
                 var dimCfg = value[idx];
 
-                // Try to find the corresponding dimension constructor
-                var ctor = bench.Dimension[dimCfg.id];
-
-                // Ensure that this is a valid dimension
-                if (!ctor || !(ctor.prototype instanceof bench.Dimension))
-                    error('unknown dimension: "' + dimCfg.id + '"');
-
-                // Create an object for the dimension
-                var dimObj = new ctor();
-
-                // Load the configuration parameters for the dimension
-                dimObj.loadParams(dimCfg);
+                // Create a new object for this dimension
+                var cfgObj = buildObj(dimCfg, bench.Dimension);
 
                 // Add the dimension to the list
-                bench.dimList.push(dimObj);
+                bench.dimList.push(cfgObj);
+            }
+        }
+
+        if (key == 'platList' && typeof value == 'object')
+        {
+            for (var idx in value)
+            {
+                var platCfg = value[idx];
+
+                // Create a new object for this platform
+                var platObj = buildObj(platCfg, bench.Platform);
+
+                // Add the platform to the list
+                bench.platList.push(platObj);
+            }
+        }
+
+        if (key == 'benchList' && typeof value == 'object')
+        {
+            for (var idx in value)
+            {
+                var benchCfg = value[idx];
+
+                // Create a new object for this benchmark
+                var benchObj = new bench.Benchmark(benchCfg);
+
+                // Add the benchmark to the list
+                bench.benchList.push(benchObj);
             }
         }
 
@@ -340,7 +231,10 @@ bench.loadConfig = function (configFile)
     }
 
     // Parse JSON code from the config file
-    var cfg = JSON.parse(read(configFile), reviver);
+    var cfg = JSON.parse(read(cfgFile), reviver);
+
+    // Store the path to the config file
+    bench.cfgFile = cfgFile;
 
     // Store the number of dry runs
     bench.numDryRuns = cfg.numDryRuns;
@@ -354,15 +248,18 @@ bench.loadConfig = function (configFile)
     // Store the list of benchmarks
     bench.benchList = cfg.benchList;
 
-    // Store the list of environments
-    bench.envList = cfg.envList;
-
-    print(bench.numDryRuns);
-    print(bench.numRuns);
-    print(bench.benchDir);
-    print(bench.benchList);
-    print(bench.dimList);
-    print(bench.envList);
+    print('Number of dry runs : ' + bench.numDryRuns);
+    print('Number of test runs: ' + bench.numRuns);
+    print('Benchmark directory: "' + bench.benchDir + '"');
+    print('Platforms:');
+    for (var i = 0; i < bench.platList.length; ++i)
+        print('* ' + bench.platList[i].name);
+    print('Dimensions:');
+    for (var i = 0; i < bench.dimList.length; ++i)
+        print('* ' + bench.dimList[i].name);
+    print('Benchmarks:');
+    for (var i = 0; i < bench.benchList.length; ++i)
+        print('* "' + bench.benchList[i].dir + '"');
 }
 
 /**
@@ -370,17 +267,38 @@ Perform benchmarking
 */
 bench.runBenchs = function ()
 {
+    // For each platform
+    for (var i = 0; i < bench.platList.length; ++i)
+    {
+        var plat = bench.platList[i];
 
-    // For each env
-        // For each ben
+        // For each benchmark
+        for (var j = 0; j < bench.benchList.length; ++j)
+        {
+            var bench = bench.benchList[j];
+
+            // For each dry run
+            for (var dryRunIdx = 0; dryRunIdx < bench.numDryRuns; ++dryRunIdx)
+            {
+            }
+
+            // For each test run
+            for (var testRunIdx = 0; testRunIdx < bench.numDryRuns; ++testRunIdx)
+            {
+            }
+
+
+
             // For each dry run
                 // start child vm
-                    // load JSON output file
                     // add output
-                    // write JSON output file
             // For each run
+                // load JSON output file
                 // start child vm
+                // write JSON output file
 
-    // TODO: postRuns in reverse order of preRuns
+            // TODO: postRuns in reverse order of preRuns
+        }
+    }
 }
 

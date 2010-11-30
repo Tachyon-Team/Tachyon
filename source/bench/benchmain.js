@@ -27,6 +27,8 @@ function main()
 
     // TODO: perform benchmarking!
 
+    // TODO: recognize master vs "slave" mode?
+
 }
 
 main();

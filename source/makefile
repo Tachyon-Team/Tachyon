@@ -76,6 +76,9 @@ BENCH_SRCS =                        \
     utility/xml.js                  \
     utility/html.js                 \
     utility/misc.js                 \
+    bench/platforms.js              \
+    bench/dimensions.js             \
+    bench/benchmarks.js             \
     bench/benchmarking.js           \
     bench/benchmain.js
 
