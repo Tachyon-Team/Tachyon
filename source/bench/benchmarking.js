@@ -7,25 +7,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /*
-TODO: eliminate numRuns, numDryRuns, benchAlone from dimension config
-
-TODO: v8 extension for shell commands
-- cmd string input,
-- return stdout in string
-
-TODO: how do we store the output and config info?
-- Want JSON file to start
-- Output in dimension list?
-- Probably want output separate, not config param...
-
-TODO: how do we run the benchmarks? in an external VM?
-- This may be necessary to run in Tachyon now
-- Need scripts to run with Tachyon inside V8
-- Can store benchmark and dimension(s) to test inside JSON file?
-- Output comes back in JSON file as well?
-- Reset VM between each benchmark, iteration ***
-  - shell command, bench id, config file
-
 TODO: design/write env/platform driver
 - Needs to do all pre-runs, run benchmark, post-runs
 - Sufficient iterations for all dimensions
@@ -33,13 +14,10 @@ TODO: design/write env/platform driver
 - Tricky part is how to run benchmark in Tachyon/V8
 - Support for pulling from git
 
-TODO: assemble sample benchmark program?
-- start with fib benchmark, for simplicity
-
-TODO: in benchmark description
-max number of runs to perform for this benchmark
-
 TODO: dump all in JSON file, do postprocessing separately
+
+TODO: driver for Tachyon under V8
+- Wait for Erick to be done refactoring w/linking
 */
 
 /**
@@ -85,18 +63,27 @@ bench.output = {};
 /**
 Add output for a given dimension of a given run
 */
-bench.addOutput = function (env, dim, val)
+bench.addOutput = function (platform, dimension, benchmark, outVal)
 {
+    assert (
+        bench.output,
+        'output object not defined'
+    );
+
     // If there is no entry for this environment, create one
-    if (!bench.output[env.id])
-        bench.output[env.id] = {};
+    if (!bench.output[platform.id])
+        bench.output[platform.id] = {};
 
     // If there is no entry for this dimension, create one
-    if (!bench.output[env.id][dim.id])
-        bench.output[env.id][dim.id] = [];
+    if (!bench.output[platform.id][dimension.id])
+        bench.output[platform.id][dimension.id] = {};
+
+    // If there is no entry for this benchmark, create one
+    if (!bench.output[platform.id][dimension.id][benchmark.dir])
+        bench.output[platform.id][dimension.id][benchmark.dir] = [];
 
     // Add the value to the output
-    bench.output[env.id][dim.id].push(val);
+    bench.output[platform.id][dimension.id][benchmark.dir].push(outVal);
 }
 
 /**
@@ -136,6 +123,11 @@ bench.loadOutput = function (outFile)
 
     // Get the current output data
     bench.output = out.output;
+
+    assert (
+        typeof bench.output == 'object',
+        'could not load output object from output file'
+    );
 }
 
 /**
@@ -163,6 +155,21 @@ bench.loadConfig = function (cfgFile)
 {
     print('Loading cfg file: "' + cfgFile + '"');
 
+    // Function to parse include directives
+    function parseInclude(value)
+    {
+        // If this is not an include directive, return the value unchanged
+        if (typeof value.include != 'string')
+            return value;
+
+        var inclFile = value.include;
+
+        // Parse JSON code from the include file
+        var obj = JSON.parse(read(inclFile), reviver);
+
+        return obj;
+    }
+
     // Reviver function to parse the config
     function reviver(key, value)
     {
@@ -187,6 +194,8 @@ bench.loadConfig = function (cfgFile)
 
         if (key == 'dimList' && typeof value == 'object')
         {
+            value = parseInclude(value);
+
             for (var idx in value)
             {
                 var dimCfg = value[idx];
@@ -201,6 +210,8 @@ bench.loadConfig = function (cfgFile)
 
         if (key == 'platList' && typeof value == 'object')
         {
+            value = parseInclude(value);
+
             for (var idx in value)
             {
                 var platCfg = value[idx];
@@ -215,6 +226,8 @@ bench.loadConfig = function (cfgFile)
 
         if (key == 'benchList' && typeof value == 'object')
         {
+            value = parseInclude(value);
+
             for (var idx in value)
             {
                 var benchCfg = value[idx];
@@ -245,9 +258,6 @@ bench.loadConfig = function (cfgFile)
     // Store the benchmarks director
     bench.benchDir = cfg.benchDir;
 
-    // Store the list of benchmarks
-    bench.benchList = cfg.benchList;
-
     print('Number of dry runs : ' + bench.numDryRuns);
     print('Number of test runs: ' + bench.numRuns);
     print('Benchmark directory: "' + bench.benchDir + '"');
@@ -267,26 +277,74 @@ Perform benchmarking
 */
 bench.runBenchs = function ()
 {
-    //
-    // TODO: create initial JSON output file
-    //
+    // Until an available file name is found
+    for (var num = 1; num < 1000; ++num)
+    {
+        var date = new Date();
+
+        // Generate a file name containing today's date
+        var outFile =
+            'benchdata-' +
+            date.getFullYear() + '-' + 
+            leftPadStr(date.getMonth(), '0', 2) + '-' + 
+            leftPadStr(date.getDate(), '0', 2) + '#' +
+            leftPadStr(num, '0', 3) +
+            '.json';
+
+        // Test if the file exists
+        var avail = false;
+        try
+        {
+            read(outFile);
+        }
+        catch (e)
+        {
+            avail = true;
+        }
+
+        // If the name is availanble, stop
+        if (avail)
+            break;
+    }
+
+    // Create the initial JSON output file
+    bench.storeOutput(outFile);
+
+    print();
+    print('Starting tests');
+    print('Output file: ' + outFile);
+    print();
 
     // For each platform
     for (var platIdx = 0; platIdx < bench.platList.length; ++platIdx)
     {
         var platform = bench.platList[platIdx];
 
+        print(
+            '* Platform ' + platform.name + ' ('  + (platIdx+1) + '/' + 
+            bench.platList.length + ')'
+        );
+
         // For each benchmark
         for (var benchIdx = 0; benchIdx < bench.benchList.length; ++benchIdx)
         {
             var benchmark = bench.benchList[benchIdx];
 
+            print(
+                '** Benchmark "' + benchmark.dir + '" (' + (benchIdx+1) + '/' +
+                bench.benchList.length + ')'
+            );
+
             // For each dry run
             for (var dryRunIdx = 0; dryRunIdx < bench.numDryRuns; ++dryRunIdx)
             {
+                print(
+                    '*** Dry run ' + (dryRunIdx+1) + '/' + bench.numDryRuns
+                );
+
                 platform.callVM(
                     {
-                        "dataFile"  :"test file.json",
+                        "outFile"   : outFile,
                         "platIdx"   : platIdx,
                         "benchIdx"  : benchIdx,
                         "testRun"   : false
@@ -297,9 +355,13 @@ bench.runBenchs = function ()
             // For each test run
             for (var testRunIdx = 0; testRunIdx < bench.numRuns; ++testRunIdx)
             {
+                print(
+                    '*** Test run ' + (testRunIdx+1) + '/' + bench.numRuns
+                );
+
                 platform.callVM(
                     {
-                        "dataFile"  :"test file.json",
+                        "outFile"   : outFile,
                         "platIdx"   : platIdx,
                         "benchIdx"  : benchIdx,
                         "testRun"   : true
@@ -308,6 +370,8 @@ bench.runBenchs = function ()
             }
         }
     }
+
+    print('Tests done');
 }
 
 /**
@@ -318,18 +382,44 @@ Run one benchmark iteration under a given platform
 */
 bench.runBench = function (platIdx, benchIdx, testRun)
 {
-    // TODO: load data file
-    // Do this in main?
+    var platform = bench.platList[platIdx];
 
-    // TODO: postRuns in reverse order of preRuns
+    var benchmark = bench.benchList[benchIdx];
 
-    // TODO: store data file
+    //print('Benchmark run: "' + benchmark.dir + '"');
 
+    // Load/initialize the benchmark
+    benchmark.init(platform);
 
+    // Execute pre-run code for each dimension in listed order
+    for (var i = 0; i < bench.dimList.length; ++i)
+        bench.dimList[i].preRun();
 
+    // Run the benchmark once
+    benchmark.run(platform);
 
+    // Execute post-run code for each dimension in reverse order
+    for (var i = bench.dimList.length - 1; i >= 0; --i)
+    {
+        var dim = bench.dimList[i];
 
+        var outVal = dim.postRun();
 
+        assert (bench.output);
 
+        // If this is a test run, add the output for this benchmark
+        if (testRun)
+        {
+            bench.addOutput(
+                platform, 
+                dim, 
+                benchmark, 
+                outVal
+            );
+        }
+    }
+
+    // Perform cleanup
+    benchmark.cleanup(platform);
 }
 

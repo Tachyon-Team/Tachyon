@@ -16,9 +16,9 @@ Initializate the benchmark
 */
 benchHook.init = function (platform, benchPath)
 {
-    platform.loadSrc(benchPath + 'fib.js');
+    platform.loadSrc(benchPath + 'loop_sum.js');
 
-    this.args = [40];
+    this.args = [500000000];
 }
 
 /**
@@ -35,6 +35,6 @@ benchHook.run = function (platform)
 {
     // TODO: output validation function?
 
-    return platform.callFunc('fib', this.args);
+    return platform.callFunc('loop_sum', this.args);
 }
 

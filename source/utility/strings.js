@@ -198,3 +198,16 @@ function pluralize(word, count)
     return word + ((count != 1)? 's':'');
 }
 
+/**
+Left-pad a string until it has the desired length
+*/
+function leftPadStr(str, pad, len)
+{
+    str = str.toString();
+
+    while (str.length < len)
+        str = pad + str;
+
+    return str;
+}
+

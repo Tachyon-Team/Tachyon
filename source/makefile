@@ -69,19 +69,6 @@ TEST_SRCS =                         \
     $(BASE_SRCS)                    \
     $(TEST_SPEC_SRCS)
 
-# Benchmarking target source files
-BENCH_SRCS =                        \
-    utility/debug.js                \
-    utility/system.js               \
-    utility/xml.js                  \
-    utility/html.js                 \
-    utility/misc.js                 \
-    bench/platforms.js              \
-    bench/dimensions.js             \
-    bench/benchmarks.js             \
-    bench/benchmarking.js           \
-    bench/benchmain.js
-
 # All source files
 ALL_SRCS =                          \
     $(BASE_SRCS)                    \
@@ -97,7 +84,7 @@ test:
 	$(JSVM) $(TEST_SRCS)
 
 perf: 
-	$(JSVM) $(BENCH_SRCS) -- "bench/configs/time_benchs.json"
+	./bench/d8.sh -cfgFile "bench/configs/time_benchs.json"
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)

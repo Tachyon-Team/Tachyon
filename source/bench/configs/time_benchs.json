@@ -1,15 +1,13 @@
 { 
-    "numDryRuns":2,
-    "numRuns"   :10,
-    "benchDir"  : "source/programs/",
+    "numDryRuns": 2,
+    "numRuns"   : 10,
+    "benchDir"  : "programs/",
     "platList"  : [
         { "id": "V8" }
     ],
     "dimList"   : [
         { "id":"RunTime" }
     ],
-    "benchList" : [
-        { "dir":"fib" }
-    ]
+    "benchList" : { "include": "bench/configs/benchs_all.json" }
 }
 

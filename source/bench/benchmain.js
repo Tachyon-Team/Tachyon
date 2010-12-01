@@ -19,16 +19,16 @@ function parseArgs()
     // List for trailing unnamed arguments
     var files = [];
 
-    var argIdx = 1;
+    var argIdx = 0;
 
     // For each named argument
-    for (; argIdx < args.length; ++argIdx)
+    for (; argIdx < args.length; argIdx += 2)
     {
         var arg = args[argIdx];
 
         // If this is not an option argument, stop
-        if (!(arg.chatAt(0) == '-'))
-            return;
+        if (arg.charAt(0) != '-')
+            break;
 
         // Ensure that the option value is present
         if (argIdx >= args.length - 1)
@@ -37,24 +37,23 @@ function parseArgs()
         // Get the option name
         var optName = arg.slice(1);
 
-
-        // TODO
-
-
+        // Store the option value
+        options[optName] = args[argIdx + 1];
     }
 
-
-
-    // TODO
-
-
-
+    // For each remaining argument
+    for (; argIdx < args.length; ++argIdx)
+    {
+        // Add it to the file arguments
+        files.push(args[argIdx]);
+    }
 
     // Return the parsed arguments
     return {
-        "args"  :args,
-        "files" :files
-    }
+        "cmd"       : args[0],
+        "options"   : options,
+        "files"     : files
+    };
 }
 
 /**
@@ -62,25 +61,41 @@ Entry point function for the benchmarking code
 */
 function main()
 {
-    var args = command_line();
+    //
+    // TODO: mode to generate report file?
+    //
 
-    if (args.length == 0)
+    // Parse the command-line arguments
+    var args = parseArgs();
+
+    // If a config file argument is supplied
+    if (args.options['cfgFile'])
     {
-        print('config file argument required');
-        return
+        bench.loadConfig(args.options['cfgFile']);
+
+        bench.runBenchs();
     }
 
-    var configFile = args[0];
+    // Otherwise, if an output file argument is supplied
+    else if (args.options['outFile'])
+    {
+        bench.loadOutput(args.options['outFile']);
 
-    bench.loadConfig(configFile);
+        bench.runBench(
+            Number(args.options['platIdx']),
+            Number(args.options['benchIdx']),
+            Boolean(args.options['testRun'])
+        );
 
+        bench.storeOutput(args.options['outFile']);
+    }
 
-    bench.runBenchs();
-
-    // TODO: perform benchmarking!
-
-    // TODO: recognize master vs "slave" mode?
-
+    // Otherwise, arguments are missing
+    else
+    {
+        print('expected config file argument');
+        return;
+    }
 }
 
 main();

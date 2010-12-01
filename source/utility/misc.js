@@ -10,6 +10,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
+Get a reference to the global object
+*/
+function getGlobalObj()
+{
+    return (function() { return this })();
+}
+
+/**
 Test if an integer value is a power of 2
 */
 function isPowerOf2(x)
