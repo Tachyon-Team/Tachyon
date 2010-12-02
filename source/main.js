@@ -39,7 +39,8 @@ function testIR()
     );
     */
 
-    var ast = parse_src_file('programs/fib/fib.js');
+    var ast = parse_src_file('test.js');
+    //var ast = parse_src_file('programs/fib/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
     //var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
 

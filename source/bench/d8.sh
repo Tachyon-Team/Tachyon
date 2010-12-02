@@ -9,6 +9,7 @@ d8                                  \
     bench/dimensions.js             \
     bench/benchmarks.js             \
     bench/benchmarking.js           \
+    bench/reports.js                \
     bench/benchmain.js              \
                                     \
     --allow_natives_syntax -- $*

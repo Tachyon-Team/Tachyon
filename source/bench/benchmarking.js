@@ -87,30 +87,6 @@ bench.addOutput = function (platform, dimension, benchmark, outVal)
 }
 
 /**
-Get the geometric mean accross output values
-*/
-/*
-bench.Dimension.prototype.getOutMean = function ()
-{
-    assert (
-        a instanceof Array && a.length > 0,
-        'output must be array value'
-    );
-
-    var prod = 1;
-
-    for (var i = 0; i < this.output.length; ++i)
-    {
-        assert (typeof this.output[i] == 'number');
-
-        prod *= this.output[i];
-    }
-
-    return Math.pow(prod, 1 / this.output.length);
-}
-*/
-
-/**
 Load the output accumulated up to this point
 */
 bench.loadOutput = function (outFile)

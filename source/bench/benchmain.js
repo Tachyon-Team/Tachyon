@@ -90,6 +90,14 @@ function main()
         bench.storeOutput(args.options['outFile']);
     }
 
+    // Otherwise, if a report should be generated
+    else if (args.options['genReport'])
+    {
+        bench.loadOutput(args.options['genReport']);
+
+        bench.genReport();
+    }
+    
     // Otherwise, arguments are missing
     else
     {

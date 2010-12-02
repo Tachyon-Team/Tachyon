@@ -170,20 +170,33 @@ tests.utility.linkedList.iterator = function ()
 }
 
 /**
-Test of number formatting with significant digits
+Test of number formatting with decimals
 */
 tests.utility.fmtNumDecimals = function ()
 {
-    // TODO
+    assert (
+        fmtNumDecimals(10.35, 1) == '10.4'
+    );
 
-    /*
-    fmtNumSigDigits(10.35, 3);
-    fmtNumSigDigits(10, 3);
+    assert (
+        fmtNumDecimals(10, 0) == '10'
+    );
 
-    fmtNumSigDigits(-35.2, 3);
+    assert (
+        fmtNumDecimals(-35.2466, 2) == '-35.25'
+    );
 
-    fmtNumSigDigits(Math.pow(142.23, 14), 3);
-    */
+    assert (
+        fmtNumDecimals(Number('-1.349338e+30'), 2) == '-1.35e+30'
+    );
+
+    assert (    
+        fmtNumDecimals(89.999, 2) == '90.00'
+    );
+
+    assert (    
+        fmtNumDecimals(99.999, 2) == '100.00'
+    );
 }
 
 /**
