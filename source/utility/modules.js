@@ -10,12 +10,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// Function to get a reference to the global object
-function getGlobalObj()
-{
-    return (function() { return this })();
-}
-
 /**
 Function to create a new module
 */

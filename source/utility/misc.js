@@ -10,6 +10,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
+Get a reference to the global object
+*/
+function getGlobalObj()
+{
+    return (function() { return this })();
+}
+
+/**
 Test if an integer value is a power of 2
 */
 function isPowerOf2(x)
@@ -97,13 +105,24 @@ function isPosInt(val)
 }
 
 /**
-Format a given number string to limit the significant digits
+Test if a value is a non-negative integer
 */
-/*
-function fmtNumSigDigits(numVal, sigDigits)
+function isNonNegInt(val)
+{
+    return (
+        typeof val === 'number' &&
+        val >= 0 &&
+        Math.floor(val) === val
+    );
+}
+
+/**
+Format a given number string to limit the number of decimals
+*/
+function fmtNumDecimals(numVal, numDecs)
 {
     assert (
-        typeof numVal === 'number' && isPosInt(sigDigits),
+        typeof numVal === 'number' && isNonNegInt(numDecs),
         'invalid input arguments'
     );
 
@@ -181,30 +200,75 @@ function fmtNumSigDigits(numVal, sigDigits)
         }
     }
 
-    print('"' + prefStr + '"');
-    print('"' + intgDigs + '"');
-    print('"' + fracDigs + '"');
-    print('"' + postStr + '"');
+    //print('"' + prefStr + '"');
+    //print('"' + intgDigs + '"');
+    //print('"' + fracDigs + '"');
+    //print('"' + postStr + '"');
 
-    // If some digits must be removed
-    if (intgDigs.length + fracDigs.length > sigDigits)
+    // If rounding is required
+    if (fracDigs.length > numDecs)
     {
-        
+        var allDigs = intgDigs.concat(fracDigs);
 
+        // Get the digit based on which we will round
+        var rndDig = allDigs[intgDigs.length + numDecs];
 
+        // Remove the digits starting with the rounding digit
+        allDigs = allDigs.slice(0, intgDigs.length + numDecs);
 
+        // Get the last digit that will be kept
+        var lastDig = allDigs[allDigs.length-1];
+
+        var rndDir;
+
+        if (rndDig > 5)
+        {
+            rndDir = 1;
+        }
+        else if (rndDig < 5)
+        {
+            rndDir = 0;
+        }
+        else
+        {
+            // Round half to even: If the fraction of y is 0.5, then q is the 
+            // even integer nearest to y.
+            if (lastDig % 2 == 0)
+                rndDir = 0;
+            else
+                rndDir = 1;
+        }
+
+        for (var i = allDigs.length - 1; i >= 0 && rndDir == 1; --i)
+        {
+            allDigs[i] = (allDigs[i] + 1) % 10;
+
+            if (allDigs[i] != 0)
+                rndDir = 0;
+        }
+
+        if (rndDir == 1)
+            allDigs.unshift(1);
+
+        fracDigs = allDigs.slice(allDigs.length - numDecs, allDigs.length);
+        intgDigs = allDigs.slice(0, allDigs.length - numDecs);
+    }
+
+    var outStr = prefStr;
+
+    for (var i = 0; i < intgDigs.length; ++i)
+        outStr += String(intgDigs[i]);
+
+    if (fracDigs.length)
+    {
+        outStr += '.';
+
+        for (var i = 0; i < fracDigs.length; ++i)
+            outStr += String(fracDigs[i]);
     }    
 
+    outStr += postStr;
 
-
-    // TODO: rounding
-
-
-
-
-
-
-
+    return outStr;
 }
-*/
 

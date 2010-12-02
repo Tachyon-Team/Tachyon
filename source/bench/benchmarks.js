@@ -31,16 +31,22 @@ bench.Benchmark = function (cfg)
     @field
     */
     this.hook = null;
+
+    /**
+    Output from the last benchmark run
+    @field
+    */
+    this.output = undefined;
 }
 bench.Benchmark.prototype = {};
 
 /**
 Initialize the benchmark and prepare to run it
 */
-bench.Benchmark.prototype.init = function ()
+bench.Benchmark.prototype.init = function (platform)
 {
     // Assemble the path to this benchmark
-    var benchPath = bench.benchPath + this.dir + '/';
+    var benchPath = bench.benchDir + this.dir + '/';
 
     load(benchPath + 'benchhook.js');
 
@@ -48,15 +54,15 @@ bench.Benchmark.prototype.init = function ()
 
     benchHook = null;
 
-    this.hook.init(benchPath);
+    this.hook.init(platform, benchPath);
 }
 
 /**
 Cleanup after the benchmark run
 */
-bench.Benchmark.prototype.cleanup = function ()
+bench.Benchmark.prototype.cleanup = function (platform)
 {
-    this.hook.cleanup();
+    this.hook.cleanup(platform);
 
     this.hook = null;
 }
@@ -64,8 +70,8 @@ bench.Benchmark.prototype.cleanup = function ()
 /**
 Run the benchmark
 */
-bench.Benchmark.prototype.run = function ()
+bench.Benchmark.prototype.run = function (platform)
 {
-    this.hook.run();
+    this.output = this.hook.run(platform);
 }
 

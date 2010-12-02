@@ -154,7 +154,7 @@ bench.Dimension.RunTime.prototype.postRun = function ()
     // Calculate the total time in seconds
     var totalTimeS = (endTimeMs - this.startTimeMs) / 1000;
 
-    // Store the total time in the output values
-    this.addOutput(totalTimeS);
+    // Return the total time as the output value
+    return totalTimeS;
 }
 

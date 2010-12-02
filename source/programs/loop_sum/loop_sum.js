@@ -1,4 +1,4 @@
-function loop(n)
+function loop_sum(n)
 {
     var sum = 0;
 
@@ -10,4 +10,4 @@ function loop(n)
     return sum;
 }
 
-return loop(10);
+//return loop(10);

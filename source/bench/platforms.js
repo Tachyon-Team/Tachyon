@@ -60,14 +60,38 @@ Start a new (child) VM process, passing it command-line arguments
 */
 bench.Platform.prototype.callVM = function (args)
 {
-    var argStr = this.shellCmd + ' --';
+    var argStr = this.shellCmd;
 
     for (var argName in args)
         argStr += ' -' + argName + ' "' + args[argName] + '"';
 
-    print('Calling: ' + argStr);
+    //print('Calling: ' + argStr);
 
-    shellCommand(argStr);
+    var output = shellCommand(argStr);
+
+    //print(output);
+
+    return output;
+}
+
+/**
+Load a source file dynamically
+*/
+bench.Platform.prototype.loadSrc = function (srcFile)
+{
+    load(srcFile);
+}
+
+/**
+Call a global function by name
+*/
+bench.Platform.prototype.callFunc = function (funcName, args)
+{
+    var globalObj = getGlobalObj();
+
+    var func = globalObj[funcName];
+
+    func.apply(globalObj, args);
 }
 
 /**
@@ -93,7 +117,7 @@ bench.Platform.V8.prototype.name = 'Google V8';
 /**
 Shell command used to start this platform
 */
-bench.Platform.V8.prototype.shellCmd = 'd8';
+bench.Platform.V8.prototype.shellCmd = './bench/d8.sh';
 
 /**
 Set the parameters for this environment
