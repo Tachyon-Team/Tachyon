@@ -1337,34 +1337,38 @@ function stmtToIR(context)
             'loop_incr'
         );
 
-        // Create a context for the loop incrementation
-        var incrContext = testCtx.branch(
-            astStmt,
-            loopIncr,
-            incrLocals
-        );
+        // If there were non-terminated break contexts
+        if (loopIncr)
+        {
+            // Create a context for the loop incrementation
+            var incrContext = testCtx.branch(
+                astStmt,
+                loopIncr,
+                incrLocals
+            );
 
-        // Compute the current property index - 1
-        var incrVal = incrContext.addInstr(
-            new SubInstr(
-                propIndex,
-                ConstValue.getConst(1)
-            )
-        );
+            // Compute the current property index - 1
+            var incrVal = incrContext.addInstr(
+                new SubInstr(
+                    propIndex,
+                    ConstValue.getConst(1)
+                )
+            );
 
-        // Add an incoming value to the property index phi node
-        propIndex.addIncoming(incrVal, incrContext.entryBlock);
+            // Add an incoming value to the property index phi node
+            propIndex.addIncoming(incrVal, incrContext.entryBlock);
 
-        // Bridge the incrementation context
-        incrContext.bridge();
+            // Bridge the incrementation context
+            incrContext.bridge();
 
-        // Merge the continue contexts with the loop entry
-        mergeLoopEntry(
-            [incrContext],
-            entryLocals,
-            testCtx.entryBlock
-        );
-        
+            // Merge the continue contexts with the loop entry
+            mergeLoopEntry(
+                [incrContext],
+                entryLocals,
+                testCtx.entryBlock
+            );
+        }        
+
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
