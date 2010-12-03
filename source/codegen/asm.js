@@ -878,8 +878,11 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
         function (o) { 
             const offset = o.label.getPos() - that.startPos; 
             const srcAddr = baseAddr.addOffset(offset);
+
+            assert(srcAddr !== null);
             
             o.linkObj.setAddr(srcAddr);
+
         });
 
     // Add a linking function for convenience

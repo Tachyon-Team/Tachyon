@@ -58,9 +58,10 @@ function testIR()
     ir.validate();    
     
     
-    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
+    /*    
+    var codeblock = backend.compileIRToCB(ir);    
     print(backend.listing(codeblock));
-    var result = backend.execute(codeblock);
+    var result = backend.executeCB(codeblock);
 
     //print('result: ' + (result >> 2));    
     print('result: ' + result);

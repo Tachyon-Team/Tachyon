@@ -70,6 +70,61 @@ irToAsm.config.argsReg =
 // Target
 irToAsm.config.target = x86.target.x86;
 
+/** 
+    @private
+    Returns an entry point for the function.
+*/
+irToAsm.getEntryPoint = function (irfunc, name)
+{
+    name = name || "default";
+    
+    var ep;
+    const width = irToAsm.config.target === x86.target.x86 ?
+                  32 : 64;
+    const offset = width / 8;
+
+    function setEntryPoint (ep, name)
+    {
+        name = name || "default";
+
+        this.entryPoints[name] = ep;
+    };
+
+    function getEntryPoint (name)
+    {
+        name = name || "default";
+
+        return this.entryPoints[name];
+    };
+
+    // Assign an entry point to this irfunc
+    // if it doesn't exist
+    if (irfunc.linking.entryPoints === undefined)
+    {
+        irfunc.linking.entryPoints = {};
+        irfunc.linking.setEntryPoint = setEntryPoint;
+        irfunc.linking.getEntryPoint = getEntryPoint;
+    }
+
+    ep = irfunc.linking.entryPoints[name]
+
+    if (ep === undefined)
+    {
+        ep = x86.Assembler.prototype.linked(
+                    irfunc.funcName,
+                    function (dstAddr) { 
+                        var bytes = dstAddr
+                                    .addOffset(offset)
+                                    .getAddrOffsetBytes(this.srcAddr);
+                      return bytes;},
+                    width);
+        irfunc.linking.setEntryPoint(ep, name);
+    }
+
+    return ep;
+};
+
+
 /**
 @class
 Returns an object allocating stack slots for spilling during
@@ -199,9 +254,10 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
     };
 
 
-    // Assign a unique label to this function
-    // if it doesn't exist
-    this.func_prelude(this.label(fct, "<func \"" + fct.funcName + "\">"));
+    // Add the entry point in the code stream
+    this.func_prelude(this.fct);
+
+    // Start the code generation
     this.func_init();
 
     for (i=0; i < blockList.length; ++i)
@@ -263,6 +319,7 @@ irToAsm.translator.prototype.label = function (obj, name)
 
     return label;
 };
+
 
 /**
     @private
@@ -453,14 +510,20 @@ irToAsm.translator.prototype.call_self = function (offset)
 
 };
 
-irToAsm.translator.prototype.func_prelude = function (prelude_label)
+irToAsm.translator.prototype.func_prelude = function (fct)
 {
     // Add the call self instructions to retrieve
-    // the address of the function
+    // the address of the function until the move
+    // instruction supporting a link object is done
+    // TODO: Remove when function address is retrieved at link
+    // time
     this.asm.
-    label(prelude_label);
-
+    label(this.label(fct, "<func \"" + fct.funcName + "\">"));
     this.call_self();
+
+    // Add an entry point for static calls
+    var lobj = irToAsm.getEntryPoint(fct);
+    this.asm.provide(lobj);
 };
 
 irToAsm.translator.prototype.func_init = function ()
@@ -964,7 +1027,7 @@ NotInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.mov(opnds[0], dest);
     }
 
-    tltor.asm.and(dest);
+    tltor.asm.not(dest);
 };
 
 AndInstr.prototype.genCode = function (tltor, opnds)
@@ -1233,11 +1296,11 @@ EqInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) 
+    if (opnds[0].type === x86.type.IMM_VAL && opnds[0].value === 0) 
     {
         tltor.asm.test(opnds[1], opnds[1]);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0)
+    else if (opnds[1].type === x86.type.IMM_VAL && opnds[1].value === 0)
     {
         tltor.asm.test(opnds[0], opnds[0]);
     } 
@@ -1496,7 +1559,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         } 
         else
         {
-            const primLbl = tltor.label(this.uses[0], this.uses[0].label);
+            const primEp = irToAsm.getEntryPoint(this.uses[0]);
 
             assert(opndNb <= argRegNb);
 
@@ -1520,7 +1583,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                                      }, scratch);
 
 
-            tltor.asm.call(primLbl, 10);
+            tltor.asm.call(primEp);
 
         } 
 
@@ -1719,7 +1782,7 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
         else
         {
             // Zero-extend the value
-            tltor.asm.movsz(memLoc, dst, this.type.numBits);
+            tltor.asm.movzx(memLoc, dst, this.type.numBits);
         }
     }
     else

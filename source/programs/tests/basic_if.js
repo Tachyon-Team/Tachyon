@@ -10,20 +10,9 @@ tests.basic_if = tests.testSuite();
 
 tests.basic_if.main = function ()
 {
-    var filename = 'programs/basic_if/basic_if.js';
-    var port = new File_input_port(filename);
-    var p = new Parser(new Scanner(port), true);
-    var ast = p.parse();
-    var normalized_ast = ast_normalize(ast);
-    
-    var ir = unitToIR(normalized_ast);
-
-    var primitives = backend.usedPrimitives(ir);
-
-    //var codeblock = backend.compile(ir);
-    var codeblock = backend.compile(ir, undefined, primitives);
-    print(backend.listing(codeblock));
-    var x = backend.execute(codeblock);
+    var basic_if = compileFileToJSFunc('programs/basic_if/basic_if.js');
+    var x = basic_if();
+    basic_if.free();
     assert(x === (2 << 2), "Invalid return value: " + x);
 
 };

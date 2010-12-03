@@ -14,20 +14,17 @@ Initialize the resources required by the Tachyon VM.
 */
 function initialize()
 {
-    // Compile the IR primitives
-    var i;
-    var irList = compPrimitives();
-    var primitives = irList[0].getChildrenList().concat(irList[1].getChildrenList());
-    var map = {};
-    var p;
+    var primIt;
 
-    for (i=0; i < primitives.length; ++i)
+    // Compile the IR primitives
+    backend.primitiveList = compPrimitives();
+
+    for (primIt = new ArrayIterator(backend.primitiveList);
+         primIt.valid();
+         primIt.next())
     {
-        p = primitives[i];
-        map[p.funcName] = p;
-        //print(p);
+        compileIR(primIt.get());
     }
-    backend.primitiveMap = map;
 }
 
 /**
@@ -35,5 +32,12 @@ Uninitialize resources used by the Tachyon VM
 */
 function uninitialize()
 {
+    var primIt;
+    for (primIt = new ArrayIterator(backend.primitiveList);
+         primIt.valid();
+         primIt.next())
+    {
+        primIt.get().runtime.free();
+    }
 }
 

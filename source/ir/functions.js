@@ -114,6 +114,21 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     */
     this.writesMem = true;
 
+    /**
+    Everything related to linkage information. Will not be copied during
+    a deep copy.
+    @field
+    */
+    this.linking = {};
+
+    /**
+    Everything related to runtime information. Will not be copied during
+    a deep copy.
+    @field
+    */
+    this.runtime = {};
+
+
     // If the argument or return types are undefined, make them boxed
     if (!this.argTypes)
     {

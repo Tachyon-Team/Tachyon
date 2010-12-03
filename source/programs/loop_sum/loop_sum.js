@@ -9,5 +9,4 @@ function loop_sum(n)
 
     return sum;
 }
-
-//return loop(10);
+return loop_sum(10);

@@ -801,12 +801,16 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
     var i = 0;
     var current = null;
     var newRange = allocator.range(startPos, endPos);
+    var deleteNb, insertPos;
 
-    // Find the range before which this should be inserted
+
+    // Find the first range which is not strictly
+    // less than the new range.
     for (i=0; i < this.ranges.length; ++i)
     {
         current = this.ranges[i];
-        if (current.startPos >= newRange.startPos)
+       
+        if (current.endPos >= startPos)
         {
             break; 
         } 
@@ -818,18 +822,31 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
         current = null;
     }
 
-    // Merge or not 
-    if (current && newRange.endPos >= current.startPos)
+    deleteNb = 0;
+    insertPos = i;
+
+    // Merge with all the ranges partially covered by 
+    // the new range
+    if (current && endPos >= current.startPos)
     {
         newRange.start = Math.min(newRange.startPos, current.startPos);
-        newRange.endPos = Math.max(newRange.endPos, current.endPos);
 
-        this.ranges.splice(i, 1, newRange);
-    } else
-    {
-        // Add the new range without merging
-        this.ranges.splice(i, 0, newRange);
-    }
+        for (i=insertPos; i<this.ranges.length; ++i) 
+        {
+            if (this.ranges[i].startPos <= endPos)
+            {
+                current = this.ranges[i];
+                deleteNb++;
+            } else
+            {
+                break;
+            }
+        }
+            
+        newRange.endPos = Math.max(newRange.endPos, current.endPos);
+     }
+
+     this.ranges.splice(insertPos, deleteNb, newRange);
 }
 
 /** 
@@ -845,6 +862,9 @@ allocator.interval.prototype.addUsePos = function (pos, registerFlag)
         this.usePositions.length === 0)
     { 
         this.usePositions.unshift(allocator.usePos(pos, registerFlag));
+    } else if (this.usePositions.length > 0 && this.usePositions[0].pos === pos)
+    {
+        // Do nothing when the same temporary is used as more than one operand
     } else
     {
         // TODO: We should insert at the right place

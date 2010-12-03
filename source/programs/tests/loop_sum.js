@@ -10,24 +10,15 @@ tests.loop_sum = tests.testSuite();
 
 tests.loop_sum.main = function ()
 {
-    var ast = parse_src_file('programs/loop_sum/loop_sum.js');
-    
-    var ir = unitToIR(ast);
-
-    lowerIRFunc(ir);
-
-    //var codeblock = backend.compile(ir);
-    //var codeblock = backend.compile(ir, undefined, backend.usedPrimitives(ir));
-    var codeblock = backend.compile(ir, print, backend.usedPrimitives(ir));    
-    print(backend.listing(codeblock));
+    var loop_sum = compileFileToJSFunc('programs/loop_sum/loop_sum.js');
 
     var startTimeMs = new Date().getTime();
-
-    var x = backend.execute(codeblock);
-
+    var x = loop_sum();
     var endTimeMs = new Date().getTime();
+
+    loop_sum.free();
     var timeS = (endTimeMs - startTimeMs) / 1000;
-    print('time: ' + timeS + ' s');
+    //print('time: ' + timeS + ' s');
 
     assert(x === (45 << 2), "Invalid return value: " + x);
 };

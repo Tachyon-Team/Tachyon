@@ -32,6 +32,7 @@ BASE_SRCS =                         \
     ir/commelim.js                  \
     ir/inlining.js                  \
     ir/lowering.js                  \
+    frontend.js                     \
     runtime/objlayout.js            \
     runtime/context.js              \
     runtime/objects.js              \
@@ -42,6 +43,7 @@ BASE_SRCS =                         \
     codegen/ir-to-asm-x86.js        \
     codegen/regalloc-config-x86.js  \
     jslib/errors.js                 \
+    compiler.js                     \
     init.js
 
 # Main-specific source files
@@ -56,7 +58,7 @@ TEST_SPEC_SRCS =                    \
     ir/tests/*.js                   \
     runtime/tests/*.js              \
     codegen/tests/*.js              \
-    programs/tests/fib.js           \
+    programs/tests/*.js             \
     tests/testmain.js
 
 # Main target source files

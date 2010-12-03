@@ -10,10 +10,14 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 var backend = backend || {};
 
 /**
-    Returns a code block representing the compiled code.
+    Returns a code block representing the compiled IRFunction.
 */
-backend.compile = function (ir, print, primitives)
+backend.compileIRToCB = function (ir, flags)
 {
+    flags = flags || {};
+    var print = flags.print;
+    var primitives = flags.primitives;
+
     if (print === undefined)
     {
         print = function () {};
@@ -53,7 +57,7 @@ backend.compile = function (ir, print, primitives)
         fcts[k].regAlloc = fcts[k].regAlloc || {};
         fcts[k].regAlloc.spillNb = 0;
 
-        cfg = fcts[k].virginCFG;
+        cfg = fcts[k].virginCFG.copy();
 
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order, irToAsm.config);
@@ -96,8 +100,8 @@ backend.compile = function (ir, print, primitives)
         liveIntervals = allocator.liveIntervals(cfg, order, irToAsm.config);
         fixedIntervals = allocator.fixedIntervals(cfg, irToAsm.config);
 
-        /*
         // Print intervals before allocation
+        /*
         for (i=0; i<liveIntervals.length; ++i)
         {
             print(i + ": " + liveIntervals[i] + ",");
@@ -180,6 +184,21 @@ backend.compile = function (ir, print, primitives)
     return translator.asm.codeBlock;
 };
 
+
+/** 
+    Compile an IRFunction to a machine code block.
+    This machine code block should be freed once it is no longer needed.
+    Returns the machine code block.
+*/
+backend.compileIRToMCB = function (ir, flags)
+{
+    flags = flags || {};
+
+    var cb = backend.compileIRToCB(ir, flags);
+    //print(backend.listing(cb));
+    return cb.assembleToMachineCodeBlock(); // assemble it
+};
+
 /**
     Returns a string representation of the listing for the given
     code block.
@@ -193,7 +212,7 @@ backend.listing = function (codeBlock)
     Allocate an executable memory zone, write the given code block in
     that zone, execute it, free the memory zone and return the result.
 */
-backend.execute = function (codeBlock)
+backend.executeCB = function (codeBlock)
 {
     // TODO: add support for list of arguments to function
 
@@ -206,47 +225,5 @@ backend.execute = function (codeBlock)
     return x;
 };
 
-/**
-    Returns the list of primitive functions used in a given IR.
-*/
-backend.usedPrimitives = function (ir)
-{
-    var workList = ir.getChildrenList();
-    var visited = [];
-    var primitives = [];
-
-
-    while (workList.length > 0)
-    {
-        var func = workList.pop();
-
-        if (arraySetHas(visited, func))
-            continue;
-
-        for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
-        {
-            var instr = itr.get();
-
-            for (var useItr = instr.getUseItr(); useItr.valid(); useItr.next())
-            {
-                var use = useItr.get();
-
-                if (use instanceof IRFunction)
-                {
-                    workList = workList.concat(use.getChildrenList());
-                    if (use.funcName in backend.primitiveMap)
-                    {
-                        arraySetAdd(primitives, use);
-                    }
-                }
-            }
-        }
-
-        arraySetAdd(visited, func);
-    }
-
-    return primitives;
-};
-
-backend.primitiveMap = {};
+backend.primitiveList = [];
 
