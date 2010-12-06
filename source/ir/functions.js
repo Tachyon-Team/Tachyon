@@ -158,7 +158,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
             output += ', ';
     }
 
-    output += ') ['
+    output += ') [';
 
     for (var i = 0; i < this.closVars.length; ++i)
     {
@@ -204,7 +204,7 @@ Return the IR value name for this function
 IRFunction.prototype.getValName = function ()
 {
     return '<fn' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
-}
+};
 
 /**
 Create a deep copy of the function
@@ -239,7 +239,7 @@ IRFunction.prototype.copy = function ()
     newFunc.writesMem = this.writesMem;
 
     return newFunc;
-}
+};
 
 /**
 Validate the function and its children
@@ -263,7 +263,7 @@ IRFunction.prototype.validate = function ()
 
     // The function is valid
     return true;
-}
+};
 
 /**
 Get the default number of function arguments

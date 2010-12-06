@@ -22,7 +22,7 @@ function error(message)
 
     // If we are running within V8, capture a stack trace
     if (Error.captureStackTrace)
-        Error.captureStackTrace(errObj, error)
+        Error.captureStackTrace(errObj, error);
 
     throw errObj;
 };

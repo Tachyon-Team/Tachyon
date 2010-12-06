@@ -121,20 +121,20 @@ DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
         return 0;
     else
         return null;
-}
+};
 
 DivInstr.prototype.regAlloc.outRegHint =  function (instr, config)
 { 
     // The output will be in EAX
     return 0; 
-}
+};
 
 DivInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
 { 
     // EDX:EAX are reserved for the dividend,
     // EBX is reverved as a scratch register
     return [0,1,3];
-}
+};
 
 /**
 Allocation information for modulo instruction
@@ -145,7 +145,7 @@ ModInstr.prototype.regAlloc.outRegHint =  function (instr, config)
 { 
     // The output will be in EDX
     return 3; 
-}
+};
 
 /**
 Allocation information for multiplication instruction
@@ -162,7 +162,7 @@ MulInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
         return 0;
     else
         return null;
-}
+};
 
 MulInstr.prototype.regAlloc.outRegHint = function (instr, config)
 {
@@ -171,7 +171,7 @@ MulInstr.prototype.regAlloc.outRegHint = function (instr, config)
 
     // The output will be in EAX
     return 0; 
-}
+};
 
 MulInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
 {
@@ -180,7 +180,7 @@ MulInstr.prototype.regAlloc.usedRegisters = function (instr, config)
  
     // EDX:EAX are reserved for the multiplier,
     return [0,3];
-}
+};
 
 /**
 Allocation information for multiplication with overflow instruction

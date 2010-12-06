@@ -38,7 +38,7 @@ bench.numRuns = 1;
 /**
 List of platforms (VMs) to test
 */
-bench.platList = []
+bench.platList = [];
 
 /**
 List of benchmarking dimensions to measure
@@ -84,7 +84,7 @@ bench.addOutput = function (platform, dimension, benchmark, outVal)
 
     // Add the value to the output
     bench.output[platform.id][dimension.id][benchmark.dir].push(outVal);
-}
+};
 
 /**
 Load the output accumulated up to this point
@@ -104,7 +104,7 @@ bench.loadOutput = function (outFile)
         typeof bench.output == 'object',
         'could not load output object from output file'
     );
-}
+};
 
 /**
 Store the output accumulated up to this point
@@ -122,7 +122,7 @@ bench.storeOutput = function (outFile)
 
     // Write the data to the output file
     writeFile(outFile, fileData);
-}
+};
 
 /**
 Load a benchmarking configuration file
@@ -246,7 +246,7 @@ bench.loadConfig = function (cfgFile)
     print('Benchmarks:');
     for (var i = 0; i < bench.benchList.length; ++i)
         print('* "' + bench.benchList[i].dir + '"');
-}
+};
 
 /**
 Perform benchmarking
@@ -348,7 +348,7 @@ bench.runBenchs = function ()
     }
 
     print('Tests done');
-}
+};
 
 /**
 Run one benchmark iteration under a given platform
@@ -397,5 +397,5 @@ bench.runBench = function (platIdx, benchIdx, testRun)
 
     // Perform cleanup
     benchmark.cleanup(platform);
-}
+};
 

@@ -44,7 +44,7 @@ LinkedList.prototype.toString = function ()
     }
 
     return output + ')';
-}
+};
 
 /**
 Get an iterator to the list
@@ -52,7 +52,7 @@ Get an iterator to the list
 LinkedList.prototype.getItr = function ()
 {
     return new LinkedList.Iterator(this.first);
-}
+};
 
 /**
 Test if the list is empty
@@ -60,7 +60,7 @@ Test if the list is empty
 LinkedList.prototype.isEmpty = function ()
 {
     return (this.first === null);
-}
+};
 
 /**
 Clear all the list contents
@@ -69,7 +69,7 @@ LinkedList.prototype.clear = function ()
 {
     this.first = null;
     this.last = null;
-}
+};
 
 /**
 Get the first list element
@@ -82,7 +82,7 @@ LinkedList.prototype.getFirst = function ()
     );
 
     return this.first;
-}
+};
 
 /**
 Get the last list element
@@ -95,7 +95,7 @@ LinkedList.prototype.getLast = function ()
     );
 
     return this.last;
-}
+};
 
 /**
 Add an element to the beginning of the list
@@ -106,7 +106,7 @@ LinkedList.prototype.addFirst = function (item)
 
     if (this.last === null)
         this.last = this.first;
-}
+};
 
 /**
 Add an element to the end of the list
@@ -125,7 +125,7 @@ LinkedList.prototype.addLast = function (item)
         this.last.next = newNode;
         this.last = this.last.next;
     }
-}
+};
 
 /**
 Add an element before an iterator's current position
@@ -136,7 +136,7 @@ LinkedList.prototype.addBefore = function (item, itr)
         this.addFirst(item);
     else
         itr.prev.next = new LinkedList.Node(item, itr.current);
-}
+};
 
 /**
 Add an element after an iterator's current position
@@ -147,7 +147,7 @@ LinkedList.prototype.addAfter = function (item, itr)
         this.addLast(item);
     else
         itr.current.next = new LinkedList.Node(item, itr.current.next);
-}
+};
 
 /**
 Add an element to the end of the list
@@ -159,7 +159,7 @@ LinkedList.prototype.addSorted = function (item, compFunc)
 
     // Add the new item before the current node
     this.addBefore(item, itr);
-}
+};
 
 /**
 Remove an elemement from the beginning of the list
@@ -176,7 +176,7 @@ LinkedList.prototype.remFirst = function ()
     this.first = this.first.next;
 
     return item;
-}
+};
 
 /**
 Remove an elemement at an iterator's position
@@ -196,7 +196,7 @@ LinkedList.prototype.remItr = function (itr)
     {
         this.remFirst();
     }
-}
+};
 
 /**
 Find an element matching a comparison criteria
@@ -210,7 +210,7 @@ LinkedList.prototype.find = function (item, compFunc)
     }
 
     return itr;
-}
+};
 
 /**
 Obtain the contents of the list as an array
@@ -223,7 +223,7 @@ LinkedList.prototype.toArray = function ()
         output.push(node.item);
 
     return output;
-}
+};
 
 /**
 Create a linked list form an array's content
@@ -236,7 +236,7 @@ LinkedList.fromArray = function (array)
         list.addLast(array[i]);
 
     return list;
-}
+};
 
 /**
 @class Linked list node
@@ -254,7 +254,7 @@ LinkedList.Node = function (item, next)
     @field
     */
     this.next = next;
-}
+};
 
 /**
 @class Linked list iterator
@@ -272,7 +272,7 @@ LinkedList.Iterator = function (node)
     @field
     */
     this.current = node;
-}
+};
 LinkedList.Iterator.prototype = {};
 
 /**
@@ -281,7 +281,7 @@ Test if the iterator is at a valid position
 LinkedList.Iterator.prototype.valid = function ()
 {
     return (this.current !== null);
-}
+};
 
 /**
 Move to the next list item
@@ -295,7 +295,7 @@ LinkedList.Iterator.prototype.next = function ()
 
     this.prev = this.current;
     this.current = this.current.next;
-}
+};
 
 /**
 Get the current list item
@@ -308,5 +308,5 @@ LinkedList.Iterator.prototype.get = function ()
     );
 
     return this.current.item;
-}
+};
 

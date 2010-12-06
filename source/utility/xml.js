@@ -41,7 +41,7 @@ Produce a string representation of an XML document
 XMLDocument.prototype.toString = function ()
 {
     return this.root.toString(this, '');
-}
+};
 
 /**
 @class Represent an XML/HTML element
@@ -105,11 +105,11 @@ XMLElement.prototype.toString = function (document, indent)
     }
 
     if (!this.isLeaf)
-        output += indent + '</' + escName + '>'
+        output += indent + '</' + escName + '>';
 
     // Return the output string
     return output;
-}
+};
 
 /**
 Add a new child to an XML element
@@ -122,7 +122,7 @@ XMLElement.prototype.addChild = function (childNode)
     );
 
     this.children.push(childNode);
-}
+};
 
 /**
 @class XML text string node
@@ -144,5 +144,5 @@ XMLText.prototype.toString = function (document, indent)
 {
     // Escape and indent the string
     return indentText(escapeXMLString(this.text), indent);
-}
+};
 

@@ -33,7 +33,7 @@ bench.getOutMean = function (outputs)
 
     return Math.pow(prod, 1 / this.output.length);
     */
-}
+};
 
 /**
 Generate a report file
@@ -41,5 +41,5 @@ Generate a report file
 bench.genReport = function ()
 {
 
-}
+};
 

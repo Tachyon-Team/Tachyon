@@ -36,7 +36,7 @@ function StaticEnv()
         );
 
         bindings[name] = val;
-    }
+    };
 
     /**
     Test if a binding exists
@@ -44,7 +44,7 @@ function StaticEnv()
     this.hasBinding = function (name)
     {
         return (bindings[name] !== undefined);
-    }
+    };
 
     /**
     Get the value of a binding
@@ -59,7 +59,7 @@ function StaticEnv()
         );
 
         return val;
-    }
+    };
 }
 StaticEnv.prototype = {};
 
@@ -96,7 +96,7 @@ StaticEnv.prototype.parseUnit = function (astUnit)
             );
         }
     }
-}
+};
 
 /**
 Parse static bindings for function declarations
@@ -126,5 +126,5 @@ StaticEnv.prototype.parseFunc = function (funcName, parentFunc, funcExpr)
         // Register a static binding for the function
         this.regBinding(funcName, func);
     }
-}
+};
 

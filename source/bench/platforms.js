@@ -18,7 +18,7 @@ to test benchmarks under.
 bench.Platform = function ()
 {
     // TODO
-}
+};
 bench.Platform.prototype = {};
 
 /**
@@ -32,7 +32,7 @@ bench.Platform.prototype.loadParams = function (cfg)
         // Try to parse the parameter
         this.setParam(param, cfg[param]);
     }
-}
+};
 
 /**
 Set the generic parameters for this platform
@@ -53,7 +53,7 @@ bench.Platform.prototype.setParam = function (param, val)
             );
         }   
     }
-}
+};
 
 /**
 Start a new (child) VM process, passing it command-line arguments
@@ -72,7 +72,7 @@ bench.Platform.prototype.callVM = function (args)
     //print(output);
 
     return output;
-}
+};
 
 /**
 Load a source file dynamically
@@ -80,7 +80,7 @@ Load a source file dynamically
 bench.Platform.prototype.loadSrc = function (srcFile)
 {
     load(srcFile);
-}
+};
 
 /**
 Call a global function by name
@@ -92,7 +92,7 @@ bench.Platform.prototype.callFunc = function (funcName, args)
     var func = globalObj[funcName];
 
     func.apply(globalObj, args);
-}
+};
 
 /**
 @class Represents the V8 platform
@@ -101,7 +101,7 @@ bench.Platform.prototype.callFunc = function (funcName, args)
 bench.Platform.V8 = function ()
 {
     // TODO
-}
+};
 bench.Platform.V8.prototype = new bench.Platform();
 
 /**
@@ -138,5 +138,5 @@ bench.Platform.V8.prototype.setParam = function (param, val)
             );
         }
     }
-}
+};
 

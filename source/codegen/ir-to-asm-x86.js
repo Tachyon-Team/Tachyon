@@ -106,7 +106,7 @@ irToAsm.getEntryPoint = function (irfunc, name)
         irfunc.linking.getEntryPoint = getEntryPoint;
     }
 
-    ep = irfunc.linking.entryPoints[name]
+    ep = irfunc.linking.entryPoints[name];
 
     if (ep === undefined)
     {

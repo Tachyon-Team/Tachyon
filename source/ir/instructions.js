@@ -75,7 +75,7 @@ Obtain a string representation of an IR type
 IRType.prototype.toString = function ()
 {
     return this.name;
-}
+};
 
 /**
 Test if the type is a pointer type
@@ -91,7 +91,7 @@ IRType.prototype.isPtr = function ()
         default:
         return false;
     }
-}
+};
 
 /**
 Test if the type is an integer type
@@ -113,7 +113,7 @@ IRType.prototype.isInt = function ()
         default:
         return false;
     }
-}
+};
 
 /**
 Test if the type is an unsigned integer type
@@ -131,7 +131,7 @@ IRType.prototype.isUnsigned = function ()
         default:
         return false;
     }
-}
+};
 
 /**
 Test if the type is a signed integer type
@@ -149,7 +149,7 @@ IRType.prototype.isSigned = function ()
         default:
         return false;
     }
-}
+};
 
 /**
 Test if the type is a floating-point type
@@ -164,7 +164,7 @@ IRType.prototype.isFP = function ()
         default:
         return false;
     }
-}
+};
 
 /**
 Test if the type is an integer or floating-point type
@@ -172,7 +172,7 @@ Test if the type is an integer or floating-point type
 IRType.prototype.isNumber = function ()
 {
     return this.isInt() || this.isFP();
-}
+};
 
 // TODO: boxed and pointer type sizes are actually platform-dependent
 // Need code get appropriate size for the platform
@@ -206,7 +206,7 @@ IRType.i32  = new IRType('i32' , 4),
 IRType.i64  = new IRType('i64' , 8),
 
 // Floating-point types
-IRType.f64  = new IRType('f64' , 8)
+IRType.f64  = new IRType('f64' , 8);
 
 // If we are on a 32-bit platform
 if (PLATFORM_PTR_SIZE == 4)
@@ -234,7 +234,7 @@ function IRValue()
     /**
     Get a string representation of a value's name
     */
-    this.getValName = function () { return 'value' };
+    this.getValName = function () { return 'value'; };
 
     /**
     Produce a string representation of this value
@@ -324,7 +324,7 @@ Test if a constant is a number
 ConstValue.prototype.isNumber = function ()
 {
     return (typeof this.value == 'number');
-}
+};
 
 /**
 Test if a constant is an integer
@@ -332,7 +332,7 @@ Test if a constant is an integer
 ConstValue.prototype.isInt = function ()
 {
     return (this.isNumber() && this.value == Math.floor(this.value));
-}
+};
 
 /**
 Test if a constant is a boxed integer
@@ -345,7 +345,7 @@ ConstValue.prototype.isBoxInt = function ()
         this.value >= getIntMin(BOX_NUM_BITS_INT) && 
         this.value <= getIntMax(BOX_NUM_BITS_INT)
     );
-}
+};
 
 /**
 Test if a constant is a string
@@ -353,7 +353,7 @@ Test if a constant is a string
 ConstValue.prototype.isString = function ()
 {
     return (typeof this.value == 'string');
-}
+};
 
 /**
 Test if a constant is the undefined constant
@@ -361,7 +361,7 @@ Test if a constant is the undefined constant
 ConstValue.prototype.isUndef = function ()
 {
     return this.value === undefined;
-}
+};
 
 /**
 Get the tag bits associated with a constant
@@ -405,7 +405,7 @@ ConstValue.prototype.getTagBits = function ()
         false,
         'cannot get tag bits for: ' + this
     );
-}
+};
 
 /**
 Get the immediate value (bit pattern) of a constant
@@ -456,7 +456,7 @@ ConstValue.prototype.getImmValue = function ()
         false,
         'cannot get immediate bits for: ' + this
     );
-}
+};
 
 /**
 Map of values to maps of types to IR constants
@@ -560,7 +560,7 @@ Default output string formatting function
 IRInstr.defOutFormat = function (instr)
 {
     return instr.type.name + ' ' + instr.getValName();
-}
+};
 
 /**
 Default input string formatting function
@@ -576,7 +576,7 @@ IRInstr.defInFormat = function (instr, pos)
         output += ins.getValName();
 
     return output;
-}
+};
 
 /**
 Produce a string representation of this instruction
@@ -612,7 +612,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     {
         output += 
             (this.targetNames[i]? (' ' + this.targetNames[i]):'') + 
-            ' ' + this.targets[i].getBlockName()
+            ' ' + this.targets[i].getBlockName();
         ;
     }
 
@@ -724,7 +724,7 @@ Test if this instruction is a branch
 IRInstr.prototype.isBranch = function ()
 {
     return (this.targets.length > 0);
-}
+};
 
 /**
 Test if this instruction writes to memory
@@ -732,7 +732,7 @@ Test if this instruction writes to memory
 IRInstr.prototype.writesMem = function ()
 {
     return false;
-}
+};
 
 /**
 Test if this instruction reads from memory
@@ -740,7 +740,7 @@ Test if this instruction reads from memory
 IRInstr.prototype.readsMem = function ()
 {
     return false;
-}
+};
 
 /**
 @class SSA phi node instruction
@@ -760,7 +760,7 @@ function PhiInstr(values, preds)
         assert (
             values[i].type === values[i-1].type,
             'all phi input values must have the same type'
-        )
+        );
     }
 
     // Set the mnemonic name for this instruction
@@ -802,7 +802,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
         var pred = instr.preds[pos];
 
         return '[' + inFormatFn(instr, pos) + ' ' + pred.getBlockName() + ']';
-    }
+    };
 
     var output = "";
 
@@ -843,7 +843,7 @@ PhiInstr.prototype.replPred = function (oldPred, newPred)
         false,
         'cannot replace pred, invalid pred'
     );
-}
+};
 
 /**
 Remove a phi predecessor and the corresponding use
@@ -873,7 +873,7 @@ PhiInstr.prototype.remPred = function (pred)
             return;
         }
     }
-}
+};
 
 /**
 Add an incoming value to a phi node
@@ -921,7 +921,7 @@ PhiInstr.prototype.getIncoming = function (pred)
         false,
         'cannot get incoming for pred, invalid pred'
     );        
-}
+};
 
 /**
 Make a shallow copy of the instruction
@@ -963,7 +963,7 @@ ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
     output += ' ' + this.argIndex;
 
     return output;
-}
+};
 
 /**
 Make a shallow copy of the instruction
@@ -1097,7 +1097,7 @@ function instrMaker(
         {
             var errorStr = 
                 'Invalid arguments to "' + mnemonic + '" instruction: ' +
-                error.toString()
+                error.toString();
             ;
 
             throw errorStr;
@@ -1168,7 +1168,7 @@ instrMaker.validCount = function (name, array, minExpected, maxExpected)
     else if (maxExpected != Infinity)
         expectedStr = 'between ' + minExpected + ' and ' + maxExpected;
     else
-        expectedStr = minExpected + ' or more'
+        expectedStr = minExpected + ' or more';
 
     assert (
         array.length >= minExpected && array.length <= maxExpected,
@@ -1176,7 +1176,7 @@ instrMaker.validCount = function (name, array, minExpected, maxExpected)
         pluralize(name, array.length) + 
         ', expected ' + expectedStr
     );
-}
+};
 
 /**
 Function to validate the type paramers count of an instruction
@@ -1184,7 +1184,7 @@ Function to validate the type paramers count of an instruction
 instrMaker.validNumParams = function (typeParams, minExpected, maxExpected)
 {
     instrMaker.validCount('type parameter', typeParams, minExpected, maxExpected);
-}
+};
 
 /**
 Function to validate the argument count of an instruction
@@ -1192,7 +1192,7 @@ Function to validate the argument count of an instruction
 instrMaker.validNumInputs = function (inputVals, minExpected, maxExpected)
 {
     instrMaker.validCount('input value', inputVals, minExpected, maxExpected);
-}
+};
 
 /**
 Function to validate the branch targets of an instruction
@@ -1200,7 +1200,7 @@ Function to validate the branch targets of an instruction
 instrMaker.validNumBranches = function (branchTargets, minExpected, maxExpected)
 {
     instrMaker.validCount('branch target', branchTargets, minExpected, maxExpected);
-}
+};
 
 /**
 Function to ensure that all values in an array are of boxed type
@@ -1216,7 +1216,7 @@ instrMaker.allValsBoxed = function (inputVals)
             );
         }
     );
-}
+};
 
 /**
 Function to ensure that all values in an array are of boxed type
@@ -1227,7 +1227,7 @@ instrMaker.validType = function (value, expectedType)
         value.type === expectedType,
         'got ' + value.type + ' value, expected ' + expectedType
     );
-}
+};
 
 //=============================================================================
 //
@@ -1241,7 +1241,7 @@ instrMaker.validType = function (value, expectedType)
 */
 ArithInstr = function ()
 {
-}
+};
 ArithInstr.prototype = new IRInstr();
 
 /**
@@ -1260,7 +1260,7 @@ ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     );
     
     this.type = inputVals[0].type;
-}
+};
 
 /**
 @class Addition instruction
@@ -1321,7 +1321,7 @@ var SubInstr = instrMaker(
             inputVals[0].type === IRType.rptr && 
             inputVals[1].type === IRType.rptr
         )
-            this.type = IRType.pint
+            this.type = IRType.pint;
         else
             this.type = inputVals[0].type;
     },
@@ -1374,7 +1374,7 @@ var ModInstr = instrMaker(
 */
 ArithOvfInstr = function ()
 {
-}
+};
 ArithOvfInstr.prototype = new IRInstr();
 
 /**
@@ -1393,7 +1393,7 @@ ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTarget
     );
     
     this.type = inputVals[0].type;
-}
+};
 
 /**
 @class Instruction to add integer values with overflow handling
@@ -1451,7 +1451,7 @@ var LsftOvfInstr = instrMaker(
 */
 BitOpInstr = function ()
 {
-}
+};
 BitOpInstr.prototype = new IRInstr();
 
 /**
@@ -1476,7 +1476,7 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     );
     
     this.type = inputVals[1].type;
-}
+};
 
 /**
 @class Bitwise NOT instruction
@@ -1578,7 +1578,7 @@ var UrsftInstr = instrMaker(
 */
 CompInstr = function ()
 {
-}
+};
 CompInstr.prototype = new IRInstr();
 
 /**
@@ -1597,7 +1597,7 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     );
     
     this.type = IRType.bool;
-}
+};
 
 /**
 @class Less-than comparison instruction
@@ -1689,7 +1689,7 @@ var JumpInstr = instrMaker(
 /**
 Jump instructions are always branch instructions
 */
-JumpInstr.prototype.isBranch = function () { return true; }
+JumpInstr.prototype.isBranch = function () { return true; };
 
 /**
 @class Function return instruction
@@ -1708,7 +1708,7 @@ var RetInstr = instrMaker(
 /**
 Ret instructions are always branch instructions
 */
-RetInstr.prototype.isBranch = function () { return true; }
+RetInstr.prototype.isBranch = function () { return true; };
 
 /**
 @class If branching instruction
@@ -1743,7 +1743,7 @@ var IfInstr = instrMaker(
 */
 ExceptInstr = function ()
 {
-}
+};
 ExceptInstr.prototype = new IRInstr();
 
 /**
@@ -1752,7 +1752,7 @@ Set the target block of the exception-producing instruction
 ExceptInstr.prototype.setThrowTarget = function (catchBlock)
 {
     this.targets[0] = catchBlock;
-}
+};
 
 /**
 Get the target block of the exception-producing instruction
@@ -1760,7 +1760,7 @@ Get the target block of the exception-producing instruction
 ExceptInstr.prototype.getThrowTarget = function ()
 {
     return this.targets[0]? this.targets[0]:null;
-}
+};
 
 /**
 @class Exception throw to exception handler. Handler may be left undefined for
@@ -1787,7 +1787,7 @@ Throw instructions are always branch instructions
 ThrowInstr.prototype.isBranch = function ()
 {
     return true; 
-}
+};
 
 /**
 @class Exception value catch
@@ -1807,14 +1807,14 @@ var CatchInstr = instrMaker(
 */
 CallInstr = function ()
 {
-}
+};
 CallInstr.prototype = new ExceptInstr();
 
 /**
 By default, conservatively assume all calls read and write to/from memory
 */
-CallInstr.prototype.writesMem = function () { return true; }
-CallInstr.prototype.readsMem = function () { return true; }
+CallInstr.prototype.writesMem = function () { return true; };
+CallInstr.prototype.readsMem = function () { return true; };
 
 /**
 Set the continue block of the call instruction
@@ -1825,7 +1825,7 @@ CallInstr.prototype.setContTarget = function (contBlock)
 
     while (!this.targets[this.targets.length-1])
         this.targets.pop();
-}
+};
 
 /**
 Get the continuation target block of the call instruction
@@ -1833,7 +1833,7 @@ Get the continuation target block of the call instruction
 CallInstr.prototype.getContTarget = function ()
 {
     return (this.targets.length > 0)? this.targets[0]:null;
-}
+};
 
 /**
 Set the throw target block of the call instruction
@@ -1844,7 +1844,7 @@ CallInstr.prototype.setThrowTarget = function (catchBlock)
 
     while (!this.targets[this.targets.length-1])
         this.targets.pop();
-}
+};
 
 /**
 Get the throw target block of the call instruction
@@ -1852,7 +1852,7 @@ Get the throw target block of the call instruction
 CallInstr.prototype.getThrowTarget = function ()
 {
     return (this.targets.length > 1)? this.targets[1]:null;
-}
+};
 
 /**
 @class Function call instruction
@@ -1916,7 +1916,7 @@ CallFuncInstr.prototype.writesMem = function ()
         return this.uses[0].writesMem;
     else
         return true;
-}
+};
 
 /**
 Test if a call instruction reads from memory
@@ -1927,7 +1927,7 @@ CallFuncInstr.prototype.readsMem = function ()
         return this.uses[0].readsMem;
     else
         return true;
-}
+};
 
 /**
 @class Constructor call with function object reference
@@ -2058,7 +2058,7 @@ var LoadInstr = instrMaker(
 /**
 Load instructions always read from memory
 */
-LoadInstr.prototype.readsMem = function () { return true; }
+LoadInstr.prototype.readsMem = function () { return true; };
 
 /**
 @class Instruction to store a value to memory
@@ -2084,7 +2084,7 @@ var StoreInstr = instrMaker(
 /**
 Store instructions always write to memory
 */
-StoreInstr.prototype.writesMem = function () { return true; }
+StoreInstr.prototype.writesMem = function () { return true; };
 
 /**
 @class Instruction to get a pointer to the current runtime context
@@ -2103,7 +2103,7 @@ var GetCtxInstr = instrMaker(
 /**
 Get context instructions always read from memory
 */
-GetCtxInstr.prototype.readsMem = function () { return true; }
+GetCtxInstr.prototype.readsMem = function () { return true; };
 
 /**
 @class Instruction to set the runtime context pointer
@@ -2123,7 +2123,7 @@ var SetCtxInstr = instrMaker(
 /**
 Set context instructions always write to memory
 */
-SetCtxInstr.prototype.writesMem = function () { return true; }
+SetCtxInstr.prototype.writesMem = function () { return true; };
 
 //=============================================================================
 //

@@ -14,7 +14,7 @@ Get a reference to the global object
 */
 function getGlobalObj()
 {
-    return (function() { return this })();
+    return (function() { return this; })();
 }
 
 /**

@@ -37,7 +37,7 @@ bench.Benchmark = function (cfg)
     @field
     */
     this.output = undefined;
-}
+};
 bench.Benchmark.prototype = {};
 
 /**
@@ -55,7 +55,7 @@ bench.Benchmark.prototype.init = function (platform)
     benchHook = null;
 
     this.hook.init(platform, benchPath);
-}
+};
 
 /**
 Cleanup after the benchmark run
@@ -65,7 +65,7 @@ bench.Benchmark.prototype.cleanup = function (platform)
     this.hook.cleanup(platform);
 
     this.hook = null;
-}
+};
 
 /**
 Run the benchmark
@@ -73,5 +73,5 @@ Run the benchmark
 bench.Benchmark.prototype.run = function (platform)
 {
     this.output = this.hook.run(platform);
-}
+};
 

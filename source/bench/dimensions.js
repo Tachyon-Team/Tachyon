@@ -36,7 +36,7 @@ bench.Dimension = function ()
     @field
     */
     this.output = undefined;
-}
+};
 bench.Dimension.prototype = {};
 
 /**
@@ -50,7 +50,7 @@ bench.Dimension.prototype.loadParams = function (cfg)
         // Try to parse the parameter
         this.setParam(param, cfg[param]);
     }
-}
+};
 
 /**
 Set the generic parameters for this dimension
@@ -81,7 +81,7 @@ bench.Dimension.prototype.setParam = function (param, val)
             );
         }   
     }
-}
+};
 
 /**
 @class Run-time benchmarking dimension
@@ -100,7 +100,7 @@ bench.Dimension.RunTime = function ()
     @field
     */
     this.units = 's';
-}
+};
 bench.Dimension.RunTime.prototype = new bench.Dimension();
 
 /**
@@ -132,7 +132,7 @@ bench.Dimension.RunTime.prototype.setParam = function (param, val)
             );
         }
     }
-}
+};
 
 /**
 Code to be executed before the benchmark is run
@@ -141,7 +141,7 @@ bench.Dimension.RunTime.prototype.preRun = function ()
 {
     // Store the start time in ms
     this.startTimeMs = new Date().getTime();
-}
+};
 
 /**
 Code to be executed after the benchmark is run
@@ -156,5 +156,5 @@ bench.Dimension.RunTime.prototype.postRun = function ()
 
     // Return the total time as the output value
     return totalTimeS;
-}
+};
 

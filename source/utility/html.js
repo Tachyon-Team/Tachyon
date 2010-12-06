@@ -57,7 +57,7 @@ Add contents to the page body
 HTMLPage.prototype.addContents = function (elem)
 {
     this.body.addChild(elem);
-}
+};
 
 /**
 Create an HTML header

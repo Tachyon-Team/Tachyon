@@ -20,7 +20,7 @@ a.codeBlock.bigEndian = false;
 // In cdecl calling convention, registers ebx, esi, edi, and ebp
 // are callee-save
 
-a.push(reg.ebx)
+a.push(reg.ebx);
 a.push(reg.esi);
 a.push(reg.edi);
 a.push(reg.ebp);

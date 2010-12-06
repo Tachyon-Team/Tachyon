@@ -847,7 +847,7 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
      }
 
      this.ranges.splice(insertPos, deleteNb, newRange);
-}
+};
 
 /** 
     Add a use position to an interval.
@@ -1189,7 +1189,7 @@ allocator.orderBlocks = function (cfg)
     */ 
 
     // Return the produced block order and the block information computed
-    return blockOrder
+    return blockOrder;
 };
 
 /**

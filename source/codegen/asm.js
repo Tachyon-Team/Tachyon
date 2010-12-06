@@ -215,7 +215,7 @@ asm.CodeBlock.prototype.genNumber = function (width, n)
 };
 
 /** @namespace */
-asm.type = {}
+asm.type = {};
 /** Generic asm object */
 asm.type.OBJ = "ASM_OBJ";
 /** Label */
@@ -837,7 +837,7 @@ asm.CodeBlock.prototype.assemble = function ()
         };
     }
     return pos;
-}
+};
 
 /** Returns an allocated machine code block with the assembled
     code. This block should be freed using freeMachineBlock */
@@ -896,10 +896,10 @@ asm.CodeBlock.prototype.byteNb = function ()
 {
     var nb = 0;
 
-    this.code.forEach(function (o) { if (typeof o === "number") { nb++} });
+    this.code.forEach(function (o) { if (typeof o === "number") { nb++; } });
 
     return nb;
-}
+};
 
 /** 
     Marks the position at which the object is required for a subsequent

@@ -224,7 +224,7 @@ function constProp(cfg)
 
                 // Remove the instruction
                 block.remInstrAtIndex(j, val);
-                --j                
+                --j;
             }
         }
     }
@@ -269,7 +269,7 @@ PhiInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 
     // All uses have the same constant value
     return curVal;
-}
+};
 
 ArithInstr.genConstEval = function (opFunc, genFunc)
 {
@@ -304,7 +304,7 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
     }
 
     return constEval;
-}
+};
 
 AddInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
@@ -439,7 +439,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
     }
 
     return constEval;
-}
+};
 
 AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
@@ -509,7 +509,7 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
 
         return BOT;
     }
-)
+);
 
 OrInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
@@ -526,35 +526,35 @@ OrInstr.prototype.constEval = BitOpInstr.genConstEval(
 
         return BOT;
     }
-)
+);
 
 XorInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 ^ v1;
     }
-)
+);
 
 LsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 << v1;
     }
-)
+);
 
 RsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 >> v1;
     }
-)
+);
 
 UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 >>> v1;
     }
-)
+);
 
 ICastInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 {
@@ -594,7 +594,7 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
     }
 
     return BOT;
-}
+};
 
 CompInstr.genConstEval = function (opFunc)
 {
@@ -624,7 +624,7 @@ CompInstr.genConstEval = function (opFunc)
     }
 
     return constEval;
-}
+};
 
 LtInstr.prototype.constEval = CompInstr.genConstEval(
     function (v0, v1)
@@ -740,7 +740,7 @@ CallFuncInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList
             cfgWorkList.push(this.targets[i]);
 
     return BOT;
-}
+};
 
 IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 {
@@ -770,4 +770,4 @@ IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 
     // Return the test value
     return test;
-}
+};

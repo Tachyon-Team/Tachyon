@@ -58,7 +58,7 @@ iir =
     ge          : GeInstr,
     eq          : EqInstr,
     ne          : NeInstr
-}
+};
 
 /**
 Pseudo-constructor for IIR constants

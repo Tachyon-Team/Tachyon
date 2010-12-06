@@ -422,7 +422,7 @@ ControlFlowGraph.prototype.addBlock = function (block)
 
     // Assign a name to the block
     this.assignBlockName(block, block.getBlockName());
-}
+};
 
 /**
 Remove a basic block from this CFG

@@ -506,7 +506,7 @@ x86.Assembler.prototype.register.prototype.isr64 = function ()
 /** returns the field value of the register */
 x86.Assembler.prototype.register.prototype.field = function () 
 { 
-    return this.value & 0xF 
+    return this.value & 0xF;
 };
 /** returns the width value of the register */
 x86.Assembler.prototype.register.prototype.width = function () 
@@ -540,7 +540,7 @@ x86.Assembler.prototype.register.prototype.subReg = function (width)
         case 8:
         return reg.reg8(field);
     }
-}
+};
 
 /** Predefined register object */ 
 x86.Assembler.prototype.register.al = 

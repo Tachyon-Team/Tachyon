@@ -53,7 +53,7 @@ function makeErrorCtor(errorName, protoParent)
             enumerable      : false,
             configurable    : false
         }
-    )
+    );
 
     // Set the error name in the error prototype object
     ErrorCtor.prototype.name = errorName;

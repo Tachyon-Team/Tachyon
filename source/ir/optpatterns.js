@@ -196,7 +196,7 @@ blockPatterns.predSuccMerge = new optPattern(
             
             // If the instruction is a phi node
             if (!(instr instanceof PhiInstr))
-                break
+                break;
  
             // Ensure that this phi node has only one predecessor
             assert (
@@ -407,7 +407,7 @@ blockPatterns.boxToBoolElim = new optPattern(
         }
 
         var trueTarget = ifInstr.targets[0];
-        var falseTarget = ifInstr.targets[1]
+        var falseTarget = ifInstr.targets[1];
 
         // Flag to indicate the CFG was changed
         var changed = false;

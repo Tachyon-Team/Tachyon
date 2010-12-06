@@ -56,8 +56,7 @@ function FieldSpec(name, type, typeSize, numElems, offset)
     this.elemSize = 
         (type instanceof IRType)?
         type.size:
-        this.type.getSize(typeSize)
-    ;
+        this.type.getSize(typeSize);
 
     /**
     Number of elements in this field
@@ -129,7 +128,7 @@ function ObjectLayout(name, ptrType, tagName)
     */
     this.finalized = false;
 }
-ObjectLayout.prototype = {}
+ObjectLayout.prototype = {};
 
 /**
 Map of layout names to object layouts
@@ -167,7 +166,7 @@ ObjectLayout.prototype.getSize = function (typeSize)
 
     // Return the object size
     return size;
-}
+};
 
 /**
 Add a new field specification
@@ -223,7 +222,7 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
 
     // Add the new field to the map
     this.fieldMap[name] = newField;
-}
+};
 
 /**
 Get a field specification by name
@@ -236,7 +235,7 @@ ObjectLayout.prototype.getField = function (name)
     );
 
     return this.fieldMap[name];
-}
+};
 
 /**
 Lock the layout so that it can no longer be changed
@@ -244,7 +243,7 @@ Lock the layout so that it can no longer be changed
 ObjectLayout.prototype.finalize = function ()
 {
     this.finalized = true;
-}
+};
 
 /**
 Generate the offset computation to access a given field or sub-field
@@ -302,7 +301,7 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
 
     // Return the computed offset value
     return { offset:curOffset, type:curType };
-}
+};
 
 /**
 Generate functions to manipulate a given layout
@@ -442,7 +441,7 @@ ObjectLayout.prototype.genMethods = function ()
                 argStr += ', ' + idxVar;
                 offsetStr +=
                     'offset += iir.constant(IRType.pint, ' + spec.elemSize +
-                    ') * ' + idxVar + ';\n'
+                    ') * ' + idxVar + ';\n';
                 ;
             }
 
@@ -498,5 +497,5 @@ ObjectLayout.prototype.genMethods = function ()
 
     // Append the generated code to the object layout source string
     ObjectLayout.sourceStr += sourceStr;
-}
+};
 

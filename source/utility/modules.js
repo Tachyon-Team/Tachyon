@@ -24,7 +24,7 @@ function makeModule(modName, parentObj)
         return parentObj[modName];
 
     // Create an object for the new module
-    newMod = {}
+    newMod = {};
 
     // Define a read-only empty object property in the parent
     Object.defineProperty(parentObj, modName, {value:newMod, writable:false});
@@ -36,7 +36,7 @@ function makeModule(modName, parentObj)
     newMod.addFunction = function(fName, fObj)
     {
         Object.defineProperty(this, fName, {value:fObj, writable:false});        
-    }
+    };
 
     // Return a reference to the new module
     return newMod;

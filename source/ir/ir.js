@@ -435,7 +435,7 @@ function getIRFuncObj(
     var bodyStmts = 
         (astNode instanceof FunctionExpr)?
         astNode.body:
-        astNode.block.statements        
+        astNode.block.statements;
     ;
     for (var i = 0; i < bodyStmts.length; ++i)
     {
@@ -746,7 +746,7 @@ IRConvContext.prototype.splice = function (contBlock)
         this.exitBlock = contBlock;
     else
         this.entryBlock = contBlock;
-}
+};
 
 /**
 Terminate a context so it cannot be pursued
@@ -867,7 +867,7 @@ IRConvContext.prototype.addInstr = function (instr, outName)
     insBlock.addInstr(instr, outName);
 
     return instr;
-}
+};
 
 /**
 Convert a statement list to IR code

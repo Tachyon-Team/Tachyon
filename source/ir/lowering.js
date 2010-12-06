@@ -37,7 +37,7 @@ function lowerIRCFG(cfg)
         var instr = itr.get();
 
         // Test if some instruction uses are boxed values
-        var usesBoxed = false
+        var usesBoxed = false;
         for (var i = 0; i < instr.uses.length; ++i)
             if (instr.uses[i].type === IRType.box)
                 usesBoxed = true;
@@ -67,7 +67,7 @@ function lowerIRCFG(cfg)
         // If this is a function call to a known function
         if (instr instanceof CallInstr && instr.uses[0] instanceof IRFunction)
         {
-            var calleeFunc = instr.uses[0]
+            var calleeFunc = instr.uses[0];
 
             // If the callee is marked inline and is inlinable
             if (calleeFunc.inline && isInlinable(calleeFunc))
