@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "misc.js", Time-stamp: <2010-06-08 16:52:10 feeley>
+// File: "misc.js", Time-stamp: <2010-12-05 10:40:12 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -43,7 +43,7 @@ function String_input_port(content, filename)
             return content.charCodeAt(this.pos++);
         else
             return EOF;
-    }
+    };
 }
 
 function String_output_port(init)

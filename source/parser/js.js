@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js.js", Time-stamp: <2010-06-23 16:48:28 feeley>
+// File: "js.js", Time-stamp: <2010-12-05 21:40:52 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -9,16 +9,40 @@
 function main()
 {
     var args = command_line();
+    var opt_ast = false;
+    var i = 0;
+    var n;
 
-    if (args.length == 1)
+    while (i < args.length)
     {
-        var filename = args[0];
+        if (args[i] == "-ast")
+            opt_ast = true;
+        else
+            break;
+        i++;
+    }
+
+    n = args.length - i;
+
+    while (i < args.length)
+    {
+        var filename = args[i];
+
+        if (n > 1)
+        {
+            print(filename + ":");
+        }
         var port = new File_input_port(filename);
         var s = new Scanner(port);
         var p = new Parser(s, true);
-        var ast = p.parse();
-        var normalized_ast = ast_normalize(ast);
-        pp(normalized_ast); // pretty-print AST
+        var prog = p.parse();
+        if (prog != null)
+        {
+            var normalized_prog = ast_normalize(prog);
+            if (opt_ast)
+                pp(normalized_prog);
+        }
+        i++;
     }
 }
 

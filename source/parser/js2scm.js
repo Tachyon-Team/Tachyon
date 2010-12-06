@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js2scm.js", Time-stamp: <2010-06-23 21:50:57 feeley>
+// File: "js2scm.js", Time-stamp: <2010-12-05 21:15:53 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -40,9 +40,6 @@ function main()
     if (prog != null)
     {
         prog = new Program(prog.loc,
-                           null,
-                           null,
-                           null,
                            new BlockStatement(prog.loc,
                                               Array.prototype.concat.apply([], statements)));
 

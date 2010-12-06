@@ -49,7 +49,7 @@ function testIR()
 
     var ir = unitToIR(ast, true);
     
-    print(ir);
+    //print(ir);
 
     lowerIRFunc(ir);
 

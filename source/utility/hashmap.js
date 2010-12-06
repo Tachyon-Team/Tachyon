@@ -279,7 +279,7 @@ function HashMap(hashFunc, equalFunc)
     this.getItr = function ()
     {
         return new HashMap.Iterator(this, 0);
-    }
+    };
 
     /**
     Erase all contained items
@@ -354,7 +354,7 @@ function HashMap(hashFunc, equalFunc)
     Internal storage array
     @field
     */
-    this.array = []
+    this.array = [];
 
     // Set the initial array size
     this.array.length = 2 * this.numSlots;
@@ -409,7 +409,7 @@ HashMap.Iterator = function (hashMap, slotIndex)
 
     // Move to the next non-free slot
     this.nextFullSlot();
-}
+};
 HashMap.Iterator.prototype = {};
 
 /**
@@ -422,7 +422,7 @@ HashMap.Iterator.prototype.nextFullSlot = function ()
         this.map.array[this.index] === freeHashKey
     )
         this.index += 2;
-}
+};
 
 /**
 Test if the iterator is at a valid position
@@ -430,7 +430,7 @@ Test if the iterator is at a valid position
 HashMap.Iterator.prototype.valid = function ()
 {
     return (this.index < this.map.array.length);
-}
+};
 
 /**
 Move to the next list item
@@ -447,7 +447,7 @@ HashMap.Iterator.prototype.next = function ()
 
     // Move to the first non-free slot found
     this.nextFullSlot();
-}
+};
 
 /**
 Get the current list item
@@ -462,6 +462,5 @@ HashMap.Iterator.prototype.get = function ()
     return { 
         key: this.map.array[this.index],  
         value: this.map.array[this.index + 1] 
-    }
-}
-
+    };
+};

@@ -8,11 +8,13 @@ OPT_SCM=""
 LAST_FILE=""
 FILES=""
 
-JS2SCM="d8 misc.js scanner.js parser.js pp.js ast-passes.js scheme.js js2scm.js --"
+DIR=`dirname $0`
+
+JS2SCM="d8 $DIR/../utility/system.js $DIR/../utility/hashmap.js $DIR/misc.js $DIR/scanner.js $DIR/parser.js $DIR/pp.js $DIR/ast-passes.js $DIR/scheme.js $DIR/js2scm.js --"
 
 # After a "make boostrap" this can be used instead:
 #
-#JS2SCM="js2scm.js.exe"
+#JS2SCM="$DIR/js2scm.js.exe"
 
 while [ "$1" != "" ]; do
   case "$1" in

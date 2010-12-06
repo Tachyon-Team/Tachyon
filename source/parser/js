@@ -1,9 +1,12 @@
 #! /bin/sh
 
-JS="d8 misc.js scanner.js parser.js pp.js ast-passes.js js.js --"
+DIR=`dirname $0`
 
+JS="d8 $DIR/../utility/system.js $DIR/../utility/hashmap.js $DIR/misc.js $DIR/scanner.js $DIR/parser.js $DIR/pp.js $DIR/ast-passes.js $DIR/js.js --"
+
+echo $JS
 # After a "make boostrap" this can be used instead:
 #
-#JS="js.js.exe"
+#JS="$DIR/js.js.exe"
 
 $JS "$@"

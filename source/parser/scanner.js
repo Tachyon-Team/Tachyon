@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-06-23 16:22:57 feeley>
+// File: "scanner.js", Time-stamp: <2010-12-05 10:40:33 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -452,7 +452,7 @@ Scanner.prototype.parse_number = function ()
             n = n * base + char_value(c);
         }
         return n;
-    }
+    };
     
     // Computes the value of a serie of digit characters
     // as if they are on the "right-hand side" of the decimal point
@@ -470,7 +470,7 @@ Scanner.prototype.parse_number = function ()
             n = n * base + char_value(c);
         }
         return n/pos;
-    }
+    };
 
     // Decimal helper functions
     function decimal (c)
@@ -562,7 +562,7 @@ Scanner.prototype.parse_number = function ()
 
 
         return that.valued_token(NUMBER_CAT, n, start_pos);
-    }
+    };
 }();
 
 

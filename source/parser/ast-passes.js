@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-07-14 15:14:37 feeley>
+// File: "ast-passes.js", Time-stamp: <2010-12-05 23:11:25 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -506,16 +506,19 @@ ast_pass2_ctx.prototype.function_ctx = function (ast)
                            new_ctx.add_variable(param, true);
                        });
     return new_ctx;
-}
+};
 
 ast_pass2_ctx.prototype.catch_ctx = function (ast)
 {
     var new_ctx = ast_pass2_empty_ctx(ast);
-    new_ctx.add_variable(ast.id, true);[new Decl(IDENT.loc.join(Initializer.loc),
+    new_ctx.add_variable(ast.id, true);
+/*
+    [new Decl(IDENT.loc.join(Initializer.loc),
                      IDENT,
                      Initializer)]
+*/
     return new_ctx;
-}
+};
 
 ast_pass2_ctx.prototype.add_variable = function (id, is_param)
 {
@@ -527,7 +530,7 @@ ast_pass2_ctx.prototype.add_variable = function (id, is_param)
         this.vars[id_str] = v;
     }
     return v;
-}
+};
 
 ast_pass2_ctx.prototype.walk_statement = function (ast)
 {
@@ -619,7 +622,7 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
         else
             return new BlockStatement(ast.loc,
                                       [new ExprStatement(
-                                         decl.loc,
+                                         initializer.loc,
                                          new OpExpr(ast.loc,
                                                     op2_table[EQUAL_CAT],
                                                     [new Ref(ast.id.loc,
@@ -711,7 +714,7 @@ ast_pass3_ctx.prototype.function_ctx = function (ast)
     );
 
     return new_ctx;
-}
+};
 
 ast_pass3_ctx.prototype.catch_ctx = function (ast)
 {
@@ -720,7 +723,7 @@ ast_pass3_ctx.prototype.catch_ctx = function (ast)
     ast.id = new_ctx.resolve_variable(ast.id);
 
     return new_ctx;
-}
+};
 
 ast_pass3_ctx.prototype.resolve_variable = function (id)
 {
@@ -766,7 +769,7 @@ ast_pass3_ctx.prototype.resolve_variable = function (id)
     }
 
     return resolve(this.scope);
-}
+};
 
 ast_pass3_ctx.prototype.walk_statement = function (ast)
 {
