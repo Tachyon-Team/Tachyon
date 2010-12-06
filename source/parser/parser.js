@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-07-14 13:52:57 feeley>
+// File: "parser.js", Time-stamp: <2010-12-06 08:38:16 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -992,10 +992,10 @@ function CallExpr_1(p, MemberExpr, Arguments)
                         Arguments.args);
 }
 
-function CallExpr_2(p, CallExpr, Arguments)
+function CallExpr_2(p, CallExpr_, Arguments)
 {
-    return new CallExpr(CallExpr.loc.join(Arguments.loc),
-                        CallExpr,
+    return new CallExpr(CallExpr_.loc.join(Arguments.loc),
+                        CallExpr_,
                         Arguments.args);
 }
 
