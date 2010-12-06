@@ -2063,11 +2063,11 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
         assert (
             false,
             'invalid operand combination'
-        )
+        );
     }
 
     return this;
-}
+};
 
 /** Move with sign extension. Can be chained.
     @param src
@@ -2077,7 +2077,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
 x86.Assembler.prototype.movsx = function (src, dst, width) 
 { 
     return this.movxx(src, dst, true, width);
-}
+};
 
 /** Move with zero extension. Can be chained.
     @param src

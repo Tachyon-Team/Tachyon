@@ -1507,7 +1507,7 @@ allocator.fixedIntervals = function (cfg, config)
         }
     }
     return fixed;
-}
+};
 
 //-----------------------------------------------------------------------------
 

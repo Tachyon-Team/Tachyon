@@ -950,7 +950,7 @@ ControlFlowGraph.prototype.addInstr = function (instrItr, newInstr)
     var index = instrItr.instrIt.getIndex();
 
     block.addInstr(newInstr, undefined, index);
-}
+};
 
 /**
 Remove an instruction from the CFG
@@ -961,7 +961,7 @@ ControlFlowGraph.prototype.remInstr = function (instrItr)
     var index = instrItr.instrIt.getIndex();
 
     block.remInstrAtIndex(index);
-}
+};
 
 /**
 Replace an instruction by another
@@ -972,7 +972,7 @@ ControlFlowGraph.prototype.replInstr = function (instrItr, newInstr)
     var index = instrItr.instrIt.getIndex();
 
     block.replInstrAtIndex(index, newInstr);
-}
+};
 
 /**
 Insert a new block along the edge in between two blocks.
@@ -982,7 +982,7 @@ ControlFlowGraph.prototype.insertOnEdge = function (edgeItr, block)
     var edge = edgeItr.get();
 
     this.insertBetween(edge.pred, edge.succ, block);
-}
+};
 
 /**
 Insert a new block in between two blocks.
@@ -1026,7 +1026,7 @@ ControlFlowGraph.prototype.insertBetween = function (pred, succ, block)
 
         instr.replPred(pred, block);
     }
-}
+};
 
 /**
 @class Class to represent a basic block
@@ -1077,7 +1077,7 @@ Produce a string representation
 BasicBlock.prototype.toString = function (outFormatFn, inFormatFn, lnPfxFormatFn)
 {
     if (!lnPfxFormatFn)
-        lnPfxFormatFn = function() { return ''; }
+        lnPfxFormatFn = function() { return ''; };
 
     var output = lnPfxFormatFn(this) + this.getBlockName() + ':\n';
 
@@ -1246,7 +1246,7 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
     //print('Removing instr: ' + this.instrs[index]);
 
     // Get a reference to the instruction
-    var instr = this.instrs[index]
+    var instr = this.instrs[index];
 
     // Remove the instruction from the list
     this.instrs.splice(index, 1);
@@ -1410,7 +1410,7 @@ BasicBlock.prototype.replInstrAtIndex = function (index, newVal)
         this.parentCFG.freeInstrId(oldInstr);
         this.parentCFG.freeInstrName(oldInstr);
     }
-}
+};
 
 /**
 Test if this block is terminated by a branch instruction
@@ -1418,7 +1418,7 @@ Test if this block is terminated by a branch instruction
 BasicBlock.prototype.hasBranch = function ()
 {
     return this.instrs.length > 0 && this.getLastInstr().isBranch();
-}
+};
 
 /**
 Replace the branch instruction terminating a block
@@ -1435,7 +1435,7 @@ BasicBlock.prototype.replBranch = function (newBranch)
     );
 
     this.replInstrAtIndex(this.instrs.length - 1, newBranch);
-}
+};
 
 /**
 Get the last instruction in the block
@@ -1445,7 +1445,7 @@ BasicBlock.prototype.getLastInstr = function ()
     assert (this.instrs.length > 0, 'cannot get last instruction, none present');
 
     return this.instrs[this.instrs.length - 1];
-}
+};
 
 /**
 Add a predecessor block

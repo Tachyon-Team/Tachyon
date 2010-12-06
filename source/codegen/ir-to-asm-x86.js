@@ -987,7 +987,7 @@ MulOvfInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.
     jno(tltor.label(normalTarget, normalTarget.label)).
     jmp(tltor.label(overflowTarget, overflowTarget.label));
-}
+};
 
 LsftOvfInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -999,7 +999,7 @@ LsftOvfInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[0].type == x86.type.IMM_VAL)
         shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[1]
+        shiftAmt = opnds[1];
 
     if (opnds[0] === dest)
     {
@@ -1112,7 +1112,7 @@ LsftInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[0].type == x86.type.IMM_VAL)
         shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[1]
+        shiftAmt = opnds[1];
 
     if (opnds[0] === dest)
     {
@@ -1134,7 +1134,7 @@ RsftInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[0].type == x86.type.IMM_VAL)
         shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[1]
+        shiftAmt = opnds[1];
 
     // Use the arithmetic right shift
     if (opnds[0] === dest)
@@ -1157,7 +1157,7 @@ UrsftInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[0].type == x86.type.IMM_VAL)
         shiftAmt = opnds[1].value % 256;
     else
-        shiftAmt = opnds[1]
+        shiftAmt = opnds[1];
 
     // Use the logical right shift
     if (opnds[0] === dest)
@@ -1867,7 +1867,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         // Store the value to memory
         tltor.asm.mov(srcReg, memLoc, typeSize);
     }
-}
+};
 
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1877,7 +1877,7 @@ GetCtxInstr.prototype.genCode = function (tltor, opnds)
 SetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
     tltor.asm.mov(opnds[0], irToAsm.config.context);
-}
+};
 
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {

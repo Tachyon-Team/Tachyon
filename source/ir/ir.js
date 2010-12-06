@@ -2089,8 +2089,8 @@ function exprToIR(context)
     else if (astExpr instanceof ObjectLiteral)
     {
         // Get the property names and values
-        var propNames = astExpr.properties.map(function (v) { return v.name });
-        var propValues = astExpr.properties.map(function (v) { return v.value });
+        var propNames = astExpr.properties.map(function (v) { return v.name; });
+        var propValues = astExpr.properties.map(function (v) { return v.value; });
 
         // Compile the property name expressions
         var nameCtx = context.pursue(propNames);
@@ -2303,7 +2303,7 @@ function opToIR(context)
         case 'x && y':
         {
             // Compile the first expression
-            var fstContext = context.pursue(exprs[0])
+            var fstContext = context.pursue(exprs[0]);
             exprToIR(fstContext);
 
             // Compile the second expression
@@ -2346,7 +2346,7 @@ function opToIR(context)
         case 'x || y':
         {
             // Compile the first expression
-            var fstContext = context.pursue(exprs[0])
+            var fstContext = context.pursue(exprs[0]);
             exprToIR(fstContext);
 
             // Compile the second expression
@@ -2389,7 +2389,7 @@ function opToIR(context)
         case 'x ? y : z':
         {
             // Compile the test expression
-            var testContext = context.pursue(exprs[0])
+            var testContext = context.pursue(exprs[0]);
             exprToIR(testContext);
 
             // Compile the true expression
