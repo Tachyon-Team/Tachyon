@@ -190,6 +190,14 @@ tests.utility.fmtNumDecimals = function ()
         fmtNumDecimals(Number('-1.349338e+30'), 2) == '-1.35e+30'
     );
 
+    assert (
+        fmtNumDecimals(Number('-9.99e+30'), 1) == '-1.0e+31'
+    );
+
+    assert (
+        fmtNumDecimals(Number('9.98e-30'), 1) == '1.0e-29'
+    );
+
     assert (    
         fmtNumDecimals(89.999, 2) == '90.00'
     );

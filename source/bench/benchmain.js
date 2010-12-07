@@ -95,7 +95,7 @@ function main()
     {
         bench.loadOutput(args.options['genReport']);
 
-        bench.genReport();
+        bench.genReport(args.options['genReport']);
     }
     
     // Otherwise, arguments are missing

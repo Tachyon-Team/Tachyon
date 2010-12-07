@@ -8,16 +8,3 @@ function fib(x)
 }
 return fib(20);
 
-/*
-function timeFib()
-{
-    var startTimeMs = new Date().getTime();
-
-    fib(40);
-
-    var endTimeMs = new Date().getTime();
-    var timeS = (endTimeMs - startTimeMs) / 1000;
-    print('time: ' + timeS + ' s');
-}
-timeFib();
-*/

@@ -86,6 +86,14 @@ bench.addOutput = function (platform, dimension, benchmark, outVal)
     bench.output[platform.id][dimension.id][benchmark.dir].push(outVal);
 };
 
+/*
+Get all outputs for a given platform/dimension/benchmark combination
+*/
+bench.getOutputs = function (platform, dimension, benchmark)
+{
+    return bench.output[platform.id][dimension.id][benchmark.dir];
+};
+
 /**
 Load the output accumulated up to this point
 */

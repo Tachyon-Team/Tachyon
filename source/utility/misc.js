@@ -129,12 +129,12 @@ function fmtNumDecimals(numVal, numDecs)
     var numStr = numVal.toString();
     var charIndex = 0;
 
-    var state = 'PREF';
+    var state = 'SIGN';
 
-    var prefStr = '';
-    var postStr = '';
-    var intgDigs = [];
+    var numSig = null;
+    var intDigs = [];
     var fracDigs = [];
+    var expNum = 0;
 
     for (;;)
     {
@@ -145,16 +145,25 @@ function fmtNumDecimals(numVal, numDecs)
 
         switch (state)
         {
-            case 'PREF':
+            case 'SIGN':
             {
-                if (ch >= 0 || ch <= 9)
+                if (ch == '+')
                 {
-                    state = 'INTG';
-                    continue;
+                    numSig = 1;
+                    charIndex++;
+                }
+                else if (ch == '-')
+                {
+                    numSig = -1;
+                    charIndex++;
+                }
+                else if (ch >= '0' && ch <= '9')
+                {
+                    numSig = 1;
                 }
 
-                prefStr += ch;
-                charIndex++;
+                state = 'INTG';
+                continue;
             }
             break;
     
@@ -167,13 +176,19 @@ function fmtNumDecimals(numVal, numDecs)
                     continue;
                 }
 
-                if (ch == 'e' || ch == 'E')
+                else if (ch == 'e' || ch == 'E')
                 {
-                    state = 'POST';
+                    state = 'EXPN';
+                    charIndex++;
                     continue;
                 }
 
-                intgDigs.push(numStr.charCodeAt(charIndex) - '0'.charCodeAt(0));
+                assert (
+                    ch >= '0' && ch <= '9',
+                    'invalid integer digit'
+                );
+
+                intDigs.push(numStr.charCodeAt(charIndex) - '0'.charCodeAt(0));
                 charIndex++;
             }
             break;
@@ -182,39 +197,52 @@ function fmtNumDecimals(numVal, numDecs)
             {
                 if (ch == 'e' || ch == 'E')
                 {
-                    state = 'POST';
+                    state = 'EXPN';
+                    charIndex++;
                     continue;
                 }
+
+                assert (
+                    ch >= '0' && ch <= '9',
+                    'invalid fraction digit'
+                );
 
                 fracDigs.push(numStr.charCodeAt(charIndex) - '0'.charCodeAt(0));
                 charIndex++;
             }
             break;
 
-            case 'POST':
+            case 'EXPN':
             {
-                postStr += ch;
-                charIndex++;
+                expNum = Number(numStr.slice(charIndex));
+
+                assert (
+                    isNaN(expNum) || numStr.length - charIndex < 4,
+                    'invalid exponent'
+                );
+
+                charIndex = numStr.length;
             }
             break;
+
+            default:
+            assert (
+                false,
+                'invalid state'
+            );
         }
     }
-
-    //print('"' + prefStr + '"');
-    //print('"' + intgDigs + '"');
-    //print('"' + fracDigs + '"');
-    //print('"' + postStr + '"');
 
     // If rounding is required
     if (fracDigs.length > numDecs)
     {
-        var allDigs = intgDigs.concat(fracDigs);
+        var allDigs = intDigs.concat(fracDigs);
 
         // Get the digit based on which we will round
-        var rndDig = allDigs[intgDigs.length + numDecs];
+        var rndDig = allDigs[intDigs.length + numDecs];
 
         // Remove the digits starting with the rounding digit
-        allDigs = allDigs.slice(0, intgDigs.length + numDecs);
+        allDigs = allDigs.slice(0, intDigs.length + numDecs);
 
         // Get the last digit that will be kept
         var lastDig = allDigs[allDigs.length-1];
@@ -248,17 +276,29 @@ function fmtNumDecimals(numVal, numDecs)
         }
 
         if (rndDir == 1)
+        {
             allDigs.unshift(1);
 
+            // If this number is in scientific notation, remove
+            // the last fraction digit so as to keep only one 
+            // integer digit
+            if (expNum)
+            {
+                allDigs.pop();
+                ++expNum;
+            }
+        }
+
         fracDigs = allDigs.slice(allDigs.length - numDecs, allDigs.length);
-        intgDigs = allDigs.slice(0, allDigs.length - numDecs);
+        intDigs = allDigs.slice(0, allDigs.length - numDecs);
     }
 
-    var outStr = prefStr;
+    var outStr = (numSig == -1)? '-':'';
 
-    for (var i = 0; i < intgDigs.length; ++i)
-        outStr += String(intgDigs[i]);
+    for (var i = 0; i < intDigs.length; ++i)
+        outStr += String(intDigs[i]);
 
+    // If there is a fractional part
     if (fracDigs.length)
     {
         outStr += '.';
@@ -267,7 +307,14 @@ function fmtNumDecimals(numVal, numDecs)
             outStr += String(fracDigs[i]);
     }    
 
-    outStr += postStr;
+    // If there is a nonzero exponent
+    if (expNum != 0)
+    {
+        outStr += 'e' + ((expNum > 0)? '+':'') + expNum;
+    }
+
+    //print(numVal);
+    //print(outStr);
 
     return outStr;
 }

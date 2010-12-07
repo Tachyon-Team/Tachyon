@@ -79,6 +79,8 @@ Load a source file dynamically
 */
 bench.Platform.prototype.loadSrc = function (srcFile)
 {
+    //print('loading src: "' + srcFile + '"');
+
     load(srcFile);
 };
 
@@ -100,7 +102,6 @@ bench.Platform.prototype.callFunc = function (funcName, args)
 */
 bench.Platform.V8 = function ()
 {
-    // TODO
 };
 bench.Platform.V8.prototype = new bench.Platform();
 
@@ -120,14 +121,14 @@ Shell command used to start this platform
 bench.Platform.V8.prototype.shellCmd = './bench/d8.sh';
 
 /**
-Set the parameters for this environment
+Set the parameters for this platform
 */
 bench.Platform.V8.prototype.setParam = function (param, val)
 {
     switch (param)
     {
         //
-        // TODO: parse dimension-specific params here
+        // TODO: parse platform-specific params here
         //
 
         // If the param is unknown, try using the default handler
@@ -138,5 +139,90 @@ bench.Platform.V8.prototype.setParam = function (param, val)
             );
         }
     }
+};
+
+/**
+@class Represents the Tachyon platform
+@extends bench.Platform
+*/
+bench.Platform.Tachyon = function ()
+{
+};
+bench.Platform.Tachyon.prototype = new bench.Platform();
+
+/**
+Identifier for this platform, name of the constructor
+*/
+bench.Platform.Tachyon.prototype.id = 'Tachyon';
+
+/**
+Name of the platform
+*/
+bench.Platform.Tachyon.prototype.name = 'Tachyon';
+
+/**
+Shell command used to start this platform
+*/
+bench.Platform.Tachyon.prototype.shellCmd = './bench/tachyon.sh';
+
+/**
+Set the parameters for this platform
+*/
+bench.Platform.Tachyon.prototype.setParam = function (param, val)
+{
+    switch (param)
+    {
+        //
+        // TODO: parse platform-specific params here
+        //
+
+        // If the param is unknown, try using the default handler
+        default:
+        {
+            var res = bench.Platform.prototype.setParam.apply(
+                this, [param, val]
+            );
+        }
+    }
+};
+
+/**
+Load a source file dynamically
+*/
+bench.Platform.Tachyon.prototype.loadSrc = function (srcFile)
+{
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+
+    /*
+    Could compile a separate version just for Tachyon as a
+    temporary hax. Use this for the unit tests?
+    */
+};
+
+/**
+Call a global function by name
+*/
+bench.Platform.Tachyon.prototype.callFunc = function (funcName, args)
+{
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+    // TODO
+
+    /*
+    Cannot yet call global function in generated code?
+
+    Although we cannot pass args, might be able to.
+
+    In this case, could include a benchmark main function of sorts,
+    just for Tachyon.
+
+    Start by trying to make this work for unit tests
+    */
 };
 

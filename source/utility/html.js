@@ -62,7 +62,7 @@ HTMLPage.prototype.addContents = function (elem)
 /**
 Create an HTML header
 */
-function HTMLHeader(level, titleStr)
+function HTMLHeader(level, titleStr, center)
 {
     assert (
         typeof level === 'number' && level >= 1 && level <= 6,
@@ -73,6 +73,13 @@ function HTMLHeader(level, titleStr)
 
     elem.title = new XMLText(titleStr);
     elem.addChild(elem.title);
+
+    if (center)
+    {
+        ctrElem = new XMLElement('center')
+        ctrElem.addChild(elem);
+        elem = ctrElem;
+    }
 
     return elem;
 }
@@ -85,8 +92,42 @@ function HTMLSep()
     return new XMLElement('hr', {}, true);
 }
 
+/**
+Create an HTML paragraph
+*/
+function HTMLPar(textStr)
+{
+    var parElem = new XMLElement('p');
 
-// TODO: table generation
+    parElem.addChild(new XMLText(textStr));
+
+    return parElem;
+}
+
+/**
+Create an HTML table
+*/
+function HTMLTable(rowArray)
+{
+    var tblElem = new XMLElement('table', { border:1 });
+
+    for (var rowIdx = 0; rowIdx < rowArray.length; ++rowIdx)
+    {
+        var rowElem = new XMLElement('tr');
+        tblElem.addChild(rowElem);
+
+        for (var colIdx = 0; colIdx < rowArray[rowIdx].length; ++colIdx)
+        {
+            var cellElem = new XMLElement('td');
+            rowElem.addChild(cellElem);
+
+            cellElem.addChild(new XMLText(rowArray[rowIdx][colIdx]));
+        }
+    }
+
+    return tblElem;
+}
+
 
 // TODO: colored bar graph generation
 

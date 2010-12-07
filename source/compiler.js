@@ -9,14 +9,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 /** @namespace Glue code to tie the frontend and the backend together. */
 var compiler = compiler || {};
 
-
-
-compiler.free = function () 
-{
-    freeMachineCodeBlock(this.mcb);    
-    this.mcb = null;
-};
-
 /** 
     Function meant to be assigned to the 'execute' field 
     of a runtime property of an IRFunction. It executes
@@ -60,7 +52,8 @@ compiler.link = function ()
     information to it. The runtime.mcb properties on the 
     IRFunction should be freed once it is no longer used.
 */
-function compileIR(ir, flags) {
+function compileIR(ir, flags) 
+{
     flags = flags || {};
     ir.linking.linked = false;
     ir.linking.link = compiler.link;
@@ -76,7 +69,8 @@ function compileIR(ir, flags) {
 /** 
     Link the IRFunction.
 */
-function linkIR(ir) {
+function linkIR(ir) 
+{
     ir.linking.link();
 };
 
