@@ -105,7 +105,7 @@ bench.genReport = function (outFile)
             {
                 var benchmark = bench.benchList[benchIdx];
 
-                var outputs = bench.getOutputs(platform, dimension, benchmark)
+                var outputs = bench.getOutputs(platform, dimension, benchmark);
                 var mean = bench.getOutMean(outputs);
                 mean = fmtNumDecimals(mean, dimension.numDecimals);
 

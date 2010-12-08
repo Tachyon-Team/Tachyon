@@ -78,7 +78,7 @@ function printInstrNames(ir)
 {
     var workList = ir.getChildrenList();
     
-    var visited = []
+    var visited = [];
 
     var mnemList = [];
 

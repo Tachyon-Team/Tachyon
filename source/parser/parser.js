@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-06 08:38:16 feeley>
+// File: "parser.js", Time-stamp: <2010-12-08 15:56:29 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -1940,11 +1940,8 @@ function VariableDeclarationListNoIn_4(p, VariableDeclarationListNoIn, COMMA, ID
 
 function ConstStatement_1(p, CONST, ConstDeclarationList, SEMICOLON)
 {
-    // TODO: create proper AST node
-    return { type: "ConstStatement_1"
-           , loc: CONST.loc.join(SEMICOLON.loc)
-           , ConstDeclarationList: ConstDeclarationList
-           };
+    return new VariableStatement(CONST.loc.join(SEMICOLON.loc),
+                                 ConstDeclarationList);
 }
 
 function ConstStatement_2(p, CONST, ConstDeclarationList, AUTOSEMICOLON)
@@ -1954,38 +1951,29 @@ function ConstStatement_2(p, CONST, ConstDeclarationList, AUTOSEMICOLON)
 
 function ConstDeclarationList_1(p, ConstDeclaration)
 {
-    // TODO: create proper AST node
-    return { type: "ConstDeclarationList_1"
-           , loc: ConstDeclaration.loc
-           , ConstDeclaration: ConstDeclaration
-           };
+    return [ConstDeclaration];
 }
 
 function ConstDeclarationList_2(p, ConstDeclarationList, COMMA, ConstDeclaration)
 {
-    // TODO: create proper AST node
-    return { type: "ConstDeclarationList_2"
-           , loc: ConstDeclarationList.loc.join(ConstDeclaration.loc)
-           , ConstDeclarationList: ConstDeclarationList
-           , ConstDeclaration: ConstDeclaration
-           };
+    ConstDeclarationList.push(ConstDeclaration);
+    return ConstDeclarationList;
 }
 
 function ConstDeclaration_1(p, IDENT)
 {
-    // TODO: create proper AST node
-    return { type: "ConstDeclaration_1"
-           , loc: IDENT.loc
-           };
+    // TODO: annotate Decl to indicate it is a constant
+    return new Decl(IDENT.loc,
+                    IDENT,
+                    null);
 }
 
 function ConstDeclaration_2(p, IDENT, Initializer)
 {
-    // TODO: create proper AST node
-    return { type: "ConstDeclaration_2"
-           , loc: IDENT.loc.join(Initializer.loc)
-           , Initializer: Initializer
-           };
+    // TODO: annotate Decl to indicate it is a constant
+    return new Decl(IDENT.loc.join(Initializer.loc),
+                    IDENT,
+                    Initializer);
 }
 
 function Initializer_1(p, EQUAL, AssignmentExpr)

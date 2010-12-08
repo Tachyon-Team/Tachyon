@@ -76,7 +76,7 @@ function HTMLHeader(level, titleStr, center)
 
     if (center)
     {
-        ctrElem = new XMLElement('center')
+        ctrElem = new XMLElement('center');
         ctrElem.addChild(elem);
         elem = ctrElem;
     }

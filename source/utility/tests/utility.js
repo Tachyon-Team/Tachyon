@@ -19,24 +19,24 @@ Test of JS string escaping code
 */
 tests.utility.strEscape = function()
 {
-    str1 = 'foo\f\v\b\r\nbar\"\'\ubbbb\\bif\u0aaabuz\tfoo'
+    str1 = 'foo\f\v\b\r\nbar\"\'\ubbbb\\bif\u0aaabuz\tfoo';
     str2 = escapeJSString(str1);
     str3 = 'foo\\f\\v\\b\\r\\nbar\\"\\\'\\ubbbb\\\\bif\\u0aaabuz\\tfoo';
 
     assert (str2 == str3);
-}
+};
 
 /**
 Test of text indenting code
 */
 tests.utility.strIndent = function()
 {
-    str1 = 'foo\nbar\n'
+    str1 = 'foo\nbar\n';
     str2 = indentText(str1, '\t');
     str3 = '\tfoo\n\tbar\n';
 
     assert (str2 == str3);
-}
+};
 
 /**
 Test suite for the hash map code
@@ -100,7 +100,7 @@ tests.utility.hashMap.consistency = function ()
             map.addItem(keyList[keyList.length - 1], itemList[keyList.length - 1]);
         }
     }
-}
+};
 
 /**
 Test of hash map iterators
@@ -129,7 +129,7 @@ tests.utility.hashMap.consistency = function ()
         input.toString() == output.sort().toString(),
         'did not get all heap values during iteration'
     );
-}
+};
 
 /**
 Test suite for the linked list code
@@ -151,7 +151,7 @@ tests.utility.linkedList.insert = function ()
     list.addSorted(0.5, function (i1, i2) { return i1 < i2; });
 
     assert (list == '(0,0.5,1,2,3)');
-}
+};
 
 /**
 Test of linked list iteration
@@ -167,7 +167,7 @@ tests.utility.linkedList.iterator = function ()
     {
         assert (itr.get() === array[idx]);
     }
-}
+};
 
 /**
 Test of number formatting with decimals
@@ -205,7 +205,7 @@ tests.utility.fmtNumDecimals = function ()
     assert (    
         fmtNumDecimals(99.999, 2) == '100.00'
     );
-}
+};
 
 /**
 Test suite for XML/HTML code
@@ -221,7 +221,7 @@ tests.utility.xml.strEscape = function ()
     var validStr = 'foo &amp; bar &lt;3 &gt;3 &quot;lol&quot; &apos;lol&apos;';
 
     assert (escapeXMLString(origStr) === validStr);
-}
+};
 
 /**
 Test of XML code generation
@@ -246,7 +246,7 @@ tests.utility.xml.gendoc = function ()
     var str = xmlDoc.toString();
 
     //print(str);
-}
+};
 
 /**
 Test of HTML code generation
@@ -266,5 +266,5 @@ tests.utility.xml.genhtml = function ()
     //print(str);
 
     //page.toFile('test.html');
-}
+};
 

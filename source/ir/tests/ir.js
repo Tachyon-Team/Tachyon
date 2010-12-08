@@ -50,7 +50,7 @@ tests.ir.helpers.testSource = function (sourceStr)
 
     // Return the generated IR for further testing
     return ir;
-}
+};
 
 /**
 Apply a function to each instruction in an IR function and its sub-functions
@@ -68,7 +68,7 @@ tests.ir.helpers.forEachInstr = function (ir, instrFunc)
             instrFunc(it.get());
         }
     }
-}
+};
 
 /**
 Object literal expression
@@ -84,7 +84,7 @@ tests.ir.objectExpr = function ()
             print(o);                           \
         "
     );
-}
+};
 
 /**
 Array literal expression
@@ -99,7 +99,7 @@ tests.ir.arrayExpr = function ()
             print(o);                           \
         "
     );
-}
+};
 
 /**
 Arithmetic expressions
@@ -112,7 +112,7 @@ tests.ir.arithExprs = function ()
             print(o);                           \
         "
     );
-}
+};
 
 /**
 Assignment operators
@@ -139,7 +139,7 @@ tests.ir.assignExprs = function ()
             print(c);                           \
         "
     );
-}
+};
 
 /**
 While loop statement
@@ -159,7 +159,7 @@ tests.ir.whileStmt = function ()
             }                                   \
         "
     );
-}
+};
 
 /**
 Do-while loop statement
@@ -179,7 +179,7 @@ tests.ir.doWhileStmt = function ()
             } while (v);                        \
         "
     );
-}
+};
 
 /**
 For loop statement
@@ -196,7 +196,7 @@ tests.ir.forStmt = function ()
             print(i);                           \
         "
     );
-}
+};
 
 /**
 Continue and break labels
@@ -218,7 +218,7 @@ tests.ir.loopLabels = function ()
             }                                   \
         "
     );
-}
+};
 
 /**
 Infinite loop
@@ -238,7 +238,7 @@ tests.ir.infiniteLoop = function ()
             }                                   \
         "
     );
-}
+};
 
 /**
 Nested loops
@@ -256,7 +256,7 @@ tests.ir.nestedLoops = function ()
             }                                       \
         "
     );
-}
+};
 
 /**
 Switch statement
@@ -280,7 +280,7 @@ tests.ir.switchStmt = function ()
             }                                   \
         "
     );
-}
+};
 
 /**
 With statement
@@ -319,7 +319,7 @@ tests.ir.withStmt = function ()
         hasGet && hasPut,
         'With statement code missing get or put property instruction'
     );
-}
+};
 
 /**
 Fibonacci function
@@ -337,7 +337,7 @@ tests.ir.fibFunc = function ()
             }                                   \
         "
     );
-}
+};
 
 /**
 Nested if and return statements in a function
@@ -360,7 +360,7 @@ tests.ir.ifRetFunc = function ()
             }                                       \
         "
     );
-}
+};
 
 /**
 Constructor function
@@ -377,7 +377,7 @@ tests.ir.ctorFunc = function ()
             print(obj);                         \
         "
     );
-}
+};
 
 /**
 Closure function
@@ -401,7 +401,7 @@ tests.ir.closFunc = function ()
             }                                   \
         "
     );
-}
+};
 
 /**
 Arguments object
@@ -441,7 +441,7 @@ tests.ir.argsObj = function ()
             }
         }
     );
-}
+};
 
 /**
 Inlining of function calls
@@ -495,4 +495,4 @@ tests.ir.inlining = function ()
 
     // Validate the resulting IR
     ir.validate();
-}
+};

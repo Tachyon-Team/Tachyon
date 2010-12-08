@@ -245,6 +245,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         this.cfg.insertOnEdge(edgeItr, block);
 
         this.cfg.validate();
-    }
+    };
 
 })(); // end of local namespace
