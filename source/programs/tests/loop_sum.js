@@ -18,7 +18,7 @@ tests.loop_sum.main = function ()
 
     loop_sum.free();
     var timeS = (endTimeMs - startTimeMs) / 1000;
-    //print('time: ' + timeS + ' s');
+    print('time: ' + timeS + ' s');
 
     assert(x === (45 << 2), "Invalid return value: " + x);
 };

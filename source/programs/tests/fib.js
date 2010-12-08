@@ -18,7 +18,7 @@ tests.fib.main = function ()
 
     fib.free();
     var timeS = (endTimeMs - startTimeMs) / 1000;
-    //print('time: ' + timeS + ' s');
+    print('time: ' + timeS + ' s');
 
     assert(x === (6765 << 2), "Invalid return value: " + x);
 };

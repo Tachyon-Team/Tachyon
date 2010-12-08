@@ -38,6 +38,10 @@ Generate a report file
 */
 bench.genReport = function (outFile)
 {
+    //
+    // TODO: flip columns/rows in benchmark/platform table
+    //
+
     /*
     Report title
     - cfg file
