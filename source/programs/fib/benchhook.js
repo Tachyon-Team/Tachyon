@@ -18,7 +18,7 @@ benchHook.init = function (platform, benchPath)
 {
     platform.loadSrc(benchPath + 'fib.js');
 
-    this.args = [40];
+    this.args = [41];
 };
 
 /**

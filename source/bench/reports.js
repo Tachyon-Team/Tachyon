@@ -83,39 +83,35 @@ bench.genReport = function (outFile)
         page.addContents(new HTMLPar('Mean values (' + dimension.units + ')'));
 
         var table = [];
-        var nameRow = ['Platform\\Benchmark'];
-        table.push(nameRow);
+        var platRow = ['Benchmark'];
+        table.push(platRow);
 
-        // Add the benchmark names
-        for (var benchIdx = 0; benchIdx < bench.benchList.length; ++benchIdx)
-            nameRow.push(bench.benchList[benchIdx].dir);
-        
-        // For each platform
+        // Add the platform names
         for (var platIdx = 0; platIdx < bench.platList.length; ++platIdx)
+            platRow.push(bench.platList[platIdx].name);
+
+        // For each benchmark
+        for (var benchIdx = 0; benchIdx < bench.benchList.length; ++benchIdx)
         {
-            var platform = bench.platList[platIdx];
+            var benchmark = bench.benchList[benchIdx];
 
-            var platRow = [];
-            table.push(platRow);
+            var benchRow = [];
+            table.push(benchRow);
 
-            platRow.push(platform.name);
-
-            // For each benchmark
-            for (var benchIdx = 0; benchIdx < bench.benchList.length; ++benchIdx)
+            benchRow.push(benchmark.dir);
+        
+            // For each platform
+            for (var platIdx = 0; platIdx < bench.platList.length; ++platIdx)
             {
-                var benchmark = bench.benchList[benchIdx];
+                var platform = bench.platList[platIdx];
 
                 var outputs = bench.getOutputs(platform, dimension, benchmark);
                 var mean = bench.getOutMean(outputs);
                 mean = fmtNumDecimals(mean, dimension.numDecimals);
 
-                platRow.push(mean);
+                benchRow.push(mean);
             }
         }
-
-        print(table);
-        print(table[0]);
-        print(table[1]);
 
         page.addContents(new HTMLTable(table));
     }

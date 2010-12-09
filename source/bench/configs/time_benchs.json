@@ -3,6 +3,7 @@
     "numRuns"   : 10,
     "benchDir"  : "programs/",
     "platList"  : [
+        { "id": "Tachyon" },
         { "id": "V8" }
     ],
     "dimList"   : [

@@ -6,20 +6,6 @@ Benchmarking framework implementation.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-/*
-TODO: design/write env/platform driver
-- Needs to do all pre-runs, run benchmark, post-runs
-- Sufficient iterations for all dimensions
-- Store output when done
-- Tricky part is how to run benchmark in Tachyon/V8
-- Support for pulling from git
-
-TODO: dump all in JSON file, do postprocessing separately
-
-TODO: driver for Tachyon under V8
-- Wait for Erick to be done refactoring w/linking
-*/
-
 /**
 Path to the configuration file for this benchmarking run
 */

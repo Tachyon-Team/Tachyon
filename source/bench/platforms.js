@@ -81,6 +81,12 @@ bench.Platform.prototype.loadSrc = function (srcFile)
 {
     //print('loading src: "' + srcFile + '"');
 
+    // FIXME: TEMPORARY HACK
+    // Until we have global function calling in compiled code in Tachyon
+    var tokens = srcFile.split('.js');
+    var file = tokens[0];
+    srcFile = file + '_v8.js';
+
     load(srcFile);
 };
 
@@ -201,6 +207,15 @@ bench.Platform.Tachyon.prototype.loadSrc = function (srcFile)
     Could compile a separate version just for Tachyon as a
     temporary hax. Use this for the unit tests?
     */
+
+    // FIXME: TEMPORARY HACK
+    // Until we have global function calling in compiled code in Tachyon
+    var tokens = srcFile.split('.js');
+    var file = tokens[0];
+    srcFile = file + '_tach.js';
+
+    // Compile the unit as a function
+    this.func = compileFileToJSFunc(srcFile);
 };
 
 /**
@@ -214,15 +229,7 @@ bench.Platform.Tachyon.prototype.callFunc = function (funcName, args)
     // TODO
     // TODO
 
-    /*
-    Cannot yet call global function in generated code?
-
-    Although we cannot pass args, might be able to.
-
-    In this case, could include a benchmark main function of sorts,
-    just for Tachyon.
-
-    Start by trying to make this work for unit tests
-    */
+    // Call the code for this compilation unit
+    this.func();
 };
 

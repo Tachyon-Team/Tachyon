@@ -106,5 +106,23 @@ function main()
     }
 }
 
-main();
+try 
+{
+    // Initialize Tachyon
+    if (this.initialize)
+        initialize();
+
+    main();
+
+    // Uninitialize Tachyon
+    if (this.uninitialize)
+        uninitialize();
+}
+catch (e)
+{
+    if (e.stack)
+        print(e.stack);
+    else
+        print(e);
+}
 
