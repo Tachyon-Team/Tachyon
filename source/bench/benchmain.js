@@ -22,7 +22,7 @@ function parseArgs()
     var argIdx = 0;
 
     // For each named argument
-    for (; argIdx < args.length; argIdx += 2)
+    for (; argIdx < args.length; argIdx++)
     {
         var arg = args[argIdx];
 
@@ -30,15 +30,21 @@ function parseArgs()
         if (arg.charAt(0) != '-')
             break;
 
-        // Ensure that the option value is present
-        if (argIdx >= args.length - 1)
-            error('missing command-line option value for "' + arg + '"');
-
         // Get the option name
         var optName = arg.slice(1);
 
+        // If no option value is present, report an error
+        if (argIdx >= args.length - 1)
+        {
+            error('missing value for command-line option "' + optName + '"');
+        }
+
+        // Read the option value
+        var optVal = args[argIdx + 1];
+        argIdx++;
+
         // Store the option value
-        options[optName] = args[argIdx + 1];
+        options[optName] = optVal;
     }
 
     // For each remaining argument
@@ -50,7 +56,6 @@ function parseArgs()
 
     // Return the parsed arguments
     return {
-        "cmd"       : args[0],
         "options"   : options,
         "files"     : files
     };
@@ -61,12 +66,18 @@ Entry point function for the benchmarking code
 */
 function main()
 {
-    //
-    // TODO: mode to generate report file?
-    //
-
     // Parse the command-line arguments
     var args = parseArgs();
+
+    // TODO: rename outFile to dataFile
+    // TODO: arg to genReport should be report file name
+
+    /*
+    for (argName in args.options)
+    {
+        print('"' + argName + '" = "' + args.options[argName] + '"');
+    }
+    */
 
     // If a config file argument is supplied
     if (args.options['cfgFile'])

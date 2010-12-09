@@ -38,10 +38,6 @@ Generate a report file
 */
 bench.genReport = function (outFile)
 {
-    //
-    // TODO: flip columns/rows in benchmark/platform table
-    //
-
     /*
     Report title
     - cfg file
@@ -53,6 +49,10 @@ bench.genReport = function (outFile)
     Table with platforms on cols, benchmarks on rows
     - Avg for all benchmarks if data numeric?
     */
+
+    // TODO: highlight best performer in bold/italic/green
+
+    // TODO: specify one platform as reference, rescale others
 
     repFile = 'benchreport.html';
 

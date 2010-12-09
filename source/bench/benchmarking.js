@@ -356,7 +356,9 @@ bench.runBench = function (platIdx, benchIdx, testRun)
 
     var benchmark = bench.benchList[benchIdx];
 
-    //print('Benchmark run: "' + benchmark.dir + '"');
+    print('Benchmark run');
+    print('Platform: ' + platform.name + ' (' + platIdx + ')');
+    print('Benchmark: "' + benchmark.dir + '"');
 
     // Load/initialize the benchmark
     benchmark.init(platform);
