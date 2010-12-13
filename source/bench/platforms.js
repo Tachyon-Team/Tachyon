@@ -45,6 +45,13 @@ bench.Platform.prototype.setParam = function (param, val)
         case 'id':
         break;
 
+        // Parameter to set a custom name for this platform
+        case 'name':
+        {
+            this.name = name;
+        }
+        break;
+
         default:
         {
             error(

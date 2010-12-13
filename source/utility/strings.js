@@ -109,7 +109,7 @@ function escapeJSString(input)
 /**
 Escape XML strings for output
 */
-function escapeXMLString(input)
+function escapeXMLString(input, isHTML)
 {
     var chars = [];
 
@@ -148,6 +148,19 @@ function escapeXMLString(input)
             // '
             case 39:
             pushStr('&apos;');
+            break;
+
+            // space
+            case 32:
+            pushStr('&nbsp;');
+            break;
+
+            // newline
+            case 10:
+            if (isHTML)
+                pushStr('<br />');
+            else
+                chars.push(charCode)
             break;
 
             default:
@@ -209,5 +222,48 @@ function leftPadStr(str, pad, len)
         str = pad + str;
 
     return str;
+}
+
+/**
+Remove a given set of characters from the start and end of a string
+*/
+function stripStr(str, chars)
+{
+    if (!chars)
+        chars = ' \v\t\r\n';
+
+    BEGIN_LOOP:
+    for (var startIdx = 0; startIdx < str.length; ++startIdx)
+    {
+        ch = str.charAt(startIdx);
+
+        for (var j = 0; j < chars.length; ++j)
+        {
+            ch2 = chars.charAt(j);
+
+            if (ch == ch2)
+                continue BEGIN_LOOP;
+        }
+
+        break;
+    }
+
+    END_LOOP:
+    for (var endIdx = str.length - 1; endIdx >= 0; --endIdx)
+    {
+        ch = str.charAt(endIdx);
+
+        for (var j = 0; j < chars.length; ++j)
+        {
+            ch2 = chars.charAt(j);
+
+            if (ch == ch2)
+                continue END_LOOP;
+        }
+
+        break;
+    }
+
+    return str.substr(startIdx, endIdx + 1);
 }
 

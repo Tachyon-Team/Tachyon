@@ -69,9 +69,6 @@ function main()
     // Parse the command-line arguments
     var args = parseArgs();
 
-    // TODO: rename outFile to dataFile
-    // TODO: arg to genReport should be report file name
-
     /*
     for (argName in args.options)
     {
@@ -87,33 +84,40 @@ function main()
         bench.runBenchs();
     }
 
-    // Otherwise, if an output file argument is supplied
-    else if (args.options['outFile'])
+    // Otherwise, if a data file argument is supplied
+    else if (args.options['dataFile'])
     {
-        bench.loadOutput(args.options['outFile']);
+        bench.loadOutput(args.options['dataFile']);
 
-        bench.runBench(
-            Number(args.options['platIdx']),
-            Number(args.options['benchIdx']),
-            Boolean(args.options['testRun'])
-        );
+        bench.loadConfig(bench.cfgFile);
 
-        bench.storeOutput(args.options['outFile']);
-    }
+        // If a benchmark should be run
+        if (args.options['platIdx'])
+        {
+            bench.runBench(
+                Number(args.options['platIdx']),
+                Number(args.options['benchIdx']),
+                Boolean(args.options['testRun'])
+            );
 
-    // Otherwise, if a report should be generated
-    else if (args.options['genReport'])
-    {
-        bench.loadOutput(args.options['genReport']);
-
-        bench.genReport(args.options['genReport']);
+            bench.storeOutput(args.options['dataFile']);
+        }
     }
     
     // Otherwise, arguments are missing
     else
     {
-        print('expected config file argument');
+        print('expected config file or data file argument');
         return;
+    }
+
+    // If a report file argument is supplied
+    if (args.options['genReport'])
+    {
+        bench.loadOutput(bench.dataFile);
+
+        // Generate a report file
+        bench.genReport(args.options['genReport']);
     }
 }
 

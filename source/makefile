@@ -86,7 +86,9 @@ test:
 	$(JSVM) $(TEST_SRCS)
 
 perf: 
-	./bench/d8.sh -cfgFile "bench/configs/time_benchs.json"
+	./bench/d8.sh                                   \
+        -cfgFile "bench/configs/time_benchs.json"   \
+        -genReport "benchreport.html"
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)

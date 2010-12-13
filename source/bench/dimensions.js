@@ -25,6 +25,20 @@ bench.Dimension = function ()
     this.numDecimals = undefined;
 
     /**
+    Index of the platform to use as a reference to
+    rescale the output values.
+    @field
+    */
+    this.refPlat = undefined;
+
+    /**
+    Indicates whether the best value for this dimension
+    is the minimum or the maximum.
+    @field
+    */
+    this.best = 'min';
+
+    /**
     String describing the measurement units.
     By default, no units
     @field
@@ -72,6 +86,18 @@ bench.Dimension.prototype.setParam = function (param, val)
 
             this.numDecimals = val;
         }
+        break;
+
+        case 'refPlat':
+        {
+            assert (
+                isNonNegInt(val) && val < bench.platList.length,
+                'invalid reference platform index : "' + val + '"'
+            );
+
+            this.refPlat = val;
+        }
+        break;
 
         default:
         {

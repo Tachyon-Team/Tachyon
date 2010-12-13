@@ -7,7 +7,7 @@
         { "id": "V8" }
     ],
     "dimList"   : [
-        { "id":"RunTime" }
+        { "id":"RunTime", "refPlat":1 }
     ],
     "benchList" : { "include": "bench/configs/benchs_all.json" }
 }
