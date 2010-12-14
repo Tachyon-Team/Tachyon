@@ -293,7 +293,6 @@ blockPatterns.emptyBypass = new optPattern(
         var changed = false;
 
         // For each predecessor
-        
         PRED_LOOP: //FIXME: remove LabelledStatement
         for (var j = 0; j < preds.length; ++j)
         {

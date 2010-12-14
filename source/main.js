@@ -49,7 +49,7 @@ function testIR()
 
     var ir = unitToIR(ast, true);
     
-    //print(ir);
+    print(ir);
 
     lowerIRFunc(ir);
 
@@ -57,8 +57,7 @@ function testIR()
 
     ir.validate();    
     
-    
-    /*    
+     
     var codeblock = backend.compileIRToCB(ir);    
     print(backend.listing(codeblock));
     var result = backend.executeCB(codeblock);

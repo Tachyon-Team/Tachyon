@@ -2012,7 +2012,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
     const that = this;
     function genOp(mnem, opb1, opb2, reg, opnd)
     {
-        if (srcWidth == 32 && dst.width() == 64 && signExtend)
+        if (srcWidth == 32 && dst.width() == 64 && signExt)
             that.opndPrefixOpnd(32, opnd);
 
         that.gen8(opb1);
@@ -2043,7 +2043,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
         // 0F BF/r
         genOp('movsx', 15, 191, dst, src);
     }
-    else if (srcWidth == 32 && dst.width() == 64 && signExtend)
+    else if (srcWidth == 32 && dst.width() == 64 && signExt)
     {
         // 63/r
         genOp('movsxd', 99, undefined, dst, src);
