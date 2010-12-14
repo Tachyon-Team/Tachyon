@@ -82,15 +82,8 @@ Test if the type is a pointer type
 */
 IRType.prototype.isPtr = function ()
 {
-    switch (this)
-    {
-        case IRType.rptr:
-        case IRType.box:
-        return true;
-
-        default:
-        return false;
-    }
+    return this === IRType.rptr ||
+           this === IRType.box;
 };
 
 /**
@@ -98,21 +91,8 @@ Test if the type is an integer type
 */
 IRType.prototype.isInt = function ()
 {
-    switch (this)
-    {
-        case IRType.u8:
-        case IRType.u16:
-        case IRType.u32:
-        case IRType.u64:
-        case IRType.i8:
-        case IRType.i16:
-        case IRType.i32:
-        case IRType.i64:
-        return true;
-
-        default:
-        return false;
-    }
+    return this.isUnsigned() ||
+           this.isSigned();
 };
 
 /**
@@ -120,17 +100,10 @@ Test if the type is an unsigned integer type
 */
 IRType.prototype.isUnsigned = function ()
 {
-    switch (this)
-    {
-        case IRType.u8:
-        case IRType.u16:
-        case IRType.u32:
-        case IRType.u64:
-        return true;
-
-        default:
-        return false;
-    }
+    return this === IRType.u8  ||
+           this === IRType.u16 ||
+           this === IRType.u32 ||
+           this === IRType.u64;
 };
 
 /**
@@ -138,17 +111,10 @@ Test if the type is a signed integer type
 */
 IRType.prototype.isSigned = function ()
 {
-    switch (this)
-    {
-        case IRType.i8:
-        case IRType.i16:
-        case IRType.i32:
-        case IRType.i64:
-        return true;
-
-        default:
-        return false;
-    }
+    return this === IRType.i8  ||
+           this === IRType.i16 ||
+           this === IRType.i32 ||
+           this === IRType.i64;
 };
 
 /**
@@ -156,14 +122,7 @@ Test if the type is a floating-point type
 */
 IRType.prototype.isFP = function ()
 {
-    switch (this)
-    {
-        case IRType.f64:
-        return true;
-
-        default:
-        return false;
-    }
+    return this === IRType.f64;
 };
 
 /**
@@ -171,7 +130,8 @@ Test if the type is an integer or floating-point type
 */
 IRType.prototype.isNumber = function ()
 {
-    return this.isInt() || this.isFP();
+    return this.isInt() ||
+           this.isFP();
 };
 
 // TODO: boxed and pointer type sizes are actually platform-dependent

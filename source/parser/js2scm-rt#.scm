@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-14 10:14:30 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-14 11:57:55 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -92,7 +92,7 @@
 
 (define-macro (js.switch-clauses . clauses)
   (if (assq 'js.case-fall-through clauses)
-      (error "case fall-through not implemented" clauses)
+      (error "switch with fall-through not implemented" clauses)
       (let ()
 
         (define (gen clauses default-clause)
@@ -167,6 +167,18 @@
   `(continuation-capture
     (lambda (break)
       (js.forin ,loop-id ,lhs ,set ,body))))
+
+(define-macro (js.throw val)
+  `(js:throw val))
+
+(define-macro (js.try body . final-body)
+  body) ;; TODO support exception handling
+
+(define-macro (js.try-catch body id catch-body . final-body)
+  body) ;; TODO support exception handling
+
+(define-macro (js.debugger)
+  `(break))
 
 ;;; JavaScript operators.
 

@@ -361,7 +361,7 @@ irToAsm.translator.prototype.get_prop_val = function ()
     je(cont).
     // The following instruction causes a bus error only
     // when addr is not a valid address
-    //cmovne(mem(this.G_VALUE_OFFSET, addr), irToAsm.config.retValReg).
+    //cmovnz(mem(this.G_VALUE_OFFSET, addr), irToAsm.config.retValReg).
     mov(mem(this.G_VALUE_OFFSET,addr), irToAsm.config.retValReg).
     label(cont).
     ret();
@@ -1191,7 +1191,7 @@ LtInstr.prototype.genCode = function (tltor, opnds)
         cmp(opnds[0], dest).
 
         mov(tltor.falseVal, dest).
-        cmovge(tltor.trueVal, dest);
+        cmovnl(tltor.trueVal, dest);
 
         return;
     } 
@@ -1260,7 +1260,7 @@ GtInstr.prototype.genCode = function (tltor, opnds)
 
     tltor.asm.
     mov(tltor.falseVal, dest).
-    cmovg(tltor.trueVal, dest);
+    cmovnle(tltor.trueVal, dest);
 };
 
 GeInstr.prototype.genCode = function (tltor, opnds)
@@ -1289,7 +1289,7 @@ GeInstr.prototype.genCode = function (tltor, opnds)
 
     tltor.asm.
     mov(tltor.falseVal, dest).
-    cmovge(tltor.trueVal, dest);
+    cmovnl(tltor.trueVal, dest);
 };
 
 EqInstr.prototype.genCode = function (tltor, opnds)
@@ -1324,7 +1324,7 @@ EqInstr.prototype.genCode = function (tltor, opnds)
 
     tltor.asm.
     mov(tltor.falseVal, dest).
-    cmove(tltor.trueVal, dest);
+    cmovz(tltor.trueVal, dest);
 };
 
 NeInstr.prototype.genCode = function (tltor, opnds)
@@ -1359,7 +1359,7 @@ NeInstr.prototype.genCode = function (tltor, opnds)
 
     tltor.asm.
     mov(tltor.falseVal, dest).
-    cmovne(tltor.trueVal, dest);
+    cmovnz(tltor.trueVal, dest);
 };
 
 JumpInstr.prototype.genCode = function (tltor, opnds)

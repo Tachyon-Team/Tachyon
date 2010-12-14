@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-14 10:24:52 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-14 12:42:34 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -633,7 +633,9 @@ function gen_new(ctor_and_args)
 
 function gen_begin(exprs)
 {
-    if (exprs.length == 1)
+    if (exprs.length == 0)
+        return gen_undefined();
+    else if (exprs.length == 1)
         return exprs[0];
     else
         return cons(begin, vector2list(exprs));
@@ -698,6 +700,37 @@ function gen_case(fall_through, expr, statement)
                      ? cons(new Symbol("js.default"), empty_list)
                      : expr,
                      cons(statement, empty_list)));
+}
+
+function gen_throw(val)
+{
+    return cons(new Symbol("js.throw"),
+                cons(val, empty_list));
+}
+
+function gen_try(body, final_body)
+{
+    return cons(new Symbol("js.try"),
+                cons(body,
+                     (final_body == null)
+                     ? empty_list
+                     : cons(final_body, empty_list)));
+}
+
+function gen_try_catch(body, id, catch_body, final_body)
+{
+    return cons(new Symbol("js.try-catch"),
+                cons(body,
+                     cons(id,
+                          cons(catch_body,
+                               (final_body == null)
+                               ? empty_list
+                               : cons(final_body, empty_list)))));
+}
+
+function gen_debugger()
+{
+    return cons(new Symbol("js.debugger"), empty_list);
 }
 
 function gen_op(op, args)
@@ -904,10 +937,7 @@ function ast_array_to_scm(asts, ctx)
 
 function statements_to_scm(asts, ctx)
 {
-    if (asts.length == 0)
-        return gen_undefined();
-    else
-        return gen_begin(ast_array_to_scm(asts, ctx));
+    return gen_begin(ast_array_to_scm(asts, ctx));
 }
 
 function force_undefined_at_tail(code, ctx)
@@ -1123,8 +1153,36 @@ function ast_to_scm(ast, ctx)
                             error("break with label not implemented");
                         }
                     }
-                    // TODO:
-                    //else if (statement instanceof ReturnStatement)
+                    else if (statement instanceof BreakStatement)
+                    {
+                        if (statement.label == null)
+                            fall_through = false;
+                        else
+                        {
+                            pp(ast);
+                            error("break with label not implemented");
+                        }
+                    }
+                    else if (statement instanceof ReturnStatement)
+                    {
+                        if (ctx.global)
+                            error("return not allowed at top level");
+                        else
+                        {
+                            var value_scm = (statement.expr == null)
+                                ? gen_undefined()
+                                : ast_to_scm(statement.expr, ctx);
+
+                            if (!ctx.tail)
+                            {
+                                ctx.features.use_nontail_return = true;
+                                accum.push(gen_return(value_scm));
+                            }
+                            else
+                                accum.push(value_scm);
+                        }
+                        fall_through = false;
+                    }
                     else
                         accum.push(ast_to_scm(statement, ctx));
                 }
@@ -1172,33 +1230,29 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof ThrowStatement)
     {
-        // TODO
-        return gen_call([new Symbol("throw-not-implemented")]);
+        return gen_throw(ast_to_scm(ast.expr, nontail_ctx(ctx)));
     }
     else if (ast instanceof TryStatement)
     {
-        // TODO
-        return gen_call([new Symbol("try-not-implemented")]);
+        var body = ast_to_scm(ast.statement, nontail_ctx(ctx));
+        var final_body = (ast.finally_part == null)
+                         ? null
+                         : ast_to_scm(ast.finally_part, nontail_ctx(ctx));
+
+        if (ast.catch_part == null)
+            return gen_try(body,
+                           final_body);
+        else
+            return gen_try_catch(body,
+                                 js_id_to_scm(ast.catch_part.id.toString()),
+                                 ast_to_scm(ast.catch_part.statement, nontail_ctx(ctx)),
+                                 final_body);
     }
-    else if (ast instanceof CatchPart)
-    {
-        // TODO
-        pp(ast);
-        error("CatchPart not implemented");
-        /*
-        pp_loc(ast.loc, pp_prefix(indent) + "CatchPart");
-        print(pp_prefix(indent) + "|-id= " + ast.id.toString());
-        pp_asts(indent, "statement", [ast.statement]);
-        */
-    }
+    // else if (ast instanceof CatchPart)
+    // { impossible due to handling of TryStatement }
     else if (ast instanceof DebuggerStatement)
     {
-        // TODO
-        pp(ast);
-        error("DebuggerStatement not implemented");
-        /*
-        pp_loc(ast.loc, pp_prefix(indent) + "DebuggerStatement");
-        */
+        return gen_debugger();
     }
     else if (ast instanceof OpExpr)
     {
