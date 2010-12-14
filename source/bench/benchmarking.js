@@ -12,6 +12,11 @@ Path to the configuration file for this benchmarking run
 bench.cfgFile = '';
 
 /**
+Path to the file into which benchmark data should be stored
+*/
+bench.dataFile = '';
+
+/**
 Number of dry (non-measuring) runs to perform before measuring.
 */
 bench.numDryRuns = 0;
@@ -83,13 +88,16 @@ bench.getOutputs = function (platform, dimension, benchmark)
 /**
 Load the output accumulated up to this point
 */
-bench.loadOutput = function (outFile)
+bench.loadOutput = function (dataFile, loadConfig)
 {
-    // Parse JSON code from the output file
-    var out = JSON.parse(read(outFile));
+    // Store the path to the data file
+    this.dataFile = dataFile;
 
-    // Load the config file associated with the output data
-    bench.loadConfig(out.cfgFile);
+    // Parse JSON code from the output file
+    var out = JSON.parse(read(dataFile));
+
+    // Store the config file path
+    bench.cfgFile = out.cfgFile;
 
     // Get the current output data
     bench.output = out.output;
@@ -103,8 +111,11 @@ bench.loadOutput = function (outFile)
 /**
 Store the output accumulated up to this point
 */
-bench.storeOutput = function (outFile)
+bench.storeOutput = function (dataFile)
 {
+    // Store the path to the data file
+    this.dataFile = dataFile;
+
     // Create an object to contain the output data
     var out = {
         cfgFile: bench.cfgFile,
@@ -115,7 +126,7 @@ bench.storeOutput = function (outFile)
     var fileData = JSON.stringify(out);
 
     // Write the data to the output file
-    writeFile(outFile, fileData);
+    writeFile(dataFile, fileData);
 };
 
 /**
@@ -253,7 +264,7 @@ bench.runBenchs = function ()
         var date = new Date();
 
         // Generate a file name containing today's date
-        var outFile =
+        var dataFile =
             'benchdata-' +
             date.getFullYear() + '-' + 
             leftPadStr(date.getMonth(), '0', 2) + '-' + 
@@ -265,7 +276,7 @@ bench.runBenchs = function ()
         var avail = false;
         try
         {
-            read(outFile);
+            read(dataFile);
         }
         catch (e)
         {
@@ -278,11 +289,11 @@ bench.runBenchs = function ()
     }
 
     // Create the initial JSON output file
-    bench.storeOutput(outFile);
+    bench.storeOutput(dataFile);
 
     print();
     print('Starting tests');
-    print('Output file: ' + outFile);
+    print('Data file: ' + dataFile);
     print();
 
     // For each platform
@@ -314,7 +325,7 @@ bench.runBenchs = function ()
 
                 platform.callVM(
                     {
-                        "outFile"   : outFile,
+                        "dataFile"   : dataFile,
                         "platIdx"   : platIdx,
                         "benchIdx"  : benchIdx,
                         "testRun"   : false
@@ -331,7 +342,7 @@ bench.runBenchs = function ()
 
                 platform.callVM(
                     {
-                        "outFile"   : outFile,
+                        "dataFile"  : dataFile,
                         "platIdx"   : platIdx,
                         "benchIdx"  : benchIdx,
                         "testRun"   : true
@@ -356,7 +367,9 @@ bench.runBench = function (platIdx, benchIdx, testRun)
 
     var benchmark = bench.benchList[benchIdx];
 
-    //print('Benchmark run: "' + benchmark.dir + '"');
+    print('Benchmark run');
+    print('Platform: ' + platform.name + ' (' + platIdx + ')');
+    print('Benchmark: "' + benchmark.dir + '"');
 
     // Load/initialize the benchmark
     benchmark.init(platform);

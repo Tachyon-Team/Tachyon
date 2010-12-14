@@ -99,7 +99,15 @@ function HTMLPar(textStr)
 {
     var parElem = new XMLElement('p');
 
-    parElem.addChild(new XMLText(textStr));
+    var textElem = new XMLText(textStr);
+
+    textElem.toString = function (document, indent)
+    {
+        // Escape and indent the string
+        return indentText(escapeXMLString(this.text, true), indent);    
+    };
+
+    parElem.addChild(textElem);
 
     return parElem;
 }
@@ -107,40 +115,37 @@ function HTMLPar(textStr)
 /**
 Create an HTML table
 */
-function HTMLTable(rowArray)
+function HTMLTable()
 {
     var tblElem = new XMLElement('table', { border:1 });
 
-    for (var rowIdx = 0; rowIdx < rowArray.length; ++rowIdx)
+    tblElem.addRow = function (row)
     {
         var rowElem = new XMLElement('tr');
         tblElem.addChild(rowElem);
+    };
 
-        for (var colIdx = 0; colIdx < rowArray[rowIdx].length; ++colIdx)
+    tblElem.addCell = function (contents, attribs)
+    {
+        var cellElem = new XMLElement('td', attribs);
+        tblElem.children[tblElem.children.length-1].addChild(cellElem);
+
+        if (contents instanceof Array)
         {
-            var cellElem = new XMLElement('td');
-            rowElem.addChild(cellElem);
-
-            cellElem.addChild(new XMLText(rowArray[rowIdx][colIdx]));
+            for (var i = 0; i < contents.length; ++i)
+                cellElem.addChild(contents[i]);
         }
-    }
+        else
+        {
+            if (typeof contents == 'string')
+                contents = HTMLPar(contents);
+
+            cellElem.addChild(contents);
+        }
+    };
 
     return tblElem;
 }
 
-
 // TODO: colored bar graph generation
-
-
-
-
-
-
-
-
-
-
-
-
-
 
