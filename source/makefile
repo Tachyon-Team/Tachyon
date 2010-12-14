@@ -1,6 +1,9 @@
 # JavaScript VM command
 JSVM = d8 --allow_natives_syntax
 
+# For bootstrapping with Tachyon JavaScript to Scheme compiler
+JS2SCM = parser/js2scm
+
 # Base program source files
 BASE_SRCS =                         \
     utility/debug.js                \
@@ -81,6 +84,9 @@ all: run
 
 run: 
 	$(JSVM) $(MAIN_SRCS)
+
+bootstrap-js2scm: 
+	$(JS2SCM) -scm $(MAIN_SRCS)
 
 test: 
 	$(JSVM) $(TEST_SRCS)
