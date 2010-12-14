@@ -26,7 +26,7 @@ function defHashFunc(val)
 {
     if (typeof val == 'number')
     {
-        return parseInt(val);
+        return Math.floor(val);
     }     
  
     else if (typeof val == 'string')  

@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-06-23 22:21:44 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-13 18:58:49 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -14,16 +14,25 @@
  (not inline)
 )
 
+(define-macro (js.undefined)
+  `(##void))
+;  `(##type-cast -7 2)) ;; #!unbound object
+
 ;;; JavaScript forms.
 
 (define-macro (js.var variable)
   `(define ,variable #f))
 
 (define-macro (js.function params body)
-  `(lambda (this ,@params) ,body))
+  `(lambda (this
+            #!optional
+            ,@(map (lambda (p) (list p '(js.undefined))) params))
+     ,body))
 
 (define-macro (js.function-with-nontail-return params body)
-  `(lambda (this ,@params)
+  `(lambda (this
+            #!optional
+            ,@(map (lambda (p) (list p '(js.undefined))) params))
      (continuation-capture
       (lambda (return)
         ,body))))
@@ -40,14 +49,15 @@
 (define-macro (js.call fn . args)
   (if (and (pair? fn)
            (eq? (car fn) 'js.index))
-      `(let* ((self ,(cadr fn)) (fn (js.index self ,(caddr fn))))
-         (fn self ,@args))
+      `(let* ((self ,(cadr fn)) (f (js.index self ,(caddr fn))))
+         ((if (procedure? f) f ',fn) self ,@args))
       `(,fn '() ,@args)))
 
 (define-macro (js.new ctor . args)
-  `(let* ((ctor ,ctor) (self (make-Object ctor (get-prototype ctor) (make-assoc-table))))
-     (ctor self ,@args)
-     self))
+  `(let* ((ctor ,ctor) (self (make-Object ctor (get-prototype ctor) (make-assoc-table))) (retval (ctor self ,@args)))
+     (if (##eq? retval (js.undefined))
+         self
+         retval)))
 
 (define-macro (js.index obj field)
   `(js:index ,obj ,field))

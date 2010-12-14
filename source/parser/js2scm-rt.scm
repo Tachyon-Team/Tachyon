@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-06-23 22:25:23 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-13 17:32:30 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -16,9 +16,6 @@
       #f))
 
 (include "js2scm-rt#.scm")
-
-(define-macro (undefined)
-  `(##type-cast -7 2)) ;; #!unbound object
 
 (define (sort l <?)
 
@@ -189,7 +186,11 @@
   (vector->list (Array->vector arr)))
 
 (define (vector->Array vect)
-  (make-Array _Array (get-prototype _Array) (make-assoc-table) (vector-length vect) vect))
+  (make-Array _Array
+              (get-prototype _Array)
+              (make-assoc-table)
+              (vector-length vect)
+              vect))
 
 ;;; Predefined functions.
 
@@ -209,7 +210,7 @@
   (exit))
 
 (define _undefined
-  (undefined))
+  (js.undefined))
 
 (define (_Boolean)
   #f);;;;;;;;;;;;;
@@ -234,7 +235,7 @@
           (let ((proto (Object-proto obj)))
             (if proto
                 (js:index proto field)
-                (undefined)))
+                (js.undefined)))
           x)))
 
   (cond ((equal? field "prototype")
@@ -320,8 +321,24 @@
  (js:index _String "prototype")
  "concat"
  (lambda (self . args)
-   (apply string-append
-          (cons self args))))
+   (apply string-append args)))
+
+(js:index-set!
+ (js:index _Array "prototype")
+ "slice"
+ (lambda (self start #!optional (end (js.undefined)))
+   (let* ((len (Array-len self))
+          (s (if (fx< start 0)
+                 (max 0 (fx+ len start))
+                 (min start len)))
+          (e (if (eq? end (js.undefined))
+                 len
+                 (max s
+                      (if (fx< end 0)
+                          (fx+ len end)
+                          (min end len))))))
+     (vector->Array
+      (subvector (Array-vect self) s e)))))
 
 (js:index-set!
  (js:index _String "prototype")
@@ -367,7 +384,7 @@
   (cond ((number? obj) (number->string obj))
         ((string? obj) obj)
         ((boolean? obj) (if obj "true" "false"))
-        ((##unbound? obj) "undefined")
+        ((eq? obj (js.undefined)) "undefined")
         (else (object->string obj))))
 
 (define (js:- x y)
@@ -433,14 +450,20 @@
   (vector->Array (list->vector cmd-args)))
 
 (define _Math
-  (make-Object #f #f (list->assoc-table (list (cons "min" (lambda (self x y) (fxmin x y)))))))
+  (make-Object #f
+               #f
+               (list->assoc-table
+                (list (cons "min" (lambda (self x y) (fxmin x y)))
+                      (cons "max" (lambda (self x y) (fxmax x y)))
+                      (cons "floor" (lambda (self x) (floor x)))
+                      ))))
 
 (define (js:typeof obj)
   (cond ((boolean? obj) "boolean")
         ((number? obj) "number")
         ((string? obj) "string")
         ((procedure? obj) "function")
-        ((eq? obj (undefined)) "undefined")
+        ((eq? obj (js.undefined)) "undefined")
         (else "object")))
 
 (define (main . lst)

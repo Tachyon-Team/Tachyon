@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "misc.js", Time-stamp: <2010-12-05 10:40:12 feeley>
+// File: "misc.js", Time-stamp: <2010-12-13 11:16:45 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -94,17 +94,16 @@ function String_output_port(init)
 
 function parse_src_file(filename)
 {
-    var port = new File_input_port(filename);
-    var p = new Parser(new Scanner(port), true);
-    var ast = p.parse();
-    var normalized_ast = ast_normalize(ast);
-
-    return normalized_ast;
+    return parse_src_port(new File_input_port(filename));
 }
 
 function parse_src_str(str)
 {
-    var port = new String_input_port(str);
+    return parse_src_port(new String_input_port(str));
+}
+
+function parse_src_port(port)
+{
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();
     var normalized_ast = ast_normalize(ast);
