@@ -160,7 +160,7 @@ function escapeXMLString(input, isHTML)
             if (isHTML)
                 pushStr('<br />');
             else
-                chars.push(charCode)
+                chars.push(charCode);
             break;
 
             default:
