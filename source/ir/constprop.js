@@ -353,7 +353,7 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
 
         if (((u0 instanceof ConstValue && u0.value == 0) || 
              (u1 instanceof ConstValue && u1.value == 0)) &&
-            u1.type === u2.type)
+            u0.type === u1.type)
         {
             return ConstValue.getConst(
                 0,

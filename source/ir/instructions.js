@@ -666,7 +666,7 @@ IRInstr.prototype.replDest = function (oldDest, newDest)
     for (var i = 0; i < this.dests.length; ++i)
     {
         if (this.dests[i] === oldDest)
-            this.dests[i] = newdest;
+            this.dests[i] = newDest;
     }
 };
 
