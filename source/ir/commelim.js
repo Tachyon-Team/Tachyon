@@ -181,7 +181,6 @@ function commElim(cfg, maxItrs)
             }
 
             // For each instruction
-            INSTR_LOOP:
             for (var i = 0; i < block.instrs.length; ++i)
             {
                 var instr = block.instrs[i];
@@ -226,7 +225,9 @@ function commElim(cfg, maxItrs)
                 reachInstr[instr.instrId] = undefined;
 
                 // If an instruction with the same value number must reach this
-                for (var j = 0; j < mustReachCur.length; ++j)
+                var j = mustReachCur.length-1;
+
+                while (j >= 0)
                 {
                     var rinstr = mustReachCur[j];
                     if (getValNo(rinstr) == valNo)
@@ -235,12 +236,16 @@ function commElim(cfg, maxItrs)
                         reachInstr[instr.instrId] = rinstr;
 
                         // Don't add the current instruction to the reach set
-                        continue INSTR_LOOP;
+                        break;
                     }
+                    j--;
                 }
 
-                // Add the instruction to the set of reaching values
-                arraySetAdd(mustReachCur, instr);
+                if (j < 0)
+                {
+                    // Add the instruction to the set of reaching values
+                    arraySetAdd(mustReachCur, instr);
+                }
             }
             
             // If the must reach set has changed for this block

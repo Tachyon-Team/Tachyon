@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-14 09:50:42 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-14 10:24:52 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -940,6 +940,7 @@ function ast_to_scm(ast, ctx)
     else if (ast instanceof ConstStatement)
     {
         // TODO
+        pp(ast);
         error("ConstStatement not implemented");
     }
     else if (ast instanceof FunctionDeclaration)
@@ -1046,7 +1047,10 @@ function ast_to_scm(ast, ctx)
             return gen_continue();
         }
         else
+        {
+            pp(ast);
             error("continue with label not implemented");
+        }
     }
     else if (ast instanceof BreakStatement)
     {
@@ -1056,7 +1060,10 @@ function ast_to_scm(ast, ctx)
             return gen_break();
         }
         else
+        {
+            pp(ast);
             error("break with label not implemented");
+        }
     }
     else if (ast instanceof ReturnStatement)
     {
@@ -1080,6 +1087,7 @@ function ast_to_scm(ast, ctx)
     else if (ast instanceof WithStatement)
     {
         // TODO
+        pp(ast);
         error("WithStatement not implemented");
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "WithStatement");
@@ -1110,7 +1118,10 @@ function ast_to_scm(ast, ctx)
                         if (statement.label == null)
                             fall_through = false;
                         else
+                        {
+                            pp(ast);
                             error("break with label not implemented");
+                        }
                     }
                     // TODO:
                     //else if (statement instanceof ReturnStatement)
@@ -1151,6 +1162,7 @@ function ast_to_scm(ast, ctx)
     else if (ast instanceof LabelledStatement)
     {
         // TODO
+        pp(ast);
         error("LabelledStatement not implemented");
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "LabelledStatement");
@@ -1171,6 +1183,7 @@ function ast_to_scm(ast, ctx)
     else if (ast instanceof CatchPart)
     {
         // TODO
+        pp(ast);
         error("CatchPart not implemented");
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "CatchPart");
@@ -1181,6 +1194,7 @@ function ast_to_scm(ast, ctx)
     else if (ast instanceof DebuggerStatement)
     {
         // TODO
+        pp(ast);
         error("DebuggerStatement not implemented");
         /*
         pp_loc(ast.loc, pp_prefix(indent) + "DebuggerStatement");

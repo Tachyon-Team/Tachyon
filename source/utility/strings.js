@@ -232,38 +232,26 @@ function stripStr(str, chars)
     if (!chars)
         chars = ' \v\t\r\n';
 
-    BEGIN_LOOP:
-    for (var startIdx = 0; startIdx < str.length; ++startIdx)
-    {
-        ch = str.charAt(startIdx);
+    var endIdx = str.length;
+    while (endIdx > 0 && memberStr(str.charAt(endIdx-1), chars))
+        endIdx--;
 
-        for (var j = 0; j < chars.length; ++j)
-        {
-            ch2 = chars.charAt(j);
+    var startIdx = 0;
+    while (startIdx < endIdx && memberStr(str.charAt(startIdx), chars))
+        startIdx++;
 
-            if (ch == ch2)
-                continue BEGIN_LOOP;
-        }
-
-        break;
-    }
-
-    END_LOOP:
-    for (var endIdx = str.length - 1; endIdx >= 0; --endIdx)
-    {
-        ch = str.charAt(endIdx);
-
-        for (var j = 0; j < chars.length; ++j)
-        {
-            ch2 = chars.charAt(j);
-
-            if (ch == ch2)
-                continue END_LOOP;
-        }
-
-        break;
-    }
-
-    return str.substr(startIdx, endIdx + 1);
+    return str.substr(startIdx, endIdx);
 }
 
+/**
+Test if a character is a member of a set of characters
+*/
+function memberStr(ch, chars)
+{
+    var i = chars.length-1;
+
+    while (i >= 0 && ch != chars.charAt(i))
+        i--;
+
+    return i >= 0;
+}

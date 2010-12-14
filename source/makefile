@@ -86,7 +86,7 @@ run:
 	$(JSVM) $(MAIN_SRCS)
 
 bootstrap-js2scm: 
-	$(JS2SCM) -scm $(MAIN_SRCS)
+	$(JS2SCM) $(MAIN_SRCS)
 
 test: 
 	$(JSVM) $(TEST_SRCS)

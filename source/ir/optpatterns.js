@@ -293,7 +293,8 @@ blockPatterns.emptyBypass = new optPattern(
         var changed = false;
 
         // For each predecessor
-        PRED_LOOP:
+        
+        PRED_LOOP: //FIXME: remove LabelledStatement
         for (var j = 0; j < preds.length; ++j)
         {
             var pred = preds[j];
@@ -311,7 +312,7 @@ blockPatterns.emptyBypass = new optPattern(
 
                 // If the phi node already has this predecessor, skip the predecessor
                 if (arraySetHas(instr.preds, pred))
-                    continue PRED_LOOP;
+                    continue PRED_LOOP; //FIXME: remove LabelledStatement
             }
 
             //print('simplifying no instructions, single successor: ' + block.getBlockName() + ', succ: ' + succ.getBlockName());
