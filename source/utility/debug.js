@@ -21,7 +21,7 @@ function error(message)
     var errObj = new Error(errMsg);
 
     // If we are running within V8, capture a stack trace
-    if (Error.captureStackTrace)
+    if (Error.captureStackTrace !== undefined)
         Error.captureStackTrace(errObj, error);
 
     throw errObj;

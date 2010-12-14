@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-14 11:57:55 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-14 16:16:00 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -26,16 +26,46 @@
 (define-macro (js.function params body)
   `(lambda (this
             #!optional
-            ,@(map (lambda (p) (list p '(js.undefined))) params))
+            ,@(map (lambda (p) (list p '(js.undefined))) params)
+            .
+            args)
      ,body))
+
+(define-macro (js.function-with-arguments params body)
+  `(lambda (this . args)
+     (let* ((_arguments (list->Array args))
+            ,@(map (lambda (p)
+                     (list p `(if (pair? args)
+                                  (let ((arg (car args)))
+                                    (set! args (cdr args))
+                                    arg)
+                                  (js.undefined))))
+                   params))
+       ,body)))
 
 (define-macro (js.function-with-nontail-return params body)
   `(lambda (this
             #!optional
-            ,@(map (lambda (p) (list p '(js.undefined))) params))
+            ,@(map (lambda (p) (list p '(js.undefined))) params)
+            .
+            args)
      (continuation-capture
       (lambda (return)
         ,body))))
+
+(define-macro (js.function-with-nontail-return-with-arguments params body)
+  `(lambda (this . args)
+     (let* ((_arguments (list->Array args))
+            ,@(map (lambda (p)
+                     (list p `(if (pair? args)
+                                  (let ((arg (car args)))
+                                    (set! args (cdr args))
+                                    arg)
+                                  (js.undefined))))
+                   params))
+       (continuation-capture
+        (lambda (return)
+          ,body)))))
 
 (define-macro (js.return value)
   `(continuation-return return ,value))
@@ -44,7 +74,15 @@
   `this)
 
 (define-macro (js.if test consequent alternative)
-  `(if ,test ,consequent ,alternative))
+  `(if (let ((res ,test))
+         (cond ((##eq? res (js.undefined))
+                (error "this if test is undefined"))
+               ((not (boolean? res))
+                (error "this if test is not a boolean" res))
+               (else
+                res)))
+       ,consequent
+       ,alternative))
 
 (define-macro (js.call fn . args)
   (if (and (pair? fn)
@@ -54,7 +92,9 @@
       `(,fn '() ,@args)))
 
 (define-macro (js.new ctor . args)
-  `(let* ((ctor ,ctor) (self (make-Object ctor (get-prototype ctor) (make-assoc-table))) (retval (ctor self ,@args)))
+  `(let* ((ctor ,ctor)
+          (self (make-Object ctor (get-prototype ctor) (make-assoc-table)))
+          (retval (ctor self ,@args)))
      (if (##eq? retval (js.undefined))
          self
          retval)))
@@ -169,7 +209,7 @@
       (js.forin ,loop-id ,lhs ,set ,body))))
 
 (define-macro (js.throw val)
-  `(js:throw val))
+  `(js:throw ,val))
 
 (define-macro (js.try body . final-body)
   body) ;; TODO support exception handling
@@ -222,7 +262,12 @@
 
 (define-macro (js.! x)
   `(let ((x ,x))
-     (not x))) ;; is this correct?
+     (cond ((##eq? x (js.undefined))
+            (error "js.! argument is undefined"))
+           ((not (boolean? x))
+            (error "js.! argument is not a boolean" x))
+           (else
+            (not x))))) ;; is this correct?
 
 (define-macro (js.x++ x)
   (if (and (pair? x)

@@ -15,7 +15,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 function FieldSpec(name, type, typeSize, numElems, offset)
 {
     assert (
-        name,
+        name !== undefined,
         'must specify field name'
     );
 
@@ -25,7 +25,7 @@ function FieldSpec(name, type, typeSize, numElems, offset)
     );
 
     assert (
-        !(type instanceof IRType && typeSize != undefined),
+        !(type instanceof IRType && typeSize !== undefined),
         'type size cannot be set for IR values'
     );
 
@@ -53,7 +53,7 @@ function FieldSpec(name, type, typeSize, numElems, offset)
     Size of an element of this field
     @field
     */
-    this.elemSize = 
+    this.elemSize =
         (type instanceof IRType)?
         type.size:
         this.type.getSize(typeSize);
@@ -79,13 +79,13 @@ function ObjectLayout(name, ptrType, tagName)
 {
     // Ensure that no layout with this name exists
     assert (
-        !ObjectLayout.layoutMap[name],
+        ObjectLayout.layoutMap[name] === undefined,
         'an object layout with this name already exists'
     );
 
     // Ensure that a tag is specified for boxed references
     assert (
-        !(ptrType === IRType.box && !tagName),
+        !(ptrType === IRType.box && tagName === undefined),
         'tag name must be specified for boxed references'
     );
 
@@ -153,13 +153,13 @@ ObjectLayout.prototype.getSize = function (typeSize)
     var lastField = this.fields[this.fields.length - 1];
 
     assert (
-        typeSize || lastField.numElems &&
-        !(typeSize && lastField.numElems == Infinity),
+        typeSize !== undefined || lastField.numElems &&
+        !(typeSize !== undefined && lastField.numElems == Infinity),
         'must specify type size for variable-length layouts'
     );
-    
+
     // Get the number of elements in the last field
-    var numElems = typeSize? typeSize:lastField.numElems;
+    var numElems = (typeSize !== undefined) ? typeSize : lastField.numElems;
 
     // Compute the total size of the object
     var size = lastField.offset + lastField.elemSize * numElems;
@@ -174,7 +174,7 @@ Add a new field specification
 ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
 {
     assert (
-        name,
+        name !== undefined,
         'must specify object layout name'
     );
 
@@ -192,7 +192,7 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
         numElems = 1;
 
     assert (
-        !(numElems === Infinity && 
+        !(numElems === Infinity &&
           this.fields.length > 0 &&
           this.fields[this.fields.length-1].numElems === Infinity),
         'only the last field can have variable length'
@@ -257,7 +257,7 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
     );
 
     assert (
-        this.ptrType,
+        this.ptrType !== undefined,
         'cannot generate access IR for layout, pointer type unspecified (' +
         this.name + ')'
     );
@@ -285,7 +285,7 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
         // Add the field offset to the total offset
         var fieldOffset = ConstValue.getConst(spec.offset, IRType.pint);
         curOffset = context.addInstr(new AddInstr(curOffset, fieldOffset));
-        
+
         // If an index is supplied
         if (query[i+1] instanceof IRValue)
         {
@@ -314,7 +314,7 @@ ObjectLayout.prototype.genMethods = function ()
     );
 
     assert (
-        this.ptrType,
+        this.ptrType !== undefined,
         'cannot generate methods for layout, pointer type unspecified (' +
         this.name + ')'
     );
@@ -388,35 +388,18 @@ ObjectLayout.prototype.genMethods = function ()
 
     // Generate code for the accessor functions for a given layout
     function genAccessFuncs(
-        curLayout, 
-        nameStr, 
-        argStr, 
+        curLayout,
+        nameStr,
+        argStr,
         numArgs,
-        proStr, 
+        proStr,
         offsetStr
     )
     {
-        // For each field
-        for (var fname in curLayout.fieldMap)
-        {
-            // Get the field specification for this field
-            var spec = curLayout.fieldMap[fname];
-
-            // Generate code for this field and sub-fields
-            genAccessField(
-                spec, 
-                nameStr, 
-                argStr, 
-                numArgs, 
-                proStr, 
-                offsetStr
-            );
-        }        
-
         // Generate code for a given field and sub-fields
         function genAccessField(
-            spec, 
-            nameStr, 
+            spec,
+            nameStr,
             argStr,
             numArgs,
             proStr,
@@ -451,10 +434,10 @@ ObjectLayout.prototype.genMethods = function ()
                 // Recurse on the layout
                 genAccessFuncs(
                     spec.type,
-                    nameStr, 
-                    argStr, 
-                    numArgs, 
-                    proStr, 
+                    nameStr,
+                    argStr,
+                    numArgs,
+                    proStr,
                     offsetStr
                 );
 
@@ -482,13 +465,30 @@ ObjectLayout.prototype.genMethods = function ()
             sourceStr += '}\n';
             sourceStr += '\n';
         }
+
+        // For each field
+        for (var fname in curLayout.fieldMap)
+        {
+            // Get the field specification for this field
+            var spec = curLayout.fieldMap[fname];
+
+            // Generate code for this field and sub-fields
+            genAccessField(
+                spec,
+                nameStr,
+                argStr,
+                numArgs,
+                proStr,
+                offsetStr
+            );
+        }
     }
 
     // Generate the getter and setter functions
     genAccessFuncs(
-        this, 
-        this.name, 
-        'obj', 
+        this,
+        this.name,
+        'obj',
         1,
         '"tachyon:arg obj ' + this.ptrType + '";\n' +
         '"tachyon:inline";\n',

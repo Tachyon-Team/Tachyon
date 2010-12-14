@@ -66,7 +66,7 @@ StaticEnv.prototype = {};
 /**
 Global static environment instance
 */
-staticEnv = new StaticEnv();
+var staticEnv = new StaticEnv();
 
 /**
 Parse static bindings in a code unit

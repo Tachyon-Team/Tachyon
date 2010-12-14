@@ -138,7 +138,7 @@ IRType.prototype.isNumber = function ()
 // Need code get appropriate size for the platform
 
 // Size of a pointer on the current platform
-PLATFORM_PTR_SIZE = 4;
+var PLATFORM_PTR_SIZE = 4;
 
 // Type given when there is no output value
 IRType.none = new IRType('none', 0),
@@ -157,13 +157,11 @@ IRType.bool = new IRType('bool', PLATFORM_PTR_SIZE),
 IRType.u8   = new IRType('u8'  , 1),
 IRType.u16  = new IRType('u16' , 2),
 IRType.u32  = new IRType('u32' , 4),
-IRType.u64  = new IRType('u64' , 8),
 
 // Unboxed signed integer types
 IRType.i8   = new IRType('i8'  , 1),
 IRType.i16  = new IRType('i16' , 2),
 IRType.i32  = new IRType('i32' , 4),
-IRType.i64  = new IRType('i64' , 8),
 
 // Floating-point types
 IRType.f64  = new IRType('f64' , 8);
@@ -173,15 +171,14 @@ if (PLATFORM_PTR_SIZE == 4)
 {
     // Int type of width corresponding a pointer on this platform
     IRType.pint = IRType.i32;
-
-    // No support for 64-bit integer types on 32-bit platforms
-    delete IRType.i64;
-    delete IRType.u64;
 }
 
 // Otherwise, we are on a 64-bit platform
 else
 {
+    IRType.u64  = new IRType('u64' , 8),
+    IRType.i64  = new IRType('i64' , 8),
+
     // Int type of width corresponding a pointer on this platform
     IRType.pint = IRType.i64;
 }
@@ -955,7 +952,7 @@ function instrMaker(
 )
 {
     assert (
-        mnemonic,
+        mnemonic !== undefined,
         'mnemonic name not specified for instruction'
     );
 
@@ -1074,7 +1071,7 @@ function instrMaker(
         this.uses = inputVals;
 
         // If this is a branch instruction
-        if (branchNames)
+        if (branchNames !== undefined)
         {
             // Store the branch targets
             this.targets = branchTargets;
@@ -1082,7 +1079,7 @@ function instrMaker(
     }
 
     // If no prototype object was specified, create one
-    if (!protoObj)
+    if (protoObj === undefined)
         protoObj = new IRInstr();
 
     // Set the prototype for the new instruction
@@ -1092,7 +1089,7 @@ function instrMaker(
     InstrConstr.prototype.targetNames = branchNames;
 
     // Store the initialization function
-    if (initFunc)
+    if (initFunc !== undefined)
         InstrConstr.prototype.initFunc = initFunc;
 
     /**
@@ -1199,7 +1196,7 @@ instrMaker.validType = function (value, expectedType)
 @class Base class for arithmetic instructions
 @augments IRInstr
 */
-ArithInstr = function ()
+var ArithInstr = function ()
 {
 };
 ArithInstr.prototype = new IRInstr();
@@ -1332,7 +1329,7 @@ var ModInstr = instrMaker(
 @class Base class for arithmetic instructions with overflow handling
 @augments IRInstr
 */
-ArithOvfInstr = function ()
+var ArithOvfInstr = function ()
 {
 };
 ArithOvfInstr.prototype = new IRInstr();
@@ -1409,7 +1406,7 @@ var LsftOvfInstr = instrMaker(
 @class Base class for bitwise operation instructions
 @augments IRInstr
 */
-BitOpInstr = function ()
+var BitOpInstr = function ()
 {
 };
 BitOpInstr.prototype = new IRInstr();
@@ -1536,7 +1533,7 @@ var UrsftInstr = instrMaker(
 @class Base class for comparison instructions
 @augments IRInstr
 */
-CompInstr = function ()
+var CompInstr = function ()
 {
 };
 CompInstr.prototype = new IRInstr();
@@ -1701,7 +1698,7 @@ var IfInstr = instrMaker(
 @class Base class for exception-producing instructions
 @augments IRInstr
 */
-ExceptInstr = function ()
+var ExceptInstr = function ()
 {
 };
 ExceptInstr.prototype = new IRInstr();
@@ -1765,7 +1762,7 @@ var CatchInstr = instrMaker(
 @class Base class for call instructions
 @augments ExceptInstr
 */
-CallInstr = function ()
+var CallInstr = function ()
 {
 };
 CallInstr.prototype = new ExceptInstr();

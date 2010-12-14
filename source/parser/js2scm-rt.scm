@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-13 17:32:30 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-14 15:25:17 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -108,6 +108,9 @@
   vect
 )
 
+(define-type-of-Object Error
+)
+
 (define prototypes (make-table test: eq? weak-keys: #t))
 
 (define (get-prototype ctor)
@@ -192,6 +195,9 @@
               (vector-length vect)
               vect))
 
+(define (list->Array lst)
+  (vector->Array (list->vector lst)))
+
 ;;; Predefined functions.
 
 (define (_print this x)
@@ -212,19 +218,26 @@
 (define _undefined
   (js.undefined))
 
-(define (_Boolean)
-  #f);;;;;;;;;;;;;
+(define _Nan +nan.0)
+(define _Infinity +inf.0)
 
-(define (_Number)
-  #f);;;;;;;;;;;;;
+(define (_Boolean this . args)
+  (js.undefined))
 
-(define (_Function)
-  #f);;;;;;;;;;;;;
+(define (_Number this . args)
+  (js.undefined))
 
-(define (_Array . lst)
-  #f);;;;;;;;;;;;;
+(define (_Function this . args)
+  (js.undefined))
 
-(define (_String #!optional (value ""))
+(define (_Array this . args)
+  (js.undefined))
+
+(define (_Error this . args)
+  (js:index-set! this "args" args)
+  (js.undefined))
+
+(define (_String this #!optional (value "") . args)
   (to-string value))
 
 (define (js:index obj field)
@@ -281,6 +294,12 @@
  "apply"
  (lambda (self self2 args)
    (apply self (cons self2 (Array->list args)))))
+
+(js:index-set!
+ (js:index _Function "prototype")
+ "call"
+ (lambda (self self2 . args)
+   (apply self (cons self2 args))))
 
 (js:index-set!
  (js:index _Array "prototype")
@@ -363,6 +382,10 @@
  "toString"
  (lambda (self)
    (number->string self)))
+
+(define (js:throw obj)
+  (pp obj)
+  (raise obj))
 
 (init-stats) ;; start stats from scratch
 
@@ -447,7 +470,7 @@
     (for-each iteration keys)))
 
 (define _arguments
-  (vector->Array (list->vector cmd-args)))
+  (list->Array cmd-args))
 
 (define _Math
   (make-Object #f

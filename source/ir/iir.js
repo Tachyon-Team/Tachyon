@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Object containing IR instructions usable inline inside functions
 */
-iir =
+var iir =
 {
     // Constants
     constant    : IIRConst,

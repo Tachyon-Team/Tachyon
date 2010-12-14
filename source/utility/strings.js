@@ -176,7 +176,7 @@ Indent each line of a text string
 */
 function indentText(inputStr, indentStr)
 {
-    if (!indentStr)
+    if (indentStr === undefined)
         indentStr = '\t';
 
     var chars = [];

@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-14 12:42:34 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-14 14:24:28 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -603,8 +603,12 @@ function gen_assign(variable, value)
 function gen_function(features, params, body)
 {
     return cons(features.use_nontail_return
-                ? new Symbol("js.function-with-nontail-return")
-                : new Symbol("js.function"),
+                ? (features.use_arguments
+                   ? new Symbol("js.function-with-nontail-return-with-arguments")
+                   : new Symbol("js.function-with-nontail-return"))
+                : (features.use_arguments
+                   ? new Symbol("js.function-with-arguments")
+                   : new Symbol("js.function")),
                 cons(vector2list(params),
                      cons(body, empty_list)));
 }
@@ -851,20 +855,24 @@ function Context(tail, global, features)
 }
 
 function Features(use_nontail_return,
+                  use_arguments,
                   use_break,
                   use_continue)
 {
     this.use_nontail_return = use_nontail_return;
-    this.use_break = use_break;
-    this.use_continue = use_continue;
+    this.use_arguments      = use_arguments;
+    this.use_break          = use_break;
+    this.use_continue       = use_continue;
 }
 
 function begin_function(ctx)
 {
     var state = new Features(ctx.features.use_nontail_return,
+                             ctx.features.use_arguments,
                              ctx.features.use_break,
                              ctx.features.use_continue);
     ctx.features.use_nontail_return = false;
+    ctx.features.use_arguments      = false;
     ctx.features.use_break          = false;
     ctx.features.use_continue       = false;
     return state;
@@ -873,6 +881,7 @@ function begin_function(ctx)
 function end_function(state, ctx, result)
 {
     ctx.features.use_nontail_return = state.use_nontail_return;
+    ctx.features.use_arguments      = state.use_arguments;
     ctx.features.use_break          = state.use_break;
     ctx.features.use_continue       = state.use_continue;
     return result;
@@ -881,6 +890,7 @@ function end_function(state, ctx, result)
 function begin_loop(ctx)
 {
     var state = new Features(ctx.features.use_nontail_return,
+                             ctx.features.use_arguments,
                              ctx.features.use_break,
                              ctx.features.use_continue);
     ctx.features.use_break    = false;
@@ -897,14 +907,17 @@ function end_loop(state, ctx, result)
 
 function begin_switch(ctx)
 {
-    var state = ctx.features.use_break;
+    var state = new Features(ctx.features.use_nontail_return,
+                             ctx.features.use_arguments,
+                             ctx.features.use_break,
+                             ctx.features.use_continue);
     ctx.features.use_break = false;
     return state;
 }
 
 function end_switch(state, ctx, result)
 {
-    ctx.features.use_break = state;
+    ctx.features.use_break = state.use_break;
     return result;
 }
 
@@ -915,12 +928,12 @@ function nontail_ctx(ctx)
 
 function global_ctx()
 {
-    return new Context(true, true, new Features(false, false, false));
+    return new Context(true, true, new Features(false, false, false, false));
 }
 
 function function_body_ctx()
 {
-    return new Context(true, false, new Features(false, false, false));
+    return new Context(true, false, new Features(false, false, false, false));
 }
 
 function ast_array_to_scm(asts, ctx)
@@ -1323,6 +1336,9 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof Ref)
     {
+        if (ast.id == "arguments")
+            ctx.features.use_arguments = true;
+
         return gen_ref(js_id_to_scm(ast.id.toString()));
     }
     else if (ast instanceof This)
