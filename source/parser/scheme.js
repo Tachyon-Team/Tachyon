@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-13 19:01:36 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-14 09:50:42 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -681,6 +681,25 @@ function gen_forin(features, loop_id, id, set, body)
                 cons(loop_id, cons(id, cons(set, cons(body, empty_list)))));
 }
 
+function gen_switch(features, value, clauses)
+{
+    return cons(features.use_break
+                ? new Symbol("js.switch-with-break")
+                : new Symbol("js.switch"),
+                cons(value, vector2list(clauses)));
+}
+
+function gen_case(fall_through, expr, statement)
+{
+    return cons(fall_through
+                ? new Symbol("js.case-fall-through")
+                : new Symbol("js.case"),
+                cons((expr == null)
+                     ? cons(new Symbol("js.default"), empty_list)
+                     : expr,
+                     cons(statement, empty_list)));
+}
+
 function gen_op(op, args)
 {
     return cons(js_op_to_scm_table[op], vector2list(args));
@@ -840,6 +859,19 @@ function end_loop(state, ctx, result)
 {
     ctx.features.use_break    = state.use_break;
     ctx.features.use_continue = state.use_continue;
+    return force_undefined_at_tail(result, ctx);
+}
+
+function begin_switch(ctx)
+{
+    var state = ctx.features.use_break;
+    ctx.features.use_break = false;
+    return state;
+}
+
+function end_switch(state, ctx, result)
+{
+    ctx.features.use_break = state;
     return result;
 }
 
@@ -1057,24 +1089,65 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof SwitchStatement)
     {
-        // TODO
-        error("SwitchStatement not implemented");
-        /*
-        pp_loc(ast.loc, pp_prefix(indent) + "SwitchStatement");
-        pp_asts(indent, "expr", [ast.expr]);
-        pp_asts(indent, "clauses", ast.clauses);
-        */
+        function gen_clause(expr, statements, ctx, last_clause)
+        {
+            var fall_through = !last_clause;
+            var accum = [];
+
+            var i = 0;
+            while (i < statements.length)
+            {
+                var statement = statements[i++];
+                if (i == statements.length)
+                {
+                    if (statement instanceof BlockStatement)
+                    {
+                        statements = statement.statements;
+                        i = 0;
+                    }
+                    else if (statement instanceof BreakStatement)
+                    {
+                        if (statement.label == null)
+                            fall_through = false;
+                        else
+                            error("break with label not implemented");
+                    }
+                    // TODO:
+                    //else if (statement instanceof ReturnStatement)
+                    else
+                        accum.push(ast_to_scm(statement, ctx));
+                }
+                else
+                    accum.push(ast_to_scm(statement, ctx));
+            }
+
+            return gen_case(fall_through,
+                            (expr == null)
+                            ? null
+                            : ast_to_scm(expr, nontail_ctx(ctx)),
+                            gen_begin(accum));
+        }
+
+        var feature_state = begin_switch(ctx);
+
+        var accum = [];
+        for (var i=0; i<ast.clauses.length; i++)
+        {
+            var clause_i = ast.clauses[i];
+            accum.push(gen_clause(clause_i.expr,
+                                  clause_i.statements,
+                                  nontail_ctx(ctx), // TODO: could be optimized
+                                  i == ast.clauses.length-1));
+        }
+
+        return end_switch(feature_state,
+                          ctx,
+                          gen_switch(ctx.features,
+                                     ast_to_scm(ast.expr, nontail_ctx(ctx)),
+                                     accum));
     }
-    else if (ast instanceof CaseClause)
-    {
-        // TODO
-        error("CaseClause not implemented");
-        /*
-        pp_loc(ast.loc, pp_prefix(indent) + "CaseClause");
-        pp_asts(indent, "expr", [ast.expr]);
-        pp_asts(indent, "statements", ast.statements);
-        */
-    }
+    // else if (ast instanceof CaseClause)
+    // { impossible due to handling of SwitchStatement }
     else if (ast instanceof LabelledStatement)
     {
         // TODO

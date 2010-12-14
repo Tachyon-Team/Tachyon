@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-13 18:58:49 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-14 10:14:30 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -79,6 +79,36 @@
 
 (define-macro (js.break)
   `(continuation-return break (void)))
+
+(define-macro (js.switch val . clauses)
+  `(let ((switch-val ,val))
+     (js.switch-clauses ,@clauses)))
+
+(define-macro (js.switch-with-break val . clauses)
+  `(continuation-capture
+    (lambda (break)
+      (let ((val ,val))
+        (js.switch-clauses ,@clauses)))))
+
+(define-macro (js.switch-clauses . clauses)
+  (if (assq 'js.case-fall-through clauses)
+      (error "case fall-through not implemented" clauses)
+      (let ()
+
+        (define (gen clauses default-clause)
+          (if (pair? clauses)
+              (let* ((clause (car clauses))
+                     (case-expr (cadr clause)))
+                (if (equal? case-expr '(js.default))
+                    (gen (cdr clauses) clause)
+                    `(if (js.=== switch-val ,case-expr)
+                         ,(caddr clause)
+                         ,(gen (cdr clauses) default-clause))))
+              (if default-clause
+                  (caddr default-clause)
+                  `(js.undefined))))
+
+        (gen clauses #f))))
 
 (define-macro (js.dowhile loop-id body test)
   `(let ,loop-id ()
