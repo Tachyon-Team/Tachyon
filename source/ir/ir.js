@@ -388,7 +388,7 @@ function getIRFuncObj(
 )
 {
     // If a function object already exists, return it
-    if (astNode.irFunc)
+    if (astNode.irFunc !== undefined)
         return astNode.irFunc;
 
     // Create arrays for the argument and closure variables

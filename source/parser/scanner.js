@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-12-05 10:40:33 feeley>
+// File: "scanner.js", Time-stamp: <2010-12-15 14:03:35 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -592,6 +592,20 @@ Scanner.prototype.parse_string = function ()
                 c = LF_CH;
             else if (c == ZERO_CH)
                 c = NUL_CH;
+            else if (c == LOWER_B_CH)
+                c = BS_CH;
+            else if (c == LOWER_T_CH)
+                c = TAB_CH;
+            else if (c == LOWER_V_CH)
+                c = VT_CH;
+            else if (c == LOWER_F_CH)
+                c = FF_CH;
+            else if (c == LOWER_R_CH)
+                c = CR_CH;
+            else if (c == LOWER_X_CH)
+                error("\\xXX string syntax not supported");
+            else if (c == LOWER_U_CH)
+                error("\\uXXXX string syntax not supported");
             chars.push(c);
         }                    
         else
@@ -687,9 +701,12 @@ function Location(filename, start_pos, end_pos)
 
 
 var NUL_CH         =   0;
+var BS_CH          =   8;
 var TAB_CH         =   9;
 var EOL_CH         =  10;
 var LF_CH          =  10;
+var VT_CH          =  11;
+var FF_CH          =  12;
 var CR_CH          =  13;
 var SPACE_CH       =  32;
 var EXCL_CH        =  33;

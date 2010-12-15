@@ -263,13 +263,16 @@ x86.Assembler.prototype.provide = function (linkObj)
 */
 x86.Assembler.prototype.immediateValue = function (value)
 {
-    assert((value === undefined) || typeof value === "number",
-               "'value' argument should be a number");
+    if (value === undefined)
+        value = 0;
+
+    assert(typeof value === "number",
+           "'value' argument should be a number");
 
     var that = Object.create(x86.Assembler.prototype.immediateValue.prototype);
 
     /** @private */
-    that.value = value || 0;
+    that.value = value;
 
     return that;
 };

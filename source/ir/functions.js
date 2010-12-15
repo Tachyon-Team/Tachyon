@@ -130,13 +130,13 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
 
 
     // If the argument or return types are undefined, make them boxed
-    if (!this.argTypes)
+    if (this.argTypes === undefined)
     {
         this.argTypes = [];
         for (var i = 0; i < argVars.length; ++i)
             this.argTypes.push(IRType.box);
     }
-    if (!this.retType)
+    if (this.retType === undefined)
     {
         this.retType = IRType.box;
     }

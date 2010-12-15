@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-14 15:25:17 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-15 15:49:22 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -63,6 +63,10 @@
          (pp (list 'stats-ref (sort-stats stats-ref)))
          (pp (list 'stats-set (sort-stats stats-set)))))))
 
+;;;----------------------------------------------------------------------------
+
+;; Representation of objects
+
 (define (make-assoc-table)
   (make-table))
 
@@ -91,6 +95,16 @@
   at ;; assoc-table
 )
 
+(define (make-empty-Object)
+  (make-Object #f #f (make-assoc-table)))
+
+(define (has-own-prop? self name)
+  (let ((x (assoc-table-ref (Object-at self) name assoc-table-ref)))
+    (not (eq? x assoc-table-ref))))
+
+(define (has-prop? self name)
+  (not (eq? (js:index self name) (js.undefined))))
+
 (define-type-of-Object Function
   fn
 )
@@ -118,7 +132,7 @@
       (error "can only get the prototype of a function" ctor)
       (let ((p (table-ref prototypes ctor #f)))
         (or p
-            (let ((prototype (make-Object #f #f (make-assoc-table))))
+            (let ((prototype (make-empty-Object)))
               (table-set! prototypes ctor prototype)
               prototype)))))
 
@@ -155,50 +169,9 @@
               (table-set! obj-proxies val obj)
               obj))))
 
-(define (make-empty-Array)
-  (make-Array _Array (get-prototype _Array) (make-assoc-table) 0 (vector #f)))
+;;;----------------------------------------------------------------------------
 
-(define (Array-push arr x)
-  (let ((i (Array-len arr))
-        (v (Array-vect arr)))
-    (if (fx< i (vector-length v))
-        (begin
-          (vector-set! v i x)
-          (Array-len-set! arr (fx+ i 1)))
-        (let* ((n (fx* 2 (vector-length v)))
-               (new-v (make-vector n #f)))
-          (subvector-move! v 0 i new-v 0)
-          (vector-set! new-v i x)
-          (Array-len-set! arr (fx+ i 1))
-          (Array-vect-set! arr new-v)))))
-
-(define (Array-resize-if-needed arr len)
-  (let ((v (Array-vect arr)))
-    (if (fx< (vector-length v) len)
-        (let* ((n (fx* 2 len))
-               (new-v (make-vector n #f)))
-          (subvector-move! v 0 (Array-len arr) new-v 0)
-          (Array-vect-set! arr new-v)))
-    (if (fx< (Array-len arr) len)
-        (Array-len-set! arr len))))
-
-(define (Array->vector arr)
-  (subvector (Array-vect arr) 0 (Array-len arr)))
-
-(define (Array->list arr)
-  (vector->list (Array->vector arr)))
-
-(define (vector->Array vect)
-  (make-Array _Array
-              (get-prototype _Array)
-              (make-assoc-table)
-              (vector-length vect)
-              vect))
-
-(define (list->Array lst)
-  (vector->Array (list->vector lst)))
-
-;;; Predefined functions.
+;;; Predefined variables in global object.
 
 (define (_print this x)
   (println (to-string x)))
@@ -219,6 +192,7 @@
   (js.undefined))
 
 (define _Nan +nan.0)
+
 (define _Infinity +inf.0)
 
 (define (_Boolean this . args)
@@ -240,54 +214,76 @@
 (define (_String this #!optional (value "") . args)
   (to-string value))
 
-(define (js:index obj field)
+;;;----------------------------------------------------------------------------
+
+;; Property getter and setter
+
+(define (js:index obj prop)
 
   (define (get-in-at)
-    (let ((x (assoc-table-ref (Object-at obj) field assoc-table-ref)))
+    (let ((x (assoc-table-ref (Object-at obj) prop assoc-table-ref)))
       (if (eq? x assoc-table-ref)
           (let ((proto (Object-proto obj)))
             (if proto
-                (js:index proto field)
+                (js:index proto prop)
                 (js.undefined)))
           x)))
 
-  (cond ((equal? field "prototype")
+  (cond ((equal? prop "prototype")
          (get-prototype obj))
+        ((equal? prop "hasOwnProperty")
+         has-own-prop?)
         ((string? obj) 
-         (cond ((equal? field "length")
+         (cond ((equal? prop "length")
                 (string-length obj))
                (else
-                (js:index (get-obj-proxy obj) field))))
+                (js:index (get-obj-proxy obj) prop))))
         ((Array? obj)
-         (cond ((equal? field "length")
+         (cond ((equal? prop "length")
                 (Array-len obj))
-               ((number? field)
-                (Array-resize-if-needed obj (fx+ field 1))
-                (vector-ref (Array-vect obj) field))
+               ((number? prop)
+                (Array-resize-if-needed obj (fx+ prop 1))
+                (vector-ref (Array-vect obj) prop))
                (else
                 (get-in-at))))
         ((Object? obj)
          (get-in-at))
         (else
-         (js:index (get-obj-proxy obj) field))))
+         (js:index (get-obj-proxy obj) prop))))
 
-(define (js:index-set! obj field value)
+(define (js:index-set! obj prop value)
 
   (define (set-in-at)
-    (assoc-table-set! (Object-at obj) field value))
+    (assoc-table-set! (Object-at obj) prop value))
 
-  (cond ((equal? field "prototype")
+  (cond ((equal? prop "prototype")
          (set-prototype obj value))
         ((Array? obj)
-         (cond ((number? field)
-                (Array-resize-if-needed obj (fx+ field 1))
-                (vector-set! (Array-vect obj) field value))
+         (cond ((number? prop)
+                (Array-resize-if-needed obj (fx+ prop 1))
+                (vector-set! (Array-vect obj) prop value))
                (else
                 (set-in-at))))
         ((Object? obj)
          (set-in-at))
         (else
-         (js:index-set! (get-obj-proxy obj) field value))))
+         (js:index-set! (get-obj-proxy obj) prop value))))
+
+;;;----------------------------------------------------------------------------
+
+;; Object
+
+(define _Object (make-empty-Object))
+
+(js:index-set!
+ _Object
+ "create"
+ (lambda (self proto) 
+   (make-Object _Object proto (make-assoc-table))))
+
+;;;----------------------------------------------------------------------------
+
+;; Function
 
 (js:index-set!
  (js:index _Function "prototype")
@@ -301,6 +297,65 @@
  (lambda (self self2 . args)
    (apply self (cons self2 args))))
 
+;;;----------------------------------------------------------------------------
+
+;; Array
+
+(define (make-empty-Array)
+  (make-Array _Array
+              (get-prototype _Array)
+              (make-assoc-table)
+              0
+              (vector (js.undefined))))
+
+(define (Array-push arr x)
+  (let ((i (Array-len arr))
+        (v (Array-vect arr)))
+    (if (fx< i (vector-length v))
+        (begin
+          (vector-set! v i x)
+          (Array-len-set! arr (fx+ i 1)))
+        (let* ((n (fx* 2 (vector-length v)))
+               (new-v (make-vector n (js.undefined))))
+          (subvector-move! v 0 i new-v 0)
+          (vector-set! new-v i x)
+          (Array-len-set! arr (fx+ i 1))
+          (Array-vect-set! arr new-v)))))
+
+(define (Array-resize-if-needed arr len)
+  (let ((v (Array-vect arr)))
+    (if (fx< (vector-length v) len)
+        (let* ((n (fx* 2 len))
+               (new-v (make-vector n (js.undefined))))
+          (subvector-move! v 0 (Array-len arr) new-v 0)
+          (Array-vect-set! arr new-v)))
+    (if (fx< (Array-len arr) len)
+        (Array-len-set! arr len))))
+
+(define (Array-for-each-index arr fn)
+  (let ((len (Array-len arr)))
+    (let loop ((i 0))
+      (if (fx< i len)
+          (begin
+            (fn i)
+            (loop (fx+ i 1)))))))
+
+(define (Array->vector arr)
+  (subvector (Array-vect arr) 0 (Array-len arr)))
+
+(define (Array->list arr)
+  (vector->list (Array->vector arr)))
+
+(define (vector->Array vect)
+  (make-Array _Array
+              (get-prototype _Array)
+              (make-assoc-table)
+              (vector-length vect)
+              vect))
+
+(define (list->Array lst)
+  (vector->Array (list->vector lst)))
+
 (js:index-set!
  (js:index _Array "prototype")
  "concat"
@@ -308,6 +363,38 @@
    (vector->Array
     (apply vector-append
            (map Array->vector (cons self args))))))
+
+(js:index-set!
+ (js:index _Array "prototype")
+ "slice"
+ (lambda (self start #!optional (end (js.undefined)))
+   (let* ((len (Array-len self))
+          (s (if (fx< start 0)
+                 (max 0 (fx+ len start))
+                 (min start len)))
+          (e (if (eq? end (js.undefined))
+                 len
+                 (max s
+                      (if (fx< end 0)
+                          (fx+ len end)
+                          (min end len))))))
+     (vector->Array
+      (subvector (Array-vect self) s e)))))
+
+(js:index-set!
+ (js:index _Array "prototype")
+ "splice"
+ (lambda (self start delcount . items)
+   (let* ((v (Array-vect self))
+          (v0 (subvector v start (fx+ start delcount)))
+          (v1 (subvector v 0 start))
+          (v2 (list->vector items))
+          (v3 (subvector v (fx+ start delcount) (Array-len self)))
+          (new-v (vector-append v1 v2 v3)))
+     (Array-vect-set! self new-v)
+     (Array-len-set! self (vector-length new-v))
+     (pp (list v1 v2 v3 '=> v0));;;;;;;;;;;;
+     (vector->Array v0))))
 
 (js:index-set!
  (js:index _Array "prototype")
@@ -336,28 +423,15 @@
              (loop (fx+ i 1)))
            result)))))
 
+;;;----------------------------------------------------------------------------
+
+;; String
+
 (js:index-set!
  (js:index _String "prototype")
  "concat"
  (lambda (self . args)
    (apply string-append args)))
-
-(js:index-set!
- (js:index _Array "prototype")
- "slice"
- (lambda (self start #!optional (end (js.undefined)))
-   (let* ((len (Array-len self))
-          (s (if (fx< start 0)
-                 (max 0 (fx+ len start))
-                 (min start len)))
-          (e (if (eq? end (js.undefined))
-                 len
-                 (max s
-                      (if (fx< end 0)
-                          (fx+ len end)
-                          (min end len))))))
-     (vector->Array
-      (subvector (Array-vect self) s e)))))
 
 (js:index-set!
  (js:index _String "prototype")
@@ -378,16 +452,70 @@
    (list->string (map integer->char lst))))
 
 (js:index-set!
+ (js:index _String "prototype")
+ "split"
+ (lambda (self separator)
+   (if (not (and (string? separator)
+                 (= 1 (string-length separator))))
+       (error "String.split expects a separator of length 1")
+       (list->Array
+        (call-with-input-string
+            self
+          (lambda (p)
+            (read-all p (lambda (p) (read-line p (string-ref separator 0))))))))))
+
+(define (to-string obj)
+  (cond ((and (Object? obj)
+              (has-prop? obj "toString"))
+         (js.call (js.index obj "toString")))
+        ((number? obj) (number->string obj))
+        ((string? obj) obj)
+        ((boolean? obj) (if obj "true" "false"))
+        ((eq? obj (js.undefined)) "undefined")
+        (else (object->string obj))))
+
+;;;----------------------------------------------------------------------------
+
+;; Number
+
+(js:index-set!
  (js:index _Number "prototype")
  "toString"
  (lambda (self)
    (number->string self)))
 
-(define (js:throw obj)
-  (pp obj)
-  (raise obj))
+;;;----------------------------------------------------------------------------
 
-(init-stats) ;; start stats from scratch
+;; Math
+
+(define _Math (make-empty-Object))
+
+(js:index-set!
+ _Math
+ "min"
+ (lambda (self x y)
+   (fxmin x y)))
+
+(js:index-set!
+ _Math
+ "max"
+ (lambda (self x y)
+   (fxmax x y)))
+
+(js:index-set!
+ _Math
+ "floor"
+ (lambda (self x)
+   (floor x)))
+
+;;;----------------------------------------------------------------------------
+
+;; Command-line arguments
+
+(define _arguments
+  (list->Array cmd-args))
+
+;;;----------------------------------------------------------------------------
 
 ;;; JavaScript operators.
 
@@ -402,13 +530,6 @@
            (or (##fixnum? y) (##flonum? y)))
       (+ x y)
       (string-append (to-string x) (to-string y))))
-
-(define (to-string obj)
-  (cond ((number? obj) (number->string obj))
-        ((string? obj) obj)
-        ((boolean? obj) (if obj "true" "false"))
-        ((eq? obj (js.undefined)) "undefined")
-        (else (object->string obj))))
 
 (define (js:- x y)
   (if (and (or (##fixnum? x) (##flonum? x))
@@ -441,15 +562,21 @@
       (error "js:<= expects numbers" x y)))
 
 (define (js:== x y)
-  (if (and (or (##fixnum? x) (##flonum? x))
-           (or (##fixnum? y) (##flonum? y)))
-      (= x y)
-      (if (and (string? x) (string? y))
-          (string=? x y)
-          (eq? x y))))
+  (js:=== x y)) ;; FIXME
 
 (define (js:!= x y)
   (not (js:== x y)))
+
+(define (js:=== x y)
+  (cond ((and (number? x) (number? y))
+         (= x y))
+        ((and (string? x) (string? y))
+         (string=? x y))
+        (else
+         (eq? x y))))
+
+(define (js:!== x y)
+  (not (js:=== x y)))
 
 (define (js:array-lit . elems)
   (let ((obj (make-empty-Array)))
@@ -461,25 +588,20 @@
 
 (define (js:instanceof x y)
   (cond ((Object? x)
-         (eq? (Object-ctor x) y))
+         (or (eq? (Object-ctor x) y)
+             (js:instanceof (Object-proto x) y)))
         (else
          #f)))
 
 (define (js:forin set iteration)
   (let ((keys (map car (assoc-table->list (Object-at set)))))
-    (for-each iteration keys)))
+    (for-each iteration keys)
+    (if (Array? set)
+        (Array-for-each-index set iteration))))
 
-(define _arguments
-  (list->Array cmd-args))
-
-(define _Math
-  (make-Object #f
-               #f
-               (list->assoc-table
-                (list (cons "min" (lambda (self x y) (fxmin x y)))
-                      (cons "max" (lambda (self x y) (fxmax x y)))
-                      (cons "floor" (lambda (self x) (floor x)))
-                      ))))
+(define (js:throw obj)
+  (pp obj)
+  (raise obj))
 
 (define (js:typeof obj)
   (cond ((boolean? obj) "boolean")
@@ -488,6 +610,8 @@
         ((procedure? obj) "function")
         ((eq? obj (js.undefined)) "undefined")
         (else "object")))
+
+(init-stats) ;; start stats from scratch
 
 (define (main . lst)
   0)

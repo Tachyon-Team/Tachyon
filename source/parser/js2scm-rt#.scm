@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-14 16:16:00 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-15 14:37:08 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -73,14 +73,17 @@
 (define-macro (js.this)
   `this)
 
+(define-macro (js.guard-odd-false x expr)
+  `(if (or (js.=== ,x (js.undefined))
+           (js.=== ,x '())
+           (js.=== ,x 0)
+           (js.=== ,x ""))
+       (error "odd false detected" ,x ,expr)
+       ,x))
+
 (define-macro (js.if test consequent alternative)
-  `(if (let ((res ,test))
-         (cond ((##eq? res (js.undefined))
-                (error "this if test is undefined"))
-               ((not (boolean? res))
-                (error "this if test is not a boolean" res))
-               (else
-                res)))
+  `(if (let ((x ,test))
+         (js.guard-odd-false x '(js.if ,test ,consequent ,alternative)))
        ,consequent
        ,alternative))
 
@@ -99,11 +102,11 @@
          self
          retval)))
 
-(define-macro (js.index obj field)
-  `(js:index ,obj ,field))
+(define-macro (js.index obj prop)
+  `(js:index ,obj ,prop))
 
-(define-macro (js.index-set! obj field value)
-  `(js:index-set! ,obj ,field ,value))
+(define-macro (js.index-set! obj prop value)
+  `(js:index-set! ,obj ,prop ,value))
 
 (define-macro (js.array-lit . elems)
   `(js:array-lit ,@elems))
@@ -153,7 +156,8 @@
 (define-macro (js.dowhile loop-id body test)
   `(let ,loop-id ()
      ,body
-     (if ,test
+     (if (let ((x ,test))
+           (js.guard-odd-false x '(js.dowhile ,loop-id ,body ,test)))
          (,loop-id))))
 
 (define-macro (js.dowhile-with-break loop-id body test)
@@ -161,12 +165,14 @@
     (lambda (break)
       (let ,loop-id ()
         ,body
-        (if ,test
+        (if (let ((x ,test))
+              (js.guard-odd-false x '(js.dowhile-with-break ,loop-id ,body ,test)))
             (,loop-id))))))
 
 (define-macro (js.while loop-id test body)
   `(let ,loop-id ()
-     (if ,test
+     (if (let ((x ,test))
+           (js.guard-odd-false x '(js.while ,loop-id ,test ,body)))
          (begin
            ,body
            (,loop-id)))))
@@ -175,14 +181,16 @@
   `(continuation-capture
     (lambda (break)
       (let ,loop-id ()
-        (if ,test
+        (if (let ((x ,test))
+              (js.guard-odd-false x '(js.while-with-break ,loop-id ,test ,body)))
             (begin
               ,body
               (,loop-id)))))))
 
 (define-macro (js.for loop-id test body step)
   `(let ,loop-id ()
-     (if ,test
+     (if (let ((x ,test))
+           (js.guard-odd-false x '(js.for ,loop-id ,test ,body ,step)))
          (begin
            ,body
            ,step
@@ -192,7 +200,8 @@
   `(continuation-capture
     (lambda (break)
       (let ,loop-id ()
-        (if ,test
+        (if (let ((x ,test))
+              (js.guard-odd-false x '(js.for-with-break ,loop-id ,test ,body ,step)))
             (begin
               ,body
               ,step
@@ -261,13 +270,8 @@
   `(TODO-js.~))
 
 (define-macro (js.! x)
-  `(let ((x ,x))
-     (cond ((##eq? x (js.undefined))
-            (error "js.! argument is undefined"))
-           ((not (boolean? x))
-            (error "js.! argument is not a boolean" x))
-           (else
-            (not x))))) ;; is this correct?
+  `(not (let ((x ,x))
+          (js.guard-odd-false x '(js.! ,x)))))
 
 (define-macro (js.x++ x)
   (if (and (pair? x)
@@ -390,32 +394,16 @@
   `(TODO-js.in))
 
 (define-macro (js.== x y)
-  (if #t ;; assume only numerical type is fixnum and no overflow
-      `(let* ((x ,x) (y ,y))
-         (if (##fixnum? x)
-             (if (##fixnum? y)
-                 (##fx= x y)
-                 #f)
-             (js:== x y)))
-      `(##fx= ,x ,y)))
+  `(js:== ,x ,y))
 
 (define-macro (js.!= x y)
-  (if #t ;; assume only numerical type is fixnum and no overflow
-      `(let* ((x ,x) (y ,y))
-         (if (##fixnum? x)
-             (if (##fixnum? y)
-                 (not (##fx= x y))
-                 #t)
-             (js:!= x y)))
-      `(not (##fx= ,x ,y))))
+  `(js:!= ,x ,y))
 
 (define-macro (js.=== x y)
-  `(let* ((x ,x) (y ,y))
-     (eq? x y))) ;;; is this correct?
+  `(js:=== ,x ,y))
 
 (define-macro (js.!== x y)
-  `(let* ((x ,x) (y ,y))
-     (not (eq? x y)))) ;;; is this correct?
+  `(js:!== ,x ,y))
 
 (define-macro (js.& x y)
   `(fxand ,x ,y))
@@ -427,10 +415,14 @@
   `(|TODO-js.\||))
 
 (define-macro (js.&& x y)
-  `(and ,x ,y))
+  `(and (let ((x ,x))
+          (js.guard-odd-false x '(js.&& ,x ,y)))
+        ,y))
 
 (define-macro (|js.\|\|| x y)
-  `(or ,x ,y))
+  `(or (let ((x ,x))
+          (js.guard-odd-false x '(|js.\|\|| ,x ,y)))
+       ,y))
 
 (define-macro (|js.,| x y)
   `(begin ,x ,y))
@@ -493,6 +485,9 @@
   `(TODO-js.%=))
 
 (define-macro (js.x?y:z x y z)
-  `(if ,x ,y ,z))
+  `(if (let ((x ,x))
+         (js.guard-odd-false x '(js.x?y:z ,x ,y ,z)))
+       ,y
+       ,z))
 
 ;;;============================================================================

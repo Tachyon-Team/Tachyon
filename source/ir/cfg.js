@@ -392,7 +392,7 @@ Get the entry block for this CFG
 ControlFlowGraph.prototype.getEntryBlock = function ()
 {
     // If there is no entry block yet, create one
-    if (!this.entry)
+    if (this.entry === null)
         this.entry = this.getNewBlock('entry');
 
     return this.entry;
