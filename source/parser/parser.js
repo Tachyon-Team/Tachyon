@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-13 17:11:40 feeley>
+// File: "parser.js", Time-stamp: <2010-12-16 08:59:35 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -361,8 +361,8 @@ function Program(loc, block)
     this.vars = null;
     this.free_vars = null;
     this.block = block;
-    this.usesArguments = true;
-    this.usesEval = true;
+    this.usesArguments = false;
+    this.usesEval = false;
 }
 
 function FunctionDeclaration(loc, id, funct)
