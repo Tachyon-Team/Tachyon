@@ -19,6 +19,11 @@ function initialize()
     // Compile the IR primitives
     backend.primitiveList = compPrimitives();
 
+    /*
+    var func = staticEnv.getBinding('extObjHashTbl');
+    print(func);
+    */
+
     for (primIt = new ArrayIterator(backend.primitiveList);
          primIt.valid();
          primIt.next())

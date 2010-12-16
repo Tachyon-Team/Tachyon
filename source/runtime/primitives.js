@@ -672,18 +672,15 @@ function getHash(key)
 /**
 Set a property on an object
 */
-function putPropVal(obj, propName, propVal)
+function putProp(obj, propName, propHash, propVal)
 {
-    "tachyon:static";
+    "tachyon:inline";
+    "tachyon:arg propHash pint";
 
-    // TODO: assert object is passed? toObject?
-
+    //
     // TODO: find if getter-setter exists?
     // Requires first looking up the entry in the whole prototype chain...
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
+    //
 
     // Get a pointer to the hash table
     var tblPtr = get_obj_tbl(obj);
@@ -716,8 +713,9 @@ function putPropVal(obj, propName, propVal)
         // Otherwise, if we have reached an empty slot
         else if (keyVal === UNDEFINED)
         {
-            // Set the corresponding property value
-            set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
+            // Set the corresponding key and value in the slot
+            set_hashtbl_tbl_key(newTbl, hashIndex, propName);
+            set_hashtbl_tbl_val(newTbl, hashIndex, propVal);
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
@@ -732,7 +730,8 @@ function putPropVal(obj, propName, propVal)
             if (numProps / HASH_MAP_MAX_LOAD_NUM >
                 tblSize / HASH_MAP_MAX_LOAD_DENUM)
             {
-                // TODO: realloc hash table, rehash all properties
+                // Extend the hash table for this object
+                extObjHashTbl(obj, tblPtr, tblSize);
             }
 
             // Break out of the loop
@@ -742,6 +741,71 @@ function putPropVal(obj, propName, propVal)
         // Move to the next hash table slot
         hashIndex = (hashIndex + iir.constant(IRType.pint, 1)) % tblSize;
     }
+}
+
+/**
+Extend the hash table and rehash the properties of an object
+*/
+function extObjHashTbl(obj, curTbl, curSize)
+{
+    "tachyon:inline";
+    "tachyon:arg curSize pint";
+
+    // Compute the new table size
+    var newSize = curSize * iir.constant(IRType.pint, 2) + iir.constant(IRType.pint, 1);
+
+    // Allocate a new, larger hash table
+    var newTbl = alloc_hashtbl(newSize);
+
+    // For each entry in the current table
+    for (var curIdx = iir.constant(IRType.pint, 0); 
+         curIdx < curSize; 
+         curIdx = (curIdx + iir.constant(IRType.pint, 1)) % curSize
+    )
+    {
+        // Get the key and property values at this hash slot
+        var propKey = get_hashtbl_tbl_key(curTbl, curIdx);
+        var propVal = get_hashtbl_tbl_val(curTbl, curIdx);
+
+        // Get the hash code for the property
+        // Boxed value, may be a string or an int
+        var propHash = getHash(propKey);
+
+        // Get the hash table index for this hash value in the new table
+        var startHashIndex = propHash % newSize;
+        var hashIndex = startHashIndex;
+
+        // Until a free slot is encountered
+        while (true)
+        {
+            // Get the key value at this hash slot
+            var slotKey = get_hashtbl_tbl_key(newTbl, hashIndex);
+
+            // If we have reached an empty slot
+            if (slotKey === UNDEFINED)
+            {
+                // Set the corresponding key and value in the slot
+                set_hashtbl_tbl_key(newTbl, hashIndex, propKey);
+                set_hashtbl_tbl_val(newTbl, hashIndex, propVal);
+
+                // Break out of the loop
+                break;
+            }
+
+            // Move to the next hash table slot
+            hashIndex = (hashIndex + iir.constant(IRType.pint, 1)) % newSize;
+
+            // Ensure that a free slot was found for this key
+            assert (
+                hashIndex != startHashIndex,
+                'no free slots found in extended hash table'
+            );
+        }
+    }
+
+    // Update the hash table pointer and the table size for the object
+    set_obj_tbl(obj, newTbl);
+    set_obj_tblsize(obj, newSize);
 }
 
 /**
@@ -810,7 +874,26 @@ function getProp(obj, propName, propHash)
 }
 
 /**
-Get a property from an object
+Set a property on an object, by property name value
+*/
+function putPropVal(obj, propName, propVal)
+{
+    "tachyon:static";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Get the hash code for the property
+    // Boxed value, may be a string or an int
+    var propHash = getHash(propName);
+
+    // Set the property on the object
+    putProp(obj, propName, propHash, propVal);
+}
+
+/**
+Test if a property exists on an object
 */
 function hasPropVal(obj, propName)
 {

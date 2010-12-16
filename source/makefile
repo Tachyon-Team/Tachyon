@@ -23,6 +23,7 @@ BASE_SRCS =                         \
     parser/parser.js                \
     parser/pp.js                    \
     parser/ast-passes.js            \
+    platform/ffi.js                 \
     platform/memory.js              \
     ir/static.js                    \
     ir/instructions.js              \
