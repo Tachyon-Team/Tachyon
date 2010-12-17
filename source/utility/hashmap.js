@@ -13,8 +13,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 var HASH_MAP_INIT_SIZE = 89;
 
 // Hash map min and max load factors
-var HASH_MAP_MIN_LOAD = 0.1;
-var HASH_MAP_MAX_LOAD = 0.6;
+var HASH_MAP_MIN_LOAD_NUM = 1;
+var HASH_MAP_MIN_LOAD_DENUM = 10;
+var HASH_MAP_MAX_LOAD_NUM = 6;
+var HASH_MAP_MAX_LOAD_DENUM = 10;
 
 // Next object serial number to be assigned
 var nextObjectSerial = 1;
@@ -100,9 +102,16 @@ function HashMap(hashFunc, equalFunc)
         // Increment the number of items stored
         this.numItems++;
 
-        // If we are above the max load factor, expand the internal array
-        if (this.numItems > this.numSlots * HASH_MAP_MAX_LOAD - 1)
+        // Test if resizing of the hash map is needed
+        // numItems > ratio * numSlots
+        // numItems > num/denum * numSlots 
+        // numItems / num > numSlots / denum
+        if (this.numItems / HASH_MAP_MAX_LOAD_NUM >
+            this.numSlots / HASH_MAP_MAX_LOAD_DENUM
+        )
+        {
             this.resize(2 * this.numSlots + 1);
+        }
     };
 
     /**
@@ -135,9 +144,16 @@ function HashMap(hashFunc, equalFunc)
         // Increment the number of items stored
         this.numItems++;
 
-        // If we are above the max load factor, expand the internal array
-        if (this.numItems > this.numSlots * HASH_MAP_MAX_LOAD - 1)
+        // Test if resizing of the hash map is needed
+        // numItems > ratio * numSlots
+        // numItems > num/denum * numSlots 
+        // numItems / num > numSlots / denum
+        if (this.numItems / HASH_MAP_MAX_LOAD_NUM >
+            this.numSlots / HASH_MAP_MAX_LOAD_DENUM
+        )
+        {
             this.resize(2 * this.numSlots + 1);
+        }
     };
 
     /**
@@ -194,9 +210,19 @@ function HashMap(hashFunc, equalFunc)
                 // Decrement the number of items stored
                 this.numItems--;
 
+
                 // If we are under the minimum load factor, shrink the internal array
-                if (this.numItems < this.numSlots * HASH_MAP_MIN_LOAD && this.numSlots > HASH_MAP_INIT_SIZE)
+                // numItems < ratio * numSlots 
+                // numItems < num/denum * numSlots 
+                // numItems / num < numSlots / denum
+                if ((this.numItems / HASH_MAP_MIN_LOAD_NUM <
+                     this.numSlots / HASH_MAP_MIN_LOAD_DENUM)
+                    &&
+                    this.numSlots > HASH_MAP_INIT_SIZE
+                )
+                {
                     this.resize((this.numSlots - 1) >> 1);
+                }
 
                 // Item removed
                 return;
@@ -205,7 +231,7 @@ function HashMap(hashFunc, equalFunc)
             index = (index + 2) % this.array.length;
         }
     
-        assert (false, 'cannot remove item, key not found');        
+        assert (false, 'cannot remove item, key not found');
     };
 
     /**
