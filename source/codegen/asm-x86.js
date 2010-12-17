@@ -399,9 +399,6 @@ x86.Assembler.prototype.linked.prototype.toString = function (verbose)
     }
 };
 
-
-
-
 /**
     Returns a new memory object. Note: the lower case constructor
     means new is not necessary to create an object of this class.
@@ -1489,21 +1486,26 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
         if (op === 17)
         {
             this.movImm(dest, src, width);
-        } else
+        } 
+        else
         {
             this.opImm(op, mnemonic, src, dest, width);
         }
-    } else if (src.type === x86.type.REG)
+    }
+    else if (src.type === x86.type.REG)
     {
         genOp(src, dest, true);
-    } else if (dest.type === x86.type.REG)
+    } 
+    else if (dest.type === x86.type.REG)
     {
         genOp(dest, src, false);
-    } else
+    }
+    else
     {
         error("invalid operand combination", dest, src);
     }
-   return this;
+
+    return this;
 };
 
 /**
@@ -1533,7 +1535,8 @@ x86.Assembler.prototype.pushImm = function (dest)
     {
         this.gen8(0x6a); // opcode
         listing(this._genImmNum(k, 8));
-    } else
+    } 
+    else
     {
         this.gen8(0x68); // opcode
         listing(this._genImmNum(k, 32));
@@ -1567,7 +1570,8 @@ x86.Assembler.prototype.pushPop = function (opnd, isPop)
             assert(opnd.field() < 8,
                    "cannot push/pop extended register" +
                    " in 32 bit mode");
-        } else
+        } 
+        else
         {
             that.assert64bitMode();
             if (opnd.field() >= 8)

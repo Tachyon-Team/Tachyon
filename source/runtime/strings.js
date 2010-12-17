@@ -50,9 +50,30 @@ NOTE: this is also used to find strings in the hash consing table
 */
 function strcmp(str1, str2)
 {
-    // TODO
+    "tachyon:arg str1 rptr";
+    "tachyon:arg str2 rptr";
+    "tachyon:ret pint";
 
-    // TODO: define constant for raw string data offset?
+    // For each character to be compared
+    for (;;)
+    {
+        var ch1 = iir.load(IRType.u16, str1, iir.constant(IRType.pint, 0));
+        var ch2 = iir.load(IRType.u16, str1, iir.constant(IRType.pint, 0));
+
+        if (ch1 < ch2)
+            return iir.icast(IRType.pint, -1);
+        else if (ch1 > ch2)
+            return iir.constant(IRType.pint, 1);
+        
+        if (ch1 == iir.constant(IRType.u16, 0))
+            break;
+
+        str1 += iir.constant(IRType.pint, 2);
+        str2 += iir.constant(IRType.pint, 2);
+    }
+
+    // The strings are equal
+    return iir.constant(IRType.pint, 0);
 }
 
 /**
@@ -78,6 +99,15 @@ function getStrObj(strData, strLen)
     // - involves string comparison
     //
     // For now, no resizing of table
+
+
+
+
+    // TODO: look for string in string table before allocating
+    // TODO: define constant for raw string data offset?
+
+
+
 
     // Allocate a string object
     var strObj = alloc_str(strLen);

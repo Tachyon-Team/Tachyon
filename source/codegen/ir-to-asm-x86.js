@@ -282,7 +282,8 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
             {
                 opnds = instr.uses.map(replace);
                 instr.genCode(this, opnds);
-            } else
+            } 
+            else
             {
                 // Replace constants by immediate values
                 opnds = instr.regAlloc.opnds.map(replace);
@@ -1200,7 +1201,12 @@ LtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.numBits);
+        tltor.asm.cmp(
+            opnds[1],
+            opnds[0],
+            (opnds[0].width === undefined && opnds[1].width === undefined)?
+            this.type.numBits:undefined
+        );
     }
 
     tltor.asm.
