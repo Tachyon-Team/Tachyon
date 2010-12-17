@@ -15,10 +15,7 @@ Apply all peephole optimization patterns to a CFG
 */
 function applyPatternsCFG(cfg, maxItrs)
 {
-    // If no maximum iteration count is set, there is no maximum
-    if (maxItrs === undefined)
-        maxItrs = Infinity;
-
+    // Apply all block patterns
     var numItrs = applyPatternsListCFG(
         blockPatterns,
         cfg,
@@ -29,7 +26,7 @@ function applyPatternsCFG(cfg, maxItrs)
 
     // If the number of iterations is limited, and the limit was reached,
     // apply dead block removal
-    if (maxItrs != Infinity && numItrs == maxItrs)
+    if (maxItrs !== undefined && numItrs == maxItrs)
         remDeadBlocks(cfg);
 
     return numItrs;
@@ -43,7 +40,7 @@ function remDeadBlocks(cfg)
     return applyPatternsListCFG(
         [blockPatterns.remDead],
         cfg,
-        Infinity,
+        undefined,
         false,
         false
     );
@@ -64,7 +61,10 @@ function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
     var changed = true;
 
     // Repeat until no more changes occur or the max iteration count is reached
-    for (var itrCount = 0; changed && itrCount < maxItrs; ++itrCount)
+    for (var itrCount = 0; 
+         changed && (itrCount < maxItrs || maxItrs === undefined); 
+         ++itrCount
+    )
     {
         //print('*** itr ' + itrCount);
 
@@ -293,7 +293,7 @@ blockPatterns.emptyBypass = new optPattern(
         var changed = false;
 
         // For each predecessor
-        PRED_LOOP: //FIXME: remove LabelledStatement
+        PRED_LOOP:
         for (var j = 0; j < preds.length; ++j)
         {
             var pred = preds[j];
@@ -311,7 +311,7 @@ blockPatterns.emptyBypass = new optPattern(
 
                 // If the phi node already has this predecessor, skip the predecessor
                 if (arraySetHas(instr.preds, pred))
-                    continue PRED_LOOP; //FIXME: remove LabelledStatement
+                    continue PRED_LOOP;
             }
 
             //print('simplifying no instructions, single successor: ' + block.getBlockName() + ', succ: ' + succ.getBlockName());
