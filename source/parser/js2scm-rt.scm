@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-16 19:18:36 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-17 09:53:11 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -88,48 +88,11 @@
         (table-set! stats-set len (+ 1 (table-ref stats-set len 0)))))
   (table-set! at key val))
 
-(define-type Object
-  extender: define-type-of-Object
-  ctor
-  proto
-  at ;; assoc-table
-)
-
-(define (make-empty-Object)
-  (make-Object #f #f (make-assoc-table)))
-
-(define (has-own-prop? self name)
-  (let ((x (assoc-table-ref (Object-at self) name assoc-table-ref)))
-    (not (eq? x assoc-table-ref))))
-
-(define (has-prop? self name)
-  (not (eq? (js:index self name) (js.undefined))))
-
-(define-type-of-Object Function
-  fn
-)
-
-(define-type-of-Object String
-  str
-)
-
-(define-type-of-Object Number
-  num
-)
-
-(define-type-of-Object Array
-  len
-  vect
-)
-
-(define-type-of-Object Error
-)
-
 (define prototypes (make-table test: eq? weak-keys: #t))
 
 (define (get-prototype ctor)
   (if (not (procedure? ctor))
-      (error "can only get the prototype of a function" ctor)
+      (error "can only get the prototype property of a function" ctor)
       (let ((p (table-ref prototypes ctor #f)))
         (or p
             (let ((prototype (make-empty-Object)))
@@ -168,6 +131,60 @@
                           (error "get-obj-proxy unknown type" val)))))
               (table-set! obj-proxies val obj)
               obj))))
+
+(define (has-own-prop? self name)
+  (let ((x (assoc-table-ref (Object-at self) name assoc-table-ref)))
+    (not (eq? x assoc-table-ref))))
+
+(define (has-prop? self name)
+  (not (eq? (js:index self name) (js.undefined))))
+
+(define-type Object
+  extender: define-type-of-Object
+  ctor
+  proto
+  at ;; assoc-table
+)
+
+(define (_Object this . args)
+  (if (pair? args)
+      (error "Object with 1 argument not implemented")
+      (make-empty-Object)))
+
+(define (create-Object proto)
+  (make-Object _Object
+               proto
+               (make-assoc-table)))
+
+(define Object-prototype
+  (create-Object '())) ;; prototype is null
+
+(table-set! prototypes _Object Object-prototype)
+
+(define (make-empty-Object)
+  (make-Object _Object
+               Object-prototype
+               (make-assoc-table)))
+
+(define-type-of-Object Function
+  fn
+)
+
+(define-type-of-Object String
+  str
+)
+
+(define-type-of-Object Number
+  num
+)
+
+(define-type-of-Object Array
+  len
+  vect
+)
+
+(define-type-of-Object Error
+)
 
 ;;;----------------------------------------------------------------------------
 
@@ -224,9 +241,9 @@
     (let ((x (assoc-table-ref (Object-at obj) prop assoc-table-ref)))
       (if (eq? x assoc-table-ref)
           (let ((proto (Object-proto obj)))
-            (if proto
-                (js:index proto prop)
-                (js.undefined)))
+            (if (null? proto)
+                (js.undefined)
+                (js:index proto prop)))
           x)))
 
   (cond ((equal? prop "prototype")
@@ -274,13 +291,11 @@
 
 ;; Object
 
-(define _Object (make-empty-Object))
-
 (js:index-set!
  _Object
  "create"
- (lambda (self proto) 
-   (make-Object _Object proto (make-assoc-table))))
+ (lambda (self proto)
+   (create-Object proto)))
 
 ;;;----------------------------------------------------------------------------
 
@@ -414,7 +429,6 @@
           (new-v (vector-append v1 v2 v3)))
      (Array-vect-set! self new-v)
      (Array-len-set! self (vector-length new-v))
-     (pp (list v1 v2 v3 '=> v0));;;;;;;;;;;;
      (vector->Array v0))))
 
 (js:index-set!
@@ -616,6 +630,11 @@
        (Array-push obj elem))
      elems)
     obj))
+
+(define (js:obj-lit . props)
+  (make-Object _Object
+               Object-prototype
+               (list->assoc-table props)))
 
 (define (js:instanceof x y)
   (cond ((Object? x)

@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-16 19:36:28 feeley>
+// File: "parser.js", Time-stamp: <2010-12-17 10:00:19 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 

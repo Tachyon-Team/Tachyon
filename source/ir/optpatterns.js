@@ -62,7 +62,7 @@ function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
 
     // Repeat until no more changes occur or the max iteration count is reached
     for (var itrCount = 0; 
-         changed && (itrCount < maxItrs || maxItrs === undefined); 
+         changed && (maxItrs === undefined || itrCount < maxItrs); 
          ++itrCount
     )
     {
