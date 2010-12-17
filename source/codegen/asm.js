@@ -387,7 +387,6 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     // Constants controlling the output layout
     const textCol   = 32;
     const posWidth  =  6;
-    const posRadix  = 16;
     const byteWidth =  3;
 
     /** @ignore */
@@ -395,7 +394,7 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     /** @ignore */
     function printByte(b) 
     { 
-        return printDigit(b >> 4) + printDigit(b%16) + " "; 
+        return printDigit(b >> 4) + printDigit(b % 16) + " "; 
     };
 
     /** @ignore */
@@ -403,13 +402,12 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     {
         var s = new Array(posWidth);
 
-        // Adds every digit of the position with
-        // posRadix as a base, starting from the
+        // Adds every digit of the position starting from the
         // least significant
         for (var i=posWidth-1; i>=0; i--)
         {
-            s[i] = printDigit(p % posRadix);
-            p = Math.floor(p / posRadix);
+            s[i] = printDigit(p % 16);
+            p = p >> 4;
         }
 
         return s.join("");
@@ -973,7 +971,7 @@ asm.CodeBlock.prototype.genProvided = function (linkObj)
 /** 
     Patches at each of the requiring site of the machine code block,
     the address of the corresponding providing site, as determined by
-    the egality of the linking objects.
+    the equality of the linking objects.
 
     'mcb' is the machine code block to link.
     
@@ -1020,8 +1018,9 @@ asm.address = function (byteArray, bigEndian)
     assert(bigEndian === false,
            "Only big endian address format is supported for now");
 
+    // FIXME: can't use 32 bit upper/lower parts because this overflows fixnums (for now hope there is no overflow)
     that.lowerAddr = 0;
-    that.upperAddr = null;
+    that.upperAddr = 0;
 
     that.bigEndian = bigEndian;
 
@@ -1035,12 +1034,10 @@ asm.address = function (byteArray, bigEndian)
     
     if (byteArray.length === 8)
     {
-        that.upperAddr = 0;
         for (i=7; i >= 4; --i)
         {
             that.upperAddr = 256*that.upperAddr + byteArray[i];
         }
-
     } 
 
     return that;
@@ -1049,7 +1046,7 @@ asm.address = function (byteArray, bigEndian)
 /** Returns the number of bits in the address */
 asm.address.prototype.width = function ()
 {
-    return this.upperAddr === null ? 32 : 64;
+    return (this.upperAddr === 0) ? 32 : 64;
 };
 
 /** Returns a new address corresponding to the old address
@@ -1059,22 +1056,15 @@ asm.address.prototype.addOffset = function (n)
 {
     assert(n >= 0, "'n' should be an address or a positive integer");
 
-    const MAX_INT = 0xffffffff;
+    // FIXME: can't use 32 bit upper/lower parts because this overflows fixnums (for now hope there is no overflow)
+
     const lowerAddr = this.lowerAddr + n;
+    const upperAddr = this.upperAddr;
     const newAddr = Object.create(this);
 
-    if (lowerAddr <= MAX_INT)
-    {
-        newAddr.lowerAddr = lowerAddr;
-    } else
-    {
-        const upperAddrInc = lowerAddr / (MAX_INT + 1);
-        assert((upperAddrInc + upperAddr) <= MAX_INT, 
-               "Address overflow"); 
-        newAddr.upperAddr += upperAddrInc;
+    newAddr.lowerAddr = lowerAddr;
+    newAddr.upperAddr = upperAddr;
 
-        newAddr.lowerAddr = lowerAddr % (MAX_INT + 1);
-    }
     return newAddr;
 };
 

@@ -341,7 +341,7 @@ staticEnv.regBinding(
     )
 );
 
-// Hash map max load factor (num/denum)
+// Hash map max load factor (num/denom)
 staticEnv.regBinding(
     'HASH_MAP_MAX_LOAD_NUM',
     ConstValue.getConst(
@@ -350,7 +350,7 @@ staticEnv.regBinding(
     )
 );
 staticEnv.regBinding(
-    'HASH_MAP_MAX_LOAD_DENUM',
+    'HASH_MAP_MAX_LOAD_DENOM',
     ConstValue.getConst(
         5,
         IRType.pint

@@ -80,9 +80,8 @@ irToAsm.getEntryPoint = function (irfunc, name)
         name = "default";
     
     var ep;
-    const width = irToAsm.config.target === x86.target.x86 ?
-                  32 : 64;
-    const offset = width / 8;
+    const width = (irToAsm.config.target === x86.target.x86) ? 32 : 64;
+    const offset = width >> 3;
 
     function setEntryPoint (ep, name)
     {
@@ -143,7 +142,7 @@ irToAsm.spillAllocator = function ()
 irToAsm.spillAllocator.prototype.newSlot = function ()
 {
     // Memory is byte addressed
-    var offset = (this.slots.length * irToAsm.config.stack.width())/8;
+    var offset = (this.slots.length * irToAsm.config.stack.width()) >> 3;
     var s = mem(offset, irToAsm.config.stack);
     this.slots.push(s);
     return s;
@@ -535,7 +534,7 @@ irToAsm.translator.prototype.func_init = function ()
     //       passed lesser than the number of arguments
     //       expected
 
-    const byteLength = irToAsm.config.stack.width() / 8;
+    const byteLength = irToAsm.config.stack.width() >> 3;
     var spillNb = this.fct.regAlloc.spillNb;
     if (spillNb > 0)
     {
@@ -649,7 +648,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const argRegNb = irToAsm.config.argsIndex.length;
 
     // Number of bytes in a reference
-    const refByteNb = irToAsm.config.stack.width() / 8;
+    const refByteNb = irToAsm.config.stack.width() >> 3;
 
     // Number of variables spilled during register allocation
     const regAllocSpillNb = tltor.fct.regAlloc.spillNb; 
@@ -866,7 +865,7 @@ AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
     const stack = irToAsm.config.stack;
-    const refByteNb = stack.width() / 8;
+    const refByteNb = stack.width() >> 3;
     const normalTarget = this.targets[0];
     const overflowTarget = this.targets[1];
 
@@ -919,7 +918,7 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
     const stack = irToAsm.config.stack;
-    const refByteNb = stack.width() / 8;
+    const refByteNb = stack.width() >> 3;
     const normalTarget = this.targets[0];
     const overflowTarget = this.targets[1];
 
@@ -1376,7 +1375,7 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the return value
     const dest = this.regAlloc.dest;
     const offset = tltor.fct.regAlloc.spillNb;
-    const refByteNb = irToAsm.config.stack.width() / 8;
+    const refByteNb = irToAsm.config.stack.width() >> 3;
     const retValReg = irToAsm.config.retValReg;
 
     // Remove all spilled values and return address from stack
@@ -1595,7 +1594,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                opnds[0].type === x86.type.MEM)
     {
         // Number of bytes in a reference
-        const refByteNb = irToAsm.config.stack.width() / 8;
+        const refByteNb = irToAsm.config.stack.width() >> 3;
 
         // Register for the function address
         const funcObjReg = irToAsm.config.argsReg[0];
