@@ -1008,7 +1008,7 @@ asm.link = function (mcb)
 /** Represents a machine address */
 asm.address = function (byteArray, bigEndian)
 {
-    if (bigEndian === undefine)
+    if (bigEndian === undefined)
         bigEndian = false;
 
     const that = Object.create(asm.address.prototype);
