@@ -3940,7 +3940,7 @@ function genInlineIR(context, branches)
     instrArgs = instrArgs.concat(argVals);
 
     // If branch targets were specified, add them to the instruction arguments
-    if (branches)
+    if (branches !== undefined)
         instrArgs = instrArgs.concat(branches);
 
     // Get a reference to the instruction constructor

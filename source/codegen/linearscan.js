@@ -9,7 +9,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace */
-var allocator = allocator || {};
+var allocator = {};
 
 
 //-----------------------------------------------------------------------------
@@ -21,7 +21,8 @@ var allocator = allocator || {};
 /** Returns the max index and the max value of an array */
 allocator.max = function (a, accessFct)
 {
-    accessFct = accessFct || function (a) { return a; };
+    if (accessFct === undefined)
+        accessFct = function (x) { return x; };
 
     var maxIndex = 0;
     var maxValue = 0;
@@ -29,10 +30,11 @@ allocator.max = function (a, accessFct)
 
     for (i=0; i < a.length; ++i)
     {
-        if (accessFct(a[i]) > maxValue)
+        var x = accessFct(a[i]);
+        if (x > maxValue)
         {
             maxIndex = i;
-            maxValue = accessFct(a[i]); 
+            maxValue = x; 
         }
     }
     
@@ -42,7 +44,8 @@ allocator.max = function (a, accessFct)
 /** Returns the min index and the min value of an array */
 allocator.min = function (a, accessFct)
 {
-    accessFct = accessFct || function (a) { return a; };
+    if (accessFct === undefined)
+        accessFct = function (x) { return x; };
 
     var minIndex = 0;
     var minValue = 0;
@@ -50,10 +53,11 @@ allocator.min = function (a, accessFct)
 
     for (i=0; i < a.length; ++i)
     {
-        if (accessFct(a[i]) > minValue)
+        var x = accessFct(a[i]);
+        if (x < minValue)
         {
             minIndex = i;
-            minValue = a[i]; 
+            minValue = x; 
         }
     }
     
@@ -121,7 +125,8 @@ allocator.binSearch = function (a, value, cmpFct)
 */
 allocator.find = function (a, value, accessFct)
 {
-    accessFct = accessFct || function (x) { return x; };
+    if (accessFct === undefined)
+        accessFct = function (x) { return x; };
 
     var i;
     for(i=0; i < a.length; ++i)
@@ -145,7 +150,8 @@ allocator.find = function (a, value, accessFct)
 */
 allocator.findPos = function (a, value, accessFct)
 {
-    accessFct = accessFct || function (x) { return x; };
+    if (accessFct === undefined)
+        accessFct = function (x) { return x; };
 
     var i;
     for(i=0; i < a.length; ++i)
@@ -232,8 +238,12 @@ allocator.set.prototype.toString = function ()
 allocator.priorityQueue = function (a, cmpFunction)
 {
     var that = Object.create(allocator.priorityQueue.prototype);
-    that.innerArray = a || that.innerArray;
-    that.cmpFunction = cmpFunction || that.cmpFunction;
+
+    if (a !== undefined)
+        that.innerArray = a;
+
+    if (cmpFunction !== undefined)
+        that.cmpFunction = cmpFunction;
 
     // Ensure sorted
     that.innerArray.sort(cmpFunction);
@@ -338,8 +348,13 @@ allocator.priorityQueue.prototype.toString = function ()
 allocator.range = function (startPos, endPos) 
 {
     var that = Object.create(allocator.range.prototype);
-    that.startPos = startPos || that.startPos;
-    that.endPos   = endPos   || that.endPos;
+
+    if (startPos !== undefined)
+        that.startPos = startPos;
+
+    if (endPos !== undefined)
+        that.endPos = endPos;
+
     return that;
 };
 /** Start position of the range, inclusive */
@@ -414,8 +429,13 @@ allocator.range.prototype.cmp = function (pos, isInclusive)
 allocator.usePos = function (pos, registerFlag)
 {
     var that = Object.create(allocator.usePos.prototype);
-    that.pos = pos || that.pos; 
-    that.registerFlag = registerFlag || that.registerFlag;
+
+    if (pos !== undefined)
+        that.pos = pos;
+
+    if (registerFlag !== undefined)
+        that.registerFlag = registerFlag;
+
     return that;
 };
 /** @namespace */
@@ -453,7 +473,7 @@ allocator.interval = function (ranges, usePositions)
     that.ranges = ranges || [];
     that.ranges.sort(function (r1,r2) { return r1.startPos - r2.startPos; });
 
-    if (usePositions)
+    if (usePositions !== undefined)
     {
         that.usePositions = usePositions;
     } else
@@ -883,12 +903,13 @@ allocator.interval.prototype.nextUse = function (pos, registerFlag)
 {
     var i;
 
-    pos = pos || 0;
+    if (pos === undefined)
+        pos = 0;
 
     for (i=0; i < this.usePositions.length; ++i)
     {
          if (this.usePositions[i].pos >= pos && 
-             ( !registerFlag ||
+             ( registerFlag === undefined ||
              this.usePositions[i].registerFlag === registerFlag))
         {
             break;

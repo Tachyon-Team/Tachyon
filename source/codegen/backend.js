@@ -7,14 +7,16 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace */
-var backend = backend || {};
+var backend = {};
 
 /**
     Returns a code block representing the compiled IRFunction.
 */
 backend.compileIRToCB = function (ir, flags)
 {
-    flags = flags || {};
+    if (flags === undefined)
+        flags = {};
+
     var print = flags.print;
     var primitives = flags.primitives;
 
@@ -192,7 +194,8 @@ backend.compileIRToCB = function (ir, flags)
 */
 backend.compileIRToMCB = function (ir, flags)
 {
-    flags = flags || {};
+    if (flags !== undefined)
+        flags = {};
 
     var cb = backend.compileIRToCB(ir, flags);
     //print(backend.listing(cb));

@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-15 14:37:08 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-16 17:34:41 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -21,7 +21,7 @@
 ;;; JavaScript forms.
 
 (define-macro (js.var variable)
-  `(define ,variable #f))
+  `(define ,variable (js.undefined)))
 
 (define-macro (js.function params body)
   `(lambda (this

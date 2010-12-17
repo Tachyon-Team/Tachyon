@@ -10,7 +10,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace x86 code generator */
-var x86 = x86 || {};
+var x86 = {};
 
 /** @namespace potential x86 targets */
 x86.target = {};
@@ -52,6 +52,9 @@ x86.isSigned32 = function (num)
 */
 x86.Assembler = function (target)
 {
+    if (target === undefined)
+        target = x86.target.x86;
+
     /** Flag for listing output */
     this.useListing = true;
 
@@ -62,7 +65,7 @@ x86.Assembler = function (target)
         should not be modified once the object is constructed */
     // TODO: refactor to have a setter throw an exception once
     // getter and setter are supported
-    this.target     = target || x86.target.x86;
+    this.target     = target;
 };
 
 /** Returns whether the current compilation target is x86_64 */
@@ -225,7 +228,10 @@ x86.Assembler.prototype._genImmNum = function (k, width)
 */
 x86.Assembler.prototype.genImmNum = function (k, width)
 {
-    return this._genImmNum(k, Math.min(32, width || 32));
+    if (width === undefined)
+        width = 32;
+
+    return this._genImmNum(k, Math.min(32, width));
 };
 
 
@@ -305,27 +311,37 @@ x86.Assembler.prototype.immediateValue.prototype.toString = function (verbose)
 */
 x86.Assembler.prototype.memory = function ( disp, base, index, scale )
 {
-    assert((disp === undefined)  || typeof disp === "number",
+    if (disp === undefined)
+        disp = 0;
+
+    if (base === undefined)
+        base = null;
+
+    if (index === undefined)
+        index = null;
+
+    if (scale === undefined)
+        scale = 1;
+
+    assert(typeof disp === "number",
                "'disp' argument should be a number");
-    assert((base === undefined)  || base.type === x86.type.REG,
+    assert((base === null)  || base.type === x86.type.REG,
                "'base' argument should be a register");
-    assert((index === undefined) || index.type === x86.type.REG,
+    assert((index === null) || index.type === x86.type.REG,
                "'index' argument should be a register");
-    assert((scale === undefined) ||
-           (typeof scale === "number" &&
-            (scale === 1 || scale === 2 || scale === 4 || scale === 8)),
+    assert(scale === 1 || scale === 2 || scale === 4 || scale === 8,
                "'scale' argument should be 1,2,4 or 8");
 
     var that = Object.create(x86.Assembler.prototype.memory.prototype);
 
     /** @private */
-    that.disp  = disp  || 0;
+    that.disp  = disp;
     /** @private */
-    that.base  = base  || null;
+    that.base  = base;
     /** @private */
-    that.index = index || null;
+    that.index = index;
     /** @private */
-    that.scale = scale || 1;
+    that.scale = scale;
 
     return that;
 };
@@ -1057,7 +1073,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
 
         case x86.type.MEM:
             const base = opnd.base;
-            if(base)
+            if (base !== null)
             {
                 assert((base.isr32() || (base.isr64() &&
                             this.is64bitMode())),
@@ -1068,7 +1084,7 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
                 rex += (base.field() >> 3);
 
                 const index = opnd.index;
-                if(index)
+                if (index !== null)
                 {
                     assert((base.isr32() ? index.isr32() : index.isr64()),
                            "index register must have the"+
@@ -1140,17 +1156,17 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             const disp  = opnd.disp;
             const scale = opnd.scale;
 
-            if (base)
+            if (base !== null)
             {
                 // index: Need a SIB when using an index
                 // baseFieldLo: register or base = RSP/R12
-                if (index || (baseFieldLo === 4))
+                if (index !== null || (baseFieldLo === 4))
                 {
                     // SIB Needed
                     modrm = modrm_rf + 4;
                     var sib   = baseFieldLo;
 
-                    if (index)
+                    if (index !== null)
                     {
                         assert(!(index.field() === 4),
                                "SP not allowed as index", index);
@@ -1205,7 +1221,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
                         this.gen32(disp);
                     }
                 }
-            } else // (!base)
+            } else // (base !== null)
             {
                 // Absolute address, use disp32 ModR/M
                 absAddr();
@@ -1719,8 +1735,10 @@ x86.Assembler.prototype.label = function (lbl)
 /** @private Generic jump to label instruction encoding */
 x86.Assembler.prototype.jumpLabel = function (opcode, mnemonic, label, offset)
 {
+    if (offset === undefined)
+        offset = 0;
+
     const that = this;
-    var offset = offset || 0;
 
     assert(label.type === asm.type.LBL,
            "invalid label '", label, "'");
@@ -2807,7 +2825,7 @@ x86.Assembler.prototype.idiv = function (src, width)
 /** Can be chained */
 x86.Assembler.prototype.xchg = function (src, dst, width)
 {
-    width = src.width? src.width():(dst.width? dst.width():width);
+    width = src.width ? src.width() : (dst.width ? dst.width() : width);
 
     assert (
         width && (width == 32 || width == 64),

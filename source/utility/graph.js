@@ -8,10 +8,10 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace */
-var graph = graph || {};
+var graph = {};
 
 /** 
-    Returns a graph object with an adjency list internal representation.
+    Returns a graph object with an adjacency list internal representation.
 
     Node objects must have a toString method returning a different value
     for each individual object.

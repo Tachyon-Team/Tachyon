@@ -16,7 +16,7 @@ Apply all peephole optimization patterns to a CFG
 function applyPatternsCFG(cfg, maxItrs)
 {
     // If no maximum iteration count is set, there is no maximum
-    if (!maxItrs)
+    if (maxItrs === undefined)
         maxItrs = Infinity;
 
     var numItrs = applyPatternsListCFG(

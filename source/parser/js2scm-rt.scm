@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-15 15:49:22 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-16 11:34:27 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -242,8 +242,9 @@
          (cond ((equal? prop "length")
                 (Array-len obj))
                ((number? prop)
-                (Array-resize-if-needed obj (fx+ prop 1))
-                (vector-ref (Array-vect obj) prop))
+                (if (fx< prop (Array-len obj))
+                    (vector-ref (Array-vect obj) prop)
+                    (js.undefined)))
                (else
                 (get-in-at))))
         ((Object? obj)
@@ -321,6 +322,16 @@
           (vector-set! new-v i x)
           (Array-len-set! arr (fx+ i 1))
           (Array-vect-set! arr new-v)))))
+
+(define (Array-shift arr)
+  (let ((len (Array-len arr)))
+    (if (fx> len 0)
+        (let* ((v (Array-vect arr))
+               (x (vector-ref v 0)))
+          (Array-len-set! arr (fx- len 1))
+          (Array-vect-set! arr (subvector v 1 len))
+          x)
+        (js.undefined))))
 
 (define (Array-resize-if-needed arr len)
   (let ((v (Array-vect arr)))
@@ -400,6 +411,11 @@
  (js:index _Array "prototype")
  "push"
  Array-push)
+
+(js:index-set!
+ (js:index _Array "prototype")
+ "shift"
+ Array-shift)
 
 (js:index-set!
  (js:index _Array "prototype")
@@ -600,7 +616,7 @@
         (Array-for-each-index set iteration))))
 
 (define (js:throw obj)
-  (pp obj)
+  (pp (table->list (Object-at obj)));;;;;;;;;;;;;;;
   (raise obj))
 
 (define (js:typeof obj)

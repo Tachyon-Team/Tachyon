@@ -7,7 +7,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace Glue code to tie the frontend and the backend together. */
-var compiler = compiler || {};
+var compiler = {};
 
 /** 
     Function meant to be assigned to the 'execute' field 
@@ -54,7 +54,9 @@ compiler.link = function ()
 */
 function compileIR(ir, flags) 
 {
-    flags = flags || {};
+    if (flags === undefined)
+        flags = {};
+
     ir.linking.linked = false;
     ir.linking.link = compiler.link;
 
@@ -101,7 +103,8 @@ after last usage by calling the 'free' method on the function. Ex:
 */
 function compileFileToJSFunc(filename, flags) 
 {
-    flags = flags || {};
+    if (flags === undefined)
+        flags = {};
 
     //var ir = frontend.compileFileToIR(filename, flags["tachyonSrc"]);
     var ast = parse_src_file(filename);

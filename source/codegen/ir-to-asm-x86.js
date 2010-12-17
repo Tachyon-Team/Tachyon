@@ -8,7 +8,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace */
-var irToAsm = irToAsm || {};
+var irToAsm = {};
 
 (function () { // local namespace
 
@@ -76,7 +76,8 @@ irToAsm.config.target = x86.target.x86;
 */
 irToAsm.getEntryPoint = function (irfunc, name)
 {
-    name = name || "default";
+    if (name === undefined)
+        name = "default";
     
     var ep;
     const width = irToAsm.config.target === x86.target.x86 ?
@@ -85,14 +86,16 @@ irToAsm.getEntryPoint = function (irfunc, name)
 
     function setEntryPoint (ep, name)
     {
-        name = name || "default";
+        if (name === undefined)
+            name = "default";
 
         this.entryPoints[name] = ep;
     };
 
     function getEntryPoint (name)
     {
-        name = name || "default";
+        if (name === undefined)
+            name = "default";
 
         return this.entryPoints[name];
     };

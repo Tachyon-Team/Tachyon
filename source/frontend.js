@@ -6,7 +6,7 @@ Front-end interface.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
-var frontend = frontend || {};
+var frontend = {};
 
 /**
 Compile a file to an optimized IRFunction
@@ -16,7 +16,8 @@ Compile a file to an optimized IRFunction
 */
 frontend.compileFileToIR = function (filename, tachyonSrc)
 {
-    tachyonSrc = tachyonSrc || false;
+    if (tachyonSrc === undefined)
+        tachyonSrc = false;
 
     var ast = parse_src_file(filename);
     var ir = unitToIR(ast, tachyonSrc);

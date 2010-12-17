@@ -739,7 +739,7 @@ function PhiInstr(values, preds)
     Phi node type, equal to the input values type
     @field
     */
-    this.type = this.uses.length? this.uses[0].type:IRType.none;
+    this.type = (this.uses.length > 0) ? this.uses[0].type : IRType.none;
 }
 PhiInstr.prototype = new IRInstr();
 
@@ -999,7 +999,7 @@ function instrMaker(
         else
         {
             // Verify if all types in the specification are the same
-            var firstType = inputVals.length? inputVals[0].type:null;
+            var firstType = (inputVals.length > 0) ? inputVals[0].type : null;
             var allSame = true;
             for (var j = 0; j < inputVals.length; ++j)
             {
@@ -1789,7 +1789,7 @@ Get the continuation target block of the call instruction
 */
 CallInstr.prototype.getContTarget = function ()
 {
-    return (this.targets.length > 0)? this.targets[0]:null;
+    return (this.targets.length > 0) ? this.targets[0] : null;
 };
 
 /**
@@ -1808,7 +1808,7 @@ Get the throw target block of the call instruction
 */
 CallInstr.prototype.getThrowTarget = function ()
 {
-    return (this.targets.length > 1)? this.targets[1]:null;
+    return (this.targets.length > 1) ? this.targets[1] : null;
 };
 
 /**
