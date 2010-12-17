@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-16 08:59:35 feeley>
+// File: "parser.js", Time-stamp: <2010-12-16 19:36:28 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -16,6 +16,7 @@ function Parser(scanner, autosemicolon_enabled)
 
     this.autosemicolon_enabled = autosemicolon_enabled;
     this.autosemicolon_warning = autosemicolon_enabled;
+    this.number_literal_warning = true;
 
     this.stack = [];
     this.sp    = 0;
@@ -81,7 +82,19 @@ Parser.prototype.consume = function ()
         this.previous_input = this.input;
         this.input = this.scanner.get_token();
         this.input_valid = true;
+
         // print(this.input.loc.to_string() + ":");
+
+        if (this.input.cat === NUMBER_CAT && this.number_literal_warning)
+        {
+            if (Math.floor(this.input.value) !== this.input.value)
+                this.warning(this.input.loc,
+                             "number literal is not an integer");
+            else if (this.input.value < -1073741824 ||
+                     this.input.value > 1073741823)
+                this.warning(this.input.loc,
+                             "number literal is outside 30 bit integer range");
+        }
     }
 };
 

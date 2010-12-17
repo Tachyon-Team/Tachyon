@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-16 11:34:27 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-16 19:18:36 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -323,6 +323,16 @@
           (Array-len-set! arr (fx+ i 1))
           (Array-vect-set! arr new-v)))))
 
+(define (Array-pop arr)
+  (let ((len (Array-len arr)))
+    (if (fx> len 0)
+        (let* ((v (Array-vect arr))
+               (x (vector-ref v (fx- len 1))))
+          (Array-len-set! arr (fx- len 1))
+          (Array-vect-set! arr (subvector v 0 (fx- len 1)))
+          x)
+        (js.undefined))))
+
 (define (Array-shift arr)
   (let ((len (Array-len arr)))
     (if (fx> len 0)
@@ -411,6 +421,11 @@
  (js:index _Array "prototype")
  "push"
  Array-push)
+
+(js:index-set!
+ (js:index _Array "prototype")
+ "pop"
+ Array-pop)
 
 (js:index-set!
  (js:index _Array "prototype")
