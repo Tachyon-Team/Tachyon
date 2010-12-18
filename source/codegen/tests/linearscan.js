@@ -132,7 +132,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
     t.case1 = function ()
     {
         assert(interval([t.r1, t.r3]).nextIntersection(interval([t.r2])) 
-                === Infinity);
+                === MAX_FIXNUM);
     };
     
     // Case 2: Split in the middle of a range 
@@ -149,7 +149,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         assert(it1.startPos() === 0);
         assert(it1.endPos() === 1);
         assert(it1.nextUse(0) === 0);
-        assert(it1.nextUse(1) === Infinity);
+        assert(it1.nextUse(1) === MAX_FIXNUM);
         assert(it2.startPos() === 1);
         assert(it2.endPos() === 2);
         assert(it2.nextUse(1) === 2);
@@ -223,7 +223,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         assert(it1.endPos() === 1);
         assert(it1.nextUse(0) === 0);
         assert(it1.nextUse(1) === 1);
-        assert(it1.nextUse(2) === Infinity);
+        assert(it1.nextUse(2) === MAX_FIXNUM);
         assert(it2.startPos() === 3);
         assert(it2.endPos() === 4);
         assert(it2.nextUse(3) === 3);
@@ -246,7 +246,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         assert(it1.nextUse(0) === 0);
         assert(it1.nextUse(1) === 1);
         assert(it1.nextUse(2) === 3);
-        assert(it1.nextUse(4) === Infinity);
+        assert(it1.nextUse(4) === MAX_FIXNUM);
         assert(it1.ranges.length === 2);
         assert(it2.startPos() === 4);
         assert(it2.endPos() === 5);

@@ -62,7 +62,7 @@ x86.Assembler = function (target)
     this.codeBlock  = new asm.CodeBlock(0, false, this.useListing);
 
     /** @private Current target for compilation,
-        should not be modified once the object is constructed */
+        must not be modified once the object is constructed */
     // TODO: refactor to have a setter throw an exception once
     // getter and setter are supported
     this.target     = target;
@@ -187,11 +187,14 @@ x86.Assembler.prototype._genImmNum = function (k, width)
     /** @ignore */
     function signedLo64(k)
     {
+        /*
         assert( k <= 9007199254740991 || k >= -9007199254740991,
                   "Internal error: current scheme cannot garantee an exact" +
                   " representation for signed numbers greater than (2^53-1)" +
                   " or lesser than -(2^53-1)");
         return k;
+        */
+        error("Internal error: 64 bits value cannot be represented");
     };
 
     if (width === 8)
@@ -273,7 +276,7 @@ x86.Assembler.prototype.immediateValue = function (value)
         value = 0;
 
     assert(typeof value === "number",
-           "'value' argument should be a number");
+           "'value' argument must be a number");
 
     var that = Object.create(x86.Assembler.prototype.immediateValue.prototype);
 
@@ -324,13 +327,13 @@ x86.Assembler.prototype.memory = function ( disp, base, index, scale )
         scale = 1;
 
     assert(typeof disp === "number",
-               "'disp' argument should be a number");
+               "'disp' argument must be a number");
     assert((base === null)  || base.type === x86.type.REG,
-               "'base' argument should be a register");
+               "'base' argument must be a register");
     assert((index === null) || index.type === x86.type.REG,
-               "'index' argument should be a register");
+               "'index' argument must be a register");
     assert(scale === 1 || scale === 2 || scale === 4 || scale === 8,
-               "'scale' argument should be 1,2,4 or 8");
+               "'scale' argument must be 1,2,4 or 8");
 
     var that = Object.create(x86.Assembler.prototype.memory.prototype);
 
@@ -367,9 +370,9 @@ x86.Assembler.prototype.linked = function (name, linkValue, width)
 {
     var that = Object.create(x86.Assembler.prototype.linked.prototype);
 
-    assert(typeof(name) === "string", "'name' argument should be a string");
-    assert(typeof(linkValue) === "function", "'linkValue' argument should be a function");
-    assert(typeof(width) === "number", "'name' argument should be a string");
+    assert(typeof(name) === "string", "'name' argument must be a string");
+    assert(typeof(linkValue) === "function", "'linkValue' argument must be a function");
+    assert(typeof(width) === "number", "'name' argument must be a string");
 
     that.name = name;
     that.linkValue = linkValue;
@@ -1451,7 +1454,7 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
             dest.type === x86.type.MEM ||
             src.type  === x86.type.REG ||
             src.type  === x86.type.MEM,
-            "one of dest or src should be a register or" +
+            "one of dest or src must be a register or" +
             " a memory location");
 
     assert(!(dest.type === x86.type.MEM &&
@@ -1629,7 +1632,7 @@ x86.Assembler.prototype.incDec = function (opnd, isInc, width)
     /** @ignore special case when the destination is a register */
     function register()
     {
-        // No rex prefix should be used since inc or dec
+        // No rex prefix must be used since inc or dec
         // opcode are used as rex prefixes
         that.
         gen8( (isInc ? 0x40 : 0x48) + (7 & opnd.field()) );
@@ -2145,11 +2148,11 @@ x86.Assembler.prototype.dec  = function (opnd, width)
 x86.Assembler.prototype.lea  = function (src, dest)
 {
     assert(dest.type === x86.type.REG,
-               "'dest' argument should be a register, instead received ", dest);
+               "'dest' argument must be a register, instead received ", dest);
     assert(!dest.isr8(),
-               "'dest' argument should not be an 8 bit register");
+               "'dest' argument must not be an 8 bit register");
     assert(src.type === x86.type.MEM,
-               "'src' argument should be a memory operand," +
+               "'src' argument must be a memory operand," +
                " instead received ", dest);
 
     this.opndPrefixRegOpnd(dest, src);
@@ -2173,11 +2176,11 @@ x86.Assembler.prototype.test = function (src, dest, width)
     const k = src.value;
 
     assert(src.type === x86.type.IMM_VAL || src.type === x86.type.REG,
-               "'src' should be an immediate value or a register instead of ",
+               "'src' must be an immediate value or a register instead of ",
                src);
 
     assert(dest.type === x86.type.REG || dest.type === x86.type.MEM,
-               "'dest' should be a register or a memory location instead of ",
+               "'dest' must be a register or a memory location instead of ",
                dest);
 
     assert((dest.type === x86.type.REG) ?
@@ -2244,11 +2247,11 @@ x86.Assembler.prototype.test = function (src, dest, width)
 x86.Assembler.prototype.cmoveGeneral  = function (op, mnemonic, src, dest)
 {
     assert(dest.type === x86.type.REG,
-               "'dest' argument should be a register, instead received ", dest);
+               "'dest' argument must be a register, instead received ", dest);
     assert(!dest.isr8(),
-               "'dest' argument should not be an 8 bit register");
+               "'dest' argument must not be an 8 bit register");
     assert(src.type === x86.type.MEM || src.type === x86.type.REG,
-               "'src' argument should be a memory or a register operand," +
+               "'src' argument must be a memory or a register operand," +
                " instead received ", dest);
 
     this.opndPrefixRegOpnd(dest, src);
@@ -2589,7 +2592,7 @@ x86.Assembler.prototype.shift =
 function (opcodeExt, mnemonic, src, dest, width)
 {
     assert(src.type === x86.type.IMM_VAL,
-               "'src' argument should be an immediate value instead of ",
+               "'src' argument must be an immediate value instead of ",
                src);
 
     assert((dest.type === x86.type.REG) ?

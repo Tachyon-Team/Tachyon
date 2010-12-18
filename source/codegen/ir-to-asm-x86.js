@@ -1457,6 +1457,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Used for loop iterations
     var i;
 
+    // Register object
+    var reg;
+
     // Used for moving operands in the right registers
     var map;
 
@@ -1621,9 +1624,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         const spillOffset = spillNb * refByteNb;
 
         // Iteration temporaries
-
-        // Register object
-        var reg;
 
         // Stack pointer offset
         var spoffset;
