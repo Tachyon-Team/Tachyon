@@ -26,6 +26,51 @@ Perform sparse conditional constant propagation on a CFG
 */
 function constProp(cfg)
 {
+    // Get the value of a constant use or instruction
+    function getValue(val)
+    {
+        if (val instanceof ConstValue)
+            return val;
+        else
+            return instrVals[val.instrId];
+    }
+
+    // Test if a basic block is reachable
+    function isReachable(block)
+    {
+        return (reachable[block.blockId] === true);
+    }
+
+    // Evaluate an SSA instruction
+    function evalInstr(instr)
+    {
+        // If there is a const prop function for this instruction, use it
+        if (instr.constEval !== undefined)
+        {
+            var val = instr.constEval(getValue, isReachable, cfgWorkList);
+
+            if (val instanceof IRInstr && 
+                instrVals[val.instrId] instanceof ConstValue)
+                return instrVals[val.instrId];
+
+            return val;
+        }
+
+        // Otherwise, if this instruction is a generic branch
+        else if (instr.isBranch())
+        {
+            // Put all branches on the CFG work list
+            for (var i = 0; i < instr.targets.length; ++i)
+            {
+                if (instr.targets[i])
+                    cfgWorkList.push(instr.targets[i]);
+            }
+        }
+
+        // By default, return the non-constant value
+        return BOT;
+    }
+    
     // List of CFG blocks to be processed
     var cfgWorkList = [cfg.entry];
 
@@ -52,7 +97,7 @@ function constProp(cfg)
             var b = cfgWorkList.pop();
 
             // Test if this is the first visit to this block
-            var firstVisit = !reachable[b.blockId];
+            var firstVisit = reachable[b.blockId] === undefined;
 
             // Mark b as reachable
             reachable[b.blockId] = true;
@@ -76,7 +121,7 @@ function constProp(cfg)
                     var dest = instr.dests[j];
 
                     // If the block of the destination is reachable
-                    if (reachable[dest.parentBlock.blockId])
+                    if (reachable[dest.parentBlock.blockId] === true)
                     {
                         // Add the dest to the SSA work list
                         ssaWorkList.push(dest);
@@ -108,7 +153,7 @@ function constProp(cfg)
                     var dest = v.dests[i];
 
                     // If the block of the destination is reachable
-                    if (reachable[dest.parentBlock.blockId])
+                    if (reachable[dest.parentBlock.blockId] === true)
                     {
                         // Add the dest to the SSA work list
                         ssaWorkList.push(dest);
@@ -118,51 +163,6 @@ function constProp(cfg)
         }
     }
 
-    // Get the value of a constant use or instruction
-    function getValue(val)
-    {
-        if (val instanceof ConstValue)
-            return val;
-        else
-            return instrVals[val.instrId];
-    }
-
-    // Test if a basic block is reachable
-    function isReachable(block)
-    {
-        return (reachable[block.blockId] === true);
-    }
-
-    // Evaluate an SSA instruction
-    function evalInstr(instr)
-    {
-        // If there is a const prop function for this instruction, use it
-        if (instr.constEval)
-        {
-            var val = instr.constEval(getValue, isReachable, cfgWorkList);
-
-            if (val instanceof IRInstr && 
-                instrVals[val.instrId] instanceof ConstValue)
-                return instrVals[val.instrId];
-
-            return val;
-        }
-
-        // Otherwise, if this instruction is a generic branch
-        else if (instr.isBranch())
-        {
-            // Put all branches on the CFG work list
-            for (var i = 0; i < instr.targets.length; ++i)
-            {
-                if (instr.targets[i])
-                    cfgWorkList.push(instr.targets[i]);
-            }
-        }
-
-        // By default, return the non-constant value
-        return BOT;
-    }
-    
     var numConsts = 0;
     var numBranches = 0;
 

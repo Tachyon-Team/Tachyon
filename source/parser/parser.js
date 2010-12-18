@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-17 10:07:28 feeley>
+// File: "parser.js", Time-stamp: <2010-12-17 11:04:35 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -17,7 +17,7 @@ function Parser(scanner, autosemicolon_enabled)
     this.autosemicolon_enabled = autosemicolon_enabled;
     this.autosemicolon_warning = autosemicolon_enabled;
     this.number_literal_warning = false;
-    this.division_warning = true;
+    this.division_warning = false;
 
     this.stack = [];
     this.sp    = 0;

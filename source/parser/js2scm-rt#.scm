@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-17 08:54:14 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-18 09:27:50 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -78,7 +78,7 @@
            (js.=== ,x '())
            (js.=== ,x 0)
            (js.=== ,x ""))
-       (error "odd false detected" ,x ,expr)
+       #f ;;; (error "odd false detected" ,x ,expr)
        ,x))
 
 (define-macro (js.if test consequent alternative)
@@ -117,21 +117,82 @@
 (define-macro (js.prop name value)
   `(cons ,name ,value))
 
-(define-macro (js.continue)
-  `(TODO-js.continue))
+(define-macro (js.goto ctrl-point)
 
-(define-macro (js.break)
-  `(continuation-return break (void)))
+  (define (ctrl-point->id ctrl-point)
+    (string->symbol (string-append "point" (number->string ctrl-point))))
 
-(define-macro (js.switch val . clauses)
-  `(let ((switch-val ,val))
-     (js.switch-clauses ,@clauses)))
+  `(continuation-return ,(ctrl-point->id ctrl-point) (void)))
 
-(define-macro (js.switch-with-break val . clauses)
-  `(continuation-capture
-    (lambda (break)
-      (let ((val ,val))
-        (js.switch-clauses ,@clauses)))))
+(define-macro (js.continue ctrl-point)
+  `(js.goto ,ctrl-point))
+
+(define-macro (js.break ctrl-point)
+  `(js.goto ,ctrl-point))
+
+(define-macro (js.ctrl-point ctrl-point expr)
+
+  (define (ctrl-point->id ctrl-point)
+    (string->symbol (string-append "point" (number->string ctrl-point))))
+
+  (if (= ctrl-point 0)
+      expr
+      `(continuation-capture
+        (lambda (,(ctrl-point->id ctrl-point))
+          ,expr))))
+
+(define-macro (js.dowhile break-ctrl-point continue-ctrl-point loop-id body test)
+  `(js.ctrl-point
+    ,break-ctrl-point
+    (let ,loop-id ()
+         (js.ctrl-point
+          ,continue-ctrl-point
+          ,body)
+         (if (let ((x ,test))
+               (js.guard-odd-false x '(js.dowhile ,break-ctrl-point ,continue-ctrl-point ,loop-id ,body ,test)))
+             (,loop-id)))))
+
+(define-macro (js.while break-ctrl-point continue-ctrl-point loop-id test body)
+  `(js.ctrl-point
+    ,break-ctrl-point
+    (let ,loop-id ()
+         (if (let ((x ,test))
+               (js.guard-odd-false x '(js.while ,break-ctrl-point ,continue-ctrl-point ,loop-id ,test ,body)))
+             (begin
+               (js.ctrl-point
+                ,continue-ctrl-point
+                ,body)
+               (,loop-id))))))
+
+(define-macro (js.for break-ctrl-point continue-ctrl-point loop-id test body step)
+  `(js.ctrl-point
+    ,break-ctrl-point
+    (let ,loop-id ()
+         (if (let ((x ,test))
+               (js.guard-odd-false x '(js.for ,break-ctrl-point ,continue-ctrl-point ,loop-id ,test ,body ,step)))
+             (begin
+               (js.ctrl-point
+                ,continue-ctrl-point
+                ,body)
+               ,step
+               (,loop-id))))))
+
+(define-macro (js.forin break-ctrl-point continue-ctrl-point loop-id lhs set body)
+  `(js.ctrl-point
+    ,break-ctrl-point
+    (js:forin
+     ,set
+     (lambda (key)
+       (js.= ,lhs key)
+       (js.ctrl-point
+        ,continue-ctrl-point
+        ,body)))))
+
+(define-macro (js.switch break-ctrl-point val . clauses)
+  `(js.ctrl-point
+    ,break-ctrl-point
+    (let ((switch-val ,val))
+      (js.switch-clauses ,@clauses))))
 
 (define-macro (js.switch-clauses . clauses)
   (if (assq 'js.case-fall-through clauses)
@@ -152,70 +213,6 @@
                   `(js.undefined))))
 
         (gen clauses #f))))
-
-(define-macro (js.dowhile loop-id body test)
-  `(let ,loop-id ()
-     ,body
-     (if (let ((x ,test))
-           (js.guard-odd-false x '(js.dowhile ,loop-id ,body ,test)))
-         (,loop-id))))
-
-(define-macro (js.dowhile-with-break loop-id body test)
-  `(continuation-capture
-    (lambda (break)
-      (let ,loop-id ()
-        ,body
-        (if (let ((x ,test))
-              (js.guard-odd-false x '(js.dowhile-with-break ,loop-id ,body ,test)))
-            (,loop-id))))))
-
-(define-macro (js.while loop-id test body)
-  `(let ,loop-id ()
-     (if (let ((x ,test))
-           (js.guard-odd-false x '(js.while ,loop-id ,test ,body)))
-         (begin
-           ,body
-           (,loop-id)))))
-
-(define-macro (js.while-with-break loop-id test body)
-  `(continuation-capture
-    (lambda (break)
-      (let ,loop-id ()
-        (if (let ((x ,test))
-              (js.guard-odd-false x '(js.while-with-break ,loop-id ,test ,body)))
-            (begin
-              ,body
-              (,loop-id)))))))
-
-(define-macro (js.for loop-id test body step)
-  `(let ,loop-id ()
-     (if (let ((x ,test))
-           (js.guard-odd-false x '(js.for ,loop-id ,test ,body ,step)))
-         (begin
-           ,body
-           ,step
-           (,loop-id)))))
-
-(define-macro (js.for-with-break loop-id test body step)
-  `(continuation-capture
-    (lambda (break)
-      (let ,loop-id ()
-        (if (let ((x ,test))
-              (js.guard-odd-false x '(js.for-with-break ,loop-id ,test ,body ,step)))
-            (begin
-              ,body
-              ,step
-              (,loop-id)))))))
-
-(define-macro (js.forin loop-id lhs set body)
-  `(js:forin
-    ,set
-    (lambda (key) (js.= ,lhs key) ,body)))
-
-(define-macro (js.forin-with-break loop-id lhs set body)
-  `(continuation-capture
-    (lambda (break)
-      (js.forin ,loop-id ,lhs ,set ,body))))
 
 (define-macro (js.throw val)
   `(js:throw ,val))

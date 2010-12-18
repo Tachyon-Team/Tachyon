@@ -344,7 +344,7 @@ function HashMap(hashFunc, equalFunc)
     {
         // Ensure that the new size is valid
         assert (
-            this.numItems <= newSize && Math.round(newSize) - newSize == 0,
+            this.numItems <= newSize && Math.floor(newSize) === newSize,
             'cannot resize, more items than new size allows'
         );
 

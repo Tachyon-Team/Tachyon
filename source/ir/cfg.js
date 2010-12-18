@@ -131,7 +131,7 @@ Make a deep-copy of the control-flow graph
 ControlFlowGraph.prototype.copy = function ()
 {
     // Create a new control flow graph
-    newCFG = new ControlFlowGraph(this.ownerFunc);
+    var newCFG = new ControlFlowGraph(this.ownerFunc);
 
     // Copy information about free block/instruction names and ids
     newCFG.freeInstrIds = this.freeInstrIds.slice(0);
@@ -142,10 +142,10 @@ ControlFlowGraph.prototype.copy = function ()
     newCFG.blockNames   = this.blockNames.slice(0);
 
     // Create a map from old blocks to new blocks
-    blockMap = [];
+    var blockMap = [];
 
     // Create a map from old instruction ids to new instructions
-    instrMap = [];
+    var instrMap = [];
 
     // Remove the entry block from the new CFG
     newCFG.blocks = [];
@@ -1130,7 +1130,7 @@ Make a copy of the basic block
 BasicBlock.prototype.copy = function (cfg)
 {
     // Create a new basic block
-    newBlock = new BasicBlock(cfg, this.label);
+    var newBlock = new BasicBlock(cfg, this.label);
 
     // Copy the block id
     newBlock.blockId = this.blockId;
