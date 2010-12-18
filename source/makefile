@@ -46,7 +46,10 @@ BASE_SRCS =                         \
     codegen/backend.js              \
     codegen/ir-to-asm-x86.js        \
     codegen/regalloc-config-x86.js  \
-    jslib/errors.js                 \
+    stdlib/errors.js                \
+    stdlib/math.js                  \
+    stdlib/arrays.js                \
+    stdlib/strings.js               \
     compiler.js                     \
     init.js
 
