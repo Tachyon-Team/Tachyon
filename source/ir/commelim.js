@@ -14,10 +14,6 @@ Perform common/redundant code elimination on a CFG
 */
 function commElim(cfg, maxItrs)
 {
-    // If no maximum iteration count was specified, there is no limit
-    if (!maxItrs)
-        maxItrs = Infinity;
-
     // Hashing function for IR values        
     function hashFunc(val)
     {
@@ -120,7 +116,10 @@ function commElim(cfg, maxItrs)
     var changed = true;
 
     // Until no changes occur or the max iteration count is reached
-    for (var itrCount = 0; changed && itrCount < maxItrs; ++itrCount)
+    for (var itrCount = 0;
+        changed && (maxItrs === undefined || itrCount < maxItrs);
+        ++itrCount
+    )
     {
         /*
         print('******************ITR*****************');

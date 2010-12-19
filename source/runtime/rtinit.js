@@ -32,7 +32,10 @@ function initHeap(heapPtr)
 
     // TODO: allocate object prototype object
     // set global object proto
-    // set reference in context
+    // set boxed reference in context
+    // TODO: allocate other basic objects
+    // Possibly, this should be done elsewhere, in a later initialization phase
+    // However, it must be done before code that can throw JS exceptions is run
 
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
@@ -54,7 +57,7 @@ function getFloatObj(fpVal)
     "tachyon:arg fpVal f64";
 
     //
-    // TODO
+    // TODO: allocate a float object and return it
     //
 }
 

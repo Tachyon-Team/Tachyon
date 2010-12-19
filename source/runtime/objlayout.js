@@ -154,7 +154,7 @@ ObjectLayout.prototype.getSize = function (typeSize)
 
     assert (
         typeSize !== undefined || lastField.numElems &&
-        !(typeSize !== undefined && lastField.numElems == Infinity),
+        !(typeSize !== undefined && lastField.numElems === false),
         'must specify type size for variable-length layouts'
     );
 
@@ -170,6 +170,10 @@ ObjectLayout.prototype.getSize = function (typeSize)
 
 /**
 Add a new field specification
+@param type type of the element(s) in this field.
+@param typeSize size parameter of the sub-object, for variable-size objects.
+@param numElems number of elements in the field. Use value false for a
+                variable-size field.
 */
 ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
 {
@@ -192,9 +196,9 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
         numElems = 1;
 
     assert (
-        !(numElems === Infinity &&
+        !(numElems === false &&
           this.fields.length > 0 &&
-          this.fields[this.fields.length-1].numElems === Infinity),
+          this.fields[this.fields.length-1].numElems === false),
         'only the last field can have variable length'
     );
 
@@ -329,7 +333,7 @@ ObjectLayout.prototype.genMethods = function ()
     var numElems = lastField.numElems;
 
     // If the number of elements is not variable
-    if (numElems !== Infinity)
+    if (numElems !== false)
     {
         // Compute the object size
         var objSize = lastField.offset + lastField.elemSize * numElems;

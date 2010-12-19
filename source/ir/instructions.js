@@ -1116,19 +1116,17 @@ Function to validate the length of an input array
 */
 instrMaker.validCount = function (name, array, minExpected, maxExpected)
 {
-    if (maxExpected === undefined)
-        maxExpected = minExpected;
-
     var expectedStr;
     if (minExpected == maxExpected)
         expectedStr = String(minExpected);
-    else if (maxExpected != Infinity)
+    else if (maxExpected !== undefined)
         expectedStr = 'between ' + minExpected + ' and ' + maxExpected;
     else
         expectedStr = minExpected + ' or more';
 
     assert (
-        array.length >= minExpected && array.length <= maxExpected,
+        array.length >= minExpected && 
+        (maxExpected === undefined || array.length <= maxExpected),
         'got ' + array.length + ' ' +
         pluralize(name, array.length) + 
         ', expected ' + expectedStr
@@ -1206,7 +1204,7 @@ Default initialization function for arithmetic instructions
 */
 ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 {
-    instrMaker.validNumInputs(inputVals, 2);
+    instrMaker.validNumInputs(inputVals, 2, 2);
 
     assert (
         (inputVals[0].type === IRType.box ||
@@ -1227,7 +1225,7 @@ var AddInstr = instrMaker(
     'add',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 2);
+        instrMaker.validNumInputs(inputVals, 2, 2);
 
         assert (
             (inputVals[0].type === IRType.rptr &&
@@ -1256,7 +1254,7 @@ var SubInstr = instrMaker(
     'sub',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 2);
+        instrMaker.validNumInputs(inputVals, 2, 2);
 
         assert (
             (inputVals[0].type === IRType.rptr &&
@@ -1339,7 +1337,7 @@ Default initialization function for arithmetic instructions w/ overflow
 */
 ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 {
-    instrMaker.validNumInputs(inputVals, 2);
+    instrMaker.validNumInputs(inputVals, 2, 2);
     assert (
         (inputVals[0].type === IRType.pint &&
          inputVals[1].type === inputVals[0].type)
@@ -1416,7 +1414,7 @@ Default initialization function for bitwise operation instructions
 */
 BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 {
-    instrMaker.validNumInputs(inputVals, 2);
+    instrMaker.validNumInputs(inputVals, 2, 2);
 
     assert (
         (
@@ -1443,7 +1441,7 @@ var NotInstr = instrMaker(
     'not',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
 
         assert (
             (inputVals[0].type === IRType.box ||
@@ -1543,7 +1541,7 @@ Default initialization function for comparison instructions
 */
 CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 {
-    instrMaker.validNumInputs(inputVals, 2);
+    instrMaker.validNumInputs(inputVals, 2, 2);
 
     assert (
         (inputVals[0].type === IRType.box ||
@@ -1636,7 +1634,7 @@ var JumpInstr = instrMaker(
     'jump',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 0);
+        instrMaker.validNumInputs(inputVals, 0, 0);
         
         this.type = IRType.none;
     },
@@ -1656,7 +1654,7 @@ var RetInstr = instrMaker(
     'ret',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         
         this.type = IRType.none;
     }
@@ -1675,13 +1673,13 @@ var IfInstr = instrMaker(
     'if',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             inputVals[0].type === IRType.box ||
             inputVals[0].type === IRType.bool,
             'input must be boxed or bool'
         );
-        instrMaker.validNumBranches(branchTargets, 2);
+        instrMaker.validNumBranches(branchTargets, 2, 2);
         
         this.type = IRType.none;
     },
@@ -1728,7 +1726,7 @@ var ThrowInstr = instrMaker(
     'throw',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 1);
         
@@ -1754,7 +1752,7 @@ var CatchInstr = instrMaker(
     'catch',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 0);
+        instrMaker.validNumInputs(inputVals, 0, 0);
     }
 );
 
@@ -1821,7 +1819,7 @@ var CallFuncInstr = instrMaker(
     {
         this.mnemonic = 'call';
 
-        instrMaker.validNumInputs(inputVals, 2, Infinity);
+        instrMaker.validNumInputs(inputVals, 2);
         instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
@@ -1896,7 +1894,7 @@ var ConstructInstr = instrMaker(
     {
         this.mnemonic = 'construct';
 
-        instrMaker.validNumInputs(inputVals, 2, Infinity);
+        instrMaker.validNumInputs(inputVals, 2);
         instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
@@ -1929,8 +1927,8 @@ var ICastInstr = instrMaker(
     'icast',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumParams(typeParams, 1, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             (inputVals[0].type.isInt() || 
              inputVals[0].type === IRType.box ||
@@ -1954,8 +1952,8 @@ var IToFPInstr = instrMaker(
     'itof',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 1);
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumParams(inputVals, 1, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             inputVals[0].type === IRType.pint &&
             typeParams[0] === IRType.f64,
@@ -1974,8 +1972,8 @@ var FPToIInstr = instrMaker(
     'ftoi',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 1);
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumParams(inputVals, 1, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             typeParams[0].type === IRType.f64 &&
             typeParams[0] === IRType.pint,
@@ -2000,8 +1998,8 @@ var LoadInstr = instrMaker(
     'load',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 2);
+        instrMaker.validNumParams(typeParams, 1, 1);
+        instrMaker.validNumInputs(inputVals, 2, 2);
         assert (
             inputVals[0].type.isPtr(),
             'the first input must be a pointer'
@@ -2025,8 +2023,8 @@ var StoreInstr = instrMaker(
     'store',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(typeParams, 1);
-        instrMaker.validNumInputs(inputVals, 3);
+        instrMaker.validNumParams(typeParams, 1, 1);
+        instrMaker.validNumInputs(inputVals, 3, 3);
         assert (
             inputVals[0].type.isPtr(),
             'the first input must be a pointer'
@@ -2051,7 +2049,7 @@ var GetCtxInstr = instrMaker(
     'get_ctx',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 0);
+        instrMaker.validNumInputs(inputVals, 0, 0);
         
         this.type = IRType.rptr;
     }
@@ -2070,7 +2068,7 @@ var SetCtxInstr = instrMaker(
     'set_ctx',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validNumInputs(inputVals, 1, 1);
         instrMaker.validType(inputVals[0], IRType.rptr);
         
         this.type = IRType.none;

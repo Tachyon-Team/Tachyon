@@ -6,6 +6,7 @@ JS2SCM = parser/js2scm
 
 # Base program source files
 BASE_SRCS =                         \
+    utility/constants.js            \
     utility/debug.js                \
     utility/system.js               \
     utility/iterators.js            \

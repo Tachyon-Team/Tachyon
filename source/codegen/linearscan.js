@@ -41,29 +41,6 @@ allocator.max = function (a, accessFct)
     return { index:maxIndex, value:maxValue }; 
 };
 
-/** Returns the min index and the min value of an array */
-allocator.min = function (a, accessFct)
-{
-    if (accessFct === undefined)
-        accessFct = function (x) { return x; };
-
-    var minIndex = 0;
-    var minValue = 0;
-    var i;
-
-    for (i=0; i < a.length; ++i)
-    {
-        var x = accessFct(a[i]);
-        if (x < minValue)
-        {
-            minIndex = i;
-            minValue = x; 
-        }
-    }
-    
-    return { index:minIndex, value:minValue }; 
-};
-
 /** 
     Returns the index of the first item equals to value
     in the sorted array. 
@@ -343,7 +320,7 @@ allocator.priorityQueue.prototype.toString = function ()
 /** 
     @class Range for intervals 
     @param {Number} startPos optional, defaults to 0
-    @param {Number} endPos optional, default to Infinity 
+    @param {Number} endPos optional, default to MAX_FIXNUM 
 */
 allocator.range = function (startPos, endPos) 
 {
@@ -360,7 +337,7 @@ allocator.range = function (startPos, endPos)
 /** Start position of the range, inclusive */
 allocator.range.prototype.startPos = 0;
 /** End position of the range, inclusive */
-allocator.range.prototype.endPos   = Infinity;
+allocator.range.prototype.endPos   = MAX_FIXNUM;
 /** Returns a string representation of a range */
 allocator.range.prototype.toString = function () 
 {
@@ -598,7 +575,7 @@ allocator.interval.prototype.covers = function (pos, isInclusive)
 };
 
 /** Give the position of the next intersection with interval,
-    Infinity if no intersection occurs */  
+    MAX_FIXNUM if no intersection occurs */  
 allocator.interval.prototype.nextIntersection = function (interval)
 {
     var i1 = 0;
@@ -627,7 +604,7 @@ allocator.interval.prototype.nextIntersection = function (interval)
     if (rs1.length === 0 || 
         rs2.length === 0)
     {
-        return Infinity;
+        return MAX_FIXNUM;
     }
 
     // Start from further startPosition,
@@ -665,7 +642,7 @@ allocator.interval.prototype.nextIntersection = function (interval)
         }
     }
      
-    return Infinity;
+    return MAX_FIXNUM;
 };
 
 /** Split before position.
@@ -918,7 +895,7 @@ allocator.interval.prototype.nextUse = function (pos, registerFlag)
 
     if (i === this.usePositions.length)
     {
-        return Infinity;           
+        return MAX_FIXNUM;           
     } else
     {
         return this.usePositions[i].pos;
@@ -1638,7 +1615,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         // Reset freeUntilPos for all physical registers 
         for (i=0; i < freeUntilPos.length; ++i)
         {
-            freeUntilPos[i] = Infinity;
+            freeUntilPos[i] = MAX_FIXNUM;
         }
 
         // For each active, register is never available
@@ -1728,7 +1705,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         // Reset nextUsePos for all physical registers 
         for (i=0; i < nextUsePos.length; ++i)
         {
-            nextUsePos[i] = Infinity;
+            nextUsePos[i] = MAX_FIXNUM;
         }
 
         // For each active, find the next use after start of current 
@@ -1745,7 +1722,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         {
             it = inactiveSet.values[i];
             next = it.nextUse(current.startPos());
-            while (!(next === Infinity || current.covers(next)))
+            while (!(next === MAX_FIXNUM || current.covers(next)))
             {
                 next  = it.nextUse(next+1);
             }
@@ -1783,7 +1760,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             // If a register is required, we split the interval
             // just before its use
             nextRegPos = current.nextUse(0, regFlag.REQUIRED);
-            if (nextRegPos !== Infinity)
+            if (nextRegPos !== MAX_FIXNUM)
             {
                 unhandledQueue.enqueue(current.split(nextRegPos - 1));
             }
@@ -1810,7 +1787,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             }
            
             fixedPos = current.nextIntersection(fixed[reg]); 
-            if (fixedPos !== Infinity)
+            if (fixedPos !== MAX_FIXNUM)
             {
                 // The register has a fixed interval, covering a part 
                 // of current, we need to split

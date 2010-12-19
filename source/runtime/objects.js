@@ -288,7 +288,7 @@ hashTblLayout.addField(
     'tbl',
     hashEntryLayout,
     undefined,
-    Infinity
+    false
 );
 
 // Finalize the hash table layout and generate accessors
@@ -389,7 +389,7 @@ strLayout.addField(
     'data',
     IRType.u16,
     undefined,
-    Infinity
+    false
 );
 
 // Finalize the string layout and generate accessors
@@ -428,7 +428,7 @@ strTblLayout.addField(
     'tbl',
     IRType.box,
     undefined,
-    Infinity
+    false
 );
 
 // Finalize the string table layout and generate accessors
