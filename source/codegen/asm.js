@@ -1012,36 +1012,27 @@ asm.address = function (byteArray, bigEndian)
         bigEndian = false;
 
     const that = Object.create(asm.address.prototype);
-    var i;
+
+    var i,k;
     
     assert(byteArray.length === 4 || byteArray.length === 8,
            "Address '" + byteArray + "' must be 4 or 8 bytes long");
 
-    assert(bigEndian === false,
-           "Only big endian address format is supported for now");
+    if (bigEndian === true)
+    {
+        byteArray = byteArray.slice(0).reverse();
+    }
 
-    that.lowerAddr = 0;
-    that.upperAddr = null;
+    that.addrElemArray = [];
+    that.addrElemArray.length = byteArray.length >> 1;
 
     that.bigEndian = bigEndian;
 
-    if (byteArray.length >= 4)
+    for (i=that.addrElemArray.length-1; i >= 0; --i)
     {
-        for (i=3; i >= 0; --i)
-        {
-            that.lowerAddr = 256*that.lowerAddr + byteArray[i];
-        }
+        k = i << 1;
+        that.addrElemArray[i] = (byteArray[k+1] << 8) + byteArray[k];
     }
-    
-    if (byteArray.length === 8)
-    {
-        that.upperAddr = 0;
-        for (i=7; i >= 4; --i)
-        {
-            that.upperAddr = 256*that.upperAddr + byteArray[i];
-        }
-
-    } 
 
     return that;
 };
@@ -1049,7 +1040,16 @@ asm.address = function (byteArray, bigEndian)
 /** Returns the number of bits in the address */
 asm.address.prototype.width = function ()
 {
-    return this.upperAddr === null ? 32 : 64;
+    return this.addrElemArray.length === 2 ? 32 : 64;
+};
+
+/** Returns a copy of the current address */
+asm.address.prototype.copy = function ()
+{
+    newAddr = Object.create(this);
+    newAddr.addrElemArray = this.addrElemArray.slice(0);
+    newAddr.bigEndian = this.bigEndian;
+    return newAddr;
 };
 
 /** Returns a new address corresponding to the old address
@@ -1057,25 +1057,111 @@ asm.address.prototype.width = function ()
 */
 asm.address.prototype.addOffset = function (n)
 {
-    assert(n >= 0, "'n' must be an address or a positive integer");
-
-    const MAX_INT = 0xffffffff;
-    const lowerAddr = this.lowerAddr + n;
-    const newAddr = Object.create(this);
-
-    if (lowerAddr <= MAX_INT)
+    if (n < 0) 
     {
-        newAddr.lowerAddr = lowerAddr;
-    } else
-    {
-        const upperAddrInc = lowerAddr / (MAX_INT + 1);
-        assert((upperAddrInc + that.upperAddr) <= MAX_INT, 
-               "Address overflow"); 
-        newAddr.upperAddr += upperAddrInc;
+        return this.subOffset(-n);
+    }
 
-        newAddr.lowerAddr = lowerAddr % (MAX_INT + 1);
+    const newAddr = this.copy();
+    const length = newAddr.addrElemArray.length;
+
+    var carry = 0;
+    var opnd  = n;
+    var i     = 0;
+    var res   = 0;
+
+    while (opnd > 0 || carry !== 0)
+    {
+        assert(i < length, "Address overflow");
+
+        res   = this.addrElemArray[i] + (opnd & 0xFFFF) + carry;
+        newAddr.addrElemArray[i] = res & 0xFFFF;
+
+        carry = res >> 16;
+        opnd  = opnd >> 16;
+        i++;
     }
     return newAddr;
+};
+
+/** Returns a new address located at old address - n */
+asm.address.prototype.subOffset = function (n)
+{
+    
+    if (n < 0) 
+    {
+        return this.addOffset(-n);
+    }
+
+    const newAddr = this.copy();
+    const length = newAddr.addrElemArray.length;
+
+    var carry = 0;
+    var opnd  = n;
+    var i     = 0;
+    var res   = 0;
+
+    while (opnd > 0 || carry !== 0)
+    {
+
+        res   = this.addrElemArray[i] - (opnd & 0xFFFF) + carry;
+
+        if (res >= 0)
+        {
+            newAddr.addrElemArray[i] = res;
+            carry = 0;
+        } else
+        {
+            newAddr.addrElemArray[i] = res + 0x10000;
+            carry = -1;
+        }
+
+        opnd  = opnd >> 16;
+        i++;
+    }
+    
+    assert(opnd === 0 && carry === 0, "Address underflow");
+
+    return newAddr;
+};
+
+/** Returns a new address corresponding to the sum of the
+    value of the old address with the new modulo width.
+*/
+asm.address.prototype.addAddress = function (addr)
+{
+    assert(this.width() === addr.width(),
+           "both addresses must have the same width");
+
+    const newAddr = this.copy();
+    const length = newAddr.addrElemArray.length;
+    var carry = 0;
+    var i     = 0;
+    var res   = 0;
+
+    for (i=0; i < length; ++i)
+    {
+        res   = this.addrElemArray[i] + addr.addrElemArray[i] + carry; 
+        carry = res >> 16;
+        newAddr.addrElemArray[i] = res & 0xFFFF;
+    }
+
+    return newAddr;
+};
+
+/** Returns the complement of the address */
+asm.address.prototype.complement = function ()
+{
+    const newAddr = this.copy();
+    const length = newAddr.addrElemArray.length;
+    var i = 0;
+
+    for (i=0; i < length; ++i)
+    {
+        newAddr.addrElemArray[i] = (0xFFFF - this.addrElemArray[i]);
+    }
+
+    return newAddr.addOffset(1);
 };
 
 /** Returns the offset needed to reach 'addr' from this.addr */
@@ -1091,7 +1177,7 @@ asm.address.prototype.getAddrOffsetBytes = function (addr, bigEndian)
     assert(this.width() === addr.width(),
            "both addresses must have the same width");
 
-    return this.int2ByteArray(addr.lowerAddr - this.lowerAddr, bigEndian);
+    return addr.addAddress(this.complement()).getBytes(bigEndian);
 };
 
 /** Compare two addresses. Returns -1 if this is lesser than 'addr',
@@ -1101,42 +1187,22 @@ asm.address.prototype.cmp = function (addr)
 {
     assert(this.width() === addr.width(),
            "both addresses must have the same width");
-    
-    if (this.upperAddr < addr.upperAddr)
+
+    var i;
+    for (i=addr.addrElemArray.length-1; i>=0; --i)
     {
-        return -1;
-    } else if (this.upperAddr === addr.upperAddr)
-    {
-        if (this.lowerAddr < addr.lowerAddr)
+        if (this.addrElemArray[i] < addr.addrElemArray[i])
         {
             return -1;
-        } else if (this.lowerAddr === addr.lowerAddr)
-        {
-            return 0;
-        } else
+        } else if(this.addrElemArray[i] > addr.addrElemArray[i])
         {
             return 1;
         }
-    } else
-    {
-        return 1;
     }
+    return 0;
 };
 
-asm.address.prototype.int2ByteArray = function (i, bigEndian)
-{
-
-    var bytes = [(i & 0xff), 
-                 (i & 0xff00) >> 8, 
-                 (i & 0xff0000) >> 16, 
-                 (i) >>> 24 ]; 
-    if (bigEndian)
-    {
-        bytes.reverse();
-    } 
-    return bytes;
-};
-
+/** Returns an array of bytes containing the address */
 asm.address.prototype.getBytes = function (bigEndian)
 {
     if (bigEndian === undefined)
@@ -1144,19 +1210,23 @@ asm.address.prototype.getBytes = function (bigEndian)
         bigEndian = this.bigEndian;
     }
 
-    var addr = this.int2ByteArray(this.lowerAddr, bigEndian);
+    a = [];
+    a.length = this.addrElemArray.length << 1;
+    var i,k;
 
-    if (this.upperAddr === null) 
+    for (i=this.addrElemArray.length - 1; i >=0; --i)
     {
-        return addr;
+        k = i << 1;
+        a[k]     = this.addrElemArray[i] & 0x00FF;
+        a[k + 1] = (this.addrElemArray[i] >> 8) & 0xFF;
     }
 
-    if (bigEndian)
+    if (bigEndian === true)
     {
-        return this.int2ByteArray(this.upperAddr, bigEndian).concat(addr);
-    } else
+        return a.reverse();
+    } else 
     {
-        return addr.concat(this.int2ByteArray(this.upperAddr, bigEndian));
+        return a;
     }
 };
 
