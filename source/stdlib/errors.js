@@ -13,11 +13,12 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // The [[Class]] internal property of the newly constructed object is set to "Error".
 //
 // JS provides no way to set this internal property
-// Need a custom function to do it
+// Need a custom function to do it (Tachyon-specific)
 
 // TODO: PROBLEM:
 // name property of constructors, can we change this somehow? property not writable
 // one possible fix is to use eval to generate the constructor...
+// Alternative is Tachyon-specific functionality to change name manually
 
 /**
 Function to create an error constructor function

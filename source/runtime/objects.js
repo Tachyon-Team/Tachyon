@@ -52,6 +52,9 @@ staticEnv.regBinding(
     )
 );
 
+// Maximum positive and negative value representable with immediate integers
+var MAX_FIXNUM = Math.pow(2, BOX_NUM_BITS_INT) - 1;
+
 // Number of reference tag bits
 var TAG_NUM_BITS_REF = 3;
 staticEnv.regBinding(
