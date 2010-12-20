@@ -2244,8 +2244,10 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 
     if (cycles.length > 0)
     {
-        assert(temp !== undefined, 
-               "A temporary memory location should be provided");
+        assert(
+            temp !== undefined, 
+            "A temporary memory location should be provided"
+        );
 
         for (cycleIt = new ArrayIterator(cycles);
              cycleIt.valid();

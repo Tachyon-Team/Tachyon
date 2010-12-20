@@ -31,9 +31,9 @@ function testIR()
     var ast = parse_src_str(
         'function foo() { ' +
         '"tachyon:ret i8";' +
-        'iir.set_ctx(iir.constant(IRType.rptr,' + blockAddr + '));' +
-        'iir.store(IRType.i8, iir.get_ctx(), iir.constant(IRType.i32, 0), iir.constant(IRType.i8, 7));' +
-        'return iir.load(IRType.i8, iir.get_ctx(), iir.constant(IRType.i32, 0));' +
+        'iir.set_ctx(iir.icast(IRType.rptr,' + blockAddr + '));' +
+        'iir.store(IRType.i8, iir.get_ctx(), iir.icast(IRType.i32, 0), iir.icast(IRType.i8, 7));' +
+        'return iir.load(IRType.i8, iir.get_ctx(), iir.icast(IRType.i32, 0));' +
         '}' + 
         'return foo();'
     );
@@ -132,6 +132,7 @@ try
     // Uninitialize Tachyon
     uninitialize();
 }
+
 catch (e)
 {
     if (e.stack)

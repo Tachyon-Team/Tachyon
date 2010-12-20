@@ -233,7 +233,7 @@ function constProp(cfg)
     //print('Branches found: ' + numBranches);
 
     // Remove basic blocks which are now unreachable from the CFG
-    remDeadBlocks(cfg);
+    cfg.remDeadBlocks();
 }
 
 //=============================================================================

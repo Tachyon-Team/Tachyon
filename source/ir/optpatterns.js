@@ -24,26 +24,10 @@ function applyPatternsCFG(cfg, maxItrs)
         false
     );
 
-    // If the number of iterations is limited, and the limit was reached,
-    // apply dead block removal
-    if (maxItrs !== undefined && numItrs == maxItrs)
-        remDeadBlocks(cfg);
+    // Remove dead blocks from the CFG
+    cfg.remDeadBlocks();
 
     return numItrs;
-}
-
-/**
-Remove all dead blocks from a CFG
-*/
-function remDeadBlocks(cfg)
-{
-    return applyPatternsListCFG(
-        [blockPatterns.remDead],
-        cfg,
-        undefined,
-        false,
-        false
-    );
 }
 
 /**
@@ -87,7 +71,7 @@ function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
             if (validate)
             {
                 // Remove any dead blocks
-                remDeadBlocks(cfg);
+                cfg.remDeadBlocks();
 
                 // Validate the CFG
                 cfg.validate();
@@ -136,35 +120,6 @@ var blockPatterns = [];
 List of instruction-level optimization patterns
 */
 var instrPatterns = [];
-
-/**
-Eliminate blocks with no predecessors
-*/
-blockPatterns.remDead = new optPattern(
-    'dead block elimination',
-    function match(cfg, block)
-    {
-        // If this block has no predecessors, and it is not the entry block
-        return (
-            block.preds.length == 0 &&
-            block !== cfg.entry
-        );
-    },
-    function apply(cfg, block, printInfo)
-    {
-        // Remove the block from the CFG
-        cfg.remBlock(block);
-
-        // Remove all instructions in the block to
-        // clear use-dest links
-        while (block.instrs.length > 0)
-            block.remInstrAtIndex(0);
-
-        // The CFG was changed
-        return true;
-    }
-);
-blockPatterns.push(blockPatterns.remDead);
 
 /**
 Merge blocks with only one destination
