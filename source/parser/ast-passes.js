@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-12-13 17:14:35 feeley>
+// File: "ast-passes.js", Time-stamp: <2010-12-20 14:04:39 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -12,7 +12,7 @@ function get_free_id(postFix, loc)
 {
     return new Token(
         IDENT_CAT, 
-        ("#tachyon#" + (get_free_id.nextIdNum++) + "#" + postFix),
+        ("$tachyon$" + (get_free_id.nextIdNum++) + "$" + postFix),
         loc
     );
 }
@@ -579,7 +579,7 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
     }
     else if (ast instanceof ForVarStatement)
     {
-        var accum = new Literal(ast.loc, null);
+        var accum = null;
         for (var i=ast.decls.length-1; i>=0; i--)
         {
             var decl = ast.decls[i];
@@ -587,14 +587,17 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
             if (decl.initializer != null)
             {
                 decl.initializer = this.walk_expr(decl.initializer);
-                accum = new OpExpr(decl.loc,
-                                   op2_table[COMMA_CAT],
-                                   [new OpExpr(decl.loc,
-                                               op2_table[EQUAL_CAT],
-                                               [new Ref(decl.id.loc,
-                                                        decl.id),
-                                                decl.initializer]),
-                                    accum]);
+                var init = new OpExpr(decl.loc,
+                                      op2_table[EQUAL_CAT],
+                                      [new Ref(decl.id.loc,
+                                               decl.id),
+                                       decl.initializer]);
+                if (accum === null)
+                    accum = init;
+                else
+                    accum = new OpExpr(decl.loc,
+                                       op2_table[COMMA_CAT],
+                                       [init, accum]);
             }
         }
         ast.expr2 = this.walk_expr(ast.expr2);

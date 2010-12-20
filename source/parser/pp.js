@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "pp.js", Time-stamp: <2010-07-14 14:06:59 feeley>
+// File: "pp.js", Time-stamp: <2010-12-20 14:27:30 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -336,6 +336,553 @@ function pp_spaces(n)
         return " " + pp_spaces(n-1);
     else
         return "";
+}
+
+//-----------------------------------------------------------------------------
+
+// JavaScript pretty-printing.
+
+function js_pp(ast)
+{
+    print(js_to_string(ast));
+}
+
+function js_to_string(ast)
+{
+    var ctx = new js_pp_ctx(new String_output_port(""), 0);
+    ast_to_js(ast, ctx);
+    return ctx.port.get_output_string();
+}
+
+function js_pp_ctx(port, indent)
+{
+    this.port = port;
+    this.indent = indent;
+}
+
+function js_unparse_string(str)
+{
+    var port = new String_output_port("");
+
+    port.write_string("\"");
+
+    for (var i=0; i<str.length; i++)
+    {
+        var c = str.charAt(i);
+        switch (c)
+        {
+            case "\\": c = "\\\\"; break;
+            case "\"": c = "\\\""; break;
+            case "\0": c = "\\0"; break;
+            case "\b": c = "\\b"; break;
+            case "\t": c = "\\t"; break;
+            case "\n": c = "\\n"; break;
+            case "\v": c = "\\v"; break;
+            case "\f": c = "\\f"; break;
+            case "\r": c = "\\r"; break;
+        }
+        port.write_string(c);
+    }
+
+    port.write_string("\"");
+
+    return port.get_output_string();
+}
+
+function ast_to_js(ast, ctx)
+{
+    function js_id_to_js(id)
+    {
+        return id;
+    }
+
+    function js_out(str, ctx)
+    {
+        ctx.port.write_string(str);
+    }
+
+    function js_indent(ctx)
+    {
+        for (var i=0; i<ctx.indent; i++)
+            js_out("    ", ctx);
+    }
+
+    function js_indent_begin(ctx)
+    {
+        ctx.indent++;
+    }
+
+    function js_indent_end(ctx)
+    {
+        ctx.indent--;
+    }
+
+    function js_var(id, ctx)
+    {
+        js_indent(ctx);
+        js_out("var " + id + ";\n", ctx);
+    }
+
+    function js_var_assign(id, ctx)
+    {
+        js_indent(ctx);
+        js_out(id + " = ", ctx);
+    }
+
+    if (ast == null)
+        error("null ast");
+    else if (ast instanceof Program)
+    {
+        for (var v in ast.vars)
+            js_var(js_id_to_js(v), ctx);
+        ast_to_js(ast.block, ctx);
+    }
+    else if (ast instanceof BlockStatement)
+    {
+        for (var i=0; i<ast.statements.length; i++)
+            ast_to_js(ast.statements[i], ctx);
+    }
+    // else if (ast instanceof VariableStatement)
+    // { impossible due to pass1 transformations }
+    else if (ast instanceof ConstStatement)
+    {
+        // TODO
+        pp(ast);
+        error("ConstStatement not implemented");
+    }
+    else if (ast instanceof FunctionDeclaration)
+    {
+        js_indent(ctx);
+        js_out(js_id_to_js(ast.id.toString()) + " = ", ctx);
+        ast_to_js(ast.funct, ctx);
+        js_out(";\n", ctx);
+    }
+    else if (ast instanceof ExprStatement)
+    {
+        js_indent(ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out(";\n", ctx);
+    }
+    else if (ast instanceof IfStatement)
+    {
+        js_indent(ctx);
+        js_out("if (", ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out(")\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        ast_to_js(ast.statements[0], ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("}\n", ctx);
+
+        if (ast.statements.length == 2)
+        {
+            js_indent(ctx);
+            js_out("else\n", ctx);
+
+            js_indent(ctx);
+            js_out("{\n", ctx);
+            js_indent_begin(ctx);
+
+            ast_to_js(ast.statements[1], ctx);
+
+            js_indent_end(ctx);
+            js_indent(ctx);
+            js_out("}\n", ctx);
+        }
+    }
+    else if (ast instanceof DoWhileStatement)
+    {
+        js_indent(ctx);
+        js_out("do\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        ast_to_js(ast.statement, ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("} while (", ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out(");\n", ctx);
+    }
+    else if (ast instanceof WhileStatement)
+    {
+        js_indent(ctx);
+        js_out("while (", ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out(")\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        ast_to_js(ast.statement, ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("}\n", ctx);
+    }
+    else if (ast instanceof ForStatement)
+    {
+        js_indent(ctx);
+        js_out("for (", ctx);
+        if (ast.expr1 !== null)
+            ast_to_js(ast.expr1, ctx);
+        js_out("; ", ctx);
+        if (ast.expr2 !== null)
+            ast_to_js(ast.expr2, ctx);
+        js_out("; ", ctx);
+        if (ast.expr3 !== null)
+            ast_to_js(ast.expr3, ctx);
+        js_out(")\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        ast_to_js(ast.statement, ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("}\n", ctx);
+    }
+    // else if (ast instanceof ForVarStatement)
+    // { impossible due to pass1 transformations }
+    else if (ast instanceof ForInStatement)
+    {
+        js_indent(ctx);
+        js_out("for (", ctx);
+        ast_to_js(ast.lhs_expr, ctx);
+        js_out(" in ", ctx);
+        ast_to_js(ast.set_expr, ctx);
+        js_out(")\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        ast_to_js(ast.statement, ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("}\n", ctx);
+    }
+    // else if (ast instanceof ForVarInStatement)
+    // { impossible due to pass1 transformations }
+    else if (ast instanceof ContinueStatement)
+    {
+        js_indent(ctx);
+        js_out("continue", ctx);
+        if (ast.label !== null)
+            js_out(" " + ast.label.toString(), ctx);
+        js_out(";\n", ctx);
+    }
+    else if (ast instanceof BreakStatement)
+    {
+        js_indent(ctx);
+        js_out("break", ctx);
+        if (ast.label !== null)
+            js_out(" " + ast.label.toString(), ctx);
+        js_out(";\n", ctx);
+    }
+    else if (ast instanceof ReturnStatement)
+    {
+        js_indent(ctx);
+        js_out("return", ctx);
+        if (ast.expr !== null)
+        {
+            js_out(" ", ctx);
+            ast_to_js(ast.expr, ctx);
+        }
+        js_out(";\n", ctx);
+    }
+    else if (ast instanceof WithStatement)
+    {
+        // TODO
+        pp(ast);
+        error("WithStatement not implemented");
+        /*
+        pp_loc(ast.loc, pp_prefix(indent) + "WithStatement");
+        pp_asts(indent, "expr", [ast.expr]);
+        pp_asts(indent, "statement", [ast.statement]);
+        */
+    }
+    else if (ast instanceof SwitchStatement)
+    {
+        js_indent(ctx);
+        js_out("switch (", ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out(")\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        for (var i=0; i<ast.clauses.length; i++)
+        {
+            var clause_i = ast.clauses[i];
+            js_indent(ctx);
+            if (clause_i.expr === null)
+                js_out("default:\n", ctx);
+            else
+            {
+                js_out("case ", ctx);
+                ast_to_js(clause_i.expr, ctx);
+                js_out(":\n", ctx);
+            }
+            js_indent(ctx);
+            js_out("{\n", ctx);
+            js_indent_begin(ctx);
+
+            for (var j=0; j<clause_i.statements.length; j++)
+                ast_to_js(clause_i.statements[j], ctx);
+
+            js_indent_end(ctx);
+            js_indent(ctx);
+            js_out("}\n", ctx);
+        }
+
+        js_indent_end(ctx);
+
+        js_indent(ctx);
+        js_out("}\n", ctx);
+    }
+    // else if (ast instanceof CaseClause)
+    // { impossible due to handling of SwitchStatement }
+    else if (ast instanceof LabelledStatement)
+    {
+        js_indent(ctx);
+        js_out(ast.label.toString() + ":\n", ctx);
+
+        js_indent_begin(ctx);
+        ast_to_js(ast.statement, ctx);
+        js_indent_end(ctx);
+    }
+    else if (ast instanceof ThrowStatement)
+    {
+        js_indent(ctx);
+        js_out("throw ", ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out(";\n", ctx);
+    }
+    else if (ast instanceof TryStatement)
+    {
+        js_indent(ctx);
+        js_out("try\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        ast_to_js(ast.statement, ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("}\n", ctx);
+
+        if (ast.catch_part !== null)
+        {
+            js_indent(ctx);
+            js_out("catch (", ctx);
+            js_out(js_id_to_js(ast.catch_part.id.toString()), ctx);
+            js_out(")\n", ctx);
+
+            js_indent(ctx);
+            js_out("{\n", ctx);
+            js_indent_begin(ctx);
+
+            ast_to_js(ast.catch_part.statement, ctx);
+
+            js_indent_end(ctx);
+            js_indent(ctx);
+            js_out("}\n", ctx);
+        }
+
+        if (ast.finally_part !== null)
+        {
+            js_indent(ctx);
+            js_out("finally\n", ctx);
+
+            js_indent(ctx);
+            js_out("{\n", ctx);
+            js_indent_begin(ctx);
+
+            ast_to_js(ast.finally_part, ctx);
+
+            js_indent_end(ctx);
+            js_indent(ctx);
+            js_out("}\n", ctx);
+        }
+    }
+    // else if (ast instanceof CatchPart)
+    // { impossible due to handling of TryStatement }
+    else if (ast instanceof DebuggerStatement)
+    {
+        js_indent(ctx);
+        js_out("debugger\n", ctx);
+    }
+    else if (ast instanceof OpExpr)
+    {
+        js_out("(", ctx);
+        if (ast.op === "x ? y : z")
+        {
+            ast_to_js(ast.exprs[0], ctx);
+            js_out("?", ctx);
+            ast_to_js(ast.exprs[1], ctx);
+            js_out(":", ctx);
+            ast_to_js(ast.exprs[2], ctx);
+        }
+        else if (ast.op === "x [ y ]")
+        {
+            ast_to_js(ast.exprs[0], ctx);
+            js_out("[", ctx);
+            ast_to_js(ast.exprs[1], ctx);
+            js_out("]", ctx);
+        }
+        else
+        {
+            var len = ast.op.length;
+            var last = ast.op.charAt(len-1);
+
+            if (last === "y")
+            {
+                ast_to_js(ast.exprs[0], ctx);
+                js_out(ast.op.substring(1, len-1), ctx);
+                ast_to_js(ast.exprs[1], ctx);
+            }
+            else if (last === "x")
+            {
+                js_out(ast.op.substring(0, len-1), ctx);
+                ast_to_js(ast.exprs[0], ctx);
+            }
+            else if (ast.op.charAt(0) === "x")
+            {
+                ast_to_js(ast.exprs[0], ctx);
+                js_out(ast.op.substring(1, len), ctx);
+            }
+            else
+                error("unknown op " + ast.op);
+        }
+        js_out(")", ctx);
+    }
+    else if (ast instanceof NewExpr)
+    {
+        js_out("new ", ctx);
+        ast_to_js(ast.expr, ctx);
+        js_out("(", ctx);
+        var sep = "";
+        for (var i=0; i<ast.args.length; i++)
+        {
+            js_out(sep, ctx);
+            ast_to_js(ast.args[i], ctx);
+            sep = ", ";
+        }
+        js_out(")", ctx);
+    }
+    else if (ast instanceof CallExpr)
+    {
+        ast_to_js(ast.fn, ctx);
+        js_out("(", ctx);
+        var sep = "";
+        for (var i=0; i<ast.args.length; i++)
+        {
+            js_out(sep, ctx);
+            ast_to_js(ast.args[i], ctx);
+            sep = ", ";
+        }
+        js_out(")", ctx);
+    }
+    else if (ast instanceof FunctionExpr)
+    {
+        js_out("(", ctx); // FIXME: V8 seems to require extra parentheses at toplevel
+        js_out("function ", ctx);
+
+        if (ast.id != null)
+            js_out(js_id_to_js(ast.id.toString()), ctx);
+
+        js_out("(", ctx);
+
+        var sep = "";
+        for (var i=0; i<ast.params.length; i++)
+        {
+            js_out(sep, ctx);
+            js_out(js_id_to_js(ast.params[i].toString()), ctx);
+            sep = ", ";
+        }
+        js_out(")\n", ctx);
+
+        js_indent(ctx);
+        js_out("{\n", ctx);
+        js_indent_begin(ctx);
+
+        for (var v in ast.vars)
+            if (!ast.vars[v].is_param)
+                js_var(js_id_to_js(v), ctx);
+
+        for (var i=0; i<ast.body.length; i++)
+            ast_to_js(ast.body[i], ctx);
+
+        js_indent_end(ctx);
+        js_indent(ctx);
+        js_out("}", ctx);
+        js_out(")", ctx); // FIXME: V8 seems to require extra parentheses at toplevel
+    }
+    else if (ast instanceof Literal)
+    {
+        var val = ast.value;
+        var str;
+        if (val === null)
+            str = "null";
+        else if (typeof val === "string")
+            str = js_unparse_string(val);
+        else
+            str = ast.value.toString();
+        js_out(str, ctx);
+    }
+    else if (ast instanceof ArrayLiteral)
+    {
+        js_out("[", ctx);
+        var sep = "";
+        for (var i=0; i<ast.exprs.length; i++)
+        {
+            js_out(sep, ctx);
+            ast_to_js(ast.exprs[i], ctx);
+            sep = ", ";
+        }
+        js_out("]", ctx);
+    }
+    else if (ast instanceof ObjectLiteral)
+    {
+        js_out("{", ctx);
+        var sep = "";
+        for (var i=0; i<ast.properties.length; i++)
+        {
+            js_out(sep, ctx);
+            ast_to_js(ast.properties[i].name, ctx);
+            js_out(": ", ctx);
+            ast_to_js(ast.properties[i].value, ctx);
+            sep = ", ";
+        }
+        js_out("}", ctx);
+    }
+    else if (ast instanceof Ref)
+    {
+        js_out(js_id_to_js(ast.id.toString()), ctx);
+    }
+    else if (ast instanceof This)
+    {
+        js_out("this", ctx);
+    }
+    else
+        error("UNKNOWN AST");
 }
 
 //=============================================================================

@@ -1176,12 +1176,12 @@ BasicBlock.prototype.addInstr = function (instr, outName, index)
     );
 
     // If the index is undefined, insert at the end of the block
-    if (index == undefined)
+    if (index === undefined)
         index = this.instrs.length;
 
     // Ensure that the index is valid
     assert (
-        index <= this.instrs.length,
+        index >= 0 && index <= this.instrs.length,
         'invalid instruction insertion index'
     );
 

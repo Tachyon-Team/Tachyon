@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-18 07:38:14 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-20 11:12:38 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -1212,6 +1212,8 @@ function ast_to_scm(ast, ctx)
                             gen_begin(accum));
         }
 
+        var expr_scm = ast_to_scm(ast.expr, nontail_ctx(ctx));
+
         var accum = [];
         for (var i=0; i<ast.clauses.length; i++)
         {
@@ -1223,7 +1225,7 @@ function ast_to_scm(ast, ctx)
         }
 
         return force_undefined_at_tail(gen_switch(ctx.spine.break_ctrl_point,
-                                                  ast_to_scm(ast.expr, nontail_ctx(ctx)),
+                                                  expr_scm,
                                                   accum),
                                        ctx);
     }

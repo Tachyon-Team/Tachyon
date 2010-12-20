@@ -1714,7 +1714,7 @@ Get the target block of the exception-producing instruction
 */
 ExceptInstr.prototype.getThrowTarget = function ()
 {
-    return this.targets[0]? this.targets[0]:null;
+    return this.targets[0] ? this.targets[0] : null;
 };
 
 /**
@@ -1739,10 +1739,7 @@ var ThrowInstr = instrMaker(
 /**
 Throw instructions are always branch instructions
 */
-ThrowInstr.prototype.isBranch = function ()
-{
-    return true; 
-};
+ThrowInstr.prototype.isBranch = function () { return true; };
 
 /**
 @class Exception value catch
