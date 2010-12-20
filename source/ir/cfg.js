@@ -788,6 +788,49 @@ ControlFlowGraph.prototype.validate = function ()
     return true;
 };
 
+/**
+Remove dead (unreachable) basic blocks form a CFG
+*/
+ControlFlowGraph.prototype.remDeadBlocks = function ()
+{
+    var visited = [];
+
+    var stack = [this.entry];
+
+    while (stack.length > 0)
+    {
+        var b = stack.pop();
+
+        if (visited[b.blockId] === true)
+            continue;
+
+        visited[b.blockId] = true;
+
+        for (var i = b.succs.length - 1; i >= 0; --i)
+            stack.push(b.succs[i]);
+    }
+
+    for (var i = 0; i < this.blocks.length; ++i)
+    {
+        var block = this.blocks[i];
+
+        // If this block is unvisited
+        if (visited[block.blockId] === undefined)
+        {
+            // Remove the block from the CFG
+            this.remBlock(block);
+
+            // Remove all instructions in the block to
+            // clear use-dest links
+            while (block.instrs.length > 0)
+                block.remInstrAtIndex(0);
+
+            // Move back to the previous block index
+            --i;
+        }
+    }
+}
+
 /** 
     Returns a block iterator. Depending on the given type, the order of
     visited blocks might have certain properties.

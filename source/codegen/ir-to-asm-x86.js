@@ -802,7 +802,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
 
         else
         {
-            tltor.mov(opnds[0], dst);
+            tltor.asm.mov(opnds[0], dst);
             tltor.asm.imul(opnds[1], dst, undefined, this.type.numBits);
         }
     }

@@ -1928,13 +1928,15 @@ var ICastInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             (inputVals[0].type.isInt() || 
+             inputVals[0].type === IRType.bool ||
              inputVals[0].type === IRType.box ||
              inputVals[0].type === IRType.rptr) 
             &&
             (typeParams[0].isInt() ||
+             typeParams[0] === IRType.bool ||
              typeParams[0] === IRType.box ||
              typeParams[0] === IRType.rptr),
-            'type parameters must be integer or raw pointer'
+            'type parameters must be integer, boolean, boxed or raw pointer'
         );
         
         this.type = typeParams[0];

@@ -80,11 +80,19 @@ function lowerIRCFG(cfg)
         }
     }
 
+    // Validate the CFG
+    //cfg.validate();
+
     // Perform constant propagation on the CFG
     constProp(cfg);
 
+    //print('validating post const prop');
+    //print('\n' + cfg + '\n');
+
     // Validate the CFG
     cfg.validate();
+
+    //print('validated');
 
     //print('\n' + cfg + '\n');
 
