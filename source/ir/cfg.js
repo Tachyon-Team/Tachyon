@@ -829,7 +829,7 @@ ControlFlowGraph.prototype.remDeadBlocks = function ()
             --i;
         }
     }
-}
+};
 
 /** 
     Returns a block iterator. Depending on the given type, the order of

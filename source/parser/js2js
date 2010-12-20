@@ -1,0 +1,42 @@
+#! /bin/sh
+
+OPT_DEBUG=""
+OPT_AST=""
+OPT_JS=""
+LAST_FILE=""
+FILES=""
+
+DIR=`dirname $0`
+
+JS2JS="d8 $DIR/../utility/debug.js $DIR/../utility/system.js $DIR/../utility/hashmap.js $DIR/misc.js $DIR/scanner.js $DIR/parser.js $DIR/pp.js $DIR/ast-passes.js $DIR/js2js.js --"
+
+# After a "make boostrap" this can be used instead:
+#
+#JS2JS="$DIR/js2js.js.exe"
+
+while [ "$1" != "" ]; do
+  case "$1" in
+      "-debug") OPT_DEBUG="-debug" ;;
+        "-ast") OPT_AST="-ast" ;;
+         "-js") OPT_JS="-js" ;;
+          "--") shift
+                break ;;
+          *.js) LAST_FILE="$1"
+                FILES="$FILES $LAST_FILE"
+                ;;
+             *) echo "Usage: $0 [-ast|-js] file1.js file2.js ..."
+                exit 1
+                ;;
+  esac
+  shift
+done
+
+if [ "$OPT_AST" != "" ]; then
+  $JS2JS $OPT_DEBUG -ast -nojs $FILES
+else
+  $JS2JS $OPT_DEBUG $FILES < /dev/null > $LAST_FILE.js
+  if [ "$OPT_JS" == "" ]; then
+    cat $LAST_FILE.js
+    rm -f $LAST_FILE.js
+  fi
+fi

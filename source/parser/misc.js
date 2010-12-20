@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "misc.js", Time-stamp: <2010-12-15 13:50:52 feeley>
+// File: "misc.js", Time-stamp: <2010-12-20 16:11:37 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -106,7 +106,7 @@ function parse_src_port(port)
 {
     var p = new Parser(new Scanner(port), true);
     var ast = p.parse();
-    var normalized_ast = ast_normalize(ast);
+    var normalized_ast = ast_normalize(ast, false);
 
     return normalized_ast;
 }
