@@ -23,13 +23,13 @@ function initStrTable()
 
     // Initialize the hash table size and number of properties
     set_strtbl_tblsize(strtbl, STR_TBL_INIT_SIZE);
-    set_strtbl_numstrs(strtbl, iir.cst(IRType.i32, 0));
+    set_strtbl_numstrs(strtbl, i32(0));
 
     // Initialize the string table
     for (
-        var i = iir.cst(IRType.pint, 0); 
+        var i = pint(0); 
         i < STR_TBL_INIT_SIZE; 
-        i += iir.cst(IRType.pint, 1)
+        i += pint(1)
     )
     {
         set_strtbl_tbl(strtbl, i, UNDEFINED);
@@ -57,23 +57,23 @@ function strcmp(str1, str2)
     // For each character to be compared
     for (;;)
     {
-        var ch1 = iir.load(IRType.u16, str1, iir.cst(IRType.pint, 0));
-        var ch2 = iir.load(IRType.u16, str1, iir.cst(IRType.pint, 0));
+        var ch1 = iir.load(IRType.u16, str1, pint(0));
+        var ch2 = iir.load(IRType.u16, str1, pint(0));
 
         if (ch1 < ch2)
-            return iir.cst(IRType.pint, -1);
+            return pint(-1);
         else if (ch1 > ch2)
-            return iir.cst(IRType.pint, 1);
+            return pint(1);
         
-        if (ch1 == iir.cst(IRType.u16, 0))
+        if (ch1 == u16(0))
             break;
 
-        str1 += iir.cst(IRType.pint, 2);
-        str2 += iir.cst(IRType.pint, 2);
+        str1 += pint(2);
+        str2 += pint(2);
     }
 
     // The strings are equal
-    return iir.cst(IRType.pint, 0);
+    return pint(0);
 }
 
 /**
@@ -91,13 +91,13 @@ function getStrObj(strData, strLen)
     //
 
     // Initialize the hash code to 0
-    var hashCode = iir.cst(IRType.pint, 0);
+    var hashCode = pint(0);
 
     // For each character, update the hash code
     for (
-        var index = iir.cst(IRType.pint, 0); 
+        var index = pint(0); 
         true;
-        index = index + iir.cst(IRType.pint, 1)
+        index = index + pint(1)
     )
     {
         // Get the current character
@@ -107,13 +107,13 @@ function getStrObj(strData, strLen)
         var ch = iir.icast(IRType.pint, ch);
 
         // If this is the null terminator, break out of the loop
-        if (ch == iir.cst(IRType.pint, 0))
+        if (ch == pint(0))
             break;
 
         // Update 
         hashCode =
-            (hashCode * iir.cst(IRType.pint, 256) + ch) %
-            iir.cst(IRType.pint, 426870919);
+            (hashCode * pint(256) + ch) %
+            pint(426870919);
     }
 
     //
@@ -157,7 +157,7 @@ function getStrObj(strData, strLen)
         }
 
         // Move to the next hash table slot
-        hashIndex = (hashIndex + iir.cst(IRType.pint, 1)) % tblSize;
+        hashIndex = (hashIndex + pint(1)) % tblSize;
     }
 
     //
@@ -179,9 +179,9 @@ function getStrObj(strData, strLen)
 
     // Copy the character data into the string object
     for (
-        var index = iir.cst(IRType.pint, 0); 
+        var index = pint(0); 
         index < strLen;
-        index = index + iir.cst(IRType.pint, 1)
+        index = index + pint(1)
     )
     {
         // Get the current character
@@ -205,7 +205,7 @@ function getStrObj(strData, strLen)
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
-            numProps += iir.cst(IRType.i32, 1);
+            numProps += i32(1);
             set_obj_numprops(obj, numProps);
             numProps = iir.icast(IRType.pint, numProps);
     */

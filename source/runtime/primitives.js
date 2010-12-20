@@ -37,7 +37,7 @@ function unboxInt(boxVal)
     "tachyon:nothrow";
     "tachyon:ret pint";
 
-    // Box the integer
+    // Unbox the integer
     return iir.icast(IRType.pint, boxVal) >> TAG_NUM_BITS_INT;
 }
 
@@ -123,7 +123,7 @@ function boxIsFunc(boxVal)
     */
 
     // FIXME: for now, function pointers not boxed, this will not work
-    return iir.cst(IRType.bool, 1);
+    return TRUE_BOOL;
 }
 
 /**
@@ -178,36 +178,75 @@ function boxToBool(boxVal)
     var boxInt = iir.icast(IRType.pint, boxVal);
 
     if (boxInt == BIT_PATTERN_TRUE)
-        return iir.cst(IRType.bool, 1);
+        return TRUE_BOOL;
 
     else if (boxInt == BIT_PATTERN_FALSE)
-        return iir.cst(IRType.bool, 0);
+        return FALSE_BOOL;
 
     else if (boxInt == BIT_PATTERN_UNDEF)
-        return iir.cst(IRType.bool, 0);
+        return FALSE_BOOL;
 
     else if (boxInt == BIT_PATTERN_NULL)
-        return iir.cst(IRType.bool, 0);
+        return FALSE_BOOL;
 
     else if (boxIsInt(boxVal))
     { 
-        if (boxInt != iir.cst(IRType.pint, 0))
-            return iir.cst(IRType.bool, 1);
+        if (boxInt != pint(0))
+            return TRUE_BOOL;
         else
-            return iir.cst(IRType.bool, 0);
+            return FALSE_BOOL;
     }
 
     else if (boxIsString(boxVal))
     {
         var len = iir.icast(IRType.pint, get_str_len(boxVal));
 
-        if (len != iir.cst(IRType.pint, 0))
-            return iir.cst(IRType.bool, 1);
+        if (len != pint(0))
+            return TRUE_BOOL;
         else
-            return iir.cst(IRType.bool, 0);
+            return FALSE_BOOL;
     }
 
-    return iir.cst(IRType.bool, 1);
+    return TRUE_BOOL;
+}
+
+/**
+Cast a boxed integer value to the pint type
+*/
+function pint(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret pint";
+
+    // Unbox the integer directly
+    return unboxInt(boxVal);
+}
+
+/**
+Cast a boxed integer value to the i32 type
+*/
+function i32(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i32";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.i32, unboxInt(boxVal));
+}
+
+/**
+Cast a boxed integer value to the u16 type
+*/
+function u16(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret u16";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.u16, unboxInt(boxVal));
 }
 
 //=============================================================================
@@ -236,7 +275,7 @@ function heapAlloc(size)
 
     // Align the next allocation pointer
     var rem = iir.icast(IRType.pint, nextPtr) % HEAP_ALIGN;
-    if (rem != iir.cst(IRType.pint, 0))
+    if (rem != pint(0))
     {
         var pad = HEAP_ALIGN - rem;
         nextPtr += pad;
@@ -305,7 +344,7 @@ function newObject(proto)
 
     // Initialize the hash table size and number of properties
     set_obj_tblsize(obj, HASH_MAP_INIT_SIZE);
-    set_obj_numprops(obj, iir.cst(IRType.i32, 0));
+    set_obj_numprops(obj, i32(0));
 
     // Initialize the hash table pointer to null to prevent GC errors
     set_obj_tbl(obj, null);
@@ -316,9 +355,9 @@ function newObject(proto)
 
     // Initialize the hash table
     for (
-        var i = iir.cst(IRType.pint, 0); 
+        var i = pint(0); 
         i < HASH_MAP_INIT_SIZE; 
-        i += iir.cst(IRType.pint, 1)
+        i += pint(1)
     )
     {
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
@@ -361,7 +400,7 @@ function ltGeneral(v1, v2)
     "tachyon:ret bool";
 
     // TODO
-    return iir.cst(IRType.bool, 0);
+    return FALSE_BOOL;
 }
 
 /**
@@ -719,7 +758,7 @@ function putProp(obj, propName, propHash, propVal)
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
-            numProps += iir.cst(IRType.i32, 1);
+            numProps += i32(1);
             set_obj_numprops(obj, numProps);
             numProps = iir.icast(IRType.pint, numProps);
 
@@ -739,7 +778,7 @@ function putProp(obj, propName, propHash, propVal)
         }
 
         // Move to the next hash table slot
-        hashIndex = (hashIndex + iir.cst(IRType.pint, 1)) % tblSize;
+        hashIndex = (hashIndex + pint(1)) % tblSize;
     }
 }
 
@@ -752,15 +791,15 @@ function extObjHashTbl(obj, curTbl, curSize)
     "tachyon:arg curSize pint";
 
     // Compute the new table size
-    var newSize = curSize * iir.cst(IRType.pint, 2) + iir.cst(IRType.pint, 1);
+    var newSize = curSize * pint(2) + pint(1);
 
     // Allocate a new, larger hash table
     var newTbl = alloc_hashtbl(newSize);
 
     // For each entry in the current table
-    for (var curIdx = iir.cst(IRType.pint, 0); 
+    for (var curIdx = pint(0); 
          curIdx < curSize; 
-         curIdx = (curIdx + iir.cst(IRType.pint, 1)) % curSize
+         curIdx = (curIdx + pint(1)) % curSize
     )
     {
         // Get the key and property values at this hash slot
@@ -793,7 +832,7 @@ function extObjHashTbl(obj, curTbl, curSize)
             }
 
             // Move to the next hash table slot
-            hashIndex = (hashIndex + iir.cst(IRType.pint, 1)) % newSize;
+            hashIndex = (hashIndex + pint(1)) % newSize;
 
             // Ensure that a free slot was found for this key
             assert (
@@ -861,7 +900,7 @@ function getProp(obj, propName, propHash)
             }
 
             // Move to the next hash table slot
-            hashIndex = (hashIndex + iir.cst(IRType.pint, 1)) % tblSize;
+            hashIndex = (hashIndex + pint(1)) % tblSize;
         }
 
         // Move up in the prototype chain

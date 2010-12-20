@@ -66,6 +66,15 @@ function IRType(name, size)
         this.minVal = getIntMin(this.numBits, name[0] == 'u');
         this.maxVal = getIntMax(this.numBits, name[0] == 'u');
     }
+
+    // Otherwise, if this is the boxed type
+    else if (name == 'box')
+    {
+        // TODO: make this infinity when supported, boxed
+        // values can be floats
+        this.minVal = getIntMin(30, false);
+        this.maxVal = getIntMax(30, false);
+    }
 }
 IRType.prototype = {};
 
@@ -1548,7 +1557,8 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
          inputVals[0].type.isNumber())
         &&
         inputVals[1].type === inputVals[0].type,
-        'invalid input types'
+        'invalid input types (' + inputVals[0].type + 
+        ', ' + inputVals[1].type + ')'
     );
     
     this.type = IRType.bool;

@@ -233,6 +233,24 @@ staticEnv.regBinding(
     )
 );
 
+// True boolean constant
+staticEnv.regBinding(
+    'TRUE_BOOL',
+    ConstValue.getConst(
+        1,
+        IRType.bool
+    )
+);
+
+// False boolean constant
+staticEnv.regBinding(
+    'FALSE_BOOL',
+    ConstValue.getConst(
+        0,
+        IRType.bool
+    )
+);
+
 // Undefined constant
 staticEnv.regBinding(
     'UNDEFINED',

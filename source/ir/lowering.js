@@ -80,26 +80,22 @@ function lowerIRCFG(cfg)
         }
     }
 
-    // Validate the CFG
-    //cfg.validate();
+    // FIXME: temporary
+    // Apply peephole optimization patterns to the CFG
+    //applyPatternsCFG(cfg);
+
+    //print(cfg.ownerFunc);
 
     // Perform constant propagation on the CFG
     constProp(cfg);
 
-    //print('validating post const prop');
-    //print('\n' + cfg + '\n');
+    //print(cfg.ownerFunc);
 
     // Validate the CFG
     cfg.validate();
 
-    //print('validated');
-
-    //print('\n' + cfg + '\n');
-
     // Apply peephole optimization patterns to the CFG
     applyPatternsCFG(cfg);
-
-    //print('\n' + cfg + '\n');
 
     // Validate the CFG
     cfg.validate();

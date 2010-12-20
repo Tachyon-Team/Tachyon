@@ -136,6 +136,8 @@ function constProp(cfg)
     // Evaluate an SSA instruction
     function evalInstr(instr)
     {
+        //print('evaluating: ' + instr);
+
         // If there is a const prop function for this instruction, use it
         if (instr.constEval)
         {
@@ -144,6 +146,8 @@ function constProp(cfg)
             if (val instanceof IRInstr && 
                 instrVals[val.instrId] instanceof ConstValue)
                 return instrVals[val.instrId];
+
+            //print('result: ' + val);
 
             return val;
         }
@@ -171,9 +175,14 @@ function constProp(cfg)
     {
         var block = cfg.blocks[i];
 
+        //print('processing: ' + block.getBlockName());
+
         // If this block is not reachable, skip it
         if (!isReachable(block))
+        {
+            //print('unreachable: ' + block.getBlockName());
             continue;
+        }
 
         // For each instruction in the block
         for (var j = 0; j < block.instrs.length; ++j)
@@ -199,6 +208,31 @@ function constProp(cfg)
                 }
             }
 
+            // If this is an arithmetic instruction with overflow 
+            // and we have a replacement value
+            else if (instr instanceof ArithOvfInstr && val instanceof IRValue)
+            {
+                //print(instr + ' ==> ' + val);
+                //print(instr.parentBlock.parentCFG.ownerFunc.funcName);
+
+                // Remap the dests to the replacement instruction
+                while (instr.dests.length > 0)
+                {
+                    var dest = instr.dests[0];
+
+                    dest.replUse(instr, val);
+
+                    if (val instanceof IRInstr)
+                        val.addDest(dest);
+
+                    instr.remDest(dest);
+                }
+
+                // Replace the instruction by a jump to the normal branch
+                block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
+                ++numBranches;
+            }
+
             // If there is a constant value for this instruction
             else if (val instanceof ConstValue)
             {
@@ -218,6 +252,9 @@ function constProp(cfg)
                 for (var k = 0; k < instr.dests.length; ++k)
                 {
                     var dest = instr.dests[k];
+
+                    print('DEST: ' + dest);
+
                     dest.replUse(instr, val);
                     val.addDest(dest);
                 }
@@ -296,7 +333,7 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
         }
         else if (genFunc)
         {
-            return genFunc(this.uses[0], this.uses[1]);
+            return genFunc(v0, v1);
         }
 
         // By default, return the unknown value
@@ -349,7 +386,6 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
 
         if (u1 instanceof ConstValue && u1.value == 1)
             return u0;
-
 
         if (((u0 instanceof ConstValue && u0.value == 0) || 
              (u1 instanceof ConstValue && u1.value == 0)) &&
@@ -431,7 +467,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
 
         else if (genFunc)
         {
-            return genFunc(this.uses[0], this.uses[1], this.type);
+            return genFunc(v0, v1, this.type);
         }
 
         // By default, return the unknown value
@@ -578,6 +614,11 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
             if (castVal >= this.type.minVal && castVal <= this.type.maxVal)
                 result = castVal;
         }
+        else if (v0.type.isInt() && this.type.isInt())
+        {
+            if (v0.value >= this.type.minVal && v0.value <= this.type.maxVal)
+                result = v0.value;
+        }
 
         if (result !== undefined)
         {
@@ -681,6 +722,91 @@ NeInstr.prototype.constEval = CompInstr.genConstEval(
     function (v0, v1)
     {
         return v0 != v1;
+    }
+);
+
+ArithOvfInstr.genConstEval = function (opFunc, genFunc)
+{
+    function constEval(getValue, isReachable, cfgWorkList)
+    {
+        var v0 = getValue(this.uses[0]);
+        var v1 = getValue(this.uses[1]);
+
+        if (v0 === TOP || v1 === TOP)
+        {
+            return TOP;
+        }
+
+        if (v0 instanceof ConstValue && v1 instanceof ConstValue)
+        {
+            var result = opFunc(v0.value, v1.value, v0.type);
+
+            // If there was no overflow
+            if (result >= -MAX_FIXNUM && result <= MAX_FIXNUM)
+            {
+                // Add the normal (non-overflow) branch to the work list
+                cfgWorkList.push(this.targets[0]);
+
+                // Return the result
+                return ConstValue.getConst(
+                    result,
+                    v0.type
+                );
+            }
+        }
+
+        else if (genFunc)
+        {
+            var result = genFunc(v0, v1);
+
+            if (result !== BOT)
+            {
+                // Add the normal (non-overflow) branch to the work list
+                cfgWorkList.push(this.targets[0]);
+
+                return result;
+            }
+        }
+
+        // By default, both branches are reachable (an overflow could occur)
+        cfgWorkList.push(this.targets[0]);
+        cfgWorkList.push(this.targets[1]);
+
+        // By default, return the unknown value
+        return BOT;
+    }
+
+    return constEval;
+};
+/*
+AddOvfInstr.prototype.constEval = ArithInstr.genConstEval(
+    function (v0, v1)
+    {
+        return v0 + v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue && u0.value == 0)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
+    }
+);
+*/
+SubOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
+    function (v0, v1)
+    {
+        return v0 - v1;
+    },
+    function (u0, u1)
+    {
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 

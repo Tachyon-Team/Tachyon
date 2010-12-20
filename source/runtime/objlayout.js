@@ -343,7 +343,7 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
-        sourceStr += '\treturn iir.cst(IRType.pint, ' + objSize + ');\n';
+        sourceStr += '\treturn pint(' + objSize + ');\n';
         sourceStr += '}\n';
         sourceStr += '\n';
 
@@ -368,8 +368,8 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
-        sourceStr += '\tvar baseSize = iir.cst(IRType.pint, ' + lastField.offset + ');\n';
-        sourceStr += '\tvar elemSize = iir.cst(IRType.pint, ' + lastField.elemSize + ');\n';
+        sourceStr += '\tvar baseSize = pint(' + lastField.offset + ');\n';
+        sourceStr += '\tvar elemSize = pint(' + lastField.elemSize + ');\n';
         sourceStr += '\tvar objSize = baseSize + elemSize * size;\n';
         sourceStr += '\treturn objSize;\n';
         sourceStr += '}\n';
@@ -414,7 +414,7 @@ ObjectLayout.prototype.genMethods = function ()
             nameStr += '_' + fname;
 
             // Add the field offset to the current offset
-            offsetStr += 'offset += iir.cst(IRType.pint, ' + spec.offset + ');\n';
+            offsetStr += 'offset += pint(' + spec.offset + ');\n';
 
             // If there are many elements, or a variable number of elements
             if (spec.numElems != 1)
@@ -427,7 +427,7 @@ ObjectLayout.prototype.genMethods = function ()
                 // Integrate the index argument in the computation
                 argStr += ', ' + idxVar;
                 offsetStr +=
-                    'offset += iir.cst(IRType.pint, ' + spec.elemSize +
+                    'offset += pint(' + spec.elemSize +
                     ') * ' + idxVar + ';\n';
                 ;
             }
@@ -496,7 +496,7 @@ ObjectLayout.prototype.genMethods = function ()
         1,
         '"tachyon:arg obj ' + this.ptrType + '";\n' +
         '"tachyon:inline";\n',
-        'var offset = iir.cst(IRType.pint, 0);\n'
+        'var offset = pint(0);\n'
     );
 
     // Append the generated code to the object layout source string
