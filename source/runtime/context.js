@@ -20,6 +20,12 @@ ctxLayout.addField(
     IRType.box
 );
 
+// String table
+ctxLayout.addField(
+    'strtbl',
+    IRType.box
+);
+
 // Object prototype object
 ctxLayout.addField(
     'objproto',
