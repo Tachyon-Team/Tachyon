@@ -41,13 +41,20 @@ function constProp(cfg)
         return (reachable[block.blockId] === true);
     }
 
+    // Queue a CFG edge into the CFG work list
+    function queueEdge(branchInstr, succBlock)
+    {
+        var predBlock = branchInstr.parentBlock;
+        cfgWorkList.push({pred: predBlock, succ:succBlock});
+    }
+
     // Evaluate an SSA instruction
     function evalInstr(instr)
     {
         // If there is a const prop function for this instruction, use it
         if (instr.constEval !== undefined)
         {
-            var val = instr.constEval(getValue, isReachable, cfgWorkList);
+            var val = instr.constEval(getValue, isReachable, queueEdge);
 
             if (val instanceof IRInstr && 
                 instrVals[val.instrId] instanceof ConstValue)
@@ -63,7 +70,7 @@ function constProp(cfg)
             for (var i = 0; i < instr.targets.length; ++i)
             {
                 if (instr.targets[i])
-                    cfgWorkList.push(instr.targets[i]);
+                    queueEdge(instr, instr.targets[i]);
             }
         }
 
@@ -72,7 +79,7 @@ function constProp(cfg)
     }
     
     // List of CFG blocks to be processed
-    var cfgWorkList = [cfg.entry];
+    var cfgWorkList = [];
 
     // List of SSA edges to be processed
     var ssaWorkList = [];
@@ -80,12 +87,25 @@ function constProp(cfg)
     // Reachable blocks, indexed by block id
     var reachable = [];
 
+    // Visited edges, indexed by predecessor id, successor id
+    var edgeVisited = [];
+
     // Instruction values, indexed by instr id
     var instrVals = [];
+
+    // Initialize all edges to unvisited
+    for (var itr = cfg.getBlockItr(); itr.valid(); itr.next())
+        edgeVisited[itr.get().blockId] = [];
+    for (var itr = cfg.getEdgeItr(); itr.valid(); itr.next())
+        edgeVisited[itr.get().pred.blockId][itr.get().succ.blockId] = undefined;
 
     // Initialize all instruction values to top
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
         instrVals[itr.get().instrId] = TOP;
+
+    // Add the entry block to the CFG work list
+    cfgWorkList.push({pred: cfg.entry, succ:cfg.entry});
+    edgeVisited[cfg.entry.blockId][cfg.entry.blockId] = undefined;
 
     // Until a fixed point is reached
     while (cfgWorkList.length > 0 || ssaWorkList.length > 0)
@@ -93,24 +113,40 @@ function constProp(cfg)
         // Until the CFG work list is processed
         while (cfgWorkList.length > 0)
         {
-            // Remove a block from the CFG work list
-            var b = cfgWorkList.pop();
+            // Remove an edge from the work list
+            var edge = cfgWorkList.pop();
+            var pred = edge.pred;
+            var succ = edge.succ;
+
+            // Test if this edge has already been visited
+            var firstEdgeVisit = (edgeVisited[pred.blockId][succ.blockId] !== true);
+
+            // If this is not the first visit of this edge, do nothing
+            if (!firstEdgeVisit)
+                continue;
 
             // Test if this is the first visit to this block
-            var firstVisit = reachable[b.blockId] === undefined;
+            var firstVisit = (reachable[succ.blockId] !== true);
 
-            // Mark b as reachable
-            reachable[b.blockId] = true;
+            //print('iterating cfg: ' + succ.getBlockName() + (firstVisit? ' (first visit)':''));
 
-            // For each instruction in b
-            for (var i = 0; i < b.instrs.length; ++i)
+            // Mark the edge as visited
+            edgeVisited[pred.blockId][succ.blockId] = true;
+
+            // Mark the successor block as reachable
+            reachable[succ.blockId] = true;
+
+            // For each instruction in the successor block
+            for (var i = 0; i < succ.instrs.length; ++i)
             {
-                var instr = b.instrs[i];
+                var instr = succ.instrs[i];
 
                 // If this is not a phi node and this is not the first visit,
                 // do not revisit non-phi instructions
                 if (!(instr instanceof PhiInstr) && !firstVisit)
                     break;
+
+                //print('visiting: ' + instr);
 
                 // Evaluate the instruction
                 instrVals[instr.instrId] = evalInstr(instr);
@@ -139,11 +175,13 @@ function constProp(cfg)
             // Evaluate the value of the edge dest
             var t = evalInstr(v);
 
-            //print(t);
+            //print('iterating ssa: ' + v + ' ==> ' + t);
 
             // If the instruction value has changed
             if (t !== instrVals[v.instrId])
             {
+                //print('value changed');
+
                 // Update the value for this instruction
                 instrVals[v.instrId] = t;
                 
@@ -161,55 +199,6 @@ function constProp(cfg)
                 }
             }
         }
-    }
-
-    // Get the value of a constant use or instruction
-    function getValue(val)
-    {
-        if (val instanceof ConstValue)
-            return val;
-        else
-            return instrVals[val.instrId];
-    }
-
-    // Test if a basic block is reachable
-    function isReachable(block)
-    {
-        return (reachable[block.blockId] === true);
-    }
-
-    // Evaluate an SSA instruction
-    function evalInstr(instr)
-    {
-        //print('evaluating: ' + instr);
-
-        // If there is a const prop function for this instruction, use it
-        if (instr.constEval)
-        {
-            var val = instr.constEval(getValue, isReachable, cfgWorkList);
-
-            if (val instanceof IRInstr && 
-                instrVals[val.instrId] instanceof ConstValue)
-                return instrVals[val.instrId];
-
-            //print('result: ' + val);
-
-            return val;
-        }
-
-        // Otherwise, if this instruction is a generic branch
-        else if (instr.isBranch())
-        {
-            // Put all branches on the CFG work list
-            for (var i = 0; i < instr.targets.length; ++i)
-            {
-                if (instr.targets[i])
-                    cfgWorkList.push(instr.targets[i]);
-            }
-        }
-
-        // By default, return the non-constant value
-        return BOT;
     }
     
     var numConsts = 0;
@@ -298,8 +287,6 @@ function constProp(cfg)
                 {
                     var dest = instr.dests[k];
 
-                    print('DEST: ' + dest);
-
                     dest.replUse(instr, val);
                     val.addDest(dest);
                 }
@@ -324,7 +311,7 @@ function constProp(cfg)
 //
 //=============================================================================
 
-PhiInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+PhiInstr.prototype.constEval = function (getValue, isReachable, queueEdge)
 {
     var curVal;
 
@@ -355,7 +342,7 @@ PhiInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 
 ArithInstr.genConstEval = function (opFunc, genFunc)
 {
-    function constEval(getValue, isReachable, cfgWorkList)
+    function constEval(getValue, isReachable, queueEdge)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -482,7 +469,7 @@ ModInstr.prototype.constEval = ArithInstr.genConstEval(
 
 BitOpInstr.genConstEval = function (opFunc, genFunc)
 {
-    function constEval(getValue, isReachable, cfgWorkList)
+    function constEval(getValue, isReachable, queueEdge)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -641,7 +628,7 @@ UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     }
 );
 
-ICastInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge)
 {
     var v0 = getValue(this.uses[0]);
 
@@ -688,7 +675,7 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
 
 CompInstr.genConstEval = function (opFunc)
 {
-    function constEval(getValue, isReachable, cfgWorkList)
+    function constEval(getValue, isReachable, queueEdge)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -776,7 +763,7 @@ NeInstr.prototype.constEval = CompInstr.genConstEval(
 
 ArithOvfInstr.genConstEval = function (opFunc, genFunc)
 {
-    function constEval(getValue, isReachable, cfgWorkList)
+    function constEval(getValue, isReachable, queueEdge)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -791,10 +778,10 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
             var result = opFunc(v0.value, v1.value, v0.type);
 
             // If there was no overflow
-            if (result >= -MAX_FIXNUM && result <= MAX_FIXNUM)
+            if (result >= IRType.pint.minVal && result <= IRType.pint.maxVal)
             {
                 // Add the normal (non-overflow) branch to the work list
-                cfgWorkList.push(this.targets[0]);
+                queueEdge(this, this.targets[0]);
 
                 // Return the result
                 return ConstValue.getConst(
@@ -811,15 +798,15 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
             if (result !== BOT)
             {
                 // Add the normal (non-overflow) branch to the work list
-                cfgWorkList.push(this.targets[0]);
+                queueEdge(this, this.targets[0]);
 
                 return result;
             }
         }
 
         // By default, both branches are reachable (an overflow could occur)
-        cfgWorkList.push(this.targets[0]);
-        cfgWorkList.push(this.targets[1]);
+        queueEdge(this, this.targets[0]);
+        queueEdge(this, this.targets[1]);
 
         // By default, return the unknown value
         return BOT;
@@ -827,8 +814,8 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
 
     return constEval;
 };
-/*
-AddOvfInstr.prototype.constEval = ArithInstr.genConstEval(
+
+AddOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 + v1;
@@ -844,7 +831,7 @@ AddOvfInstr.prototype.constEval = ArithInstr.genConstEval(
         return BOT;
     }
 );
-*/
+
 SubOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
@@ -854,6 +841,33 @@ SubOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     {
         if (u1 instanceof ConstValue && u1.value == 0)
             return u0;
+
+        return BOT;
+    }
+);
+
+MulOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
+    function (v0, v1)
+    {
+        return v0 * v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue && u0.value == 1)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 1)
+            return u0;
+
+        if (((u0 instanceof ConstValue && u0.value == 0) || 
+             (u1 instanceof ConstValue && u1.value == 0)) &&
+            u0.type === u1.type)
+        {
+            return ConstValue.getConst(
+                0,
+                u0.type
+            );
+        }
 
         return BOT;
     }
@@ -891,7 +905,7 @@ function constEvalBool(val)
     return BOT;
 }
 
-CallFuncInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+CallFuncInstr.prototype.constEval = function (getValue, isReachable, queueEdge)
 {
     // If this is a call to boxToBool
     if (this.uses[0] instanceof IRFunction && 
@@ -912,12 +926,12 @@ CallFuncInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList
     // Add all branch targets to the CFG work list
     for (var i = 0; i < this.targets.length; ++i)
         if (this.targets[i])
-            cfgWorkList.push(this.targets[i]);
+            queueEdge(this, this.targets[i]);
 
     return BOT;
 };
 
-IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
+IfInstr.prototype.constEval = function (getValue, isReachable, queueEdge)
 {
     // Evaluate the test value
     var test = constEvalBool(getValue(this.uses[0]));
@@ -926,23 +940,24 @@ IfInstr.prototype.constEval = function (getValue, isReachable, cfgWorkList)
     if (test.value === true)
     {
         // Add the true branch to the work list
-        cfgWorkList.push(this.targets[0]);
+        queueEdge(this, this.targets[0]);
     }
 
     // If the test evaluates to false
     else if (test.value === false)
     {
         // Add the false branch to the work list
-        cfgWorkList.push(this.targets[1]);
+        queueEdge(this, this.targets[1]);
     }
 
     // If test is non-constant, both branches are reachable
     else if (test === BOT)
     {
-        cfgWorkList.push(this.targets[0]);
-        cfgWorkList.push(this.targets[1]);
+        queueEdge(this, this.targets[0]);
+        queueEdge(this, this.targets[1]);
     }
 
     // Return the test value
     return test;
 };
+

@@ -253,6 +253,8 @@ tests.ir.nestedLoops = function ()
                 for (var i = 0; i < 10; ++i)        \
                     for (var j = 0; j < 10; ++j)    \
                         v = i + j;                  \
+                                                    \
+                return v;                           \
             }                                       \
         "
     );
@@ -340,9 +342,9 @@ tests.ir.fibFunc = function ()
 };
 
 /**
-Nested if and return statements in a function
+Nested if with constants and return statements in a function
 */
-tests.ir.ifRetFunc = function ()
+tests.ir.ifRetCstFunc = function ()
 {
     tests.ir.helpers.testSource(
         "                                           \
@@ -353,6 +355,29 @@ tests.ir.ifRetFunc = function ()
                     var v = foo;                    \
                                                     \
                     if (true)                       \
+                        return 0;                   \
+                    else                            \
+                        return 1;                   \
+                }                                   \
+            }                                       \
+        "
+    );
+};
+
+/**
+Nested if with variables and return statements in a function
+*/
+tests.ir.ifRetFunc = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                           \
+            function foo(a, b)                      \
+            {                                       \
+                if (a)                              \
+                {                                   \
+                    var v = foo;                    \
+                                                    \
+                    if (b)                          \
                         return 0;                   \
                     else                            \
                         return 1;                   \

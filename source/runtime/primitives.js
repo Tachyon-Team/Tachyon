@@ -237,6 +237,19 @@ function i32(boxVal)
 }
 
 /**
+Cast a boxed integer value to the i16 type
+*/
+function i16(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i16";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.i16, unboxInt(boxVal));
+}
+
+/**
 Cast a boxed integer value to the u16 type
 */
 function u16(boxVal)

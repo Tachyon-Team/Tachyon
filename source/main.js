@@ -39,8 +39,8 @@ function testIR()
     );
     */
 
-    //var ast = parse_src_file('test.js');
-    var ast = parse_src_file('programs/fib/fib.js');
+    var ast = parse_src_file('programs/loop_sum/loop_sum.js');
+    //var ast = parse_src_file('programs/fib/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
     //var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
     //var ast = parse_src_str('function foo(a) { "tachyon:inline"; } return foo(1);');
@@ -49,7 +49,7 @@ function testIR()
 
     var ir = unitToIR(ast, true);
     
-    print(ir);
+    //print(ir);
 
     lowerIRFunc(ir);
 
@@ -57,17 +57,19 @@ function testIR()
 
     ir.validate();    
      
+    /*
     var codeblock = backend.compileIRToCB(ir);    
     //print(backend.listing(codeblock));
     var result = backend.executeCB(codeblock);
 
     //print('result: ' + (result >> 2));    
     print('result: ' + result);
+    */
 
-    /*
+    
     var func = staticEnv.getBinding('strcmp');
     print(func);
-    */
+    
 
     //printInstrNames(ir);
 };
