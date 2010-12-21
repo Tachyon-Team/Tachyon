@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-17 10:00:19 feeley>
+// File: "parser.js", Time-stamp: <2010-12-17 11:04:35 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -16,7 +16,8 @@ function Parser(scanner, autosemicolon_enabled)
 
     this.autosemicolon_enabled = autosemicolon_enabled;
     this.autosemicolon_warning = autosemicolon_enabled;
-    this.number_literal_warning = true;
+    this.number_literal_warning = false;
+    this.division_warning = false;
 
     this.stack = [];
     this.sp    = 0;
@@ -94,6 +95,13 @@ Parser.prototype.consume = function ()
                      this.input.value > 1073741823)
                 this.warning(this.input.loc,
                              "number literal is outside 30 bit integer range");
+        }
+
+        if ((this.input.cat === DIVEQUAL_CAT || this.input.cat === DIV_CAT) &&
+            this.division_warning)
+        {
+            this.warning(this.input.loc,
+                         "use of division operator");
         }
     }
 };

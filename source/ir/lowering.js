@@ -86,8 +86,12 @@ function lowerIRCFG(cfg)
 
     //print(cfg.ownerFunc);
 
+    //print('doing const prop');
+
     // Perform constant propagation on the CFG
     constProp(cfg);
+
+    //print('done const prop');
 
     //print(cfg.ownerFunc);
 

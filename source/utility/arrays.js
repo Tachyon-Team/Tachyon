@@ -69,7 +69,7 @@ Perform the intersection operation on an array set
 */
 function arraySetIntr(arr1, arr2)
 {
-    out = [];
+    var out = [];
 
     for (var i = 0; i < arr1.length; ++i)
         if (arraySetHas(arr2, arr1[i]))

@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js2scm.js", Time-stamp: <2010-12-20 16:10:43 feeley>
+// File: "js2js.js", Time-stamp: <2010-12-20 16:10:27 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -13,8 +13,7 @@ function main()
     var prog = null;
     var opt_debug = false;
     var opt_ast = false;
-    var opt_pp = false;
-    var opt_noscm = false;
+    var opt_nojs = false;
     var i = 0;
 
     while (i < args.length)
@@ -23,10 +22,8 @@ function main()
             opt_debug = true;
         else if (args[i] == "-ast")
             opt_ast = true;
-        else if (args[i] == "-pp")
-            opt_pp = true;
-        else if (args[i] == "-noscm")
-            opt_noscm = true;
+        else if (args[i] == "-nojs")
+            opt_nojs = true;
         else
             break;
         i++;
@@ -54,11 +51,8 @@ function main()
         if (opt_ast)
             pp(normalized_prog);
 
-        if (opt_pp)
+        if (!opt_nojs)
             js_pp(normalized_prog);
-
-        if (!opt_noscm)
-            compile_to_scm(normalized_prog);
     }
 }
 

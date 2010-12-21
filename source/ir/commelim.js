@@ -301,7 +301,7 @@ function commElim(cfg, maxItrs)
                     callBlock.addInstr(
                         new JumpInstr(instr.getContTarget()),
                         undefined,
-                        callBlock.instrs.length - 1
+                        undefined
                     );
                 }
 

@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-17 09:53:11 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-18 10:06:53 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -331,7 +331,7 @@
         (begin
           (vector-set! v i x)
           (Array-len-set! arr (fx+ i 1)))
-        (let* ((n (fx* 2 (vector-length v)))
+        (let* ((n (fx+ 1 (fx* 2 (vector-length v))))
                (new-v (make-vector n (js.undefined))))
           (subvector-move! v 0 i new-v 0)
           (vector-set! new-v i x)
@@ -361,7 +361,7 @@
 (define (Array-resize-if-needed arr len)
   (let ((v (Array-vect arr)))
     (if (fx< (vector-length v) len)
-        (let* ((n (fx* 2 len))
+        (let* ((n (fx+ 1 (fx* 2 len)))
                (new-v (make-vector n (js.undefined))))
           (subvector-move! v 0 (Array-len arr) new-v 0)
           (Array-vect-set! arr new-v)))
@@ -486,6 +486,12 @@
 
 (js:index-set!
  (js:index _String "prototype")
+ "charAt"
+ (lambda (self i)
+   (string (string-ref self i))))
+
+(js:index-set!
+ (js:index _String "prototype")
  "charCodeAt"
  (lambda (self i)
    (char->integer (string-ref self i))))
@@ -552,6 +558,12 @@
  "floor"
  (lambda (self x)
    (floor x)))
+
+(js:index-set!
+ _Math
+ "pow"
+ (lambda (self x y)
+   (expt x y)))
 
 ;;;----------------------------------------------------------------------------
 
@@ -636,13 +648,6 @@
                Object-prototype
                (list->assoc-table props)))
 
-(define (js:instanceof x y)
-  (cond ((Object? x)
-         (or (eq? (Object-ctor x) y)
-             (js:instanceof (Object-proto x) y)))
-        (else
-         #f)))
-
 (define (js:forin set iteration)
   (let ((keys (map car (assoc-table->list (Object-at set)))))
     (for-each iteration keys)
@@ -652,6 +657,15 @@
 (define (js:throw obj)
   (pp (table->list (Object-at obj)));;;;;;;;;;;;;;;
   (raise obj))
+
+(define (js:instanceof x ctor)
+  (cond ((Object? x)
+         (or (eq? (Object-ctor x) ctor)
+             (js:instanceof (Object-proto x) ctor)))
+        ((procedure? x)
+         (js:instanceof (get-obj-proxy x) ctor))
+        (else
+         #f)))
 
 (define (js:typeof obj)
   (cond ((boolean? obj) "boolean")

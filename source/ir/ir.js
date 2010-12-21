@@ -742,7 +742,7 @@ IRConvContext.prototype.splice = function (contBlock)
         'continuation block not defined for IR conversion context splice'
     );
 
-    if (this.exitBlock)
+    if (this.exitBlock !== undefined)
         this.exitBlock = contBlock;
     else
         this.entryBlock = contBlock;
@@ -814,7 +814,7 @@ IRConvContext.prototype.pursue = function (astNode)
 
     return new IRConvContext(
         astNode,
-        (this.exitBlock !== undefined)? this.exitBlock:this.entryBlock,
+        (this.exitBlock !== undefined) ? this.exitBlock : this.entryBlock,
         this.ctxNode,
         this.withVal,
         this.localMap,
@@ -862,7 +862,9 @@ Add an instruction at the end of the current block of this context
 */
 IRConvContext.prototype.addInstr = function (instr, outName)
 {
-    var insBlock = this.exitBlock? this.exitBlock:this.entryBlock;
+    var insBlock = (this.exitBlock !== undefined)
+                   ? this.exitBlock
+                   : this.entryBlock;
 
     insBlock.addInstr(instr, outName);
 
@@ -975,7 +977,7 @@ function stmtToIR(context)
 
         // Create a context for the false statement
         var falseContext = context.branch(
-            astStmt.statements[1]? astStmt.statements[1]:null,
+            (astStmt.statements.length > 1) ? astStmt.statements[1] : null,
             context.cfg.getNewBlock('if_false'),
             testContext.localMap.copy()
         );
@@ -1398,7 +1400,7 @@ function stmtToIR(context)
     else if (astStmt instanceof ContinueStatement)
     {
         // Get the label, if one was specified
-        var label = astStmt.label? astStmt.label.toString():'';
+        var label = (astStmt.label !== null) ? astStmt.label.toString() : '';
 
         // If there is a continue list for this label
         if (context.contMap.hasItem(label))
@@ -1427,7 +1429,7 @@ function stmtToIR(context)
     else if (astStmt instanceof BreakStatement)
     {
         // Get the label, if one was specified
-        var label = astStmt.label? astStmt.label.toString():'';
+        var label = (astStmt.label !== null) ? astStmt.label.toString() : '';
 
         // If there is a break list for this label
         if (context.breakMap.hasItem(label))
@@ -1456,7 +1458,7 @@ function stmtToIR(context)
     else if (astStmt instanceof ReturnStatement)
     {
         // If there is a return expression
-        if (astStmt.expr)
+        if (astStmt.expr !== null)
         {
             // Compile the return expression
             var retContext = context.pursue(astStmt.expr);
@@ -1514,7 +1516,9 @@ function stmtToIR(context)
     else if (astStmt instanceof SwitchStatement)
     {
         // Get the label for this statement
-        var label = astStmt.stmtLabel? astStmt.stmtLabel.toString():'';
+        var label = (astStmt.stmtLabel !== undefined)
+                    ? astStmt.stmtLabel.toString()
+                    : '';
 
         // Compile the switch expression
         var switchCtx = context.pursue(astStmt.expr);        
@@ -1664,7 +1668,7 @@ function stmtToIR(context)
         nextTestCtx.bridge();
 
         // If a default clause was specified
-        if (defaultEntry)
+        if (defaultEntry !== null)
         {
             // Merge the context from the default case into the default entry
             mergeLoopEntry(
@@ -1696,6 +1700,8 @@ function stmtToIR(context)
 
     else if (astStmt instanceof LabelledStatement)
     {
+        // FIXME: a statement may have several labels:   foo: bar: switch (...)
+        // FIXME: don't add fields to AST nodes
         // Assign our label to the inner statement
         astStmt.statement.stmtLabel = astStmt.label;
 
@@ -1791,7 +1797,7 @@ function stmtToIR(context)
         );
 
         // Compile the finally statement, if it is defined
-        if (astStmt.finally_part)
+        if (astStmt.finally_part !== null)
             stmtToIR(finallyCtx);
         else
             finallyCtx.bridge();
@@ -2538,7 +2544,7 @@ function opToIR(context)
                     var opValueGlob;
 
                     // If we are within a with block
-                    if (context.withVal)
+                    if (context.withVal !== null)
                     {
                         // Add a has-property test on the object for the symbol name
                         var hasTestVal = insertPrimCallIR(
@@ -2583,7 +2589,7 @@ function opToIR(context)
                     );
 
                     // If we are within a with block
-                    if (context.withVal)
+                    if (context.withVal !== null)
                     {
                         // Delete the property from the with object
                         var opValueObj = insertPrimCallIR(
@@ -2831,7 +2837,7 @@ function assgToIR(context, rhsVal)
         var symName = leftExpr.id.toString();   
 
         // If we are within a with block
-        if (context.withVal)
+        if (context.withVal !== null)
         {
             // Add a has-property test on the object for the symbol name
             var hasTestVal = insertPrimCallIR(
@@ -2952,7 +2958,7 @@ function assgToIR(context, rhsVal)
         }
 
         // If we are within a with block
-        if (context.withVal)
+        if (context.withVal !== null)
         {
             // If a RHS code gen function was specified
             if (rhsVal instanceof Function)
@@ -3012,11 +3018,11 @@ function assgToIR(context, rhsVal)
             var curContext = varContext;
         }
 
-        // If the assignment value is and instruction, but not a function argument
+        // If the assignment value is an instruction, but not a function argument
         if (rhsValAssg instanceof IRInstr && !(rhsValAssg instanceof ArgValInstr))
         {
             // If the value already has a name, release it
-            if (rhsValAssg.outName)
+            if (rhsValAssg.outName !== "")
                 context.cfg.freeInstrName(rhsValAssg);
 
             // Assign the lhs variable name to the instruction
@@ -3105,7 +3111,7 @@ function refToIR(context)
     var varValueProp;
 
     // If we are within a with block
-    if (context.withVal)
+    if (context.withVal !== null)
     {
         // Add a has-property test on the object for the symbol name
         var hasTestVal = insertPrimCallIR(
@@ -3189,7 +3195,7 @@ function refToIR(context)
             }
 
             // If the value already has a name, release it
-            if (varValueVar.outName)
+            if (varValueVar.outName !== "" && !!varValueVar.outName) // FIXME
                 context.cfg.freeInstrName(rhsValAssg);
 
             // Assign the symbol name to the instruction
@@ -3249,7 +3255,7 @@ function refToIR(context)
     }
 
     // If we are within a with block
-    if (context.withVal)
+    if (context.withVal !== null)
     {
         // Get the value in the with object
         var varValueProp = insertPrimCallIR(
@@ -3581,7 +3587,7 @@ function insertCallIR(context, instr)
         instr.setContTarget(contBlock);
 
         // If we are in a try block
-        if (context.throwList)
+        if (context.throwList !== null)
         {
             // Create a new context and bridge it
             var newCtx = context.pursue(null);
@@ -3620,7 +3626,7 @@ function throwToIR(context, throwCtx, excVal)
     );
 
     // If this is an intraprocedural throw
-    if (context.throwList)
+    if (context.throwList !== null)
     {
         // Add the context to the list of throw contexts
         context.throwList.push(throwCtx);
@@ -3748,7 +3754,9 @@ function createLoopEntry(
 )
 {
     // Get the label for this statement
-    var label = loopStmt.stmtLabel? loopStmt.stmtLabel.toString():'';
+    var label = (loopStmt.stmtLabel !== undefined) // FIXME
+                ? loopStmt.stmtLabel.toString()
+                : '';
 
     // Update the break and continue context maps for the loop body
     var breakMap = context.breakMap.copy();
@@ -3774,7 +3782,9 @@ function createLoopEntry(
         var varName = localVars[i];
         var phiNode = new PhiInstr(
             [context.localMap.getItem(varName)],
-            [context.exitBlock? context.exitBlock:context.entryBlock]
+            [(context.exitBlock !== undefined)
+             ? context.exitBlock
+             : context.entryBlock]
         );
         loopEntry.addInstr(phiNode, varName);
         entryLocals.setItem(varName, phiNode);

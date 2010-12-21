@@ -60,7 +60,7 @@ function IRType(name, size)
     this.numBits = size * 8;
 
     // If this is an integer type
-    if (name[0] == 'i' || name[0] == 'u')
+    if (name.charAt(0) == 'i' || name.charAt(0) == 'u')
     {
         // Compute the available range
         this.minVal = getIntMin(this.numBits, name[0] == 'u');
@@ -533,8 +533,8 @@ Default input string formatting function
 */
 IRInstr.defInFormat = function (instr, pos)
 {
-    output = "";
-    ins = instr.uses[pos];
+    var output = "";
+    var ins = instr.uses[pos];
 
     if (!(ins instanceof IRValue))
         output += "***invalid value***";
@@ -778,7 +778,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     output += this.mnemonic + ' ';
 
-    for (i = 0; i < this.uses.length; ++i)
+    for (var i = 0; i < this.uses.length; ++i)
     {
         output += phiInFormatFn(this, i);
 
@@ -1724,7 +1724,7 @@ Get the target block of the exception-producing instruction
 */
 ExceptInstr.prototype.getThrowTarget = function ()
 {
-    return this.targets[0]? this.targets[0]:null;
+    return this.targets[0] ? this.targets[0] : null;
 };
 
 /**
@@ -1749,10 +1749,7 @@ var ThrowInstr = instrMaker(
 /**
 Throw instructions are always branch instructions
 */
-ThrowInstr.prototype.isBranch = function ()
-{
-    return true; 
-};
+ThrowInstr.prototype.isBranch = function () { return true; };
 
 /**
 @class Exception value catch

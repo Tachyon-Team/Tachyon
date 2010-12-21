@@ -14,9 +14,9 @@ var HASH_MAP_INIT_SIZE = 89;
 
 // Hash map min and max load factors
 var HASH_MAP_MIN_LOAD_NUM = 1;
-var HASH_MAP_MIN_LOAD_DENUM = 10;
+var HASH_MAP_MIN_LOAD_DENOM = 10;
 var HASH_MAP_MAX_LOAD_NUM = 6;
-var HASH_MAP_MAX_LOAD_DENUM = 10;
+var HASH_MAP_MAX_LOAD_DENOM = 10;
 
 // Next object serial number to be assigned
 var nextObjectSerial = 1;
@@ -104,11 +104,10 @@ function HashMap(hashFunc, equalFunc)
 
         // Test if resizing of the hash map is needed
         // numItems > ratio * numSlots
-        // numItems > num/denum * numSlots 
-        // numItems / num > numSlots / denum
-        if (this.numItems / HASH_MAP_MAX_LOAD_NUM >
-            this.numSlots / HASH_MAP_MAX_LOAD_DENUM
-        )
+        // numItems > num/denom * numSlots 
+        // numItems * denom > numSlots * num
+        if (this.numItems * HASH_MAP_MAX_LOAD_DENOM >
+            this.numSlots * HASH_MAP_MAX_LOAD_NUM)
         {
             this.resize(2 * this.numSlots + 1);
         }
@@ -146,11 +145,10 @@ function HashMap(hashFunc, equalFunc)
 
         // Test if resizing of the hash map is needed
         // numItems > ratio * numSlots
-        // numItems > num/denum * numSlots 
-        // numItems / num > numSlots / denum
-        if (this.numItems / HASH_MAP_MAX_LOAD_NUM >
-            this.numSlots / HASH_MAP_MAX_LOAD_DENUM
-        )
+        // numItems > num/denom * numSlots 
+        // numItems * denom > numSlots * num
+        if (this.numItems * HASH_MAP_MAX_LOAD_DENOM >
+            this.numSlots * HASH_MAP_MAX_LOAD_NUM)
         {
             this.resize(2 * this.numSlots + 1);
         }
@@ -213,13 +211,12 @@ function HashMap(hashFunc, equalFunc)
 
                 // If we are under the minimum load factor, shrink the internal array
                 // numItems < ratio * numSlots 
-                // numItems < num/denum * numSlots 
-                // numItems / num < numSlots / denum
-                if ((this.numItems / HASH_MAP_MIN_LOAD_NUM <
-                     this.numSlots / HASH_MAP_MIN_LOAD_DENUM)
+                // numItems < num/denom * numSlots 
+                // numItems * denom < numSlots * num
+                if ((this.numItems * HASH_MAP_MIN_LOAD_DENOM <
+                     this.numSlots * HASH_MAP_MIN_LOAD_NUM)
                     &&
-                    this.numSlots > HASH_MAP_INIT_SIZE
-                )
+                    this.numSlots > HASH_MAP_INIT_SIZE)
                 {
                     this.resize((this.numSlots - 1) >> 1);
                 }
@@ -347,7 +344,7 @@ function HashMap(hashFunc, equalFunc)
     {
         // Ensure that the new size is valid
         assert (
-            this.numItems <= newSize && Math.round(newSize) - newSize == 0,
+            this.numItems <= newSize && Math.floor(newSize) === newSize,
             'cannot resize, more items than new size allows'
         );
 

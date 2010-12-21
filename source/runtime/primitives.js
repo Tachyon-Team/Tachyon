@@ -764,10 +764,10 @@ function putProp(obj, propName, propHash, propVal)
 
             // Test if resizing of the hash map is needed
             // numProps > ratio * tblSize
-            // numProps > num/denum * tblSize
-            // numProps / num > tblSize / denum
-            if (numProps / HASH_MAP_MAX_LOAD_NUM >
-                tblSize / HASH_MAP_MAX_LOAD_DENUM)
+            // numProps > num/denom * tblSize
+            // numProps * denom > tblSize * num
+            if (numProps * HASH_MAP_MAX_LOAD_DENOM >
+                tblSize * HASH_MAP_MAX_LOAD_NUM)
             {
                 // Extend the hash table for this object
                 extObjHashTbl(obj, tblPtr, tblSize);

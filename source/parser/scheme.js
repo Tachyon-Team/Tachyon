@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-14 14:24:28 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-20 11:12:38 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -645,54 +645,55 @@ function gen_begin(exprs)
         return cons(begin, vector2list(exprs));
 }
 
-function gen_continue()
+function gen_continue(ctrl_point)
 {
-    return cons(new Symbol("js.continue"), empty_list);
+    return cons(new Symbol("js.continue"),
+                cons(ctrl_point, empty_list));
 }
 
-function gen_break()
+function gen_break(ctrl_point)
 {
-    return cons(new Symbol("js.break"), empty_list);
+    return cons(new Symbol("js.break"),
+                cons(ctrl_point, empty_list));
 }
 
-function gen_dowhile(features, loop_id, body, test)
+function gen_dowhile(break_ctrl_point, continue_ctrl_point, loop_id, body, test)
 {
-    return cons(features.use_break
-                ? new Symbol("js.dowhile-with-break")
-                : new Symbol("js.dowhile"),
-                cons(loop_id, cons(body, cons(test, empty_list))));
+    return cons(new Symbol("js.dowhile"),
+                cons(break_ctrl_point,
+                     cons(continue_ctrl_point,
+                          cons(loop_id, cons(body, cons(test, empty_list))))));
 }
 
-function gen_while(features, loop_id, test, body)
+function gen_while(break_ctrl_point, continue_ctrl_point, loop_id, test, body)
 {
-    return cons(features.use_break
-                ? new Symbol("js.while-with-break")
-                : new Symbol("js.while"),
-                cons(loop_id, cons(test, cons(body, empty_list))));
+    return cons(new Symbol("js.while"),
+                cons(break_ctrl_point,
+                     cons(continue_ctrl_point,
+                          cons(loop_id, cons(test, cons(body, empty_list))))));
 }
 
-function gen_for(features, loop_id, test, step, body)
+function gen_for(break_ctrl_point, continue_ctrl_point, loop_id, test, step, body)
 {
-    return cons(features.use_break
-                ? new Symbol("js.for-with-break")
-                : new Symbol("js.for"),
-                cons(loop_id, cons(test, cons(step, cons(body, empty_list)))));
+    return cons(new Symbol("js.for"),
+                cons(break_ctrl_point,
+                     cons(continue_ctrl_point,
+                          cons(loop_id, cons(test, cons(step, cons(body, empty_list)))))));
 }
 
-function gen_forin(features, loop_id, id, set, body)
+function gen_forin(break_ctrl_point, continue_ctrl_point, loop_id, id, set, body)
 {
-    return cons(features.use_break
-                ? new Symbol("js.forin-with-break")
-                : new Symbol("js.forin"),
-                cons(loop_id, cons(id, cons(set, cons(body, empty_list)))));
+    return cons(new Symbol("js.forin"),
+                cons(break_ctrl_point,
+                     cons(continue_ctrl_point,
+                          cons(loop_id, cons(id, cons(set, cons(body, empty_list)))))));
 }
 
-function gen_switch(features, value, clauses)
+function gen_switch(break_ctrl_point, value, clauses)
 {
-    return cons(features.use_break
-                ? new Symbol("js.switch-with-break")
-                : new Symbol("js.switch"),
-                cons(value, vector2list(clauses)));
+    return cons(new Symbol("js.switch"),
+                cons(break_ctrl_point,
+                     cons(value, vector2list(clauses))));
 }
 
 function gen_case(fall_through, expr, statement)
@@ -847,34 +848,31 @@ function self_evaluating(data)
 
 // AST to Scheme translator.
 
-function Context(tail, global, features)
+function Context(tail, global, spine, features)
 {
     this.tail = tail;
     this.global = global;
+    this.spine = spine;
     this.features = features;
 }
 
 function Features(use_nontail_return,
                   use_arguments,
-                  use_break,
-                  use_continue)
+                  ctrl_point_count)
 {
     this.use_nontail_return = use_nontail_return;
     this.use_arguments      = use_arguments;
-    this.use_break          = use_break;
-    this.use_continue       = use_continue;
+    this.ctrl_point_count   = ctrl_point_count;
 }
 
 function begin_function(ctx)
 {
     var state = new Features(ctx.features.use_nontail_return,
                              ctx.features.use_arguments,
-                             ctx.features.use_break,
-                             ctx.features.use_continue);
+                             ctx.features.ctrl_point_count);
     ctx.features.use_nontail_return = false;
     ctx.features.use_arguments      = false;
-    ctx.features.use_break          = false;
-    ctx.features.use_continue       = false;
+    ctx.features.ctrl_point_count   = 0;
     return state;
 }
 
@@ -882,58 +880,43 @@ function end_function(state, ctx, result)
 {
     ctx.features.use_nontail_return = state.use_nontail_return;
     ctx.features.use_arguments      = state.use_arguments;
-    ctx.features.use_break          = state.use_break;
-    ctx.features.use_continue       = state.use_continue;
+    ctx.features.ctrl_point_count   = state.ctrl_point_count;
     return result;
 }
 
-function begin_loop(ctx)
+function nest_ctx(ctx, ast)
 {
-    var state = new Features(ctx.features.use_nontail_return,
-                             ctx.features.use_arguments,
-                             ctx.features.use_break,
-                             ctx.features.use_continue);
-    ctx.features.use_break    = false;
-    ctx.features.use_continue = false;
-    return state;
-}
-
-function end_loop(state, ctx, result)
-{
-    ctx.features.use_break    = state.use_break;
-    ctx.features.use_continue = state.use_continue;
-    return force_undefined_at_tail(result, ctx);
-}
-
-function begin_switch(ctx)
-{
-    var state = new Features(ctx.features.use_nontail_return,
-                             ctx.features.use_arguments,
-                             ctx.features.use_break,
-                             ctx.features.use_continue);
-    ctx.features.use_break = false;
-    return state;
-}
-
-function end_switch(state, ctx, result)
-{
-    ctx.features.use_break = state.use_break;
-    return result;
+    return new Context(ctx.tail,
+                       ctx.global,
+                       { ast: ast,
+                         break_ctrl_point: 0,
+                         continue_ctrl_point: 0,
+                         parent: ctx.spine },
+                       ctx.features);
 }
 
 function nontail_ctx(ctx)
 {
-    return new Context(false, ctx.global, ctx.features);
+    return new Context(false,
+                       ctx.global,
+                       ctx.spine,
+                       ctx.features);
 }
 
 function global_ctx()
 {
-    return new Context(true, true, new Features(false, false, false, false));
+    return new Context(true,
+                       true,
+                       null,
+                       new Features(false, false, 0, 0));
 }
 
 function function_body_ctx()
 {
-    return new Context(true, false, new Features(false, false, false, false));
+    return new Context(true,
+                       false,
+                       null,
+                       new Features(false, false, 0, 0));
 }
 
 function ast_array_to_scm(asts, ctx)
@@ -963,6 +946,8 @@ function force_undefined_at_tail(code, ctx)
 
 function ast_to_scm(ast, ctx)
 {
+    ctx = nest_ctx(ctx, ast);
+
     if (ast == null)
         error("null ast");
     else if (ast instanceof Program)
@@ -1011,34 +996,32 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof DoWhileStatement)
     {
-        var feature_state = begin_loop(ctx);
-
         var loop_id = gensym("loop");
+        var stat_scm = ast_to_scm(ast.statement, nontail_ctx(ctx));
+        var expr_scm = ast_to_scm(ast.expr, nontail_ctx(ctx));
 
-        return end_loop(feature_state,
-                        ctx,
-                        gen_dowhile(ctx.features,
-                                    loop_id,
-                                    ast_to_scm(ast.statement, nontail_ctx(ctx)),
-                                    ast_to_scm(ast.expr, nontail_ctx(ctx))));
+        return force_undefined_at_tail(gen_dowhile(ctx.spine.break_ctrl_point,
+                                                   ctx.spine.continue_ctrl_point,
+                                                   loop_id,
+                                                   stat_scm,
+                                                   expr_scm),
+                                       ctx);
     }
     else if (ast instanceof WhileStatement)
     {
-        var feature_state = begin_loop(ctx);
-
         var loop_id = gensym("loop");
+        var expr_scm = ast_to_scm(ast.expr, nontail_ctx(ctx));
+        var stat_scm = ast_to_scm(ast.statement, nontail_ctx(ctx));
 
-        return end_loop(feature_state,
-                        ctx,
-                        gen_while(ctx.features,
-                                  loop_id,
-                                  ast_to_scm(ast.expr, nontail_ctx(ctx)),
-                                  ast_to_scm(ast.statement, nontail_ctx(ctx))));
+        return force_undefined_at_tail(gen_while(ctx.spine.break_ctrl_point,
+                                                 ctx.spine.continue_ctrl_point,
+                                                 loop_id,
+                                                 expr_scm,
+                                                 stat_scm),
+                                       ctx);
     }
     else if (ast instanceof ForStatement)
     {
-        var feature_state = begin_loop(ctx);
-
         var loop_id = gensym("loop");
 
         var expr1_scm = (ast.expr1 == null)
@@ -1055,58 +1038,107 @@ function ast_to_scm(ast, ctx)
                         ? gen_undefined()
                         : ast_to_scm(ast.expr3, nontail_ctx(ctx));
 
-        return end_loop(feature_state,
-                        ctx,
-                        gen_begin([expr1_scm,
-                                   gen_for(ctx.features,
-                                           loop_id,
-                                           expr2_scm,
-                                           stat_scm,
-                                           expr3_scm)]));
+        return force_undefined_at_tail(gen_begin([expr1_scm,
+                                                  gen_for(ctx.spine.break_ctrl_point,
+                                                          ctx.spine.continue_ctrl_point,
+                                                          loop_id,
+                                                          expr2_scm,
+                                                          stat_scm,
+                                                          expr3_scm)]),
+                                       ctx);
     }
     // else if (ast instanceof ForVarStatement)
     // { impossible due to pass1 transformations }
     else if (ast instanceof ForInStatement)
     {
-        var feature_state = begin_loop(ctx);
-
         var loop_id = gensym("loop");
+        var lhs_expr_scm = ast_to_scm(ast.lhs_expr, nontail_ctx(ctx));
+        var set_expr_scm = ast_to_scm(ast.set_expr, nontail_ctx(ctx));
+        var stat_scm = ast_to_scm(ast.statement, nontail_ctx(ctx));
 
-        return end_loop(feature_state,
-                        ctx,
-                        gen_forin(ctx.features,
-                                  loop_id,
-                                  ast_to_scm(ast.lhs_expr, nontail_ctx(ctx)),
-                                  ast_to_scm(ast.set_expr, nontail_ctx(ctx)),
-                                  ast_to_scm(ast.statement, nontail_ctx(ctx))));
+        return force_undefined_at_tail(gen_forin(ctx.spine.break_ctrl_point,
+                                                 ctx.spine.continue_ctrl_point,
+                                                 loop_id,
+                                                 lhs_expr_scm,
+                                                 set_expr_scm,
+                                                 stat_scm),
+                                       ctx);
     }
     // else if (ast instanceof ForVarInStatement)
     // { impossible due to pass1 transformations }
     else if (ast instanceof ContinueStatement)
     {
-        if (ast.label == null)
+        var probe = ctx.spine;
+        var target = null;
+
+        while (probe !== null)
         {
-            ctx.features.use_continue = true;
-            return gen_continue();
+            if (probe.ast instanceof LabelledStatement)
+            {
+                if (ast.label !== null &&
+                    ast.label.toString() === probe.ast.label.toString())
+                    break;
+            }
+            else if (probe.ast instanceof DoWhileStatement ||
+                     probe.ast instanceof WhileStatement ||
+                     probe.ast instanceof ForStatement ||
+                     probe.ast instanceof ForInStatement)
+            {
+                target = probe;
+                if (ast.label === null)
+                    break;
+            }
+            else
+                target = null;
+
+            probe = probe.parent;
         }
-        else
-        {
-            pp(ast);
-            error("continue with label not implemented");
-        }
+
+        if (target === null)
+            error("undefined continue target");
+
+        if (target.continue_ctrl_point === 0)
+            target.continue_ctrl_point = ++ctx.features.ctrl_point_count;
+
+        return gen_continue(target.continue_ctrl_point);
     }
     else if (ast instanceof BreakStatement)
     {
-        if (ast.label == null)
+        var probe = ctx.spine;
+        var target = null;
+
+        while (probe !== null)
         {
-            ctx.features.use_break = true;
-            return gen_break();
+            if (probe.ast instanceof LabelledStatement)
+            {
+                if (ast.label !== null &&
+                    ast.label.toString() === probe.ast.label.toString())
+                    break;
+            }
+            else if (probe.ast instanceof DoWhileStatement ||
+                     probe.ast instanceof WhileStatement ||
+                     probe.ast instanceof ForStatement ||
+                     probe.ast instanceof ForInStatement ||
+                     probe.ast instanceof SwitchStatement)
+            {
+                target = probe;
+                if (ast.label === null)
+                    break;
+            }
+            else
+                target = null;
+
+            probe = probe.parent;
         }
-        else
-        {
-            pp(ast);
-            error("break with label not implemented");
-        }
+
+        if (target === null)
+            error("undefined break target");
+
+        print(target.break_ctrl_point);
+        if (target.break_ctrl_point === 0)
+            target.break_ctrl_point = ++ctx.features.ctrl_point_count;
+
+        return gen_break(target.break_ctrl_point);
     }
     else if (ast instanceof ReturnStatement)
     {
@@ -1156,44 +1188,14 @@ function ast_to_scm(ast, ctx)
                         statements = statement.statements;
                         i = 0;
                     }
-                    else if (statement instanceof BreakStatement)
+                    else if (statement instanceof ContinueStatement ||
+                             statement instanceof ReturnStatement)
                     {
-                        if (statement.label == null)
-                            fall_through = false;
-                        else
-                        {
-                            pp(ast);
-                            error("break with label not implemented");
-                        }
+                        fall_through = false;
+                        accum.push(ast_to_scm(statement, ctx));
                     }
                     else if (statement instanceof BreakStatement)
                     {
-                        if (statement.label == null)
-                            fall_through = false;
-                        else
-                        {
-                            pp(ast);
-                            error("break with label not implemented");
-                        }
-                    }
-                    else if (statement instanceof ReturnStatement)
-                    {
-                        if (ctx.global)
-                            error("return not allowed at top level");
-                        else
-                        {
-                            var value_scm = (statement.expr == null)
-                                ? gen_undefined()
-                                : ast_to_scm(statement.expr, ctx);
-
-                            if (!ctx.tail)
-                            {
-                                ctx.features.use_nontail_return = true;
-                                accum.push(gen_return(value_scm));
-                            }
-                            else
-                                accum.push(value_scm);
-                        }
                         fall_through = false;
                     }
                     else
@@ -1210,7 +1212,7 @@ function ast_to_scm(ast, ctx)
                             gen_begin(accum));
         }
 
-        var feature_state = begin_switch(ctx);
+        var expr_scm = ast_to_scm(ast.expr, nontail_ctx(ctx));
 
         var accum = [];
         for (var i=0; i<ast.clauses.length; i++)
@@ -1222,24 +1224,16 @@ function ast_to_scm(ast, ctx)
                                   i == ast.clauses.length-1));
         }
 
-        return end_switch(feature_state,
-                          ctx,
-                          gen_switch(ctx.features,
-                                     ast_to_scm(ast.expr, nontail_ctx(ctx)),
-                                     accum));
+        return force_undefined_at_tail(gen_switch(ctx.spine.break_ctrl_point,
+                                                  expr_scm,
+                                                  accum),
+                                       ctx);
     }
     // else if (ast instanceof CaseClause)
     // { impossible due to handling of SwitchStatement }
     else if (ast instanceof LabelledStatement)
     {
-        // TODO
-        pp(ast);
-        error("LabelledStatement not implemented");
-        /*
-        pp_loc(ast.loc, pp_prefix(indent) + "LabelledStatement");
-        print(pp_prefix(indent) + "|-id= " + ast.id.toString());
-        pp_asts(indent, "statement", [ast.statement]);
-        */
+        return ast_to_scm(ast.statement, ctx);
     }
     else if (ast instanceof ThrowStatement)
     {

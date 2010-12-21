@@ -350,15 +350,17 @@ blockPatterns.boxToBoolElim = new optPattern(
         var phiInstr = block.instrs[0];
         var phiPreds = phiInstr.preds.slice(0);
         var phiUses = phiInstr.uses.slice(0);
+        var boxToBool = false;
+        var ifInstr;
 
         if (block.instrs.length == 2)
         {
-            var ifInstr = block.instrs[1];
+            ifInstr = block.instrs[1];
         }
         else
         {
-            var boxToBool = block.instrs[1];
-            var ifInstr = block.instrs[2];
+            boxToBool = block.instrs[1];
+            ifInstr = block.instrs[2];
         }
 
         var trueTarget = ifInstr.targets[0];

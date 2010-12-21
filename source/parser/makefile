@@ -1,4 +1,4 @@
-# File: "makefile", Time-stamp: <2010-12-08 16:17:30 feeley>
+# File: "makefile", Time-stamp: <2010-12-20 15:18:42 feeley>
 
 # Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -71,6 +71,7 @@ parser.js: parser-tables.js
 
 bootstrap:
 	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js misc.js scanner.js parser.js pp.js ast-passes.js js.js
+	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js misc.js scanner.js parser.js pp.js ast-passes.js js2js.js
 	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js misc.js scanner.js parser.js pp.js ast-passes.js scheme.js js2scm.js
 
 clean realclean:

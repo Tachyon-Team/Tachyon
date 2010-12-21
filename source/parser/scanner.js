@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-12-15 14:03:35 feeley>
+// File: "scanner.js", Time-stamp: <2010-12-17 10:45:42 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -469,7 +469,7 @@ Scanner.prototype.parse_number = function ()
             pos = pos * base;
             n = n * base + char_value(c);
         }
-        return n/pos;
+        return n/pos; // FIXME: remove reliance on floating point division
     };
 
     // Decimal helper functions

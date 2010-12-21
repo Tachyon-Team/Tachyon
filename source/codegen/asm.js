@@ -387,7 +387,6 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     // Constants controlling the output layout
     const textCol   = 32;
     const posWidth  =  6;
-    const posRadix  = 16;
     const byteWidth =  3;
 
     /** @ignore */
@@ -395,7 +394,7 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     /** @ignore */
     function printByte(b) 
     { 
-        return printDigit(b >> 4) + printDigit(b%16) + " "; 
+        return printDigit(b >> 4) + printDigit(b % 16) + " "; 
     };
 
     /** @ignore */
@@ -403,13 +402,12 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     {
         var s = new Array(posWidth);
 
-        // Adds every digit of the position with
-        // posRadix as a base, starting from the
+        // Adds every digit of the position starting from the
         // least significant
         for (var i=posWidth-1; i>=0; i--)
         {
-            s[i] = printDigit(p % posRadix);
-            p = Math.floor(p / posRadix);
+            s[i] = printDigit(p % 16);
+            p = p >> 4;
         }
 
         return s.join("");
@@ -973,7 +971,7 @@ asm.CodeBlock.prototype.genProvided = function (linkObj)
 /** 
     Patches at each of the requiring site of the machine code block,
     the address of the corresponding providing site, as determined by
-    the egality of the linking objects.
+    the equality of the linking objects.
 
     'mcb' is the machine code block to link.
     

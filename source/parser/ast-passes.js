@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-12-13 17:14:35 feeley>
+// File: "ast-passes.js", Time-stamp: <2010-12-20 17:01:07 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -11,8 +11,8 @@
 function get_free_id(postFix, loc)
 {
     return new Token(
-        IDENT_CAT, 
-        ("#tachyon#" + (get_free_id.nextIdNum++) + "#" + postFix),
+        IDENT_CAT,
+        ("$tachyon$" + (get_free_id.nextIdNum++) + "$" + postFix),
         loc
     );
 }
@@ -261,91 +261,12 @@ function ast_walk_exprs(asts, ctx)
 
 //-----------------------------------------------------------------------------
 
-// Pass 0.
-//
-// Identifies functions that use the 'eval' and 'arguments' symbols
-//
-// NOTE: this is not done through free variables for two reasons:
-// 1. Free variables can come from nested sub-functions.
-// 2. Free variable resolution and must be done after pass 1
-
-function ast_pass0_ctx(ast)
-{
-    this.ast = ast;
-}
-
-ast_pass0_ctx.prototype.walk_statement = function (ast)
-{
-    if (ast == null)
-    {
-        // no transformation
-        return ast;
-    }
-    else
-    {
-        return ast_walk_statement(ast, this);
-    }
-};
-
-ast_pass0_ctx.prototype.walk_expr = function (ast)
-{
-    if (ast == null)
-    {
-        // no transformation
-        return ast;
-    }
-    
-    // Function expression
-    else if (ast instanceof FunctionExpr)
-    {  
-        // Create a new context to traverse the function body
-        var new_ctx = new ast_pass0_ctx(ast);
-
-        // Traverse the function body
-        ast_walk_statements(ast.body, new_ctx);            
-
-        // Return the updated function
-        return ast;    
-    }
-
-    // Variable reference
-    else if (ast instanceof Ref)
-    {    
-        // TODO: eliminate when ids are fixed
-        var symName = ast.id.toString();
-
-        if (symName == 'arguments')
-            this.ast.usesArguments = true;
-
-        else if (symName == 'eval')
-            this.ast.usesEval = true;
-
-        return ast;  
-    }
-
-    else
-    {
-        return ast_walk_expr(ast, this);
-    }
-};
-
-function ast_pass0(ast)
-{
-    var ctx = new ast_pass0_ctx(ast);
-    ctx.walk_statement(ast);
-}
-
-//-----------------------------------------------------------------------------
-
 // Pass 1.
 //
-// Transforms an AST into which, when the arguments name occurs free, references
-// to formal parameters become references to an alias of the arguments object
+// Adds debugging traces.
 
-function ast_pass1_ctx(varMap)
+function ast_pass1_ctx()
 {
-    // Map function parameters names/ids to pairs argObj/index or nothing
-    this.varMap = varMap;
 }
 
 ast_pass1_ctx.prototype.walk_statement = function (ast)
@@ -354,6 +275,15 @@ ast_pass1_ctx.prototype.walk_statement = function (ast)
     {
         // no transformation
         return ast;
+    }
+    else if (ast instanceof Program)
+    {
+        ast.block.statements.unshift(new VariableStatement(ast.loc,
+                                                           [new Decl(ast.loc,
+                                                                     new Token(IDENT_CAT, "debug$print", ast.loc),
+                                                                     new Ref(ast.loc,
+                                                                             new Token(IDENT_CAT, "print", ast.loc)))]));
+        return ast_walk_statement(ast, this);
     }
     else
     {
@@ -368,11 +298,143 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
         // no transformation
         return ast;
     }
-    
+    else if (ast instanceof FunctionExpr)
+    {
+        ast.body.unshift(new ExprStatement(ast.loc,
+                                           new CallExpr(ast.loc,
+                                                        new Ref(ast.loc,
+                                                                new Token(IDENT_CAT, "debug$print", ast.loc)),
+                                                        [new Literal(ast.loc,
+                                                                     ast.loc.to_string()+":")])));
+        ast_walk_statements(ast.body, this);
+        return ast;
+    }
+    else
+    {
+        return ast_walk_expr(ast, this);
+    }
+};
+
+function ast_pass1(ast)
+{
+    var ctx = new ast_pass1_ctx();
+    ctx.walk_statement(ast);
+}
+
+//-----------------------------------------------------------------------------
+
+// Pass 2.
+//
+// Identifies functions that use the 'eval' and 'arguments' symbols.
+//
+// NOTE: this is not done through free variables for two reasons:
+// 1. Free variables can come from nested sub-functions.
+// 2. Free variable resolution and must be done after pass 1
+
+function ast_pass2_ctx(ast)
+{
+    this.ast = ast;
+}
+
+ast_pass2_ctx.prototype.walk_statement = function (ast)
+{
+    if (ast == null)
+    {
+        // no transformation
+        return ast;
+    }
+    else
+    {
+        return ast_walk_statement(ast, this);
+    }
+};
+
+ast_pass2_ctx.prototype.walk_expr = function (ast)
+{
+    if (ast == null)
+    {
+        // no transformation
+        return ast;
+    }
+
     // Function expression
     else if (ast instanceof FunctionExpr)
-    {  
-        // Create a copy of the 
+    {
+        // Create a new context to traverse the function body
+        var new_ctx = new ast_pass2_ctx(ast);
+
+        // Traverse the function body
+        ast_walk_statements(ast.body, new_ctx);
+
+        // Return the updated function
+        return ast;
+    }
+
+    // Variable reference
+    else if (ast instanceof Ref)
+    {
+        // TODO: eliminate when ids are fixed
+        var symName = ast.id.toString();
+
+        if (symName == 'arguments')
+            this.ast.usesArguments = true;
+
+        else if (symName == 'eval')
+            this.ast.usesEval = true;
+
+        return ast;
+    }
+
+    else
+    {
+        return ast_walk_expr(ast, this);
+    }
+};
+
+function ast_pass2(ast)
+{
+    var ctx = new ast_pass2_ctx(ast);
+    ctx.walk_statement(ast);
+}
+
+//-----------------------------------------------------------------------------
+
+// Pass 3.
+//
+// Transforms an AST into which, when the arguments name occurs free, references
+// to formal parameters become references to an alias of the arguments object
+
+function ast_pass3_ctx(varMap)
+{
+    // Map function parameters names/ids to pairs argObj/index or nothing
+    this.varMap = varMap;
+}
+
+ast_pass3_ctx.prototype.walk_statement = function (ast)
+{
+    if (ast == null)
+    {
+        // no transformation
+        return ast;
+    }
+    else
+    {
+        return ast_walk_statement(ast, this);
+    }
+};
+
+ast_pass3_ctx.prototype.walk_expr = function (ast)
+{
+    if (ast == null)
+    {
+        // no transformation
+        return ast;
+    }
+
+    // Function expression
+    else if (ast instanceof FunctionExpr)
+    {
+        // Create a copy of the
         var newVarMap = this.varMap.copy();
 
         // If the arguments object may be used
@@ -389,7 +451,8 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
                         new Decl(
                             ast.loc,
                             argsObjId,
-                            new Ref(ast.loc, new Token(IDENT_CAT, "arguments", ast.loc))
+                            new Ref(ast.loc,
+                                    new Token(IDENT_CAT, "arguments", ast.loc))
                         )
                     ]
                 )
@@ -411,22 +474,22 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
                 var symName = ast.params[i].toString();
                 if (newVarMap.hasItem(symName))
                     newVarMap.remItrm(symName);
-            }            
+            }
         }
 
         // Create a new context to traverse the function body
-        var new_ctx = new ast_pass1_ctx(newVarMap);
+        var new_ctx = new ast_pass3_ctx(newVarMap);
 
         // Traverse and update the function body
-        ast.body = ast_walk_statements(ast.body, new_ctx);            
+        ast.body = ast_walk_statements(ast.body, new_ctx);
 
         // Return the updated function
-        return ast;    
+        return ast;
     }
 
     // Variable reference
     else if (ast instanceof Ref)
-    {    
+    {
         // TODO: eliminate when ids are fixed
         var symName = ast.id.toString();
 
@@ -438,10 +501,10 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
 
             // Replace the parameter reference by an argument object indexing
             return new OpExpr(
-                ast.loc, 
-                'x [ y ]', 
+                ast.loc,
+                'x [ y ]',
                 [
-                    new Ref(ast.loc, assoc.id), 
+                    new Ref(ast.loc, assoc.id),
                     new Literal(ast.loc, assoc.index)
                 ]
             );
@@ -458,15 +521,15 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
     }
 };
 
-function ast_pass1(ast)
+function ast_pass3(ast)
 {
-    var ctx = new ast_pass1_ctx(new HashMap());
+    var ctx = new ast_pass3_ctx(new HashMap());
     ctx.walk_statement(ast);
 }
 
 //-----------------------------------------------------------------------------
 
-// Pass 2.
+// Pass 4.
 //
 // Transforms an AST into a simpler AST.
 //
@@ -475,15 +538,15 @@ function ast_pass1(ast)
 //   - transform "ForVarInStatement" into "ForInStatement"
 //   - flattening of nested block statements
 
-function ast_pass2_ctx(vars, scope)
+function ast_pass4_ctx(vars, scope)
 {
     this.vars = vars;
     this.scope = scope;
 }
 
-function ast_pass2_empty_ctx(scope)
+function ast_pass4_empty_ctx(scope)
 {
-    return new ast_pass2_ctx({}, scope);
+    return new ast_pass4_ctx({}, scope);
 }
 
 function ast_Variable(id, is_param, scope)
@@ -498,9 +561,9 @@ ast_Variable.prototype.toString = function ()
     return this.id.toString();
 };
 
-ast_pass2_ctx.prototype.function_ctx = function (ast)
+ast_pass4_ctx.prototype.function_ctx = function (ast)
 {
-    var new_ctx = ast_pass2_empty_ctx(ast);
+    var new_ctx = ast_pass4_empty_ctx(ast);
     ast.params.forEach(function (param, i, self)
                        {
                            new_ctx.add_variable(param, true);
@@ -508,9 +571,9 @@ ast_pass2_ctx.prototype.function_ctx = function (ast)
     return new_ctx;
 };
 
-ast_pass2_ctx.prototype.catch_ctx = function (ast)
+ast_pass4_ctx.prototype.catch_ctx = function (ast)
 {
-    var new_ctx = ast_pass2_empty_ctx(ast);
+    var new_ctx = ast_pass4_empty_ctx(ast);
     new_ctx.add_variable(ast.id, true);
 /*
     [new Decl(IDENT.loc.join(Initializer.loc),
@@ -520,7 +583,7 @@ ast_pass2_ctx.prototype.catch_ctx = function (ast)
     return new_ctx;
 };
 
-ast_pass2_ctx.prototype.add_variable = function (id, is_param)
+ast_pass4_ctx.prototype.add_variable = function (id, is_param)
 {
     var id_str = id.value;
     var v = this.vars[id_str];
@@ -532,7 +595,7 @@ ast_pass2_ctx.prototype.add_variable = function (id, is_param)
     return v;
 };
 
-ast_pass2_ctx.prototype.walk_statement = function (ast)
+ast_pass4_ctx.prototype.walk_statement = function (ast)
 {
     if (ast == null)
     {
@@ -541,7 +604,7 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
     }
     else if (ast instanceof Program)
     {
-        var new_ctx = ast_pass2_empty_ctx(ast);
+        var new_ctx = ast_pass4_empty_ctx(ast);
         ast.block = new_ctx.walk_statement(ast.block);
         ast.vars = new_ctx.vars;
         return ast;
@@ -579,7 +642,7 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
     }
     else if (ast instanceof ForVarStatement)
     {
-        var accum = new Literal(ast.loc, null);
+        var accum = null;
         for (var i=ast.decls.length-1; i>=0; i--)
         {
             var decl = ast.decls[i];
@@ -587,14 +650,17 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
             if (decl.initializer != null)
             {
                 decl.initializer = this.walk_expr(decl.initializer);
-                accum = new OpExpr(decl.loc,
-                                   op2_table[COMMA_CAT],
-                                   [new OpExpr(decl.loc,
-                                               op2_table[EQUAL_CAT],
-                                               [new Ref(decl.id.loc,
-                                                        decl.id),
-                                                decl.initializer]),
-                                    accum]);
+                var init = new OpExpr(decl.loc,
+                                      op2_table[EQUAL_CAT],
+                                      [new Ref(decl.id.loc,
+                                               decl.id),
+                                       decl.initializer]);
+                if (accum === null)
+                    accum = init;
+                else
+                    accum = new OpExpr(decl.loc,
+                                       op2_table[COMMA_CAT],
+                                       [init, accum]);
             }
         }
         ast.expr2 = this.walk_expr(ast.expr2);
@@ -642,7 +708,7 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
         return ast_walk_statement(ast, this);
 };
 
-ast_pass2_ctx.prototype.walk_expr = function (ast)
+ast_pass4_ctx.prototype.walk_expr = function (ast)
 {
     if (ast == null)
     {
@@ -665,7 +731,7 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
     }
 };
 
-ast_pass2_ctx.prototype.walk_statements = function (asts)
+ast_pass4_ctx.prototype.walk_statements = function (asts)
 {
     var ctx = this;
     var accum = [];
@@ -680,15 +746,15 @@ ast_pass2_ctx.prototype.walk_statements = function (asts)
     return Array.prototype.concat.apply([], accum);
 };
 
-function ast_pass2(ast)
+function ast_pass4(ast)
 {
-    var ctx = ast_pass2_empty_ctx(null);
+    var ctx = ast_pass4_empty_ctx(null);
     ctx.walk_statement(ast);
 }
 
 //-----------------------------------------------------------------------------
 
-// Pass 3.
+// Pass 5.
 //
 // Transforms an AST into an AST in which
 //
@@ -697,14 +763,14 @@ function ast_pass2(ast)
 //   - a map of closure-provided variables is added to functions
 //   - a list of all nested functions is added to functions
 
-function ast_pass3_ctx(scope)
+function ast_pass5_ctx(scope)
 {
     this.scope = scope;
 }
 
-ast_pass3_ctx.prototype.function_ctx = function (ast)
+ast_pass5_ctx.prototype.function_ctx = function (ast)
 {
-    var new_ctx = new ast_pass3_ctx(ast);
+    var new_ctx = new ast_pass5_ctx(ast);
 
     ast.params.forEach(
         function (param, i, self)
@@ -716,16 +782,16 @@ ast_pass3_ctx.prototype.function_ctx = function (ast)
     return new_ctx;
 };
 
-ast_pass3_ctx.prototype.catch_ctx = function (ast)
+ast_pass5_ctx.prototype.catch_ctx = function (ast)
 {
-    var new_ctx = new ast_pass3_ctx(ast);
+    var new_ctx = new ast_pass5_ctx(ast);
 
     ast.id = new_ctx.resolve_variable(ast.id);
 
     return new_ctx;
 };
 
-ast_pass3_ctx.prototype.resolve_variable = function (id)
+ast_pass5_ctx.prototype.resolve_variable = function (id)
 {
     // Where is this id declared???
 
@@ -771,7 +837,7 @@ ast_pass3_ctx.prototype.resolve_variable = function (id)
     return resolve(this.scope);
 };
 
-ast_pass3_ctx.prototype.walk_statement = function (ast)
+ast_pass5_ctx.prototype.walk_statement = function (ast)
 {
     if (ast == null)
     {
@@ -783,7 +849,7 @@ ast_pass3_ctx.prototype.walk_statement = function (ast)
         ast.free_vars = {};
         ast.funcs = [];
 
-        var new_ctx = new ast_pass3_ctx(ast);
+        var new_ctx = new ast_pass5_ctx(ast);
         ast.block = new_ctx.walk_statement(ast.block);
         return ast;
     }
@@ -814,7 +880,7 @@ ast_pass3_ctx.prototype.walk_statement = function (ast)
     }
 };
 
-ast_pass3_ctx.prototype.walk_expr = function (ast)
+ast_pass5_ctx.prototype.walk_expr = function (ast)
 {
     if (ast == null)
     {
@@ -830,7 +896,7 @@ ast_pass3_ctx.prototype.walk_expr = function (ast)
 
         // Add this function to the scope's nested function list
         // If this function is part of a function declaration, add the declaration instead
-        // TODO: fix this code which does not work when the scope is for a CatchPart   
+        // TODO: fix this code which does not work when the scope is for a CatchPart
         if (this.func_decl != undefined && this.func_decl.funct === ast)
             this.scope.funcs.push(this.func_decl);
         else
@@ -856,20 +922,22 @@ ast_pass3_ctx.prototype.walk_expr = function (ast)
     }
 };
 
-function ast_pass3(ast)
+function ast_pass5(ast)
 {
-    var ctx = new ast_pass3_ctx(ast);
+    var ctx = new ast_pass5_ctx(ast);
     ctx.walk_statement(ast);
 }
 
 //-----------------------------------------------------------------------------
 
-function ast_normalize(ast)
+function ast_normalize(ast, debug)
 {
-    ast_pass0(ast);
-    ast_pass1(ast);
+    if (debug)
+        ast_pass1(ast);
     ast_pass2(ast);
     ast_pass3(ast);
+    ast_pass4(ast);
+    ast_pass5(ast);
 
     return ast;
 }
