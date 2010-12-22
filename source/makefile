@@ -89,8 +89,11 @@ all: run
 run: 
 	$(JSVM) $(MAIN_SRCS)
 
-bootstrap-js2scm: 
+bootstrap-js2scm:
 	$(JS2SCM) -scm $(MAIN_SRCS)
+
+bootstrap-js2scm-debug:
+	$(JS2SCM) -scm -debug $(MAIN_SRCS)
 
 test: 
 	$(JSVM) $(TEST_SRCS)

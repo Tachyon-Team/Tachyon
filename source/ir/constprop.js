@@ -478,10 +478,10 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
             return TOP;
 
         var val0 = (v0.type === IRType.box)
-                   ? ((v0.value === undefined) ? 0 : (v0.value << TAG_NUM_BITS_INT)) // FIXME
+                   ? ((v0.value === undefined || v0.value === null) ? 0 : (v0.value << TAG_NUM_BITS_INT)) // FIXME
                    : v0.value;
         var val1 = (v1.type === IRType.box)
-                   ? ((v1.value === undefined) ? 0 : (v1.value << TAG_NUM_BITS_INT)) // FIXME
+                   ? ((v1.value === undefined || v1.value === null) ? 0 : (v1.value << TAG_NUM_BITS_INT)) // FIXME
                    : v1.value;
 
         if (v0 instanceof ConstValue && v1 instanceof ConstValue &&

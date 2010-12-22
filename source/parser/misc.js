@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "misc.js", Time-stamp: <2010-12-20 16:11:37 feeley>
+// File: "misc.js", Time-stamp: <2010-12-22 11:00:40 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 

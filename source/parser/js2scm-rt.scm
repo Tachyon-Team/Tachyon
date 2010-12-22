@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-18 10:06:53 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-22 10:32:54 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -67,6 +67,7 @@
 
 ;; Representation of objects
 
+#|
 (define (make-assoc-table)
   (make-table))
 
@@ -87,6 +88,35 @@
       (let ((len (table-length at)))
         (table-set! stats-set len (+ 1 (table-ref stats-set len 0)))))
   (table-set! at key val))
+|#
+
+(define (make-assoc-table)
+  (list #f))
+
+(define (list->assoc-table lst)
+  (cons #f lst))
+
+(define (assoc-table->list at)
+  (cdr at))
+
+(define (assoc-table-ref at key not-found)
+  (let ((x (assoc key (cdr at))))
+    (if x
+        (cdr x)
+        not-found)))
+
+(define (assoc-table-set! at key val)
+  (let ((x (assoc key (cdr at))))
+    (if x
+        (set-cdr! x val)
+        (let loop ((lst at))
+          (let ((rest (cdr lst)))
+            (if (pair? rest)
+                (loop rest)
+                (set-cdr! lst (list (cons key val)))))))))
+
+
+
 
 (define prototypes (make-table test: eq? weak-keys: #t))
 
@@ -655,7 +685,7 @@
         (Array-for-each-index set iteration))))
 
 (define (js:throw obj)
-  (pp (table->list (Object-at obj)));;;;;;;;;;;;;;;
+  (pp (assoc-table->list (Object-at obj)));;;;;;;;;;;;;;;
   (raise obj))
 
 (define (js:instanceof x ctor)
