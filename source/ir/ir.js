@@ -236,6 +236,7 @@ function stmtListToIRFunc(
         entryBlock,
         null,
         null,
+        [],
         localMap,
         sharedMap,
         new HashMap(),
@@ -542,7 +543,8 @@ function IRConvContext(
     astNode, 
     entryBlock,
     ctxNode,
-    withVal, 
+    withVal,
+    labels,
     localMap,
     sharedMap,
     breakMap, 
@@ -571,6 +573,10 @@ function IRConvContext(
     assert (
         withVal !== undefined,
         'with context value not defined in IR conversion context'
+    );
+    assert (
+        labels instanceof Array,
+        'labels not defined or invalid in IR conversion context'
     );
     assert (
         localMap !== undefined,
@@ -636,6 +642,12 @@ function IRConvContext(
     @field
     */
     this.withVal = withVal;
+
+    /**
+    Labels applied to this statement
+    @field
+    */
+    this.labels = labels;
 
     /**
     Mutable map of local variable states
@@ -817,6 +829,7 @@ IRConvContext.prototype.pursue = function (astNode)
         (this.exitBlock !== undefined) ? this.exitBlock : this.entryBlock,
         this.ctxNode,
         this.withVal,
+        [],
         this.localMap,
         this.sharedMap,
         this.breakMap,
@@ -844,6 +857,7 @@ IRConvContext.prototype.branch = function (
         entryBlock,
         this.ctxNode,
         this.withVal,
+        [],
         localMap,
         this.sharedMap,
         this.breakMap,
@@ -1515,11 +1529,6 @@ function stmtToIR(context)
 
     else if (astStmt instanceof SwitchStatement)
     {
-        // Get the label for this statement
-        var label = (astStmt.stmtLabel !== undefined)
-                    ? astStmt.stmtLabel.toString()
-                    : '';
-
         // Compile the switch expression
         var switchCtx = context.pursue(astStmt.expr);        
         exprToIR(switchCtx);
@@ -1529,9 +1538,10 @@ function stmtToIR(context)
 
         // Create a break context map
         var breakMap = context.breakMap.copy();
-        breakMap.setItem(label, brkCtxList);
         breakMap.setItem('', brkCtxList);
-        
+        for (var i = 0; i < context.labels.length; ++i)
+            breakMap.setItem(context.labels[i], brkCtxList);
+
         // Create a context for the first case test
         var nextTestCtx = context.branch(
             astStmt.clauses[0]? astStmt.clauses[0].expr:null,
@@ -1700,13 +1710,14 @@ function stmtToIR(context)
 
     else if (astStmt instanceof LabelledStatement)
     {
-        // FIXME: a statement may have several labels:   foo: bar: switch (...)
-        // FIXME: don't add fields to AST nodes
-        // Assign our label to the inner statement
-        astStmt.statement.stmtLabel = astStmt.label;
+        // Create a new context for the statement
+        var stmtContext = context.pursue(astStmt.statement);
+
+        // Add the label to the label list
+        stmtContext.labels = context.labels.slice(0);
+        stmtContext.labels.push(astStmt.label.toString());
 
         // Compile the inner statement
-        var stmtContext = context.pursue(astStmt.statement);
         stmtToIR(stmtContext);
         context.setOutput(stmtContext.getExitBlock());
     }
@@ -3195,7 +3206,7 @@ function refToIR(context)
             }
 
             // If the value already has a name, release it
-            if (varValueVar.outName !== "" && !!varValueVar.outName) // FIXME
+            if (varValueVar.outName !== "")
                 context.cfg.freeInstrName(rhsValAssg);
 
             // Assign the symbol name to the instruction
@@ -3752,23 +3763,20 @@ function createLoopEntry(
     blockName
 )
 {
-    // Get the label for this statement
-    var label = (loopStmt.stmtLabel !== undefined) // FIXME
-                ? loopStmt.stmtLabel.toString()
-                : '';
-
     // Update the break and continue context maps for the loop body
     var breakMap = context.breakMap.copy();
     var contMap = context.contMap.copy();
     if (brkCtxList)
     {
-        breakMap.setItem(label, brkCtxList);
         breakMap.setItem('', brkCtxList);
+        for (var i = 0; i < context.labels.length; ++i)
+            breakMap.setItem(context.labels[i], brkCtxList);
     }
     if (cntCtxList)
     {
-        contMap.setItem(label, cntCtxList);
         contMap.setItem('', cntCtxList);
+        for (var i = 0; i < context.labels.length; ++i)
+            contMap.setItem(context.labels[i], cntCtxList);
     }
 
     // Create a basic block for the loop entry
@@ -3795,6 +3803,7 @@ function createLoopEntry(
         loopEntry,
         context.ctxNode,
         context.withVal,
+        [],
         entryLocals.copy(),
         context.sharedMap,
         breakMap,

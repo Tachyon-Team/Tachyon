@@ -68,7 +68,7 @@ function testIR()
     */
 
     
-    var func = staticEnv.getBinding('getStrObj');
+    var func = staticEnv.getBinding('streq');
     print(func);
     
 

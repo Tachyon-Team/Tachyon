@@ -477,27 +477,27 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
         if (v0 === TOP || v1 === TOP)
             return TOP;
 
-        var val0 = (v0.type === IRType.box)
-                   ? ((v0.value === undefined || v0.value === null) ? 0 : (v0.value << TAG_NUM_BITS_INT)) // FIXME
-                   : v0.value;
-        var val1 = (v1.type === IRType.box)
-                   ? ((v1.value === undefined || v1.value === null) ? 0 : (v1.value << TAG_NUM_BITS_INT)) // FIXME
-                   : v1.value;
-
+        // If both values are constant integers
         if (v0 instanceof ConstValue && v1 instanceof ConstValue &&
-            typeof v0.value == 'number' && typeof v1.value == 'number' &&
-            val0 >= IRType.i32.minVal && val0 <= IRType.i32.maxVal &&
-            val1 >= IRType.i32.minVal && val1 <= IRType.i32.maxVal)
+            v0.isInt() && v1.isInt())
         {
-            var result = opFunc(val0, val1);
+            var val0 = v0.getImmValue();
+            var val1 = v1.getImmValue();
 
-            // If the result is within the range of the output type, return it
-            if (result >= this.type.minVal && result <= this.type.maxVal)
+            // If both values fit in the int32 range
+            if (val0 >= IRType.i32.minVal && val0 <= IRType.i32.maxVal &&
+                val1 >= IRType.i32.minVal && val1 <= IRType.i32.maxVal)
             {
-                return ConstValue.getConst(
-                    result,
-                    this.type
-                );
+                var result = opFunc(val0, val1);
+
+                // If the result is within the range of the output type, return it
+                if (result >= this.type.minVal && result <= this.type.maxVal)
+                {
+                    return ConstValue.getConst(
+                        result,
+                        this.type
+                    );
+                }
             }
         }
 
@@ -645,7 +645,7 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge)
         }
         else if (v0.type === IRType.box && this.type.isInt())
         {
-            var castVal = v0.value << TAG_NUM_BITS_INT;
+            var castVal = v0.getImmValue();
             
             if (castVal >= this.type.minVal && castVal <= this.type.maxVal)
                 result = castVal;

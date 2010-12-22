@@ -21,20 +21,13 @@ function initStrTable()
     // Allocate the string table object
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
-    // Initialize the hash table size and number of properties
+    // Initialize the string table size and number of properties
     set_strtbl_tblsize(strtbl, STR_TBL_INIT_SIZE);
     set_strtbl_numstrs(strtbl, i32(0));
 
-    // Initialize the string table
-    for (
-        var i = pint(0); 
-        i < STR_TBL_INIT_SIZE; 
-        i += pint(1)
-    )
-    {
+    // Initialize the string table entries
+    for (var i = pint(0); i < STR_TBL_INIT_SIZE; i += pint(1))
         set_strtbl_tbl(strtbl, i, UNDEFINED);
-    }
-
 
     // Get a pointer to the context
     var ctx = iir.get_ctx();
@@ -46,44 +39,39 @@ function initStrTable()
 /**
 Compare two raw UTF-16 strings by iterating over 16 bit code units
 This conforms to section 11.8.5 of the ECMAScript 262 specification
-NOTE: this is also used to find strings in the hash consing table
+NOTE: this is used to find strings in the hash consing table
 */
-function strcmp(str1, str2)
+function streq(strObj, rawStr)
 {
-    "tachyon:arg str1 rptr";
-    "tachyon:arg str2 rptr";
-    "tachyon:ret pint";
+    "tachyon:arg rawStr rptr";
+    "tachyon:ret bool";
 
     // For each character to be compared
-    for (;;)
+    for (var i = pint(0);; i += pint(1))
     {
-        var ch1 = iir.load(IRType.u16, str1, pint(0));
-        var ch2 = iir.load(IRType.u16, str1, pint(0));
+        var ch1 = get_str_data(strObj, i);
 
-        if (ch1 < ch2)
-            return pint(-1);
-        else if (ch1 > ch2)
-            return pint(1);
+        var ch2 = iir.load(IRType.u16, rawStr, pint(2) * i);
+
+        if (ch1 != ch2)
+            return FALSE_BOOL;
         
         if (ch1 == u16(0))
             break;
-
-        str1 += pint(2);
-        str2 += pint(2);
     }
 
     // The strings are equal
-    return pint(0);
+    return TRUE_BOOL;
 }
 
 /**
 Allocate/get a reference to a string object containing the given string data
-@param strData pointer to raw UTF-16 string data
+@param rawStr pointer to raw UTF-16 string data
 */
-function getStrObj(strData, strLen)
+function getStrObj(rawStr, strLen)
 {
     "tachyon:static";
-    "tachyon:arg strData rptr";
+    "tachyon:arg rawStr rptr";
     "tachyon:arg strLen pint";
 
     //
@@ -97,7 +85,7 @@ function getStrObj(strData, strLen)
     for (var index = pint(0); true; index = index + pint(1))
     {
         // Get the current character
-        var ch = iir.load(IRType.u16, strData, index);
+        var ch = iir.load(IRType.u16, rawStr, index);
 
         // Convert the character value to the pint type
         var ch = iir.icast(IRType.pint, ch);
@@ -136,8 +124,7 @@ function getStrObj(strData, strLen)
         var strVal = get_strtbl_tbl(strtbl, hashIndex);
 
         // If this is the string we want
-        // TODO: string comparison
-        if (false)
+        if (streq(strVal, rawStr))
         {
             // Return a pointer to the string we found
             return strVal;
@@ -168,12 +155,12 @@ function getStrObj(strData, strLen)
     set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 
 
-    /*
+    /*    
     // Copy the character data into the string object
     for (var index = pint(0); index < strLen; index = index + pint(1))
     {
         // Get the current character
-        var ch = iir.load(IRType.u16, strData, index);
+        var ch = iir.load(IRType.u16, rawStr, index);
 
         // Copy the character into the string object
         set_str_data(strObj, index, ch);

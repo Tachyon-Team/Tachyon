@@ -28,6 +28,8 @@ function initialize()
          primIt.valid();
          primIt.next())
     {
+        //print(primIt.get());
+
         compileIR(primIt.get());
     }
 }
