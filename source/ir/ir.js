@@ -3687,19 +3687,18 @@ function mergeContexts(
         // Compute properties of the input values
         var firstVal = values[0];
         var allEqual = true;
-        var numUndef = 0;
-        var numTyped = 0;
+        var allSameType = true;
         for (var j = 0; j < values.length; ++j)
         {
             var value = values[j];
             if (value !== firstVal)
                 allEqual = false;
-            if (value.type !== IRType.box)
-                numTyped++;            
+            if (value.type !== firstVal.type)
+                allSameType = false;
         }
 
-        // If there is a mix of typed and undefined values
-        if (numTyped > 0 && numTyped != values.length)
+        // If not all values have the same type
+        if (allSameType === false)
         {
             // Set the merge value to undefined
             mergeMap.addItem(varName, ConstValue.getConst(undefined));
@@ -3827,6 +3826,7 @@ function mergeLoopEntry(
         var varName = localVars[i];
         var phiNode = entryLocals.getItem(varName);
 
+        /*
         // Compute properties of the current incoming values
         var numUndef = 0;
         var numTyped = 0;
@@ -3838,6 +3838,7 @@ function mergeLoopEntry(
             if (phiNode.uses[j].type != IRType.box)
                 numTyped++;
         }
+        */
 
         // For each incoming context
         for (var j = 0; j < contexts.length; ++j)
@@ -3850,14 +3851,20 @@ function mergeLoopEntry(
 
             var varValue = context.localMap.getItem(varName);
 
-            if (varValue instanceof ConstValue && varValue.isUndef())
-                numUndef++;
-            if (varValue.type != IRType.box)
-                numTyped++;
-
-            // If there would be a mix of typed and undefined values
-            if (numTyped > 0 && numUndef > 0 && numTyped + numUndef == phiNode.uses.length + 1)
+            // If there would be a mix of values of different types
+            if (varValue.type !== phiNode.type)
             {
+                // If the phi node value is already being used
+                if (phiNode.dests.length > 0)
+                {
+                    // Print an error and abort compilation
+                    error(
+                        'phi node for "' + varName + '" merges values of ' +
+                        'different types, but cannot be removed because its ' +
+                        'value is used'
+                    );
+                }
+
                 // Replace the phi node by the undefined value
                 entryLocals.setItem(varName, ConstValue.getConst(undefined));
 

@@ -94,11 +94,7 @@ function getStrObj(strData, strLen)
     var hashCode = pint(0);
 
     // For each character, update the hash code
-    for (
-        var index = pint(0); 
-        true;
-        index = index + pint(1)
-    )
+    for (var index = pint(0); true; index = index + pint(1))
     {
         // Get the current character
         var ch = iir.load(IRType.u16, strData, index);
@@ -111,9 +107,7 @@ function getStrObj(strData, strLen)
             break;
 
         // Update 
-        hashCode =
-            (hashCode * pint(256) + ch) %
-            pint(426870919);
+        hashCode = (hashCode * pint(256) + ch) % pint(426870919);
     }
 
     //
@@ -143,7 +137,7 @@ function getStrObj(strData, strLen)
 
         // If this is the string we want
         // TODO: string comparison
-        if (true)
+        if (false)
         {
             // Return a pointer to the string we found
             return strVal;
@@ -174,41 +168,44 @@ function getStrObj(strData, strLen)
     set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 
 
-    // TODO: debug phi node error
-
-
+    /*
     // Copy the character data into the string object
-    for (
-        var index = pint(0); 
-        index < strLen;
-        index = index + pint(1)
-    )
+    for (var index = pint(0); index < strLen; index = index + pint(1))
     {
         // Get the current character
-        //var cx = iir.load(IRType.u16, strData, index);
+        var ch = iir.load(IRType.u16, strData, index);
 
         // Copy the character into the string object
-        //set_str_data(strObj, index, ch);
+        set_str_data(strObj, index, ch);
     }
+    */
+
+
+
+
+
+
+    // TODO
 
     //
     // Hash table updating
     //
 
+    // Set the corresponding key and value in the slot
+    set_strtbl_tbl(strtbl, hashIndex, strObj);
+
+    // Get the number of strings and increment it
+    var numStrings = get_strtbl_numstrs(strtbl);
+    numStrings += i32(1);
+    set_strtbl_numstrs(strtbl, numStrings);
+    numStrings = iir.icast(IRType.pint, numStrings);
+    
+
+
+    // TODO: hash table extension
 
 
 
-    /*
-            // Set the corresponding key and value in the slot
-            set_hashtbl_tbl_key(newTbl, hashIndex, propName);
-            set_hashtbl_tbl_val(newTbl, hashIndex, propVal);
-
-            // Get the number of properties and increment it
-            var numProps = get_obj_numprops(obj);
-            numProps += i32(1);
-            set_obj_numprops(obj, numProps);
-            numProps = iir.icast(IRType.pint, numProps);
-    */
 
 
 

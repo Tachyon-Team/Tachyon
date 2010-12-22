@@ -39,6 +39,7 @@ function testIR()
     );
     */
 
+    //var ast = parse_src_file('test.js');
     var ast = parse_src_file('programs/loop_sum/loop_sum.js');
     //var ast = parse_src_file('programs/fib/fib.js');
     //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
@@ -67,7 +68,7 @@ function testIR()
     */
 
     
-    var func = staticEnv.getBinding('strcmp');
+    var func = staticEnv.getBinding('getStrObj');
     print(func);
     
 
