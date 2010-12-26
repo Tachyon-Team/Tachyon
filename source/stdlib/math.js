@@ -48,7 +48,7 @@ Math.ceil = function (x)
 {
     // For integers, the value is unchanged
     return x;
-}
+};
 
 /**
 15.8.2.9 floor (x)
