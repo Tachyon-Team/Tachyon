@@ -3,7 +3,7 @@
 Implementation of ECMAScript 5 array string routines.
 
 @author
-TBD
+Maxime Chevalier-Boisvert
 
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
@@ -24,7 +24,9 @@ String.prototype.toUpperCase()
 */
 
 /**
-String constructor
+15.5.2 String constructor
+new String (value)
+String (value)
 */
 /*
 function String(value)
@@ -33,7 +35,7 @@ function String(value)
 }*/
 
 /**
-String prototype object
+15.5.3.1 String prototype object
 */
 //String.prototype = {};
 
