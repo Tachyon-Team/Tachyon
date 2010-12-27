@@ -14,6 +14,7 @@ TODO: establish functionality needed for initial bootstrap
 
 For now, fixnum support only
 
+Math.abs
 Math.ceil
 Math.floor
 Math.max
@@ -28,6 +29,23 @@ Math object (see ECMAScript 5 18.8)
 var Math = {};
 
 // TODO: set [[Class]] internal property of the Math object to "Math"
+
+/**
+15.8.2.1 abs (x)
+Returns the absolute value of x; the result has the same magnitude as x
+but has positive sign.
+
+• If x is NaN, the result is NaN.
+• If x is −0, the result is +0.
+• If x is −∞, the result is +∞.
+*/
+Math.abs = function (x)
+{
+    if (x < 0)
+        return -x;
+    else
+        return x;
+};
 
 /**
 15.8.2.6 ceil (x)
