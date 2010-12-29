@@ -474,7 +474,7 @@ staticEnv.regBinding(
     )
 );
 staticEnv.regBinding(
-    'STR_TBL_MAX_LOAD_DENUM',
+    'STR_TBL_MAX_LOAD_DENOM',
     ConstValue.getConst(
         5,
         IRType.pint

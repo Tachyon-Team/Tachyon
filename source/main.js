@@ -68,7 +68,7 @@ function testIR()
     */
 
     
-    var func = staticEnv.getBinding('streq');
+    var func = staticEnv.getBinding('extStrTable');
     print(func);
     
 

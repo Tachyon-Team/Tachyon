@@ -783,7 +783,7 @@ function putProp(obj, propName, propHash, propVal)
                 tblSize * HASH_MAP_MAX_LOAD_NUM)
             {
                 // Extend the hash table for this object
-                extObjHashTbl(obj, tblPtr, tblSize);
+                extObjHashTable(obj, tblPtr, tblSize);
             }
 
             // Break out of the loop
@@ -798,7 +798,7 @@ function putProp(obj, propName, propHash, propVal)
 /**
 Extend the hash table and rehash the properties of an object
 */
-function extObjHashTbl(obj, curTbl, curSize)
+function extObjHashTable(obj, curTbl, curSize)
 {
     "tachyon:inline";
     "tachyon:arg curSize pint";
