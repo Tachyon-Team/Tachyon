@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js2js.js", Time-stamp: <2010-12-20 16:10:27 feeley>
+// File: "js2js.js", Time-stamp: <2010-12-31 11:28:46 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -18,11 +18,11 @@ function main()
 
     while (i < args.length)
     {
-        if (args[i] == "-debug")
+        if (args[i] === "-debug")
             opt_debug = true;
-        else if (args[i] == "-ast")
+        else if (args[i] === "-ast")
             opt_ast = true;
-        else if (args[i] == "-nojs")
+        else if (args[i] === "-nojs")
             opt_nojs = true;
         else
             break;
@@ -40,7 +40,7 @@ function main()
         i++;
     }
 
-    if (prog != null)
+    if (prog !== null)
     {
         prog = new Program(prog.loc,
                            new BlockStatement(prog.loc,

@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-17 11:04:35 feeley>
+// File: "parser.js", Time-stamp: <2010-12-31 11:29:28 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -18,6 +18,7 @@ function Parser(scanner, autosemicolon_enabled)
     this.autosemicolon_warning = autosemicolon_enabled;
     this.number_literal_warning = false;
     this.division_warning = false;
+    this.equality_warning = false;
 
     this.stack = [];
     this.sp    = 0;
@@ -103,6 +104,13 @@ Parser.prototype.consume = function ()
             this.warning(this.input.loc,
                          "use of division operator");
         }
+
+        if ((this.input.cat === EQEQ_CAT || this.input.cat === NE_CAT) &&
+            this.equality_warning)
+        {
+            this.warning(this.input.loc,
+                         "use of equality operator");
+        }
     }
 };
 
@@ -140,7 +148,7 @@ Parser.prototype.index_gtable = function (state, new_category)
     for (var i=0; i<t.length; i++)
     {
         var g = t[i];
-        if (this.goto_cat(g) == new_category)
+        if (this.goto_cat(g) === new_category)
             return this.goto_new_state(g);
     }
     return 0; // never reached
@@ -274,7 +282,7 @@ Parser.prototype.parse = function ()
 
             if (this.autosemicolon_enabled &&
                 (this.scanner.crossed_eol ||
-                 this.token_cat(this.input) == RBRACE_CAT))
+                 this.token_cat(this.input) === RBRACE_CAT))
             {
                 // automatic semicolon insertion should be considered
 
@@ -285,16 +293,16 @@ Parser.prototype.parse = function ()
                 {
                     var a_cat = this.action_cat(a);
 
-                    if (a_cat == cat)
+                    if (a_cat === cat)
                         normal_index = i;
-                    else if (a_cat == AUTOSEMICOLON_CAT)
+                    else if (a_cat === AUTOSEMICOLON_CAT)
                         autosemicolon_index = i;
 
                     i--;
                     a = t[i];
                 }
 
-                if (autosemicolon_index != 0)
+                if (autosemicolon_index !== 0)
                 {
                     autosemicolon_inserted = true;
                     a = t[autosemicolon_index];
@@ -310,7 +318,7 @@ Parser.prototype.parse = function ()
                 {
                     var a_cat = this.action_cat(a);
 
-                    if (a_cat == cat)
+                    if (a_cat === cat)
                         break;
 
                     i--;
@@ -320,13 +328,13 @@ Parser.prototype.parse = function ()
 
             var op = this.action_op(a);
 
-            if (op == this.accept_op)
+            if (op === this.accept_op)
             {
                 return this.stack[1]; // attribute of root
             }
-            else if (op == this.error_op)
+            else if (op === this.error_op)
             {
-                if (this.input.cat == this.eoi_cat)
+                if (this.input.cat === this.eoi_cat)
                     this.error(this.input.loc, "unexpected end of file");
                 else
                     this.error(this.input.loc, "unexpected token");
@@ -355,7 +363,7 @@ Parser.prototype.parse = function ()
         {
             var a = t[0];
             var defop = this.action_op(a);
-            if (t.length == 1 && defop < 0)
+            if (t.length === 1 && defop < 0)
                 this.reduce(-defop);
             else
                 this.consume();

@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js.js", Time-stamp: <2010-12-20 16:11:27 feeley>
+// File: "js.js", Time-stamp: <2010-12-31 11:28:10 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -16,9 +16,9 @@ function main()
 
     while (i < args.length)
     {
-        if (args[i] == "-debug")
+        if (args[i] === "-debug")
             opt_debug = true;
-        else if (args[i] == "-ast")
+        else if (args[i] === "-ast")
             opt_ast = true;
         else
             break;
@@ -39,7 +39,7 @@ function main()
         var s = new Scanner(port);
         var p = new Parser(s, true);
         var prog = p.parse();
-        if (prog != null)
+        if (prog !== null)
         {
             var normalized_prog = ast_normalize(prog, opt_debug);
             if (opt_ast)
