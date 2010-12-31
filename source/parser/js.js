@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js.js", Time-stamp: <2010-12-31 11:28:10 feeley>
+// File: "js.js", Time-stamp: <2010-12-31 11:41:09 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -10,6 +10,7 @@ function main()
 {
     var args = command_line();
     var opt_debug = false;
+    var opt_warn = false;
     var opt_ast = false;
     var i = 0;
     var n;
@@ -18,6 +19,8 @@ function main()
     {
         if (args[i] === "-debug")
             opt_debug = true;
+        else if (args[i] === "-warn")
+            opt_warn = true;
         else if (args[i] === "-ast")
             opt_ast = true;
         else
@@ -37,7 +40,7 @@ function main()
         }
         var port = new File_input_port(filename);
         var s = new Scanner(port);
-        var p = new Parser(s, true);
+        var p = new Parser(s, opt_warn);
         var prog = p.parse();
         if (prog !== null)
         {

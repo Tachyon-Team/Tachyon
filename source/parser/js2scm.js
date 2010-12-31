@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "js2scm.js", Time-stamp: <2010-12-31 11:27:16 feeley>
+// File: "js2scm.js", Time-stamp: <2010-12-31 11:40:01 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -12,6 +12,7 @@ function main()
     var statements = [];
     var prog = null;
     var opt_debug = false;
+    var opt_warn = false;
     var opt_ast = false;
     var opt_pp = false;
     var opt_noscm = false;
@@ -21,6 +22,8 @@ function main()
     {
         if (args[i] === "-debug")
             opt_debug = true;
+        else if (args[i] === "-warn")
+            opt_warn = true;
         else if (args[i] === "-ast")
             opt_ast = true;
         else if (args[i] === "-pp")
@@ -37,7 +40,7 @@ function main()
         var filename = args[i];
         var port = new File_input_port(filename);
         var s = new Scanner(port);
-        var p = new Parser(s, true);
+        var p = new Parser(s, opt_warn);
         prog = p.parse();
         statements.push(prog.block.statements);
         i++;

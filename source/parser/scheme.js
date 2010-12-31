@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-31 11:26:54 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-31 11:51:50 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -1134,7 +1134,6 @@ function ast_to_scm(ast, ctx)
         if (target === null)
             error("undefined break target");
 
-        print(target.break_ctrl_point);
         if (target.break_ctrl_point === 0)
             target.break_ctrl_point = ++ctx.features.ctrl_point_count;
 

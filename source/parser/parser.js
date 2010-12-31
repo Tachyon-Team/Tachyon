@@ -1,24 +1,24 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-31 11:29:28 feeley>
+// File: "parser.js", Time-stamp: <2010-12-31 11:34:47 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
 //=============================================================================
 
 
-function Parser(scanner, autosemicolon_enabled)
+function Parser(scanner, warnings)
 {
     this.scanner = scanner;
     this.atable  = action_table;
     this.gtable  = goto_table;
     this.rtable  = reduction_table;
 
-    this.autosemicolon_enabled = autosemicolon_enabled;
-    this.autosemicolon_warning = autosemicolon_enabled;
-    this.number_literal_warning = false;
-    this.division_warning = false;
-    this.equality_warning = false;
+    this.autosemicolon_enabled = true;
+    this.autosemicolon_warning = warnings;
+    this.number_literal_warning = warnings;
+    this.division_warning = warnings;
+    this.equality_warning = warnings;
 
     this.stack = [];
     this.sp    = 0;
