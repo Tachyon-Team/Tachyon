@@ -363,7 +363,7 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
                 );
             }
         }
-        else if (genFunc)
+        else if (genFunc !== undefined)
         {
             return genFunc(v0, v1);
         }
@@ -501,7 +501,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
             }
         }
 
-        else if (genFunc)
+        else if (genFunc !== undefined)
         {
             return genFunc(v0, v1, this.type);
         }
@@ -791,7 +791,7 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
             }
         }
 
-        else if (genFunc)
+        else if (genFunc !== undefined)
         {
             var result = genFunc(v0, v1);
 

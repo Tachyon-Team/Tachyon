@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-31 11:51:50 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-31 13:19:13 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -1329,7 +1329,7 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof Ref)
     {
-        if (ast.id === "arguments")
+        if (ast.id.toString() === "arguments")
             ctx.features.use_arguments = true;
 
         return gen_ref(js_id_to_scm(ast.id.toString()));

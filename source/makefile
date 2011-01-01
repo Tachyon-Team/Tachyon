@@ -46,12 +46,15 @@ BASE_SRCS =                         \
     codegen/backend.js              \
     codegen/ir-to-asm-x86.js        \
     codegen/regalloc-config-x86.js  \
+    compiler.js                     \
+    init.js
+
+# Standard library source files
+STDLIB_SRCS =                       \
     stdlib/errors.js                \
     stdlib/math.js                  \
     stdlib/arrays.js                \
-    stdlib/strings.js               \
-    compiler.js                     \
-    init.js
+    stdlib/strings.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                    \
@@ -75,11 +78,13 @@ MAIN_SRCS =                         \
 
 # Test target source files
 TEST_SRCS =                         \
+    $(STDLIB_SRCS)                  \
     $(BASE_SRCS)                    \
     $(TEST_SPEC_SRCS)
 
 # All source files
 ALL_SRCS =                          \
+    $(STDLIB_SRCS)                  \
     $(BASE_SRCS)                    \
     $(MAIN_SPEC_SRCS)               \
     $(TEST_SPEC_SRCS)

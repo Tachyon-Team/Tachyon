@@ -63,8 +63,8 @@ function IRType(name, size)
     if (name.charAt(0) == 'i' || name.charAt(0) == 'u')
     {
         // Compute the available range
-        this.minVal = getIntMin(this.numBits, name[0] == 'u');
-        this.maxVal = getIntMax(this.numBits, name[0] == 'u');
+        this.minVal = getIntMin(this.numBits, name.charAt(0) == 'u');
+        this.maxVal = getIntMax(this.numBits, name.charAt(0) == 'u');
     }
 
     // Otherwise, if this is the boxed type
@@ -308,8 +308,8 @@ ConstValue.prototype.isBoxInt = function ()
     return (
         this.type === IRType.box &&
         this.isInt() && 
-        this.value >= getIntMin(BOX_NUM_BITS_INT) && 
-        this.value <= getIntMax(BOX_NUM_BITS_INT)
+        this.value >= getIntMin(BOX_NUM_BITS_INT, false) && 
+        this.value <= getIntMax(BOX_NUM_BITS_INT, false)
     );
 };
 
@@ -550,9 +550,9 @@ Produce a string representation of this instruction
 IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // If no formatting functions were specified, use the default ones
-    if (!outFormatFn)
+    if (outFormatFn === undefined)
         outFormatFn = IRInstr.defOutFormat;
-    if (!inFormatFn)
+    if (inFormatFn === undefined)
         inFormatFn = IRInstr.defInFormat;
 
     // Create a string for the output
@@ -591,7 +591,7 @@ Get a string representation of an instruction's value/name
 IRInstr.prototype.getValName = function ()
 {
     // If the output name for this instruction is set
-    if (this.outName)
+    if (this.outName !== "") // FIXME
     {
         // Return the output/temporary name
         return this.outName;
@@ -758,9 +758,9 @@ Produce a string representation of the phi instruction
 PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // If no formatting functions were specified, use the default ones
-    if (!outFormatFn)
+    if (outFormatFn === undefined)
         outFormatFn = IRInstr.defOutFormat;
-    if (!inFormatFn)
+    if (inFormatFn === undefined)
         inFormatFn = IRInstr.defInFormat;
 
     var phiInFormatFn = function (instr, pos)
@@ -852,7 +852,7 @@ PhiInstr.prototype.addIncoming = function (value, pred)
     );
 
     // If there are already inputs
-    if (this.uses.length)
+    if (this.uses.length !== 0)
     {
         assert (
             value.type === this.uses[0].type,

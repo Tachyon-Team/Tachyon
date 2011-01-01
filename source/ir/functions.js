@@ -182,7 +182,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
         ) + '\n\n';
     }
 
-    var cfg = this.finalCFG? this.finalCFG:this.virginCFG;
+    var cfg = (this.finalCFG !== null) ? this.finalCFG : this.virginCFG;
 
     output += indentText(
         cfg.toString(
@@ -250,7 +250,7 @@ IRFunction.prototype.validate = function ()
     this.virginCFG.validate();
 
     // Validate the final control-flow graph
-    if (this.finalCFG)
+    if (this.finalCFG !== null)
         this.finalCFG.validate();
 
     // Validate the child functions
