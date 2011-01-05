@@ -15,15 +15,33 @@ Configuration object for the compiler
 var config = {};
 
 /**
-Current compiler target
+Initialize the Tachyon configuration
 */
-config.target = Target.Debug_X86_32;
+function initConfig()
+{
 
-/**
-Configuration for the run-time options
-*/
-config.runtime = {};
+    // TODO: create target, put target inside config.params
 
-// TODO: object representation choice
-// TODO: GC parameters
+
+
+    // TODO: create static env
+
+
+    /**
+    Current compilation parameters
+    */
+    config.params = new CompParams({
+        target      : Target.Debug_X86_32,
+        tachyonSrc  : true,
+        staticEnv   : {}
+    });
+
+    /**
+    Configuration for the run-time options
+    */
+    config.runtime = {};
+
+    // TODO: object representation choice
+    // TODO: GC parameters
+}
 

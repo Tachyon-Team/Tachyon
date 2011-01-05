@@ -10,7 +10,7 @@ tests.fib = tests.testSuite();
 
 tests.fib.main = function ()
 {
-    var fib = compileFileToJSFunc('programs/fib/fib.js', {tachyonSrc:true});
+    var fib = compileFileToJSFunc('programs/fib/fib.js', config.params);
 
     var startTimeMs = new Date().getTime();
     var x = fib();

@@ -12,42 +12,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class IR type representation object
 */
-function IRType(name, size)
+function IRType(name)
 {
     /**
     Name of this type
     @field
     */
     this.name = name;
-
-    /**
-    Type size in bytes
-    @field
-    */
-    this.size = size;
-
-    /**
-    Type size in bits
-    @field
-    */
-    this.numBits = size * 8;
-
-    // If this is an integer type
-    if (name.charAt(0) == 'i' || name.charAt(0) == 'u')
-    {
-        // Compute the available range
-        this.minVal = getIntMin(this.numBits, name.charAt(0) == 'u');
-        this.maxVal = getIntMax(this.numBits, name.charAt(0) == 'u');
-    }
-
-    // Otherwise, if this is the boxed type
-    else if (name == 'box')
-    {
-        // TODO: make this infinity when supported, boxed
-        // values can be floats
-        this.minVal = getIntMin(30, false);
-        this.maxVal = getIntMax(30, false);
-    }
 }
 IRType.prototype = {};
 
@@ -96,7 +67,8 @@ IRType.prototype.isSigned = function ()
     return this === IRType.i8  ||
            this === IRType.i16 ||
            this === IRType.i32 ||
-           this === IRType.i64;
+           this === IRType.i64 ||
+           this === IRType.pint;
 };
 
 /**
@@ -116,57 +88,122 @@ IRType.prototype.isNumber = function ()
            this.isFP();
 };
 
-// TODO: boxed and pointer type sizes are actually platform-dependent
-// Need code get appropriate size for the platform
+/**
+Get the type size in bytes
+*/
+IRType.prototype.getSizeBytes = function (target)
+{
+    switch (this)
+    {
+        case IRType.none:
+        return 0;
 
+        case IRType.i8:
+        case IRType.u8:
+        return 1;
 
-// FIXME: the pointer size depends on the target, but the target may be
-// different depending on the platform. Can't just define pint, box,
-// rptr globally. They depend on the target...
-//
-//
+        case IRType.i16:
+        case IRType.u16:
+        return 2;
 
+        case IRType.i32:
+        case IRType.u32:
+        return 4;
+
+        case IRType.i64:
+        case IRType.u64:
+        case IRType.f64:
+        return 8;
+
+        // These types take the size of the pointer on the target architecture
+        case IRType.box:
+        case IRType.rptr:
+        case IRType.bool:
+        case IRType.pint:
+        return target.ptrSizeBytes;
+    }
+};
+
+/**
+Get the type size in bits
+*/
+IRType.prototype.getSizeBits = function (target)
+{
+    return this.getSizeBytes(target) * 8;
+};
+
+/**
+Get the minimum value this type can represent
+*/
+IRType.prototype.getMinVal = function (target)
+{
+    // If this is an integer type
+    if (this.isInt())
+    {
+        // Compute the minimum value
+        return getIntMin(this.getSizeBits(target), this.isUnsigned());
+    }
+
+    // Otherwise, if this is the boxed type
+    else if (this === IRType.box)
+    {
+        // TODO: make this infinity when supported, boxed
+        // values can be floats
+        return getIntMin(30, false);
+    }
+};
+
+/**
+Get the maximum value this type can represent
+*/
+IRType.prototype.getMaxVal = function (target)
+{
+    // If this is an integer type
+    if (this.isInt())
+    {
+        // Compute the maximum value
+        return getIntMax(this.getSizeBits(target), this.isUnsigned());
+    }
+
+    // Otherwise, if this is the boxed type
+    else if (this === IRType.box)
+    {
+        // TODO: make this infinity when supported, boxed
+        // values can be floats
+        return getIntMin(30, false);
+    }
+
+};
 
 // Type given when there is no output value
-IRType.none = new IRType('none', 0),
+IRType.none = new IRType('none');
 
 // Boxed value type
 // Contains an immediate integer or an object pointer, and a tag
-IRType.box  = new IRType('box' , config.target.ptrSizeBytes),
+IRType.box  = new IRType('box');
 
 // Raw pointer to any memory address
-IRType.rptr = new IRType('rptr', config.target.ptrSizeBytes),
+IRType.rptr = new IRType('rptr');
 
 // Boolean type
-IRType.bool = new IRType('bool', config.target.ptrSizeBytes),
+IRType.bool = new IRType('bool');
+
+// Integer type of width specific to the platform
+// (same width as the pointer size)
+IRType.pint = new IRType('pint');
 
 // Unboxed unsigned integer types
-IRType.u8   = new IRType('u8'  , 1),
-IRType.u16  = new IRType('u16' , 2),
-IRType.u32  = new IRType('u32' , 4),
+IRType.u8   = new IRType('u8');
+IRType.u16  = new IRType('u16');
+IRType.u32  = new IRType('u32');
+IRType.u64  = new IRType('u64');
 
 // Unboxed signed integer types
-IRType.i8   = new IRType('i8'  , 1),
-IRType.i16  = new IRType('i16' , 2),
-IRType.i32  = new IRType('i32' , 4),
+IRType.i8   = new IRType('i8');
+IRType.i16  = new IRType('i16');
+IRType.i32  = new IRType('i32');
+IRType.i64  = new IRType('i64');
 
 // Floating-point types
-IRType.f64  = new IRType('f64' , 8);
-
-// If we are on a 32-bit platform
-if (config.target.ptrSizeBits == 32)
-{
-    // Int type of width corresponding a pointer on this platform
-    IRType.pint = IRType.i32;
-}
-
-// Otherwise, we are on a 64-bit platform
-else
-{
-    IRType.u64  = new IRType('u64' , 8),
-    IRType.i64  = new IRType('i64' , 8),
-
-    // Int type of width corresponding a pointer on this platform
-    IRType.pint = IRType.i64;
-}
+IRType.f64  = new IRType('f64');
 

@@ -83,7 +83,7 @@ function commElim(cfg, maxItrs)
     function getValNo(val)
     {
         // If the value number is already computed, return it
-        if (valNoCache[val.instrId] !== undefined && valNoCache[val.instrId] !== 0) // FIXME: it seems 0 and undefined can get here
+        if (valNoCache[val.instrId] !== undefined)
             return valNoCache[val.instrId];
 
         // If this value matches an existing value number, get that number

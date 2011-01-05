@@ -356,7 +356,7 @@ function newObject(proto)
     set_obj_proto(obj, proto);
 
     // Initialize the hash table size and number of properties
-    set_obj_tblsize(obj, HASH_MAP_INIT_SIZE);
+    set_obj_tblsize(obj, iir.icast(IRType.i32, HASH_MAP_INIT_SIZE));
     set_obj_numprops(obj, i32(0));
 
     // Initialize the hash table pointer to null to prevent GC errors
@@ -857,7 +857,7 @@ function extObjHashTable(obj, curTbl, curSize)
 
     // Update the hash table pointer and the table size for the object
     set_obj_tbl(obj, newTbl);
-    set_obj_tblsize(obj, newSize);
+    set_obj_tblsize(obj, iir.icast(IRType.i32, newSize));
 }
 
 /**

@@ -13,8 +13,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Perform IR lowering on a function and its subfunctions
 */
-function lowerIRFunc(irFunc)
+function lowerIRFunc(irFunc, params)
 {
+    assert (
+        params instanceof CompParams,
+        'expexted compilation parameters'
+    );
+
     // For each function in the IR
     var funcList = irFunc.getChildrenList();
     for (var i = 0; i < funcList.length; ++i)
@@ -22,15 +27,20 @@ function lowerIRFunc(irFunc)
         var func = funcList[i];
 
         // Perform lowering on the function's CFG
-        lowerIRCFG(func.virginCFG);
+        lowerIRCFG(func.virginCFG, params);
     }
 }
 
 /**
 Perform IR lowering on a control-flow graph
 */
-function lowerIRCFG(cfg)
+function lowerIRCFG(cfg, params)
 {
+    assert (
+        params instanceof CompParams,
+        'expexted compilation parameters'
+    );
+
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {
@@ -81,7 +91,7 @@ function lowerIRCFG(cfg)
     }
 
     // Perform constant propagation on the CFG
-    constProp(cfg);
+    constProp(cfg, params);
 
     // Validate the CFG
     cfg.validate();
@@ -128,12 +138,12 @@ function lowerIRCFG(cfg)
 /**
 Compile the primitives source code to enable IR lowering
 */
-function compPrimitives()
+function compPrimitives(params)
 {
     // Build a list of the ASTs of the primitive code
     var astList = [
-        // Generated code for the memory objects
-        parse_src_str(ObjectLayout.sourceStr),
+        // Generated code for the object layouts
+        parse_src_str(MemLayout.sourceStr),
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
         // Source code for string operations
@@ -160,7 +170,7 @@ function compPrimitives()
         var ast = astList[i];
 
         // Generate IR from the AST
-        var ir = unitToIR(ast, true);
+        var ir = unitToIR(ast, params);
 
         irList.push(ir);
     }
@@ -171,7 +181,7 @@ function compPrimitives()
         var ir = irList[i];
 
         // Perform IR lowering on the primitives
-        lowerIRFunc(ir);
+        lowerIRFunc(ir, params);
 
         //print(ir);
 

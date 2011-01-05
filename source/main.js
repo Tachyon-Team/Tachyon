@@ -48,11 +48,11 @@ function testIR()
 
     //pp(ast);
 
-    var ir = unitToIR(ast, true);
+    var ir = unitToIR(ast, config.params);
     
     //print(ir);
 
-    lowerIRFunc(ir);
+    lowerIRFunc(ir, config.params);
 
     print(ir);
 

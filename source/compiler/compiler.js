@@ -52,15 +52,14 @@ compiler.link = function ()
     information to it. The runtime.mcb properties on the 
     IRFunction should be freed once it is no longer used.
 */
-function compileIR(ir, flags) 
+function compileIR(ir, params) 
 {
-    if (flags === undefined)
-        flags = {};
+    assert (params instanceof CompParams);
 
     ir.linking.linked = false;
     ir.linking.link = compiler.link;
 
-    var mcb = backend.compileIRToMCB(ir, flags);
+    var mcb = backend.compileIRToMCB(ir, params);
     ir.runtime.mcb = mcb;
     ir.runtime.execute = compiler.execute;
     ir.runtime.free = compiler.free;
@@ -71,7 +70,7 @@ function compileIR(ir, flags)
 /** 
     Link the IRFunction.
 */
-function linkIR(ir) 
+function linkIR(ir, params) 
 {
     ir.linking.link();
 };
@@ -101,17 +100,17 @@ after last usage by calling the 'free' method on the function. Ex:
 
 @filename   String containing path to the source file
 */
-function compileFileToJSFunc(filename, flags) 
+function compileFileToJSFunc(filename, params) 
 {
-    if (flags === undefined)
-        flags = {};
+    assert (params instanceof CompParams);
 
     //var ir = frontend.compileFileToIR(filename, flags["tachyonSrc"]);
     var ast = parse_src_file(filename);
-    var ir = unitToIR(ast, true);
-    lowerIRFunc(ir);
-    compileIR(ir, flags);
-    linkIR(ir);
-    return createJSFuncFromCompiledIR(ir);
+    var ir = unitToIR(ast, params);
+    lowerIRFunc(ir, params);
+    compileIR(ir, params);
+    linkIR(ir, params);
+
+    return createJSFuncFromCompiledIR(ir, params);
 };
 

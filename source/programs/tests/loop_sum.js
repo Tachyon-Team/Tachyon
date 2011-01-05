@@ -10,7 +10,7 @@ tests.loop_sum = tests.testSuite();
 
 tests.loop_sum.main = function ()
 {
-    var loop_sum = compileFileToJSFunc('programs/loop_sum/loop_sum.js');
+    var loop_sum = compileFileToJSFunc('programs/loop_sum/loop_sum.js', config.params);
 
     var startTimeMs = new Date().getTime();
     var x = loop_sum();

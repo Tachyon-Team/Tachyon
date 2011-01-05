@@ -9,11 +9,8 @@ Maxime Chevalier-Boisvert, Erick Lavoie
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
-/*
-TODO: Should we include runtime, object representation here?
-*/
-
 /**
+@class Description of target architecture for compilation
 */
 function Target(cfgObj)
 {

@@ -28,7 +28,7 @@ tests.ir.helpers.testSource = function (sourceStr)
     var ast = parse_src_str(sourceStr);
 
     // Translate the AST to IR
-    var ir = unitToIR(ast);
+    var ir = unitToIR(ast, config.params);
 
     /*
     pp(ast); // pretty-print AST
@@ -43,7 +43,7 @@ tests.ir.helpers.testSource = function (sourceStr)
     ir.validate();
 
     // Perform lowering on the IR
-    lowerIRFunc(ir);
+    lowerIRFunc(ir, config.params);
 
     // Validate the IR
     ir.validate();

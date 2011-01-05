@@ -12,13 +12,10 @@ var backend = {};
 /**
     Returns a code block representing the compiled IRFunction.
 */
-backend.compileIRToCB = function (ir, flags)
+backend.compileIRToCB = function (ir, params)
 {
-    if (flags === undefined)
-        flags = {};
-
-    var print = flags.print;
-    var primitives = flags.primitives;
+    var print = params.print;
+    var primitives = params.primitives;
 
     if (print === undefined)
     {
@@ -27,7 +24,7 @@ backend.compileIRToCB = function (ir, flags)
 
     const mem = x86.Assembler.prototype.memory;
     const reg = x86.Assembler.prototype.register;
-    const translator = irToAsm.translator();
+    const translator = irToAsm.translator(params);
 
     var cfg, order, liveIntervals, mems;
     var i, k, next, tab;
@@ -192,12 +189,9 @@ backend.compileIRToCB = function (ir, flags)
     This machine code block should be freed once it is no longer needed.
     Returns the machine code block.
 */
-backend.compileIRToMCB = function (ir, flags)
+backend.compileIRToMCB = function (ir, params)
 {
-    if (flags !== undefined)
-        flags = {};
-
-    var cb = backend.compileIRToCB(ir, flags);
+    var cb = backend.compileIRToCB(ir, params);
     //print(backend.listing(cb));
     return cb.assembleToMachineCodeBlock(); // assemble it
 };

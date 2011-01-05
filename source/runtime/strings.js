@@ -22,7 +22,7 @@ function initStrTable()
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
     // Initialize the string table size and number of properties
-    set_strtbl_tblsize(strtbl, STR_TBL_INIT_SIZE);
+    set_strtbl_tblsize(strtbl, iir.icast(IRType.i32, STR_TBL_INIT_SIZE));
     set_strtbl_numstrs(strtbl, i32(0));
 
     // Initialize the string table entries
@@ -149,7 +149,7 @@ function getStrObj(rawStr, strLen)
     var strObj = alloc_str(strLen);
     
     // Set the string length in the string object
-    set_str_len(strObj, strLen);
+    set_str_len(strObj, iir.icast(IRType.i32, strLen));
 
     // Set the hash code in the string object
     set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
@@ -211,8 +211,8 @@ function extStrTable(curTbl, curSize, numStrings)
     var newTbl = alloc_strtbl(newSize);
 
     // Set the new size and the number of strings stored
-    set_strtbl_tblsize(newTbl, newSize);
-    set_strtbl_numstrs(newTbl, numStrings);
+    set_strtbl_tblsize(newTbl, iir.icast(IRType.i32, newSize));
+    set_strtbl_numstrs(newTbl, iir.icast(IRType.i32, numStrings));
 
     // For each entry in the current table
     for (var curIdx = pint(0); 

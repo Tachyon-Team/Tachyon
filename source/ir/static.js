@@ -63,6 +63,7 @@ function StaticEnv()
 }
 StaticEnv.prototype = {};
 
+//FIXME: eliminate this
 /**
 Global static environment instance
 */

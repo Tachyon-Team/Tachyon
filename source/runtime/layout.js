@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Represents a field specification for a memory-allocatable object
 */
-function FieldSpec(name, type, typeSize, numElems, offset)
+function FieldSpec(name, type, subSize, elemSize, numElems, offset)
 {
     assert (
         name !== undefined,
@@ -20,12 +20,12 @@ function FieldSpec(name, type, typeSize, numElems, offset)
     );
 
     assert (
-        type instanceof IRType || type instanceof ObjectLayout,
+        type instanceof IRType || type instanceof MemLayout,
         'invalid field type'
     );
 
     assert (
-        !(type instanceof IRType && typeSize !== undefined),
+        !(type instanceof IRType && subSize !== undefined),
         'type size cannot be set for IR values'
     );
 
@@ -47,16 +47,13 @@ function FieldSpec(name, type, typeSize, numElems, offset)
     Undefined if not applicable
     @field
     */
-    this.typeSize = typeSize;
+    this.subSize = subSize;
 
     /**
     Size of an element of this field
     @field
     */
-    this.elemSize =
-        (type instanceof IRType)?
-        type.size:
-        this.type.getSize(typeSize);
+    this.elemSize = elemSize;
 
     /**
     Number of elements in this field
@@ -75,11 +72,11 @@ function FieldSpec(name, type, typeSize, numElems, offset)
 /**
 @class Represents the memory layout of allocatable objects
 */
-function ObjectLayout(name, ptrType, tagName)
+function MemLayout(name, ptrType, tagName, target)
 {
     // Ensure that no layout with this name exists
     assert (
-        ObjectLayout.layoutMap[name] === undefined,
+        MemLayout.layoutMap[name] === undefined,
         'an object layout with this name already exists'
     );
 
@@ -89,8 +86,14 @@ function ObjectLayout(name, ptrType, tagName)
         'tag name must be specified for boxed references'
     );
 
+    // Ensure that the target object is valid
+    assert (
+        target instanceof Target,
+        'target architecture needed'
+    );
+
     // Store the layout in the layout map
-    ObjectLayout.layoutMap[name] = this;
+    MemLayout.layoutMap[name] = this;
 
     /**
     Name of the layout
@@ -111,6 +114,11 @@ function ObjectLayout(name, ptrType, tagName)
     this.tagName = tagName;
 
     /**
+    Target architecture for this layout
+    */
+    this.target = target;
+
+    /**
     List of fields
     @field
     */
@@ -128,22 +136,22 @@ function ObjectLayout(name, ptrType, tagName)
     */
     this.finalized = false;
 }
-ObjectLayout.prototype = {};
+MemLayout.prototype = {};
 
 /**
 Map of layout names to object layouts
 */
-ObjectLayout.layoutMap = {};
+MemLayout.layoutMap = {};
 
 /**
 Source code for generated layout functions
 */
-ObjectLayout.sourceStr = '';
+MemLayout.sourceStr = '';
 
 /**
 Get the current size of an object using this layout
 */
-ObjectLayout.prototype.getSize = function (typeSize)
+MemLayout.prototype.getSize = function (subSize)
 {
     // If there are no fields, the size is 0
     if (this.fields.length == 0)
@@ -153,13 +161,13 @@ ObjectLayout.prototype.getSize = function (typeSize)
     var lastField = this.fields[this.fields.length - 1];
 
     assert (
-        typeSize !== undefined || lastField.numElems &&
-        !(typeSize !== undefined && lastField.numElems === false),
+        subSize !== undefined || lastField.numElems &&
+        !(subSize !== undefined && lastField.numElems === false),
         'must specify type size for variable-length layouts'
     );
 
     // Get the number of elements in the last field
-    var numElems = (typeSize !== undefined) ? typeSize : lastField.numElems;
+    var numElems = (subSize !== undefined) ? subSize : lastField.numElems;
 
     // Compute the total size of the object
     var size = lastField.offset + lastField.elemSize * numElems;
@@ -171,11 +179,11 @@ ObjectLayout.prototype.getSize = function (typeSize)
 /**
 Add a new field specification
 @param type type of the element(s) in this field.
-@param typeSize size parameter of the sub-object, for variable-size objects.
+@param subSize size parameter of the sub-object, for variable-size objects.
 @param numElems number of elements in the field. Use value false for a
                 variable-size field.
 */
-ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
+MemLayout.prototype.addField = function(name, type, subSize, numElems)
 {
     assert (
         name !== undefined,
@@ -215,11 +223,17 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
     }
 
     //
-    // TODO: alignment?
+    // TODO: memory alignment of fields?
     //
 
+    // Compute the element size for this field
+    var elemSize = 
+        (type instanceof IRType)?
+        type.getSizeBytes(this.target):
+        type.getSize(subSize);
+
     // Create a new field-specification object
-    var newField = new FieldSpec(name, type, typeSize, numElems, offset);
+    var newField = new FieldSpec(name, type, subSize, elemSize, numElems, offset);
 
     // Add the new field to the list
     this.fields.push(newField);
@@ -231,7 +245,7 @@ ObjectLayout.prototype.addField = function(name, type, typeSize, numElems)
 /**
 Get a field specification by name
 */
-ObjectLayout.prototype.getField = function (name)
+MemLayout.prototype.getField = function (name)
 {
     assert (
         this.fieldMap[name] !== undefined,
@@ -244,7 +258,7 @@ ObjectLayout.prototype.getField = function (name)
 /**
 Lock the layout so that it can no longer be changed
 */
-ObjectLayout.prototype.finalize = function ()
+MemLayout.prototype.finalize = function ()
 {
     this.finalized = true;
 };
@@ -253,7 +267,7 @@ ObjectLayout.prototype.finalize = function ()
 Generate the offset computation to access a given field or sub-field
 @arg query list of field name strings and index values
 */
-ObjectLayout.prototype.genfieldAccessIR = function (context, query)
+MemLayout.prototype.genfieldAccessIR = function (context, query)
 {
     assert (
         query.length > 0,
@@ -310,7 +324,7 @@ ObjectLayout.prototype.genfieldAccessIR = function (context, query)
 /**
 Generate functions to manipulate a given layout
 */
-ObjectLayout.prototype.genMethods = function ()
+MemLayout.prototype.genMethods = function ()
 {
     assert (
         this.finalized,
@@ -342,6 +356,7 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += 'function get_size_' + this.name + '()\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
         sourceStr += '\treturn pint(' + objSize + ');\n';
         sourceStr += '}\n';
@@ -351,6 +366,7 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += 'function alloc_' + this.name + '()\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
@@ -366,6 +382,7 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += 'function get_size_' + this.name + '(size)\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
         sourceStr += '\tvar baseSize = pint(' + lastField.offset + ');\n';
@@ -379,6 +396,7 @@ ObjectLayout.prototype.genMethods = function ()
         sourceStr += 'function alloc_' + this.name + '(size)\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
@@ -433,7 +451,7 @@ ObjectLayout.prototype.genMethods = function ()
             }
 
             // If there can't be accessors for this field
-            if (spec.type instanceof ObjectLayout)
+            if (spec.type instanceof MemLayout)
             {
                 // Recurse on the layout
                 genAccessFuncs(
@@ -495,11 +513,12 @@ ObjectLayout.prototype.genMethods = function ()
         'obj',
         1,
         '"tachyon:arg obj ' + this.ptrType + '";\n' +
-        '"tachyon:inline";\n',
+        '"tachyon:inline";\n' + 
+        '"tachyon:nothrow";\n',
         'var offset = pint(0);\n'
     );
 
     // Append the generated code to the object layout source string
-    ObjectLayout.sourceStr += sourceStr;
+    MemLayout.sourceStr += sourceStr;
 };
 

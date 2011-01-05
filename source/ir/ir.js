@@ -21,11 +21,11 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
-@tachyonSrc Flag to indicate whether we are compiling tachyon code
+@params Compilation parameters
 */
 function unitToIR(
     astUnit,
-    tachyonSrc
+    params
 )
 {
     //
@@ -43,7 +43,16 @@ function unitToIR(
     //
 
     // Ensure that the top-level AST is a program
-    assert (astUnit instanceof Program, 'top-level AST must be program');
+    assert (
+        astUnit instanceof Program, 
+        'top-level AST must be program'
+    );
+
+    // Ensure that the compilation parameters are valid
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     // Treat the top-level unit as a function
     return stmtListToIRFunc(
@@ -55,7 +64,7 @@ function unitToIR(
         astUnit.funcs,
         astUnit.block.statements,
         astUnit,
-        tachyonSrc
+        params.tachyonSrc
     );
 }
 

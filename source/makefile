@@ -19,6 +19,7 @@ BASE_SRCS =                         \
     utility/xml.js                  \
     utility/html.js                 \
     compiler/targets.js             \
+    compiler/params.js              \
     compiler/config.js              \
     compiler/frontend.js            \
     compiler/compiler.js            \
@@ -42,7 +43,7 @@ BASE_SRCS =                         \
     ir/commelim.js                  \
     ir/inlining.js                  \
     ir/lowering.js                  \
-    runtime/objlayout.js            \
+    runtime/layout.js               \
     runtime/context.js              \
     runtime/objects.js              \
     codegen/asm.js                  \
