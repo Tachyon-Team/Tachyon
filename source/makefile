@@ -18,6 +18,11 @@ BASE_SRCS =                         \
     utility/misc.js                 \
     utility/xml.js                  \
     utility/html.js                 \
+    compiler/targets.js             \
+    compiler/config.js              \
+    compiler/frontend.js            \
+    compiler/compiler.js            \
+    compiler/init.js                \
     parser/misc.js                  \
     parser/scanner.js               \
     parser/parser.js                \
@@ -25,6 +30,7 @@ BASE_SRCS =                         \
     parser/ast-passes.js            \
     platform/ffi.js                 \
     platform/memory.js              \
+    ir/types.js                     \
     ir/static.js                    \
     ir/instructions.js              \
     ir/iir.js                       \
@@ -36,7 +42,6 @@ BASE_SRCS =                         \
     ir/commelim.js                  \
     ir/inlining.js                  \
     ir/lowering.js                  \
-    frontend.js                     \
     runtime/objlayout.js            \
     runtime/context.js              \
     runtime/objects.js              \
@@ -45,9 +50,7 @@ BASE_SRCS =                         \
     codegen/linearscan.js           \
     codegen/backend.js              \
     codegen/ir-to-asm-x86.js        \
-    codegen/regalloc-config-x86.js  \
-    compiler.js                     \
-    init.js
+    codegen/regalloc-config-x86.js
 
 # Standard library source files
 STDLIB_SRCS =                       \
