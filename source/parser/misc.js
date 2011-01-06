@@ -94,15 +94,27 @@ function String_output_port(init)
 
 function parse_src_file(filename, warnings)
 {
+    assert (
+        filename !== undefined,
+        'expected file name'
+    );
+
     if (warnings === undefined)
         warnings = true;
+
     return parse_src_port(new File_input_port(filename), warnings);
 }
 
 function parse_src_str(str, warnings)
 {
+    assert (
+        str !== undefined,
+        'expected source string'
+    );
+
     if (warnings === undefined)
         warnings = true;
+
     return parse_src_port(new String_input_port(str), warnings);
 }
 

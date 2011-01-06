@@ -63,12 +63,6 @@ function StaticEnv()
 }
 StaticEnv.prototype = {};
 
-//FIXME: eliminate this
-/**
-Global static environment instance
-*/
-var staticEnv = new StaticEnv();
-
 /**
 Parse static bindings in a code unit
 */

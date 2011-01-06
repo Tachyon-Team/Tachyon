@@ -19,21 +19,31 @@ Initialize the Tachyon configuration
 */
 function initConfig()
 {
-
-    // TODO: create target, put target inside config.params
-
-
-
-    // TODO: create static env
-
-
     /**
-    Current compilation parameters
+    Compilation parameters for the currently running Tachyon VM.
+    The tachyon code has special privileges.
     */
-    config.params = new CompParams({
+    config.hostParams = new CompParams({
         target      : Target.Debug_X86_32,
         tachyonSrc  : true,
-        staticEnv   : {}
+        staticEnv   : new StaticEnv()
+    });
+
+    /**
+    Compilation parameters for the client code tachyon compiles and runs.
+    The parameters are the same as for host code, but the client code has
+    no special privileges.
+    */
+    config.clientParams = Object.create(config.hostParams);
+    config.clientParams.tachyonSrc = false;
+
+    /**
+    Compilation parameters used to bootstrap Tachyon
+    */
+    config.bootParams = new CompParams({
+        target      : Target.Debug_X86_32,
+        tachyonSrc  : true,
+        staticEnv   : new StaticEnv()
     });
 
     /**

@@ -17,7 +17,7 @@ function makeContextLayout(params)
     /**
     Run-time context layout object
     */
-    ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params.target);
+    var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
 
     // Global object
     ctxLayout.addField(

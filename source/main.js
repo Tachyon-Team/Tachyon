@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    /*
+    /* TODO: test object code using this method
     var memBlock = allocMemoryBlock(128);
     
     function getAddrInt(block, idx)
@@ -41,18 +41,14 @@ function testIR()
 
     //var ast = parse_src_file('test.js');
     var ast = parse_src_file('programs/loop_sum/loop_sum.js');
-    //var ast = parse_src_file('programs/fib/fib.js');
-    //var ast = parse_src_str('function foo(a) { return iir.or(0, a); }');
-    //var ast = parse_src_str('function foo(a, b) { return iir.mul(a, b); } return foo(8, 2);');
-    //var ast = parse_src_str('function foo(a) { "tachyon:inline"; } return foo(1);');
 
     //pp(ast);
 
-    var ir = unitToIR(ast, config.params);
+    var ir = unitToIR(ast, config.hostParams);
     
     //print(ir);
 
-    lowerIRFunc(ir, config.params);
+    lowerIRFunc(ir, config.hostParams);
 
     print(ir);
 
@@ -66,13 +62,11 @@ function testIR()
     //print('result: ' + (result >> 2));    
     print('result: ' + result);
     */
-
     
-    var func = staticEnv.getBinding('extStrTable');
+    /*
+    var func = config.hostParams.staticEnv.getBinding('extStrTable');
     print(func);
-    
-
-    //printInstrNames(ir);
+    */
 };
 
 function printInstrNames(ir)

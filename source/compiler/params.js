@@ -43,5 +43,23 @@ function CompParams(cfgObj)
     @field
     */
     this.staticEnv = cfgObj.staticEnv;
+
+    /**
+    Map of object memory layouts, by name
+    @field
+    */
+    this.memLayouts = {};
+
+    /**
+    Object layout code auto-generated for this platform
+    @field
+    */
+    this.layoutSrc = '';
+
+    /**
+    List of IR function objects for primitive functions
+    @field
+    */
+    this.primIR = [];
 }
 

@@ -17,6 +17,7 @@ Allocate and initialize the string table, used for hash consing
 function initStrTable()
 {
     "tachyon:static";
+    "tachyon:noglobal";
 
     // Allocate the string table object
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
@@ -43,6 +44,7 @@ NOTE: this is used to find strings in the hash consing table
 */
 function streq(strObj, rawStr)
 {
+    "tachyon:noglobal";
     "tachyon:arg rawStr rptr";
     "tachyon:ret bool";
 
@@ -71,6 +73,7 @@ Allocate/get a reference to a string object containing the given string data
 function getStrObj(rawStr, strLen)
 {
     "tachyon:static";
+    "tachyon:noglobal";
     "tachyon:arg rawStr rptr";
     "tachyon:arg strLen pint";
 
@@ -201,6 +204,7 @@ Extend the string table and rehash its contents
 function extStrTable(curTbl, curSize, numStrings)
 {
     "tachyon:inline";
+    "tachyon:noglobal";
     "tachyon:arg curSize pint";
     "tachyon:arg numStrings pint";
 
@@ -250,11 +254,13 @@ function extStrTable(curTbl, curSize, numStrings)
             // Move to the next hash table slot
             hashIndex = (hashIndex + pint(1)) % newSize;
 
+            /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
                 hashIndex != startHashIndex,
                 'no free slots found in extended hash table'
             );
+            */
         }
     }
 

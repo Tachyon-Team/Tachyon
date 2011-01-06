@@ -17,28 +17,24 @@ function initialize()
     // Initialize the Tachyon configuration
     initConfig();
 
-    // Create the contect object layout
-    makeContextLayout(config.params);
+    // Create the context and object layouts
+    makeContextLayout(config.hostParams);
+    makeObjectLayouts(config.hostParams);
 
-    // Create the object layouts
-    makeObjectLayouts(config.params);
+    // Compile the primitives to IR for both configurations
+    compPrimitives(config.hostParams);
 
-    // Compile the IR primitives
-    backend.primitiveList = compPrimitives(config.params);
-
-    /*
-    var func = staticEnv.getBinding('extObjHashTbl');
-    print(func);
-    */
-
-    for (var primIt = new ArrayIterator(backend.primitiveList);
+    // Compile the primitives to machine code
+    for (var primIt = new ArrayIterator(config.hostParams.primIR);
          primIt.valid();
          primIt.next())
     {
         //print(primIt.get());
 
-        compileIR(primIt.get(), config.params);
+        compileIR(primIt.get(), config.hostParams);
     }
+
+    // TODO: create layouts, compile primitives for bootstrap
 }
 
 /**

@@ -17,7 +17,7 @@ function lowerIRFunc(irFunc, params)
 {
     assert (
         params instanceof CompParams,
-        'expexted compilation parameters'
+        'expected compilation parameters'
     );
 
     // For each function in the IR
@@ -38,7 +38,7 @@ function lowerIRCFG(cfg, params)
 {
     assert (
         params instanceof CompParams,
-        'expexted compilation parameters'
+        'expected compilation parameters'
     );
 
     // For each instruction in the CFG
@@ -58,7 +58,7 @@ function lowerIRCFG(cfg, params)
             // Create a boolean conversion instruction
             var toBoolInstr = new CallFuncInstr(
                 [
-                    staticEnv.getBinding('boxToBool'),
+                    params.staticEnv.getBinding('boxToBool'),
                     ConstValue.getConst(undefined),
                     instr.uses[0]
                 ]
@@ -82,7 +82,12 @@ function lowerIRCFG(cfg, params)
             // If the callee is marked inline and is inlinable
             if (calleeFunc.inline && isInlinable(calleeFunc))
             {
-                //print('inlining: ' + calleeFunc.funcName);
+                /*
+                print(
+                    'inlining: ' + calleeFunc.funcName + ' in ' + 
+                    cfg.ownerFunc.funcName
+                );
+                */
 
                 // Inline the call
                 inlineCall(instr, calleeFunc);
@@ -97,7 +102,7 @@ function lowerIRCFG(cfg, params)
     cfg.validate();
 
     // Apply peephole optimization patterns to the CFG
-    applyPatternsCFG(cfg);
+    applyPatternsCFG(cfg, params);
 
     // Validate the CFG
     cfg.validate();
@@ -143,7 +148,7 @@ function compPrimitives(params)
     // Build a list of the ASTs of the primitive code
     var astList = [
         // Generated code for the object layouts
-        parse_src_str(MemLayout.sourceStr),
+        parse_src_str(params.layoutSrc),
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
         // Source code for string operations
@@ -152,16 +157,13 @@ function compPrimitives(params)
         parse_src_file('runtime/rtinit.js'), 
     ];
 
-    // List of IR functions for the primitive code
-    var irList = [];
-
     // For each AST
     for (var i = 0; i < astList.length; ++i)
     {
         var ast = astList[i];
 
         // Parse static bindings in the unit
-        staticEnv.parseUnit(ast);
+        params.staticEnv.parseUnit(ast);
     }
 
     // For each AST
@@ -172,13 +174,13 @@ function compPrimitives(params)
         // Generate IR from the AST
         var ir = unitToIR(ast, params);
 
-        irList.push(ir);
+        params.primIR.push(ir);
     }
 
     // For each IR
-    for (var i = 0; i < irList.length; ++i)
+    for (var i = 0; i < params.primIR.length; ++i)
     {
-        var ir = irList[i];
+        var ir = params.primIR[i];
 
         // Perform IR lowering on the primitives
         lowerIRFunc(ir, params);
@@ -188,6 +190,4 @@ function compPrimitives(params)
         // Validate the resulting code
         ir.validate();
     }
-
-    return irList;
 }

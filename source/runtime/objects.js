@@ -13,23 +13,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // inside V8, we cannot access a previously defined static environment. This
 // will no longer be a problem once Tachyon is bootstrapped.
 var MAX_FIXNUM = Math.pow(2, 30) - 1;
-var TAG_NUM_BITS_INT = 2;
-var BOX_NUM_BITS_INT = 30;
-var TAG_NUM_BITS_REF = 3;
-var TAG_INT_MASK = 3;
-var TAG_REF_MASK = 7;
-var TAG_INT = 0;
-var TAG_OBJECT = 7;
-var TAG_FUNCTION = 6;
-var TAG_ARRAY = 5;
-var TAG_FLOAT = 3;
-var TAG_STRING = 2;
-var TAG_OTHER = 1;
-var BIT_PATTERN_TRUE = 1;
-var BIT_PATTERN_FALSE = 9;
-var BIT_PATTERN_NULL = 17;
-var BIT_PATTERN_UNDEF = 25;
-var BIT_PATTERN_NOT_FOUND = 33;
 
 //
 // TODO: separate object-related code from tag bit code, string code, etc.
@@ -66,7 +49,7 @@ function makeObjectLayouts(params)
     //=============================================================================
 
     // Number of integer tag bits
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_NUM_BITS_INT',
         ConstValue.getConst(
             2,
@@ -75,16 +58,17 @@ function makeObjectLayouts(params)
     );
 
     // Number of usable integer bits in a boxed integer
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'BOX_NUM_BITS_INT',
         ConstValue.getConst(
-            IRType.pint.getSizeBits(params.target) - TAG_NUM_BITS_INT,
+            IRType.pint.getSizeBits(params.target) - 
+            params.staticEnv.getBinding('TAG_NUM_BITS_INT').value,
             IRType.pint
         )
     );
 
     // Number of reference tag bits
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_NUM_BITS_REF',
         ConstValue.getConst(
             3,
@@ -93,7 +77,7 @@ function makeObjectLayouts(params)
     );
 
     // Mask used to extract immediate integer tags
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_INT_MASK',
         ConstValue.getConst(
             3,
@@ -102,7 +86,7 @@ function makeObjectLayouts(params)
     );
 
     // Mask used to extract reference tags
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_REF_MASK',
         ConstValue.getConst(
             7,
@@ -111,7 +95,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for immediate integers
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_INT',
         ConstValue.getConst(
             0,
@@ -120,7 +104,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for plain objects
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_OBJECT',
         ConstValue.getConst(
             7,
@@ -129,7 +113,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for function objects
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_FUNCTION',
         ConstValue.getConst(
             6,
@@ -138,7 +122,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for array objects
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_ARRAY',
         ConstValue.getConst(
             5,
@@ -147,7 +131,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for floating-point values
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_FLOAT',
         ConstValue.getConst(
             3,
@@ -156,7 +140,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for strings
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_STRING',
         ConstValue.getConst(
             2,
@@ -165,7 +149,7 @@ function makeObjectLayouts(params)
     );
 
     // Tag for other values
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TAG_OTHER',
         ConstValue.getConst(
             1,
@@ -180,7 +164,7 @@ function makeObjectLayouts(params)
     //=============================================================================
 
     // Alignment for heap allocation
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'HEAP_ALIGN',
         ConstValue.getConst(
             8,
@@ -202,7 +186,7 @@ function makeObjectLayouts(params)
     //=============================================================================
 
     // Bit pattern for the true constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'BIT_PATTERN_TRUE',
         ConstValue.getConst(
             1,
@@ -211,7 +195,7 @@ function makeObjectLayouts(params)
     );
 
     // Bit pattern for the false constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'BIT_PATTERN_FALSE',
         ConstValue.getConst(
             9,
@@ -220,7 +204,7 @@ function makeObjectLayouts(params)
     );
 
     // Bit pattern for the null constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'BIT_PATTERN_NULL',
         ConstValue.getConst(
             17,
@@ -229,7 +213,7 @@ function makeObjectLayouts(params)
     );
 
     // Bit pattern for the undefined constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'BIT_PATTERN_UNDEF',
         ConstValue.getConst(
             25,
@@ -238,7 +222,7 @@ function makeObjectLayouts(params)
     );
 
     // Bit pattern for the not found constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'BIT_PATTERN_NOT_FOUND',
         ConstValue.getConst(
             33,
@@ -247,7 +231,7 @@ function makeObjectLayouts(params)
     );
 
     // True boolean constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'TRUE_BOOL',
         ConstValue.getConst(
             1,
@@ -256,7 +240,7 @@ function makeObjectLayouts(params)
     );
 
     // False boolean constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'FALSE_BOOL',
         ConstValue.getConst(
             0,
@@ -265,7 +249,7 @@ function makeObjectLayouts(params)
     );
 
     // Undefined constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'UNDEFINED',
         ConstValue.getConst(
             undefined,
@@ -274,7 +258,7 @@ function makeObjectLayouts(params)
     );
 
     // Null pointer constant
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'NULL_PTR',
         ConstValue.getConst(
             0,
@@ -291,7 +275,7 @@ function makeObjectLayouts(params)
     /**
     Hash table entry layout object
     */
-    var hashEntryLayout = new MemLayout('hashentry', undefined, undefined, config.params.target);
+    var hashEntryLayout = new MemLayout('hashentry', undefined, undefined, params);
 
     // Hash table key
     hashEntryLayout.addField(
@@ -311,7 +295,7 @@ function makeObjectLayouts(params)
     /**
     Hash table entry layout object
     */
-    var hashTblLayout = new MemLayout('hashtbl', IRType.box, 'TAG_OTHER', config.params.target);
+    var hashTblLayout = new MemLayout('hashtbl', IRType.box, 'TAG_OTHER', params);
 
     //
     // TODO: header
@@ -332,7 +316,7 @@ function makeObjectLayouts(params)
     /**
     Object layout object
     */
-    var objLayout = new MemLayout('obj', IRType.box, 'TAG_OBJECT', config.params.target);
+    var objLayout = new MemLayout('obj', IRType.box, 'TAG_OBJECT', params);
 
     //
     // TODO: header
@@ -367,7 +351,7 @@ function makeObjectLayouts(params)
     objLayout.genMethods();
 
     // Initial hash map size
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'HASH_MAP_INIT_SIZE',
         ConstValue.getConst(
             11,
@@ -376,14 +360,14 @@ function makeObjectLayouts(params)
     );
 
     // Hash map max load factor (num/denom)
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'HASH_MAP_MAX_LOAD_NUM',
         ConstValue.getConst(
             3,
             IRType.pint
         )
     );
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'HASH_MAP_MAX_LOAD_DENOM',
         ConstValue.getConst(
             5,
@@ -400,7 +384,7 @@ function makeObjectLayouts(params)
     /**
     String layout object
     */
-    var strLayout = new MemLayout('str', IRType.box, 'TAG_STRING', config.params.target);
+    var strLayout = new MemLayout('str', IRType.box, 'TAG_STRING', params);
 
     //
     // TODO: header
@@ -439,7 +423,7 @@ function makeObjectLayouts(params)
     /**
     Hash table entry layout object
     */
-    var strTblLayout = new MemLayout('strtbl', IRType.box, 'TAG_OTHER', config.params.target);
+    var strTblLayout = new MemLayout('strtbl', IRType.box, 'TAG_OTHER', params);
 
     //
     // TODO: header
@@ -470,7 +454,7 @@ function makeObjectLayouts(params)
     strTblLayout.genMethods();
 
     // Initial string table size
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'STR_TBL_INIT_SIZE',
         ConstValue.getConst(
             101,
@@ -479,14 +463,14 @@ function makeObjectLayouts(params)
     );
 
     // String table max load factor (num/denum)
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'STR_TBL_MAX_LOAD_NUM',
         ConstValue.getConst(
             3,
             IRType.pint
         )
     );
-    staticEnv.regBinding(
+    params.staticEnv.regBinding(
         'STR_TBL_MAX_LOAD_DENOM',
         ConstValue.getConst(
             5,

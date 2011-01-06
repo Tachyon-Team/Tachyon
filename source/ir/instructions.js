@@ -147,8 +147,12 @@ ConstValue.prototype.isInt = function ()
 /**
 Test if a constant is a boxed integer
 */
-ConstValue.prototype.isBoxInt = function ()
+ConstValue.prototype.isBoxInt = function (params)
 {
+    assert (params instanceof CompParams);
+
+    var BOX_NUM_BITS_INT = params.staticEnv.getBinding('BOX_NUM_BITS_INT').value;
+
     return (
         this.type === IRType.box &&
         this.isInt() && 
@@ -176,8 +180,13 @@ ConstValue.prototype.isUndef = function ()
 /**
 Get the tag bits associated with a constant
 */
-ConstValue.prototype.getTagBits = function ()
+ConstValue.prototype.getTagBits = function (params)
 {
+    assert (
+        params instanceof CompParams,
+        'compilation parameters expected'
+    );
+
     assert (
         this.type === IRType.box,
         'tag bits only applicable to boxed values'
@@ -185,22 +194,22 @@ ConstValue.prototype.getTagBits = function ()
 
     if (this.value instanceof IRFunction)
     {
-        return TAG_FUNCTION;
+        return params.staticEnv.getBinding('TAG_FUNCTION').value;
     }
 
-    if (this.isBoxInt())
+    if (this.isBoxInt(params))
     {
-        return TAG_INT;
+        return params.staticEnv.getBinding('TAG_INT').value;
     }
 
     if (this.isNumber())
     {
-        return TAG_FLOAT;
+        return params.staticEnv.getBinding('TAG_FLOAT').value;
     }
 
     if (typeof this.value == 'string')
     {
-        return TAG_STRING;
+        return params.staticEnv.getBinding('TAG_STRING').value;
     }
 
     if (this.value === true || 
@@ -208,7 +217,7 @@ ConstValue.prototype.getTagBits = function ()
         this.value === null || 
         this.value === undefined)
     {
-        return TAG_OTHER;
+        return params.staticEnv.getBinding('TAG_OTHER').value;
     }
 
     assert (
@@ -220,11 +229,13 @@ ConstValue.prototype.getTagBits = function ()
 /**
 Get the immediate value (bit pattern) of a constant
 */
-ConstValue.prototype.getImmValue = function ()
+ConstValue.prototype.getImmValue = function (params)
 {
-    if (this.isBoxInt())
+    assert (params instanceof CompParams);
+
+    if (this.isBoxInt(params))
     {
-        return (this.value << TAG_NUM_BITS_INT);
+        return (this.value << params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
     }
 
     if (this.type.isInt() && this.type !== IRType.box)
@@ -244,22 +255,22 @@ ConstValue.prototype.getImmValue = function ()
 
     if (this.value === true)
     {
-        return BIT_PATTERN_TRUE;
+        return params.staticEnv.getBinding('BIT_PATTERN_TRUE').value;
     }
 
     if (this.value === false)
     {
-        return BIT_PATTERN_FALSE;
+        return params.staticEnv.getBinding('BIT_PATTERN_FALSE').value;
     }
 
     if (this.value === undefined)
     {
-        return BIT_PATTERN_UNDEF;
+        return params.staticEnv.getBinding('BIT_PATTERN_UNDEF').value;
     }
 
     if (this.value === null)
     {
-        return BIT_PATTERN_NULL;
+        return params.staticEnv.getBinding('BIT_PATTERN_NULL').value;
     }
 
     assert (

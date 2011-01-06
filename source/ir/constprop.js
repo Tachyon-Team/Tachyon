@@ -486,8 +486,8 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
         if (v0 instanceof ConstValue && v1 instanceof ConstValue &&
             v0.isInt() && v1.isInt())
         {
-            var val0 = v0.getImmValue();
-            var val1 = v1.getImmValue();
+            var val0 = v0.getImmValue(params);
+            var val1 = v1.getImmValue(params);
 
             // If both values fit in the int32 range
             if (val0 >= IRType.i32.getMinVal(params.target) && val0 <= IRType.i32.getMaxVal(params.target) &&
@@ -508,7 +508,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
 
         else if (genFunc !== undefined)
         {
-            return genFunc(v0, v1, this.type);
+            return genFunc(v0, v1, this.type, params);
         }
 
         // By default, return the unknown value
@@ -523,8 +523,11 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     {
         return v0 & v1;
     },
-    function (u0, u1, type)
+    function (u0, u1, type, params)
     {
+        var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
+        var TAG_REF_MASK = params.staticEnv.getBinding('TAG_REF_MASK').value;
+
         if ((u0 instanceof ConstValue && u0.value == 0) ||
             (u1 instanceof ConstValue && u1.value == 0))
         {
@@ -537,12 +540,12 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
         if (u0 instanceof ConstValue &&
             u1 instanceof ConstValue &&
             u0.type === IRType.box &&
-            !u0.isBoxInt() &&
+            !u0.isBoxInt(params) &&
             u1.type === IRType.pint && 
             u1.value === TAG_REF_MASK)
         {
             return ConstValue.getConst(
-                u0.getTagBits(),
+                u0.getTagBits(params),
                 IRType.pint
             );
         }
@@ -550,12 +553,12 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
         if (u0 instanceof ConstValue &&
             u1 instanceof ConstValue &&
             u0.type === IRType.box &&
-            !u1.isBoxInt() &&
+            !u1.isBoxInt(params) &&
             u0.type === IRType.pint && 
             u0.value === TAG_REF_MASK)
         {
             return ConstValue.getConst(
-                u1.getTagBits(),
+                u1.getTagBits(params),
                 IRType.pint
             );
         }
@@ -567,7 +570,7 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
             u1.value === TAG_INT_MASK)
         {
             return ConstValue.getConst(
-                u0.getTagBits() & TAG_INT_MASK,
+                u0.getTagBits(params) & TAG_INT_MASK,
                 IRType.pint
             );
         }
@@ -579,7 +582,7 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
             u0.value === TAG_INT_MASK)
         {
             return ConstValue.getConst(
-                u1.getTagBits() & TAG_INT_MASK,
+                u1.getTagBits(params) & TAG_INT_MASK,
                 IRType.pint
             );
         }
@@ -650,7 +653,7 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, par
         }
         else if (v0.type === IRType.box && this.type.isInt())
         {
-            var castVal = v0.getImmValue();
+            var castVal = v0.getImmValue(params);
             
             if (castVal >= this.type.getMinVal(params.target) && castVal <= this.type.getMaxVal(params.target))
                 result = castVal;

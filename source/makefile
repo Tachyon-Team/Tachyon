@@ -37,7 +37,7 @@ BASE_SRCS =                         \
     ir/iir.js                       \
     ir/cfg.js                       \
     ir/functions.js                 \
-    ir/ir.js                        \
+    ir/ast-to-ir.js                 \
     ir/optpatterns.js               \
     ir/constprop.js                 \
     ir/commelim.js                  \

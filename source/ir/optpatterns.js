@@ -13,15 +13,21 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Apply all peephole optimization patterns to a CFG
 */
-function applyPatternsCFG(cfg, maxItrs)
+function applyPatternsCFG(cfg, params, maxItrs)
 {
+    assert (
+        params instanceof CompParams,
+        'compilation parameters expected'
+    );
+
     // Apply all block patterns
     var numItrs = applyPatternsListCFG(
         blockPatterns,
         cfg,
         maxItrs,
         false,
-        false
+        false,
+        params
     );
 
     // Remove dead blocks from the CFG
@@ -33,7 +39,7 @@ function applyPatternsCFG(cfg, maxItrs)
 /**
 Apply peephole optimization patterns to a CFG
 */
-function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
+function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate, params)
 {
     if (printInfo)
     {
@@ -61,7 +67,7 @@ function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate)
             var block = cfg.blocks[i];
 
             // Apply block-level patterns to the block
-            var result = applyPatternsBlock(blockPatterns, cfg, block, printInfo);
+            var result = applyPatternsBlock(blockPatterns, cfg, block, printInfo, params);
 
             // If any changes occurred, set the changed flag
             if (result)
@@ -126,7 +132,7 @@ Merge blocks with only one destination
 */
 blockPatterns.predSuccMerge = new optPattern(
     'predecessor-successor merge',
-    function match(cfg, block)
+    function match(cfg, block, params)
     {
         // If this block has only one successor, which has only one predecessor
         // and the block is not terminated by an exception-producing instruction
@@ -137,7 +143,7 @@ blockPatterns.predSuccMerge = new optPattern(
             !(block.getLastInstr() instanceof ExceptInstr)
         );
     },
-    function apply(cfg, block, printInfo)
+    function apply(cfg, block, printInfo, params)
     {
         //print('merging block with one succ: ' + block.getBlockName());
         //print('successor: ' + block.succs[0].getBlockName());
@@ -224,7 +230,7 @@ Jump over blocks with no instructions and a single successor
 */
 blockPatterns.emptyBypass = new optPattern(
     'empty block bypassing',
-    function match(cfg, block)
+    function match(cfg, block, params)
     {
         // If this block has only one successor, no instructions but a branch, 
         // and the block is not terminated by an exception-producing instruction
@@ -235,7 +241,7 @@ blockPatterns.emptyBypass = new optPattern(
             !(block.getLastInstr() instanceof ExceptInstr)
         );
     },
-    function apply(cfg, block, printInfo)
+    function apply(cfg, block, printInfo, params)
     {
         var succ = block.succs[0];
     
@@ -324,7 +330,7 @@ if t b1 b2
 */
 blockPatterns.boxToBoolElim = new optPattern(
     'boxToBool elimination',
-    function match(cfg, block)
+    function match(cfg, block, params)
     {
         // If this block contains only an if instruction using the
         // value of an immediately preceding phi
@@ -338,14 +344,14 @@ blockPatterns.boxToBoolElim = new optPattern(
                 ||
                 (block.instrs.length == 3 &&
                  block.instrs[1] instanceof CallFuncInstr &&
-                 block.instrs[1].uses[0] === staticEnv.getBinding('boxToBool') &&
+                 block.instrs[1].uses[0] === params.staticEnv.getBinding('boxToBool') &&
                  block.instrs[1].uses[2] === block.instrs[0] &&
                  block.instrs[2] instanceof IfInstr &&
                  block.instrs[2].uses[0] === block.instrs[1])
             )
         );
     },
-    function apply(cfg, block, printInfo)
+    function apply(cfg, block, printInfo, params)
     {
         var phiInstr = block.instrs[0];
         var phiPreds = phiInstr.preds.slice(0);
@@ -477,7 +483,7 @@ Aggregate phi nodes used only by other phi nodes
 */
 blockPatterns.phiMerge = new optPattern(
     'phi node aggregation',
-    function match(cfg, block)
+    function match(cfg, block, params)
     {
         // If this block contains only a phi node used only by another phi node
         return (
@@ -489,7 +495,7 @@ blockPatterns.phiMerge = new optPattern(
             block.succs[0].instrs[0] === block.instrs[0].dests[0]
         );
     },
-    function apply(cfg, block, printInfo)
+    function apply(cfg, block, printInfo, params)
     {
         var origPhi = block.instrs[0];
         var destPhi = origPhi.dests[0];
@@ -573,7 +579,7 @@ blockPatterns.instrPatterns = new optPattern(
         // Always match
         return true;
     },
-    function apply(cfg, block, printInfo)
+    function apply(cfg, block, printInfo, params)
     {
         // Flag to indicate the CFG was changed
         var changed = false;
@@ -584,7 +590,7 @@ blockPatterns.instrPatterns = new optPattern(
             var instr = block.instrs[i];
 
             // Apply instruction-level patterns to this instruction
-            var result = applyPatternsInstr(cfg, block, instr, i);
+            var result = applyPatternsInstr(cfg, block, instr, i, params);
 
             if (result)
                 changed = true;
@@ -598,7 +604,7 @@ blockPatterns.push(blockPatterns.instrPatterns);
 /**
 Apply block-level optimization patterns to a block
 */
-function applyPatternsBlock(blockPatterns, cfg, block, printInfo)
+function applyPatternsBlock(blockPatterns, cfg, block, printInfo, params)
 {
     // For each block level pattern
     for (var i = 0; i < blockPatterns.length; ++i)
@@ -606,7 +612,7 @@ function applyPatternsBlock(blockPatterns, cfg, block, printInfo)
         var pattern = blockPatterns[i];
 
         // If the pattern matches this block
-        if (pattern.match(cfg, block))
+        if (pattern.match(cfg, block, params))
         {
             if (printInfo)
             {
@@ -617,7 +623,7 @@ function applyPatternsBlock(blockPatterns, cfg, block, printInfo)
             }
 
             // Try applying the pattern to the block
-            var res = pattern.apply(cfg, block, printInfo);
+            var res = pattern.apply(cfg, block, printInfo, params);
 
             // If changes were made, the CFG was changed
             if (res)
@@ -632,7 +638,7 @@ function applyPatternsBlock(blockPatterns, cfg, block, printInfo)
 /**
 Apply instruction-level optimization patterns to an instruction
 */
-function applyPatternsInstr(cfg, block, instr, index)
+function applyPatternsInstr(cfg, block, instr, index, params)
 {
     // If the instruction's value is not used and the instruction
     // has no side effects and is not a branch
@@ -732,7 +738,7 @@ function applyPatternsInstr(cfg, block, instr, index)
     {
         // If the left operand is a power of 2
         if (instr.uses[0] instanceof ConstValue &&
-                 instr.uses[0].isBoxInt() &&
+                 instr.uses[0].isBoxInt(params) &&
                  isPowerOf2(instr.uses[0].value))
         {
             // Replace the multiplication by a left shift
@@ -753,7 +759,7 @@ function applyPatternsInstr(cfg, block, instr, index)
 
         // If the right operand is a power of 2
         else if (instr.uses[1] instanceof ConstValue &&
-            instr.uses[1].isBoxInt() &&
+            instr.uses[1].isBoxInt(params) &&
             isPowerOf2(instr.uses[1].value))
         {
             // Replace the multiplication by a left shift
@@ -778,7 +784,7 @@ function applyPatternsInstr(cfg, block, instr, index)
     {
         // If the left operand is a power of 2
         if (instr.uses[1] instanceof ConstValue &&
-            instr.uses[1].isBoxInt() &&
+            instr.uses[1].isBoxInt(params) &&
             isPowerOf2(instr.uses[1].value))
         {
             // Replace the multiplication by a left shift
@@ -800,7 +806,7 @@ function applyPatternsInstr(cfg, block, instr, index)
 
         // If the right operand is a power of 2
         else if (instr.uses[0] instanceof ConstValue &&
-                 instr.uses[0].isBoxInt() &&
+                 instr.uses[0].isBoxInt(params) &&
                  isPowerOf2(instr.uses[0].value))
         {
             // Replace the multiplication by a left shift
@@ -824,7 +830,7 @@ function applyPatternsInstr(cfg, block, instr, index)
     // If this is a division by a power of 2
     if (instr instanceof DivInstr && 
         instr.uses[1] instanceof ConstValue &&
-        instr.uses[1].isBoxInt() &&
+        instr.uses[1].isBoxInt(params) &&
         isPowerOf2(instr.uses[1].value))
     {
         // Replace the division by a right shift
@@ -847,7 +853,7 @@ function applyPatternsInstr(cfg, block, instr, index)
     // If this is a modulo of a power of 2
     if (instr instanceof ModInstr && 
         instr.uses[1] instanceof ConstValue &&
-        instr.uses[1].isBoxInt() &&
+        instr.uses[1].isBoxInt(params) &&
         isPowerOf2(instr.uses[1].value))
     {
         // Replace the modulo by a bitwise AND instruction

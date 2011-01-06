@@ -72,11 +72,11 @@ function FieldSpec(name, type, subSize, elemSize, numElems, offset)
 /**
 @class Represents the memory layout of allocatable objects
 */
-function MemLayout(name, ptrType, tagName, target)
+function MemLayout(name, ptrType, tagName, params)
 {
     // Ensure that no layout with this name exists
     assert (
-        MemLayout.layoutMap[name] === undefined,
+        params.memLayouts[name] === undefined,
         'an object layout with this name already exists'
     );
 
@@ -86,14 +86,14 @@ function MemLayout(name, ptrType, tagName, target)
         'tag name must be specified for boxed references'
     );
 
-    // Ensure that the target object is valid
+    // Ensure that the compilation parameters are valid
     assert (
-        target instanceof Target,
-        'target architecture needed'
+        params instanceof CompParams,
+        'compilation parameters needed'
     );
 
     // Store the layout in the layout map
-    MemLayout.layoutMap[name] = this;
+    params.memLayouts[name] = this;
 
     /**
     Name of the layout
@@ -114,9 +114,9 @@ function MemLayout(name, ptrType, tagName, target)
     this.tagName = tagName;
 
     /**
-    Target architecture for this layout
+    Compilation parameters for this layout
     */
-    this.target = target;
+    this.params = params;
 
     /**
     List of fields
@@ -137,16 +137,6 @@ function MemLayout(name, ptrType, tagName, target)
     this.finalized = false;
 }
 MemLayout.prototype = {};
-
-/**
-Map of layout names to object layouts
-*/
-MemLayout.layoutMap = {};
-
-/**
-Source code for generated layout functions
-*/
-MemLayout.sourceStr = '';
 
 /**
 Get the current size of an object using this layout
@@ -229,7 +219,7 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
     // Compute the element size for this field
     var elemSize = 
         (type instanceof IRType)?
-        type.getSizeBytes(this.target):
+        type.getSizeBytes(this.params.target):
         type.getSize(subSize);
 
     // Create a new field-specification object
@@ -357,6 +347,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:nothrow";\n';
+        sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
         sourceStr += '\treturn pint(' + objSize + ');\n';
         sourceStr += '}\n';
@@ -367,6 +358,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:nothrow";\n';
+        sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
@@ -383,6 +375,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:nothrow";\n';
+        sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
         sourceStr += '\tvar baseSize = pint(' + lastField.offset + ');\n';
@@ -397,6 +390,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:nothrow";\n';
+        sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
@@ -514,11 +508,12 @@ MemLayout.prototype.genMethods = function ()
         1,
         '"tachyon:arg obj ' + this.ptrType + '";\n' +
         '"tachyon:inline";\n' + 
-        '"tachyon:nothrow";\n',
+        '"tachyon:nothrow";\n' +
+        '"tachyon:noglobal";\n',
         'var offset = pint(0);\n'
     );
 
     // Append the generated code to the object layout source string
-    MemLayout.sourceStr += sourceStr;
+    this.params.layoutSrc += sourceStr;
 };
 
