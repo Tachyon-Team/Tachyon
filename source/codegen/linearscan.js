@@ -1937,8 +1937,9 @@ allocator.assign = function (cfg, config)
     @param cfg          Control Flow Graph 
     @param intervals    Intervals after register allocation
     @param order        A Linear order of all the basic blocks
+    @param config       Compilation specific information
 */
-allocator.resolve = function (cfg, intervals, order)
+allocator.resolve = function (cfg, intervals, order, config)
 {
     function liveAtBegin (succ)
     {
@@ -2110,7 +2111,7 @@ allocator.resolve = function (cfg, intervals, order)
                         };
             insertIndex = 0;
         }
-        mapping.orderAndInsertMoves(insertFct);
+        mapping.orderAndInsertMoves(insertFct, config.temp);
     }
 
     for (insertIt = new ArrayIterator(blocksToInsert);
@@ -2186,10 +2187,6 @@ allocator.mapping.prototype.add = function (from, to)
 
 allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 {
-
-    // TODO: We might want to use the Gabow's or Tarjan's algorithm
-    // for finding the strongly connected components of the graph instead
-
     var regName;
     var g = graph.adjencyList();
     var i;

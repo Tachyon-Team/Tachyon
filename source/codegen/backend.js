@@ -27,7 +27,7 @@ backend.compileIRToCB = function (ir, flags)
 
     const mem = x86.Assembler.prototype.memory;
     const reg = x86.Assembler.prototype.register;
-    const translator = irToAsm.translator();
+    const translator = irToAsm.translator(irToAsm.config);
 
     var cfg, order, liveIntervals, mems;
     var i, k, next, tab;
@@ -111,7 +111,7 @@ backend.compileIRToCB = function (ir, flags)
         print();
         */
 
-        mems = irToAsm.spillAllocator();
+        mems = irToAsm.spillAllocator(irToAsm.config);
 
         allocator.linearScan(irToAsm.config, 
                              liveIntervals, 
@@ -138,7 +138,7 @@ backend.compileIRToCB = function (ir, flags)
         allocator.assign(cfg, irToAsm.config); 
     
         // SSA form deconstruction and linear scan resolution 
-        order = allocator.resolve(cfg, liveIntervals, order);
+        order = allocator.resolve(cfg, liveIntervals, order, irToAsm.config);
 
 
         print("******* After register allocation *******");
