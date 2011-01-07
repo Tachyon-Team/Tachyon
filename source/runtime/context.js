@@ -10,73 +10,79 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
-Run-time context layout object
+Create the context object layout for a given architecture
 */
-var ctxLayout = new ObjectLayout('ctx', IRType.rptr);
+function makeContextLayout(params)
+{
+    /**
+    Run-time context layout object
+    */
+    var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
 
-// Global object
-ctxLayout.addField(
-    'globalobj',
-    IRType.box
-);
+    // Global object
+    ctxLayout.addField(
+        'globalobj',
+        IRType.box
+    );
 
-// String table
-ctxLayout.addField(
-    'strtbl',
-    IRType.box
-);
+    // String table
+    ctxLayout.addField(
+        'strtbl',
+        IRType.box
+    );
 
-// Object prototype object
-ctxLayout.addField(
-    'objproto',
-    IRType.box
-);
+    // Object prototype object
+    ctxLayout.addField(
+        'objproto',
+        IRType.box
+    );
 
-// Function prototype object
-ctxLayout.addField(
-    'funcproto',
-    IRType.box
-);
+    // Function prototype object
+    ctxLayout.addField(
+        'funcproto',
+        IRType.box
+    );
 
-// Range error constructor
-ctxLayout.addField(
-    'rangeerror',
-    IRType.box
-);
+    // Range error constructor
+    ctxLayout.addField(
+        'rangeerror',
+        IRType.box
+    );
 
-// Reference error constructor
-ctxLayout.addField(
-    'referror',
-    IRType.box
-);
+    // Reference error constructor
+    ctxLayout.addField(
+        'referror',
+        IRType.box
+    );
 
-// Syntax error constructor
-ctxLayout.addField(
-    'syntaxerror',
-    IRType.box
-);
+    // Syntax error constructor
+    ctxLayout.addField(
+        'syntaxerror',
+        IRType.box
+    );
 
-// Type error constructor
-ctxLayout.addField(
-    'typeerror',
-    IRType.box
-);
+    // Type error constructor
+    ctxLayout.addField(
+        'typeerror',
+        IRType.box
+    );
 
-// URI error constructor
-ctxLayout.addField(
-    'urierror',
-    IRType.box
-);
+    // URI error constructor
+    ctxLayout.addField(
+        'urierror',
+        IRType.box
+    );
 
-// Heap allocation pointer
-ctxLayout.addField(
-    'allocptr',
-    IRType.rptr
-);
+    // Heap allocation pointer
+    ctxLayout.addField(
+        'allocptr',
+        IRType.rptr
+    );
 
-// Finalize the context layout
-ctxLayout.finalize();
+    // Finalize the context layout
+    ctxLayout.finalize();
 
-// Generate accessor methods
-ctxLayout.genMethods();
+    // Generate accessor methods
+    ctxLayout.genMethods();
+}
 

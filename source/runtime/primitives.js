@@ -172,6 +172,7 @@ function boxToBool(boxVal)
 {
     "tachyon:static";
     "tachyon:nothrow";
+    "tachyon:noglobal";
     "tachyon:ret bool";
 
     // Get an integer-typed value for input
@@ -274,6 +275,7 @@ Allocate a memory block of a given size on the heap
 function heapAlloc(size)
 {
     "tachyon:static";
+    "tachyon:noglobal";
     "tachyon:arg size pint";
     "tachyon:ret rptr";
 
@@ -348,6 +350,7 @@ function newObject(proto)
 {
     "tachyon:static";
     "tachyon:nothrow";
+    "tachyon:noglobal";
 
     // Allocate space for an object
     var obj = alloc_obj();
@@ -356,7 +359,7 @@ function newObject(proto)
     set_obj_proto(obj, proto);
 
     // Initialize the hash table size and number of properties
-    set_obj_tblsize(obj, HASH_MAP_INIT_SIZE);
+    set_obj_tblsize(obj, iir.icast(IRType.i32, HASH_MAP_INIT_SIZE));
     set_obj_numprops(obj, i32(0));
 
     // Initialize the hash table pointer to null to prevent GC errors
@@ -727,6 +730,7 @@ Set a property on an object
 function putProp(obj, propName, propHash, propVal)
 {
     "tachyon:inline";
+    "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
     //
@@ -766,8 +770,8 @@ function putProp(obj, propName, propHash, propVal)
         else if (keyVal === UNDEFINED)
         {
             // Set the corresponding key and value in the slot
-            set_hashtbl_tbl_key(newTbl, hashIndex, propName);
-            set_hashtbl_tbl_val(newTbl, hashIndex, propVal);
+            set_hashtbl_tbl_key(tblPtr, hashIndex, propName);
+            set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
@@ -783,7 +787,7 @@ function putProp(obj, propName, propHash, propVal)
                 tblSize * HASH_MAP_MAX_LOAD_NUM)
             {
                 // Extend the hash table for this object
-                extObjHashTbl(obj, tblPtr, tblSize);
+                extObjHashTable(obj, tblPtr, tblSize);
             }
 
             // Break out of the loop
@@ -798,9 +802,10 @@ function putProp(obj, propName, propHash, propVal)
 /**
 Extend the hash table and rehash the properties of an object
 */
-function extObjHashTbl(obj, curTbl, curSize)
+function extObjHashTable(obj, curTbl, curSize)
 {
     "tachyon:inline";
+    "tachyon:noglobal";
     "tachyon:arg curSize pint";
 
     // Compute the new table size
@@ -847,17 +852,19 @@ function extObjHashTbl(obj, curTbl, curSize)
             // Move to the next hash table slot
             hashIndex = (hashIndex + pint(1)) % newSize;
 
+            /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
                 hashIndex != startHashIndex,
                 'no free slots found in extended hash table'
             );
+            */
         }
     }
 
     // Update the hash table pointer and the table size for the object
     set_obj_tbl(obj, newTbl);
-    set_obj_tblsize(obj, newSize);
+    set_obj_tblsize(obj, iir.icast(IRType.i32, newSize));
 }
 
 /**
@@ -866,6 +873,7 @@ Get a property from an object
 function getProp(obj, propName, propHash)
 {
     "tachyon:inline";
+    "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
     // Until we reach the end of the prototype chain
@@ -931,6 +939,7 @@ Set a property on an object, by property name value
 function putPropVal(obj, propName, propVal)
 {
     "tachyon:static";
+    "tachyon:noglobal";
 
     // TODO: throw error if not object
     // - Maybe not, should never happen in practice... toObject
@@ -950,6 +959,7 @@ Test if a property exists on an object
 function hasPropVal(obj, propName)
 {
     "tachyon:static";
+    "tachyon:noglobal";
     "tachyon:ret bool";
 
     // TODO: throw error if not object
@@ -973,6 +983,7 @@ Get a property from an object
 function getPropVal(obj, propName)
 {
     "tachyon:static";
+    "tachyon:noglobal";
 
     // TODO: throw error if not object
     // - Maybe not, should never happen in practice... toObject

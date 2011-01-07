@@ -64,11 +64,6 @@ function StaticEnv()
 StaticEnv.prototype = {};
 
 /**
-Global static environment instance
-*/
-var staticEnv = new StaticEnv();
-
-/**
 Parse static bindings in a code unit
 */
 StaticEnv.prototype.parseUnit = function (astUnit)

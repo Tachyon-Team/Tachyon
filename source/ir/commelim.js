@@ -83,7 +83,7 @@ function commElim(cfg, maxItrs)
     function getValNo(val)
     {
         // If the value number is already computed, return it
-        if (valNoCache[val.instrId])
+        if (valNoCache[val.instrId] !== undefined)
             return valNoCache[val.instrId];
 
         // If this value matches an existing value number, get that number
@@ -272,7 +272,7 @@ function commElim(cfg, maxItrs)
             // If the instruction is a call or a non-branch instruction and 
             // there is a replacement, which was not previously removed
             if ((instr instanceof CallInstr || !instr.isBranch()) && 
-                rinstr && !arraySetHas(remSet, rinstr))
+                rinstr !== undefined && !arraySetHas(remSet, rinstr))
             {
                 /*                
                 print('********************');

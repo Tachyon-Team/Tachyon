@@ -1,6 +1,7 @@
 #! /bin/sh
 
 OPT_DEBUG=""
+OPT_WARN=""
 OPT_AST=""
 OPT_JS=""
 LAST_FILE=""
@@ -17,6 +18,7 @@ JS2JS="d8 $DIR/../utility/debug.js $DIR/../utility/system.js $DIR/../utility/has
 while [ "$1" != "" ]; do
   case "$1" in
       "-debug") OPT_DEBUG="-debug" ;;
+       "-warn") OPT_WARN="-warn" ;;
         "-ast") OPT_AST="-ast" ;;
          "-js") OPT_JS="-js" ;;
           "--") shift
@@ -32,9 +34,9 @@ while [ "$1" != "" ]; do
 done
 
 if [ "$OPT_AST" != "" ]; then
-  $JS2JS $OPT_DEBUG -ast -nojs $FILES
+  $JS2JS $OPT_DEBUG $OPT_WARN -ast -nojs $FILES
 else
-  $JS2JS $OPT_DEBUG $FILES < /dev/null > $LAST_FILE.js
+  $JS2JS $OPT_DEBUG $OPT_WARN $FILES < /dev/null > $LAST_FILE.js
   if [ "$OPT_JS" == "" ]; then
     cat $LAST_FILE.js
     rm -f $LAST_FILE.js

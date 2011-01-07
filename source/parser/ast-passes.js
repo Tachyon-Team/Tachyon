@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-12-20 17:01:07 feeley>
+// File: "ast-passes.js", Time-stamp: <2010-12-31 11:23:53 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -25,7 +25,7 @@ get_free_id.nextIdNum = 0;
 
 function ast_walk_statement(ast, ctx)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -189,7 +189,7 @@ function ast_walk_statements(asts, ctx)
 
 function ast_walk_expr(ast, ctx)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -271,7 +271,7 @@ function ast_pass1_ctx()
 
 ast_pass1_ctx.prototype.walk_statement = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -293,7 +293,7 @@ ast_pass1_ctx.prototype.walk_statement = function (ast)
 
 ast_pass1_ctx.prototype.walk_expr = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -325,7 +325,7 @@ function ast_pass1(ast)
 
 // Pass 2.
 //
-// Identifies functions that use the 'eval' and 'arguments' symbols.
+// Identifies functions that use the "eval" and "arguments" symbols.
 //
 // NOTE: this is not done through free variables for two reasons:
 // 1. Free variables can come from nested sub-functions.
@@ -338,7 +338,7 @@ function ast_pass2_ctx(ast)
 
 ast_pass2_ctx.prototype.walk_statement = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -351,7 +351,7 @@ ast_pass2_ctx.prototype.walk_statement = function (ast)
 
 ast_pass2_ctx.prototype.walk_expr = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -376,10 +376,10 @@ ast_pass2_ctx.prototype.walk_expr = function (ast)
         // TODO: eliminate when ids are fixed
         var symName = ast.id.toString();
 
-        if (symName == 'arguments')
+        if (symName === "arguments")
             this.ast.usesArguments = true;
 
-        else if (symName == 'eval')
+        else if (symName === "eval")
             this.ast.usesEval = true;
 
         return ast;
@@ -412,7 +412,7 @@ function ast_pass3_ctx(varMap)
 
 ast_pass3_ctx.prototype.walk_statement = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -425,7 +425,7 @@ ast_pass3_ctx.prototype.walk_statement = function (ast)
 
 ast_pass3_ctx.prototype.walk_expr = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -502,7 +502,7 @@ ast_pass3_ctx.prototype.walk_expr = function (ast)
             // Replace the parameter reference by an argument object indexing
             return new OpExpr(
                 ast.loc,
-                'x [ y ]',
+                "x [ y ]",
                 [
                     new Ref(ast.loc, assoc.id),
                     new Literal(ast.loc, assoc.index)
@@ -587,7 +587,7 @@ ast_pass4_ctx.prototype.add_variable = function (id, is_param)
 {
     var id_str = id.value;
     var v = this.vars[id_str];
-    if (typeof v == "undefined")
+    if (typeof v === "undefined")
     {
         v = new ast_Variable(id, is_param, this.scope);
         this.vars[id_str] = v;
@@ -597,7 +597,7 @@ ast_pass4_ctx.prototype.add_variable = function (id, is_param)
 
 ast_pass4_ctx.prototype.walk_statement = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -622,7 +622,7 @@ ast_pass4_ctx.prototype.walk_statement = function (ast)
         ast.decls.forEach(function (decl, i, self)
                           {
                               ctx.add_variable(decl.id, false);
-                              if (decl.initializer != null)
+                              if (decl.initializer !== null)
                               {
                                   decl.initializer = ctx.walk_expr(decl.initializer);
                                   accum.push(new ExprStatement(
@@ -634,7 +634,7 @@ ast_pass4_ctx.prototype.walk_statement = function (ast)
                                                            decl.initializer])));
                               }
                           });
-        if (accum.length == 1)
+        if (accum.length === 1)
             return accum[0];
         else
             return new BlockStatement(ast.loc,
@@ -647,7 +647,7 @@ ast_pass4_ctx.prototype.walk_statement = function (ast)
         {
             var decl = ast.decls[i];
             this.add_variable(decl.id, false);
-            if (decl.initializer != null)
+            if (decl.initializer !== null)
             {
                 decl.initializer = this.walk_expr(decl.initializer);
                 var init = new OpExpr(decl.loc,
@@ -683,7 +683,7 @@ ast_pass4_ctx.prototype.walk_statement = function (ast)
                                                   ast.id),
                                           set_expr,
                                           statement);
-        if (initializer == null)
+        if (initializer === null)
             return for_stat;
         else
             return new BlockStatement(ast.loc,
@@ -710,7 +710,7 @@ ast_pass4_ctx.prototype.walk_statement = function (ast)
 
 ast_pass4_ctx.prototype.walk_expr = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -718,7 +718,7 @@ ast_pass4_ctx.prototype.walk_expr = function (ast)
     else if (ast instanceof FunctionExpr)
     {
         var new_ctx = this.function_ctx(ast);
-        if (ast.id != null)
+        if (ast.id !== null)
             new_ctx.add_variable(ast.id, false);
         ast.body = new_ctx.walk_statements(ast.body);
         ast.vars = new_ctx.vars;
@@ -801,12 +801,12 @@ ast_pass5_ctx.prototype.resolve_variable = function (id)
 
         // If the id is declared in the current scope
         var v = scope.vars[id_str];
-        if (typeof v != "undefined")
+        if (typeof v !== "undefined")
             return v;
 
         // If the id is a free variable of the current scope
         v = scope.free_vars[id_str];
-        if (typeof v != "undefined")
+        if (typeof v !== "undefined")
             return v;
 
         // If the current scope is global
@@ -839,7 +839,7 @@ ast_pass5_ctx.prototype.resolve_variable = function (id)
 
 ast_pass5_ctx.prototype.walk_statement = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -882,7 +882,7 @@ ast_pass5_ctx.prototype.walk_statement = function (ast)
 
 ast_pass5_ctx.prototype.walk_expr = function (ast)
 {
-    if (ast == null)
+    if (ast === null)
     {
         // no transformation
         return ast;
@@ -897,14 +897,14 @@ ast_pass5_ctx.prototype.walk_expr = function (ast)
         // Add this function to the scope's nested function list
         // If this function is part of a function declaration, add the declaration instead
         // TODO: fix this code which does not work when the scope is for a CatchPart
-        if (this.func_decl != undefined && this.func_decl.funct === ast)
+        if (this.func_decl !== undefined && this.func_decl.funct === ast)
             this.scope.funcs.push(this.func_decl);
         else
             this.scope.funcs.push(ast);
 
         var new_ctx = this.function_ctx(ast);
 
-        if (ast.id != null)
+        if (ast.id !== null)
             ast.id = new_ctx.resolve_variable(ast.id);
 
         ast.body = ast_walk_statements(ast.body, new_ctx);

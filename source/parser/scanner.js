@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-12-17 10:45:42 feeley>
+// File: "scanner.js", Time-stamp: <2010-12-31 11:18:24 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -39,7 +39,7 @@ function Scanner(port)
 Scanner.prototype.read_char = function ()
 {
     var c = this.port.read_char();
-    if (c != EOF)
+    if (c !== EOF)
         this.current_char_pos++;
     return c;
 };
@@ -51,24 +51,24 @@ Scanner.prototype.get_char = function ()
 {
     var c = this.peeked_char;
 
-    if (c != null)
+    if (c !== null)
         this.peeked_char = null;
     else
         c = this.read_char();
 
-    if (c == LF_CH)
+    if (c === LF_CH)
     {
         this.current_line++;
         this.current_line_pos = this.current_char_pos;
         return EOL_CH;
     }
-    else if (c == CR_CH)
+    else if (c === CR_CH)
     {
         this.current_line++;
         this.current_line_pos = this.current_char_pos;
         this.peeked_char_pos = this.current_char_pos;
         var next = this.read_char();
-        if (next == LF_CH)
+        if (next === LF_CH)
             this.current_line_pos = this.current_char_pos;
         else
             this.peeked_char = next; // remember for next time
@@ -129,7 +129,7 @@ Scanner.prototype.fill_window = function (n)
         var i = s;
         while (i < n)
         {
-            var cp = (this.peeked_char == null)
+            var cp = (this.peeked_char === null)
                      ? this.current_char_pos
                      : this.peeked_char_pos;
             this.pos_window[i] =
@@ -153,11 +153,11 @@ Scanner.prototype.get_token = function ()
 
     for (;;)
     {
-        if (c == EOF)
+        if (c === EOF)
             return this.simple_token(EOI_CAT, 0);
-        else if (c == SPACE_CH || c == EOL_CH || c == TAB_CH)
+        else if (c === SPACE_CH || c === EOL_CH || c === TAB_CH)
         {
-            if (c == EOL_CH)
+            if (c === EOL_CH)
                 this.crossed_eol = true;
             this.advance(1);
             c = this.lookahead_char(0);
@@ -166,18 +166,18 @@ Scanner.prototype.get_token = function ()
             return this.parse_identifier();
         else if (this.decimal_class(c))
             return this.parse_number();
-        else if (c == PERIOD_CH)
+        else if (c === PERIOD_CH)
         {
             if (this.decimal_class(this.lookahead_char(1)))
                 return this.parse_number();
             else
                 return this.simple_token(PERIOD_CAT, 1);
         }
-        else if (c == EXCL_CH)
+        else if (c === EXCL_CH)
         {
-            if (this.lookahead_char(1) == EQUAL_CH)
+            if (this.lookahead_char(1) === EQUAL_CH)
             {
-                if (this.lookahead_char(2) == EQUAL_CH)
+                if (this.lookahead_char(2) === EQUAL_CH)
                     return this.simple_token(STRNEQ_CAT, 3);
                 else
                     return this.simple_token(NE_CAT, 2);
@@ -185,60 +185,60 @@ Scanner.prototype.get_token = function ()
             else
                 return this.simple_token(EXCL_CAT, 1);
         }
-        else if (c == PERCENT_CH)
+        else if (c === PERCENT_CH)
         {
-            if (this.lookahead_char(1) == EQUAL_CH)
+            if (this.lookahead_char(1) === EQUAL_CH)
                 return this.simple_token(MODEQUAL_CAT, 2);
             else
                 return this.simple_token(MOD_CAT, 1);
         }
-        else if (c == AMPERSAND_CH)
+        else if (c === AMPERSAND_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == AMPERSAND_CH)
+            if (x === AMPERSAND_CH)
                 return this.simple_token(AND_CAT, 2);
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(BITANDEQUAL_CAT, 2);
             else
                 return this.simple_token(BITAND_CAT, 1);
         }
-        else if (c == STAR_CH)
+        else if (c === STAR_CH)
         {
-            if (this.lookahead_char(1) == EQUAL_CH)
+            if (this.lookahead_char(1) === EQUAL_CH)
                 return this.simple_token(MULTEQUAL_CAT, 2);
             else
                 return this.simple_token(MULT_CAT, 1);
         }
-        else if (c == PLUS_CH)
+        else if (c === PLUS_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == PLUS_CH)
+            if (x === PLUS_CH)
                 return this.simple_token(PLUSPLUS_CAT, 2);
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(PLUSEQUAL_CAT, 2);
             else
                 return this.simple_token(PLUS_CAT, 1);
         }
-        else if (c == MINUS_CH)
+        else if (c === MINUS_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == MINUS_CH)
+            if (x === MINUS_CH)
                 return this.simple_token(MINUSMINUS_CAT, 2);
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(MINUSEQUAL_CAT, 2);
             else
                 return this.simple_token(MINUS_CAT, 1);
         }
-        else if (c == SLASH_CH)
+        else if (c === SLASH_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == SLASH_CH)
+            if (x === SLASH_CH)
             {
                 this.advance(2);
                 for (;;)
                 {
                     c = this.lookahead_char(0);
-                    if (c == EOL_CH || c == EOF)
+                    if (c === EOL_CH || c === EOF)
                     {
                         this.crossed_eol = true;
                         break;
@@ -246,35 +246,35 @@ Scanner.prototype.get_token = function ()
                     this.advance(1);
                 }
             }
-            else if (x == STAR_CH)
+            else if (x === STAR_CH)
             {
                 this.advance(2);
                 for (;;)
                 {
                     c = this.lookahead_char(0);
-                    if (c == EOF)
+                    if (c === EOF)
                         error("unterminated comment");
-                    if (c == STAR_CH && this.lookahead_char(1) == SLASH_CH)
+                    if (c === STAR_CH && this.lookahead_char(1) === SLASH_CH)
                         break;
-                    if (c == EOL_CH)
+                    if (c === EOL_CH)
                         this.crossed_eol = true;
                     this.advance(1);
                 }
                 this.advance(2);
                 c = this.lookahead_char(0);
             }
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(DIVEQUAL_CAT, 2);
             else
                 return this.simple_token(DIV_CAT, 1);
         }
-        else if (c == COLON_CH)
+        else if (c === COLON_CH)
             return this.simple_token(COLON_CAT, 1);
-        else if (c == EQUAL_CH)
+        else if (c === EQUAL_CH)
         {
-            if (this.lookahead_char(1) == EQUAL_CH)
+            if (this.lookahead_char(1) === EQUAL_CH)
             {
-                if (this.lookahead_char(2) == EQUAL_CH)
+                if (this.lookahead_char(2) === EQUAL_CH)
                     return this.simple_token(STREQ_CAT, 3);
                 else
                     return this.simple_token(EQEQ_CAT, 2);
@@ -282,82 +282,82 @@ Scanner.prototype.get_token = function ()
             else
                 return this.simple_token(EQUAL_CAT, 1);
         }
-        else if (c == LT_CH)
+        else if (c === LT_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == LT_CH)
+            if (x === LT_CH)
             {
-                if (this.lookahead_char(2) == EQUAL_CH)
+                if (this.lookahead_char(2) === EQUAL_CH)
                     return this.simple_token(LSHIFTEQUAL_CAT, 3);
                 else
                     return this.simple_token(LSHIFT_CAT, 2);
             }
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(LE_CAT, 2);
             else
                 return this.simple_token(LT_CAT, 1);
         }
-        else if (c == GT_CH)
+        else if (c === GT_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == GT_CH)
+            if (x === GT_CH)
             {
                 var y = this.lookahead_char(2);
-                if (y == GT_CH)
+                if (y === GT_CH)
                 {
-                    if (this.lookahead_char(3) == EQUAL_CH)
+                    if (this.lookahead_char(3) === EQUAL_CH)
                         return this.simple_token(URSHIFTEQUAL_CAT, 4);
                     else
                         return this.simple_token(URSHIFT_CAT, 3);
                 }
-                else if (y == EQUAL_CH)
+                else if (y === EQUAL_CH)
                     return this.simple_token(RSHIFTEQUAL_CAT, 3);
                 else
                     return this.simple_token(RSHIFT_CAT, 2);
             }
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(GE_CAT, 2);
             else
                 return this.simple_token(GT_CAT, 1);
         }
-        else if (c == QUESTION_CH)
+        else if (c === QUESTION_CH)
             return this.simple_token(QUESTION_CAT, 1);
-        else if (c == CARET_CH)
+        else if (c === CARET_CH)
         {
-            if (this.lookahead_char(1) == EQUAL_CH)
+            if (this.lookahead_char(1) === EQUAL_CH)
                 return this.simple_token(BITXOREQUAL_CAT, 2);
             else
                 return this.simple_token(BITXOR_CAT, 1);
         }
-        else if (c == LPAREN_CH)
+        else if (c === LPAREN_CH)
             return this.simple_token(LPAREN_CAT, 1);
-        else if (c == RPAREN_CH)
+        else if (c === RPAREN_CH)
             return this.simple_token(RPAREN_CAT, 1);
-        else if (c == COMMA_CH)
+        else if (c === COMMA_CH)
             return this.simple_token(COMMA_CAT, 1);
-        else if (c == SEMICOLON_CH)
+        else if (c === SEMICOLON_CH)
             return this.simple_token(SEMICOLON_CAT, 1);
-        else if (c == LBRACK_CH)
+        else if (c === LBRACK_CH)
             return this.simple_token(LBRACK_CAT, 1);
-        else if (c == VBAR_CH)
+        else if (c === VBAR_CH)
         {
             var x = this.lookahead_char(1);
-            if (x == VBAR_CH)
+            if (x === VBAR_CH)
                 return this.simple_token(OR_CAT, 2);
-            else if (x == EQUAL_CH)
+            else if (x === EQUAL_CH)
                 return this.simple_token(BITOREQUAL_CAT, 2);
             else
                 return this.simple_token(BITOR_CAT, 1);
         }
-        else if (c == RBRACK_CH)
+        else if (c === RBRACK_CH)
             return this.simple_token(RBRACK_CAT, 1);
-        else if (c == LBRACE_CH)
+        else if (c === LBRACE_CH)
             return this.simple_token(LBRACE_CAT, 1);
-        else if (c == RBRACE_CH)
+        else if (c === RBRACE_CH)
             return this.simple_token(RBRACE_CAT, 1);
-        else if (c == TILDE_CH)
+        else if (c === TILDE_CH)
             return this.simple_token(BITNOT_CAT, 1);
-        else if (c == DOUBLEQUOTE_CH || c == QUOTE_CH)
+        else if (c === DOUBLEQUOTE_CH || c === QUOTE_CH)
             return this.parse_string();
         else
             error("unknown token");
@@ -371,8 +371,8 @@ Scanner.prototype.identifier_class = function (c)
 {
     return (c >= LOWER_A_CH && c <= LOWER_Z_CH) ||
         (c >= UPPER_A_CH && c <= UPPER_Z_CH) ||
-        c == UNDERSCORE_CH ||
-        c == DOLLAR_CH;
+        c === UNDERSCORE_CH ||
+        c === DOLLAR_CH;
 };
 
 
@@ -410,7 +410,7 @@ Scanner.prototype.parse_identifier = function ()
     }
     var id = String.fromCharCode.apply(null,chars);
     var x = keyword_hashtable[h];
-    if (x != null && x.id == id)
+    if (x !== null && x.id === id)
         return this.valued_token(x.cat, id, start_pos);
     else
         return this.valued_token(IDENT_CAT, id, start_pos);
@@ -577,34 +577,34 @@ Scanner.prototype.parse_string = function ()
     for (;;)
     {
         var c = this.lookahead_char(0);
-        if (c == EOF)
+        if (c === EOF)
             error("unterminated string");
         this.advance(1);
-        if (c == close)
+        if (c === close)
             break;
-        else if (c == BACKSLASH_CH)
+        else if (c === BACKSLASH_CH)
         {
             c = this.lookahead_char(0);
-            if (c == EOF)
+            if (c === EOF)
                 error("unterminated string");
             this.advance(1);
-            if (c == LOWER_N_CH)
+            if (c === LOWER_N_CH)
                 c = LF_CH;
-            else if (c == ZERO_CH)
+            else if (c === ZERO_CH)
                 c = NUL_CH;
-            else if (c == LOWER_B_CH)
+            else if (c === LOWER_B_CH)
                 c = BS_CH;
-            else if (c == LOWER_T_CH)
+            else if (c === LOWER_T_CH)
                 c = TAB_CH;
-            else if (c == LOWER_V_CH)
+            else if (c === LOWER_V_CH)
                 c = VT_CH;
-            else if (c == LOWER_F_CH)
+            else if (c === LOWER_F_CH)
                 c = FF_CH;
-            else if (c == LOWER_R_CH)
+            else if (c === LOWER_R_CH)
                 c = CR_CH;
-            else if (c == LOWER_X_CH)
+            else if (c === LOWER_X_CH)
                 error("\\xXX string syntax not supported");
-            else if (c == LOWER_U_CH)
+            else if (c === LOWER_U_CH)
                 error("\\uXXXX string syntax not supported");
             chars.push(c);
         }                    

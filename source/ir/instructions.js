@@ -37,162 +37,6 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 //=============================================================================
 
 /**
-@class IR type representation object
-*/
-function IRType(name, size)
-{
-    /**
-    Name of this type
-    @field
-    */
-    this.name = name;
-
-    /**
-    Type size in bytes
-    @field
-    */
-    this.size = size;
-
-    /**
-    Type size in bits
-    @field
-    */
-    this.numBits = size * 8;
-
-    // If this is an integer type
-    if (name.charAt(0) == 'i' || name.charAt(0) == 'u')
-    {
-        // Compute the available range
-        this.minVal = getIntMin(this.numBits, name[0] == 'u');
-        this.maxVal = getIntMax(this.numBits, name[0] == 'u');
-    }
-
-    // Otherwise, if this is the boxed type
-    else if (name == 'box')
-    {
-        // TODO: make this infinity when supported, boxed
-        // values can be floats
-        this.minVal = getIntMin(30, false);
-        this.maxVal = getIntMax(30, false);
-    }
-}
-IRType.prototype = {};
-
-/**
-Obtain a string representation of an IR type
-*/
-IRType.prototype.toString = function ()
-{
-    return this.name;
-};
-
-/**
-Test if the type is a pointer type
-*/
-IRType.prototype.isPtr = function ()
-{
-    return this === IRType.rptr ||
-           this === IRType.box;
-};
-
-/**
-Test if the type is an integer type
-*/
-IRType.prototype.isInt = function ()
-{
-    return this.isUnsigned() ||
-           this.isSigned();
-};
-
-/**
-Test if the type is an unsigned integer type
-*/
-IRType.prototype.isUnsigned = function ()
-{
-    return this === IRType.u8  ||
-           this === IRType.u16 ||
-           this === IRType.u32 ||
-           this === IRType.u64;
-};
-
-/**
-Test if the type is a signed integer type
-*/
-IRType.prototype.isSigned = function ()
-{
-    return this === IRType.i8  ||
-           this === IRType.i16 ||
-           this === IRType.i32 ||
-           this === IRType.i64;
-};
-
-/**
-Test if the type is a floating-point type
-*/
-IRType.prototype.isFP = function ()
-{
-    return this === IRType.f64;
-};
-
-/**
-Test if the type is an integer or floating-point type
-*/
-IRType.prototype.isNumber = function ()
-{
-    return this.isInt() ||
-           this.isFP();
-};
-
-// TODO: boxed and pointer type sizes are actually platform-dependent
-// Need code get appropriate size for the platform
-
-// Size of a pointer on the current platform
-var PLATFORM_PTR_SIZE = 4;
-
-// Type given when there is no output value
-IRType.none = new IRType('none', 0),
-
-// Boxed value type
-// Contains an immediate integer or an object pointer, and a tag
-IRType.box  = new IRType('box' , PLATFORM_PTR_SIZE),
-
-// Raw pointer to any memory address
-IRType.rptr = new IRType('rptr', PLATFORM_PTR_SIZE),
-
-// Boolean type
-IRType.bool = new IRType('bool', PLATFORM_PTR_SIZE),
-
-// Unboxed unsigned integer types
-IRType.u8   = new IRType('u8'  , 1),
-IRType.u16  = new IRType('u16' , 2),
-IRType.u32  = new IRType('u32' , 4),
-
-// Unboxed signed integer types
-IRType.i8   = new IRType('i8'  , 1),
-IRType.i16  = new IRType('i16' , 2),
-IRType.i32  = new IRType('i32' , 4),
-
-// Floating-point types
-IRType.f64  = new IRType('f64' , 8);
-
-// If we are on a 32-bit platform
-if (PLATFORM_PTR_SIZE == 4)
-{
-    // Int type of width corresponding a pointer on this platform
-    IRType.pint = IRType.i32;
-}
-
-// Otherwise, we are on a 64-bit platform
-else
-{
-    IRType.u64  = new IRType('u64' , 8),
-    IRType.i64  = new IRType('i64' , 8),
-
-    // Int type of width corresponding a pointer on this platform
-    IRType.pint = IRType.i64;
-}
-
-/**
 @class Base class for all IR values
 */
 function IRValue()
@@ -303,13 +147,17 @@ ConstValue.prototype.isInt = function ()
 /**
 Test if a constant is a boxed integer
 */
-ConstValue.prototype.isBoxInt = function ()
+ConstValue.prototype.isBoxInt = function (params)
 {
+    assert (params instanceof CompParams);
+
+    var BOX_NUM_BITS_INT = params.staticEnv.getBinding('BOX_NUM_BITS_INT').value;
+
     return (
         this.type === IRType.box &&
         this.isInt() && 
-        this.value >= getIntMin(BOX_NUM_BITS_INT) && 
-        this.value <= getIntMax(BOX_NUM_BITS_INT)
+        this.value >= getIntMin(BOX_NUM_BITS_INT, false) && 
+        this.value <= getIntMax(BOX_NUM_BITS_INT, false)
     );
 };
 
@@ -332,8 +180,13 @@ ConstValue.prototype.isUndef = function ()
 /**
 Get the tag bits associated with a constant
 */
-ConstValue.prototype.getTagBits = function ()
+ConstValue.prototype.getTagBits = function (params)
 {
+    assert (
+        params instanceof CompParams,
+        'compilation parameters expected'
+    );
+
     assert (
         this.type === IRType.box,
         'tag bits only applicable to boxed values'
@@ -341,22 +194,22 @@ ConstValue.prototype.getTagBits = function ()
 
     if (this.value instanceof IRFunction)
     {
-        return TAG_FUNCTION;
+        return params.staticEnv.getBinding('TAG_FUNCTION').value;
     }
 
-    if (this.isBoxInt())
+    if (this.isBoxInt(params))
     {
-        return TAG_INT;
+        return params.staticEnv.getBinding('TAG_INT').value;
     }
 
     if (this.isNumber())
     {
-        return TAG_FLOAT;
+        return params.staticEnv.getBinding('TAG_FLOAT').value;
     }
 
     if (typeof this.value == 'string')
     {
-        return TAG_STRING;
+        return params.staticEnv.getBinding('TAG_STRING').value;
     }
 
     if (this.value === true || 
@@ -364,7 +217,7 @@ ConstValue.prototype.getTagBits = function ()
         this.value === null || 
         this.value === undefined)
     {
-        return TAG_OTHER;
+        return params.staticEnv.getBinding('TAG_OTHER').value;
     }
 
     assert (
@@ -376,11 +229,13 @@ ConstValue.prototype.getTagBits = function ()
 /**
 Get the immediate value (bit pattern) of a constant
 */
-ConstValue.prototype.getImmValue = function ()
+ConstValue.prototype.getImmValue = function (params)
 {
-    if (this.isBoxInt())
+    assert (params instanceof CompParams);
+
+    if (this.isBoxInt(params))
     {
-        return (this.value << TAG_NUM_BITS_INT);
+        return (this.value << params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
     }
 
     if (this.type.isInt() && this.type !== IRType.box)
@@ -400,22 +255,22 @@ ConstValue.prototype.getImmValue = function ()
 
     if (this.value === true)
     {
-        return BIT_PATTERN_TRUE;
+        return params.staticEnv.getBinding('BIT_PATTERN_TRUE').value;
     }
 
     if (this.value === false)
     {
-        return BIT_PATTERN_FALSE;
+        return params.staticEnv.getBinding('BIT_PATTERN_FALSE').value;
     }
 
     if (this.value === undefined)
     {
-        return BIT_PATTERN_UNDEF;
+        return params.staticEnv.getBinding('BIT_PATTERN_UNDEF').value;
     }
 
     if (this.value === null)
     {
-        return BIT_PATTERN_NULL;
+        return params.staticEnv.getBinding('BIT_PATTERN_NULL').value;
     }
 
     assert (
@@ -550,9 +405,9 @@ Produce a string representation of this instruction
 IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // If no formatting functions were specified, use the default ones
-    if (!outFormatFn)
+    if (outFormatFn === undefined)
         outFormatFn = IRInstr.defOutFormat;
-    if (!inFormatFn)
+    if (inFormatFn === undefined)
         inFormatFn = IRInstr.defInFormat;
 
     // Create a string for the output
@@ -591,7 +446,7 @@ Get a string representation of an instruction's value/name
 IRInstr.prototype.getValName = function ()
 {
     // If the output name for this instruction is set
-    if (this.outName)
+    if (this.outName !== "") // FIXME
     {
         // Return the output/temporary name
         return this.outName;
@@ -758,9 +613,9 @@ Produce a string representation of the phi instruction
 PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // If no formatting functions were specified, use the default ones
-    if (!outFormatFn)
+    if (outFormatFn === undefined)
         outFormatFn = IRInstr.defOutFormat;
-    if (!inFormatFn)
+    if (inFormatFn === undefined)
         inFormatFn = IRInstr.defInFormat;
 
     var phiInFormatFn = function (instr, pos)
@@ -852,7 +707,7 @@ PhiInstr.prototype.addIncoming = function (value, pred)
     );
 
     // If there are already inputs
-    if (this.uses.length)
+    if (this.uses.length !== 0)
     {
         assert (
             value.type === this.uses[0].type,

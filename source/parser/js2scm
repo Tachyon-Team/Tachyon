@@ -1,6 +1,7 @@
 #! /bin/sh
 
 OPT_DEBUG=""
+OPT_WARN=""
 OPT_AST=""
 OPT_PP=""
 OPT_INT=""
@@ -21,6 +22,7 @@ JS2SCM="d8 $DIR/../utility/debug.js $DIR/../utility/system.js $DIR/../utility/ha
 while [ "$1" != "" ]; do
   case "$1" in
       "-debug") OPT_DEBUG="-debug" ;;
+       "-warn") OPT_WARN="-warn" ;;
         "-ast") OPT_AST="-ast" ;;
          "-pp") OPT_PP="-pp" ;;
         "-int") OPT_INT="-int" ;;
@@ -40,12 +42,12 @@ while [ "$1" != "" ]; do
 done
 
 if [ "$OPT_AST" != "" ]; then
-  $JS2SCM $OPT_DEBUG -ast -noscm $FILES
+  $JS2SCM $OPT_DEBUG $OPT_WARN -ast -noscm $FILES
 else
   if [ "$OPT_PP" != "" ]; then
-    $JS2SCM $OPT_DEBUG -pp -noscm $FILES
+    $JS2SCM $OPT_DEBUG $OPT_WARN -pp -noscm $FILES
   else
-    $JS2SCM $OPT_DEBUG $FILES < /dev/null > $LAST_FILE.scm
+    $JS2SCM $OPT_DEBUG $OPT_WARN $FILES < /dev/null > $LAST_FILE.scm
     if [ "$OPT_INT" != "" ]; then
       gsi -:dar $LAST_FILE.scm "$@"
     else

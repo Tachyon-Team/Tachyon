@@ -73,43 +73,49 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     this.parentFunc = null;
 
     /**
-    Flag indicating that this function may use the arguments object
+    Indicates that this function may use the arguments object
     @field
     */
     this.usesArguments = false;
 
     /**
-    Flag indicating that this function may use eval
+    Indicates that this function may use eval
     @field
     */
     this.usesEval = false;
 
     /**
-    Flag indicating that this function should be statically linked
+    Indicating that this function should be statically linked
     @field
     */
     this.staticLink = false;
 
     /**
-    Flag indicating that this function should be inlined
+    Indicates that this function should be inlined
     @field
     */
     this.inline = false;
 
     /**
-    Flag indicating that this function cannot throw exceptions
+    Indicates that this function cannot throw exceptions
     @field
     */
     this.noThrow = false;
 
     /**
-    Flag indicating that the function reads from memory
+    Indicates that this function cannot do global variable accesses directly
+    @field
+    */
+    this.noGlobal = false;
+
+    /**
+    Indicates that the function reads from memory
     @field
     */
     this.readsMem = true;
 
     /**
-    Flag indicating that the function writes to memory
+    Indicates that the function writes to memory
     @field
     */
     this.writesMem = true;
@@ -127,7 +133,6 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     @field
     */
     this.runtime = {};
-
 
     // If the argument or return types are undefined, make them boxed
     if (this.argTypes === undefined)
@@ -182,7 +187,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
         ) + '\n\n';
     }
 
-    var cfg = this.finalCFG? this.finalCFG:this.virginCFG;
+    var cfg = (this.finalCFG !== null) ? this.finalCFG : this.virginCFG;
 
     output += indentText(
         cfg.toString(
@@ -235,6 +240,7 @@ IRFunction.prototype.copy = function ()
     newFunc.staticLink = this.staticLink;
     newFunc.inline = this.inline;
     newFunc.noThrow = this.noThrow;
+    newFunc.noGlobal = this.noGlobal;
     newFunc.readsMem = this.readsMem;
     newFunc.writesMem = this.writesMem;
 
@@ -250,7 +256,7 @@ IRFunction.prototype.validate = function ()
     this.virginCFG.validate();
 
     // Validate the final control-flow graph
-    if (this.finalCFG)
+    if (this.finalCFG !== null)
         this.finalCFG.validate();
 
     // Validate the child functions

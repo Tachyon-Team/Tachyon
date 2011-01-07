@@ -75,7 +75,7 @@ tests.utility.hashMap.consistency = function ()
             map.remItem(keyList[idx]);
 
             if (map.hasItem(keyList[idx]))
-                throw 'removed item still in table';
+                error('removed item still in table');
 
             remList.push(itemList[idx]);
 
@@ -86,10 +86,10 @@ tests.utility.hashMap.consistency = function ()
         for (var i = 0; i < keyList.length; ++i)
         {
             if (!map.hasItem(keyList[i]))
-                throw 'item not found in table';
+                error('item not found in table');
 
             if (map.getItem(keyList[i]) != itemList[i])
-                throw 'item extracted does not match item inserted';
+                error('item extracted does not match item inserted');
         }
 
         for (var i = 0; i < remList.length; ++i)

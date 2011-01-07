@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "pp.js", Time-stamp: <2010-12-20 14:27:30 feeley>
+// File: "pp.js", Time-stamp: <2010-12-31 11:21:02 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -15,29 +15,29 @@ function pp(ast)
 
 function pp_indent(ast, indent)
 {
-    if (ast == null)
+    if (ast === null)
         print(pp_prefix(indent) + "null");
     else if (ast instanceof Program)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "Program");
 
-        if (ast.vars != null)
+        if (ast.vars !== null)
         {
             for (var v in ast.vars)
                 pp_id(ast.vars[v], indent, "var");
         }
 
-        if (ast.free_vars != null)
+        if (ast.free_vars !== null)
         {
             for (var v in ast.free_vars)
                 pp_id(ast.free_vars[v], indent, "free_var");
         }
 
-        if (ast.funcs != null)
+        if (ast.funcs !== null)
         {
             for (var i in ast.funcs)
             {
-                if (ast.funcs[i].id != null)
+                if (ast.funcs[i].id !== null)
                     pp_id(ast.funcs[i].id, indent, "func");
                 else
                     print(pp_prefix(indent) + "|-func anonymous");
@@ -70,7 +70,7 @@ function pp_indent(ast, indent)
     else if (ast instanceof FunctionDeclaration)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "FunctionDeclaration");
-        if (ast.id != null)
+        if (ast.id !== null)
             pp_id(ast.id, indent, "id");
         pp_asts(indent, "funct", [ast.funct]);
     }
@@ -131,13 +131,13 @@ function pp_indent(ast, indent)
     else if (ast instanceof ContinueStatement)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "ContinueStatement");
-        if (ast.label != null)
+        if (ast.label !== null)
             print(pp_prefix(indent) + "|-label= " + ast.label.toString());
     }
     else if (ast instanceof BreakStatement)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "BreakStatement");
-        if (ast.label != null)
+        if (ast.label !== null)
             print(pp_prefix(indent) + "|-label= " + ast.label.toString());
     }
     else if (ast instanceof ReturnStatement)
@@ -216,41 +216,41 @@ function pp_indent(ast, indent)
     {
         pp_loc(ast.loc, pp_prefix(indent) + "FunctionExpr");
 
-        if (ast.id != null)
+        if (ast.id !== null)
             pp_id(ast.id, indent, "id");
 
         for (var p in ast.params)
             pp_loc(ast.params[p].loc, pp_prefix(indent) + "|-param= " + ast.params[p].toString());
 
-        if (ast.vars != null)
+        if (ast.vars !== null)
         {
             for (var v in ast.vars)
                 pp_id(ast.vars[v], indent, "var");
         }
 
-        if (ast.free_vars != null)
+        if (ast.free_vars !== null)
         {
             for (var v in ast.free_vars)
                 pp_id(ast.free_vars[v], indent, "free_var");
         }
 
-        if (ast.clos_vars != null)
+        if (ast.clos_vars !== null)
         {
             for (var v in ast.clos_vars)
                 pp_id(ast.clos_vars[v], indent, "clos_var");
         }
 
-        if (ast.esc_vars != null)
+        if (ast.esc_vars !== null)
         {
             for (var v in ast.esc_vars)
                 pp_id(ast.esc_vars[v], indent, "esc_var");
         }
 
-        if (ast.funcs != null)
+        if (ast.funcs !== null)
         {
             for (var i in ast.funcs)
             {
-                if (ast.funcs[i].id != null)
+                if (ast.funcs[i].id !== null)
                     pp_id(ast.funcs[i].id, indent, "func");
                 else
                     print(pp_prefix(indent) + "|-func anonymous");
@@ -314,7 +314,7 @@ function pp_loc(loc, line)
 
 function pp_asts(indent, label, asts)
 {
-    if (asts != null)
+    if (asts !== null)
     {
         print(pp_prefix(indent) + "|-" + label + "=");
         for (var i=0; i<asts.length; i++)
@@ -429,7 +429,7 @@ function ast_to_js(ast, ctx)
         js_out(id + " = ", ctx);
     }
 
-    if (ast == null)
+    if (ast === null)
         error("null ast");
     else if (ast instanceof Program)
     {
@@ -480,7 +480,7 @@ function ast_to_js(ast, ctx)
         js_indent(ctx);
         js_out("}\n", ctx);
 
-        if (ast.statements.length == 2)
+        if (ast.statements.length === 2)
         {
             js_indent(ctx);
             js_out("else\n", ctx);
@@ -805,7 +805,7 @@ function ast_to_js(ast, ctx)
         js_out("(", ctx); // FIXME: V8 seems to require extra parentheses at toplevel
         js_out("function ", ctx);
 
-        if (ast.id != null)
+        if (ast.id !== null)
             js_out(js_id_to_js(ast.id.toString()), ctx);
 
         js_out("(", ctx);

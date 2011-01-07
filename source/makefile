@@ -18,6 +18,12 @@ BASE_SRCS =                         \
     utility/misc.js                 \
     utility/xml.js                  \
     utility/html.js                 \
+    compiler/targets.js             \
+    compiler/params.js              \
+    compiler/config.js              \
+    compiler/frontend.js            \
+    compiler/compiler.js            \
+    compiler/init.js                \
     parser/misc.js                  \
     parser/scanner.js               \
     parser/parser.js                \
@@ -25,19 +31,19 @@ BASE_SRCS =                         \
     parser/ast-passes.js            \
     platform/ffi.js                 \
     platform/memory.js              \
+    ir/types.js                     \
     ir/static.js                    \
     ir/instructions.js              \
     ir/iir.js                       \
     ir/cfg.js                       \
     ir/functions.js                 \
-    ir/ir.js                        \
+    ir/ast-to-ir.js                 \
     ir/optpatterns.js               \
     ir/constprop.js                 \
     ir/commelim.js                  \
     ir/inlining.js                  \
     ir/lowering.js                  \
-    frontend.js                     \
-    runtime/objlayout.js            \
+    runtime/layout.js               \
     runtime/context.js              \
     runtime/objects.js              \
     codegen/asm.js                  \
@@ -45,13 +51,14 @@ BASE_SRCS =                         \
     codegen/linearscan.js           \
     codegen/backend.js              \
     codegen/ir-to-asm-x86.js        \
-    codegen/regalloc-config-x86.js  \
+    codegen/regalloc-config-x86.js
+
+# Standard library source files
+STDLIB_SRCS =                       \
     stdlib/errors.js                \
     stdlib/math.js                  \
     stdlib/arrays.js                \
-    stdlib/strings.js               \
-    compiler.js                     \
-    init.js
+    stdlib/strings.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                    \
@@ -75,11 +82,13 @@ MAIN_SRCS =                         \
 
 # Test target source files
 TEST_SRCS =                         \
+    $(STDLIB_SRCS)                  \
     $(BASE_SRCS)                    \
     $(TEST_SPEC_SRCS)
 
 # All source files
 ALL_SRCS =                          \
+    $(STDLIB_SRCS)                  \
     $(BASE_SRCS)                    \
     $(MAIN_SPEC_SRCS)               \
     $(TEST_SPEC_SRCS)
@@ -89,8 +98,11 @@ all: run
 run: 
 	$(JSVM) $(MAIN_SRCS)
 
-bootstrap-js2scm: 
+bootstrap-js2scm:
 	$(JS2SCM) -scm $(MAIN_SRCS)
+
+bootstrap-js2scm-debug:
+	$(JS2SCM) -scm -debug $(MAIN_SRCS)
 
 test: 
 	$(JSVM) $(TEST_SRCS)

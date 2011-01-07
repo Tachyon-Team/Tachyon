@@ -14,22 +14,27 @@ Initialize the resources required by the Tachyon VM.
 */
 function initialize()
 {
-    var primIt;
+    // Initialize the Tachyon configuration
+    initConfig();
 
-    // Compile the IR primitives
-    backend.primitiveList = compPrimitives();
+    // Create the context and object layouts
+    makeContextLayout(config.hostParams);
+    makeObjectLayouts(config.hostParams);
 
-    /*
-    var func = staticEnv.getBinding('extObjHashTbl');
-    print(func);
-    */
+    // Compile the primitives to IR for both configurations
+    compPrimitives(config.hostParams);
 
-    for (primIt = new ArrayIterator(backend.primitiveList);
+    // Compile the primitives to machine code
+    for (var primIt = new ArrayIterator(config.hostParams.primIR);
          primIt.valid();
          primIt.next())
     {
-        compileIR(primIt.get());
+        //print(primIt.get());
+
+        compileIR(primIt.get(), config.hostParams);
     }
+
+    // TODO: create layouts, compile primitives for bootstrap
 }
 
 /**

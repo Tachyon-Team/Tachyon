@@ -13,8 +13,13 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Perform IR lowering on a function and its subfunctions
 */
-function lowerIRFunc(irFunc)
+function lowerIRFunc(irFunc, params)
 {
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
     // For each function in the IR
     var funcList = irFunc.getChildrenList();
     for (var i = 0; i < funcList.length; ++i)
@@ -22,15 +27,20 @@ function lowerIRFunc(irFunc)
         var func = funcList[i];
 
         // Perform lowering on the function's CFG
-        lowerIRCFG(func.virginCFG);
+        lowerIRCFG(func.virginCFG, params);
     }
 }
 
 /**
 Perform IR lowering on a control-flow graph
 */
-function lowerIRCFG(cfg)
+function lowerIRCFG(cfg, params)
 {
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {
@@ -48,7 +58,7 @@ function lowerIRCFG(cfg)
             // Create a boolean conversion instruction
             var toBoolInstr = new CallFuncInstr(
                 [
-                    staticEnv.getBinding('boxToBool'),
+                    params.staticEnv.getBinding('boxToBool'),
                     ConstValue.getConst(undefined),
                     instr.uses[0]
                 ]
@@ -72,7 +82,12 @@ function lowerIRCFG(cfg)
             // If the callee is marked inline and is inlinable
             if (calleeFunc.inline && isInlinable(calleeFunc))
             {
-                //print('inlining: ' + calleeFunc.funcName);
+                /*
+                print(
+                    'inlining: ' + calleeFunc.funcName + ' in ' + 
+                    cfg.ownerFunc.funcName
+                );
+                */
 
                 // Inline the call
                 inlineCall(instr, calleeFunc);
@@ -81,13 +96,13 @@ function lowerIRCFG(cfg)
     }
 
     // Perform constant propagation on the CFG
-    constProp(cfg);
+    constProp(cfg, params);
 
     // Validate the CFG
     cfg.validate();
 
     // Apply peephole optimization patterns to the CFG
-    applyPatternsCFG(cfg);
+    applyPatternsCFG(cfg, params);
 
     // Validate the CFG
     cfg.validate();
@@ -128,12 +143,12 @@ function lowerIRCFG(cfg)
 /**
 Compile the primitives source code to enable IR lowering
 */
-function compPrimitives()
+function compPrimitives(params)
 {
     // Build a list of the ASTs of the primitive code
     var astList = [
-        // Generated code for the memory objects
-        parse_src_str(ObjectLayout.sourceStr),
+        // Generated code for the object layouts
+        parse_src_str(params.layoutSrc),
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
         // Source code for string operations
@@ -142,16 +157,13 @@ function compPrimitives()
         parse_src_file('runtime/rtinit.js'), 
     ];
 
-    // List of IR functions for the primitive code
-    var irList = [];
-
     // For each AST
     for (var i = 0; i < astList.length; ++i)
     {
         var ast = astList[i];
 
         // Parse static bindings in the unit
-        staticEnv.parseUnit(ast);
+        params.staticEnv.parseUnit(ast);
     }
 
     // For each AST
@@ -160,24 +172,22 @@ function compPrimitives()
         var ast = astList[i];
 
         // Generate IR from the AST
-        var ir = unitToIR(ast, true);
+        var ir = unitToIR(ast, params);
 
-        irList.push(ir);
+        params.primIR.push(ir);
     }
 
     // For each IR
-    for (var i = 0; i < irList.length; ++i)
+    for (var i = 0; i < params.primIR.length; ++i)
     {
-        var ir = irList[i];
+        var ir = params.primIR[i];
 
         // Perform IR lowering on the primitives
-        lowerIRFunc(ir);
+        lowerIRFunc(ir, params);
 
         //print(ir);
 
         // Validate the resulting code
         ir.validate();
     }
-
-    return irList;
 }

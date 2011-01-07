@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scheme.js", Time-stamp: <2010-12-20 11:12:38 feeley>
+// File: "scheme.js", Time-stamp: <2010-12-31 13:19:13 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -10,22 +10,22 @@
 
 function isBoolean(obj)
 {
-    return (typeof obj == "boolean") || (obj instanceof Boolean);
+    return (typeof obj === "boolean") || (obj instanceof Boolean);
 }
 
 function isNumber(obj)
 {
-    return (typeof obj == "number") || (obj instanceof Number);
+    return (typeof obj === "number") || (obj instanceof Number);
 }
 
 function isString(obj)
 {
-    return (typeof obj == "string") || (obj instanceof String);
+    return (typeof obj === "string") || (obj instanceof String);
 }
 
 function isProcedure(obj)
 {
-    return (typeof obj == "function") || (obj instanceof Function);
+    return (typeof obj === "function") || (obj instanceof Function);
 }
 
 function Symbol(name)
@@ -177,10 +177,10 @@ function scm_generic_write(obj, width, output)
     {
         return isPair(expr) && isPair(cdr(expr)) &&
             isNull(cdr(cdr(expr))) && isSymbol(car(expr)) &&
-            (car(expr).name == "quote" ||
-             car(expr).name == "quasiquote" ||
-             car(expr).name == "unquote" ||
-             car(expr).name == "unquote-splicing");
+            (car(expr).name === "quote" ||
+             car(expr).name === "quasiquote" ||
+             car(expr).name === "unquote" ||
+             car(expr).name === "unquote-splicing");
     }
 
     function read_macro_body(expr)
@@ -190,13 +190,13 @@ function scm_generic_write(obj, width, output)
 
     function read_macro_prefix(expr)
     {
-        if (car(expr).name == "quote")
+        if (car(expr).name === "quote")
             return "'";
-        else if (car(expr).name == "quasiquote")
+        else if (car(expr).name === "quasiquote")
             return "`";
-        else if (car(expr).name == "unquote")
+        else if (car(expr).name === "unquote")
             return ",";
-        else if (car(expr).name == "unquote-splicing")
+        else if (car(expr).name === "unquote-splicing")
             return ",@";
         else
             return ""; // should never happen
@@ -211,7 +211,7 @@ function scm_generic_write(obj, width, output)
 
         function wr_boolean(x, col)
         {
-            return out((x == false) ? "#f" : "#t", col);
+            return out((x === false) ? "#f" : "#t", col);
         }
 
         function wr_number(x, col)
@@ -225,9 +225,9 @@ function scm_generic_write(obj, width, output)
             for (var i=0; i<x.length; i++)
             {
                 var c = x.charCodeAt(i);
-                if (c == 92 || c == 34) // \ or "
+                if (c === 92 || c === 34) // \ or "
                     col = out(String.fromCharCode(c), out("\\", col));
-                else if (c == 10) // LF
+                else if (c === 10) // LF
                     col = out("\\n", col);
                 else
                     col = out(String.fromCharCode(c), col);
@@ -299,9 +299,9 @@ function scm_generic_write(obj, width, output)
             return wr_lst(vector2list(vect), out("#", col));
         }
 
-        if (typeof obj == "undefined")
+        if (typeof obj === "undefined")
             return wr_undefined(obj, col);
-        else if (obj == null)
+        else if (obj === null)
             return wr_null(obj , col);
         else if (isBoolean(obj))
             return wr_boolean(obj, col);
@@ -391,7 +391,7 @@ function scm_generic_write(obj, width, output)
                 if (isSymbol(head))
                 {
                     var proc = style(head);
-                    if (proc != null)
+                    if (proc !== null)
                         col = proc(expr, col, extra);
                     else if (head.name.length > max_call_head_width)
 
@@ -459,7 +459,7 @@ function scm_generic_write(obj, width, output)
         {
             function tail1(rest, col1, col2, col3)
             {
-                if (pp1 != null && isPair(rest))
+                if (pp1 !== null && isPair(rest))
                 {
                     var val1 = car(rest);
                     var extra = isNull(cdr(rest)) ? extra+1 : 0;
@@ -471,7 +471,7 @@ function scm_generic_write(obj, width, output)
 
             function tail2(rest, col1, col2, col3)
             {
-                if (pp2 != null && isPair(rest))
+                if (pp2 !== null && isPair(rest))
                 {
                     var val1 = car(rest);
                     var extra = isNull(cdr(rest)) ? extra+1 : 0;
@@ -543,24 +543,24 @@ function scm_generic_write(obj, width, output)
 
         function style(head)
         {
-            if (head.name == "lambda" ||
-                head.name == "let*" ||
-                head.name == "letrec" ||
-                head.name == "define")
+            if (head.name === "lambda" ||
+                head.name === "let*" ||
+                head.name === "letrec" ||
+                head.name === "define")
                 return pp_lambda;
-            else if (head.name == "if" ||
-                     head.name == "set!")
+            else if (head.name === "if" ||
+                     head.name === "set!")
                 return pp_if;
-            else if (head.name == "cond")
+            else if (head.name === "cond")
                 return pp_cond;
-            else if (head.name == "and" ||
-                     head.name == "or")
+            else if (head.name === "and" ||
+                     head.name === "or")
                 return pp_and;
-            else if (head.name == "let")
+            else if (head.name === "let")
                 return pp_let;
-            else if (head.name == "begin")
+            else if (head.name === "begin")
                 return pp_begin;
-            else if (head.name == "do")
+            else if (head.name === "do")
                 return pp_do;
             else
                 return null;
@@ -637,9 +637,9 @@ function gen_new(ctor_and_args)
 
 function gen_begin(exprs)
 {
-    if (exprs.length == 0)
+    if (exprs.length === 0)
         return gen_undefined();
-    else if (exprs.length == 1)
+    else if (exprs.length === 1)
         return exprs[0];
     else
         return cons(begin, vector2list(exprs));
@@ -701,7 +701,7 @@ function gen_case(fall_through, expr, statement)
     return cons(fall_through
                 ? new Symbol("js.case-fall-through")
                 : new Symbol("js.case"),
-                cons((expr == null)
+                cons((expr === null)
                      ? cons(new Symbol("js.default"), empty_list)
                      : expr,
                      cons(statement, empty_list)));
@@ -717,7 +717,7 @@ function gen_try(body, final_body)
 {
     return cons(new Symbol("js.try"),
                 cons(body,
-                     (final_body == null)
+                     (final_body === null)
                      ? empty_list
                      : cons(final_body, empty_list)));
 }
@@ -728,7 +728,7 @@ function gen_try_catch(body, id, catch_body, final_body)
                 cons(body,
                      cons(id,
                           cons(catch_body,
-                               (final_body == null)
+                               (final_body === null)
                                ? empty_list
                                : cons(final_body, empty_list)))));
 }
@@ -925,7 +925,7 @@ function ast_array_to_scm(asts, ctx)
     for (var i=0; i<asts.length; i++)
     {
         var ast_i = asts[i];
-        var ctx_i = (i == asts.length-1) ? ctx : nontail_ctx(ctx);
+        var ctx_i = (i === asts.length-1) ? ctx : nontail_ctx(ctx);
         accum.push(ast_to_scm(ast_i, ctx_i));
     }
     return accum;
@@ -948,7 +948,7 @@ function ast_to_scm(ast, ctx)
 {
     ctx = nest_ctx(ctx, ast);
 
-    if (ast == null)
+    if (ast === null)
         error("null ast");
     else if (ast instanceof Program)
     {
@@ -985,7 +985,7 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof IfStatement)
     {
-        if (ast.statements.length == 1)
+        if (ast.statements.length === 1)
             return gen_if(ast_to_scm(ast.expr, nontail_ctx(ctx)),
                           ast_to_scm(ast.statements[0], ctx),
                           gen_undefined());
@@ -1024,17 +1024,17 @@ function ast_to_scm(ast, ctx)
     {
         var loop_id = gensym("loop");
 
-        var expr1_scm = (ast.expr1 == null)
+        var expr1_scm = (ast.expr1 === null)
                         ? gen_undefined()
                         : ast_to_scm(ast.expr1, nontail_ctx(ctx));
 
-        var expr2_scm = (ast.expr2 == null)
+        var expr2_scm = (ast.expr2 === null)
                         ? gen_lit(js_value_to_scm(true))
                         : ast_to_scm(ast.expr2, nontail_ctx(ctx));
 
         var stat_scm = ast_to_scm(ast.statement, nontail_ctx(ctx));
 
-        var expr3_scm = (ast.expr3 == null)
+        var expr3_scm = (ast.expr3 === null)
                         ? gen_undefined()
                         : ast_to_scm(ast.expr3, nontail_ctx(ctx));
 
@@ -1134,7 +1134,6 @@ function ast_to_scm(ast, ctx)
         if (target === null)
             error("undefined break target");
 
-        print(target.break_ctrl_point);
         if (target.break_ctrl_point === 0)
             target.break_ctrl_point = ++ctx.features.ctrl_point_count;
 
@@ -1146,7 +1145,7 @@ function ast_to_scm(ast, ctx)
             error("return not allowed at top level");
         else
         {
-            var value_scm = (ast.expr == null)
+            var value_scm = (ast.expr === null)
                             ? gen_undefined()
                             : ast_to_scm(ast.expr, ctx);
 
@@ -1181,7 +1180,7 @@ function ast_to_scm(ast, ctx)
             while (i < statements.length)
             {
                 var statement = statements[i++];
-                if (i == statements.length)
+                if (i === statements.length)
                 {
                     if (statement instanceof BlockStatement)
                     {
@@ -1206,7 +1205,7 @@ function ast_to_scm(ast, ctx)
             }
 
             return gen_case(fall_through,
-                            (expr == null)
+                            (expr === null)
                             ? null
                             : ast_to_scm(expr, nontail_ctx(ctx)),
                             gen_begin(accum));
@@ -1221,7 +1220,7 @@ function ast_to_scm(ast, ctx)
             accum.push(gen_clause(clause_i.expr,
                                   clause_i.statements,
                                   nontail_ctx(ctx), // TODO: could be optimized
-                                  i == ast.clauses.length-1));
+                                  i === ast.clauses.length-1));
         }
 
         return force_undefined_at_tail(gen_switch(ctx.spine.break_ctrl_point,
@@ -1242,11 +1241,11 @@ function ast_to_scm(ast, ctx)
     else if (ast instanceof TryStatement)
     {
         var body = ast_to_scm(ast.statement, nontail_ctx(ctx));
-        var final_body = (ast.finally_part == null)
+        var final_body = (ast.finally_part === null)
                          ? null
                          : ast_to_scm(ast.finally_part, nontail_ctx(ctx));
 
-        if (ast.catch_part == null)
+        if (ast.catch_part === null)
             return gen_try(body,
                            final_body);
         else
@@ -1330,7 +1329,7 @@ function ast_to_scm(ast, ctx)
     }
     else if (ast instanceof Ref)
     {
-        if (ast.id == "arguments")
+        if (ast.id.toString() === "arguments")
             ctx.features.use_arguments = true;
 
         return gen_ref(js_id_to_scm(ast.id.toString()));
@@ -1350,7 +1349,7 @@ function js_id_to_scm(id)
 
 function js_value_to_scm(value)
 {
-    if (value == null)
+    if (value === null)
         return empty_list;
     else
         return value;

@@ -160,14 +160,18 @@ irToAsm.spillAllocator.prototype.newSlot = function ()
 //
 //=============================================================================
 
-/** 
+/**
 @class
 Returns a new translator object to translate IR to Assembly.
 */
-irToAsm.translator = function (config)
+irToAsm.translator = function (config, params)
 {
     var that = Object.create(irToAsm.translator.prototype);
-    that.asm = new x86.Assembler(config.target);
+
+    // Store the compilation parameters on the translator
+    that.params = params;
+
+    that.asm = new x86.Assembler(irToAsm.config.target);
     that.asm.codeBlock.bigEndian = false;
     that.strings = {};
     that.stringNb = 0;
@@ -253,14 +257,15 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         if (opnd instanceof ConstValue && typeof opnd.value === "string" )
         {
             return $(that.stringValue(opnd.value));
-        } else if (opnd instanceof ConstValue)
+        } 
+        else if (opnd instanceof ConstValue)
         {
-            return $(opnd.getImmValue());
-        } else 
+            return $(opnd.getImmValue(that.params));
+        }
+        else 
         {
             return opnd;
         }
-
     };
 
 
@@ -366,8 +371,8 @@ irToAsm.translator.prototype.get_prop_val = function ()
     this.get_prop_addr(obj, key, addr);
 
     this.asm.
-    cmp(this.config.NULL, addr).
-    mov($((new ConstValue(undefined, IRType.box)).getImmValue()), 
+    cmp(irToAsm.config.NULL, addr).
+    mov($((new ConstValue(undefined, IRType.box)).getImmValue(this.params)), 
           this.config.retValReg).
     je(cont).
     // The following instruction causes a bus error only
@@ -480,8 +485,8 @@ irToAsm.translator.prototype.dump_global_object = function ()
 
 irToAsm.translator.prototype.dump_context_object = function ()
 {
-    const immTrue = (new ConstValue(true, IRType.none)).getImmValue();
-    const immFalse = (new ConstValue(false, IRType.none)).getImmValue();
+    const immTrue = (new ConstValue(true, IRType.none)).getImmValue(this.params);
+    const immFalse = (new ConstValue(false, IRType.none)).getImmValue(this.params);
 
     this.asm.
     label(this.contextLabel);
@@ -782,7 +787,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
             var op1 = EDX;
         }
 
-        tltor.asm.mul(op1, this.type.numBits);
+        tltor.asm.mul(op1, this.type.getSizeBits(tltor.params.target));
     }
 
     // Otherwise, a signed result is expected
@@ -790,28 +795,28 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     {
         if (opnds[0].type === x86.type.IMM_VAL)
         {
-            tltor.asm.imul(opnds[1], dst, opnds[0], this.type.numBits);
+            tltor.asm.imul(opnds[1], dst, opnds[0], this.type.getSizeBits(tltor.params.target));
         }
 
         else if (opnds[1].type === x86.type.IMM_VAL)
         {
-            tltor.asm.imul(opnds[0], dst, opnds[1], this.type.numBits);
+            tltor.asm.imul(opnds[0], dst, opnds[1], this.type.getSizeBits(tltor.params.target));
         }
 
         else if (opnds[0] === dst)
         {
-            tltor.asm.imul(opnds[1], dst, undefined, this.type.numBits);
+            tltor.asm.imul(opnds[1], dst, undefined, this.type.getSizeBits(tltor.params.target));
         }
 
         else if (opnds[1] === dst)
         {
-            tltor.asm.imul(opnds[0], dst, undefined, this.type.numBits);
+            tltor.asm.imul(opnds[0], dst, undefined, this.type.getSizeBits(tltor.params.target));
         }
 
         else
         {
             tltor.asm.mov(opnds[0], dst);
-            tltor.asm.imul(opnds[1], dst, undefined, this.type.numBits);
+            tltor.asm.imul(opnds[1], dst, undefined, this.type.getSizeBits(tltor.params.target));
         }
     }
 };
@@ -859,11 +864,11 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        tltor.asm.div(dsor, this.type.numBits);
+        tltor.asm.div(dsor, this.type.getSizeBits(tltor.params.target));
     }
     else
     {
-        tltor.asm.idiv(dsor, this.type.numBits);
+        tltor.asm.idiv(dsor, this.type.getSizeBits(tltor.params.target));
     }
 };
 
@@ -1212,7 +1217,7 @@ LtInstr.prototype.genCode = function (tltor, opnds)
             opnds[1],
             opnds[0],
             (opnds[0].width === undefined && opnds[1].width === undefined)?
-            this.type.numBits:undefined
+            this.type.getSizeBits(tltor.params.target):undefined
         );
     }
 
@@ -1242,7 +1247,7 @@ LeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.numBits);
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.getSizeBits(tltor.params.target));
     }
 
     tltor.asm.
@@ -1331,7 +1336,7 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (opnds[1].type === x86.type.IMM_VAL)
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.type.numBits);
+        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
     else
     {
@@ -1425,7 +1430,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     {
         // Use the compare instruction
         tltor.asm.
-        cmp($(0), opnds[0], this.uses[0].type.numBits).
+        cmp($(0), opnds[0], this.uses[0].type.getSizeBits(tltor.params.target)).
         je(falseLabel).
         jmp(trueLabel);
     }
@@ -1561,7 +1566,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // TODO: Make the proper call to the primitive
 
             // Always assume that it is a function for now
-            const immTrue = (new ConstValue(true, IRType.none)).getImmValue();
+            const immTrue = (new ConstValue(true, IRType.none)).getImmValue(tltor.params);
 
             tltor.asm.
             mov($(immTrue), dest);
@@ -1571,7 +1576,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // TODO: Make the proper call to the primitive
             // Ignore for now, simply return undefined
             const immUndefined = 
-                  (new ConstValue(undefined, IRType.box)).getImmValue();
+                  (new ConstValue(undefined, IRType.box)).getImmValue(tltor.params);
 
             tltor.asm.
             mov($(immUndefined), dest);
@@ -1769,6 +1774,8 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     }
     else
     {
+        var TAG_REF_MASK = tltor.params.staticEnv.getBinding('TAG_REF_MASK').value;
+
         // Mask out the tag bits
         // ptr = ptr & ~TAG_REF_MASK
         // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
@@ -1788,24 +1795,24 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // If the value we are loading needs to be extended
-    if (this.type.numBits < IRType.pint.numBits)
+    if (this.type.getSizeBits(tltor.params.target) < IRType.pint.getSizeBits(tltor.params.target))
     {
         // If we are loading a signed value
         if (this.type.isSigned())
         {
             // Sign-extend the value
-            tltor.asm.movsx(memLoc, dst, this.type.numBits);
+            tltor.asm.movsx(memLoc, dst, this.type.getSizeBits(tltor.params.target));
         }
         else
         {
             // Zero-extend the value
-            tltor.asm.movzx(memLoc, dst, this.type.numBits);
+            tltor.asm.movzx(memLoc, dst, this.type.getSizeBits(tltor.params.target));
         }
     }
     else
     {
         // Load the value directly
-        tltor.asm.mov(memLoc, dst, this.type.numBits);
+        tltor.asm.mov(memLoc, dst, this.type.getSizeBits(tltor.params.target));
     }
 };
 
@@ -1847,6 +1854,8 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     }
     else
     {
+        var TAG_REF_MASK = tltor.params.staticEnv.getBinding('TAG_REF_MASK').value;
+
         // Mask out the tag bits
         // ptr = ptr & ~TAG_REF_MASK
         // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
@@ -1866,7 +1875,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // Get the size of the value to be stored
-    var typeSize = this.uses[2].type.numBits;
+    var typeSize = this.uses[2].type.getSizeBits(tltor.params.target);
 
     // If the value to store is an immediate
     if (opnds[2].type === x86.type.IMM_VAL)

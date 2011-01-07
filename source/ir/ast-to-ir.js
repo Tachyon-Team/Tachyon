@@ -21,11 +21,11 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Translate an AST code unit into IR functions
 @astUnit AST of the source unit to translate
-@tachyonSrc Flag to indicate whether we are compiling tachyon code
+@params Compilation parameters
 */
 function unitToIR(
     astUnit,
-    tachyonSrc
+    params
 )
 {
     //
@@ -43,7 +43,16 @@ function unitToIR(
     //
 
     // Ensure that the top-level AST is a program
-    assert (astUnit instanceof Program, 'top-level AST must be program');
+    assert (
+        astUnit instanceof Program, 
+        'top-level AST must be program'
+    );
+
+    // Ensure that the compilation parameters are valid
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     // Treat the top-level unit as a function
     return stmtListToIRFunc(
@@ -55,7 +64,7 @@ function unitToIR(
         astUnit.funcs,
         astUnit.block.statements,
         astUnit,
-        tachyonSrc
+        params
     );
 }
 
@@ -66,7 +75,7 @@ function funcToIR(
     funcName,
     parentFunc,
     astFunc,
-    tachyonSrc
+    params
 )
 {
     // Ensure that the top-level AST is a program
@@ -82,7 +91,7 @@ function funcToIR(
         astFunc.funcs,
         astFunc.body,
         astFunc,
-        tachyonSrc
+        params
     );
 }
 
@@ -98,13 +107,9 @@ function stmtListToIRFunc(
     nestedFuncs,
     bodyStmts,
     astNode,
-    tachyonSrc
+    params
 )
 {
-    // If the tachyon source flag is left undefined, set it to false
-    if (tachyonSrc === undefined)
-        tachyonSrc = false;
-
     // Create a new function object for the function
     var newFunc = getIRFuncObj(
         funcName,
@@ -159,10 +164,33 @@ function stmtListToIRFunc(
     }
 
     // Read the global object from the context
-    var globalObj = insertContextReadIR(
+    var globalObj = insertFieldReadIR(
         entryBlock, 
-        ['globalobj'], 
+        params.memLayouts.ctx,
+        ['globalobj'],
         'global'
+    );
+
+    // Create a map for the closure and escaping variable mutable cells
+    var sharedMap = new HashMap();
+
+    // Create a context for the function body
+    var bodyContext = new IRConvContext(
+        bodyStmts, 
+        entryBlock,
+        null,
+        null,
+        [],
+        localMap,
+        sharedMap,
+        new HashMap(),
+        new HashMap(),
+        null,
+        cfg,
+        funcObj,
+        thisVal,
+        globalObj,
+        params
     );
 
     // If the function uses the arguments object
@@ -170,15 +198,12 @@ function stmtListToIRFunc(
     {
         // Create the arguments object and add it to the variable map
         var argObj = insertPrimCallIR(
-            entryBlock, 
+            bodyContext, 
             'makeArgObj', 
             [funcObj]
         );
         localMap.setItem('arguments', argObj);
     }
-
-    // Create a map for the closure and escaping variable mutable cells
-    var sharedMap = new HashMap();
 
     // For each closure variable
     for (var i = 0; i < newFunc.closVars.length; ++i)
@@ -187,7 +212,7 @@ function stmtListToIRFunc(
 
         // Get the corresponding mutable cell from the closure
         var closCell = insertPrimCallIR(
-            entryBlock, 
+            bodyContext, 
             'getClos', 
             [funcObj, ConstValue.getConst(i)]
         );
@@ -206,7 +231,7 @@ function stmtListToIRFunc(
         {
             // Create a new mutable cell for this variable
             var newCell = insertPrimCallIR(
-                entryBlock,
+                bodyContext,
                 'makeCell', 
                 []
             );
@@ -219,7 +244,7 @@ function stmtListToIRFunc(
             {
                 // Put the current value of the symbol into the cell
                 insertPrimCallIR(
-                    entryBlock,
+                    bodyContext,
                     'putCell',
                     [newCell, localMap.getItem(symName)]
                 );
@@ -229,24 +254,6 @@ function stmtListToIRFunc(
             }
         }
     }
-
-    // Create a context for the function body
-    var bodyContext = new IRConvContext(
-        bodyStmts, 
-        entryBlock,
-        null,
-        null,
-        localMap,
-        sharedMap,
-        new HashMap(),
-        new HashMap(),
-        null,
-        cfg,
-        funcObj,
-        thisVal,
-        globalObj,
-        tachyonSrc
-    );
 
     // For each nested function
     for (var i in nestedFuncs)
@@ -267,12 +274,12 @@ function stmtListToIRFunc(
             nestFuncExpr = nestFuncAst;
         }
 
-        // Compile the nested function to IR
+        // Translate the nested function to IR
         var nestFunc = funcToIR(
             nestFuncName,
             newFunc,
             nestFuncExpr,
-            tachyonSrc
+            params
         );
         
         // Make the new function a child of the function being compiled
@@ -352,7 +359,7 @@ function stmtListToIRFunc(
     cfg.remDeadBlocks();
 
     // Simplify the CFG using peephole patterns
-    applyPatternsCFG(cfg);
+    applyPatternsCFG(cfg, params);
     
     //print('');
 
@@ -481,6 +488,12 @@ function getIRFuncObj(
             newFunc.noThrow = true;
         }
 
+        // If this is a no global accesses annotation
+        else if (tokens.length == 1 && tokens[0] == 'noglobal')
+        {
+            newFunc.noGlobal = true;
+        }
+
         // If this is an argument type annotation (eg: arg <arg_name> <type>)
         else if (tokens.length == 3 && tokens[0] == 'arg')
         {
@@ -542,7 +555,8 @@ function IRConvContext(
     astNode, 
     entryBlock,
     ctxNode,
-    withVal, 
+    withVal,
+    labels,
     localMap,
     sharedMap,
     breakMap, 
@@ -552,7 +566,7 @@ function IRConvContext(
     funcObj,
     thisVal,
     globalObj,
-    tachyonSrc
+    params
 )
 {
     // Ensure that the arguments are valid
@@ -571,6 +585,10 @@ function IRConvContext(
     assert (
         withVal !== undefined,
         'with context value not defined in IR conversion context'
+    );
+    assert (
+        labels instanceof Array,
+        'labels not defined or invalid in IR conversion context'
     );
     assert (
         localMap !== undefined,
@@ -609,8 +627,8 @@ function IRConvContext(
         'invalid global object in IR conversion context'
     );
     assert (
-        typeof tachyonSrc === 'boolean',
-        'tachyon source flag unspecified in IR conversion context'
+        params instanceof CompParams,
+        'invalid compilation parameters in IR conversion context'
     );
 
     /**
@@ -636,6 +654,12 @@ function IRConvContext(
     @field
     */
     this.withVal = withVal;
+
+    /**
+    Labels applied to this statement
+    @field
+    */
+    this.labels = labels;
 
     /**
     Mutable map of local variable states
@@ -707,7 +731,7 @@ function IRConvContext(
     Flag to indicate that we are compiling tachyon code
     @field
     */
-    this.tachyonSrc = tachyonSrc;
+    this.params = params;
 }
 IRConvContext.prototype = {};
 
@@ -817,6 +841,7 @@ IRConvContext.prototype.pursue = function (astNode)
         (this.exitBlock !== undefined) ? this.exitBlock : this.entryBlock,
         this.ctxNode,
         this.withVal,
+        [],
         this.localMap,
         this.sharedMap,
         this.breakMap,
@@ -826,7 +851,7 @@ IRConvContext.prototype.pursue = function (astNode)
         this.funcObj,
         this.thisVal,
         this.globalObj,
-        this.tachyonSrc
+        this.params
     );
 };
 
@@ -844,6 +869,7 @@ IRConvContext.prototype.branch = function (
         entryBlock,
         this.ctxNode,
         this.withVal,
+        [],
         localMap,
         this.sharedMap,
         this.breakMap,
@@ -853,7 +879,7 @@ IRConvContext.prototype.branch = function (
         this.funcObj,
         this.thisVal,
         this.globalObj,
-        this.tachyonSrc
+        this.params
     );
 };
 
@@ -955,7 +981,7 @@ function stmtToIR(context)
     else if (astStmt instanceof IfStatement)
     {
         // If the test expression is an inline conditional IR instruction
-        if (context.tachyonSrc && isCondInlineIR(astStmt))
+        if (context.params.tachyonSrc && isCondInlineIR(astStmt))
         {
             // Generate the inline IR instruction
             genCondInlineIR(context);
@@ -1515,11 +1541,6 @@ function stmtToIR(context)
 
     else if (astStmt instanceof SwitchStatement)
     {
-        // Get the label for this statement
-        var label = (astStmt.stmtLabel !== undefined)
-                    ? astStmt.stmtLabel.toString()
-                    : '';
-
         // Compile the switch expression
         var switchCtx = context.pursue(astStmt.expr);        
         exprToIR(switchCtx);
@@ -1529,9 +1550,10 @@ function stmtToIR(context)
 
         // Create a break context map
         var breakMap = context.breakMap.copy();
-        breakMap.setItem(label, brkCtxList);
         breakMap.setItem('', brkCtxList);
-        
+        for (var i = 0; i < context.labels.length; ++i)
+            breakMap.setItem(context.labels[i], brkCtxList);
+
         // Create a context for the first case test
         var nextTestCtx = context.branch(
             astStmt.clauses[0]? astStmt.clauses[0].expr:null,
@@ -1700,13 +1722,14 @@ function stmtToIR(context)
 
     else if (astStmt instanceof LabelledStatement)
     {
-        // FIXME: a statement may have several labels:   foo: bar: switch (...)
-        // FIXME: don't add fields to AST nodes
-        // Assign our label to the inner statement
-        astStmt.statement.stmtLabel = astStmt.label;
+        // Create a new context for the statement
+        var stmtContext = context.pursue(astStmt.statement);
+
+        // Add the label to the label list
+        stmtContext.labels = context.labels.slice(0);
+        stmtContext.labels.push(astStmt.label.toString());
 
         // Compile the inner statement
-        var stmtContext = context.pursue(astStmt.statement);
         stmtToIR(stmtContext);
         context.setOutput(stmtContext.getExitBlock());
     }
@@ -1965,8 +1988,19 @@ function exprToIR(context)
 
     else if (astExpr instanceof CallExpr)
     {
+        // If this is an assertion and we are not in debug mode
+        if (astExpr.fn instanceof Ref && astExpr.fn.id.toString() === 'assert' &&
+            context.params.target.debug === false)
+        {
+            // Set the undefined value as the context output
+            context.setOutput(context.entryBlock, ConstValue.getConst(undefined));
+
+            // Exit early
+            return;
+        }  
+
         // If this is an inline IR instruction
-        if (context.tachyonSrc && isInlineIR(astExpr))
+        if (context.params.tachyonSrc && isInlineIR(astExpr))
         {
             // Generate the inline IR instruction
             genInlineIR(context);
@@ -1979,9 +2013,6 @@ function exprToIR(context)
         var argsContext = context.pursue(astExpr.args);
         var argVals = exprListToIR(argsContext);
 
-        // Get a reference to the function expression
-        var fnExpr = astExpr.fn;
-
         // Variable for the function value
         var funcVal;
 
@@ -1992,10 +2023,10 @@ function exprToIR(context)
         var lastContext;
 
         // If the function expression is of the form x[y]
-        if (fnExpr instanceof OpExpr && fnExpr == 'x [ y ]')
+        if (astExpr.fn instanceof OpExpr && astExpr.fn === 'x [ y ]')
         {
-            var thisExpr = fnExpr.exprs[0];
-            var idxExpr = fnExpr.exprs[1];
+            var thisExpr = astExpr.fn.exprs[0];
+            var idxExpr = astExpr.fn.exprs[1];
     
             // Generate code for the "this" expression
             var thisContext = argsContext.pursue(thisExpr);
@@ -2020,7 +2051,7 @@ function exprToIR(context)
         else
         {
             // Generate code for the statement
-            var funcContext = argsContext.pursue(fnExpr);
+            var funcContext = argsContext.pursue(astExpr.fn);
             funcContext.ctxNode = astExpr;
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
@@ -2050,8 +2081,8 @@ function exprToIR(context)
 
         var constType = typeof astExpr.value;
 
-        if (constType == 'string' || constType == 'number' || 
-            constType == 'boolean' || constValue === null || 
+        if (constType === 'string' || constType === 'number' || 
+            constType === 'boolean' || constValue === null || 
             constValue === undefined)
         {
            constValue = ConstValue.getConst(astExpr.value);
@@ -2107,8 +2138,9 @@ function exprToIR(context)
         var valVals = exprListToIR(valCtx);
 
         // Find the object prototype object in the context
-        var objProto = insertContextReadIR(
-            valCtx, 
+        var objProto = insertFieldReadIR(
+            valCtx,
+            context.params.memLayouts.ctx,
             ['objproto']
         );
 
@@ -2836,6 +2868,20 @@ function assgToIR(context, rhsVal)
     {
         var symName = leftExpr.id.toString();   
 
+        // If the variable is global
+        if (leftExpr.id.scope instanceof Program)
+        {
+            // If global variable accesses are forbidden
+            if (context.cfg.ownerFunc.noGlobal)
+            {
+                error(
+                    'lookup of global variable "' + symName + '" but ' +
+                    'global variable accesses are not allowed in ' +
+                    context.cfg.ownerFunc.funcName
+                );
+            }
+        }
+
         // If we are within a with block
         if (context.withVal !== null)
         {
@@ -3153,13 +3199,23 @@ function refToIR(context)
     {
         // If we are compiling tachyon code and there is a named static
         // binding with this name
-        if (context.tachyonSrc && staticEnv.hasBinding(symName))
+        if (context.params.tachyonSrc && context.params.staticEnv.hasBinding(symName))
         {
             // Use the value of the binding
-            varValueVar = staticEnv.getBinding(symName);
+            varValueVar = context.params.staticEnv.getBinding(symName);
         }
         else
         {
+            // If global variable accesses are forbidden
+            if (context.cfg.ownerFunc.noGlobal)
+            {
+                error(
+                    'lookup of global variable "' + symName + '" but ' +
+                    'global variable accesses are not allowed in ' +
+                    context.cfg.ownerFunc.funcName
+                );
+            }
+
             // Compute the hash of the symbol
             var symHashVal = ConstValue.getConst(
                 defHashFunc(symName),
@@ -3193,38 +3249,17 @@ function refToIR(context)
                     ]
                 );
             }
+        }
 
+        // If the assignment value is an instruction
+        if (varValueVar instanceof IRInstr)
+        {
             // If the value already has a name, release it
-            if (varValueVar.outName !== "" && !!varValueVar.outName) // FIXME
-                context.cfg.freeInstrName(rhsValAssg);
+            if (varValueVar.outName !== "")
+                context.cfg.freeInstrName(varValueVar);
 
             // Assign the symbol name to the instruction
             context.cfg.assignInstrName(varValueVar, symName);
-
-            /*
-            // Test if the property exists on the global object
-            var testVal = insertPrimCallIR(
-                varContext, 
-                'hasPropVal', 
-                [context.globalObj, ConstValue.getConst(symName)]
-            );
-
-            // Throw an error if the property does not exist
-            insertCondErrorIR(
-                varContext,
-                testVal, 
-                'ReferenceError',
-                symName + ' is not defined globally'
-            );
-
-            // Get the value from the global object
-            varValueVar = insertPrimCallIR(
-                varContext, 
-                'getPropVal', 
-                [context.globalObj, ConstValue.getConst(symName)]
-            );
-            */
-
         }
     }
 
@@ -3305,7 +3340,7 @@ function refToIR(context)
 /**
 Insert a read from the runtime context
 */
-function insertContextReadIR(context, query, outName)
+function insertFieldReadIR(context, layout, query, outName)
 {
     // Get a pointer to the context object
     var ctxPtr = context.addInstr(
@@ -3313,7 +3348,7 @@ function insertContextReadIR(context, query, outName)
     );
 
     // Generate IR to access the field
-    var field = ctxLayout.genfieldAccessIR(context, query);
+    var field = layout.genfieldAccessIR(context, query);
 
     // Read the variable from the context object
     var readVal = context.addInstr(
@@ -3374,19 +3409,19 @@ function insertErrorIR(context, errorName, errorMsg)
     switch (errorName)
     {
         case 'RangeError':
-        errorCtor = insertContextReadIR(context, ['rangeerror']);
+        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['rangeerror']);
         break;
         case 'ReferenceError':
-        errorCtor = insertContextReadIR(context, ['referror']);
+        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['referror']);
         break;
         case 'SyntaxError':
-        errorCtor = insertContextReadIR(context, ['syntaxerror']);
+        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['syntaxerror']);
         break;
         case 'TypeError':
-        errorCtor = insertContextReadIR(context, ['typeerror']);
+        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['typeerror']);
         break;
         case 'URIError':
-        errorCtor = insertContextReadIR(context, ['urierror']);
+        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['urierror']);
         break;
     }
     assert (
@@ -3417,7 +3452,7 @@ Insert a call to a primitive function
 function insertPrimCallIR(context, primName, argVals)
 {
     // Get the static binding for the primitive function
-    var primFunc = staticEnv.getBinding(primName);
+    var primFunc = context.params.staticEnv.getBinding(primName);
 
     // Insert the function call
     var retVal = insertCallIR(
@@ -3453,7 +3488,7 @@ function insertConstructIR(context, funcVal, argVals)
         context,
         new CallFuncInstr(
             [
-                staticEnv.getBinding('boxIsObj'),
+                context.params.staticEnv.getBinding('boxIsObj'),
                 context.globalObj,
                 funcProto
             ]
@@ -3466,8 +3501,9 @@ function insertConstructIR(context, funcVal, argVals)
             protoNotObj
         )
     );
-    var objProto = insertContextReadIR(
-        protoNotObj, 
+    var objProto = insertFieldReadIR(
+        protoNotObj,
+        context.params.memLayouts.ctx,
         ['objproto']
     );
     protoIsObj.addInstr(new JumpInstr(protoMerge));
@@ -3510,7 +3546,7 @@ function insertConstructIR(context, funcVal, argVals)
         context,
         new CallFuncInstr(
             [
-                staticEnv.getBinding('boxIsObj'),
+                context.params.staticEnv.getBinding('boxIsObj'),
                 context.globalObj,
                 retVal
             ]
@@ -3553,7 +3589,7 @@ function insertCallIR(context, instr)
     // If this is not a direct function call
     if (!(instr.uses[0] instanceof IRFunction) && 
         !(instr.uses[0] instanceof CallFuncInstr &&
-          instr.uses[0].uses[0] === staticEnv.getBinding('getGlobalFunc'))
+          instr.uses[0].uses[0] === context.params.staticEnv.getBinding('getGlobalFunc'))
     )
     {
         // Test if the callee value is a function
@@ -3561,7 +3597,7 @@ function insertCallIR(context, instr)
             context,
             new CallFuncInstr(
                 [
-                    staticEnv.getBinding('boxIsFunc'),
+                    context.params.staticEnv.getBinding('boxIsFunc'),
                     context.globalObj,
                     instr.uses[0]
                 ]
@@ -3752,23 +3788,20 @@ function createLoopEntry(
     blockName
 )
 {
-    // Get the label for this statement
-    var label = (loopStmt.stmtLabel !== undefined) // FIXME
-                ? loopStmt.stmtLabel.toString()
-                : '';
-
     // Update the break and continue context maps for the loop body
     var breakMap = context.breakMap.copy();
     var contMap = context.contMap.copy();
     if (brkCtxList)
     {
-        breakMap.setItem(label, brkCtxList);
         breakMap.setItem('', brkCtxList);
+        for (var i = 0; i < context.labels.length; ++i)
+            breakMap.setItem(context.labels[i], brkCtxList);
     }
     if (cntCtxList)
     {
-        contMap.setItem(label, cntCtxList);
         contMap.setItem('', cntCtxList);
+        for (var i = 0; i < context.labels.length; ++i)
+            contMap.setItem(context.labels[i], cntCtxList);
     }
 
     // Create a basic block for the loop entry
@@ -3795,6 +3828,7 @@ function createLoopEntry(
         loopEntry,
         context.ctxNode,
         context.withVal,
+        [],
         entryLocals.copy(),
         context.sharedMap,
         breakMap,
@@ -3804,7 +3838,7 @@ function createLoopEntry(
         context.funcObj,
         context.thisVal,
         context.globalObj,
-        context.tachyonSrc
+        context.params
     );
 }
 
@@ -3905,9 +3939,9 @@ function isInlineIR(callExpr)
 
     return (
         fnExpr instanceof OpExpr && 
-        fnExpr.op == 'x [ y ]' &&
+        fnExpr.op === 'x [ y ]' &&
         fnExpr.exprs[0] instanceof Ref && 
-        fnExpr.exprs[0].id.toString() == 'iir'
+        fnExpr.exprs[0].id.toString() === 'iir'
     );
 }
 
@@ -3985,7 +4019,7 @@ function isCondInlineIR(ifStmt)
         ||
         (
             ifStmt.expr instanceof OpExpr &&
-            ifStmt.expr.op == 'x = y' &&
+            ifStmt.expr.op === 'x = y' &&
             ifStmt.expr.exprs[0] instanceof Ref &&
             isInlineIR(ifStmt.expr.exprs[1])
         )

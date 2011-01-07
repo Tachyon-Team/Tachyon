@@ -27,6 +27,22 @@ var ffiFuncObj = new ffi.CFunction('printBar', ['char*', 'int'], 'int')
 // Le backend sait que call_ffi utilise la convention d'appel C
 var retVal = iir.call_ffi(ffiFuncObj, args...);
 
+// Marc: tous arguments boxés, fixnums ou strings
+// new ffi.CFunction crée des wrappers automatiquement?
+
+// Wrapper généré dynamiquement
+box printBar(box s, box i)
+{
+    rptr str = malloc_and_copy_str(s);
+    i32 iv = unboxInt(i);
+
+    i32 retval = iir.call_ffi(ffi_func, str, iv);
+
+    free_str(s);
+
+    return boxInt(retVal);
+}
+
 FFI version 0.2, introduction de callbacks
 ------------------------------------------
 

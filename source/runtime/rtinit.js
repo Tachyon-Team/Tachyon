@@ -16,6 +16,7 @@ Allocate and initialize a context object and a global object on the heap
 function initHeap(heapPtr)
 {
     "tachyon:static";
+    "tachyon:noglobal";
     "tachyon:arg heapPtr rptr";
     "tachyon:ret rptr";
 
@@ -54,6 +55,7 @@ Allocate/get a reference to a string object containing a given value
 function getFloatObj(fpVal)
 {
     "tachyon:static";
+    "tachyon:noglobal";
     "tachyon:arg fpVal f64";
 
     //

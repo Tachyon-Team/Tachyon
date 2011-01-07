@@ -86,7 +86,7 @@ function inlineCall(callInstr, calleeFunc)
 
         // If the call instruction has a throw target and the branch is an 
         // exception producing instruction with no throw target
-        if (throwTarget &&
+        if (throwTarget !== null &&
             branchInstr instanceof ExceptInstr &&
             !branchInstr.getThrowTarget()
         )
@@ -138,7 +138,7 @@ function inlineCall(callInstr, calleeFunc)
     var callBlock = callInstr.parentBlock;
 
     // If the call is in the middle of a basic block
-    if (!contTarget)
+    if (contTarget === null)
     {
         // For each successor of the call block
         for (var i = 0; i < callBlock.succs.length; ++i)
