@@ -1990,7 +1990,7 @@ function exprToIR(context)
     {
         // If this is an assertion and we are not in debug mode
         if (astExpr.fn instanceof Ref && astExpr.fn.id.toString() === 'assert' &&
-            context.params.target.debug === false)
+            context.params.debug === false)
         {
             // Set the undefined value as the context output
             context.setOutput(context.entryBlock, ConstValue.getConst(undefined));

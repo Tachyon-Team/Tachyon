@@ -1409,6 +1409,7 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 
     assert (
         (inputVals[0].type === IRType.box ||
+         inputVals[0].type === IRType.rptr ||
          inputVals[0].type.isNumber())
         &&
         inputVals[1].type === inputVals[0].type,

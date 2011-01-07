@@ -738,8 +738,8 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     {
         // If the left operand is a power of 2
         if (instr.uses[0] instanceof ConstValue &&
-                 instr.uses[0].isBoxInt(params) &&
-                 isPowerOf2(instr.uses[0].value))
+            (instr.uses[0].isBoxInt(params) || instr.uses[0].isInt()) &&
+            isPowerOf2(instr.uses[0].value))
         {
             // Replace the multiplication by a left shift
             block.replInstrAtIndex(
@@ -747,7 +747,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 new LsftInstr(
                     instr.uses[1],
                     ConstValue.getConst(
-                        highestBit(instr.uses[0].getImmValue()),
+                        highestBit(instr.uses[0].getImmValue(params)),
                         IRType.pint
                     )
                 )
@@ -759,7 +759,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
         // If the right operand is a power of 2
         else if (instr.uses[1] instanceof ConstValue &&
-            instr.uses[1].isBoxInt(params) &&
+            (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt(params)) &&
             isPowerOf2(instr.uses[1].value))
         {
             // Replace the multiplication by a left shift
@@ -768,7 +768,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 new LsftInstr(
                     instr.uses[0],
                     ConstValue.getConst(
-                        highestBit(instr.uses[1].getImmValue()),
+                        highestBit(instr.uses[1].getImmValue(params)),
                         IRType.pint
                     )
                 )
@@ -782,9 +782,9 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // If this is a multiplication with overflow handling
     if (instr instanceof MulOvfInstr)
     {
-        // If the left operand is a power of 2
+        // If the right operand is a power of 2
         if (instr.uses[1] instanceof ConstValue &&
-            instr.uses[1].isBoxInt(params) &&
+            (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt()) &&
             isPowerOf2(instr.uses[1].value))
         {
             // Replace the multiplication by a left shift
@@ -792,7 +792,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 new LsftOvfInstr(
                     instr.uses[0],
                     ConstValue.getConst(
-                        highestBit(instr.uses[1].getImmValue()),
+                        highestBit(instr.uses[1].getImmValue(params)),
                         IRType.pint
                     ),
                     instr.targets[0],
@@ -804,9 +804,9 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             return true;
         }
 
-        // If the right operand is a power of 2
+        // If the left operand is a power of 2
         else if (instr.uses[0] instanceof ConstValue &&
-                 instr.uses[0].isBoxInt(params) &&
+            (instr.uses[0].isBoxInt(params) || instr.uses[0].isInt()) &&
                  isPowerOf2(instr.uses[0].value))
         {
             // Replace the multiplication by a left shift
@@ -814,7 +814,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 new LsftOvfInstr(
                     instr.uses[1],
                     ConstValue.getConst(
-                        highestBit(instr.uses[0].getImmValue()),
+                        highestBit(instr.uses[0].getImmValue(params)),
                         IRType.pint
                     ),
                     instr.targets[0],
@@ -830,7 +830,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // If this is a division by a power of 2
     if (instr instanceof DivInstr && 
         instr.uses[1] instanceof ConstValue &&
-        instr.uses[1].isBoxInt(params) &&
+        (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt()) &&
         isPowerOf2(instr.uses[1].value))
     {
         // Replace the division by a right shift
@@ -840,7 +840,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             new shiftInstr(
                 instr.uses[0],
                 ConstValue.getConst(
-                    highestBit(instr.uses[1].getImmValue()),
+                    highestBit(instr.uses[1].getImmValue(params)),
                     IRType.pint
                 )
             )
@@ -853,7 +853,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // If this is a modulo of a power of 2
     if (instr instanceof ModInstr && 
         instr.uses[1] instanceof ConstValue &&
-        instr.uses[1].isBoxInt(params) &&
+        (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt()) &&
         isPowerOf2(instr.uses[1].value))
     {
         // Replace the modulo by a bitwise AND instruction
@@ -862,7 +862,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             new AndInstr(
                 instr.uses[0],
                 ConstValue.getConst(
-                    instr.uses[1].getImmValue() - 1,
+                    instr.uses[1].getImmValue(params) - 1,
                     instr.type
                 )
             )

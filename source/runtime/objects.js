@@ -309,9 +309,8 @@ function makeObjectLayouts(params)
         false
     );
 
-    // Finalize the hash table layout and generate accessors
+    // Finalize the hash table layout
     hashTblLayout.finalize();
-    hashTblLayout.genMethods();
 
     /**
     Object layout object
@@ -346,9 +345,8 @@ function makeObjectLayouts(params)
         IRType.i32
     );
 
-    // Finalize the object layout and generate accessors
+    // Finalize the object layout
     objLayout.finalize();
-    objLayout.genMethods();
 
     // Initial hash map size
     params.staticEnv.regBinding(
@@ -410,9 +408,8 @@ function makeObjectLayouts(params)
         false
     );
 
-    // Finalize the string layout and generate accessors
+    // Finalize the string layout
     strLayout.finalize();
-    strLayout.genMethods();
 
     //=============================================================================
     //
@@ -449,9 +446,8 @@ function makeObjectLayouts(params)
         false
     );
 
-    // Finalize the string table layout and generate accessors
+    // Finalize the string table layout
     strTblLayout.finalize();
-    strTblLayout.genMethods();
 
     // Initial string table size
     params.staticEnv.regBinding(

@@ -12,12 +12,40 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    /* TODO: test object code using this method
-    var memBlock = allocMemoryBlock(128);
+    var memBlock = allocMachineCodeBlock(4096);
     
+    var blockAddr = getBlockAddress(memBlock, 0);
+    var b0 = blockAddr[0];
+    var b1 = blockAddr[1];
+    var b2 = blockAddr[2];
+    var b3 = blockAddr[3];
+
+    shellCommand("cp test.js test_repl.js");
+    shellCommand("sed -i 's/b0/" + b0 + "/g' test_repl.js");
+    shellCommand("sed -i 's/b1/" + b1 + "/g' test_repl.js");
+    shellCommand("sed -i 's/b2/" + b2 + "/g' test_repl.js");
+    shellCommand("sed -i 's/b3/" + b3 + "/g' test_repl.js");
+
+    var func = compileFileToJSFunc('test_repl.js', config.hostParams);
+    var result = func();
+    func.free();
+
+    print('result: ' + result);
+    //print('result: ' + (result >> 2));
+    print('');
+
+    //print('context size: ' + config.hostParams.memLayouts.ctx.getSize());
+
+    for (var i = 0; i < 4096; ++i)
+    {
+        if (memBlock[i] != 0)
+            print(i + ': ' + memBlock[i]);
+    }
+
+    /*
     function getAddrInt(block, idx)
     {
-        var blockAddr = getBlockAddress(memBlock, idx);
+        var blockAddr = 
 
         var addr = 0;
         for (var i = blockAddr.length - 1; i >= 0; --i)
@@ -25,9 +53,9 @@ function testIR()
 
         return addr;
     }
+    */
 
-    var blockAddr = getAddrInt(memBlock, 0);
-
+    /*
     var ast = parse_src_str(
         'function foo() { ' +
         '"tachyon:ret i8";' +
@@ -39,20 +67,13 @@ function testIR()
     );
     */
 
-    //var ast = parse_src_file('test.js');
-    var ast = parse_src_file('programs/loop_sum/loop_sum.js');
-
-    //pp(ast);
-
+    /*
+    var ast = parse_src_file('test_repl.js');
     var ir = unitToIR(ast, config.hostParams);
-    
-    //print(ir);
-
     lowerIRFunc(ir, config.hostParams);
-
-    print(ir);
-
     ir.validate();    
+    print(ir);
+    */
      
     /*
     var codeblock = backend.compileIRToCB(ir);    
@@ -64,7 +85,7 @@ function testIR()
     */
     
     /*
-    var func = config.hostParams.staticEnv.getBinding('extStrTable');
+    var func = config.hostParams.staticEnv.getBinding('newObject');
     print(func);
     */
 };

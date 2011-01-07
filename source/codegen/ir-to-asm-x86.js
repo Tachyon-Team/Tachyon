@@ -34,7 +34,7 @@ irToAsm.config.NULL  = $(0);
 irToAsm.config.UNDEFINED = $(0);
 
 // Global object configuration
-irToAsm.config.maxGlobalEntries = 4;
+irToAsm.config.maxGlobalEntries = 16;
 
 // Register configuration
 // TODO: replace stack handling in ir_call and ir_ret to allow
@@ -702,24 +702,29 @@ AddInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the output value
     const dest = this.regAlloc.dest;
 
-    if (opnds[0].type === x86.type.IMM_VAL && opnds[0].value === 1)
+    if (opnds[1].type === x86.type.IMM_VAL)
     {
-        if (opnds[1] !== dest)
-        {
-            tltor.asm.mov(opnds[1], dest);
-        }
+        // Case where one of the operands is an immediate
+        // value
 
-        tltor.asm.inc(dest);
-    }   
-    else if (opnds[1].type === x86.type.IMM_VAL && opnds[1].value === 1)
-    {
-        if (opnds[0] !== dest)
+        if (dest !== opnds[0])
         {
             tltor.asm.mov(opnds[0], dest);
         }
 
-        tltor.asm.inc(dest);
-    }
+        if (opnds[1].value === 1)
+        {
+            tltor.asm.inc(dest);
+        } 
+        else
+        {
+            tltor.asm.add(opnds[1], dest);
+        }
+    } 
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    {
+        tltor.asm.add(opnds[0], dest);
+    } 
     else
     {
         if (opnds[0] !== dest)
@@ -735,15 +740,42 @@ SubInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the output value
     const dest = this.regAlloc.dest;
-
-    if (opnds[1].type === x86.type.IMM_VAL && opnds[1].value === 1)
+    const stack = tltor.config.stack;
+    const refByteNb = stack.width() >> 3;
+ 
+    if (opnds[1].type === x86.type.IMM_VAL)
     {
-        if (opnds[0] !== dest)
+        // Case where one of the operands is an immediate
+        // value
+
+        if (dest !== opnds[0])
         {
             tltor.asm.mov(opnds[0], dest);
         }
 
-        tltor.asm.dec(dest);
+        if (opnds[1].value === 1)
+        {
+            tltor.asm.dec(dest);
+        } 
+        else
+        {
+            tltor.asm.sub(opnds[1], dest);
+        }
+    } 
+    else if (opnds[0] === opnds[1])
+    {
+        // Operands are the same, put a zero in the destination register
+        tltor.asm.xor(dest, dest); 
+    } 
+    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    {
+        // Operands are inverted with regard to x86 notation 
+
+        // TODO: Change when register allocation spilling is done differently
+        tltor.asm.
+        mov(opnds[1], tltor.config.temp).
+        mov(opnds[0], dest).
+        sub(tltor.config.temp, dest);
     }
     else
     {
@@ -751,7 +783,7 @@ SubInstr.prototype.genCode = function (tltor, opnds)
         {
             tltor.asm.mov(opnds[0], dest);
         }
-       
+   
         tltor.asm.sub(opnds[1], dest);
     }
 };
@@ -877,50 +909,11 @@ ModInstr.prototype.genCode = DivInstr.prototype.genCode;
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {
-    const dest = this.regAlloc.dest;
-    const stack = tltor.config.stack;
-    const refByteNb = stack.width() >> 3;
+    // Reuse the implementation of the addition without overflow
+    AddInstr.prototype.genCode.apply(this, [tltor, opnds]);
+
     const normalTarget = this.targets[0];
     const overflowTarget = this.targets[1];
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[1].type === x86.type.IMM_VAL)
-    {
-        // Case where one of the operands is an immediate
-        // value
-
-        if (dest !== opnds[0])
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-
-        if (opnds[1].value === 1)
-        {
-            tltor.asm.inc(dest);
-        } 
-        else
-        {
-            tltor.asm.add(opnds[1], dest);
-        }
-    } 
-    else if (opnds[1].type === x86.type.REG && 
-             opnds[1] === dest)
-    {
-        tltor.asm.add(opnds[0], dest);
-    } 
-    else
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-   
-        tltor.asm.add(opnds[1], dest);
-    }
 
     // Handle jump to exception
     tltor.asm.
@@ -930,60 +923,11 @@ AddOvfInstr.prototype.genCode = function (tltor, opnds)
 
 SubOvfInstr.prototype.genCode = function (tltor, opnds)
 {
-    const dest = this.regAlloc.dest;
-    const stack = tltor.config.stack;
-    const refByteNb = stack.width() >> 3;
+    // Reuse the implementation of the subtraction without overflow
+    SubInstr.prototype.genCode.apply(this, [tltor, opnds]);
+
     const normalTarget = this.targets[0];
     const overflowTarget = this.targets[1];
-
-    if (dest === null)
-    {
-        return;
-    }
-
-    if (opnds[1].type === x86.type.IMM_VAL)
-    {
-        // Case where one of the operands is an immediate
-        // value
-
-        if (dest !== opnds[0])
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-
-        if (opnds[1].value === 1)
-        {
-            tltor.asm.dec(dest);
-        } 
-        else
-        {
-            tltor.asm.sub(opnds[1], dest);
-        }
-    } 
-    else if (opnds[0] === opnds[1])
-    {
-        // Operands are the same, put a zero in the destination register
-        tltor.asm.xor(dest, dest); 
-    } 
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        // Operands are inverted with regard to x86 notation 
-
-        // TODO: Change when register allocation spilling is done differently
-        tltor.asm.
-        mov(opnds[1], tltor.config.temp).
-        mov(opnds[0], dest).
-        sub(tltor.config.temp, dest);
-    }
-    else
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-   
-        tltor.asm.sub(opnds[1], dest);
-    }
 
     // Handle jump to exception
     tltor.asm.
@@ -1007,26 +951,11 @@ MulOvfInstr.prototype.genCode = function (tltor, opnds)
 
 LsftOvfInstr.prototype.genCode = function (tltor, opnds)
 {
-    const dest = this.regAlloc.dest;
+    // Reuse the implementation of the left shift without overflow
+    LsftInstr.prototype.genCode.apply(this, [tltor, opnds]);
+
     const normalTarget = this.targets[0];
     const overflowTarget = this.targets[1];
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    if (opnds[0] === dest)
-    {
-        tltor.asm.sal(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        sal(shiftAmt, dest);
-    }
 
     // Handle jump to exception
     tltor.asm.
@@ -1751,8 +1680,8 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     base    : register
     disp    : immediate offset
     index   : register              (optional)
-    scale   : applied to index reg  (optional)
-    - 1, 2, 4, 8
+    scale   : applied to index reg  (optional) 
+              1, 2, 4, 8
     */
 
     assert (
@@ -1786,12 +1715,12 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[1].type === x86.type.REG)
     {
         // Use the index field
-        var memLoc = mem(0, opnds[0], opnds[1]);
+        var memLoc = mem(0, opnds[0], opnds[1], 1);
     }
     else
     {
         // Use the displacement field
-        var memLoc = mem(opnds[1].value, opnds[0]);
+        var memLoc = mem(opnds[1].value, opnds[0], undefined, 1);
     }
 
     // If the value we are loading needs to be extended
@@ -1826,8 +1755,8 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     base    : register
     disp    : immediate offset
     index   : register              (optional)
-    scale   : applied to index reg  (optional)
-    - 1, 2, 4, 8
+    scale   : applied to index reg  (optional) 
+              1, 2, 4, 8
     */
 
     assert (
@@ -1866,12 +1795,12 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[1].type === x86.type.REG)
     {
         // Use the index field
-        var memLoc = mem(0, opnds[0], opnds[1]);
+        var memLoc = mem(0, opnds[0], opnds[1], 1);
     }
     else
     {
         // Use the displacement field
-        var memLoc = mem(opnds[1].value, opnds[0]);
+        var memLoc = mem(opnds[1].value, opnds[0], undefined, 1);
     }
 
     // Get the size of the value to be stored

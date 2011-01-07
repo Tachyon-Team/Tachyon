@@ -24,8 +24,9 @@ function initConfig()
     The tachyon code has special privileges.
     */
     config.hostParams = new CompParams({
-        target      : Target.Debug_X86_32,
+        target      : Target.x86_32,
         tachyonSrc  : true,
+        debug       : true,
         staticEnv   : new StaticEnv()
     });
 
@@ -41,8 +42,9 @@ function initConfig()
     Compilation parameters used to bootstrap Tachyon
     */
     config.bootParams = new CompParams({
-        target      : Target.Debug_X86_32,
+        target      : Target.x86_32,
         tachyonSrc  : true,
+        debug       : true,
         staticEnv   : new StaticEnv()
     });
 

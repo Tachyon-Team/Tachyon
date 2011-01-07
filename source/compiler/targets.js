@@ -18,8 +18,6 @@ function Target(cfgObj)
 
     assert (cfgObj.ptrSizeBits === 32 || cfgObj.ptrSizeBits === 64);
 
-    assert (cfgObj.debug === true || cfgObj.debug === false);
-
     /**
     Back-end name    
     @field
@@ -49,22 +47,15 @@ function Target(cfgObj)
     @field
     */
     this.ptrSizeBytes = this.ptrSizeBits / 8;    
-
-    /**
-    Debug mode flag
-    @field
-    */
-    this.debug = cfgObj.debug;
 }
 
 /**
 Debug, x86, 32-bit configuration
 */
-Target.Debug_X86_32 = new Target({
+Target.x86_32 = new Target({
     backend         : 'backendX86',
     backendCfg      : {/*back-end specific, reg alloc config, etc.*/},
     endian          : 'little',
-    ptrSizeBits     : 32,
-    debug           : true
+    ptrSizeBits     : 32
 });
 

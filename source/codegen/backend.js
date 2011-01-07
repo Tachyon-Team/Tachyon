@@ -192,7 +192,10 @@ backend.compileIRToCB = function (ir, params)
 backend.compileIRToMCB = function (ir, params)
 {
     var cb = backend.compileIRToCB(ir, params);
-    //print(backend.listing(cb));
+    
+    if (params.print !== undefined)
+        params.print(backend.listing(cb));
+
     return cb.assembleToMachineCodeBlock(); // assemble it
 };
 

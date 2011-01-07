@@ -145,10 +145,24 @@ Compile the primitives source code to enable IR lowering
 */
 function compPrimitives(params)
 {
+    // Declare a variable for the layout source
+    var layoutSrc = '';
+
+    // Generate methods for the instantiable layouts
+    for (var l in params.memLayouts)
+    {
+        var layout = params.memLayouts[l];
+
+        if (layout.isInstantiable() === false)
+            continue;
+
+        layoutSrc += layout.genMethods();
+    }
+
     // Build a list of the ASTs of the primitive code
     var astList = [
         // Generated code for the object layouts
-        parse_src_str(params.layoutSrc),
+        parse_src_str(layoutSrc),
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
         // Source code for string operations
@@ -166,6 +180,9 @@ function compPrimitives(params)
         params.staticEnv.parseUnit(ast);
     }
 
+    // List of IRFunction objects for the primitives
+    var primIR = [];
+
     // For each AST
     for (var i = 0; i < astList.length; ++i)
     {
@@ -174,13 +191,13 @@ function compPrimitives(params)
         // Generate IR from the AST
         var ir = unitToIR(ast, params);
 
-        params.primIR.push(ir);
+        primIR.push(ir);
     }
 
     // For each IR
-    for (var i = 0; i < params.primIR.length; ++i)
+    for (var i = 0; i < primIR.length; ++i)
     {
-        var ir = params.primIR[i];
+        var ir = primIR[i];
 
         // Perform IR lowering on the primitives
         lowerIRFunc(ir, params);
@@ -190,4 +207,7 @@ function compPrimitives(params)
         // Validate the resulting code
         ir.validate();
     }
+
+    // Return the list of function objects
+    return primIR;
 }

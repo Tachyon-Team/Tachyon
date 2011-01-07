@@ -81,8 +81,5 @@ function makeContextLayout(params)
 
     // Finalize the context layout
     ctxLayout.finalize();
-
-    // Generate accessor methods
-    ctxLayout.genMethods();
 }
 

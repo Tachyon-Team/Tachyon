@@ -23,8 +23,9 @@ function CompParams(cfgObj)
 
     assert (cfgObj.tachyonSrc === true || cfgObj.tachyonSrc === false);
 
-    // TODO
-    //assert (cfgObj.staticEnv instanceof StaticEnv);
+    assert (cfgObj.debug === true || cfgObj.debug === false);
+
+    assert (cfgObj.staticEnv instanceof StaticEnv);
 
     /**
     Target architecture
@@ -39,6 +40,12 @@ function CompParams(cfgObj)
     this.tachyonSrc = cfgObj.tachyonSrc;
 
     /**
+    Debug mode flag
+    @field
+    */
+    this.debug = cfgObj.debug;
+
+    /**
     Static definitions to be used during compilation
     @field
     */
@@ -49,17 +56,5 @@ function CompParams(cfgObj)
     @field
     */
     this.memLayouts = {};
-
-    /**
-    Object layout code auto-generated for this platform
-    @field
-    */
-    this.layoutSrc = '';
-
-    /**
-    List of IR function objects for primitive functions
-    @field
-    */
-    this.primIR = [];
 }
 

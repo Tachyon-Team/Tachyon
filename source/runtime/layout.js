@@ -312,6 +312,14 @@ MemLayout.prototype.genfieldAccessIR = function (context, query)
 };
 
 /**
+Test if instances of objects can be generated using this layout
+*/
+MemLayout.prototype.isInstantiable = function ()
+{
+    return this.ptrType != undefined;
+}
+
+/**
 Generate functions to manipulate a given layout
 */
 MemLayout.prototype.genMethods = function ()
@@ -513,7 +521,7 @@ MemLayout.prototype.genMethods = function ()
         'var offset = pint(0);\n'
     );
 
-    // Append the generated code to the object layout source string
-    this.params.layoutSrc += sourceStr;
+    // Return the generated code
+    return sourceStr;
 };
 

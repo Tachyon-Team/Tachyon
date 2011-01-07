@@ -312,7 +312,7 @@ x86.Assembler.prototype.immediateValue.prototype.toString = function (verbose)
     @param {Number} scale
 
 */
-x86.Assembler.prototype.memory = function ( disp, base, index, scale )
+x86.Assembler.prototype.memory = function (disp, base, index, scale)
 {
     if (disp === undefined)
         disp = 0;
@@ -356,7 +356,8 @@ x86.Assembler.prototype.memory.prototype.toString = function (verbose)
     if (verbose === true && this.__proto__ !== undefined)
     {
         return this.__proto__.toString(true);
-    } else
+    } 
+    else
     {
         return "mem(" +
                (this.disp !== 0 ? this.disp + "," : "") +
@@ -1164,15 +1165,25 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
                 {
                     // SIB Needed
                     modrm = modrm_rf + 4;
-                    var sib   = baseFieldLo;
+                    var sib = baseFieldLo;
 
                     if (index !== null)
                     {
+                        // Compute the two scale bits
+                        var scaleBits;
+                        switch (scale)
+                        {
+                            case 1: scaleBits = 0; break;
+                            case 2: scaleBits = 1; break;
+                            case 4: scaleBits = 2; break;
+                            case 8: scaleBits = 3; break;
+                        }
+
                         assert(!(index.field() === 4),
                                "SP not allowed as index", index);
-                        sib += ((7 & index.field()) << 3) +
-                               (scale << 6);
-                    } else // !index
+                        sib += ((7 & index.field()) << 3) + (scaleBits << 6);
+                    } 
+                    else // !index
                     {
                         sib += 0x20;
                     }
