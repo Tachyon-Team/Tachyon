@@ -21,6 +21,9 @@ function initialize()
     makeContextLayout(config.hostParams);
     makeObjectLayouts(config.hostParams);
 
+    // Initialize the FFI functions
+    initFFI(config.hostParams);
+
     // Compile the primitives to IR for both configurations
     var primIR = compPrimitives(config.hostParams);
 

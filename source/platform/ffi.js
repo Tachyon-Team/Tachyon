@@ -58,8 +58,10 @@ FFI version 0.3
 
 */
 
-
-function cTypeToIRType(cType)
+/**
+Convert from a C type name to the corresponding C type
+*/
+function cTypeToIRType(cType, params)
 {
     switch (cType)
     {
@@ -80,7 +82,7 @@ function cTypeToIRType(cType)
 /**
 Represents a C FFI function
 */
-function CFunction(funcName, argTypes, retType)
+function CFunction(funcName, argTypes, retType, params)
 {
     this.funcName = funcName;
 
@@ -88,7 +90,7 @@ function CFunction(funcName, argTypes, retType)
     this.argTypes = argTypes.map(cTypeToIRType);
 
 
-    this.retType = cTypeToIRType(retType);
+    this.retType = cTypeToIRType(retType, params);
 
 
     this.funcPtr = asm.address(getFuncAddr(funcName));
@@ -107,4 +109,14 @@ CFunction.prototype.getValName = function ()
 Obtain a string representation of the function
 */
 CFunction.prototype.toString = CFunction.prototype.getValName;
+
+/**
+Initialize FFI functions for the current configuration
+*/
+function initFFI(params)
+{
+    var ffiPrintInt = new CFunction('printInt', ['int'], 'void');
+
+    config.hostParams.staticEnv.regBinding('printInt', ffiPrintInt);
+}
 

@@ -61,14 +61,7 @@ function testIR()
     ir.validate();    
     print(ir);
     */
-     
 
-
-    var ffiPrintInt = new CFunction('printInt', ['int'], 'void');
-
-    config.hostParams.staticEnv.regBinding('printInt', ffiPrintInt);
-
-    print(config.hostParams.staticEnv.getBinding('printInt'));
 
     var ast = parse_src_file('test_ffi.js');
     var ir = unitToIR(ast, config.hostParams);
