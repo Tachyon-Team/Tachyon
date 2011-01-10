@@ -12,6 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
+    /*
     var memBlock = allocMachineCodeBlock(4096);
     
     var blockAddr = getBlockAddress(memBlock, 0);
@@ -41,18 +42,6 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
-
-    /*
-    function getAddrInt(block, idx)
-    {
-        var blockAddr = 
-
-        var addr = 0;
-        for (var i = blockAddr.length - 1; i >= 0; --i)
-            addr = addr * 256 + blockAddr[i];
-
-        return addr;
-    }
     */
 
     /*
@@ -75,6 +64,14 @@ function testIR()
     print(ir);
     */
      
+    
+    var ast = parse_src_file('programs/fib/fib.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();
+    print(ir);
+    
+
     /*
     var codeblock = backend.compileIRToCB(ir);    
     //print(backend.listing(codeblock));
@@ -85,7 +82,7 @@ function testIR()
     */
     
     /*
-    var func = config.hostParams.staticEnv.getBinding('newObject');
+    var func = config.hostParams.staticEnv.getBinding('getProp');
     print(func);
     */
 };

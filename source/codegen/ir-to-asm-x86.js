@@ -1246,11 +1246,11 @@ EqInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[0].type === x86.type.IMM_VAL && opnds[0].value === 0) 
+    if (opnds[0].type === x86.type.REG && opnds[0].value === 0) 
     {
         tltor.asm.test(opnds[1], opnds[1]);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL && opnds[1].value === 0)
+    else if (opnds[1].type === x86.type.REG && opnds[1].value === 0)
     {
         tltor.asm.test(opnds[0], opnds[0]);
     } 
@@ -1281,13 +1281,13 @@ NeInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (opnds[0].type === x86.type.IMM_VAL && opnds[1].value === 0) 
-    {
-        tltor.asm.test(opnds[1], opnds[1]);
-    } 
-    else if (opnds[1].type === x86.type.IMM_VAL && opnds[0].value === 0)
+    if (opnds[0].type === x86.type.REG && opnds[1].value === 0) 
     {
         tltor.asm.test(opnds[0], opnds[0]);
+    } 
+    else if (opnds[1].type === x86.type.REG && opnds[0].value === 0)
+    {
+        tltor.asm.test(opnds[1], opnds[1]);
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||

@@ -1207,7 +1207,10 @@ ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTarget
          inputVals[1].type === inputVals[0].type)
         ||
         (inputVals[0].type === IRType.box &&
-         inputVals[1].type === inputVals[0].type),
+         inputVals[1].type === inputVals[0].type)
+        ||
+        (inputVals[0].type === IRType.box &&
+         inputVals[1].type === IRType.pint),
         'invalid input types'
     );
     
