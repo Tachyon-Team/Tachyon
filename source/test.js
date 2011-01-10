@@ -28,8 +28,9 @@ function testObjs()
     // TODO: look at assembler listing?
 
     //putPropVal(obj, 0, 33);
-    putPropVal2(obj, 0, 33);
+    //putPropVal2(obj, 0, 33);
 
+    putProp(obj, 0, pint(0), 33);
 
     //Split position bug?
 

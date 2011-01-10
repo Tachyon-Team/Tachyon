@@ -54,5 +54,8 @@ var iir =
     gt          : GtInstr,
     ge          : GeInstr,
     eq          : EqInstr,
-    ne          : NeInstr
+    ne          : NeInstr,
+
+    // FFI call instruction
+    call_ffi    : CallFFIInstr
 };

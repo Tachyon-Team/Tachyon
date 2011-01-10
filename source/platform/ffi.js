@@ -59,9 +59,52 @@ FFI version 0.3
 */
 
 
+function cTypeToIRType(cType)
+{
+    switch (cType)
+    {
+        case 'int':
+        return IRType.pint;
+
+        case 'char*':
+        return IRType.rptr;
+
+        case 'void':
+        return IRType.none;
+
+        default:
+        error('unsupported C type: ' + cType);        
+    }
+}
+
+/**
+Represents a C FFI function
+*/
+function CFunction(funcName, argTypes, retType)
+{
+    this.funcName = funcName;
 
 
+    this.argTypes = argTypes.map(cTypeToIRType);
 
 
+    this.retType = cTypeToIRType(retType);
 
+
+    this.funcPtr = asm.address(getFuncAddr(funcName));
+}
+CFunction.prototype = new IRValue();
+
+/**
+Return the IR value name for this function
+*/
+CFunction.prototype.getValName = function ()
+{
+    return '<c-ffi' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
+};
+
+/**
+Obtain a string representation of the function
+*/
+CFunction.prototype.toString = CFunction.prototype.getValName;
 

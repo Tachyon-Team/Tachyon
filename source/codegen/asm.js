@@ -866,7 +866,7 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
 
     const len = this.assemble();
     const block = allocMachineCodeBlock(len);
-    const baseAddr = asm.address(getBlockAddress(block));
+    const baseAddr = asm.address(getBlockAddr(block));
     var pos = 0;
 
     for (var i=0; i<this.code.length; i++)

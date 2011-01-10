@@ -29,8 +29,6 @@ BASE_SRCS =                         \
     parser/parser.js                \
     parser/pp.js                    \
     parser/ast-passes.js            \
-    platform/ffi.js                 \
-    platform/memory.js              \
     ir/types.js                     \
     ir/static.js                    \
     ir/instructions.js              \
@@ -43,6 +41,8 @@ BASE_SRCS =                         \
     ir/commelim.js                  \
     ir/inlining.js                  \
     ir/lowering.js                  \
+    platform/ffi.js                 \
+    platform/memory.js              \
     runtime/layout.js               \
     runtime/context.js              \
     runtime/objects.js              \

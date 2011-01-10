@@ -15,7 +15,7 @@ function testIR()
     /*
     var memBlock = allocMachineCodeBlock(4096);
     
-    var blockAddr = getBlockAddress(memBlock, 0);
+    var blockAddr = getBlockAddr(memBlock, 0);
     var b0 = blockAddr[0];
     var b1 = blockAddr[1];
     var b2 = blockAddr[2];
@@ -46,14 +46,12 @@ function testIR()
 
     /*
     var ast = parse_src_str(
-        'function foo() { ' +
-        '"tachyon:ret i8";' +
-        'iir.set_ctx(iir.icast(IRType.rptr,' + blockAddr + '));' +
-        'iir.store(IRType.i8, iir.get_ctx(), iir.icast(IRType.i32, 0), iir.icast(IRType.i8, 7));' +
-        'return iir.load(IRType.i8, iir.get_ctx(), iir.icast(IRType.i32, 0));' +
-        '}' + 
-        'return foo();'
+        'function foo() { return (6/3); }'
     );
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();    
+    print(ir);
     */
 
     /*
@@ -64,8 +62,15 @@ function testIR()
     print(ir);
     */
      
-    
-    var ast = parse_src_file('programs/fib/fib.js');
+
+
+    var ffiPrintInt = new CFunction('printInt', ['int'], 'void');
+
+    config.hostParams.staticEnv.regBinding('printInt', ffiPrintInt);
+
+    print(config.hostParams.staticEnv.getBinding('printInt'));
+
+    var ast = parse_src_file('test_ffi.js');
     var ir = unitToIR(ast, config.hostParams);
     lowerIRFunc(ir, config.hostParams);
     ir.validate();
