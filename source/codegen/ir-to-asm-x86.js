@@ -1673,7 +1673,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const callDest  = tltor.asm.linked(
                     cfct.funcName, 
-                    function (dstAddr) { return fctAddr.getBytes(); },
+                    function (dstAddr) { return dstAddr.
+                                                .addOffset(4).
+                                                .getAddrOffsetBytes(fctAddr); },
                     fctAddr.width());
                     
                     
