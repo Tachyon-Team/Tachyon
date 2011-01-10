@@ -12,9 +12,10 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
+    /*
     var memBlock = allocMachineCodeBlock(4096);
     
-    var blockAddr = getBlockAddress(memBlock, 0);
+    var blockAddr = getBlockAddr(memBlock, 0);
     var b0 = blockAddr[0];
     var b1 = blockAddr[1];
     var b2 = blockAddr[2];
@@ -41,30 +42,16 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
-
-    /*
-    function getAddrInt(block, idx)
-    {
-        var blockAddr = 
-
-        var addr = 0;
-        for (var i = blockAddr.length - 1; i >= 0; --i)
-            addr = addr * 256 + blockAddr[i];
-
-        return addr;
-    }
     */
 
     /*
     var ast = parse_src_str(
-        'function foo() { ' +
-        '"tachyon:ret i8";' +
-        'iir.set_ctx(iir.icast(IRType.rptr,' + blockAddr + '));' +
-        'iir.store(IRType.i8, iir.get_ctx(), iir.icast(IRType.i32, 0), iir.icast(IRType.i8, 7));' +
-        'return iir.load(IRType.i8, iir.get_ctx(), iir.icast(IRType.i32, 0));' +
-        '}' + 
-        'return foo();'
+        'function foo() { return (6/3); }'
     );
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();    
+    print(ir);
     */
 
     /*
@@ -74,7 +61,15 @@ function testIR()
     ir.validate();    
     print(ir);
     */
-     
+
+
+    var ast = parse_src_file('test_ffi.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();
+    print(ir);
+    
+
     /*
     var codeblock = backend.compileIRToCB(ir);    
     //print(backend.listing(codeblock));
@@ -85,7 +80,7 @@ function testIR()
     */
     
     /*
-    var func = config.hostParams.staticEnv.getBinding('newObject');
+    var func = config.hostParams.staticEnv.getBinding('getProp');
     print(func);
     */
 };

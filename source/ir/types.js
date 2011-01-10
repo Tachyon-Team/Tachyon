@@ -170,7 +170,7 @@ IRType.prototype.getMaxVal = function (target)
     {
         // TODO: make this infinity when supported, boxed
         // values can be floats
-        return getIntMin(30, false);
+        return getIntMax(30, false);
     }
 
 };

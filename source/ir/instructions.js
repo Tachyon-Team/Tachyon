@@ -1207,7 +1207,10 @@ ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTarget
          inputVals[1].type === inputVals[0].type)
         ||
         (inputVals[0].type === IRType.box &&
-         inputVals[1].type === inputVals[0].type),
+         inputVals[1].type === inputVals[0].type)
+        ||
+        (inputVals[0].type === IRType.box &&
+         inputVals[1].type === IRType.pint),
         'invalid input types'
     );
     
@@ -1746,6 +1749,49 @@ CallFuncInstr.prototype.readsMem = function ()
     else
         return true;
 };
+
+/**
+@class FFI function call instruction
+@augments CallInstr
+*/
+var CallFFIInstr = instrMaker(
+    'call_ffi',
+    function (typeParams, inputVals, branchTargets)
+    {
+        this.mnemonic = 'call_ffi';
+
+        instrMaker.validNumInputs(inputVals, 1);
+        instrMaker.validType(inputVals[0], IRType.box);
+        instrMaker.validNumBranches(branchTargets, 0, 0);
+
+        assert (
+            inputVals[0] instanceof CFunction
+        );
+
+        assert (
+            inputVals.length - 1 == inputVals[0].argTypes.length
+        );
+
+        for (var i = 1; i < inputVals.length; ++i)
+        {
+            assert (
+                inputVals[i].type === inputVals[0].argTypes[i-1],
+                'argument type does not match (arg' + (i-1) + ' ' +
+                inputVals[i].type + ', ' +
+                inputVals[0].funcName + ')'
+            );
+        }
+
+        this.type = inputVals[0].retType;
+    },
+    new CallInstr()
+);
+
+/**
+By default, conservatively assume all calls read and write to/from memory
+*/
+CallFFIInstr.prototype.writesMem = function () { return true; };
+CallFFIInstr.prototype.readsMem = function () { return true; };
 
 /**
 @class Constructor call with function object reference

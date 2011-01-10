@@ -328,7 +328,7 @@ v8::Handle<v8::Value> freeMemoryBlock(const v8::Arguments& args)
     }
 }
 
-v8::Handle<v8::Value> getBlockAddress(const v8::Arguments& args)
+v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
 {
     if (args.Length() < 1 || args.Length() > 2)
     {
@@ -361,6 +361,53 @@ v8::Handle<v8::Value> getBlockAddress(const v8::Arguments& args)
 
     // Compute the address
     uint8_t* address = blockPtr + idxVal;
+
+    // Create an array to store the pointer data
+    i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(address));
+    ASSERT(array->IsJSArray() && array->HasFastElements());
+
+    // Write the pointer into the array, byte-per-byte
+    for (size_t i = 0; i < sizeof(address); ++i) 
+    {
+        uint8_t* bytePtr = ((uint8_t*)&address) + i;
+        i::Object* element = i::Smi::FromInt(*bytePtr);
+
+        ptrArray->SetFastElement(i, element);
+    }
+
+    return Utils::ToLocal(ptrArray);
+}
+
+/*---------------------------------------------------------------------------*/
+
+void printInt(int val)
+{
+    printf("%i\n", val);
+}
+
+typedef void (*FPTR)();
+
+v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in getFuncAddr -- 1 argument expected\n");
+        exit(1);
+    }
+
+    v8::String::Utf8Value funcName(args[0]);  
+    char* fName = *funcName;
+
+    FPTR address = NULL;
+
+    if (strcmp(fName, "printInt") == 0)
+        address = (FPTR)(printInt);
+
+    if (address == NULL)
+    {
+        printf("C function not found\n");
+        exit(1);
+    }
 
     // Create an array to store the pointer data
     i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(address));
@@ -420,8 +467,13 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     );
 
     global_template->Set(
-        v8::String::New("getBlockAddress"), 
-        v8::FunctionTemplate::New(getBlockAddress)
+        v8::String::New("getBlockAddr"), 
+        v8::FunctionTemplate::New(getBlockAddr)
+    );
+
+    global_template->Set(
+        v8::String::New("getFuncAddr"), 
+        v8::FunctionTemplate::New(getFuncAddr)
     );
 }
 

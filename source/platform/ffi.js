@@ -63,8 +63,6 @@ var foo2 = import_foreign("foo", ["int", "char*"], "int");
 
 print(foo2(1, "hello"));
 
-
-
 void foreign_proxy(void)
 {
   context *ctx = ...;
@@ -74,7 +72,65 @@ void foreign_proxy(void)
 }
 */
 
+/**
+Convert from a C type name to the corresponding C type
+*/
+function cTypeToIRType(cType, params)
+{
+    switch (cType)
+    {
+        case 'int':
+        return IRType.pint;
+
+        case 'char*':
+        return IRType.rptr;
+
+        case 'void':
+        return IRType.none;
+
+        default:
+        error('unsupported C type: ' + cType);        
+    }
+}
+
+/**
+Represents a C FFI function
+*/
+function CFunction(funcName, argTypes, retType, params)
+{
+    this.funcName = funcName;
 
 
+    this.argTypes = argTypes.map(cTypeToIRType);
 
+
+    this.retType = cTypeToIRType(retType, params);
+
+
+    this.funcPtr = asm.address(getFuncAddr(funcName));
+}
+CFunction.prototype = new IRValue();
+
+/**
+Return the IR value name for this function
+*/
+CFunction.prototype.getValName = function ()
+{
+    return '<c-ffi' + (this.funcName? (' "' + this.funcName + '"'):'') + '>';
+};
+
+/**
+Obtain a string representation of the function
+*/
+CFunction.prototype.toString = CFunction.prototype.getValName;
+
+/**
+Initialize FFI functions for the current configuration
+*/
+function initFFI(params)
+{
+    var ffiPrintInt = new CFunction('printInt', ['int'], 'void');
+
+    config.hostParams.staticEnv.regBinding('printInt', ffiPrintInt);
+}
 

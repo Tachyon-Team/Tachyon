@@ -370,11 +370,7 @@ function newObject(proto)
     set_obj_tbl(obj, hashtbl);
 
     // Initialize the hash table
-    for (
-        var i = pint(0); 
-        i < HASH_MAP_INIT_SIZE; 
-        i += pint(1)
-    )
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
     {
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
     }

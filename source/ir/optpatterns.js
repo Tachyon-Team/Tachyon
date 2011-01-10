@@ -733,23 +733,163 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // Strength reduction patterns
     //
 
+    // Test if a value is a specific constant
+    function isConst(val, cst)
+    {
+        return (
+            val instanceof ConstValue &&
+            val.value === cst
+        );
+    }
+
+    // Test if a value is a power of 2 constant
+    function isPow2(val)
+    {
+        return (
+            val instanceof ConstValue &&
+            (val.isBoxInt(params) || val.isInt()) &&
+            isPowerOf2(val.value)
+        );
+    }
+
+    // Replace an arithmetic instruction
+    function replArith(replInstr, replInstrOvf, u0, u1)
+    {
+        if (instr instanceof ArithInstr)
+        {
+            block.replInstrAtIndex(
+                index,
+                new replInstr(
+                    u0,
+                    u1
+                )
+            );
+        }
+        else
+        {
+            assert (instr instanceof ArithOvfInstr);
+
+            block.replBranch(
+                new replInstrOvf(
+                    u0,
+                    u1,
+                    instr.targets[0],
+                    instr.targets[1]
+                )
+            );
+        }
+    }
+
+    // Replace an instruction by a value
+    function replByVal(val)
+    {    
+        // Remap the dests to the replacement value/instruction
+        while (instr.dests.length > 0)
+        {
+            var dest = instr.dests[0];
+
+            dest.replUse(instr, val);
+
+            if (val instanceof IRInstr)
+                val.addDest(dest);
+
+            instr.remDest(dest);
+        }
+
+        if (instr instanceof ArithOvfInstr)
+        {
+            // Replace the instruction by a jump to the normal branch
+            block.replInstrAtIndex(index, new JumpInstr(instr.targets[0]));
+        }
+        else
+        {
+            // Remove the instruction
+            block.remInstrAtIndex(index);
+        }
+    }
+
+    // If this is an addition instruction
+    if (instr instanceof AddInstr || instr instanceof AddOvfInstr)
+    {
+        // If the left operand is 0
+        if (isConst(instr.uses[0], 0))
+        {
+            // Replace the instruction by its right operand
+            replByVal(instr.uses[1]);
+
+            // A change was made
+            return true;
+        }
+
+        // If the right operand is 0
+        else if (isConst(instr.uses[1], 0))
+        {
+            // Replace the instruction by its left operand
+            replByVal(instr.uses[0]);
+
+            // A change was made
+            return true;
+        }
+    }
+
+    // If this is a subtraction instruction
+    if (instr instanceof SubInstr || instr instanceof SubOvfInstr)
+    {
+        // If the right operand is 0        
+        if (isConst(instr.uses[1], 0))
+        {
+            // Replace the instruction by its left operand
+            replByVal(instr.uses[0]);
+
+            // A change was made
+            return true;
+        }
+    }
+
     // If this is a multiplication
-    if (instr instanceof MulInstr)
+    if (instr instanceof MulInstr || instr instanceof MulOvfInstr)
     {
+        // If the right or left operand is 0
+        if (isConst(instr.uses[0], 0) || isConst(instr.uses[1], 0))
+        {
+            // Replace the instruction by 0
+            replByVal(ConstValue.getConst(0, instr.type));
+
+            // A change was made
+            return true;
+        }
+
+        // If the left operand is 1
+        else if (isConst(instr.uses[0], 1))
+        {
+            // Replace the instruction by its right operand
+            replByVal(instr.uses[1]);
+
+            // A change was made
+            return true;
+        }
+
+        // If the right operand is 1
+        else if (isConst(instr.uses[1], 1))
+        {
+            // Replace the instruction by its left operand
+            replByVal(instr.uses[0]);
+
+            // A change was made
+            return true;
+        }
+
         // If the left operand is a power of 2
-        if (instr.uses[0] instanceof ConstValue &&
-            (instr.uses[0].isBoxInt(params) || instr.uses[0].isInt()) &&
-            isPowerOf2(instr.uses[0].value))
+        else if (isPow2(instr.uses[0]))
         {
             // Replace the multiplication by a left shift
-            block.replInstrAtIndex(
-                index,
-                new LsftInstr(
-                    instr.uses[1],
-                    ConstValue.getConst(
-                        highestBit(instr.uses[0].getImmValue(params)),
-                        IRType.pint
-                    )
+            replArith(
+                LsftInstr,
+                LsftOvfInstr,
+                instr.uses[1],
+                ConstValue.getConst(
+                    highestBit(instr.uses[0].value),
+                    IRType.pint
                 )
             );
 
@@ -758,19 +898,16 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
 
         // If the right operand is a power of 2
-        else if (instr.uses[1] instanceof ConstValue &&
-            (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt(params)) &&
-            isPowerOf2(instr.uses[1].value))
+        else if (isPow2(instr.uses[1]))
         {
             // Replace the multiplication by a left shift
-            block.replInstrAtIndex(
-                index,
-                new LsftInstr(
-                    instr.uses[0],
-                    ConstValue.getConst(
-                        highestBit(instr.uses[1].getImmValue(params)),
-                        IRType.pint
-                    )
+            replArith(
+                LsftInstr,
+                LsftOvfInstr,
+                instr.uses[0],
+                ConstValue.getConst(
+                    highestBit(instr.uses[1].value),
+                    IRType.pint
                 )
             );
 
@@ -779,97 +916,178 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
     }
 
-    // If this is a multiplication with overflow handling
-    if (instr instanceof MulOvfInstr)
+    // If this is a division instruction
+    if (instr instanceof DivInstr)
     {
-        // If the right operand is a power of 2
-        if (instr.uses[1] instanceof ConstValue &&
-            (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt()) &&
-            isPowerOf2(instr.uses[1].value))
+        // If this is a division by 1
+        if (isConst(instr.uses[1], 1))
         {
-            // Replace the multiplication by a left shift
-            block.replBranch(
-                new LsftOvfInstr(
-                    instr.uses[0],
-                    ConstValue.getConst(
-                        highestBit(instr.uses[1].getImmValue(params)),
-                        IRType.pint
-                    ),
-                    instr.targets[0],
-                    instr.targets[1]
-                )
-            );
+            // Replace the instruction by its left operand
+            replByVal(instr.uses[0]);
 
             // A change was made
             return true;
         }
 
-        // If the left operand is a power of 2
-        else if (instr.uses[0] instanceof ConstValue &&
-            (instr.uses[0].isBoxInt(params) || instr.uses[0].isInt()) &&
-                 isPowerOf2(instr.uses[0].value))
+        // If this is a division by a power of 2
+        else if (isPow2(instr.uses[1]))
         {
-            // Replace the multiplication by a left shift
-            block.replBranch(
-                new LsftOvfInstr(
-                    instr.uses[1],
-                    ConstValue.getConst(
-                        highestBit(instr.uses[0].getImmValue(params)),
-                        IRType.pint
-                    ),
-                    instr.targets[0],
-                    instr.targets[1]
-                )
-            );
-
-            // A change was made
-            return true;
-        }
-    }
-
-    // If this is a division by a power of 2
-    if (instr instanceof DivInstr && 
-        instr.uses[1] instanceof ConstValue &&
-        (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt()) &&
-        isPowerOf2(instr.uses[1].value))
-    {
-        // Replace the division by a right shift
-        var shiftInstr = instr.type.isUnsigned()? UrsftInstr:RsftInstr;
-        block.replInstrAtIndex(
-            index,
-            new shiftInstr(
+            // Replace the division by a right shift
+            replArith(
+                instr.type.isUnsigned()? UrsftInstr:RsftInstr,
+                undefined,
                 instr.uses[0],
                 ConstValue.getConst(
                     highestBit(instr.uses[1].getImmValue(params)),
                     IRType.pint
                 )
-            )
-        );
+            );
 
-        // A change was made
-        return true;
+            // A change was made
+            return true;
+        }
     }
 
-    // If this is a modulo of a power of 2
-    if (instr instanceof ModInstr && 
-        instr.uses[1] instanceof ConstValue &&
-        (instr.uses[1].isBoxInt(params) || instr.uses[1].isInt()) &&
-        isPowerOf2(instr.uses[1].value))
+    // If this is a modulo operation
+    if (instr instanceof ModInstr)
     {
-        // Replace the modulo by a bitwise AND instruction
-        block.replInstrAtIndex(
-            index,
-            new AndInstr(
+        // If this is a modulo of a power of 2
+        if (isPow2(instr.uses[1]))
+        {
+            // Replace the modulo by a bitwise AND instruction
+            replArith(
+                AndInstr,
+                undefined,
                 instr.uses[0],
                 ConstValue.getConst(
                     instr.uses[1].getImmValue(params) - 1,
                     instr.type
                 )
-            )
-        );
+            );
 
-        // A change was made
-        return true;
+            // A change was made
+            return true;
+        }
+    }
+
+    // If this is a logical OR instruction
+    if (instr instanceof OrInstr)
+    {
+        // If the left operand is 0
+        if (isConst(instr.uses[0], 0))
+        {
+            // Replace the instruction by its right operand
+            replByVal(instr.uses[1]);
+
+            // A change was made
+            return true;
+        }
+
+        // If the right operand is 0
+        else if (isConst(instr.uses[1], 0))
+        {
+            // Replace the instruction by its left operand
+            replByVal(instr.uses[0]);
+
+            // A change was made
+            return true;
+        }
+    }
+
+    // If this is a logical AND instruction
+    if (instr instanceof AndInstr)
+    {
+        var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
+        var TAG_REF_MASK = params.staticEnv.getBinding('TAG_REF_MASK').value;
+
+        // If the right or left operand is 0
+        if (isConst(instr.uses[0], 0) || isConst(instr.uses[1], 0))
+        {
+            // Replace the instruction by 0
+            replByVal(ConstValue.getConst(0, instr.type));
+
+            // A change was made
+            return true;
+        }
+
+        // If this is a reference tag bit extraction
+        if (instr.uses[0] instanceof ConstValue &&
+            instr.uses[1] instanceof ConstValue &&
+            instr.uses[0].type === IRType.box &&
+            !instr.uses[0].isBoxInt(params) &&
+            instr.uses[1].type === IRType.pint && 
+            instr.uses[1].value === TAG_REF_MASK)
+        {
+            replByVal(
+                ConstValue.getConst(
+                    instr.uses[0].getTagBits(params),
+                    IRType.pint
+                )
+            );
+        }
+
+        // If this is a reference tag bit extraction
+        if (
+            instr.uses[0] instanceof ConstValue &&
+            instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].type === IRType.box &&
+            !instr.uses[1].isBoxInt(params) &&
+            instr.uses[0].type === IRType.pint && 
+            instr.uses[0].value === TAG_REF_MASK)
+        {
+            replByVal(
+                ConstValue.getConst(
+                    instr.uses[1].getTagBits(params),
+                    IRType.pint
+                )
+            );
+        }
+
+        // If this is an integer tag bit extraction
+        if (
+            instr.uses[0] instanceof ConstValue &&
+            instr.uses[1] instanceof ConstValue &&
+            instr.uses[0].type === IRType.box &&
+            instr.uses[1].type === IRType.pint && 
+            instr.uses[1].value === TAG_INT_MASK)
+        {
+            replByVal(
+                ConstValue.getConst(
+                    instr.uses[0].getTagBits(params) & TAG_INT_MASK,
+                    IRType.pint
+                )
+            );
+        }
+
+        // If this is an integer tag bit extraction
+        if (
+            instr.uses[0] instanceof ConstValue &&
+            instr.uses[1] instanceof ConstValue &&
+            instr.uses[1].type === IRType.box &&
+            instr.uses[0].type === IRType.pint && 
+            instr.uses[0].value === TAG_INT_MASK)
+        {
+            replByVal(
+                ConstValue.getConst(
+                    instr.uses[1].getTagBits(params) & TAG_INT_MASK,
+                    IRType.pint
+                )
+            );
+        }
+    }
+
+    // If this is an integer cast instruction
+    if (instr instanceof ICastInstr)
+    {
+        // If the input and output types are the same
+        if (instr.uses[0].type === instr.type)
+        {
+            // Replace the instruction by its input
+            replByVal(instr.uses[0]);
+
+            // A change was made
+            return true;
+        }
     }
 
     // No changes were made

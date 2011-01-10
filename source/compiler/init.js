@@ -21,11 +21,16 @@ function initialize()
     makeContextLayout(config.hostParams);
     makeObjectLayouts(config.hostParams);
 
+    // Initialize the FFI functions
+    initFFI(config.hostParams);
+
     // Compile the primitives to IR for both configurations
     var primIR = compPrimitives(config.hostParams);
 
+    /*
     var func = config.hostParams.staticEnv.getBinding('newObject');
     print(func);
+    */
 
     // Compile the primitives to machine code
     for (var primIt = new ArrayIterator(primIR); primIt.valid(); primIt.next())

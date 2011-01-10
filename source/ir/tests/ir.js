@@ -6,7 +6,7 @@ Unit tests for AST->IR translation code
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -22,7 +22,7 @@ tests.ir.helpers = {};
 /**
 Parse a source code string, copy the resulting IR and validate it
 */
-tests.ir.helpers.testSource = function (sourceStr)
+tests.ir.helpers.testSource = function (sourceStr, printOut)
 {
     // Parse the source string
     var ast = parse_src_str(sourceStr);
@@ -30,11 +30,8 @@ tests.ir.helpers.testSource = function (sourceStr)
     // Translate the AST to IR
     var ir = unitToIR(ast, config.clientParams);
 
-    /*
-    pp(ast); // pretty-print AST
-    print('\n');
-    print(ir);
-    */
+    if (printOut === true)
+        print(ir);
 
     // Copy the resulting function
     ir.copy();
@@ -44,6 +41,9 @@ tests.ir.helpers.testSource = function (sourceStr)
 
     // Perform lowering on the IR
     lowerIRFunc(ir, config.clientParams);
+
+    if (printOut === true)
+        print(ir);
 
     // Validate the IR
     ir.validate();

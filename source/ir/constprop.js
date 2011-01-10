@@ -345,7 +345,7 @@ PhiInstr.prototype.constEval = function (getValue, isReachable, queueEdge, param
     return curVal;
 };
 
-ArithInstr.genConstEval = function (opFunc, genFunc)
+ArithInstr.genConstEval = function (opFunc)
 {
     function constEval(getValue, isReachable, queueEdge, params)
     {
@@ -360,17 +360,14 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
             var result = opFunc(v0.value, v1.value, v0.type);
 
             // If there was no overflow, return the result
-            if (result >= v0.type.getMinVal(params.target) && result <= v0.type.getMaxVal(params.target))
+            if (result >= this.type.getMinVal(params.target) && 
+                result <= this.type.getMaxVal(params.target))
             {
                 return ConstValue.getConst(
                     result,
-                    v0.type
+                    this.type
                 );
             }
-        }
-        else if (genFunc !== undefined)
-        {
-            return genFunc(v0, v1);
         }
 
         // By default, return the unknown value
@@ -384,16 +381,6 @@ AddInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 + v1;
-    },
-    function (u0, u1)
-    {
-        if (u0 instanceof ConstValue && u0.value == 0)
-            return u1;
-
-        if (u1 instanceof ConstValue && u1.value == 0)
-            return u0;
-
-        return BOT;
     }
 );
 
@@ -401,13 +388,6 @@ SubInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 - v1;
-    },
-    function (u0, u1)
-    {
-        if (u1 instanceof ConstValue && u1.value == 0)
-            return u0;
-
-        return BOT;
     }
 );
 
@@ -415,26 +395,6 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 * v1;
-    },
-    function (u0, u1)
-    {
-        if (u0 instanceof ConstValue && u0.value == 1)
-            return u1;
-
-        if (u1 instanceof ConstValue && u1.value == 1)
-            return u0;
-
-        if (((u0 instanceof ConstValue && u0.value == 0) || 
-             (u1 instanceof ConstValue && u1.value == 0)) &&
-            u0.type === u1.type)
-        {
-            return ConstValue.getConst(
-                0,
-                u0.type
-            );
-        }
-
-        return BOT;
     }
 );
 
@@ -452,13 +412,6 @@ DivInstr.prototype.constEval = ArithInstr.genConstEval(
         }
 
         return res;
-    },
-    function (u0, u1)
-    {
-        if (u1 instanceof ConstValue && u1.value == 1)
-            return u0;
-
-        return BOT;
     }
 );
 
@@ -472,7 +425,7 @@ ModInstr.prototype.constEval = ArithInstr.genConstEval(
     }
 );
 
-BitOpInstr.genConstEval = function (opFunc, genFunc)
+BitOpInstr.genConstEval = function (opFunc)
 {
     function constEval(getValue, isReachable, queueEdge, params)
     {
@@ -496,7 +449,8 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
                 var result = opFunc(val0, val1);
 
                 // If the result is within the range of the output type, return it
-                if (result >= this.type.getMinVal(params.target) && result <= this.type.getMaxVal(params.target))
+                if (result >= this.type.getMinVal(params.target) && 
+                    result <= this.type.getMaxVal(params.target))
                 {
                     return ConstValue.getConst(
                         result,
@@ -504,11 +458,6 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
                     );
                 }
             }
-        }
-
-        else if (genFunc !== undefined)
-        {
-            return genFunc(v0, v1, this.type, params);
         }
 
         // By default, return the unknown value
@@ -522,72 +471,6 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 & v1;
-    },
-    function (u0, u1, type, params)
-    {
-        var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
-        var TAG_REF_MASK = params.staticEnv.getBinding('TAG_REF_MASK').value;
-
-        if ((u0 instanceof ConstValue && u0.value == 0) ||
-            (u1 instanceof ConstValue && u1.value == 0))
-        {
-            return ConstValue.getConst(
-                0,
-                type
-            );
-        }
-
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
-            u0.type === IRType.box &&
-            !u0.isBoxInt(params) &&
-            u1.type === IRType.pint && 
-            u1.value === TAG_REF_MASK)
-        {
-            return ConstValue.getConst(
-                u0.getTagBits(params),
-                IRType.pint
-            );
-        }
-
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
-            u0.type === IRType.box &&
-            !u1.isBoxInt(params) &&
-            u0.type === IRType.pint && 
-            u0.value === TAG_REF_MASK)
-        {
-            return ConstValue.getConst(
-                u1.getTagBits(params),
-                IRType.pint
-            );
-        }
-
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
-            u0.type === IRType.box &&
-            u1.type === IRType.pint && 
-            u1.value === TAG_INT_MASK)
-        {
-            return ConstValue.getConst(
-                u0.getTagBits(params) & TAG_INT_MASK,
-                IRType.pint
-            );
-        }
-
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
-            u1.type === IRType.box &&
-            u0.type === IRType.pint && 
-            u0.value === TAG_INT_MASK)
-        {
-            return ConstValue.getConst(
-                u1.getTagBits(params) & TAG_INT_MASK,
-                IRType.pint
-            );
-        }
-
-        return BOT;
     }
 );
 
@@ -595,16 +478,6 @@ OrInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 | v1;
-    },
-    function (u0, u1, type)
-    {
-        if (u0 instanceof ConstValue && u0.value == 0)
-            return u1;
-
-        if (u1 instanceof ConstValue && u1.value == 0)
-            return u0;
-
-        return BOT;
     }
 );
 
@@ -655,12 +528,14 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, par
         {
             var castVal = v0.getImmValue(params);
             
-            if (castVal >= this.type.getMinVal(params.target) && castVal <= this.type.getMaxVal(params.target))
+            if (castVal >= this.type.getMinVal(params.target) && 
+                castVal <= this.type.getMaxVal(params.target))
                 result = castVal;
         }
-        else if (v0.type.isInt() && this.type.isInt())
+        else if (v0.type.isInt() && (this.type.isInt() || this.type === IRType.box))
         {
-            if (v0.value >= this.type.getMinVal(params.target) && v0.value <= this.type.getMaxVal(params.target))
+            if (v0.value >= this.type.getMinVal(params.target) && 
+                v0.value <= this.type.getMaxVal(params.target))
                 result = v0.value;
         }
 
@@ -671,11 +546,6 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, par
                 this.type
             );
         }
-    }
-
-    else if (v0.type === this.type)
-    {
-        return v0;
     }
 
     return BOT;
@@ -769,7 +639,7 @@ NeInstr.prototype.constEval = CompInstr.genConstEval(
     }
 );
 
-ArithOvfInstr.genConstEval = function (opFunc, genFunc)
+ArithOvfInstr.genConstEval = function (opFunc)
 {
     function constEval(getValue, isReachable, queueEdge, params)
     {
@@ -799,19 +669,6 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
             }
         }
 
-        else if (genFunc !== undefined)
-        {
-            var result = genFunc(v0, v1);
-
-            if (result !== BOT)
-            {
-                // Add the normal (non-overflow) branch to the work list
-                queueEdge(this, this.targets[0]);
-
-                return result;
-            }
-        }
-
         // By default, both branches are reachable (an overflow could occur)
         queueEdge(this, this.targets[0]);
         queueEdge(this, this.targets[1]);
@@ -827,16 +684,6 @@ AddOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 + v1;
-    },
-    function (u0, u1)
-    {
-        if (u0 instanceof ConstValue && u0.value == 0)
-            return u1;
-
-        if (u1 instanceof ConstValue && u1.value == 0)
-            return u0;
-
-        return BOT;
     }
 );
 
@@ -844,13 +691,6 @@ SubOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 - v1;
-    },
-    function (u0, u1)
-    {
-        if (u1 instanceof ConstValue && u1.value == 0)
-            return u0;
-
-        return BOT;
     }
 );
 
@@ -858,26 +698,13 @@ MulOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 * v1;
-    },
-    function (u0, u1)
+    }
+);
+
+LsftOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
+    function (v0, v1)
     {
-        if (u0 instanceof ConstValue && u0.value == 1)
-            return u1;
-
-        if (u1 instanceof ConstValue && u1.value == 1)
-            return u0;
-
-        if (((u0 instanceof ConstValue && u0.value == 0) || 
-             (u1 instanceof ConstValue && u1.value == 0)) &&
-            u0.type === u1.type)
-        {
-            return ConstValue.getConst(
-                0,
-                u0.type
-            );
-        }
-
-        return BOT;
+        return v0 << v1;
     }
 );
 

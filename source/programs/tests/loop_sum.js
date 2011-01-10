@@ -10,6 +10,8 @@ tests.loop_sum = tests.testSuite();
 
 tests.loop_sum.main = function ()
 {
+    //config.clientParams.print = print;
+
     var loop_sum = compileFileToJSFunc('programs/loop_sum/loop_sum.js', config.clientParams);
 
     var startTimeMs = new Date().getTime();
