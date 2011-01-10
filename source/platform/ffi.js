@@ -58,8 +58,21 @@ FFI version 0.3
 
 */
 
+/*
+var foo2 = import_foreign("foo", ["int", "char*"], "int");
+
+print(foo2(1, "hello"));
 
 
+
+void foreign_proxy(void)
+{
+  context *ctx = ...;
+  int *a = &ctx.a;
+  int (*f)(int,int,int,int,int) = fn_tbl[ctx.fn_id];
+  a[0] = f( a[0], a[1], a[2], a[3], a[4] )
+}
+*/
 
 
 

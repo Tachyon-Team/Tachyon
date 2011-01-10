@@ -28,12 +28,11 @@ const mem = x86.Assembler.prototype.memory;
 irToAsm.config = {};
 
 // Constant values
-irToAsm.config.TRUE  = $(1); 
-irToAsm.config.FALSE = $(0);
+// TODO: Remove once put_prop and get_prop are not used anymore
 irToAsm.config.NULL  = $(0);
-irToAsm.config.UNDEFINED = $(0);
 
 // Global object configuration
+// TODO: Remove once the global object exist in the heap
 irToAsm.config.maxGlobalEntries = 16;
 
 // Register configuration
@@ -74,6 +73,12 @@ irToAsm.config.target = x86.target.x86;
 // all registers are in use
 irToAsm.config.temp = mem(3*(irToAsm.config.target === x86.target.x86 ? 4 : 8),
                           irToAsm.config.context);
+
+// Alternate stack register for calling ffi functions
+irToAsm.config.altStack = EBP;
+
+irToAsm.config.stackAlignByteNb = 16;
+
 
 /** 
     @private
@@ -166,12 +171,14 @@ Returns a new translator object to translate IR to Assembly.
 */
 irToAsm.translator = function (config, params)
 {
+    assert(config !== undefined);
+
     var that = Object.create(irToAsm.translator.prototype);
 
     // Store the compilation parameters on the translator
     that.params = params;
 
-    that.asm = new x86.Assembler(irToAsm.config.target);
+    that.asm = new x86.Assembler(config.target);
     that.asm.codeBlock.bigEndian = false;
     that.strings = {};
     that.stringNb = 0;
@@ -182,10 +189,6 @@ irToAsm.translator = function (config, params)
     that.putPropValLabel = that.asm.labelObj("PUT_PROP");
     that.getPropValLabel = that.asm.labelObj("GET_PROP");
 
-    if (config === undefined) 
-    {
-        config = irToAsm.config;
-    }
     that.config = config;
 
     if (that.asm.is64bitMode())
@@ -371,7 +374,7 @@ irToAsm.translator.prototype.get_prop_val = function ()
     this.get_prop_addr(obj, key, addr);
 
     this.asm.
-    cmp(irToAsm.config.NULL, addr).
+    cmp(this.config.NULL, addr).
     mov($((new ConstValue(undefined, IRType.box)).getImmValue(this.params)), 
           this.config.retValReg).
     je(cont).
@@ -1644,6 +1647,133 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     {
         error("Invalid CallInstr function operand '" + opnds[0] + "'");
     }
+};
+
+CallFFIInstr.prototype.genCode = function (tltor, opnds)
+{
+    const argsReg = tltor.config.argsReg;
+
+    const refByteNb = tltor.config.stack.width() >> 3;
+
+    const stack = tltor.config.stack;
+
+    const context = tltor.config.context;
+
+    const altStack = tltor.config.altStack;
+
+    const stackAlignByteNb = tltor.config.stackAlignByteNb;
+
+    const temp = EAX;
+
+    const opndsNb = opnds.length;
+
+    const cfct = this.uses[0];
+
+    const fctAddr = cfct.funcPtr; 
+
+    const callDest  = tltor.asm.linked(
+                    cfct.funcName, 
+                    function (dstAddr) { return fctAddr.getBytes(); },
+                    fctAddr.width());
+                    
+                    
+
+    assert(altStack !== EAX && altStack !== EDX);
+
+
+    // Iteration
+    var i;
+    var offset;
+
+    // Invariant: opnds are constants, registers or memory location
+    //            containing C-valid object or primitive values
+
+
+    // Move stack pointer in available register
+    tltor.asm.
+    mov(stack, altStack).
+
+    // Reserve space for arguments and context 
+    sub($(refByteNb*(argsReg.length + 1)), stack);
+
+    // Save all opnd in registers on stack
+    for (i=1; i < argsReg.length+1; ++i)
+    {
+        offset = -(i*refByteNb);
+
+        tltor.asm.
+        mov(argsReg[i], mem(offset, altStack));
+    }
+
+    tltor.asm.
+    // Save context
+    mov(context, mem(-(i*refByteNb), altStack)).
+
+    // Align stack pointer
+    //    Add space to save stack pointer
+    sub($(refByteNb), stack).
+    //    Calculate offset for pointer
+    //        Perform modulo calulation on stack pointer
+    mov(stack, EAX).
+    mov($(stackAlignByteNb), EDX).
+    div(EDX).
+
+    sub($(stackAlignByteNb), stack).
+    add(EDX, stack).
+    
+    // Save runtime specific registers
+    mov(altStack, mem(0, stack)).
+
+    // Reserve space for C function parameters
+    sub($(refByteNb*opnds.length), stack);
+
+    // Push argument on stack in reverse order
+    for (i=0; i < opndsNb; ++i)
+    {
+
+        if (opnds[i].type === x86.type.REG)
+        {
+            offset = -(i+1)*refByteNb;
+
+            tltor.asm.
+            mov(mem(offset, altStack), temp);
+        } else if (opnds[i].type === x86.type.MEM)
+        {
+            tltor.asm.
+            mov(mem(opnds[i].disp, altStack), temp);
+        } else if (opnds[i].type === x86.type.IMM_VAL)
+        {
+            tltor.asm.
+            mov(opnds[i], temp);
+        } else
+        {
+            error("invalid opnd type for ffi function call: ", opnds[i].type);
+        }
+
+        tltor.asm.
+        mov(temp, mem(i, stack));
+    }
+
+    // Prepare stack pointer for C calling convention
+    
+
+    tltor.asm.
+    mov(stack, ESP).
+    call(callDest);
+
+    // Move return value into Tachyon calling convention register
+
+    if (tltor.config.retValReg !== EAX)
+    {
+        tltor.asm.
+        mov(EAX, tltor.config.retValReg);
+    }
+
+    // Restore runtime specific registers
+    tltor.asm.
+    mov(mem(opndsNb*refByteNb, ESP), altStack).
+    mov(mem(refByteNb, altStack), context).
+    mov(altStack, stack);
 };
 
 ConstructInstr.prototype.genCode = CallFuncInstr.prototype.genCode;
