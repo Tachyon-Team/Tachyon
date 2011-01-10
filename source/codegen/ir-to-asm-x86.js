@@ -79,7 +79,6 @@ irToAsm.config.altStack = EBP;
 
 irToAsm.config.stackAlignByteNb = 16;
 
-
 /** 
     @private
     Returns an entry point for the function.
@@ -1665,23 +1664,20 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const temp = EAX;
 
-    const opndsNb = opnds.length;
-
     const cfct = this.uses[0];
 
     const fctAddr = cfct.funcPtr; 
 
     const callDest  = tltor.asm.linked(
                     cfct.funcName, 
-                    function (dstAddr) { return dstAddr.
-                                                .addOffset(4).
+                    function (dstAddr) { return dstAddr
+                                                .addOffset(4)
                                                 .getAddrOffsetBytes(fctAddr); },
                     fctAddr.width());
                     
-                    
+    const numArgs = opnds.length - 1;        
 
     assert(altStack !== EAX && altStack !== EDX);
-
 
     // Iteration
     var i;
@@ -1689,7 +1685,6 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     // Invariant: opnds are constants, registers or memory location
     //            containing C-valid object or primitive values
-
 
     // Move stack pointer in available register
     tltor.asm.
@@ -1699,9 +1694,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     sub($(refByteNb*(argsReg.length + 1)), stack);
 
     // Save all opnd in registers on stack
-    for (i=1; i < argsReg.length+1; ++i)
+    for (i = 0; i < argsReg.length; ++i)
     {
-        offset = -(i*refByteNb);
+        offset = -((i+1)*refByteNb);
 
         tltor.asm.
         mov(argsReg[i], mem(offset, altStack));
@@ -1709,7 +1704,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     tltor.asm.
     // Save context
-    mov(context, mem(-(i*refByteNb), altStack)).
+    mov(context, mem(-(i+1)*refByteNb, altStack)).
 
     // Align stack pointer
     //    Add space to save stack pointer
@@ -1717,39 +1712,40 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     //    Calculate offset for pointer
     //        Perform modulo calulation on stack pointer
     mov(stack, EAX).
-    mov($(stackAlignByteNb), EDX).
-    div(EDX).
-
-    sub($(stackAlignByteNb), stack).
-    add(EDX, stack).
+    and($(stackAlignByteNb - 1), EAX).
+    add(EAX, stack).
     
     // Save runtime specific registers
     mov(altStack, mem(0, stack)).
 
     // Reserve space for C function parameters
-    sub($(refByteNb*opnds.length), stack);
+    sub($(refByteNb*numArgs), stack);
 
     // Push argument on stack in reverse order
-    for (i=0; i < opndsNb; ++i)
+    for (i = 0; i < numArgs; ++i)
     {
+        var opnd = opnds[i+1];
 
-        if (opnds[i].type === x86.type.REG)
+        if (opnd.type === x86.type.REG)
         {
             offset = -(i+1)*refByteNb;
 
             tltor.asm.
             mov(mem(offset, altStack), temp);
-        } else if (opnds[i].type === x86.type.MEM)
+        } 
+        else if (opnd.type === x86.type.MEM)
         {
             tltor.asm.
-            mov(mem(opnds[i].disp, altStack), temp);
-        } else if (opnds[i].type === x86.type.IMM_VAL)
+            mov(mem(opnd.disp, altStack), temp);
+        } 
+        else if (opnd.type === x86.type.IMM_VAL)
         {
             tltor.asm.
-            mov(opnds[i], temp);
-        } else
+            mov(opnd, temp);
+        }
+        else
         {
-            error("invalid opnd type for ffi function call: ", opnds[i].type);
+            error("invalid opnd type for ffi function call: ", opnd.type);
         }
 
         tltor.asm.
@@ -1757,14 +1753,11 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // Prepare stack pointer for C calling convention
-    
-
     tltor.asm.
     mov(stack, ESP).
     call(callDest);
 
     // Move return value into Tachyon calling convention register
-
     if (tltor.config.retValReg !== EAX)
     {
         tltor.asm.
@@ -1773,8 +1766,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     // Restore runtime specific registers
     tltor.asm.
-    mov(mem(opndsNb*refByteNb, ESP), altStack).
-    mov(mem(refByteNb, altStack), context).
+    mov(mem(numArgs*refByteNb, ESP), altStack).
+    mov(mem(-(argsReg.length+1) * refByteNb, altStack), context).
     mov(altStack, stack);
 };
 

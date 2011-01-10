@@ -62,13 +62,19 @@ function testIR()
     print(ir);
     */
 
-
+    /*
     var ast = parse_src_file('test_ffi.js');
     var ir = unitToIR(ast, config.hostParams);
     lowerIRFunc(ir, config.hostParams);
     ir.validate();
     print(ir);
-    
+    */
+
+    var func = compileFileToJSFunc('test_ffi.js', config.hostParams);
+    var result = func();
+    func.free();
+    print(result);
+
 
     /*
     var codeblock = backend.compileIRToCB(ir);    

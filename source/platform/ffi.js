@@ -130,7 +130,9 @@ Initialize FFI functions for the current configuration
 function initFFI(params)
 {
     var ffiPrintInt = new CFunction('printInt', ['int'], 'void');
-
     config.hostParams.staticEnv.regBinding('printInt', ffiPrintInt);
+
+    var ffiPrint2Ints = new CFunction('print2Ints', ['int', 'int'], 'void');
+    config.hostParams.staticEnv.regBinding('print2Ints', ffiPrint2Ints);
 }
 

@@ -385,6 +385,11 @@ void printInt(int val)
     printf("%i\n", val);
 }
 
+void print2Ints(int val1, int val2)
+{
+    printf("%i and %i\n", val1, val2);
+}
+
 typedef void (*FPTR)();
 
 v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
@@ -402,6 +407,8 @@ v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
 
     if (strcmp(fName, "printInt") == 0)
         address = (FPTR)(printInt);
+    else if (strcmp(fName, "print2Ints") == 0)
+        address = (FPTR)(print2Ints);
 
     if (address == NULL)
     {
