@@ -32,6 +32,7 @@ BASE_SRCS =                         \
     ir/types.js                     \
     ir/static.js                    \
     ir/instructions.js              \
+    ir/constants.js                 \
     ir/iir.js                       \
     ir/cfg.js                       \
     ir/functions.js                 \

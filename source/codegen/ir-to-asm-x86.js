@@ -374,7 +374,7 @@ irToAsm.translator.prototype.get_prop_val = function ()
 
     this.asm.
     cmp(this.config.NULL, addr).
-    mov($((new ConstValue(undefined, IRType.box)).getImmValue(this.params)), 
+    mov($(ConstValue.getConst(undefined, IRType.box).getImmValue(this.params)), 
           this.config.retValReg).
     je(cont).
     // The following instruction causes a bus error only
@@ -383,7 +383,6 @@ irToAsm.translator.prototype.get_prop_val = function ()
     mov(mem(this.G_VALUE_OFFSET,addr), this.config.retValReg).
     label(cont).
     ret();
-
 };
 
 irToAsm.translator.prototype.get_prop_addr = function (obj, key, addr)
@@ -487,8 +486,8 @@ irToAsm.translator.prototype.dump_global_object = function ()
 
 irToAsm.translator.prototype.dump_context_object = function ()
 {
-    const immTrue = (new ConstValue(true, IRType.none)).getImmValue(this.params);
-    const immFalse = (new ConstValue(false, IRType.none)).getImmValue(this.params);
+    const immTrue = ConstValue.getConst(true, IRType.box).getImmValue(this.params);
+    const immFalse = ConstValue.getConst(false, IRType.box).getImmValue(this.params);
 
     this.asm.
     label(this.contextLabel);
@@ -1497,7 +1496,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // TODO: Make the proper call to the primitive
 
             // Always assume that it is a function for now
-            const immTrue = (new ConstValue(true, IRType.none)).getImmValue(tltor.params);
+            const immTrue = ConstValue.getConst(1, IRType.bool).getImmValue(tltor.params);
 
             tltor.asm.
             mov($(immTrue), dest);
@@ -1506,8 +1505,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         {
             // TODO: Make the proper call to the primitive
             // Ignore for now, simply return undefined
-            const immUndefined = 
-                  (new ConstValue(undefined, IRType.box)).getImmValue(tltor.params);
+            const immUndefined = ConstValue.getConst(undefined, IRType.box).getImmValue(tltor.params);
 
             tltor.asm.
             mov($(immUndefined), dest);

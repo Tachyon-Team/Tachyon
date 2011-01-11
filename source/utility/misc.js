@@ -117,6 +117,17 @@ function isNonNegInt(val)
 }
 
 /**
+Test if a value is an integer
+*/
+function isInt()
+{
+    return (
+        typeof val === 'number' &&
+        Math.floor(val) === val
+    );
+}
+
+/**
 Format a given number string to limit the number of decimals
 */
 function fmtNumDecimals(numVal, numDecs)
