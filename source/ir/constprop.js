@@ -524,6 +524,14 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, par
         {
             result = v0.value;
         }
+
+        else if (v0.type.isInt() && this.type.isInt())
+        {
+            if (v0.value >= this.type.getMinVal(params.target) && 
+                v0.value <= this.type.getMaxVal(params.target))
+                result = v0.value;
+        }
+
         else if (v0.type === IRType.box && this.type.isInt())
         {
             var castVal = v0.getImmValue(params);
@@ -532,11 +540,16 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, par
                 castVal <= this.type.getMaxVal(params.target))
                 result = castVal;
         }
-        else if (v0.type.isInt() && (this.type.isInt() || this.type === IRType.box))
+
+        else if (v0.type.isInt() && this.type === IRType.box)
         {
-            if (v0.value >= this.type.getMinVal(params.target) && 
-                v0.value <= this.type.getMaxVal(params.target))
-                result = v0.value;
+            var TAG_NUM_BITS_INT = params.staticEnv.getBinding('TAG_NUM_BITS_INT').value;
+
+            var castVal = v0.value >> TAG_NUM_BITS_INT;
+
+            if (castVal >= this.type.getMinVal(params.target) && 
+                castVal <= this.type.getMaxVal(params.target))
+                result = castVal;
         }
 
         if (result !== undefined)
