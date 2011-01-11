@@ -1505,20 +1505,20 @@ var CallFFIInstr = instrMaker(
         );
 
         assert (
-            inputVals.length - 1 == inputVals[0].argTypes.length
+            inputVals.length - 1 === inputVals[0].cArgTypes.length
         );
 
         for (var i = 1; i < inputVals.length; ++i)
         {
             assert (
-                inputVals[i].type === inputVals[0].argTypes[i-1],
+                inputVals[i].type === inputVals[0].cArgTypes[i-1],
                 'argument type does not match (arg' + (i-1) + ' ' +
                 inputVals[i].type + ', ' +
                 inputVals[0].funcName + ')'
             );
         }
 
-        this.type = inputVals[0].retType;
+        this.type = inputVals[0].cRetType;
     },
     new CallInstr()
 );

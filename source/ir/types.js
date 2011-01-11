@@ -93,6 +93,8 @@ Get the type size in bytes
 */
 IRType.prototype.getSizeBytes = function (target)
 {
+    assert (target instanceof Target);
+
     switch (this)
     {
         case IRType.none:

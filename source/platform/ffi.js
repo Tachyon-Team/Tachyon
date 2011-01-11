@@ -7,11 +7,10 @@ the C/C++ code required by Tachyon.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /*
-
 FFI version 0.1, minimal pour bootstrap
 ---------------------------------------
 
@@ -79,6 +78,9 @@ function cTypeToIRType(cType, params)
 {
     switch (cType)
     {
+        case 'short':
+        return IRType.i16;
+
         case 'int':
         return IRType.pint;
 
@@ -96,17 +98,74 @@ function cTypeToIRType(cType, params)
 /**
 Represents a C FFI function
 */
-function CFunction(funcName, argTypes, retType, params)
+function CFunction(
+    funcName,
+    cArgTypes,
+    cRetType,
+    params,
+    tachArgTypes,
+    tachRetType
+)
 {
+    assert (
+        cArgTypes instanceof Array && cRetType !== undefined
+    );
+    assert (
+        params instanceof CompParams
+    );
+
+    // If tachyon argument types are not specified
+    if (tachArgTypes === undefined)
+    {
+        tachArgTypes = [];
+        for (var i = 0; i < cArgTypes.length; ++i)
+            tachArgTypes.push(IRType.box);
+    }
+
+    // If the tachyon return type was not specified
+    if (tachRetType === undefined)
+    {
+        tachRetType = IRType.box;
+    }
+
+    assert (
+        tachArgTypes.length === cArgTypes.length
+    );
+
+    /**
+    Name of the C function
+    @field
+    */
     this.funcName = funcName;
 
+    /**
+    Argument types of the C function
+    @field
+    */
+    this.cArgTypes = cArgTypes.map(cTypeToIRType);
 
-    this.argTypes = argTypes.map(cTypeToIRType);
+    /**
+    Return type of the C function
+    @field
+    */
+    this.cRetType = cTypeToIRType(cRetType, params);
 
+    /**
+    Argument types of the wrapper
+    @field
+    */
+    this.tachArgTypes = tachArgTypes;
 
-    this.retType = cTypeToIRType(retType, params);
+    /**
+    Return type of the wrapper
+    @field
+    */
+    this.tachRetType = tachRetType;
 
-
+    /**
+    Address of the C function
+    @field
+    */
     this.funcPtr = asm.address(getFuncAddr(funcName));
 }
 CFunction.prototype = new IRValue();
@@ -125,14 +184,146 @@ Obtain a string representation of the function
 CFunction.prototype.toString = CFunction.prototype.getValName;
 
 /**
+Generate code for a wrapper function for a C FFI function
+*/
+CFunction.prototype.genWrapper = function ()
+{
+    function genTypeConv(inType, outType, inVar)
+    {
+        switch (inType)
+        {
+            case IRType.box:
+            switch (outType)
+            {
+                case IRType.pint:
+                return 'unboxInt(' + inVar + ')';
+
+                case IRType.i16:
+                return 'iir.icast(IRType.i16, unboxInt(' + inVar + '))';
+            }
+            break;
+
+            case IRType.pint:
+            switch (outType)
+            {
+                case IRType.box:
+                return 'boxInt(' + inVar + ')';
+            }
+            break;
+
+            case IRType.i16:
+            switch (outType)
+            {
+                case IRType.box:
+                return 'boxInt(iir.icast(IRType.i16, ' + inVar + '))';
+            }
+            break;
+        }
+
+        assert (
+            false,
+            'cannot convert from ' + inType + ' to ' + outType
+        );
+    }
+
+    // Source string to store the generated code
+    var sourceStr = '';
+
+    sourceStr += 'function ' + this.funcName + '(';
+
+    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    {
+        sourceStr += 'a' + i;        
+        if (i != this.tachArgTypes.length - 1)
+            sourceStr += ',';
+    }
+
+    sourceStr += ')\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:static";\n';
+    sourceStr += '\t"tachyon:ret ' + this.tachRetType + '";\n';
+
+    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    {
+        var argType = this.tachArgTypes[i];
+        sourceStr += '\t"tachyon:arg a' + i + ' ' + argType + '";\n';
+    }
+
+    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    {
+        var cType = this.cArgTypes[i];
+        var tType = this.tachArgTypes[i];
+
+        if (cType === tType)
+            continue;
+
+        var varName = 'a' + i;
+
+        sourceStr += '\t' + varName + ' = ';
+        sourceStr += genTypeConv(tType, cType, varName) + ';\n';
+    }
+    
+    var retVoid = this.cRetType === IRType.none;
+
+    sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + 'iir.call_ffi(ffi_' + this.funcName;
+
+    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    {
+        sourceStr += ', a' + i;
+    }
+
+    sourceStr += ');\n';
+
+    if (retVoid === false)
+    {
+        sourceStr += '\treturn ' + genTypeConv(this.cRetType, this.tachRetType, 'r') + ';\n';
+    }
+
+    sourceStr += '}\n';
+
+    //print(sourceStr);
+
+    // Return the generated code
+    return sourceStr;
+}
+
+/**
 Initialize FFI functions for the current configuration
 */
 function initFFI(params)
 {
-    var ffiPrintInt = new CFunction('printInt', ['int'], 'void');
-    config.hostParams.staticEnv.regBinding('printInt', ffiPrintInt);
+    function regFFI(ffiFunc)
+    {
+        params.ffiFuncs[ffiFunc.funcName] = ffiFunc;
+        params.staticEnv.regBinding('ffi_' + ffiFunc.funcName, ffiFunc);
+    }
 
-    var ffiPrint2Ints = new CFunction('print2Ints', ['int', 'int'], 'void');
-    config.hostParams.staticEnv.regBinding('print2Ints', ffiPrint2Ints);
+    regFFI(new CFunction(
+        'printInt', 
+        ['int'], 
+        'void',
+        params
+    ));
+
+    regFFI(new CFunction(
+        'sum2Ints', 
+        ['int', 'int'], 
+        'int',
+        params
+    ));
+
+    regFFI(new CFunction(
+        'printHello', 
+        [], 
+        'void',
+        params
+    ));
+
+    regFFI(new CFunction(
+        'print2Shorts', 
+        ['short', 'short'], 
+        'void',
+        params
+    ));
 }
 

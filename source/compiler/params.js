@@ -56,5 +56,10 @@ function CompParams(cfgObj)
     @field
     */
     this.memLayouts = {};
+
+    /**
+    FFI functions used by compiler
+    */
+    this.ffiFuncs = {};    
 }
 

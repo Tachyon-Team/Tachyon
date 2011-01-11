@@ -74,9 +74,6 @@ irToAsm.config.target = x86.target.x86;
 irToAsm.config.temp = mem(3*(irToAsm.config.target === x86.target.x86 ? 4 : 8),
                           irToAsm.config.context);
 
-// Alternate stack register for calling ffi functions
-irToAsm.config.altStack = EBP;
-
 irToAsm.config.stackAlignByteNb = 16;
 
 /** 
@@ -1656,11 +1653,11 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const context = tltor.config.context;
 
-    const altStack = tltor.config.altStack;
+    const altStack = EBP;
+
+    const scratchReg = EDI;
 
     const stackAlignByteNb = tltor.config.stackAlignByteNb;
-
-    const temp = EAX;
 
     const cfct = this.uses[0];
 
@@ -1675,7 +1672,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
                     
     const numArgs = opnds.length - 1;        
 
-    assert(altStack !== EAX && altStack !== EDX);
+    assert(altStack !== scratchReg);
+    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r); });
+    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r); });
 
     // Iteration
     var i;
@@ -1688,71 +1687,90 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.
     mov(stack, altStack).
 
-    // Reserve space for arguments and context 
-    sub($(refByteNb*(argsReg.length + 1)), stack);
+    // Reserve space for context register
+    sub($(refByteNb), stack).
 
-    // Save all opnd in registers on stack
-    for (i = 0; i < argsReg.length; ++i)
-    {
-        offset = -((i+1)*refByteNb);
-
-        tltor.asm.
-        mov(argsReg[i], mem(offset, altStack));
-    }
-
-    tltor.asm.
     // Save context
-    mov(context, mem(-(i+1)*refByteNb, altStack)).
+    mov(context, mem(-refByteNb, altStack)).
 
     // Align stack pointer
-    //    Add space to save stack pointer
+    //  Add space to save stack pointer
     sub($(refByteNb), stack).
     //    Calculate offset for pointer
     //        Perform modulo calulation on stack pointer
-    mov(stack, EAX).
-    and($(stackAlignByteNb - 1), EAX).
-    add(EAX, stack).
+    sub($(stackAlignByteNb), stack).
+    mov(stack, scratchReg).
+    and($(stackAlignByteNb - 1), scratchReg).
+    add(scratchReg, stack).
     
-    // Save runtime specific registers
-    mov(altStack, mem(0, stack)).
+    // Save the old stack pointer on top of the stack
+    mov(altStack, mem(0, stack));
+
+    // Stack space taken by arguments
+    var argStackSpace = 0;
+
+    // Offsets to write each argument at
+    var argOffsets = [];
+
+    // For each argument
+    for (i = 0; i < numArgs; ++i)
+    {
+        argOffsets.push(argStackSpace);
+
+        var opndSizeBytes = this.uses[i+1].type.getSizeBytes(tltor.params.target); 
+
+        argStackSpace += opndSizeBytes;
+
+        // Align the offset for the next argument
+        var rem = argStackSpace % tltor.params.target.ptrSizeBytes;
+        if (rem != 0)
+            argStackSpace += tltor.params.target.ptrSizeBytes - rem;
+    }
 
     // Reserve space for C function parameters
-    sub($(refByteNb*numArgs), stack);
+    tltor.asm.
+    sub($(argStackSpace), stack);
 
-    // Push argument on stack in reverse order
+    // Write argument on stack in reverse order
     for (i = 0; i < numArgs; ++i)
     {
         var opnd = opnds[i+1];
 
+        var opndSizeBits = this.uses[i+1].type.getSizeBits(tltor.params.target);
+
+        var offset = argOffsets[i];
+
         if (opnd.type === x86.type.REG)
         {
-            offset = -(i+1)*refByteNb;
-
             tltor.asm.
-            mov(mem(offset, altStack), temp);
+            mov(opnd, mem(offset, stack));
         } 
         else if (opnd.type === x86.type.MEM)
         {
             tltor.asm.
-            mov(mem(opnd.disp, altStack), temp);
+            mov(mem(opnd.disp, altStack), scratchReg).
+            mov(scratchReg, mem(offset, stack));
         } 
         else if (opnd.type === x86.type.IMM_VAL)
         {
             tltor.asm.
-            mov(opnd, temp);
+            mov(opnd, mem(offset, stack), opndSizeBits);
         }
         else
         {
             error("invalid opnd type for ffi function call: ", opnd.type);
         }
-
-        tltor.asm.
-        mov(temp, mem(i, stack));
     }
 
     // Prepare stack pointer for C calling convention
+    if (stack !== ESP)
+    {
+        tltor.asm.
+        mov(stack, ESP);
+    }
+
+    // Call the C function
     tltor.asm.
-    mov(stack, ESP).
     call(callDest);
 
     // Move return value into Tachyon calling convention register
@@ -1764,8 +1782,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     // Restore runtime specific registers
     tltor.asm.
-    mov(mem(numArgs*refByteNb, ESP), altStack).
-    mov(mem(-(argsReg.length+1) * refByteNb, altStack), context).
+    mov(mem(argStackSpace, ESP), altStack).
+    mov(mem(-refByteNb, altStack), context).
     mov(altStack, stack);
 };
 

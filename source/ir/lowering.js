@@ -170,14 +170,27 @@ function compPrimitives(params)
 
         if (layout.isInstantiable() === false)
             continue;
-
+ 
         layoutSrc += layout.genMethods();
+    }
+
+    // Declare a variable for the FFI wrapper source
+    var wrapperSrc = '';
+
+    // Generate wrapper code for the FFI functions
+    for (var f in params.ffiFuncs)
+    {
+        var func = params.ffiFuncs[f];
+
+        wrapperSrc += func.genWrapper();
     }
 
     // Build a list of the ASTs of the primitive code
     var astList = [
         // Generated code for the object layouts
         parse_src_str(layoutSrc),
+        // Generated code for the FFI functions
+        parse_src_str(wrapperSrc),
         // Source code for the primitives
         parse_src_file('runtime/primitives.js'),
         // Source code for string operations
