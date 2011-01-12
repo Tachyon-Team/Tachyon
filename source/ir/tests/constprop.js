@@ -15,21 +15,94 @@ Test suite for constant propagation
 tests.constprop = tests.testSuite();
 
 /**
-Object literal expression
+Helper functions for this test suite
 */
-tests.constprop.arith = function ()
-{
-    ir = tests.ir.helpers.testSource(
-        "                                       \
-            function foo(a)                     \
-            {                                   \
-                return (2+3) * 4;               \
-            }                                   \
-        "
-        //, true
-    );
+tests.constprop.helpers = {};
 
-    // TODO: test that return value is correct
-    // Write a function to do this
+/**
+Test that only a constant value is returned
+*/
+tests.constprop.helpers.returnsCst = function (ir, constVal)
+{
+    tests.ir.helpers.forEachInstr(
+        ir,
+        function (instr)
+        {
+            if (instr instanceof RetInstr)
+            {
+                if (instr.uses[0] !== constVal)
+                    error('wrong constant returned');
+            }
+        },
+        false
+    );
 };
+
+/**
+Generate a constant propagation test
+*/
+tests.constprop.helpers.genTest = function (testCode, constVal)
+{
+    return function ()
+    {
+        ir = tests.ir.helpers.testSource(
+            "                                       \
+                function foo(a)                     \
+                {                                   \
+                " + testCode + "                    \
+                }                                   \
+            "
+        );
+
+        tests.constprop.helpers.returnsCst(ir, constVal);
+    }
+}
+
+/**
+Addition test
+*/
+tests.constprop.add = tests.constprop.helpers.genTest(
+    'return 6 + 4;',
+    ConstValue.getConst(10)
+);
+
+/**
+Addition test
+*/
+tests.constprop.sub = tests.constprop.helpers.genTest(
+    'return 6 - 3;',
+    ConstValue.getConst(3)
+);
+
+/**
+Multiplication test
+*/
+tests.constprop.mul = tests.constprop.helpers.genTest(
+    'return 6 * 3;',
+    ConstValue.getConst(18)
+);
+
+/**
+Division test
+*/
+tests.constprop.div = tests.constprop.helpers.genTest(
+    'return 6 / 3;',
+    ConstValue.getConst(2)
+);
+
+/**
+Reciprocal test
+*/
+tests.constprop.divmul = tests.constprop.helpers.genTest(
+    'return (6 / 3) * 3;',
+    ConstValue.getConst(6)
+);
+
+/**
+Complex expression test
+*/
+tests.constprop.expr = tests.constprop.helpers.genTest(
+    'return ((6 / 3) + 2) * 3;',
+    ConstValue.getConst(12)
+);
 

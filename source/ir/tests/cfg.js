@@ -119,6 +119,13 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             r1
         );
         addInstr(
+            new ICastInstr(
+                IRType.box,
+                r1.instrs[0]
+            ),
+            r1
+        );
+        addInstr(
             new JumpInstr(merge),
             r1
         );
@@ -126,7 +133,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         // Merge block
         addInstr(
             new PhiInstr(
-                [l1.instrs[0], r1.instrs[0]],
+                [l1.instrs[0], r1.instrs[1]],
                 [l2, r1]
             ),
             merge

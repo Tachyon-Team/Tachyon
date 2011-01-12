@@ -55,7 +55,7 @@ tests.ir.helpers.testSource = function (sourceStr, printOut)
 /**
 Apply a function to each instruction in an IR function and its sub-functions
 */
-tests.ir.helpers.forEachInstr = function (ir, instrFunc)
+tests.ir.helpers.forEachInstr = function (ir, instrFunc, testModule)
 {
     // Get the list of all functions in the tree
     var flist = ir.getChildrenList();
@@ -63,7 +63,12 @@ tests.ir.helpers.forEachInstr = function (ir, instrFunc)
     // Apply the function to each instruction of each function
     for (var i = 0; i < flist.length; ++i)
     {
-        for (var it = flist[i].virginCFG.getInstrItr(); it.valid(); it.next())
+        var func = flist[i];
+
+        if (func === ir && testModule !== true)
+            continue;
+
+        for (var it = func.virginCFG.getInstrItr(); it.valid(); it.next())
         {
             instrFunc(it.get());
         }

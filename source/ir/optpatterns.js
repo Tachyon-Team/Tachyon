@@ -888,7 +888,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 LsftOvfInstr,
                 instr.uses[1],
                 ConstValue.getConst(
-                    highestBit(instr.uses[0].value),
+                    highestBit(instr.uses[0].getImmValue(params)),
                     IRType.pint
                 )
             );
@@ -906,7 +906,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 LsftOvfInstr,
                 instr.uses[0],
                 ConstValue.getConst(
-                    highestBit(instr.uses[1].value),
+                    highestBit(instr.uses[1].getImmValue(params)),
                     IRType.pint
                 )
             );

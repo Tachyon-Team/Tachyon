@@ -357,7 +357,21 @@ ArithInstr.genConstEval = function (opFunc)
 
         if (v0 instanceof ConstValue && v1 instanceof ConstValue)
         {
-            var result = opFunc(v0.value, v1.value, v0.type);
+            if (v0.isInt() && v1.isInt())
+            {
+                v0 = v0.getImmValue(params);
+                v1 = v1.getImmValue(params);
+            }
+            else
+            {
+                v0 = v0.value;
+                v1 = v1.value;
+            }
+
+            var result = opFunc(v0, v1, this.type);
+
+            if (this.type === IRType.box)
+                result >>= params.staticEnv.getBinding('TAG_NUM_BITS_INT').value;
 
             // If there was no overflow, return the result
             if (result >= this.type.getMinVal(params.target) && 
@@ -403,7 +417,7 @@ DivInstr.prototype.constEval = ArithInstr.genConstEval(
     {
         var res = v0 / v1;
 
-        if (type.isInt())
+        if (type.isInt() || type === IRType.box)
         {
             if (res > 0)
                 return Math.floor(res);
@@ -418,7 +432,7 @@ DivInstr.prototype.constEval = ArithInstr.genConstEval(
 ModInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1, type)
     {
-        if (type.isInt() && v0 < 0 || v1 < 0)
+        if (type.isInt() && (v0 < 0 || v1 < 0))
             return NaN;
 
         return v0 % v1;
@@ -439,14 +453,19 @@ BitOpInstr.genConstEval = function (opFunc)
         if (v0 instanceof ConstValue && v1 instanceof ConstValue &&
             v0.isInt() && v1.isInt())
         {
-            var val0 = v0.getImmValue(params);
-            var val1 = v1.getImmValue(params);
+            v0 = v0.getImmValue(params);
+            v1 = v1.getImmValue(params);
 
             // If both values fit in the int32 range
-            if (val0 >= IRType.i32.getMinVal(params.target) && val0 <= IRType.i32.getMaxVal(params.target) &&
-                val1 >= IRType.i32.getMinVal(params.target) && val1 <= IRType.i32.getMaxVal(params.target))
+            if (v0 >= IRType.i32.getMinVal(params.target) && 
+                v0 <= IRType.i32.getMaxVal(params.target) &&
+                v1 >= IRType.i32.getMinVal(params.target) && 
+                v1 <= IRType.i32.getMaxVal(params.target))
             {
-                var result = opFunc(val0, val1);
+                var result = opFunc(v0, v1);
+
+                if (this.type === IRType.box)
+                    result >>= params.staticEnv.getBinding('TAG_NUM_BITS_INT').value;
 
                 // If the result is within the range of the output type, return it
                 if (result >= this.type.getMinVal(params.target) && 
@@ -666,10 +685,25 @@ ArithOvfInstr.genConstEval = function (opFunc)
 
         if (v0 instanceof ConstValue && v1 instanceof ConstValue)
         {
-            var result = opFunc(v0.value, v1.value, v0.type);
+            if (v0.isInt() && v1.isInt())
+            {
+                v0 = v0.getImmValue(params);
+                v1 = v1.getImmValue(params);
+            }
+            else
+            {
+                v0 = v0.value;
+                v1 = v1.value;
+            }
+
+            var result = opFunc(v0, v1);
+
+            if (this.type === IRType.box)
+                result >>= params.staticEnv.getBinding('TAG_NUM_BITS_INT').value;
 
             // If there was no overflow
-            if (result >= IRType.pint.getMinVal(params.target) && result <= IRType.pint.getMaxVal(params.target))
+            if (result >= IRType.pint.getMinVal(params.target) &&
+                result <= IRType.pint.getMaxVal(params.target))
             {
                 // Add the normal (non-overflow) branch to the work list
                 queueEdge(this, this.targets[0]);
@@ -677,7 +711,7 @@ ArithOvfInstr.genConstEval = function (opFunc)
                 // Return the result
                 return ConstValue.getConst(
                     result,
-                    v0.type
+                    this.type
                 );
             }
         }
