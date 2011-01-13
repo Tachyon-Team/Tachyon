@@ -949,6 +949,54 @@ function putPropVal(obj, propName, propVal)
     putProp(obj, propName, propHash, propVal);
 }
 
+// FIXME: temporary until we no longer special case these functions in
+// the backend
+function __putPropVal(obj, propName, propVal)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Get the hash code for the property
+    // Boxed value, may be a string or an int
+    var propHash = getHash(propName);
+
+    // Set the property on the object
+    putProp(obj, propName, propHash, propVal);
+}
+
+// FIXME: temporary until we no longer special case these functions in
+// the backend
+function __getPropVal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // TODO: throw error if not object
+    // - Maybe not, should never happen in practice... toObject
+    // - What we actually want is a debug assertion
+
+    // Get the hash code for the property
+    // Boxed value, may be a string or an int
+    var propHash = getHash(propName);
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    // If the property isn't defined
+    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    {
+        // Return the undefined value
+        return UNDEFINED;
+    }
+
+    // Return the property value we found
+    return prop;
+}
+
 /**
 Test if a property exists on an object
 */

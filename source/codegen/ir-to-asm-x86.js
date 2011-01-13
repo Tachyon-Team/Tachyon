@@ -1512,7 +1512,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             const primEp = irToAsm.getEntryPoint(this.uses[0], undefined, 
                                                  tltor.config);
 
-            assert(opndNb <= argRegNb);
+            assert(opndNb <= argRegNb, opnds[0].funcName);
 
             // Move arguments in the right registers
             map = allocator.mapping();

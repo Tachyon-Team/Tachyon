@@ -1,4 +1,4 @@
-function putPropVal2(obj, propName, propVal)
+function __putPropVal2(obj, propName, propVal)
 {
     "tachyon:noglobal";
 
@@ -17,7 +17,7 @@ function putPropVal2(obj, propName, propVal)
     putProp(obj, propName, propHash, propVal);
 }
 
-function getPropVal2(obj, propName)
+function __getPropVal2(obj, propName)
 {
     "tachyon:noglobal";
 
@@ -56,12 +56,10 @@ function testObjs()
 
     // TODO: look at assembler listing?
 
-    putPropVal2(obj, 0, 35);
+    __putPropVal2(obj, 0, 35);
 
-    return getPropVal2(obj, 0);
+    //return __getPropVal2(obj, 0);
 
-
-    // TODO: test putProp, getProp
 
     //obj[0] = 33;
 
@@ -105,12 +103,6 @@ function testObjs()
     69: 4
     73: 132
     */
-
-
-
-
-
-
 }
 
 function proxy()
