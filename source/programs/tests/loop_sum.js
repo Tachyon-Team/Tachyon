@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Fibonacci implementation to test the whole compiler.
+Test of a loop computing a sum.
 
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved

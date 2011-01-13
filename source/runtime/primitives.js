@@ -660,7 +660,7 @@ function div(v1, v2)
     {
         // Perform a raw machine division
         // The tag bits will cancel out
-        var divRes = iir.icast(IRType.pint, iir.div(v1, v2));
+        var divRes = iir.div(v1, v2);
 
         // Box the result value
         return boxInt(divRes);

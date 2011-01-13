@@ -650,14 +650,14 @@ function instrMaker(
         }
 
         // If an error occurs, rethrow it, including the instruction name
-        catch (error)
+        catch (errorVal)
         {
             var errorStr = 
                 'Invalid arguments to "' + mnemonic + '" instruction: ' +
-                error.toString();
+                errorVal.toString();
             ;
 
-            throw errorStr;
+            error(errorStr);
         }
 
         // If the mnemonic name is not set, call the name setting function
@@ -802,7 +802,7 @@ ArithInstr.prototype = new IRInstr();
 /**
 Default initialization function for arithmetic instructions
 */
-ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+ArithInstr.initFunc = function (typeParams, inputVals, branchTargets)
 {
     instrMaker.validNumInputs(inputVals, 2, 2);
 
@@ -815,6 +815,28 @@ ArithInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     );
     
     this.type = inputVals[0].type;
+};
+
+/**
+Initialization function for arithmetic instructions which can interfere
+with tag bits
+*/
+ArithInstr.initFuncUntag = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2, 2);
+
+    assert (
+        (inputVals[0].type === IRType.box ||
+         inputVals[0].type.isNumber())
+        &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types'
+    );
+
+    if (inputVals[0].type === IRType.box)
+        this.type = IRType.pint;
+    else
+        this.type = inputVals[0].type;
 };
 
 /**
@@ -890,7 +912,7 @@ var SubInstr = instrMaker(
 */
 var MulInstr = instrMaker(
     'mul',
-    undefined,
+    ArithInstr.initFuncUntag,
     undefined,
     new ArithInstr()
 );
@@ -901,7 +923,7 @@ var MulInstr = instrMaker(
 */
 var DivInstr = instrMaker(
     'div',
-    undefined,
+    ArithInstr.initFuncUntag,
     undefined,
     new ArithInstr()
 );
@@ -912,7 +934,7 @@ var DivInstr = instrMaker(
 */
 var ModInstr = instrMaker(
     'mod',
-    undefined,
+    ArithInstr.initFunc,
     undefined,
     new ArithInstr()
 );
@@ -935,7 +957,7 @@ ArithOvfInstr.prototype = new IRInstr();
 /**
 Default initialization function for arithmetic instructions w/ overflow
 */
-ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+ArithOvfInstr.initFunc = function (typeParams, inputVals, branchTargets)
 {
     instrMaker.validNumInputs(inputVals, 2, 2);
     assert (
@@ -954,12 +976,35 @@ ArithOvfInstr.prototype.initFunc = function (typeParams, inputVals, branchTarget
 };
 
 /**
+Initialization function for arithmetic instructions w/ overflow which can
+interfere with tag bits.
+*/
+ArithOvfInstr.initFuncUntag = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2, 2);
+    assert (
+        (inputVals[0].type === IRType.pint &&
+         inputVals[1].type === inputVals[0].type)
+        ||
+        (inputVals[0].type === IRType.box &&
+         inputVals[1].type === inputVals[0].type)
+        ||
+        (inputVals[0].type === IRType.box &&
+         inputVals[1].type === IRType.pint),
+        'invalid input types'
+    );
+    
+    // The return type is pint, even if the inputs are boxed
+    this.type = IRType.pint;
+};
+
+/**
 @class Instruction to add integer values with overflow handling
 @augments ArithOvfInstr
 */
 var AddOvfInstr = instrMaker(
     'add_ovf',
-    undefined,
+    ArithOvfInstr.initFunc,
     ['normal', 'overflow'],
     new ArithOvfInstr()
 );
@@ -970,7 +1015,7 @@ var AddOvfInstr = instrMaker(
 */
 var SubOvfInstr = instrMaker(
     'sub_ovf',
-    undefined,
+    ArithOvfInstr.initFunc,
     ['normal', 'overflow'],
     new ArithOvfInstr()
 );
@@ -981,7 +1026,7 @@ var SubOvfInstr = instrMaker(
 */
 var MulOvfInstr = instrMaker(
     'mul_ovf',
-    undefined,
+    ArithOvfInstr.initFuncUntag,
     ['normal', 'overflow'],
     new ArithOvfInstr()
 );
@@ -992,7 +1037,7 @@ var MulOvfInstr = instrMaker(
 */
 var LsftOvfInstr = instrMaker(
     'lsft_ovf',
-    undefined,
+    ArithOvfInstr.initFuncUntag,
     ['normal', 'overflow'],
     new ArithOvfInstr()
 );

@@ -235,7 +235,7 @@ CFunction.prototype.genWrapper = function ()
     {
         sourceStr += 'a' + i;        
         if (i != this.tachArgTypes.length - 1)
-            sourceStr += ',';
+            sourceStr += ', ';
     }
 
     sourceStr += ')\n';

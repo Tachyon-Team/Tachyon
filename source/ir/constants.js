@@ -13,78 +13,32 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 @class Represents constant values in the IR
 @augments IRValue
 */
-function ConstValue(value, bitPattern, type)
+function ConstValue(value, type)
 {
-    /*
-    TODO: want to be able to represent some boxed values directly
-    as their bit patterns.
-
-    Boxed integers should automatically be represented this way internally.
-
-    bitPattern flag specifies that value is a bit pattern. Eventually, will
-    want to be able to get a boxed value constant by its bit pattern. Will want
-
-    ConstValue.fromBits(bitPattern, type)
-    ConstValue.getIntVal()
-    ConstValue.inRange(intVal, target)    
-    */
-
-    // If the value is integer, it will be represented as a bit pattern
-    if (type.isInt())
-    {
-        bitPattern = true;
-    }
-
-    // If the value is a boxed integer, always represent it as its bit pattern
-    if (type === IRType.box && isInt(value) && bitPattern === false)
-    {
-        var TAG_NUM_BITS_INT = params.staticEnv.getBinding('TAG_NUM_BITS_INT').value;
-
-        bitPattern = true;
-        value = value << TAG_NUM_BITS_INT;
-    }
-
     // Ensure that the specified value is valid
     assert (
-        !(bitPattern === false && type.isInt() && 
-        (typeof value !== 'number' || Math.floor(value) !== value)),
+        !(type.isInt() && 
+        (typeof value != 'number' || Math.floor(value) != value)),
         'integer constants require integer values'
     );
     assert (
-        !(bitPattern === false && type.isFP() && typeof value != 'number'),
+        !(type.isFP() && typeof value != 'number'),
         'floating-point constants require number values'
     );
     assert (
-        !(bitPattern === false && typeof value == 'string' && type !== IRType.box),
+        !(typeof value == 'string' && type !== IRType.box),
         'string-valued constants must have box type'
-    );
-    assert (
-        !(bitPattern === false && 
-        (value === true || value === false || value === undefined || value === null) &&
-        type != IRType.box),
-        'true, false, undefined and null must be represented using the box type'
     );
     assert (
         !(type === IRType.bool && value != 0 && value != 1),
         'boolean constants must be 0 or 1'
-    );
-    assert (
-        !(bitPattern === true &&
-        (typeof value !== 'number' || Math.floor(value) != value)),
-        'bit patterns must be integer values'
-    );
+    );        
 
     /**
     Value of the constant
     @field
     */
     this.value = value;
-
-    /**
-    Indicates that the value is a bit pattern
-    @field
-    */
-    this.bitPattern = bitPattern;
 
     /**
     Type of the constant
@@ -307,7 +261,7 @@ ConstValue.getConst = function (value, type)
     if (!typeMap.hasItem(type))
     {
         // Create a new constant with the specified type
-        var constant = new ConstValue(value, undefined, type);
+        var constant = new ConstValue(value, type);
         typeMap.addItem(type, constant);
     }
     else

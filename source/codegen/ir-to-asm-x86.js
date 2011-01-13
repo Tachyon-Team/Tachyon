@@ -1683,29 +1683,6 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     // Invariant: opnds are constants, registers or memory location
     //            containing C-valid object or primitive values
 
-    // Move stack pointer in available register
-    tltor.asm.
-    mov(stack, altStack).
-
-    // Reserve space for context register
-    sub($(refByteNb), stack).
-
-    // Save context
-    mov(context, mem(-refByteNb, altStack)).
-
-    // Align stack pointer
-    //  Add space to save stack pointer
-    sub($(refByteNb), stack).
-    //    Calculate offset for pointer
-    //        Perform modulo calulation on stack pointer
-    sub($(stackAlignByteNb), stack).
-    mov(stack, scratchReg).
-    and($(stackAlignByteNb - 1), scratchReg).
-    add(scratchReg, stack).
-    
-    // Save the old stack pointer on top of the stack
-    mov(altStack, mem(0, stack));
-
     // Stack space taken by arguments
     var argStackSpace = 0;
 
@@ -1727,9 +1704,50 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
             argStackSpace += tltor.params.target.ptrSizeBytes - rem;
     }
 
-    // Reserve space for C function parameters
+    /*
+    C stack frame
+    -----------------
+    C arguments
+    -----------------
+    Old stack pointer
+    -----------------
+    ...
+    Padding 
+    (variable size)
+    ...
+    -----------------
+    Context pointer
+    -----------------   <-- Old stack pointer (altStack)
+    Tachyon frame
+    */
+
+    // Compute the total stack space needed for the context register, 
+    // the old stack pointer and arguments
+    var totalStackSpace = (2 * refByteNb) + argStackSpace;
+
+    // Add the padding amount we need to align the stack pointer
+    // (minus the remainder we compute dynamically later)
+    totalStackSpace += stackAlignByteNb;
+
+    // Move the current stack pointer into alternate register
     tltor.asm.
-    sub($(argStackSpace), stack);
+    mov(stack, altStack).
+
+    // Reserve the total stack space needed
+    sub($(totalStackSpace), stack).
+
+    // Save the context pointer
+    mov(context, mem(-refByteNb, altStack)).
+
+    // Align the new stack pointer
+    // Perform modulo calulation on stack pointer
+    // Remove the remainder value from the stack pointer
+    mov(stack, scratchReg).
+    and($(stackAlignByteNb - 1), scratchReg).
+    add(scratchReg, stack).
+    
+    // Save the old stack pointer below the arguments
+    mov(altStack, mem(argStackSpace, stack));
 
     // Write argument on stack in reverse order
     for (i = 0; i < numArgs; ++i)

@@ -46,7 +46,13 @@ function testIR()
 
     /*
     var ast = parse_src_str(
-        'function foo() { return (6/3); }'
+        //'function foo() { return 6-3; }'
+        //'function foo() { return 3+3; }'
+        //'function foo() { return 6/3; }'
+        //'function foo() { return 6*3; }'
+        //'function foo() { return (6/3)*3; }'
+        //'function foo(a) { return iir.add(a, 0); }'
+        'function foo(a) { return iir.add(0, iir.sub(a,0)); }'
     );
     var ir = unitToIR(ast, config.hostParams);
     lowerIRFunc(ir, config.hostParams);
@@ -61,9 +67,7 @@ function testIR()
     ir.validate();    
     print(ir);
     
-
-    //config.hostParams.print = print;    
-
+    //config.hostParams.print = print;
     var func = compileFileToJSFunc('test_ffi.js', config.hostParams);
     var result = func();
     func.free();
@@ -80,7 +84,7 @@ function testIR()
     */
     
     /*
-    var func = config.hostParams.staticEnv.getBinding('getProp');
+    var func = config.hostParams.staticEnv.getBinding('lt');
     print(func);
     */
 };
