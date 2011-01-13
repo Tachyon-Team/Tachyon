@@ -7,12 +7,12 @@ command-line arguments, etc.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 function testIR()
 {
-    /*
+    
     var memBlock = allocMachineCodeBlock(4096);
     
     var blockAddr = getBlockAddr(memBlock, 0);
@@ -42,6 +42,20 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
+    
+
+    /*
+    var ast = parse_src_file('test_ffi.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();    
+    print(ir);
+    
+    //config.hostParams.print = print;
+    var func = compileFileToJSFunc('test_ffi.js', config.hostParams);
+    var result = func();
+    func.free();
+    //print(result >> 2);
     */
 
     /*
@@ -59,20 +73,6 @@ function testIR()
     ir.validate();    
     print(ir);
     */
-
-    
-    var ast = parse_src_file('test_ffi.js');
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();    
-    print(ir);
-    
-    //config.hostParams.print = print;
-    var func = compileFileToJSFunc('test_ffi.js', config.hostParams);
-    var result = func();
-    func.free();
-    //print(result >> 2);
-    
 
     /*
     var codeblock = backend.compileIRToCB(ir);    

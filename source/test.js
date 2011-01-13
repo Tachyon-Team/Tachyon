@@ -10,8 +10,35 @@ function putPropVal2(obj, propName, propVal)
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
 
+    printInt(propName);
+    printInt(boxInt(propHash));
+
     // Set the property on the object
     putProp(obj, propName, propHash, propVal);
+}
+
+function getPropVal2(obj, propName)
+{
+    "tachyon:noglobal";
+
+    // Get the hash code for the property
+    // Boxed value, may be a string or an int
+    var propHash = getHash(propName);
+
+    printInt(propName);
+    printInt(boxInt(propHash));
+
+    // Attempt to find the property on the object
+    var prop = getProp(obj, propName, propHash);
+
+    printInt(prop);
+
+    // If the property isn't defined
+    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    {
+        // Return the undefined value
+        return UNDEFINED;
+    }
 }
 
 function testObjs()
@@ -27,17 +54,9 @@ function testObjs()
 
     // TODO: look at assembler listing?
 
-    //putPropVal(obj, 0, 33);
-    //putPropVal2(obj, 0, 33);
+    putPropVal2(obj, 0, 35);
 
-    putProp(obj, 0, pint(0), 33);
-
-    //Split position bug?
-
-    // Argument passing bug???
-
-
-
+    return getPropVal2(obj, 0);
 
 
     // TODO: test putProp, getProp
