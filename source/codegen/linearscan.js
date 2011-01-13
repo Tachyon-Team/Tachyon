@@ -523,25 +523,48 @@ allocator.interval.prototype.rangeNb = function ()
 /** Returns a string representation of an interval */
 allocator.interval.prototype.toString = function ()
 {
-    var r = [];
-    var u = [];
-    var i;
-    
-    // Print all the ranges
-    for (i=0; i < this.ranges.length; ++i)
+    var it = null;
+    var str = "";
+
+    function intervalStr(interval)
     {
-        r.push(String(this.ranges[i]));
+        var r = [];
+        var u = [];
+        var i;
+
+        // Print all the ranges
+        for (i=0; i < interval.ranges.length; ++i)
+        {
+            r.push(String(interval.ranges[i]));
+        }
+
+        // Print all the use positions
+        for (i=0; i < interval.usePositions.length; ++i)
+        {
+            u.push(String(interval.usePositions[i]));
+        }
+
+
+        return "{ vreg:'" + interval.vreg + "' ranges:( " + 
+               r.join(",") + " ) usePositions:( " + u.join(",") + " ) reg:'" + 
+               interval.reg + "' }";
+    };
+  
+    // Find the first interval of the chain
+    it = this;
+    while (it.previous !== null)
+    {
+        it = it.previous;
     }
 
-    // Print all the use positions
-    for (i=0; i < this.usePositions.length; ++i)
-    {
-        u.push(String(this.usePositions[i]));
+    str += "Intervals: \n";
+
+    while (it !== null) {
+        str += (it === this ? ">>> " : "    ") + intervalStr(it) + "\n";
+        it = it.next;
     }
 
-    return "Interval { vreg:'" + this.vreg + "' ranges:( " + 
-           r.join(",") + " ) usePositions:( " + u.join(",") + " ) reg:'" + 
-           this.reg + "' }";
+    return str;
 };
 
 /** Tells if a given position is contained within one of the ranges
@@ -1275,8 +1298,6 @@ allocator.numberInstrs = function (cfg, order, config)
             //      instr );
         }
 
-        // Set the operation number at the block end to be the same
-        // as the last instruction
         block.regAlloc.to = nextNo;
     }
 };
@@ -1644,8 +1665,6 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             freeUntilPos[i] = Math.min(it.nextIntersection(current),
                                        freeUntilPos[i]);
         }
-
-
         
         if (current.regHint !== null && typeof current.regHint === "number" &&
             freeUntilPos[current.regHint] > current.startPos())
@@ -1664,6 +1683,8 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             // available, use one of the availables
             reg = allocator.max(freeUntilPos).index;
         }
+
+
 
         // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
         // is free for a part of current.  This way it handles 
@@ -1948,7 +1969,7 @@ allocator.resolve = function (cfg, intervals, order, config)
     };
     function withinBounds(pos, block)
     {
-        return pos >= block.regAlloc.from && pos <= block.regAlloc.to;
+        return pos >= block.regAlloc.from && pos < block.regAlloc.to;
     };
 
     function insertInstr(block, instr, pos)
@@ -1967,6 +1988,9 @@ allocator.resolve = function (cfg, intervals, order, config)
                 insertPos++;
             }
         }
+
+        assert(insertPos < block.instrs.length,
+               "Move instruction inserted after a branching instruction");
         
         block.addInstr(instr, "", insertPos);
     };
@@ -1982,6 +2006,7 @@ allocator.resolve = function (cfg, intervals, order, config)
     var newblock;
     var blocksToInsert = [];
     var insertIt;
+    var lastInstr;
 
     // Insert Moves at split positions
     for (intervalIt = new ArrayIterator(intervals); 
@@ -1989,6 +2014,7 @@ allocator.resolve = function (cfg, intervals, order, config)
          intervalIt.next())
     {
         interval = intervalIt.get();
+
         while (interval !== null)
         {
             
@@ -2072,20 +2098,24 @@ allocator.resolve = function (cfg, intervals, order, config)
             continue;
         }
 
+        
+        lastInstr = edge.pred.getLastInstr();
+
         // Order and insert moves
-        if (edge.pred.succs.length === 1)
+        if (edge.pred.succs.length === 1 && 
+            lastInstr.isBranch() &&
+            lastInstr instanceof JumpInstr)
         {
-            // Predecessor has only a successor, insert moves at
-            // the end of predecessor
+            // Predecessor has only a successor
+            // and is a jump instruction.  
+            // 
+            // We are conservative here as other
+            // branching instructions might be good 
+            // candidates too.  We will optimize 
+            // it later.
             insertFct = function (move) 
             { 
-                if (edge.pred.hasBranch())
-                {
-                    edge.pred.addInstr(move, "", edge.pred.instrs.length - 1); 
-                } else
-                {
-                    edge.pred.addInstr(move); 
-                }
+                edge.pred.addInstr(move, "", edge.pred.instrs.length - 1); 
             };
 
         } else if (edge.succ.preds.length === 1)
