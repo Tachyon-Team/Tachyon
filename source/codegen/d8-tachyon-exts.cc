@@ -120,7 +120,7 @@ v8::Handle<v8::Value> shellCommand(const v8::Arguments& args)
 
     outStr[strLen] = '\0';
 
-    fclose(pipeFile);
+    pclose(pipeFile);
 
     v8::Local<v8::String> v8Str = v8::String::New(outStr);
 
