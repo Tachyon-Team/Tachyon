@@ -41,6 +41,8 @@ function lowerIRCFG(cfg, params)
         'expected compilation parameters'
     );
 
+    //print(cfg.ownerFunc);
+
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
     {
@@ -94,6 +96,8 @@ function lowerIRCFG(cfg, params)
             }
         }
     }
+
+    //print(cfg.ownerFunc);
 
     // Apply peephole optimization patterns to the CFG
     applyPatternsCFG(cfg, params);

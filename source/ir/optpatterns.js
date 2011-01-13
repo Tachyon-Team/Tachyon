@@ -13,7 +13,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Apply all peephole optimization patterns to a CFG
 */
-function applyPatternsCFG(cfg, params, maxItrs)
+function applyPatternsCFG(cfg, params, maxItrs, printInfo)
 {
     assert (
         params instanceof CompParams,
@@ -25,7 +25,7 @@ function applyPatternsCFG(cfg, params, maxItrs)
         blockPatterns,
         cfg,
         maxItrs,
-        false,
+        printInfo,
         false,
         params
     );
@@ -41,7 +41,7 @@ Apply peephole optimization patterns to a CFG
 */
 function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate, params)
 {
-    if (printInfo)
+    if (printInfo === true)
     {
         print('Processing CFG of function "' + cfg.ownerFunc.funcName + '"');
         //print(cfg);
@@ -328,8 +328,8 @@ t = phi x1,x2,x3
 [t = call <boxToBool> t]
 if t b1 b2
 */
-blockPatterns.boxToBoolElim = new optPattern(
-    'boxToBool elimination',
+blockPatterns.ifPhiElim = new optPattern(
+    'if-phi elimination',
     function match(cfg, block, params)
     {
         // If this block contains only an if instruction using the
@@ -476,7 +476,42 @@ blockPatterns.boxToBoolElim = new optPattern(
         return changed;
     }
 );
-blockPatterns.push(blockPatterns.boxToBoolElim);
+blockPatterns.push(blockPatterns.ifPhiElim);
+
+/**
+Eliminate conditional branches performing the same test as 
+previous conditionals
+*/
+blockPatterns.ifIfElim = new optPattern(
+    'if-if elimination',
+    function match(cfg, block, params)
+    {
+        // If this block ends with an if instruction testing the same value
+        // as its only predecessor's if instruction
+        return (
+            block.getLastInstr() instanceof IfInstr &&
+            block.preds.length == 1 &&
+            block.preds[0].getLastInstr() instanceof IfInstr &&
+            block.getLastInstr().uses[0] === block.preds[0].getLastInstr().uses[0] &&
+            block.preds[0].getLastInstr().targets[0] !== block.preds[0].getLastInstr().targets[1]
+        );
+    },
+    function apply(cfg, block, printInfo, params)
+    {
+        var blockIf = block.getLastInstr();
+        var predIf = block.preds[0].getLastInstr();
+
+        // Find whether this block is the predecessor's true or false target
+        var target = predIf.targets.indexOf(block);
+
+        // Replace our conditional by a direct jump to the correct target
+        block.replBranch(new JumpInstr(blockIf.targets[target]));
+
+        // A change was made to the CFG
+        return true;
+    }
+);
+blockPatterns.push(blockPatterns.ifIfElim);
 
 /**
 Aggregate phi nodes used only by other phi nodes

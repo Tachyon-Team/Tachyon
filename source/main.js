@@ -60,28 +60,19 @@ function testIR()
     print(ir);
     */
 
-    var ast = parse_src_file('test_ir.js');
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();    
-    print(ir);
-
-
-    /*
+    
     var ast = parse_src_file('test_ffi.js');
     var ir = unitToIR(ast, config.hostParams);
     lowerIRFunc(ir, config.hostParams);
     ir.validate();    
     print(ir);
     
-
-    //config.hostParams.print = print;    
-
+    //config.hostParams.print = print;
     var func = compileFileToJSFunc('test_ffi.js', config.hostParams);
     var result = func();
     func.free();
     //print(result >> 2);
-    */    
+    
 
     /*
     var codeblock = backend.compileIRToCB(ir);    
@@ -93,7 +84,7 @@ function testIR()
     */
     
     /*
-    var func = config.hostParams.staticEnv.getBinding('getProp');
+    var func = config.hostParams.staticEnv.getBinding('lt');
     print(func);
     */
 };
