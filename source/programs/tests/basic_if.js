@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Fibonacci implementation to test the whole compiler.
+Basic conditional branching test.
 
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved

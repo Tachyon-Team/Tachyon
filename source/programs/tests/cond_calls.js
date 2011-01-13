@@ -1,6 +1,8 @@
 /**
 @fileOverview
-Fibonacci implementation to test the whole compiler.
+This test is meant to ensure that values are correctly merged after 
+conditionals and that local variable values are properly preserved across
+calls.
 
 @copyright
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved

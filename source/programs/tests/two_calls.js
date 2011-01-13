@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Fibonacci implementation to test the whole compiler.
+Test of multiple function calls with computations in between.
 
 @copyright
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved

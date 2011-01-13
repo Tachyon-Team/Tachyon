@@ -1,17 +1,17 @@
 /**
 @fileOverview
-Test of a function call followed by a loop.
+Nested loops unit test.
 
 @copyright
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
-tests.call_loop = tests.testSuite();
+tests.nested_loops = tests.testSuite();
 
-tests.call_loop.main = function ()
+tests.nested_loops.main = function ()
 {
     var func = compileFileToJSFunc(
-        'programs/call_loop/call_loop.js', 
+        'programs/nested_loops/nested_loops.js',
         config.clientParams
     );
 
@@ -19,6 +19,6 @@ tests.call_loop.main = function ()
 
     func.free();
 
-    assert(x === (15 << 2), "Invalid return value: " + x);
+    assert(x === (503 << 2), "Invalid return value: " + x);
 };
 

@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Basic function to test the whole compiler.
+Test of the return statement.
 
 @copyright
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
