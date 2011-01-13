@@ -1672,6 +1672,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
                     
     const numArgs = opnds.length - 1;        
 
+    assert(stack.width() === 32, "Only 32-bits FFI calls are supported for now"); 
+
     assert(altStack !== scratchReg);
     tltor.config.argsReg.forEach(function (r) { assert(altStack !== r); });
     tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r); });
@@ -1705,9 +1707,11 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     }
 
     /*
+    Stack frames pushed on top, addresses decreasing upward. 
+
     C stack frame
     -----------------
-    C arguments
+    C arguments       <-- 16 byte aligned for OS X ABI Function call guide
     -----------------
     Old stack pointer
     -----------------
@@ -1717,17 +1721,16 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     ...
     -----------------
     Context pointer
-    -----------------   <-- Old stack pointer (altStack)
-    Tachyon frame
+    -----------------   
+    Tachyon frame     <-- Old stack pointer (altStack)
     */
 
     // Compute the total stack space needed for the context register, 
     // the old stack pointer and arguments
     var totalStackSpace = (2 * refByteNb) + argStackSpace;
 
-    // Add the padding amount we need to align the stack pointer
-    // (minus the remainder we compute dynamically later)
-    totalStackSpace += stackAlignByteNb;
+    // TODO: Find a way to calculate the mask for 64 bits pointer values
+    const alignMask = ~(stackAlignByteNb - 1);
 
     // Move the current stack pointer into alternate register
     tltor.asm.
@@ -1740,11 +1743,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     mov(context, mem(-refByteNb, altStack)).
 
     // Align the new stack pointer
-    // Perform modulo calulation on stack pointer
-    // Remove the remainder value from the stack pointer
-    mov(stack, scratchReg).
-    and($(stackAlignByteNb - 1), scratchReg).
-    add(scratchReg, stack).
+    and($(alignMask), stack).
     
     // Save the old stack pointer below the arguments
     mov(altStack, mem(argStackSpace, stack));
