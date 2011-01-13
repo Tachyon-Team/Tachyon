@@ -34,16 +34,40 @@ function constProp(cfg, params)
     // Get the value of a constant use or instruction
     function getValue(val)
     {
+        // If the value is a constant, return it directly
         if (val instanceof ConstValue)
+        {
             return val;
+        }
         else
-            return instrVals[val.instrId];
+        {
+            // Get the current value we have for the instruction
+            var curVal = instrVals[val.instrId];
+
+            // Follow the chain of instruction replacement values until
+            // a non-instruction replacement value is found
+            while (
+                curVal instanceof IRInstr && 
+                instrVals[curVal.instrId] instanceof IRValue
+            )
+            {
+                curVal = instrVals[curVal.instrId];
+            }
+
+            return curVal;
+        }
     }
 
     // Test if a basic block is reachable
     function isReachable(block)
     {
         return (reachable[block.blockId] === true);
+    }
+
+    // Test if an edge was visited
+    function edgeReachable(pred, succ)
+    {
+        return (edgeVisited[pred.blockId][succ.blockId] === true);
     }
 
     // Queue a CFG edge into the CFG work list
@@ -59,11 +83,7 @@ function constProp(cfg, params)
         // If there is a const prop function for this instruction, use it
         if (instr.constEval !== undefined)
         {
-            var val = instr.constEval(getValue, isReachable, queueEdge, params);
-
-            if (val instanceof IRInstr && 
-                instrVals[val.instrId] instanceof ConstValue)
-                return instrVals[val.instrId];
+            var val = instr.constEval(getValue, edgeReachable, queueEdge, params);
 
             return val;
         }
@@ -183,9 +203,10 @@ function constProp(cfg, params)
             //print('iterating ssa: ' + v + ' ==> ' + t);
 
             // If the instruction value has changed
-            if (t !== instrVals[v.instrId])
+            //if (t !== instrVals[v.instrId])
+            if (t !== getValue(v))
             {
-                //print('value changed');
+                //print('value changed: ' + v + ' ==> ' + t);
 
                 // Update the value for this instruction
                 instrVals[v.instrId] = t;
@@ -228,8 +249,12 @@ function constProp(cfg, params)
         {
             var instr = block.instrs[j];
 
+            //print(instr);
+
             // Get the value for this instruction
             var val = getValue(instr);
+
+            //print('\tval: ' + val);
 
             // If this is an if instruction
             if (instr instanceof IfInstr)
@@ -316,7 +341,7 @@ function constProp(cfg, params)
 //
 //=============================================================================
 
-PhiInstr.prototype.constEval = function (getValue, isReachable, queueEdge, params)
+PhiInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     var curVal;
 
@@ -326,9 +351,11 @@ PhiInstr.prototype.constEval = function (getValue, isReachable, queueEdge, param
         var useVal = getValue(this.uses[i]);
         var pred = this.preds[i];
 
-        // If this predecessor is not reachable, ignore its value
-        if (!isReachable(pred))
+        // If the edge from the predecessor is not executable, ignore its value
+        if (edgeReachable(pred, this.parentBlock) !== true)
             continue;
+
+        //print('incoming: ' + this.uses[i] + ' ==> ' + useVal);
 
         // If any use is still top, the current value is unknown
         if (useVal === TOP)
@@ -345,9 +372,9 @@ PhiInstr.prototype.constEval = function (getValue, isReachable, queueEdge, param
     return curVal;
 };
 
-ArithInstr.genConstEval = function (opFunc)
+ArithInstr.genConstEval = function (opFunc, genFunc)
 {
-    function constEval(getValue, isReachable, queueEdge, params)
+    function constEval(getValue, edgeReachable, queueEdge, params)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -384,6 +411,14 @@ ArithInstr.genConstEval = function (opFunc)
             }
         }
 
+        if (genFunc !== undefined)
+        {           
+            var u0 = (v0 instanceof ConstValue)? v0:this.uses[0];
+            var u1 = (v1 instanceof ConstValue)? v1:this.uses[1];
+
+            return genFunc(u0, u1, this.type);
+        }
+
         // By default, return the unknown value
         return BOT;
     }
@@ -395,6 +430,16 @@ AddInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 + v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue && u0.value == 0)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -402,6 +447,13 @@ SubInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 - v1;
+    },
+    function (u0, u1)
+    {
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -409,6 +461,26 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
     function (v0, v1)
     {
         return v0 * v1;
+    },
+    function (u0, u1, outType)
+    {
+        if (u0 instanceof ConstValue && u0.value == 1)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 1)
+            return u0;
+
+        if (((u0 instanceof ConstValue && u0.value == 0) || 
+             (u1 instanceof ConstValue && u1.value == 0)) &&
+            u0.type === u1.type)
+        {
+            return ConstValue.getConst(
+                0,
+                outType
+            );
+        }
+
+        return BOT;
     }
 );
 
@@ -426,6 +498,13 @@ DivInstr.prototype.constEval = ArithInstr.genConstEval(
         }
 
         return res;
+    },
+    function (u0, u1)
+    {
+        if (u1 instanceof ConstValue && u1.value == 1)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -439,9 +518,9 @@ ModInstr.prototype.constEval = ArithInstr.genConstEval(
     }
 );
 
-BitOpInstr.genConstEval = function (opFunc)
+BitOpInstr.genConstEval = function (opFunc, genFunc)
 {
-    function constEval(getValue, isReachable, queueEdge, params)
+    function constEval(getValue, edgeReachable, queueEdge, params)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -479,6 +558,14 @@ BitOpInstr.genConstEval = function (opFunc)
             }
         }
 
+        if (genFunc !== undefined)
+        {
+            var u0 = (v0 instanceof ConstValue)? v0:this.uses[0];
+            var u1 = (v1 instanceof ConstValue)? v1:this.uses[1];
+
+            return genFunc(u0, u1, this.type, params);
+        }
+
         // By default, return the unknown value
         return BOT;
     }
@@ -490,6 +577,72 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 & v1;
+    },
+    function (u0, u1, outType, params)
+    {
+        var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
+        var TAG_REF_MASK = params.staticEnv.getBinding('TAG_REF_MASK').value;
+
+        if ((u0 instanceof ConstValue && u0.value == 0) ||
+            (u1 instanceof ConstValue && u1.value == 0))
+        {
+            return ConstValue.getConst(
+                0,
+                outType
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u0.type === IRType.box &&
+            !u0.isBoxInt(params) &&
+            u1.type === IRType.pint && 
+            u1.value === TAG_REF_MASK)
+        {
+            return ConstValue.getConst(
+                u0.getTagBits(params),
+                IRType.pint
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u1.type === IRType.box &&
+            !u1.isBoxInt(params) &&
+            u0.type === IRType.pint && 
+            u0.value === TAG_REF_MASK)
+        {
+            return ConstValue.getConst(
+                u1.getTagBits(params),
+                IRType.pint
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u0.type === IRType.box &&
+            u1.type === IRType.pint && 
+            u1.value === TAG_INT_MASK)
+        {
+            return ConstValue.getConst(
+                u0.getTagBits(params) & TAG_INT_MASK,
+                IRType.pint
+            );
+        }
+
+        if (u0 instanceof ConstValue &&
+            u1 instanceof ConstValue &&
+            u1.type === IRType.box &&
+            u0.type === IRType.pint && 
+            u0.value === TAG_INT_MASK)
+        {
+            return ConstValue.getConst(
+                u1.getTagBits(params) & TAG_INT_MASK,
+                IRType.pint
+            );
+        }
+
+        return BOT;
     }
 );
 
@@ -497,6 +650,16 @@ OrInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return v0 | v1;
+    },
+    function (u0, u1, type)
+    {
+        if (u0 instanceof ConstValue && u0.value == 0)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -528,7 +691,7 @@ UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     }
 );
 
-ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, params)
+ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     var v0 = getValue(this.uses[0]);
 
@@ -585,7 +748,7 @@ ICastInstr.prototype.constEval = function (getValue, isReachable, queueEdge, par
 
 CompInstr.genConstEval = function (opFunc)
 {
-    function constEval(getValue, isReachable, queueEdge, params)
+    function constEval(getValue, edgeReachable, queueEdge, params)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -671,9 +834,9 @@ NeInstr.prototype.constEval = CompInstr.genConstEval(
     }
 );
 
-ArithOvfInstr.genConstEval = function (opFunc)
+ArithOvfInstr.genConstEval = function (opFunc, genFunc)
 {
-    function constEval(getValue, isReachable, queueEdge, params)
+    function constEval(getValue, edgeReachable, queueEdge, params)
     {
         var v0 = getValue(this.uses[0]);
         var v1 = getValue(this.uses[1]);
@@ -716,6 +879,22 @@ ArithOvfInstr.genConstEval = function (opFunc)
             }
         }
 
+        if (genFunc !== undefined)
+        {
+            var u0 = (v0 instanceof ConstValue)? v0:this.uses[0];
+            var u1 = (v1 instanceof ConstValue)? v1:this.uses[1];
+
+            var result = genFunc(u0, u1, this.type);
+
+            if (result !== BOT)
+            {
+                // Add the normal (non-overflow) branch to the work list
+                queueEdge(this, this.targets[0]);
+
+                return result;
+            }
+        }
+
         // By default, both branches are reachable (an overflow could occur)
         queueEdge(this, this.targets[0]);
         queueEdge(this, this.targets[1]);
@@ -731,6 +910,16 @@ AddOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 + v1;
+    },
+    function (u0, u1)
+    {
+        if (u0 instanceof ConstValue && u0.value == 0)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -738,6 +927,13 @@ SubOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 - v1;
+    },
+    function (u0, u1)
+    {
+        if (u1 instanceof ConstValue && u1.value == 0)
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -745,6 +941,26 @@ MulOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     function (v0, v1)
     {
         return v0 * v1;
+    },
+    function (u0, u1, outType)
+    {
+        if (u0 instanceof ConstValue && u0.value == 1)
+            return u1;
+
+        if (u1 instanceof ConstValue && u1.value == 1)
+            return u0;
+
+        if (((u0 instanceof ConstValue && u0.value == 0) || 
+             (u1 instanceof ConstValue && u1.value == 0)) &&
+            u0.type === u1.type)
+        {
+            return ConstValue.getConst(
+                0,
+                outType
+            );
+        }
+
+        return BOT;
     }
 );
 
@@ -787,7 +1003,7 @@ function constEvalBool(val)
     return BOT;
 }
 
-CallFuncInstr.prototype.constEval = function (getValue, isReachable, queueEdge, params)
+CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     // If this is a call to boxToBool
     if (this.uses[0] instanceof IRFunction && 
@@ -813,7 +1029,7 @@ CallFuncInstr.prototype.constEval = function (getValue, isReachable, queueEdge, 
     return BOT;
 };
 
-IfInstr.prototype.constEval = function (getValue, isReachable, queueEdge, params)
+IfInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     // Evaluate the test value
     var test = constEvalBool(getValue(this.uses[0]));

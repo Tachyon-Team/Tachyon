@@ -808,6 +808,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
     }
 
+    /*
     // If this is an addition instruction
     if (instr instanceof AddInstr || instr instanceof AddOvfInstr)
     {
@@ -845,10 +846,12 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             return true;
         }
     }
+    */
 
     // If this is a multiplication
     if (instr instanceof MulInstr || instr instanceof MulOvfInstr)
     {
+        /*
         // If the right or left operand is 0
         if (isConst(instr.uses[0], 0) || isConst(instr.uses[1], 0))
         {
@@ -878,9 +881,10 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             // A change was made
             return true;
         }
+        */
 
         // If the left operand is a power of 2
-        else if (isPow2(instr.uses[0]))
+        if (isPow2(instr.uses[0]))
         {
             // Replace the multiplication by a left shift
             replArith(
@@ -919,6 +923,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // If this is a division instruction
     if (instr instanceof DivInstr)
     {
+        /*
         // If this is a division by 1
         if (isConst(instr.uses[1], 1))
         {
@@ -928,9 +933,10 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             // A change was made
             return true;
         }
+        */
 
         // If this is a division by a power of 2
-        else if (isPow2(instr.uses[1]))
+        if (isPow2(instr.uses[1]))
         {
             // Replace the division by a right shift
             replArith(
@@ -970,6 +976,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
     }
 
+    /*
     // If this is a logical OR instruction
     if (instr instanceof OrInstr)
     {
@@ -1089,6 +1096,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             return true;
         }
     }
+    */
 
     // No changes were made
     return false;

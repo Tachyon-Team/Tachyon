@@ -44,19 +44,28 @@ function testIR()
     }
     */
 
-    
+    /*
     var ast = parse_src_str(
         //'function foo() { return 6-3; }'
         //'function foo() { return 3+3; }'
         //'function foo() { return 6/3; }'
         //'function foo() { return 6*3; }'
-        'function foo() { return (6/3)*3; }'
+        //'function foo() { return (6/3)*3; }'
+        //'function foo(a) { return iir.add(a, 0); }'
+        'function foo(a) { return iir.add(0, iir.sub(a,0)); }'
     );
     var ir = unitToIR(ast, config.hostParams);
     lowerIRFunc(ir, config.hostParams);
     ir.validate();    
     print(ir);
-    
+    */
+
+    var ast = parse_src_file('test_ir.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();    
+    print(ir);
+
 
     /*
     var ast = parse_src_file('test_ffi.js');

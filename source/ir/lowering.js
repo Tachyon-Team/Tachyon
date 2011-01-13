@@ -98,20 +98,15 @@ function lowerIRCFG(cfg, params)
     // Apply peephole optimization patterns to the CFG
     applyPatternsCFG(cfg, params);
 
-    // Perform constant propagation on the CFG
-    constProp(cfg, params);
-
     // Validate the CFG
     cfg.validate();
 
-    // Apply peephole optimization patterns to the CFG
-    applyPatternsCFG(cfg, params);
-
-    // Validate the CFG
-    cfg.validate();
+    //print(cfg.ownerFunc);
 
     // Perform constant propagation on the CFG
     constProp(cfg, params);
+
+    //print(cfg.ownerFunc);
 
     // Validate the CFG
     cfg.validate();
