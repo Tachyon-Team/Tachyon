@@ -39,6 +39,8 @@ function getPropVal2(obj, propName)
         // Return the undefined value
         return UNDEFINED;
     }
+
+    return prop;
 }
 
 function testObjs()

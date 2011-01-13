@@ -998,6 +998,9 @@ function getPropVal(obj, propName)
         // Return the undefined value
         return UNDEFINED;
     }
+
+    // Return the property value we found
+    return prop;
 }
 
 /**
