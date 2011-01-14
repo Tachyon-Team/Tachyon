@@ -311,6 +311,7 @@ function makeError(errorCtor, message)
     "tachyon:static";
     "tachyon:nothrow";
 
+    // FIXME: for now, constructors unsupported
     //return new errorCtor(message);
     return UNDEFINED;
 }
@@ -329,9 +330,6 @@ function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFIN
 function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function makeCell() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function putCell(cell, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function getCell(cell) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function newArray() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -377,6 +375,54 @@ function newObject(proto)
 
     // Return the object reference
     return obj;
+}
+
+/**
+Create a mutable closure cell
+*/
+function makeCell() 
+{ 
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    /*
+    // Allocate space for the cell
+    var cell = alloc_cell();
+
+    return cell;
+    */
+
+    // TODO
+    return UNDEFINED;
+}
+
+/**
+Store a value in a mutable cell
+*/
+function putCell(cell, val)
+{ 
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    // TODO
+    //put_cell_val(cell, val);
+}
+
+/**
+Read a value from a mutable cell
+*/
+function getCell(cell) 
+{ 
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    //return get_cell_val(cell);
+
+    // TODO
+    return UNDEFINED;
 }
 
 /**

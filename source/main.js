@@ -21,7 +21,7 @@ function testIR()
     var b2 = blockAddr[2];
     var b3 = blockAddr[3];
 
-    shellCommand("cp test.js test_repl.js");
+    shellCommand("cp test_objs.js test_repl.js");
     shellCommand("sed -i 's/b0/" + b0 + "/g' test_repl.js");
     shellCommand("sed -i 's/b1/" + b1 + "/g' test_repl.js");
     shellCommand("sed -i 's/b2/" + b2 + "/g' test_repl.js");

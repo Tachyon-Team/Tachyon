@@ -473,4 +473,28 @@ function makeObjectLayouts(params)
             IRType.pint
         )
     );
+
+    //=============================================================================
+    //
+    // Mutable closure cell memory layout
+    //
+    //=============================================================================
+
+    /**
+    Mutable cell layout object
+    */
+    var cellLayout = new MemLayout('cell', IRType.box, 'TAG_OTHER', params);
+
+    //
+    // TODO: header
+    //
+
+    // String length
+    cellLayout.addField(
+        'val',
+        IRType.box
+    );
+
+    // Finalize the cell layout
+    cellLayout.finalize();
 }

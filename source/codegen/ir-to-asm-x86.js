@@ -1392,7 +1392,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Number of operands
     const opndNb = opnds.length;
 
-
     // Used for loop iterations
     var i;
 
@@ -1402,8 +1401,10 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Used for moving operands in the right registers
     var map;
 
-    assert(dest === tltor.config.retValReg || 
-           dest === null);
+    assert(
+        dest === tltor.config.retValReg || dest === null,
+        'invalid destination register for function call'
+    );
 
     if (opnds[0] instanceof IRFunction)
     {
@@ -1419,6 +1420,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         // arguments.
 
         const name = opnds[0].funcName;
+
         if (name === "makeClos")
         {
             assert(
@@ -1487,26 +1489,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Implicitly returns the property value
             // in return value register
             tltor.asm.call(tltor.putPropValLabel);
-        } 
-        else if (name === "boxIsFunc")
-        {
-            // TODO: Make the proper call to the primitive
-
-            // Always assume that it is a function for now
-            const immTrue = ConstValue.getConst(1, IRType.bool).getImmValue(tltor.params);
-
-            tltor.asm.
-            mov($(immTrue), dest);
-        } 
-        else if (name === "makeError")
-        {
-            // TODO: Make the proper call to the primitive
-            // Ignore for now, simply return undefined
-            const immUndefined = ConstValue.getConst(undefined, IRType.box).getImmValue(tltor.params);
-
-            tltor.asm.
-            mov($(immUndefined), dest);
-        } 
+        }
         else
         {
             const primEp = irToAsm.getEntryPoint(this.uses[0], undefined, 
@@ -1535,12 +1518,12 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
 
             tltor.asm.call(primEp);
-
-        } 
-
-
-    } else if (opnds[0].type === x86.type.REG || 
-               opnds[0].type === x86.type.MEM)
+        }
+    } 
+    else if (
+        opnds[0].type === x86.type.REG || 
+        opnds[0].type === x86.type.MEM
+    )
     {
         // Number of bytes in a reference
         const refByteNb = tltor.config.stack.width() >> 3;
@@ -1549,8 +1532,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         const funcObjReg = tltor.config.argsReg[0];
 
         // Label for the continuation
-        const continue_label = tltor.label(this.targets[0], 
-                                         this.targets[0].label);
+        const continue_label = tltor.label(this.targets[0], this.targets[0].label);
 
         // Index for the last argument passed in a register 
         const lastArgIndex = argRegNb - 1;
@@ -1569,6 +1551,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
         // Make sure we still have a register left for scratch
         assert(argRegNb < avbleRegNb);
+
         // Make sure it is not used to pass arguments
         assert(!(scratchIndex in tltor.config.argsIndex));
 
@@ -1587,7 +1570,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                     tltor.asm.
                     mov(opnds[i], scratch).
                     mov(scratch, mem(spoffset, stack));
-                } else
+                } 
+                else
                 {
                     tltor.asm.
                     mov(opnds[i], mem(spoffset, stack), stack.width());
@@ -1600,7 +1584,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
         for (i=0; i < argRegNb && i < opndNb; ++i)
         {
-
             reg = argsReg[i];
             if (opnds[i] !== reg)
             {
@@ -1619,11 +1602,13 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             }
         }
 
-        map.orderAndInsertMoves( function (move)
-                                 {
-                                    tltor.asm.
-                                    mov(move.uses[0], move.uses[1]);
-                                 }, scratch);
+        map.orderAndInsertMoves( 
+            function (move)
+            {
+                tltor.asm.mov(move.uses[0], move.uses[1]);
+            },
+            scratch
+        );
 
         // Call function address
         tltor.asm.call(funcObjReg);
@@ -1636,8 +1621,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
         // Jump to continue_label
         tltor.asm.jmp(continue_label);
-
-    } else
+    } 
+    else
     {
         error("Invalid CallInstr function operand '" + opnds[0] + "'");
     }
