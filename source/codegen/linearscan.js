@@ -2291,7 +2291,7 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
             // Insert all other moves
             while (move !== undefined)
             {
-                insertFct(cycleIt.get().pop());
+                insertFct(move);
                 move = cycleIt.get().pop();
             }
 
