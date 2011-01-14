@@ -1406,6 +1406,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'invalid destination register for function call'
     );
 
+    // If this is a static call, likely to a primitive function
     if (opnds[0] instanceof IRFunction)
     {
         // Special cases for some static functions until 
@@ -1431,6 +1432,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Implicitly returns the function address
             // in return value register
             tltor.asm.call(tltor.label(opnds[2]));
+
+            // Return early
+            return;
         } 
         else if (
             name === "getPropVal" ||
@@ -1462,6 +1466,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Implicitly returns the property value
             // in return value register
             tltor.asm.call(tltor.getPropValLabel);
+
+            // Return early
+            return;
         } 
         else if (name === "putPropVal")
         {
@@ -1489,142 +1496,144 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Implicitly returns the property value
             // in return value register
             tltor.asm.call(tltor.putPropValLabel);
+
+            // Return early
+            return;
+        }
+    }
+ 
+    // Number of bytes in a reference
+    const refByteNb = tltor.config.stack.width() >> 3;
+
+    // Register for the function address
+    const funcObjReg = tltor.config.argsReg[0];
+
+    // Index for the last argument passed in a register 
+    const lastArgIndex = argRegNb - 1;
+
+    // Number of operands that must be spilled at the call site
+    var spillNb = opndNb - argRegNb;
+    spillNb = (spillNb < 0) ? 0 : spillNb;
+    
+    // Stack pointer offset for all spilled operands
+    const spillOffset = spillNb * refByteNb;
+
+    // Stack pointer offset
+    var spoffset;
+
+    // Make sure we still have a register left for scratch
+    assert(argRegNb < avbleRegNb);
+
+    // Make sure it is not used to pass arguments
+    assert (!(scratchIndex in tltor.config.argsIndex));
+
+    // Allocate space on stack for extra args
+    if (spillOffset > 0)
+    {
+        tltor.asm.sub($(spillOffset), stack);
+
+        for (i = argRegNb, spoffset = 0;
+                i < opndNb; 
+                ++i, spoffset += refByteNb)
+        {
+
+            if (opnds[i].type === x86.type.MEM)
+            {
+                tltor.asm.
+                mov(opnds[i], scratch).
+                mov(scratch, mem(spoffset, stack));
+            } 
+            else
+            {
+                tltor.asm.
+                mov(opnds[i], mem(spoffset, stack), stack.width());
+            }
+        }
+    }
+
+    // Move arguments in the right registers
+    map = allocator.mapping();
+
+    for (i = 0; i < argRegNb && i < opndNb; ++i)
+    {
+        // If this is a static function call
+        if (opnds[i] instanceof IRFunction)
+        {
+            // Pass undefined as the function object
+            var opnd = $(ConstValue.getConst(undefined).getImmValue(tltor.params));
         }
         else
         {
-            const primEp = irToAsm.getEntryPoint(this.uses[0], undefined, 
-                                                 tltor.config);
-
-            assert(opndNb <= argRegNb, opnds[0].funcName);
-
-            // Move arguments in the right registers
-            map = allocator.mapping();
-
-            for (i=2; i < argRegNb && i < opndNb; ++i)
+            var opnd = opnds[i];
+        }
+        
+        reg = argsReg[i];
+        
+        if (opnd !== reg)
+        {
+            // Fix the offset since the stack pointer has been moved
+            if (opnd.type === x86.type.MEM)
             {
+                // Make a copy of the object with the same properties
+                opnd = Object.create(opnd);
 
-                reg = argsReg[i];
-                if (opnds[i] !== reg)
-                {
-                    map.add(opnds[i], reg);
-                }
+                // Adjust the offset to take the displacement of the stack pointer
+                // into account
+                opnd.disp += spillOffset;
             }
 
-            map.orderAndInsertMoves( function (move)
-                                     {
-                                        tltor.asm.
-                                        mov(move.uses[0], move.uses[1]);
-                                     }, scratch);
-
-
-            tltor.asm.call(primEp);
+            map.add(opnd, reg);
         }
-    } 
-    else if (
-        opnds[0].type === x86.type.REG || 
-        opnds[0].type === x86.type.MEM
-    )
+    }
+
+    map.orderAndInsertMoves( 
+        function (move)
+        {
+            tltor.asm.mov(move.uses[0], move.uses[1]);
+        },
+        scratch
+    );
+
+    // If this is a static call
+    if (opnds[0] instanceof IRFunction)
     {
-        // Number of bytes in a reference
-        const refByteNb = tltor.config.stack.width() >> 3;
+        // Get the function entry point
+        const entryPoint = irToAsm.getEntryPoint(
+            this.uses[0],
+            undefined, 
+            tltor.config
+        );
 
-        // Register for the function address
-        const funcObjReg = tltor.config.argsReg[0];
+        // Call the function by its address
+        tltor.asm.call(entryPoint);
+    }
+    else
+    {
+        // The first operand should be the function address
+        assert (
+            opnds[0].type === x86.type.REG || 
+            opnds[0].type === x86.type.MEM,
+            "Invalid CallInstr function operand '" + opnds[0] + "'"
+        )
+        
+        // Call function address
+        tltor.asm.call(funcObjReg);
+    }
+    
+    // Remove return address and extra args
+    if (spillOffset > 0)
+    {
+        tltor.asm.add($(spillOffset), stack);
+    }
 
+    // If this function has a continuation label
+    if (this.targets[0] !== undefined)
+    {
         // Label for the continuation
         const continue_label = tltor.label(this.targets[0], this.targets[0].label);
 
-        // Index for the last argument passed in a register 
-        const lastArgIndex = argRegNb - 1;
-
-        // Number of operands that must be spilled at the call site
-        var spillNb = opndNb - argRegNb;
-        spillNb = (spillNb < 0) ? 0 : spillNb;
-       
-        // Stack pointer offset for all spilled operands
-        const spillOffset = spillNb * refByteNb;
-
-        // Iteration temporaries
-
-        // Stack pointer offset
-        var spoffset;
-
-        // Make sure we still have a register left for scratch
-        assert(argRegNb < avbleRegNb);
-
-        // Make sure it is not used to pass arguments
-        assert(!(scratchIndex in tltor.config.argsIndex));
-
-        // Allocate space on stack for extra args
-        if (spillOffset > 0)
-        {
-            tltor.asm.sub($(spillOffset), stack);
-
-            for (i = argRegNb, spoffset = 0;
-                 i < opndNb; 
-                 ++i, spoffset += refByteNb)
-            {
-
-                if (opnds[i].type === x86.type.MEM)
-                {
-                    tltor.asm.
-                    mov(opnds[i], scratch).
-                    mov(scratch, mem(spoffset, stack));
-                } 
-                else
-                {
-                    tltor.asm.
-                    mov(opnds[i], mem(spoffset, stack), stack.width());
-                }
-            }
-        }
-
-        // Move arguments in the right registers
-        map = allocator.mapping();
-
-        for (i=0; i < argRegNb && i < opndNb; ++i)
-        {
-            reg = argsReg[i];
-            if (opnds[i] !== reg)
-            {
-                // Fix the offset since the stack pointer has been moved
-                if (opnds[i].type === x86.type.MEM)
-                {
-                    // Make a copy of the object with the same properties
-                    opnds[i] = Object.create(opnds[i]);
-
-                    // Adjust the offset to take the displacement of the stack pointer
-                    // into account
-                    opnds[i].disp += spillOffset;
-                }
-
-                map.add(opnds[i], reg);
-            }
-        }
-
-        map.orderAndInsertMoves( 
-            function (move)
-            {
-                tltor.asm.mov(move.uses[0], move.uses[1]);
-            },
-            scratch
-        );
-
-        // Call function address
-        tltor.asm.call(funcObjReg);
-
-        // Remove return address and extra args
-        if (spillOffset > 0)
-        {
-            tltor.asm.add($(spillOffset), stack);
-        }
-
         // Jump to continue_label
         tltor.asm.jmp(continue_label);
-    } 
-    else
-    {
-        error("Invalid CallInstr function operand '" + opnds[0] + "'");
     }
 };
 
