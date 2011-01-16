@@ -22,17 +22,17 @@ function testIR()
     var b3 = blockAddr[3];
 
     shellCommand("cp test_objs.js test_repl.js");
-    shellCommand("sed -i 's/b0/" + b0 + "/g' test_repl.js");
-    shellCommand("sed -i 's/b1/" + b1 + "/g' test_repl.js");
-    shellCommand("sed -i 's/b2/" + b2 + "/g' test_repl.js");
-    shellCommand("sed -i 's/b3/" + b3 + "/g' test_repl.js");
+    shellCommand("sed -i '' -e 's/b0/" + b0 + "/g' test_repl.js");
+    shellCommand("sed -i '' -e 's/b1/" + b1 + "/g' test_repl.js");
+    shellCommand("sed -i '' -e 's/b2/" + b2 + "/g' test_repl.js");
+    shellCommand("sed -i '' -e 's/b3/" + b3 + "/g' test_repl.js");
 
     var func = compileFileToJSFunc('test_repl.js', config.hostParams);
     var result = func();
     func.free();
 
-    print('result: ' + result);
-    //print('result: ' + (result >> 2));
+    //print('result: ' + result);
+    print('result: ' + (result >> 2));
     print('');
 
     //print('context size: ' + config.hostParams.memLayouts.ctx.getSize());
