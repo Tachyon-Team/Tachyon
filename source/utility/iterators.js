@@ -80,3 +80,9 @@ FilterIterator.prototype.get = function ()
     return this.it.get();
 };
 
+/** Returns the index of the underlying iterator */
+FilterIterator.prototype.getIndex = function ()
+{
+    return this.it.getIndex();
+};
+

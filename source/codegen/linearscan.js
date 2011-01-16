@@ -1962,7 +1962,7 @@ allocator.assign = function (cfg, config)
 */
 allocator.resolve = function (cfg, intervals, order, config)
 {
-    function liveAtBegin (succ)
+    function getLiveAtBeginFct (succ)
     {
         var pos = succ.regAlloc.from;
         return function (interval) { return interval.covers(pos); };
@@ -1972,7 +1972,24 @@ allocator.resolve = function (cfg, intervals, order, config)
         return pos >= block.regAlloc.from && pos < block.regAlloc.to;
     };
 
-    function insertInstr(block, instr, pos)
+    // Insertion function that remembers the last instruction
+    // offset within a block instruction array to allow multiple insertions
+    // to be successive
+    function getInsertFct(block, pos) 
+    { 
+        var insertIndex = pos;
+        return function (instr) { block.addInstr(instr,"", insertIndex++); };
+    };
+
+    // There is no direct mapping of index into the block instruction
+    // array and the position assigned by register allocation.  We therefore
+    // need to search within the block to find the insertion position within
+    // the array.
+    //
+    // If performance becomes a problem, the last block instruction offset
+    // could be cached to find the insertion position faster the second time
+    // assuming moves are inserted in order.
+    function insertMoves(block, moves, pos)
     {
         var itr = block.getInstrItr();
         var insertPos = 0; 
@@ -1991,24 +2008,36 @@ allocator.resolve = function (cfg, intervals, order, config)
 
         assert(insertPos < block.instrs.length,
                "Move instruction inserted after a branching instruction");
-        
-        block.addInstr(instr, "", insertPos);
+      
+        // We might receive either a single move instruction or a
+        // mapping containing many moves
+        if (moves instanceof MoveInstr)
+        {
+            block.addInstr(moves, "", insertPos);
+        } else
+        {
+            // We got multiple moves to insert
+            moves.orderAndInsertMoves(getInsertFct(block,insertPos), 
+                                      config.temp);
+        }
     };
+
     
-    var edgeIt, intervalIt, moveIt, blockIt, edge, moveFrom, moveTo;
+    var edgeIt, intervalIt, movesIt, blockIt, edge, moveFrom, moveTo;
     var interval;
+    var move;
     var moves = [];
     var pos, offset, blockOffset;
     var mapping;
     var insertFct;
     var insertIndex;
     var opnd;
-    var newblock;
+    var block;
     var blocksToInsert = [];
     var insertIt;
     var lastInstr;
 
-    // Insert Moves at split positions
+    // Determine moves to insert resulting from splitting of intervals
     for (intervalIt = new ArrayIterator(intervals); 
          intervalIt.valid(); 
          intervalIt.next())
@@ -2021,45 +2050,57 @@ allocator.resolve = function (cfg, intervals, order, config)
             if (interval.previous !== null &&
                 interval.previous.reg !== interval.reg)
             {
-                moves.push([interval.previous.endPos(),
-                            new MoveInstr(interval.previous.reg,
-                                          interval.reg)]);
+                pos = interval.previous.endPos();
+                move = moves[pos];
+                moveFrom = interval.previous.reg;
+                moveTo = interval.reg;
+
+                if (move === undefined) 
+                {
+                    moves[pos] = new MoveInstr(moveFrom, moveTo);
+                } else if (move instanceof MoveInstr) 
+                {
+                    // Replace the move with a mapping
+                    // for the two moves
+                    // in case they might conflict with each other
+                    mapping = allocator.mapping();
+                    mapping.addMove(move);
+                    mapping.add(moveFrom, moveTo);
+                    moves[pos] = mapping;
+                    
+                } else
+                {
+                    // We already got a mapping, add this move to it
+                    move.add(moveFrom, moveTo);    
+                }
             }
             interval = interval.next;
         }
     }
-    moves.sort(function (a,b) { return a[0] - b[0]; });
 
-
-    moveIt = new ArrayIterator(moves);
+    // Insert moves into corresponding blocks
+    movesIt = new FilterIterator(new ArrayIterator(moves),
+                                function (move) { return move !== undefined });
     blockIt = new ArrayIterator(order); 
-
-    while (moveIt.valid() && blockIt.valid())
+    while (movesIt.valid() && blockIt.valid())
     {
-        blockOffset = blockIt.get().regAlloc.from;
-
-        if (withinBounds(moveIt.get()[0], blockIt.get()))
+        if (withinBounds(movesIt.getIndex(), blockIt.get()))
         {
-            // We do a linear search since the correspondance between
-            // the insertion index and the instruction position varies
-            // since some instructions occupies more than 2 positions 
-            // (i.e. calls)
-            insertInstr(blockIt.get(), moveIt.get()[1], moveIt.get()[0]);
-            moveIt.next();
+            insertMoves(blockIt.get(), movesIt.get(), movesIt.getIndex());
+            movesIt.next();
         } else
         {
             blockIt.next();
         }
     }
 
-    // Resolve differences introduced by splitting in different
-    // basic blocks
+    // Resolve differences accross edges introduced by splitting
     for (edgeIt = cfg.getEdgeItr(); edgeIt.valid(); edgeIt.next())
     {
         mapping = allocator.mapping();
         edge = edgeIt.get();
         for (intervalIt = new FilterIterator(new ArrayIterator(intervals), 
-                                                 liveAtBegin(edge.succ));
+                                             getLiveAtBeginFct(edge.succ));
              intervalIt.valid(); 
              intervalIt.next())
         {
@@ -2113,37 +2154,28 @@ allocator.resolve = function (cfg, intervals, order, config)
             // branching instructions might be good 
             // candidates too.  We will optimize 
             // it later.
-            insertFct = function (move) 
-            { 
-                edge.pred.addInstr(move, "", edge.pred.instrs.length - 1); 
-            };
-
-        } else if (edge.succ.preds.length === 1)
-        {
-            // Successor has only a predecessor, insert moves
-            // at the beginning of successor
-            insertFct = function (move) 
-                        { 
-                            edge.succ.addInstr(move,"", insertIndex++);
-                        };
-            insertIndex = 0;
-
-        } else
-        {
-            // We need to introduce an additional block to insert
-            // the move instructions
-            newblock = cfg.getNewBlock("ssa_dec");
-            blocksToInsert.push({edge:edge, block:newblock});
-
-            insertFct = function (move) 
-                        { 
-                            newblock.addInstr(move,"", insertIndex++);
-                        };
-            insertIndex = 0;
+            insertFct = getInsertFct(edge.pred, edge.pred.instrs.length - 1);
+        } else         
+        {   
+            if (edge.succ.preds.length === 1)
+            {
+                // Successor has only a predecessor, insert moves
+                // at the beginning of successor
+                block = edge.succ;
+            } else
+            {
+                // We need to introduce an additional block to insert
+                // the move instructions
+                block = cfg.getNewBlock("ssa_dec");     
+                blocksToInsert.push({edge:edge, block:block});
+            }
+            
+            insertFct = getInsertFct(block, 0);
         }
         mapping.orderAndInsertMoves(insertFct, config.temp);
     }
 
+    // Insert blocks for moves that could not be inserted on existing blocks
     for (insertIt = new ArrayIterator(blocksToInsert);
          insertIt.valid();
          insertIt.next())
@@ -2189,6 +2221,13 @@ allocator.mapping = function ()
 allocator.mapping.prototype.add = function (from, to)
 {
     var mov = new MoveInstr(from, to);
+    this.addMove(mov);
+};
+
+allocator.mapping.prototype.addMove = function (mov)
+{
+    const from = mov.uses[0];
+    const to   = mov.uses[1];
 
     if (this.read[from] === undefined)
     {
