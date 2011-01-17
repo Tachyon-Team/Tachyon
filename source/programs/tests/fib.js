@@ -12,13 +12,16 @@ tests.fib.main = function ()
 {
     var fib = compileFileToJSFunc('programs/fib/fib.js', config.clientParams);
 
-    var startTimeMs = new Date().getTime();
+    //var startTimeMs = new Date().getTime();
+
     var x = fib();
-    var endTimeMs = new Date().getTime();
+
+    //var endTimeMs = new Date().getTime();
 
     fib.free();
-    var timeS = (endTimeMs - startTimeMs) / 1000;
-    print('time: ' + timeS + ' s');
+
+    //var timeS = (endTimeMs - startTimeMs) / 1000;
+    //print('time: ' + timeS + ' s');
 
     assert(x === (6765 << 2), "Invalid return value: " + x);
 };
