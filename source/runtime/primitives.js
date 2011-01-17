@@ -856,14 +856,26 @@ function extObjHashTable(obj, curTbl, curSize)
     // Allocate a new, larger hash table
     var newTbl = alloc_hashtbl(newSize);
 
+    // Initialize the keys in the new hash table
+    for (var i = pint(0); i < newSize; i += pint(1))
+    {
+        set_hashtbl_tbl_key(newTbl, i, UNDEFINED);
+    }
+
     // For each entry in the current table
     for (var curIdx = pint(0); 
          curIdx < curSize; 
-         curIdx = (curIdx + pint(1)) % curSize
+         curIdx = curIdx + pint(1)
     )
     {
-        // Get the key and property values at this hash slot
+        // Get the key at this hash slot
         var propKey = get_hashtbl_tbl_key(curTbl, curIdx);
+
+        // If this is an empty hash entry, skip it
+        if (propKey === UNDEFINED)
+            continue;
+
+        // Get the value at this hash slot
         var propVal = get_hashtbl_tbl_val(curTbl, curIdx);
 
         // Get the hash code for the property
@@ -1030,17 +1042,17 @@ function __getPropVal(obj, propName)
     var propHash = getHash(propName);
 
     // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
+    var propVal = getProp(obj, propName, propHash);
 
     // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.pint, propVal) == BIT_PATTERN_NOT_FOUND)
     {
         // Return the undefined value
         return UNDEFINED;
     }
 
     // Return the property value we found
-    return prop;
+    return propVal;
 }
 
 /**

@@ -12,16 +12,6 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    /*
-    var ast = parse_src_file('test_objs.js');
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();    
-    print(ir);
-    */
-    
-
-    config.hostParams.print = print;
 
     var memBlock = allocMachineCodeBlock(4096);
     
@@ -52,7 +42,7 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
-    
+
 
     /*
     var ast = parse_src_file('test_ffi.js');
@@ -83,6 +73,26 @@ function testIR()
     ir.validate();    
     print(ir);
     */
+
+
+
+    /*
+    var ast = parse_src_file('loop_loop.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();    
+    print(ir);
+    */
+
+    /*
+    config.hostParams.print = print;    
+    
+    var func = compileFileToJSFunc('loop_loop.js', config.hostParams);
+    var result = func();
+    func.free();
+    print(result >> 2);
+    */
+
 
     /*
     var codeblock = backend.compileIRToCB(ir);    

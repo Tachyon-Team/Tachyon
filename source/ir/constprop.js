@@ -726,12 +726,18 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
         else if (v0.type.isInt() && this.type === IRType.box)
         {
             var TAG_NUM_BITS_INT = params.staticEnv.getBinding('TAG_NUM_BITS_INT').value;
+            var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
+            var TAG_INT = params.staticEnv.getBinding('TAG_INT').value;
 
-            var castVal = v0.value >> TAG_NUM_BITS_INT;
+            // If the tag bits correspond to a boxed integer
+            if ((v0.value & TAG_INT_MASK) === TAG_INT)
+            {
+                var castVal = v0.value >> TAG_NUM_BITS_INT;
 
-            if (castVal >= this.type.getMinVal(params.target) && 
-                castVal <= this.type.getMaxVal(params.target))
-                result = castVal;
+                if (castVal >= this.type.getMinVal(params.target) && 
+                    castVal <= this.type.getMaxVal(params.target))
+                    result = castVal;
+            }
         }
 
         if (result !== undefined)
