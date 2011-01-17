@@ -1521,6 +1521,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Stack pointer offset
     var spoffset;
 
+    // Temporary opnd
+    var opnd;
+
     // Make sure we still have a register left for scratch
     assert(argRegNb < avbleRegNb);
 
@@ -1539,8 +1542,15 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
             if (opnds[i].type === x86.type.MEM)
             {
+
+                // Source memory location
+                // Adjust the offset to take the displacement of the stack pointer
+                // into account
+                opnd = Object.create(opnds[i]);
+                opnd.disp += spillOffset;
+
                 tltor.asm.
-                mov(opnds[i], scratch).
+                mov(opnd, scratch).
                 mov(scratch, mem(spoffset, stack));
             } 
             else
@@ -1560,11 +1570,11 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         if (opnds[i] instanceof IRFunction)
         {
             // Pass undefined as the function object
-            var opnd = $(ConstValue.getConst(undefined).getImmValue(tltor.params));
+            opnd = $(ConstValue.getConst(undefined).getImmValue(tltor.params));
         }
         else
         {
-            var opnd = opnds[i];
+            opnd = opnds[i];
         }
         
         reg = argsReg[i];
