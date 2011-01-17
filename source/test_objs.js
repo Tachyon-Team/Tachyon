@@ -1,48 +1,3 @@
-function __putPropVal2(obj, propName, propVal)
-{
-    "tachyon:noglobal";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    //printInt(propName);
-    //printInt(boxInt(propHash));
-
-    // Set the property on the object
-    putProp(obj, propName, propHash, propVal);
-}
-
-function __getPropVal2(obj, propName)
-{
-    "tachyon:noglobal";
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    printInt(propName);
-    printInt(boxInt(propHash));
-
-    // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
-
-    printInt(prop);
-
-    // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
-    {
-        // Return the undefined value
-        return UNDEFINED;
-    }
-
-    return prop;
-}
-
 function testObjs()
 {
     //"tachyon:noglobal";
@@ -50,7 +5,7 @@ function testObjs()
 
     var obj = newObject(UNDEFINED);
 
-    const NUM_PROPS = 5;
+    const NUM_PROPS = 1;
 
     for (var i = 0; i < NUM_PROPS; ++i)
     {

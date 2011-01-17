@@ -12,7 +12,17 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
+    /*
+    var ast = parse_src_file('test_objs.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();    
+    print(ir);
+    */
     
+
+    config.hostParams.print = print;
+
     var memBlock = allocMachineCodeBlock(4096);
     
     var blockAddr = getBlockAddr(memBlock, 0);

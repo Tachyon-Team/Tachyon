@@ -1185,7 +1185,7 @@ allocator.orderBlocks = function (cfg)
     // Compute the last loop end for header blocks
     for (var i = 0; i < blockOrder.length; ++i)
     {
-        var block = cfg.blocks[i];
+        var block = blockOrder[i];
 
         if (block.regAlloc.loopHeader)
             block.regAlloc.loopHeader.regAlloc.lastLoopEnd = block;
@@ -1343,9 +1343,9 @@ allocator.liveIntervals = function (cfg, order, config)
                 }
             }
 
-            // If this is a loop header, skip it
-            if (succ.regAlloc.lastLoopEnd === block)
-                continue;            
+            // If this is our loop header, skip it
+            if (block.regAlloc.loopHeader === succ)
+                continue;
 
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
@@ -1384,7 +1384,6 @@ allocator.liveIntervals = function (cfg, order, config)
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
-
             }
 
             // Input operands for phi instructions are added to the live set
