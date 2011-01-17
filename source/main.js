@@ -12,7 +12,7 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-
+    /*
     var memBlock = allocMachineCodeBlock(4096);
     
     var blockAddr = getBlockAddr(memBlock, 0);
@@ -42,6 +42,26 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
+    */
+
+
+    var ast = parse_src_file('programs/loop_loop/loop_loop.js');
+    var ir = unitToIR(ast, config.hostParams);
+    lowerIRFunc(ir, config.hostParams);
+    ir.validate();
+
+    var barFunc = ir.childFuncs[0];
+
+    var proxy = new CProxy(
+        barFunc,
+        config.hostParams,
+        ['int', 'int', 'int'],
+        'int'
+    );
+
+    var wrapper = proxy.genProxy();
+
+
 
 
     /*
@@ -74,16 +94,6 @@ function testIR()
     print(ir);
     */
 
-
-
-    /*
-    var ast = parse_src_file('loop_loop.js');
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();    
-    print(ir);
-    */
-
     /*
     config.hostParams.print = print;    
     
@@ -91,16 +101,6 @@ function testIR()
     var result = func();
     func.free();
     print(result >> 2);
-    */
-
-
-    /*
-    var codeblock = backend.compileIRToCB(ir);    
-    //print(backend.listing(codeblock));
-    var result = backend.executeCB(codeblock);
-
-    //print('result: ' + (result >> 2));    
-    print('result: ' + result);
     */
     
     /*

@@ -81,6 +81,9 @@ function cTypeToIRType(cType, params)
         case 'short':
         return IRType.i16;
 
+        case 'unsigned short':
+        return IRType.u16;
+
         case 'int':
         return IRType.pint;
 
@@ -93,6 +96,68 @@ function cTypeToIRType(cType, params)
         default:
         error('unsupported C type: ' + cType);        
     }
+}
+
+/**
+Generate a code string to perform a type conversion
+*/
+function genTypeConv(inType, outType, inVar)
+{
+    switch (inType)
+    {
+        case IRType.box:
+        switch (outType)
+        {
+            case IRType.pint:
+            return 'unboxInt(' + inVar + ')';
+
+            case IRType.i16:
+            return 'iir.icast(IRType.i16, unboxInt(' + inVar + '))';
+            
+            case IRType.u16:
+            return 'iir.icast(IRType.u16, unboxInt(' + inVar + '))';            
+        }
+        break;
+
+        case IRType.pint:
+        switch (outType)
+        {
+            case IRType.box:
+            return 'boxInt(' + inVar + ')';
+        }
+        break;
+
+        case IRType.i16:
+        switch (outType)
+        {
+            case IRType.box:
+            return 'boxInt(iir.icast(IRType.i16, ' + inVar + '))';
+        }
+        break;
+        
+        case IRType.u16:
+        switch (outType)
+        {
+            case IRType.box:
+            return 'boxInt(iir.icast(IRType.u16, ' + inVar + '))';
+        }
+        break;
+
+        /*        
+        TODO: string conversions
+        case IRType.rptr:
+        {
+            case IRType.box:
+            return 'TODO';
+        }
+        break;
+        */
+    }
+
+    assert (
+        false,
+        'cannot convert from ' + inType + ' to ' + outType
+    );
 }
 
 /**
@@ -132,6 +197,12 @@ function CFunction(
         tachArgTypes.length === cArgTypes.length
     );
 
+    // Convert the C argument types to IR types
+    cArgTypes = cArgTypes.map(function (t) { return cTypeToIRType(t, params); });
+
+    // Convert the C return type to an IR type
+    cRetType = cTypeToIRType(cRetType, params);
+
     /**
     Name of the C function
     @field
@@ -142,13 +213,13 @@ function CFunction(
     Argument types of the C function
     @field
     */
-    this.cArgTypes = cArgTypes.map(cTypeToIRType);
+    this.cArgTypes = cArgTypes;
 
     /**
     Return type of the C function
     @field
     */
-    this.cRetType = cTypeToIRType(cRetType, params);
+    this.cRetType = cRetType;
 
     /**
     Argument types of the wrapper
@@ -188,44 +259,6 @@ Generate code for a wrapper function for a C FFI function
 */
 CFunction.prototype.genWrapper = function ()
 {
-    function genTypeConv(inType, outType, inVar)
-    {
-        switch (inType)
-        {
-            case IRType.box:
-            switch (outType)
-            {
-                case IRType.pint:
-                return 'unboxInt(' + inVar + ')';
-
-                case IRType.i16:
-                return 'iir.icast(IRType.i16, unboxInt(' + inVar + '))';
-            }
-            break;
-
-            case IRType.pint:
-            switch (outType)
-            {
-                case IRType.box:
-                return 'boxInt(' + inVar + ')';
-            }
-            break;
-
-            case IRType.i16:
-            switch (outType)
-            {
-                case IRType.box:
-                return 'boxInt(iir.icast(IRType.i16, ' + inVar + '))';
-            }
-            break;
-        }
-
-        assert (
-            false,
-            'cannot convert from ' + inType + ' to ' + outType
-        );
-    }
-
     // Source string to store the generated code
     var sourceStr = '';
 
@@ -285,6 +318,184 @@ CFunction.prototype.genWrapper = function ()
 
     // Return the generated code
     return sourceStr;
+}
+
+/**
+@class Represents a proxy function callable from C for a Tachyon function
+*/
+function CProxy(
+    irFunction,
+    params,
+    cArgTypes,
+    cRetType,
+    ctxVal
+)
+{
+    assert (
+        irFunction instanceof IRFunction
+    );
+
+    // The types presented to C must be specified
+    assert (
+        cArgTypes instanceof Array && cRetType !== undefined
+    );
+    
+    assert (
+        params instanceof CompParams
+    );
+
+    assert (
+        irFunction.argTypes.length === cArgTypes.length
+    );
+
+    assert (
+        ctxVal instanceof ConstValue ||
+        ctxVal === undefined
+    );
+
+    // For now, assume the context is always passed as an argument
+    assert (ctxVal === undefined);
+
+    // Convert the C argument types to IR types
+    cArgTypes = cArgTypes.map(function (t) { return cTypeToIRType(t, params); });
+
+    // Convert the C return type to an IR type
+    cRetType = cTypeToIRType(cRetType, params);
+
+    // If the context should be passed as an argument, make the first
+    // C argument a void pointer
+    if (ctxVal === undefined)
+        cArgTypes.unshift(IRType.rptr);
+
+    /**
+    Tachyon function to be wrapped by this proxy
+    @field
+    */
+    this.irFunction = irFunction;    
+
+    /**
+    Argument types of the C function
+    @field
+    */
+    this.cArgTypes = cArgTypes;
+
+    /**
+    Return type of the C function
+    @field
+    */
+    this.cRetType = cRetType;
+
+    /**
+    Context pointer to be used. May be undefined if
+    the context is to be passed by argument.
+    @field
+    */
+    this.ctxVal = ctxVal;
+}
+CProxy.prototype = {};
+
+/**
+Generate the proxy function
+*/
+CProxy.prototype.genProxy = function ()
+{
+    // Source string to store the generated code
+    var sourceStr = '';
+
+    var funcName = 'cproxy_' + this.irFunction.funcName;
+
+    sourceStr += 'function ' + funcName + '(';
+
+    if (this.ctxVal === undefined)
+    {
+        sourceStr += 'ctx';
+
+        if (this.irFunction.argTypes.length > 0)
+            sourceStr += ', ';
+    }
+
+    for (var i = 0; i < this.irFunction.argTypes.length; ++i)
+    {
+        sourceStr += 'a' + i;        
+        if (i != this.irFunction.argTypes.length - 1)
+            sourceStr += ', ';
+    }
+
+    sourceStr += ')\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:ret ' + this.cRetType + '";\n';
+
+    if (this.ctxVal === undefined)
+    {
+        sourceStr += '\t"tachyon:arg ctx rptr\n';
+    }
+
+    for (var i = 0; i < this.irFunction.argTypes.length; ++i)
+    {
+        var argType = this.cArgTypes[
+            this.cArgTypes.length - this.irFunction.argTypes.length + i
+        ];
+
+        sourceStr += '\t"tachyon:arg a' + i + ' ' + argType + '";\n';
+    }
+
+    if (this.ctxVal === undefined)
+    {
+        sourceStr += '\tiir.set_ctx(ctx);\n';
+    }
+
+    for (var i = 0; i < this.irFunction.argTypes.length; ++i)
+    {
+        var cType = this.cArgTypes[
+            this.cArgTypes.length - this.irFunction.argTypes.length + i
+        ];
+        var tType = this.irFunction.argTypes[i];
+
+        if (cType === tType)
+            continue;
+
+        var varName = 'a' + i;
+
+        sourceStr += '\t' + varName + ' = ';
+        sourceStr += genTypeConv(cType, tType, varName) + ';\n';
+    }
+    
+    var retVoid = this.cRetType === IRType.none;
+
+
+    // FIXME: fetch global object from context, use iir.call to pass it
+
+
+    sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + this.irFunction.funcName + '(';
+
+    for (var i = 0; i < this.irFunction.argTypes.length; ++i)
+    {
+        sourceStr += 'a' + i;
+
+        if (i != this.irFunction.argTypes.length - 1)
+            sourceStr += ', ';
+    }
+
+    sourceStr += ');\n';
+
+    if (retVoid === false)
+    {
+        sourceStr += '\treturn ' + genTypeConv(this.irFunction.retType, this.cRetType, 'r') + ';\n';
+    }
+    else
+    {
+        sourceStr += '\treturn;';
+    }
+
+    sourceStr += '}\n';
+    
+    print(sourceStr);
+
+
+
+    // TODO: compile function, set cproxy flag on function object
+
+
 }
 
 /**

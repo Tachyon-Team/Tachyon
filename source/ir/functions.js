@@ -12,7 +12,15 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Intermediate representation function
 */
-function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, astNode)
+function IRFunction(
+    funcName, 
+    argVars, 
+    closVars, 
+    argTypes, 
+    retType, 
+    parentFunc, 
+    astNode
+)
 {
     /**
     Function name
@@ -71,6 +79,13 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     @field
     */
     this.parentFunc = null;
+
+    /**
+    Indicates that this function is a proxy callable from C
+    (uses the C calling convention)
+    @field
+    */
+    this.cproxy = false;
 
     /**
     Indicates that this function may use the arguments object
