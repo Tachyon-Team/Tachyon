@@ -163,14 +163,6 @@ function stmtListToIRFunc(
         }
     }
 
-    // Read the global object from the context
-    var globalObj = insertFieldReadIR(
-        entryBlock, 
-        params.memLayouts.ctx,
-        ['globalobj'],
-        'global'
-    );
-
     // Create a map for the closure and escaping variable mutable cells
     var sharedMap = new HashMap();
 
@@ -189,7 +181,6 @@ function stmtListToIRFunc(
         cfg,
         funcObj,
         thisVal,
-        globalObj,
         params
     );
 
@@ -330,6 +321,9 @@ function stmtListToIRFunc(
         {
             var varName = itr.get().key;
             var varVal = itr.get().value;
+
+            // Get the global object
+            var globalObj = insertGetGlobal(bodyContext);
 
             // Bind the variable's initial value in the global environment
             insertPrimCallIR(
@@ -571,7 +565,6 @@ function IRConvContext(
     cfg,
     funcObj,
     thisVal,
-    globalObj,
     params
 )
 {
@@ -627,10 +620,6 @@ function IRConvContext(
     assert (
         thisVal instanceof IRValue,
         'invalid this value in IR conversion context'
-    );
-    assert (
-        globalObj instanceof IRValue,
-        'invalid global object in IR conversion context'
     );
     assert (
         params instanceof CompParams,
@@ -714,12 +703,6 @@ function IRConvContext(
     @field
     */
     this.thisVal = thisVal;
-
-    /**
-    Global object instance
-    @field
-    */
-    this.globalObj = globalObj;
 
     /**
     Current basic block at the output
@@ -856,7 +839,6 @@ IRConvContext.prototype.pursue = function (astNode)
         this.cfg,
         this.funcObj,
         this.thisVal,
-        this.globalObj,
         this.params
     );
 };
@@ -884,7 +866,6 @@ IRConvContext.prototype.branch = function (
         this.cfg,
         this.funcObj,
         this.thisVal,
-        this.globalObj,
         this.params
     );
 };
@@ -2062,8 +2043,11 @@ function exprToIR(context)
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
+            // Get the global object
+            var globalObj = insertGetGlobal(funcContext);            
+
             // The this value is the global object
-            thisVal = context.globalObj;
+            thisVal = globalObj;
 
             lastContext = funcContext;
         }
@@ -2144,9 +2128,8 @@ function exprToIR(context)
         var valVals = exprListToIR(valCtx);
 
         // Find the object prototype object in the context
-        var objProto = insertFieldReadIR(
+        var objProto = insertCtxReadIR(
             valCtx,
-            context.params.memLayouts.ctx,
             ['objproto']
         );
 
@@ -2619,11 +2602,14 @@ function opToIR(context)
                         var globContext = context;
                     }
 
+                    // Get the global object
+                    var globalObj = insertGetGlobal(globContext);
+
                     // Delete the property from the global object
                     opValueGlob = insertPrimCallIR(
                         globContext, 
                         'delPropVal', 
-                        [context.globalObj, ConstValue.getConst(varName)]
+                        [globalObj, ConstValue.getConst(varName)]
                     );
 
                     // If we are within a with block
@@ -2886,6 +2872,9 @@ function assgToIR(context, rhsVal)
                     context.cfg.ownerFunc.funcName
                 );
             }
+
+            // Get the global object
+            var globalObj = insertGetGlobal(context);
         }
 
         // If we are within a with block
@@ -2939,7 +2928,7 @@ function assgToIR(context, rhsVal)
                 lhsVal = insertPrimCallIR(
                     varContext, 
                     'getPropVal', 
-                    [context.globalObj, ConstValue.getConst(symName)]
+                    [globalObj, ConstValue.getConst(symName)]
                 );
             }
 
@@ -2984,7 +2973,7 @@ function assgToIR(context, rhsVal)
             insertPrimCallIR(
                 varContext, 
                 'putPropVal', 
-                [context.globalObj, ConstValue.getConst(symName), rhsValAssg]
+                [globalObj, ConstValue.getConst(symName), rhsValAssg]
             );
         }
 
@@ -3228,6 +3217,9 @@ function refToIR(context)
                 IRType.pint
             );
 
+            // Get the global object
+            var globalObj = insertGetGlobal(varContext);
+
             // If this is a global function lookup
             if (context.ctxNode instanceof CallExpr)
             {
@@ -3236,7 +3228,7 @@ function refToIR(context)
                     varContext, 
                     'getGlobalFunc', 
                     [
-                        context.globalObj, 
+                        globalObj, 
                         ConstValue.getConst(symName),
                         symHashVal
                     ]
@@ -3249,7 +3241,7 @@ function refToIR(context)
                     varContext, 
                     'getGlobal', 
                     [
-                        context.globalObj, 
+                        globalObj, 
                         ConstValue.getConst(symName),
                         symHashVal
                     ]
@@ -3346,7 +3338,7 @@ function refToIR(context)
 /**
 Insert a read from the runtime context
 */
-function insertFieldReadIR(context, layout, query, outName)
+function insertCtxReadIR(context, query, outName)
 {
     // Get a pointer to the context object
     var ctxPtr = context.addInstr(
@@ -3354,7 +3346,7 @@ function insertFieldReadIR(context, layout, query, outName)
     );
 
     // Generate IR to access the field
-    var field = layout.genfieldAccessIR(context, query);
+    var field = context.params.memLayouts.ctx.genfieldAccessIR(context, query);
 
     // Read the variable from the context object
     var readVal = context.addInstr(
@@ -3368,6 +3360,14 @@ function insertFieldReadIR(context, layout, query, outName)
 
     // Return the value read
     return readVal;
+}
+
+/**
+Insert a context read to get the global object
+*/
+function insertGetGlobal(context)
+{
+    return insertCtxReadIR(context, ['globalobj'], 'global');
 }
 
 /**
@@ -3415,19 +3415,19 @@ function insertErrorIR(context, errorName, errorMsg)
     switch (errorName)
     {
         case 'RangeError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['rangeerror']);
+        errorCtor = insertCtxReadIR(context, ['rangeerror']);
         break;
         case 'ReferenceError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['referror']);
+        errorCtor = insertCtxReadIR(context, ['referror']);
         break;
         case 'SyntaxError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['syntaxerror']);
+        errorCtor = insertCtxReadIR(context, ['syntaxerror']);
         break;
         case 'TypeError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['typeerror']);
+        errorCtor = insertCtxReadIR(context, ['typeerror']);
         break;
         case 'URIError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['urierror']);
+        errorCtor = insertCtxReadIR(context, ['urierror']);
         break;
     }
     assert (
@@ -3488,32 +3488,30 @@ function insertConstructIR(context, funcVal, argVals)
     // If the prototype field is an object use it, otherwise, use the
     // object prototype object
     var protoIsObj = context.cfg.getNewBlock('proto_is_obj');
-    var protoNotObj = context.cfg.getNewBlock('proto_not_obj');
-    var protoMerge = context.cfg.getNewBlock('proto_merge');   
-    var testVal = insertCallIR(
+    var protoNotObjCtx = context.branch(
+        context.astNode,
+        context.cfg.getNewBlock('proto_not_obj'),
+        context.localMap.copy()
+    );
+    var protoMerge = context.cfg.getNewBlock('proto_merge');
+    var testVal = insertPrimCallIR(
         context,
-        new CallFuncInstr(
-            [
-                context.params.staticEnv.getBinding('boxIsObj'),
-                context.globalObj,
-                funcProto
-            ]
-        )
+        'boxIsObj',
+        [funcProto]
     );
     context.addInstr(
         new IfInstr(
             testVal,
             protoIsObj,
-            protoNotObj
+            protoNotObjCtx.entryBlock
         )
     );
-    var objProto = insertFieldReadIR(
-        protoNotObj,
-        context.params.memLayouts.ctx,
+    var objProto = insertCtxReadIR(
+        protoNotObjCtx,
         ['objproto']
     );
     protoIsObj.addInstr(new JumpInstr(protoMerge));
-    protoNotObj.addInstr(new JumpInstr(protoMerge));
+    protoNotObjCtx.addInstr(new JumpInstr(protoMerge));
     var protoVal = protoMerge.addInstr(
         new PhiInstr(
             [
@@ -3522,7 +3520,7 @@ function insertConstructIR(context, funcVal, argVals)
             ],
             [
                 protoIsObj, 
-                protoNotObj
+                protoNotObjCtx.entryBlock
             ]
         ),
         'proto_val'
@@ -3548,15 +3546,10 @@ function insertConstructIR(context, funcVal, argVals)
     var retIsObj = context.cfg.getNewBlock('ret_is_obj');
     var retNotObj = context.cfg.getNewBlock('ret_not_obj');
     var retMerge = context.cfg.getNewBlock('ret_merge');
-    var testVal = insertCallIR(
+    var testVal = insertPrimCallIR(
         context,
-        new CallFuncInstr(
-            [
-                context.params.staticEnv.getBinding('boxIsObj'),
-                context.globalObj,
-                retVal
-            ]
-        )
+        'boxIsObj',
+        [retVal]
     );
     context.addInstr(
         new IfInstr(
@@ -3599,15 +3592,11 @@ function insertCallIR(context, instr)
     )
     {
         // Test if the callee value is a function
-        var testVal = insertCallIR(
+        var testVal = insertPrimCallIR(
             context,
-            new CallFuncInstr(
-                [
-                    context.params.staticEnv.getBinding('boxIsFunc'),
-                    context.globalObj,
-                    instr.uses[0]
-                ]
-            )
+            'boxIsFunc',
+            [instr.uses[0]]
+
         );
 
         // Throw an error if the callee is not a function
@@ -3843,7 +3832,6 @@ function createLoopEntry(
         context.cfg,
         context.funcObj,
         context.thisVal,
-        context.globalObj,
         context.params
     );
 }

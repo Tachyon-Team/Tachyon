@@ -44,7 +44,7 @@ function testIR()
     }
     */
 
-
+    
     var ast = parse_src_file('programs/loop_loop/loop_loop.js');
     var ir = unitToIR(ast, config.hostParams);
     lowerIRFunc(ir, config.hostParams);
@@ -59,10 +59,12 @@ function testIR()
         'int'
     );
 
+    config.hostParams.print = print;
+
     var wrapper = proxy.genProxy();
 
-
-
+    print(wrapper);
+    
 
     /*
     var ast = parse_src_file('test_ffi.js');
@@ -95,14 +97,10 @@ function testIR()
     */
 
     /*
-    config.hostParams.print = print;    
-    
-    var func = compileFileToJSFunc('loop_loop.js', config.hostParams);
-    var result = func();
-    func.free();
-    print(result >> 2);
-    */
-    
+    var func = compileSrcFile('programs/fib/fib.js', config.hostParams);
+    print(func);
+    */    
+
     /*
     var func = config.hostParams.staticEnv.getBinding('lt');
     print(func);
