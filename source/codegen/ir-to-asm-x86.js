@@ -545,9 +545,45 @@ irToAsm.translator.prototype.func_init = function ()
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
     //       expected
-
+ 
     const byteLength = this.config.stack.width() >> 3;
+    const cstack = this.asm.target === x86.target.x86 ? ESP : reg.rsp;
     var spillNb = this.fct.regAlloc.spillNb;
+
+    if (this.fct.cProxy)
+    {
+        if (this.asm.target === x86.target.x86)
+        {
+            // We follow 32 bits Windows, Linux, BSD and Mac OS X
+            // callee-save convention
+            this.asm.
+            push(EBX).
+            push(ESI).
+            push(EDI).
+            push(EBP);
+        } else {
+            // We follow 64 bits Linux, BSD, Mac OS X
+            // callee-save convention
+            this.asm.
+            push(reg.rbx).
+            push(reg.rbp).
+            push(reg.r12).
+            push(reg.r13).
+            push(reg.r14).
+            push(reg.r15);
+        }
+
+        // Put the stack pointer where tachyon expects it to be
+        if (cstack !== this.config.stack)
+        {
+            tltor.asm.
+            mov(cstack, this.config.stack);
+        }
+    }
+
+    // TODO: Correctly handle a number of arguments
+    //       passed lesser than the number of arguments
+    //       expected
     if (spillNb > 0)
     {
         this.asm.sub($(spillNb*byteLength), this.config.stack);
@@ -657,7 +693,8 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const argsReg = tltor.config.argsReg;
 
     // Number of registers used for passing arguments
-    const argRegNb = tltor.config.argsIndex.length;
+    const argRegNb = (tltor.fct.cProxy === true) ? 0 
+                     : tltor.config.argsIndex.length;
 
     // Number of bytes in a reference
     const refByteNb = tltor.config.stack.width() >> 3;
@@ -667,12 +704,19 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
 
     // Index on the call site argument space
     const callSiteArgIndex = argIndex - argRegNb;
+    
+    // Offset due to C calling convention 
+    const ccallOffset = (tltor.fct.cProxy === true) ?
+                        ((tltor.asm.target === x86.target.x86) ? 4 : 6) : 0;
 
     // Offset to the argument on the stack
-    const spoffset = (regAllocSpillNb + callSiteArgIndex + 1) * refByteNb;
+    const spoffset = (regAllocSpillNb + callSiteArgIndex + 
+                      ccallOffset + 1) * refByteNb;
 
     // Stack pointer
     const stack = tltor.config.stack;
+
+
 
     // Ignore if the argument is not required
     if (dest === null)
@@ -1319,10 +1363,11 @@ JumpInstr.prototype.genCode = function (tltor, opnds)
 RetInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the return value
-    const dest = this.regAlloc.dest;
     const offset = tltor.fct.regAlloc.spillNb;
     const refByteNb = tltor.config.stack.width() >> 3;
-    const retValReg = tltor.config.retValReg;
+    const retValReg = (tltor.fct.cProxy === false) ? tltor.config.retValReg 
+                      : ((tltor.asm.target === x86.target.x86) ? EAX : reg.rax);
+    const cstack = tltor.asm.target === x86.target.x86 ? ESP : reg.rsp;
 
     // Remove all spilled values and return address from stack
     if (offset > 0)
@@ -1333,6 +1378,38 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     if (opnds[0] !== retValReg)
     {
         tltor.asm.mov(opnds[0], retValReg);
+    }
+
+    if (tltor.fct.cProxy)
+    {
+        // Put the stack pointer where C expects it to be
+        if (tltor.config.stack !== cstack)
+        {
+            tltor.asm.
+            mov(tltor.config.stack, cstack);
+        }
+
+        if (tltor.asm.target === x86.target.x86)
+        {
+            // We follow 32 bits Windows, Linux, BSD and Mac OS X
+            // callee-save convention
+            tltor.asm.
+            pop(EBP).
+            pop(EDI).
+            pop(ESI).
+            pop(EBX);
+        } else 
+        {
+            // We follow 64 bits Linux, BSD, Mac OS X
+            // callee-save convention
+            tltor.asm.
+            pop(reg.r15).
+            pop(reg.r14).
+            pop(reg.r13).
+            pop(reg.r12).
+            pop(reg.rbp).
+            pop(reg.rbx);
+        }
     }
   
     // Return address is just under the stack pointer
