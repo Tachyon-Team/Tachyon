@@ -423,11 +423,12 @@ CProxy.prototype.genProxy = function ()
 
     sourceStr += ')\n';
     sourceStr += '{\n';
+    sourceStr += '\t"tachyon:cproxy";\n';
     sourceStr += '\t"tachyon:ret ' + this.cRetType + '";\n';
 
     if (this.ctxVal === undefined)
     {
-        sourceStr += '\t"tachyon:arg ctx rptr\n';
+        sourceStr += '\t"tachyon:arg ctx rptr";\n';
     }
 
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
@@ -444,6 +445,15 @@ CProxy.prototype.genProxy = function ()
         sourceStr += '\tiir.set_ctx(ctx);\n';
     }
 
+    // Get the global object from the context if available
+    sourceStr += '\tvar global = '
+    if (this.ctxVal === undefined)
+        sourceStr += 'get_ctx_global(ctx)';
+    else
+        sourceStr += 'UNDEFINED';
+    sourceStr += ';\n';
+
+    // Convert the types of function arguments
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
     {
         var cType = this.cArgTypes[
@@ -462,18 +472,12 @@ CProxy.prototype.genProxy = function ()
     
     var retVoid = this.cRetType === IRType.none;
 
-
-    // FIXME: fetch global object from context, use iir.call to pass it
-
-
-    sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + this.irFunction.funcName + '(';
+    sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + 'iir.call(';
+    sourceStr += this.irFunction.funcName + ', global';
 
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
     {
-        sourceStr += 'a' + i;
-
-        if (i != this.irFunction.argTypes.length - 1)
-            sourceStr += ', ';
+        sourceStr += ', ' + 'a' + i;
     }
 
     sourceStr += ');\n';
@@ -491,11 +495,11 @@ CProxy.prototype.genProxy = function ()
     
     print(sourceStr);
 
+    // Compile the source string into an IR function
+    var func = compileSrcString(sourceStr, config.hostParams);
 
-
-    // TODO: compile function, set cproxy flag on function object
-
-
+    // Return the compiled function
+    return func;
 }
 
 /**

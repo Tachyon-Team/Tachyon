@@ -85,7 +85,7 @@ function IRFunction(
     (uses the C calling convention)
     @field
     */
-    this.cproxy = false;
+    this.cProxy = false;
 
     /**
     Indicates that this function may use the arguments object
