@@ -185,6 +185,10 @@ irToAsm.translator = function (config, params)
     that.putPropValLabel = that.asm.labelObj("PUT_PROP");
     that.getPropValLabel = that.asm.labelObj("GET_PROP");
 
+    // Temporary place holder for the context link object
+    // until we allocate it in the heap
+    that.ctxLinkObj = null;
+
     that.config = config;
 
     if (that.asm.is64bitMode())
@@ -486,7 +490,18 @@ irToAsm.translator.prototype.dump_context_object = function ()
     const immTrue = ConstValue.getConst(true, IRType.box).getImmValue(this.params);
     const immFalse = ConstValue.getConst(false, IRType.box).getImmValue(this.params);
 
+    const ctxLinkObj = this.asm.linked("ctxLinkObj",
+                                       function (dstAddr) { 
+                                        return this.getAddr().getBytes();},
+                                       (this.asm.target === x86.target.x86) ?
+                                       32 : 64);
+
+    this.ctxLinkObj = ctxLinkObj;
+     
+
     this.asm.
+    // Allows retrieve the context pointer from the main function
+    provide(ctxLinkObj).
     label(this.contextLabel);
 
     this.call_self();

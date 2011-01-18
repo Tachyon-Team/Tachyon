@@ -390,6 +390,7 @@ x86.Assembler.prototype.linked.prototype.linkValue  = function () { error("'link
 x86.Assembler.prototype.linked.prototype.width = function () { return 32; };
 x86.Assembler.prototype.linked.prototype.srcAddr = null;
 x86.Assembler.prototype.linked.prototype.setAddr = function (addr) { this.srcAddr = addr;};
+x86.Assembler.prototype.linked.prototype.getAddr = function () { return this.srcAddr.copy();};
 
 
 x86.Assembler.prototype.linked.prototype.toString = function (verbose)
