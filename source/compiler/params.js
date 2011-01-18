@@ -25,6 +25,8 @@ function CompParams(cfgObj)
 
     assert (cfgObj.debug === true || cfgObj.debug === false);
 
+    assert (cfgObj.parserWarnings === true || cfgObj.parserWarnings === false);
+
     assert (cfgObj.staticEnv instanceof StaticEnv);
 
     /**
@@ -40,10 +42,16 @@ function CompParams(cfgObj)
     this.tachyonSrc = cfgObj.tachyonSrc;
 
     /**
-    Debug mode flag
+    Enable debug mode flag
     @field
     */
     this.debug = cfgObj.debug;
+
+    /**
+    Enable parser warnings flag
+    @field
+    */
+    this.parserWarnings = cfgObj.parserWarnings;
 
     /**
     Static definitions to be used during compilation

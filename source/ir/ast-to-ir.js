@@ -2823,19 +2823,19 @@ function opToIR(context)
         break;
 
         case 'x == y':
-        opGen('eq', EqInstr);
+        opGen('eq');
         break;
 
         case 'x != y':
-        opGen('ne', NeInstr);
+        opGen('ne');
         break;
 
         case 'x === y':
-        opGen('seq');
+        opGen('seq', EqInstr);
         break;
 
         case 'x !== y':
-        opGen('nseq');
+        opGen('nseq', NeInstr);
         break;
 
         case 'typeof x':

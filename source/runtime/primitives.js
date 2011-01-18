@@ -79,7 +79,7 @@ function boxHasTag(boxVal, tagVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == tagVal;
+    return getRefTag(boxVal) === tagVal;
 }
 
 /**
@@ -92,7 +92,7 @@ function boxIsInt(boxVal)
     "tachyon:ret bool";
 
     // Test if the value has the int tag
-    return (boxVal & TAG_INT_MASK) == TAG_INT;
+    return (boxVal & TAG_INT_MASK) === TAG_INT;
 }
 
 /**
@@ -119,7 +119,7 @@ function boxIsFunc(boxVal)
 
     /* TODO
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_FUNCTION;
+    return getRefTag(boxVal) === TAG_FUNCTION;
     */
 
     // FIXME: for now, function pointers not boxed, this will not work
@@ -136,7 +136,7 @@ function boxIsArray(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_ARRAY;
+    return getRefTag(boxVal) === TAG_ARRAY;
 }
 
 /**
@@ -149,7 +149,7 @@ function boxIsFloat(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_FLOAT;
+    return getRefTag(boxVal) === TAG_FLOAT;
 }
 
 /**
@@ -162,7 +162,7 @@ function boxIsString(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_STRING;
+    return getRefTag(boxVal) === TAG_STRING;
 }
 
 /**
@@ -178,21 +178,21 @@ function boxToBool(boxVal)
     // Get an integer-typed value for input
     var boxInt = iir.icast(IRType.pint, boxVal);
 
-    if (boxInt == BIT_PATTERN_TRUE)
+    if (boxInt === BIT_PATTERN_TRUE)
         return TRUE_BOOL;
 
-    else if (boxInt == BIT_PATTERN_FALSE)
+    else if (boxInt === BIT_PATTERN_FALSE)
         return FALSE_BOOL;
 
-    else if (boxInt == BIT_PATTERN_UNDEF)
+    else if (boxInt === BIT_PATTERN_UNDEF)
         return FALSE_BOOL;
 
-    else if (boxInt == BIT_PATTERN_NULL)
+    else if (boxInt === BIT_PATTERN_NULL)
         return FALSE_BOOL;
 
     else if (boxIsInt(boxVal))
     { 
-        if (boxInt != pint(0))
+        if (boxInt !== pint(0))
             return TRUE_BOOL;
         else
             return FALSE_BOOL;
@@ -202,7 +202,7 @@ function boxToBool(boxVal)
     {
         var len = iir.icast(IRType.pint, get_str_len(boxVal));
 
-        if (len != pint(0))
+        if (len !== pint(0))
             return TRUE_BOOL;
         else
             return FALSE_BOOL;
@@ -290,7 +290,7 @@ function heapAlloc(size)
 
     // Align the next allocation pointer
     var rem = iir.icast(IRType.pint, nextPtr) % HEAP_ALIGN;
-    if (rem != pint(0))
+    if (rem !== pint(0))
     {
         var pad = HEAP_ALIGN - rem;
         nextPtr += pad;
@@ -909,7 +909,7 @@ function extObjHashTable(obj, curTbl, curSize)
             /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
-                hashIndex != startHashIndex,
+                hashIndex !== startHashIndex,
                 'no free slots found in extended hash table'
             );
             */
@@ -1045,7 +1045,7 @@ function __getPropVal(obj, propName)
     var propVal = getProp(obj, propName, propHash);
 
     // If the property isn't defined
-    if (iir.icast(IRType.pint, propVal) == BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.pint, propVal) === BIT_PATTERN_NOT_FOUND)
     {
         // Return the undefined value
         return UNDEFINED;
@@ -1076,7 +1076,7 @@ function hasPropVal(obj, propName)
     var prop = getProp(obj, propName, propHash);
 
     // Test if the property was found
-    return (iir.icast(IRType.pint, prop) != BIT_PATTERN_NOT_FOUND);
+    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
 }
 
 /**
@@ -1099,7 +1099,7 @@ function getPropVal(obj, propName)
     var prop = getProp(obj, propName, propHash);
 
     // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
     {
         // Return the undefined value
         return UNDEFINED;
@@ -1121,7 +1121,7 @@ function getGlobal(obj, propName, propHash)
     var prop = getProp(obj, propName, propHash);
 
     // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
     {
         // Throw a ReferenceError exception
         throw makeError(ReferenceError, "global property not defined" + propName);
@@ -1151,7 +1151,7 @@ function getGlobalFunc(obj, propName, propHash)
     else
     {
         // If the property isn't defined
-        if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+        if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
         {
             // Throw a ReferenceError exception
             throw makeError(ReferenceError, "global property not defined" + propName);

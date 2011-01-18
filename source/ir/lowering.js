@@ -187,15 +187,15 @@ function compPrimitives(params)
     // Build a list of the ASTs of the primitive code
     var astList = [
         // Generated code for the object layouts
-        parse_src_str(layoutSrc),
+        parse_src_str(layoutSrc, params),
         // Generated code for the FFI functions
-        parse_src_str(wrapperSrc),
+        parse_src_str(wrapperSrc, params),
         // Source code for the primitives
-        parse_src_file('runtime/primitives.js'),
+        parse_src_file('runtime/primitives.js', params),
         // Source code for string operations
-        parse_src_file('runtime/strings.js'),
+        parse_src_file('runtime/strings.js', params),
         // Source code for the runtime initialization
-        parse_src_file('runtime/rtinit.js'), 
+        parse_src_file('runtime/rtinit.js', params), 
     ];
 
     // For each AST

@@ -55,10 +55,10 @@ function streq(strObj, rawStr)
 
         var ch2 = iir.load(IRType.u16, rawStr, pint(2) * i);
 
-        if (ch1 != ch2)
+        if (ch1 !== ch2)
             return FALSE_BOOL;
         
-        if (ch1 == u16(0))
+        if (ch1 === u16(0))
             break;
     }
 
@@ -94,7 +94,7 @@ function getStrObj(rawStr, strLen)
         var ch = iir.icast(IRType.pint, ch);
 
         // If this is the null terminator, break out of the loop
-        if (ch == pint(0))
+        if (ch === pint(0))
             break;
 
         // Update 
@@ -254,7 +254,7 @@ function extStrTable(curTbl, curSize, numStrings)
             /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
-                hashIndex != startHashIndex,
+                hashIndex !== startHashIndex,
                 'no free slots found in extended hash table'
             );
             */

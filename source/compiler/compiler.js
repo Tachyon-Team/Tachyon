@@ -99,7 +99,7 @@ Compile a source string to compiled IR
 */
 function compileSrcString(str, params)
 {
-    var ast = parse_src_str(str);
+    var ast = parse_src_str(str, params);
 
     return compileAst(ast, params);
 }
@@ -109,7 +109,7 @@ Compile a source file to compiled IR
 */
 function compileSrcFile(fileName, params)
 {
-    var ast = parse_src_file(fileName);
+    var ast = parse_src_file(fileName, params);
 
     return compileAst(ast, params);
 }

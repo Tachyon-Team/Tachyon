@@ -25,7 +25,7 @@ Parse a source code string, copy the resulting IR and validate it
 tests.ir.helpers.testSource = function (sourceStr, printOut)
 {
     // Parse the source string
-    var ast = parse_src_str(sourceStr);
+    var ast = parse_src_str(sourceStr, config.clientParams);
 
     // Translate the AST to IR
     var ir = unitToIR(ast, config.clientParams);

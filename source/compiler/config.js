@@ -24,10 +24,11 @@ function initConfig()
     The tachyon code has special privileges.
     */
     config.hostParams = new CompParams({
-        target      : Target.x86_32,
-        tachyonSrc  : true,
-        debug       : true,
-        staticEnv   : new StaticEnv()
+        target          : Target.x86_32,
+        tachyonSrc      : true,
+        debug           : true,
+        parserWarnings  : true,
+        staticEnv       : new StaticEnv()
     });
 
     /**
@@ -37,15 +38,17 @@ function initConfig()
     */
     config.clientParams = Object.create(config.hostParams);
     config.clientParams.tachyonSrc = false;
+    config.clientParams.parserWarnings = false;
 
     /**
     Compilation parameters used to bootstrap Tachyon
     */
     config.bootParams = new CompParams({
-        target      : Target.x86_32,
-        tachyonSrc  : true,
-        debug       : true,
-        staticEnv   : new StaticEnv()
+        target          : Target.x86_32,
+        tachyonSrc      : true,
+        debug           : true,
+        parserWarnings  : true,
+        staticEnv       : new StaticEnv()
     });
 
     /**
