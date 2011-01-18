@@ -489,35 +489,32 @@ irToAsm.translator.prototype.dump_context_object = function ()
 {
     const immTrue = ConstValue.getConst(true, IRType.box).getImmValue(this.params);
     const immFalse = ConstValue.getConst(false, IRType.box).getImmValue(this.params);
+     
+    this.asm.label(this.contextLabel);
 
+    this.call_self();
+
+    // Allows retrieve the context pointer from the main function
     const ctxLinkObj = this.asm.linked("ctxLinkObj",
                                        function (dstAddr) { 
                                         return this.getAddr().getBytes();},
                                        (this.asm.target === x86.target.x86) ?
                                        32 : 64);
-
     this.ctxLinkObj = ctxLinkObj;
-     
-
-    this.asm.
-    // Allows retrieve the context pointer from the main function
-    provide(ctxLinkObj).
-    label(this.contextLabel);
-
-    this.call_self();
+    this.asm.provide(ctxLinkObj);
 
     if (this.asm.is64bitMode())
     {
         // Global object slot - True value - False value - TEMP
         this.asm.gen64(0).gen64(immTrue).gen64(immFalse).gen64(0);
-    } else
+    } 
+    else
     {
         // Global object slot - True value - False value - TEMP
         this.asm.gen32(0).gen32(immTrue).gen32(immFalse).gen32(0);
     }
    
     this.asm.genListing("CONTEXT_OBJECT");
-    
 };
 
 irToAsm.translator.prototype.call_self = function (offset)
@@ -576,7 +573,9 @@ irToAsm.translator.prototype.func_init = function ()
             push(ESI).
             push(EDI).
             push(EBP);
-        } else {
+        }
+        else
+        {
             // We follow 64 bits Linux, BSD, Mac OS X
             // callee-save convention
             this.asm.
@@ -730,8 +729,6 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
 
     // Stack pointer
     const stack = tltor.config.stack;
-
-
 
     // Ignore if the argument is not required
     if (dest === null)

@@ -44,18 +44,24 @@ function testIR()
     }
     */
 
-    
-    var ast = parse_src_file('programs/loop_loop/loop_loop.js');
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();
+    var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
 
-    var barFunc = ir.childFuncs[0];
+    // Call the unit function to initialize the global object
+    var r1 = ir.runtime.execute();
+    print('fib res: ' + r1);
+
+    var fibFunc = ir.childFuncs[0];
+
+    // Bind the function statically, for now
+    config.hostParams.staticEnv.regBinding(
+        'fib',
+        fibFunc
+    );
 
     var proxy = new CProxy(
-        barFunc,
+        fibFunc,
         config.hostParams,
-        ['int', 'int', 'int'],
+        ['int'],
         'int'
     );
 
@@ -63,8 +69,21 @@ function testIR()
 
     var wrapper = proxy.genProxy();
 
+    print(fibFunc);
     print(wrapper);
     
+    // Get context ptr from bar IR
+    var ctxAddr = ir.linking.ctxLinkObj.getAddr();
+
+    // Get pointer to entry point of compiled wrapper function
+    var funcAddr = wrapper.linking.getEntryPoint('default').getAddr();
+
+    print(ctxAddr);
+    print(funcAddr);
+
+    var result = callTachyonFFI(funcAddr.getBytes(), ctxAddr.getBytes(), 10);
+
+    print(result);
 
     /*
     var ast = parse_src_file('test_ffi.js');

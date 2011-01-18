@@ -440,15 +440,18 @@ CProxy.prototype.genProxy = function ()
         sourceStr += '\t"tachyon:arg a' + i + ' ' + argType + '";\n';
     }
 
+    
     if (this.ctxVal === undefined)
     {
         sourceStr += '\tiir.set_ctx(ctx);\n';
     }
 
+    //sourceStr += '\tprintInt(1337);\n';
+
     // Get the global object from the context if available
     sourceStr += '\tvar global = '
     if (this.ctxVal === undefined)
-        sourceStr += 'get_ctx_global(ctx)';
+        sourceStr += 'get_ctx_globalobj(ctx)';
     else
         sourceStr += 'UNDEFINED';
     sourceStr += ';\n';
@@ -482,6 +485,8 @@ CProxy.prototype.genProxy = function ()
 
     sourceStr += ');\n';
 
+    //sourceStr += '\tprintInt(13372);\n';
+
     if (retVoid === false)
     {
         sourceStr += '\treturn ' + genTypeConv(this.irFunction.retType, this.cRetType, 'r') + ';\n';
@@ -490,16 +495,19 @@ CProxy.prototype.genProxy = function ()
     {
         sourceStr += '\treturn;';
     }
+    
+
+    //sourceStr += 'return iir.icast(IRType.pint, 7);';
 
     sourceStr += '}\n';
     
-    print(sourceStr);
+    //print(sourceStr);
 
     // Compile the source string into an IR function
     var func = compileSrcString(sourceStr, config.hostParams);
 
     // Return the compiled function
-    return func;
+    return func.childFuncs[0];
 }
 
 /**

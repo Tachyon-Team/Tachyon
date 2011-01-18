@@ -126,13 +126,26 @@ function stmtListToIRFunc(
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
 
-    // Add an instruction to get the function object argument
-    var funcObj = new ArgValInstr(IRType.box, 'funcObj', 0);
-    entryBlock.addInstr(funcObj, 'funcObj');
+    // Current argument index
+    var argIndex = 0;
 
-    // Add an instruction to get the this value argument
-    var thisVal = new ArgValInstr(IRType.box, 'thisVal', 1);
-    entryBlock.addInstr(thisVal, 'this');
+    // If this is a C proxy function
+    if (newFunc.cProxy === true)
+    {
+        // The function object and this value are undefined
+        var funcObj = ConstValue.getConst(undefined);
+        var thisVal = ConstValue.getConst(undefined);
+    }
+    else
+    {
+        // Add an instruction to get the function object argument
+        var funcObj = new ArgValInstr(IRType.box, 'funcObj', argIndex++);
+        entryBlock.addInstr(funcObj, 'funcObj');
+
+        // Add an instruction to get the this value argument
+        var thisVal = new ArgValInstr(IRType.box, 'thisVal', argIndex++);
+        entryBlock.addInstr(thisVal, 'this');
+    }
 
     // Create a map for the local variable storage locations
     var localMap = new HashMap();
@@ -143,7 +156,7 @@ function stmtListToIRFunc(
         var symName = newFunc.argVars[i].toString();
 
         // Create an instruction to get the argument value
-        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, 2 + i);
+        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, argIndex++);
         entryBlock.addInstr(argVal, symName);
 
         // Add the argument value to the local map
