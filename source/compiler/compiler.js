@@ -76,6 +76,45 @@ function linkIR(ir, params)
 };
 
 /**
+Compile an ast to compiled IR
+*/
+function compileAst(ast, params)
+{
+    assert (
+        params instanceof CompParams,
+        'compilation parameters expected'
+    );
+
+    var ir = unitToIR(ast, params);
+    lowerIRFunc(ir, params);
+    compileIR(ir, params);
+    linkIR(ir, params);
+
+    // Return the compiled IR function
+    return ir;
+};
+
+/**
+Compile a source string to compiled IR
+*/
+function compileSrcString(str, params)
+{
+    var ast = parse_src_str(str);
+
+    return compileAst(ast, params);
+}
+
+/**
+Compile a source file to compiled IR
+*/
+function compileSrcFile(fileName, params)
+{
+    var ast = parse_src_file(fileName);
+
+    return compileAst(ast, params);
+}
+
+/**
 Creates a compiled fonction from an IRFunction with
 linking and runtime information.
 */
@@ -100,19 +139,14 @@ after last usage by calling the 'free' method on the function. Ex:
 
 @filename String containing path to the source file
 */
-function compileFileToJSFunc(filename, params) 
+function compileFileToJSFunc(fileName, params) 
 {
     assert (
         params instanceof CompParams,
         'compilation parameters expected'
     );
 
-    //var ir = frontend.compileFileToIR(filename, flags["tachyonSrc"]);
-    var ast = parse_src_file(filename);
-    var ir = unitToIR(ast, params);
-    lowerIRFunc(ir, params);
-    compileIR(ir, params);
-    linkIR(ir, params);
+    var ir = compileSrcFile(fileName, params); 
 
     return createJSFuncFromCompiledIR(ir, params);
 };

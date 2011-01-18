@@ -21,7 +21,6 @@ BASE_SRCS =                         \
     compiler/targets.js             \
     compiler/params.js              \
     compiler/config.js              \
-    compiler/frontend.js            \
     compiler/compiler.js            \
     compiler/init.js                \
     parser/misc.js                  \

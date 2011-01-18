@@ -3,9 +3,9 @@ function testObjs()
     //"tachyon:noglobal";
     //"tachyon:ret box";
 
-    var obj = newObject(UNDEFINED);
+    var obj = newObject(null);
 
-    const NUM_PROPS = 1;
+    const NUM_PROPS = 13;
 
     for (var i = 0; i < NUM_PROPS; ++i)
     {
@@ -14,8 +14,20 @@ function testObjs()
 
     for (var i = 0; i < NUM_PROPS; ++i)
     {
+        __putPropVal(obj, i, 2*i);
+    }
+
+    for (var i = 0; i < NUM_PROPS; ++i)
+    {
         printInt(__getPropVal(obj, i));
     }
+
+    var pv = __getPropVal(obj, 55)
+
+    if (pv === UNDEFINED)
+        printInt(1337);
+    else
+        printInt(boxInt(iir.icast(IRType.pint, pv)));
 }
 
 function proxy()

@@ -469,8 +469,14 @@ function getIRFuncObj(
 
         var tokens = tokens[1].split(' ');
         
+        // If this is a C proxy function
+        if (tokens.length == 1 && tokens[0] == 'cproxy')
+        {
+            newFunc.cProxy = true;
+        }
+
         // If this is a static linkage annotation
-        if (tokens.length == 1 && tokens[0] == 'static')
+        else if (tokens.length == 1 && tokens[0] == 'static')
         {
             newFunc.staticLink = true;
         }
