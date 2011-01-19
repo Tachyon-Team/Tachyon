@@ -50,12 +50,22 @@ function Target(cfgObj)
 }
 
 /**
-Debug, x86, 32-bit configuration
+x86, 32-bit configuration
 */
 Target.x86_32 = new Target({
     backend         : 'backendX86',
     backendCfg      : {/*back-end specific, reg alloc config, etc.*/},
     endian          : 'little',
     ptrSizeBits     : 32
+});
+
+/**
+x86, 64-bit configuration
+*/
+Target.x86_64 = new Target({
+    backend         : 'backendX86',
+    backendCfg      : {/*back-end specific, reg alloc config, etc.*/},
+    endian          : 'little',
+    ptrSizeBits     : 64
 });
 

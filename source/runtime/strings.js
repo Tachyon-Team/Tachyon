@@ -44,6 +44,7 @@ NOTE: this is used to find strings in the hash consing table
 */
 function streq(strObj, rawStr)
 {
+    "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg rawStr rptr";
     "tachyon:ret bool";
@@ -88,7 +89,7 @@ function getStrObj(rawStr, strLen)
     for (var index = pint(0); true; index = index + pint(1))
     {
         // Get the current character
-        var ch = iir.load(IRType.u16, rawStr, index);
+        var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
 
         // Convert the character value to the pint type
         var ch = iir.icast(IRType.pint, ch);
@@ -126,23 +127,27 @@ function getStrObj(rawStr, strLen)
         // Get the string value at this hash slot
         var strVal = get_strtbl_tbl(strtbl, hashIndex);
 
-        // If this is the string we want
-        if (streq(strVal, rawStr))
-        {
-            // Return a pointer to the string we found
-            return strVal;
-        }
-
-        // Otherwise, if we have reached an empty slot
-        else if (strVal === UNDEFINED)
+        // If we have reached an empty slot
+        if (strVal === UNDEFINED)
         {
             // Break out of the loop
             break;
         }
 
+        // Otherwise, if this is the string we want
+        else if (streq(strVal, rawStr))
+        {
+            // Return a pointer to the string we found
+            return strVal;
+        }
+
         // Move to the next hash table slot
         hashIndex = (hashIndex + pint(1)) % tblSize;
     }
+
+    printInt(boxInt(hashIndex));
+
+    printInt(boxInt(strLen));
 
     //
     // String object allocation
@@ -157,15 +162,21 @@ function getStrObj(rawStr, strLen)
     // Set the hash code in the string object
     set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 
+    printInt(boxInt(strLen));
+
     // Copy the character data into the string object
     for (var index = pint(0); index < strLen; index = index + pint(1))
     {
         // Get the current character
-        var ch = iir.load(IRType.u16, rawStr, index);
+        var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
+
+        //printInt(boxInt(iir.icast(IRType.pint, ch)));
 
         // Copy the character into the string object
         set_str_data(strObj, index, ch);
     }
+
+    printInt(333);
 
     //
     // Hash table updating

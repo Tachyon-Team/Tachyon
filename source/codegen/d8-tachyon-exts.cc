@@ -481,15 +481,15 @@ v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
     return valToArray(address);
 }
 
+// Union type for values returned by Tachyon functions
 union TachVal
 {
     int intVal;
     void* ptrVal;
 };
 
+// Pointer to a Tachyon function
 typedef int (*TACHYON_FPTR)(void*, ...);
-
-typedef int (*TACHYON_FPTR2)();
 
 // Call a Tachyon function through its FFI
 // First argument is a function pointer
@@ -497,6 +497,13 @@ typedef int (*TACHYON_FPTR2)();
 // Other arguments are to be passed to the function
 v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
 {
+    // TODO:
+    // First arg: vector of strings describing arg types
+    // Second arg: string describing return type
+    // Third arg: func ptr
+    // Fourth arg: context ptr
+    // Other args: args to be passed
+
     if (args.Length() < 2)
     {
         printf("Error in callTachyonFFI -- 2 or more argument expected\n");

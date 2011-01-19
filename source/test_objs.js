@@ -1,7 +1,31 @@
+function testStrs()
+{
+    "tachyon:noglobal";
+
+    initStrTable();
+
+    var ctxPtr = iir.get_ctx();
+
+    var rawStr = ctxPtr + pint(8192);
+
+    var strLen = pint(4);
+
+    iir.store(IRType.u16, rawStr, pint(0), u16(104));    // h
+    iir.store(IRType.u16, rawStr, pint(2), u16(105));    // i
+    iir.store(IRType.u16, rawStr, pint(4), u16(33));     // !
+    iir.store(IRType.u16, rawStr, pint(6), u16(0));      // \0
+
+    var str = getStrObj(rawStr, strLen);
+
+    printInt(1337);
+
+
+
+}
+
 function testObjs()
 {
-    //"tachyon:noglobal";
-    //"tachyon:ret box";
+    "tachyon:noglobal";
 
     var obj = newObject(null);
 
@@ -22,7 +46,7 @@ function testObjs()
         printInt(__getPropVal(obj, i));
     }
 
-    var pv = __getPropVal(obj, 55)
+    var pv = __getPropVal(obj, 55);
 
     if (pv === UNDEFINED)
         printInt(1337);
@@ -54,7 +78,9 @@ function proxy()
 
     set_ctx_allocptr(ptr, ptr + get_size_ctx());
 
-    return testObjs();
+    testStrs();
+
+    //return testObjs();
 }
 
 return proxy();

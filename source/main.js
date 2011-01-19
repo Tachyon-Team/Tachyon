@@ -12,8 +12,8 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    /*
-    var memBlock = allocMachineCodeBlock(4096);
+    
+    var memBlock = allocMachineCodeBlock(16384);
     
     var blockAddr = getBlockAddr(memBlock, 0);
     var b0 = blockAddr[0];
@@ -42,13 +42,14 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
-    */
+    
 
+    /*
     var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
 
     // Call the unit function to initialize the global object
     var r1 = ir.runtime.execute();
-    print('fib res: ' + r1);
+    //print('fib res: ' + r1);
 
     var fibFunc = ir.childFuncs[0];
 
@@ -78,12 +79,13 @@ function testIR()
     // Get pointer to entry point of compiled wrapper function
     var funcAddr = wrapper.linking.getEntryPoint('default').getAddr();
 
-    print(ctxAddr);
-    print(funcAddr);
+    //print(ctxAddr);
+    //print(funcAddr);
 
     var result = callTachyonFFI(funcAddr.getBytes(), ctxAddr.getBytes(), 10);
 
     print(result);
+    */
 
     /*
     var ast = parse_src_file('test_ffi.js');

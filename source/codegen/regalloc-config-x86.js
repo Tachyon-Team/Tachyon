@@ -67,7 +67,6 @@ RetInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
 
 RetInstr.prototype.regAlloc.opndsRegRequired = true;
 
-
 /**
 *   Allocation information for argument value instructions 
 */
@@ -84,20 +83,6 @@ ArgValInstr.prototype.regAlloc.outRegHint = function (instr, config)
         return null;
     }
 };
-
-/**
-*   Allocation information for get property instructions 
-*/
-//GetPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
-
-//GetPropValInstr.prototype.regAlloc.opndsRegRequired = true;
-
-/**
-*   Allocation information for put property instructions 
-*/
-//PutPropValInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
-
-//PutPropValInstr.prototype.regAlloc.opndsRegRequired = true;
 
 /**
 *   Allocation information for get context instructions 

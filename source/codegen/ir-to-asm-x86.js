@@ -925,14 +925,11 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         // Swap the divisor with EBX
         tltor.asm.xchg(dsor, EBX);
 
-        if (dvnd === EBX) dvnd = dsor;
-        dsor = EBX;
-    }
+        // If the dividend is in EBX, it is now where the divisor was
+        if (dvnd === EBX) 
+            dvnd = dsor;
 
-    // Otherwise, if the divisor is an immediate value, put it into EBX
-    else if (dsor.type === x86.type.IMM_VAL)
-    {
-        tltor.asm.mov(dsor, EBX);
+        // The divisor is now in EBX
         dsor = EBX;
     }
 
@@ -941,6 +938,15 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.mov(dvnd, EAX);
         dvnd = EAX;
+    }
+
+    // If the divisor is an immediate value, put it into EBX.
+    // The dividend cannot be in EBX, it would have been moved
+    // into EAX during the previous step
+    if (dsor.type === x86.type.IMM_VAL)
+    {
+        tltor.asm.mov(dsor, EBX);
+        dsor = EBX;
     }
 
     // Sign-extend EAX into EDX:EAX using CDQ
