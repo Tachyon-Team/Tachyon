@@ -145,10 +145,6 @@ function getStrObj(rawStr, strLen)
         hashIndex = (hashIndex + pint(1)) % tblSize;
     }
 
-    printInt(boxInt(hashIndex));
-
-    printInt(boxInt(strLen));
-
     //
     // String object allocation
     //
@@ -163,6 +159,7 @@ function getStrObj(rawStr, strLen)
     set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 
     printInt(boxInt(strLen));
+    printInt(boxInt(hashCode));
 
     // Copy the character data into the string object
     for (var index = pint(0); index < strLen; index = index + pint(1))
@@ -170,13 +167,9 @@ function getStrObj(rawStr, strLen)
         // Get the current character
         var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
 
-        //printInt(boxInt(iir.icast(IRType.pint, ch)));
-
         // Copy the character into the string object
         set_str_data(strObj, index, ch);
     }
-
-    printInt(333);
 
     //
     // Hash table updating

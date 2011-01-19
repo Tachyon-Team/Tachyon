@@ -12,7 +12,7 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    /*
+
     var memBlock = allocMachineCodeBlock(16384);
     
     var blockAddr = getBlockAddr(memBlock, 0);
@@ -42,9 +42,9 @@ function testIR()
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
-    */
-
     
+
+    /*
     var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
 
     // Call the unit function to initialize the global object
@@ -91,7 +91,7 @@ function testIR()
     );
 
     print(result);
-    
+    */
 
     /*
     var ast = parse_src_file('test_ffi.js');

@@ -2325,7 +2325,10 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 
             // Store the last move
             moveTemp = new MoveInstr(temp, move.uses[1]);
-            
+
+            // Get the first move to insert 
+            move = cycleIt.get().pop();
+
             // Insert all other moves
             while (move !== undefined)
             {
