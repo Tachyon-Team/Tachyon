@@ -531,7 +531,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         {
             tachArg.intVal = arg->Int32Value();
 
-            printf("Arg %d = %d\n", i, tachArg.intVal);
+            printf("Arg %d = %d\n", (int)i, tachArg.intVal);
         }
         else
         {
