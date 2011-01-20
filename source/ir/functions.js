@@ -326,3 +326,21 @@ IRFunction.prototype.getChildrenList = function ()
 
     return list;
 };
+
+/**
+Get a child function by name
+*/
+IRFunction.prototype.getChild = function (name)
+{
+    for (var i = 0; i < this.childFuncs.length; ++i)
+    {
+        if (this.childFuncs[i].funcName === name)
+            return this.childFuncs[i];
+    }
+
+    assert (
+        false,
+        'child function not found: "' + name + '"'
+    );
+}
+

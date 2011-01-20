@@ -102,6 +102,10 @@ function getStrObj(rawStr, strLen)
         hashCode = (hashCode * pint(256) + ch) % pint(426870919);
     }
 
+
+    printInt(boxInt(strLen));
+    printInt(boxInt(hashCode));
+
     //
     // Hash table lookup
     //

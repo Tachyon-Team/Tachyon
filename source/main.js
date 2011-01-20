@@ -13,82 +13,41 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 function testIR()
 {
 
-    var memBlock = allocMachineCodeBlock(16384);
-    
+    var memBlock = allocMachineCodeBlock(16384);    
     var blockAddr = getBlockAddr(memBlock, 0);
-    var b0 = blockAddr[0];
-    var b1 = blockAddr[1];
-    var b2 = blockAddr[2];
-    var b3 = blockAddr[3];
 
-    shellCommand("cp test_objs.js test_repl.js");
-    shellCommand("sed -i '' -e 's/b0/" + b0 + "/g' test_repl.js");
-    shellCommand("sed -i '' -e 's/b1/" + b1 + "/g' test_repl.js");
-    shellCommand("sed -i '' -e 's/b2/" + b2 + "/g' test_repl.js");
-    shellCommand("sed -i '' -e 's/b3/" + b3 + "/g' test_repl.js");
+    var ir = compileSrcFile('test_objs.js', config.hostParams);
 
-    var func = compileFileToJSFunc('test_repl.js', config.hostParams);
-    var result = func();
-    func.free();
+    var bridge = makeBridge(
+        ir.getChild('proxy'),
+        ['void*'],
+        'int'
+    );
 
-    //print('result: ' + result);
-    print('result: ' + (result >> 2));
+    var result = bridge(blockAddr);
+
+    print('result: ' + result);
     print('');
-
-    //print('context size: ' + config.hostParams.memLayouts.ctx.getSize());
 
     for (var i = 0; i < 4096; ++i)
     {
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
-    
 
-    /*
+
+
+    
+    /*    
     var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
 
-    // Call the unit function to initialize the global object
-    var r1 = ir.runtime.execute();
-    //print('fib res: ' + r1);
-
-    var fibFunc = ir.childFuncs[0];
-
-    // Bind the function statically, for now
-    config.hostParams.staticEnv.regBinding(
-        'fib',
-        fibFunc
-    );
-
-    var proxy = new CProxy(
-        fibFunc,
-        config.hostParams,
+    var bridge = makeBridge(
+        ir.getChild('fib'),
         ['int'],
         'int'
     );
 
-    //config.hostParams.print = print;
-
-    var wrapper = proxy.genProxy();
-
-    print(fibFunc);
-    print(wrapper);
-    
-    // Get context ptr from bar IR
-    var ctxAddr = ir.linking.ctxLinkObj.getAddr();
-
-    // Get pointer to entry point of compiled wrapper function
-    var funcAddr = wrapper.linking.getEntryPoint('default').getAddr();
-
-    //print(ctxAddr);
-    //print(funcAddr);
-
-    var result = callTachyonFFI(
-        ['int'],
-        'int',
-        funcAddr.getBytes(),
-        ctxAddr.getBytes(),
-        10
-    );
+    var result = bridge(10);
 
     print(result);
     */

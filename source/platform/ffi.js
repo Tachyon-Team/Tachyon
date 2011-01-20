@@ -88,6 +88,7 @@ function cTypeToIRType(cType, params)
         return IRType.pint;
 
         case 'char*':
+        case 'void*':
         return IRType.rptr;
 
         case 'void':
@@ -451,7 +452,7 @@ CProxy.prototype.genProxy = function ()
     // Get the global object from the context if available
     sourceStr += '\tvar global = '
     if (this.ctxVal === undefined)
-        sourceStr += 'get_ctx_globalobj(ctx)';
+        sourceStr += '(ctx !== NULL_PTR)? get_ctx_globalobj(ctx):UNDEFINED';
     else
         sourceStr += 'UNDEFINED';
     sourceStr += ';\n';
@@ -508,6 +509,65 @@ CProxy.prototype.genProxy = function ()
 
     // Return the compiled function
     return func.childFuncs[0];
+}
+
+/**
+Create a bridge to call a compiled Tachyon function through V8
+*/
+function makeBridge(
+    irFunction,
+    cArgTypes,
+    cRetType
+)
+{
+    // FIXME: execute the parent function to initialize its global object
+    irFunction.parentFunc.runtime.execute();
+
+    // FIXME: bind the function statically, for now, since we have no global object
+    config.hostParams.staticEnv.regBinding(
+        irFunction.funcName,
+        irFunction
+    );
+
+    // Generate a proxy for the function
+    var proxy = new CProxy(
+        irFunction,
+        config.hostParams,
+        cArgTypes,
+        cRetType
+    );
+    
+    var wrapper = proxy.genProxy();
+
+    //print(wrapper);
+    
+    // Get context ptr from bar IR
+    var ctxAddr = irFunction.parentFunc.linking.ctxLinkObj.getAddr();
+
+    // Get pointer to entry point of compiled wrapper function
+    var funcAddr = wrapper.linking.getEntryPoint('default').getAddr();
+
+    // Callable bridge function
+    function bridge()
+    {
+        var argArray = [];
+        for (var i = 0; i < arguments.length; ++i)
+            argArray.push(arguments[i]);
+
+        var result = callTachyonFFI.apply(
+            null,
+            [
+                cArgTypes,
+                cRetType,
+                funcAddr.getBytes(),
+                ctxAddr.getBytes()
+            ].concat(argArray)
+        );
+
+        return result;
+    };
+
+    return bridge;
 }
 
 /**

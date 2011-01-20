@@ -520,7 +520,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
     // Get the context pointer
     uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[3]);
     
-    printf("Got func ptr and ctx ptr\n");
+    //printf("Got func ptr and ctx ptr\n");
 
     // Allocate memory for the argument values
     size_t numArgs = args.Length() - MIN_ARG_COUNT;
@@ -552,8 +552,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
             if (arg->IsNumber())
             {
                 tachArg.intVal = arg->Int32Value();
-
-                printf("Arg %d = %d\n", i, tachArg.intVal);
+                //printf("Arg %d = %d\n", i, tachArg.intVal);
             }
             else
             {
@@ -568,8 +567,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
             if (arg->IsArray())
             {
                 tachArg.ptrVal = arrayToVal<void*>(arg);
-
-                printf("Arg %d = %p\n", i, tachArg.ptrVal);
+                //printf("Arg %d = %p\n", i, tachArg.ptrVal);
             }
             else
             {
@@ -614,18 +612,18 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         break;
 
         case 3:
-        printf("Calling Tachyon func with 3 arguments\n");
+        //printf("Calling Tachyon func with 3 arguments\n");
         retVal.intVal = funcPtr(
             ctxPtr,
             tachArgs[0].intVal,
             tachArgs[1].intVal,
             tachArgs[2].intVal
         );
-        printf("Returned from Tachyon func\n");
+        //printf("Returned from Tachyon func\n");
         break;
 
         case 4:
-        printf("Calling Tachyon func with 4 arguments\n");
+        //printf("Calling Tachyon func with 4 arguments\n");
         retVal.intVal = funcPtr(
             ctxPtr,
             tachArgs[0].intVal,
@@ -633,7 +631,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
             tachArgs[2].intVal,
             tachArgs[3].intVal
         );
-        printf("Returned from Tachyon func\n");
+        //printf("Returned from Tachyon func\n");
         break;
 
         default:
@@ -666,7 +664,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         exit(1);
     }
 
-    printf("returning from tachyonCallFFI\n");
+    //printf("returning from tachyonCallFFI\n");
 
     return v8RetVal;
 }
