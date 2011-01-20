@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-extensions.cc", Time-stamp: <2010-06-18 13:35:20 feeley> */
+/* File: "d8-extensions.cc", Time-stamp: <2011-01-20 15:48:04 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -553,7 +553,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
             {
                 tachArg.intVal = arg->Int32Value();
 
-                printf("Arg %d = %d\n", i, tachArg.intVal);
+                printf("Arg %d = %d\n", (int)i, (int)tachArg.intVal);
             }
             else
             {
@@ -569,7 +569,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
             {
                 tachArg.ptrVal = arrayToVal<void*>(arg);
 
-                printf("Arg %d = %p\n", i, tachArg.ptrVal);
+                printf("Arg %d = %p\n", (int)i, tachArg.ptrVal);
             }
             else
             {
