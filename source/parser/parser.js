@@ -105,11 +105,18 @@ Parser.prototype.consume = function ()
                          "use of division operator");
         }
 
-        if ((this.input.cat === EQEQ_CAT || this.input.cat === NE_CAT) &&
+        if (this.input.cat === EQEQ_CAT &&
             this.equality_warning)
         {
             this.warning(this.input.loc,
                          "use of equality operator");
+        }
+
+        if (this.input.cat === NE_CAT &&
+            this.equality_warning)
+        {
+            this.warning(this.input.loc,
+                         "use of inequality operator");
         }
     }
 };

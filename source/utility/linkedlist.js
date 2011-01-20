@@ -35,11 +35,11 @@ LinkedList.prototype.toString = function ()
 {
     var output = '(';
 
-    for (var node = this.first; node != null; node = node.next)
+    for (var node = this.first; node !== null; node = node.next)
     {
         output += node.item.toString();
 
-        if (node.next != null)
+        if (node.next !== null)
             output += ',';
     }
 
@@ -167,7 +167,7 @@ Remove an elemement from the beginning of the list
 LinkedList.prototype.remFirst = function ()
 {
     assert (
-        this.first != null,
+        this.first !== null,
         'cannot remove first, list empty'
     );
 
@@ -219,7 +219,7 @@ LinkedList.prototype.toArray = function ()
 {
     var output = [];
 
-    for (var node = this.first; node != null; node = node.next)
+    for (var node = this.first; node !== null; node = node.next)
         output.push(node.item);
 
     return output;

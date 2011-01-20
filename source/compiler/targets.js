@@ -46,7 +46,7 @@ function Target(cfgObj)
     Pointer size of the target platform, in bytes
     @field
     */
-    this.ptrSizeBytes = this.ptrSizeBits / 8;    
+    this.ptrSizeBytes = this.ptrSizeBits >> 3;    
 }
 
 /**

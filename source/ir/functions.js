@@ -174,7 +174,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     {
         output += this.argTypes[i] + ' ' + this.argVars[i];
 
-        if (i != this.argVars.length - 1)
+        if (i !== this.argVars.length - 1)
             output += ', ';
     }
 
@@ -184,7 +184,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     {
         output += this.closVars[i];
 
-        if (i != this.closVars.length - 1)
+        if (i !== this.closVars.length - 1)
             output += ', ';
     }
 
@@ -342,5 +342,5 @@ IRFunction.prototype.getChild = function (name)
         false,
         'child function not found: "' + name + '"'
     );
-}
+};
 

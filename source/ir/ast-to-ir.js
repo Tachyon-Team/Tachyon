@@ -471,44 +471,44 @@ function getIRFuncObj(
         var annotation = annotations[i];
 
         var tokens = annotation.split(':');
-        if (tokens.length < 2 || tokens[0] != 'tachyon')
+        if (tokens.length < 2 || tokens[0] !== 'tachyon')
             continue;
 
         var tokens = tokens[1].split(' ');
         
         // If this is a C proxy function
-        if (tokens.length == 1 && tokens[0] == 'cproxy')
+        if (tokens.length === 1 && tokens[0] === 'cproxy')
         {
             newFunc.cProxy = true;
         }
 
         // If this is a static linkage annotation
-        else if (tokens.length == 1 && tokens[0] == 'static')
+        else if (tokens.length === 1 && tokens[0] === 'static')
         {
             newFunc.staticLink = true;
         }
 
         // If this is an inline annotation
-        else if (tokens.length == 1 && tokens[0] == 'inline')
+        else if (tokens.length === 1 && tokens[0] === 'inline')
         {
             newFunc.inline = true;
             newFunc.staticLink = true;
         }
 
         // If this is a no throw annotation
-        else if (tokens.length == 1 && tokens[0] == 'nothrow')
+        else if (tokens.length === 1 && tokens[0] === 'nothrow')
         {
             newFunc.noThrow = true;
         }
 
         // If this is a no global accesses annotation
-        else if (tokens.length == 1 && tokens[0] == 'noglobal')
+        else if (tokens.length === 1 && tokens[0] === 'noglobal')
         {
             newFunc.noGlobal = true;
         }
 
         // If this is an argument type annotation (eg: arg <arg_name> <type>)
-        else if (tokens.length == 3 && tokens[0] == 'arg')
+        else if (tokens.length === 3 && tokens[0] === 'arg')
         {
             var argName = tokens[1];
             var type = IRType[tokens[2]];
@@ -516,7 +516,7 @@ function getIRFuncObj(
             var argNo = -1;
             for (var j = 0; j < newFunc.argVars.length; ++j)
             {
-                if (newFunc.argVars[j].toString() == argName)
+                if (newFunc.argVars[j].toString() === argName)
                 {
                     argNo = j;
                     break;
@@ -527,7 +527,7 @@ function getIRFuncObj(
                 throw 'functions taking non-boxed arguments cannot ' + 
                     'use the arguments object';
 
-            if (argNo == -1)
+            if (argNo === -1)
                 throw 'invalid argument name in argument type annotation';
 
             if (!type)
@@ -537,7 +537,7 @@ function getIRFuncObj(
         }
 
         // If this is a return type annotation (eg: ret <type>)
-        else if (tokens.length == 2 && tokens[0] == 'ret')
+        else if (tokens.length === 2 && tokens[0] === 'ret')
         {
             var type = IRType[tokens[1]];
 
@@ -1903,7 +1903,7 @@ function exprToIR(context)
     var astExpr = context.astNode;
 
     // If the expression is null (empty expression)
-    if (astExpr == null)
+    if (astExpr === null)
     {
         // Set the output to the true constant
         // This works for empty expression statements and the case where
@@ -1922,7 +1922,7 @@ function exprToIR(context)
 
         // Ensure that he nested function was found
         assert (
-            nestFunc != null,
+            nestFunc !== null,
             'nested function not found for function expression'
         );
 
@@ -2289,7 +2289,7 @@ function opToIR(context)
         // Test if all arguments are boxed
         var allBoxed = true;
         for (var i = 0; i < argVals.length; ++i)
-            if (argVals[i].type != IRType.box)
+            if (argVals[i].type !== IRType.box)
                 allBoxed = false;
 
         // If all values are boxed
@@ -2536,7 +2536,7 @@ function opToIR(context)
             var fieldExpr = exprs[0];
 
             // If the op is a field indexing
-            if (fieldExpr instanceof OpExpr && fieldExpr.op == 'x [ y ]')
+            if (fieldExpr instanceof OpExpr && fieldExpr.op === 'x [ y ]')
             {
                 // Compile the argument values
                 var argsContext = context.pursue(fieldExpr.exprs);
@@ -3088,7 +3088,7 @@ function assgToIR(context, rhsVal)
     }
 
     // Otherwise, if the left-hand side is an object field
-    else if (leftExpr instanceof OpExpr && leftExpr.op == 'x [ y ]')
+    else if (leftExpr instanceof OpExpr && leftExpr.op === 'x [ y ]')
     {
         var objExpr = leftExpr.exprs[0];
         var idxExpr = leftExpr.exprs[1];
@@ -3203,7 +3203,7 @@ function refToIR(context)
     }
 
     // If the variable is global
-    if (astExpr.id.scope instanceof Program && symName != 'arguments')
+    if (astExpr.id.scope instanceof Program && symName !== 'arguments')
     {
         // If we are compiling tachyon code and there is a named static
         // binding with this name
@@ -3700,7 +3700,7 @@ function mergeContexts(
     var mergeBlock = cfg.getNewBlock(blockName);
 
     // If there are no non-terminated contexts, there is nothing to merge, stop
-    if (ntContexts.length == 0)
+    if (ntContexts.length === 0)
         return null;
 
     // Clear the contents of the merge map, if any
@@ -3876,7 +3876,7 @@ function mergeLoopEntry(
             var useValue = phiNode.uses[j];
             if (useValue instanceof ConstValue && useValue.isUndef())
                 numUndef++;
-            if (phiNode.uses[j].type != IRType.box)
+            if (phiNode.uses[j].type !== IRType.box)
                 numTyped++;
         }
         */
@@ -3976,9 +3976,9 @@ function genInlineIR(context, branches)
     while (
         args.length > 0 && 
         args[0] instanceof OpExpr &&
-        args[0].op == 'x [ y ]' &&
+        args[0].op === 'x [ y ]' &&
         args[0].exprs[0] instanceof Ref &&
-        args[0].exprs[0].id.toString() == 'IRType'
+        args[0].exprs[0].id.toString() === 'IRType'
     )
     {
         // Get a reference to the IR type object
@@ -4054,7 +4054,7 @@ function genCondInlineIR(context)
     // If this is an inline IR instruction with value assignment
     if (
         astStmt.expr instanceof OpExpr &&
-        astStmt.expr.op == 'x = y' &&
+        astStmt.expr.op === 'x = y' &&
         astStmt.expr.exprs[0] instanceof Ref &&
         isInlineIR(astStmt.expr.exprs[1])
     )

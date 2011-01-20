@@ -16,7 +16,7 @@ Function to create a new module
 function makeModule(modName, parentObj)
 {
     // If no parent object was set, use the global object
-    if (parentObj == null || parentObj == undefined)
+    if (parentObj === null || parentObj === undefined)
         parentObj = getGlobalObj;
 
     // If the property already exists, return its value

@@ -26,12 +26,12 @@ Default hash function implementation
 */
 function defHashFunc(val)
 {
-    if (typeof val == 'number')
+    if (typeof val === 'number')
     {
         return Math.floor(val);
     }     
  
-    else if (typeof val == 'string')  
+    else if (typeof val === 'string')  
     {
         var hashCode = 0;
 
@@ -41,7 +41,7 @@ function defHashFunc(val)
         return hashCode;
     }
 
-    else if (typeof val == 'boolean')
+    else if (typeof val === 'boolean')
     {
         return val? 1:0;
     }
@@ -393,7 +393,7 @@ function HashMap(hashFunc, equalFunc)
     this.numItems = 0;
 
     // If no hash function was specified, use the default function
-    if (hashFunc == undefined || hashFunc == null)
+    if (hashFunc === undefined || hashFunc === null)
         hashFunc = defHashFunc;
 
     /**
@@ -403,7 +403,7 @@ function HashMap(hashFunc, equalFunc)
     this.hashFunc = hashFunc;
 
     // If no hash function was specified, use the default function
-    if (equalFunc == undefined || equalFunc == null)
+    if (equalFunc === undefined || equalFunc === null)
         equalFunc = defEqualFunc;
 
     /**
