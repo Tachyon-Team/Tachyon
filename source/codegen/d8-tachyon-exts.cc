@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-extensions.cc", Time-stamp: <2010-06-18 13:35:20 feeley> */
+/* File: "d8-extensions.cc", Time-stamp: <2011-01-20 15:48:04 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
