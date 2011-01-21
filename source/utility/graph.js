@@ -82,6 +82,7 @@ graph.adjencyList.prototype.addEdge = function (from, to)
 */
 graph.adjencyList.prototype.addNode = function (node)
 {
+    assert(node !== undefined, "Invalid node");
     
     var nodePos = this.nodeLookup[node];
     if (nodePos === undefined)
