@@ -54,17 +54,10 @@ function testObjs()
         printInt(boxInt(iir.icast(IRType.pint, pv)));
 }
 
-function proxy()
+function proxy(ptr)
 {
+    "tachyon:arg ptr rptr";
     "tachyon:ret box";
-
-    var ptrVal = 
-        (pint(b3) << pint(24)) + 
-        (pint(b2) << pint(16)) + 
-        (pint(b1) << pint(8)) + 
-        pint(b0);
-
-    var ptr = iir.icast(IRType.rptr, ptrVal);
 
     var ctx = iir.get_ctx();
 
@@ -80,8 +73,10 @@ function proxy()
 
     testStrs();
 
-    //return testObjs();
+    //testObjs();
+
+    return 31337;
 }
 
-return proxy();
+//return proxy();
 

@@ -150,7 +150,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction has a non-void output print its output name
-    if (this.type != IRType.none)
+    if (this.type !== IRType.none)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic;
@@ -160,7 +160,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     {
         output += " " + inFormatFn(this, i);
 
-        if (i != this.uses.length - 1)
+        if (i !== this.uses.length - 1)
             output += ",";
     }
 
@@ -236,7 +236,7 @@ IRInstr.prototype.addDest = function (dest)
         'invalid dest value'
     );
 
-    if (this.dests.length == 0)
+    if (this.dests.length === 0)
         this.dests = [dest];
     else
         arraySetAdd(this.dests, dest);
@@ -307,7 +307,7 @@ function PhiInstr(values, preds)
 {
     // Ensure that each value has one associated predecessor
     assert (
-        values.length == preds.length,
+        values.length === preds.length,
         'must have one predecessor for each phi use'
     );
 
@@ -364,7 +364,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction's type is not void, print its output name
-    if (this.type != IRType.none)
+    if (this.type !== IRType.none)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + ' ';
@@ -373,7 +373,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     {
         output += phiInFormatFn(this, i);
 
-        if (i != this.uses.length - 1)
+        if (i !== this.uses.length - 1)
             output += ", ";
     }
 
@@ -576,7 +576,7 @@ function instrMaker(
             branchTargets.push(argArray[curIndex]);
 
         assert (
-            curIndex == argArray.length,
+            curIndex === argArray.length,
             'invalid arguments passed to ' + mnemonic + ' constructor'
         );
     }
@@ -717,7 +717,7 @@ Function to validate the length of an input array
 instrMaker.validCount = function (name, array, minExpected, maxExpected)
 {
     var expectedStr;
-    if (minExpected == maxExpected)
+    if (minExpected === maxExpected)
         expectedStr = String(minExpected);
     else if (maxExpected !== undefined)
         expectedStr = 'between ' + minExpected + ' and ' + maxExpected;
@@ -1474,7 +1474,7 @@ var CallFuncInstr = instrMaker(
         if (inputVals[0] instanceof IRFunction)
         {
             assert (
-                inputVals.length  - 2 == inputVals[0].getNumArgs(),
+                inputVals.length  - 2 === inputVals[0].getNumArgs(),
                 'direct calls do not support variable argument counts, got ' +
                 (inputVals.length - 2) + ' arguments, expected ' + 
                 inputVals[0].getNumArgs() + ' (' + inputVals[0].funcName + ')'
@@ -1820,7 +1820,7 @@ MoveInstr.prototype.toString = function ()
     {
         output += this.uses[i];
 
-        if (i != this.uses.length - 1)
+        if (i !== this.uses.length - 1)
         {
             output += ", ";
         }

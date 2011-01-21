@@ -41,10 +41,10 @@ function commElim(cfg, maxItrs)
             val1 instanceof PhiInstr)
             return false;
 
-        if (val1.mnemonic != val2.mnemonic)
+        if (val1.mnemonic !== val2.mnemonic)
             return false;
 
-        if (val1.uses.length != val2.uses.length)
+        if (val1.uses.length !== val2.uses.length)
             return false;
 
         for (var i = 0; i < val1.uses.length; ++i)
@@ -155,7 +155,7 @@ function commElim(cfg, maxItrs)
         var workList = [cfg.entry];
 
         // Until the work list is empty
-        while (workList.length != 0)
+        while (workList.length !== 0)
         {
             var block = workList.pop();
 
@@ -229,7 +229,7 @@ function commElim(cfg, maxItrs)
                 while (j >= 0)
                 {
                     var rinstr = mustReachCur[j];
-                    if (getValNo(rinstr) == valNo)
+                    if (getValNo(rinstr) === valNo)
                     {
                         // Note that the instruction reaches here
                         reachInstr[instr.instrId] = rinstr;

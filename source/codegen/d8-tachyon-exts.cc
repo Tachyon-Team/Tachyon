@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-extensions.cc", Time-stamp: <2010-06-18 13:35:20 feeley> */
+/* File: "d8-extensions.cc", Time-stamp: <2011-01-20 15:48:04 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -492,55 +492,102 @@ union TachVal
 typedef int (*TACHYON_FPTR)(void*, ...);
 
 // Call a Tachyon function through its FFI
-// First argument is a function pointer
-// Second argument is a context pointer
-// Other arguments are to be passed to the function
+// First arg: vector of strings describing arg types
+// Second arg: string describing return type
+// Third arg: function pointer
+// Fourth arg: context pointer
+// Other args: args to be passed to the function
 v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
 {
-    // TODO:
-    // First arg: vector of strings describing arg types
-    // Second arg: string describing return type
-    // Third arg: func ptr
-    // Fourth arg: context ptr
-    // Other args: args to be passed
+    const int MIN_ARG_COUNT = 4;
 
-    if (args.Length() < 2)
+    if (args.Length() < MIN_ARG_COUNT)
     {
-        printf("Error in callTachyonFFI -- 2 or more argument expected\n");
+        printf("Error in callTachyonFFI -- %d or more argument expected\n", MIN_ARG_COUNT);
         exit(1);
     }
 
+    // Get the array of argument types
+    const v8::Local<v8::Object> argTypeArray = args[0]->ToObject();
+
+    // Get the return type string
+    v8::String::Utf8Value retTypeStrObj(args[1]);
+    const char* retTypeStr = *retTypeStrObj;
+
     // Get the function pointer
-    TACHYON_FPTR funcPtr = arrayToVal<TACHYON_FPTR>(*args[0]);
+    TACHYON_FPTR funcPtr = arrayToVal<TACHYON_FPTR>(*args[2]);
     
     // Get the context pointer
-    uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[1]);
+    uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[3]);
     
-    printf("Got func ptr and ctx ptr\n");
+    //printf("Got func ptr and ctx ptr\n");
 
-    size_t numArgs = args.Length() - 2;
+    // Allocate memory for the argument values
+    size_t numArgs = args.Length() - MIN_ARG_COUNT;
     TachVal* tachArgs = new TachVal[numArgs];
 
+    // For each argument to be passed
     for (size_t i = 0; i < numArgs; ++i)
     {
-        const v8::Value* arg = *args[i + 2];
+        // Get the argument object
+        const v8::Value* arg = *args[i + MIN_ARG_COUNT];
 
+        // If there is no argument type string for this argument
+        if (!argTypeArray->Has(i))
+        {
+            printf("Error in callTachyonFFI -- missing argument type string\n");
+            exit(1);
+        }
+
+        // Get the argument type string
+        v8::String::Utf8Value argTypeStrObj(argTypeArray->Get(i));
+        const char* argTypeStr = *argTypeStrObj;
+
+        // Get a reference to the Tachyon argument object
         TachVal& tachArg = tachArgs[i];
 
-        if (arg->IsNumber())
+        // If this is an integer argument
+        if (!strcmp(argTypeStr, "int"))
         {
-            tachArg.intVal = arg->Int32Value();
-
-            printf("Arg %d = %d\n", (int)i, tachArg.intVal);
+            if (arg->IsNumber())
+            {
+                tachArg.intVal = arg->Int32Value();
+                //printf("Arg %d = %d\n", i, tachArg.intVal);
+            }
+            else
+            {
+                printf("Error in callTachyonFFI -- integer arguments should be number values\n");
+                exit(1);
+            }
         }
+
+        // If this is a pointer argument
+        else if (!strcmp(argTypeStr, "void*") || !strcmp(argTypeStr, "char*"))
+        {
+            if (arg->IsArray())
+            {
+                tachArg.ptrVal = arrayToVal<void*>(arg);
+                //printf("Arg %d = %p\n", i, tachArg.ptrVal);
+            }
+            else
+            {
+                printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
+                exit(1);
+            }
+        }
+
+        // Otherwise, if an unsupported type is passed    
         else
         {
-            printf("Error in callTachyonFFI -- unsupported argument type\n");
+            printf("Error in callTachyonFFI -- unsupported argument type: \"%s\"\n", argTypeStr);
             exit(1);
         }
     }
 
+    // Variable to store the return value
     TachVal retVal;
+
+    // Switch on the number of arguments to pass
     switch (numArgs)
     {
         case 0:
@@ -565,14 +612,26 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         break;
 
         case 3:
-        printf("Calling Tachyon func with 3 arguments\n");
+        //printf("Calling Tachyon func with 3 arguments\n");
         retVal.intVal = funcPtr(
             ctxPtr,
             tachArgs[0].intVal,
             tachArgs[1].intVal,
             tachArgs[2].intVal
         );
-        printf("Returned from Tachyon func\n");
+        //printf("Returned from Tachyon func\n");
+        break;
+
+        case 4:
+        //printf("Calling Tachyon func with 4 arguments\n");
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal,
+            tachArgs[3].intVal
+        );
+        //printf("Returned from Tachyon func\n");
         break;
 
         default:
@@ -580,13 +639,34 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         exit(1);
     }
 
+    // Delete the argument objects
     delete [] tachArgs;
 
-    v8::Handle<v8::Value> numVal = v8::Number::New(retVal.intVal);
+    // Variable for the V8 return value
+    v8::Handle<v8::Value> v8RetVal;
 
-    printf("returning from tachyonCallFFI\n");
+    // If the return value is integer
+    if (!strcmp(retTypeStr, "int"))
+    {
+        v8RetVal = v8::Number::New(retVal.intVal);
+    }
 
-    return numVal;
+    // If the return value is a pointer
+    else if (!strcmp(retTypeStr, "void*") || !strcmp(retTypeStr, "char*"))
+    {
+        v8RetVal = valToArray(retVal.ptrVal);
+    }
+
+    // Otherwise, if an unsupported type is passed    
+    else
+    {
+        printf("Error in callTachyonFFI -- unsupported return type: \"%s\"\n", retTypeStr);
+        exit(1);
+    }
+
+    //printf("returning from tachyonCallFFI\n");
+
+    return v8RetVal;
 }
 
 /*---------------------------------------------------------------------------*/

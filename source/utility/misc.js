@@ -23,14 +23,14 @@ Test if an integer value is a power of 2
 function isPowerOf2(x)
 {
     assert (
-        Math.floor(x) == x,
+        Math.floor(x) === x,
         'value must be integer'
     );
 
     if (x <= 0)
         return false;
 
-    return (x & (x-1)) == 0;
+    return (x & (x-1)) === 0;
 }
 
 /**
@@ -39,13 +39,13 @@ Find the highest bit set to 1 in an integer
 function highestBit(x)
 {
     assert (
-        Math.floor(x) == x,
+        Math.floor(x) === x,
         'value must be integer'
     );
 
     var ret = -1;
 
-    while (x != 0)
+    while (x !== 0)
     {
         x >>= 1;
         ret++;
@@ -158,12 +158,12 @@ function fmtNumDecimals(numVal, numDecs)
         {
             case 'SIGN':
             {
-                if (ch == '+')
+                if (ch === '+')
                 {
                     numSig = 1;
                     charIndex++;
                 }
-                else if (ch == '-')
+                else if (ch === '-')
                 {
                     numSig = -1;
                     charIndex++;
@@ -180,14 +180,14 @@ function fmtNumDecimals(numVal, numDecs)
     
             case 'INTG':
             {
-                if (ch == '.')
+                if (ch === '.')
                 {
                     state = 'FRAC';
                     charIndex++;
                     continue;
                 }
 
-                else if (ch == 'e' || ch == 'E')
+                else if (ch === 'e' || ch === 'E')
                 {
                     state = 'EXPN';
                     charIndex++;
@@ -206,7 +206,7 @@ function fmtNumDecimals(numVal, numDecs)
 
             case 'FRAC':
             {
-                if (ch == 'e' || ch == 'E')
+                if (ch === 'e' || ch === 'E')
                 {
                     state = 'EXPN';
                     charIndex++;
@@ -272,21 +272,21 @@ function fmtNumDecimals(numVal, numDecs)
         {
             // Round half to even: If the fraction of y is 0.5, then q is the 
             // even integer nearest to y.
-            if (lastDig % 2 == 0)
+            if (lastDig % 2 === 0)
                 rndDir = 0;
             else
                 rndDir = 1;
         }
 
-        for (var i = allDigs.length - 1; i >= 0 && rndDir == 1; --i)
+        for (var i = allDigs.length - 1; i >= 0 && rndDir === 1; --i)
         {
             allDigs[i] = (allDigs[i] + 1) % 10;
 
-            if (allDigs[i] != 0)
+            if (allDigs[i] !== 0)
                 rndDir = 0;
         }
 
-        if (rndDir == 1)
+        if (rndDir === 1)
         {
             allDigs.unshift(1);
 
@@ -304,7 +304,7 @@ function fmtNumDecimals(numVal, numDecs)
         intDigs = allDigs.slice(0, allDigs.length - numDecs);
     }
 
-    var outStr = (numSig == -1)? '-':'';
+    var outStr = (numSig === -1)? '-':'';
 
     for (var i = 0; i < intDigs.length; ++i)
         outStr += String(intDigs[i]);
@@ -319,7 +319,7 @@ function fmtNumDecimals(numVal, numDecs)
     }    
 
     // If there is a nonzero exponent
-    if (expNum != 0)
+    if (expNum !== 0)
     {
         outStr += 'e' + ((expNum > 0)? '+':'') + expNum;
     }

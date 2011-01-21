@@ -174,7 +174,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     {
         output += this.argTypes[i] + ' ' + this.argVars[i];
 
-        if (i != this.argVars.length - 1)
+        if (i !== this.argVars.length - 1)
             output += ', ';
     }
 
@@ -184,7 +184,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     {
         output += this.closVars[i];
 
-        if (i != this.closVars.length - 1)
+        if (i !== this.closVars.length - 1)
             output += ', ';
     }
 
@@ -326,3 +326,21 @@ IRFunction.prototype.getChildrenList = function ()
 
     return list;
 };
+
+/**
+Get a child function by name
+*/
+IRFunction.prototype.getChild = function (name)
+{
+    for (var i = 0; i < this.childFuncs.length; ++i)
+    {
+        if (this.childFuncs[i].funcName === name)
+            return this.childFuncs[i];
+    }
+
+    assert (
+        false,
+        'child function not found: "' + name + '"'
+    );
+};
+

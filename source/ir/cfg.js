@@ -295,7 +295,7 @@ ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
 {
     assert (instr instanceof IRInstr);
 
-    if (outName == undefined || outName == '')
+    if (outName === undefined || outName === '')
     {
         instr.outName = '';
         return;
@@ -335,7 +335,7 @@ ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
 {
     assert (block instanceof BasicBlock);
 
-    if (labelName == undefined || labelName == '')
+    if (labelName === undefined || labelName === '')
     {
         block.label = '';
         return;
@@ -581,7 +581,7 @@ ControlFlowGraph.prototype.validate = function ()
             if (instr instanceof PhiInstr)
             {
                 // Verify that it appears at the start of the block
-                if (j != 0 && !(block.instrs[j-1] instanceof PhiInstr))
+                if (j !== 0 && !(block.instrs[j-1] instanceof PhiInstr))
                    error('phi node after non-phi instruction');
 
                 // Verify that each immediate predecessor has a corresponding use
@@ -594,13 +594,13 @@ ControlFlowGraph.prototype.validate = function ()
                         );
 
                 // Verify that there is exactly one predecessor for each use
-                if (instr.preds.length != instr.uses.length)
+                if (instr.preds.length !== instr.uses.length)
                     error(
                         'phi node does not have one predecessor for each use'
                     );
 
                 // Verify that there are no more phi uses than block predecessors
-                if (instr.preds.length != block.preds.length)
+                if (instr.preds.length !== block.preds.length)
                     error(
                         'phi node:\n' + instr + '\nin:\n' +
                         block.getBlockName() +
@@ -609,7 +609,7 @@ ControlFlowGraph.prototype.validate = function ()
             }
 
             // Verify that no branches appear before the last instruction
-            if (instr.isBranch() && j != block.instrs.length - 1)
+            if (instr.isBranch() && j !== block.instrs.length - 1)
                 error('branch before last block instruction');
 
             // For each use of this instruction
@@ -622,7 +622,7 @@ ControlFlowGraph.prototype.validate = function ()
                     error('invalid use found');
 
                 // Verify that the use is in this CFG
-                if (use instanceof IRInstr && use.parentBlock.parentCFG != this)
+                if (use instanceof IRInstr && use.parentBlock.parentCFG !== this)
                     error('use not in CFG');
 
                 // Verify that our uses have us as a dest
@@ -646,7 +646,7 @@ ControlFlowGraph.prototype.validate = function ()
                     error('invalid dest found');
 
                 // Verify that the dest is in this CFG
-                if (dest.parentBlock.parentCFG != this)
+                if (dest.parentBlock.parentCFG !== this)
                     error('dest not in CFG');
 
                 // Verify that our dests have us as a use
@@ -688,7 +688,7 @@ ControlFlowGraph.prototype.validate = function ()
     }
 
     // Until the work list is empty
-    while (workList.length != 0)
+    while (workList.length !== 0)
     {
         var block = workList.pop();
 
@@ -1138,12 +1138,12 @@ BasicBlock.prototype.toString = function (outFormatFn, inFormatFn, lnPfxFormatFn
     // Print predecessors
     output += '\npreds: ';
     for (var i = 0; i < this.preds.length; ++i)
-        output += this.preds[i].getBlockName() + ((i != this.preds.length - 1)? ', ':'');
+        output += this.preds[i].getBlockName() + ((i !== this.preds.length - 1)? ', ':'');
 
     // Print successors
     output += '\nsuccs: ';
     for (var i = 0; i < this.succs.length; ++i)
-        output += this.succs[i].getBlockName() + ((i != this.succs.length - 1)? ', ':'');
+        output += this.succs[i].getBlockName() + ((i !== this.succs.length - 1)? ', ':'');
     */
 
     return output;
@@ -1387,7 +1387,7 @@ BasicBlock.prototype.replInstrAtIndex = function (index, newVal)
 
         // Ensure that a branch is not replaced by a non-branch or vice-versa
         assert (
-            oldInstr.isBranch() == newVal.isBranch(),
+            oldInstr.isBranch() === newVal.isBranch(),
             'branches must be replaced by branches'
         );
 

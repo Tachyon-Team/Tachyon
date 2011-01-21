@@ -137,8 +137,8 @@ blockPatterns.predSuccMerge = new optPattern(
         // If this block has only one successor, which has only one predecessor
         // and the block is not terminated by an exception-producing instruction
         return (
-            block.succs.length == 1 && 
-            block.succs[0].preds.length == 1 &&
+            block.succs.length === 1 && 
+            block.succs[0].preds.length === 1 &&
             block !== block.succs[0] &&
             !(block.getLastInstr() instanceof ExceptInstr)
         );
@@ -161,7 +161,7 @@ blockPatterns.predSuccMerge = new optPattern(
  
             // Ensure that this phi node has only one predecessor
             assert (
-                instr.preds.length == 1, 
+                instr.preds.length === 1, 
                 'phi node in merged block should have one pred:\n' +
                 instr
             );
@@ -235,9 +235,9 @@ blockPatterns.emptyBypass = new optPattern(
         // If this block has only one successor, no instructions but a branch, 
         // and the block is not terminated by an exception-producing instruction
         return (
-            block.succs.length == 1 && 
+            block.succs.length === 1 && 
             block.succs[0] !== block &&
-            block.instrs.length == 1 &&
+            block.instrs.length === 1 &&
             !(block.getLastInstr() instanceof ExceptInstr)
         );
     },
@@ -336,13 +336,13 @@ blockPatterns.ifPhiElim = new optPattern(
         // value of an immediately preceding phi
         return (
             block.instrs[0] instanceof PhiInstr &&
-            block.instrs[0].dests.length == 1 &&
+            block.instrs[0].dests.length === 1 &&
             (
-                (block.instrs.length == 2 &&
+                (block.instrs.length === 2 &&
                  block.instrs[1] instanceof IfInstr &&
                  block.instrs[1].uses[0] === block.instrs[0])
                 ||
-                (block.instrs.length == 3 &&
+                (block.instrs.length === 3 &&
                  block.instrs[1] instanceof CallFuncInstr &&
                  block.instrs[1].uses[0] === params.staticEnv.getBinding('boxToBool') &&
                  block.instrs[1].uses[2] === block.instrs[0] &&
@@ -359,7 +359,7 @@ blockPatterns.ifPhiElim = new optPattern(
         var boxToBool = false;
         var ifInstr;
 
-        if (block.instrs.length == 2)
+        if (block.instrs.length === 2)
         {
             ifInstr = block.instrs[1];
         }
@@ -390,7 +390,7 @@ blockPatterns.ifPhiElim = new optPattern(
             var truthVal = constEvalBool(use);
 
             // If a truth value could be evaluated
-            if (truthVal != BOT)
+            if (truthVal !== BOT)
             {
                 // We know which target the predecessor should jump to
                 var ifTarget = ifInstr.targets[truthVal.value? 0:1];
@@ -490,7 +490,7 @@ blockPatterns.ifIfElim = new optPattern(
         // as its only predecessor's if instruction
         return (
             block.getLastInstr() instanceof IfInstr &&
-            block.preds.length == 1 &&
+            block.preds.length === 1 &&
             block.preds[0].getLastInstr() instanceof IfInstr &&
             block.getLastInstr().uses[0] === block.preds[0].getLastInstr().uses[0] &&
             block.preds[0].getLastInstr().targets[0] !== block.preds[0].getLastInstr().targets[1]
@@ -522,9 +522,9 @@ blockPatterns.phiMerge = new optPattern(
     {
         // If this block contains only a phi node used only by another phi node
         return (
-            block.instrs.length == 2 &&
+            block.instrs.length === 2 &&
             block.instrs[0] instanceof PhiInstr &&
-            block.instrs[0].dests.length == 1 &&
+            block.instrs[0].dests.length === 1 &&
             block.instrs[0].dests[0] instanceof PhiInstr &&
             block.instrs[1] instanceof JumpInstr &&
             block.succs[0].instrs[0] === block.instrs[0].dests[0]
@@ -678,9 +678,9 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // If the instruction's value is not used and the instruction
     // has no side effects and is not a branch
     if (
-        instr.dests.length == 0 &&
-        instr.writesMem() == false &&
-        instr.isBranch() == false
+        instr.dests.length === 0 &&
+        instr.writesMem() === false &&
+        instr.isBranch() === false
     )
     {
         //print('Removing dead: ' + instr);
@@ -727,7 +727,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
         // If this phi node has the form:
         // Vi <- phi(...Vi...Vi...)
-        if (numVi == instr.uses.length)
+        if (numVi === instr.uses.length)
         {
             //print('Removing phi: ' + instr);
 
@@ -741,7 +741,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         // If this phi-assignment has the form:
         // Vi <- phi(...Vi...Vj...Vi...Vj...)
         // 0 or more Vi and 1 or more Vj
-        else if (numVi + numVj == instr.uses.length)        
+        else if (numVi + numVj === instr.uses.length)        
         {
             //print('Renaming phi: ' + instr);
 
