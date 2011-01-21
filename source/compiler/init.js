@@ -17,8 +17,6 @@ function initialize()
     // Initialize the Tachyon configuration
     initConfig();
 
-    config.hostParams.print = print;
-
     // Create the context and object layouts
     makeContextLayout(config.hostParams);
     makeObjectLayouts(config.hostParams);

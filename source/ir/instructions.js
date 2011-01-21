@@ -1784,7 +1784,7 @@ SetCtxInstr.prototype.writesMem = function () { return true; };
        register allocation.
 @augments IRInstr
 */
-function MoveInstr(from, to)
+function MoveInstr(from, to, interval)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = "move";
@@ -1794,6 +1794,16 @@ function MoveInstr(from, to)
     @field
     */
     this.uses = [from, to];
+
+    /**
+    Field used for register allocation
+    */
+    this.regAlloc = {};
+
+    /**
+    Store the interval that has introduced this move
+    */
+    this.regAlloc.interval = (interval === undefined) ? null : interval;
 }
 MoveInstr.prototype = new IRInstr();
 
@@ -1814,6 +1824,12 @@ MoveInstr.prototype.toString = function ()
         {
             output += ", ";
         }
+    }
+
+    if (this.regAlloc.interval !== null && 
+        this.regAlloc.interval.instr !== null)
+    {
+        output += " -- SSA Temp: " + this.regAlloc.interval.instr.getValName();
     }
 
     return output;
