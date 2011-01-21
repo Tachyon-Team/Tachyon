@@ -12,8 +12,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /** Throw an exception with message and args */
 function error(message)
 {
-    var errMsg = message;
-    for (var i=1; i<arguments.length; ++i)
+    var errMsg = '';
+    for (var i = 0; i < arguments.length; ++i)
     {
         errMsg += arguments[i];
     }
@@ -27,6 +27,25 @@ function error(message)
     throw errObj;
 };
 
+/**
+Retrow an error with added information
+*/
+function rethrowError(exc, message)
+{
+    if (message === undefined)
+        throw error;
+
+    var errMsg = '';
+    for (var i=1; i < arguments.length; ++i)
+    {
+        errMsg += arguments[i];
+    }
+
+    errMsg += ':\n' + exc;
+
+    error(errMsg);
+}
+
 /** Ensure a boolean condition is met, otherwise throw an exception */
 function assert(bool, message)
 {
@@ -37,8 +56,8 @@ function assert(bool, message)
 };
 
 /** 
-    Tells if an object corresponds to the global object for the current
-    execution context.
+Tells if an object corresponds to the global object for the current
+execution context.
 */
 function isGlobal(obj)
 {
@@ -48,7 +67,9 @@ function isGlobal(obj)
     return obj === global;
 }
 
-/** Ensure the new operator has been call for this particular constructor */
+/** 
+Ensure the new operator has been called for this particular constructor
+*/
 function assertNew(obj)
 {
     assert(!isGlobal(obj), 
@@ -56,8 +77,8 @@ function assertNew(obj)
 };
 
 /** 
-    Ensure a received exception is equal to an expected exception, 
-    otherwise rethrow the exception.
+Ensure a received exception is equal to an expected exception, 
+otherwise rethrow the exception.
 */
 function assertExceptionEqual(expected, received)
 {

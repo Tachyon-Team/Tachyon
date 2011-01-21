@@ -462,6 +462,75 @@ function ltGeneral(v1, v2)
 }
 
 /**
+Implementation of HIR less-than-or-equal instruction
+*/
+function le(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.le(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = leGeneral(v1, v2);
+    }
+
+    return tv? true:false;
+}
+
+/**
+Implementation of HIR greater-than instruction
+*/
+function gt(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.gt(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = gtGeneral(v1, v2);
+    }
+
+    return tv? true:false;
+}
+
+/**
+Implementation of HIR greater-than-or-equal instruction
+*/
+function ge(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.ge(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = geGeneral(v1, v2);
+    }
+
+    return tv? true:false;
+}
+
+/**
 Implementation of HIR eq instruction
 */
 function eq(v1, v2)
