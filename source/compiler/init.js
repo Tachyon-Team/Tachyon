@@ -26,29 +26,8 @@ function initialize()
     // Initialize the FFI functions
     initFFI(config.hostParams);
 
-    // Compile the primitives to IR for both configurations
-    var primIR = compPrimitives(config.hostParams);
-
-    /*
-    var func = config.hostParams.staticEnv.getBinding('newObject');
-    print(func);
-    */
-
-    // Compile the primitives to machine code
-    for (var primIt = new ArrayIterator(primIR); primIt.valid(); primIt.next())
-    {
-        //print(primIt.get());
-
-        compileIR(primIt.get(), config.hostParams);
-    }
-
-    // Link the primitives with each other
-    for (var primIt = new ArrayIterator(primIR); primIt.valid(); primIt.next())
-    {
-        linkIR(primIt.get(), config.hostParams);
-    }
-
-    // TODO: create layouts, compile primitives for bootstrap
+    // Compile the Tachyon primitives
+    compTachyon(false, config.hostParams);
 }
 
 /**

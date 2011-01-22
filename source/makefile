@@ -23,6 +23,7 @@ BASE_SRCS =                         \
     compiler/config.js              \
     compiler/compiler.js            \
     compiler/init.js                \
+    compiler/bootstrap.js           \
     parser/misc.js                  \
     parser/scanner.js               \
     parser/parser.js                \
@@ -51,8 +52,7 @@ BASE_SRCS =                         \
     codegen/linearscan.js           \
     codegen/backend.js              \
     codegen/ir-to-asm-x86.js        \
-    codegen/regalloc-config-x86.js  \
-    bootstrap/bootstrap.js
+    codegen/regalloc-config-x86.js
 
 # Standard library source files
 STDLIB_SRCS =                       \

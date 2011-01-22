@@ -10,67 +10,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-/*
-FFI version 0.1, minimal pour bootstrap
----------------------------------------
-
-// Enregistrement d'une fonction C (prototype)
-// Type descend de IRValue, comme IRFunction
-// Placeholder, contient:
-// - nom de fonction
-// - types des arguments
-// - type de retour
-var ffiFuncObj = new ffi.CFunction('printBar', ['char*', 'int'], 'int')
-
-// Appel vers C, linké statiquement plus tard
-// Le backend sait que call_ffi utilise la convention d'appel C
-var retVal = iir.call_ffi(ffiFuncObj, args...);
-
-// Marc: tous arguments boxés, fixnums ou strings
-// new ffi.CFunction crée des wrappers automatiquement?
-
-// Wrapper généré dynamiquement
-box printBar(box s, box i)
-{
-    rptr str = malloc_and_copy_str(s);
-    i32 iv = unboxInt(i);
-
-    i32 retval = iir.call_ffi(ffi_func, str, iv);
-
-    free_str(s);
-
-    return boxInt(retVal);
-}
-
-FFI version 0.2, introduction de callbacks
-------------------------------------------
-
-// On passe un pointeur vers une fonction JS
-// Un proxy (code stub) appellable à partir de C est créé
-ffi.regCallback(jsFuncObj, ['char*', 'int'], 'int');
-
-FFI version 0.3
----------------
-
-- Parsing de headers C
-- Création de code C qui accède aux objets JS (classe C++)
-
-*/
-
-/*
-var foo2 = import_foreign("foo", ["int", "char*"], "int");
-
-print(foo2(1, "hello"));
-
-void foreign_proxy(void)
-{
-  context *ctx = ...;
-  int *a = &ctx.a;
-  int (*f)(int,int,int,int,int) = fn_tbl[ctx.fn_id];
-  a[0] = f( a[0], a[1], a[2], a[3], a[4] )
-}
-*/
-
 /**
 Convert from a C type name to the corresponding C type
 */
@@ -268,7 +207,7 @@ CFunction.prototype.genWrapper = function ()
     for (var i = 0; i < this.tachArgTypes.length; ++i)
     {
         sourceStr += 'a' + i;        
-        if (i != this.tachArgTypes.length - 1)
+        if (i !== this.tachArgTypes.length - 1)
             sourceStr += ', ';
     }
 
@@ -319,7 +258,7 @@ CFunction.prototype.genWrapper = function ()
 
     // Return the generated code
     return sourceStr;
-}
+};
 
 /**
 @class Represents a proxy function callable from C for a Tachyon function
@@ -418,7 +357,7 @@ CProxy.prototype.genProxy = function ()
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
     {
         sourceStr += 'a' + i;        
-        if (i != this.irFunction.argTypes.length - 1)
+        if (i !== this.irFunction.argTypes.length - 1)
             sourceStr += ', ';
     }
 
@@ -450,7 +389,7 @@ CProxy.prototype.genProxy = function ()
     //sourceStr += '\tprintInt(1337);\n';
 
     // Get the global object from the context if available
-    sourceStr += '\tvar global = '
+    sourceStr += '\tvar global = ';
     if (this.ctxVal === undefined)
         sourceStr += '(ctx !== NULL_PTR)? get_ctx_globalobj(ctx):UNDEFINED';
     else
@@ -509,7 +448,7 @@ CProxy.prototype.genProxy = function ()
 
     // Return the compiled function
     return func.childFuncs[0];
-}
+};
 
 /**
 Create a bridge to call a compiled Tachyon function through V8

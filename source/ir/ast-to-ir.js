@@ -2206,6 +2206,11 @@ function opToIR(context)
         'invalid IR conversion context specified'
     );
 
+    assert (
+        context.astNode instanceof OpExpr,
+        'expected operator expression'
+    );
+
     // Get references to the operator and the sub-expressions
     var op = context.astNode.op;
     var exprs = context.astNode.exprs;
@@ -2284,7 +2289,7 @@ function opToIR(context)
 
     // Function to create either a primitive call or a machine instruction
     // depending on the argument types
-    function makeOp(context, primName, instrClass, argVals)
+    function makeOp(curContext, primName, instrClass, argVals)
     {
         // Test if all arguments are boxed
         var allBoxed = true;
@@ -2297,20 +2302,29 @@ function opToIR(context)
         {
             // Create the primitive call
            var opVal = insertPrimCallIR(
-                context,
+                curContext,
                 primName, 
                 argVals
             );
         }
         else
         {
-            if (!instrClass)
-                throw 'operator cannot operate on typed values: ' + primName;
+            // Setup a try block to catch potential type errors
+            try
+            {
+                if (!instrClass)
+                    throw 'operator cannot operate on typed values: ' + primName;
 
-            // Create the machine instruction
-            var opVal = context.addInstr(
-                new instrClass(argVals)
-            );
+                // Create the machine instruction
+                var opVal = curContext.addInstr(
+                    new instrClass(argVals)
+                );
+            }
+            catch (exc)
+            {
+                // Rethrow the exception with source code location information
+                rethrowError(exc, context.astNode.loc.to_string());
+            }
         }
 
         return opVal;
@@ -2702,7 +2716,7 @@ function opToIR(context)
         prePostGen('add', AddInstr, true);     
         break;
 
-        case '-- x':
+        case 'x --':
         prePostGen('sub', SubInstr, true);           
         break;
 

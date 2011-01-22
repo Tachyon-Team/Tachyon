@@ -179,6 +179,9 @@ function indentText(inputStr, indentStr)
     if (indentStr === undefined)
         indentStr = '\t';
 
+    if (typeof inputStr !== 'string')
+        inputStr = inputStr.toString();
+
     var chars = [];
 
     if (inputStr.length > 0)

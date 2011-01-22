@@ -592,10 +592,8 @@ function instrMaker(
         for (; curIndex < argArray.length && argArray[curIndex] instanceof BasicBlock; ++curIndex)
             branchTargets.push(argArray[curIndex]);
 
-        assert (
-            curIndex === argArray.length,
-            'invalid arguments passed to ' + mnemonic + ' constructor'
-        );
+        if (curIndex !== argArray.length)
+            error('invalid arguments passed to ' + mnemonic + ' constructor');
     }
 
     /**
@@ -669,12 +667,10 @@ function instrMaker(
         // If an error occurs, rethrow it, including the instruction name
         catch (errorVal)
         {
-            var errorStr = 
-                'Invalid arguments to "' + mnemonic + '" instruction: ' +
-                errorVal.toString();
-            ;
-
-            error(errorStr);
+            rethrowError(
+                errorVal,
+                'Invalid arguments to "' + mnemonic + '" instruction'
+            );
         }
 
         // If the mnemonic name is not set, call the name setting function
