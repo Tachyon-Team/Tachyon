@@ -958,18 +958,6 @@ allocator.SplitIterator.prototype.update = function (value)
     error("not supported"); 
 };
 
-/** Apply the given function to the remaining items in succession,
-*/
-allocator.SplitIterator.prototype.forEach = function (fct) 
-{ 
-    for(; this.valid(); this.next())
-    {
-        fct(this.get());
-    }
-};
-
-
-
 
 //-----------------------------------------------------------------------------
 
@@ -1011,7 +999,11 @@ allocator.orderBlocks = function (cfg)
                 // Operation number at the end of the block
                 to              : -1,   
                 // Live set at the block entry
-                liveIn          : null  
+                liveIn          : null,
+
+                // Expected slot mapping at the block entry
+                expected        : null
+
             };
         } else
         {
@@ -1965,39 +1957,38 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 */
 allocator.assign = function (cfg, config)
 {
-    var it, instr, opndIt, opnds, dest, pos, opnd;
-    for (it = cfg.getInstrItr(); it.valid(); it.next())
+    cfg.getInstrItr().forEach(function (instr) 
     {
-        instr = it.get();
-        opnds = []; 
-        dest  = null; 
-        pos = instr.regAlloc.id;
-        opndPos = pos - allocator.numberInstrs.inc;
+        var opnds = []; 
+        var dest  = null; 
+        var pos = instr.regAlloc.id;
+        var usePos = pos - allocator.numberInstrs.inc;
 
-        for (opndIt = instr.getUseItr(); opndIt.valid(); opndIt.next())
+        instr.getUseItr().forEach(function (use)
         {
-            opnd = opndIt.get(); 
-
-            if (opnd instanceof IRInstr)
+            if (use instanceof IRInstr)
             {
                 if (instr instanceof PhiInstr)
                 {
                     // For phi instructions, make sure we used the same 
                     // register as used for SSA deconstruction
-                    opnds.push(opnd.regAlloc.interval.
-                              regAtPos(instr.preds[opndIt.index].regAlloc.to));
+                    opnds.push(use.regAlloc.interval.
+                              regAtPos(instr.getPredecessor(use).regAlloc.to));
                 } else if (instr.regAlloc.usedRegisters(instr, config))
                 {
-                    opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
+                    // Special case for instructions for which
+                    // the inputs where separated from the outputs
+                    opnds.push(use.regAlloc.interval.regAtPos(usePos));
                 } else                 
                 {
-                    opnds.push(opnd.regAlloc.interval.regAtPos(pos));
+                    // Regular instruction
+                    opnds.push(use.regAlloc.interval.regAtPos(pos));
                 }
             } else 
             {
-                opnds.push(opnd);
+                opnds.push(use);
             }
-        }
+        });
 
         if (instr.hasDests())
         {
@@ -2006,7 +1997,7 @@ allocator.assign = function (cfg, config)
 
         instr.regAlloc.opnds = opnds;
         instr.regAlloc.dest = dest;
-    }
+    });
 };
 
 /** 
@@ -2082,7 +2073,6 @@ allocator.resolve = function (cfg, intervals, order, config)
     };
     
     var edgeIt, intervalIt, movesIt, blockIt, edge, moveFrom, moveTo;
-    var interval;
     var move;
     var mapping;
     var insertFct;
@@ -2107,7 +2097,7 @@ allocator.resolve = function (cfg, intervals, order, config)
         });
     });
 
-    // Resolve differences accross edges introduced by splitting
+    // Resolve differences accross edges
     for (edgeIt = cfg.getEdgeItr(); edgeIt.valid(); edgeIt.next())
     {
         mapping = allocator.mapping();
@@ -2215,6 +2205,428 @@ allocator.resolve = function (cfg, intervals, order, config)
 
     // Reorder blocks, taking into account the new blocks inserted
     return allocator.orderBlocks(cfg);
+};
+
+/**
+    Validates the register allocation and the move instruction
+    introduced, ensuring that for each instruction, temporaries
+    are in the expected registers or memory slot.
+*/
+allocator.validate = function (cfg, config)
+{
+
+    function assertInstrCompatible(given, slots, values, instr)
+    {
+        assert(given.compatible(slots, values), 
+                "RegAlloc expected:\n" + values.join("\n") + "\n in:\n",
+                slots.join("\n") + "\n but received: \n",
+                given.getValues(slots).map(String).join("\n") + "\n for '",
+                instr.getValName() + "' at pos " + instr.regAlloc.id + "\n",
+                "in mapping " + given.toString(slots));
+    };
+
+    // To check the soundness of the moves inserted
+    // during SSA deconstruction and find a common
+    // comparison point for the different predecessor
+    // of a block without having to execute each
+    // possible path through the graph, we handle
+    // phi instructions as a special case
+    function applyPhiInstrs(slotMap, block, pred)
+    {
+        block.getInstrItr().forEach(function (instr)
+        {
+            if (instr instanceof PhiInstr)
+            {
+                const slot  = instr.regAlloc.dest;
+                const value = instr.getIncoming(pred);
+               
+                assertInstrCompatible(slotMap, [slot], [value], instr);
+                slotMap.update(slot, instr);
+            } else
+            {
+                return false;
+            }
+        });
+         
+        return true;
+    };
+
+    function compatible(given, expected)
+    {
+        // I assume without a formal proof that
+        // the difference set of the slots from
+        // given and expected contains only 
+        // values that won't be needed afterwards.
+        //
+        // The informal proof goes like this:
+        // A difference in the set of slots 
+        // can only be introduced by multiple paths
+        // in the CFG.  Given that temps that 
+        // are defined in a single path will
+        // be merged in a phi node to be used
+        // by a subsequent instruction and be moved
+        // appropriately in the PhiInstr slot,
+        // any slot introduced before the PhiInstr
+        // by that temp in a specific path will not be needed anymore,
+        // since the PhiInstr slot will be used instead.
+        //
+        // We then only need to check compatibility
+        // in the intersection set of given and expected slots
+        // to garantee the soundness of the register allocation.
+        const givenSlots = given.getSlots();
+        const expectedSlots = expected.getSlots();
+
+        const intrSlots = arraySetIntr(givenSlots, expectedSlots);  
+        const givenIntrValues = given.getValues(intrSlots);
+         
+        return expected.compatible(intrSlots, givenIntrValues);
+    };
+
+    function traverseBlock(block, expected, pred)
+    {
+        var given = expected.copy();
+
+        block.getInstrItr().forEach(function (instr)
+        {
+            const opnds = instr.regAlloc.opnds;
+            const dest = instr.regAlloc.dest;
+            var blocked = instr.regAlloc.usedRegisters(instr, config);
+
+            // They already have been handled
+            if (instr instanceof PhiInstr) return;
+
+            // We ignore branch instructions
+            if (instr.isBranch() && !instr instanceof CallInstr
+                && !instr instanceof RetInstr) return;
+
+            if (instr instanceof MoveInstr)
+            {
+                given.move(instr.uses[0], instr.uses[1], instr); 
+                return;
+            };
+            
+            // Some control flow instructions like
+            // jump may have been inserted after register
+            // allocation resolution.  Those instructions
+            // won't have a regAlloc.id
+            if (instr.regAlloc.id === undefined) return;
+            
+            assertInstrCompatible(given, opnds, instr.uses, instr);
+
+            // We record invalidation of registers
+            if (blocked !== null)
+            {
+                blocked = blocked.map(function (index) 
+                { 
+                    return config.physReg[index]; 
+                });
+                given.invalidate(blocked, instr);
+            }
+
+            // We then update the destination register
+            // of the instruction with its value
+            if (dest !== null)
+            {
+                given.update(dest, instr);
+            }
+        });
+        return given;
+    };
+
+    // Initialize     
+    var stack = [];
+    var block = cfg.getEntryBlock();
+    var given;
+
+    cfg.getBlockItr().forEach(function (block)
+    {
+        block.regAlloc.expected = null;        
+        block.regAlloc.given    = null;
+    });
+
+    // The cfg entry block mapping is empty
+    block.regAlloc.expected = allocator.slotMapping();
+
+    stack.push(block);
+
+    // DFS
+    while (stack.length > 0) 
+    {
+        block = stack.pop();
+        given = traverseBlock(block, block.regAlloc.expected);
+
+        block.succs.forEach(function (succ)
+        {
+            const regAlloc = succ.regAlloc;
+            const expected = regAlloc.expected;
+            const slotMap = given.copy();
+
+            if (expected === null)
+            {
+                applyPhiInstrs(slotMap, succ, block);
+                regAlloc.expected = slotMap;
+                stack.push(succ);
+            } else
+            {
+                applyPhiInstrs(slotMap, succ, block);
+                assert(compatible(slotMap, expected),
+                       "Given mapping from '" + block.getBlockName() + "':\n",
+                       slotMap,
+                       "is incompatible with expected mapping for '",
+                       succ.getBlockName() + "':\n",
+                       expected);
+            }
+        });
+    }
+
+    return true;
+};
+
+/**
+    Mapping from memory slots and registers to IRValues.
+*/
+allocator.slotMapping = function ()
+{
+    var that = Object.create(allocator.slotMapping.prototype);
+
+    that.mapping = {};
+    that.debug   = {};
+
+    return that;
+};
+
+/**
+    Tests whether the given register/memory/... slots and their
+    associated IRValues are compatible with the current mapping.
+
+    Returns true if for each register and memory slots,
+    the mapping contains the same IRValue as given in values. 
+    Ignores entries in slots which are not register or memory slots.
+
+    @param slots   Array of register/memory/...
+    @param values  Array of IRValues
+*/
+allocator.slotMapping.prototype.compatible = function (slots, values)
+{
+    assert(slots.length === values.length);
+
+    var i, currentValue, slot, value;
+
+    for (i = 0; i < slots.length; ++i)
+    {
+        slot  = slots[i];
+        if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+        {
+            value = values[i]; 
+
+            currentValue = this.mapping[slot];
+
+            if (currentValue !== value)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+};
+
+/**
+    Update the slot given in the current mapping to the value given.
+
+    @param slot    register/memory/... slot to update
+    @param value   value to store in mapping
+    @param instr   Optional, defaults to value parameter,
+                   instruction responsible for the value given
+*/
+allocator.slotMapping.prototype.update = function (slot, value, instr)
+{
+    assert(slot.type === x86.type.REG || slot.type === x86.type.MEM);
+
+    this.mapping[slot] = value;
+
+    if (instr === undefined)
+    {
+        instr = value;
+    }
+
+    assert(instr !== null);
+    this.getDebugSlot(slot).push(instr);
+};
+
+/**
+    Move the value from one slot to another.
+    
+    @param orig   Origin slot
+    @param dest   Destination slot
+*/
+allocator.slotMapping.prototype.move = function (orig, dest, instr)
+{
+    const value = (orig.type === x86.type.REG || orig.type === x86.type.MEM) ?
+                  this.mapping[orig] : orig;
+
+    this.update(dest, value, instr);
+};
+
+/**
+    Invalidate the content of the given slots. 
+
+    @param slots  Array of register/memory/... slots
+    @param instr  Optional instruction for debugging.
+*/
+allocator.slotMapping.prototype.invalidate = function (slots, instr)
+{
+    const that = this;
+
+    slots.forEach(function (slot)
+    {
+        that.update(slot, null, instr);
+    });
+};
+
+/**
+    Returns a copy of this mapping.
+*/
+allocator.slotMapping.prototype.copy = function ()
+{
+    var slot, i, newA, oldA;
+    var newMapping = Object.create(this);
+    
+    newMapping.mapping = {};
+
+    for (slot in this.mapping)
+    {
+        newMapping.mapping[slot] = this.mapping[slot];
+    }
+
+    newMapping.debug = {};
+
+    for (slot in this.debug)
+    {
+        newA = [];
+        oldA = this.debug[slot];
+
+        newA.length = oldA.length;
+
+
+        for (i = 0; i < oldA.length; ++i)
+        {
+            newA[i] = oldA[i];
+        }
+
+        newMapping.debug[slot] = newA;
+    }
+
+    return newMapping;
+};
+
+/** 
+    Returns a string representing the content of the mapping.
+*/
+allocator.slotMapping.prototype.toString = function (debugSlots)
+{
+    const tab = "\t";
+    const mapping = this.mapping;
+    const debug = this.debug;
+
+    var s = "slotMapping: \n";
+    var slots = [];
+    var slot;
+
+
+    for (slot in mapping)
+    {
+        slots.push(slot);
+    }
+
+    // Regroup memory and register entries together 
+    slots.sort(); // Sort alphabetically
+
+    // move register entries happening after memory entries
+    // to the front
+    slots.sort(function (a,b)
+    {
+        if (a.slice(0,3) === "mem")
+        {
+            if (b.slice(0,3) === "mem")
+            {
+                return 0;
+            } else 
+            {
+                return 1; 
+            } 
+        } else if (b.slice(0,3) === "mem")
+        {
+            return -1; 
+        } else
+        {
+            return 0;
+        }
+    });
+
+    slots.forEach(function (slot)
+    {
+        s += tab + slot + ": " + mapping[slot] + "\n";
+    });
+
+    // Print debugging information if debugSlots are provided
+    if (debugSlots !== undefined)
+    {
+        s += "DEBUG: \n";
+        debugSlots.forEach(function (slot)
+        {
+            if (slot.type !== x86.type.REG && slot.type !== x86.type.MEM)
+                return
+
+
+            debugList = (debug[slot] === undefined) ?  [] : 
+            debug[slot].map(function (instr)
+            { 
+                return "pos: '" + instr.regAlloc.id + "' " + instr; 
+            }).join("\n");
+
+            // Show the last instruction first
+            s += slot + ":\n" + debugList + "\n";
+        });
+    }
+
+    return s;
+};
+
+allocator.slotMapping.prototype.getDebugSlot = function (slot)
+{
+    if (this.debug[slot] === undefined)
+    {
+        this.debug[slot] = [];
+    }
+
+    return this.debug[slot];
+};
+
+allocator.slotMapping.prototype.getSlots = function ()
+{
+    var slot;
+    var slots = [];
+
+    for (slot in this.mapping)
+    {
+        slots.push(slot);
+    }
+
+    return slots;
+};
+
+allocator.slotMapping.prototype.getValues = function (slots)
+{
+    var values = [];
+    const mapping = this.mapping;
+   
+    slots.forEach(function (slot) 
+    {
+        values.push(mapping[slot]);
+    });
+
+    return values;
 };
 
 /** 
@@ -2416,16 +2828,16 @@ allocator.mapping.prototype.readArray = function (from)
 allocator.mapping.prototype.union = function (mapping)
 {
     var p;
-    var i;
+    const that = this;
     
     for (p in mapping.read)
     {
         if (mapping.read.hasOwnProperty(p))
         {
-            for(i=0; i < mapping.read[p].length; ++i)
+            mapping.read[p].forEach(function (move)
             {
-                this.addMove(mapping.read[p][i]); 
-            }
+                that.addMove(move); 
+            });
         }
     }
 };

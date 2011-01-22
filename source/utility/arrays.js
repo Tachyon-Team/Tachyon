@@ -187,4 +187,3 @@ ArrayIterator.prototype.getIndex = function ()
 {
     return this.index;
 };
-

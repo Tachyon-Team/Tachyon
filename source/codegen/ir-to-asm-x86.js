@@ -250,11 +250,6 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
     // to have to information from register allocation 
     this.fct = fct;
 
-    var block;
-    var instrIt;
-    var opnds;
-    var i;
-
     function replace(opnd)
     {
         if (opnd instanceof ConstValue && typeof opnd.value === "string" )
@@ -278,25 +273,21 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
     // Start the code generation
     this.func_init();
 
-    for (i=0; i < blockList.length; ++i)
+    blockList.forEach(function (block)
     {
-        block = blockList[i]; 
-
         // Generate the asm label for the current block 
-        this.asm.label(this.label(block, block.label));
+        that.asm.label(that.label(block, block.label));
 
         // Generate all the asm instructions for each IR
         // instructions
-        for (var instrIt = block.getInstrItr(); 
-             instrIt.valid(); 
-             instrIt.next())
+        block.getInstrItr().forEach(function (instr)
         {
-            instr = instrIt.get();
+            var opnds;
 
             if (instr.regAlloc.opnds === undefined)
             {
                 opnds = instr.uses.map(replace);
-                instr.genCode(this, opnds);
+                instr.genCode(that, opnds);
             } 
             else
             {
@@ -304,12 +295,12 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
                 opnds = instr.regAlloc.opnds.map(replace);
 
                 assert(instr.genCode !== undefined);
-                instr.genCode(this, opnds);
+                instr.genCode(that, opnds);
             }
-        }
+        });
 
-        this.asm.genListing("");
-    }
+        that.asm.genListing("");
+    });
 };
 
 /** 

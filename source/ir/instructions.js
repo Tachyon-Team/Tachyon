@@ -481,6 +481,23 @@ PhiInstr.prototype.getIncoming = function (pred)
 };
 
 /**
+Get the predecessor block for a given value 
+*/
+PhiInstr.prototype.getPredecessor = function (value)
+{
+    for (var i = 0; i < this.uses.length; ++i)
+    {
+        if (this.uses[i] === value)
+            return this.preds[i];
+    }
+
+    assert (
+        false,
+        'cannot get predecessor for value, invalid value'
+    );        
+};
+
+/**
 Make a shallow copy of the instruction
 */
 PhiInstr.prototype.copy = function ()
@@ -1798,7 +1815,7 @@ function MoveInstr(from, to, interval)
     /**
     Field used for register allocation
     */
-    this.regAlloc = {};
+    this.regAlloc = Object.create(this.regAlloc);
 
     /**
     Store the interval that has introduced this move
