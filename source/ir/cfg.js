@@ -652,6 +652,261 @@ ControlFlowGraph.prototype.validate = function ()
     //
 
     // Work list for the analysis
+    var workList = new LinkedList();
+
+    // Add the entry block to the work list
+    workList.addLast(this.entry);
+
+    // Array to store must reach input sets for each block
+    var mustReachIn = [];
+
+    // Compute the set of all definitions in the CFG
+    var fullReachSet = [];
+    for (var i = 0; i < this.blocks.length; ++i)
+    {
+        var block = this.blocks[i];
+        for (var j = 0; j < block.instrs.length; ++j)
+            if (block.instrs[j].dests.length > 0)
+                fullReachSet.push(block.instrs[j]);
+    }
+
+    // Initialize the must reach in sets
+    mustReachIn[this.entry.blockId] = [];
+    for (var i = 0; i < this.blocks.length; ++i)
+    {
+        var block = this.blocks[i];
+        if (block.preds.length > 1)
+            mustReachIn[block.blockId] = fullReachSet;
+    }
+
+    // Until the work list is empty
+    while (workList.isEmpty() === false)
+    {
+        var block = workList.remFirst();
+
+        //print(block.getBlockName());
+
+        // Get the must reach set at this block's entry
+        var mustReachCur = mustReachIn[block.blockId];
+
+        assert (mustReachCur !== undefined);
+
+        // If we have more than one predecessor, copy the
+        // must reach set before modifying it
+        if (block.preds.length > 1)
+            mustReachCur = mustReachCur.slice(0);
+
+        // Remove return values flowing through exception edges
+        for (var i = 0; i < mustReachCur.length; ++i)
+        {
+            var instr = mustReachCur[i];
+            if (instr instanceof CallFuncInstr && 
+                instr.getThrowTarget() === block)
+            {
+                mustReachCur.splice(i, 1);
+                --i;
+            }
+        }
+
+        // For each instruction
+        for (var i = 0; i < block.instrs.length; ++i)
+        {
+            var instr = block.instrs[i];
+
+            // If this is not a phi node
+            if ((instr instanceof PhiInstr) === false)
+            {
+                // For each use of the instruction
+                for (var k = 0; k < instr.uses.length; ++k)
+                {
+                    var use = instr.uses[k];
+
+                    // If the use isn't in the CFG, ignore it
+                    if (!(use instanceof IRInstr))
+                        continue;
+
+                    // If the use does not reach the instruction
+                    if (arraySetHas(mustReachCur, use) === false)
+                    {
+                        error(
+                            'instruction:\n' + instr + '\nin block:\n' + 
+                            instr.parentBlock.getBlockName() +
+                            '\nuses non-reaching value:\n' + use
+                        );
+                    }
+                }
+            }
+
+            // If the instruction's value is used somewhere,
+            // add it to the must reach set
+            if (instr.dests.length > 0)
+                arraySetAdd(mustReachCur, instr);
+        }
+
+        // Count the number of successors with only us as a predecessor
+        var numSinglePred = 0;
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+            if (succ.preds.length === 1)
+                ++numSinglePred;
+        }
+
+        // For each successor
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+
+            // For each instruction of the successor
+            for (var j = 0; j < succ.instrs.length; ++j)
+            {
+                var instr = succ.instrs[j];
+
+                // If this is not a phi node, skip it
+                if ((instr instanceof PhiInstr) === false)
+                    continue;
+
+                // Get the incoming value for the current block
+                var use = instr.getIncoming(block);
+
+                // If the use isn't in the CFG, ignore it
+                if (!(use instanceof IRInstr))
+                    continue;
+
+                // If the use does not reach the phi node
+                if (arraySetHas(mustReachCur, use) === false)
+                {
+                    error(
+                        'phi node:\n' + instr +
+                        '\nuses non-reaching value:\n' + use
+                    );
+                }
+            }
+
+            // If this successor has more than 1 predecessor
+            if (succ.preds.length > 1)
+            {
+                var succReachIn = mustReachIn[succ.blockId];
+
+                // Merge with the must reach in of the successor
+                mustReachIn[succ.blockId] = arraySetIntr(
+                    mustReachCur,
+                    succReachIn
+                );
+
+                // If the must reach in set changed, add the succ to the work list
+                if (arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
+                    workList.addLast(succ);
+            }
+
+            // Otherwise, this successor has only one predecessor (us)
+            else
+            {
+                // If it is the only such block
+                if (numSinglePred === 1)
+                {
+                    // Give it our output reach set as input without
+                    // copying the set
+                    mustReachIn[succ.blockId] = mustReachCur;
+                }
+                else
+                {
+                    // Give it a copy of our must reach set as input
+                    mustReachIn[succ.blockId] = mustReachCur.slice(0);
+                }
+
+                // Add the successor to the work list
+                workList.addLast(succ);
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+    /*
+    // For each basic block
+    for (var i = 0; i < this.blocks.length; ++i)
+    {
+        var block = this.blocks[i];
+
+        // Compute the must and may reach sets at this block's entry
+        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
+        for (var j = 0; j < block.preds.length; ++j)
+        {
+            var pred = block.preds[j];
+            mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
+        }
+
+        // For each instruction
+        for (var j = 0; j < block.instrs.length; ++j)
+        {
+            var instr = block.instrs[j];
+
+            // For each use of the instruction
+            for (var k = 0; k < instr.uses.length; ++k)
+            {
+                var use = instr.uses[k];
+
+                // If the use isn't in the CFG, ignore it
+                if (!(use instanceof IRInstr))
+                    continue;
+
+                if (instr instanceof PhiInstr)
+                {
+                    var phiPred = instr.preds[k];
+                    if (!arraySetHas(mustReachOut[phiPred.blockId], use))
+                        error(
+                            'phi node:\n' + instr +
+                            '\nuses non-reaching value:\n' + use
+                        );
+                }
+                else
+                {
+                    if (!arraySetHas(mustReachCur, use))
+                        error(
+                            'instruction:\n' + instr + '\nin block:\n' + 
+                            instr.parentBlock.getBlockName() +
+                            '\nuses non-reaching value:\n' + use
+                        );
+                }
+            }
+
+            // If the instruction's value is used somewhere,
+            // add it to the must reach set
+            if (instr.dests.length > 0)
+                arraySetAdd(mustReachCur, instr);
+        }
+    }
+    */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+    // Work list for the analysis
     var workList = [this.entry];
 
     // Array to store must reach sets for each block
@@ -777,6 +1032,7 @@ ControlFlowGraph.prototype.validate = function ()
                 arraySetAdd(mustReachCur, instr);
         }
     }
+    */
 
     // The CFG is valid
     return true;
