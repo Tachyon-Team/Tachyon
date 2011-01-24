@@ -798,7 +798,8 @@ Bridge a context with no exit block
 */
 IRConvContext.prototype.bridge = function ()
 {
-    this.exitBlock = this.entryBlock;
+    if (this.exitBlock === undefined)
+        this.exitBlock = this.entryBlock;
 };
 
 /**
@@ -3716,8 +3717,11 @@ function throwToIR(context, throwCtx, excVal)
         context.throwList.push(throwCtx);
     }
 
-    // Terminate the throw context, no instructions go after this
+    // Terminate the current context, no instructions go after this
     context.terminate();
+
+    // Bridge the throw context to make sure it has an exit block
+    throwCtx.bridge();
 }
 
 /**

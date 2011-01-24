@@ -204,6 +204,23 @@ tests.ir.forStmt = function ()
 };
 
 /**
+For-in loop statement
+*/
+tests.ir.forInStmt = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            for (var propName in obj)           \
+            {                                   \
+                print(propName);                \
+            }                                   \
+                                                \
+            print(propName);                    \
+        "
+    );
+};
+
+/**
 Continue and break labels
 */
 tests.ir.loopLabels = function ()
