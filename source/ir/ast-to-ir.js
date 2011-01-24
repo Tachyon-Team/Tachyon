@@ -110,6 +110,8 @@ function stmtListToIRFunc(
     params
 )
 {
+    //print('Generating IR for function: "' + funcName + '"');
+
     // Create a new function object for the function
     var newFunc = getIRFuncObj(
         funcName,
@@ -347,8 +349,13 @@ function stmtListToIRFunc(
         }
     }
 
+    //print('generating IR for function body');
+    //if (astNode.loc instanceof Location) pp_loc(astNode.loc, "");
+
     // Generate code for the function body
     stmtListToIR(bodyContext);
+
+    //print('done generating IR');
 
     // If the context is not terminated and this function has a boxed return value
     if (!bodyContext.isTerminated() && newFunc.retType === IRType.box)
@@ -365,10 +372,12 @@ function stmtListToIRFunc(
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
 
+    //print('Applying opt patterns');
+
     // Simplify the CFG using peephole patterns
     applyPatternsCFG(cfg, params);
-    
-    //print('');
+
+    //print('validating');    
 
     // Run a validation test on the CFG
     try
@@ -382,6 +391,8 @@ function stmtListToIRFunc(
             e + '\n' + cfg.toString()
         );
     }
+
+    //print('done generating IR for function');
 
     // Return the new function
     return newFunc;
@@ -941,6 +952,9 @@ Convert an AST statement into IR code
 */
 function stmtToIR(context)
 {
+    //print('Generating ir for stmt:');
+    //pp(context.astNode)
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
@@ -1330,19 +1344,20 @@ function stmtToIR(context)
         testCtx.bridge();
   
         // Create a context for the loop body
+        var loopBody = context.cfg.getNewBlock('loop_body');
         var bodyCtx = testCtx.branch(
             astStmt.lhs_expr,
-            context.cfg.getNewBlock('loop_body'),
+            loopBody,
             testCtx.localMap.copy()
         );
         
         // Get the current property
         var curPropName = insertPrimCallIR(
             bodyCtx, 
-            'getPropVal', 
+            'getPropVal',
             [propNameArr, propIndex]
         );
-        
+
         // Assign the current prop name to LHS expr
         assgToIR(bodyCtx, curPropName);
 
@@ -1411,12 +1426,12 @@ function stmtToIR(context)
         testExit.replBranch(
             new IfInstr(
                 testVal,
-                bodyCtx.entryBlock,
+                loopBody,
                 loopExit
             )
-        );       
+        );    
 
-        // Add a jump from the entry block to the loop entry
+        // Add a jump from the entry block to the test block
         setCtx.addInstr(new JumpInstr(testCtx.entryBlock));
 
         // Set the exit block to be the join block
@@ -1893,6 +1908,9 @@ Convert an AST expression into IR code
 */
 function exprToIR(context)
 {
+    //print('Generating ir for expr:');
+    //pp(context.astNode)
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
@@ -2101,6 +2119,8 @@ function exprToIR(context)
 
     else if (astExpr instanceof ArrayLiteral)
     {
+        //print('Generating IR for array literal');
+
         // Compile the element value expressions
         var elemCtx = context.pursue(astExpr.exprs);
         var elemVals = exprListToIR(elemCtx);
@@ -2121,7 +2141,7 @@ function exprToIR(context)
                 [newArray, ConstValue.getConst(i), elemVals[i]]
             );
         }
-        
+
         // Set the new array as the output
         context.setOutput(elemCtx.getExitBlock(), newArray);
     }
@@ -2200,6 +2220,9 @@ Convert ast operator expression nodes to IR
 */
 function opToIR(context)
 {
+    //print('Generating IR for op expr:');
+    //pp(context.astNode);
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
@@ -3164,6 +3187,9 @@ Convert a variable reference expression to IR code
 */
 function refToIR(context)
 {
+    //print('Generating IR for ref expr:');
+    //pp(context.astNode);
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,

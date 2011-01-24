@@ -225,9 +225,6 @@ function compSources(srcList, params)
         // Generate IR from the AST
         var ir = unitToIR(ast, params);
 
-        // Validate the resulting code
-        ir.validate();
-
         // Add the IR function to the list
         irList.push(ir);
     }

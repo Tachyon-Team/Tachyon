@@ -47,13 +47,13 @@ function ControlFlowGraph(ownerFunc)
     Instruction output names used in the CFG
     @field
     */
-    this.instrNames = [];
+    this.instrNames = new HashMap();
 
     /**
     Block names used in the CFG
     @field
     */
-    this.blockNames = [];
+    this.blockNames = new HashMap();
 
     /**
     IR function to which this CFG belongs
@@ -138,8 +138,8 @@ ControlFlowGraph.prototype.copy = function ()
     newCFG.nextInstrId  = this.nextInstrId;
     newCFG.freeBlockIds = this.freeBlockIds.slice(0);
     newCFG.nextBlockId  = this.nextBlockId;
-    newCFG.instrNames   = this.instrNames.slice(0);
-    newCFG.blockNames   = this.blockNames.slice(0);
+    newCFG.instrNames   = this.instrNames.copy();
+    newCFG.blockNames   = this.blockNames.copy();
 
     // Create a map from old blocks to new blocks
     var blockMap = [];
@@ -301,21 +301,11 @@ ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
         return;
     }
 
-    if (!arraySetHas(this.instrNames, outName))
-    {
-        instr.outName = outName;
-    }
-    else
-    {
-        var idx = 1;
+    var that = this;
+    function nameTaken(name) { return that.instrNames.hasItem(name); }
+    instr.outName = findFreeName(nameTaken, outName);
 
-        while (arraySetHas(this.instrNames, outName + '_' + idx))
-            idx++;
-
-        instr.outName = outName + '_' + idx;
-    }
-
-    arraySetAdd(this.instrNames, instr.outName);
+    this.instrNames.addItem(instr.outName);
 };
 
 /**
@@ -325,7 +315,10 @@ ControlFlowGraph.prototype.freeInstrName = function (instr)
 {
     assert (instr instanceof IRInstr);
 
-    arraySetRem(this.instrNames, instr.outName);
+    if (instr.outName === '')
+        return;
+
+    this.instrNames.remItem(instr.outName);
 };
 
 /**
@@ -341,21 +334,11 @@ ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
         return;
     }
 
-    if (!arraySetHas(this.blockNames, labelName))
-    {
-        block.label = labelName;
-    }
-    else
-    {
-        var idx = 1;
+    var that = this;
+    function nameTaken(name) { return that.blockNames.hasItem(name); }
+    block.label = findFreeName(nameTaken, labelName);
 
-        while (arraySetHas(this.blockNames, labelName + '_' + idx))
-            idx++;
-
-        block.label = labelName + '_' + idx;
-    }
-
-    arraySetAdd(this.blockNames, block.label);
+    this.blockNames.addItem(block.label);
 };
 
 /**
@@ -365,7 +348,10 @@ ControlFlowGraph.prototype.freeBlockName = function (block)
 {
     assert (block instanceof BasicBlock);
 
-    arraySetRem(this.blockNames, block.label);
+    if (block.label === '')
+        return;
+
+    this.blockNames.remItem(block.label);
 };
 
 /**
@@ -691,6 +677,8 @@ ControlFlowGraph.prototype.validate = function ()
     while (workList.length !== 0)
     {
         var block = workList.pop();
+
+        //print(block.getBlockName());
 
         // Compute the must and may reach sets at this block's entry
         var mustReachCur = (block.preds.length > 0)? fullReachSet:[];

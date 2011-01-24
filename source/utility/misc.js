@@ -330,3 +330,41 @@ function fmtNumDecimals(numVal, numDecs)
     return outStr;
 }
 
+/**
+Find an available name in a set by prepending the smallest number
+postfix possible. This function uses a binary search.
+*/
+function findFreeName(nameTaken, startName)
+{
+    if (nameTaken(startName) === false)
+    {
+        return startName;
+    }
+    else
+    {
+        function idToName(idx) { return startName + '_' + idx; }
+        function idTaken(idx) { return nameTaken(idToName(idx)); }
+
+        var minIdx = 1;
+        var maxIdx = 1;
+
+        while (idTaken(maxIdx))
+        {
+            minIdx = maxIdx;
+            maxIdx *= 2;
+        }
+
+        while (minIdx < maxIdx)
+        {
+            var midIdx = minIdx + Math.floor((maxIdx - minIdx) / 2);
+
+            if (idTaken(midIdx))
+                minIdx = midIdx + 1;
+            else
+                maxIdx = midIdx;
+        }
+
+        return idToName(maxIdx);
+    }
+}
+
