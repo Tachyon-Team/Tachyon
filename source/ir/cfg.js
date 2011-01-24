@@ -663,7 +663,8 @@ ControlFlowGraph.prototype.validate = function ()
     {
         var block = this.blocks[i];
         for (var j = 0; j < block.instrs.length; ++j)
-            fullReachSet.push(block.instrs[j]);
+            if (block.instrs[j].dests.length > 0)
+                fullReachSet.push(block.instrs[j]);
     }
 
     // Initialize the reaching def sets for all blocks
@@ -703,9 +704,12 @@ ControlFlowGraph.prototype.validate = function ()
         // For each instruction
         for (var i = 0; i < block.instrs.length; ++i)
         {
-            // Add the instruction to the set of reaching values
             var instr = block.instrs[i];
-            arraySetAdd(mustReachCur, instr);
+
+            // If the instruction's value is used somewhere,
+            // add it to the must reach set
+            if (instr.dests.length > 0)
+                arraySetAdd(mustReachCur, instr);
         }
         
         // If the must reach set has changed for this block
@@ -767,8 +771,10 @@ ControlFlowGraph.prototype.validate = function ()
                 }
             }
 
-            // Add the instruction to the must reach set
-            arraySetAdd(mustReachCur, instr);
+            // If the instruction's value is used somewhere,
+            // add it to the must reach set
+            if (instr.dests.length > 0)
+                arraySetAdd(mustReachCur, instr);
         }
     }
 

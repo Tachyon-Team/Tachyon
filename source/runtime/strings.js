@@ -71,12 +71,11 @@ function streq(strObj, rawStr)
 Allocate/get a reference to a string object containing the given string data
 @param rawStr pointer to raw UTF-16 string data
 */
-function getStrObj(rawStr, strLen)
+function getStrObj(rawStr)
 {
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg rawStr rptr";
-    "tachyon:arg strLen pint";
 
     //
     // Hash code computation
@@ -102,9 +101,11 @@ function getStrObj(rawStr, strLen)
         hashCode = (hashCode * pint(256) + ch) % pint(426870919);
     }
 
+    // Store the string length (excluding the null terminator)
+    var strLen = index;
 
-    printInt(boxInt(strLen));
-    printInt(boxInt(hashCode));
+    //printInt(boxInt(strLen));
+    //printInt(boxInt(hashCode));
 
     //
     // Hash table lookup
@@ -154,7 +155,7 @@ function getStrObj(rawStr, strLen)
     //
 
     // Allocate a string object
-    var strObj = alloc_str(strLen);
+    var strObj = alloc_str(strLen + pint(1));
     
     // Set the string length in the string object
     set_str_len(strObj, iir.icast(IRType.i32, strLen));
@@ -162,11 +163,11 @@ function getStrObj(rawStr, strLen)
     // Set the hash code in the string object
     set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 
-    printInt(boxInt(strLen));
-    printInt(boxInt(hashCode));
+    //printInt(boxInt(strLen));
+    //printInt(boxInt(hashCode));
 
     // Copy the character data into the string object
-    for (var index = pint(0); index < strLen; index = index + pint(1))
+    for (var index = pint(0); index <= strLen; index = index + pint(1))
     {
         // Get the current character
         var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
