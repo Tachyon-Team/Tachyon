@@ -147,6 +147,19 @@ tests.ir.assignExprs = function ()
 };
 
 /**
+In expression
+*/
+tests.ir.inExpr = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            var a = b in c;                     \
+            print(a);                           \
+        "
+    );
+};
+
+/**
 While loop statement
 */
 tests.ir.whileStmt = function ()
@@ -199,6 +212,23 @@ tests.ir.forStmt = function ()
             }                                   \
                                                 \
             print(i);                           \
+        "
+    );
+};
+
+/**
+For-in loop statement
+*/
+tests.ir.forInStmt = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            for (var propName in obj)           \
+            {                                   \
+                print(propName);                \
+            }                                   \
+                                                \
+            print(propName);                    \
         "
     );
 };
@@ -284,6 +314,41 @@ tests.ir.switchStmt = function ()
                 }                               \
                                                 \
                 return 0;                       \
+            }                                   \
+        "
+    );
+};
+
+/**
+Try statement
+*/
+tests.ir.tryStmt = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            function foo(v)                     \
+            {                                   \
+                var a = 0;                      \
+                                                \
+                try                             \
+                {                               \
+                    a = 1;                      \
+                    a = bar(v);                 \
+                }                               \
+                                                \
+                catch (e)                       \
+                {                               \
+                    print(a);                   \
+                    a = 2;                      \
+                    print(a);                   \
+                }                               \
+                                                \
+                finally                         \
+                {                               \
+                    print(a);                   \
+                }                               \
+                                                \
+                return a;                       \
             }                                   \
         "
     );

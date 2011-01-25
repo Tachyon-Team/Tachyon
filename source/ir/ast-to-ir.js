@@ -372,6 +372,8 @@ function stmtListToIRFunc(
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
 
+    cfg.validate();
+
     //print('Applying opt patterns');
 
     // Simplify the CFG using peephole patterns
@@ -798,7 +800,8 @@ Bridge a context with no exit block
 */
 IRConvContext.prototype.bridge = function ()
 {
-    this.exitBlock = this.entryBlock;
+    if (this.exitBlock === undefined)
+        this.exitBlock = this.entryBlock;
 };
 
 /**
@@ -1766,6 +1769,7 @@ function stmtToIR(context)
                
         // Create a context for the try body
         var tryBodyCtx = context.pursue(astStmt.statement);
+        tryBodyCtx.localMap = context.localMap.copy();
         tryBodyCtx.throwList = throwCtxList;
 
         // Compile the try body statement
@@ -1819,10 +1823,10 @@ function stmtToIR(context)
         stmtToIR(catchCtx);
 
         // Merge the finally contexts
-        var finallyLocals = new HashMap();
+        //var finallyLocals = new HashMap();
         var finallyBlock = mergeContexts(
             [tryBodyCtx, catchCtx],
-            finallyLocals,
+            context.localMap,
             context.cfg,
             'try_finally'
         );
@@ -1831,7 +1835,7 @@ function stmtToIR(context)
         var finallyCtx = context.branch(
             astStmt.finally_part,
             finallyBlock,
-            finallyLocals
+            context.localMap
         );
 
         // Compile the finally statement, if it is defined
@@ -2323,7 +2327,7 @@ function opToIR(context)
         // If all values are boxed
         if (allBoxed)
         {
-            // Create the primitive call
+           // Create the primitive call
            var opVal = insertPrimCallIR(
                 curContext,
                 primName, 
@@ -2881,6 +2885,10 @@ function opToIR(context)
 
         case 'x instanceof y':
         opGen('instanceOf');
+        break;
+
+        case 'x in y':
+        opGen('inOp');
         break;
 
         default:
@@ -3677,6 +3685,10 @@ function insertCallIR(context, instr)
             var newCtx = context.pursue(null);
             newCtx.bridge();
 
+            // Copy the local map so as to not make available
+            // new bindings after the throw
+            newCtx.localMap = newCtx.localMap.copy();
+
             // Add the new context to the list of throw contexts
             context.throwList.push(newCtx);
         }
@@ -3716,8 +3728,11 @@ function throwToIR(context, throwCtx, excVal)
         context.throwList.push(throwCtx);
     }
 
-    // Terminate the throw context, no instructions go after this
+    // Terminate the current context, no instructions go after this
     context.terminate();
+
+    // Bridge the throw context to make sure it has an exit block
+    throwCtx.bridge();
 }
 
 /**
