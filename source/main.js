@@ -12,7 +12,96 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    bootstrap();
+
+
+
+
+    var initHeap = config.hostParams.staticEnv.getBinding('initHeap');
+
+    print('Initializing run-time');
+
+    // Allocate 64MB heap
+    var heapBlock = allocMachineCodeBlock(Math.pow(2, 26));
+    var heapAddr = getBlockAddr(heapBlock, 0);
+
+    print('creating bridge');
+
+    var initHeapBridge = makeBridge(
+        initHeap,
+        ['void*'],
+        'void*'
+    );
+
+    print('calling initHeap');
+
+    var ctxPtr = initHeapBridge(asm.address([0,0,0,0]).getBytes(), heapAddr);
+
+
+
+
+
+
+
+    var getStrObj = config.hostParams.staticEnv.getBinding('getStrObj');
+
+    var getStrObjBridge = makeBridge(
+        getStrObj,
+        ['void*'],
+        'void*'
+    );
+
+    config.hostParams.getStrObj = function (jsStr)
+    {
+        assert (jsStr.length + 1 < 4096);
+
+        var memBlock = allocMachineCodeBlock(8192);
+        var blockAddr = getBlockAddr(memBlock, 0);
+
+        for (var i = 0; i < jsStr.length; ++i)
+        {
+            var ch = jsStr.charCodeAt(i);
+
+            memBlock[2 * i] = ch & 0xFF;
+            memBlock[2 * i + 1] = ch >> 8;
+        }
+
+        memBlock[2 * i] = 0;
+        memBlock[2 * i + 1] = 0;
+
+        var strObj = getStrObjBridge(ctxPtr, blockAddr);
+
+        freeMachineCodeBlock(memBlock);
+
+        return strObj;
+    }
+
+    //print(config.hostParams.getStrObj("foo"));
+    print(config.hostParams.getStrObj("Hello world!"));
+
+
+    
+
+
+
+
+
+
+    var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
+
+    var bridge = makeBridge(
+        ir,
+        [],
+        'int'
+    );
+
+    var result = bridge(ctxPtr);
+
+    print(result);
+
+
+
+
+    //bootstrap();
 
     /*
     var memBlock = allocMachineCodeBlock(16384);    

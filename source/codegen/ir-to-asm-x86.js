@@ -31,9 +31,11 @@ irToAsm.config = {};
 // TODO: Remove once put_prop and get_prop are not used anymore
 irToAsm.config.NULL  = $(0);
 
+/*
 // Global object configuration
 // TODO: Remove once the global object exist in the heap
 irToAsm.config.maxGlobalEntries = 16;
+*/
 
 // Register configuration
 // TODO: replace stack handling in ir_call and ir_ret to allow
@@ -180,6 +182,7 @@ irToAsm.translator = function (config, params)
     that.stringNb = 0;
     that.fct = null;
 
+    /*
     that.globalLabel = that.asm.labelObj("GLOBAL_PRELUDE");
     that.contextLabel = that.asm.labelObj("CONTEXT_PRELUDE");
     that.putPropValLabel = that.asm.labelObj("PUT_PROP");
@@ -188,9 +191,11 @@ irToAsm.translator = function (config, params)
     // Temporary place holder for the context link object
     // until we allocate it in the heap
     that.ctxLinkObj = null;
+    */
 
     that.config = config;
 
+    /*
     if (that.asm.is64bitMode())
     {
         // Global object properties
@@ -222,9 +227,10 @@ irToAsm.translator = function (config, params)
         // Register byte width
         that.REG_BYTE_WIDTH = 4;
     }
+    */
 
     // Use the context register value as a true (nonzero) boolean
-    that.trueVal = config.context;
+    that.trueVal = config.stack;
 
     // The false boolean must be 0
     that.falseVal = $(0);
@@ -265,7 +271,6 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
             return opnd;
         }
     };
-
 
     // Add the entry point in the code stream
     this.func_prelude(this.fct);
@@ -348,6 +353,7 @@ irToAsm.translator.prototype.stringValue = function (s)
     return value;
 };
 
+/*
 irToAsm.translator.prototype.get_prop_val = function ()
 {
     assert(this.config.physReg.length >= 4);
@@ -507,6 +513,7 @@ irToAsm.translator.prototype.dump_context_object = function ()
    
     this.asm.genListing("CONTEXT_OBJECT");
 };
+*/
 
 irToAsm.translator.prototype.call_self = function (offset)
 {
@@ -524,7 +531,6 @@ irToAsm.translator.prototype.call_self = function (offset)
     add($(offset),retValReg).
     ret().
     genListing("ADDR RETRIEVAL");
-
 };
 
 irToAsm.translator.prototype.func_prelude = function (fct)
@@ -604,7 +610,6 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     var i;
 
-
     // Let's preserve all registers from the caller
     // except xAX (used for return value)
     if (this.asm.is64bitMode())
@@ -624,6 +629,7 @@ irToAsm.translator.prototype.init = function (mainFct)
     this.asm.
     genListing("INIT").
 
+    /*
     // Initialise the context object
     call(this.contextLabel).
     mov(retValReg, contextObjReg). 
@@ -632,6 +638,7 @@ irToAsm.translator.prototype.init = function (mainFct)
 
     // Save global object in context
     mov(retValReg, mem(0, contextObjReg)).
+    */
 
     // Retrieve the main function address
     call(this.label(mainFct, "<func MAIN>")).
@@ -656,9 +663,9 @@ irToAsm.translator.prototype.init = function (mainFct)
     }
 
     this.asm.ret();
-
 };
 
+/*
 irToAsm.translator.prototype.definitions = function ()
 {
     // Add the global object dump at the end of the init section
@@ -673,6 +680,7 @@ irToAsm.translator.prototype.definitions = function ()
     // Add the put property value code here
     this.put_prop_val();
 };
+*/
 
 //=============================================================================
 //
@@ -940,17 +948,20 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         dsor = EBX;
     }
 
-    // Sign-extend EAX into EDX:EAX using CDQ
-    tltor.asm.cdq();
-
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
+        // Extend the value into EDX
+        tltor.asm.mov($(0), EDX);
+
         tltor.asm.div(dsor, this.type.getSizeBits(tltor.params.target));
     }
     else
     {
+        // Sign-extend EAX into EDX:EAX using CDQ
+        tltor.asm.cdq();
+
         tltor.asm.idiv(dsor, this.type.getSizeBits(tltor.params.target));
     }
 };
@@ -1351,7 +1362,7 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (opnds[1].type === x86.type.IMM_VAL)
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[1].type.getSizeBits(tltor.params.target));
     }
     else
     {
@@ -1532,7 +1543,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
             // Return early
             return;
-        } 
+        }
+ 
+        /*
         else if (
             name === "getPropVal" ||
             name === "getGlobal" ||
@@ -1597,6 +1610,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Return early
             return;
         }
+        */
     }
  
     // Number of bytes in a reference

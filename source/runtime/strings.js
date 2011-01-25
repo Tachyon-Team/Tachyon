@@ -104,8 +104,8 @@ function getStrObj(rawStr)
     // Store the string length (excluding the null terminator)
     var strLen = index;
 
-    //printInt(boxInt(strLen));
-    //printInt(boxInt(hashCode));
+    printInt(boxInt(strLen));
+    printInt(boxInt(hashCode));
 
     //
     // Hash table lookup
@@ -124,7 +124,13 @@ function getStrObj(rawStr)
     );
 
     // Get the hash table index for this hash value
-    var hashIndex = hashCode % tblSize;
+    // compute this using unsigned modulo to always obtain a positive value
+    var hashIndex = iir.icast(
+        IRType.pint,
+        iir.icast(IRType.u32, hashCode) % iir.icast(IRType.u32, tblSize)
+    );
+
+    printInt(boxInt(hashIndex));
 
     // Until the key is found, or a free slot is encountered
     while (true)

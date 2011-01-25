@@ -38,7 +38,8 @@ backend.compileIRToCB = function (ir, params)
     }
 
     translator.init(ir);
-    translator.definitions();
+    
+    //translator.definitions();
     
     // Store context object on main function 
     ir.linking.ctxLinkObj = translator.ctxLinkObj;

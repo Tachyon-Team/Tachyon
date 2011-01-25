@@ -243,6 +243,8 @@ function compSources(srcList, params)
         ir.validate();
     }
 
+    //params.print = print;
+
     // Compile the IR functions to machine code
     for (var i = 0; i < irList.length; ++i)
     {
@@ -250,17 +252,24 @@ function compSources(srcList, params)
 
         print('Generating machine code for: "' + getSrcName(i) + '"');
 
-        compileIR(ir, config.hostParams);
+        compileIR(ir, params);
     }
+
+    //params.print = undefined;
+
+    print('Linking run-time init functions');
 
     // Link the primitives with each other
     for (var i = 0; i < irList.length; ++i)
     {
         var ir = irList[i];
 
+        if (ir.linking.linked)
+            continue;
+
         print('Linking machine code for: "' + getSrcName(i) + '"');
 
-        linkIR(ir, config.hostParams);
+        linkIR(ir, params);
     }
 
     // Return the list of IR functions

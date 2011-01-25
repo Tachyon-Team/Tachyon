@@ -348,7 +348,7 @@ function findFreeName(nameTaken, startName)
         var minIdx = 1;
         var maxIdx = 1;
 
-        while (idTaken(maxIdx))
+        while (idTaken(maxIdx) === true)
         {
             minIdx = maxIdx;
             maxIdx *= 2;

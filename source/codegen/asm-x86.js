@@ -2306,7 +2306,7 @@ x86.Assembler.prototype.cmoveGeneral  = function (op, mnemonic, src, dest)
                "'dest' argument must not be an 8 bit register");
     assert(src.type === x86.type.MEM || src.type === x86.type.REG,
                "'src' argument must be a memory or a register operand," +
-               " instead received ", dest);
+               " instead received ", src);
 
     this.opndPrefixRegOpnd(dest, src);
     this.gen8(x86.opcode.esc);

@@ -860,7 +860,11 @@ function putProp(obj, propName, propHash, propVal)
     );
 
     // Get the hash table index for this hash value
-    var hashIndex = propHash % tblSize;
+    // compute this using unsigned modulo to always obtain a positive value
+    var hashIndex = iir.icast(
+        IRType.pint,
+        iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
+    );
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -953,7 +957,11 @@ function extObjHashTable(obj, curTbl, curSize)
         var propHash = getHash(propKey);
 
         // Get the hash table index for this hash value in the new table
-        var startHashIndex = propHash % newSize;
+        // compute this using unsigned modulo to always obtain a positive value
+        var startHashIndex = iir.icast(
+            IRType.pint,
+            iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, newSize)
+        );
         var hashIndex = startHashIndex;
 
         // Until a free slot is encountered
@@ -1013,7 +1021,11 @@ function getProp(obj, propName, propHash)
         );
 
         // Get the hash table index for this hash value
-        var hashIndex = propHash % tblSize;
+        // compute this using unsigned modulo to always obtain a positive value
+        var hashIndex = iir.icast(
+            IRType.pint,
+            iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
+        );
 
         // Until the key is found, or a free slot is encountered
         while (true)

@@ -43,6 +43,9 @@ Generate a code string to perform a type conversion
 */
 function genTypeConv(inType, outType, inVar)
 {
+    if (inType === outType)
+        return inVar;
+
     switch (inType)
     {
         case IRType.box:
@@ -50,6 +53,9 @@ function genTypeConv(inType, outType, inVar)
         {
             case IRType.pint:
             return 'unboxInt(' + inVar + ')';
+
+            case IRType.rptr:
+            return 'iir.icast(IRType.rptr, ' + inVar + ')';
 
             case IRType.i16:
             return 'iir.icast(IRType.i16, unboxInt(' + inVar + '))';
@@ -307,11 +313,26 @@ function CProxy(
     if (ctxVal === undefined)
         cArgTypes.unshift(IRType.rptr);
 
+    // Find a free global name to call the function through
+    var funcName = findFreeName(
+        function (n) { return params.staticEnv.hasBinding(n); }, 
+        irFunction.funcName + '_tproxy'
+    )
+
+    // Bind the function in the static environment
+    params.staticEnv.regBinding(funcName, irFunction);
+
     /**
     Tachyon function to be wrapped by this proxy
     @field
     */
     this.irFunction = irFunction;    
+
+    /**
+    Global name to call the function through
+    @field
+    */
+    this.funcName = funcName;
 
     /**
     Argument types of the C function
@@ -416,7 +437,7 @@ CProxy.prototype.genProxy = function ()
     var retVoid = this.cRetType === IRType.none;
 
     sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + 'iir.call(';
-    sourceStr += this.irFunction.funcName + ', global';
+    sourceStr += this.funcName + ', global';
 
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
     {
@@ -436,12 +457,11 @@ CProxy.prototype.genProxy = function ()
         sourceStr += '\treturn;';
     }
     
-
     //sourceStr += 'return iir.icast(IRType.pint, 7);';
 
     sourceStr += '}\n';
     
-    //print(sourceStr);
+    print(sourceStr);
 
     // Compile the source string into an IR function
     var func = compileSrcString(sourceStr, config.hostParams);
@@ -459,15 +479,6 @@ function makeBridge(
     cRetType
 )
 {
-    // FIXME: execute the parent function to initialize its global object
-    irFunction.parentFunc.runtime.execute();
-
-    // FIXME: bind the function statically, for now, since we have no global object
-    config.hostParams.staticEnv.regBinding(
-        irFunction.funcName,
-        irFunction
-    );
-
     // Generate a proxy for the function
     var proxy = new CProxy(
         irFunction,
@@ -480,17 +491,14 @@ function makeBridge(
 
     //print(wrapper);
     
-    // Get context ptr from bar IR
-    var ctxAddr = irFunction.parentFunc.linking.ctxLinkObj.getAddr();
-
     // Get pointer to entry point of compiled wrapper function
     var funcAddr = wrapper.linking.getEntryPoint('default').getAddr();
 
     // Callable bridge function
-    function bridge()
+    function bridge(ctxPtr)
     {
         var argArray = [];
-        for (var i = 0; i < arguments.length; ++i)
+        for (var i = 1; i < arguments.length; ++i)
             argArray.push(arguments[i]);
 
         var result = callTachyonFFI.apply(
@@ -499,7 +507,7 @@ function makeBridge(
                 cArgTypes,
                 cRetType,
                 funcAddr.getBytes(),
-                ctxAddr.getBytes()
+                ctxPtr
             ].concat(argArray)
         );
 
