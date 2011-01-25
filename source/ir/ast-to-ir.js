@@ -372,6 +372,8 @@ function stmtListToIRFunc(
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
 
+    cfg.validate();
+
     //print('Applying opt patterns');
 
     // Simplify the CFG using peephole patterns
@@ -1767,6 +1769,7 @@ function stmtToIR(context)
                
         // Create a context for the try body
         var tryBodyCtx = context.pursue(astStmt.statement);
+        tryBodyCtx.localMap = context.localMap.copy();
         tryBodyCtx.throwList = throwCtxList;
 
         // Compile the try body statement
@@ -1820,10 +1823,10 @@ function stmtToIR(context)
         stmtToIR(catchCtx);
 
         // Merge the finally contexts
-        var finallyLocals = new HashMap();
+        //var finallyLocals = new HashMap();
         var finallyBlock = mergeContexts(
             [tryBodyCtx, catchCtx],
-            finallyLocals,
+            context.localMap,
             context.cfg,
             'try_finally'
         );
@@ -1832,7 +1835,7 @@ function stmtToIR(context)
         var finallyCtx = context.branch(
             astStmt.finally_part,
             finallyBlock,
-            finallyLocals
+            context.localMap
         );
 
         // Compile the finally statement, if it is defined
@@ -2324,7 +2327,7 @@ function opToIR(context)
         // If all values are boxed
         if (allBoxed)
         {
-            // Create the primitive call
+           // Create the primitive call
            var opVal = insertPrimCallIR(
                 curContext,
                 primName, 
@@ -3677,6 +3680,10 @@ function insertCallIR(context, instr)
             // Create a new context and bridge it
             var newCtx = context.pursue(null);
             newCtx.bridge();
+
+            // Copy the local map so as to not make available
+            // new bindings after the throw
+            newCtx.localMap = newCtx.localMap.copy();
 
             // Add the new context to the list of throw contexts
             context.throwList.push(newCtx);

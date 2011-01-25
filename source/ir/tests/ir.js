@@ -307,6 +307,41 @@ tests.ir.switchStmt = function ()
 };
 
 /**
+Try statement
+*/
+tests.ir.tryStmt = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            function foo(v)                     \
+            {                                   \
+                var a = 0;                      \
+                                                \
+                try                             \
+                {                               \
+                    a = 1;                      \
+                    a = bar(v);                 \
+                }                               \
+                                                \
+                catch (e)                       \
+                {                               \
+                    print(a);                   \
+                    a = 2;                      \
+                    print(a);                   \
+                }                               \
+                                                \
+                finally                         \
+                {                               \
+                    print(a);                   \
+                }                               \
+                                                \
+                return a;                       \
+            }                                   \
+        "
+    );
+};
+
+/**
 With statement
 */
 tests.ir.withStmt = function ()
