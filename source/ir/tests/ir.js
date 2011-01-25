@@ -147,6 +147,19 @@ tests.ir.assignExprs = function ()
 };
 
 /**
+In expression
+*/
+tests.ir.inExpr = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            var a = b in c;                     \
+            print(a);                           \
+        "
+    );
+};
+
+/**
 While loop statement
 */
 tests.ir.whileStmt = function ()

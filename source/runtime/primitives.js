@@ -340,6 +340,7 @@ function lsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function rsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function ursft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function logNot(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function inOp(x, y) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties

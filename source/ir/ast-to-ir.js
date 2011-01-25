@@ -2887,6 +2887,10 @@ function opToIR(context)
         opGen('instanceOf');
         break;
 
+        case 'x in y':
+        opGen('inOp');
+        break;
+
         default:
         {
             assert (false, 'Unsupported AST operation "' + op + '"');
