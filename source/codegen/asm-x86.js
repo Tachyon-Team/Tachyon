@@ -391,6 +391,7 @@ x86.Assembler.prototype.linked.prototype.width = function () { return 32; };
 x86.Assembler.prototype.linked.prototype.srcAddr = null;
 x86.Assembler.prototype.linked.prototype.setAddr = function (addr) { this.srcAddr = addr;};
 x86.Assembler.prototype.linked.prototype.getAddr = function () { return this.srcAddr.copy();};
+x86.Assembler.prototype.linked.prototype.clone   = function () { return Object.create(this); };
 
 
 x86.Assembler.prototype.linked.prototype.toString = function (verbose)
@@ -1309,18 +1310,37 @@ x86.Assembler.prototype.opndModRMSIBRegOpnd = function (reg, opnd)
 x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
 {
     const that = this;
-    const k = src.value;
+    const isLink = src.type === x86.type.LINK;
+    const k = (isLink) ? 0 : src.value;
 
     /** @ignore Adds the listing for the instruction */
-    function listing(width,n)
+    function listing(width,v)
     {
         if (that.useListing)
         {
+            const value = (isLink) ? v : that.immediateValue(v);
             that.genListing(x86.instrFormat(mnemonic,
                                              x86.widthSuffix(width),
                                              dest,
-                                             that.immediateValue(n)));
+                                             value));
         }
+    }
+
+    /** @ignore generate a constant value */
+    function cstValue(width)
+    {
+        var value;
+
+        if (isLink)
+        {
+            value = src;
+            that.require(value);
+        } else
+        {
+            value = that.genImmNum(k, width);
+        }
+        
+        listing(width, value);
     }
 
     /**
@@ -1334,7 +1354,8 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
         // opcode = #x04, #x0c, #x14, ..., #x3c (for AL)
         //       or #x05, #x0d, #x15, ..., #x3d (for AX/EAX/RAX)
         gen8(((width === 8) ? 0x04 : 0x05) + (op << 3));
-        listing(width, that.genImmNum(k,width));
+        
+        cstValue(width);
     }
 
     /**
@@ -1345,13 +1366,13 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
     {
         that.opndPrefixOpnd(width, dest);
 
-        if (width === 8)
+        if (width === 8 && !isLink)
         {
             that.
             gen8(0x80).            // opcode = 8 bit operation
             opndModRMSIB(op,dest); // ModR/M
             listing(width, that.genImmNum(k,8));
-        } else if (x86.isSigned8(k))
+        } else if (x86.isSigned8(k) && !isLink)
         {
             that.
             gen8(0x83).            // opcode = sign extended 8 bit imm
@@ -1362,7 +1383,8 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
             that.
             gen8(0x81).            // opcode = sign extended 16/32 bit imm
             opndModRMSIB(op,dest); // ModR/M
-            listing(width, that.genImmNum(k,width));
+
+            cstValue(width);
         }
     }
 
@@ -1396,18 +1418,37 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
 {
 
     const that = this;
-    const k = src.value;
+    const isLink = src.type === x86.type.LINK;
+    const k = (isLink) ? 0 : src.value;
 
     /** @ignore generate listing */
-    function listing(width,n)
+    function listing(width,v)
     {
         if (that.useListing)
         {
+            const value = (isLink) ? v : that.immediateValue(v);
             that.genListing(x86.instrFormat("mov",
                                              x86.widthSuffix(width),
                                              dest,
-                                             that.immediateValue(n)));
+                                             value));
         }
+    }
+
+    /** @ignore generate a constant value */
+    function cstValue(width)
+    {
+        var value;
+
+        if (isLink)
+        {
+            value = src;
+            that.require(value);
+        } else
+        {
+            value = that.genImmNum(k, width);
+        }
+        
+        listing(width, value);
     }
 
     /** @ignore special case when the destination is a register */
@@ -1420,7 +1461,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         //      or #xb8-#xbf (for 16/32/64 bit registers)
         that.gen8( ((width === 8) ? 0xb0 : 0xb8) + (7 & dest.field()) );
 
-        listing(width, that.genImmNum(k, width));
+        cstValue(width);
     }
 
     /** @ignore general case */
@@ -1430,7 +1471,8 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         that.
         gen8((width === 8) ? 0xc6 : 0xc7).  // opcode
         opndModRMSIB(0,dest); // ModR/M
-        listing(width, that.genImmNum(k,width));
+
+        cstValue(width);
     }
 
     assert((dest.type === x86.type.REG) ?
@@ -1496,7 +1538,7 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
         }
     }
 
-    if (src.type === x86.type.IMM_VAL)
+    if (src.type === x86.type.IMM_VAL || src.type === x86.type.LINK)
     {
         if (op === 17)
         {

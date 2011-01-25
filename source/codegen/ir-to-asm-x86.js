@@ -1456,6 +1456,7 @@ ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
+
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
@@ -1515,9 +1516,19 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                 'invalid uses for call to makeClos'
             );
 
-            // Implicitly returns the function address
-            // in return value register
-            tltor.asm.call(tltor.label(opnds[2]));
+            assert(dest !== null, "makeClose should have a destination register");
+
+
+            const irfunc = opnds[2];
+            const lobj   = irToAsm.getEntryPoint(irfunc, "default", config).clone();
+
+            // linkValue function for make closure calls
+            lobj.linkValue = function getSrcAddrBytes()
+            {
+                return this.srcAddr.getBytes();
+            }
+
+            tltor.asm.mov(lobj, dest);
 
             // Return early
             return;
