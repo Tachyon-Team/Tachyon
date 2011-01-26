@@ -1241,6 +1241,11 @@ allocator.numberInstrs = function (cfg, order, config)
     var instrNb;
     var i,j, block, instr;
 
+    cfg.regAlloc = {
+        // Used for split resolution
+        blockBoundaries:{}   
+    }; 
+
     // For each block in the order
     for (i = 0; i < order.length; ++i)
     {
@@ -1248,6 +1253,9 @@ allocator.numberInstrs = function (cfg, order, config)
 
         // Set the operation number at the block start
         block.regAlloc.from = nextNo;
+
+        // Store block boundaries
+        cfg.regAlloc.blockBoundaries[nextNo] = true;
 
         // All phi instructions happen at the same time at the beginning of the
         // block so they should have the same instruction number as the beginning 
@@ -2085,14 +2093,15 @@ allocator.resolve = function (cfg, intervals, order, config)
     const moves = allocator.moves();
 
     // Determine moves to insert resulting from splitting of intervals
+    // inside blocks
     intervals.forEach(function (interval)
     {
         interval.getSplitItr().forEach(function (split)
         {
             if (split.before.reg !== split.after.reg &&
-                // Non-continuous splits should be resolved later
-                // during edge resolution
-                split.before.endPos() === split.after.startPos())
+                // Only splits inside blocks should be resolved
+                // here, the others will be done by the next phase
+                cfg.regAlloc.blockBoundaries[split.before.endPos()] !== true)
             {
                 moves.addMove(new MoveInstr(split.before.reg, 
                                             split.after.reg, split.before), 
@@ -2131,8 +2140,9 @@ allocator.resolve = function (cfg, intervals, order, config)
                 moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
             }
 
-
-            moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from);
+            // pred 'to' position might be the same as succ 'from' pos
+            // so let's add 1 to succ 'from'
+            moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from + 1);
 
 
             if (moveFrom !== moveTo)
@@ -2245,16 +2255,16 @@ allocator.validate = function (cfg, config)
             if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
             {
                 value = values[i]; 
-                assert(given.compatible([slot], [value]), 
+                assert(given.compatible(slot, value), 
                         "RegAlloc expected:\n" + value,
                         "\n in:\n",
                         slot + "\n but received: \n",
-                        given.getValues([slot]).map(String).join("\n"), 
+                        String(given.getValue(slot)),
                         "\n for '",
                         instr.getValName() + "' at pos " + instr.regAlloc.id,
                         "\n",
                         "in mapping " + given.toString([slot]) + "\n",
-                        given.getValues([slot]).map(printIt).join("\n"));
+                        printIt(given.getValue(slot)));
             }
         }
     };
@@ -2430,35 +2440,24 @@ allocator.slotMapping = function ()
 };
 
 /**
-    Tests whether the given register/memory/... slots and their
-    associated IRValues are compatible with the current mapping.
+    Tests whether the given register/memory/... slot and its
+    associated IRValue are compatible with the current mapping.
 
-    Returns true if for each register and memory slots,
-    the mapping contains the same IRValue as given in values. 
-    Ignores entries in slots which are not register or memory slots.
+    Returns true if the mapping contains the same IRValue as given in values.
+    Ignores entries in slot which is not a register or a memory slot.
 
-    @param slots   Array of register/memory/...
-    @param values  Array of IRValues
+    @param slot   register/memory/...
+    @param value  IRValue
 */
-allocator.slotMapping.prototype.compatible = function (slots, values)
+allocator.slotMapping.prototype.compatible = function (slot, value)
 {
-    assert(slots.length === values.length);
-
-    var i, currentValue, slot, value;
-
-    for (i = 0; i < slots.length; ++i)
+    if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
     {
-        slot  = slots[i];
-        if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+        currentValue = this.mapping[slot];
+
+        if (currentValue !== value)
         {
-            value = values[i]; 
-
-            currentValue = this.mapping[slot];
-
-            if (currentValue !== value)
-            {
-                return false;
-            }
+            return false;
         }
     }
 
@@ -2663,6 +2662,11 @@ allocator.slotMapping.prototype.getValues = function (slots)
     return values;
 };
 
+allocator.slotMapping.prototype.getValue = function (slot)
+{
+    return this.mapping[slot];
+};
+
 /** 
     @private Stores move instruction to be inserted
 
@@ -2761,7 +2765,6 @@ allocator.mapping = function ()
     that.read = {};
     that.write = {};
     that.length = 0;
-    that.intervals = {};
     return that;
 };
 
@@ -2775,78 +2778,17 @@ allocator.mapping.prototype.addMove = function (move)
 {
     const from = move.uses[0];
     const to   = move.uses[1];
-    const interval = move.regAlloc.interval;
 
-    assert(this.write[to] === null || this.write[to] === undefined, 
-           "Multiple moves to the same destination");
-
-    if (interval === null || this.intervals[interval.vreg] === undefined)
+    if (this.write[to] !== null && this.write[to] !== undefined)
     {
-
-        this.readArray(from).push(move);
-
-        this.write[to] = move;
-
-        this.length++;
-
-        if (interval !== null) 
-        {
-            this.intervals[interval.vreg] = {from:from, to:to};
-        }
-    } else
-    {
-        const previous = this.intervals[interval.vreg];
-        
-        // Chain moves might occur when split positions
-        // correspond to the beginning of a block. In that
-        // case an interval might generate more than one move
-        // during the resolution phase, one for the split position
-        // and possibly another for control flow resolution.
-        
-        assert(previous.from === to || previous.to   === from,
-               "Multiple moves from the same interval do not chain");
-
-        const preFrom  = previous.from;
-        const preTo    = previous.to;
-        const readFrom = this.read[preFrom];
-        const writeTo  = this.write[preTo];
-
-        if (preFrom === to)
-        {
-            // Remove from the read set
-            var pos = allocator.findPos(readFrom, interval.vreg,
-                       function (move) { return move.regAlloc.interval.vreg; })
-            var move = readFrom[pos]; 
-            readFrom.splice(pos,1);
-
-            // Adjust the move instruction
-            // to use the from operand of the new move
-            move.uses[0] = from;
-
-            // Update the interval caching
-            this.intervals[interval.vreg].from = from;
-
-            // Add the move instruction in the read set
-            this.readArray(from).push(move);
-        } else
-        {
-            // Retrieve the move instruction
-            var move = writeTo;
-
-            // Remove from the write destination
-            this.write[preTo] = null;
-
-            // Adjust the move instruction
-            // to use the to operand of the new move
-            move.uses[1] = to;
-             
-            // Update the interval caching
-            this.intervals[interval.vreg].to = to;
-           
-            // Update where this move writes to
-            this.write[to] = move;
-        }
+           error("Multiple moves to the same destination.\n",
+           " Previous move: " + this.write[to] + "\n",
+           " New move: " + move);
     }
+
+    this.readArray(from).push(move);
+    this.write[to] = move;
+    this.length++;
 };
 
 allocator.mapping.prototype.readArray = function (from)
