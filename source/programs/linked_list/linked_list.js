@@ -17,4 +17,3 @@ function linkedlist(n)
     return sum;
 }
 
-return linkedlist(5);

@@ -119,7 +119,7 @@ function isNonNegInt(val)
 /**
 Test if a value is an integer
 */
-function isInt()
+function isInt(val)
 {
     return (
         typeof val === 'number' &&

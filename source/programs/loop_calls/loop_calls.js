@@ -30,5 +30,3 @@ function foo(a)
     return a;
 }
 
-return foo(1);
-

@@ -623,7 +623,6 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         break;
 
         case 4:
-        //printf("Calling Tachyon func with 4 arguments\n");
         retVal.intVal = funcPtr(
             ctxPtr,
             tachArgs[0].intVal,
@@ -631,11 +630,33 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
             tachArgs[2].intVal,
             tachArgs[3].intVal
         );
-        //printf("Returned from Tachyon func\n");
+        break;
+
+        case 5:
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal,
+            tachArgs[3].intVal,
+            tachArgs[4].intVal
+        );
+        break;
+
+        case 6:
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal,
+            tachArgs[3].intVal,
+            tachArgs[4].intVal,
+            tachArgs[5].intVal
+        );
         break;
 
         default:
-        printf("Error in callTachyonFFI -- unsupported argument count\n");
+        printf("Error in callTachyonFFI -- unsupported argument count: %d\n", numArgs);
         exit(1);
     }
 

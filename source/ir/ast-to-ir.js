@@ -1501,6 +1501,9 @@ function stmtToIR(context)
 
     else if (astStmt instanceof ReturnStatement)
     {
+        if (context.cfg.ownerFunc.astNode instanceof Program)
+            error('unit-level returns are not allowed');
+
         // If there is a return expression
         if (astStmt.expr !== null)
         {

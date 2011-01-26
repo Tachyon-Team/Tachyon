@@ -6,5 +6,4 @@ function fib(x)
         return fib(x-1) + fib(x-2);
 
 }
-//return fib(40);
-return fib(20);
+

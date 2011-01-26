@@ -12,6 +12,7 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
+    /*
     var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
 
     var bridge = makeBridge(
@@ -29,7 +30,7 @@ function testIR()
     print(result);
 
     print(config.hostParams.getStrObj("Hello world!"));
-
+    */
 
 
     //bootstrap(true, config.bootParams);
