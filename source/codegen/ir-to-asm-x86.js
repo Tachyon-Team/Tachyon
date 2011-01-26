@@ -2108,10 +2108,21 @@ SetCtxInstr.prototype.genCode = function (tltor, opnds)
 
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {
-    assert(!(opnds[0].type === x86.type.MEM &&
-             opnds[1].type === x86.type.MEM));
+    const temp = tltor.config.temp;
 
-    tltor.asm.mov(opnds[0], opnds[1]);
+    if (opnds[0].type === x86.type.MEM &&
+        opnds[1].type === x86.type.MEM)
+    {
+        tltor.asm.
+        mov(EAX, temp).
+        mov(opnds[0], EAX).
+        mov(EAX, opnds[1]).
+        mov(temp, EAX);
+    } else
+    {
+        tltor.asm.
+        mov(opnds[0], opnds[1], tltor.params.target.ptrSizeBits);
+    }
 };
 
 })(); // end of local namespace
