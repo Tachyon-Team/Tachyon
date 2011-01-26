@@ -172,8 +172,17 @@ allocator.priorityQueue = function (a, cmpFunction)
     if (cmpFunction !== undefined)
         that.cmpFunction = cmpFunction;
 
-    // Ensure sorted
-    that.innerArray.sort(cmpFunction);
+    // Ensure an initial stable sort
+    var a2 = arrayRange(a.length); 
+    var fct = function (u,v)
+    {
+        const cmp = cmpFunction(a[u],a[v]);
+        return (cmp !== 0) ? cmp : u - v;
+    };
+
+    a2.sort(fct);
+
+    that.innerArray = a2.map(function (i) { return a[i]; });
 
     return that;
 };
@@ -198,6 +207,7 @@ allocator.priorityQueue.prototype.enqueue = function (value)
     var cmp = 0;
     var i;
 
+    // Binary Search
     while (maxIndex !== minIndex)
     {
         cmp = this.cmpFunction(value, a[current]);

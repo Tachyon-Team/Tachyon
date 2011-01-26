@@ -37,14 +37,6 @@ backend.compileIRToCB = function (ir, params)
         fcts = primitives.concat(fcts);
     }
 
-    translator.init(ir);
-    
-    //translator.definitions();
-    
-    // Store context object on main function 
-    ir.linking.ctxLinkObj = translator.ctxLinkObj;
-
-
     //translator.asm.codeBlock.assemble();
     //print("******* Definitions *********************");
     //print(translator.asm.codeBlock.listingString(startIndex));

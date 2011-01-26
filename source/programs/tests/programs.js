@@ -226,3 +226,14 @@ tests.linked_list.main = genTest(
     10
 );
 
+/**
+Loop with enough variables to force spilling of Phi nodes.
+*/
+tests.loop_spills = tests.testSuite(); 
+tests.loop_spills.main = genTest(
+    'programs/loop_spills/loop_spills.js',
+    'foo',
+    [42],
+    122
+);
+

@@ -180,52 +180,7 @@ irToAsm.translator = function (config, params)
     that.asm.codeBlock.bigEndian = false;
     that.fct = null;
 
-    /*
-    that.globalLabel = that.asm.labelObj("GLOBAL_PRELUDE");
-    that.contextLabel = that.asm.labelObj("CONTEXT_PRELUDE");
-    that.putPropValLabel = that.asm.labelObj("PUT_PROP");
-    that.getPropValLabel = that.asm.labelObj("GET_PROP");
-
-    // Temporary place holder for the context link object
-    // until we allocate it in the heap
-    that.ctxLinkObj = null;
-    */
-
     that.config = config;
-
-    /*
-    if (that.asm.is64bitMode())
-    {
-        // Global object properties
-        that.G_NEXT_OFFSET = 0;  // Offset for the cell containing 
-                                  // the next empty entry offset
-        that.G_NEXT_OFFSET_WIDTH = 64;
-        that.G_FIRST_OFFSET = 8; // Length value in bytes
-        that.G_KEY_OFFSET   = 0; // Key offset is 0 (we iterate over keys)
-        that.G_KEY_WIDTH = 64;
-        that.G_VALUE_OFFSET = 8; // Value offset is 8 (key length is 8 bytes)
-        that.G_VALUE_WIDTH = 64;
-        that.G_ENTRY_LENGTH = 16; // Key (8 bytes) Value (8 bytes)
-
-        // Register byte width
-        that.REG_BYTE_WIDTH = 8;
-    } else
-    {
-        // Global object properties
-        that.G_NEXT_OFFSET = 0;  // Offset for the cell containing 
-                                  // the next empty entry offset
-        that.G_NEXT_OFFSET_WIDTH = 32;
-        that.G_FIRST_OFFSET = 4; // Length value in bytes
-        that.G_KEY_OFFSET   = 0; // Key offset is 0 (we iterate over keys)
-        that.G_KEY_WIDTH = 32;
-        that.G_VALUE_OFFSET = 4; // Value offset is 4 (key length is 4 bytes)
-        that.G_VALUE_WIDTH = 32;
-        that.G_ENTRY_LENGTH = 8; // Key (4 bytes) Value (4 bytes)
-
-        // Register byte width
-        that.REG_BYTE_WIDTH = 4;
-    }
-    */
 
     // Use the context register value as a true (nonzero) boolean
     that.trueVal = config.stack;
@@ -238,9 +193,6 @@ irToAsm.translator = function (config, params)
 
 /** @private assembler object */
 irToAsm.translator.prototype.asm = null;
-/** @private known strings so far */
-irToAsm.translator.prototype.strings = {};
-irToAsm.translator.prototype.stringNb = 0;
 
 /** 
 Generate the corresponding assembly code for the function in the order
@@ -270,11 +222,8 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         }
     };
 
-    // Add the entry point in the code stream
-    this.func_prelude(this.fct);
-
     // Start the code generation
-    this.func_init();
+    this.prelude();
 
     blockList.forEach(function (block)
     {
@@ -357,203 +306,7 @@ irToAsm.translator.prototype.stringValue = function (s)
     );
 };
 
-/*
-irToAsm.translator.prototype.get_prop_val = function ()
-{
-    assert(this.config.physReg.length >= 4);
-    assert(value !== this.config.retValReg);
-
-    const obj = this.config.physReg[0];
-    const key = this.config.physReg[1];
-    const value = this.config.physReg[2];
-    const addr = this.config.physReg[3];
-
-    const cont = this.asm.labelObj();
-
-    this.asm.label(this.getPropValLabel);
-
-    this.get_prop_addr(obj, key, addr);
-
-    this.asm.
-    cmp(this.config.NULL, addr).
-    mov($(ConstValue.getConst(undefined, IRType.box).getImmValue(this.params)), 
-          this.config.retValReg).
-    je(cont).
-    // The following instruction causes a bus error only
-    // when addr is not a valid address
-    //cmovnz(mem(this.G_VALUE_OFFSET, addr), this.config.retValReg).
-    mov(mem(this.G_VALUE_OFFSET,addr), this.config.retValReg).
-    label(cont).
-    ret();
-};
-
-irToAsm.translator.prototype.get_prop_addr = function (obj, key, addr)
-{
-    var loop = this.asm.labelObj();
-    var end = this.asm.labelObj();
-    var notFound = this.asm.labelObj();
-    var cont = this.asm.labelObj();
-
-    this.asm.
-    mov(obj, addr).
-    add($(this.G_FIRST_OFFSET), addr). // Retrieve address of first element
-    add(mem(this.G_NEXT_OFFSET - this.G_FIRST_OFFSET, addr), 
-        addr). // Retrieve beginning of next
-    sub($(this.G_ENTRY_LENGTH), addr).       // Move to last element
-
-    label(loop).                        // Loop from end to beginning
-    sub($(this.G_FIRST_OFFSET), addr).
-    cmp(obj, addr).           
-    jl(end).
-
-    add($(this.G_FIRST_OFFSET), addr).       // Address of current item
-    cmp(key, mem(this.G_KEY_OFFSET, addr), 
-        this.G_KEY_WIDTH).   // global[index] === key ?
-    je(cont).                         // Item found on equal!
-
-    sub($(this.G_ENTRY_LENGTH), addr).      // move to next value
-    jmp(loop).
-
-    label(end).
-    mov(this.config.NULL, addr).        // no value found
-
-    label(cont);
-};
-
-irToAsm.translator.prototype.put_prop_val = function ()
-{
-    assert(this.config.physReg.length >= 4);
-
-    const obj = this.config.physReg[0];
-    const key = this.config.physReg[1];
-    const value = this.config.physReg[2];
-    const addr = this.config.physReg[3];
-
-    var loop = this.asm.labelObj();
-    var found = this.asm.labelObj();
-
-    this.asm.label(this.putPropValLabel);
-
-    this.get_prop_addr(obj, key, addr);
-    
-    this.asm.
-    cmp(this.config.NULL, addr).
-    jne(found).
-    mov(obj, addr).
-    add($(this.G_FIRST_OFFSET), addr).          // Retrieve address of first element
-    add(mem(this.G_NEXT_OFFSET, obj), addr). // Retrieve address of next element 
-    // Inc entry nb
-    add($(this.G_ENTRY_LENGTH), mem(this.G_NEXT_OFFSET, obj), this.G_NEXT_OFFSET_WIDTH). 
-    mov(key, mem(this.G_KEY_OFFSET, addr), this.G_KEY_WIDTH).     // Add entry key
-    label(found).                          
-    mov(value, mem(this.G_VALUE_OFFSET, addr), this.G_VALUE_WIDTH). // Add/Update the entry value
-    mov(value, this.config.retValReg).
-    ret();
-
-};
-
-irToAsm.translator.prototype.dump_global_object = function ()
-{
-    this.asm.
-    label(this.globalLabel);
-
-    this.call_self();
-
-    if (this.asm.is64bitMode())
-    {
-        this.asm.gen64(0);
-    } else
-    {
-        this.asm.gen32(0); // Length
-    }
-   
-    for (var i=0; i < this.config.maxGlobalEntries; ++i)
-    {
-        if (this.asm.is64bitMode())
-        {
-            this.asm.
-            gen64(0). // Reserved space for key
-            gen64(0); // Reserved space for value
-        } else 
-        {
-            this.asm.
-            gen32(0). // Reserved space for key
-            gen32(0); // Reserved space for value
-
-        }
-    }
-    this.asm.genListing("GLOBAL_OBJECT");
-    
-};
-
-irToAsm.translator.prototype.dump_context_object = function ()
-{
-    const immTrue = ConstValue.getConst(true, IRType.box).getImmValue(this.params);
-    const immFalse = ConstValue.getConst(false, IRType.box).getImmValue(this.params);
-     
-    this.asm.label(this.contextLabel);
-
-    this.call_self();
-
-    // Allows retrieve the context pointer from the main function
-    const ctxLinkObj = this.asm.linked("ctxLinkObj",
-                                       function (dstAddr) { 
-                                        return this.getAddr().getBytes();},
-                                       (this.asm.target === x86.target.x86) ?
-                                       32 : 64);
-    this.ctxLinkObj = ctxLinkObj;
-    this.asm.provide(ctxLinkObj);
-
-    if (this.asm.is64bitMode())
-    {
-        // Global object slot - True value - False value - TEMP
-        this.asm.gen64(0).gen64(immTrue).gen64(immFalse).gen64(0);
-    } 
-    else
-    {
-        // Global object slot - True value - False value - TEMP
-        this.asm.gen32(0).gen32(immTrue).gen32(immFalse).gen32(0);
-    }
-   
-    this.asm.genListing("CONTEXT_OBJECT");
-};
-*/
-
-irToAsm.translator.prototype.call_self = function (offset)
-{
-    if (offset === undefined)
-    {
-        offset = 5;
-    }
-    const SELF = this.asm.labelObj();
-    const retValReg = this.config.retValReg;
-
-    this.asm.
-    call(SELF).
-    label(SELF).
-    pop(retValReg).
-    add($(offset),retValReg).
-    ret().
-    genListing("ADDR RETRIEVAL");
-};
-
-irToAsm.translator.prototype.func_prelude = function (fct)
-{
-    // Add the call self instructions to retrieve
-    // the address of the function until the move
-    // instruction supporting a link object is done
-    // TODO: Remove when function address is retrieved at link
-    // time
-    this.asm.
-    label(this.label(fct, "<func \"" + fct.funcName + "\">"));
-    this.call_self();
-
-    // Add an entry point for static calls
-    var lobj = irToAsm.getEntryPoint(fct, undefined, this.config);
-    this.asm.provide(lobj);
-};
-
-irToAsm.translator.prototype.func_init = function ()
+irToAsm.translator.prototype.prelude = function ()
 {
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
@@ -562,6 +315,10 @@ irToAsm.translator.prototype.func_init = function ()
     const byteLength = this.config.stack.width() >> 3;
     const cstack = this.asm.target === x86.target.x86 ? ESP : reg.rsp;
     var spillNb = this.fct.regAlloc.spillNb;
+
+    // Add an entry point for static calls
+    var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.config);
+    this.asm.provide(lobj);
 
     if (this.fct.cProxy)
     {
@@ -604,87 +361,6 @@ irToAsm.translator.prototype.func_init = function ()
         this.asm.sub($(spillNb*byteLength), this.config.stack);
     }
 };
-
-irToAsm.translator.prototype.init = function (mainFct)
-{
-    const stack = this.config.stack;
-
-    const retValReg = this.config.retValReg;
-    const contextObjReg = this.config.context;
-
-    var i;
-
-    // Let's preserve all registers from the caller
-    // except xAX (used for return value)
-    if (this.asm.is64bitMode())
-    {
-        for (i=1; i < 16; ++i)
-        {
-            this.asm.push(reg.reg64(i));
-        }
-    } else
-    {
-        for (i=1; i < 8; ++i)
-        {
-            this.asm.push(reg.reg32(i));
-        }
-    }
-
-    this.asm.
-    genListing("INIT").
-
-    /*
-    // Initialise the context object
-    call(this.contextLabel).
-    mov(retValReg, contextObjReg). 
-
-    call(this.globalLabel).
-
-    // Save global object in context
-    mov(retValReg, mem(0, contextObjReg)).
-    */
-
-    // Retrieve the main function address
-    call(this.label(mainFct, "<func MAIN>")).
-
-    // Call the main function
-    call(retValReg);
-
-    // Let's restore all registers for the caller
-    // except xAX (used for return value)
-    if (this.asm.is64bitMode())
-    {
-        for (i=15; i >= 1; --i)
-        {
-            this.asm.pop(reg.reg64(i));
-        }
-    } else
-    {
-        for (i=7; i >= 1; --i)
-        {
-            this.asm.pop(reg.reg32(i));
-        }
-    }
-
-    this.asm.ret();
-};
-
-/*
-irToAsm.translator.prototype.definitions = function ()
-{
-    // Add the global object dump at the end of the init section
-    this.dump_global_object();
-
-    // Add the context object dump right after the global object
-    this.dump_context_object();
-
-    // Add the get property value code here
-    this.get_prop_val();
-
-    // Add the put property value code here
-    this.put_prop_val();
-};
-*/
 
 //=============================================================================
 //
@@ -1551,73 +1227,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             // Return early
             return;
         }
- 
-        /*
-        else if (
-            name === "getPropVal" ||
-            name === "getGlobal" ||
-            name === "getGlobalFunc"                
-        )
-        {
-            // Make sure we have space for a scratch register
-            assert(avbleRegNb > 2, 'not enough scratch registers');
-
-            // Move arguments in the right registers, skipping
-            // the function address and the 'this' reference
-            map = allocator.mapping();
-
-            for (i = 2; i < 4; ++i)
-            {
-                if (opnds[i] !== tltor.config.physReg[i-2])
-                {
-                    map.add(opnds[i], tltor.config.physReg[i-2]);
-                }
-            }
-
-            map.orderAndInsertMoves( function (move)
-                                     {
-                                        tltor.asm.
-                                        mov(move.uses[0], move.uses[1]);
-                                     }, scratch);
-
-            // Implicitly returns the property value
-            // in return value register
-            tltor.asm.call(tltor.getPropValLabel);
-
-            // Return early
-            return;
-        } 
-        else if (name === "putPropVal")
-        {
-            // Make sure we have space for a scratch register
-            assert(avbleRegNb > 3);
-
-            // Move arguments in the right registers, skipping
-            // the function address and the 'this' reference
-            map = allocator.mapping();
-
-            for (i = 2; i < 5; ++i)
-            {
-                if (opnds[i] !== tltor.config.physReg[i-2])
-                {
-                    map.add(opnds[i], tltor.config.physReg[i-2]);
-                }
-            }
-
-            map.orderAndInsertMoves( function (move)
-                                     {
-                                        tltor.asm.
-                                        mov(move.uses[0], move.uses[1]);
-                                     }, scratch);
-
-            // Implicitly returns the property value
-            // in return value register
-            tltor.asm.call(tltor.putPropValLabel);
-
-            // Return early
-            return;
-        }
-        */
     }
  
     // Number of bytes in a reference
