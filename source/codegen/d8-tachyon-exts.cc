@@ -656,7 +656,7 @@ v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
         break;
 
         default:
-        printf("Error in callTachyonFFI -- unsupported argument count: %d\n", numArgs);
+        printf("Error in callTachyonFFI -- unsupported argument count: %d\n", (int)numArgs);
         exit(1);
     }
 
