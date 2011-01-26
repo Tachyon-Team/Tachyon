@@ -2058,6 +2058,7 @@ allocator.resolve = function (cfg, intervals, order, config)
 
         assert(insertPos < block.instrs.length,
                "Move instruction inserted after a branching instruction");
+
       
         // We might receive either a single move instruction or a
         // mapping containing many moves
@@ -2088,7 +2089,10 @@ allocator.resolve = function (cfg, intervals, order, config)
     {
         interval.getSplitItr().forEach(function (split)
         {
-            if (split.before.reg !== split.after.reg)
+            if (split.before.reg !== split.after.reg &&
+                // Non-continuous splits should be resolved later
+                // during edge resolution
+                split.before.endPos() === split.after.startPos())
             {
                 moves.addMove(new MoveInstr(split.before.reg, 
                                             split.after.reg, split.before), 
@@ -2215,14 +2219,44 @@ allocator.resolve = function (cfg, intervals, order, config)
 allocator.validate = function (cfg, config)
 {
 
+    function printIt(instr)
+    {
+        if (instr !== undefined && instr.regAlloc !== undefined)
+        {
+            return String(instr.regAlloc.interval);
+        }
+    };
+
+    function printValue(v)
+    {
+        if (v instanceof IRFunction)
+        {
+            return v.funcName;
+        } else {
+            return String(v);
+        }
+    };
+
     function assertInstrCompatible(given, slots, values, instr)
     {
-        assert(given.compatible(slots, values), 
-                "RegAlloc expected:\n" + values.join("\n") + "\n in:\n",
-                slots.join("\n") + "\n but received: \n",
-                given.getValues(slots).map(String).join("\n") + "\n for '",
-                instr.getValName() + "' at pos " + instr.regAlloc.id + "\n",
-                "in mapping " + given.toString(slots));
+        for (var i = 0; i < slots.length; ++i)
+        {
+            slot  = slots[i];
+            if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+            {
+                value = values[i]; 
+                assert(given.compatible([slot], [value]), 
+                        "RegAlloc expected:\n" + value,
+                        "\n in:\n",
+                        slot + "\n but received: \n",
+                        given.getValues([slot]).map(String).join("\n"), 
+                        "\n for '",
+                        instr.getValName() + "' at pos " + instr.regAlloc.id,
+                        "\n",
+                        "in mapping " + given.toString([slot]) + "\n",
+                        given.getValues([slot]).map(printIt).join("\n"));
+            }
+        }
     };
 
     // To check the soundness of the moves inserted
