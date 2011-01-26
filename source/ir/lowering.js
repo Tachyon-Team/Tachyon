@@ -54,11 +54,66 @@ function lowerIRCFG(cfg, params)
             if (instr.uses[i].type === IRType.box)
                 usesBoxed = true;
 
+        // If this is a load or a store instruction on a boxed value
+        if ((instr instanceof LoadInstr || instr instanceof StoreInstr) && 
+            instr.uses[0].type === IRType.box)
+        {
+            // Create an unboxing operation
+            var unboxVal = new CallFuncInstr(
+                [
+                    params.staticEnv.getBinding('unboxRef'),
+                    ConstValue.getConst(undefined),
+                    instr.uses[0]
+                ]
+            );
+
+            var instrConstr = (instr instanceof LoadInstr)? LoadInstr:StoreInstr;
+
+            // Replace the load/store instruction
+            cfg.replInstr(
+                itr, 
+                new instrConstr(
+                    [instr.typeParams[0], unboxVal].concat(instr.uses.slice(1))
+                )
+            );
+
+            // Add the instruction before the load
+            cfg.addInstr(itr, unboxVal);
+
+            var instr = itr.get();
+        }
+
+        // If this is a store instruction on a boxed value
+        if (instr instanceof StoreInstr && instr.uses[0].type === IRType.box)
+        {
+            // Create an unboxing operation
+            var unboxVal = new CallFuncInstr(
+                [
+                    params.staticEnv.getBinding('unboxRef'),
+                    ConstValue.getConst(undefined),
+                    instr.uses[0]
+                ]
+            );
+
+            // Replace the store instruction
+            cfg.replInstr(
+                itr, 
+                new StoreInstr(
+                    [instr.typeParams[0], unboxVal].concat(instr.uses.slice(1))
+                )
+            );
+
+            // Add the instruction before the load
+            cfg.addInstr(itr, unboxVal);
+
+            var instr = itr.get();
+        }
+
         // If this is an untyped if instruction
         if (usesBoxed && instr instanceof IfInstr)
         {
-            // Create a boolean conversion instruction
-            var toBoolInstr = new CallFuncInstr(
+            // Create a boolean conversion operation
+            var boolVal = new CallFuncInstr(
                 [
                     params.staticEnv.getBinding('boxToBool'),
                     ConstValue.getConst(undefined),
@@ -67,11 +122,11 @@ function lowerIRCFG(cfg, params)
             );
 
             // Replace the if instruction by a typed if
-            var ifBoolInstr = new IfInstr([toBoolInstr].concat(instr.targets));
+            var ifBoolInstr = new IfInstr([boolVal].concat(instr.targets));
             cfg.replInstr(itr, ifBoolInstr);
 
             // Add the instruction before the if
-            cfg.addInstr(itr, toBoolInstr);
+            cfg.addInstr(itr, boolVal);
 
             var instr = itr.get();
         }

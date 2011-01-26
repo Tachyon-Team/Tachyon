@@ -15,4 +15,3 @@ function foo()
     return a;
 }
 
-return foo();

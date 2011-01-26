@@ -82,7 +82,7 @@ function getStrObj(rawStr)
     //
 
     // Initialize the hash code to 0
-    var hashCode = pint(0);
+    var hashCode = u32(0);
 
     // For each character, update the hash code
     for (var index = pint(0); true; index = index + pint(1))
@@ -91,21 +91,21 @@ function getStrObj(rawStr)
         var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
 
         // Convert the character value to the pint type
-        var ch = iir.icast(IRType.pint, ch);
+        var ch = iir.icast(IRType.u32, ch);
 
         // If this is the null terminator, break out of the loop
-        if (ch === pint(0))
+        if (ch === u32(0))
             break;
 
         // Update 
-        hashCode = (hashCode * pint(256) + ch) % pint(426870919);
+        hashCode = (((hashCode << u32(8)) + ch) & u32(536870911)) % u32(426870919);
     }
 
     // Store the string length (excluding the null terminator)
     var strLen = index;
 
-    printInt(boxInt(strLen));
-    printInt(boxInt(hashCode));
+    //printInt(boxInt(strLen));
+    //printInt(boxInt(hashCode));
 
     //
     // Hash table lookup
@@ -130,7 +130,7 @@ function getStrObj(rawStr)
         iir.icast(IRType.u32, hashCode) % iir.icast(IRType.u32, tblSize)
     );
 
-    printInt(boxInt(hashIndex));
+    //printInt(boxInt(hashIndex));
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -167,10 +167,10 @@ function getStrObj(rawStr)
     set_str_len(strObj, iir.icast(IRType.i32, strLen));
 
     // Set the hash code in the string object
-    set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
+    set_str_hash(strObj, iir.icast(IRType.u32, hashCode));
 
     //printInt(boxInt(strLen));
-    //printInt(boxInt(hashCode));
+    //printInt(boxInt(iir.icast(IRType.pint, hashCode)));
 
     // Copy the character data into the string object
     for (var index = pint(0); index <= strLen; index = index + pint(1))
@@ -202,6 +202,8 @@ function getStrObj(rawStr)
     if (numStrings * STR_TBL_MAX_LOAD_DENOM >
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
+        //printInt(1337);
+
         // Extend the string table
         extStrTable(strtbl, tblSize, numStrings);
     }
@@ -226,25 +228,33 @@ function extStrTable(curTbl, curSize, numStrings)
     // Allocate a new, larger hash table
     var newTbl = alloc_strtbl(newSize);
 
+    // Initialize the new table entries
+    for (var i = pint(0); i < newSize; i += pint(1))
+        set_strtbl_tbl(newTbl, i, UNDEFINED);
+
     // Set the new size and the number of strings stored
     set_strtbl_tblsize(newTbl, iir.icast(IRType.i32, newSize));
     set_strtbl_numstrs(newTbl, iir.icast(IRType.i32, numStrings));
 
     // For each entry in the current table
-    for (var curIdx = pint(0); 
-         curIdx < curSize; 
-         curIdx = (curIdx + pint(1)) % curSize
-    )
+    for (var curIdx = pint(0); curIdx < curSize; curIdx += pint(1))
     {
         // Get the value at this hash slot
         var slotVal = get_strtbl_tbl(curTbl, curIdx);
+
+        // If this slot is empty, skip it
+        if (slotVal === UNDEFINED)
+            continue;
 
         // Get the hash code for the value
         // Boxed value, may be a string or an int
         var valHash = getHash(slotVal);
 
         // Get the hash table index for this hash value in the new table
-        var startHashIndex = valHash % newSize;
+        var startHashIndex = iir.icast(
+            IRType.pint,
+            iir.icast(IRType.u32, valHash) % iir.icast(IRType.u32, newSize)
+        );
         var hashIndex = startHashIndex;
 
         // Until a free slot is encountered

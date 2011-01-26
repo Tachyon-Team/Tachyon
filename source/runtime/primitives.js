@@ -52,7 +52,20 @@ function boxRef(rawPtr, tagVal)
     "tachyon:arg tagVal pint";
 
     // Box the raw pointer
-    return iir.icast(IRType.box, (rawPtr & ~TAG_REF_MASK) | tagVal);
+    return iir.icast(IRType.box, rawPtr | tagVal);
+}
+
+/**
+Unbox a reference value
+*/
+function unboxRef(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret rptr";
+
+    // Box the raw pointer
+    return iir.icast(IRType.rptr, boxVal & ~TAG_REF_MASK);
 }
 
 /**
@@ -235,6 +248,19 @@ function i32(boxVal)
 
     // Unbox the integer and cast it
     return iir.icast(IRType.i32, unboxInt(boxVal));
+}
+
+/**
+Cast a boxed integer value to the u32 type
+*/
+function u32(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret u32";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.u32, unboxInt(boxVal));
 }
 
 /**
@@ -823,7 +849,7 @@ function getHash(key)
 
     // If the property is integer
     if (boxIsInt(key))
-    {
+    {    
         // Unbox the integer key
         return unboxInt(key);
     }
@@ -845,6 +871,10 @@ function putProp(obj, propName, propHash, propVal)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
+    //printInt(13371);
+    //printInt(propName);
+    //printInt(boxInt(propHash));
+
     //
     // TODO: find if getter-setter exists?
     // Requires first looking up the entry in the whole prototype chain...
@@ -865,6 +895,8 @@ function putProp(obj, propName, propHash, propVal)
         IRType.pint,
         iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
     );
+
+    //printInt(boxInt(hashIndex));
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -1008,6 +1040,10 @@ function getProp(obj, propName, propHash)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
+    //printInt(13372);
+    //printInt(propName);
+    //printInt(boxInt(propHash));
+
     // Until we reach the end of the prototype chain
     do
     {
@@ -1026,6 +1062,8 @@ function getProp(obj, propName, propHash)
             IRType.pint,
             iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
         );
+
+        //printInt(boxInt(hashIndex));
 
         // Until the key is found, or a free slot is encountered
         while (true)
@@ -1087,54 +1125,6 @@ function putPropVal(obj, propName, propVal)
 
     // Set the property on the object
     putProp(obj, propName, propHash, propVal);
-}
-
-// FIXME: temporary until we no longer special case these functions in
-// the backend
-function __putPropVal(obj, propName, propVal)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Set the property on the object
-    putProp(obj, propName, propHash, propVal);
-}
-
-// FIXME: temporary until we no longer special case these functions in
-// the backend
-function __getPropVal(obj, propName)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Attempt to find the property on the object
-    var propVal = getProp(obj, propName, propHash);
-
-    // If the property isn't defined
-    if (iir.icast(IRType.pint, propVal) === BIT_PATTERN_NOT_FOUND)
-    {
-        // Return the undefined value
-        return UNDEFINED;
-    }
-
-    // Return the property value we found
-    return propVal;
 }
 
 /**

@@ -20,4 +20,3 @@ function foo(n)
     return a;
 }
 
-return foo(5);

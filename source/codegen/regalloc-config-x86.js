@@ -120,7 +120,7 @@ DivInstr.prototype.regAlloc.usedRegisters = function (instr, config)
     // EBX is reverved as a scratch register
     //return [0,1,3];
 
-    //FIXME: until reg alloc fixed interval fix
+    // FIXME: until bug with fixed intervals is fixed
     return arrayRange(config.physReg.length);
 };
 

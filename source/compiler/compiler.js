@@ -40,11 +40,8 @@ property to its dependencies.
 */
 compiler.link = function () 
 {
-    if(!this.linked) 
-    {
-        this.rt.mcb.link();
-        this.linked = true;
-    }
+    this.rt.mcb.link();
+    this.linked = true;
 };
 
 /** 
@@ -118,6 +115,7 @@ function compileSrcFile(fileName, params)
 Creates a compiled fonction from an IRFunction with
 linking and runtime information.
 */
+/*
 function createJSFuncFromCompiledIR(ir)
 {
     var f = function () 
@@ -128,6 +126,7 @@ function createJSFuncFromCompiledIR(ir)
 
     return f;
 };
+*/
 
 /**
 Compile a file to an optimized callable function. The function should be freed 
@@ -139,6 +138,7 @@ after last usage by calling the 'free' method on the function. Ex:
 
 @filename String containing path to the source file
 */
+/*
 function compileFileToJSFunc(fileName, params) 
 {
     assert (
@@ -150,4 +150,4 @@ function compileFileToJSFunc(fileName, params)
 
     return createJSFuncFromCompiledIR(ir, params);
 };
-
+*/

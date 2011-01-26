@@ -27,8 +27,7 @@ function foo()
 
     v += 3;
 
-    // v === 156
+    // v === 39
     return v;
 }
 
-return foo();

@@ -11,5 +11,3 @@ function foo(a)
     return a;
 }
 
-// Returns 503
-return foo(3);

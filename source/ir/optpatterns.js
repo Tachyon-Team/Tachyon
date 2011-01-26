@@ -928,7 +928,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 instr.uses[1],
                 ConstValue.getConst(
                     highestBit(instr.uses[0].getImmValue(params)),
-                    IRType.pint
+                    (instr.uses[1].type === IRType.box)? IRType.pint:instr.uses[1].type
                 )
             );
 
@@ -946,7 +946,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 instr.uses[0],
                 ConstValue.getConst(
                     highestBit(instr.uses[1].getImmValue(params)),
-                    IRType.pint
+                    (instr.uses[0].type === IRType.box)? IRType.pint:instr.uses[0].type
                 )
             );
 
@@ -980,7 +980,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 instr.uses[0],
                 ConstValue.getConst(
                     highestBit(instr.uses[1].getImmValue(params)),
-                    IRType.pint
+                    (instr.uses[0].type === IRType.box)? IRType.pint:instr.uses[0].type
                 )
             );
 
@@ -1002,7 +1002,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 instr.uses[0],
                 ConstValue.getConst(
                     instr.uses[1].getImmValue(params) - 1,
-                    instr.type
+                    (instr.uses[0].type === IRType.box)? IRType.pint:instr.uses[0].type
                 )
             );
 

@@ -7,11 +7,12 @@ function f()
     {
         1 + 1;
         x = 1; 
-    } else
+    } 
+    else
     {
         1 + 1;
         x = 2;
     }
     return x;
 }
-return f();
+
