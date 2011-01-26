@@ -871,9 +871,9 @@ function putProp(obj, propName, propHash, propVal)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
-    printInt(13371);
-    printInt(propName);
-    printInt(boxInt(propHash));
+    //printInt(13371);
+    //printInt(propName);
+    //printInt(boxInt(propHash));
 
     //
     // TODO: find if getter-setter exists?
@@ -895,9 +895,8 @@ function putProp(obj, propName, propHash, propVal)
         IRType.pint,
         iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
     );
-    //var hashIndex = propHash % tblSize;
 
-    printInt(boxInt(hashIndex));
+    //printInt(boxInt(hashIndex));
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -1041,9 +1040,9 @@ function getProp(obj, propName, propHash)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
-    printInt(13372);
-    printInt(propName);
-    printInt(boxInt(propHash));
+    //printInt(13372);
+    //printInt(propName);
+    //printInt(boxInt(propHash));
 
     // Until we reach the end of the prototype chain
     do
@@ -1063,9 +1062,8 @@ function getProp(obj, propName, propHash)
             IRType.pint,
             iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
         );
-        //var hashIndex = propHash % tblSize;
 
-        printInt(boxInt(hashIndex));
+        //printInt(boxInt(hashIndex));
 
         // Until the key is found, or a free slot is encountered
         while (true)
