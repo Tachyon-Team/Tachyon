@@ -19,15 +19,30 @@ TODO: Should we include runtime, object representation here?
 */
 function CompParams(cfgObj)
 {
-    assert (cfgObj.target instanceof Target);
+    assert (
+        cfgObj.target instanceof Target,
+        'invalid target object'
+    );
 
-    assert (cfgObj.tachyonSrc === true || cfgObj.tachyonSrc === false);
+    assert (
+        cfgObj.tachyonSrc === true || cfgObj.tachyonSrc === false,
+        'invalid tachyon source flag'
+    );
 
-    assert (cfgObj.debug === true || cfgObj.debug === false);
+    assert (
+        cfgObj.debug === true || cfgObj.debug === false,
+        'invalid debug flag'
+    );
 
-    assert (cfgObj.parserWarnings === true || cfgObj.parserWarnings === false);
+    assert (
+        cfgObj.parserWarnings === true || cfgObj.parserWarnings === false,
+        'invalid parser warnings flag'
+    );
 
-    assert (cfgObj.staticEnv instanceof StaticEnv);
+    assert (
+        cfgObj.staticEnv instanceof StaticEnv,
+        'invalid static environment'
+    );
 
     /**
     Target architecture
@@ -67,7 +82,14 @@ function CompParams(cfgObj)
 
     /**
     FFI functions used by compiler
+    @field
     */
-    this.ffiFuncs = {};    
+    this.ffiFuncs = {};
+
+    /**
+    Function to allocate string objects
+    @field
+    */
+    this.getStrObj = null;
 }
 

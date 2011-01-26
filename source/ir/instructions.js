@@ -1560,11 +1560,13 @@ var CallFFIInstr = instrMaker(
         instrMaker.validNumBranches(branchTargets, 0, 0);
 
         assert (
-            inputVals[0] instanceof CFunction
+            inputVals[0] instanceof CFunction,
+            'FFI calls can only be made to static functions'
         );
 
         assert (
-            inputVals.length - 1 === inputVals[0].cArgTypes.length
+            inputVals.length - 1 === inputVals[0].cArgTypes.length,
+            'incorrect number of arguments to FFI function'
         );
 
         for (var i = 1; i < inputVals.length; ++i)

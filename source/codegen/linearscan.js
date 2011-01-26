@@ -2132,7 +2132,10 @@ allocator.resolve = function (cfg, intervals, order, config)
         {
             if (intervalIt.get().startPos() === edge.succ.regAlloc.from)
             {
-                assert(intervalIt.get().instr instanceof PhiInstr);
+                assert(
+                    intervalIt.get().instr instanceof PhiInstr,
+                    'expected phi instruction'
+                );
 
                 // We got a Phi instruction
                 opnd = intervalIt.get().instr.getIncoming(edge.pred);
@@ -2266,14 +2269,14 @@ allocator.validate = function (cfg, config)
             {
                 value = values[i]; 
                 assert(given.compatible(slot, value), 
-                        "RegAlloc expected:\n" + value,
-                        "\n in:\n",
-                        slot + "\n but received: \n",
-                        String(given.getValue(slot)),
-                        "\n for '",
-                        instr.getValName() + "' at pos " + instr.regAlloc.id,
-                        "\n",
-                        "in mapping " + given.toString([slot]) + "\n",
+                        "RegAlloc expected:\n" + value +
+                        "\n in:\n" +
+                        slot + "\n but received: \n" +
+                        String(given.getValue(slot)) +
+                        "\n for '" +
+                        instr.getValName() + "' at pos " + instr.regAlloc.id +
+                        "\n" +
+                        "in mapping " + given.toString([slot]) + "\n" +
                         printIt(given.getValue(slot)));
             }
         }
@@ -2424,10 +2427,10 @@ allocator.validate = function (cfg, config)
             {
                 applyPhiInstrs(slotMap, succ, block);
                 assert(compatible(slotMap, expected),
-                       "Given mapping from '" + block.getBlockName() + "':\n",
-                       slotMap,
-                       "is incompatible with expected mapping for '",
-                       succ.getBlockName() + "':\n",
+                       "Given mapping from '" + block.getBlockName() + "':\n" +
+                       slotMap +
+                       "is incompatible with expected mapping for '" +
+                       succ.getBlockName() + "':\n" +
                        expected);
             }
         });
@@ -2484,7 +2487,10 @@ allocator.slotMapping.prototype.compatible = function (slot, value)
 */
 allocator.slotMapping.prototype.update = function (slot, value, instr)
 {
-    assert(slot.type === x86.type.REG || slot.type === x86.type.MEM);
+    assert(
+        slot.type === x86.type.REG || slot.type === x86.type.MEM,
+        'slot must be register or memory'
+    );
 
     this.mapping[slot] = value;
 
@@ -2493,7 +2499,11 @@ allocator.slotMapping.prototype.update = function (slot, value, instr)
         instr = value;
     }
 
-    assert(instr !== null);
+    assert(
+        instr !== null,
+        'instruction is null'
+    );
+
     this.getDebugSlot(slot).push(instr);
 };
 
@@ -2791,8 +2801,8 @@ allocator.mapping.prototype.addMove = function (move)
 
     if (this.write[to] !== null && this.write[to] !== undefined)
     {
-           error("Multiple moves to the same destination.\n",
-           " Previous move: " + this.write[to] + "\n",
+           error("Multiple moves to the same destination.\n" +
+           " Previous move: " + this.write[to] + "\n" +
            " New move: " + move);
     }
 

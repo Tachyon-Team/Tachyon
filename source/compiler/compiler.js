@@ -51,7 +51,10 @@ IRFunction should be freed once it is no longer used.
 */
 function compileIR(ir, params) 
 {
-    assert (params instanceof CompParams);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     ir.linking.linked = false;
     ir.linking.link = compiler.link;
@@ -111,43 +114,3 @@ function compileSrcFile(fileName, params)
     return compileAst(ast, params);
 }
 
-/**
-Creates a compiled fonction from an IRFunction with
-linking and runtime information.
-*/
-/*
-function createJSFuncFromCompiledIR(ir)
-{
-    var f = function () 
-    { 
-        return ir.runtime.execute();
-    };
-    f.free = ir.runtime.free;
-
-    return f;
-};
-*/
-
-/**
-Compile a file to an optimized callable function. The function should be freed 
-after last usage by calling the 'free' method on the function. Ex:
-
-    var f = compileFileToJSFunc(...);
-    print(f());
-    f.free();
-
-@filename String containing path to the source file
-*/
-/*
-function compileFileToJSFunc(fileName, params) 
-{
-    assert (
-        params instanceof CompParams,
-        'compilation parameters expected'
-    );
-
-    var ir = compileSrcFile(fileName, params); 
-
-    return createJSFuncFromCompiledIR(ir, params);
-};
-*/

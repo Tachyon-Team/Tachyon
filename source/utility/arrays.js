@@ -114,8 +114,8 @@ function arrayRange(from, to, step)
     }
 
     
-    assert(from >= 0);
-    assert(step > 0);
+    assert(from >= 0, 'from must be >= 0');
+    assert(step > 0, 'step must be > 0');
 
     j=0;
     for (i=from; i < to; i+=step)

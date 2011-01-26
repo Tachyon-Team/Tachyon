@@ -14,9 +14,15 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 function Target(cfgObj)
 {
-    assert (cfgObj.endian === 'little' || cfgObj.endian === 'big');
+    assert (
+        cfgObj.endian === 'little' || cfgObj.endian === 'big',
+        'invalid endian specified'
+    );
 
-    assert (cfgObj.ptrSizeBits === 32 || cfgObj.ptrSizeBits === 64);
+    assert (
+        cfgObj.ptrSizeBits === 32 || cfgObj.ptrSizeBits === 64,
+        'invalid pointer size specified'
+    );
 
     /**
     Back-end name    

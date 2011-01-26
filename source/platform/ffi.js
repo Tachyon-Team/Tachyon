@@ -119,7 +119,8 @@ function CFunction(
 )
 {
     assert (
-        cArgTypes instanceof Array && cRetType !== undefined
+        cArgTypes instanceof Array && cRetType !== undefined,
+        'invalid C arguments or return type'
     );
     assert (
         params instanceof CompParams,
@@ -141,7 +142,8 @@ function CFunction(
     }
 
     assert (
-        tachArgTypes.length === cArgTypes.length
+        tachArgTypes.length === cArgTypes.length,
+        'must have the same number of Tachyon arguments as C arguments'
     );
 
     // Convert the C argument types to IR types
@@ -280,29 +282,37 @@ function CProxy(
 )
 {
     assert (
-        irFunction instanceof IRFunction
+        irFunction instanceof IRFunction,
+        'expected IR function'
     );
 
     // The types presented to C must be specified
     assert (
-        cArgTypes instanceof Array && cRetType !== undefined
+        cArgTypes instanceof Array && cRetType !== undefined,
+        'invalid C argument types or return type'
     );
     
     assert (
-        params instanceof CompParams
+        params instanceof CompParams,
+        'expected compilation parameters'
     );
 
     assert (
-        irFunction.argTypes.length === cArgTypes.length
+        irFunction.argTypes.length === cArgTypes.length,
+        'C argument types do not match function argument types'
     );
 
     assert (
         ctxVal instanceof ConstValue ||
-        ctxVal === undefined
+        ctxVal === undefined,
+        'invalid context value'
     );
 
     // For now, assume the context is always passed as an argument
-    assert (ctxVal === undefined);
+    assert (
+        ctxVal === undefined,
+        'cannot pre-specify fixed context'
+    );
 
     // Convert the C argument types to IR types
     cArgTypes = cArgTypes.map(function (t) { return cTypeToIRType(t, params); });

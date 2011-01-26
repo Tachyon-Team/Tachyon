@@ -247,7 +247,10 @@ Assign a free id number to an instruction
 */
 ControlFlowGraph.prototype.assignInstrId = function (instr)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
     if (this.freeInstrIds.length > 0)
         instr.instrId = this.freeInstrIds.pop();
@@ -260,7 +263,10 @@ Free an instruction id number
 */
 ControlFlowGraph.prototype.freeInstrId = function (instr)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
     this.freeInstrIds.push(instr.instrId);
 };
@@ -270,7 +276,10 @@ Assign a free id number to a basic block
 */
 ControlFlowGraph.prototype.assignBlockId = function (block)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
     if (this.freeBlockIds.length > 0)
         block.blockId = this.freeBlockIds.pop();
@@ -283,7 +292,10 @@ Free a block id number
 */
 ControlFlowGraph.prototype.freeBlockId = function (block)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
     this.freeBlockIds.push(block.blockId);
 };
@@ -293,7 +305,10 @@ Assign a free output name to an instruction
 */
 ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
     if (outName === undefined || outName === '')
     {
@@ -313,7 +328,10 @@ Free an instruction output name
 */
 ControlFlowGraph.prototype.freeInstrName = function (instr)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
     if (instr.outName === '')
         return;
@@ -326,7 +344,10 @@ Assign a free label name to a block
 */
 ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
     if (labelName === undefined || labelName === '')
     {
@@ -346,7 +367,10 @@ Free a block label name
 */
 ControlFlowGraph.prototype.freeBlockName = function (block)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
     if (block.label === '')
         return;
@@ -689,7 +713,10 @@ ControlFlowGraph.prototype.validate = function ()
         // Get the must reach set at this block's entry
         var mustReachCur = mustReachIn[block.blockId];
 
-        assert (mustReachCur !== undefined);
+        assert (
+            mustReachCur !== undefined,
+            'must reach in set unavailable'
+        );
 
         // If we have more than one predecessor, copy the
         // must reach set before modifying it
@@ -1522,7 +1549,10 @@ Get the last instruction in the block
 */
 BasicBlock.prototype.getLastInstr = function ()
 {
-    assert (this.instrs.length > 0, 'cannot get last instruction, none present');
+    assert (
+        this.instrs.length > 0, 
+        'cannot get last instruction, none present'
+    );
 
     return this.instrs[this.instrs.length - 1];
 };
