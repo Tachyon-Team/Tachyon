@@ -20,6 +20,8 @@ function testIR()
         'int'
     );
 
+    print(config.hostParams.staticEnv.getBinding('alloc_str'));
+
     print('Calling fib');
 
     var result = bridge(config.hostParams.ctxPtr);

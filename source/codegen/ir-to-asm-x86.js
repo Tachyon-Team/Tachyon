@@ -1988,20 +1988,10 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
 
     const dst = this.regAlloc.dest;
 
-    // If the base pointer is a raw pointer
-    if (this.uses[0].type === IRType.rptr)
-    {
-        var ptr = opnds[0];
-    }
-    else
-    {
-        var TAG_REF_MASK = tltor.params.staticEnv.getBinding('TAG_REF_MASK').value;
-
-        // Mask out the tag bits
-        // ptr = ptr & ~TAG_REF_MASK
-        // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
-        tltor.asm.and($(~TAG_REF_MASK), opnds[0]);
-    }
+    assert (
+        this.uses[0].type === IRType.rptr,
+        'load can only operate on raw pointers'
+    );
 
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)
@@ -2068,20 +2058,10 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
 
     const dst = this.regAlloc.dest;
 
-    // If the base pointer is a raw pointer
-    if (this.uses[0].type === IRType.rptr)
-    {
-        var ptr = opnds[0];
-    }
-    else
-    {
-        var TAG_REF_MASK = tltor.params.staticEnv.getBinding('TAG_REF_MASK').value;
-
-        // Mask out the tag bits
-        // ptr = ptr & ~TAG_REF_MASK
-        // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
-        tltor.asm.and($(~TAG_REF_MASK), opnds[0]);
-    }
+    assert (
+        this.uses[0].type === IRType.rptr,
+        'store can only operate on raw pointers'
+    );
 
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)

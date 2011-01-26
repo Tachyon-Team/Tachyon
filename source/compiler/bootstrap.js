@@ -361,6 +361,8 @@ function initRuntime(params)
 
         var strObj = getStrObjBridge(ctxPtr, blockAddr);
 
+        //print(strObj);
+
         freeMachineCodeBlock(memBlock);
 
         return strObj;

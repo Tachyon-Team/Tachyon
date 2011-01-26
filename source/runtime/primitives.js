@@ -52,7 +52,20 @@ function boxRef(rawPtr, tagVal)
     "tachyon:arg tagVal pint";
 
     // Box the raw pointer
-    return iir.icast(IRType.box, (rawPtr & ~TAG_REF_MASK) | tagVal);
+    return iir.icast(IRType.box, rawPtr | tagVal);
+}
+
+/**
+Unbox a reference value
+*/
+function unboxRef(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret rptr";
+
+    // Box the raw pointer
+    return iir.icast(IRType.rptr, boxVal & ~TAG_REF_MASK);
 }
 
 /**
@@ -235,6 +248,19 @@ function i32(boxVal)
 
     // Unbox the integer and cast it
     return iir.icast(IRType.i32, unboxInt(boxVal));
+}
+
+/**
+Cast a boxed integer value to the u32 type
+*/
+function u32(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret u32";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.u32, unboxInt(boxVal));
 }
 
 /**
@@ -823,7 +849,7 @@ function getHash(key)
 
     // If the property is integer
     if (boxIsInt(key))
-    {
+    {    
         // Unbox the integer key
         return unboxInt(key);
     }
@@ -863,15 +889,13 @@ function putProp(obj, propName, propHash, propVal)
         get_obj_tblsize(obj)
     );
 
-    /*
     // Get the hash table index for this hash value
     // compute this using unsigned modulo to always obtain a positive value
     var hashIndex = iir.icast(
         IRType.pint,
         iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
     );
-    */
-    var hashIndex = propHash % tblSize;
+    //var hashIndex = propHash % tblSize;
 
     printInt(boxInt(hashIndex));
 
@@ -1033,15 +1057,13 @@ function getProp(obj, propName, propHash)
             get_obj_tblsize(obj)
         );
 
-        /*
         // Get the hash table index for this hash value
         // compute this using unsigned modulo to always obtain a positive value
         var hashIndex = iir.icast(
             IRType.pint,
             iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
         );
-        */
-        var hashIndex = propHash % tblSize;
+        //var hashIndex = propHash % tblSize;
 
         printInt(boxInt(hashIndex));
 

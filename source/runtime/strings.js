@@ -82,6 +82,27 @@ function getStrObj(rawStr)
     //
 
     // Initialize the hash code to 0
+    var hashCode = u32(0);
+
+    // For each character, update the hash code
+    for (var index = pint(0); true; index = index + pint(1))
+    {
+        // Get the current character
+        var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
+
+        // Convert the character value to the pint type
+        var ch = iir.icast(IRType.u32, ch);
+
+        // If this is the null terminator, break out of the loop
+        if (ch === u32(0))
+            break;
+
+        // Update 
+        hashCode = (hashCode * u32(256) + ch) % u32(426870919);
+    }
+
+    /*
+    // Initialize the hash code to 0
     var hashCode = pint(0);
 
     // For each character, update the hash code
@@ -100,6 +121,7 @@ function getStrObj(rawStr)
         // Update 
         hashCode = (hashCode * pint(256) + ch) % pint(426870919);
     }
+    */
 
     // Store the string length (excluding the null terminator)
     var strLen = index;
@@ -167,7 +189,7 @@ function getStrObj(rawStr)
     set_str_len(strObj, iir.icast(IRType.i32, strLen));
 
     // Set the hash code in the string object
-    set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
+    set_str_hash(strObj, iir.icast(IRType.u32, hashCode));
 
     //printInt(boxInt(strLen));
     //printInt(boxInt(hashCode));
@@ -181,6 +203,13 @@ function getStrObj(rawStr)
         // Copy the character into the string object
         set_str_data(strObj, index, ch);
     }
+
+    if (boxIsString(strObj))
+        printInt(89898);
+
+    if (boxIsInt(strObj))
+        printInt(9999999);
+
 
     //
     // Hash table updating
