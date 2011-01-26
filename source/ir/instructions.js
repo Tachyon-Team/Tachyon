@@ -1317,7 +1317,8 @@ var RetInstr = instrMaker(
     'ret',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1, 1);
+        // Can either return nothing or one value
+        instrMaker.validNumInputs(inputVals, 0, 1);
         
         this.type = IRType.none;
     }

@@ -26,8 +26,13 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
     else
         var params = config.clientParams;
 
+    //if (funcName === 'linkedlist')
+    //    params.print = print;
+
     // Compile the unit
     var ir = compileSrcFile(srcFile, params);
+
+    //params.print = undefined;
 
     // Get the function of the specified name in the unit
     var func = ir.getChild(funcName);
@@ -200,6 +205,17 @@ tests.nested_loops.main = genTest(
 );
 
 /**
+Object property put/get unit test.
+*/
+tests.object_props = tests.testSuite();
+tests.object_props.main = genTest(
+    'programs/object_props/object_props.js',
+    'foo',
+    [33],
+    1584
+);
+
+/**
 Linked list unit test.
 */
 tests.linked_list = tests.testSuite();
@@ -207,7 +223,6 @@ tests.linked_list.main = genTest(
     'programs/linked_list/linked_list.js',
     'linkedlist',
     [5],
-    10, 
-    true
+    10
 );
 

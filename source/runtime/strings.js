@@ -6,10 +6,8 @@ Implementation of string operations.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
-
-// TODO: stare at IR, look for errors...
 
 /**
 Allocate and initialize the string table, used for hash consing
@@ -276,13 +274,11 @@ function extStrTable(curTbl, curSize, numStrings)
             // Move to the next hash table slot
             hashIndex = (hashIndex + pint(1)) % newSize;
 
-            /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
-                hashIndex !== startHashIndex,
+                boolToBox(hashIndex !== startHashIndex),
                 'no free slots found in extended hash table'
             );
-            */
         }
     }
 
@@ -291,5 +287,50 @@ function extStrTable(curTbl, curSize, numStrings)
 
     // Update the string table reference in the context
     set_ctx_strtbl(ctx, newTbl);
+}
+
+/**
+Create/allocatr a C (UTF-8) string from a string object.
+*/
+function makeCString(strVal)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret rptr";
+
+    // Get the string length
+    var strLen = iir.icast(IRType.pint, get_str_len(strVal));
+
+    // Allocate memory for the C string
+    var strPtr = malloc(strLen + pint(1));
+
+    // For each character
+    for (var i = pint(0); i < strLen; i += pint(1))
+    {
+        var ch = get_str_data(strVal, i);
+
+        var cCh = iir.icast(IRType.i8, ch);
+
+        iir.store(IRType.i8, strPtr, i, cCh);
+    }
+
+    // Store the null terminator
+    iir.store(IRType.i8, strPtr, i, i8(0));
+
+    return strPtr;
+}
+
+/**
+Free a C string's memory buffer
+*/
+function freeCString(strPtr)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg strPtr rptr";
+
+    free(strPtr);
+
+    return;
 }
 

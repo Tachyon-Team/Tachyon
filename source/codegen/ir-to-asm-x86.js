@@ -178,8 +178,6 @@ irToAsm.translator = function (config, params)
 
     that.asm = new x86.Assembler(config.target);
     that.asm.codeBlock.bigEndian = false;
-    that.strings = {};
-    that.stringNb = 0;
     that.fct = null;
 
     /*
@@ -341,18 +339,6 @@ irToAsm.translator.prototype.label = function (obj, name)
 */
 irToAsm.translator.prototype.stringValue = function (s)
 {
-    /*
-    var value = this.strings[s];
-
-    if (value === undefined)
-    {
-       value = this.stringNb++; 
-       this.strings[s] = value;
-    }
-
-    return value;
-    */
-
     var that = this;
     return this.asm.linked(
         s,
@@ -360,7 +346,6 @@ irToAsm.translator.prototype.stringValue = function (s)
         {
             if (that.params.getStrObj instanceof Function)
             {
-                print('allocating string "' + s + '"');
                 return that.params.getStrObj(s);
             }
             else
@@ -1275,8 +1260,8 @@ GtInstr.prototype.genCode = function (tltor, opnds)
         opnds[1].type === x86.type.IMM_VAL))
     {
         tltor.asm.
-        mov(opnds[1], dest).
-        cmp(opnds[0], dest);
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
     } 
     else if (opnds[0].type === x86.type.IMM_VAL)
     {
@@ -1414,11 +1399,13 @@ RetInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.add($(offset*refByteNb), tltor.config.stack);
     }
 
-    if (opnds[0] !== retValReg)
+    // If there is a value to return and it isn't in the return value register
+    if (opnds.length > 0 && opnds[0] !== retValReg)
     {
         tltor.asm.mov(opnds[0], retValReg);
     }
 
+    // If this is a proxy callable from C
     if (tltor.fct.cProxy)
     {
         // Put the stack pointer where C expects it to be
@@ -1437,7 +1424,8 @@ RetInstr.prototype.genCode = function (tltor, opnds)
             pop(EDI).
             pop(ESI).
             pop(EBX);
-        } else 
+        } 
+        else 
         {
             // We follow 64 bits Linux, BSD, Mac OS X
             // callee-save convention

@@ -225,6 +225,18 @@ function boxToBool(boxVal)
 }
 
 /**
+Convert a boolean value to a boxed boolean value
+*/
+function boolToBox(boolVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:arg boolVal bool";
+
+    return boolVal? true:false;
+}
+
+/**
 Cast a boxed integer value to the pint type
 */
 function pint(boxVal)
@@ -289,6 +301,19 @@ function u16(boxVal)
     return iir.icast(IRType.u16, unboxInt(boxVal));
 }
 
+/**
+Cast a boxed integer value to the i8 type
+*/
+function i8(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i8";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.i8, unboxInt(boxVal));
+}
+
 //=============================================================================
 //
 // Utility functions
@@ -325,6 +350,25 @@ function heapAlloc(size)
     // Update the allocation pointer in the context object
     set_ctx_allocptr(ctx, nextPtr);
 
+    /************** TEMPORARY ************/
+    var startPtr = iir.get_ctx();
+    var oldSize = allocPtr - startPtr;
+    var newSize = nextPtr - startPtr;
+    var nextStep = oldSize;
+    var rem = iir.icast(IRType.pint, oldSize) % pint(1024);
+    if (rem !== pint(0))
+    {
+        var pad = pint(1024) - rem;
+        nextStep += pad;
+    }
+    if (newSize > nextStep)
+    {
+        var newSize = newSize / pint(1024);
+        print("Heap alloc (KB):");
+        print(boxInt(newSize));
+    }
+    /************** TEMPORARY ************/
+
     // Allocate the object at the current position
     return allocPtr;
 }
@@ -337,9 +381,10 @@ function makeError(errorCtor, message)
     "tachyon:static";
     "tachyon:nothrow";
 
-    // FIXME: for now, constructors unsupported
+    // FIXME: for now, constructors and exceptions unsupported
+    error(message);
+
     //return new errorCtor(message);
-    return UNDEFINED;
 }
 
 //=============================================================================
@@ -1016,13 +1061,11 @@ function extObjHashTable(obj, curTbl, curSize)
             // Move to the next hash table slot
             hashIndex = (hashIndex + pint(1)) % newSize;
 
-            /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
-                hashIndex !== startHashIndex,
+                boolToBox(hashIndex !== startHashIndex),
                 'no free slots found in extended hash table'
             );
-            */
         }
     }
 
@@ -1039,10 +1082,6 @@ function getProp(obj, propName, propHash)
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
-
-    //printInt(13372);
-    //printInt(propName);
-    //printInt(boxInt(propHash));
 
     // Until we reach the end of the prototype chain
     do

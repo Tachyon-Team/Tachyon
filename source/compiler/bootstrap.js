@@ -27,10 +27,9 @@ function bootstrap(allCode, params)
     // Initialize the runtime
     initRuntime(params);
 
-
     print('re-linking');
 
-    // Link the primitives with each other
+    // Re-link the primitives with each other to link strings
     for (var i = 0; i < irList.length; ++i)
     {
         var ir = irList[i];
@@ -40,9 +39,7 @@ function bootstrap(allCode, params)
         linkIR(ir, params);
     }
 
-    print('Tachyon init complete');
-
-
+    print('Tachyon initialization complete');
 
     // TODO: execute compiled units
 }
@@ -83,6 +80,8 @@ function getPrimSrcs(params)
         { str: layoutSrc, desc: 'object layout source' },
         // Generated code for the FFI functions
         { str: wrapperSrc, desc: 'FFI wrapper source' },
+        // Utility code for the runtime primitives
+        'runtime/utility.js',
         // Source code for the primitives
         'runtime/primitives.js',
         // Source code for string operations

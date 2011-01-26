@@ -421,24 +421,14 @@ v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
 
 /*---------------------------------------------------------------------------*/
 
-void printHello()
-{
-    printf("Hello!\n");
-}
-
 void printInt(int val)
 {
     printf("%d\n", val);
 }
 
-void print2Ints(int val1, int val2)
+void printStr(const char* str)
 {
-    printf("%d and %d\n", val1, val2);
-}
-
-void print2Shorts(short val1, short val2)
-{
-    printf("%d and %d\n", (int)val1, (int)val2);
+    printf("%s\n", str);
 }
 
 int sum2Ints(int v1, int v2)
@@ -461,20 +451,22 @@ v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
 
     FPTR address = NULL;
 
-    if (strcmp(fName, "printHello") == 0)
-        address = (FPTR)(printHello);
+    if (strcmp(fName, "malloc") == 0)
+        address = (FPTR)(malloc);
+    else if (strcmp(fName, "free") == 0)
+        address = (FPTR)(free);
+    else if (strcmp(fName, "exit") == 0)
+        address = (FPTR)(exit);
     else if (strcmp(fName, "printInt") == 0)
         address = (FPTR)(printInt);
-    else if (strcmp(fName, "print2Ints") == 0)
-        address = (FPTR)(print2Ints);
-    else if (strcmp(fName, "print2Shorts") == 0)
-        address = (FPTR)(print2Shorts);
+    else if (strcmp(fName, "printStr") == 0)
+        address = (FPTR)(printStr);
     else if (strcmp(fName, "sum2Ints") == 0)
         address = (FPTR)(sum2Ints);
 
     if (address == NULL)
     {
-        printf("C function not found\n");
+        printf("C function not found: \"%s\"\n", fName);
         exit(1);
     }
 

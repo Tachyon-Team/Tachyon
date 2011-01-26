@@ -1504,6 +1504,9 @@ function stmtToIR(context)
         if (context.cfg.ownerFunc.astNode instanceof Program)
             error('unit-level returns are not allowed');
 
+        // Get the return type for this function
+        var retType = context.cfg.ownerFunc.retType;
+
         // If there is a return expression
         if (astStmt.expr !== null)
         {
@@ -1513,7 +1516,7 @@ function stmtToIR(context)
 
             // Ensure that the type of the returned value is valid
             assert (
-                retContext.getOutValue().type === context.cfg.ownerFunc.retType,
+                retContext.getOutValue().type === retType,
                 'returned value type must match function return type in "' +
                 context.cfg.ownerFunc.funcName + '"'
             );
@@ -1523,14 +1526,25 @@ function stmtToIR(context)
         }
         else
         {
-            // Ensure that the function has a boxed return type
-            assert (
-                context.cfg.ownerFunc.retType === IRType.box,
-                'functions with non-boxed return types cannot return undefined'
-            );
+            // If the return type is boxed
+            if (retType === IRType.box)
+            {
+                // Return the undefined constant
+                context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+            }
 
-            // Return the undefined constant
-            context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+            // If the return type is none
+            else if (retType === IRType.none)
+            {
+                // Return nothing
+                context.addInstr(new RetInstr());
+            }
+
+            // For any other return type
+            else
+            {
+                error('functions with return type "' + retType + '" must return a value');
+            }
         }
 
         // Indicate that there is no continuation for this context
