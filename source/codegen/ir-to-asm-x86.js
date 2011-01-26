@@ -260,7 +260,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
     {
         if (opnd instanceof ConstValue && typeof opnd.value === "string" )
         {
-            return $(that.stringValue(opnd.value));
+            return that.stringValue(opnd.value);
         } 
         else if (opnd instanceof ConstValue)
         {
@@ -335,13 +335,13 @@ irToAsm.translator.prototype.label = function (obj, name)
     return label;
 };
 
-
 /**
     @private
     Returns a representation of the string that fits into a register
 */
 irToAsm.translator.prototype.stringValue = function (s)
 {
+    /*
     var value = this.strings[s];
 
     if (value === undefined)
@@ -351,6 +351,25 @@ irToAsm.translator.prototype.stringValue = function (s)
     }
 
     return value;
+    */
+
+    var that = this;
+    return this.asm.linked(
+        s,
+        function ()
+        {
+            if (that.params.getStrObj instanceof Function)
+            {
+                print('allocating string "' + s + '"');
+                return that.params.getStrObj(s);
+            }
+            else
+            {
+                return [0,0,0,0];
+            }
+        },
+        that.params.target.ptrSizeBits
+    );
 };
 
 /*

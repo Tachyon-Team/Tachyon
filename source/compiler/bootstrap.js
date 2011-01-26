@@ -10,21 +10,39 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
-Compile the Tachyon compiler using Tachyon
+Compile and initialize the Tachyon compiler using Tachyon
 */
-function bootstrap()
+function bootstrap(allCode, params)
 {
     // Create the context and object layouts
-    makeContextLayout(config.bootParams);
-    makeObjectLayouts(config.bootParams);
+    makeContextLayout(params);
+    makeObjectLayouts(params);
 
     // Initialize the FFI functions
-    initFFI(config.bootParams);
+    initFFI(params);
 
-    // Compile all of Tachyon source code
-    compTachyon(true, config.bootParams);
+    // Compile the Tachyon source code
+    var irList = compTachyon(allCode, params);
 
-    // TODO: initialize heap
+    // Initialize the runtime
+    initRuntime(params);
+
+
+    print('re-linking');
+
+    // Link the primitives with each other
+    for (var i = 0; i < irList.length; ++i)
+    {
+        var ir = irList[i];
+
+        //print('Linking machine code for: "' + getSrcName(i) + '"');
+
+        linkIR(ir, params);
+    }
+
+    print('Tachyon init complete');
+
+
 
     // TODO: execute compiled units
 }
@@ -166,6 +184,8 @@ function compTachyon(allCode, params)
     }
 
     var irList = compSources(srcs, params);
+
+    return irList;
 }
 
 /**
@@ -274,5 +294,79 @@ function compSources(srcList, params)
 
     // Return the list of IR functions
     return irList;
+}
+
+/**
+Initialize the run-time components, including the context 
+and the global object.
+*/
+function initRuntime(params)
+{
+    print('Initializing run-time');
+
+    // Allocate a 64MB heap
+    var heapBlock = allocMachineCodeBlock(Math.pow(2, 26));
+    var heapAddr = getBlockAddr(heapBlock, 0);
+
+    // Get the heap initialization function
+    var initHeap = config.hostParams.staticEnv.getBinding('initHeap');
+
+    //print('creating bridge');
+
+    // Create a bridge to call the heap init function
+    var initHeapBridge = makeBridge(
+        initHeap,
+        ['void*'],
+        'void*'
+    );
+
+    //print('calling initHeap');
+
+    // Initialize the heap
+    var ctxPtr = initHeapBridge(asm.address([0,0,0,0]).getBytes(), heapAddr);
+
+    // Store the context pointer in the compilation parameters
+    config.hostParams.ctxPtr = ctxPtr;
+
+    // Get the string allocation function
+    var getStrObj = config.hostParams.staticEnv.getBinding('getStrObj');
+
+    // Create a bridge to call the string allocation function
+    var getStrObjBridge = makeBridge(
+        getStrObj,
+        ['void*'],
+        'void*'
+    );
+
+    /**
+    Function to allocate a string object on the heap
+    */
+    function getStrObjFunc(jsStr)
+    {
+        assert (jsStr.length < 4096);
+
+        var memBlock = allocMachineCodeBlock(8192);
+        var blockAddr = getBlockAddr(memBlock, 0);
+
+        for (var i = 0; i < jsStr.length; ++i)
+        {
+            var ch = jsStr.charCodeAt(i);
+
+            memBlock[2 * i] = ch & 0xFF;
+            memBlock[2 * i + 1] = ch >> 8;
+        }
+
+        memBlock[2 * i] = 0;
+        memBlock[2 * i + 1] = 0;
+
+        var strObj = getStrObjBridge(ctxPtr, blockAddr);
+
+        freeMachineCodeBlock(memBlock);
+
+        return strObj;
+    }
+
+    // Store the string allocatiom function in the compilation parameters
+    config.hostParams.getStrObj = getStrObjFunc;
 }
 

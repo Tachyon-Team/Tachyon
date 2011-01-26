@@ -461,7 +461,7 @@ CProxy.prototype.genProxy = function ()
 
     sourceStr += '}\n';
     
-    print(sourceStr);
+    //print(sourceStr);
 
     // Compile the source string into an IR function
     var func = compileSrcString(sourceStr, config.hostParams);
@@ -497,6 +497,9 @@ function makeBridge(
     // Callable bridge function
     function bridge(ctxPtr)
     {
+        //print(ctxPtr);
+        //print(funcAddr.getBytes());
+
         var argArray = [];
         for (var i = 1; i < arguments.length; ++i)
             argArray.push(arguments[i]);
@@ -510,6 +513,8 @@ function makeBridge(
                 ctxPtr
             ].concat(argArray)
         );
+
+        //print(result);
 
         return result;
     };

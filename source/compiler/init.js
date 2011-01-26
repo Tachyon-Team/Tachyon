@@ -19,15 +19,8 @@ function initialize()
 
     //config.hostParams.print = print;
 
-    // Create the context and object layouts
-    makeContextLayout(config.hostParams);
-    makeObjectLayouts(config.hostParams);
-
-    // Initialize the FFI functions
-    initFFI(config.hostParams);
-
-    // Compile the Tachyon primitives
-    compTachyon(false, config.hostParams);
+    // Compile and initialize the Tachyon primitives
+    bootstrap(false, config.hostParams);
 }
 
 /**

@@ -373,7 +373,7 @@ x86.Assembler.prototype.linked = function (name, linkValue, width)
 
     assert(typeof(name) === "string", "'name' argument must be a string");
     assert(typeof(linkValue) === "function", "'linkValue' argument must be a function");
-    assert(typeof(width) === "number", "'name' argument must be a string");
+    assert(typeof(width) === "number", "'width' argument must be a number");
 
     that.name = name;
     that.linkValue = linkValue;
