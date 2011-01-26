@@ -178,8 +178,6 @@ irToAsm.translator = function (config, params)
 
     that.asm = new x86.Assembler(config.target);
     that.asm.codeBlock.bigEndian = false;
-    that.strings = {};
-    that.stringNb = 0;
     that.fct = null;
 
     that.config = config;
@@ -195,9 +193,6 @@ irToAsm.translator = function (config, params)
 
 /** @private assembler object */
 irToAsm.translator.prototype.asm = null;
-/** @private known strings so far */
-irToAsm.translator.prototype.strings = {};
-irToAsm.translator.prototype.stringNb = 0;
 
 /** 
 Generate the corresponding assembly code for the function in the order
@@ -227,11 +222,8 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         }
     };
 
-    // Add the entry point in the code stream
-    this.func_prelude(this.fct);
-
     // Start the code generation
-    this.func_init();
+    this.prelude();
 
     blockList.forEach(function (block)
     {
@@ -315,41 +307,7 @@ irToAsm.translator.prototype.stringValue = function (s)
     );
 };
 
-irToAsm.translator.prototype.call_self = function (offset)
-{
-    if (offset === undefined)
-    {
-        offset = 5;
-    }
-    const SELF = this.asm.labelObj();
-    const retValReg = this.config.retValReg;
-
-    this.asm.
-    call(SELF).
-    label(SELF).
-    pop(retValReg).
-    add($(offset),retValReg).
-    ret().
-    genListing("ADDR RETRIEVAL");
-};
-
-irToAsm.translator.prototype.func_prelude = function (fct)
-{
-    // Add the call self instructions to retrieve
-    // the address of the function until the move
-    // instruction supporting a link object is done
-    // TODO: Remove when function address is retrieved at link
-    // time
-    this.asm.
-    label(this.label(fct, "<func \"" + fct.funcName + "\">"));
-    this.call_self();
-
-    // Add an entry point for static calls
-    var lobj = irToAsm.getEntryPoint(fct, undefined, this.config);
-    this.asm.provide(lobj);
-};
-
-irToAsm.translator.prototype.func_init = function ()
+irToAsm.translator.prototype.prelude = function ()
 {
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
@@ -358,6 +316,10 @@ irToAsm.translator.prototype.func_init = function ()
     const byteLength = this.config.stack.width() >> 3;
     const cstack = this.asm.target === x86.target.x86 ? ESP : reg.rsp;
     var spillNb = this.fct.regAlloc.spillNb;
+
+    // Add an entry point for static calls
+    var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.config);
+    this.asm.provide(lobj);
 
     if (this.fct.cProxy)
     {
@@ -399,59 +361,6 @@ irToAsm.translator.prototype.func_init = function ()
     {
         this.asm.sub($(spillNb*byteLength), this.config.stack);
     }
-};
-
-irToAsm.translator.prototype.init = function (mainFct)
-{
-    const stack = this.config.stack;
-
-    const retValReg = this.config.retValReg;
-    const contextObjReg = this.config.context;
-
-    var i;
-
-    // Let's preserve all registers from the caller
-    // except xAX (used for return value)
-    if (this.asm.is64bitMode())
-    {
-        for (i=1; i < 16; ++i)
-        {
-            this.asm.push(reg.reg64(i));
-        }
-    } else
-    {
-        for (i=1; i < 8; ++i)
-        {
-            this.asm.push(reg.reg32(i));
-        }
-    }
-
-    this.asm.
-    genListing("INIT").
-
-    // Retrieve the main function address
-    call(this.label(mainFct, "<func MAIN>")).
-
-    // Call the main function
-    call(retValReg);
-
-    // Let's restore all registers for the caller
-    // except xAX (used for return value)
-    if (this.asm.is64bitMode())
-    {
-        for (i=15; i >= 1; --i)
-        {
-            this.asm.pop(reg.reg64(i));
-        }
-    } else
-    {
-        for (i=7; i >= 1; --i)
-        {
-            this.asm.pop(reg.reg32(i));
-        }
-    }
-
-    this.asm.ret();
 };
 
 //=============================================================================
