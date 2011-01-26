@@ -9,9 +9,14 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 /**
 Compile and run a source file, returning the result.
 */
-function compileAndRunSrc(srcFile)
+function compileAndRunSrc(srcFile, hostParams)
 {
-    var ir = compileSrcFile(srcFile, config.clientParams);
+    if (hostParams === true)
+        var params = config.hostParams;
+    else
+        var params = config.clientParams;
+
+    var ir = compileSrcFile(srcFile, params);
 
     var bridge = makeBridge(
         ir,
@@ -19,7 +24,7 @@ function compileAndRunSrc(srcFile)
         'int'
     );
 
-    var result = bridge(config.clientParams.ctxPtr);
+    var result = bridge(params.ctxPtr);
 
     return result;
 }
@@ -28,11 +33,11 @@ function compileAndRunSrc(srcFile)
 Generate a unit test for a source file, testing the return value
 obtained after execution.
 */
-function genTest(srcFile, expectResult)
+function genTest(srcFile, expectResult, hostParams)
 {
     return function()
     {
-        var result = compileAndRunSrc(srcFile);
+        var result = compileAndRunSrc(srcFile, hostParams);
 
         assert (
             result === expectResult,
@@ -109,4 +114,10 @@ Nested loops unit test.
 */
 tests.nested_loops = tests.testSuite();
 tests.nested_loops.main = genTest('programs/nested_loops/nested_loops.js', 503);
+
+/**
+Linked list unit test.
+*/
+tests.linkedlist = tests.testSuite();
+tests.linkedlist.main = genTest('programs/linkedlist/linkedlist.js', 10, true);
 
