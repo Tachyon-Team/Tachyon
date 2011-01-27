@@ -68,6 +68,11 @@ x86.Assembler = function (target)
     this.target     = target;
 };
 
+x86.Assembler.prototype.isImmediate = function (obj)
+{
+    return obj.type === x86.type.IMM_VAL || obj.type === x86.type.LINK;
+}
+
 /** Returns whether the current compilation target is x86_64 */
 x86.Assembler.prototype.is64bitMode = function ()
 {
