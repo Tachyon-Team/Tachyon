@@ -2105,12 +2105,21 @@ function exprToIR(context)
         }
 
         // Create the call instruction
-        var exprVal = insertCallIR(
-            lastContext,
-            new CallFuncInstr(
-                [funcVal, thisVal].concat(argVals)
-            )
-        );
+        try
+        {
+            var exprVal = insertCallIR(
+                lastContext,
+                new CallFuncInstr(
+                    [funcVal, thisVal].concat(argVals)
+                )
+            );
+        }
+
+        // If an error occurred, rethrow it with source code location information
+        catch (exc)
+        {
+            rethrowError(exc, context.astNode.loc.to_string());
+        }
 
         // Set the output
         context.setOutput(lastContext.getExitBlock(), exprVal);

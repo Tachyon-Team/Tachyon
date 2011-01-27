@@ -194,6 +194,17 @@ tests.loop_loop.main = genTest(
 );
 
 /**
+Loop with enough variables to force spilling of phi nodes.
+*/
+tests.loop_spills = tests.testSuite(); 
+tests.loop_spills.main = genTest(
+    'programs/loop_spills/loop_spills.js',
+    'foo',
+    [42],
+    122
+);
+
+/**
 Nested loops unit test.
 */
 tests.nested_loops = tests.testSuite();
@@ -227,13 +238,14 @@ tests.linked_list.main = genTest(
 );
 
 /**
-Loop with enough variables to force spilling of Phi nodes.
+String concatenation with another string.
 */
-tests.loop_spills = tests.testSuite(); 
-tests.loop_spills.main = genTest(
-    'programs/loop_spills/loop_spills.js',
+tests.str_cat_str = tests.testSuite(); 
+tests.str_cat_str.main = genTest(
+    'programs/str_cat_str/str_cat_str.js',
     'foo',
-    [42],
-    122
+    [],
+    0,
+    true
 );
 

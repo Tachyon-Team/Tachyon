@@ -742,6 +742,13 @@ function addGeneral(v1, v2)
     "tachyon:static";
     "tachyon:nothrow";
 
+    // If both arguments are strings
+    if (boxIsString(v1) && boxIsString(v2))
+    {
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
+
     // TODO
     return UNDEFINED;
 }

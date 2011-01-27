@@ -36,74 +36,15 @@ function initStrTable()
 }
 
 /**
-Compare two raw UTF-16 strings by iterating over 16 bit code units
-This conforms to section 11.8.5 of the ECMAScript 262 specification
-NOTE: this is used to find strings in the hash consing table
+Given a string object, try to find the same string in the hash consing
+table. If found, a reference to that string is returned. Otherwise, the
+string is added to the hash table and the reference to that string is
+returned.
 */
-function streq(strObj, rawStr)
+function getTableStr(strObj)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:arg rawStr rptr";
-    "tachyon:ret bool";
-
-    // For each character to be compared
-    for (var i = pint(0);; i += pint(1))
-    {
-        var ch1 = get_str_data(strObj, i);
-
-        var ch2 = iir.load(IRType.u16, rawStr, pint(2) * i);
-
-        if (ch1 !== ch2)
-            return FALSE_BOOL;
-        
-        if (ch1 === u16(0))
-            break;
-    }
-
-    // The strings are equal
-    return TRUE_BOOL;
-}
-
-/**
-Allocate/get a reference to a string object containing the given string data
-@param rawStr pointer to raw UTF-16 string data
-*/
-function getStrObj(rawStr)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg rawStr rptr";
-
-    //
-    // Hash code computation
-    //
-
-    // Initialize the hash code to 0
-    var hashCode = u32(0);
-
-    // For each character, update the hash code
-    for (var index = pint(0); true; index = index + pint(1))
-    {
-        // Get the current character
-        var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
-
-        // Convert the character value to the pint type
-        var ch = iir.icast(IRType.u32, ch);
-
-        // If this is the null terminator, break out of the loop
-        if (ch === u32(0))
-            break;
-
-        // Update 
-        hashCode = (((hashCode << u32(8)) + ch) & u32(536870911)) % u32(426870919);
-    }
-
-    // Store the string length (excluding the null terminator)
-    var strLen = index;
-
-    //printInt(boxInt(strLen));
-    //printInt(boxInt(hashCode));
 
     //
     // Hash table lookup
@@ -121,6 +62,9 @@ function getStrObj(rawStr)
         get_strtbl_tblsize(strtbl)
     );
 
+    // Get the hash code from the string object
+    var hashCode = get_str_hash(strObj);
+
     // Get the hash table index for this hash value
     // compute this using unsigned modulo to always obtain a positive value
     var hashIndex = iir.icast(
@@ -128,7 +72,11 @@ function getStrObj(rawStr)
         iir.icast(IRType.u32, hashCode) % iir.icast(IRType.u32, tblSize)
     );
 
-    //printInt(boxInt(hashIndex));
+    /*
+    print("Hash lookup");
+    print(strObj);
+    printInt(boxInt(hashIndex));
+    */
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -144,40 +92,14 @@ function getStrObj(rawStr)
         }
 
         // Otherwise, if this is the string we want
-        else if (streq(strVal, rawStr))
+        else if (streq(strVal, strObj))
         {
-            // Return a pointer to the string we found
+            // Return a reference to the string we found in the table
             return strVal;
         }
 
         // Move to the next hash table slot
         hashIndex = (hashIndex + pint(1)) % tblSize;
-    }
-
-    //
-    // String object allocation
-    //
-
-    // Allocate a string object
-    var strObj = alloc_str(strLen + pint(1));
-    
-    // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.i32, strLen));
-
-    // Set the hash code in the string object
-    set_str_hash(strObj, iir.icast(IRType.u32, hashCode));
-
-    //printInt(boxInt(strLen));
-    //printInt(boxInt(iir.icast(IRType.pint, hashCode)));
-
-    // Copy the character data into the string object
-    for (var index = pint(0); index <= strLen; index = index + pint(1))
-    {
-        // Get the current character
-        var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
-
-        // Copy the character into the string object
-        set_str_data(strObj, index, ch);
     }
 
     //
@@ -200,13 +122,11 @@ function getStrObj(rawStr)
     if (numStrings * STR_TBL_MAX_LOAD_DENOM >
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
-        //printInt(1337);
-
         // Extend the string table
         extStrTable(strtbl, tblSize, numStrings);
     }
 
-    // Return a reference to the string object
+    // Return a reference to the string object passed as argument
     return strObj;
 }
 
@@ -287,6 +207,162 @@ function extStrTable(curTbl, curSize, numStrings)
 
     // Update the string table reference in the context
     set_ctx_strtbl(ctx, newTbl);
+}
+
+/**
+Find/allocate a string object in the hash consing table from raw string data.
+*/
+function getStrObj(rawStr, strLen)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg rawStr rptr";
+    "tachyon:arg strLen pint";
+
+    // Create a string object from the raw string data
+    var strObj = rawStrToObj(rawStr, strLen);
+
+    // Find/put the string in the string table
+    var str = getTableStr(strObj);
+
+    // Return the string from the string table
+    return str;
+}
+
+/**
+Compare two string objects by iterating over UTF-16 code units
+This conforms to section 11.8.5 of the ECMAScript 262 specification
+NOTE: this is used to find strings in the hash consing table
+*/
+function streq(str1, str2)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret bool";
+
+    // Get the length of both strings
+    var len1 = iir.icast(IRType.pint, get_str_len(str1));
+    var len2 = iir.icast(IRType.pint, get_str_len(str2));
+
+    // If the lengths aren't equal, the strings aren't equal
+    if (len1 !== len2)
+        return FALSE_BOOL;
+
+    // For each character to be compared
+    for (var i = pint(0); i < len1; i += pint(1))
+    {
+        var ch1 = get_str_data(str1, i);
+        var ch2 = get_str_data(str2, i);
+
+        if (ch1 !== ch2)
+            return FALSE_BOOL;
+    }
+
+    // The strings are equal
+    return TRUE_BOOL;
+}
+
+/**
+Concatenate the strings from two string objects
+*/
+function strcat(str1, str2)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // Get the length of both strings
+    var len1 = iir.icast(IRType.pint, get_str_len(str1));
+    var len2 = iir.icast(IRType.pint, get_str_len(str2));
+
+    // Compute the length of the new string
+    var newLen = len1 + len2;
+
+    // Allocate a string object
+    var newStr = alloc_str(newLen);
+    
+    // Set the string length in the new string object
+    set_str_len(newStr, iir.icast(IRType.i32, newLen));
+
+    // Copy the character data from the first string
+    for (var i = pint(0); i < len1; i += pint(1))
+    {
+        var ch = get_str_data(str1, i);
+        set_str_data(newStr, i, ch);
+    }
+
+    // Copy the character data from the second string
+    for (var i = pint(0); i < len2; i += pint(1))
+    {
+        var ch = get_str_data(str2, i);
+        set_str_data(newStr, len1 + i, ch);
+    }
+
+    // Compute the hash code for the new string
+    compStrHash(newStr);
+
+    // Find/add the concatenated string in the string table
+    return getTableStr(newStr);
+}
+
+/**
+Create a string object from raw string data
+*/
+function rawStrToObj(rawStr, strLen)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg rawStr rptr";
+    "tachyon:arg strLen pint";
+
+    // Allocate a string object
+    var strObj = alloc_str(strLen);
+    
+    // Set the string length in the string object
+    set_str_len(strObj, iir.icast(IRType.i32, strLen));
+
+    // Copy the character data into the string object
+    for (var index = pint(0); index < strLen; index += pint(1))
+    {
+        // Get the current character
+        var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
+
+        // Copy the character into the string object
+        set_str_data(strObj, index, ch);
+    }
+
+    // Compute the hash code for the new string
+    compStrHash(strObj);
+
+    // Return the string object
+    return strObj;
+}
+
+/**
+Compute and set the hash code for a string object
+*/
+function compStrHash(strObj)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // Get the string length
+    var len = iir.icast(IRType.pint, get_str_len(strObj));
+
+    // Initialize the hash code to 0
+    var hashCode = u32(0);
+
+    // For each character, update the hash code
+    for (var i = pint(0); i < len; i += pint(1))
+    {
+        // Get the current character
+        var ch = iir.icast(IRType.u32, get_str_data(strObj, i));
+
+        // Update the hash code
+        hashCode = (((hashCode << u32(8)) + ch) & u32(536870911)) % u32(426870919);
+    }
+
+    // Set the hash code in the string object
+    set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
 }
 
 /**

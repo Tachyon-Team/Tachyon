@@ -397,7 +397,7 @@ function makeObjectLayouts(params)
     // Precomputed hash code
     strLayout.addField(
         'hash',
-        IRType.u32
+        IRType.i32
     );
 
     // Character data (UTF-16)

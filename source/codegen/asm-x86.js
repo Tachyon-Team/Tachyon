@@ -1153,7 +1153,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             break;
 
         case x86.type.LINK:
-            x86.error("unimplemented for opnd of type LINK");
+            error("unimplemented for opnd of type LINK");
             break;
 
         case x86.type.MEM:
