@@ -351,14 +351,47 @@ function compStrHash(strObj)
     // Initialize the hash code to 0
     var hashCode = u32(0);
 
+    // Initialize the integer value to 0
+    var intVal = u32(0);
+
+    // Flag indicating that the string represents an integer
+    var isInt = TRUE_BOOL;
+
     // For each character, update the hash code
     for (var i = pint(0); i < len; i += pint(1))
     {
         // Get the current character
         var ch = iir.icast(IRType.u32, get_str_data(strObj, i));
 
+        // If this character is a digit
+        if (ch >= u32(48) && ch <= u32(57))
+        {
+            // Update the number value
+            var digitVal = ch - u32(48);
+            intVal = u32(10) * intVal + digitVal;
+        }
+        else
+        {
+            // This string does not represent a number
+            isInt = FALSE_BOOL;
+        }
+
         // Update the hash code
         hashCode = (((hashCode << u32(8)) + ch) & u32(536870911)) % u32(426870919);
+    }
+
+    // If this is an integer value within the supported range
+    if (len > pint(0) && isInt && intVal < HASH_CODE_STR_OFFSET)
+    {
+        printInt(1337);
+
+        // Set the hash code to the integer value
+        hashCode = intVal;
+    }
+    else
+    {
+        // Offset the string hash code to indicate this is not an integer value
+        hashCode += HASH_CODE_STR_OFFSET;
     }
 
     // Set the hash code in the string object
@@ -408,5 +441,51 @@ function freeCString(strPtr)
     free(strPtr);
 
     return;
+}
+
+/**
+Convert a boxed value to a string
+*/
+function boxToString(val)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // TODO: int to string conversion
+    /*
+    if (boxIsInt(val))
+    {
+    }
+    */
+
+    if (boxIsString(val))
+    {
+        return val;
+    }
+
+    // TODO: call toString on objects
+    /*
+    if (boxIsObj(val))
+    {
+    }
+    */
+
+    switch (val)
+    {
+        case UNDEFINED:
+        return 'undefined';
+
+        case null:
+        return 'null';
+
+        case true:
+        return 'true';
+
+        case false:
+        return 'false';
+
+        default:
+        error('unsupported value type in boxToString');
+    }
 }
 

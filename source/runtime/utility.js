@@ -44,35 +44,19 @@ function print(val)
     "tachyon:static";
     "tachyon:noglobal";
 
+    // FIXME: until we have int to string conversion
     if (boxIsInt(val))
     {
         printInt(val);
+        return;
     }
-    else if (boxIsString(val))
-    {
-        var cstr = makeCString(val);
-        printStr(cstr);
-        freeCString(cstr);
-    }
-    else if (val === UNDEFINED)
-    {
-        print('undefined');
-    }
-    else if (val === null)
-    {
-        print('null');
-    }
-    else if (val === true)
-    {
-        print('true');
-    }
-    else if (val === false)
-    {
-        print('false');
-    }
-    else
-    {
-        print('unsupported value type in print');
-    }
+
+    // Convert the value to a string
+    var strVal = boxToString(val);
+
+    // Print the string
+    var cstr = makeCString(val);
+    printStr(cstr);
+    freeCString(cstr);
 }
 
