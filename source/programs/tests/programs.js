@@ -238,6 +238,17 @@ tests.linked_list.main = genTest(
 );
 
 /**
+String equality and non-equality.
+*/
+tests.str_equality = tests.testSuite(); 
+tests.str_equality.main = genTest(
+    'programs/str_equality/str_equality.js',
+    'foo',
+    [],
+    0
+);
+
+/**
 String concatenation with another string.
 */
 tests.str_cat_str = tests.testSuite(); 
@@ -245,7 +256,6 @@ tests.str_cat_str.main = genTest(
     'programs/str_cat_str/str_cat_str.js',
     'foo',
     [],
-    0,
-    true
+    0
 );
 

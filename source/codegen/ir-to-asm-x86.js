@@ -1007,14 +1007,14 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
-               (opnds[0].type === x86.type.IMM_VAL &&
-               opnds[1].type === x86.type.IMM_VAL))
+               (tltor.asm.isImmediate(opnds[0]) &&
+                tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL)
+    else if (tltor.asm.isImmediate(opnds[1]))
     {
         tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
@@ -1042,14 +1042,14 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
-               (opnds[0].type === x86.type.IMM_VAL &&
-               opnds[1].type === x86.type.IMM_VAL))
+               (tltor.asm.isImmediate(opnds[0]) &&
+                tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL)
+    else if (tltor.asm.isImmediate(opnds[1]))
     {
         tltor.asm.cmp(opnds[1], opnds[0], this.uses[1].type.getSizeBits(tltor.params.target));
     }
