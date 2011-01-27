@@ -172,7 +172,10 @@ backend.compileIRToCB = function (ir, params)
         //print(translator.asm.codeBlock.listingString(startIndex));
         //startIndex = translator.asm.codeBlock.code.length;
 
-        assert(allocator.validate(cfg, irToAsm.config));
+        assert(
+            allocator.validate(cfg, irToAsm.config),
+            'validation failed'
+        );
         /*
         print("******* Mapping validation **************");
 

@@ -169,7 +169,10 @@ Returns a new translator object to translate IR to Assembly.
 */
 irToAsm.translator = function (config, params)
 {
-    assert(config !== undefined);
+    assert(
+        config !== undefined,
+        'invalid translator config'
+    );
 
     var that = Object.create(irToAsm.translator.prototype);
 
@@ -246,7 +249,11 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
                 // Replace constants by immediate values
                 opnds = instr.regAlloc.opnds.map(replace);
 
-                assert(instr.genCode !== undefined);
+                assert(
+                    instr.genCode !== undefined,
+                    'genCode method not present'
+                );
+
                 instr.genCode(that, opnds);
             }
         });
@@ -418,9 +425,11 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     if (argIndex < argRegNb)
     {
         // The argument is in a register
-        assert(argsReg[argIndex] === dest,
-               "arg: dest register '" + dest + 
-               "' unexpected for argument index '" + argIndex + "'");
+        assert(
+            argsReg[argIndex] === dest,
+            "arg: dest register '" + dest + 
+            "' unexpected for argument index '" + argIndex + "'"
+        );
     } 
     else
     {
@@ -1210,8 +1219,10 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                 'invalid uses for call to makeClos'
             );
 
-            assert(dest !== null, "makeClose should have a destination register");
-
+            assert(
+                dest !== null,
+                "makeClose should have a destination register"
+            );
 
             const irfunc = opnds[2];
             const lobj   = irToAsm.getEntryPoint(irfunc, "default", config).clone();
@@ -1252,10 +1263,16 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     var opnd;
 
     // Make sure we still have a register left for scratch
-    assert(argRegNb < avbleRegNb);
+    assert (
+        argRegNb < avbleRegNb,
+        'no register left for scratch'
+    );
 
     // Make sure it is not used to pass arguments
-    assert (!(scratchIndex in tltor.config.argsIndex));
+    assert (
+        !(scratchIndex in tltor.config.argsIndex),
+        'invalid scratch register index'
+    );
 
     // Allocate space on stack for extra args
     if (spillOffset > 0)
@@ -1351,7 +1368,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             opnds[0].type === x86.type.REG || 
             opnds[0].type === x86.type.MEM,
             "Invalid CallInstr function operand '" + opnds[0] + "'"
-        )
+        );
         
         // Call function address
         tltor.asm.call(funcObjReg);
@@ -1405,9 +1422,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     assert(stack.width() === 32, "Only 32-bits FFI calls are supported for now"); 
 
-    assert(altStack !== scratchReg);
-    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r); });
-    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r); });
+    assert(altStack !== scratchReg, 'alt stack reg is the same as scratch reg');
+    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
+    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
 
     // Iteration
     var i;
@@ -1506,7 +1523,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         }
         else
         {
-            error("invalid opnd type for ffi function call: ", opnd.type);
+            error("invalid opnd type for ffi function call: " + opnd.type);
         }
     }
 
