@@ -115,6 +115,18 @@ tests.basic_many_args.main = genTest(
 );
 
 /**
+Passing arguments and getting a return value from an FFI function
+*/
+tests.ffi_sum = tests.testSuite();
+tests.ffi_sum.main = genTest(
+    'programs/ffi_sum/ffi_sum.js',
+    'f',
+    [10,15],
+    25,
+    true
+);
+
+/**
 This test is meant to ensure that values are correctly merged after 
 conditionals and that local variable values are properly preserved across
 calls.

@@ -44,7 +44,7 @@ function print(val)
     "tachyon:static";
     "tachyon:noglobal";
 
-    // FIXME: until we have int to string conversion
+    // FIXME: until we have int to string conversion in boxToString
     if (boxIsInt(val))
     {
         printInt(val);
