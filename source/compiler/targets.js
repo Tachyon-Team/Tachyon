@@ -14,9 +14,15 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 function Target(cfgObj)
 {
-    assert (cfgObj.endian === 'little' || cfgObj.endian === 'big');
+    assert (
+        cfgObj.endian === 'little' || cfgObj.endian === 'big',
+        'invalid endian specified'
+    );
 
-    assert (cfgObj.ptrSizeBits === 32 || cfgObj.ptrSizeBits === 64);
+    assert (
+        cfgObj.ptrSizeBits === 32 || cfgObj.ptrSizeBits === 64,
+        'invalid pointer size specified'
+    );
 
     /**
     Back-end name    
@@ -46,16 +52,26 @@ function Target(cfgObj)
     Pointer size of the target platform, in bytes
     @field
     */
-    this.ptrSizeBytes = this.ptrSizeBits / 8;    
+    this.ptrSizeBytes = this.ptrSizeBits >> 3;    
 }
 
 /**
-Debug, x86, 32-bit configuration
+x86, 32-bit configuration
 */
 Target.x86_32 = new Target({
     backend         : 'backendX86',
     backendCfg      : {/*back-end specific, reg alloc config, etc.*/},
     endian          : 'little',
     ptrSizeBits     : 32
+});
+
+/**
+x86, 64-bit configuration
+*/
+Target.x86_64 = new Target({
+    backend         : 'backendX86',
+    backendCfg      : {/*back-end specific, reg alloc config, etc.*/},
+    endian          : 'little',
+    ptrSizeBits     : 64
 });
 

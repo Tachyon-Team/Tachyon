@@ -12,37 +12,45 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    
-    var memBlock = allocMachineCodeBlock(4096);
-    
+    bootstrap(true, config.bootParams);
+
+    /*
+    var memBlock = allocMachineCodeBlock(16384);    
     var blockAddr = getBlockAddr(memBlock, 0);
-    var b0 = blockAddr[0];
-    var b1 = blockAddr[1];
-    var b2 = blockAddr[2];
-    var b3 = blockAddr[3];
 
-    shellCommand("cp test_objs.js test_repl.js");
-    shellCommand("sed -i '' -e 's/b0/" + b0 + "/g' test_repl.js");
-    shellCommand("sed -i '' -e 's/b1/" + b1 + "/g' test_repl.js");
-    shellCommand("sed -i '' -e 's/b2/" + b2 + "/g' test_repl.js");
-    shellCommand("sed -i '' -e 's/b3/" + b3 + "/g' test_repl.js");
+    var ir = compileSrcFile('test_objs.js', config.hostParams);
 
-    var func = compileFileToJSFunc('test_repl.js', config.hostParams);
-    var result = func();
-    func.free();
+    var bridge = makeBridge(
+        ir.getChild('proxy'),
+        ['void*'],
+        'int'
+    );
 
-    //print('result: ' + result);
-    print('result: ' + (result >> 2));
+    var result = bridge(blockAddr);
+
+    print('result: ' + result);
     print('');
-
-    //print('context size: ' + config.hostParams.memLayouts.ctx.getSize());
 
     for (var i = 0; i < 4096; ++i)
     {
         if (memBlock[i] != 0)
             print(i + ': ' + memBlock[i]);
     }
+    */
     
+    /*    
+    var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
+
+    var bridge = makeBridge(
+        ir.getChild('fib'),
+        ['int'],
+        'int'
+    );
+
+    var result = bridge(10);
+
+    print(result);
+    */
 
     /*
     var ast = parse_src_file('test_ffi.js');
@@ -75,14 +83,10 @@ function testIR()
     */
 
     /*
-    var codeblock = backend.compileIRToCB(ir);    
-    //print(backend.listing(codeblock));
-    var result = backend.executeCB(codeblock);
+    var func = compileSrcFile('programs/fib/fib.js', config.hostParams);
+    print(func);
+    */    
 
-    //print('result: ' + (result >> 2));    
-    print('result: ' + result);
-    */
-    
     /*
     var func = config.hostParams.staticEnv.getBinding('lt');
     print(func);

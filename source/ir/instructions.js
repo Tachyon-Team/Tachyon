@@ -150,7 +150,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction has a non-void output print its output name
-    if (this.type != IRType.none)
+    if (this.type !== IRType.none)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic;
@@ -160,7 +160,7 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
     {
         output += " " + inFormatFn(this, i);
 
-        if (i != this.uses.length - 1)
+        if (i !== this.uses.length - 1)
             output += ",";
     }
 
@@ -236,7 +236,7 @@ IRInstr.prototype.addDest = function (dest)
         'invalid dest value'
     );
 
-    if (this.dests.length == 0)
+    if (this.dests.length === 0)
         this.dests = [dest];
     else
         arraySetAdd(this.dests, dest);
@@ -307,7 +307,7 @@ function PhiInstr(values, preds)
 {
     // Ensure that each value has one associated predecessor
     assert (
-        values.length == preds.length,
+        values.length === preds.length,
         'must have one predecessor for each phi use'
     );
 
@@ -364,7 +364,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = "";
 
     // If this instruction's type is not void, print its output name
-    if (this.type != IRType.none)
+    if (this.type !== IRType.none)
         output += outFormatFn(this) + ' = ';
 
     output += this.mnemonic + ' ';
@@ -373,7 +373,7 @@ PhiInstr.prototype.toString = function (outFormatFn, inFormatFn)
     {
         output += phiInFormatFn(this, i);
 
-        if (i != this.uses.length - 1)
+        if (i !== this.uses.length - 1)
             output += ", ";
     }
 
@@ -481,6 +481,23 @@ PhiInstr.prototype.getIncoming = function (pred)
 };
 
 /**
+Get the predecessor block for a given value 
+*/
+PhiInstr.prototype.getPredecessor = function (value)
+{
+    for (var i = 0; i < this.uses.length; ++i)
+    {
+        if (this.uses[i] === value)
+            return this.preds[i];
+    }
+
+    assert (
+        false,
+        'cannot get predecessor for value, invalid value'
+    );        
+};
+
+/**
 Make a shallow copy of the instruction
 */
 PhiInstr.prototype.copy = function ()
@@ -575,10 +592,8 @@ function instrMaker(
         for (; curIndex < argArray.length && argArray[curIndex] instanceof BasicBlock; ++curIndex)
             branchTargets.push(argArray[curIndex]);
 
-        assert (
-            curIndex == argArray.length,
-            'invalid arguments passed to ' + mnemonic + ' constructor'
-        );
+        if (curIndex !== argArray.length)
+            error('invalid arguments passed to ' + mnemonic + ' constructor');
     }
 
     /**
@@ -652,12 +667,10 @@ function instrMaker(
         // If an error occurs, rethrow it, including the instruction name
         catch (errorVal)
         {
-            var errorStr = 
-                'Invalid arguments to "' + mnemonic + '" instruction: ' +
-                errorVal.toString();
-            ;
-
-            error(errorStr);
+            rethrowError(
+                errorVal,
+                'Invalid arguments to "' + mnemonic + '" instruction'
+            );
         }
 
         // If the mnemonic name is not set, call the name setting function
@@ -717,7 +730,7 @@ Function to validate the length of an input array
 instrMaker.validCount = function (name, array, minExpected, maxExpected)
 {
     var expectedStr;
-    if (minExpected == maxExpected)
+    if (minExpected === maxExpected)
         expectedStr = String(minExpected);
     else if (maxExpected !== undefined)
         expectedStr = 'between ' + minExpected + ' and ' + maxExpected;
@@ -1304,7 +1317,8 @@ var RetInstr = instrMaker(
     'ret',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumInputs(inputVals, 1, 1);
+        // Can either return nothing or one value
+        instrMaker.validNumInputs(inputVals, 0, 1);
         
         this.type = IRType.none;
     }
@@ -1474,7 +1488,7 @@ var CallFuncInstr = instrMaker(
         if (inputVals[0] instanceof IRFunction)
         {
             assert (
-                inputVals.length  - 2 == inputVals[0].getNumArgs(),
+                inputVals.length  - 2 === inputVals[0].getNumArgs(),
                 'direct calls do not support variable argument counts, got ' +
                 (inputVals.length - 2) + ' arguments, expected ' + 
                 inputVals[0].getNumArgs() + ' (' + inputVals[0].funcName + ')'
@@ -1546,11 +1560,13 @@ var CallFFIInstr = instrMaker(
         instrMaker.validNumBranches(branchTargets, 0, 0);
 
         assert (
-            inputVals[0] instanceof CFunction
+            inputVals[0] instanceof CFunction,
+            'FFI calls can only be made to static functions'
         );
 
         assert (
-            inputVals.length - 1 === inputVals[0].cArgTypes.length
+            inputVals.length - 1 === inputVals[0].cArgTypes.length,
+            'incorrect number of arguments to FFI function'
         );
 
         for (var i = 1; i < inputVals.length; ++i)
@@ -1784,7 +1800,7 @@ SetCtxInstr.prototype.writesMem = function () { return true; };
        register allocation.
 @augments IRInstr
 */
-function MoveInstr(from, to)
+function MoveInstr(from, to, interval)
 {
     // Set the mnemonic name for this instruction
     this.mnemonic = "move";
@@ -1794,6 +1810,16 @@ function MoveInstr(from, to)
     @field
     */
     this.uses = [from, to];
+
+    /**
+    Field used for register allocation
+    */
+    this.regAlloc = Object.create(this.regAlloc);
+
+    /**
+    Store the interval that has introduced this move
+    */
+    this.regAlloc.interval = (interval === undefined) ? null : interval;
 }
 MoveInstr.prototype = new IRInstr();
 
@@ -1810,10 +1836,16 @@ MoveInstr.prototype.toString = function ()
     {
         output += this.uses[i];
 
-        if (i != this.uses.length - 1)
+        if (i !== this.uses.length - 1)
         {
             output += ", ";
         }
+    }
+
+    if (this.regAlloc.interval !== null && 
+        this.regAlloc.interval.instr !== null)
+    {
+        output += " -- SSA Temp: " + this.regAlloc.interval.instr.getValName();
     }
 
     return output;

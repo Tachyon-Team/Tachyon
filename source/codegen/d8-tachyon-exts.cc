@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-extensions.cc", Time-stamp: <2010-06-18 13:35:20 feeley> */
+/* File: "d8-extensions.cc", Time-stamp: <2011-01-20 15:48:04 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -328,6 +328,60 @@ v8::Handle<v8::Value> freeMemoryBlock(const v8::Arguments& args)
     }
 }
 
+// Convert an array of bytes to a value
+template <class T> T arrayToVal(const v8::Value* arrayVal)
+{
+    //i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(arrayVal);
+
+    const v8::Local<v8::Object> jsObj = arrayVal->ToObject();
+
+    T val;
+
+    for (size_t i = 0; i < sizeof(T); ++i)
+    {
+        uint8_t* bytePtr = (uint8_t*)(&val) + i;
+
+        if (!jsObj->Has(i))
+        {
+            printf("Error in arrayToVal -- array does not match value size\n");
+            exit(1);
+        }
+
+        const v8::Local<v8::Value> jsVal = jsObj->Get(i);        
+
+        int intVal = jsVal->Int32Value();
+
+        if (intVal < 0 || intVal > 255)
+        {
+            printf("Error in arrayToVal -- value outside of byte range\n");
+            exit(1);
+        }
+
+        *bytePtr = intVal;
+    }
+
+    return val;
+}
+
+// Convert a value to an array of bytes
+template <class T> v8::Handle<v8::Value> valToArray(T val)
+{
+    // Create an array to store the pointer data
+    i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(val));
+    ASSERT(array->IsJSArray() && array->HasFastElements());
+
+    // Write the value into the array, byte-per-byte
+    for (size_t i = 0; i < sizeof(val); ++i) 
+    {
+        uint8_t* bytePtr = ((uint8_t*)&val) + i;
+        i::Object* element = i::Smi::FromInt(*bytePtr);
+
+        ptrArray->SetFastElement(i, element);
+    }
+
+    return Utils::ToLocal(ptrArray);
+}
+
 v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
 {
     if (args.Length() < 1 || args.Length() > 2)
@@ -362,42 +416,19 @@ v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
     // Compute the address
     uint8_t* address = blockPtr + idxVal;
 
-    // Create an array to store the pointer data
-    i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(address));
-    ASSERT(array->IsJSArray() && array->HasFastElements());
-
-    // Write the pointer into the array, byte-per-byte
-    for (size_t i = 0; i < sizeof(address); ++i) 
-    {
-        uint8_t* bytePtr = ((uint8_t*)&address) + i;
-        i::Object* element = i::Smi::FromInt(*bytePtr);
-
-        ptrArray->SetFastElement(i, element);
-    }
-
-    return Utils::ToLocal(ptrArray);
+    return valToArray(address);
 }
 
 /*---------------------------------------------------------------------------*/
-
-void printHello()
-{
-    printf("Hello!\n");
-}
 
 void printInt(int val)
 {
     printf("%d\n", val);
 }
 
-void print2Ints(int val1, int val2)
+void printStr(const char* str)
 {
-    printf("%d and %d\n", val1, val2);
-}
-
-void print2Shorts(short val1, short val2)
-{
-    printf("%d and %d\n", (int)val1, (int)val2);
+    printf("%s\n", str);
 }
 
 int sum2Ints(int v1, int v2)
@@ -420,37 +451,235 @@ v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
 
     FPTR address = NULL;
 
-    if (strcmp(fName, "printHello") == 0)
-        address = (FPTR)(printHello);
+    if (strcmp(fName, "malloc") == 0)
+        address = (FPTR)(malloc);
+    else if (strcmp(fName, "free") == 0)
+        address = (FPTR)(free);
+    else if (strcmp(fName, "exit") == 0)
+        address = (FPTR)(exit);
     else if (strcmp(fName, "printInt") == 0)
         address = (FPTR)(printInt);
-    else if (strcmp(fName, "print2Ints") == 0)
-        address = (FPTR)(print2Ints);
-    else if (strcmp(fName, "print2Shorts") == 0)
-        address = (FPTR)(print2Shorts);
+    else if (strcmp(fName, "printStr") == 0)
+        address = (FPTR)(printStr);
     else if (strcmp(fName, "sum2Ints") == 0)
         address = (FPTR)(sum2Ints);
 
     if (address == NULL)
     {
-        printf("C function not found\n");
+        printf("C function not found: \"%s\"\n", fName);
         exit(1);
     }
 
-    // Create an array to store the pointer data
-    i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(address));
-    ASSERT(array->IsJSArray() && array->HasFastElements());
+    return valToArray(address);
+}
 
-    // Write the pointer into the array, byte-per-byte
-    for (size_t i = 0; i < sizeof(address); ++i) 
+// Union type for values returned by Tachyon functions
+union TachVal
+{
+    int intVal;
+    void* ptrVal;
+};
+
+// Pointer to a Tachyon function
+typedef int (*TACHYON_FPTR)(void*, ...);
+
+// Call a Tachyon function through its FFI
+// First arg: vector of strings describing arg types
+// Second arg: string describing return type
+// Third arg: function pointer
+// Fourth arg: context pointer
+// Other args: args to be passed to the function
+v8::Handle<v8::Value> callTachyonFFI(const v8::Arguments& args)
+{
+    const int MIN_ARG_COUNT = 4;
+
+    if (args.Length() < MIN_ARG_COUNT)
     {
-        uint8_t* bytePtr = ((uint8_t*)&address) + i;
-        i::Object* element = i::Smi::FromInt(*bytePtr);
-
-        ptrArray->SetFastElement(i, element);
+        printf("Error in callTachyonFFI -- %d or more argument expected\n", MIN_ARG_COUNT);
+        exit(1);
     }
 
-    return Utils::ToLocal(ptrArray);
+    // Get the array of argument types
+    const v8::Local<v8::Object> argTypeArray = args[0]->ToObject();
+
+    // Get the return type string
+    v8::String::Utf8Value retTypeStrObj(args[1]);
+    const char* retTypeStr = *retTypeStrObj;
+
+    // Get the function pointer
+    TACHYON_FPTR funcPtr = arrayToVal<TACHYON_FPTR>(*args[2]);
+    
+    // Get the context pointer
+    uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[3]);
+    
+    //printf("Got func ptr and ctx ptr\n");
+
+    // Allocate memory for the argument values
+    size_t numArgs = args.Length() - MIN_ARG_COUNT;
+    TachVal* tachArgs = new TachVal[numArgs];
+
+    // For each argument to be passed
+    for (size_t i = 0; i < numArgs; ++i)
+    {
+        // Get the argument object
+        const v8::Value* arg = *args[i + MIN_ARG_COUNT];
+
+        // If there is no argument type string for this argument
+        if (!argTypeArray->Has(i))
+        {
+            printf("Error in callTachyonFFI -- missing argument type string\n");
+            exit(1);
+        }
+
+        // Get the argument type string
+        v8::String::Utf8Value argTypeStrObj(argTypeArray->Get(i));
+        const char* argTypeStr = *argTypeStrObj;
+
+        // Get a reference to the Tachyon argument object
+        TachVal& tachArg = tachArgs[i];
+
+        // If this is an integer argument
+        if (!strcmp(argTypeStr, "int"))
+        {
+            if (arg->IsNumber())
+            {
+                tachArg.intVal = arg->Int32Value();
+                //printf("Arg %d = %d\n", i, tachArg.intVal);
+            }
+            else
+            {
+                printf("Error in callTachyonFFI -- integer arguments should be number values\n");
+                exit(1);
+            }
+        }
+
+        // If this is a pointer argument
+        else if (!strcmp(argTypeStr, "void*") || !strcmp(argTypeStr, "char*"))
+        {
+            if (arg->IsArray())
+            {
+                tachArg.ptrVal = arrayToVal<void*>(arg);
+                //printf("Arg %d = %p\n", i, tachArg.ptrVal);
+            }
+            else
+            {
+                printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
+                exit(1);
+            }
+        }
+
+        // Otherwise, if an unsupported type is passed    
+        else
+        {
+            printf("Error in callTachyonFFI -- unsupported argument type: \"%s\"\n", argTypeStr);
+            exit(1);
+        }
+    }
+
+    // Variable to store the return value
+    TachVal retVal;
+
+    // Switch on the number of arguments to pass
+    switch (numArgs)
+    {
+        case 0:
+        retVal.intVal = funcPtr(
+            ctxPtr
+        );
+        break;
+
+        case 1:
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal
+        );
+        break;
+
+        case 2:
+        retVal.intVal = funcPtr(
+            ctxPtr, 
+            tachArgs[0].intVal, 
+            tachArgs[1].intVal
+        );
+        break;
+
+        case 3:
+        //printf("Calling Tachyon func with 3 arguments\n");
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal
+        );
+        //printf("Returned from Tachyon func\n");
+        break;
+
+        case 4:
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal,
+            tachArgs[3].intVal
+        );
+        break;
+
+        case 5:
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal,
+            tachArgs[3].intVal,
+            tachArgs[4].intVal
+        );
+        break;
+
+        case 6:
+        retVal.intVal = funcPtr(
+            ctxPtr,
+            tachArgs[0].intVal,
+            tachArgs[1].intVal,
+            tachArgs[2].intVal,
+            tachArgs[3].intVal,
+            tachArgs[4].intVal,
+            tachArgs[5].intVal
+        );
+        break;
+
+        default:
+        printf("Error in callTachyonFFI -- unsupported argument count: %d\n", (int)numArgs);
+        exit(1);
+    }
+
+    // Delete the argument objects
+    delete [] tachArgs;
+
+    // Variable for the V8 return value
+    v8::Handle<v8::Value> v8RetVal;
+
+    // If the return value is integer
+    if (!strcmp(retTypeStr, "int"))
+    {
+        v8RetVal = v8::Number::New(retVal.intVal);
+    }
+
+    // If the return value is a pointer
+    else if (!strcmp(retTypeStr, "void*") || !strcmp(retTypeStr, "char*"))
+    {
+        v8RetVal = valToArray(retVal.ptrVal);
+    }
+
+    // Otherwise, if an unsupported type is passed    
+    else
+    {
+        printf("Error in callTachyonFFI -- unsupported return type: \"%s\"\n", retTypeStr);
+        exit(1);
+    }
+
+    //printf("returning from tachyonCallFFI\n");
+
+    return v8RetVal;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -502,6 +731,11 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("getFuncAddr"), 
         v8::FunctionTemplate::New(getFuncAddr)
+    );
+
+    global_template->Set(
+        v8::String::New("callTachyonFFI"),
+        v8::FunctionTemplate::New(callTachyonFFI)
     );
 }
 

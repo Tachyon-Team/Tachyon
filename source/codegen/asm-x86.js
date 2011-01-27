@@ -68,6 +68,11 @@ x86.Assembler = function (target)
     this.target     = target;
 };
 
+x86.Assembler.prototype.isImmediate = function (obj)
+{
+    return obj.type === x86.type.IMM_VAL || obj.type === x86.type.LINK;
+}
+
 /** Returns whether the current compilation target is x86_64 */
 x86.Assembler.prototype.is64bitMode = function ()
 {
@@ -373,7 +378,7 @@ x86.Assembler.prototype.linked = function (name, linkValue, width)
 
     assert(typeof(name) === "string", "'name' argument must be a string");
     assert(typeof(linkValue) === "function", "'linkValue' argument must be a function");
-    assert(typeof(width) === "number", "'name' argument must be a string");
+    assert(typeof(width) === "number", "'width' argument must be a number");
 
     that.name = name;
     that.linkValue = linkValue;
@@ -390,6 +395,8 @@ x86.Assembler.prototype.linked.prototype.linkValue  = function () { error("'link
 x86.Assembler.prototype.linked.prototype.width = function () { return 32; };
 x86.Assembler.prototype.linked.prototype.srcAddr = null;
 x86.Assembler.prototype.linked.prototype.setAddr = function (addr) { this.srcAddr = addr;};
+x86.Assembler.prototype.linked.prototype.getAddr = function () { return this.srcAddr.copy();};
+x86.Assembler.prototype.linked.prototype.clone   = function () { return Object.create(this); };
 
 
 x86.Assembler.prototype.linked.prototype.toString = function (verbose)
@@ -1076,10 +1083,12 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
             const base = opnd.base;
             if (base !== null)
             {
-                assert((base.isr32() || (base.isr64() &&
-                            this.is64bitMode())),
-                           "invalid width base register ",
-                           base);
+                assert(
+                    (base.isr32() || (base.isr64() &&
+                    this.is64bitMode())),
+                    "invalid width base register " + base
+                );
+
                 // If needed emit REX.B (Extension of the ModR/M r/m field,
                 // SIB base field, or Opcode reg field
                 rex += (base.field() >> 3);
@@ -1087,17 +1096,19 @@ x86.Assembler.prototype.opndPrefix = function (width, field, opnd, forceRex)
                 const index = opnd.index;
                 if (index !== null)
                 {
-                    assert((base.isr32() ? index.isr32() : index.isr64()),
-                           "index register must have the"+
-                           " same width as base ",
-                           base);
+                    assert(
+                        (base.isr32() ? index.isr32() : index.isr64()),
+                        "index register must have the" +
+                        " same width as base " + base
+                    );
+
                     rex += ((index.field() >> 3) << 1);
                 }
             }
             break;
 
         default:
-            error("unknown operand '", opnd, "'");
+            error("unknown operand '" + opnd + "'");
     }
 
     this.opndSizeOverridePrefix(width);
@@ -1147,7 +1158,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             break;
 
         case x86.type.LINK:
-            x86.error("unimplemented for opnd of type LINK");
+            error("unimplemented for opnd of type LINK");
             break;
 
         case x86.type.MEM:
@@ -1179,8 +1190,11 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
                             case 8: scaleBits = 3; break;
                         }
 
-                        assert(!(index.field() === 4),
-                               "SP not allowed as index", index);
+                        assert(
+                            !(index.field() === 4),
+                            "SP not allowed as index " + index
+                        );
+
                         sib += ((7 & index.field()) << 3) + (scaleBits << 6);
                     } 
                     else // !index
@@ -1241,7 +1255,7 @@ x86.Assembler.prototype.opndModRMSIB = function (field, opnd)
             break;
 
         default:
-            error("unkown operand", opnd);
+            error("unkown operand " + opnd);
     }
     return this;
 };
@@ -1263,16 +1277,19 @@ x86.Assembler.prototype.opndPrefixRegOpnd = function (reg, opnd)
                               (opnd.field() >= 4) &&
                               (!opnd.isr8h()));
         var isRex;
-        assert(((width === opnd.width()) ||
-                    reg.isxmm()),   // for cvtsi2ss/cvtsi2sd instructions
-                   "registers are not of the same width",
-                   reg,opnd);
+        assert(
+            ((width === opnd.width()) ||
+            reg.isxmm()),   // for cvtsi2ss/cvtsi2sd instructions
+            "registers are not of the same width " + reg + " " + opnd
+        );
 
         isRex = this.opndPrefix(width, field, opnd, (isExtLo8 || isExtLo8Reg2));
 
-        assert(!(isRex && (reg.isr8h() || opnd.isr8h())),
-                   "cannot use high 8 bit register here",
-                   reg, opnd);
+        assert(
+            !(isRex && (reg.isr8h() || opnd.isr8h())),
+            "cannot use high 8 bit register here " + reg + " " + opnd
+        );
+
         return isRex;
     } else  // opnd.type !== x86.type.REG
     {
@@ -1308,18 +1325,37 @@ x86.Assembler.prototype.opndModRMSIBRegOpnd = function (reg, opnd)
 x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
 {
     const that = this;
-    const k = src.value;
+    const isLink = src.type === x86.type.LINK;
+    const k = (isLink) ? 0 : src.value;
 
     /** @ignore Adds the listing for the instruction */
-    function listing(width,n)
+    function listing(width,v)
     {
         if (that.useListing)
         {
+            const value = (isLink) ? v : that.immediateValue(v);
             that.genListing(x86.instrFormat(mnemonic,
                                              x86.widthSuffix(width),
                                              dest,
-                                             that.immediateValue(n)));
+                                             value));
         }
+    }
+
+    /** @ignore generate a constant value */
+    function cstValue(width)
+    {
+        var value;
+
+        if (isLink)
+        {
+            value = src;
+            that.require(value);
+        } else
+        {
+            value = that.genImmNum(k, width);
+        }
+        
+        listing(width, value);
     }
 
     /**
@@ -1333,7 +1369,8 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
         // opcode = #x04, #x0c, #x14, ..., #x3c (for AL)
         //       or #x05, #x0d, #x15, ..., #x3d (for AX/EAX/RAX)
         gen8(((width === 8) ? 0x04 : 0x05) + (op << 3));
-        listing(width, that.genImmNum(k,width));
+        
+        cstValue(width);
     }
 
     /**
@@ -1344,13 +1381,13 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
     {
         that.opndPrefixOpnd(width, dest);
 
-        if (width === 8)
+        if (width === 8 && !isLink)
         {
             that.
             gen8(0x80).            // opcode = 8 bit operation
             opndModRMSIB(op,dest); // ModR/M
             listing(width, that.genImmNum(k,8));
-        } else if (x86.isSigned8(k))
+        } else if (x86.isSigned8(k) && !isLink)
         {
             that.
             gen8(0x83).            // opcode = sign extended 8 bit imm
@@ -1361,13 +1398,16 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
             that.
             gen8(0x81).            // opcode = sign extended 16/32 bit imm
             opndModRMSIB(op,dest); // ModR/M
-            listing(width, that.genImmNum(k,width));
+
+            cstValue(width);
         }
     }
 
-    assert((dest.type === x86.type.REG) ?
-            (!width || (dest.width() === width)) : width,
-            "missing or inconsistent operand width ", width);
+    assert (
+        (dest.type === x86.type.REG) ?
+        (!width || (dest.width() === width)) : width,
+        "missing or inconsistent operand width " + width
+    );
 
     if (dest.type === x86.type.REG)
     {
@@ -1395,18 +1435,37 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
 {
 
     const that = this;
-    const k = src.value;
+    const isLink = src.type === x86.type.LINK;
+    const k = (isLink) ? 0 : src.value;
 
     /** @ignore generate listing */
-    function listing(width,n)
+    function listing(width,v)
     {
         if (that.useListing)
         {
+            const value = (isLink) ? v : that.immediateValue(v);
             that.genListing(x86.instrFormat("mov",
                                              x86.widthSuffix(width),
                                              dest,
-                                             that.immediateValue(n)));
+                                             value));
         }
+    }
+
+    /** @ignore generate a constant value */
+    function cstValue(width)
+    {
+        var value;
+
+        if (isLink)
+        {
+            value = src;
+            that.require(value);
+        } else
+        {
+            value = that.genImmNum(k, width);
+        }
+        
+        listing(width, value);
     }
 
     /** @ignore special case when the destination is a register */
@@ -1419,7 +1478,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         //      or #xb8-#xbf (for 16/32/64 bit registers)
         that.gen8( ((width === 8) ? 0xb0 : 0xb8) + (7 & dest.field()) );
 
-        listing(width, that.genImmNum(k, width));
+        cstValue(width);
     }
 
     /** @ignore general case */
@@ -1429,12 +1488,14 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         that.
         gen8((width === 8) ? 0xc6 : 0xc7).  // opcode
         opndModRMSIB(0,dest); // ModR/M
-        listing(width, that.genImmNum(k,width));
+
+        cstValue(width);
     }
 
     assert((dest.type === x86.type.REG) ?
             (!width || (dest.width() === width)) : width,
-            "missing or inconsistent operand width '", width, "'");
+            "missing or inconsistent operand width '" + width + "'"
+    );
 
     if (dest.type === x86.type.REG)
     {
@@ -1477,8 +1538,9 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
     function genOp(reg, opnd, isSwapped)
     {
         assert(!width || (reg.width() === width),
-               "inconsistent operand width '",width,
-               "' and register width '", reg.width(), "'");
+               "inconsistent operand width '" + width +
+               "' and register width '" + reg.width() + "'");
+
         that.opndPrefixRegOpnd(reg, opnd);
         that.
         gen8((op << 3) +
@@ -1495,7 +1557,7 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
         }
     }
 
-    if (src.type === x86.type.IMM_VAL)
+    if (src.type === x86.type.IMM_VAL || src.type === x86.type.LINK)
     {
         if (op === 17)
         {
@@ -1516,7 +1578,7 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
     }
     else
     {
-        error("invalid operand combination", dest, src);
+        error("invalid operand combination " + dest + " " + src);
     }
 
     return this;
@@ -1662,7 +1724,7 @@ x86.Assembler.prototype.incDec = function (opnd, isInc, width)
 
     assert((opnd.type === x86.type.REG) ?
             (!width || (opnd.width() === width)) : width,
-            "missing or inconsistent operand width '", width, "'");
+            "missing or inconsistent operand width '" + width + "'");
 
     if (opnd.type === x86.type.REG)
     {
@@ -1743,7 +1805,7 @@ x86.opcode.cmovnle    = 0x4f;
 x86.Assembler.prototype.label = function (lbl)
 {
     assert(lbl.type === asm.type.LBL,
-               "invalid label", lbl);
+               "invalid label" + lbl);
     this.
     genListing(x86.labelFormat(lbl)).
     codeBlock.genLabel(lbl);
@@ -1759,7 +1821,7 @@ x86.Assembler.prototype.jumpLabel = function (opcode, mnemonic, label, offset)
     const that = this;
 
     assert(label.type === asm.type.LBL,
-           "invalid label '", label, "'");
+           "invalid label '" + label + "'");
 
     /** @ignore */
     function labelDist(label, offsetLabel, pos, offsetPos)
@@ -1840,7 +1902,7 @@ x86.Assembler.prototype.jumpLabel = function (opcode, mnemonic, label, offset)
 x86.Assembler.prototype.jumpLink = function (opcode, mnemonic, linkObj)
 {
     assert(linkObj.type === x86.type.LINK,
-           "invalid link object '", linkObj, "'");
+           "invalid link object '" + linkObj + "'");
 
     assert(linkObj.width() === 32, "Invalid width " + linkObj.width());
 
@@ -1874,7 +1936,7 @@ x86.Assembler.prototype.jumpGeneral = function (field, opnd)
 {
     assert(!(opnd.type === x86.type.REG) ||
            (this.is64bitMode() ? opnd.isr64() : opnd.isr32()),
-           "invalid width register", opnd);
+           "invalid width register" + opnd);
 
     this.opndPrefix(0,0,opnd,false);
 
@@ -2158,13 +2220,19 @@ x86.Assembler.prototype.dec  = function (opnd, width)
 
 x86.Assembler.prototype.lea  = function (src, dest)
 {
-    assert(dest.type === x86.type.REG,
-               "'dest' argument must be a register, instead received ", dest);
-    assert(!dest.isr8(),
-               "'dest' argument must not be an 8 bit register");
-    assert(src.type === x86.type.MEM,
-               "'src' argument must be a memory operand," +
-               " instead received ", dest);
+    assert(
+        dest.type === x86.type.REG,
+        "'dest' argument must be a register, instead received " + dest
+    );
+    assert(
+        !dest.isr8(),
+        "'dest' argument must not be an 8 bit register"
+    );
+    assert(
+        src.type === x86.type.MEM,
+        "'src' argument must be a memory operand," +
+        " instead received " + dest
+    );
 
     this.opndPrefixRegOpnd(dest, src);
     this.gen8(0x8d); // opcode
@@ -2187,11 +2255,11 @@ x86.Assembler.prototype.test = function (src, dest, width)
     const k = src.value;
 
     assert(src.type === x86.type.IMM_VAL || src.type === x86.type.REG,
-               "'src' must be an immediate value or a register instead of ",
+               "'src' must be an immediate value or a register instead of " +
                src);
 
     assert(dest.type === x86.type.REG || dest.type === x86.type.MEM,
-               "'dest' must be a register or a memory location instead of ",
+               "'dest' must be a register or a memory location instead of " +
                dest);
 
     assert((dest.type === x86.type.REG) ?
@@ -2258,12 +2326,12 @@ x86.Assembler.prototype.test = function (src, dest, width)
 x86.Assembler.prototype.cmoveGeneral  = function (op, mnemonic, src, dest)
 {
     assert(dest.type === x86.type.REG,
-               "'dest' argument must be a register, instead received ", dest);
+               "'dest' argument must be a register, instead received " + dest);
     assert(!dest.isr8(),
                "'dest' argument must not be an 8 bit register");
     assert(src.type === x86.type.MEM || src.type === x86.type.REG,
                "'src' argument must be a memory or a register operand," +
-               " instead received ", dest);
+               " instead received " + src);
 
     this.opndPrefixRegOpnd(dest, src);
     this.gen8(x86.opcode.esc);
@@ -2297,7 +2365,7 @@ x86.Assembler.prototype.jmp = function (opnd1, opnd2)
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.jmpRel8, "jmp", opnd1, opnd2);
         default:
-            error("invalid operand type", opnd1.type);
+            error("invalid operand type " + opnd1.type);
     }
 };
 
@@ -2318,7 +2386,7 @@ x86.Assembler.prototype.call = function (opnd1, opnd2)
         case asm.type.LBL:
             return this.jumpLabel(x86.opcode.callRel32, "call", opnd1, opnd2);
         default:
-            error("invalid operand type", opnd1.type);
+            error("invalid operand type " + opnd1.type);
     }
 };
 
@@ -2589,7 +2657,7 @@ x86.Assembler.prototype.cmovle = function (src, dest)
 /** Can be chained */
 x86.Assembler.prototype.cmovnle= function (src, dest)
 {
-    return this.cmoveGeneral(x86.opcode.cmovnl, "cmovnl", src, dest);
+    return this.cmoveGeneral(x86.opcode.cmovnle, "cmovnle", src, dest);
 };
 
 ///** Can be chained */
@@ -2602,13 +2670,16 @@ x86.Assembler.prototype.cmovnle= function (src, dest)
 x86.Assembler.prototype.shift =
 function (opcodeExt, mnemonic, src, dest, width)
 {
-    assert(src.type === x86.type.IMM_VAL,
-               "'src' argument must be an immediate value instead of ",
-               src);
+    assert(
+        src.type === x86.type.IMM_VAL,
+        "'src' argument must be an immediate value instead of " + src
+    );
 
-    assert((dest.type === x86.type.REG) ?
-            (!width || (dest.width() === width)) : width,
-            "missing or inconsistent operand width ", width);
+    assert(
+        (dest.type === x86.type.REG) ?
+        (!width || (dest.width() === width)) : width,
+        "missing or inconsistent operand width " + width
+    );
 
     width = (dest.type === x86.type.REG) ? dest.width() : width;
 
@@ -2675,9 +2746,11 @@ x86.Assembler.prototype.ror = function (src, dest, width)
 x86.Assembler.prototype.oneOpnd =
 function (opcode, opcodeExt, mnemonic, dest, width)
 {
-    assert((dest.type === x86.type.REG) ?
-            (!width || (dest.width() === width)) : width,
-            "missing or inconsistent operand width", width);
+    assert(
+        (dest.type === x86.type.REG) ?
+        (!width || (dest.width() === width)) : width,
+        "missing or inconsistent operand width " + width
+    );
 
     width = (dest.type === x86.type.REG) ? dest.width() : width;
 

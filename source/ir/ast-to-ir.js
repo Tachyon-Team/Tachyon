@@ -110,6 +110,8 @@ function stmtListToIRFunc(
     params
 )
 {
+    //print('Generating IR for function: "' + funcName + '"');
+
     // Create a new function object for the function
     var newFunc = getIRFuncObj(
         funcName,
@@ -126,13 +128,26 @@ function stmtListToIRFunc(
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();
 
-    // Add an instruction to get the function object argument
-    var funcObj = new ArgValInstr(IRType.box, 'funcObj', 0);
-    entryBlock.addInstr(funcObj, 'funcObj');
+    // Current argument index
+    var argIndex = 0;
 
-    // Add an instruction to get the this value argument
-    var thisVal = new ArgValInstr(IRType.box, 'thisVal', 1);
-    entryBlock.addInstr(thisVal, 'this');
+    // If this is a C proxy function
+    if (newFunc.cProxy === true)
+    {
+        // The function object and this value are undefined
+        var funcObj = ConstValue.getConst(undefined);
+        var thisVal = ConstValue.getConst(undefined);
+    }
+    else
+    {
+        // Add an instruction to get the function object argument
+        var funcObj = new ArgValInstr(IRType.box, 'funcObj', argIndex++);
+        entryBlock.addInstr(funcObj, 'funcObj');
+
+        // Add an instruction to get the this value argument
+        var thisVal = new ArgValInstr(IRType.box, 'thisVal', argIndex++);
+        entryBlock.addInstr(thisVal, 'this');
+    }
 
     // Create a map for the local variable storage locations
     var localMap = new HashMap();
@@ -143,7 +158,7 @@ function stmtListToIRFunc(
         var symName = newFunc.argVars[i].toString();
 
         // Create an instruction to get the argument value
-        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, 2 + i);
+        var argVal = new ArgValInstr(newFunc.argTypes[i], symName, argIndex++);
         entryBlock.addInstr(argVal, symName);
 
         // Add the argument value to the local map
@@ -163,14 +178,6 @@ function stmtListToIRFunc(
         }
     }
 
-    // Read the global object from the context
-    var globalObj = insertFieldReadIR(
-        entryBlock, 
-        params.memLayouts.ctx,
-        ['globalobj'],
-        'global'
-    );
-
     // Create a map for the closure and escaping variable mutable cells
     var sharedMap = new HashMap();
 
@@ -189,7 +196,6 @@ function stmtListToIRFunc(
         cfg,
         funcObj,
         thisVal,
-        globalObj,
         params
     );
 
@@ -331,6 +337,9 @@ function stmtListToIRFunc(
             var varName = itr.get().key;
             var varVal = itr.get().value;
 
+            // Get the global object
+            var globalObj = insertGetGlobal(bodyContext);
+
             // Bind the variable's initial value in the global environment
             insertPrimCallIR(
                 bodyContext, 
@@ -340,8 +349,13 @@ function stmtListToIRFunc(
         }
     }
 
+    //print('generating IR for function body');
+    //if (astNode.loc instanceof Location) pp_loc(astNode.loc, "");
+
     // Generate code for the function body
     stmtListToIR(bodyContext);
+
+    //print('done generating IR');
 
     // If the context is not terminated and this function has a boxed return value
     if (!bodyContext.isTerminated() && newFunc.retType === IRType.box)
@@ -358,10 +372,14 @@ function stmtListToIRFunc(
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
 
+    cfg.validate();
+
+    //print('Applying opt patterns');
+
     // Simplify the CFG using peephole patterns
     applyPatternsCFG(cfg, params);
-    
-    //print('');
+
+    //print('validating');    
 
     // Run a validation test on the CFG
     try
@@ -375,6 +393,8 @@ function stmtListToIRFunc(
             e + '\n' + cfg.toString()
         );
     }
+
+    //print('done generating IR for function');
 
     // Return the new function
     return newFunc;
@@ -464,38 +484,44 @@ function getIRFuncObj(
         var annotation = annotations[i];
 
         var tokens = annotation.split(':');
-        if (tokens.length < 2 || tokens[0] != 'tachyon')
+        if (tokens.length < 2 || tokens[0] !== 'tachyon')
             continue;
 
         var tokens = tokens[1].split(' ');
         
+        // If this is a C proxy function
+        if (tokens.length === 1 && tokens[0] === 'cproxy')
+        {
+            newFunc.cProxy = true;
+        }
+
         // If this is a static linkage annotation
-        if (tokens.length == 1 && tokens[0] == 'static')
+        else if (tokens.length === 1 && tokens[0] === 'static')
         {
             newFunc.staticLink = true;
         }
 
         // If this is an inline annotation
-        else if (tokens.length == 1 && tokens[0] == 'inline')
+        else if (tokens.length === 1 && tokens[0] === 'inline')
         {
             newFunc.inline = true;
             newFunc.staticLink = true;
         }
 
         // If this is a no throw annotation
-        else if (tokens.length == 1 && tokens[0] == 'nothrow')
+        else if (tokens.length === 1 && tokens[0] === 'nothrow')
         {
             newFunc.noThrow = true;
         }
 
         // If this is a no global accesses annotation
-        else if (tokens.length == 1 && tokens[0] == 'noglobal')
+        else if (tokens.length === 1 && tokens[0] === 'noglobal')
         {
             newFunc.noGlobal = true;
         }
 
         // If this is an argument type annotation (eg: arg <arg_name> <type>)
-        else if (tokens.length == 3 && tokens[0] == 'arg')
+        else if (tokens.length === 3 && tokens[0] === 'arg')
         {
             var argName = tokens[1];
             var type = IRType[tokens[2]];
@@ -503,7 +529,7 @@ function getIRFuncObj(
             var argNo = -1;
             for (var j = 0; j < newFunc.argVars.length; ++j)
             {
-                if (newFunc.argVars[j].toString() == argName)
+                if (newFunc.argVars[j].toString() === argName)
                 {
                     argNo = j;
                     break;
@@ -514,7 +540,7 @@ function getIRFuncObj(
                 throw 'functions taking non-boxed arguments cannot ' + 
                     'use the arguments object';
 
-            if (argNo == -1)
+            if (argNo === -1)
                 throw 'invalid argument name in argument type annotation';
 
             if (!type)
@@ -524,7 +550,7 @@ function getIRFuncObj(
         }
 
         // If this is a return type annotation (eg: ret <type>)
-        else if (tokens.length == 2 && tokens[0] == 'ret')
+        else if (tokens.length === 2 && tokens[0] === 'ret')
         {
             var type = IRType[tokens[1]];
 
@@ -565,7 +591,6 @@ function IRConvContext(
     cfg,
     funcObj,
     thisVal,
-    globalObj,
     params
 )
 {
@@ -621,10 +646,6 @@ function IRConvContext(
     assert (
         thisVal instanceof IRValue,
         'invalid this value in IR conversion context'
-    );
-    assert (
-        globalObj instanceof IRValue,
-        'invalid global object in IR conversion context'
     );
     assert (
         params instanceof CompParams,
@@ -710,12 +731,6 @@ function IRConvContext(
     this.thisVal = thisVal;
 
     /**
-    Global object instance
-    @field
-    */
-    this.globalObj = globalObj;
-
-    /**
     Current basic block at the output
     @field
     */
@@ -785,7 +800,8 @@ Bridge a context with no exit block
 */
 IRConvContext.prototype.bridge = function ()
 {
-    this.exitBlock = this.entryBlock;
+    if (this.exitBlock === undefined)
+        this.exitBlock = this.entryBlock;
 };
 
 /**
@@ -850,7 +866,6 @@ IRConvContext.prototype.pursue = function (astNode)
         this.cfg,
         this.funcObj,
         this.thisVal,
-        this.globalObj,
         this.params
     );
 };
@@ -878,7 +893,6 @@ IRConvContext.prototype.branch = function (
         this.cfg,
         this.funcObj,
         this.thisVal,
-        this.globalObj,
         this.params
     );
 };
@@ -941,6 +955,9 @@ Convert an AST statement into IR code
 */
 function stmtToIR(context)
 {
+    //print('Generating ir for stmt:');
+    //pp(context.astNode)
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
@@ -1330,19 +1347,20 @@ function stmtToIR(context)
         testCtx.bridge();
   
         // Create a context for the loop body
+        var loopBody = context.cfg.getNewBlock('loop_body');
         var bodyCtx = testCtx.branch(
             astStmt.lhs_expr,
-            context.cfg.getNewBlock('loop_body'),
+            loopBody,
             testCtx.localMap.copy()
         );
         
         // Get the current property
         var curPropName = insertPrimCallIR(
             bodyCtx, 
-            'getPropVal', 
+            'getPropVal',
             [propNameArr, propIndex]
         );
-        
+
         // Assign the current prop name to LHS expr
         assgToIR(bodyCtx, curPropName);
 
@@ -1411,12 +1429,12 @@ function stmtToIR(context)
         testExit.replBranch(
             new IfInstr(
                 testVal,
-                bodyCtx.entryBlock,
+                loopBody,
                 loopExit
             )
-        );       
+        );    
 
-        // Add a jump from the entry block to the loop entry
+        // Add a jump from the entry block to the test block
         setCtx.addInstr(new JumpInstr(testCtx.entryBlock));
 
         // Set the exit block to be the join block
@@ -1483,6 +1501,12 @@ function stmtToIR(context)
 
     else if (astStmt instanceof ReturnStatement)
     {
+        if (context.cfg.ownerFunc.astNode instanceof Program)
+            error('unit-level returns are not allowed');
+
+        // Get the return type for this function
+        var retType = context.cfg.ownerFunc.retType;
+
         // If there is a return expression
         if (astStmt.expr !== null)
         {
@@ -1492,7 +1516,7 @@ function stmtToIR(context)
 
             // Ensure that the type of the returned value is valid
             assert (
-                retContext.getOutValue().type === context.cfg.ownerFunc.retType,
+                retContext.getOutValue().type === retType,
                 'returned value type must match function return type in "' +
                 context.cfg.ownerFunc.funcName + '"'
             );
@@ -1502,14 +1526,25 @@ function stmtToIR(context)
         }
         else
         {
-            // Ensure that the function has a boxed return type
-            assert (
-                context.cfg.ownerFunc.retType === IRType.box,
-                'functions with non-boxed return types cannot return undefined'
-            );
+            // If the return type is boxed
+            if (retType === IRType.box)
+            {
+                // Return the undefined constant
+                context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+            }
 
-            // Return the undefined constant
-            context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+            // If the return type is none
+            else if (retType === IRType.none)
+            {
+                // Return nothing
+                context.addInstr(new RetInstr());
+            }
+
+            // For any other return type
+            else
+            {
+                error('functions with return type "' + retType + '" must return a value');
+            }
         }
 
         // Indicate that there is no continuation for this context
@@ -1751,6 +1786,7 @@ function stmtToIR(context)
                
         // Create a context for the try body
         var tryBodyCtx = context.pursue(astStmt.statement);
+        tryBodyCtx.localMap = context.localMap.copy();
         tryBodyCtx.throwList = throwCtxList;
 
         // Compile the try body statement
@@ -1804,10 +1840,10 @@ function stmtToIR(context)
         stmtToIR(catchCtx);
 
         // Merge the finally contexts
-        var finallyLocals = new HashMap();
+        //var finallyLocals = new HashMap();
         var finallyBlock = mergeContexts(
             [tryBodyCtx, catchCtx],
-            finallyLocals,
+            context.localMap,
             context.cfg,
             'try_finally'
         );
@@ -1816,7 +1852,7 @@ function stmtToIR(context)
         var finallyCtx = context.branch(
             astStmt.finally_part,
             finallyBlock,
-            finallyLocals
+            context.localMap
         );
 
         // Compile the finally statement, if it is defined
@@ -1893,6 +1929,9 @@ Convert an AST expression into IR code
 */
 function exprToIR(context)
 {
+    //print('Generating ir for expr:');
+    //pp(context.astNode)
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
@@ -1903,7 +1942,7 @@ function exprToIR(context)
     var astExpr = context.astNode;
 
     // If the expression is null (empty expression)
-    if (astExpr == null)
+    if (astExpr === null)
     {
         // Set the output to the true constant
         // This works for empty expression statements and the case where
@@ -1922,7 +1961,7 @@ function exprToIR(context)
 
         // Ensure that he nested function was found
         assert (
-            nestFunc != null,
+            nestFunc !== null,
             'nested function not found for function expression'
         );
 
@@ -2056,19 +2095,31 @@ function exprToIR(context)
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
+            // Get the global object
+            var globalObj = insertGetGlobal(funcContext);            
+
             // The this value is the global object
-            thisVal = context.globalObj;
+            thisVal = globalObj;
 
             lastContext = funcContext;
         }
 
         // Create the call instruction
-        var exprVal = insertCallIR(
-            lastContext,
-            new CallFuncInstr(
-                [funcVal, thisVal].concat(argVals)
-            )
-        );
+        try
+        {
+            var exprVal = insertCallIR(
+                lastContext,
+                new CallFuncInstr(
+                    [funcVal, thisVal].concat(argVals)
+                )
+            );
+        }
+
+        // If an error occurred, rethrow it with source code location information
+        catch (exc)
+        {
+            rethrowError(exc, context.astNode.loc.to_string());
+        }
 
         // Set the output
         context.setOutput(lastContext.getExitBlock(), exprVal);
@@ -2098,6 +2149,8 @@ function exprToIR(context)
 
     else if (astExpr instanceof ArrayLiteral)
     {
+        //print('Generating IR for array literal');
+
         // Compile the element value expressions
         var elemCtx = context.pursue(astExpr.exprs);
         var elemVals = exprListToIR(elemCtx);
@@ -2118,7 +2171,7 @@ function exprToIR(context)
                 [newArray, ConstValue.getConst(i), elemVals[i]]
             );
         }
-        
+
         // Set the new array as the output
         context.setOutput(elemCtx.getExitBlock(), newArray);
     }
@@ -2138,9 +2191,8 @@ function exprToIR(context)
         var valVals = exprListToIR(valCtx);
 
         // Find the object prototype object in the context
-        var objProto = insertFieldReadIR(
+        var objProto = insertCtxReadIR(
             valCtx,
-            context.params.memLayouts.ctx,
             ['objproto']
         );
 
@@ -2198,10 +2250,18 @@ Convert ast operator expression nodes to IR
 */
 function opToIR(context)
 {
+    //print('Generating IR for op expr:');
+    //pp(context.astNode);
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
         'invalid IR conversion context specified'
+    );
+
+    assert (
+        context.astNode instanceof OpExpr,
+        'expected operator expression'
     );
 
     // Get references to the operator and the sub-expressions
@@ -2282,33 +2342,42 @@ function opToIR(context)
 
     // Function to create either a primitive call or a machine instruction
     // depending on the argument types
-    function makeOp(context, primName, instrClass, argVals)
+    function makeOp(curContext, primName, instrClass, argVals)
     {
         // Test if all arguments are boxed
         var allBoxed = true;
         for (var i = 0; i < argVals.length; ++i)
-            if (argVals[i].type != IRType.box)
+            if (argVals[i].type !== IRType.box)
                 allBoxed = false;
 
         // If all values are boxed
         if (allBoxed)
         {
-            // Create the primitive call
+           // Create the primitive call
            var opVal = insertPrimCallIR(
-                context,
+                curContext,
                 primName, 
                 argVals
             );
         }
         else
         {
-            if (!instrClass)
-                throw 'operator cannot operate on typed values: ' + primName;
+            // Setup a try block to catch potential type errors
+            try
+            {
+                if (!instrClass)
+                    throw 'operator cannot operate on typed values: ' + primName;
 
-            // Create the machine instruction
-            var opVal = context.addInstr(
-                new instrClass(argVals)
-            );
+                // Create the machine instruction
+                var opVal = curContext.addInstr(
+                    new instrClass(argVals)
+                );
+            }
+            catch (exc)
+            {
+                // Rethrow the exception with source code location information
+                rethrowError(exc, context.astNode.loc.to_string());
+            }
         }
 
         return opVal;
@@ -2534,7 +2603,7 @@ function opToIR(context)
             var fieldExpr = exprs[0];
 
             // If the op is a field indexing
-            if (fieldExpr instanceof OpExpr && fieldExpr.op == 'x [ y ]')
+            if (fieldExpr instanceof OpExpr && fieldExpr.op === 'x [ y ]')
             {
                 // Compile the argument values
                 var argsContext = context.pursue(fieldExpr.exprs);
@@ -2613,11 +2682,14 @@ function opToIR(context)
                         var globContext = context;
                     }
 
+                    // Get the global object
+                    var globalObj = insertGetGlobal(globContext);
+
                     // Delete the property from the global object
                     opValueGlob = insertPrimCallIR(
                         globContext, 
                         'delPropVal', 
-                        [context.globalObj, ConstValue.getConst(varName)]
+                        [globalObj, ConstValue.getConst(varName)]
                     );
 
                     // If we are within a with block
@@ -2697,7 +2769,7 @@ function opToIR(context)
         prePostGen('add', AddInstr, true);     
         break;
 
-        case '-- x':
+        case 'x --':
         prePostGen('sub', SubInstr, true);           
         break;
 
@@ -2818,19 +2890,19 @@ function opToIR(context)
         break;
 
         case 'x == y':
-        opGen('eq', EqInstr);
+        opGen('eq');
         break;
 
         case 'x != y':
-        opGen('ne', NeInstr);
+        opGen('ne');
         break;
 
         case 'x === y':
-        opGen('seq');
+        opGen('seq', EqInstr);
         break;
 
         case 'x !== y':
-        opGen('nseq');
+        opGen('nseq', NeInstr);
         break;
 
         case 'typeof x':
@@ -2839,6 +2911,10 @@ function opToIR(context)
 
         case 'x instanceof y':
         opGen('instanceOf');
+        break;
+
+        case 'x in y':
+        opGen('inOp');
         break;
 
         default:
@@ -2880,6 +2956,9 @@ function assgToIR(context, rhsVal)
                     context.cfg.ownerFunc.funcName
                 );
             }
+
+            // Get the global object
+            var globalObj = insertGetGlobal(context);
         }
 
         // If we are within a with block
@@ -2933,7 +3012,7 @@ function assgToIR(context, rhsVal)
                 lhsVal = insertPrimCallIR(
                     varContext, 
                     'getPropVal', 
-                    [context.globalObj, ConstValue.getConst(symName)]
+                    [globalObj, ConstValue.getConst(symName)]
                 );
             }
 
@@ -2978,7 +3057,7 @@ function assgToIR(context, rhsVal)
             insertPrimCallIR(
                 varContext, 
                 'putPropVal', 
-                [context.globalObj, ConstValue.getConst(symName), rhsValAssg]
+                [globalObj, ConstValue.getConst(symName), rhsValAssg]
             );
         }
 
@@ -3080,7 +3159,7 @@ function assgToIR(context, rhsVal)
     }
 
     // Otherwise, if the left-hand side is an object field
-    else if (leftExpr instanceof OpExpr && leftExpr.op == 'x [ y ]')
+    else if (leftExpr instanceof OpExpr && leftExpr.op === 'x [ y ]')
     {
         var objExpr = leftExpr.exprs[0];
         var idxExpr = leftExpr.exprs[1];
@@ -3142,6 +3221,9 @@ Convert a variable reference expression to IR code
 */
 function refToIR(context)
 {
+    //print('Generating IR for ref expr:');
+    //pp(context.astNode);
+
     // Ensure that the IR conversion context is valid
     assert (
         context instanceof IRConvContext,
@@ -3195,7 +3277,7 @@ function refToIR(context)
     }
 
     // If the variable is global
-    if (astExpr.id.scope instanceof Program && symName != 'arguments')
+    if (astExpr.id.scope instanceof Program && symName !== 'arguments')
     {
         // If we are compiling tachyon code and there is a named static
         // binding with this name
@@ -3216,11 +3298,14 @@ function refToIR(context)
                 );
             }
 
-            // Compute the hash of the symbol
+            // Precompute the hash code of the symbol
             var symHashVal = ConstValue.getConst(
-                defHashFunc(symName),
+                precompHash(symName, context.params),
                 IRType.pint
             );
+
+            // Get the global object
+            var globalObj = insertGetGlobal(varContext);
 
             // If this is a global function lookup
             if (context.ctxNode instanceof CallExpr)
@@ -3230,7 +3315,7 @@ function refToIR(context)
                     varContext, 
                     'getGlobalFunc', 
                     [
-                        context.globalObj, 
+                        globalObj, 
                         ConstValue.getConst(symName),
                         symHashVal
                     ]
@@ -3243,7 +3328,7 @@ function refToIR(context)
                     varContext, 
                     'getGlobal', 
                     [
-                        context.globalObj, 
+                        globalObj, 
                         ConstValue.getConst(symName),
                         symHashVal
                     ]
@@ -3340,7 +3425,7 @@ function refToIR(context)
 /**
 Insert a read from the runtime context
 */
-function insertFieldReadIR(context, layout, query, outName)
+function insertCtxReadIR(context, query, outName)
 {
     // Get a pointer to the context object
     var ctxPtr = context.addInstr(
@@ -3348,7 +3433,7 @@ function insertFieldReadIR(context, layout, query, outName)
     );
 
     // Generate IR to access the field
-    var field = layout.genfieldAccessIR(context, query);
+    var field = context.params.memLayouts.ctx.genfieldAccessIR(context, query);
 
     // Read the variable from the context object
     var readVal = context.addInstr(
@@ -3362,6 +3447,14 @@ function insertFieldReadIR(context, layout, query, outName)
 
     // Return the value read
     return readVal;
+}
+
+/**
+Insert a context read to get the global object
+*/
+function insertGetGlobal(context)
+{
+    return insertCtxReadIR(context, ['globalobj'], 'global');
 }
 
 /**
@@ -3409,19 +3502,19 @@ function insertErrorIR(context, errorName, errorMsg)
     switch (errorName)
     {
         case 'RangeError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['rangeerror']);
+        errorCtor = insertCtxReadIR(context, ['rangeerror']);
         break;
         case 'ReferenceError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['referror']);
+        errorCtor = insertCtxReadIR(context, ['referror']);
         break;
         case 'SyntaxError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['syntaxerror']);
+        errorCtor = insertCtxReadIR(context, ['syntaxerror']);
         break;
         case 'TypeError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['typeerror']);
+        errorCtor = insertCtxReadIR(context, ['typeerror']);
         break;
         case 'URIError':
-        errorCtor = insertFieldReadIR(context, context.params.memLayouts.ctx, ['urierror']);
+        errorCtor = insertCtxReadIR(context, ['urierror']);
         break;
     }
     assert (
@@ -3482,32 +3575,30 @@ function insertConstructIR(context, funcVal, argVals)
     // If the prototype field is an object use it, otherwise, use the
     // object prototype object
     var protoIsObj = context.cfg.getNewBlock('proto_is_obj');
-    var protoNotObj = context.cfg.getNewBlock('proto_not_obj');
-    var protoMerge = context.cfg.getNewBlock('proto_merge');   
-    var testVal = insertCallIR(
+    var protoNotObjCtx = context.branch(
+        context.astNode,
+        context.cfg.getNewBlock('proto_not_obj'),
+        context.localMap.copy()
+    );
+    var protoMerge = context.cfg.getNewBlock('proto_merge');
+    var testVal = insertPrimCallIR(
         context,
-        new CallFuncInstr(
-            [
-                context.params.staticEnv.getBinding('boxIsObj'),
-                context.globalObj,
-                funcProto
-            ]
-        )
+        'boxIsObj',
+        [funcProto]
     );
     context.addInstr(
         new IfInstr(
             testVal,
             protoIsObj,
-            protoNotObj
+            protoNotObjCtx.entryBlock
         )
     );
-    var objProto = insertFieldReadIR(
-        protoNotObj,
-        context.params.memLayouts.ctx,
+    var objProto = insertCtxReadIR(
+        protoNotObjCtx,
         ['objproto']
     );
     protoIsObj.addInstr(new JumpInstr(protoMerge));
-    protoNotObj.addInstr(new JumpInstr(protoMerge));
+    protoNotObjCtx.addInstr(new JumpInstr(protoMerge));
     var protoVal = protoMerge.addInstr(
         new PhiInstr(
             [
@@ -3516,7 +3607,7 @@ function insertConstructIR(context, funcVal, argVals)
             ],
             [
                 protoIsObj, 
-                protoNotObj
+                protoNotObjCtx.entryBlock
             ]
         ),
         'proto_val'
@@ -3542,15 +3633,10 @@ function insertConstructIR(context, funcVal, argVals)
     var retIsObj = context.cfg.getNewBlock('ret_is_obj');
     var retNotObj = context.cfg.getNewBlock('ret_not_obj');
     var retMerge = context.cfg.getNewBlock('ret_merge');
-    var testVal = insertCallIR(
+    var testVal = insertPrimCallIR(
         context,
-        new CallFuncInstr(
-            [
-                context.params.staticEnv.getBinding('boxIsObj'),
-                context.globalObj,
-                retVal
-            ]
-        )
+        'boxIsObj',
+        [retVal]
     );
     context.addInstr(
         new IfInstr(
@@ -3593,15 +3679,11 @@ function insertCallIR(context, instr)
     )
     {
         // Test if the callee value is a function
-        var testVal = insertCallIR(
+        var testVal = insertPrimCallIR(
             context,
-            new CallFuncInstr(
-                [
-                    context.params.staticEnv.getBinding('boxIsFunc'),
-                    context.globalObj,
-                    instr.uses[0]
-                ]
-            )
+            'boxIsFunc',
+            [instr.uses[0]]
+
         );
 
         // Throw an error if the callee is not a function
@@ -3628,6 +3710,10 @@ function insertCallIR(context, instr)
             // Create a new context and bridge it
             var newCtx = context.pursue(null);
             newCtx.bridge();
+
+            // Copy the local map so as to not make available
+            // new bindings after the throw
+            newCtx.localMap = newCtx.localMap.copy();
 
             // Add the new context to the list of throw contexts
             context.throwList.push(newCtx);
@@ -3668,8 +3754,11 @@ function throwToIR(context, throwCtx, excVal)
         context.throwList.push(throwCtx);
     }
 
-    // Terminate the throw context, no instructions go after this
+    // Terminate the current context, no instructions go after this
     context.terminate();
+
+    // Bridge the throw context to make sure it has an exit block
+    throwCtx.bridge();
 }
 
 /**
@@ -3692,7 +3781,7 @@ function mergeContexts(
     var mergeBlock = cfg.getNewBlock(blockName);
 
     // If there are no non-terminated contexts, there is nothing to merge, stop
-    if (ntContexts.length == 0)
+    if (ntContexts.length === 0)
         return null;
 
     // Clear the contents of the merge map, if any
@@ -3837,7 +3926,6 @@ function createLoopEntry(
         context.cfg,
         context.funcObj,
         context.thisVal,
-        context.globalObj,
         context.params
     );
 }
@@ -3869,7 +3957,7 @@ function mergeLoopEntry(
             var useValue = phiNode.uses[j];
             if (useValue instanceof ConstValue && useValue.isUndef())
                 numUndef++;
-            if (phiNode.uses[j].type != IRType.box)
+            if (phiNode.uses[j].type !== IRType.box)
                 numTyped++;
         }
         */
@@ -3969,9 +4057,9 @@ function genInlineIR(context, branches)
     while (
         args.length > 0 && 
         args[0] instanceof OpExpr &&
-        args[0].op == 'x [ y ]' &&
+        args[0].op === 'x [ y ]' &&
         args[0].exprs[0] instanceof Ref &&
-        args[0].exprs[0].id.toString() == 'IRType'
+        args[0].exprs[0].id.toString() === 'IRType'
     )
     {
         // Get a reference to the IR type object
@@ -4047,7 +4135,7 @@ function genCondInlineIR(context)
     // If this is an inline IR instruction with value assignment
     if (
         astStmt.expr instanceof OpExpr &&
-        astStmt.expr.op == 'x = y' &&
+        astStmt.expr.op === 'x = y' &&
         astStmt.expr.exprs[0] instanceof Ref &&
         isInlineIR(astStmt.expr.exprs[1])
     )
@@ -4128,3 +4216,71 @@ function genCondInlineIR(context)
     // Set the exit block to be the join block
     context.setOutput(joinBlock);
 }
+
+/**
+Precompute the hash code of a value to be used in a hash lookup.
+*/
+function precompHash(val, params)
+{
+    if (typeof val === 'number')
+    {
+        return val;
+    }
+    else if (typeof val === 'string')
+    {
+        // Initialize the hash code to 0
+        var hashCode = 0;
+
+        // Initialize the integer value to 0
+        var intVal = 0;
+
+        // Flag indicating that the string represents an integer
+        var isInt = true;
+
+        // For each character, update the hash code
+        for (var i = 0; i < val.length; i += 1)
+        {
+            // Get the current character
+            var ch = val.charCodeAt(i);
+
+            // If this character is a digit
+            if (ch >= 48 && ch <= 57)
+            {
+                // Update the number value
+                var digitVal = ch - 48;
+                intVal = 10 * intVal + digitVal;
+            }
+            else
+            {
+                // This string does not represent a number
+                isInt = false;
+            }
+
+            // Update the hash code
+            hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
+        }
+
+        var HASH_CODE_STR_OFFSET = params.staticEnv.getBinding('HASH_CODE_STR_OFFSET').value;
+
+        // If this is an integer value within the supported range
+        if (val.length > 0 && isInt && intVal < HASH_CODE_STR_OFFSET)
+        {
+            // Set the hash code to the integer value
+            hashCode = intVal;
+        }
+        else
+        {
+            // Offset the string hash code to indicate this is not an integer value
+            hashCode += HASH_CODE_STR_OFFSET;
+        }
+
+        return hashCode;
+    }
+    
+    // For other value types
+    else
+    {
+        return precompHash(val.toString(), params);
+    }
+}
+

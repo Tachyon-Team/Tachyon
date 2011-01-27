@@ -56,6 +56,9 @@ var iir =
     eq          : EqInstr,
     ne          : NeInstr,
 
+    // Function call instruction
+    call        : CallFuncInstr,
+
     // FFI call instruction
     call_ffi    : CallFFIInstr
 };

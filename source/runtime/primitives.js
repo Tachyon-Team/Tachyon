@@ -52,7 +52,20 @@ function boxRef(rawPtr, tagVal)
     "tachyon:arg tagVal pint";
 
     // Box the raw pointer
-    return iir.icast(IRType.box, (rawPtr & ~TAG_REF_MASK) | tagVal);
+    return iir.icast(IRType.box, rawPtr | tagVal);
+}
+
+/**
+Unbox a reference value
+*/
+function unboxRef(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret rptr";
+
+    // Box the raw pointer
+    return iir.icast(IRType.rptr, boxVal & ~TAG_REF_MASK);
 }
 
 /**
@@ -79,7 +92,7 @@ function boxHasTag(boxVal, tagVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == tagVal;
+    return getRefTag(boxVal) === tagVal;
 }
 
 /**
@@ -92,7 +105,7 @@ function boxIsInt(boxVal)
     "tachyon:ret bool";
 
     // Test if the value has the int tag
-    return (boxVal & TAG_INT_MASK) == TAG_INT;
+    return (boxVal & TAG_INT_MASK) === TAG_INT;
 }
 
 /**
@@ -119,7 +132,7 @@ function boxIsFunc(boxVal)
 
     /* TODO
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_FUNCTION;
+    return getRefTag(boxVal) === TAG_FUNCTION;
     */
 
     // FIXME: for now, function pointers not boxed, this will not work
@@ -136,7 +149,7 @@ function boxIsArray(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_ARRAY;
+    return getRefTag(boxVal) === TAG_ARRAY;
 }
 
 /**
@@ -149,7 +162,7 @@ function boxIsFloat(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_FLOAT;
+    return getRefTag(boxVal) === TAG_FLOAT;
 }
 
 /**
@@ -162,7 +175,7 @@ function boxIsString(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) == TAG_STRING;
+    return getRefTag(boxVal) === TAG_STRING;
 }
 
 /**
@@ -178,21 +191,21 @@ function boxToBool(boxVal)
     // Get an integer-typed value for input
     var boxInt = iir.icast(IRType.pint, boxVal);
 
-    if (boxInt == BIT_PATTERN_TRUE)
+    if (boxInt === BIT_PATTERN_TRUE)
         return TRUE_BOOL;
 
-    else if (boxInt == BIT_PATTERN_FALSE)
+    else if (boxInt === BIT_PATTERN_FALSE)
         return FALSE_BOOL;
 
-    else if (boxInt == BIT_PATTERN_UNDEF)
+    else if (boxInt === BIT_PATTERN_UNDEF)
         return FALSE_BOOL;
 
-    else if (boxInt == BIT_PATTERN_NULL)
+    else if (boxInt === BIT_PATTERN_NULL)
         return FALSE_BOOL;
 
     else if (boxIsInt(boxVal))
     { 
-        if (boxInt != pint(0))
+        if (boxInt !== pint(0))
             return TRUE_BOOL;
         else
             return FALSE_BOOL;
@@ -202,13 +215,25 @@ function boxToBool(boxVal)
     {
         var len = iir.icast(IRType.pint, get_str_len(boxVal));
 
-        if (len != pint(0))
+        if (len !== pint(0))
             return TRUE_BOOL;
         else
             return FALSE_BOOL;
     }
 
     return TRUE_BOOL;
+}
+
+/**
+Convert a boolean value to a boxed boolean value
+*/
+function boolToBox(boolVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:arg boolVal bool";
+
+    return boolVal? true:false;
 }
 
 /**
@@ -238,6 +263,19 @@ function i32(boxVal)
 }
 
 /**
+Cast a boxed integer value to the u32 type
+*/
+function u32(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret u32";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.u32, unboxInt(boxVal));
+}
+
+/**
 Cast a boxed integer value to the i16 type
 */
 function i16(boxVal)
@@ -261,6 +299,19 @@ function u16(boxVal)
 
     // Unbox the integer and cast it
     return iir.icast(IRType.u16, unboxInt(boxVal));
+}
+
+/**
+Cast a boxed integer value to the i8 type
+*/
+function i8(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret i8";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.i8, unboxInt(boxVal));
 }
 
 //=============================================================================
@@ -290,7 +341,7 @@ function heapAlloc(size)
 
     // Align the next allocation pointer
     var rem = iir.icast(IRType.pint, nextPtr) % HEAP_ALIGN;
-    if (rem != pint(0))
+    if (rem !== pint(0))
     {
         var pad = HEAP_ALIGN - rem;
         nextPtr += pad;
@@ -298,6 +349,25 @@ function heapAlloc(size)
     
     // Update the allocation pointer in the context object
     set_ctx_allocptr(ctx, nextPtr);
+
+    /************** TEMPORARY ************/
+    var startPtr = iir.get_ctx();
+    var oldSize = allocPtr - startPtr;
+    var newSize = nextPtr - startPtr;
+    var nextStep = oldSize;
+    var rem = iir.icast(IRType.pint, oldSize) % pint(1024);
+    if (rem !== pint(0))
+    {
+        var pad = pint(1024) - rem;
+        nextStep += pad;
+    }
+    if (newSize > nextStep)
+    {
+        var newSize = newSize / pint(1024);
+        print("Heap alloc (KB):");
+        print(boxInt(newSize));
+    }
+    /************** TEMPORARY ************/
 
     // Allocate the object at the current position
     return allocPtr;
@@ -311,9 +381,10 @@ function makeError(errorCtor, message)
     "tachyon:static";
     "tachyon:nothrow";
 
-    // FIXME: for now, constructors unsupported
+    // FIXME: for now, constructors and exceptions unsupported
+    error(message);
+
     //return new errorCtor(message);
-    return UNDEFINED;
 }
 
 //=============================================================================
@@ -340,6 +411,7 @@ function lsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function rsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function ursft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function logNot(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
+function inOp(x, y) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties
@@ -459,6 +531,75 @@ function ltGeneral(v1, v2)
 
     // TODO
     return FALSE_BOOL;
+}
+
+/**
+Implementation of HIR less-than-or-equal instruction
+*/
+function le(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.le(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = leGeneral(v1, v2);
+    }
+
+    return tv? true:false;
+}
+
+/**
+Implementation of HIR greater-than instruction
+*/
+function gt(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.gt(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = gtGeneral(v1, v2);
+    }
+
+    return tv? true:false;
+}
+
+/**
+Implementation of HIR greater-than-or-equal instruction
+*/
+function ge(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare the immediate integers directly without unboxing them
+        var tv = iir.ge(v1, v2);
+    }
+    else
+    {
+        // Call a function for the general case
+        var tv = geGeneral(v1, v2);
+    }
+
+    return tv? true:false;
 }
 
 /**
@@ -600,6 +741,13 @@ function addGeneral(v1, v2)
 {
     "tachyon:static";
     "tachyon:nothrow";
+
+    // If both arguments are strings
+    if (boxIsString(v1) && boxIsString(v2))
+    {
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
 
     // TODO
     return UNDEFINED;
@@ -753,7 +901,7 @@ function getHash(key)
 
     // If the property is integer
     if (boxIsInt(key))
-    {
+    {    
         // Unbox the integer key
         return unboxInt(key);
     }
@@ -775,6 +923,10 @@ function putProp(obj, propName, propHash, propVal)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
+    //printInt(13371);
+    //printInt(propName);
+    //printInt(boxInt(propHash));
+
     //
     // TODO: find if getter-setter exists?
     // Requires first looking up the entry in the whole prototype chain...
@@ -790,7 +942,13 @@ function putProp(obj, propName, propHash, propVal)
     );
 
     // Get the hash table index for this hash value
-    var hashIndex = propHash % tblSize;
+    // compute this using unsigned modulo to always obtain a positive value
+    var hashIndex = iir.icast(
+        IRType.pint,
+        iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
+    );
+
+    //printInt(boxInt(hashIndex));
 
     // Until the key is found, or a free slot is encountered
     while (true)
@@ -856,14 +1014,26 @@ function extObjHashTable(obj, curTbl, curSize)
     // Allocate a new, larger hash table
     var newTbl = alloc_hashtbl(newSize);
 
+    // Initialize the keys in the new hash table
+    for (var i = pint(0); i < newSize; i += pint(1))
+    {
+        set_hashtbl_tbl_key(newTbl, i, UNDEFINED);
+    }
+
     // For each entry in the current table
     for (var curIdx = pint(0); 
          curIdx < curSize; 
-         curIdx = (curIdx + pint(1)) % curSize
+         curIdx = curIdx + pint(1)
     )
     {
-        // Get the key and property values at this hash slot
+        // Get the key at this hash slot
         var propKey = get_hashtbl_tbl_key(curTbl, curIdx);
+
+        // If this is an empty hash entry, skip it
+        if (propKey === UNDEFINED)
+            continue;
+
+        // Get the value at this hash slot
         var propVal = get_hashtbl_tbl_val(curTbl, curIdx);
 
         // Get the hash code for the property
@@ -871,7 +1041,11 @@ function extObjHashTable(obj, curTbl, curSize)
         var propHash = getHash(propKey);
 
         // Get the hash table index for this hash value in the new table
-        var startHashIndex = propHash % newSize;
+        // compute this using unsigned modulo to always obtain a positive value
+        var startHashIndex = iir.icast(
+            IRType.pint,
+            iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, newSize)
+        );
         var hashIndex = startHashIndex;
 
         // Until a free slot is encountered
@@ -894,13 +1068,11 @@ function extObjHashTable(obj, curTbl, curSize)
             // Move to the next hash table slot
             hashIndex = (hashIndex + pint(1)) % newSize;
 
-            /* TODO: make assert an inline primitive
             // Ensure that a free slot was found for this key
             assert (
-                hashIndex != startHashIndex,
+                boolToBox(hashIndex !== startHashIndex),
                 'no free slots found in extended hash table'
             );
-            */
         }
     }
 
@@ -931,7 +1103,13 @@ function getProp(obj, propName, propHash)
         );
 
         // Get the hash table index for this hash value
-        var hashIndex = propHash % tblSize;
+        // compute this using unsigned modulo to always obtain a positive value
+        var hashIndex = iir.icast(
+            IRType.pint,
+            iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
+        );
+
+        //printInt(boxInt(hashIndex));
 
         // Until the key is found, or a free slot is encountered
         while (true)
@@ -995,54 +1173,6 @@ function putPropVal(obj, propName, propVal)
     putProp(obj, propName, propHash, propVal);
 }
 
-// FIXME: temporary until we no longer special case these functions in
-// the backend
-function __putPropVal(obj, propName, propVal)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Set the property on the object
-    putProp(obj, propName, propHash, propVal);
-}
-
-// FIXME: temporary until we no longer special case these functions in
-// the backend
-function __getPropVal(obj, propName)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
-
-    // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
-    {
-        // Return the undefined value
-        return UNDEFINED;
-    }
-
-    // Return the property value we found
-    return prop;
-}
-
 /**
 Test if a property exists on an object
 */
@@ -1064,7 +1194,7 @@ function hasPropVal(obj, propName)
     var prop = getProp(obj, propName, propHash);
 
     // Test if the property was found
-    return (iir.icast(IRType.pint, prop) != BIT_PATTERN_NOT_FOUND);
+    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
 }
 
 /**
@@ -1087,7 +1217,7 @@ function getPropVal(obj, propName)
     var prop = getProp(obj, propName, propHash);
 
     // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
     {
         // Return the undefined value
         return UNDEFINED;
@@ -1109,7 +1239,7 @@ function getGlobal(obj, propName, propHash)
     var prop = getProp(obj, propName, propHash);
 
     // If the property isn't defined
-    if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
     {
         // Throw a ReferenceError exception
         throw makeError(ReferenceError, "global property not defined" + propName);
@@ -1139,7 +1269,7 @@ function getGlobalFunc(obj, propName, propHash)
     else
     {
         // If the property isn't defined
-        if (iir.icast(IRType.pint, prop) == BIT_PATTERN_NOT_FOUND)
+        if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
         {
             // Throw a ReferenceError exception
             throw makeError(ReferenceError, "global property not defined" + propName);

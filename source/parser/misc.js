@@ -92,35 +92,34 @@ function String_output_port(init)
 
 //-----------------------------------------------------------------------------
 
-function parse_src_file(filename, warnings)
+function parse_src_file(filename, params)
 {
     assert (
         filename !== undefined,
         'expected file name'
     );
 
-    if (warnings === undefined)
-        warnings = true;
-
-    return parse_src_port(new File_input_port(filename), warnings);
+    return parse_src_port(new File_input_port(filename), params);
 }
 
-function parse_src_str(str, warnings)
+function parse_src_str(str, params)
 {
     assert (
         str !== undefined,
         'expected source string'
     );
 
-    if (warnings === undefined)
-        warnings = true;
-
-    return parse_src_port(new String_input_port(str), warnings);
+    return parse_src_port(new String_input_port(str), params);
 }
 
-function parse_src_port(port, warnings)
+function parse_src_port(port, params)
 {
-    var p = new Parser(new Scanner(port), warnings);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
+    var p = new Parser(new Scanner(port), params.parserWarnings);
     var ast = p.parse();
     var normalized_ast = ast_normalize(ast, false);
 

@@ -144,7 +144,7 @@ Get the current size of an object using this layout
 MemLayout.prototype.getSize = function (subSize)
 {
     // If there are no fields, the size is 0
-    if (this.fields.length == 0)
+    if (this.fields.length === 0)
         return 0;
 
     // Get the last field of the layout
@@ -201,7 +201,7 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
     );
 
     // If the layout is empty
-    if (this.fields.length == 0)
+    if (this.fields.length === 0)
     {
         // The offset is zero
         var offset = 0;
@@ -316,8 +316,8 @@ Test if instances of objects can be generated using this layout
 */
 MemLayout.prototype.isInstantiable = function ()
 {
-    return this.ptrType != undefined;
-}
+    return this.ptrType !== undefined;
+};
 
 /**
 Generate functions to manipulate a given layout
@@ -437,7 +437,7 @@ MemLayout.prototype.genMethods = function ()
             offsetStr += 'offset += pint(' + spec.offset + ');\n';
 
             // If there are many elements, or a variable number of elements
-            if (spec.numElems != 1)
+            if (spec.numElems !== 1)
             {
                 // Create an index variable for this field
                 var idxVar = 'idx' + (numArgs - 1);

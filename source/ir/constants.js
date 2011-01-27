@@ -18,19 +18,19 @@ function ConstValue(value, type)
     // Ensure that the specified value is valid
     assert (
         !(type.isInt() && 
-        (typeof value != 'number' || Math.floor(value) != value)),
+        (typeof value !== 'number' || Math.floor(value) !== value)),
         'integer constants require integer values'
     );
     assert (
-        !(type.isFP() && typeof value != 'number'),
+        !(type.isFP() && typeof value !== 'number'),
         'floating-point constants require number values'
     );
     assert (
-        !(typeof value == 'string' && type !== IRType.box),
+        !(typeof value === 'string' && type !== IRType.box),
         'string-valued constants must have box type'
     );
     assert (
-        !(type === IRType.bool && value != 0 && value != 1),
+        !(type === IRType.bool && value !== 0 && value !== 1),
         'boolean constants must be 0 or 1'
     );        
 
@@ -53,11 +53,11 @@ Get a string representation of a constant instruction
 */
 ConstValue.prototype.toString = function ()
 {
-    if (typeof this.value == 'string')
+    if (typeof this.value === 'string')
     {
        return '"' + escapeJSString(this.value) + '"';
     }
-    else if (typeof this.value == 'number')
+    else if (typeof this.value === 'number')
     {
         return this.type + ':' + String(this.value);
     }
@@ -85,7 +85,7 @@ Test if a constant is a number
 */
 ConstValue.prototype.isNumber = function ()
 {
-    return (typeof this.value == 'number');
+    return (typeof this.value === 'number');
 };
 
 /**
@@ -93,7 +93,7 @@ Test if a constant is an integer
 */
 ConstValue.prototype.isInt = function ()
 {
-    return (this.isNumber() && this.value == Math.floor(this.value));
+    return (this.isNumber() && this.value === Math.floor(this.value));
 };
 
 /**
@@ -101,7 +101,10 @@ Test if a constant is a boxed integer
 */
 ConstValue.prototype.isBoxInt = function (params)
 {
-    assert (params instanceof CompParams);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     var BOX_NUM_BITS_INT = params.staticEnv.getBinding('BOX_NUM_BITS_INT').value;
 
@@ -118,7 +121,7 @@ Test if a constant is a string
 */
 ConstValue.prototype.isString = function ()
 {
-    return (typeof this.value == 'string');
+    return (typeof this.value === 'string');
 };
 
 /**
@@ -159,7 +162,7 @@ ConstValue.prototype.getTagBits = function (params)
         return params.staticEnv.getBinding('TAG_FLOAT').value;
     }
 
-    if (typeof this.value == 'string')
+    if (typeof this.value === 'string')
     {
         return params.staticEnv.getBinding('TAG_STRING').value;
     }
@@ -183,7 +186,10 @@ Get the immediate value (bit pattern) of a constant
 */
 ConstValue.prototype.getImmValue = function (params)
 {
-    assert (params instanceof CompParams);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     if (this.isBoxInt(params))
     {

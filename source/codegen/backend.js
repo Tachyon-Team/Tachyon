@@ -37,8 +37,6 @@ backend.compileIRToCB = function (ir, params)
         fcts = primitives.concat(fcts);
     }
 
-    translator.init(ir);
-    translator.definitions();
     //translator.asm.codeBlock.assemble();
     //print("******* Definitions *********************");
     //print(translator.asm.codeBlock.listingString(startIndex));
@@ -137,8 +135,11 @@ backend.compileIRToCB = function (ir, params)
         // SSA form deconstruction and linear scan resolution 
         order = allocator.resolve(cfg, liveIntervals, order, irToAsm.config);
 
-
         print("******* After register allocation *******");
+
+
+
+
 
         function inFormatFn(instr, pos)
         {
@@ -170,9 +171,26 @@ backend.compileIRToCB = function (ir, params)
         //print("******* Listing *************************");
         //print(translator.asm.codeBlock.listingString(startIndex));
         //startIndex = translator.asm.codeBlock.code.length;
+
+        assert(
+            allocator.validate(cfg, irToAsm.config),
+            'validation failed'
+        );
+        /*
+        print("******* Mapping validation **************");
+
+        cfg.getBlockItr().forEach(function (block)
+        {
+            print(block.getBlockName() + " expecting:");
+            print(block.regAlloc.expected);
+            print();
+        });
+        */
+        
         print("*****************************************");
         print("Number of spills: " + fcts[k].regAlloc.spillNb);
         print();
+
     }
 
 

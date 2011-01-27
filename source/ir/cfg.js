@@ -47,13 +47,13 @@ function ControlFlowGraph(ownerFunc)
     Instruction output names used in the CFG
     @field
     */
-    this.instrNames = [];
+    this.instrNames = new HashMap();
 
     /**
     Block names used in the CFG
     @field
     */
-    this.blockNames = [];
+    this.blockNames = new HashMap();
 
     /**
     IR function to which this CFG belongs
@@ -138,8 +138,8 @@ ControlFlowGraph.prototype.copy = function ()
     newCFG.nextInstrId  = this.nextInstrId;
     newCFG.freeBlockIds = this.freeBlockIds.slice(0);
     newCFG.nextBlockId  = this.nextBlockId;
-    newCFG.instrNames   = this.instrNames.slice(0);
-    newCFG.blockNames   = this.blockNames.slice(0);
+    newCFG.instrNames   = this.instrNames.copy();
+    newCFG.blockNames   = this.blockNames.copy();
 
     // Create a map from old blocks to new blocks
     var blockMap = [];
@@ -247,7 +247,10 @@ Assign a free id number to an instruction
 */
 ControlFlowGraph.prototype.assignInstrId = function (instr)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
     if (this.freeInstrIds.length > 0)
         instr.instrId = this.freeInstrIds.pop();
@@ -260,7 +263,10 @@ Free an instruction id number
 */
 ControlFlowGraph.prototype.freeInstrId = function (instr)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
     this.freeInstrIds.push(instr.instrId);
 };
@@ -270,7 +276,10 @@ Assign a free id number to a basic block
 */
 ControlFlowGraph.prototype.assignBlockId = function (block)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
     if (this.freeBlockIds.length > 0)
         block.blockId = this.freeBlockIds.pop();
@@ -283,7 +292,10 @@ Free a block id number
 */
 ControlFlowGraph.prototype.freeBlockId = function (block)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
     this.freeBlockIds.push(block.blockId);
 };
@@ -293,29 +305,22 @@ Assign a free output name to an instruction
 */
 ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
-    if (outName == undefined || outName == '')
+    if (outName === undefined || outName === '')
     {
         instr.outName = '';
         return;
     }
 
-    if (!arraySetHas(this.instrNames, outName))
-    {
-        instr.outName = outName;
-    }
-    else
-    {
-        var idx = 1;
+    var that = this;
+    function nameTaken(name) { return that.instrNames.hasItem(name); }
+    instr.outName = findFreeName(nameTaken, outName);
 
-        while (arraySetHas(this.instrNames, outName + '_' + idx))
-            idx++;
-
-        instr.outName = outName + '_' + idx;
-    }
-
-    arraySetAdd(this.instrNames, instr.outName);
+    this.instrNames.addItem(instr.outName);
 };
 
 /**
@@ -323,9 +328,15 @@ Free an instruction output name
 */
 ControlFlowGraph.prototype.freeInstrName = function (instr)
 {
-    assert (instr instanceof IRInstr);
+    assert (
+        instr instanceof IRInstr,
+        'invalid instruction'
+    );
 
-    arraySetRem(this.instrNames, instr.outName);
+    if (instr.outName === '')
+        return;
+
+    this.instrNames.remItem(instr.outName);
 };
 
 /**
@@ -333,29 +344,22 @@ Assign a free label name to a block
 */
 ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
-    if (labelName == undefined || labelName == '')
+    if (labelName === undefined || labelName === '')
     {
         block.label = '';
         return;
     }
 
-    if (!arraySetHas(this.blockNames, labelName))
-    {
-        block.label = labelName;
-    }
-    else
-    {
-        var idx = 1;
+    var that = this;
+    function nameTaken(name) { return that.blockNames.hasItem(name); }
+    block.label = findFreeName(nameTaken, labelName);
 
-        while (arraySetHas(this.blockNames, labelName + '_' + idx))
-            idx++;
-
-        block.label = labelName + '_' + idx;
-    }
-
-    arraySetAdd(this.blockNames, block.label);
+    this.blockNames.addItem(block.label);
 };
 
 /**
@@ -363,9 +367,15 @@ Free a block label name
 */
 ControlFlowGraph.prototype.freeBlockName = function (block)
 {
-    assert (block instanceof BasicBlock);
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
 
-    arraySetRem(this.blockNames, block.label);
+    if (block.label === '')
+        return;
+
+    this.blockNames.remItem(block.label);
 };
 
 /**
@@ -581,7 +591,7 @@ ControlFlowGraph.prototype.validate = function ()
             if (instr instanceof PhiInstr)
             {
                 // Verify that it appears at the start of the block
-                if (j != 0 && !(block.instrs[j-1] instanceof PhiInstr))
+                if (j !== 0 && !(block.instrs[j-1] instanceof PhiInstr))
                    error('phi node after non-phi instruction');
 
                 // Verify that each immediate predecessor has a corresponding use
@@ -594,13 +604,13 @@ ControlFlowGraph.prototype.validate = function ()
                         );
 
                 // Verify that there is exactly one predecessor for each use
-                if (instr.preds.length != instr.uses.length)
+                if (instr.preds.length !== instr.uses.length)
                     error(
                         'phi node does not have one predecessor for each use'
                     );
 
                 // Verify that there are no more phi uses than block predecessors
-                if (instr.preds.length != block.preds.length)
+                if (instr.preds.length !== block.preds.length)
                     error(
                         'phi node:\n' + instr + '\nin:\n' +
                         block.getBlockName() +
@@ -609,7 +619,7 @@ ControlFlowGraph.prototype.validate = function ()
             }
 
             // Verify that no branches appear before the last instruction
-            if (instr.isBranch() && j != block.instrs.length - 1)
+            if (instr.isBranch() && j !== block.instrs.length - 1)
                 error('branch before last block instruction');
 
             // For each use of this instruction
@@ -622,7 +632,7 @@ ControlFlowGraph.prototype.validate = function ()
                     error('invalid use found');
 
                 // Verify that the use is in this CFG
-                if (use instanceof IRInstr && use.parentBlock.parentCFG != this)
+                if (use instanceof IRInstr && use.parentBlock.parentCFG !== this)
                     error('use not in CFG');
 
                 // Verify that our uses have us as a dest
@@ -646,7 +656,7 @@ ControlFlowGraph.prototype.validate = function ()
                     error('invalid dest found');
 
                 // Verify that the dest is in this CFG
-                if (dest.parentBlock.parentCFG != this)
+                if (dest.parentBlock.parentCFG !== this)
                     error('dest not in CFG');
 
                 // Verify that our dests have us as a use
@@ -666,10 +676,13 @@ ControlFlowGraph.prototype.validate = function ()
     //
 
     // Work list for the analysis
-    var workList = [this.entry];
+    var workList = new LinkedList();
 
-    // Array to store must reach sets for each block
-    var mustReachOut = [];
+    // Add the entry block to the work list
+    workList.addLast(this.entry);
+
+    // Array to store must reach input sets for each block
+    var mustReachIn = [];
 
     // Compute the set of all definitions in the CFG
     var fullReachSet = [];
@@ -677,28 +690,38 @@ ControlFlowGraph.prototype.validate = function ()
     {
         var block = this.blocks[i];
         for (var j = 0; j < block.instrs.length; ++j)
-            fullReachSet.push(block.instrs[j]);
+            if (block.instrs[j].dests.length > 0)
+                fullReachSet.push(block.instrs[j]);
     }
 
-    // Initialize the reaching def sets for all blocks
+    // Initialize the must reach in sets
+    mustReachIn[this.entry.blockId] = [];
     for (var i = 0; i < this.blocks.length; ++i)
     {
         var block = this.blocks[i];
-        mustReachOut[block.blockId] = fullReachSet;
+        if (block.preds.length > 1)
+            mustReachIn[block.blockId] = fullReachSet;
     }
 
     // Until the work list is empty
-    while (workList.length != 0)
+    while (workList.isEmpty() === false)
     {
-        var block = workList.pop();
+        var block = workList.remFirst();
 
-        // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet:[];
-        for (var i = 0; i < block.preds.length; ++i)
-        {
-            var pred = block.preds[i];
-            mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
-        }
+        //print(block.getBlockName());
+
+        // Get the must reach set at this block's entry
+        var mustReachCur = mustReachIn[block.blockId];
+
+        assert (
+            mustReachCur !== undefined,
+            'must reach in set unavailable'
+        );
+
+        // If we have more than one predecessor, copy the
+        // must reach set before modifying it
+        if (block.preds.length > 1)
+            mustReachCur = mustReachCur.slice(0);
 
         // Remove return values flowing through exception edges
         for (var i = 0; i < mustReachCur.length; ++i)
@@ -715,72 +738,113 @@ ControlFlowGraph.prototype.validate = function ()
         // For each instruction
         for (var i = 0; i < block.instrs.length; ++i)
         {
-            // Add the instruction to the set of reaching values
             var instr = block.instrs[i];
-            arraySetAdd(mustReachCur, instr);
-        }
-        
-        // If the must reach set has changed for this block
-        if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]))
-        {
-            // Update the sets for this block
-            mustReachOut[block.blockId] = mustReachCur;
 
-            // Add the successors of this block to the work list
-            for (var i = 0; i < block.succs.length; ++i)
-                workList.push(block.succs[i]);
-        }
-    }
-
-    // For each basic block
-    for (var i = 0; i < this.blocks.length; ++i)
-    {
-        var block = this.blocks[i];
-
-        // Compute the must and may reach sets at this block's entry
-        var mustReachCur = (block.preds.length > 0)? fullReachSet.slice(0):[];
-        for (var j = 0; j < block.preds.length; ++j)
-        {
-            var pred = block.preds[j];
-            mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
-        }
-
-        // For each instruction
-        for (var j = 0; j < block.instrs.length; ++j)
-        {
-            var instr = block.instrs[j];
-
-            // For each use of the instruction
-            for (var k = 0; k < instr.uses.length; ++k)
+            // If this is not a phi node
+            if ((instr instanceof PhiInstr) === false)
             {
-                var use = instr.uses[k];
-
-                // If the use isn't in the CFG, ignore it
-                if (!(use instanceof IRInstr))
-                    continue;
-
-                if (instr instanceof PhiInstr)
+                // For each use of the instruction
+                for (var k = 0; k < instr.uses.length; ++k)
                 {
-                    var phiPred = instr.preds[k];
-                    if (!arraySetHas(mustReachOut[phiPred.blockId], use))
-                        error(
-                            'phi node:\n' + instr +
-                            '\nuses non-reaching value:\n' + use
-                        );
-                }
-                else
-                {
-                    if (!arraySetHas(mustReachCur, use))
+                    var use = instr.uses[k];
+
+                    // If the use isn't in the CFG, ignore it
+                    if (!(use instanceof IRInstr))
+                        continue;
+
+                    // If the use does not reach the instruction
+                    if (arraySetHas(mustReachCur, use) === false)
+                    {
                         error(
                             'instruction:\n' + instr + '\nin block:\n' + 
                             instr.parentBlock.getBlockName() +
                             '\nuses non-reaching value:\n' + use
                         );
+                    }
                 }
             }
 
-            // Add the instruction to the must reach set
-            arraySetAdd(mustReachCur, instr);
+            // If the instruction's value is used somewhere,
+            // add it to the must reach set
+            if (instr.dests.length > 0)
+                arraySetAdd(mustReachCur, instr);
+        }
+
+        // Count the number of successors with only us as a predecessor
+        var numSinglePred = 0;
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+            if (succ.preds.length === 1)
+                ++numSinglePred;
+        }
+
+        // For each successor
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+
+            // For each instruction of the successor
+            for (var j = 0; j < succ.instrs.length; ++j)
+            {
+                var instr = succ.instrs[j];
+
+                // If this is not a phi node, skip it
+                if ((instr instanceof PhiInstr) === false)
+                    continue;
+
+                // Get the incoming value for the current block
+                var use = instr.getIncoming(block);
+
+                // If the use isn't in the CFG, ignore it
+                if (!(use instanceof IRInstr))
+                    continue;
+
+                // If the use does not reach the phi node
+                if (arraySetHas(mustReachCur, use) === false)
+                {
+                    error(
+                        'phi node:\n' + instr +
+                        '\nuses non-reaching value:\n' + use
+                    );
+                }
+            }
+
+            // If this successor has more than 1 predecessor
+            if (succ.preds.length > 1)
+            {
+                var succReachIn = mustReachIn[succ.blockId];
+
+                // Merge with the must reach in of the successor
+                mustReachIn[succ.blockId] = arraySetIntr(
+                    mustReachCur,
+                    succReachIn
+                );
+
+                // If the must reach in set changed, add the succ to the work list
+                if (arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
+                    workList.addLast(succ);
+            }
+
+            // Otherwise, this successor has only one predecessor (us)
+            else
+            {
+                // If it is the only such block
+                if (numSinglePred === 1)
+                {
+                    // Give it our output reach set as input without
+                    // copying the set
+                    mustReachIn[succ.blockId] = mustReachCur;
+                }
+                else
+                {
+                    // Give it a copy of our must reach set as input
+                    mustReachIn[succ.blockId] = mustReachCur.slice(0);
+                }
+
+                // Add the successor to the work list
+                workList.addLast(succ);
+            }
         }
     }
 
@@ -1138,12 +1202,12 @@ BasicBlock.prototype.toString = function (outFormatFn, inFormatFn, lnPfxFormatFn
     // Print predecessors
     output += '\npreds: ';
     for (var i = 0; i < this.preds.length; ++i)
-        output += this.preds[i].getBlockName() + ((i != this.preds.length - 1)? ', ':'');
+        output += this.preds[i].getBlockName() + ((i !== this.preds.length - 1)? ', ':'');
 
     // Print successors
     output += '\nsuccs: ';
     for (var i = 0; i < this.succs.length; ++i)
-        output += this.succs[i].getBlockName() + ((i != this.succs.length - 1)? ', ':'');
+        output += this.succs[i].getBlockName() + ((i !== this.succs.length - 1)? ', ':'');
     */
 
     return output;
@@ -1387,7 +1451,7 @@ BasicBlock.prototype.replInstrAtIndex = function (index, newVal)
 
         // Ensure that a branch is not replaced by a non-branch or vice-versa
         assert (
-            oldInstr.isBranch() == newVal.isBranch(),
+            oldInstr.isBranch() === newVal.isBranch(),
             'branches must be replaced by branches'
         );
 
@@ -1485,7 +1549,10 @@ Get the last instruction in the block
 */
 BasicBlock.prototype.getLastInstr = function ()
 {
-    assert (this.instrs.length > 0, 'cannot get last instruction, none present');
+    assert (
+        this.instrs.length > 0, 
+        'cannot get last instruction, none present'
+    );
 
     return this.instrs[this.instrs.length - 1];
 };

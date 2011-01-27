@@ -10,38 +10,38 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // Initial hash map size
-var HASH_MAP_INIT_SIZE = 89;
+HashMap.INIT_SIZE = 89;
 
 // Hash map min and max load factors
-var HASH_MAP_MIN_LOAD_NUM = 1;
-var HASH_MAP_MIN_LOAD_DENOM = 10;
-var HASH_MAP_MAX_LOAD_NUM = 6;
-var HASH_MAP_MAX_LOAD_DENOM = 10;
-
-// Next object serial number to be assigned
-var nextObjectSerial = 1;
+HashMap.MIN_LOAD_NUM = 1;
+HashMap.MIN_LOAD_DENOM = 10;
+HashMap.MAX_LOAD_NUM = 6;
+HashMap.MAX_LOAD_DENOM = 10;
 
 /**
 Default hash function implementation
 */
 function defHashFunc(val)
 {
-    if (typeof val == 'number')
+    if (typeof val === 'number')
     {
         return Math.floor(val);
     }     
  
-    else if (typeof val == 'string')  
+    else if (typeof val === 'string')  
     {
         var hashCode = 0;
 
         for (var i = 0; i < val.length; ++i)
-            hashCode = (hashCode * 256 + val.charCodeAt(i)) % 426870919;
+        {
+            var ch = val.charCodeAt(i);
+            hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
+        }
 
         return hashCode;
     }
 
-    else if (typeof val == 'boolean')
+    else if (typeof val === 'boolean')
     {
         return val? 1:0;
     }
@@ -55,12 +55,17 @@ function defHashFunc(val)
     {
         if (!val.hasOwnProperty('__hashCode__'))
         {
-            val.__hashCode__ = nextObjectSerial++;
+            val.__hashCode__ = defHashFunc.nextObjectSerial++;
         }
 
         return val.__hashCode__;
     }
 }
+
+/**
+Next object serial number to be assigned
+*/
+defHashFunc.nextObjectSerial = 1;
 
 /**
 Default equality function
@@ -106,8 +111,8 @@ function HashMap(hashFunc, equalFunc)
         // numItems > ratio * numSlots
         // numItems > num/denom * numSlots 
         // numItems * denom > numSlots * num
-        if (this.numItems * HASH_MAP_MAX_LOAD_DENOM >
-            this.numSlots * HASH_MAP_MAX_LOAD_NUM)
+        if (this.numItems * HashMap.MAX_LOAD_DENOM >
+            this.numSlots * HashMap.MAX_LOAD_NUM)
         {
             this.resize(2 * this.numSlots + 1);
         }
@@ -147,8 +152,8 @@ function HashMap(hashFunc, equalFunc)
         // numItems > ratio * numSlots
         // numItems > num/denom * numSlots 
         // numItems * denom > numSlots * num
-        if (this.numItems * HASH_MAP_MAX_LOAD_DENOM >
-            this.numSlots * HASH_MAP_MAX_LOAD_NUM)
+        if (this.numItems * HashMap.MAX_LOAD_DENOM >
+            this.numSlots * HashMap.MAX_LOAD_NUM)
         {
             this.resize(2 * this.numSlots + 1);
         }
@@ -213,10 +218,10 @@ function HashMap(hashFunc, equalFunc)
                 // numItems < ratio * numSlots 
                 // numItems < num/denom * numSlots 
                 // numItems * denom < numSlots * num
-                if ((this.numItems * HASH_MAP_MIN_LOAD_DENOM <
-                     this.numSlots * HASH_MAP_MIN_LOAD_NUM)
+                if ((this.numItems * HashMap.MIN_LOAD_DENOM <
+                     this.numSlots * HashMap.MIN_LOAD_NUM)
                     &&
-                    this.numSlots > HASH_MAP_INIT_SIZE)
+                    this.numSlots > HashMap.INIT_SIZE)
                 {
                     this.resize((this.numSlots - 1) >> 1);
                 }
@@ -310,7 +315,7 @@ function HashMap(hashFunc, equalFunc)
     this.clear = function ()
     {
         // Set the initial number of slots
-        this.numSlots = HASH_MAP_INIT_SIZE;
+        this.numSlots = HashMap.INIT_SIZE;
 
         // Set the initial array size
         this.array.length = 2 * this.numSlots;
@@ -371,7 +376,7 @@ function HashMap(hashFunc, equalFunc)
     Number of internal array slots
     @field
     */
-    this.numSlots = HASH_MAP_INIT_SIZE;
+    this.numSlots = HashMap.INIT_SIZE;
 
     /**
     Internal storage array
@@ -393,7 +398,7 @@ function HashMap(hashFunc, equalFunc)
     this.numItems = 0;
 
     // If no hash function was specified, use the default function
-    if (hashFunc == undefined || hashFunc == null)
+    if (hashFunc === undefined || hashFunc === null)
         hashFunc = defHashFunc;
 
     /**
@@ -403,7 +408,7 @@ function HashMap(hashFunc, equalFunc)
     this.hashFunc = hashFunc;
 
     // If no hash function was specified, use the default function
-    if (equalFunc == undefined || equalFunc == null)
+    if (equalFunc === undefined || equalFunc === null)
         equalFunc = defEqualFunc;
 
     /**

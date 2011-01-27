@@ -83,7 +83,7 @@ Test two array sets for equality
 */
 function arraySetEqual(arr1, arr2)
 {
-    if (arr1.length != arr2.length)
+    if (arr1.length !== arr2.length)
         return false;
 
     for (var i = 0; i < arr1.length; ++i)
@@ -114,9 +114,8 @@ function arrayRange(from, to, step)
     }
 
     
-    assert(from >= 0);
-    assert(to > from);
-    assert(step > 0);
+    assert(from >= 0, 'from must be >= 0');
+    assert(step > 0, 'step must be > 0');
 
     j=0;
     for (i=from; i < to; i+=step)
@@ -187,4 +186,3 @@ ArrayIterator.prototype.getIndex = function ()
 {
     return this.index;
 };
-

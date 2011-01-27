@@ -898,7 +898,7 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
             const offset = o.label.getPos() - that.startPos; 
             const srcAddr = baseAddr.addOffset(offset);
 
-            assert(srcAddr !== null);
+            assert(srcAddr !== null, 'source address is null');
             
             o.linkObj.setAddr(srcAddr);
 
@@ -940,7 +940,7 @@ asm.CodeBlock.prototype.genRequired = function (linkObj)
     const label = this.label();        
 
     this.genLabel(label);
-    // Adds temporary zeros to be replace with the linked value
+    // Adds temporary zeros to be replaced with the linked value
     this.genNumber(linkObj.width(), 0);
 
     // Maintain the required object list

@@ -12,7 +12,15 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Intermediate representation function
 */
-function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, astNode)
+function IRFunction(
+    funcName, 
+    argVars, 
+    closVars, 
+    argTypes, 
+    retType, 
+    parentFunc, 
+    astNode
+)
 {
     /**
     Function name
@@ -71,6 +79,13 @@ function IRFunction(funcName, argVars, closVars, argTypes, retType, parentFunc, 
     @field
     */
     this.parentFunc = null;
+
+    /**
+    Indicates that this function is a proxy callable from C
+    (uses the C calling convention)
+    @field
+    */
+    this.cProxy = false;
 
     /**
     Indicates that this function may use the arguments object
@@ -159,7 +174,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     {
         output += this.argTypes[i] + ' ' + this.argVars[i];
 
-        if (i != this.argVars.length - 1)
+        if (i !== this.argVars.length - 1)
             output += ', ';
     }
 
@@ -169,7 +184,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
     {
         output += this.closVars[i];
 
-        if (i != this.closVars.length - 1)
+        if (i !== this.closVars.length - 1)
             output += ', ';
     }
 
@@ -311,3 +326,21 @@ IRFunction.prototype.getChildrenList = function ()
 
     return list;
 };
+
+/**
+Get a child function by name
+*/
+IRFunction.prototype.getChild = function (name)
+{
+    for (var i = 0; i < this.childFuncs.length; ++i)
+    {
+        if (this.childFuncs[i].funcName === name)
+            return this.childFuncs[i];
+    }
+
+    assert (
+        false,
+        'child function not found: "' + name + '"'
+    );
+};
+

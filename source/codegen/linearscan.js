@@ -42,56 +42,6 @@ allocator.max = function (a, accessFct)
 };
 
 /** 
-    Returns the index of the first item equals to value
-    in the sorted array. 
-    @param {Array} a sorted array
-    @param value
-    @param {Function} cmpFct comparison function used
-*/
-allocator.binSearch = function (a, value, cmpFct)
-{
-    var maxIndex = a.length;
-    var minIndex = 0;
-    var current  = (maxIndex + minIndex) >> 1;
-    var cmp = 0;
-    var i;
-
-    while (maxIndex !== minIndex)
-    {
-        cmp = cmpFct(value, a[current]);
-        if (cmp < 0)
-        {
-            maxIndex = current;
-        } else if (cmp === 0)
-        {
-            break;
-        } else
-        {
-            minIndex = current + 1;
-        }
-        current  = (maxIndex + minIndex) >> 1;
-    }
-
-
-    if (cmpFct(value, a[current]) !== 0)
-    {
-        return null;
-    } else
-    {
-        // Check if a previous value would also be equal
-        for (i=current; i >= 0; --i)
-        {
-            if (cmpFct(a[i], a[current]) === 0)
-            {
-                current = i;
-            } 
-        }
-
-        return current;
-    }
-};
-
-/** 
     Finds the first object in a given array whose access function returns
     a value with the identity equality comparison returning true. Returns
     null if no value can be found.
@@ -222,8 +172,17 @@ allocator.priorityQueue = function (a, cmpFunction)
     if (cmpFunction !== undefined)
         that.cmpFunction = cmpFunction;
 
-    // Ensure sorted
-    that.innerArray.sort(cmpFunction);
+    // Ensure an initial stable sort
+    var a2 = arrayRange(a.length); 
+    var fct = function (u,v)
+    {
+        const cmp = cmpFunction(a[u],a[v]);
+        return (cmp !== 0) ? cmp : u - v;
+    };
+
+    a2.sort(fct);
+
+    that.innerArray = a2.map(function (i) { return a[i]; });
 
     return that;
 };
@@ -248,6 +207,7 @@ allocator.priorityQueue.prototype.enqueue = function (value)
     var cmp = 0;
     var i;
 
+    // Binary Search
     while (maxIndex !== minIndex)
     {
         cmp = this.cmpFunction(value, a[current]);
@@ -945,6 +905,70 @@ allocator.interval.prototype.regAtPos = function (pos)
     return null;
 };
 
+/**
+    Iterate through all split positions in ascending order of 
+    position.
+*/
+allocator.interval.prototype.getSplitItr = function ()
+{
+    return new allocator.SplitIterator(this); 
+};
+
+/**
+    @class 
+    Iterator to the split positions of an interval.
+
+    @param interval interval to iterate on
+
+    @augments Iterator
+*/
+allocator.SplitIterator = function (interval)
+{
+    /** @private */
+    this.current = interval;
+    this.next();
+
+    return this;
+};
+
+allocator.SplitIterator.prototype = new Iterator();
+
+/** Move iterator to the next item */
+allocator.SplitIterator.prototype.next  = function () 
+{ 
+    this.current = this.current.next; 
+};
+
+/** Ensure iterator is still on a valid item.  Ex: Not at the end */
+allocator.SplitIterator.prototype.valid = function () 
+{ 
+    return this.current !== null; 
+};
+
+/** Returns the current  split object with properties:
+    
+    before: interval before the split
+    after:  interval after the split
+*/
+allocator.SplitIterator.prototype.get = function () 
+{ 
+    var it = this.current;
+    return {before:it.previous, after:it}; 
+};
+
+/** Insert an item at the current position */
+allocator.SplitIterator.prototype.insert = function (item) 
+{ 
+    error("not supported"); 
+};
+
+/** Update the item at the current position with the new value */
+allocator.SplitIterator.prototype.update = function (value) 
+{ 
+    error("not supported"); 
+};
+
+
 //-----------------------------------------------------------------------------
 
 // Block Ordering
@@ -985,7 +1009,11 @@ allocator.orderBlocks = function (cfg)
                 // Operation number at the end of the block
                 to              : -1,   
                 // Live set at the block entry
-                liveIn          : null  
+                liveIn          : null,
+
+                // Expected slot mapping at the block entry
+                expected        : null
+
             };
         } else
         {
@@ -1185,7 +1213,7 @@ allocator.orderBlocks = function (cfg)
     // Compute the last loop end for header blocks
     for (var i = 0; i < blockOrder.length; ++i)
     {
-        var block = cfg.blocks[i];
+        var block = blockOrder[i];
 
         if (block.regAlloc.loopHeader)
             block.regAlloc.loopHeader.regAlloc.lastLoopEnd = block;
@@ -1223,6 +1251,11 @@ allocator.numberInstrs = function (cfg, order, config)
     var instrNb;
     var i,j, block, instr;
 
+    cfg.regAlloc = {
+        // Used for split resolution
+        blockBoundaries:{}   
+    }; 
+
     // For each block in the order
     for (i = 0; i < order.length; ++i)
     {
@@ -1230,6 +1263,9 @@ allocator.numberInstrs = function (cfg, order, config)
 
         // Set the operation number at the block start
         block.regAlloc.from = nextNo;
+
+        // Store block boundaries
+        cfg.regAlloc.blockBoundaries[nextNo] = true;
 
         // All phi instructions happen at the same time at the beginning of the
         // block so they should have the same instruction number as the beginning 
@@ -1343,9 +1379,9 @@ allocator.liveIntervals = function (cfg, order, config)
                 }
             }
 
-            // If this is a loop header, skip it
-            if (succ.regAlloc.lastLoopEnd === block)
-                continue;            
+            // If this is our loop header, skip it
+            if (block.regAlloc.loopHeader === succ)
+                continue;
 
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
@@ -1384,7 +1420,6 @@ allocator.liveIntervals = function (cfg, order, config)
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
-
             }
 
             // Input operands for phi instructions are added to the live set
@@ -1548,6 +1583,33 @@ allocator.fixedIntervals = function (cfg, config)
 */ 
 allocator.linearScan = function (config, unhandled, mems, fixed)
 {
+
+    // Print function used for debugging purposes
+    function printState() 
+    {
+        function printItval(it)
+        {
+            (it.instr !== null) ? print(it.instr.getValName()) : "";
+            print(it);
+        };
+
+        print("Available registers:");
+        print(config.physReg);
+        print("Free until pos:");
+        print(freeUntilPos);
+        print("Next use pos");
+        print(nextUsePos);
+        print("Current: ");
+        printItval(current);
+        print("Actives: ");
+        activeSet.values.forEach(printItval);
+        print("Inactives: ");
+        inactiveSet.values.forEach(printItval);
+        print("Fixed: ");
+        fixed.forEach(printItval);
+        print("-----------");
+    }
+
     //       Interval registers are indexes into the pregs array during
     //       allocation, but are replaced by their pregs object
     //       at the end.
@@ -1627,6 +1689,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
     // Iteration vars
     var current, position, it, i;
 
+
     /** @ignore */
     function tryAllocateFreeReg(current)
     {
@@ -1686,9 +1749,10 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 
 
 
-        // Original algorithm said allocation failed if freeUntilPos[reg] === 0         // but it was too weak, allocation should fail unless a register
-        // is free for a part of current.  This way it handles 
-        // a fixed interval starting at the same position as current
+        // Original algorithm said allocation failed only 
+        // if freeUntilPos[reg] === 0 but it was too weak, allocation should 
+        // fail unless a register is free for a part of current.  This way it 
+        // handles a fixed interval starting at the same position as current
         if (typeof reg !== "number")
         {
             // Always succeed when a register not available for allocation
@@ -1824,6 +1888,8 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         current  = unhandledQueue.dequeue();
         position = current.startPos();
 
+        //  Make a copy of the set to allow
+        //  modifications while iterating
         var values = activeSet.values.slice(0);
 
         // check for intervals in active that are handled or inactive
@@ -1844,6 +1910,8 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         }
 
 
+        //  Make a copy of the set to allow
+        //  modifications while iterating
         var values = inactiveSet.values.slice(0);
 
         // check for intervals in inactive that are handled or active
@@ -1907,39 +1975,38 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 */
 allocator.assign = function (cfg, config)
 {
-    var it, instr, opndIt, opnds, dest, pos, opnd;
-    for (it = cfg.getInstrItr(); it.valid(); it.next())
+    cfg.getInstrItr().forEach(function (instr) 
     {
-        instr = it.get();
-        opnds = []; 
-        dest  = null; 
-        pos = instr.regAlloc.id;
-        opndPos = pos - allocator.numberInstrs.inc;
+        var opnds = []; 
+        var dest  = null; 
+        var pos = instr.regAlloc.id;
+        var usePos = pos - allocator.numberInstrs.inc;
 
-        for (opndIt = instr.getUseItr(); opndIt.valid(); opndIt.next())
+        instr.getUseItr().forEach(function (use)
         {
-            opnd = opndIt.get(); 
-
-            if (opnd instanceof IRInstr)
+            if (use instanceof IRInstr)
             {
                 if (instr instanceof PhiInstr)
                 {
                     // For phi instructions, make sure we used the same 
                     // register as used for SSA deconstruction
-                    opnds.push(opnd.regAlloc.interval.
-                              regAtPos(instr.preds[opndIt.index].regAlloc.to));
+                    opnds.push(use.regAlloc.interval.
+                              regAtPos(instr.getPredecessor(use).regAlloc.to));
                 } else if (instr.regAlloc.usedRegisters(instr, config))
                 {
-                    opnds.push(opnd.regAlloc.interval.regAtPos(opndPos));
+                    // Special case for instructions for which
+                    // the inputs where separated from the outputs
+                    opnds.push(use.regAlloc.interval.regAtPos(usePos));
                 } else                 
                 {
-                    opnds.push(opnd.regAlloc.interval.regAtPos(pos));
+                    // Regular instruction
+                    opnds.push(use.regAlloc.interval.regAtPos(pos));
                 }
             } else 
             {
-                opnds.push(opnd);
+                opnds.push(use);
             }
-        }
+        });
 
         if (instr.hasDests())
         {
@@ -1948,7 +2015,7 @@ allocator.assign = function (cfg, config)
 
         instr.regAlloc.opnds = opnds;
         instr.regAlloc.dest = dest;
-    }
+    });
 };
 
 /** 
@@ -1972,19 +2039,20 @@ allocator.resolve = function (cfg, intervals, order, config)
         return pos >= block.regAlloc.from && pos < block.regAlloc.to;
     };
 
-    // Insertion function that remembers the last instruction
+    // Returns an insertion function that remembers the last instruction
     // offset within a block instruction array to allow multiple insertions
     // to be successive
     function getInsertFct(block, pos) 
     { 
         var insertIndex = pos;
-        return function (instr) { block.addInstr(instr,"", insertIndex++); };
+        return function (instr) { 
+            block.addInstr(instr,"", insertIndex++); };
     };
 
     // There is no direct mapping of index into the block instruction
     // array and the position assigned by register allocation.  We therefore
     // need to search within the block to find the insertion position within
-    // the array.
+    // the instruction array.
     //
     // If performance becomes a problem, the last block instruction offset
     // could be cached to find the insertion position faster the second time
@@ -2008,6 +2076,7 @@ allocator.resolve = function (cfg, intervals, order, config)
 
         assert(insertPos < block.instrs.length,
                "Move instruction inserted after a branching instruction");
+
       
         // We might receive either a single move instruction or a
         // mapping containing many moves
@@ -2021,80 +2090,37 @@ allocator.resolve = function (cfg, intervals, order, config)
                                       config.temp);
         }
     };
-
     
     var edgeIt, intervalIt, movesIt, blockIt, edge, moveFrom, moveTo;
-    var interval;
     var move;
-    var moves = [];
-    var pos, offset, blockOffset;
     var mapping;
     var insertFct;
-    var insertIndex;
     var opnd;
     var block;
     var blocksToInsert = [];
     var insertIt;
     var lastInstr;
+    const moves = allocator.moves();
 
     // Determine moves to insert resulting from splitting of intervals
-    for (intervalIt = new ArrayIterator(intervals); 
-         intervalIt.valid(); 
-         intervalIt.next())
+    // inside blocks
+    intervals.forEach(function (interval)
     {
-        interval = intervalIt.get();
-
-        while (interval !== null)
+        interval.getSplitItr().forEach(function (split)
         {
-            
-            if (interval.previous !== null &&
-                interval.previous.reg !== interval.reg)
+            if (split.before.reg !== split.after.reg &&
+                // Only splits inside blocks should be resolved
+                // here, the others will be done by the next phase
+                cfg.regAlloc.blockBoundaries[split.before.endPos()] !== true)
             {
-                pos = interval.previous.endPos();
-                move = moves[pos];
-                moveFrom = interval.previous.reg;
-                moveTo = interval.reg;
-
-                if (move === undefined) 
-                {
-                    moves[pos] = new MoveInstr(moveFrom, moveTo);
-                } else if (move instanceof MoveInstr) 
-                {
-                    // Replace the move with a mapping
-                    // for the two moves
-                    // in case they might conflict with each other
-                    mapping = allocator.mapping();
-                    mapping.addMove(move);
-                    mapping.add(moveFrom, moveTo);
-                    moves[pos] = mapping;
-                    
-                } else
-                {
-                    // We already got a mapping, add this move to it
-                    move.add(moveFrom, moveTo);    
-                }
+                moves.addMove(new MoveInstr(split.before.reg, 
+                                            split.after.reg, split.before), 
+                              split.before.endPos());
             }
-            interval = interval.next;
-        }
-    }
+        });
+    });
 
-    // Insert moves into corresponding blocks
-    movesIt = new FilterIterator(new ArrayIterator(moves),
-                                function (move) { return move !== undefined });
-    blockIt = new ArrayIterator(order); 
-    while (movesIt.valid() && blockIt.valid())
-    {
-        if (withinBounds(movesIt.getIndex(), blockIt.get()))
-        {
-            insertMoves(blockIt.get(), movesIt.get(), movesIt.getIndex());
-            movesIt.next();
-        } else
-        {
-            blockIt.next();
-        }
-    }
-
-    // Resolve differences accross edges introduced by splitting
+    // Resolve differences accross edges
     for (edgeIt = cfg.getEdgeItr(); edgeIt.valid(); edgeIt.next())
     {
         mapping = allocator.mapping();
@@ -2106,7 +2132,10 @@ allocator.resolve = function (cfg, intervals, order, config)
         {
             if (intervalIt.get().startPos() === edge.succ.regAlloc.from)
             {
-                assert(intervalIt.get().instr instanceof PhiInstr);
+                assert(
+                    intervalIt.get().instr instanceof PhiInstr,
+                    'expected phi instruction'
+                );
 
                 // We got a Phi instruction
                 opnd = intervalIt.get().instr.getIncoming(edge.pred);
@@ -2124,13 +2153,14 @@ allocator.resolve = function (cfg, intervals, order, config)
                 moveFrom = intervalIt.get().regAtPos(edge.pred.regAlloc.to);
             }
 
-
-            moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from);
+            // pred 'to' position might be the same as succ 'from' pos
+            // so let's add 1 to succ 'from'
+            moveTo = intervalIt.get().regAtPos(edge.succ.regAlloc.from + 1);
 
 
             if (moveFrom !== moveTo)
             {
-               mapping.add(moveFrom, moveTo);
+               mapping.add(moveFrom, moveTo, intervalIt.get());
             }
         }
 
@@ -2148,31 +2178,46 @@ allocator.resolve = function (cfg, intervals, order, config)
             lastInstr instanceof JumpInstr)
         {
             // Predecessor has only a successor
-            // and is a jump instruction.  
+            // and is a jump instruction. Insert
+            // moves before the last instruction.
             // 
             // We are conservative here as other
             // branching instructions might be good 
             // candidates too.  We will optimize 
             // it later.
-            insertFct = getInsertFct(edge.pred, edge.pred.instrs.length - 1);
+            moves.addMapping(mapping, lastInstr.regAlloc.id);
         } else         
         {   
             if (edge.succ.preds.length === 1)
             {
                 // Successor has only a predecessor, insert moves
                 // at the beginning of successor
-                block = edge.succ;
+                moves.addMapping(mapping, edge.succ.regAlloc.from);
             } else
             {
                 // We need to introduce an additional block to insert
                 // the move instructions
                 block = cfg.getNewBlock("ssa_dec");     
                 blocksToInsert.push({edge:edge, block:block});
+                mapping.orderAndInsertMoves(getInsertFct(block, 0), 
+                                            config.temp);
             }
-            
-            insertFct = getInsertFct(block, 0);
         }
-        mapping.orderAndInsertMoves(insertFct, config.temp);
+    }
+
+    // Insert moves into corresponding blocks
+    movesIt = moves.getItr();
+    blockIt = new ArrayIterator(order); 
+    while (movesIt.valid() && blockIt.valid())
+    {
+        if (withinBounds(movesIt.getIndex(), blockIt.get()))
+        {
+            insertMoves(blockIt.get(), movesIt.get(), movesIt.getIndex());
+            movesIt.next();
+        } else
+        {
+            blockIt.next();
+        }
     }
 
     // Insert blocks for moves that could not be inserted on existing blocks
@@ -2187,6 +2232,531 @@ allocator.resolve = function (cfg, intervals, order, config)
 
     // Reorder blocks, taking into account the new blocks inserted
     return allocator.orderBlocks(cfg);
+};
+
+/**
+    Validates the register allocation and the move instruction
+    introduced, ensuring that for each instruction, temporaries
+    are in the expected registers or memory slot.
+*/
+allocator.validate = function (cfg, config)
+{
+
+    function printIt(instr)
+    {
+        if (instr !== undefined && instr.regAlloc !== undefined)
+        {
+            return String(instr.regAlloc.interval);
+        }
+    };
+
+    function printValue(v)
+    {
+        if (v instanceof IRFunction)
+        {
+            return v.funcName;
+        } else {
+            return String(v);
+        }
+    };
+
+    function assertInstrCompatible(given, slots, values, instr)
+    {
+        for (var i = 0; i < slots.length; ++i)
+        {
+            slot  = slots[i];
+            if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+            {
+                value = values[i]; 
+                assert(given.compatible(slot, value), 
+                        "RegAlloc expected:\n" + value +
+                        "\n in:\n" +
+                        slot + "\n but received: \n" +
+                        String(given.getValue(slot)) +
+                        "\n for '" +
+                        instr.getValName() + "' at pos " + instr.regAlloc.id +
+                        "\n" +
+                        "in mapping " + given.toString([slot]) + "\n" +
+                        printIt(given.getValue(slot)));
+            }
+        }
+    };
+
+    // To check the soundness of the moves inserted
+    // during SSA deconstruction and find a common
+    // comparison point for the different predecessor
+    // of a block without having to execute each
+    // possible path through the graph, we handle
+    // phi instructions as a special case
+    function applyPhiInstrs(slotMap, block, pred)
+    {
+        block.getInstrItr().forEach(function (instr)
+        {
+            if (instr instanceof PhiInstr)
+            {
+                const slot  = instr.regAlloc.dest;
+                const value = instr.getIncoming(pred);
+               
+                assertInstrCompatible(slotMap, [slot], [value], instr);
+                slotMap.update(slot, instr);
+            } else
+            {
+                return false;
+            }
+        });
+         
+        return true;
+    };
+
+    function compatible(given, expected)
+    {
+        // I assume without a formal proof that
+        // the difference set of the slots from
+        // given and expected contains only 
+        // values that won't be needed afterwards.
+        //
+        // The informal proof goes like this:
+        // A difference in the set of slots 
+        // can only be introduced by multiple paths
+        // in the CFG.  Given that temps that 
+        // are defined in a single path will
+        // be merged in a phi node to be used
+        // by a subsequent instruction and be moved
+        // appropriately in the PhiInstr slot,
+        // any slot introduced before the PhiInstr
+        // by that temp in a specific path will not be needed anymore,
+        // since the PhiInstr slot will be used instead.
+        //
+        // We then only need to check compatibility
+        // in the intersection set of given and expected slots
+        // to garantee the soundness of the register allocation.
+        const givenSlots = given.getSlots();
+        const expectedSlots = expected.getSlots();
+
+        const intrSlots = arraySetIntr(givenSlots, expectedSlots);  
+        const givenIntrValues = given.getValues(intrSlots);
+         
+        return expected.compatible(intrSlots, givenIntrValues);
+    };
+
+    function traverseBlock(block, expected, pred)
+    {
+        var given = expected.copy();
+
+        block.getInstrItr().forEach(function (instr)
+        {
+            const opnds = instr.regAlloc.opnds;
+            const dest = instr.regAlloc.dest;
+            var blocked = instr.regAlloc.usedRegisters(instr, config);
+
+            // They already have been handled
+            if (instr instanceof PhiInstr) return;
+
+            // We ignore branch instructions
+            if (instr.isBranch() && !instr instanceof CallInstr
+                && !instr instanceof RetInstr) return;
+
+            if (instr instanceof MoveInstr)
+            {
+                given.move(instr.uses[0], instr.uses[1], instr); 
+                return;
+            };
+            
+            // Some control flow instructions like
+            // jump may have been inserted after register
+            // allocation resolution.  Those instructions
+            // won't have a regAlloc.id
+            if (instr.regAlloc.id === undefined) return;
+            
+            assertInstrCompatible(given, opnds, instr.uses, instr);
+
+            // We record invalidation of registers
+            if (blocked !== null)
+            {
+                blocked = blocked.map(function (index) 
+                { 
+                    return config.physReg[index]; 
+                });
+                given.invalidate(blocked, instr);
+            }
+
+            // We then update the destination register
+            // of the instruction with its value
+            if (dest !== null)
+            {
+                given.update(dest, instr);
+            }
+        });
+        return given;
+    };
+
+    // Initialize     
+    var stack = [];
+    var block = cfg.getEntryBlock();
+    var given;
+
+    cfg.getBlockItr().forEach(function (block)
+    {
+        block.regAlloc.expected = null;        
+        block.regAlloc.given    = null;
+    });
+
+    // The cfg entry block mapping is empty
+    block.regAlloc.expected = allocator.slotMapping();
+
+    stack.push(block);
+
+    // DFS
+    while (stack.length > 0) 
+    {
+        block = stack.pop();
+        given = traverseBlock(block, block.regAlloc.expected);
+
+        block.succs.forEach(function (succ)
+        {
+            const regAlloc = succ.regAlloc;
+            const expected = regAlloc.expected;
+            const slotMap = given.copy();
+
+            if (expected === null)
+            {
+                applyPhiInstrs(slotMap, succ, block);
+                regAlloc.expected = slotMap;
+                stack.push(succ);
+            } else
+            {
+                applyPhiInstrs(slotMap, succ, block);
+                assert(compatible(slotMap, expected),
+                       "Given mapping from '" + block.getBlockName() + "':\n" +
+                       slotMap +
+                       "is incompatible with expected mapping for '" +
+                       succ.getBlockName() + "':\n" +
+                       expected);
+            }
+        });
+    }
+
+    return true;
+};
+
+/**
+    Mapping from memory slots and registers to IRValues.
+*/
+allocator.slotMapping = function ()
+{
+    var that = Object.create(allocator.slotMapping.prototype);
+
+    that.mapping = {};
+    that.debug   = {};
+
+    return that;
+};
+
+/**
+    Tests whether the given register/memory/... slot and its
+    associated IRValue are compatible with the current mapping.
+
+    Returns true if the mapping contains the same IRValue as given in values.
+    Ignores entries in slot which is not a register or a memory slot.
+
+    @param slot   register/memory/...
+    @param value  IRValue
+*/
+allocator.slotMapping.prototype.compatible = function (slot, value)
+{
+    if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+    {
+        currentValue = this.mapping[slot];
+
+        if (currentValue !== value)
+        {
+            return false;
+        }
+    }
+
+    return true;
+};
+
+/**
+    Update the slot given in the current mapping to the value given.
+
+    @param slot    register/memory/... slot to update
+    @param value   value to store in mapping
+    @param instr   Optional, defaults to value parameter,
+                   instruction responsible for the value given
+*/
+allocator.slotMapping.prototype.update = function (slot, value, instr)
+{
+    assert(
+        slot.type === x86.type.REG || slot.type === x86.type.MEM,
+        'slot must be register or memory'
+    );
+
+    this.mapping[slot] = value;
+
+    if (instr === undefined)
+    {
+        instr = value;
+    }
+
+    assert(
+        instr !== null,
+        'instruction is null'
+    );
+
+    this.getDebugSlot(slot).push(instr);
+};
+
+/**
+    Move the value from one slot to another.
+    
+    @param orig   Origin slot
+    @param dest   Destination slot
+*/
+allocator.slotMapping.prototype.move = function (orig, dest, instr)
+{
+    const value = (orig.type === x86.type.REG || orig.type === x86.type.MEM) ?
+                  this.mapping[orig] : orig;
+
+    this.update(dest, value, instr);
+};
+
+/**
+    Invalidate the content of the given slots. 
+
+    @param slots  Array of register/memory/... slots
+    @param instr  Optional instruction for debugging.
+*/
+allocator.slotMapping.prototype.invalidate = function (slots, instr)
+{
+    const that = this;
+
+    slots.forEach(function (slot)
+    {
+        that.update(slot, null, instr);
+    });
+};
+
+/**
+    Returns a copy of this mapping.
+*/
+allocator.slotMapping.prototype.copy = function ()
+{
+    var slot, i, newA, oldA;
+    var newMapping = Object.create(this);
+    
+    newMapping.mapping = {};
+
+    for (slot in this.mapping)
+    {
+        newMapping.mapping[slot] = this.mapping[slot];
+    }
+
+    newMapping.debug = {};
+
+    for (slot in this.debug)
+    {
+        newA = [];
+        oldA = this.debug[slot];
+
+        newA.length = oldA.length;
+
+
+        for (i = 0; i < oldA.length; ++i)
+        {
+            newA[i] = oldA[i];
+        }
+
+        newMapping.debug[slot] = newA;
+    }
+
+    return newMapping;
+};
+
+/** 
+    Returns a string representing the content of the mapping.
+*/
+allocator.slotMapping.prototype.toString = function (debugSlots)
+{
+    const tab = "\t";
+    const mapping = this.mapping;
+    const debug = this.debug;
+
+    var s = "slotMapping: \n";
+    var slots = [];
+    var slot;
+
+
+    for (slot in mapping)
+    {
+        slots.push(slot);
+    }
+
+    // Regroup memory and register entries together 
+    slots.sort(); // Sort alphabetically
+
+    // move register entries happening after memory entries
+    // to the front
+    slots.sort(function (a,b)
+    {
+        if (a.slice(0,3) === "mem")
+        {
+            if (b.slice(0,3) === "mem")
+            {
+                return 0;
+            } else 
+            {
+                return 1; 
+            } 
+        } else if (b.slice(0,3) === "mem")
+        {
+            return -1; 
+        } else
+        {
+            return 0;
+        }
+    });
+
+    slots.forEach(function (slot)
+    {
+        s += tab + slot + ": " + mapping[slot] + "\n";
+    });
+
+    // Print debugging information if debugSlots are provided
+    if (debugSlots !== undefined)
+    {
+        s += "DEBUG: \n";
+        debugSlots.forEach(function (slot)
+        {
+            if (slot.type !== x86.type.REG && slot.type !== x86.type.MEM)
+                return
+
+
+            debugList = (debug[slot] === undefined) ?  [] : 
+            debug[slot].map(function (instr)
+            { 
+                return "pos: '" + instr.regAlloc.id + "' " + instr; 
+            }).join("\n");
+
+            // Show the last instruction first
+            s += slot + ":\n" + debugList + "\n";
+        });
+    }
+
+    return s;
+};
+
+allocator.slotMapping.prototype.getDebugSlot = function (slot)
+{
+    if (this.debug[slot] === undefined)
+    {
+        this.debug[slot] = [];
+    }
+
+    return this.debug[slot];
+};
+
+allocator.slotMapping.prototype.getSlots = function ()
+{
+    var slot;
+    var slots = [];
+
+    for (slot in this.mapping)
+    {
+        slots.push(slot);
+    }
+
+    return slots;
+};
+
+allocator.slotMapping.prototype.getValues = function (slots)
+{
+    var values = [];
+    const mapping = this.mapping;
+   
+    slots.forEach(function (slot) 
+    {
+        values.push(mapping[slot]);
+    });
+
+    return values;
+};
+
+allocator.slotMapping.prototype.getValue = function (slot)
+{
+    return this.mapping[slot];
+};
+
+/** 
+    @private Stores move instruction to be inserted
+
+    Handles multiple moves inserted at the same position.
+*/
+allocator.moves = function ()
+{
+    var that = Object.create(allocator.moves.prototype);    
+
+    // Positions at which to insert moves
+    that.positions = [];
+
+    return that;
+};
+
+/**
+    Adds a move instruction at the given position.
+*/
+allocator.moves.prototype.addMove = function (move, pos)
+{
+    const positions = this.positions;
+    const current = positions[pos];
+
+    if (current === undefined) 
+    {
+        positions[pos] = move;
+    } else if (current instanceof MoveInstr) 
+    {
+        // Replace the move with a mapping
+        // for the two moves
+        // in case they might conflict with each other
+        mapping = allocator.mapping();
+        mapping.addMove(current);
+        mapping.addMove(move);
+        positions[pos] = mapping;
+    } else
+    {
+        // We already got a mapping, add this move to it
+        current.addMove(move);    
+    }
+};
+
+/**
+    Adds a mapping at the given position. 
+*/
+allocator.moves.prototype.addMapping = function (mapping, pos)
+{
+    const positions = this.positions;
+    const current = positions[pos];
+
+    if (current === undefined) 
+    {
+        positions[pos] = mapping;
+    } else if (current instanceof MoveInstr) 
+    {
+        mapping.addMove(current);
+        positions[pos] = mapping;
+    } else
+    {
+        current.union(mapping);
+    }
+};
+
+/**
+    Returns an iterator to the contained moves.
+*/
+allocator.moves.prototype.getItr = function ()
+{
+    return new FilterIterator(new ArrayIterator(this.positions),
+                              function (move) { return move !== undefined });
 };
 
 /** 
@@ -2218,40 +2788,54 @@ allocator.mapping = function ()
     return that;
 };
 
-allocator.mapping.prototype.add = function (from, to)
+allocator.mapping.prototype.add = function (from, to, interval)
 {
-    var mov = new MoveInstr(from, to);
-    this.addMove(mov);
+    var move = new MoveInstr(from, to, interval);
+    this.addMove(move);
 };
 
-allocator.mapping.prototype.addMove = function (mov)
+allocator.mapping.prototype.addMove = function (move)
 {
-    const from = mov.uses[0];
-    const to   = mov.uses[1];
+    const from = move.uses[0];
+    const to   = move.uses[1];
 
+    if (this.write[to] !== null && this.write[to] !== undefined)
+    {
+           error("Multiple moves to the same destination.\n" +
+           " Previous move: " + this.write[to] + "\n" +
+           " New move: " + move);
+    }
+
+    this.readArray(from).push(move);
+    this.write[to] = move;
+    this.length++;
+};
+
+allocator.mapping.prototype.readArray = function (from)
+{
     if (this.read[from] === undefined)
     {
         this.read[from] = [];
     }
-    this.read[from].push(mov);
 
-    if (this.write[from] === undefined)
+    return this.read[from];
+};
+
+allocator.mapping.prototype.union = function (mapping)
+{
+    var p;
+    const that = this;
+    
+    for (p in mapping.read)
     {
-        this.write[from] = null;
+        if (mapping.read.hasOwnProperty(p))
+        {
+            mapping.read[p].forEach(function (move)
+            {
+                that.addMove(move); 
+            });
+        }
     }
-
-    if (this.read[to] === undefined)
-    {
-        this.read[to] = [];
-    }
-
-    if (this.write[to] !== null && this.write[to] !== undefined)
-    {
-        error("Multiple moves to the same destination");
-    }
-    this.write[to] = mov;
-
-    this.length++;
 };
 
 allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
@@ -2280,7 +2864,7 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
         {
             for (i=0; i < readValue.length; ++i)
             {
-                if (writeValue !== null)
+                if (writeValue !== null && writeValue !== undefined)
                 {
                     g.addEdge(readValue[i], writeValue); 
                 } else
@@ -2288,7 +2872,7 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
                     g.addNode(readValue[i]);
                 }
             }
-        } else if (writeValue !== null)
+        } else if (writeValue !== null && writeValue !== undefined)
         {
             g.addNode(writeValue);
         }
@@ -2304,7 +2888,7 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
     for (moveIt = g.getNodeItr("topologicalSort"); 
         moveIt.valid();
         moveIt.next())
-    {
+    {   
         insertFct(moveIt.get());
     }
 
@@ -2326,7 +2910,10 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 
             // Store the last move
             moveTemp = new MoveInstr(temp, move.uses[1]);
-            
+
+            // Get the first move to insert 
+            move = cycleIt.get().pop();
+
             // Insert all other moves
             while (move !== undefined)
             {
@@ -2344,12 +2931,14 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 allocator.mapping.prototype.toString = function ()
 {
     var i;
+    var p;
     var s = "";
 
     for (p in this.read)
     {
         if (this.read.hasOwnProperty(p))
         {
+            s += p + " : ";
             for(i=0; i < this.read[p].length; ++i)
             {
                 s += this.read[p][i] + "\n";

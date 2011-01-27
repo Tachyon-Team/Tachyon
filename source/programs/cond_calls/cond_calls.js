@@ -34,4 +34,3 @@ function fee()
     return foo(1) + foo(2);
 }
 
-return fee();

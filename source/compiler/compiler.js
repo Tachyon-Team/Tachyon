@@ -40,11 +40,8 @@ property to its dependencies.
 */
 compiler.link = function () 
 {
-    if(!this.linked) 
-    {
-        this.rt.mcb.link();
-        this.linked = true;
-    }
+    this.rt.mcb.link();
+    this.linked = true;
 };
 
 /** 
@@ -54,7 +51,10 @@ IRFunction should be freed once it is no longer used.
 */
 function compileIR(ir, params) 
 {
-    assert (params instanceof CompParams);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     ir.linking.linked = false;
     ir.linking.link = compiler.link;
@@ -76,44 +76,41 @@ function linkIR(ir, params)
 };
 
 /**
-Creates a compiled fonction from an IRFunction with
-linking and runtime information.
+Compile an ast to compiled IR
 */
-function createJSFuncFromCompiledIR(ir)
-{
-    var f = function () 
-    { 
-        return ir.runtime.execute();
-    };
-    f.free = ir.runtime.free;
-
-    return f;
-};
-
-/**
-Compile a file to an optimized callable function. The function should be freed 
-after last usage by calling the 'free' method on the function. Ex:
-
-    var f = compileFileToJSFunc(...);
-    print(f());
-    f.free();
-
-@filename String containing path to the source file
-*/
-function compileFileToJSFunc(filename, params) 
+function compileAst(ast, params)
 {
     assert (
         params instanceof CompParams,
         'compilation parameters expected'
     );
 
-    //var ir = frontend.compileFileToIR(filename, flags["tachyonSrc"]);
-    var ast = parse_src_file(filename);
     var ir = unitToIR(ast, params);
     lowerIRFunc(ir, params);
     compileIR(ir, params);
     linkIR(ir, params);
 
-    return createJSFuncFromCompiledIR(ir, params);
+    // Return the compiled IR function
+    return ir;
 };
+
+/**
+Compile a source string to compiled IR
+*/
+function compileSrcString(str, params)
+{
+    var ast = parse_src_str(str, params);
+
+    return compileAst(ast, params);
+}
+
+/**
+Compile a source file to compiled IR
+*/
+function compileSrcFile(fileName, params)
+{
+    var ast = parse_src_file(fileName, params);
+
+    return compileAst(ast, params);
+}
 

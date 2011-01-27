@@ -25,6 +25,17 @@ Iterator.prototype.get   = function () { error("unimplemented"); };
 Iterator.prototype.insert = function (item) { error("unimplemented"); };
 /** Update the item at the current position with the new value */
 Iterator.prototype.update = function (value) { error("unimplemented"); };
+/** Apply the given function to the remaining items in succession */
+Iterator.prototype.forEach = function (fct) 
+{ 
+    for (; this.valid(); this.next())
+    {
+       if(fct(this.get()) === false)
+       {
+            break;
+       }
+    }
+};
 
 
 /**

@@ -31,9 +31,11 @@ irToAsm.config = {};
 // TODO: Remove once put_prop and get_prop are not used anymore
 irToAsm.config.NULL  = $(0);
 
+/*
 // Global object configuration
 // TODO: Remove once the global object exist in the heap
 irToAsm.config.maxGlobalEntries = 16;
+*/
 
 // Register configuration
 // TODO: replace stack handling in ir_call and ir_ret to allow
@@ -167,7 +169,10 @@ Returns a new translator object to translate IR to Assembly.
 */
 irToAsm.translator = function (config, params)
 {
-    assert(config !== undefined);
+    assert(
+        config !== undefined,
+        'invalid translator config'
+    );
 
     var that = Object.create(irToAsm.translator.prototype);
 
@@ -176,51 +181,12 @@ irToAsm.translator = function (config, params)
 
     that.asm = new x86.Assembler(config.target);
     that.asm.codeBlock.bigEndian = false;
-    that.strings = {};
-    that.stringNb = 0;
     that.fct = null;
-
-    that.globalLabel = that.asm.labelObj("GLOBAL_PRELUDE");
-    that.contextLabel = that.asm.labelObj("CONTEXT_PRELUDE");
-    that.putPropValLabel = that.asm.labelObj("PUT_PROP");
-    that.getPropValLabel = that.asm.labelObj("GET_PROP");
 
     that.config = config;
 
-    if (that.asm.is64bitMode())
-    {
-        // Global object properties
-        that.G_NEXT_OFFSET = 0;  // Offset for the cell containing 
-                                  // the next empty entry offset
-        that.G_NEXT_OFFSET_WIDTH = 64;
-        that.G_FIRST_OFFSET = 8; // Length value in bytes
-        that.G_KEY_OFFSET   = 0; // Key offset is 0 (we iterate over keys)
-        that.G_KEY_WIDTH = 64;
-        that.G_VALUE_OFFSET = 8; // Value offset is 8 (key length is 8 bytes)
-        that.G_VALUE_WIDTH = 64;
-        that.G_ENTRY_LENGTH = 16; // Key (8 bytes) Value (8 bytes)
-
-        // Register byte width
-        that.REG_BYTE_WIDTH = 8;
-    } else
-    {
-        // Global object properties
-        that.G_NEXT_OFFSET = 0;  // Offset for the cell containing 
-                                  // the next empty entry offset
-        that.G_NEXT_OFFSET_WIDTH = 32;
-        that.G_FIRST_OFFSET = 4; // Length value in bytes
-        that.G_KEY_OFFSET   = 0; // Key offset is 0 (we iterate over keys)
-        that.G_KEY_WIDTH = 32;
-        that.G_VALUE_OFFSET = 4; // Value offset is 4 (key length is 4 bytes)
-        that.G_VALUE_WIDTH = 32;
-        that.G_ENTRY_LENGTH = 8; // Key (4 bytes) Value (4 bytes)
-
-        // Register byte width
-        that.REG_BYTE_WIDTH = 4;
-    }
-
     // Use the context register value as a true (nonzero) boolean
-    that.trueVal = config.context;
+    that.trueVal = config.stack;
 
     // The false boolean must be 0
     that.falseVal = $(0);
@@ -230,9 +196,6 @@ irToAsm.translator = function (config, params)
 
 /** @private assembler object */
 irToAsm.translator.prototype.asm = null;
-/** @private known strings so far */
-irToAsm.translator.prototype.strings = {};
-irToAsm.translator.prototype.stringNb = 0;
 
 /** 
 Generate the corresponding assembly code for the function in the order
@@ -246,16 +209,11 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
     // to have to information from register allocation 
     this.fct = fct;
 
-    var block;
-    var instrIt;
-    var opnds;
-    var i;
-
     function replace(opnd)
     {
         if (opnd instanceof ConstValue && typeof opnd.value === "string" )
         {
-            return $(that.stringValue(opnd.value));
+            return that.stringValue(opnd.value);
         } 
         else if (opnd instanceof ConstValue)
         {
@@ -267,45 +225,41 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         }
     };
 
-
-    // Add the entry point in the code stream
-    this.func_prelude(this.fct);
-
     // Start the code generation
-    this.func_init();
+    this.prelude();
 
-    for (i=0; i < blockList.length; ++i)
+    blockList.forEach(function (block)
     {
-        block = blockList[i]; 
-
         // Generate the asm label for the current block 
-        this.asm.label(this.label(block, block.label));
+        that.asm.label(that.label(block, block.label));
 
         // Generate all the asm instructions for each IR
         // instructions
-        for (var instrIt = block.getInstrItr(); 
-             instrIt.valid(); 
-             instrIt.next())
+        block.getInstrItr().forEach(function (instr)
         {
-            instr = instrIt.get();
+            var opnds;
 
             if (instr.regAlloc.opnds === undefined)
             {
                 opnds = instr.uses.map(replace);
-                instr.genCode(this, opnds);
+                instr.genCode(that, opnds);
             } 
             else
             {
                 // Replace constants by immediate values
                 opnds = instr.regAlloc.opnds.map(replace);
 
-                assert(instr.genCode !== undefined);
-                instr.genCode(this, opnds);
-            }
-        }
+                assert(
+                    instr.genCode !== undefined,
+                    'genCode method not present'
+                );
 
-        this.asm.genListing("");
-    }
+                instr.genCode(that, opnds);
+            }
+        });
+
+        that.asm.genListing("");
+    });
 };
 
 /** 
@@ -335,302 +289,84 @@ irToAsm.translator.prototype.label = function (obj, name)
     return label;
 };
 
-
 /**
     @private
     Returns a representation of the string that fits into a register
 */
 irToAsm.translator.prototype.stringValue = function (s)
 {
-    var value = this.strings[s];
-
-    if (value === undefined)
-    {
-       value = this.stringNb++; 
-       this.strings[s] = value;
-    }
-
-    return value;
-};
-
-irToAsm.translator.prototype.get_prop_val = function ()
-{
-    assert(this.config.physReg.length >= 4);
-    assert(value !== this.config.retValReg);
-
-    const obj = this.config.physReg[0];
-    const key = this.config.physReg[1];
-    const value = this.config.physReg[2];
-    const addr = this.config.physReg[3];
-
-    const cont = this.asm.labelObj();
-
-    this.asm.label(this.getPropValLabel);
-
-    this.get_prop_addr(obj, key, addr);
-
-    this.asm.
-    cmp(this.config.NULL, addr).
-    mov($(ConstValue.getConst(undefined, IRType.box).getImmValue(this.params)), 
-          this.config.retValReg).
-    je(cont).
-    // The following instruction causes a bus error only
-    // when addr is not a valid address
-    //cmovnz(mem(this.G_VALUE_OFFSET, addr), this.config.retValReg).
-    mov(mem(this.G_VALUE_OFFSET,addr), this.config.retValReg).
-    label(cont).
-    ret();
-};
-
-irToAsm.translator.prototype.get_prop_addr = function (obj, key, addr)
-{
-    var loop = this.asm.labelObj();
-    var end = this.asm.labelObj();
-    var notFound = this.asm.labelObj();
-    var cont = this.asm.labelObj();
-
-    this.asm.
-    mov(obj, addr).
-    add($(this.G_FIRST_OFFSET), addr). // Retrieve address of first element
-    add(mem(this.G_NEXT_OFFSET - this.G_FIRST_OFFSET, addr), 
-        addr). // Retrieve beginning of next
-    sub($(this.G_ENTRY_LENGTH), addr).       // Move to last element
-
-    label(loop).                        // Loop from end to beginning
-    sub($(this.G_FIRST_OFFSET), addr).
-    cmp(obj, addr).           
-    jl(end).
-
-    add($(this.G_FIRST_OFFSET), addr).       // Address of current item
-    cmp(key, mem(this.G_KEY_OFFSET, addr), 
-        this.G_KEY_WIDTH).   // global[index] === key ?
-    je(cont).                         // Item found on equal!
-
-    sub($(this.G_ENTRY_LENGTH), addr).      // move to next value
-    jmp(loop).
-
-    label(end).
-    mov(this.config.NULL, addr).        // no value found
-
-    label(cont);
-};
-
-irToAsm.translator.prototype.put_prop_val = function ()
-{
-    assert(this.config.physReg.length >= 4);
-
-    const obj = this.config.physReg[0];
-    const key = this.config.physReg[1];
-    const value = this.config.physReg[2];
-    const addr = this.config.physReg[3];
-
-    var loop = this.asm.labelObj();
-    var found = this.asm.labelObj();
-
-    this.asm.label(this.putPropValLabel);
-
-    this.get_prop_addr(obj, key, addr);
-    
-    this.asm.
-    cmp(this.config.NULL, addr).
-    jne(found).
-    mov(obj, addr).
-    add($(this.G_FIRST_OFFSET), addr).          // Retrieve address of first element
-    add(mem(this.G_NEXT_OFFSET, obj), addr). // Retrieve address of next element 
-    // Inc entry nb
-    add($(this.G_ENTRY_LENGTH), mem(this.G_NEXT_OFFSET, obj), this.G_NEXT_OFFSET_WIDTH). 
-    mov(key, mem(this.G_KEY_OFFSET, addr), this.G_KEY_WIDTH).     // Add entry key
-    label(found).                          
-    mov(value, mem(this.G_VALUE_OFFSET, addr), this.G_VALUE_WIDTH). // Add/Update the entry value
-    mov(value, this.config.retValReg).
-    ret();
-
-};
-
-irToAsm.translator.prototype.dump_global_object = function ()
-{
-    this.asm.
-    label(this.globalLabel);
-
-    this.call_self();
-
-    if (this.asm.is64bitMode())
-    {
-        this.asm.gen64(0);
-    } else
-    {
-        this.asm.gen32(0); // Length
-    }
-   
-    for (var i=0; i < this.config.maxGlobalEntries; ++i)
-    {
-        if (this.asm.is64bitMode())
+    var that = this;
+    return this.asm.linked(
+        s,
+        function ()
         {
-            this.asm.
-            gen64(0). // Reserved space for key
-            gen64(0); // Reserved space for value
-        } else 
-        {
-            this.asm.
-            gen32(0). // Reserved space for key
-            gen32(0); // Reserved space for value
-
-        }
-    }
-    this.asm.genListing("GLOBAL_OBJECT");
-    
+            if (that.params.getStrObj instanceof Function)
+            {
+                return that.params.getStrObj(s);
+            }
+            else
+            {
+                return [0,0,0,0];
+            }
+        },
+        that.params.target.ptrSizeBits
+    );
 };
 
-irToAsm.translator.prototype.dump_context_object = function ()
-{
-    const immTrue = ConstValue.getConst(true, IRType.box).getImmValue(this.params);
-    const immFalse = ConstValue.getConst(false, IRType.box).getImmValue(this.params);
-
-    this.asm.
-    label(this.contextLabel);
-
-    this.call_self();
-
-    if (this.asm.is64bitMode())
-    {
-        // Global object slot - True value - False value - TEMP
-        this.asm.gen64(0).gen64(immTrue).gen64(immFalse).gen64(0);
-    } else
-    {
-        // Global object slot - True value - False value - TEMP
-        this.asm.gen32(0).gen32(immTrue).gen32(immFalse).gen32(0);
-    }
-   
-    this.asm.genListing("CONTEXT_OBJECT");
-    
-};
-
-irToAsm.translator.prototype.call_self = function (offset)
-{
-    if (offset === undefined)
-    {
-        offset = 5;
-    }
-    const SELF = this.asm.labelObj();
-    const retValReg = this.config.retValReg;
-
-    this.asm.
-    call(SELF).
-    label(SELF).
-    pop(retValReg).
-    add($(offset),retValReg).
-    ret().
-    genListing("ADDR RETRIEVAL");
-
-};
-
-irToAsm.translator.prototype.func_prelude = function (fct)
-{
-    // Add the call self instructions to retrieve
-    // the address of the function until the move
-    // instruction supporting a link object is done
-    // TODO: Remove when function address is retrieved at link
-    // time
-    this.asm.
-    label(this.label(fct, "<func \"" + fct.funcName + "\">"));
-    this.call_self();
-
-    // Add an entry point for static calls
-    var lobj = irToAsm.getEntryPoint(fct, undefined, this.config);
-    this.asm.provide(lobj);
-};
-
-irToAsm.translator.prototype.func_init = function ()
+irToAsm.translator.prototype.prelude = function ()
 {
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
     //       expected
-
+ 
     const byteLength = this.config.stack.width() >> 3;
+    const cstack = this.asm.target === x86.target.x86 ? ESP : reg.rsp;
     var spillNb = this.fct.regAlloc.spillNb;
+
+    // Add an entry point for static calls
+    var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.config);
+    this.asm.provide(lobj);
+
+    if (this.fct.cProxy)
+    {
+        if (this.asm.target === x86.target.x86)
+        {
+            // We follow 32 bits Windows, Linux, BSD and Mac OS X
+            // callee-save convention
+            this.asm.
+            push(EBX).
+            push(ESI).
+            push(EDI).
+            push(EBP);
+        }
+        else
+        {
+            // We follow 64 bits Linux, BSD, Mac OS X
+            // callee-save convention
+            this.asm.
+            push(reg.rbx).
+            push(reg.rbp).
+            push(reg.r12).
+            push(reg.r13).
+            push(reg.r14).
+            push(reg.r15);
+        }
+
+        // Put the stack pointer where tachyon expects it to be
+        if (cstack !== this.config.stack)
+        {
+            tltor.asm.
+            mov(cstack, this.config.stack);
+        }
+    }
+
+    // TODO: Correctly handle a number of arguments
+    //       passed lesser than the number of arguments
+    //       expected
     if (spillNb > 0)
     {
         this.asm.sub($(spillNb*byteLength), this.config.stack);
     }
-};
-
-irToAsm.translator.prototype.init = function (mainFct)
-{
-    const stack = this.config.stack;
-
-    const retValReg = this.config.retValReg;
-    const contextObjReg = this.config.context;
-
-    var i;
-
-
-    // Let's preserve all registers from the caller
-    // except xAX (used for return value)
-    if (this.asm.is64bitMode())
-    {
-        for (i=1; i < 16; ++i)
-        {
-            this.asm.push(reg.reg64(i));
-        }
-    } else
-    {
-        for (i=1; i < 8; ++i)
-        {
-            this.asm.push(reg.reg32(i));
-        }
-    }
-
-    this.asm.
-    genListing("INIT").
-
-    // Initialise the context object
-    call(this.contextLabel).
-    mov(retValReg, contextObjReg). 
-
-    call(this.globalLabel).
-
-    // Save global object in context
-    mov(retValReg, mem(0, contextObjReg)).
-
-    // Retrieve the main function address
-    call(this.label(mainFct, "<func MAIN>")).
-
-    // Call the main function
-    call(retValReg);
-
-    // Let's restore all registers for the caller
-    // except xAX (used for return value)
-    if (this.asm.is64bitMode())
-    {
-        for (i=15; i >= 1; --i)
-        {
-            this.asm.pop(reg.reg64(i));
-        }
-    } else
-    {
-        for (i=7; i >= 1; --i)
-        {
-            this.asm.pop(reg.reg32(i));
-        }
-    }
-
-    this.asm.ret();
-
-};
-
-irToAsm.translator.prototype.definitions = function ()
-{
-    // Add the global object dump at the end of the init section
-    this.dump_global_object();
-
-    // Add the context object dump right after the global object
-    this.dump_context_object();
-
-    // Add the get property value code here
-    this.get_prop_val();
-
-    // Add the put property value code here
-    this.put_prop_val();
 };
 
 //=============================================================================
@@ -657,7 +393,8 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const argsReg = tltor.config.argsReg;
 
     // Number of registers used for passing arguments
-    const argRegNb = tltor.config.argsIndex.length;
+    const argRegNb = (tltor.fct.cProxy === true) ? 0 
+                     : tltor.config.argsIndex.length;
 
     // Number of bytes in a reference
     const refByteNb = tltor.config.stack.width() >> 3;
@@ -667,9 +404,14 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
 
     // Index on the call site argument space
     const callSiteArgIndex = argIndex - argRegNb;
+    
+    // Offset due to C calling convention 
+    const ccallOffset = (tltor.fct.cProxy === true) ?
+                        ((tltor.asm.target === x86.target.x86) ? 4 : 6) : 0;
 
     // Offset to the argument on the stack
-    const spoffset = (regAllocSpillNb + callSiteArgIndex + 1) * refByteNb;
+    const spoffset = (regAllocSpillNb + callSiteArgIndex + 
+                      ccallOffset + 1) * refByteNb;
 
     // Stack pointer
     const stack = tltor.config.stack;
@@ -683,9 +425,11 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     if (argIndex < argRegNb)
     {
         // The argument is in a register
-        assert(argsReg[argIndex] === dest,
-               "arg: dest register '" + dest + 
-               "' unexpected for argument index '" + argIndex + "'");
+        assert(
+            argsReg[argIndex] === dest,
+            "arg: dest register '" + dest + 
+            "' unexpected for argument index '" + argIndex + "'"
+        );
     } 
     else
     {
@@ -869,14 +613,11 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         // Swap the divisor with EBX
         tltor.asm.xchg(dsor, EBX);
 
-        if (dvnd === EBX) dvnd = dsor;
-        dsor = EBX;
-    }
+        // If the dividend is in EBX, it is now where the divisor was
+        if (dvnd === EBX) 
+            dvnd = dsor;
 
-    // Otherwise, if the divisor is an immediate value, put it into EBX
-    else if (dsor.type === x86.type.IMM_VAL)
-    {
-        tltor.asm.mov(dsor, EBX);
+        // The divisor is now in EBX
         dsor = EBX;
     }
 
@@ -887,17 +628,29 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         dvnd = EAX;
     }
 
-    // Sign-extend EAX into EDX:EAX using CDQ
-    tltor.asm.cdq();
+    // If the divisor is an immediate value, put it into EBX.
+    // The dividend cannot be in EBX, it would have been moved
+    // into EAX during the previous step
+    if (dsor.type === x86.type.IMM_VAL)
+    {
+        tltor.asm.mov(dsor, EBX);
+        dsor = EBX;
+    }
 
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
+        // Extend the value into EDX
+        tltor.asm.mov($(0), EDX);
+
         tltor.asm.div(dsor, this.type.getSizeBits(tltor.params.target));
     }
     else
     {
+        // Sign-extend EAX into EDX:EAX using CDQ
+        tltor.asm.cdq();
+
         tltor.asm.idiv(dsor, this.type.getSizeBits(tltor.params.target));
     }
 };
@@ -1192,8 +945,8 @@ GtInstr.prototype.genCode = function (tltor, opnds)
         opnds[1].type === x86.type.IMM_VAL))
     {
         tltor.asm.
-        mov(opnds[1], dest).
-        cmp(opnds[0], dest);
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
     } 
     else if (opnds[0].type === x86.type.IMM_VAL)
     {
@@ -1203,7 +956,7 @@ GtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
 
     tltor.asm.
@@ -1254,14 +1007,14 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
-               (opnds[0].type === x86.type.IMM_VAL &&
-               opnds[1].type === x86.type.IMM_VAL))
+               (tltor.asm.isImmediate(opnds[0]) &&
+                tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL)
+    else if (tltor.asm.isImmediate(opnds[1]))
     {
         tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
@@ -1289,16 +1042,16 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
-               (opnds[0].type === x86.type.IMM_VAL &&
-               opnds[1].type === x86.type.IMM_VAL))
+               (tltor.asm.isImmediate(opnds[0]) &&
+                tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL)
+    else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[1].type.getSizeBits(tltor.params.target));
     }
     else
     {
@@ -1319,10 +1072,11 @@ JumpInstr.prototype.genCode = function (tltor, opnds)
 RetInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the return value
-    const dest = this.regAlloc.dest;
     const offset = tltor.fct.regAlloc.spillNb;
     const refByteNb = tltor.config.stack.width() >> 3;
-    const retValReg = tltor.config.retValReg;
+    const retValReg = (tltor.fct.cProxy === false) ? tltor.config.retValReg 
+                      : ((tltor.asm.target === x86.target.x86) ? EAX : reg.rax);
+    const cstack = tltor.asm.target === x86.target.x86 ? ESP : reg.rsp;
 
     // Remove all spilled values and return address from stack
     if (offset > 0)
@@ -1330,9 +1084,44 @@ RetInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.add($(offset*refByteNb), tltor.config.stack);
     }
 
-    if (opnds[0] !== retValReg)
+    // If there is a value to return and it isn't in the return value register
+    if (opnds.length > 0 && opnds[0] !== retValReg)
     {
         tltor.asm.mov(opnds[0], retValReg);
+    }
+
+    // If this is a proxy callable from C
+    if (tltor.fct.cProxy)
+    {
+        // Put the stack pointer where C expects it to be
+        if (tltor.config.stack !== cstack)
+        {
+            tltor.asm.
+            mov(tltor.config.stack, cstack);
+        }
+
+        if (tltor.asm.target === x86.target.x86)
+        {
+            // We follow 32 bits Windows, Linux, BSD and Mac OS X
+            // callee-save convention
+            tltor.asm.
+            pop(EBP).
+            pop(EDI).
+            pop(ESI).
+            pop(EBX);
+        } 
+        else 
+        {
+            // We follow 64 bits Linux, BSD, Mac OS X
+            // callee-save convention
+            tltor.asm.
+            pop(reg.r15).
+            pop(reg.r14).
+            pop(reg.r13).
+            pop(reg.r12).
+            pop(reg.rbp).
+            pop(reg.rbx);
+        }
     }
   
     // Return address is just under the stack pointer
@@ -1370,6 +1159,7 @@ ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
+
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
@@ -1429,73 +1219,21 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                 'invalid uses for call to makeClos'
             );
 
-            // Implicitly returns the function address
-            // in return value register
-            tltor.asm.call(tltor.label(opnds[2]));
+            assert(
+                dest !== null,
+                "makeClose should have a destination register"
+            );
 
-            // Return early
-            return;
-        } 
-        else if (
-            name === "getPropVal" ||
-            name === "getGlobal" ||
-            name === "getGlobalFunc"                
-        )
-        {
-            // Make sure we have space for a scratch register
-            assert(avbleRegNb > 2, 'not enough scratch registers');
+            const irfunc = opnds[2];
+            const lobj   = irToAsm.getEntryPoint(irfunc, "default", config).clone();
 
-            // Move arguments in the right registers, skipping
-            // the function address and the 'this' reference
-            map = allocator.mapping();
-
-            for (i = 2; i < 4; ++i)
+            // linkValue function for make closure calls
+            lobj.linkValue = function getSrcAddrBytes()
             {
-                if (opnds[i] !== tltor.config.physReg[i-2])
-                {
-                    map.add(opnds[i], tltor.config.physReg[i-2]);
-                }
+                return this.srcAddr.getBytes();
             }
 
-            map.orderAndInsertMoves( function (move)
-                                     {
-                                        tltor.asm.
-                                        mov(move.uses[0], move.uses[1]);
-                                     }, scratch);
-
-            // Implicitly returns the property value
-            // in return value register
-            tltor.asm.call(tltor.getPropValLabel);
-
-            // Return early
-            return;
-        } 
-        else if (name === "putPropVal")
-        {
-            // Make sure we have space for a scratch register
-            assert(avbleRegNb > 3);
-
-            // Move arguments in the right registers, skipping
-            // the function address and the 'this' reference
-            map = allocator.mapping();
-
-            for (i = 2; i < 5; ++i)
-            {
-                if (opnds[i] !== tltor.config.physReg[i-2])
-                {
-                    map.add(opnds[i], tltor.config.physReg[i-2]);
-                }
-            }
-
-            map.orderAndInsertMoves( function (move)
-                                     {
-                                        tltor.asm.
-                                        mov(move.uses[0], move.uses[1]);
-                                     }, scratch);
-
-            // Implicitly returns the property value
-            // in return value register
-            tltor.asm.call(tltor.putPropValLabel);
+            tltor.asm.mov(lobj, dest);
 
             // Return early
             return;
@@ -1521,11 +1259,20 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Stack pointer offset
     var spoffset;
 
+    // Temporary opnd
+    var opnd;
+
     // Make sure we still have a register left for scratch
-    assert(argRegNb < avbleRegNb);
+    assert (
+        argRegNb < avbleRegNb,
+        'no register left for scratch'
+    );
 
     // Make sure it is not used to pass arguments
-    assert (!(scratchIndex in tltor.config.argsIndex));
+    assert (
+        !(scratchIndex in tltor.config.argsIndex),
+        'invalid scratch register index'
+    );
 
     // Allocate space on stack for extra args
     if (spillOffset > 0)
@@ -1539,8 +1286,15 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
             if (opnds[i].type === x86.type.MEM)
             {
+
+                // Source memory location
+                // Adjust the offset to take the displacement of the stack pointer
+                // into account
+                opnd = Object.create(opnds[i]);
+                opnd.disp += spillOffset;
+
                 tltor.asm.
-                mov(opnds[i], scratch).
+                mov(opnd, scratch).
                 mov(scratch, mem(spoffset, stack));
             } 
             else
@@ -1560,11 +1314,11 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         if (opnds[i] instanceof IRFunction)
         {
             // Pass undefined as the function object
-            var opnd = $(ConstValue.getConst(undefined).getImmValue(tltor.params));
+            opnd = $(ConstValue.getConst(undefined).getImmValue(tltor.params));
         }
         else
         {
-            var opnd = opnds[i];
+            opnd = opnds[i];
         }
         
         reg = argsReg[i];
@@ -1614,7 +1368,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             opnds[0].type === x86.type.REG || 
             opnds[0].type === x86.type.MEM,
             "Invalid CallInstr function operand '" + opnds[0] + "'"
-        )
+        );
         
         // Call function address
         tltor.asm.call(funcObjReg);
@@ -1668,9 +1422,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     assert(stack.width() === 32, "Only 32-bits FFI calls are supported for now"); 
 
-    assert(altStack !== scratchReg);
-    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r); });
-    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r); });
+    assert(altStack !== scratchReg, 'alt stack reg is the same as scratch reg');
+    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
+    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
 
     // Iteration
     var i;
@@ -1769,7 +1523,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         }
         else
         {
-            error("invalid opnd type for ffi function call: ", opnd.type);
+            error("invalid opnd type for ffi function call: " + opnd.type);
         }
     }
 
@@ -1848,20 +1602,10 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
 
     const dst = this.regAlloc.dest;
 
-    // If the base pointer is a raw pointer
-    if (this.uses[0].type === IRType.rptr)
-    {
-        var ptr = opnds[0];
-    }
-    else
-    {
-        var TAG_REF_MASK = tltor.params.staticEnv.getBinding('TAG_REF_MASK').value;
-
-        // Mask out the tag bits
-        // ptr = ptr & ~TAG_REF_MASK
-        // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
-        tltor.asm.and($(~TAG_REF_MASK), opnds[0]);
-    }
+    assert (
+        this.uses[0].type === IRType.rptr,
+        'load can only operate on raw pointers'
+    );
 
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)
@@ -1928,20 +1672,10 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
 
     const dst = this.regAlloc.dest;
 
-    // If the base pointer is a raw pointer
-    if (this.uses[0].type === IRType.rptr)
-    {
-        var ptr = opnds[0];
-    }
-    else
-    {
-        var TAG_REF_MASK = tltor.params.staticEnv.getBinding('TAG_REF_MASK').value;
-
-        // Mask out the tag bits
-        // ptr = ptr & ~TAG_REF_MASK
-        // TODO: problem, JavaScript bitwise ops will not support 64 bit values!
-        tltor.asm.and($(~TAG_REF_MASK), opnds[0]);
-    }
+    assert (
+        this.uses[0].type === IRType.rptr,
+        'store can only operate on raw pointers'
+    );
 
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)
@@ -1988,10 +1722,21 @@ SetCtxInstr.prototype.genCode = function (tltor, opnds)
 
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {
-    assert(!(opnds[0].type === x86.type.MEM &&
-             opnds[1].type === x86.type.MEM));
+    const temp = tltor.config.temp;
 
-    tltor.asm.mov(opnds[0], opnds[1]);
+    if (opnds[0].type === x86.type.MEM &&
+        opnds[1].type === x86.type.MEM)
+    {
+        tltor.asm.
+        mov(EAX, temp).
+        mov(opnds[0], EAX).
+        mov(EAX, opnds[1]).
+        mov(temp, EAX);
+    } else
+    {
+        tltor.asm.
+        mov(opnds[0], opnds[1], tltor.params.target.ptrSizeBits);
+    }
 };
 
 })(); // end of local namespace

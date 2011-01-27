@@ -179,6 +179,9 @@ function indentText(inputStr, indentStr)
     if (indentStr === undefined)
         indentStr = '\t';
 
+    if (typeof inputStr !== 'string')
+        inputStr = inputStr.toString();
+
     var chars = [];
 
     if (inputStr.length > 0)
@@ -193,7 +196,7 @@ function indentText(inputStr, indentStr)
 
         chars.push(charCode);
 
-        if (charCode == 10 && i != inputStr.length - 1)
+        if (charCode === 10 && i !== inputStr.length - 1)
         {
             for (var j = 0; j < indentStr.length; ++j)
                 chars.push(indentStr.charCodeAt(j));
@@ -208,7 +211,7 @@ Pluralize a word in function of a count
 */
 function pluralize(word, count)
 {
-    return word + ((count != 1)? 's':'');
+    return word + ((count !== 1)? 's':'');
 }
 
 /**
@@ -250,7 +253,7 @@ function memberStr(ch, chars)
 {
     var i = chars.length-1;
 
-    while (i >= 0 && ch != chars.charAt(i))
+    while (i >= 0 && ch !== chars.charAt(i))
         i--;
 
     return i >= 0;

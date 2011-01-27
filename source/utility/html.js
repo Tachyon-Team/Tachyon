@@ -137,7 +137,7 @@ function HTMLTable()
         }
         else
         {
-            if (typeof contents == 'string')
+            if (typeof contents === 'string')
                 contents = HTMLPar(contents);
 
             cellElem.addChild(contents);

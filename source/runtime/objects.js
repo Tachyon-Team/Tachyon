@@ -411,6 +411,16 @@ function makeObjectLayouts(params)
     // Finalize the string layout
     strLayout.finalize();
 
+    // Offset added to string hash codes, so as to reserve a range
+    // for integer values
+    params.staticEnv.regBinding(
+        'HASH_CODE_STR_OFFSET',
+        ConstValue.getConst(
+            65535,
+            IRType.u32
+        )
+    );
+
     //=============================================================================
     //
     // String table layout (hash consing)

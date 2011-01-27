@@ -54,11 +54,66 @@ function lowerIRCFG(cfg, params)
             if (instr.uses[i].type === IRType.box)
                 usesBoxed = true;
 
+        // If this is a load or a store instruction on a boxed value
+        if ((instr instanceof LoadInstr || instr instanceof StoreInstr) && 
+            instr.uses[0].type === IRType.box)
+        {
+            // Create an unboxing operation
+            var unboxVal = new CallFuncInstr(
+                [
+                    params.staticEnv.getBinding('unboxRef'),
+                    ConstValue.getConst(undefined),
+                    instr.uses[0]
+                ]
+            );
+
+            var instrConstr = (instr instanceof LoadInstr)? LoadInstr:StoreInstr;
+
+            // Replace the load/store instruction
+            cfg.replInstr(
+                itr, 
+                new instrConstr(
+                    [instr.typeParams[0], unboxVal].concat(instr.uses.slice(1))
+                )
+            );
+
+            // Add the instruction before the load
+            cfg.addInstr(itr, unboxVal);
+
+            var instr = itr.get();
+        }
+
+        // If this is a store instruction on a boxed value
+        if (instr instanceof StoreInstr && instr.uses[0].type === IRType.box)
+        {
+            // Create an unboxing operation
+            var unboxVal = new CallFuncInstr(
+                [
+                    params.staticEnv.getBinding('unboxRef'),
+                    ConstValue.getConst(undefined),
+                    instr.uses[0]
+                ]
+            );
+
+            // Replace the store instruction
+            cfg.replInstr(
+                itr, 
+                new StoreInstr(
+                    [instr.typeParams[0], unboxVal].concat(instr.uses.slice(1))
+                )
+            );
+
+            // Add the instruction before the load
+            cfg.addInstr(itr, unboxVal);
+
+            var instr = itr.get();
+        }
+
         // If this is an untyped if instruction
         if (usesBoxed && instr instanceof IfInstr)
         {
-            // Create a boolean conversion instruction
-            var toBoolInstr = new CallFuncInstr(
+            // Create a boolean conversion operation
+            var boolVal = new CallFuncInstr(
                 [
                     params.staticEnv.getBinding('boxToBool'),
                     ConstValue.getConst(undefined),
@@ -67,11 +122,11 @@ function lowerIRCFG(cfg, params)
             );
 
             // Replace the if instruction by a typed if
-            var ifBoolInstr = new IfInstr([toBoolInstr].concat(instr.targets));
+            var ifBoolInstr = new IfInstr([boolVal].concat(instr.targets));
             cfg.replInstr(itr, ifBoolInstr);
 
             // Add the instruction before the if
-            cfg.addInstr(itr, toBoolInstr);
+            cfg.addInstr(itr, boolVal);
 
             var instr = itr.get();
         }
@@ -154,87 +209,3 @@ function lowerIRCFG(cfg, params)
     //    print('############ DOES NOT WRITE MEM: ' + cfg.ownerFunc.funcName);
 }
 
-/**
-Compile the primitives source code to enable IR lowering
-*/
-function compPrimitives(params)
-{
-    // Declare a variable for the layout source
-    var layoutSrc = '';
-
-    // Generate methods for the instantiable layouts
-    for (var l in params.memLayouts)
-    {
-        var layout = params.memLayouts[l];
-
-        if (layout.isInstantiable() === false)
-            continue;
- 
-        layoutSrc += layout.genMethods();
-    }
-
-    // Declare a variable for the FFI wrapper source
-    var wrapperSrc = '';
-
-    // Generate wrapper code for the FFI functions
-    for (var f in params.ffiFuncs)
-    {
-        var func = params.ffiFuncs[f];
-
-        wrapperSrc += func.genWrapper();
-    }
-
-    // Build a list of the ASTs of the primitive code
-    var astList = [
-        // Generated code for the object layouts
-        parse_src_str(layoutSrc),
-        // Generated code for the FFI functions
-        parse_src_str(wrapperSrc),
-        // Source code for the primitives
-        parse_src_file('runtime/primitives.js'),
-        // Source code for string operations
-        parse_src_file('runtime/strings.js'),
-        // Source code for the runtime initialization
-        parse_src_file('runtime/rtinit.js'), 
-    ];
-
-    // For each AST
-    for (var i = 0; i < astList.length; ++i)
-    {
-        var ast = astList[i];
-
-        // Parse static bindings in the unit
-        params.staticEnv.parseUnit(ast);
-    }
-
-    // List of IRFunction objects for the primitives
-    var primIR = [];
-
-    // For each AST
-    for (var i = 0; i < astList.length; ++i)
-    {
-        var ast = astList[i];
-
-        // Generate IR from the AST
-        var ir = unitToIR(ast, params);
-
-        primIR.push(ir);
-    }
-
-    // For each IR
-    for (var i = 0; i < primIR.length; ++i)
-    {
-        var ir = primIR[i];
-
-        // Perform IR lowering on the primitives
-        lowerIRFunc(ir, params);
-
-        //print(ir);
-
-        // Validate the resulting code
-        ir.validate();
-    }
-
-    // Return the list of function objects
-    return primIR;
-}
