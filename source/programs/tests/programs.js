@@ -271,3 +271,14 @@ tests.str_cat_str.main = genTest(
     0
 );
 
+/**
+String concatenation with integers
+*/
+tests.str_cat_str = tests.testSuite(); 
+tests.str_cat_str.main = genTest(
+    'programs/str_cat_int/str_cat_int.js',
+    'foo',
+    [],
+    0
+);
+

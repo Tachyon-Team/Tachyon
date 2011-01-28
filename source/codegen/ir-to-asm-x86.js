@@ -985,7 +985,7 @@ GeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
 
     tltor.asm.

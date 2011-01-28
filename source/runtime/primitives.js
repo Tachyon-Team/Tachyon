@@ -361,11 +361,11 @@ function heapAlloc(size)
         var pad = pint(1024) - rem;
         nextStep += pad;
     }
-    if (newSize > nextStep)
+    if (newSize > nextStep && newSize / pint(1024) > pint(10))
     {
         var newSize = newSize / pint(1024);
-        print("Heap alloc (KB):");
-        print(boxInt(newSize));
+        print("Heap alloc: " + boxInt(newSize) + "KB");
+
     }
     /************** TEMPORARY ************/
 
@@ -742,9 +742,26 @@ function addGeneral(v1, v2)
     "tachyon:static";
     "tachyon:nothrow";
 
-    // If both arguments are strings
-    if (boxIsString(v1) && boxIsString(v2))
+    // If the left value is a string
+    if (boxIsString(v1))
     {
+        // If the right value is not a string
+        if (boxIsString(v2) === FALSE_BOOL)
+        {
+            // Convert the right value to a string
+            v2 = boxToString(v2);
+        }
+
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
+
+    // If the right value is a string
+    else if (boxIsString(v2))
+    {
+        // Convert the left value to a string
+        v1 = boxToString(v1);
+
         // Perform string concatenation
         return strcat(v1, v2);
     }
@@ -926,6 +943,8 @@ function putProp(obj, propName, propHash, propVal)
     //printInt(13371);
     //printInt(propName);
     //printInt(boxInt(propHash));
+    //print("prop set");
+    //print(propName);
 
     //
     // TODO: find if getter-setter exists?
@@ -1089,6 +1108,9 @@ function getProp(obj, propName, propHash)
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
+
+    //print("prop lookup");
+    //print(propName);
 
     // Until we reach the end of the prototype chain
     do

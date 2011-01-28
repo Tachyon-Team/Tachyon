@@ -44,18 +44,11 @@ function print(val)
     "tachyon:static";
     "tachyon:noglobal";
 
-    // FIXME: until we have int to string conversion in boxToString
-    if (boxIsInt(val))
-    {
-        printInt(val);
-        return;
-    }
-
     // Convert the value to a string
     var strVal = boxToString(val);
-
+       
     // Print the string
-    var cstr = makeCString(val);
+    var cstr = makeCString(strVal);
     printStr(cstr);
     freeCString(cstr);
 }

@@ -1200,14 +1200,35 @@ CompInstr.prototype = new IRInstr();
 /**
 Default initialization function for comparison instructions
 */
-CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+CompInstr.initFunc = function (typeParams, inputVals, branchTargets)
 {
     instrMaker.validNumInputs(inputVals, 2, 2);
 
     assert (
-        (inputVals[0].type === IRType.box ||
+        (inputVals[0].type === IRType.box  ||
          inputVals[0].type === IRType.rptr ||
          inputVals[0].type.isNumber())
+        &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types (' + inputVals[0].type + 
+        ', ' + inputVals[1].type + ')'
+    );
+    
+    this.type = IRType.bool;
+};
+
+/**
+Initialization function for equality and inequality comparison instructions
+*/
+CompInstr.initFuncEq = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2, 2);
+
+    assert (
+        (inputVals[0].type === IRType.box   ||
+         inputVals[0].type === IRType.rptr  ||
+         inputVals[0].type.isNumber()       ||
+         inputVals[0].type === IRType.bool)
         &&
         inputVals[1].type === inputVals[0].type,
         'invalid input types (' + inputVals[0].type + 
@@ -1223,7 +1244,7 @@ CompInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 */
 var LtInstr = instrMaker(
     'lt',
-    undefined,
+    CompInstr.initFunc,
     undefined,
     new CompInstr()
 );
@@ -1234,7 +1255,7 @@ var LtInstr = instrMaker(
 */
 var LeInstr = instrMaker(
     'le',
-    undefined,
+    CompInstr.initFunc,
     undefined,
     new CompInstr()
 );
@@ -1245,7 +1266,7 @@ var LeInstr = instrMaker(
 */
 var GtInstr = instrMaker(
     'gt',
-    undefined,
+    CompInstr.initFunc,
     undefined,
     new CompInstr()
 );
@@ -1256,7 +1277,7 @@ var GtInstr = instrMaker(
 */
 var GeInstr = instrMaker(
     'ge',
-    undefined,
+    CompInstr.initFunc,
     undefined,
     new CompInstr()
 );
@@ -1267,7 +1288,7 @@ var GeInstr = instrMaker(
 */
 var EqInstr = instrMaker(
     'eq',
-    undefined,
+    CompInstr.initFuncEq,
     undefined,
     new CompInstr()
 );
@@ -1278,7 +1299,7 @@ var EqInstr = instrMaker(
 */
 var NeInstr = instrMaker(
     'ne',
-    undefined,
+    CompInstr.initFuncEq,
     undefined,
     new CompInstr()
 );

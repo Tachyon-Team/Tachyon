@@ -72,12 +72,6 @@ function getTableStr(strObj)
         iir.icast(IRType.u32, hashCode) % iir.icast(IRType.u32, tblSize)
     );
 
-    /*
-    print("Hash lookup");
-    print(strObj);
-    printInt(boxInt(hashIndex));
-    */
-
     // Until the key is found, or a free slot is encountered
     while (true)
     {
@@ -383,8 +377,6 @@ function compStrHash(strObj)
     // If this is an integer value within the supported range
     if (len > pint(0) && isInt && intVal < HASH_CODE_STR_OFFSET)
     {
-        printInt(1337);
-
         // Set the hash code to the integer value
         hashCode = intVal;
     }
@@ -444,6 +436,175 @@ function freeCString(strPtr)
 }
 
 /**
+Get the string representation for an integer
+*/
+function getIntStr(intVal)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg intVal pint";
+
+    // If this integer value can't be interpreted as a string hash code
+    if (intVal < pint(0) || intVal >= iir.icast(IRType.pint, HASH_CODE_STR_OFFSET))
+    {
+        // Create a string for the integer value
+        var strObj = intToStr(intVal);
+
+        // Attempt to find the string in the string table
+        return getTableStr(strObj);
+    }
+
+    //
+    // Hash table lookup
+    //
+
+    // Get a pointer to the context
+    var ctx = iir.get_ctx();
+
+    // Get a pointer to the string table
+    var strtbl = get_ctx_strtbl(ctx);
+
+    // Get the size of the string table
+    var tblSize = iir.icast(
+        IRType.pint,
+        get_strtbl_tblsize(strtbl)
+    );
+
+    // Get the hash table index for this hash value
+    // compute this using unsigned modulo to always obtain a positive value
+    var hashIndex = iir.icast(
+        IRType.pint,
+        iir.icast(IRType.u32, intVal) % iir.icast(IRType.u32, tblSize)
+    );
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the string value at this hash slot
+        var strVal = get_strtbl_tbl(strtbl, hashIndex);
+
+        // If we have reached an empty slot
+        if (strVal === UNDEFINED)
+        {
+            break;
+        }
+
+        // Otherwise, if this is the string we want
+        else if (get_str_hash(strVal) === iir.icast(IRType.i32, intVal))
+        {
+            // Return a reference to the string we found in the table
+            return strVal;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = (hashIndex + pint(1)) % tblSize;
+    }
+
+    //
+    // String not found in table
+    //
+
+    // Create a string for the integer value
+    var strObj = intToStr(intVal);
+
+    //
+    // Hash table updating
+    //
+
+    // Set the corresponding key and value in the slot
+    set_strtbl_tbl(strtbl, hashIndex, strObj);
+
+    // Get the number of strings and increment it
+    var numStrings = get_strtbl_numstrs(strtbl);
+    numStrings += i32(1);
+    set_strtbl_numstrs(strtbl, numStrings);
+    numStrings = iir.icast(IRType.pint, numStrings);
+
+    // Test if resizing of the string table is needed
+    // numStrings > ratio * tblSize
+    // numStrings > num/denom * tblSize
+    // numStrings * denom > tblSize * num
+    if (numStrings * STR_TBL_MAX_LOAD_DENOM >
+        tblSize * STR_TBL_MAX_LOAD_NUM)
+    {
+        // Extend the string table
+        extStrTable(strtbl, tblSize, numStrings);
+    }
+
+    // Return a reference to the string object created
+    return strObj;
+}
+
+/**
+Create a string representing the integer value
+*/
+function intToStr(intVal)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg intVal pint";
+
+    var strLen;
+    var neg;
+
+    // If the integer is negative, adjust the string length for the minus sign
+    if (intVal < pint(0))
+    {
+        strLen = pint(1);
+        intVal *= pint(-1);
+        neg = TRUE_BOOL;
+    }
+    else
+    {
+        strLen = pint(0);
+        neg = FALSE_BOOL;
+    }
+    
+    // Compute the number of digits to add to the string length
+    var intVal2 = intVal;
+    do
+    {
+        strLen += pint(1);
+        intVal2 /= pint(10);
+
+    } while (intVal2 !== pint(0))
+
+    // Allocate a string object
+    var strObj = alloc_str(strLen);
+    
+    // Set the string length in the string object
+    set_str_len(strObj, iir.icast(IRType.i32, strLen));
+
+    // If the string is negative, write the minus sign
+    if (neg)
+    {
+        set_str_data(strObj, pint(0), u16(45));
+    }
+
+    // Write the digits in the string
+    var i = strLen - pint(1);
+    do
+    {
+        var digit = intVal % pint(10);
+
+        var ch = iir.icast(IRType.u16, digit + pint(48));
+
+        set_str_data(strObj, i, ch);
+
+        intVal /= pint(10);       
+
+        i -= pint(1);
+
+    } while (intVal !== pint(0))
+
+    // Compute the hash code for the new string
+    compStrHash(strObj);
+
+    // Return the string object
+    return strObj;
+}
+
+/**
 Convert a boxed value to a string
 */
 function boxToString(val)
@@ -451,12 +612,10 @@ function boxToString(val)
     "tachyon:static";
     "tachyon:noglobal";
 
-    // TODO: int to string conversion
-    /*
     if (boxIsInt(val))
     {
+        return getIntStr(unboxInt(val));
     }
-    */
 
     if (boxIsString(val))
     {
