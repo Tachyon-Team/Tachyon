@@ -350,25 +350,6 @@ function heapAlloc(size)
     // Update the allocation pointer in the context object
     set_ctx_allocptr(ctx, nextPtr);
 
-    /************** TEMPORARY ************/
-    var startPtr = iir.get_ctx();
-    var oldSize = allocPtr - startPtr;
-    var newSize = nextPtr - startPtr;
-    var nextStep = oldSize;
-    var rem = iir.icast(IRType.pint, oldSize) % pint(1024);
-    if (rem !== pint(0))
-    {
-        var pad = pint(1024) - rem;
-        nextStep += pad;
-    }
-    if (newSize > nextStep && newSize / pint(1024) > pint(10))
-    {
-        var newSize = newSize / pint(1024);
-        print("Heap alloc: " + boxInt(newSize) + "KB");
-
-    }
-    /************** TEMPORARY ************/
-
     // Allocate the object at the current position
     return allocPtr;
 }
@@ -402,7 +383,6 @@ function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFIN
 function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function newArray() { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function or(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -429,8 +409,8 @@ function newObject(proto)
     set_obj_proto(obj, proto);
 
     // Initialize the hash table size and number of properties
-    set_obj_tblsize(obj, iir.icast(IRType.i32, HASH_MAP_INIT_SIZE));
-    set_obj_numprops(obj, i32(0));
+    set_obj_tblsize(obj, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    set_obj_numprops(obj, u32(0));
 
     // Initialize the hash table pointer to null to prevent GC errors
     set_obj_tbl(obj, null);
@@ -447,6 +427,50 @@ function newObject(proto)
 
     // Return the object reference
     return obj;
+}
+
+/**
+Create a new empty array
+*/
+function newArray()
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    // Allocate space for an array
+    var arr = alloc_arr();
+
+    // Initialize the prototype object
+    // TODO: this should be set to the array prototype
+    set_obj_proto(arr, null);
+
+    // Initialize the hash table size and number of properties
+    set_obj_tblsize(arr, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    set_obj_numprops(arr, u32(0));
+
+    // Initialize the array table capacity and the array length
+    set_arr_cap(arr, iir.icast(IRType.u32, ARRAY_TBL_INIT_SIZE));
+    set_arr_len(arr, u32(0));
+
+    // Initialize the hash table and array table pointers to null to prevent GC errors
+    set_obj_tbl(arr, null);
+    set_arr_arr(arr, null);
+
+    // Allocate space for a hash table and set the hash table reference
+    var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+    set_obj_tbl(arr, hashtbl);
+
+    // Initialize the hash table
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
+        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
+
+    // Allocate space for an array table and set the table reference
+    var arrtbl = alloc_arrtbl(ARRAY_TBL_INIT_SIZE);
+    set_arr_arr(arr, arrtbl);
+
+    // Return the array reference
+    return arr;
 }
 
 /**
@@ -517,7 +541,7 @@ function lt(v1, v2)
         var tv = ltGeneral(v1, v2);
     }
 
-    return tv? true:false;
+    return boolToBox(tv);
 }
 
 /**
@@ -553,7 +577,20 @@ function le(v1, v2)
         var tv = leGeneral(v1, v2);
     }
 
-    return tv? true:false;
+    return boolToBox(tv);
+}
+
+/**
+Non-inline case for HIR less-than-or-equal instruction
+*/
+function leGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+
+    // TODO
+    return FALSE_BOOL;
 }
 
 /**
@@ -576,7 +613,20 @@ function gt(v1, v2)
         var tv = gtGeneral(v1, v2);
     }
 
-    return tv? true:false;
+    return boolToBox(tv);
+}
+
+/**
+Non-inline case for HIR greater-than instruction
+*/
+function gtGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+
+    // TODO
+    return FALSE_BOOL;
 }
 
 /**
@@ -599,7 +649,21 @@ function ge(v1, v2)
         var tv = geGeneral(v1, v2);
     }
 
-    return tv? true:false;
+    return boolToBox(tv);
+}
+
+
+/**
+Non-inline case for HIR greater-than-or-equal instruction
+*/
+function geGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+
+    // TODO
+    return FALSE_BOOL;
 }
 
 /**
@@ -934,7 +998,7 @@ function getHash(key)
 /**
 Set a property on an object
 */
-function putProp(obj, propName, propHash, propVal)
+function putPropObj(obj, propName, propHash, propVal)
 {
     "tachyon:inline";
     "tachyon:noglobal";
@@ -994,7 +1058,7 @@ function putProp(obj, propName, propHash, propVal)
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
-            numProps += i32(1);
+            numProps += u32(1);
             set_obj_numprops(obj, numProps);
             numProps = iir.icast(IRType.pint, numProps);
 
@@ -1097,13 +1161,13 @@ function extObjHashTable(obj, curTbl, curSize)
 
     // Update the hash table pointer and the table size for the object
     set_obj_tbl(obj, newTbl);
-    set_obj_tblsize(obj, iir.icast(IRType.i32, newSize));
+    set_obj_tblsize(obj, iir.icast(IRType.u32, newSize));
 }
 
 /**
 Get a property from an object
 */
-function getProp(obj, propName, propHash)
+function getPropObj(obj, propName, propHash)
 {
     "tachyon:inline";
     "tachyon:noglobal";
@@ -1176,27 +1240,142 @@ function getProp(obj, propName, propHash)
 }
 
 /**
-Set a property on an object, by property name value
+Set an element of an array
+*/
+function putElemArr(arr, index, elemVal)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+
+    assert (
+        index >= 0,
+        'negative array index'
+    );
+
+    index = unboxInt(index); 
+
+    // Get the array length
+    var len = iir.icast(IRType.pint, get_arr_len(arr));
+
+    // Get the array table
+    var tbl = get_arr_tbl(arr);
+
+    // If the index is outside the current size of the array
+    if (index >= len)
+    {
+        // Compute the new length
+        var newLen = index + pint(1);
+
+        // Get the array capacity
+        var cap = iir.icast(IRType.pint, get_arr_cap(arr));
+
+        // If the new length would exceed the capacity
+        if (newLen > cap)
+        {
+            // Extend the internal table
+            tbl = extArrTable(arr, tbl, len, cap);
+        }
+
+        // Initialize new entries before the index to undefined
+        for (var i = len; i < index; i += pint(1))
+            set_arrtbl_tbl(tbl, i, UNDEFINED);
+
+        // Update the array length
+        set_arr_len(arr, iir.icast(IRType.u32, newLen));
+    }
+
+    // Set the element in the array
+    set_arrtbl_tbl(tbl, index, elemVal);
+}
+
+/**
+Extend the internal array table of an array
+*/
+function extArrTable(arr, curTbl, curLen, curSize)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+    "tachyon:arg curLen pint";
+    "tachyon:arg curSize pint";
+
+    // Compute the new size
+    var newSize = pint(2) * curSize;
+
+    // Allocate the new table
+    var newTbl = alloc_arrtbl(newSize);
+
+    // Copy elements from the old table to the new
+    for (var i = pint(0); i < curLen; i += pint(1))
+    {
+        var elem = get_arrtbl_tbl(curTbl, i);
+        set_arrtbl_tbl(newTbl, i, elem);
+    }
+
+    // Update the table capacity in the array
+    set_arr_cap(arr, iir.icast(IRType.u32, newSize));
+
+    // Update the table reference in the array
+    set_arr_tbl(arr, newTbl);
+
+    return newTbl;
+}
+
+/**
+Get an element from an array
+*/
+function getElemArr(arr, index)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+
+    assert (
+        index >= 0,
+        'negative array index'
+    );
+
+    index = unboxInt(index); 
+
+    var len = iir.icast(IRType.pint, get_arr_len(arr));
+
+    if (index >= len)
+        return UNDEFINED;
+
+    var tbl = get_arr_tbl(arr);
+
+    return get_arrtbl_tbl(tbl, index);
+}
+
+/**
+Set a property on a value using a value as a key
 */
 function putPropVal(obj, propName, propVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
+    // If this is an array element
+    if (boxIsArray(obj) && boxIsInt(propName))
+    {
+        if (propName >= 0)
+        {
+            // Write the element in the array
+            putElemArr(obj, propName, propVal);
 
+            // Return early
+            return;
+        }
+    }
+    
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
 
     // Set the property on the object
-    putProp(obj, propName, propHash, propVal);
+    putPropObj(obj, propName, propHash, propVal);
 }
 
 /**
-Test if a property exists on an object
+Test if a property exists on a value using a value as a key
 */
 function hasPropVal(obj, propName)
 {
@@ -1204,39 +1383,59 @@ function hasPropVal(obj, propName)
     "tachyon:noglobal";
     "tachyon:ret bool";
 
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
+    // If this is an array element
+    if (boxIsArray(obj) && boxIsInt(propName))
+    {
+        if (propName >= 0)
+        {
+            // Get the element from the array
+            var elem = getElemArr(obj, propName);
+
+            // If the element is not undefined, return true
+            if (elem !== UNDEFINED)
+                return TRUE_BOOL;
+        }
+    }
 
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
 
     // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
+    var prop = getPropObj(obj, propName, propHash);
 
     // Test if the property was found
     return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
 }
 
 /**
-Get a property from an object
+Get a property from a value using a value as a key
 */
 function getPropVal(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    // TODO: throw error if not object
-    // - Maybe not, should never happen in practice... toObject
-    // - What we actually want is a debug assertion
+    // If this is an array element
+    if (boxIsArray(obj) && boxIsInt(propName))
+    {
+        if (propName >= 0)
+        {
+            // Get the element from the array
+            var elem = getElemArr(obj, propName);
+
+            // If the element is not undefined, return it
+            if (elem !== UNDEFINED)
+                return elem;
+        }
+    }
 
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
 
     // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
+    var prop = getPropObj(obj, propName, propHash);
 
     // If the property isn't defined
     if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
@@ -1258,7 +1457,7 @@ function getGlobal(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
+    var prop = getPropObj(obj, propName, propHash);
 
     // If the property isn't defined
     if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
@@ -1280,7 +1479,7 @@ function getGlobalFunc(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     // Attempt to find the property on the object
-    var prop = getProp(obj, propName, propHash);
+    var prop = getPropObj(obj, propName, propHash);
 
     // If the property is a function
     if (boxIsFunc(prop))

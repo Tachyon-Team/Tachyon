@@ -293,7 +293,7 @@ function makeObjectLayouts(params)
     hashEntryLayout.finalize();
 
     /**
-    Hash table entry layout object
+    Hash table layout object
     */
     var hashTblLayout = new MemLayout('hashtbl', IRType.box, 'TAG_OTHER', params);
 
@@ -336,13 +336,13 @@ function makeObjectLayouts(params)
     // Hash table size
     objLayout.addField(
         'tblsize',
-        IRType.i32
+        IRType.u32
     );
 
     // Number of properties
     objLayout.addField(
         'numprops',
-        IRType.i32
+        IRType.u32
     );
 
     // Finalize the object layout
@@ -375,6 +375,67 @@ function makeObjectLayouts(params)
 
     //=============================================================================
     //
+    // Array memory layout
+    //
+    //=============================================================================
+
+    /**
+    Array table layout object
+    */
+    var arrTblLayout = new MemLayout('arrtbl', IRType.box, 'TAG_OTHER', params);
+
+    //
+    // TODO: header
+    //
+
+    // Array entries
+    arrTblLayout.addField(
+        'tbl',
+        IRType.box,
+        undefined,
+        false
+    );
+
+    // Finalize the hash table layout
+    arrTblLayout.finalize();
+
+    /**
+    Array layout object. Extends the object layout.
+    */
+    var arrLayout = MemLayout.extend(objLayout, 'arr', 'TAG_ARRAY');
+
+    // Array table
+    arrLayout.addField(
+        'arr',
+        IRType.box
+    );
+
+    // Array table capacity
+    arrLayout.addField(
+        'cap',
+        IRType.u32
+    );
+
+    // Array length
+    arrLayout.addField(
+        'len',
+        IRType.u32
+    );
+
+    // Finalize the array layout
+    arrLayout.finalize();
+
+    // Initial array table size
+    params.staticEnv.regBinding(
+        'ARRAY_TBL_INIT_SIZE',
+        ConstValue.getConst(
+            8,
+            IRType.pint
+        )
+    );
+
+    //=============================================================================
+    //
     // String memory layout
     //
     //=============================================================================
@@ -391,13 +452,13 @@ function makeObjectLayouts(params)
     // String length
     strLayout.addField(
         'len',
-        IRType.i32
+        IRType.u32
     );
 
     // Precomputed hash code
     strLayout.addField(
         'hash',
-        IRType.i32
+        IRType.u32
     );
 
     // Character data (UTF-16)
@@ -439,13 +500,13 @@ function makeObjectLayouts(params)
     // String table size
     strTblLayout.addField(
         'tblsize',
-        IRType.i32
+        IRType.u32
     );
 
     // Number of strings
     strTblLayout.addField(
         'numstrs',
-        IRType.i32
+        IRType.u32
     );
 
     // String table entries

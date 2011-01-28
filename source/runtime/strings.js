@@ -21,8 +21,8 @@ function initStrTable()
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
     // Initialize the string table size and number of properties
-    set_strtbl_tblsize(strtbl, iir.icast(IRType.i32, STR_TBL_INIT_SIZE));
-    set_strtbl_numstrs(strtbl, i32(0));
+    set_strtbl_tblsize(strtbl, iir.icast(IRType.u32, STR_TBL_INIT_SIZE));
+    set_strtbl_numstrs(strtbl, u32(0));
 
     // Initialize the string table entries
     for (var i = pint(0); i < STR_TBL_INIT_SIZE; i += pint(1))
@@ -105,7 +105,7 @@ function getTableStr(strObj)
 
     // Get the number of strings and increment it
     var numStrings = get_strtbl_numstrs(strtbl);
-    numStrings += i32(1);
+    numStrings += u32(1);
     set_strtbl_numstrs(strtbl, numStrings);
     numStrings = iir.icast(IRType.pint, numStrings);
 
@@ -145,8 +145,8 @@ function extStrTable(curTbl, curSize, numStrings)
         set_strtbl_tbl(newTbl, i, UNDEFINED);
 
     // Set the new size and the number of strings stored
-    set_strtbl_tblsize(newTbl, iir.icast(IRType.i32, newSize));
-    set_strtbl_numstrs(newTbl, iir.icast(IRType.i32, numStrings));
+    set_strtbl_tblsize(newTbl, iir.icast(IRType.u32, newSize));
+    set_strtbl_numstrs(newTbl, iir.icast(IRType.u32, numStrings));
 
     // For each entry in the current table
     for (var curIdx = pint(0); curIdx < curSize; curIdx += pint(1))
@@ -275,7 +275,7 @@ function strcat(str1, str2)
     var newStr = alloc_str(newLen);
     
     // Set the string length in the new string object
-    set_str_len(newStr, iir.icast(IRType.i32, newLen));
+    set_str_len(newStr, iir.icast(IRType.u32, newLen));
 
     // Copy the character data from the first string
     for (var i = pint(0); i < len1; i += pint(1))
@@ -295,7 +295,9 @@ function strcat(str1, str2)
     compStrHash(newStr);
 
     // Find/add the concatenated string in the string table
-    return getTableStr(newStr);
+    var newStr = getTableStr(newStr);
+
+    return newStr;
 }
 
 /**
@@ -312,7 +314,7 @@ function rawStrToObj(rawStr, strLen)
     var strObj = alloc_str(strLen);
     
     // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.i32, strLen));
+    set_str_len(strObj, iir.icast(IRType.u32, strLen));
 
     // Copy the character data into the string object
     for (var index = pint(0); index < strLen; index += pint(1))
@@ -387,7 +389,7 @@ function compStrHash(strObj)
     }
 
     // Set the hash code in the string object
-    set_str_hash(strObj, iir.icast(IRType.i32, hashCode));
+    set_str_hash(strObj, iir.icast(IRType.u32, hashCode));
 }
 
 /**
@@ -490,7 +492,7 @@ function getIntStr(intVal)
         }
 
         // Otherwise, if this is the string we want
-        else if (get_str_hash(strVal) === iir.icast(IRType.i32, intVal))
+        else if (get_str_hash(strVal) === iir.icast(IRType.u32, intVal))
         {
             // Return a reference to the string we found in the table
             return strVal;
@@ -516,7 +518,7 @@ function getIntStr(intVal)
 
     // Get the number of strings and increment it
     var numStrings = get_strtbl_numstrs(strtbl);
-    numStrings += i32(1);
+    numStrings += u32(1);
     set_strtbl_numstrs(strtbl, numStrings);
     numStrings = iir.icast(IRType.pint, numStrings);
 
@@ -567,13 +569,13 @@ function intToStr(intVal)
         strLen += pint(1);
         intVal2 /= pint(10);
 
-    } while (intVal2 !== pint(0))
+    } while (intVal2 !== pint(0));
 
     // Allocate a string object
     var strObj = alloc_str(strLen);
     
     // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.i32, strLen));
+    set_str_len(strObj, iir.icast(IRType.u32, strLen));
 
     // If the string is negative, write the minus sign
     if (neg)
@@ -595,7 +597,7 @@ function intToStr(intVal)
 
         i -= pint(1);
 
-    } while (intVal !== pint(0))
+    } while (intVal !== pint(0));
 
     // Compute the hash code for the new string
     compStrHash(strObj);

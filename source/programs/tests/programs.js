@@ -272,7 +272,7 @@ tests.str_cat_str.main = genTest(
 );
 
 /**
-String concatenation with integers
+String concatenation with integers.
 */
 tests.str_cat_str = tests.testSuite(); 
 tests.str_cat_str.main = genTest(
@@ -280,5 +280,17 @@ tests.str_cat_str.main = genTest(
     'foo',
     [],
     0
+);
+
+/**
+Array indexing test.
+*/
+tests.array_idx = tests.testSuite(); 
+tests.array_idx.main = genTest(
+    'programs/array_idx/array_idx.js',
+    'foo',
+    [12],
+    132,
+    true
 );
 

@@ -139,6 +139,58 @@ function MemLayout(name, ptrType, tagName, params)
 MemLayout.prototype = {};
 
 /**
+Create a new layout by extending another one
+*/
+MemLayout.extend = function (baseLayout, name, tagName)
+{
+    assert (
+        baseLayout instanceof MemLayout,
+        'invalid base layout'
+    );
+    assert (
+        typeof name === 'string',
+        'invalid layout name'
+    );
+    assert (
+        typeof tagName === 'string',
+        'invalid tag name'
+    );
+
+    // Create an object for the new layout
+    var newLayout = new MemLayout(
+        name, 
+        baseLayout.ptrType, 
+        tagName, 
+        baseLayout.params
+    );
+
+    assert (
+        baseLayout.fields.length !== 0,
+        'cannot extend empty layout'
+    );
+
+    assert (
+        !(baseLayout.fields[baseLayout.fields.length-1].numElems === false),
+        'cannot extend variable-length layouts'
+    );
+
+    assert (
+        baseLayout.finalized,
+        'can only extend finalized layouts'
+    );
+
+    // Copy the fields from the base layout
+    newLayout.fields = baseLayout.fields.slice(0);
+
+    // Copy the field names from the base layout
+    for (key in baseLayout.fieldMap)
+        newLayout.fieldMap[key] = baseLayout.fieldMap[key];
+
+    // Return the new layout object
+    return newLayout;
+}
+
+/**
 Get the current size of an object using this layout
 */
 MemLayout.prototype.getSize = function (subSize)
