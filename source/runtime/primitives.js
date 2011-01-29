@@ -1346,6 +1346,49 @@ function getElemArr(arr, index)
 }
 
 /**
+Set the length of an array
+*/
+function setArrayLength(arr, newLen)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    assert (
+        newLen >= 0,
+        'invalid array length'
+    );
+
+    newLen = unboxInt(newLen);
+
+    // Get the current array length
+    var len = iir.icast(IRType.pint, get_arr_len(arr));
+
+    // If the array length is increasing
+    if (newLen > len)
+    {
+        // Get the array capacity
+        var cap = iir.icast(IRType.pint, get_arr_cap(arr));
+
+        // Get a reference to the array table
+        var tbl = get_arr_tbl(arr);
+
+        // If the new length would exceed the capacity
+        if (newLen > cap)
+        {
+            // Extend the internal table
+            tbl = extArrTable(arr, tbl, len, cap);
+        }
+
+        // Initialize new entries to undefined
+        for (var i = len; i < newLen; i += pint(1))
+            set_arrtbl_tbl(tbl, i, UNDEFINED);
+    }  
+
+    // Update the array length
+    set_arr_len(arr, iir.icast(IRType.u32, newLen));
+}
+
+/**
 Set a property on a value using a value as a key
 */
 function putPropVal(obj, propName, propVal)
@@ -1354,16 +1397,24 @@ function putPropVal(obj, propName, propVal)
     "tachyon:noglobal";
 
     // If this is an array element
-    if (boxIsArray(obj) && boxIsInt(propName))
+    if (boxIsArray(obj))
     {
-        if (propName >= 0)
+        if (boxIsInt(propName))
         {
-            // Write the element in the array
-            putElemArr(obj, propName, propVal);
+            if (propName >= 0)
+            {
+                // Write the element in the array
+                putElemArr(obj, propName, propVal);
 
-            // Return early
-            return;
+                // Return early
+                return;
+            }
         }
+
+        else if (propName === 'length')
+        {
+            setArrayLength(obj, propVal);
+        }    
     }
     
     // Get the hash code for the property
@@ -1383,17 +1434,34 @@ function hasPropVal(obj, propName)
     "tachyon:noglobal";
     "tachyon:ret bool";
 
-    // If this is an array element
-    if (boxIsArray(obj) && boxIsInt(propName))
+    // If this is an array
+    if (boxIsArray(obj))
     {
-        if (propName >= 0)
+        if (boxIsInt(propName))
         {
-            // Get the element from the array
-            var elem = getElemArr(obj, propName);
+            if (propName >= 0)
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, propName);
 
-            // If the element is not undefined, return true
-            if (elem !== UNDEFINED)
-                return TRUE_BOOL;
+                // If the element is not undefined, return true
+                if (elem !== UNDEFINED)
+                    return TRUE_BOOL;
+            }
+        }
+
+        else if (propName === 'length')
+        {
+            return TRUE_BOOL;
+        }
+    }
+
+    // If this is a string
+    else if (boxIsString(obj))
+    {
+        if (propName === 'length')
+        {
+            return TRUE_BOOL;
         }
     }
 
@@ -1416,17 +1484,34 @@ function getPropVal(obj, propName)
     "tachyon:static";
     "tachyon:noglobal";
 
-    // If this is an array element
-    if (boxIsArray(obj) && boxIsInt(propName))
+    // If this is an array
+    if (boxIsArray(obj))
     {
-        if (propName >= 0)
+        if (boxIsInt(propName))
         {
-            // Get the element from the array
-            var elem = getElemArr(obj, propName);
+            if (propName >= 0)
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, propName);
 
-            // If the element is not undefined, return it
-            if (elem !== UNDEFINED)
-                return elem;
+                // If the element is not undefined, return it
+                if (elem !== UNDEFINED)
+                    return elem;
+            }
+        }
+
+        else if (propName === 'length')
+        {
+            return boxInt(iir.icast(IRType.pint, get_arr_len(obj)));
+        }
+    }
+
+    // If this is a string
+    else if (boxIsString(obj))
+    {
+        if (propName === 'length')
+        {
+            return boxInt(iir.icast(IRType.pint, get_str_len(obj)));
         }
     }
 

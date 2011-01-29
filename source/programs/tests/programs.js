@@ -290,7 +290,17 @@ tests.array_idx.main = genTest(
     'programs/array_idx/array_idx.js',
     'foo',
     [12],
-    132,
-    true
+    132
+);
+
+/**
+Array length property test.
+*/
+tests.array_length = tests.testSuite(); 
+tests.array_length.main = genTest(
+    'programs/array_length/array_length.js',
+    'foo',
+    [],
+    0
 );
 
