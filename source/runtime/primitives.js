@@ -379,9 +379,6 @@ function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function makeClos(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function putClos(clos, idx, val) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function getClos(clos, idx) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -471,6 +468,33 @@ function newArray()
 
     // Return the array reference
     return arr;
+}
+
+/**
+Create a closure for a function
+*/
+function makeClos(funcObj)
+{
+    // TODO 
+    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
+}
+
+/**
+Set a mutable cell in a closure
+*/
+function putClos(clos, idx, val) 
+{ 
+    // TODO
+    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
+}
+
+/**
+Get a mutable cell from a closure
+*/
+function getClos(clos, idx)
+{ 
+    // TODO
+    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
 }
 
 /**

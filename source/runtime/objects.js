@@ -547,9 +547,31 @@ function makeObjectLayouts(params)
 
     //=============================================================================
     //
-    // Mutable closure cell memory layout
+    // Closure/function object layout
     //
     //=============================================================================
+
+    /**
+    Closure layout object. Extends the object layout.
+    */
+    var closLayout = MemLayout.extend(objLayout, 'clos', 'TAG_FUNCTION');
+
+    // Number of closure cells
+    closLayout.addField(
+        'numcells',
+        IRType.u32
+    );
+
+    // Closure cell references
+    closLayout.addField(
+        'cells',
+        IRType.box,
+        undefined,
+        false
+    );
+
+    // Finalize the closure layout
+    closLayout.finalize();
 
     /**
     Mutable cell layout object

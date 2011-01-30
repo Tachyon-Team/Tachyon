@@ -82,7 +82,6 @@ MAIN_SRCS =                             \
 
 # Test target source files
 TEST_SRCS =                             \
-    $(STDLIB_SRCS)                      \
     $(BASE_SRCS)                        \
     $(TEST_SPEC_SRCS)
 
