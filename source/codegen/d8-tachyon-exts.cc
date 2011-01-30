@@ -376,7 +376,13 @@ template <class T> v8::Handle<v8::Value> valToArray(T val)
         uint8_t* bytePtr = ((uint8_t*)&val) + i;
         i::Object* element = i::Smi::FromInt(*bytePtr);
 
-        ptrArray->SetFastElement(i, element);
+        v8::internal::MaybeObject* v = ptrArray->SetFastElement(i, element);
+
+        if (v->IsFailure())
+        {
+            printf("Error in valToArray -- SetFastElement failed\n");
+            exit(1);
+        }
     }
 
     return Utils::ToLocal(ptrArray);
