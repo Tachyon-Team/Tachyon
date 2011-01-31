@@ -17,7 +17,10 @@ function commElim(cfg, maxItrs)
     // Hashing function for IR values        
     function hashFunc(val)
     {
-        assert (val instanceof IRInstr);
+        assert (
+            val instanceof IRInstr,
+            'expected instruction value'
+        );
 
         var valStr = val.mnemonic;
         for (var i = 0; i < val.uses.length; ++i)
@@ -35,7 +38,10 @@ function commElim(cfg, maxItrs)
     // Equality function for IR values
     function equalFunc(val1, val2)
     {
-        assert (val1 instanceof IRInstr && val2 instanceof IRInstr);
+        assert (
+            val1 instanceof IRInstr && val2 instanceof IRInstr,
+            'expected instruction values'
+        );
 
         if (val1 instanceof ArgValInstr || 
             val1 instanceof PhiInstr)

@@ -43,7 +43,6 @@ BASE_SRCS =                             \
     ir/inlining.js                      \
     ir/lowering.js                      \
     platform/ffi.js                     \
-    platform/memory.js                  \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
@@ -83,7 +82,6 @@ MAIN_SRCS =                             \
 
 # Test target source files
 TEST_SRCS =                             \
-    $(STDLIB_SRCS)                      \
     $(BASE_SRCS)                        \
     $(TEST_SPEC_SRCS)
 

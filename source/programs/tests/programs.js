@@ -26,8 +26,13 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
     else
         var params = config.clientParams;
 
+    //if (funcName === 'linkedlist')
+    //    params.print = print;
+
     // Compile the unit
     var ir = compileSrcFile(srcFile, params);
+
+    //params.print = undefined;
 
     // Get the function of the specified name in the unit
     var func = ir.getChild(funcName);
@@ -110,6 +115,18 @@ tests.basic_many_args.main = genTest(
 );
 
 /**
+Passing arguments and getting a return value from an FFI function
+*/
+tests.ffi_sum = tests.testSuite();
+tests.ffi_sum.main = genTest(
+    'programs/ffi_sum/ffi_sum.js',
+    'f',
+    [10,15],
+    25,
+    true
+);
+
+/**
 This test is meant to ensure that values are correctly merged after 
 conditionals and that local variable values are properly preserved across
 calls.
@@ -189,6 +206,17 @@ tests.loop_loop.main = genTest(
 );
 
 /**
+Loop with enough variables to force spilling of phi nodes.
+*/
+tests.loop_spills = tests.testSuite(); 
+tests.loop_spills.main = genTest(
+    'programs/loop_spills/loop_spills.js',
+    'foo',
+    [42],
+    122
+);
+
+/**
 Nested loops unit test.
 */
 tests.nested_loops = tests.testSuite();
@@ -200,6 +228,17 @@ tests.nested_loops.main = genTest(
 );
 
 /**
+Object property put/get unit test.
+*/
+tests.object_props = tests.testSuite();
+tests.object_props.main = genTest(
+    'programs/object_props/object_props.js',
+    'foo',
+    [33],
+    1584
+);
+
+/**
 Linked list unit test.
 */
 tests.linked_list = tests.testSuite();
@@ -207,18 +246,61 @@ tests.linked_list.main = genTest(
     'programs/linked_list/linked_list.js',
     'linkedlist',
     [5],
-    10, 
-    true
+    10
 );
 
 /**
-Loop with enough variables to force spilling of Phi nodes.
+String equality and non-equality.
 */
-tests.loop_spills = tests.testSuite(); 
-tests.loop_spills.main = genTest(
-    'programs/loop_spills/loop_spills.js',
+tests.str_equality = tests.testSuite(); 
+tests.str_equality.main = genTest(
+    'programs/str_equality/str_equality.js',
     'foo',
-    [42],
-    122
+    [],
+    0
+);
+
+/**
+String concatenation with another string.
+*/
+tests.str_cat_str = tests.testSuite(); 
+tests.str_cat_str.main = genTest(
+    'programs/str_cat_str/str_cat_str.js',
+    'foo',
+    [],
+    0
+);
+
+/**
+String concatenation with integers.
+*/
+tests.str_cat_str = tests.testSuite(); 
+tests.str_cat_str.main = genTest(
+    'programs/str_cat_int/str_cat_int.js',
+    'foo',
+    [],
+    0
+);
+
+/**
+Array indexing test.
+*/
+tests.array_idx = tests.testSuite(); 
+tests.array_idx.main = genTest(
+    'programs/array_idx/array_idx.js',
+    'foo',
+    [12],
+    132
+);
+
+/**
+Array length property test.
+*/
+tests.array_length = tests.testSuite(); 
+tests.array_length.main = genTest(
+    'programs/array_length/array_length.js',
+    'foo',
+    [],
+    0
 );
 

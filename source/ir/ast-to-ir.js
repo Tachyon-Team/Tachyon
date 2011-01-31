@@ -1504,6 +1504,9 @@ function stmtToIR(context)
         if (context.cfg.ownerFunc.astNode instanceof Program)
             error('unit-level returns are not allowed');
 
+        // Get the return type for this function
+        var retType = context.cfg.ownerFunc.retType;
+
         // If there is a return expression
         if (astStmt.expr !== null)
         {
@@ -1513,7 +1516,7 @@ function stmtToIR(context)
 
             // Ensure that the type of the returned value is valid
             assert (
-                retContext.getOutValue().type === context.cfg.ownerFunc.retType,
+                retContext.getOutValue().type === retType,
                 'returned value type must match function return type in "' +
                 context.cfg.ownerFunc.funcName + '"'
             );
@@ -1523,14 +1526,25 @@ function stmtToIR(context)
         }
         else
         {
-            // Ensure that the function has a boxed return type
-            assert (
-                context.cfg.ownerFunc.retType === IRType.box,
-                'functions with non-boxed return types cannot return undefined'
-            );
+            // If the return type is boxed
+            if (retType === IRType.box)
+            {
+                // Return the undefined constant
+                context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+            }
 
-            // Return the undefined constant
-            context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+            // If the return type is none
+            else if (retType === IRType.none)
+            {
+                // Return nothing
+                context.addInstr(new RetInstr());
+            }
+
+            // For any other return type
+            else
+            {
+                error('functions with return type "' + retType + '" must return a value');
+            }
         }
 
         // Indicate that there is no continuation for this context
@@ -2091,12 +2105,21 @@ function exprToIR(context)
         }
 
         // Create the call instruction
-        var exprVal = insertCallIR(
-            lastContext,
-            new CallFuncInstr(
-                [funcVal, thisVal].concat(argVals)
-            )
-        );
+        try
+        {
+            var exprVal = insertCallIR(
+                lastContext,
+                new CallFuncInstr(
+                    [funcVal, thisVal].concat(argVals)
+                )
+            );
+        }
+
+        // If an error occurred, rethrow it with source code location information
+        catch (exc)
+        {
+            rethrowError(exc, context.astNode.loc.to_string());
+        }
 
         // Set the output
         context.setOutput(lastContext.getExitBlock(), exprVal);
@@ -3275,9 +3298,9 @@ function refToIR(context)
                 );
             }
 
-            // Compute the hash of the symbol
+            // Precompute the hash code of the symbol
             var symHashVal = ConstValue.getConst(
-                defHashFunc(symName),
+                precompHash(symName, context.params),
                 IRType.pint
             );
 
@@ -4193,3 +4216,71 @@ function genCondInlineIR(context)
     // Set the exit block to be the join block
     context.setOutput(joinBlock);
 }
+
+/**
+Precompute the hash code of a value to be used in a hash lookup.
+*/
+function precompHash(val, params)
+{
+    if (typeof val === 'number')
+    {
+        return val;
+    }
+    else if (typeof val === 'string')
+    {
+        // Initialize the hash code to 0
+        var hashCode = 0;
+
+        // Initialize the integer value to 0
+        var intVal = 0;
+
+        // Flag indicating that the string represents an integer
+        var isInt = true;
+
+        // For each character, update the hash code
+        for (var i = 0; i < val.length; i += 1)
+        {
+            // Get the current character
+            var ch = val.charCodeAt(i);
+
+            // If this character is a digit
+            if (ch >= 48 && ch <= 57)
+            {
+                // Update the number value
+                var digitVal = ch - 48;
+                intVal = 10 * intVal + digitVal;
+            }
+            else
+            {
+                // This string does not represent a number
+                isInt = false;
+            }
+
+            // Update the hash code
+            hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
+        }
+
+        var HASH_CODE_STR_OFFSET = params.staticEnv.getBinding('HASH_CODE_STR_OFFSET').value;
+
+        // If this is an integer value within the supported range
+        if (val.length > 0 && isInt && intVal < HASH_CODE_STR_OFFSET)
+        {
+            // Set the hash code to the integer value
+            hashCode = intVal;
+        }
+        else
+        {
+            // Offset the string hash code to indicate this is not an integer value
+            hashCode += HASH_CODE_STR_OFFSET;
+        }
+
+        return hashCode;
+    }
+    
+    // For other value types
+    else
+    {
+        return precompHash(val.toString(), params);
+    }
+}
+

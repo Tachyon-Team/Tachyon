@@ -169,7 +169,10 @@ Returns a new translator object to translate IR to Assembly.
 */
 irToAsm.translator = function (config, params)
 {
-    assert(config !== undefined);
+    assert(
+        config !== undefined,
+        'invalid translator config'
+    );
 
     var that = Object.create(irToAsm.translator.prototype);
 
@@ -246,7 +249,11 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
                 // Replace constants by immediate values
                 opnds = instr.regAlloc.opnds.map(replace);
 
-                assert(instr.genCode !== undefined);
+                assert(
+                    instr.genCode !== undefined,
+                    'genCode method not present'
+                );
+
                 instr.genCode(that, opnds);
             }
         });
@@ -295,7 +302,6 @@ irToAsm.translator.prototype.stringValue = function (s)
         {
             if (that.params.getStrObj instanceof Function)
             {
-                print('allocating string "' + s + '"');
                 return that.params.getStrObj(s);
             }
             else
@@ -419,9 +425,11 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     if (argIndex < argRegNb)
     {
         // The argument is in a register
-        assert(argsReg[argIndex] === dest,
-               "arg: dest register '" + dest + 
-               "' unexpected for argument index '" + argIndex + "'");
+        assert(
+            argsReg[argIndex] === dest,
+            "arg: dest register '" + dest + 
+            "' unexpected for argument index '" + argIndex + "'"
+        );
     } 
     else
     {
@@ -937,8 +945,8 @@ GtInstr.prototype.genCode = function (tltor, opnds)
         opnds[1].type === x86.type.IMM_VAL))
     {
         tltor.asm.
-        mov(opnds[1], dest).
-        cmp(opnds[0], dest);
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
     } 
     else if (opnds[0].type === x86.type.IMM_VAL)
     {
@@ -948,7 +956,7 @@ GtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
 
     tltor.asm.
@@ -977,7 +985,7 @@ GeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0]);
+        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
 
     tltor.asm.
@@ -999,14 +1007,14 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
-               (opnds[0].type === x86.type.IMM_VAL &&
-               opnds[1].type === x86.type.IMM_VAL))
+               (tltor.asm.isImmediate(opnds[0]) &&
+                tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL)
+    else if (tltor.asm.isImmediate(opnds[1]))
     {
         tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
     }
@@ -1034,14 +1042,14 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if ((opnds[0].type === x86.type.MEM &&
                opnds[1].type === x86.type.MEM) ||
-               (opnds[0].type === x86.type.IMM_VAL &&
-               opnds[1].type === x86.type.IMM_VAL))
+               (tltor.asm.isImmediate(opnds[0]) &&
+                tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
         cmp(opnds[1], dest);
     } 
-    else if (opnds[1].type === x86.type.IMM_VAL)
+    else if (tltor.asm.isImmediate(opnds[1]))
     {
         tltor.asm.cmp(opnds[1], opnds[0], this.uses[1].type.getSizeBits(tltor.params.target));
     }
@@ -1076,11 +1084,13 @@ RetInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.add($(offset*refByteNb), tltor.config.stack);
     }
 
-    if (opnds[0] !== retValReg)
+    // If there is a value to return and it isn't in the return value register
+    if (opnds.length > 0 && opnds[0] !== retValReg)
     {
         tltor.asm.mov(opnds[0], retValReg);
     }
 
+    // If this is a proxy callable from C
     if (tltor.fct.cProxy)
     {
         // Put the stack pointer where C expects it to be
@@ -1099,7 +1109,8 @@ RetInstr.prototype.genCode = function (tltor, opnds)
             pop(EDI).
             pop(ESI).
             pop(EBX);
-        } else 
+        } 
+        else 
         {
             // We follow 64 bits Linux, BSD, Mac OS X
             // callee-save convention
@@ -1208,8 +1219,10 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                 'invalid uses for call to makeClos'
             );
 
-            assert(dest !== null, "makeClose should have a destination register");
-
+            assert(
+                dest !== null,
+                "makeClose should have a destination register"
+            );
 
             const irfunc = opnds[2];
             const lobj   = irToAsm.getEntryPoint(irfunc, "default", config).clone();
@@ -1250,10 +1263,16 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     var opnd;
 
     // Make sure we still have a register left for scratch
-    assert(argRegNb < avbleRegNb);
+    assert (
+        argRegNb < avbleRegNb,
+        'no register left for scratch'
+    );
 
     // Make sure it is not used to pass arguments
-    assert (!(scratchIndex in tltor.config.argsIndex));
+    assert (
+        !(scratchIndex in tltor.config.argsIndex),
+        'invalid scratch register index'
+    );
 
     // Allocate space on stack for extra args
     if (spillOffset > 0)
@@ -1349,7 +1368,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             opnds[0].type === x86.type.REG || 
             opnds[0].type === x86.type.MEM,
             "Invalid CallInstr function operand '" + opnds[0] + "'"
-        )
+        );
         
         // Call function address
         tltor.asm.call(funcObjReg);
@@ -1403,9 +1422,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     assert(stack.width() === 32, "Only 32-bits FFI calls are supported for now"); 
 
-    assert(altStack !== scratchReg);
-    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r); });
-    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r); });
+    assert(altStack !== scratchReg, 'alt stack reg is the same as scratch reg');
+    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
+    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
 
     // Iteration
     var i;
@@ -1504,7 +1523,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         }
         else
         {
-            error("invalid opnd type for ffi function call: ", opnd.type);
+            error("invalid opnd type for ffi function call: " + opnd.type);
         }
     }
 

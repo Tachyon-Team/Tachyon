@@ -12,28 +12,7 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 
 function testIR()
 {
-    /*
-    var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
-
-    var bridge = makeBridge(
-        ir,
-        [],
-        'int'
-    );
-
-    print(config.hostParams.staticEnv.getBinding('alloc_str'));
-
-    print('Calling fib');
-
-    var result = bridge(config.hostParams.ctxPtr);
-
-    print(result);
-
-    print(config.hostParams.getStrObj("Hello world!"));
-    */
-
-
-    //bootstrap(true, config.bootParams);
+    bootstrap(true, config.bootParams);
 
     /*
     var memBlock = allocMachineCodeBlock(16384);    

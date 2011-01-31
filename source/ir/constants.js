@@ -101,7 +101,10 @@ Test if a constant is a boxed integer
 */
 ConstValue.prototype.isBoxInt = function (params)
 {
-    assert (params instanceof CompParams);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     var BOX_NUM_BITS_INT = params.staticEnv.getBinding('BOX_NUM_BITS_INT').value;
 
@@ -183,7 +186,10 @@ Get the immediate value (bit pattern) of a constant
 */
 ConstValue.prototype.getImmValue = function (params)
 {
-    assert (params instanceof CompParams);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
 
     if (this.isBoxInt(params))
     {

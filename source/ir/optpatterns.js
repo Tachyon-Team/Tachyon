@@ -304,9 +304,10 @@ blockPatterns.emptyBypass = new optPattern(
                 if (!(instr instanceof PhiInstr))
                     break;
 
-                assert(arraySetHas(succ.preds, block));
-                //print('succ instr: ' + instr);
-                //print('pred: ' + block.getBlockName());
+                assert (
+                    arraySetHas(succ.preds, block),
+                    'successor does not have us as a predecessor'
+                );
 
                 // Add an incoming value for the predecessor
                 var inVal = instr.getIncoming(block);
@@ -802,7 +803,10 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
         else
         {
-            assert (instr instanceof ArithOvfInstr);
+            assert (
+                instr instanceof ArithOvfInstr,
+                'expected arithmetic instruction w/ overflow'
+            );
 
             block.replBranch(
                 new replInstrOvf(

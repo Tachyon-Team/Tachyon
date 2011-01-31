@@ -27,10 +27,9 @@ function bootstrap(allCode, params)
     // Initialize the runtime
     initRuntime(params);
 
-
     print('re-linking');
 
-    // Link the primitives with each other
+    // Re-link the primitives with each other to link strings
     for (var i = 0; i < irList.length; ++i)
     {
         var ir = irList[i];
@@ -40,9 +39,7 @@ function bootstrap(allCode, params)
         linkIR(ir, params);
     }
 
-    print('Tachyon init complete');
-
-
+    print('Tachyon initialization complete');
 
     // TODO: execute compiled units
 }
@@ -83,6 +80,8 @@ function getPrimSrcs(params)
         { str: layoutSrc, desc: 'object layout source' },
         // Generated code for the FFI functions
         { str: wrapperSrc, desc: 'FFI wrapper source' },
+        // Utility code for the runtime primitives
+        'runtime/utility.js',
         // Source code for the primitives
         'runtime/primitives.js',
         // Source code for string operations
@@ -140,7 +139,6 @@ function getTachyonSrcs(params)
         'ir/inlining.js',
         'ir/lowering.js',
         'platform/ffi.js',
-        'platform/memory.js',
         'runtime/layout.js',
         'runtime/context.js',
         'runtime/objects.js',    
@@ -196,7 +194,8 @@ client code.
 function compSources(srcList, params)
 {
     assert (
-        params instanceof CompParams
+        params instanceof CompParams,
+        'expected compilation parameters'
     );
 
     // Function to get the name string for a code unit
@@ -334,7 +333,7 @@ function initRuntime(params)
     // Create a bridge to call the string allocation function
     var getStrObjBridge = makeBridge(
         getStrObj,
-        ['void*'],
+        ['void*', 'int'],
         'void*'
     );
 
@@ -343,9 +342,12 @@ function initRuntime(params)
     */
     function getStrObjFunc(jsStr)
     {
-        assert (jsStr.length < 4096);
+        assert (
+            typeof jsStr === 'string',
+            'expected string value in getStrObjFunc'
+        );
 
-        var memBlock = allocMachineCodeBlock(8192);
+        var memBlock = allocMachineCodeBlock(2 * jsStr.length);
         var blockAddr = getBlockAddr(memBlock, 0);
 
         for (var i = 0; i < jsStr.length; ++i)
@@ -356,10 +358,7 @@ function initRuntime(params)
             memBlock[2 * i + 1] = ch >> 8;
         }
 
-        memBlock[2 * i] = 0;
-        memBlock[2 * i + 1] = 0;
-
-        var strObj = getStrObjBridge(ctxPtr, blockAddr);
+        var strObj = getStrObjBridge(ctxPtr, blockAddr, jsStr.length);
 
         //print(strObj);
 

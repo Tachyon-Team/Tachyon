@@ -119,10 +119,12 @@ function CFunction(
 )
 {
     assert (
-        cArgTypes instanceof Array && cRetType !== undefined
+        cArgTypes instanceof Array && cRetType !== undefined,
+        'invalid C arguments or return type'
     );
     assert (
-        params instanceof CompParams
+        params instanceof CompParams,
+        'expected compilation parameters'
     );
 
     // If tachyon argument types are not specified
@@ -140,7 +142,8 @@ function CFunction(
     }
 
     assert (
-        tachArgTypes.length === cArgTypes.length
+        tachArgTypes.length === cArgTypes.length,
+        'must have the same number of Tachyon arguments as C arguments'
     );
 
     // Convert the C argument types to IR types
@@ -253,10 +256,11 @@ CFunction.prototype.genWrapper = function ()
 
     sourceStr += ');\n';
 
+    // Generate the return statement
+    sourceStr += '\treturn';
     if (retVoid === false)
-    {
-        sourceStr += '\treturn ' + genTypeConv(this.cRetType, this.tachRetType, 'r') + ';\n';
-    }
+        sourceStr += ' ' + genTypeConv(this.cRetType, this.tachRetType, 'r');
+    sourceStr += ';\n';
 
     sourceStr += '}\n';
 
@@ -278,29 +282,37 @@ function CProxy(
 )
 {
     assert (
-        irFunction instanceof IRFunction
+        irFunction instanceof IRFunction,
+        'expected IR function'
     );
 
     // The types presented to C must be specified
     assert (
-        cArgTypes instanceof Array && cRetType !== undefined
+        cArgTypes instanceof Array && cRetType !== undefined,
+        'invalid C argument types or return type'
     );
     
     assert (
-        params instanceof CompParams
+        params instanceof CompParams,
+        'expected compilation parameters'
     );
 
     assert (
-        irFunction.argTypes.length === cArgTypes.length
+        irFunction.argTypes.length === cArgTypes.length,
+        'C argument types do not match function argument types'
     );
 
     assert (
         ctxVal instanceof ConstValue ||
-        ctxVal === undefined
+        ctxVal === undefined,
+        'invalid context value'
     );
 
     // For now, assume the context is always passed as an argument
-    assert (ctxVal === undefined);
+    assert (
+        ctxVal === undefined,
+        'cannot pre-specify fixed context'
+    );
 
     // Convert the C argument types to IR types
     cArgTypes = cArgTypes.map(function (t) { return cTypeToIRType(t, params); });
@@ -400,7 +412,6 @@ CProxy.prototype.genProxy = function ()
 
         sourceStr += '\t"tachyon:arg a' + i + ' ' + argType + '";\n';
     }
-
     
     if (this.ctxVal === undefined)
     {
@@ -534,30 +545,50 @@ function initFFI(params)
     }
 
     regFFI(new CFunction(
-        'printInt', 
+        'malloc', 
         ['int'], 
+        'void*',
+        params,
+        [IRType.pint],
+        IRType.rptr
+    ));
+
+    regFFI(new CFunction(
+        'free', 
+        ['void*'],
+        'void',
+        params,
+        [IRType.rptr],
+        IRType.none
+    ));
+
+    regFFI(new CFunction(
+        'exit', 
+        ['int'],
         'void',
         params
+    ));
+
+    regFFI(new CFunction(
+        'printInt', 
+        ['int'],
+        'void',
+        params
+    ));
+
+    regFFI(new CFunction(
+        'printStr',
+        ['char*'], 
+        'void',
+        params,
+        [IRType.rptr],
+        IRType.none
     ));
 
     regFFI(new CFunction(
         'sum2Ints', 
         ['int', 'int'], 
         'int',
-        params
-    ));
-
-    regFFI(new CFunction(
-        'printHello', 
-        [], 
-        'void',
-        params
-    ));
-
-    regFFI(new CFunction(
-        'print2Shorts', 
-        ['short', 'short'], 
-        'void',
         params
     ));
 }
