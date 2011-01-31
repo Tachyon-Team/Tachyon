@@ -892,8 +892,19 @@ function check_indexOf(arr, searchElement, fromIndex)
 {
     var arr1 = arr.slice(0);
     var arr2 = arr.slice(0);
-    var res1 = arr1.indexOf(searchElement, fromIndex);
-    var res2 = arr2.array_indexOf(searchElement, fromIndex);
+    var res1;
+    var res2;
+
+    if (fromIndex !== undefined)
+    {
+        res1 = arr1.indexOf(searchElement, fromIndex);
+        res2 = arr2.array_indexOf(searchElement, fromIndex);
+    }
+    else
+    {
+        res1 = arr1.indexOf(searchElement);
+        res2 = arr2.array_indexOf(searchElement);
+    }
 
     if (res1 !== res2)
         error("indexOf, results are different");
@@ -912,8 +923,19 @@ function check_lastIndexOf(arr, searchElement, fromIndex)
 {
     var arr1 = arr.slice(0);
     var arr2 = arr.slice(0);
-    var res1 = arr1.lastIndexOf(searchElement, fromIndex);
-    var res2 = arr2.array_lastIndexOf(searchElement, fromIndex);
+    var res1;
+    var res2;
+
+    if (fromIndex !== undefined)
+    {
+        res1 = arr1.lastIndexOf(searchElement, fromIndex);
+        res2 = arr2.array_lastIndexOf(searchElement, fromIndex);
+    }
+    else
+    {
+        res1 = arr1.lastIndexOf(searchElement);
+        res2 = arr2.array_lastIndexOf(searchElement);
+    }
 
     if (res1 !== res2)
         error("lastIndexOf, results are different");
