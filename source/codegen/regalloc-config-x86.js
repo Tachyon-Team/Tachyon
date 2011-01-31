@@ -102,8 +102,10 @@ DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
 {
     // Operand 0 should be placed in EAX if possible (not guaranteed)
-    if (position == 0) 
+    if (position === 0) 
         return 0;
+    else if (position === 1)
+        return 1;
     else
         return null;
 };
@@ -146,7 +148,7 @@ MulInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
         return null;
 
     // Operand 0 should be placed in EAX if possible (not guaranteed)
-    if (position == 0) 
+    if (position === 0) 
         return 0;
     else
         return null;

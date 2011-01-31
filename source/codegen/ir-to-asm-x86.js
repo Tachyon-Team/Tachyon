@@ -604,6 +604,74 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     // - Dividend in EAX
     // - Divisor NOT in EAX or EDX
 
+    const dvnd    = {reg:null};
+    const dsor    = {reg:null};
+    const scratch = {reg:null};
+
+    const xAX     = {reg:tltor.physReg[0], value:null};
+    const xBX     = {reg:tltor.physReg[1], value:null};
+    const xDX     = {reg:tltor.physReg[3], value:null};
+
+    function setReg(reg)
+    {
+        if (reg.reg === opnds[0])
+        {
+            reg.value = dvnd;
+            dvnd.reg  = reg;
+        } else if (reg.reg === opnds[1])
+        {
+            reg.value = dsor.value;
+            dsor.reg  = reg;
+        }
+    };
+
+    function moveRegToOpnd(reg, opnd)
+    {
+        // Move the value in the register in
+        // operand register
+        tltor.asm.mov(reg.reg, opnd.reg.reg);
+        reg.value = opnd;
+        opnd.reg  = reg;
+    };
+
+    function moveOpndToReg(opnd, reg)
+    {
+
+    };
+
+    setReg(xAX);
+    setReg(xBX);
+    setReg(xDX);
+
+    if (xAX.value === null)
+    {
+        scratch.reg = xAX;
+    } else if (xBX.value === null)
+    {
+        scratch.reg = xBX;
+    } else
+    {
+        scratch.reg = xDX;
+    }
+
+
+    if (xAX !== dvnd.reg)
+    {
+        if (xAX.value !== null)
+        {
+            move(xAX, scratch);
+        }
+
+        tltor.asm.mov(dvnd.reg.reg, xAX.reg);
+    }
+
+    if (xDX === dsor.reg)
+    {
+        move(
+    }
+
+
+    /*
     var dvnd = opnds[0];
     var dsor = opnds[1];
 
@@ -653,6 +721,7 @@ DivInstr.prototype.genCode = function (tltor, opnds)
 
         tltor.asm.idiv(dsor, this.type.getSizeBits(tltor.params.target));
     }
+    */
 };
 
 // Same code as division instruction, different register hint for output
