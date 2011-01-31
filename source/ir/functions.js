@@ -164,6 +164,11 @@ function IRFunction(
 IRFunction.prototype = new IRValue();
 
 /**
+In the IR, function objects represent function pointers
+*/
+IRFunction.prototype.type = IRType.rptr;
+
+/**
 Produce a string representation of an IR function
 */
 IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)

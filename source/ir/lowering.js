@@ -63,6 +63,7 @@ function lowerIRCFG(cfg, params)
                 [
                     params.staticEnv.getBinding('unboxRef'),
                     ConstValue.getConst(undefined),
+                    ConstValue.getConst(undefined),
                     instr.uses[0]
                 ]
             );
@@ -83,32 +84,6 @@ function lowerIRCFG(cfg, params)
             var instr = itr.get();
         }
 
-        // If this is a store instruction on a boxed value
-        if (instr instanceof StoreInstr && instr.uses[0].type === IRType.box)
-        {
-            // Create an unboxing operation
-            var unboxVal = new CallFuncInstr(
-                [
-                    params.staticEnv.getBinding('unboxRef'),
-                    ConstValue.getConst(undefined),
-                    instr.uses[0]
-                ]
-            );
-
-            // Replace the store instruction
-            cfg.replInstr(
-                itr, 
-                new StoreInstr(
-                    [instr.typeParams[0], unboxVal].concat(instr.uses.slice(1))
-                )
-            );
-
-            // Add the instruction before the load
-            cfg.addInstr(itr, unboxVal);
-
-            var instr = itr.get();
-        }
-
         // If this is an untyped if instruction
         if (usesBoxed && instr instanceof IfInstr)
         {
@@ -116,6 +91,7 @@ function lowerIRCFG(cfg, params)
             var boolVal = new CallFuncInstr(
                 [
                     params.staticEnv.getBinding('boxToBool'),
+                    ConstValue.getConst(undefined),
                     ConstValue.getConst(undefined),
                     instr.uses[0]
                 ]

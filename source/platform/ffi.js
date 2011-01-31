@@ -418,8 +418,6 @@ CProxy.prototype.genProxy = function ()
         sourceStr += '\tiir.set_ctx(ctx);\n';
     }
 
-    //sourceStr += '\tprintInt(1337);\n';
-
     // Get the global object from the context if available
     sourceStr += '\tvar global = ';
     if (this.ctxVal === undefined)
@@ -448,7 +446,7 @@ CProxy.prototype.genProxy = function ()
     var retVoid = this.cRetType === IRType.none;
 
     sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + 'iir.call(';
-    sourceStr += this.funcName + ', global';
+    sourceStr += this.funcName + ', UNDEFINED, global';
 
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
     {

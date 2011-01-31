@@ -17,7 +17,7 @@ function initialize()
     // Initialize the Tachyon configuration
     initConfig();
 
-    //config.hostParams.print = print;
+    config.hostParams.print = print;
 
     // Compile and initialize the Tachyon primitives
     bootstrap(false, config.hostParams);

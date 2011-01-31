@@ -52,11 +52,12 @@ irToAsm.config.physReg = [EAX, EBX, ECX, EDX, EBP, EDI];
 
 // Register index for call's return value
 irToAsm.config.retValIndex = 0;
+
 // Registers for the corresponding CallInstr operands. The first
 // operands will be assigned those registers in their order of 
 // appearance. The remaining operands will be passed on the stack.
 // The first position corresponds to arg 0 index, the second to arg 1, etc.
-irToAsm.config.argsIndex    = [2, 1, 0, 3];
+irToAsm.config.argsIndex = [2, 1, 0, 3];
 
 // For convenience in the ir-to-asm code, references to registers
 // are derived from the argsIndex
@@ -65,6 +66,8 @@ irToAsm.config.argsReg =
     irToAsm.config.argsIndex.map( 
         function (index) { return irToAsm.config.physReg[index]; });
 
+// Register to be used for the function pointer during a call
+irToAsm.config.funcPtrIndex = irToAsm.config.physReg.length - 2;
 
 // TODO: Would we want to have distinct caller and callee save registers?
 
@@ -211,19 +214,37 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 
     function replace(opnd)
     {
-        if (opnd instanceof ConstValue && typeof opnd.value === "string" )
+        // If this is a static function reference
+        if (opnd instanceof IRFunction)
+        {
+            // Get the function entry point
+            var entryPoint = irToAsm.getEntryPoint(
+                opnd,
+                undefined, 
+                that.config
+            );
+
+            return entryPoint;            
+        }
+
+        // If this is a string
+        if (opnd instanceof ConstValue && typeof opnd.value === "string")
         {
             return that.stringValue(opnd.value);
-        } 
+        }
+ 
         else if (opnd instanceof ConstValue)
         {
             return $(opnd.getImmValue(that.params));
         }
+
         else 
         {
             return opnd;
         }
     };
+
+    this.asm.genListing('<fn:' + fct.funcName + '>');
 
     // Start the code generation
     this.prelude();
@@ -242,6 +263,8 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
             if (instr.regAlloc.opnds === undefined)
             {
                 opnds = instr.uses.map(replace);
+
+
                 instr.genCode(that, opnds);
             } 
             else
@@ -297,7 +320,7 @@ irToAsm.translator.prototype.stringValue = function (s)
 {
     var that = this;
     return this.asm.linked(
-        s,
+        '"' + s + '"',
         function ()
         {
             if (that.params.getStrObj instanceof Function)
@@ -1005,10 +1028,8 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.test(opnds[0], opnds[0]);
     } 
-    else if ((opnds[0].type === x86.type.MEM &&
-               opnds[1].type === x86.type.MEM) ||
-               (tltor.asm.isImmediate(opnds[0]) &&
-                tltor.asm.isImmediate(opnds[1])))
+    else if ((opnds[0].type === x86.type.MEM || tltor.asm.isImmediate(opnds[0])) &&
+             (opnds[1].type === x86.type.MEM || tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
@@ -1016,7 +1037,7 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
+        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.getSizeBits(tltor.params.target));
     }
     else
     {
@@ -1159,7 +1180,6 @@ ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
-
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
@@ -1179,8 +1199,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Number of registers used for passing arguments
     const argRegNb = tltor.config.argsIndex.length;
 
-    // Number of operands
-    const opndNb = opnds.length;
+    // Register to be used for the function pointer
+    const funcPtrIndex = tltor.config.funcPtrIndex;
+    const funcPtrReg = tltor.config.physReg[funcPtrIndex];
 
     // Used for loop iterations
     var i;
@@ -1196,72 +1217,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'invalid destination register for function call'
     );
 
-    // If this is a static call, likely to a primitive function
-    if (opnds[0] instanceof IRFunction)
-    {
-        // Special cases for some static functions until 
-        // we have proper support for object allocation.
-        
-        // Those static functions use a special calling convention
-        // to avoid passing the function address and a
-        // 'this' reference in registers.  Since they
-        // are function calls, all available registers
-        // are preserved before the call, allowing
-        // usage of all the physical registers to pass
-        // arguments.
-
-        const name = opnds[0].funcName;
-
-        if (name === "makeClos")
-        {
-            assert(
-                this.uses[1].isUndef() && opnds[2] instanceof IRFunction,
-                'invalid uses for call to makeClos'
-            );
-
-            assert(
-                dest !== null,
-                "makeClose should have a destination register"
-            );
-
-            const irfunc = opnds[2];
-            const lobj   = irToAsm.getEntryPoint(irfunc, "default", config).clone();
-
-            // linkValue function for make closure calls
-            lobj.linkValue = function getSrcAddrBytes()
-            {
-                return this.srcAddr.getBytes();
-            }
-
-            tltor.asm.mov(lobj, dest);
-
-            // Return early
-            return;
-        }
-    }
- 
-    // Number of bytes in a reference
-    const refByteNb = tltor.config.stack.width() >> 3;
-
-    // Register for the function address
-    const funcObjReg = tltor.config.argsReg[0];
-
-    // Index for the last argument passed in a register 
-    const lastArgIndex = argRegNb - 1;
-
-    // Number of operands that must be spilled at the call site
-    var spillNb = opndNb - argRegNb;
-    spillNb = (spillNb < 0) ? 0 : spillNb;
-    
-    // Stack pointer offset for all spilled operands
-    const spillOffset = spillNb * refByteNb;
-
-    // Stack pointer offset
-    var spoffset;
-
-    // Temporary opnd
-    var opnd;
-
     // Make sure we still have a register left for scratch
     assert (
         argRegNb < avbleRegNb,
@@ -1274,33 +1229,73 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'invalid scratch register index'
     );
 
+    assert (
+        scratch !== funcPtrReg,
+        'function pointer reg conflicts with scratch'
+    );
+
+    // If the function pointer is in a register that will be
+    // used for the arguments or scratch
+    if (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg)
+    {
+        tltor.asm.mov(opnds[0], funcPtrReg);
+        var funcPtr = funcPtrReg;
+    }
+    else
+    {
+        var funcPtr = opnds[0];
+    }
+
+    // Test if this is a static call
+    var staticCall = (funcPtr.type === x86.type.LINK);
+
+    // Get the function arguments
+    var funcArgs = opnds.slice(1);
+
+    // Number of bytes in a reference
+    const refByteNb = tltor.config.stack.width() >> 3;
+
+    // Index for the last argument passed in a register 
+    const lastArgIndex = argRegNb - 1;
+
+    // Number of operands that must be spilled at the call site
+    var spillNb = funcArgs.length - argRegNb;
+    spillNb = (spillNb < 0) ? 0 : spillNb;
+    
+    // Stack pointer offset for all spilled operands
+    const spillOffset = spillNb * refByteNb;
+
+    // Stack pointer offset
+    var spoffset;
+
+    // Temporary opnd
+    var opnd;
+
     // Allocate space on stack for extra args
     if (spillOffset > 0)
     {
         tltor.asm.sub($(spillOffset), stack);
 
-        for (i = argRegNb, spoffset = 0;
-                i < opndNb; 
-                ++i, spoffset += refByteNb)
+        for (i = argRegNb, spoffset = 0; i < funcArgs.length; ++i, spoffset += refByteNb)
         {
+            var arg = funcArgs[i];
 
-            if (opnds[i].type === x86.type.MEM)
+            if (arg.type === x86.type.MEM)
             {
-
                 // Source memory location
                 // Adjust the offset to take the displacement of the stack pointer
                 // into account
-                opnd = Object.create(opnds[i]);
-                opnd.disp += spillOffset;
+                arg = Object.create(arg);
+                arg.disp += spillOffset;
 
                 tltor.asm.
-                mov(opnd, scratch).
+                mov(arg, scratch).
                 mov(scratch, mem(spoffset, stack));
             } 
             else
             {
                 tltor.asm.
-                mov(opnds[i], mem(spoffset, stack), stack.width());
+                mov(arg, mem(spoffset, stack), stack.width());
             }
         }
     }
@@ -1308,35 +1303,26 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Move arguments in the right registers
     map = allocator.mapping();
 
-    for (i = 0; i < argRegNb && i < opndNb; ++i)
+    for (i = 0; i < argRegNb && i < funcArgs.length; ++i)
     {
-        // If this is a static function call
-        if (opnds[i] instanceof IRFunction)
-        {
-            // Pass undefined as the function object
-            opnd = $(ConstValue.getConst(undefined).getImmValue(tltor.params));
-        }
-        else
-        {
-            opnd = opnds[i];
-        }
+        var arg = funcArgs[i];
         
         reg = argsReg[i];
         
-        if (opnd !== reg)
+        if (arg !== reg)
         {
             // Fix the offset since the stack pointer has been moved
-            if (opnd.type === x86.type.MEM)
+            if (arg.type === x86.type.MEM)
             {
                 // Make a copy of the object with the same properties
-                opnd = Object.create(opnd);
+                arg = Object.create(arg);
 
                 // Adjust the offset to take the displacement of the stack pointer
                 // into account
-                opnd.disp += spillOffset;
+                arg.disp += spillOffset;
             }
 
-            map.add(opnd, reg);
+            map.add(arg, reg);
         }
     }
 
@@ -1348,31 +1334,16 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         scratch
     );
 
-    // If this is a static call
-    if (opnds[0] instanceof IRFunction)
-    {
-        // Get the function entry point
-        const entryPoint = irToAsm.getEntryPoint(
-            this.uses[0],
-            undefined, 
-            tltor.config
-        );
+    // The first operand should be the function address
+    assert (
+        opnds[0].type === x86.type.REG || 
+        opnds[0].type === x86.type.MEM ||
+        opnds[0].type === x86.type.LINK,
+        "Invalid CallInstr function operand '" + opnds[0] + "'"
+    );
 
-        // Call the function by its address
-        tltor.asm.call(entryPoint);
-    }
-    else
-    {
-        // The first operand should be the function address
-        assert (
-            opnds[0].type === x86.type.REG || 
-            opnds[0].type === x86.type.MEM,
-            "Invalid CallInstr function operand '" + opnds[0] + "'"
-        );
-        
-        // Call function address
-        tltor.asm.call(funcObjReg);
-    }
+    // Call the function by its address
+    tltor.asm.call(funcPtr);
     
     // Remove return address and extra args
     if (spillOffset > 0)
@@ -1409,7 +1380,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const cfct = this.uses[0];
 
-    const fctAddr = cfct.funcPtr; 
+    const fctAddr = cfct.funcPtr;
 
     const callDest  = tltor.asm.linked(
                     cfct.funcName, 

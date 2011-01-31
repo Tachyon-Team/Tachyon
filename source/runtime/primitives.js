@@ -418,9 +418,7 @@ function newObject(proto)
 
     // Initialize the hash table
     for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
-    {
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
-    }
 
     // Return the object reference
     return obj;
@@ -473,28 +471,52 @@ function newArray()
 /**
 Create a closure for a function
 */
-function makeClos(funcObj)
+function makeClos(funcPtr, numCells)
 {
-    // TODO 
-    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
-}
+    "tachyon:static"; 
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+    "tachyon:arg funcPtr rptr";
+    "tachyon:arg numCells pint";
 
-/**
-Set a mutable cell in a closure
-*/
-function putClos(clos, idx, val) 
-{ 
-    // TODO
-    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
-}
+    var ptrInt = iir.icast(IRType.pint, funcPtr);
+    printInt(boxInt(ptrInt & pint(0xFF)));
+    printInt(boxInt((ptrInt >> pint(8)) & pint(0xFF)));
+    printInt(boxInt((ptrInt >> pint(16)) & pint(0xFF)));
+    printInt(boxInt((ptrInt >> pint(24)) & pint(0xFF)));
 
-/**
-Get a mutable cell from a closure
-*/
-function getClos(clos, idx)
-{ 
-    // TODO
-    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
+    print('num cells: ' + boxInt(numCells));
+
+    // Allocate space for the closure
+    var clos = alloc_clos(numCells);
+
+    // Initialize the prototype object
+    // TODO: this should be set to the function prototype
+    set_obj_proto(clos, null);
+
+    // Set the function pointer
+    set_clos_funcptr(clos, funcPtr);
+
+    // Initialize the hash table size and number of properties
+    set_obj_tblsize(clos, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    set_obj_numprops(clos, u32(0));
+
+    // Initialize the hash table pointer and closure cell references to null
+    // to prevent GC errors
+    set_obj_tbl(clos, null);
+    for (var i = pint(0); i < numCells; i += pint(1))
+        set_clos_cells(clos, i, null);
+
+    // Allocate space for a hash table and set the hash table reference
+    var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+    set_obj_tbl(clos, hashtbl);
+
+    // Initialize the hash table
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
+        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
+
+    // Return the closure reference
+    return clos;
 }
 
 /**
@@ -506,43 +528,14 @@ function makeCell()
     "tachyon:nothrow";
     "tachyon:noglobal";
 
-    /*
     // Allocate space for the cell
     var cell = alloc_cell();
 
+    // Initialize the value to null to avoid GC issues
+    set_cell_val(cell, null);
+
+    // Return a reference to the cell
     return cell;
-    */
-
-    // TODO
-    return UNDEFINED;
-}
-
-/**
-Store a value in a mutable cell
-*/
-function putCell(cell, val)
-{ 
-    "tachyon:static";
-    "tachyon:nothrow";
-    "tachyon:noglobal";
-
-    // TODO
-    //put_cell_val(cell, val);
-}
-
-/**
-Read a value from a mutable cell
-*/
-function getCell(cell) 
-{ 
-    "tachyon:static";
-    "tachyon:nothrow";
-    "tachyon:noglobal";
-
-    //return get_cell_val(cell);
-
-    // TODO
-    return UNDEFINED;
 }
 
 /**

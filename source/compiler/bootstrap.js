@@ -310,6 +310,8 @@ function initRuntime(params)
     // Get the heap initialization function
     var initHeap = config.hostParams.staticEnv.getBinding('initHeap');
 
+    params.print = print;
+
     //print('creating bridge');
 
     // Create a bridge to call the heap init function
@@ -319,10 +321,14 @@ function initRuntime(params)
         'void*'
     );
 
-    //print('calling initHeap');
+    params.print = undefined;
+
+    print('calling initHeap');
 
     // Initialize the heap
     var ctxPtr = initHeapBridge(asm.address([0,0,0,0]).getBytes(), heapAddr);
+
+    print('called initHeap');
 
     // Store the context pointer in the compilation parameters
     config.hostParams.ctxPtr = ctxPtr;

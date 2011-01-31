@@ -1501,38 +1501,61 @@ var CallFuncInstr = instrMaker(
     {
         this.mnemonic = 'call';
 
-        instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.box);
-        instrMaker.validType(inputVals[1], IRType.box);
+        // 3 base arguments required for any call
+        const NUM_BASE_ARGS = 3;
+
+        // Ensure that we have all the base arguments
+        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
+        
+        // Get references to the base arguments
+        var funcPtr = inputVals[0];
+        var funcObj = inputVals[1];
+        var thisVal = inputVals[2];
+
+        // Ensure that the base argument types are valid
+        instrMaker.validType(funcPtr, IRType.rptr);
+        instrMaker.validType(funcObj, IRType.box);
+        instrMaker.validType(thisVal, IRType.box);
+
+        // 0 to 2 branch targets
         instrMaker.validNumBranches(branchTargets, 0, 2);
 
-        if (inputVals[0] instanceof IRFunction)
+        // Get a reference to the function object value
+        var funcObj = inputVals[1];
+
+        // If this is a static vall
+        if (funcPtr instanceof IRFunction)
         {
+            var numArgs = inputVals.length - NUM_BASE_ARGS;
+
             assert (
-                inputVals.length  - 2 === inputVals[0].getNumArgs(),
+                numArgs === funcPtr.getNumArgs(),
                 'direct calls do not support variable argument counts, got ' +
-                (inputVals.length - 2) + ' arguments, expected ' + 
-                inputVals[0].getNumArgs() + ' (' + inputVals[0].funcName + ')'
+                numArgs + ' arguments, expected ' + funcPtr.getNumArgs() +
+                ' (' + funcPtr.funcName + ')'
             );
 
-            for (var i = 2; i < inputVals.length; ++i)
+            for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
             {
+                if (inputVals[i].type !== funcPtr.argTypes[i-NUM_BASE_ARGS])
+                    print(inputVals);
+
                 assert (
-                    inputVals[i].type === inputVals[0].argTypes[i-2],
+                    inputVals[i].type === funcPtr.argTypes[i-NUM_BASE_ARGS],
                     'argument type does not match (' + 
-                    inputVals[0].argVars[i-2].toString() + ', ' +
-                    inputVals[0].funcName + ')'
+                    funcPtr.argVars[i-NUM_BASE_ARGS].toString() + ' = ' +
+                    inputVals[i].type + ') in ' + funcPtr.funcName
                 );
             }
 
-            this.type = inputVals[0].retType;
+            this.type = funcPtr.retType;
         }
         else
         {
-            for (var i = 2; i < inputVals.length; ++i)
+            for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
             {
                 assert (
-                    inputVals[0].type === IRType.box,
+                    inputVals[i].type === IRType.box,
                     'indirect calls can only take boxed values as input'
                 );
             }
@@ -1621,17 +1644,21 @@ var ConstructInstr = instrMaker(
     {
         this.mnemonic = 'construct';
 
-        instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.box);
+        // 3 base arguments required
+        const NUM_BASE_ARGS = 3;
+
+        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
+        instrMaker.validType(inputVals[0], IRType.rptr);
         instrMaker.validType(inputVals[1], IRType.box);
+        instrMaker.validType(inputVals[2], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
         this.type = IRType.box;
 
-        for (var i = 2; i < inputVals.length; ++i)
+        for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
         {
             assert (
-                inputVals[0].type === IRType.box,
+                inputVals[i].type === IRType.box,
                 'constructor calls can only take boxed values as input'
             );
         }

@@ -29,6 +29,8 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
     //if (funcName === 'linkedlist')
     //    params.print = print;
 
+    params.print = print;
+
     // Compile the unit
     var ir = compileSrcFile(srcFile, params);
 
@@ -43,14 +45,22 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
         'int'
     );
 
+    print(ir);
+
+    print(ir.getChild('foo').linking.getEntryPoint().getAddr());
+    
     var funcBridge = makeBridge(
         func,
         argTypes,
         'int'
     );
 
+    print('calling unit');
+
     // Execute the compilation unit to initialize it
     unitBridge(params.ctxPtr);
+
+    print('calling func');
 
     // Call the function with the given arguments
     var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
@@ -136,7 +146,8 @@ tests.cond_calls.main = genTest(
     'programs/cond_calls/cond_calls.js',
     'fee',
     [],
-    20
+    20,
+    true
 );
 
 /**
