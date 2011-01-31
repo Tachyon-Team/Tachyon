@@ -406,7 +406,7 @@ function array_indexOf(searchElement, fromIndex)
     var o = array_toObject(this);
     var len = o.length;
 
-    if (fromIndex === undefined)
+    if (arguments.length <= 1)
         fromIndex = 0;
     else
     {
@@ -430,7 +430,7 @@ function array_lastIndexOf(searchElement, fromIndex)
     var o = array_toObject(this);
     var len = o.length;
 
-    if (fromIndex === undefined || fromIndex >= len)
+    if (arguments.length <= 1 || fromIndex >= len)
         fromIndex = len-1;
     else if (fromIndex < 0)
         fromIndex = len + fromIndex;
