@@ -411,7 +411,7 @@ function newObject(proto)
     set_obj_tbl(obj, hashtbl);
 
     // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Return the object reference
@@ -451,7 +451,7 @@ function newArray()
     set_obj_tbl(arr, hashtbl);
 
     // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Allocate space for an array table and set the table reference
@@ -490,7 +490,7 @@ function makeClos(funcPtr, numCells)
     // Initialize the hash table pointer and closure cell references to null
     // to prevent GC errors
     set_obj_tbl(clos, null);
-    for (var i = pint(0); i < numCells; i += pint(1))
+    for (var i = pint(0); i < numCells; i++)
         set_clos_cells(clos, i, null);
 
     // Allocate space for a hash table and set the hash table reference
@@ -498,7 +498,7 @@ function makeClos(funcPtr, numCells)
     set_obj_tbl(clos, hashtbl);
 
     // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Return the closure reference
@@ -542,7 +542,7 @@ function makeArgObj()
     var numArgs = pint(0);
 
     // For each visible argument
-    for (var i = pint(2); i < numArgs; i += pint(1))
+    for (var i = pint(2); i < numArgs; i++)
     {
         // Get this argument
         // var argVal = iir.get_arg(i);
@@ -1099,7 +1099,7 @@ function putPropObj(obj, propName, propHash, propVal)
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
-            numProps += u32(1);
+            numProps++;
             set_obj_numprops(obj, numProps);
             numProps = iir.icast(IRType.pint, numProps);
 
@@ -1139,7 +1139,7 @@ function extObjHashTable(obj, curTbl, curSize)
     var newTbl = alloc_hashtbl(newSize);
 
     // Initialize the keys in the new hash table
-    for (var i = pint(0); i < newSize; i += pint(1))
+    for (var i = pint(0); i < newSize; i++)
     {
         set_hashtbl_tbl_key(newTbl, i, UNDEFINED);
     }
@@ -1318,7 +1318,7 @@ function putElemArr(arr, index, elemVal)
         }
 
         // Initialize new entries before the index to undefined
-        for (var i = len; i < index; i += pint(1))
+        for (var i = len; i < index; i++)
             set_arrtbl_tbl(tbl, i, UNDEFINED);
 
         // Update the array length
@@ -1346,7 +1346,7 @@ function extArrTable(arr, curTbl, curLen, curSize)
     var newTbl = alloc_arrtbl(newSize);
 
     // Copy elements from the old table to the new
-    for (var i = pint(0); i < curLen; i += pint(1))
+    for (var i = pint(0); i < curLen; i++)
     {
         var elem = get_arrtbl_tbl(curTbl, i);
         set_arrtbl_tbl(newTbl, i, elem);
@@ -1421,7 +1421,7 @@ function setArrayLength(arr, newLen)
         }
 
         // Initialize new entries to undefined
-        for (var i = len; i < newLen; i += pint(1))
+        for (var i = len; i < newLen; i++)
             set_arrtbl_tbl(tbl, i, UNDEFINED);
     }  
 

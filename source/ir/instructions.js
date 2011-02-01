@@ -1489,9 +1489,6 @@ var CallFuncInstr = instrMaker(
 
             for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
             {
-                if (inputVals[i].type !== funcPtr.argTypes[i-NUM_BASE_ARGS])
-                    print(inputVals);
-
                 assert (
                     inputVals[i].type === funcPtr.argTypes[i-NUM_BASE_ARGS],
                     'argument type does not match (' + 

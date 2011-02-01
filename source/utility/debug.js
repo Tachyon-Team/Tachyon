@@ -22,7 +22,7 @@ function error(message)
 
     // If we are running within V8, capture a stack trace
     if (Error.captureStackTrace !== undefined)
-        Error.captureStackTrace(errObj, error);
+        Error.captureStackTrace(errObj);
 
     throw errObj;
 };
@@ -33,7 +33,7 @@ Retrow an error with added information
 function rethrowError(exc, message)
 {
     if (message === undefined)
-        throw error;
+        throw exc;
 
     var errMsg = '';
     for (var i=1; i < arguments.length; ++i)
@@ -51,8 +51,8 @@ function assert(bool, message)
 {
     if (!bool) 
     { 
-        error.apply(null, Array.prototype.slice.call(arguments, 1));
-    } 
+        error(message);
+    }
 };
 
 /** 

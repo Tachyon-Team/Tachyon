@@ -1991,7 +1991,7 @@ function exprToIR(context)
         var closVal = insertPrimCallIR(
             context, 
             'makeClos', 
-            [nestFunc]
+            [nestFunc, ConstValue.getConst(closVals.length, IRType.pint)]
         );
 
         // Write the closure variables into the closure
@@ -2329,12 +2329,16 @@ function opToIR(context)
         // Get the pre-incrementation value
         var preVal = fstContext.getOutValue();
 
+        // Get an incrementation value (1) with the same type
+        // as the input value
+        var incrVal = ConstValue.getConst(1, preVal.type);
+
         // Compute the incremented value
         var postVal = makeOp(
             fstContext,
             primName,
             instrClass,
-            [fstContext.getOutValue(), ConstValue.getConst(1)]
+            [fstContext.getOutValue(), incrVal]
         );
     
         // Assign the incremented value to the variable
