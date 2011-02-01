@@ -506,54 +506,6 @@ PhiInstr.prototype.copy = function ()
 };
 
 /**
-@class Function argument value instruction
-@augments IRInstr
-*/
-function ArgValInstr(type, argName, argIndex)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'arg';
-
-    // Set the output name as the argument name
-    this.outName = argName;
-
-    // Set the argument index
-    this.argIndex = argIndex;
-
-    // Set the argument type
-    this.type = type; 
-}
-ArgValInstr.prototype = new IRInstr();
-
-/**
-Get a string representation of the argument instruction
-*/
-ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
-{
-    // Get the default toString output for the instruction
-    var output = IRInstr.prototype.toString.apply(this, [outFormatFn, inFormatFn]);
-
-    // Add the argument index to the output
-    output += ' ' + this.argIndex;
-
-    return output;
-};
-
-/**
-Make a shallow copy of the instruction
-*/
-ArgValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new ArgValInstr(
-            this.type,
-            this.outName,
-            this.argIndex
-        )
-    );
-};
-
-/**
 Function to generate instruction constructors using closures
 @param mnemonic mnemonic name of the instruction
 @param initFunc initialization and validation function
@@ -1665,6 +1617,91 @@ var ConstructInstr = instrMaker(
     },
     ['continue', 'throw'],
     new CallInstr()
+);
+
+//=============================================================================
+//
+// Argument access instructions
+//
+//=============================================================================
+
+/**
+@class Function argument value instruction
+@augments IRInstr
+*/
+function ArgValInstr(type, argName, argIndex)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'arg';
+
+    // Set the output name as the argument name
+    this.outName = argName;
+
+    // Set the argument index
+    this.argIndex = argIndex;
+
+    // Set the argument type
+    this.type = type; 
+}
+ArgValInstr.prototype = new IRInstr();
+
+/**
+Get a string representation of the argument instruction
+*/
+ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
+{
+    // Get the default toString output for the instruction
+    var output = IRInstr.prototype.toString.apply(this, [outFormatFn, inFormatFn]);
+
+    // Add the argument index to the output
+    output += ' ' + this.argIndex;
+
+    return output;
+};
+
+/**
+Make a shallow copy of the instruction
+*/
+ArgValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new ArgValInstr(
+            this.type,
+            this.outName,
+            this.argIndex
+        )
+    );
+};
+
+/**
+@class Get a function argument value based on its index. This is used
+       to build the arguments object.
+@augments IRInstr
+*/
+var GetArgValInstr = instrMaker(
+    'get_arg',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1, 1);
+        instrMaker.validType(inputVals[0], IRType.pint);
+        
+        this.type = IRType.box;
+    }
+);
+
+/**
+@class Get the number of arguments passed to a function. This is used
+       to build the arguments object.
+@augments IRInstr
+*/
+var GetNumArgsInstr = instrMaker(
+    'get_num_args',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0, 0);
+        
+        this.type = IRType.pint;
+    }
 );
 
 //=============================================================================

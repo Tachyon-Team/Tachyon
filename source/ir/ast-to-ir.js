@@ -206,7 +206,7 @@ function stmtListToIRFunc(
         var argObj = insertPrimCallIR(
             bodyContext, 
             'makeArgObj', 
-            [funcObj]
+            []
         );
         localMap.setItem('arguments', argObj);
     }

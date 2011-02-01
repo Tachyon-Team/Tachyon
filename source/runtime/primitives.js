@@ -374,7 +374,6 @@ function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function or(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -523,6 +522,44 @@ function makeCell()
 
     // Return a reference to the cell
     return cell;
+}
+
+/**
+Create the arguments object. This function must be inlined as it must run
+in the same stack frame as the caller.
+*/
+function makeArgObj()
+{
+    "tachyon:inline"; 
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    // Create an object to store the arguments
+    var argObj = newObject(null);
+
+    // Get the number of arguments passed
+    // var numArgs = iir.get_num_args();
+    var numArgs = pint(0);
+
+    // For each visible argument
+    for (var i = pint(2); i < numArgs; i += pint(1))
+    {
+        // Get this argument
+        // var argVal = iir.get_arg(i);
+        var argVal = 0;
+
+        // Compute the argument index
+        var argIndex = boxInt(i - pint(2));
+
+        // Put the argument in the object
+        argObj[argIndex] = argVal;
+    }
+
+    // Set the number of arguments
+    argObj.length = boxInt(numArgs);
+
+    // Return the argument object
+    return argObj;
 }
 
 /**
