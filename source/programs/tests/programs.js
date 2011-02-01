@@ -316,3 +316,14 @@ tests.clos_capt.main = genTest(
     8
 );
 
+/**
+Constructor/new test.
+*/
+tests.ctor_new = tests.testSuite(); 
+tests.ctor_new.main = genTest(
+    'programs/ctor_new/ctor_new.js',
+    'foo',
+    [5],
+    6
+);
+
