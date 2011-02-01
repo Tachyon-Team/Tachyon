@@ -2326,6 +2326,9 @@ function opToIR(context)
         var fstContext = context.pursue(exprs[0]);
         exprToIR(fstContext);
         
+        // Get the pre-incrementation value
+        var preVal = fstContext.getOutValue();
+
         // Compute the incremented value
         var postVal = makeOp(
             fstContext,
@@ -2341,7 +2344,7 @@ function opToIR(context)
         // Set the output to the pre or post value
         context.setOutput(
             secContext.getExitBlock(),
-            post? postVal:fstContext.getOutValue()
+            (post === true)? preVal:postVal
         );
     }
 

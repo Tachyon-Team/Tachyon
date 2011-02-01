@@ -10,8 +10,6 @@ function bif(v)
 
 function foo(a)
 {
-    printInt(222);
-
     var b = 3;
 
     if (a === 1)
@@ -32,8 +30,6 @@ function foo(a)
 
 function fee()
 {
-    printInt(111);
-
     // 9 + 11 === 20
     return foo(1) + foo(2);
 }

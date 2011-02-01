@@ -130,13 +130,8 @@ function boxIsFunc(boxVal)
     "tachyon:nothrow";
     "tachyon:ret bool";
 
-    /* TODO
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_FUNCTION;
-    */
-
-    // FIXME: for now, function pointers not boxed, this will not work
-    return TRUE_BOOL;
 }
 
 /**
@@ -478,14 +473,6 @@ function makeClos(funcPtr, numCells)
     "tachyon:noglobal";
     "tachyon:arg funcPtr rptr";
     "tachyon:arg numCells pint";
-
-    var ptrInt = iir.icast(IRType.pint, funcPtr);
-    printInt(boxInt(ptrInt & pint(0xFF)));
-    printInt(boxInt((ptrInt >> pint(8)) & pint(0xFF)));
-    printInt(boxInt((ptrInt >> pint(16)) & pint(0xFF)));
-    printInt(boxInt((ptrInt >> pint(24)) & pint(0xFF)));
-
-    print('num cells: ' + boxInt(numCells));
 
     // Allocate space for the closure
     var clos = alloc_clos(numCells);

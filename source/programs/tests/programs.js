@@ -49,12 +49,8 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
         'int'
     );
 
-    print('calling unit');
-
     // Execute the compilation unit to initialize it
     unitBridge(params.ctxPtr);
-
-    print('calling func');
 
     // Call the function with the given arguments
     var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
@@ -316,7 +312,7 @@ tests.clos_capt = tests.testSuite();
 tests.clos_capt.main = genTest(
     'programs/clos_capt/clos_capt.js',
     'foo',
-    [1337],
-    1337
+    [5],
+    8
 );
 

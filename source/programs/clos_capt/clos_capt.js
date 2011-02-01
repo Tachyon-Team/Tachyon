@@ -2,7 +2,9 @@ function bar(n)
 {
     function bif()
     {
-        return n;
+        var v = ++n;
+
+        return v;
     }
 
     return bif;
@@ -11,6 +13,10 @@ function bar(n)
 function foo(n)
 {
     var c = bar(n);
+
+    c();
+
+    c();
 
     return c();    
 }
