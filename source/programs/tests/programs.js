@@ -315,3 +315,14 @@ tests.array_length.main = genTest(
     0
 );
 
+/**
+Closure variable capture.
+*/
+tests.clos_capt = tests.testSuite(); 
+tests.clos_capt.main = genTest(
+    'programs/clos_capt/clos_capt.js',
+    'foo',
+    [1337],
+    1337
+);
+
