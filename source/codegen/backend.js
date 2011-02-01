@@ -113,21 +113,6 @@ backend.compileIRToCB = function (ir, params)
                              mems, 
                              fixedIntervals);
 
-        /*
-        // Print intervals after allocation
-        for (i=0; i<liveIntervals.length; ++i)
-        {
-            print(i + ": " + liveIntervals[i]);
-            tab = "\t";
-            next = liveIntervals[i].next;
-            while (next)
-            {
-                print( tab + next);
-                tab = tab + "\t";
-                next = next.next;
-            }
-        }*/
-
         // Add physical registers and memory location to operands
         // of every instruction
         allocator.assign(cfg, irToAsm.config); 

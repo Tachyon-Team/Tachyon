@@ -37,6 +37,12 @@ function makeContextLayout(params)
         IRType.box
     );
 
+    // Temporary slot for Memory to Memory moves
+    ctxLayout.addField(
+        'temp',
+        IRType.box
+    );
+
     // Function prototype object
     ctxLayout.addField(
         'funcproto',
