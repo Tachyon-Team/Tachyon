@@ -124,13 +124,10 @@ irToAsm.getEntryPoint = function (irfunc, name, config)
     if (ep === undefined)
     {
         ep = x86.Assembler.prototype.linked(
-                    irfunc.funcName,
-                    function (dstAddr) { 
-                        var bytes = dstAddr
-                                    .addOffset(offset)
-                                    .getAddrOffsetBytes(this.srcAddr);
-                      return bytes;},
-                    width);
+            irfunc.funcName,
+            function (dstAddr) { return this.getAddr().getBytes(); },
+            width
+        );
         irfunc.linking.setEntryPoint(ep, name);
     }
 
@@ -207,12 +204,14 @@ specified in blockList.
 irToAsm.translator.prototype.genFunc = function (fct, blockList)
 {
     const that = this;
+    const width = (this.config.target === x86.target.x86) ? 32 : 64;
+    const offset = width >> 3;
 
     // Maintain the function object throughout the translation
     // to have to information from register allocation 
     this.fct = fct;
 
-    function replace(opnd)
+    function replace(opnd, index)
     {
         // If this is a static function reference
         if (opnd instanceof IRFunction)
@@ -223,6 +222,20 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
                 undefined, 
                 that.config
             );
+            
+            // Only static calls to IRFunctions should
+            // calculate an offset
+            if (this instanceof CallInstr && index === 0)
+            {
+                entryPoint = Object.create(entryPoint);
+                entryPoint.linkValue = function (dstAddr) 
+                { 
+                    var bytes = dstAddr
+                                .addOffset(offset)
+                                .getAddrOffsetBytes(this.srcAddr);
+                    return bytes;
+                };
+            }
 
             return entryPoint;            
         }
@@ -262,15 +275,14 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 
             if (instr.regAlloc.opnds === undefined)
             {
-                opnds = instr.uses.map(replace);
-
+                opnds = instr.uses.map(replace, instr);
 
                 instr.genCode(that, opnds);
             } 
             else
             {
                 // Replace constants by immediate values
-                opnds = instr.regAlloc.opnds.map(replace);
+                opnds = instr.regAlloc.opnds.map(replace, instr);
 
                 assert(
                     instr.genCode !== undefined,

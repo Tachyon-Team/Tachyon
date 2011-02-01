@@ -29,8 +29,6 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
     //if (funcName === 'linkedlist')
     //    params.print = print;
 
-    params.print = print;
-
     // Compile the unit
     var ir = compileSrcFile(srcFile, params);
 
@@ -44,10 +42,6 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
         [],
         'int'
     );
-
-    print(ir);
-
-    print(ir.getChild('foo').linking.getEntryPoint().getAddr());
     
     var funcBridge = makeBridge(
         func,
