@@ -115,6 +115,17 @@ tests.basic_many_args.main = genTest(
 );
 
 /**
+Comparison operators test
+*/
+tests.basic_cmp = tests.testSuite();
+tests.basic_cmp.main = genTest(
+    'programs/basic_cmp/basic_cmp.js',
+    'test',
+    [5],
+    0
+);
+
+/**
 Passing arguments and getting a return value from an FFI function
 */
 tests.ffi_sum = tests.testSuite();
