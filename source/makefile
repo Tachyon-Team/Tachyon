@@ -69,6 +69,7 @@ MAIN_SPEC_SRCS =                        \
 TEST_SPEC_SRCS =                        \
     tests/testing.js                    \
     utility/tests/*.js                  \
+    stdlib/tests/*.js                   \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
     codegen/tests/*.js                  \

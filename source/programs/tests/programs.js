@@ -327,3 +327,15 @@ tests.ctor_new.main = genTest(
     6
 );
 
+/**
+Constructor/new test.
+*/
+tests.nqueens = tests.testSuite(); 
+tests.nqueens.main = genTest(
+    'programs/nqueens/nqueens.js',
+    'test',
+    [],
+    0,
+    true
+);
+

@@ -392,7 +392,7 @@ v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
 {
     if (args.Length() < 1 || args.Length() > 2)
     {
-        printf("Error in getBlockAddress -- 1 or 2 argument expected\n");
+        printf("Error in getBlockAddr -- 1 or 2 argument expected\n");
         exit(1);
     }
 
@@ -415,7 +415,7 @@ v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
     // Ensure that the index is valid
     if (idxVal >= len)
     {
-        printf("Error in getBlockAddress -- index is past end of block\n");
+        printf("Error in getBlockAddr -- index is past end of block\n");
         exit(1);
     }
 

@@ -343,8 +343,17 @@ function initRuntime(params)
             'expected string value in getStrObjFunc'
         );
 
-        var memBlock = allocMachineCodeBlock(2 * jsStr.length);
-        var blockAddr = getBlockAddr(memBlock, 0);
+        var numBytes = 2 * jsStr.length;
+
+        if (numBytes > 0)
+        {
+            var memBlock = allocMachineCodeBlock(numBytes);
+            var blockAddr = getBlockAddr(memBlock, 0);
+        }
+        else
+        {
+            var blockAddr = [0,0,0,0];
+        }
 
         for (var i = 0; i < jsStr.length; ++i)
         {
