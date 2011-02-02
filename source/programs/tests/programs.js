@@ -335,7 +335,6 @@ tests.nqueens.main = genTest(
     'programs/nqueens/nqueens.js',
     'test',
     [],
-    0,
-    true
+    0
 );
 

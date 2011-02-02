@@ -5,18 +5,17 @@ board is an array of col indices, one for each row
 */
 function nQueens(unused, board, row, n)
 {
-    print('nQueens row ' + row);
+    //print('nQueens row=' + row + ', n=' + n);
 
     // If we are past the end of the board, we have found a solution
     if (row >= n)
         return 1;
     
-    
-    print('row: ' + row);
+    /*
     print('unused:');
     for (var i = 0; i < unused.length; ++i)
         print(unused[i]);
-
+    */
 
     // Number of solutions found recursively
     var numSolns = 0;
@@ -65,7 +64,7 @@ function nQueens(unused, board, row, n)
 
 function countSolns(n)
 {
-    print('in countSolns()');
+    //print('in countSolns()');
 
     // All columns are initially unused
     var unused = [];
@@ -97,30 +96,30 @@ function printBoard(board)
                 rowStr += ',';
         }
 
-        print(rowStr)
+        print(rowStr);
     }
 }
 
 function test()
 {
-    print('in test()');
+    //print('in test()');
 
     if (countSolns(2) !== 0)
         return 1;
 
-    print('ok 2');
+    //print('ok 2');
 
     if (countSolns(3) !== 0)
         return 1;
 
-    print('ok 3');
+    //print('ok 3');
 
     if (countSolns(4) !== 2)
         return 1;
 
-    print('ok 4');
+    //print('ok 4');
 
     return 0;
 }
 
-print(test());
+//print(test());

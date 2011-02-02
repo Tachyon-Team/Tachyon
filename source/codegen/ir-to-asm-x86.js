@@ -1071,8 +1071,8 @@ GeInstr.prototype.genCode = function (tltor, opnds)
         opnds[1].type === x86.type.IMM_VAL))
     {
         tltor.asm.
-        mov(opnds[1], dest).
-        cmp(opnds[0], dest);
+        mov(opnds[0], dest).
+        cmp(opnds[1], dest);
     } 
     else if (opnds[0].type === x86.type.IMM_VAL)
     {
