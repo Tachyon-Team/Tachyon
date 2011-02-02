@@ -14,29 +14,7 @@ function testIR()
 {
     bootstrap(true, config.bootParams);
 
-    /*
-    var memBlock = allocMachineCodeBlock(16384);    
-    var blockAddr = getBlockAddr(memBlock, 0);
-
-    var ir = compileSrcFile('test_objs.js', config.hostParams);
-
-    var bridge = makeBridge(
-        ir.getChild('proxy'),
-        ['void*'],
-        'int'
-    );
-
-    var result = bridge(blockAddr);
-
-    print('result: ' + result);
-    print('');
-
-    for (var i = 0; i < 4096; ++i)
-    {
-        if (memBlock[i] != 0)
-            print(i + ': ' + memBlock[i]);
-    }
-    */
+    //var ir = compileSrcFile('test.js', config.hostParams);
     
     /*    
     var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);

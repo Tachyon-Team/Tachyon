@@ -144,7 +144,9 @@ tests.utility.linkedList.insert = function ()
     var list = new LinkedList();
 
     list.addFirst(1);
+    assert (list.getFirst().item === 1);
     list.addLast(2);
+    assert (list.getLast().item === 2);
     list.addFirst(0);
     list.addLast(3);
 

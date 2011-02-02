@@ -26,12 +26,6 @@ function commElim(cfg, maxItrs)
         for (var i = 0; i < val.uses.length; ++i)
             valStr += val.uses[i].getValName();
 
-        /*
-        for (var i = 0; i < val.targets.length; ++i)
-            if (val.targets[i])
-                valStr += val.targets[i].getBlockName();
-        */
-
         return defHashFunc(valStr);
     }
 
@@ -56,25 +50,6 @@ function commElim(cfg, maxItrs)
         for (var i = 0; i < val1.uses.length; ++i)
             if (val1.uses[i] !== val2.uses[i])
                 return false;
-
-        /*
-        print('equal 1: ' + val1);
-        print('equal 2: ' + val2);
-        print('hash 1: ' + hashFunc(val1));
-        print('hash 2: ' + hashFunc(val2));
-        */
-
-        /*
-        for (var i = 0; i < val1.targets.length; ++i)
-            if (val1.targets[i] !== val2.targets[i])
-                return false;
-        */
-
-        /*
-        print('got match');
-        print(val1);
-        print(val2);
-        */
   
         return true;
     }
@@ -129,7 +104,15 @@ function commElim(cfg, maxItrs)
     {
         /*
         print('******************ITR*****************');
-        cfg.validate();
+        try
+        {        
+            cfg.validate();
+        }
+        catch (e)
+        {
+            print('\n' + cfg.ownerFunc + '\n');
+            throw e;
+        }
         */
 
         // No changes in this iteration yet
@@ -142,36 +125,67 @@ function commElim(cfg, maxItrs)
         // Value reaching an instruction, indexed by instruction id
         var reachInstr = [];
 
-        // Sets of values reaching the exit basic blocks, indexed by block id
-        var mustReachOut = [];
+        // Work list for the analysis
+        var workList = new LinkedList();
 
-        // Compute the set of all definitions in the CFG
-        var fullReachSet = [];
-        for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
-            fullReachSet.push(itr.get());
+        // Add the entry block to the work list
+        workList.addLast(cfg.entry);
 
-        // Initialize the reaching def sets for all blocks
-        for (var i = 0; i < cfg.blocks.length; ++i)
+        // Array to store must reach input sets for each block
+        var mustReachIn = [];
+
+        // Initialize the must reach in set for the entry block
+        mustReachIn[cfg.entry.blockId] = [];
+
+        // Compute the set of blocks in a merge position
+        var mergeBlocks = []
+        for (var itr = cfg.getBlockItr(); itr.valid(); itr.next())
         {
-            var block = cfg.blocks[i];
-            mustReachOut[block.blockId] = fullReachSet;
+            var block = itr.get();
+
+            // Count the number of successors with only us as a predecessor
+            var numSinglePred = 0;
+            for (var i = 0; i < block.succs.length; ++i)
+            {
+                var succ = block.succs[i];
+                if (succ.preds.length === 1)
+                    ++numSinglePred;
+            }
+
+            // For each successor
+            for (var i = 0; i < block.succs.length; ++i)
+            {
+                var succ = block.succs[i];
+
+                // This block is in a merge position if it has more than
+                // one predecessor, or if there is more than one block with
+                // only us as a predecessor
+                mergeBlocks[succ.blockId] = (
+                    succ.preds.length > 1 || numSinglePred > 1
+                );
+            }
         }
 
-        // Work list of CFG blocks to examine
-        var workList = [cfg.entry];
-
         // Until the work list is empty
-        while (workList.length !== 0)
+        while (workList.isEmpty() === false)
         {
-            var block = workList.pop();
+            var block = workList.remFirst();
 
-            // Compute the must and may reach sets at this block's entry
-            var mustReachCur = (block.preds.length > 0)? fullReachSet:[];
-            for (var i = 0; i < block.preds.length; ++i)
-            {
-                var pred = block.preds[i];
-                mustReachCur = arraySetIntr(mustReachCur, mustReachOut[pred.blockId]);
-            }
+            /*
+            print(
+                block.getBlockName() + 
+                ', preds: ' + block.preds.length +
+                ', succs: ' + block.succs.length
+            );
+            */
+
+            // Get the must reach set at this block's entry
+            var mustReachCur = mustReachIn[block.blockId];
+
+            // If this block is in a merge position, copy the must reach
+            // set before modifying it
+            if (mergeBlocks[block.blockId] === true)
+                mustReachCur = mustReachCur.slice(0);
 
             // Remove return values flowing through exception edges
             for (var i = 0; i < mustReachCur.length; ++i)
@@ -190,6 +204,11 @@ function commElim(cfg, maxItrs)
             {
                 var instr = block.instrs[i];
 
+                assert (
+                    arraySetHas(mustReachCur, instr) === false,
+                    'INSTR REACHING SELF'
+                );
+
                 // Get the value number for this instruction
                 var valNo = getValNo(instr);            
 
@@ -202,10 +221,8 @@ function commElim(cfg, maxItrs)
                         var rinstr = mustReachCur[j];
                         if (rinstr.readsMem() && !(rinstr instanceof GetCtxInstr))
                         {
-                            /*
-                            print('killing: ' + rinstr);
-                            print('with: ' + instr);
-                            */
+                            //print('killing: ' + rinstr);
+                            //print('with: ' + instr);
 
                             mustReachCur.splice(j, 1);
                             --j;
@@ -230,41 +247,79 @@ function commElim(cfg, maxItrs)
                 reachInstr[instr.instrId] = undefined;
 
                 // If an instruction with the same value number must reach this
-                var j = mustReachCur.length-1;
-
-                while (j >= 0)
+                for (var j = mustReachCur.length - 1; j >= 0; --j)
                 {
                     var rinstr = mustReachCur[j];
                     if (getValNo(rinstr) === valNo)
                     {
+                        //print('  &&& found repl: ' + instr + ' ==> ' + rinstr.instrId);
+
                         // Note that the instruction reaches here
                         reachInstr[instr.instrId] = rinstr;
 
                         // Don't add the current instruction to the reach set
                         break;
                     }
-                    j--;
                 }
 
+                // No instruction with the same value number reaches here
                 if (j < 0)
                 {
                     // Add the instruction to the set of reaching values
                     arraySetAdd(mustReachCur, instr);
                 }
             }
-            
-            // If the must reach set has changed for this block
-            if (!arraySetEqual(mustReachCur, mustReachOut[block.blockId]))
-            {
-                // Update the sets for this block
-                mustReachOut[block.blockId] = mustReachCur;
 
-                // Add the successors of this block to the work list
-                for (var i = 0; i < block.succs.length; ++i)
-                    workList.push(block.succs[i]);
+            // For each successor
+            for (var i = 0; i < block.succs.length; ++i)
+            {
+                var succ = block.succs[i];
+
+                //print('succ: ' + succ.getBlockName());
+
+                // If the successor is in a merge position
+                if (mergeBlocks[succ.blockId] === true)
+                {
+                    var succReachIn = mustReachIn[succ.blockId];
+
+                    // Merge with the must reach in of the successor
+                    if (succReachIn !== undefined)
+                    {
+                        mustReachIn[succ.blockId] = arraySetIntr(
+                            mustReachCur,
+                            succReachIn
+                        );
+                    }
+                    else
+                    {
+                        mustReachIn[succ.blockId] = mustReachCur.slice(0);
+                    }
+
+                    // If the must reach in set changed, add the succ to the work list
+                    if (succReachIn === undefined || 
+                        arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
+                    {
+                        //print('ADDING BLOCK LAST: ' + succ.getBlockName());
+                        workList.addLast(succ);
+                    }
+                }
+
+                // Otherwise, this successor has only one predecessor (us), and
+                // it is the only such block among our successors
+                else
+                {
+                    // Give it our output reach set as input without
+                    // copying the set
+                    mustReachIn[succ.blockId] = mustReachCur;
+
+                    //print('ADDING BLOCK FIRST: ' + succ.getBlockName());
+
+                    // Make the successor next on the work list
+                    workList.addFirst(succ);
+                }
             }
         }
-
+        
         // Set of removed/replaced instructions
         var remSet = [];
 
@@ -280,10 +335,9 @@ function commElim(cfg, maxItrs)
             if ((instr instanceof CallInstr || !instr.isBranch()) && 
                 rinstr !== undefined && !arraySetHas(remSet, rinstr))
             {
-                /*                
+                /*     
                 print('********************');
-                print(instr);
-                print(rinstr);
+                print(instr + ' ==> ' + rinstr);
                 */
 
                 // Replace uses of the instruction

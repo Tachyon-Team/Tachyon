@@ -138,6 +138,9 @@ function lowerIRCFG(cfg, params)
 
     //print(cfg.ownerFunc);
 
+    //print('*** func: "' + cfg.ownerFunc.funcName + '" ***');
+    //print('*** const prop ***');
+
     // Perform constant propagation on the CFG
     constProp(cfg, params);
 
@@ -152,8 +155,12 @@ function lowerIRCFG(cfg, params)
     // Validate the CFG
     cfg.validate();
 
+    //print('*** comm elim ***');
+
     // Perform common subexpression elimination on the CFG
     commElim(cfg);
+
+    //print('*** done ***');
 
     // Validate the CFG
     cfg.validate();
@@ -184,4 +191,3 @@ function lowerIRCFG(cfg, params)
     //if (!cfg.ownerFunc.writesMem)
     //    print('############ DOES NOT WRITE MEM: ' + cfg.ownerFunc.funcName);
 }
-
