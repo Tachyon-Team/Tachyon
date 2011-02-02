@@ -506,54 +506,6 @@ PhiInstr.prototype.copy = function ()
 };
 
 /**
-@class Function argument value instruction
-@augments IRInstr
-*/
-function ArgValInstr(type, argName, argIndex)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = 'arg';
-
-    // Set the output name as the argument name
-    this.outName = argName;
-
-    // Set the argument index
-    this.argIndex = argIndex;
-
-    // Set the argument type
-    this.type = type; 
-}
-ArgValInstr.prototype = new IRInstr();
-
-/**
-Get a string representation of the argument instruction
-*/
-ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
-{
-    // Get the default toString output for the instruction
-    var output = IRInstr.prototype.toString.apply(this, [outFormatFn, inFormatFn]);
-
-    // Add the argument index to the output
-    output += ' ' + this.argIndex;
-
-    return output;
-};
-
-/**
-Make a shallow copy of the instruction
-*/
-ArgValInstr.prototype.copy = function ()
-{
-    return this.baseCopy(
-        new ArgValInstr(
-            this.type,
-            this.outName,
-            this.argIndex
-        )
-    );
-};
-
-/**
 Function to generate instruction constructors using closures
 @param mnemonic mnemonic name of the instruction
 @param initFunc initialization and validation function
@@ -1501,38 +1453,58 @@ var CallFuncInstr = instrMaker(
     {
         this.mnemonic = 'call';
 
-        instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.box);
-        instrMaker.validType(inputVals[1], IRType.box);
+        // 3 base arguments required for any call
+        const NUM_BASE_ARGS = 3;
+
+        // Ensure that we have all the base arguments
+        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
+        
+        // Get references to the base arguments
+        var funcPtr = inputVals[0];
+        var funcObj = inputVals[1];
+        var thisVal = inputVals[2];
+
+        // Ensure that the base argument types are valid
+        instrMaker.validType(funcPtr, IRType.rptr);
+        instrMaker.validType(funcObj, IRType.box);
+        instrMaker.validType(thisVal, IRType.box);
+
+        // 0 to 2 branch targets
         instrMaker.validNumBranches(branchTargets, 0, 2);
 
-        if (inputVals[0] instanceof IRFunction)
+        // Get a reference to the function object value
+        var funcObj = inputVals[1];
+
+        // If this is a static vall
+        if (funcPtr instanceof IRFunction)
         {
+            var numArgs = inputVals.length - NUM_BASE_ARGS;
+
             assert (
-                inputVals.length  - 2 === inputVals[0].getNumArgs(),
+                numArgs === funcPtr.getNumArgs(),
                 'direct calls do not support variable argument counts, got ' +
-                (inputVals.length - 2) + ' arguments, expected ' + 
-                inputVals[0].getNumArgs() + ' (' + inputVals[0].funcName + ')'
+                numArgs + ' arguments, expected ' + funcPtr.getNumArgs() +
+                ' (' + funcPtr.funcName + ')'
             );
 
-            for (var i = 2; i < inputVals.length; ++i)
+            for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
             {
                 assert (
-                    inputVals[i].type === inputVals[0].argTypes[i-2],
+                    inputVals[i].type === funcPtr.argTypes[i-NUM_BASE_ARGS],
                     'argument type does not match (' + 
-                    inputVals[0].argVars[i-2].toString() + ', ' +
-                    inputVals[0].funcName + ')'
+                    funcPtr.argVars[i-NUM_BASE_ARGS].toString() + ' = ' +
+                    inputVals[i].type + ') in ' + funcPtr.funcName
                 );
             }
 
-            this.type = inputVals[0].retType;
+            this.type = funcPtr.retType;
         }
         else
         {
-            for (var i = 2; i < inputVals.length; ++i)
+            for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
             {
                 assert (
-                    inputVals[0].type === IRType.box,
+                    inputVals[i].type === IRType.box,
                     'indirect calls can only take boxed values as input'
                 );
             }
@@ -1621,23 +1593,112 @@ var ConstructInstr = instrMaker(
     {
         this.mnemonic = 'construct';
 
-        instrMaker.validNumInputs(inputVals, 2);
-        instrMaker.validType(inputVals[0], IRType.box);
+        // 3 base arguments required
+        const NUM_BASE_ARGS = 3;
+
+        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
+        instrMaker.validType(inputVals[0], IRType.rptr);
         instrMaker.validType(inputVals[1], IRType.box);
+        instrMaker.validType(inputVals[2], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 2);
         
         this.type = IRType.box;
 
-        for (var i = 2; i < inputVals.length; ++i)
+        for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
         {
             assert (
-                inputVals[0].type === IRType.box,
+                inputVals[i].type === IRType.box,
                 'constructor calls can only take boxed values as input'
             );
         }
     },
     ['continue', 'throw'],
     new CallInstr()
+);
+
+//=============================================================================
+//
+// Argument access instructions
+//
+//=============================================================================
+
+/**
+@class Function argument value instruction
+@augments IRInstr
+*/
+function ArgValInstr(type, argName, argIndex)
+{
+    // Set the mnemonic name for this instruction
+    this.mnemonic = 'arg';
+
+    // Set the output name as the argument name
+    this.outName = argName;
+
+    // Set the argument index
+    this.argIndex = argIndex;
+
+    // Set the argument type
+    this.type = type; 
+}
+ArgValInstr.prototype = new IRInstr();
+
+/**
+Get a string representation of the argument instruction
+*/
+ArgValInstr.prototype.toString = function (outFormatFn, inFormatFn)
+{
+    // Get the default toString output for the instruction
+    var output = IRInstr.prototype.toString.apply(this, [outFormatFn, inFormatFn]);
+
+    // Add the argument index to the output
+    output += ' ' + this.argIndex;
+
+    return output;
+};
+
+/**
+Make a shallow copy of the instruction
+*/
+ArgValInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new ArgValInstr(
+            this.type,
+            this.outName,
+            this.argIndex
+        )
+    );
+};
+
+/**
+@class Get a function argument value based on its index. This is used
+       to build the arguments object.
+@augments IRInstr
+*/
+var GetArgValInstr = instrMaker(
+    'get_arg',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1, 1);
+        instrMaker.validType(inputVals[0], IRType.pint);
+        
+        this.type = IRType.box;
+    }
+);
+
+/**
+@class Get the number of arguments passed to a function. This is used
+       to build the arguments object.
+@augments IRInstr
+*/
+var GetNumArgsInstr = instrMaker(
+    'get_num_args',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0, 0);
+        
+        this.type = IRType.pint;
+    }
 );
 
 //=============================================================================

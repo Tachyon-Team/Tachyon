@@ -42,7 +42,7 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
         [],
         'int'
     );
-
+    
     var funcBridge = makeBridge(
         func,
         argTypes,
@@ -136,7 +136,8 @@ tests.cond_calls.main = genTest(
     'programs/cond_calls/cond_calls.js',
     'fee',
     [],
-    20
+    20,
+    true
 );
 
 /**
@@ -302,5 +303,27 @@ tests.array_length.main = genTest(
     'foo',
     [],
     0
+);
+
+/**
+Closure variable capture.
+*/
+tests.clos_capt = tests.testSuite(); 
+tests.clos_capt.main = genTest(
+    'programs/clos_capt/clos_capt.js',
+    'foo',
+    [5],
+    8
+);
+
+/**
+Constructor/new test.
+*/
+tests.ctor_new = tests.testSuite(); 
+tests.ctor_new.main = genTest(
+    'programs/ctor_new/ctor_new.js',
+    'foo',
+    [5],
+    6
 );
 

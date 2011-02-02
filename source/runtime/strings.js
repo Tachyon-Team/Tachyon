@@ -25,7 +25,7 @@ function initStrTable()
     set_strtbl_numstrs(strtbl, u32(0));
 
     // Initialize the string table entries
-    for (var i = pint(0); i < STR_TBL_INIT_SIZE; i += pint(1))
+    for (var i = pint(0); i < STR_TBL_INIT_SIZE; i++)
         set_strtbl_tbl(strtbl, i, UNDEFINED);
 
     // Get a pointer to the context
@@ -105,7 +105,7 @@ function getTableStr(strObj)
 
     // Get the number of strings and increment it
     var numStrings = get_strtbl_numstrs(strtbl);
-    numStrings += u32(1);
+    numStrings++;
     set_strtbl_numstrs(strtbl, numStrings);
     numStrings = iir.icast(IRType.pint, numStrings);
 
@@ -141,7 +141,7 @@ function extStrTable(curTbl, curSize, numStrings)
     var newTbl = alloc_strtbl(newSize);
 
     // Initialize the new table entries
-    for (var i = pint(0); i < newSize; i += pint(1))
+    for (var i = pint(0); i < newSize; i++)
         set_strtbl_tbl(newTbl, i, UNDEFINED);
 
     // Set the new size and the number of strings stored
@@ -149,7 +149,7 @@ function extStrTable(curTbl, curSize, numStrings)
     set_strtbl_numstrs(newTbl, iir.icast(IRType.u32, numStrings));
 
     // For each entry in the current table
-    for (var curIdx = pint(0); curIdx < curSize; curIdx += pint(1))
+    for (var curIdx = pint(0); curIdx < curSize; curIdx++)
     {
         // Get the value at this hash slot
         var slotVal = get_strtbl_tbl(curTbl, curIdx);
@@ -243,7 +243,7 @@ function streq(str1, str2)
         return FALSE_BOOL;
 
     // For each character to be compared
-    for (var i = pint(0); i < len1; i += pint(1))
+    for (var i = pint(0); i < len1; i++)
     {
         var ch1 = get_str_data(str1, i);
         var ch2 = get_str_data(str2, i);
@@ -278,14 +278,14 @@ function strcat(str1, str2)
     set_str_len(newStr, iir.icast(IRType.u32, newLen));
 
     // Copy the character data from the first string
-    for (var i = pint(0); i < len1; i += pint(1))
+    for (var i = pint(0); i < len1; i++)
     {
         var ch = get_str_data(str1, i);
         set_str_data(newStr, i, ch);
     }
 
     // Copy the character data from the second string
-    for (var i = pint(0); i < len2; i += pint(1))
+    for (var i = pint(0); i < len2; i++)
     {
         var ch = get_str_data(str2, i);
         set_str_data(newStr, len1 + i, ch);
@@ -317,7 +317,7 @@ function rawStrToObj(rawStr, strLen)
     set_str_len(strObj, iir.icast(IRType.u32, strLen));
 
     // Copy the character data into the string object
-    for (var index = pint(0); index < strLen; index += pint(1))
+    for (var index = pint(0); index < strLen; index++)
     {
         // Get the current character
         var ch = iir.load(IRType.u16, rawStr, pint(2) * index);
@@ -354,7 +354,7 @@ function compStrHash(strObj)
     var isInt = TRUE_BOOL;
 
     // For each character, update the hash code
-    for (var i = pint(0); i < len; i += pint(1))
+    for (var i = pint(0); i < len; i++)
     {
         // Get the current character
         var ch = iir.icast(IRType.u32, get_str_data(strObj, i));
@@ -408,7 +408,7 @@ function makeCString(strVal)
     var strPtr = malloc(strLen + pint(1));
 
     // For each character
-    for (var i = pint(0); i < strLen; i += pint(1))
+    for (var i = pint(0); i < strLen; i++)
     {
         var ch = get_str_data(strVal, i);
 
@@ -518,7 +518,7 @@ function getIntStr(intVal)
 
     // Get the number of strings and increment it
     var numStrings = get_strtbl_numstrs(strtbl);
-    numStrings += u32(1);
+    numStrings++;
     set_strtbl_numstrs(strtbl, numStrings);
     numStrings = iir.icast(IRType.pint, numStrings);
 
@@ -566,7 +566,7 @@ function intToStr(intVal)
     var intVal2 = intVal;
     do
     {
-        strLen += pint(1);
+        strLen++;
         intVal2 /= pint(10);
 
     } while (intVal2 !== pint(0));
@@ -595,7 +595,7 @@ function intToStr(intVal)
 
         intVal /= pint(10);       
 
-        i -= pint(1);
+        i--;
 
     } while (intVal !== pint(0));
 

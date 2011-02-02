@@ -130,13 +130,8 @@ function boxIsFunc(boxVal)
     "tachyon:nothrow";
     "tachyon:ret bool";
 
-    /* TODO
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_FUNCTION;
-    */
-
-    // FIXME: for now, function pointers not boxed, this will not work
-    return TRUE_BOOL;
 }
 
 /**
@@ -379,7 +374,6 @@ function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function makeArgObj(funcObj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function or(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
@@ -417,10 +411,8 @@ function newObject(proto)
     set_obj_tbl(obj, hashtbl);
 
     // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
-    {
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
-    }
 
     // Return the object reference
     return obj;
@@ -459,7 +451,7 @@ function newArray()
     set_obj_tbl(arr, hashtbl);
 
     // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i += pint(1))
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Allocate space for an array table and set the table reference
@@ -473,28 +465,44 @@ function newArray()
 /**
 Create a closure for a function
 */
-function makeClos(funcObj)
+function makeClos(funcPtr, numCells)
 {
-    // TODO 
-    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
-}
+    "tachyon:static"; 
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+    "tachyon:arg funcPtr rptr";
+    "tachyon:arg numCells pint";
 
-/**
-Set a mutable cell in a closure
-*/
-function putClos(clos, idx, val) 
-{ 
-    // TODO
-    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
-}
+    // Allocate space for the closure
+    var clos = alloc_clos(numCells);
 
-/**
-Get a mutable cell from a closure
-*/
-function getClos(clos, idx)
-{ 
-    // TODO
-    "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; 
+    // Initialize the prototype object
+    // TODO: this should be set to the function prototype
+    set_obj_proto(clos, null);
+
+    // Set the function pointer
+    set_clos_funcptr(clos, funcPtr);
+
+    // Initialize the hash table size and number of properties
+    set_obj_tblsize(clos, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    set_obj_numprops(clos, u32(0));
+
+    // Initialize the hash table pointer and closure cell references to null
+    // to prevent GC errors
+    set_obj_tbl(clos, null);
+    for (var i = pint(0); i < numCells; i++)
+        set_clos_cells(clos, i, null);
+
+    // Allocate space for a hash table and set the hash table reference
+    var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+    set_obj_tbl(clos, hashtbl);
+
+    // Initialize the hash table
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
+        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
+
+    // Return the closure reference
+    return clos;
 }
 
 /**
@@ -506,43 +514,52 @@ function makeCell()
     "tachyon:nothrow";
     "tachyon:noglobal";
 
-    /*
     // Allocate space for the cell
     var cell = alloc_cell();
 
+    // Initialize the value to null to avoid GC issues
+    set_cell_val(cell, null);
+
+    // Return a reference to the cell
     return cell;
-    */
-
-    // TODO
-    return UNDEFINED;
 }
 
 /**
-Store a value in a mutable cell
+Create the arguments object. This function must be inlined as it must run
+in the same stack frame as the caller.
 */
-function putCell(cell, val)
-{ 
-    "tachyon:static";
+function makeArgObj()
+{
+    "tachyon:inline"; 
     "tachyon:nothrow";
     "tachyon:noglobal";
 
-    // TODO
-    //put_cell_val(cell, val);
-}
+    // Create an object to store the arguments
+    var argObj = newObject(null);
 
-/**
-Read a value from a mutable cell
-*/
-function getCell(cell) 
-{ 
-    "tachyon:static";
-    "tachyon:nothrow";
-    "tachyon:noglobal";
+    // Get the number of arguments passed
+    // var numArgs = iir.get_num_args();
+    var numArgs = pint(0);
 
-    //return get_cell_val(cell);
+    // For each visible argument
+    for (var i = pint(2); i < numArgs; i++)
+    {
+        // Get this argument
+        // var argVal = iir.get_arg(i);
+        var argVal = 0;
 
-    // TODO
-    return UNDEFINED;
+        // Compute the argument index
+        var argIndex = boxInt(i - pint(2));
+
+        // Put the argument in the object
+        argObj[argIndex] = argVal;
+    }
+
+    // Set the number of arguments
+    argObj.length = boxInt(numArgs);
+
+    // Return the argument object
+    return argObj;
 }
 
 /**
@@ -1082,7 +1099,7 @@ function putPropObj(obj, propName, propHash, propVal)
 
             // Get the number of properties and increment it
             var numProps = get_obj_numprops(obj);
-            numProps += u32(1);
+            numProps++;
             set_obj_numprops(obj, numProps);
             numProps = iir.icast(IRType.pint, numProps);
 
@@ -1122,7 +1139,7 @@ function extObjHashTable(obj, curTbl, curSize)
     var newTbl = alloc_hashtbl(newSize);
 
     // Initialize the keys in the new hash table
-    for (var i = pint(0); i < newSize; i += pint(1))
+    for (var i = pint(0); i < newSize; i++)
     {
         set_hashtbl_tbl_key(newTbl, i, UNDEFINED);
     }
@@ -1301,7 +1318,7 @@ function putElemArr(arr, index, elemVal)
         }
 
         // Initialize new entries before the index to undefined
-        for (var i = len; i < index; i += pint(1))
+        for (var i = len; i < index; i++)
             set_arrtbl_tbl(tbl, i, UNDEFINED);
 
         // Update the array length
@@ -1329,7 +1346,7 @@ function extArrTable(arr, curTbl, curLen, curSize)
     var newTbl = alloc_arrtbl(newSize);
 
     // Copy elements from the old table to the new
-    for (var i = pint(0); i < curLen; i += pint(1))
+    for (var i = pint(0); i < curLen; i++)
     {
         var elem = get_arrtbl_tbl(curTbl, i);
         set_arrtbl_tbl(newTbl, i, elem);
@@ -1404,7 +1421,7 @@ function setArrayLength(arr, newLen)
         }
 
         // Initialize new entries to undefined
-        for (var i = len; i < newLen; i += pint(1))
+        for (var i = len; i < newLen; i++)
             set_arrtbl_tbl(tbl, i, UNDEFINED);
     }  
 

@@ -556,6 +556,12 @@ function makeObjectLayouts(params)
     */
     var closLayout = MemLayout.extend(objLayout, 'clos', 'TAG_FUNCTION');
 
+    // Function pointer
+    closLayout.addField(
+        'funcptr',
+        IRType.rptr
+    );
+
     // Number of closure cells
     closLayout.addField(
         'numcells',

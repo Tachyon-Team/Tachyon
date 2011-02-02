@@ -206,7 +206,7 @@ function stmtListToIRFunc(
         var argObj = insertPrimCallIR(
             bodyContext, 
             'makeArgObj', 
-            [funcObj]
+            []
         );
         localMap.setItem('arguments', argObj);
     }
@@ -219,8 +219,11 @@ function stmtListToIRFunc(
         // Get the corresponding mutable cell from the closure
         var closCell = insertPrimCallIR(
             bodyContext, 
-            'getClos', 
-            [funcObj, ConstValue.getConst(i)]
+            'get_clos_cells', 
+            [
+                funcObj,
+                ConstValue.getConst(i, IRType.pint)
+            ]
         );
 
         // Add the mutable cell to the shared variable map
@@ -251,7 +254,7 @@ function stmtListToIRFunc(
                 // Put the current value of the symbol into the cell
                 insertPrimCallIR(
                     bodyContext,
-                    'putCell',
+                    'set_cell_val',
                     [newCell, localMap.getItem(symName)]
                 );
 
@@ -310,7 +313,10 @@ function stmtListToIRFunc(
             var closVal = insertPrimCallIR(
                 bodyContext, 
                 'makeClos', 
-                [nestFunc]
+                [
+                    nestFunc,
+                    ConstValue.getConst(closVals.length, IRType.pint)
+                ]
             );
 
             // Write the closure variables into the closure
@@ -318,8 +324,12 @@ function stmtListToIRFunc(
             {
                 insertPrimCallIR(
                     bodyContext, 
-                    'putClos', 
-                    [closVal, ConstValue.getConst(i), closVals[i]]
+                    'set_clos_cells',
+                    [
+                        closVal, 
+                        ConstValue.getConst(i, IRType.pint), 
+                        closVals[i]
+                    ]
                 );
             }
 
@@ -1981,7 +1991,7 @@ function exprToIR(context)
         var closVal = insertPrimCallIR(
             context, 
             'makeClos', 
-            [nestFunc]
+            [nestFunc, ConstValue.getConst(closVals.length, IRType.pint)]
         );
 
         // Write the closure variables into the closure
@@ -1989,8 +1999,12 @@ function exprToIR(context)
         {
             insertPrimCallIR(
                 context, 
-                'putClos', 
-                [closVal, ConstValue.getConst(i), closVals[i]]
+                'set_clos_cells', 
+                [
+                    closVal, 
+                    ConstValue.getConst(i, IRType.pint),
+                    closVals[i]
+                ]
             );
         }
 
@@ -2107,10 +2121,44 @@ function exprToIR(context)
         // Create the call instruction
         try
         {
+            // If this is a static call
+            if (funcVal instanceof IRFunction)
+            {
+                var funcPtr = funcVal;
+                var funcObj = ConstValue.getConst(undefined);
+            }
+            else
+            {
+                // Test if the callee value is a function
+                var testVal = insertPrimCallIR(
+                    lastContext,
+                    'boxIsFunc',
+                    [funcVal]
+                );
+
+                // Throw an error if the callee is not a function
+                insertCondErrorIR(
+                    lastContext, 
+                    testVal, 
+                    'TypeError',
+                    'callee is not a function'
+                );
+
+                // Get the function pointer from the closure object
+                var funcPtr = insertPrimCallIR(
+                    lastContext, 
+                    'get_clos_funcptr', 
+                    [funcVal]
+                );
+
+                var funcObj = funcVal;
+            }
+
+            // Insert the function call
             var exprVal = insertCallIR(
                 lastContext,
                 new CallFuncInstr(
-                    [funcVal, thisVal].concat(argVals)
+                    [funcPtr, funcObj, thisVal].concat(argVals)
                 )
             );
         }
@@ -2278,12 +2326,19 @@ function opToIR(context)
         var fstContext = context.pursue(exprs[0]);
         exprToIR(fstContext);
         
+        // Get the pre-incrementation value
+        var preVal = fstContext.getOutValue();
+
+        // Get an incrementation value (1) with the same type
+        // as the input value
+        var incrVal = ConstValue.getConst(1, preVal.type);
+
         // Compute the incremented value
         var postVal = makeOp(
             fstContext,
             primName,
             instrClass,
-            [fstContext.getOutValue(), ConstValue.getConst(1)]
+            [fstContext.getOutValue(), incrVal]
         );
     
         // Assign the incremented value to the variable
@@ -2293,7 +2348,7 @@ function opToIR(context)
         // Set the output to the pre or post value
         context.setOutput(
             secContext.getExitBlock(),
-            post? postVal:fstContext.getOutValue()
+            (post === true)? preVal:postVal
         );
     }
 
@@ -3025,7 +3080,7 @@ function assgToIR(context, rhsVal)
                 // Get the value in the mutable cell
                 lhsVal = insertPrimCallIR(
                     varContext,
-                    'getCell',
+                    'get_cell_val',
                     [cellValue]
                 );
             }
@@ -3070,7 +3125,7 @@ function assgToIR(context, rhsVal)
             // Set the value in the mutable cell
             insertPrimCallIR(
                 varContext,
-                'putCell',
+                'set_cell_val',
                 [cellValue, rhsValAssg]
             );
         }
@@ -3357,7 +3412,7 @@ function refToIR(context)
         // Get the value from the mutable cell
         varValueVar = insertPrimCallIR(
             varContext,
-            'getCell',
+            'get_cell_val',
             [cellValue]
         );
     }
@@ -3551,7 +3606,11 @@ function insertPrimCallIR(context, primName, argVals)
     var retVal = insertCallIR(
         context,
         new CallFuncInstr(
-            [primFunc, ConstValue.getConst(undefined)].concat(argVals)
+            [
+                primFunc, 
+                ConstValue.getConst(undefined),
+                ConstValue.getConst(undefined)
+            ].concat(argVals)
         )
     );
 
@@ -3620,12 +3679,41 @@ function insertConstructIR(context, funcVal, argVals)
         'newObject', 
         [protoVal]
     );
+
+    // If this is not a direct function call
+    if ((funcVal instanceof IRFunction) === false)
+    {
+        // Test if the callee value is a function
+        var testVal = insertPrimCallIR(
+            context,
+            'boxIsFunc',
+            [funcVal]
+        );
+
+        // Throw an error if the callee is not a function
+        insertCondErrorIR(
+            context, 
+            testVal, 
+            'TypeError',
+            'constructor is not a function'
+        );
+    }
+
+    var funcPtr = insertPrimCallIR(
+        context,
+        'get_clos_funcptr',
+        [funcVal]
+    );
     
-    // Create the cnostructor call instruction
+    // Create the constructor call instruction
     var retVal = insertCallIR(
         context,
         new ConstructInstr(
-            [funcVal, newObj].concat(argVals)
+            [
+                funcPtr,
+                funcVal,
+                newObj
+            ].concat(argVals)
         )
     );
 
@@ -3672,29 +3760,6 @@ and throw targets and splice this into the current context
 */
 function insertCallIR(context, instr)
 {
-    // If this is not a direct function call
-    if (!(instr.uses[0] instanceof IRFunction) && 
-        !(instr.uses[0] instanceof CallFuncInstr &&
-          instr.uses[0].uses[0] === context.params.staticEnv.getBinding('getGlobalFunc'))
-    )
-    {
-        // Test if the callee value is a function
-        var testVal = insertPrimCallIR(
-            context,
-            'boxIsFunc',
-            [instr.uses[0]]
-
-        );
-
-        // Throw an error if the callee is not a function
-        insertCondErrorIR(
-            context, 
-            testVal, 
-            'TypeError',
-            'callee is not a function'
-        );
-    }
-
     // If this call may throw exceptions
     if (!(instr.uses[0] instanceof IRFunction) || !instr.uses[0].noThrow)
     {

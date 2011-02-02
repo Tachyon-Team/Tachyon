@@ -35,9 +35,9 @@ CallInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
 CallInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
 {
-    if (position < config.argsIndex.length)
+    if (position > 0 && position - 1 < config.argsIndex.length)
     {
-        return config.argsIndex[position];
+        return config.argsIndex[position - 1];
     } 
     else
     {
