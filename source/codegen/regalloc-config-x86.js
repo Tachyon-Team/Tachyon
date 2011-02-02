@@ -120,10 +120,7 @@ DivInstr.prototype.regAlloc.usedRegisters = function (instr, config)
 { 
     // EDX:EAX are reserved for the dividend,
     // EBX is reverved as a scratch register
-    //return [0,1,3];
-
-    // FIXME: until bug with fixed intervals is fixed
-    return arrayRange(config.physReg.length);
+    return [0,1,3];
 };
 
 /**

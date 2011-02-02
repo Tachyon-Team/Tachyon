@@ -649,11 +649,10 @@ allocator.interval.prototype.split = function (pos)
 
     // There is no splitting to be done at the beginning 
     // of an interval
-    if (pos === this.startPos()) 
-    {
-        throw "SplitError: position '" + pos + "' happens at the" + 
-              " beginning of the interval";
-    }
+    assert(pos !== this.startPos(), 
+           "SplitError: position '" + pos + "' happens at the" + 
+           " beginning of the interval"
+    );
 
     // Find the first range intersecting at or after
     // pos
@@ -668,10 +667,9 @@ allocator.interval.prototype.split = function (pos)
 
     // There is no splitting to be done at the end of 
     // an interval
-    if (r === this.ranges.length) 
-    {
-        throw "SplitError: position '" + pos + "' happens after last range";
-    }
+    assert(r !== this.ranges.length,
+           "SplitError: position '" + pos + "' happens after last range"
+    );
 
     // Handle both cases, where pos is either on an 
     // interval on in a hole. We want to split just before
@@ -742,6 +740,7 @@ allocator.interval.prototype.split = function (pos)
 
     // Create the new interval
     newInterval = allocator.interval(newranges, newUsePositions);
+    newInterval.instr = this.instr;
     newInterval.vreg = this.vreg;
 
     // In some cases, an interval might be split again before the 
@@ -771,7 +770,6 @@ allocator.interval.prototype.setStartPos = function (pos)
 
 /** 
     Add a range to an interval, merging ranges when they overlap.
-    Ranges are assumed to be inserted in decreasing start position.
 
     @param {Number} startPos
     @param {Number} endPos
@@ -807,7 +805,7 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
 
     // Merge with all the ranges partially covered by 
     // the new range
-    if (current && endPos >= current.startPos)
+    if (current !== null && endPos >= current.startPos)
     {
         newRange.start = Math.min(newRange.startPos, current.startPos);
 
@@ -848,7 +846,7 @@ allocator.interval.prototype.addUsePos = function (pos, registerFlag)
     } else
     {
         // TODO: We should insert at the right place
-        throw "addUsePos: positions not inserted in decreasing order";
+        assert(false, "addUsePos: positions not inserted in decreasing order");
     }
 };
 
@@ -913,6 +911,15 @@ allocator.interval.prototype.getSplitItr = function ()
 {
     return new allocator.SplitIterator(this); 
 };
+
+/** 
+    Iterate through all ranges
+*/
+allocator.interval.prototype.getRangeItr = function ()
+{
+    return new ArrayIterator(this.ranges);
+};
+
 
 /**
     @class 
@@ -1540,27 +1547,35 @@ allocator.liveIntervals = function (cfg, order, config)
 
 allocator.fixedIntervals = function (cfg, config)
 {
-    const physReg = config.physReg;
-    var fixed = physReg.map(function () { return allocator.interval(); });
-    var it;
-    var argPos;
-    var addFixed;
+    // Create new fixed intervals
+    const fixedItrvls = arrayRange(config.physReg.length).map(function (i) 
+    { 
+        const it = allocator.interval();
+        it.reg = i;
+        return it; 
+    });
 
-    for (it = cfg.getInstrItr(); it.valid(); it.next())
+    const fixedInstrs = [];
+
+    // Add the fixed registers for each instruction requiring them
+    cfg.getInstrItr().forEach(function (instr) 
     {
-        if (it.get().regAlloc.usedRegisters(it.get(), config))
+        const usedRegs = instr.regAlloc.usedRegisters(instr, config);
+        if (usedRegs !== null)
         {
             // Add a fixed interval between the arguments position
             // and the return value position
-            argPos = it.get().regAlloc.id - allocator.numberInstrs.inc; 
-            addFixed = function (index) 
-                       { 
-                           fixed[index].addRange(argPos, argPos + 1); 
-                       };
-            it.get().regAlloc.usedRegisters(it.get(), config).forEach(addFixed);
+            const argPos = instr.regAlloc.id - allocator.numberInstrs.inc; 
+
+            fixedInstrs[argPos] = instr;
+
+            usedRegs.forEach(function (index) 
+            { 
+               fixedItrvls[index].addRange(argPos, argPos + 1); 
+            });
         }
-    }
-    return fixed;
+    });
+    return {intervals:fixedItrvls, instrs:fixedInstrs};
 };
 
 //-----------------------------------------------------------------------------
@@ -1606,7 +1621,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         print("Inactives: ");
         inactiveSet.values.forEach(printItval);
         print("Fixed: ");
-        fixed.forEach(printItval);
+        fixedItrvls.forEach(printItval);
         print("-----------");
     }
 
@@ -1620,7 +1635,15 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
     var unhandledQueue = allocator.priorityQueue(unhandled.slice(0),
         function (it1, it2)
         {
-            return (it1.startPos() - it2.startPos());
+            const cmp = it1.startPos() - it2.startPos();
+
+            if (cmp !== 0) 
+            {
+                return cmp;
+            } else
+            {
+                return it1.nextUse() - it2.nextUse();
+            }
         });
 
     // TODO: Check if for performance reasons, activeSet and
@@ -1641,15 +1664,24 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
     // the next time inside a range
     var nextUsePos = new Array(pregs.length);
 
+    var fixedItrvls, fixedInstrs;
+
     // Initialize fixed if undefined
-    if(fixed === undefined || fixed.length !== pregs.length)
+    if(fixed === undefined || fixed.intervals.length !== pregs.length)
     {
-        fixed = [];
-        fixed.length = pregs.length;
+        fixedItrvls = [];
+        fixedItrvls.length = pregs.length;
         for (i=0; i < pregs.length; ++i)
         {
-            fixed[i] = allocator.interval(); 
+            fixedItrvls[i] = allocator.interval(); 
         }
+
+        fixedInstrs = [];
+    } else
+    {
+        // Fixed intervals as used by the algorithm
+        fixedItrvls = fixed.intervals; 
+        fixedInstrs = fixed.instrs;
     }
 
     /** @ignore */
@@ -1686,6 +1718,30 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 
         it.reg = slot;
     }
+
+
+    // Optimized representation of positions where registers
+    // are blocked by particular instructions
+    var fixedRegs = [];
+
+    function bitSetValue(i)
+    {
+        return 1 << i;
+    };
+
+    const ALLFIXED = bitSetValue(fixedItrvls.length) - 1;
+
+    fixedItrvls.forEach(function (it)
+    {
+        it.getRangeItr().forEach(function (range)
+        {
+            const pos = range.startPos;
+            const value = (fixedRegs[pos] === undefined) ? 0 : fixedRegs[pos];
+            fixedRegs[pos] = value | bitSetValue(it.reg); 
+        });
+    });
+
+
     // Iteration vars
     var current, position, it, i;
 
@@ -1722,9 +1778,9 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         //       in the regular case
         // For fixed interval, register is available until next
         // intersection with current
-        for (i=0; i < fixed.length; ++i)
+        for (i=0; i < fixedItrvls.length; ++i)
         {
-            it = fixed[i];
+            it = fixedItrvls[i];
             freeUntilPos[i] = Math.min(it.nextIntersection(current),
                                        freeUntilPos[i]);
         }
@@ -1818,9 +1874,9 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         // fixed interval completely so we will say that 
         // fixed intervals are used at the beginning of their 
         // intersection with current
-        for (i=0; i < fixed.length; ++i)
+        for (i=0; i < fixedItrvls.length; ++i)
         {
-            it = fixed[i];
+            it = fixedItrvls[i];
             nextUsePos[i] = Math.min(it.nextIntersection(current),
                                      nextUsePos[i]);
         }
@@ -1860,6 +1916,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 
             unhandledQueue.enqueue(it.split(position));
 
+
             // split any inactive interval for reg at the end of its
             // lifetime hole
             for (i=0; i < inactiveSet.length(); ++i)
@@ -1871,7 +1928,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
                 }
             }
            
-            fixedPos = current.nextIntersection(fixed[reg]); 
+            fixedPos = current.nextIntersection(fixedItrvls[reg]); 
             if (fixedPos !== MAX_FIXNUM)
             {
                 // The register has a fixed interval, covering a part 
@@ -1930,6 +1987,29 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
             }
         }
 
+        // Add the operands registers to fixed registers
+        // for instructions requiring them. It prevents the allocator
+        // from assigning operand registers to intervals while the
+        // operands are still live.
+        if (fixedRegs[position] !== undefined && 
+            fixedRegs[position] !== ALLFIXED)
+        {
+            fixedInstrs[position].uses.forEach(function (irval)
+            {
+                if (irval instanceof IRInstr)
+                {
+                    const reg = irval.regAlloc.interval.regAtPos(position);
+
+                    assert(reg !== null, "Invalid register");
+
+                    if ((fixedRegs[position] & bitSetValue(reg)) === 0)
+                    {
+                        fixedItrvls[reg].addRange(position, position + 1);
+                        fixedRegs[position] = (fixedRegs[position] | bitSetValue(reg));
+                    }
+                }
+            });
+        }
 
         // find a register for current
         if (!tryAllocateFreeReg(current))
@@ -2077,7 +2157,6 @@ allocator.resolve = function (cfg, intervals, order, config)
         assert(insertPos < block.instrs.length,
                "Move instruction inserted after a branching instruction");
 
-      
         // We might receive either a single move instruction or a
         // mapping containing many moves
         if (moves instanceof MoveInstr)
@@ -2111,7 +2190,8 @@ allocator.resolve = function (cfg, intervals, order, config)
             if (split.before.reg !== split.after.reg &&
                 // Only splits inside blocks should be resolved
                 // here, the others will be done by the next phase
-                cfg.regAlloc.blockBoundaries[split.before.endPos()] !== true)
+                cfg.regAlloc.blockBoundaries[split.before.endPos()] !== true &&
+                split.after.startPos() === split.before.endPos())
             {
                 moves.addMove(new MoveInstr(split.before.reg, 
                                             split.after.reg, split.before), 
