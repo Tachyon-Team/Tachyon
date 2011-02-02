@@ -632,44 +632,106 @@ MulInstr.prototype.genCode = function (tltor, opnds)
 
 DivInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Register used for the return value
-    const dest = this.regAlloc.dest;
-
     // In the end, we want to have:
     // - Dividend in EAX
     // - Divisor NOT in EAX or EDX
 
-    var dvnd = opnds[0];
-    var dsor = opnds[1];
+    const dvnd    = {reg:null, value:opnds[0]};
+    const dsor    = {reg:null, value:opnds[1]};
+    const scratch = {reg:null, value:null};
 
-    // If the divisor is in EAX or EDX
-    if (dsor === EAX || dsor === EDX)
+    const xAX     = {physReg:tltor.config.physReg[0], value:null};
+    const xBX     = {physReg:tltor.config.physReg[1], value:null};
+    const xDX     = {physReg:tltor.config.physReg[3], value:null};
+
+    function setReg(reg)
     {
-        // Swap the divisor with EBX
-        tltor.asm.xchg(dsor, EBX);
+        if (reg.physReg === dvnd.value)
+        {
+            reg.value = dvnd;
+            dvnd.reg  = reg;
+        } else if (reg.physReg === dsor.value)
+        {
+            reg.value = dsor;
+            dsor.reg  = reg;
+        }
+    };
 
-        // If the dividend is in EBX, it is now where the divisor was
-        if (dvnd === EBX) 
-            dvnd = dsor;
+    function setScratch(scratch)
+    {
+        if (xAX.value === null)
+        {
+            scratch.reg = xAX;
+        } else if (xBX.value === null)
+        {
+            scratch.reg = xBX;
+        } else
+        {
+            scratch.reg = xDX;
+        }
+    };
 
-        // The divisor is now in EBX
-        dsor = EBX;
+    function xchg(opnd1, opnd2)
+    {
+        if (opnd1 === scratch)
+        {
+            tltor.asm.mov(opnd2.reg.physReg, scratch.reg.physReg);
+        } else if (opnd2 === scratch)
+        {
+            tltor.asm.mov(opnd1.reg.physReg, scratch.reg.physReg);
+        } else
+        {
+            tltor.asm.xchg(opnd1.reg.physReg, opnd2.reg.physReg);
+        }
+
+        var treg = opnd1.reg;
+        var tvalue = opnd1.value;
+
+        opnd1.reg       = opnd2.reg;
+        opnd1.reg.value = opnd1;
+        opnd1.value     = opnd1.reg.physReg;
+
+        opnd2.reg       = treg;
+        opnd2.reg.value = opnd2;
+        opnd2.value     = treg.physReg;
+    };
+
+    function moveOpndToReg(opnd, reg)
+    {
+        // Move the operand value in the given register
+        tltor.asm.mov(opnd.value, reg.physReg);
+        
+        reg.value  = opnd;
+        opnd.reg   = reg;
+        opnd.value = reg.physReg;
+    };
+
+    setReg(xAX);
+    setReg(xBX);
+    setReg(xDX);
+
+    setScratch(scratch);
+
+    // If the dividend is not xAX register
+    if (xAX.value !== dvnd)
+    {
+        // If xAX already contains an operand,
+        // move it to the scratch register
+        if (xAX.value !== null && xAX.value !== scratch)
+        {
+            xchg(xAX.value, scratch);
+        }
+
+        // Move the dividend value in xAX
+        moveOpndToReg(dvnd, xAX);
     }
 
-    // If the dividend is not in EAX, move it there
-    if (dvnd !== EAX)
+    // If the divisor is in xDX or is a 
+    // memory location, move it to 
+    // xBX, otherwise use it directly
+    if (xDX.value === dsor || tltor.asm.isImmediate(dsor.value))
     {
-        tltor.asm.mov(dvnd, EAX);
-        dvnd = EAX;
-    }
-
-    // If the divisor is an immediate value, put it into EBX.
-    // The dividend cannot be in EBX, it would have been moved
-    // into EAX during the previous step
-    if (dsor.type === x86.type.IMM_VAL)
-    {
-        tltor.asm.mov(dsor, EBX);
-        dsor = EBX;
+        moveOpndToReg(dsor, xBX);
     }
 
     // If the output should be unsigned, use unsigned divide, otherwise
@@ -679,14 +741,14 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         // Extend the value into EDX
         tltor.asm.mov($(0), EDX);
 
-        tltor.asm.div(dsor, this.type.getSizeBits(tltor.params.target));
+        tltor.asm.div(dsor.value, this.type.getSizeBits(tltor.params.target));
     }
     else
     {
         // Sign-extend EAX into EDX:EAX using CDQ
         tltor.asm.cdq();
 
-        tltor.asm.idiv(dsor, this.type.getSizeBits(tltor.params.target));
+        tltor.asm.idiv(dsor.value, this.type.getSizeBits(tltor.params.target));
     }
 };
 

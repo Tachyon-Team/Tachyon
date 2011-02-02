@@ -102,8 +102,10 @@ DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
 {
     // Operand 0 should be placed in EAX if possible (not guaranteed)
-    if (position == 0) 
+    if (position === 0) 
         return 0;
+    else if (position === 1)
+        return 1;
     else
         return null;
 };
@@ -118,10 +120,7 @@ DivInstr.prototype.regAlloc.usedRegisters = function (instr, config)
 { 
     // EDX:EAX are reserved for the dividend,
     // EBX is reverved as a scratch register
-    //return [0,1,3];
-
-    // FIXME: until bug with fixed intervals is fixed
-    return arrayRange(config.physReg.length);
+    return [0,1,3];
 };
 
 /**
@@ -146,7 +145,7 @@ MulInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
         return null;
 
     // Operand 0 should be placed in EAX if possible (not guaranteed)
-    if (position == 0) 
+    if (position === 0) 
         return 0;
     else
         return null;
