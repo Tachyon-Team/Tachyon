@@ -14,6 +14,19 @@ Create the context object layout for a given architecture
 */
 function makeContextLayout(params)
 {
+    /** 
+    Static environment constants for the context object 
+    */
+   
+    // Alignment for heap allocation 
+    params.staticEnv.regBinding(
+        'CTX_ALIGN',
+        ConstValue.getConst(
+            256,
+            IRType.pint
+        )
+    );
+
     /**
     Run-time context layout object
     */

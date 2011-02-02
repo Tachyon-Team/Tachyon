@@ -20,6 +20,16 @@ function initHeap(heapPtr)
     "tachyon:arg heapPtr rptr";
     "tachyon:ret rptr";
 
+    // Align the context object in memory
+    //
+    // The division then multiplication is done since
+    // a javascript bitwise and operation operates only on 32 bits
+    var heapPtrInt = iir.icast(IRType.pint, heapPtr);
+    heapPtrInt = (heapPtrInt % CTX_ALIGN) === pint(0) ?  
+                  heapPtrInt : 
+                  ((heapPtrInt + CTX_ALIGN) / CTX_ALIGN) * CTX_ALIGN;
+    heapPtr = iir.icast(IRType.rptr, heapPtrInt);
+
     // Treat first address as the address of context object and initialize
     // the allocation pointer
     iir.set_ctx(heapPtr);
