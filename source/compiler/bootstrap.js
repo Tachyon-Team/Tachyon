@@ -21,27 +21,53 @@ function bootstrap(allCode, params)
     // Initialize the FFI functions
     initFFI(params);
 
-    // Compile the Tachyon source code
-    var irList = compTachyon(allCode, params);
+    // Get the source code for the primitives
+    var primSrcs = getPrimSrcs(params);
+
+    // Compile the primitives
+    var primIRs = compSources(primSrcs, params);
 
     // Initialize the runtime
     initRuntime(params);
 
-    print('re-linking');
+    print('Re-linking primitives');
 
     // Re-link the primitives with each other to link strings
-    for (var i = 0; i < irList.length; ++i)
+    for (var i = 0; i < primIRs.length; ++i)
     {
-        var ir = irList[i];
+        linkIR(primIRs[i], params);
+    }
 
-        //print('Linking machine code for: "' + getSrcName(i) + '"');
+    // Get the source code for the standard library
+    var libSrcs = getLibSrcs(params);
 
-        linkIR(ir, params);
+    // Compile the standard library
+    var libIRs = compSources(libSrcs, params);
+
+    print('Initializing standard library');
+
+    // Execute the standard library code units
+    for (var i = 0; i < libIRs.length; ++i)
+    {
+        execUnit(libIRs[i], params);
+    }
+
+    // Initialize the standard library bindings in the run-time
+    initLibRuntime(params);
+
+    // If all code should be compiled
+    if (allCode === true)
+    {
+        // Get the Tachyon compiler source code
+        var tachyonSrcs = getTachyonSrcs(params);
+
+        // Compile the Tachyon sources
+        var tachyonIRs = compSources(tachyonSrcs, params);
+
+        // TODO: execute compiled Tachyon units
     }
 
     print('Tachyon initialization complete');
-
-    // TODO: execute compiled units
 }
 
 /**
@@ -94,6 +120,19 @@ function getPrimSrcs(params)
 }
 
 /**
+Get a source code listing for the standard library files
+*/
+function getLibSrcs(params)
+{
+    // For now, compile only the string code
+    var stdlibSrcs = [
+        'stdlib/strings.js'
+    ];
+
+    return stdlibSrcs;
+}
+
+/**
 Get a source code listing for the Tachyon compiler, excluding the primitives
 */
 function getTachyonSrcs(params)
@@ -101,6 +140,7 @@ function getTachyonSrcs(params)
     // Source files, in the order they should be compiled and executed
     // TODO: this should probably be populated using a script which also
     //       populates source file names in the makefile
+  
     var tachyonSrcs = [
         'utility/debug.js',
         'utility/system.js',
@@ -155,35 +195,9 @@ function getTachyonSrcs(params)
         'main.js'
     ];
 
+    //var tachyonSrcs = ['parser/parser.js'];
+
     return tachyonSrcs;
-}
-
-/**
-Compile either only the primitive code, or all of the Tachyon source code
-*/
-function compTachyon(allCode, params)
-{
-    // Get the source code for the primitives
-    var primSrcs = getPrimSrcs(params);
-
-    // If all code should be compiled
-    if (allCode === true)
-    {
-        // Get the Tachyon compiler source code
-        var tachyonSrcs = getTachyonSrcs(params);
-
-        // Compile all souce code
-        var srcs = primSrcs.concat(tachyonSrcs);
-    }
-    else
-    {
-        // Compile only the primitives
-        var srcs = primSrcs;
-    }
-
-    var irList = compSources(srcs, params);
-
-    return irList;
 }
 
 /**
@@ -258,8 +272,12 @@ function compSources(srcList, params)
         // Perform IR lowering on the primitives
         lowerIRFunc(ir, params);
 
+        //print('Done lowering for: "' + getSrcName(i) + '"');
+
         // Validate the resulting code
         ir.validate();
+
+        //print('Done validation for: "' + getSrcName(i) + '"');
     }
 
     //params.print = print;
@@ -275,8 +293,6 @@ function compSources(srcList, params)
     }
 
     //params.print = undefined;
-
-    print('Linking run-time init functions');
 
     // Link the primitives with each other
     for (var i = 0; i < irList.length; ++i)
@@ -308,11 +324,12 @@ function initRuntime(params)
     var heapAddr = getBlockAddr(heapBlock, 0);
 
     // Get the heap initialization function
-    var initHeap = config.hostParams.staticEnv.getBinding('initHeap');
+    var initHeap = params.staticEnv.getBinding('initHeap');
 
     // Create a bridge to call the heap init function
     var initHeapBridge = makeBridge(
         initHeap,
+        params,
         ['void*'],
         'void*'
     );
@@ -321,14 +338,15 @@ function initRuntime(params)
     var ctxPtr = initHeapBridge(asm.address([0,0,0,0]).getBytes(), heapAddr);
 
     // Store the context pointer in the compilation parameters
-    config.hostParams.ctxPtr = ctxPtr;
+    params.ctxPtr = ctxPtr;
 
     // Get the string allocation function
-    var getStrObj = config.hostParams.staticEnv.getBinding('getStrObj');
+    var getStrObj = params.staticEnv.getBinding('getStrObj');
 
     // Create a bridge to call the string allocation function
     var getStrObjBridge = makeBridge(
         getStrObj,
+        params,
         ['void*', 'int'],
         'void*'
     );
@@ -373,6 +391,58 @@ function initRuntime(params)
     }
 
     // Store the string allocatiom function in the compilation parameters
-    config.hostParams.getStrObj = getStrObjFunc;
+    params.getStrObj = getStrObjFunc;
+}
+
+/**
+Execute a compiled code unit
+*/
+function execUnit(unitFunc, params)
+{
+    assert (
+        unitFunc instanceof IRFunction,
+        'invalid IR function'
+    );
+
+    assert (
+        params.ctxPtr !== null,
+        'cannot execute unit without context pointer'
+    );
+
+    // Create a bridge to call the compiled unit
+    var unitBridge = makeBridge(
+        unitFunc,
+        params,
+        [],
+        'int'
+    );
+
+    // Call the compiled unit with the context pointer
+    unitBridge(params.ctxPtr);
+}
+
+/**
+Initialize the standard library bindings in the run-time
+*/
+function initLibRuntime(params)
+{
+    assert (
+        params.ctxPtr !== null,
+        'cannot execute unit without context pointer'
+    );
+
+    // Get the stdlib initialization function
+    var initLib = params.staticEnv.getBinding('initStdlib');
+
+    // Create a bridge to call the function
+    var initLibBridge = makeBridge(
+        initLib,
+        params,
+        [],
+        'int'
+    );
+
+    // Initialize the bindings
+    initLibBridge(params.ctxPtr);
 }
 

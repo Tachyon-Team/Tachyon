@@ -364,6 +364,12 @@ function CProxy(
     @field
     */
     this.ctxVal = ctxVal;
+
+    /**
+    Compilation parameters to be used when compiling the proxy
+    @field
+    */
+    this.params = params;
 }
 CProxy.prototype = {};
 
@@ -473,7 +479,7 @@ CProxy.prototype.genProxy = function ()
     //print(sourceStr);
 
     // Compile the source string into an IR function
-    var func = compileSrcString(sourceStr, config.hostParams);
+    var func = compileSrcString(sourceStr, this.params);
 
     // Return the compiled function
     return func.childFuncs[0];
@@ -484,14 +490,20 @@ Create a bridge to call a compiled Tachyon function through V8
 */
 function makeBridge(
     irFunction,
+    params,
     cArgTypes,
     cRetType
 )
 {
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
     // Generate a proxy for the function
     var proxy = new CProxy(
         irFunction,
-        config.hostParams,
+        params,
         cArgTypes,
         cRetType
     );

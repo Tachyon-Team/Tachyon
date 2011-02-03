@@ -10,125 +10,67 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-function testIR()
+/**
+Entry point for the Tachyon VM.
+*/
+function main()
 {
-    bootstrap(true, config.bootParams);
+    // Parse the command-line arguments
+    var args = parseCmdLine()
 
-    //var ir = compileSrcFile('test.js', config.hostParams);
-    
-    /*    
-    var ir = compileSrcFile('programs/fib/fib.js', config.hostParams);
-
-    var bridge = makeBridge(
-        ir.getChild('fib'),
-        ['int'],
-        'int'
-    );
-
-    var result = bridge(10);
-
-    print(result);
-    */
-
-    /*
-    var ast = parse_src_file('test_ffi.js');
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();    
-    print(ir);
-    
-    //config.hostParams.print = print;
-    var func = compileFileToJSFunc('test_ffi.js', config.hostParams);
-    var result = func();
-    func.free();
-    //print(result >> 2);
-    */
-
-    /*
-    var ast = parse_src_str(
-        //'function foo() { return 6-3; }'
-        //'function foo() { return 3+3; }'
-        //'function foo() { return 6/3; }'
-        //'function foo() { return 6*3; }'
-        //'function foo() { return (6/3)*3; }'
-        //'function foo(a) { return iir.add(a, 0); }'
-        'function foo(a) { return iir.add(0, iir.sub(a,0)); }'
-    );
-    var ir = unitToIR(ast, config.hostParams);
-    lowerIRFunc(ir, config.hostParams);
-    ir.validate();    
-    print(ir);
-    */
-
-    /*
-    var func = compileSrcFile('programs/fib/fib.js', config.hostParams);
-    print(func);
-    */    
-
-    /*
-    var func = config.hostParams.staticEnv.getBinding('lt');
-    print(func);
-    */
-};
-
-function printInstrNames(ir)
-{
-    var workList = ir.getChildrenList();
-    
-    var visited = [];
-
-    var mnemList = [];
-
-    while (workList.length > 0)
+    // If bootstrap compilation is requested
+    if (args.options['bootstrap'])
     {
-        var func = workList.pop();
+        // Initialize Tachyon in bootstrap mode
+        initialize(true);
 
-        if (arraySetHas(visited, func))
-            continue;
-
-        /*
-        if (func.funcName == 'newObject' ||
-            func.funcName == 'getPropVal' || 
-            func.funcName == 'putPropVal')
-            continue;
-        */
-
-        for (var itr = func.virginCFG.getInstrItr(); itr.valid(); itr.next())
-        {
-            var instr = itr.get();
-
-            arraySetAdd(mnemList, instr.mnemonic);
-
-            for (var useItr = instr.getUseItr(); useItr.valid(); useItr.next())
-            {
-                var use = useItr.get();
-
-                if (use instanceof IRFunction)
-                    workList = workList.concat(use.getChildrenList());
-            }
-        }
-
-        arraySetAdd(visited, func);
+        // ???
+        // Profit        
     }
 
-    mnemList.sort();
-
-    print('Total instruction variants: ' + mnemList.length);
-    for (var i = 0; i < mnemList.length; ++i)
+    // Otherwise, assume we are running in shell mode
+    else
     {
-        print(mnemList[i]);
+        // Initialize Tachyon in minimal mode
+        initialize(false);
+
+        // Call the Tachyon read-eval-print loop
+        tachyonRepl();
     }
-}
-
-try 
-{
-    // Initialize Tachyon
-    initialize();
-
-    testIR();
 
     // Uninitialize Tachyon
     uninitialize();
+}
+
+/**
+Tachyon read-eval-print loop
+*/
+function tachyonRepl()
+{
+    print('');
+    print('Entering read-eval-print loop.');
+    print('Type commands below and enter EOF to execute them.');
+
+    for (;;)
+    {
+        var cmd = readConsole('\nt> ');
+    
+        var ir = compileSrcString(cmd, config.hostParams);
+
+        var bridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            'int'
+        );
+
+        bridge(config.hostParams.ctxPtr);
+    }
+}
+
+try
+{
+    main();
 }
 
 catch (e)

@@ -41,11 +41,31 @@ function initHeap(heapPtr)
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
 
+    // Initially, set the object prototype to null
+    set_ctx_objproto(ctxObj, null);
+
     // Initialize the string table
     initStrTable();
 
     // Return a pointer to the context object
     return ctxObj;
+}
+
+/**
+Initialize the standard library once the basic runtime components are ready.
+*/
+function initStdlib()
+{
+    "tachyon:static";
+
+    var ctx = iir.get_ctx();
+
+    // Set the string prototype object reference in the context
+    set_ctx_strproto(ctx, String.prototype);
+
+    // TODO: set array proto, object proto in ctx
+
+    // TODO: set global object prototype
 }
 
 /**

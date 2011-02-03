@@ -1554,6 +1554,14 @@ function getPropVal(obj, propName)
         {
             return boxInt(iir.icast(IRType.pint, get_str_len(obj)));
         }
+        else
+        {
+            // Get the string prorotype object
+            var strproto = get_ctx_strproto(iir.get_ctx());
+
+            // Lookup the property on the string prototype object
+            return getPropVal(strproto, propName);
+        }
     }
 
     // Get the hash code for the property

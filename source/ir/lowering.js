@@ -7,7 +7,15 @@ for code generation.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
+*/
+
+/*
+TODO: 
+- Reintroduce HIRInstr class with descendents for arith ops, putprop, getprop.
+- Have lowering function for each HIRInstr class
+- Default lowering can be translation to primitive call
+- Perform const prop on IR before lowering begins, using HIR instructions
 */
 
 /**
@@ -26,9 +34,15 @@ function lowerIRFunc(irFunc, params)
     {
         var func = funcList[i];
 
+        //print('calling lowerIRCFG for "' + func.funcName + '"');
+
         // Perform lowering on the function's CFG
         lowerIRCFG(func.virginCFG, params);
+
+        //print('back from lowerIRCFG for "' + func.funcName + '"');
     }
+
+    //print('lowerIRFunc done for "' + irFunc.funcName + '"');
 }
 
 /**
@@ -128,17 +142,18 @@ function lowerIRCFG(cfg, params)
         }
     }
 
-    //print(cfg.ownerFunc);
+    //print('*** applying patterns ***');
 
     // Apply peephole optimization patterns to the CFG
     applyPatternsCFG(cfg, params);
+
+    //print('*** validating after patterns ***');
 
     // Validate the CFG
     cfg.validate();
 
     //print(cfg.ownerFunc);
 
-    //print('*** func: "' + cfg.ownerFunc.funcName + '" ***');
     //print('*** const prop ***');
 
     // Perform constant propagation on the CFG
@@ -165,6 +180,8 @@ function lowerIRCFG(cfg, params)
     // Validate the CFG
     cfg.validate();
 
+    //print('*** validated ***');
+
     // Assume that the function does not read or write from/to memory
     cfg.ownerFunc.writesMem = false;
     cfg.ownerFunc.readsMem = false;
@@ -190,4 +207,7 @@ function lowerIRCFG(cfg, params)
 
     //if (!cfg.ownerFunc.writesMem)
     //    print('############ DOES NOT WRITE MEM: ' + cfg.ownerFunc.funcName);
+
+    //print('*** lowering done ***');
 }
+

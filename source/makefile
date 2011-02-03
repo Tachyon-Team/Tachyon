@@ -98,11 +98,8 @@ all: run
 run: 
 	$(JSVM) $(MAIN_SRCS)
 
-bootstrap-js2scm:
-	$(JS2SCM) -scm $(MAIN_SRCS)
-
-bootstrap-js2scm-debug:
-	$(JS2SCM) -scm -debug $(MAIN_SRCS)
+bootstrap:
+	$(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
 test: 
 	$(JSVM) $(TEST_SRCS)
@@ -111,6 +108,12 @@ perf:
 	./bench/d8.sh                                   \
         -cfgFile "bench/configs/time_benchs.json"   \
         -genReport "benchreport.html"
+
+bootstrap-js2scm:
+	$(JS2SCM) -scm $(MAIN_SRCS)
+
+bootstrap-js2scm-debug:
+	$(JS2SCM) -scm -debug $(MAIN_SRCS)
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)
