@@ -1,16 +1,16 @@
 /**
 @fileOverview
-Implementation of ECMAScript 5 array string routines.
+Implementation of ECMAScript 5 string string routines.
 
 @author
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /*
-TODO: establish functionality needed for initial bootstrap
+TODO: implement functionality needed for initial bootstrap
 
 String.fromCharCode([char0 [, char1 [, … ]]])
 String.prototype.charAt(pos)
@@ -24,32 +24,24 @@ String.prototype.toUpperCase()
 */
 
 /**
-15.5.2 String constructor
-new String (value)
-String (value)
+@class 15.5.2 String constructor
+new String(value)
+String(value)
 */
-/*
 function String(value)
 {
-
-}*/
+}
 
 /**
 15.5.3.1 String prototype object
 */
-//String.prototype = {};
+String.prototype = {};
 
-// Disable functions not needed for the bootstrap so that D8 will warn us
-// if we start using them
-String.prototype.concat = undefined;
-String.prototype.indexOf = undefined;
-String.prototype.lastIndexOf = undefined;
-String.prototype.localeCompare = undefined;
-String.prototype.match = undefined;
-String.prototype.replace = undefined;
-String.prototype.search = undefined;
-String.prototype.toLowerCase = undefined;
-String.prototype.toLocaleLowerCase = undefined;
-String.prototype.toLocaleUpperCase = undefined;
-String.prototype.trim = undefined;
+/**
+Test function, should be callable on string literals.
+*/
+String.prototype.foo = function ()
+{
+    return 1337;
+};
 

@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Initialize the resources required by the Tachyon VM.
 */
-function initialize()
+function initialize(boot)
 {
     // Initialize the Tachyon configuration
     initConfig();
@@ -20,7 +20,7 @@ function initialize()
     //config.hostParams.print = print;
 
     // Compile and initialize the Tachyon primitives
-    bootstrap(false, config.hostParams);
+    bootstrap(boot, boot? config.bootParams:config.hostParams);
 }
 
 /**

@@ -123,8 +123,13 @@ LinkedList.prototype.addLast = function (item)
     else
     {
         this.last.next = newNode;
-        this.last = this.last.next;
+        this.last = newNode;
     }
+
+    assert (
+        this.last === newNode,
+        'error adding new node to linked list'
+    );
 };
 
 /**
@@ -174,6 +179,9 @@ LinkedList.prototype.remFirst = function ()
     var item = this.first.item;
 
     this.first = this.first.next;
+
+    if (this.first === null)
+        this.last = null;
 
     return item;
 };

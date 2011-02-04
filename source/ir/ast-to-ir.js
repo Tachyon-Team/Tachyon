@@ -2076,7 +2076,7 @@ function exprToIR(context)
         var lastContext;
 
         // If the function expression is of the form x[y]
-        if (astExpr.fn instanceof OpExpr && astExpr.fn === 'x [ y ]')
+        if (astExpr.fn instanceof OpExpr && astExpr.fn.op === 'x [ y ]')
         {
             var thisExpr = astExpr.fn.exprs[0];
             var idxExpr = astExpr.fn.exprs[1];
@@ -2619,6 +2619,16 @@ function opToIR(context)
             var argsContext = context.pursue(exprs);
             var argVals = exprListToIR(argsContext);
 
+            // FIXME: want to add HIR instructions for HIR ops, be able to
+            // perform constant propagation on HIR
+            if (argVals[0] instanceof ConstValue && argVals[0].isNumber())
+            {
+                var opVal = ConstValue.getConst(
+                    -argVals[0].value,
+                    argVals[0].type
+                );
+            }
+            else {
             // Subtract the argument value from the constant 0
             var opVal = makeOp(
                 argsContext,
@@ -2626,6 +2636,7 @@ function opToIR(context)
                 SubInstr,
                 [ConstValue.getConst(0, argVals[0].type), argVals[0]]
             );
+            }
 
             // Set the subtraction's output value as the output
             context.setOutput(argsContext.getExitBlock(), opVal);

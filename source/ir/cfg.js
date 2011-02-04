@@ -684,23 +684,36 @@ ControlFlowGraph.prototype.validate = function ()
     // Array to store must reach input sets for each block
     var mustReachIn = [];
 
-    // Compute the set of all definitions in the CFG
-    var fullReachSet = [];
-    for (var i = 0; i < this.blocks.length; ++i)
-    {
-        var block = this.blocks[i];
-        for (var j = 0; j < block.instrs.length; ++j)
-            if (block.instrs[j].dests.length > 0)
-                fullReachSet.push(block.instrs[j]);
-    }
-
-    // Initialize the must reach in sets
+    // Initialize the must reach in set for the entry block
     mustReachIn[this.entry.blockId] = [];
-    for (var i = 0; i < this.blocks.length; ++i)
+
+    // Compute the set of blocks in a merge position
+    var mergeBlocks = []
+    for (var itr = this.getBlockItr(); itr.valid(); itr.next())
     {
-        var block = this.blocks[i];
-        if (block.preds.length > 1)
-            mustReachIn[block.blockId] = fullReachSet;
+        var block = itr.get();
+
+        // Count the number of successors with only us as a predecessor
+        var numSinglePred = 0;
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+            if (succ.preds.length === 1)
+                ++numSinglePred;
+        }
+
+        // For each successor
+        for (var i = 0; i < block.succs.length; ++i)
+        {
+            var succ = block.succs[i];
+
+            // This block is in a merge position if it has more than
+            // one predecessor, or if there is more than one block with
+            // only us as a predecessor
+            mergeBlocks[succ.blockId] = (
+                succ.preds.length > 1 || numSinglePred > 1
+            );
+        }
     }
 
     // Until the work list is empty
@@ -708,19 +721,20 @@ ControlFlowGraph.prototype.validate = function ()
     {
         var block = workList.remFirst();
 
-        //print(block.getBlockName());
+        /*
+        print(
+            block.getBlockName() + 
+            ', preds: ' + block.preds.length +
+            ', succs: ' + block.succs.length
+        );
+        */
 
         // Get the must reach set at this block's entry
         var mustReachCur = mustReachIn[block.blockId];
 
-        assert (
-            mustReachCur !== undefined,
-            'must reach in set unavailable'
-        );
-
-        // If we have more than one predecessor, copy the
-        // must reach set before modifying it
-        if (block.preds.length > 1)
+        // If this block is in a merge position, copy the must reach
+        // set before modifying it
+        if (mergeBlocks[block.blockId] === true)
             mustReachCur = mustReachCur.slice(0);
 
         // Remove return values flowing through exception edges
@@ -756,9 +770,13 @@ ControlFlowGraph.prototype.validate = function ()
                     if (arraySetHas(mustReachCur, use) === false)
                     {
                         error(
-                            'instruction:\n' + instr + '\nin block:\n' + 
+                            'instruction:\n' + instr +
+                            '\nin block:\n' + 
                             instr.parentBlock.getBlockName() +
-                            '\nuses non-reaching value:\n' + use
+                            '\nuses non-reaching value:\n' + 
+                            use +
+                            '\nfrom block:\n' +
+                            use.parentBlock.getBlockName()
                         );
                     }
                 }
@@ -770,19 +788,12 @@ ControlFlowGraph.prototype.validate = function ()
                 arraySetAdd(mustReachCur, instr);
         }
 
-        // Count the number of successors with only us as a predecessor
-        var numSinglePred = 0;
-        for (var i = 0; i < block.succs.length; ++i)
-        {
-            var succ = block.succs[i];
-            if (succ.preds.length === 1)
-                ++numSinglePred;
-        }
-
         // For each successor
         for (var i = 0; i < block.succs.length; ++i)
         {
             var succ = block.succs[i];
+
+            //print('succ: ' + succ.getBlockName());
 
             // For each instruction of the successor
             for (var j = 0; j < succ.instrs.length; ++j)
@@ -808,42 +819,47 @@ ControlFlowGraph.prototype.validate = function ()
                         '\nuses non-reaching value:\n' + use
                     );
                 }
-            }
-
-            // If this successor has more than 1 predecessor
-            if (succ.preds.length > 1)
+            }            
+            
+            // If the successor is in a merge position
+            if (mergeBlocks[succ.blockId] === true)
             {
                 var succReachIn = mustReachIn[succ.blockId];
 
                 // Merge with the must reach in of the successor
-                mustReachIn[succ.blockId] = arraySetIntr(
-                    mustReachCur,
-                    succReachIn
-                );
-
-                // If the must reach in set changed, add the succ to the work list
-                if (arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
-                    workList.addLast(succ);
-            }
-
-            // Otherwise, this successor has only one predecessor (us)
-            else
-            {
-                // If it is the only such block
-                if (numSinglePred === 1)
+                if (succReachIn !== undefined)
                 {
-                    // Give it our output reach set as input without
-                    // copying the set
-                    mustReachIn[succ.blockId] = mustReachCur;
+                    mustReachIn[succ.blockId] = arraySetIntr(
+                        mustReachCur,
+                        succReachIn
+                    );
                 }
                 else
                 {
-                    // Give it a copy of our must reach set as input
                     mustReachIn[succ.blockId] = mustReachCur.slice(0);
                 }
 
-                // Add the successor to the work list
-                workList.addLast(succ);
+                // If the must reach in set changed, add the succ to the work list
+                if (succReachIn === undefined || 
+                    arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
+                {
+                    //print('ADDING BLOCK LAST: ' + succ.getBlockName());
+                    workList.addLast(succ);
+                }
+            }
+
+            // Otherwise, this successor has only one predecessor (us), and
+            // it is the only such block among our successors
+            else
+            {
+                // Give it our output reach set as input without
+                // copying the set
+                mustReachIn[succ.blockId] = mustReachCur;
+
+                //print('ADDING BLOCK FIRST: ' + succ.getBlockName());
+
+                // Make the successor next on the work list
+                workList.addFirst(succ);
             }
         }
     }

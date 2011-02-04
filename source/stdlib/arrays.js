@@ -37,6 +37,9 @@ Array ([item0 [, item1 [, … ]]])
 /*
 function Array(len)
 {
+    var a = [];
+
+    a.length = len;
 }*/
 
 /**

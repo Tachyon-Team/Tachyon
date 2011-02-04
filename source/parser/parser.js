@@ -92,10 +92,14 @@ Parser.prototype.consume = function ()
             if (Math.floor(this.input.value) !== this.input.value)
                 this.warning(this.input.loc,
                              "number literal is not an integer");
+
+            /* FIXME: 1073741824 is outside 30 bit integer range
             else if (this.input.value < -1073741824 ||
                      this.input.value > 1073741823)
                 this.warning(this.input.loc,
                              "number literal is outside 30 bit integer range");
+
+            */
         }
 
         if ((this.input.cat === DIVEQUAL_CAT || this.input.cat === DIV_CAT) &&

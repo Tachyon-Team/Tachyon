@@ -1,6 +1,9 @@
 # JavaScript VM command
 JSVM = d8 --allow_natives_syntax
 
+# JavaScript VM command with rlwrap
+RLWJSVM = rlwrap d8 --allow_natives_syntax
+
 # For bootstrapping with Tachyon JavaScript to Scheme compiler
 JS2SCM = parser/js2scm
 
@@ -69,6 +72,7 @@ MAIN_SPEC_SRCS =                        \
 TEST_SPEC_SRCS =                        \
     tests/testing.js                    \
     utility/tests/*.js                  \
+    stdlib/tests/*.js                   \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
     codegen/tests/*.js                  \
@@ -97,11 +101,11 @@ all: run
 run: 
 	$(JSVM) $(MAIN_SRCS)
 
-bootstrap-js2scm:
-	$(JS2SCM) -scm $(MAIN_SRCS)
+shell:
+	$(RLWJSVM) $(MAIN_SRCS)
 
-bootstrap-js2scm-debug:
-	$(JS2SCM) -scm -debug $(MAIN_SRCS)
+bootstrap:
+	$(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
 test: 
 	$(JSVM) $(TEST_SRCS)
@@ -110,6 +114,12 @@ perf:
 	./bench/d8.sh                                   \
         -cfgFile "bench/configs/time_benchs.json"   \
         -genReport "benchreport.html"
+
+bootstrap-js2scm:
+	$(JS2SCM) -scm $(MAIN_SRCS)
+
+bootstrap-js2scm-debug:
+	$(JS2SCM) -scm -debug $(MAIN_SRCS)
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)

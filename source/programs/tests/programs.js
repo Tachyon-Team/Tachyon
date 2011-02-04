@@ -39,12 +39,14 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
 
     var unitBridge = makeBridge(
         ir,
+        config.hostParams,
         [],
         'int'
     );
     
     var funcBridge = makeBridge(
         func,
+        config.hostParams,
         argTypes,
         'int'
     );
@@ -112,6 +114,17 @@ tests.basic_many_args.main = genTest(
     'f',
     [0,0,0,0,20],
     20
+);
+
+/**
+Comparison operators test
+*/
+tests.basic_cmp = tests.testSuite();
+tests.basic_cmp.main = genTest(
+    'programs/basic_cmp/basic_cmp.js',
+    'test',
+    [5],
+    0
 );
 
 /**
@@ -306,6 +319,17 @@ tests.array_length.main = genTest(
 );
 
 /**
+Recursive n-queens solver. Uses arrays extensively.
+*/
+tests.nqueens = tests.testSuite(); 
+tests.nqueens.main = genTest(
+    'programs/nqueens/nqueens.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Closure variable capture.
 */
 tests.clos_capt = tests.testSuite(); 
@@ -325,5 +349,16 @@ tests.ctor_new.main = genTest(
     'foo',
     [5],
     6
+);
+
+/**
+Constructor, prototype and methods test.
+*/
+tests.ctor_proto = tests.testSuite(); 
+tests.ctor_proto.main = genTest(
+    'programs/ctor_proto/ctor_proto.js',
+    'test',
+    [5],
+    9
 );
 

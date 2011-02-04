@@ -18,5 +18,5 @@ function foo(n)
 
     c();
 
-    return c();    
+    return c();
 }

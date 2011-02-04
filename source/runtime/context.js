@@ -62,6 +62,18 @@ function makeContextLayout(params)
         IRType.box
     );
 
+    // Array prototype object
+    ctxLayout.addField(
+        'arrproto',
+        IRType.box
+    );
+
+    // String prototype object
+    ctxLayout.addField(
+        'strproto',
+        IRType.box
+    );
+
     // Range error constructor
     ctxLayout.addField(
         'rangeerror',

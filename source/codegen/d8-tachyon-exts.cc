@@ -129,6 +129,58 @@ v8::Handle<v8::Value> shellCommand(const v8::Arguments& args)
     return v8Str;
 }
 
+v8::Handle<v8::Value> readConsole(const v8::Arguments& args)
+{
+    if (args.Length() > 1)
+    {
+        printf("Error in readConsole -- 0 or 1 arguments expected\n");
+        exit(1);
+    }
+
+    if (args.Length() == 1)
+    {
+        v8::String::Utf8Value prompStrObj(args[0]);  
+        const char* promptStr = *prompStrObj;
+
+        printf("%s", promptStr);
+    }
+
+    int bufSize = 128;
+
+    int strLen = 0;
+
+    char* buffer = new char[bufSize];
+
+    for (;;)
+    {
+        char ch = getchar();
+
+        if (ch == EOF || ch == '\n')
+            break;
+
+        buffer[strLen] = ch;
+
+        ++strLen;
+
+        if (strLen >= bufSize)
+        {
+            bufSize *= 2;
+
+            char* newBuf = new char[bufSize];
+
+            memcpy(newBuf, buffer, strLen);
+        }
+    }
+
+    buffer[strLen] = '\0';
+
+    v8::Local<v8::String> v8Str = v8::String::New(buffer);
+
+    delete [] buffer;
+
+    return v8Str;
+}
+
 /*---------------------------------------------------------------------------*/
 
 #include <stdio.h>
@@ -392,7 +444,7 @@ v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
 {
     if (args.Length() < 1 || args.Length() > 2)
     {
-        printf("Error in getBlockAddress -- 1 or 2 argument expected\n");
+        printf("Error in getBlockAddr -- 1 or 2 argument expected\n");
         exit(1);
     }
 
@@ -415,7 +467,7 @@ v8::Handle<v8::Value> getBlockAddr(const v8::Arguments& args)
     // Ensure that the index is valid
     if (idxVal >= len)
     {
-        printf("Error in getBlockAddress -- index is past end of block\n");
+        printf("Error in getBlockAddr -- index is past end of block\n");
         exit(1);
     }
 
@@ -702,6 +754,11 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("shellCommand"), 
         v8::FunctionTemplate::New(shellCommand)
+    );
+
+    global_template->Set(
+        v8::String::New("readConsole"), 
+        v8::FunctionTemplate::New(readConsole)
     );
 
     global_template->Set(
