@@ -106,10 +106,10 @@ function string_fromCharCode()
 
 function string_charCodeAt(pos)
 {
-    var a = string_internal_toCharCodeArray(this);
-    if (pos >= 0 && pos < a.length)
+    var len = string_internal_getLength(this);
+    if (pos >= 0 && pos < len)
     {
-        return a[pos];
+        return string_internal_charCodeAt(this, pos);
     }
 
     // FIXME: return NaN when doubles are implemented
