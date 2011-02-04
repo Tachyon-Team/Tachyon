@@ -155,7 +155,7 @@ v8::Handle<v8::Value> readConsole(const v8::Arguments& args)
     {
         char ch = getchar();
 
-        if (ch == EOF)
+        if (ch == EOF || ch == '\n')
             break;
 
         buffer[strLen] = ch;

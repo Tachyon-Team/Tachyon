@@ -624,12 +624,10 @@ function boxToString(val)
         return val;
     }
 
-    // TODO: call toString on objects
-    /*
-    if (boxIsObj(val))
+    if (boxIsObjExt(val))
     {
+        return val.toString();
     }
-    */
 
     switch (val)
     {

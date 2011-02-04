@@ -47,15 +47,36 @@ Tachyon read-eval-print loop
 */
 function tachyonRepl()
 {
-    print('');
-    print('Entering read-eval-print loop.');
-    print('Type commands below and enter EOF to execute them.');
-
-    for (;;)
+    // Print a help listing
+    function printHelp()
     {
-        var cmd = readConsole('\nt> ');
-    
-        var ir = compileSrcString(cmd, config.hostParams);
+        print('Available special commands:');
+        print('  /help           print a help listing');
+        print('  /exit           exit the read-eval-print loop');
+    }
+
+    // Execute a special command
+    function execSpecial(cmd)
+    {
+        switch (cmd)
+        {
+            case 'exit':
+            return true;
+
+            case 'help':
+            printHelp();
+            break;
+
+            default:
+            print('Unknown special command: "' + cmd + '"');
+            break;
+        }
+    }
+
+    // Execute a code string
+    function execCode(str)
+    {
+        var ir = compileSrcString(str, config.hostParams);
 
         var bridge = makeBridge(
             ir,
@@ -65,6 +86,36 @@ function tachyonRepl()
         );
 
         bridge(config.hostParams.ctxPtr);
+    }
+
+    print('');
+    print('Entering read-eval-print loop.');
+    print('Type commands below and press enter to execute them.');
+    print('For a listing of special commands, type /help');
+    print('To exit, type /exit');
+
+    for (;;)
+    {
+        var cmd = readConsole('\nt> ');
+
+        // Remove extra whitespaces from the command
+        cmd = stripStr(cmd);
+
+        // If this is a special command    
+        if (cmd.charAt(0) === '/')
+        {
+            var exit = execSpecial(cmd.slice(1));
+            if (exit === true)
+                return;
+        }
+        else
+        {
+            // Add an extra semicolon to avoid syntax errors
+            cmd += ';';
+
+            // Execute the code string
+            execCode(cmd);
+        }
     }
 }
 
