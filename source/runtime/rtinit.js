@@ -67,6 +67,7 @@ function initStdlib()
     set_ctx_strproto(ctx, String.prototype);
 
     // TODO: set array, function proto in ctx
+    set_ctx_arrproto(ctx, null);
 
     // Get a reference to the global object
     var globalObj = get_ctx_globalobj(ctx);

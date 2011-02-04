@@ -362,3 +362,14 @@ tests.ctor_proto.main = genTest(
     9
 );
 
+/**
+Constructor, prototype and methods test.
+*/
+tests.object_tostring = tests.testSuite(); 
+tests.object_tostring.main = genTest(
+    'programs/object_tostring/object_tostring.js',
+    'test',
+    [],
+    0
+);
+

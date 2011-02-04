@@ -16,7 +16,7 @@ Entry point for the Tachyon VM.
 function main()
 {
     // Parse the command-line arguments
-    var args = parseCmdLine()
+    var args = parseCmdLine();
 
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
