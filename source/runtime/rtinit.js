@@ -60,12 +60,19 @@ function initStdlib()
 
     var ctx = iir.get_ctx();
 
+    // Set the object prototype object in the context
+    set_ctx_objproto(ctx, Object.prototype);
+
     // Set the string prototype object reference in the context
     set_ctx_strproto(ctx, String.prototype);
 
-    // TODO: set array proto, object proto in ctx
+    // TODO: set array, function proto in ctx
 
-    // TODO: set global object prototype
+    // Get a reference to the global object
+    var globalObj = get_ctx_globalobj(ctx);
+
+    // Set the global object prototype
+    set_obj_proto(globalObj, Object.prototype);
 }
 
 /**

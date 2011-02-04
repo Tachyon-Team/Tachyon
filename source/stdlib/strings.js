@@ -24,9 +24,9 @@ String.prototype.toUpperCase()
 */
 
 /**
-15.5.2 String constructor
-new String (value)
-String (value)
+@class 15.5.2 String constructor
+new String(value)
+String(value)
 */
 function String(value)
 {

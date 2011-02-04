@@ -126,6 +126,7 @@ function getLibSrcs(params)
 {
     // For now, compile only the string code
     var stdlibSrcs = [
+        'stdlib/objects.js',
         'stdlib/strings.js'
     ];
 

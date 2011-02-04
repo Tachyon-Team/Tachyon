@@ -1,6 +1,9 @@
 # JavaScript VM command
 JSVM = d8 --allow_natives_syntax
 
+# JavaScript VM command with rlwrap
+RLWJSVM = rlwrap d8 --allow_natives_syntax
+
 # For bootstrapping with Tachyon JavaScript to Scheme compiler
 JS2SCM = parser/js2scm
 
@@ -97,6 +100,9 @@ all: run
 
 run: 
 	$(JSVM) $(MAIN_SRCS)
+
+shell:
+	$(RLWJSVM) $(MAIN_SRCS)
 
 bootstrap:
 	$(JSVM) $(MAIN_SRCS) -- -bootstrap true

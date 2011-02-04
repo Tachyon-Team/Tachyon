@@ -148,6 +148,20 @@ function boxIsArray(boxVal)
 }
 
 /**
+Test if a boxed value is an object or an object extension (array or function)
+*/
+function boxIsObjExt(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+
+    // Test that the tag is either array, function or object
+    var tag = getRefTag(boxVal);
+    return (tag >= TAG_ARRAY && tag <= TAG_OBJECT);
+}
+
+/**
 Test if a boxed value is a floating-point value
 */
 function boxIsFloat(boxVal)
