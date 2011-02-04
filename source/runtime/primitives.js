@@ -542,25 +542,21 @@ function makeCell()
 Create the arguments object. This function must be inlined as it must run
 in the same stack frame as the caller.
 */
-function makeArgObj()
+function makeArgObj(numArgs)
 {
     "tachyon:inline"; 
     "tachyon:nothrow";
     "tachyon:noglobal";
+    "tachyon:arg numArgs pint";
 
     // Create an object to store the arguments
     var argObj = newObject(null);
-
-    // Get the number of arguments passed
-    // var numArgs = iir.get_num_args();
-    var numArgs = pint(0);
 
     // For each visible argument
     for (var i = pint(2); i < numArgs; i++)
     {
         // Get this argument
-        // var argVal = iir.get_arg(i);
-        var argVal = 0;
+        var argVal = iir.get_arg(i);
 
         // Compute the argument index
         var argIndex = boxInt(i - pint(2));

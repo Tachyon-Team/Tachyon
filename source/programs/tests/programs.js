@@ -362,3 +362,15 @@ tests.ctor_proto.main = genTest(
     9
 );
 
+/**
+Arguments object test.
+*/
+tests.arg_obj = tests.testSuite(); 
+tests.arg_obj.main = genTest(
+    'programs/arguments/arguments.js',
+    'foo_proxy',
+    [5],
+    5,
+    true
+);
+

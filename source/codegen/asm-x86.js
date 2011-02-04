@@ -1303,7 +1303,7 @@ x86.Assembler.prototype.opndPrefixOpnd = function (width, opnd)
     if (opnd.type === x86.type.REG)
     {
         const field = opnd.field();
-        const isExtLo8 = ((width === 8) && (field >= 4) && (!reg.isr8h()));
+        const isExtLo8 = ((width === 8) && (field >= 4) && (!opnd.isr8h()));
         return this.opndPrefix(width, 0, opnd, isExtLo8);
     } else // opnd.type !== x86.type.REG
     {

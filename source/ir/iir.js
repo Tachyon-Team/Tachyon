@@ -22,6 +22,10 @@ var iir =
     get_ctx     : GetCtxInstr,
     set_ctx     : SetCtxInstr,
 
+    // Run-time Function Call protocol
+    get_num_args: GetNumArgsInstr,
+    get_arg     : GetArgValInstr,
+
     // Type conversion
     icast       : ICastInstr,
     itof        : IToFPInstr,

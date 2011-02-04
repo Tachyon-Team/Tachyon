@@ -147,6 +147,10 @@ function stmtListToIRFunc(
         // Add an instruction to get the this value argument
         var thisVal = new ArgValInstr(IRType.box, 'thisVal', argIndex++);
         entryBlock.addInstr(thisVal, 'this');
+
+        // Add an instruction to get the number of arguments
+        var numArgs  = new GetNumArgsInstr();
+        entryBlock.addInstr(numArgs, 'numArgs');
     }
 
     // Create a map for the local variable storage locations
@@ -206,7 +210,7 @@ function stmtListToIRFunc(
         var argObj = insertPrimCallIR(
             bodyContext, 
             'makeArgObj', 
-            []
+            [numArgs]
         );
         localMap.setItem('arguments', argObj);
     }

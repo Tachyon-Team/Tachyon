@@ -120,7 +120,7 @@ DivInstr.prototype.regAlloc.usedRegisters = function (instr, config)
 { 
     // EDX:EAX are reserved for the dividend,
     // EBX is reverved as a scratch register
-    return [0,1,3];
+    return [0,1,2];
 };
 
 /**
@@ -131,7 +131,7 @@ ModInstr.prototype.regAlloc = Object.create(DivInstr.prototype.regAlloc);
 ModInstr.prototype.regAlloc.outRegHint =  function (instr, config)
 { 
     // The output will be in EDX
-    return 3; 
+    return 2; 
 };
 
 /**
@@ -166,7 +166,7 @@ MulInstr.prototype.regAlloc.usedRegisters = function (instr, config)
         return null;
  
     // EDX:EAX are reserved for the multiplier,
-    return [0,3];
+    return [0,2];
 };
 
 /**
@@ -189,4 +189,16 @@ StoreInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
 // All operands must be in registers
 StoreInstr.prototype.regAlloc.opndsRegRequired = true;
+
+StoreInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+{
+    const srcOpnd = instr.uses[2];
+
+    if ((!srcOpnd instanceof IRInstr))
+        return null;
+ 
+    // On x86 32 bits, reserve one of EAX, EBX or EDX 
+    // in case the src operand is not allocated to one of those 
+    return [0];
+};
 

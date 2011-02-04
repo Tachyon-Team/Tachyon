@@ -41,10 +41,10 @@ irToAsm.config.maxGlobalEntries = 16;
 // TODO: replace stack handling in ir_call and ir_ret to allow
 //       using EBP instead of ESP
 irToAsm.config.stack   = ESP;
-irToAsm.config.context = ESI;
+irToAsm.config.context = ECX;
 
 // Registers available for register allocation.
-irToAsm.config.physReg = [EAX, EBX, ECX, EDX, EBP, EDI];
+irToAsm.config.physReg = [EAX, EBX, EDX, ESI, EBP, EDI];
 
 // Reserved registers are indexes into the physReg array since the 
 // register allocation algorithm assumes an index into the physReg
@@ -642,7 +642,7 @@ DivInstr.prototype.genCode = function (tltor, opnds)
 
     const xAX     = {physReg:tltor.config.physReg[0], value:null};
     const xBX     = {physReg:tltor.config.physReg[1], value:null};
-    const xDX     = {physReg:tltor.config.physReg[3], value:null};
+    const xDX     = {physReg:tltor.config.physReg[2], value:null};
 
     function setReg(reg)
     {
@@ -1714,8 +1714,6 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         'cannot perform store from memory to memory'
     );
 
-    const dst = this.regAlloc.dest;
-
     assert (
         this.uses[0].type === IRType.rptr,
         'store can only operate on raw pointers'
@@ -1749,6 +1747,17 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         // Get the register corresponding to the type size
         var srcReg = opnds[2].subReg(typeSize);
 
+        // On x86 32 bits, only AL, BL, CL, DL can be accessed directly
+        if (typeSize === 8 && 
+            tltor.config.target === x86.target.x86 && 
+            (srcReg !== reg.al || srcReg !== reg.bl || 
+             srcReg !== reg.cl || srcReg !== reg.dl))
+        {
+            // EAX has been reserved for this case
+            tltor.asm.mov(opnds[2], EAX);    
+            srcReg = reg.al;
+        }
+
         // Store the value to memory
         tltor.asm.mov(srcReg, memLoc, typeSize);
     }
@@ -1756,7 +1765,17 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
 
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
-    // No op
+    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+    const ctx = tltor.config.context; 
+    const dest = this.regAlloc.dest;
+
+    assert(ctx === dest, "Invalid register assigned to context object");
+    assert(ctxAlign === 256, "Invalid alignment value for context object");
+    
+    // Mask the number of arguments that was passed on the context
+    // object.
+    tltor.asm.
+    mov($(0), dest.subReg(8));
 };
 
 SetCtxInstr.prototype.genCode = function (tltor, opnds)
@@ -1782,5 +1801,31 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
         mov(opnds[0], opnds[1], tltor.params.target.ptrSizeBits);
     }
 };
+
+GetArgValInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+
+    tltor.asm.
+    mov($(0), dest);
+};
+
+
+GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
+{
+    const dest = this.regAlloc.dest;
+    const ctx  = tltor.config.context;
+
+    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+    const mask = ctxAlign - 1;
+
+    // For now, assume the number of arguments is always representable
+    // on the number of bits available on the context register
+    tltor.asm.
+    mov($(mask), dest).
+    and(ctx, dest);
+};
+
+
 
 })(); // end of local namespace
