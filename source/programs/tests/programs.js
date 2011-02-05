@@ -367,10 +367,9 @@ Arguments object test.
 */
 tests.arg_obj = tests.testSuite(); 
 tests.arg_obj.main = genTest(
-    'programs/arguments/arguments.js',
+    'programs/arg_obj/arg_obj.js',
     'foo_proxy',
-    [5],
-    5,
-    true
+    [],
+    55
 );
 

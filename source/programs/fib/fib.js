@@ -4,6 +4,5 @@ function fib(x)
         return x;
     else
         return fib(x-1) + fib(x-2);
-
 }
 

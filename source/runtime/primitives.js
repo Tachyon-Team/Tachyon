@@ -566,7 +566,7 @@ function makeArgObj(numArgs)
     }
 
     // Set the number of arguments
-    argObj.length = boxInt(numArgs);
+    argObj.length = boxInt(numArgs - pint(2));
 
     // Return the argument object
     return argObj;

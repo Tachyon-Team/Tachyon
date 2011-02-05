@@ -1960,9 +1960,24 @@ x86.Assembler.prototype.jumpGeneral = function (field, opnd)
 
 // No operand instructions
 /** Can be chained. */
-x86.Assembler.prototype.ret = function ()
+x86.Assembler.prototype.ret = function (opnd)
 {
-    return this.noOpndInstr(0xc3, "ret");
+    if (opnd === undefined)
+    {
+        return this.noOpndInstr(0xc3, "ret");
+    } else 
+    {
+        assert(opnd.type === x86.type.IMM_VAL,
+               "Invalid operand type");
+        this.
+        gen8(0xc2).
+        genImmNum(opnd.value, 16);
+
+        this.
+        genListing(x86.instrFormat("ret",
+                                   "",
+                                   opnd));
+    }
 };
 /** Can be chained. */
 x86.Assembler.prototype.cmc = function ()

@@ -85,16 +85,6 @@ ArgValInstr.prototype.regAlloc.outRegHint = function (instr, config)
 };
 
 /**
-*   Allocation information for get context instructions 
-*/
-GetCtxInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
-
-GetCtxInstr.prototype.regAlloc.outRegHint = function (instr, config)
-{
-    return config.context;
-};
-
-/**
 Allocation information for division instruction
 */
 DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);

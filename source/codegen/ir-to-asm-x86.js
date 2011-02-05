@@ -353,10 +353,17 @@ irToAsm.translator.prototype.prelude = function ()
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
     //       expected
- 
-    const byteLength = this.config.stack.width() >> 3;
+    const that = this; 
+    const stack = this.config.stack;
+    const refByteNb = stack.width() >> 3;
     const cstack = this.asm.target === x86.target.x86 ? ESP : reg.rsp;
-    var spillNb = this.fct.regAlloc.spillNb;
+    const scratch = this.config.physReg[this.config.physReg.length - 1];
+
+    const argsRegNb = this.config.argsReg.length;
+    const spillNb = this.fct.regAlloc.spillNb;
+    const spoffset = spillNb + (this.fct.usesArguments === true ? 
+                                argsRegNb : 0);
+
 
     // Add an entry point for static calls
     var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.config);
@@ -388,19 +395,64 @@ irToAsm.translator.prototype.prelude = function ()
         }
 
         // Put the stack pointer where tachyon expects it to be
-        if (cstack !== this.config.stack)
+        if (cstack !== stack)
         {
             tltor.asm.
-            mov(cstack, this.config.stack);
+            mov(cstack, stack);
         }
     }
 
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
     //       expected
-    if (spillNb > 0)
+    if (spoffset > 0)
     {
-        this.asm.sub($(spillNb*byteLength), this.config.stack);
+        this.asm.sub($(spoffset*refByteNb), stack);
+    }
+
+    if (this.fct.usesArguments)
+    {
+
+        /*
+        At first we have the following stack frame:
+
+        -----------------
+        Spills            <-- stack pointer
+        -----------------
+        Empty
+        -----------------
+        Return Address      
+        -----------------
+        Arguments (only those not passed in registers)
+        -----------------
+
+
+        In the end, we want the following stack frame:
+
+        -----------------
+        Spills            <-- stack pointer
+        -----------------
+        Return Address      
+        -----------------
+        Arguments passed in registers
+        Arguments passed on stack
+        -----------------
+        */
+
+        const retAddrOrigOffset = (spoffset*refByteNb);
+        const retAddrNewOffset  = (spillNb*refByteNb);
+
+        // Change return address location on stack
+        this.asm.
+        mov(mem(retAddrOrigOffset, stack), scratch).
+        mov(scratch, mem(retAddrNewOffset, stack));
+
+        // Push each argument passed in registers on stack
+        // (overwrites the previous return address location)
+        this.config.argsReg.forEach(function (reg, index) {
+            that.asm.
+            mov(reg, mem((index + spillNb + 1)*refByteNb, stack));
+        });
     }
 };
 
@@ -438,7 +490,8 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const regAllocSpillNb = tltor.fct.regAlloc.spillNb; 
 
     // Index on the call site argument space
-    const callSiteArgIndex = argIndex - argRegNb;
+    const callSiteArgIndex = (tltor.fct.usesArguments === true ?
+                              argIndex : (argIndex - argRegNb));
     
     // Offset due to C calling convention 
     const ccallOffset = (tltor.fct.cProxy === true) ?
@@ -457,7 +510,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
         return;
     }
 
-    if (argIndex < argRegNb)
+    if ((argIndex < argRegNb) && !tltor.fct.usesArguments)
     {
         // The argument is in a register
         assert(
@@ -1172,7 +1225,7 @@ RetInstr.prototype.genCode = function (tltor, opnds)
                       : ((tltor.asm.target === x86.target.x86) ? EAX : reg.rax);
     const cstack = tltor.asm.target === x86.target.x86 ? ESP : reg.rsp;
 
-    // Remove all spilled values and return address from stack
+    // Remove all spilled values from stack
     if (offset > 0)
     {
         tltor.asm.add($(offset*refByteNb), tltor.config.stack);
@@ -1219,7 +1272,17 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     }
   
     // Return address is just under the stack pointer
-    tltor.asm.ret();
+    if (tltor.fct.usesArguments)
+    {
+        // Stack frame has been modified, pop the 
+        // arguments passed in registers that were 
+        // moved to the stack
+        const argsRegNb = tltor.config.argsReg.length;
+        tltor.asm.ret($(argsRegNb*refByteNb));
+    } else
+    {
+        tltor.asm.ret();
+    }
 };
 
 IfInstr.prototype.genCode = function (tltor, opnds)
@@ -1408,12 +1471,27 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     );
 
     // The first operand should be the function address
-    assert (
+    assert(
         opnds[0].type === x86.type.REG || 
         opnds[0].type === x86.type.MEM ||
         opnds[0].type === x86.type.LINK,
         "Invalid CallInstr function operand '" + opnds[0] + "'"
     );
+
+    const ctx = tltor.config.context;
+    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+
+    // Store the number of arguments in the lower bits of the context register
+    assert(ctxAlign === 256, "Invalid alignment for context object");
+    assert(funcArgs.length < ctxAlign,
+           "Too many arguments for call instruction, number of arguments" +
+           " is currently limited to " + (ctxAlign - 1));
+
+    // TODO: Check why this fails for some static calls
+    if (!staticCall)
+    {
+        tltor.asm.mov($(funcArgs.length), ctx.subReg(8));
+    }
 
     // Call the function by its address
     tltor.asm.call(funcPtr);
@@ -1769,13 +1847,15 @@ GetCtxInstr.prototype.genCode = function (tltor, opnds)
     const ctx = tltor.config.context; 
     const dest = this.regAlloc.dest;
 
-    assert(ctx === dest, "Invalid register assigned to context object");
+    assert(ctx === EAX || ctx === EBX || ctx === ECX || ctx === EDX,
+           "Invalid register for context object");
+    //assert(ctx === dest, "Invalid register assigned to context object");
     assert(ctxAlign === 256, "Invalid alignment value for context object");
     
-    // Mask the number of arguments that was passed on the context
-    // object.
+    // Mask the lower bits of the context object to ensure a valid reference
     tltor.asm.
-    mov($(0), dest.subReg(8));
+    mov($(0), ctx.subReg(8)).
+    mov(ctx, dest);
 };
 
 SetCtxInstr.prototype.genCode = function (tltor, opnds)
@@ -1804,10 +1884,30 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
 
 GetArgValInstr.prototype.genCode = function (tltor, opnds)
 {
-    const dest = this.regAlloc.dest;
+    assert(tltor.fct.usesArguments || tltor.fct.funcName === "makeArgObj",
+           "get_arg_val should only be used in function using the arguments" + 
+           " object"
+    );
 
-    tltor.asm.
-    mov($(0), dest);
+
+    const dest = this.regAlloc.dest;
+    const stack = tltor.config.stack;
+    const refByteNb = stack.width() >> 3;
+    const spillNb = tltor.fct.regAlloc.spillNb;
+    const spoffset = (spillNb + 1) * refByteNb;
+
+    if (opnds[0].type === x86.type.REG)
+    {
+        tltor.asm.
+        mov(mem(spoffset, stack, opnds[0], refByteNb), dest);
+    } else
+    {
+        assert(opnds[0].type === x86.type.MEM,
+               "Invalid index operand type");
+        tltor.asm.
+        mov(opnds[0], dest).
+        mov(mem(spoffset, stack, dest, refByteNb), dest);
+    }
 };
 
 
