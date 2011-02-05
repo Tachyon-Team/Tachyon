@@ -32,7 +32,7 @@ Object.getPrototypeOf = function (obj)
     var proto = get_obj_proto(obj);
 
     return proto;
-}
+};
 
 /**
 15.2.3.5 Object.create ( O [, Properties] )
@@ -43,7 +43,7 @@ Object.create = function (obj, props)
     var newObj = newObject(obj);
 
     return newObj;
-}
+};
 
 /**
 15.2.3.1 Object prototype object
@@ -64,7 +64,7 @@ Object.prototype.toString = function ()
 Object.prototype.hasOwnProperty = function (prop)
 {
     return (prop in this);
-}
+};
 
 /**
 15.2.4.6 Test that an object is the prototype of another
@@ -74,5 +74,5 @@ Object.prototype.isPrototypeOf = function (obj)
     var proto = Object.getPrototypeOf(obj);
 
     return (this === proto);
-}
+};
 

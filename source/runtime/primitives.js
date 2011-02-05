@@ -6,7 +6,7 @@ Implementation of high-level IR instructions through handler functions
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 //=============================================================================
@@ -384,19 +384,9 @@ function makeError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
-function typeOf(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function not(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function and(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function or(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function xor(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function lsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function rsft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function ursft(v1, v2) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function logNot(v) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function inOp(x, y) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties
@@ -881,8 +871,16 @@ function addGeneral(v1, v2)
         return strcat(v1, v2);
     }
 
-    // TODO
-    return UNDEFINED;
+    // Otherwise, both values are not strings
+    else
+    {
+        // Convert both values to strings
+        v1 = boxToString(v1);
+        v2 = boxToString(v2);
+
+        // Perform string concatenation
+        return strcat(v1, v2);
+    }
 }
 
 /**
@@ -1018,6 +1016,211 @@ function mod(v1, v2)
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
     }
+}
+
+/**
+Unary bitwise negation operator
+*/
+function not(v) 
+{ 
+    "tachyon:inline";
+    "tachyon:nothrow";
+    
+    // If the value is an immediate integer
+    if (boxIsInt(v))
+    {
+        // Perform a raw machine negation
+        return boxInt(iir.not(unboxInt(v)));
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }    
+}
+
+/**
+Bitwise AND primitive
+*/
+function and(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Perform a raw machine logical AND
+        // The tag bits will remain 0
+        return iir.and(v1, v2);
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+}
+
+/**
+Bitwise OR primitive
+*/
+function or(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Perform a raw machine logical OR
+        // The tag bits will remain 0
+        return iir.or(v1, v2);
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+}
+
+/**
+Bitwise XOR primitive
+*/
+function xor(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Perform a raw machine logical OR
+        // The tag bits will remain 0
+        return iir.xor(v1, v2);
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+}
+
+/**
+Bitwise left shift primitive
+*/
+function lsft(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // FIXME: disabled until shift instructions work with non-constant shift value
+    /*
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Perform a raw machine left shift on the boxed value
+        // after unboxing the shift amount
+        return iir.icast(IRType.box, iir.lsft(v1, unboxInt(v2)));
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+    */
+}
+
+/**
+Bitwise right shift primitive
+*/
+function rsft(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // FIXME: disabled until shift instructions work with non-constant shift value
+    /*
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Perform a raw machine right shift on the unboxed values
+        // and re-box the result
+        return boxInt(iir.rsft(unboxInt(v1), unboxInt(v2)));
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+    */
+}
+
+/**
+Bitwise unsigned right shift primitive
+*/
+function ursft(v1, v2)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+
+    // FIXME: disabled until shift instructions work with non-constant shift value
+    /*
+    // If both values are immediate integers
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Perform a raw machine unsigned right shift on the unboxed
+        // values and re-box the result
+        return boxInt(iir.rsft(unboxInt(v1), unboxInt(v2)));
+    }
+    else
+    {
+        // TODO: implement general case in separate (non-inlined) function
+        return UNDEFINED;
+    }
+    */
+}
+
+/**
+Logical negation operator
+*/
+function logNot(v) 
+{ 
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    var boolVal = boxToBool(v);
+
+    return boolVal? false:true;
+}
+
+/**
+Typeof unary operator
+*/
+function typeOf(val)
+{ 
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    if (boxIsInt(val) || boxIsFloat(val))
+        return "number";
+    else if (boxIsString(val))
+        return "string";
+    else if (val === true || val === false)
+        return "boolean";
+    else if (val === UNDEFINED)
+        return "undefined";
+    else if (val === null)
+        return "object";
+    else if (boxIsObj(val) || boxIsArray(val))
+        return "object";
+    else if (boxIsFunc(val))
+        return "function";
+
+    assert (
+        false,
+        'unsupported type in typeOf'
+    );
 }
 
 /**
@@ -1645,5 +1848,16 @@ function getGlobalFunc(obj, propName, propHash)
             throw makeError(TypeError, "global property is not a function" + propName);
         }
     }
+}
+
+/**
+Implementation of the "in" operator
+*/
+function inOp(x, y) 
+{ 
+    "tachyon:static"; 
+    "tachyon:nothrow";
+
+    return boolToBox(hasPropVal(y, x));
 }
 

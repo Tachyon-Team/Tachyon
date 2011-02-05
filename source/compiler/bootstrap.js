@@ -130,6 +130,11 @@ function getLibSrcs(params)
         'stdlib/strings.js'
     ];
 
+    // TODO: add missing libraries once working
+    // 'stdlib/errors.js',
+    // 'stdlib/math.js',
+    // 'stdlib/arrays.js',
+
     return stdlibSrcs;
 }
 
@@ -189,10 +194,6 @@ function getTachyonSrcs(params)
         'codegen/backend.js',
         'codegen/ir-to-asm-x86.js',
         'codegen/regalloc-config-x86.js',
-        'stdlib/errors.js',
-        'stdlib/math.js',
-        'stdlib/arrays.js',
-        'stdlib/strings.js',
         'main.js'
     ];
 

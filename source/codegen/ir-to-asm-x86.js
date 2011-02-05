@@ -960,6 +960,8 @@ LsftInstr.prototype.genCode = function (tltor, opnds)
     else
         shiftAmt = opnds[1];
 
+    // FIXME: when both operands are non-constant, should block CL register
+
     if (opnds[0] === dest)
     {
         tltor.asm.sal(shiftAmt, dest);

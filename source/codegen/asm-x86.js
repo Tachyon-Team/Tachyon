@@ -1365,10 +1365,10 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
     function accumulator (width)
     {
         that.
-        opndSizeOverridePrefix(width).
+        opndPrefixOpnd(width, dest);
         // opcode = #x04, #x0c, #x14, ..., #x3c (for AL)
         //       or #x05, #x0d, #x15, ..., #x3d (for AX/EAX/RAX)
-        gen8(((width === 8) ? 0x04 : 0x05) + (op << 3));
+        that.gen8(((width === 8) ? 0x04 : 0x05) + (op << 3));
         
         cstValue(width);
     }
