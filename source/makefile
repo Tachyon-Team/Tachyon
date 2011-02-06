@@ -21,6 +21,8 @@ BASE_SRCS =                             \
     utility/misc.js                     \
     utility/xml.js                      \
     utility/html.js                     \
+    codegen/asm.js                      \
+    codegen/asm-x86.js                  \
     compiler/targets.js                 \
     compiler/params.js                  \
     compiler/config.js                  \
@@ -49,8 +51,6 @@ BASE_SRCS =                             \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
-    codegen/asm.js                      \
-    codegen/asm-x86.js                  \
     codegen/linearscan.js               \
     codegen/backend.js                  \
     codegen/ir-to-asm-x86.js            \
