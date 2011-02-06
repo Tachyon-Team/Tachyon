@@ -1921,7 +1921,8 @@ StoreInstr.prototype.regAlloc.usedRegisters = function (instr, params)
 {
     const srcOpnd = instr.uses[2];
 
-    if ((!srcOpnd instanceof IRInstr))
+    if ((!srcOpnd instanceof IRInstr) || 
+        srcOpnd.type.getSizeBits(params.target) !== 8)
         return null;
  
     // On x86 32 bits, reserve one of EAX, EBX or EDX 
