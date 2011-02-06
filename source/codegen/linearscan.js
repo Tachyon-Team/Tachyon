@@ -12,6 +12,27 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 var allocator = {};
 
 
+
+/**
+*   Root object for all allocation information.  Register indexes are
+*   indexes into the physical register list containing the explicit
+*   platform specific registers.
+*/
+IRValue.prototype.regAlloc = {
+
+    /** Returns a register index preference for a given operand position */
+    opndsRegHint:function (instr, config, position) { return null; },
+
+    /** Returns a register index preference for the output value */
+    outRegHint:function (instr, config) { return null; },
+
+    /** Tells if operands of an instruction must be in registers */
+    opndsRegRequired:false,
+
+    /** List all register indices used by a given instruction */
+    usedRegisters:function (instr, config) { return null; }
+};
+
 //-----------------------------------------------------------------------------
 
 // Generic Algorithms and Data Structures

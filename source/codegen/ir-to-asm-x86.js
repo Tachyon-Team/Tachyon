@@ -407,6 +407,23 @@ PhiInstr.prototype.genCode = function (tltor, opnds)
     // Do nothing
 };
 
+/**
+*   Allocation information for argument value instructions 
+*/
+ArgValInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+ArgValInstr.prototype.regAlloc.outRegHint = function (instr, config)
+{
+    if (instr.argIndex < config.argsIndex.length)
+    {
+        return config.argsIndex[instr.argIndex];
+    } 
+    else 
+    {
+        return null;
+    }
+};
+
 ArgValInstr.prototype.genCode = function (tltor, opnds)
 {
     // Configuration imports
@@ -567,6 +584,41 @@ SubInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+/**
+Allocation information for multiplication instruction
+*/
+MulInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+MulInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+{
+    if (instr.type.isSigned())
+        return null;
+
+    // Operand 0 should be placed in EAX if possible (not guaranteed)
+    if (position === 0) 
+        return 0;
+    else
+        return null;
+};
+
+MulInstr.prototype.regAlloc.outRegHint = function (instr, config)
+{
+    if (instr.type.isSigned())
+        return null;
+
+    // The output will be in EAX
+    return 0; 
+};
+
+MulInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+{
+    if (instr.type.isSigned())
+        return null;
+ 
+    // EDX:EAX are reserved for the multiplier,
+    return [0,2];
+};
+
 MulInstr.prototype.genCode = function (tltor, opnds)
 {
     const reg = x86.Assembler.prototype.register;
@@ -635,6 +687,35 @@ MulInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.imul(opnds[1], dst, undefined, this.type.getSizeBits(tltor.params.target));
         }
     }
+};
+
+/**
+Allocation information for division instruction
+*/
+DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+{
+    // Operand 0 should be placed in EAX if possible (not guaranteed)
+    if (position === 0) 
+        return 0;
+    else if (position === 1)
+        return 1;
+    else
+        return null;
+};
+
+DivInstr.prototype.regAlloc.outRegHint =  function (instr, config)
+{ 
+    // The output will be in EAX
+    return 0; 
+};
+
+DivInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+{ 
+    // EDX:EAX are reserved for the dividend,
+    // EBX is reverved as a scratch register
+    return [0,1,2];
 };
 
 DivInstr.prototype.genCode = function (tltor, opnds)
@@ -766,6 +847,17 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+/**
+Allocation information for modulo instruction
+*/
+ModInstr.prototype.regAlloc = Object.create(DivInstr.prototype.regAlloc);
+
+ModInstr.prototype.regAlloc.outRegHint =  function (instr, config)
+{ 
+    // The output will be in EDX
+    return 2; 
+};
+
 // Same code as division instruction, different register hint for output
 ModInstr.prototype.genCode = DivInstr.prototype.genCode;
 
@@ -796,6 +888,11 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
     jno(tltor.label(normalTarget, normalTarget.label)).
     jmp(tltor.label(overflowTarget, overflowTarget.label));
 };
+
+/**
+Allocation information for multiplication with overflow instruction
+*/
+MulOvfInstr.prototype.regAlloc = Object.create(MulInstr.prototype.regAlloc);
 
 MulOvfInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1179,6 +1276,18 @@ JumpInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.jmp(tltor.label(cont, cont.label));
 };
 
+/**
+*   Allocation information for return instructions   
+*/
+RetInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+RetInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+{
+    return config.retValIndex;
+};
+
+RetInstr.prototype.regAlloc.opndsRegRequired = true;
+
 RetInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
@@ -1288,6 +1397,33 @@ IfInstr.prototype.genCode = function (tltor, opnds)
 ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 
 //CatchInstr
+
+/**
+*   Allocation information for Call Instructions 
+*/
+CallInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+CallInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+{
+    if (position > 0 && position - 1 < config.argsIndex.length)
+    {
+        return config.argsIndex[position - 1];
+    } 
+    else
+    {
+        return null;
+    }
+};
+
+CallInstr.prototype.regAlloc.outRegHint = function (instr, config)
+{
+    return config.retValIndex;
+};
+
+CallInstr.prototype.regAlloc.usedRegisters = function (instr, config)
+{
+    return arrayRange(config.physReg.length);
+};
 
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1693,6 +1829,14 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
 
 //FPToIInstr
 
+/**
+Allocation information for store instruction
+*/
+LoadInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+// All operands must be in registers
+LoadInstr.prototype.regAlloc.opndsRegRequired = true;
+
 LoadInstr.prototype.genCode = function (tltor, opnds)
 {
     /*
@@ -1761,6 +1905,25 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+/**
+Allocation information for store instruction
+*/
+StoreInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+
+// All operands must be in registers
+StoreInstr.prototype.regAlloc.opndsRegRequired = true;
+
+StoreInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+{
+    const srcOpnd = instr.uses[2];
+
+    if ((!srcOpnd instanceof IRInstr))
+        return null;
+ 
+    // On x86 32 bits, reserve one of EAX, EBX or EDX 
+    // in case the src operand is not allocated to one of those 
+    return [0];
+};
 StoreInstr.prototype.genCode = function (tltor, opnds)
 {
     /*
