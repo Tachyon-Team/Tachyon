@@ -143,6 +143,18 @@ function x86BackendCfg(is64bit)
     */
     this.stackAlignByteNb = 16;
 
+    /**
+    Register type for register allocation
+    @field
+    */
+    this.REG = x86.type.REG;
+
+    /**
+    Memory slot type for register allocation
+    @field
+    */
+    this.MEM = x86.type.MEM;
+
     return this;
 }
 

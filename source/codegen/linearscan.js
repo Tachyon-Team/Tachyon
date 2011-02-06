@@ -2345,7 +2345,7 @@ allocator.validate = function (cfg, backendCfg)
         for (var i = 0; i < slots.length; ++i)
         {
             slot  = slots[i];
-            if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+            if (slot.type === backendCfg.REG || slot.type === backendCfg.MEM)
             {
                 value = values[i]; 
                 assert(given.compatible(slot, value), 
@@ -2482,7 +2482,7 @@ allocator.validate = function (cfg, backendCfg)
     });
 
     // The cfg entry block mapping is empty
-    block.regAlloc.expected = allocator.slotMapping();
+    block.regAlloc.expected = allocator.slotMapping(backendCfg);
 
     stack.push(block);
 
@@ -2522,12 +2522,15 @@ allocator.validate = function (cfg, backendCfg)
 /**
     Mapping from memory slots and registers to IRValues.
 */
-allocator.slotMapping = function ()
+allocator.slotMapping = function (backendCfg)
 {
+    assert(backendCfg !== undefined, "No backend configuration supplied");
+
     var that = Object.create(allocator.slotMapping.prototype);
 
     that.mapping = {};
     that.debug   = {};
+    that.backendCfg = backendCfg;
 
     return that;
 };
@@ -2544,7 +2547,7 @@ allocator.slotMapping = function ()
 */
 allocator.slotMapping.prototype.compatible = function (slot, value)
 {
-    if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+    if (slot.type === this.backendCfg.REG || slot.type === this.backendCfg.MEM)
     {
         currentValue = this.mapping[slot];
 
@@ -2568,7 +2571,7 @@ allocator.slotMapping.prototype.compatible = function (slot, value)
 allocator.slotMapping.prototype.update = function (slot, value, instr)
 {
     assert(
-        slot.type === x86.type.REG || slot.type === x86.type.MEM,
+        slot.type === this.backendCfg.REG || slot.type === this.backendCfg.MEM,
         'slot must be register or memory'
     );
 
@@ -2595,7 +2598,7 @@ allocator.slotMapping.prototype.update = function (slot, value, instr)
 */
 allocator.slotMapping.prototype.move = function (orig, dest, instr)
 {
-    const value = (orig.type === x86.type.REG || orig.type === x86.type.MEM) ?
+    const value = (orig.type === this.backendCfg.REG || orig.type === this.backendCfg.MEM) ?
                   this.mapping[orig] : orig;
 
     this.update(dest, value, instr);
@@ -2658,6 +2661,7 @@ allocator.slotMapping.prototype.copy = function ()
 */
 allocator.slotMapping.prototype.toString = function (debugSlots)
 {
+    const that = this;
     const tab = "\t";
     const mapping = this.mapping;
     const debug = this.debug;
@@ -2708,7 +2712,7 @@ allocator.slotMapping.prototype.toString = function (debugSlots)
         s += "DEBUG: \n";
         debugSlots.forEach(function (slot)
         {
-            if (slot.type !== x86.type.REG && slot.type !== x86.type.MEM)
+            if (slot.type !== that.backendCfg.REG && slot.type !== that.backendCfg.MEM)
                 return
 
 
