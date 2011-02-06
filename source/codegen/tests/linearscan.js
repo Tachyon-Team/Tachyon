@@ -269,7 +269,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
                               return s;
                            } 
                }; 
-        t.config = {physReg:["REG1", "REG2"]};
+        t.params = { target: { backendCfg: { physReg:["REG1", "REG2"]} }};
     };
    
     //   Case 1: Normal allocation, two physical registers
@@ -286,7 +286,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         var it2 = interval([range(0,1), range(4,5)]);
         var it3 = interval([range(1,4)]);
 
-        allocator.linearScan(t.config, [it1, it2, it3], t.mems);
+        allocator.linearScan(t.params, [it1, it2, it3], t.mems);
 
         assert(it1.reg !== null);
         assert(it2.reg !== null);
@@ -307,8 +307,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         var it2 = interval([range(0,2)]);
 
-        var config = {physReg:["REG1"]};
-        allocator.linearScan(config, [it1, it2], t.mems);
+        var params = {target:{backendCfg:{physReg:["REG1"]}}};
+        allocator.linearScan(params, [it1, it2], t.mems);
 
         assert(it1.reg !== null);
         assert(it2.reg !== null);
@@ -332,7 +332,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         var it2 = interval([range(0,1), range(4,5)]);
         var it3 = interval([range(1,5)]);
 
-        allocator.linearScan(t.config, [it1, it2, it3], t.mems);
+        allocator.linearScan(t.params, [it1, it2, it3], t.mems);
 
         assert(it1.reg !== null);
         assert(it2.reg !== null);
@@ -359,7 +359,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
                                       usePos(5, NONE)]);  
         var it3 = interval([range(1,5)]);
 
-        allocator.linearScan(t.config, [it1, it2, it3], t.mems);
+        allocator.linearScan(t.params, [it1, it2, it3], t.mems);
 
         assert(it1.reg !== null);
         assert(it2.reg !== null);
@@ -387,7 +387,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         var it3 = interval([range(1,5)], [usePos(4, NONE),
                                       usePos(5, NONE)]);  
 
-        allocator.linearScan(t.config, [it1, it2, it3], t.mems);
+        allocator.linearScan(t.params, [it1, it2, it3], t.mems);
 
         assert(it1.reg !== null);
         assert(it2.reg !== null);
@@ -424,7 +424,7 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
                             usePos(5, NONE),
                             usePos(6, NONE)]);  
 
-        allocator.linearScan(t.config, [it1, it2, it3, it4], t.mems);
+        allocator.linearScan(t.params, [it1, it2, it3, it4], t.mems);
 
         assert(it1.reg === "REG1" || it1.reg === "REG2");
         assert(it2.reg === "REG1" || it2.reg === "REG2");

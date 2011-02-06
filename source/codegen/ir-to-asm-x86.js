@@ -412,11 +412,13 @@ PhiInstr.prototype.genCode = function (tltor, opnds)
 */
 ArgValInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-ArgValInstr.prototype.regAlloc.outRegHint = function (instr, config)
+ArgValInstr.prototype.regAlloc.outRegHint = function (instr, params)
 {
-    if (instr.argIndex < config.argsIndex.length)
+    const backendCfg = params.target.backendCfg;
+
+    if (instr.argIndex < backendCfg.argsIndex.length)
     {
-        return config.argsIndex[instr.argIndex];
+        return backendCfg.argsIndex[instr.argIndex];
     } 
     else 
     {
@@ -589,33 +591,33 @@ Allocation information for multiplication instruction
 */
 MulInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-MulInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+MulInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
     if (instr.type.isSigned())
         return null;
 
-    // Operand 0 should be placed in EAX if possible (not guaranteed)
+    // Operand 0 should be placed in xAX if possible (not guaranteed)
     if (position === 0) 
         return 0;
     else
         return null;
 };
 
-MulInstr.prototype.regAlloc.outRegHint = function (instr, config)
+MulInstr.prototype.regAlloc.outRegHint = function (instr, params)
 {
     if (instr.type.isSigned())
         return null;
 
-    // The output will be in EAX
+    // The output will be in xAX
     return 0; 
 };
 
-MulInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+MulInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
 {
     if (instr.type.isSigned())
         return null;
  
-    // EDX:EAX are reserved for the multiplier,
+    // xDX:xAX are reserved for the multiplier,
     return [0,2];
 };
 
@@ -694,9 +696,9 @@ Allocation information for division instruction
 */
 DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+DivInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
-    // Operand 0 should be placed in EAX if possible (not guaranteed)
+    // Operand 0 should be placed in xAX if possible (not guaranteed)
     if (position === 0) 
         return 0;
     else if (position === 1)
@@ -705,16 +707,16 @@ DivInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
         return null;
 };
 
-DivInstr.prototype.regAlloc.outRegHint =  function (instr, config)
+DivInstr.prototype.regAlloc.outRegHint =  function (instr, params)
 { 
-    // The output will be in EAX
+    // The output will be in xAX
     return 0; 
 };
 
-DivInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+DivInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
 { 
-    // EDX:EAX are reserved for the dividend,
-    // EBX is reverved as a scratch register
+    // xDX:xAX are reserved for the dividend,
+    // xBX is reverved as a scratch register
     return [0,1,2];
 };
 
@@ -852,9 +854,9 @@ Allocation information for modulo instruction
 */
 ModInstr.prototype.regAlloc = Object.create(DivInstr.prototype.regAlloc);
 
-ModInstr.prototype.regAlloc.outRegHint =  function (instr, config)
+ModInstr.prototype.regAlloc.outRegHint =  function (instr, params)
 { 
-    // The output will be in EDX
+    // The output will be in xDX
     return 2; 
 };
 
@@ -1281,9 +1283,9 @@ JumpInstr.prototype.genCode = function (tltor, opnds)
 */
 RetInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-RetInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+RetInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
-    return config.retValIndex;
+    return params.target.backendCfg.retValIndex;
 };
 
 RetInstr.prototype.regAlloc.opndsRegRequired = true;
@@ -1403,11 +1405,13 @@ ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 */
 CallInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 
-CallInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
+CallInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
-    if (position > 0 && position - 1 < config.argsIndex.length)
+    const backendCfg = params.target.backendCfg;
+
+    if (position > 0 && position - 1 < backendCfg.argsIndex.length)
     {
-        return config.argsIndex[position - 1];
+        return backendCfg.argsIndex[position - 1];
     } 
     else
     {
@@ -1415,14 +1419,14 @@ CallInstr.prototype.regAlloc.opndsRegHint = function (instr, config, position)
     }
 };
 
-CallInstr.prototype.regAlloc.outRegHint = function (instr, config)
+CallInstr.prototype.regAlloc.outRegHint = function (instr, params)
 {
-    return config.retValIndex;
+    return params.target.backendCfg.retValIndex;
 };
 
-CallInstr.prototype.regAlloc.usedRegisters = function (instr, config)
+CallInstr.prototype.regAlloc.usedRegisters = function (instr, params)
 {
-    return arrayRange(config.physReg.length);
+    return arrayRange(params.target.backendCfg.physReg.length);
 };
 
 CallInstr.prototype.genCode = function (tltor, opnds)
@@ -1913,7 +1917,7 @@ StoreInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
 // All operands must be in registers
 StoreInstr.prototype.regAlloc.opndsRegRequired = true;
 
-StoreInstr.prototype.regAlloc.usedRegisters = function (instr, config) 
+StoreInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
 {
     const srcOpnd = instr.uses[2];
 

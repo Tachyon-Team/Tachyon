@@ -25,7 +25,6 @@ backend.compileIRToCB = function (ir, params)
     const mem = x86.Assembler.prototype.memory;
     const reg = x86.Assembler.prototype.register;
     const translator = irToAsm.translator(params);
-    const backendCfg = params.target.backendCfg;
 
     var cfg, order, liveIntervals, mems;
     var i, k, next, tab;
@@ -58,7 +57,7 @@ backend.compileIRToCB = function (ir, params)
         cfg = fcts[k].virginCFG.copy();
 
         order = allocator.orderBlocks(cfg);
-        allocator.numberInstrs(cfg, order, backendCfg);
+        allocator.numberInstrs(cfg, order, params);
 
     
         print("******* Before register allocation ******");
@@ -95,8 +94,8 @@ backend.compileIRToCB = function (ir, params)
         print(cfg.toString(function () { return order; }, undefined, undefined, 
                            lnPfxFormatFn));
 
-        liveIntervals = allocator.liveIntervals(cfg, order, backendCfg);
-        fixedIntervals = allocator.fixedIntervals(cfg, backendCfg);
+        liveIntervals = allocator.liveIntervals(cfg, order, params);
+        fixedIntervals = allocator.fixedIntervals(cfg, params);
 
         // Print intervals before allocation
         /*
@@ -109,17 +108,17 @@ backend.compileIRToCB = function (ir, params)
 
         mems = irToAsm.spillAllocator(params);
 
-        allocator.linearScan(backendCfg, 
+        allocator.linearScan(params, 
                              liveIntervals, 
                              mems, 
                              fixedIntervals);
 
         // Add physical registers and memory location to operands
         // of every instruction
-        allocator.assign(cfg, backendCfg); 
+        allocator.assign(cfg, params); 
     
         // SSA form deconstruction and linear scan resolution 
-        order = allocator.resolve(cfg, liveIntervals, order, backendCfg);
+        order = allocator.resolve(cfg, liveIntervals, order, params);
 
         print("******* After register allocation *******");
 
@@ -159,7 +158,7 @@ backend.compileIRToCB = function (ir, params)
         //startIndex = translator.asm.codeBlock.code.length;
 
         assert(
-            allocator.validate(cfg, backendCfg),
+            allocator.validate(cfg, params),
             'validation failed'
         );
         /*

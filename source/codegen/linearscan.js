@@ -1272,7 +1272,7 @@ allocator.orderBlocks = function (cfg)
 /**
 Perform instruction numbering on a control flow graph
 */
-allocator.numberInstrs = function (cfg, order, backendCfg)
+allocator.numberInstrs = function (cfg, order, params)
 {
     var nextNo = 2;
     var inc = allocator.numberInstrs.inc;
@@ -1333,7 +1333,7 @@ allocator.numberInstrs = function (cfg, order, backendCfg)
         {
             instr = block.instrs[j];
 
-            if (instr.regAlloc.usedRegisters(instr, backendCfg))
+            if (instr.regAlloc.usedRegisters(instr, params))
             {
                 // For instructions using supplementary registers, 
                 // we need to increment by twice the value
@@ -1374,7 +1374,7 @@ allocator.numberInstrs.inc = 2;
 /**
 Compute the live intervals for the temporaries of a CFG
 */
-allocator.liveIntervals = function (cfg, order, backendCfg)
+allocator.liveIntervals = function (cfg, order, params)
 {
     var pos, it;
 
@@ -1444,7 +1444,7 @@ allocator.liveIntervals = function (cfg, order, backendCfg)
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
                 instr.regAlloc.interval.regHint = 
-                    instr.regAlloc.outRegHint(instr, backendCfg);
+                    instr.regAlloc.outRegHint(instr, params);
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
@@ -1469,7 +1469,7 @@ allocator.liveIntervals = function (cfg, order, backendCfg)
                 // instruction
                 //print( use.regAlloc.interval);
 
-                if (instr.regAlloc.usedRegisters(instr, backendCfg))
+                if (instr.regAlloc.usedRegisters(instr, params))
                 {
                     // For instructions using supplementary registers, 
                     // we separate argument position from return
@@ -1491,7 +1491,7 @@ allocator.liveIntervals = function (cfg, order, backendCfg)
                 }
 
                 use.regAlloc.interval.regHint = 
-                    instr.regAlloc.opndsRegHint(instr, backendCfg, k);
+                    instr.regAlloc.opndsRegHint(instr, params, k);
 
                 if (instr.regAlloc.opndsRegRequired)
                 {
@@ -1566,8 +1566,10 @@ allocator.liveIntervals = function (cfg, order, backendCfg)
     return liveIntervals;
 };
 
-allocator.fixedIntervals = function (cfg, backendCfg)
+allocator.fixedIntervals = function (cfg, params)
 {
+    const backendCfg = params.target.backendCfg;
+
     // Create new fixed intervals
     const fixedItrvls = arrayRange(backendCfg.physReg.length).map(function (i) 
     { 
@@ -1581,7 +1583,7 @@ allocator.fixedIntervals = function (cfg, backendCfg)
     // Add the fixed registers for each instruction requiring them
     cfg.getInstrItr().forEach(function (instr) 
     {
-        const usedRegs = instr.regAlloc.usedRegisters(instr, backendCfg);
+        const usedRegs = instr.regAlloc.usedRegisters(instr, params);
         if (usedRegs !== null)
         {
             // Add a fixed interval between the arguments position
@@ -1609,7 +1611,7 @@ allocator.fixedIntervals = function (cfg, backendCfg)
     The mems object should have a newSlot() method returning 
     a new memory location for spilling.
 
-    @param {Object} backendCfg   configuration containing platform specific
+    @param {Object} params configuration containing platform specific
                              register information
     @param {Array} unhandled list of unassigned intervals
     @param {Object} mems     object allocating memory locations used 
@@ -1617,8 +1619,9 @@ allocator.fixedIntervals = function (cfg, backendCfg)
     @param {Array} fixed     list of intervals where registers
                              are unavailable
 */ 
-allocator.linearScan = function (backendCfg, unhandled, mems, fixed)
+allocator.linearScan = function (params, unhandled, mems, fixed)
 {
+    const backendCfg = params.target.backendCfg;
 
     // Print function used for debugging purposes
     function printState() 
@@ -2074,7 +2077,7 @@ allocator.linearScan = function (backendCfg, unhandled, mems, fixed)
 
     @param cfg          Control Flow Graph 
 */
-allocator.assign = function (cfg, backendCfg)
+allocator.assign = function (cfg, params)
 {
     cfg.getInstrItr().forEach(function (instr) 
     {
@@ -2093,7 +2096,7 @@ allocator.assign = function (cfg, backendCfg)
                     // register as used for SSA deconstruction
                     opnds.push(use.regAlloc.interval.
                               regAtPos(instr.getPredecessor(use).regAlloc.to));
-                } else if (instr.regAlloc.usedRegisters(instr, backendCfg))
+                } else if (instr.regAlloc.usedRegisters(instr, params))
                 {
                     // Special case for instructions for which
                     // the inputs where separated from the outputs
@@ -2126,10 +2129,12 @@ allocator.assign = function (cfg, backendCfg)
     @param cfg          Control Flow Graph 
     @param intervals    Intervals after register allocation
     @param order        A Linear order of all the basic blocks
-    @param backendCfg       Compilation specific information
+    @param params       Compilation specific information
 */
-allocator.resolve = function (cfg, intervals, order, backendCfg)
+allocator.resolve = function (cfg, intervals, order, params)
 {
+    const backendCfg = params.target.backendCfg;
+
     function getLiveAtBeginFct (succ)
     {
         var pos = succ.regAlloc.from;
@@ -2340,8 +2345,9 @@ allocator.resolve = function (cfg, intervals, order, backendCfg)
     introduced, ensuring that for each instruction, temporaries
     are in the expected registers or memory slot.
 */
-allocator.validate = function (cfg, backendCfg)
+allocator.validate = function (cfg, params)
 {
+    const backendCfg = params.target.backendCfg;
 
     function printIt(instr)
     {
@@ -2448,7 +2454,7 @@ allocator.validate = function (cfg, backendCfg)
         {
             const opnds = instr.regAlloc.opnds;
             const dest = instr.regAlloc.dest;
-            var blocked = instr.regAlloc.usedRegisters(instr, backendCfg);
+            var blocked = instr.regAlloc.usedRegisters(instr, params);
 
             // They already have been handled
             if (instr instanceof PhiInstr) return;
