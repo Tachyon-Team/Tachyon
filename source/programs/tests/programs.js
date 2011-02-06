@@ -384,3 +384,13 @@ tests.arg_obj.main = genTest(
     55
 );
 
+/**
+Arithmetic shift test.
+*/
+tests.shift = tests.testSuite(); 
+tests.shift.main = genTest(
+    'programs/shift/shift.js',
+    'foo',
+    [],
+    0
+);

@@ -88,6 +88,92 @@ irToAsm.spillAllocator.prototype.newSlot = function ()
     return s;
 };
 
+/**
+@private
+Maker function for creating the genCode method of shift instructions
+*/
+irToAsm.shiftMaker = function (irinstr, name)
+{
+    // Register allocation hints and constraints
+    irinstr.prototype.regAlloc = Object.create(irinstr.prototype.regAlloc);
+   
+    irinstr.prototype.regAlloc.usedRegisters = function (instr, params)
+    {
+        const width = params.target.ptrSizeBits;
+        if (width === 32 && instr.uses[0] instanceof IRInstr)
+        {
+            return [2];
+        } else
+        {
+            return null;
+        }
+    };
+
+   
+    // Code generation
+    irinstr.prototype.genCode = function (tltor, opnds) 
+    {
+        // Assembler imports
+        const reg = x86.Assembler.prototype.register;
+        const $ = x86.Assembler.prototype.immediateValue;
+
+        const dest = this.regAlloc.dest;
+
+        var shiftAmt;
+        if (opnds[1].type == x86.type.IMM_VAL)
+        {
+            assert(
+                opnds[1].value > 0, 
+                "Shift amount should be a positive integer"
+            );
+
+            shiftAmt = $(opnds[1].value % 256);
+        } else
+        {
+            assert(false, "Found a dynamic shift with opnd: " + opnds[1]);
+            if (tltor.asm.target === x86.target.x86 &&
+                opnds[1].type === x86.type.REG &&
+                opnds[1] !== reg.eax &&
+                opnds[1] !== reg.ebx &&
+                opnds[1] !== reg.ecx &&
+                opnds[1] !== reg.edx)
+            {
+                // x86 32 bits only permit access to lower 8 bits
+                // of eax, ebx, ecx and edx 
+                tltor.asm.
+                // 32 bit move
+                mov(opnds[0], reg.edx).
+                // 8 bit move
+                mov(reg.dl, reg.cl);
+            } else if (opnds[0].type === x86.type.MEM)
+            {
+                tltor.asm.mov(opnds[0], reg.cl);
+            } else
+            {
+                tltor.asm.mov(opnds[0].subReg(8), reg.cl);
+            }
+            shiftAmt = reg.cl;
+        }
+
+        if (opnds[0] === dest)
+        {
+            tltor.asm[name](shiftAmt, dest);
+        }
+        else
+        {
+            tltor.asm.
+            mov(opnds[0], dest);
+
+            tltor.asm[name](shiftAmt, dest);
+        }
+
+        if (opnds[1].type !== x86.type.IMM_VAL)
+        {
+            tltor.asm.mov($(0), reg.cl);
+        }
+    };
+}
+
 //=============================================================================
 //
 // IR translator class definition
@@ -1010,75 +1096,9 @@ XorInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-LsftInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    // FIXME: when both operands are non-constant, should block CL register
-
-    if (opnds[0] === dest)
-    {
-        tltor.asm.sal(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        sal(shiftAmt, dest);
-    }
-};
-
-RsftInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    // Use the arithmetic right shift
-    if (opnds[0] === dest)
-    {
-        tltor.asm.sar(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        sar(shiftAmt, dest);
-    }
-};
-
-UrsftInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    // Use the logical right shift
-    if (opnds[0] === dest)
-    {
-        tltor.asm.shr(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        shr(shiftAmt, dest);
-    }
-};
+irToAsm.shiftMaker(LsftInstr, "sal"); 
+irToAsm.shiftMaker(RsftInstr, "sar"); 
+irToAsm.shiftMaker(UrsftInstr, "shr"); 
 
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
