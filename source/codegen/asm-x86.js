@@ -2686,8 +2686,9 @@ x86.Assembler.prototype.shift =
 function (opcodeExt, mnemonic, src, dest, width)
 {
     assert(
-        src.type === x86.type.IMM_VAL,
-        "'src' argument must be an immediate value instead of " + src
+        src.type === x86.type.IMM_VAL || src === this.register.cl,
+        "'src' argument must be an immediate value or the cl register " +
+        "instead of " + src
     );
 
     assert(
@@ -2702,23 +2703,29 @@ function (opcodeExt, mnemonic, src, dest, width)
 
     var opcode = 0xc0 +                    // base opcode
                  ((width === 8) ? 0 : 1) +
-                 ((k === 1) ? 0x10 : 0);
+                 ((src.type === x86.type.REG) ? 2 : 0) + 
+                 ((k === 1 || src.type === x86.type.REG) ? 0x10 : 0);
 
     this.opndPrefixOpnd(width, dest);
     this.gen8(opcode);
     this.opndModRMSIB(opcodeExt, dest);
 
-    if (k > 1)
+    if (k > 1 && src.type === x86.type.IMM_VAL)
     {
         this.gen8(k);
     }
 
     if (this.useListing)
     {
-        this.genListing(x86.instrFormat(mnemonic,
-                                        x86.widthSuffix(width),
-                                        dest,
-                                        this.immediateValue(k)));
+        var srcLst = 
+        this.genListing(
+            x86.instrFormat(
+                mnemonic,
+                x86.widthSuffix(width),
+                dest,
+                (src.type === x86.type.IMM_VAL) ? this.immediateValue(k) : src
+            )
+        );
     }
 
     return this;

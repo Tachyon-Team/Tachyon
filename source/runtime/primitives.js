@@ -1114,8 +1114,6 @@ function lsft(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    // FIXME: disabled until shift instructions work with non-constant shift value
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1128,7 +1126,6 @@ function lsft(v1, v2)
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
     }
-    */
 }
 
 /**
@@ -1139,8 +1136,6 @@ function rsft(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    // FIXME: disabled until shift instructions work with non-constant shift value
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1153,7 +1148,6 @@ function rsft(v1, v2)
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
     }
-    */
 }
 
 /**
@@ -1164,21 +1158,18 @@ function ursft(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    // FIXME: disabled until shift instructions work with non-constant shift value
-    /*
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Perform a raw machine unsigned right shift on the unboxed
         // values and re-box the result
-        return boxInt(iir.rsft(unboxInt(v1), unboxInt(v2)));
+        return boxInt(iir.ursft(unboxInt(v1), unboxInt(v2)));
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
         return UNDEFINED;
     }
-    */
 }
 
 /**
