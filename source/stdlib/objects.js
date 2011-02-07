@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Implementation of ECMAScript 5 object methods and prototype.
+Implementation of ECMAScript 5 Object methods and prototype.
 
 @author
 Maxime Chevalier-Boisvert

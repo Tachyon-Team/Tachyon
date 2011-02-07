@@ -51,8 +51,11 @@ function initHeap(heapPtr)
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
 
-    // Initially, set the object prototype to null
+    // Initially, set the prototype references to null
     set_ctx_objproto(ctxObj, null);
+    set_ctx_arrproto(ctxObj, null);
+    set_ctx_funcproto(ctxObj, null);
+    set_ctx_strproto(ctxObj, null);
 
     // Initialize the string table
     initStrTable();
@@ -73,11 +76,15 @@ function initStdlib()
     // Set the object prototype object in the context
     set_ctx_objproto(ctx, Object.prototype);
 
-    // Set the string prototype object reference in the context
-    set_ctx_strproto(ctx, String.prototype);
-
     // TODO: set array, function proto in ctx
     set_ctx_arrproto(ctx, null);
+
+    // Set the function prototype object reference in the context
+    //set_ctx_funcproto(ctx, Function.prototype);
+    set_ctx_funcproto(ctx, null);
+
+    // Set the string prototype object reference in the context
+    set_ctx_strproto(ctx, String.prototype);
 
     // Get a reference to the global object
     var globalObj = get_ctx_globalobj(ctx);

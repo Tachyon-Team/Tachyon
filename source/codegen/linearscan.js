@@ -2135,6 +2135,11 @@ allocator.resolve = function (cfg, intervals, order, params)
 {
     const backendCfg = params.target.backendCfg;
 
+    const mem = x86.Assembler.prototype.memory;
+
+    var tempOffset = params.memLayouts.ctx.getFieldOffset([backendCfg.tempName]);
+    var temp = mem(tempOffset, backendCfg.context);
+
     function getLiveAtBeginFct (succ)
     {
         var pos = succ.regAlloc.from;
@@ -2191,8 +2196,7 @@ allocator.resolve = function (cfg, intervals, order, params)
         } else
         {
             // We got multiple moves to insert
-            moves.orderAndInsertMoves(getInsertFct(block,insertPos), 
-                                      backendCfg.temp);
+            moves.orderAndInsertMoves(getInsertFct(block,insertPos), temp);
         }
     };
     
@@ -2275,7 +2279,6 @@ allocator.resolve = function (cfg, intervals, order, params)
             continue;
         }
 
-        
         lastInstr = edge.pred.getLastInstr();
 
         // Order and insert moves
@@ -2305,8 +2308,7 @@ allocator.resolve = function (cfg, intervals, order, params)
                 // the move instructions
                 block = cfg.getNewBlock("ssa_dec");     
                 blocksToInsert.push({edge:edge, block:block});
-                mapping.orderAndInsertMoves(getInsertFct(block, 0), 
-                                            backendCfg.temp);
+                mapping.orderAndInsertMoves(getInsertFct(block, 0), temp);
             }
         }
     }

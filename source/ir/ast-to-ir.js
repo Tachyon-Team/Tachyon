@@ -149,7 +149,7 @@ function stmtListToIRFunc(
         entryBlock.addInstr(thisVal, 'this');
 
         // Add an instruction to get the number of arguments
-        var numArgs  = new GetNumArgsInstr();
+        var numArgs = new GetNumArgsInstr();
         entryBlock.addInstr(numArgs, 'numArgs');
     }
 

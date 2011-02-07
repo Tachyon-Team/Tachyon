@@ -124,15 +124,16 @@ Get a source code listing for the standard library files
 */
 function getLibSrcs(params)
 {
-    // For now, compile only the string code
     var stdlibSrcs = [
         'stdlib/objects.js',
-        'stdlib/strings.js'
+        'stdlib/functions.js',
+        'stdlib/numbers.js',
+        'stdlib/strings.js',
+        'stdlib/math.js'
     ];
 
     // TODO: add missing libraries once working
     // 'stdlib/errors.js',
-    // 'stdlib/math.js',
     // 'stdlib/arrays.js',
 
     return stdlibSrcs;

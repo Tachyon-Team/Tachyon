@@ -480,9 +480,10 @@ function makeClos(funcPtr, numCells)
     // Allocate space for the closure
     var clos = alloc_clos(numCells);
 
-    // Initialize the prototype object
-    // TODO: this should be set to the function prototype
-    set_obj_proto(clos, null);
+    // Set the prototype to the function prototype object
+    var ctx = iir.get_ctx();
+    var funcproto = get_ctx_funcproto(ctx);
+    set_obj_proto(clos, funcproto);
 
     // Set the function pointer
     set_clos_funcptr(clos, funcPtr);

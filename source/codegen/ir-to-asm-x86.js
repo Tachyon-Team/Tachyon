@@ -107,6 +107,8 @@ irToAsm.translator = function (params)
 
     var that = Object.create(irToAsm.translator.prototype);
     const $ = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+    const backendCfg = params.target.backendCfg;
 
     // Store the compilation parameters on the translator
     that.params = params;
@@ -117,10 +119,14 @@ irToAsm.translator = function (params)
     that.fct = null;
 
     // Use the context register value as a true (nonzero) boolean
-    that.trueVal = params.target.backendCfg.stack;
+    that.trueVal = backendCfg.stack;
 
     // The false boolean must be 0
     that.falseVal = $(0);
+
+    // Get the memory location for the temporary register in the context
+    var tempOffset = params.memLayouts.ctx.getFieldOffset([backendCfg.tempName]);
+    that.temp = mem(tempOffset, backendCfg.context);
 
     return that;
 };
@@ -533,13 +539,8 @@ AddInstr.prototype.genCode = function (tltor, opnds)
 
 SubInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Configuration imports
-    const backendCfg = tltor.params.target.backendCfg;
-
     // Register used for the output value
     const dest = this.regAlloc.dest;
-    const stack = backendCfg.stack;
-    const refByteNb = stack.width() >> 3;
  
     if (opnds[1].type === x86.type.IMM_VAL)
     {
@@ -571,9 +572,9 @@ SubInstr.prototype.genCode = function (tltor, opnds)
 
         // TODO: Change when register allocation spilling is done differently
         tltor.asm.
-        mov(opnds[1], backendCfg.temp).
+        mov(opnds[1], tltor.temp).
         mov(opnds[0], dest).
-        sub(backendCfg.temp, dest);
+        sub(tltor.temp, dest);
     }
     else
     {
@@ -1512,7 +1513,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Get the function arguments
     var funcArgs = opnds.slice(1);
 
-
     // Index for the last argument passed in a register 
     const lastArgIndex = argRegNb - 1;
 
@@ -1609,11 +1609,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
            "Too many arguments for call instruction, number of arguments" +
            " is currently limited to " + (ctxAlign - 1));
 
-    // TODO: Check why this fails for some static calls
-    if (!staticCall)
-    {
-        tltor.asm.mov($(funcArgs.length), ctx.subReg(8));
-    }
+    // FIXME
+    // Store the number of arguments in the lowest bits of the context register
+    //tltor.asm.mov($(funcArgs.length), ctx.subReg(8));
 
     // Call the function by its address
     tltor.asm.call(funcPtr);
@@ -1745,6 +1743,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     sub($(totalStackSpace), stack).
 
     // Save the context pointer
+    mov($(0), context.subReg(8)).
     mov(context, mem(-refByteNb, altStack)).
 
     // Align the new stack pointer
@@ -1929,6 +1928,7 @@ StoreInstr.prototype.regAlloc.usedRegisters = function (instr, params)
     // in case the src operand is not allocated to one of those 
     return [0];
 };
+
 StoreInstr.prototype.genCode = function (tltor, opnds)
 {
     /*
@@ -2065,19 +2065,17 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
     const target = tltor.params.target; 
     const backendCfg = target.backendCfg;
     const width = target.ptrSizeBits;
-    const temp = backendCfg.temp;
 
     const xAX = reg.rax.subReg(width);
-
 
     if (opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM)
     {
         tltor.asm.
-        mov(xAX, temp).
+        mov(xAX, tltor.temp).
         mov(opnds[0], xAX).
         mov(xAX, opnds[1]).
-        mov(temp, xAX);
+        mov(tltor.temp, xAX);
     } else
     {
         tltor.asm.
@@ -2108,7 +2106,8 @@ GetArgValInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.
         mov(mem(spoffset, stack, opnds[0], refByteNb), dest);
-    } else
+    }
+    else
     {
         assert(opnds[0].type === x86.type.MEM,
                "Invalid index operand type");
@@ -2118,11 +2117,11 @@ GetArgValInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-
 GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
     const $ = x86.Assembler.prototype.immediateValue;
+    const reg = x86.Assembler.prototype.register;
 
     // Configuration imports
     const backendCfg = tltor.params.target.backendCfg;
@@ -2139,3 +2138,4 @@ GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
     mov($(mask), dest).
     and(ctx, dest);
 };
+

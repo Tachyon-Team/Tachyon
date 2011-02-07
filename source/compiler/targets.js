@@ -55,9 +55,11 @@ function Target(cfgObj)
     this.ptrSizeBytes = this.ptrSizeBits >> 3;    
 }
 
+/**
+@class x86 backend configuration
+*/
 function x86BackendCfg(is64bit)
 {
-
     if (is64bit === undefined)
     {
         is64bit = false;
@@ -131,10 +133,10 @@ function x86BackendCfg(is64bit)
     this.funcPtrIndex = this.physReg.length - 2;
 
     /**
-    Temporary location for cases where all registers are in use
+    Temporary location in the context for cases where all registers are in use
     @field
     */
-    this.temp = mem(3*refByteNb, this.context);
+    this.tempName = 'temp';
 
     /**
     Stack alignement number of bytes
