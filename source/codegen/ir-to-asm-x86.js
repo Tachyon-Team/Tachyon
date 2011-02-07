@@ -102,6 +102,7 @@ irToAsm.shiftMaker = function (irinstr, name)
         const width = params.target.ptrSizeBits;
         if (width === 32 && instr.uses[0] instanceof IRInstr)
         {
+            // Block xDX
             return [2];
         } else
         {
@@ -130,7 +131,6 @@ irToAsm.shiftMaker = function (irinstr, name)
             shiftAmt = $(opnds[1].value % 256);
         } else
         {
-            assert(false, "Found a dynamic shift with opnd: " + opnds[1]);
             if (tltor.asm.target === x86.target.x86 &&
                 opnds[1].type === x86.type.REG &&
                 opnds[1] !== reg.eax &&
@@ -142,15 +142,15 @@ irToAsm.shiftMaker = function (irinstr, name)
                 // of eax, ebx, ecx and edx 
                 tltor.asm.
                 // 32 bit move
-                mov(opnds[0], reg.edx).
+                mov(opnds[1], reg.edx).
                 // 8 bit move
                 mov(reg.dl, reg.cl);
-            } else if (opnds[0].type === x86.type.MEM)
+            } else if (opnds[1].type === x86.type.MEM)
             {
-                tltor.asm.mov(opnds[0], reg.cl);
+                tltor.asm.mov(opnds[1], reg.cl);
             } else
             {
-                tltor.asm.mov(opnds[0].subReg(8), reg.cl);
+                tltor.asm.mov(opnds[1].subReg(8), reg.cl);
             }
             shiftAmt = reg.cl;
         }

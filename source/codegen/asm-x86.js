@@ -2687,7 +2687,8 @@ function (opcodeExt, mnemonic, src, dest, width)
 {
     assert(
         src.type === x86.type.IMM_VAL || src === this.register.cl,
-        "'src' argument must be an immediate value instead of " + src
+        "'src' argument must be an immediate value or the cl register " +
+        "instead of " + src
     );
 
     assert(
@@ -2716,10 +2717,15 @@ function (opcodeExt, mnemonic, src, dest, width)
 
     if (this.useListing)
     {
-        this.genListing(x86.instrFormat(mnemonic,
-                                        x86.widthSuffix(width),
-                                        dest,
-                                        this.immediateValue(k)));
+        var srcLst = 
+        this.genListing(
+            x86.instrFormat(
+                mnemonic,
+                x86.widthSuffix(width),
+                dest,
+                (src.type === x86.type.IMM_VAL) ? this.immediateValue(k) : src
+            )
+        );
     }
 
     return this;
