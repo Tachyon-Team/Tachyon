@@ -53,3 +53,18 @@ function print(val)
     freeCString(cstr);
 }
 
+/**
+Test of an object is the global object
+*/
+function isGlobalObj(obj)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+
+    // Get a reference to the global object
+    var globalObj = get_ctx_globalobj(iir.get_ctx());
+
+    // Test if our object is the global object
+    return (obj === globalObj);
+}
+

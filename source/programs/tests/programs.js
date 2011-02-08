@@ -363,6 +363,17 @@ tests.ctor_proto.main = genTest(
 );
 
 /**
+Constructor and instanceof test
+*/
+tests.ctor_instof = tests.testSuite(); 
+tests.ctor_instof.main = genTest(
+    'programs/ctor_instof/ctor_instof.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Constructor, prototype and toString method test.
 */
 tests.object_tostring = tests.testSuite(); 

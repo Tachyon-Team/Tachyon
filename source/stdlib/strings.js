@@ -16,6 +16,21 @@ String(value)
 */
 function String(value)
 {
+    // If this is a constructor call (new String)
+    if (isGlobalObj(this) === false)
+    {
+        // Convert the value to a string
+        var strVal = boxToString(value);
+
+        // Store the value in the new object
+        // TODO: this should be a hidden/internal property
+        this.value = strVal;
+    }
+    else
+    {
+        // Convert the value to a string
+        return boxToString(value);
+    }
 }
 
 /**

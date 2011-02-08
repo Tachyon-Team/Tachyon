@@ -14,6 +14,7 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 function Function()
 {
+    // TODO
 }
 
 /**
@@ -43,6 +44,10 @@ Function.prototype.apply = function (thisArg, argArray)
 */
 Function.prototype.call = function (thisArg)
 {
-    // TODO
+    var argArray = [];
+    for (var i = 1; i < arguments.length; ++i)
+        argArray.push(arguments[i]);
+
+    this.apply(thisArg, argArray);
 };
 

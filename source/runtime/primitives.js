@@ -384,7 +384,6 @@ function makeError(errorCtor, message)
 //=============================================================================
 
 // TODO: implement the following primitives
-function instanceOf(obj, ctor) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
@@ -480,8 +479,10 @@ function makeClos(funcPtr, numCells)
     // Allocate space for the closure
     var clos = alloc_clos(numCells);
 
-    // Set the prototype to the function prototype object
+    // Get a reference to the context
     var ctx = iir.get_ctx();
+
+    // Set the prototype to the function prototype object
     var funcproto = get_ctx_funcproto(ctx);
     set_obj_proto(clos, funcproto);
 
@@ -505,6 +506,10 @@ function makeClos(funcPtr, numCells)
     // Initialize the hash table
     for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
+
+    // Create a prototype object for the function
+    var objproto = get_ctx_objproto(ctx);
+    clos.prototype = newObject(objproto);
 
     // Return the closure reference
     return clos;
@@ -1851,5 +1856,28 @@ function inOp(x, y)
     "tachyon:nothrow";
 
     return boolToBox(hasPropVal(y, x));
+}
+
+/**
+Implementation of the "instanceof" operator
+*/
+function instanceOf(obj, ctor)
+{ 
+    "tachyon:static";
+    "tachyon:nothrow";
+
+    if (boxIsObj(obj) === FALSE_BOOL)
+        return false;
+
+    assert (
+        boolToBox(boxIsFunc(ctor)),
+        'instanceof expects function as constructor'
+    );
+
+    var objProto = get_obj_proto(obj);
+
+    var ctorProto = ctor.prototype;
+
+    return (objProto === ctorProto);
 }
 
