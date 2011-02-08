@@ -1920,13 +1920,16 @@ function getPropNames(obj)
 { 
     "tachyon:static"; 
     "tachyon:nothrow"; 
+    "tachyon:noglobal";
 
     var curObj = obj;
     var curIdx = 0;
 
     // Check if a property is currently shadowed
-    function shadowCheck(propName)
+    function isShadowed(propName)
     {
+        "tachyon:noglobal";
+
         // TODO: shadowing check function?
         return false;
     }
@@ -1934,9 +1937,10 @@ function getPropNames(obj)
     // Move to the next available property
     function nextProp()
     {
+        "tachyon:noglobal";
+
         while (true)
         {
-            /*
             // FIXME: for now, no support for non-enumerable properties
             if (curObj === get_ctx_objproto(iir.get_ctx())  || 
                 curObj === get_ctx_arrproto(iir.get_ctx())  || 
@@ -1947,72 +1951,75 @@ function getPropNames(obj)
             // If we are at the end of the prototype chain, stop
             if (curObj === null)
                 return UNDEFINED;
-            */
 
-            // Get a pointer to the hash table
-            var tblPtr = get_obj_tbl(curObj);
-
-            // Get the size of the hash table
-            var tblSize = iir.icast(
-                IRType.pint,
-                get_obj_tblsize(curObj)
-            );
-
-
-
-            // Until the key is found, or a free slot is encountered
-            //for (; pint(0) < tblSize; )
-            while (true)
+            // If the current object is an object or extension
+            if (boxIsObjExt(curObj))
             {
-                if (unboxInt(curIdx) < tblSize)
-                    break;
+                // Get a pointer to the hash table
+                var tblPtr = get_obj_tbl(curObj);
 
+                // Get the size of the hash table
+                var tblSize = iir.icast(
+                    IRType.pint,
+                    get_obj_tblsize(curObj)
+                );
 
-                /*
-                // Get the key value at this hash slot
-                var keyVal = get_hashtbl_tbl_key(tblPtr, unboxInt(curIdx));
-
-                // If this is a valid key, return it
-                if (keyVal !== UNDEFINED)
-                    return keyVal;
-                */
-            }
-
-            break;
-
-
-            /*
-            if (boxIsArray(curObj))
-            
-                var len = get_array_len(obj)
-
-                var idx = curIdx;
-                    
-                curIdx++;
-
-                if (curIdx >= len)
+                // Until the key is found, or a free slot is encountered
+                for (; unboxInt(curIdx) < tblSize; ++curIdx)
                 {
-                    curObj = get_obj_proto(curObj);
-                    curIdx = pint(0);
+                    // Get the key value at this hash slot
+                    var keyVal = get_hashtbl_tbl_key(tblPtr, unboxInt(curIdx));
+
+                    // If this is a valid key, return it
+                    if (keyVal !== UNDEFINED)
+                    {
+                        ++curIdx;
+                        return keyVal;
+                    }
                 }
 
-                return boxInt(idx);
+                // If the object is an array
+                if (boxIsArray(curObj))
+                {
+                    var len = boxInt(iir.icast(IRType.pint, get_arr_len(curObj)));
+
+                    var arrIdx = curIdx - boxInt(tblSize);
+
+                    if (arrIdx < len)
+                    {
+                        ++curIdx;
+                        return arrIdx;
+                    }
+                }
+
+                // Move up the prototype chain
+                curObj = get_obj_proto(curObj);
+                curIdx = 0;
+                continue;
             }
 
+            // If the object is a string
             else if (boxIsString(curObj))
             {
+                var len = boxInt(iir.icast(IRType.pint, get_str_len(curObj)));
 
-
-
-
+                if (curIdx < len)
+                {
+                    return curIdx++;
+                }
+                else
+                {
+                    // Move up the prototype chain
+                    curObj = get_ctx_strproto(iir.get_ctx());
+                    curIdx = 0;
+                    continue;
+                }
             }
 
             else
             {
-
+                return UNDEFINED;
             }
-            */
-
         }
     }
 
@@ -2020,7 +2027,21 @@ function getPropNames(obj)
     // each call, undefined when no more properties found
     function enumerator()
     {
+        "tachyon:noglobal";
 
+        while (true)
+        {
+            print('in loop');
+
+            var propName = nextProp();
+
+            print('got name ' + propName);
+
+            if (isShadowed(propName))
+                continue;
+
+            return propName;
+        }
     }
 
     return enumerator;

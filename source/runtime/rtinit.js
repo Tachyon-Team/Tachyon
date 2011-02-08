@@ -80,8 +80,7 @@ function initStdlib()
     set_ctx_arrproto(ctx, null);
 
     // Set the function prototype object reference in the context
-    //set_ctx_funcproto(ctx, Function.prototype);
-    set_ctx_funcproto(ctx, null);
+    set_ctx_funcproto(ctx, Function.prototype);
 
     // Set the string prototype object reference in the context
     set_ctx_strproto(ctx, String.prototype);

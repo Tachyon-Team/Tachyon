@@ -341,6 +341,17 @@ tests.clos_capt.main = genTest(
 );
 
 /**
+Calls across closure boundaries.
+*/
+tests.clos_xcall = tests.testSuite(); 
+tests.clos_xcall.main = genTest(
+    'programs/clos_xcall/clos_xcall.js',
+    'test',
+    [5],
+    5
+);
+
+/**
 Constructor/new test.
 */
 tests.ctor_new = tests.testSuite(); 
@@ -376,9 +387,9 @@ tests.ctor_instof.main = genTest(
 /**
 Constructor, prototype and toString method test.
 */
-tests.object_tostring = tests.testSuite(); 
-tests.object_tostring.main = genTest(
-    'programs/object_tostring/object_tostring.js',
+tests.obj_tostring = tests.testSuite(); 
+tests.obj_tostring.main = genTest(
+    'programs/obj_tostring/obj_tostring.js',
     'test',
     [],
     0

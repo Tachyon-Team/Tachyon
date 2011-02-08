@@ -251,20 +251,6 @@ function stmtListToIRFunc(
 
             // Map the variable to the mutable cell
             sharedMap.addItem(symName, newCell);
-
-            // If there is a local map entry for this symbol
-            if (localMap.hasItem(symName))
-            {
-                // Put the current value of the symbol into the cell
-                insertPrimCallIR(
-                    bodyContext,
-                    'set_cell_val',
-                    [newCell, localMap.getItem(symName)]
-                );
-
-                // Remove the ysmbol from the local map
-                localMap.remItem(symName);
-            }
         }
     }
 
@@ -342,6 +328,29 @@ function stmtListToIRFunc(
         }
     }
 
+    // For each escaping variable
+    for (var i in escapeVars)
+    {
+        var symName = escapeVars[i].toString();
+
+        // If there is a local map entry for this symbol
+        if (localMap.hasItem(symName))
+        {
+            // Get the mutable cell for this symbol
+            var cell = sharedMap.getItem(symName);
+
+            // Put the current value of the symbol into the cell
+            insertPrimCallIR(
+                bodyContext,
+                'set_cell_val',
+                [cell, localMap.getItem(symName)]
+            );
+
+            // Remove the symbol from the local map
+            localMap.remItem(symName);
+        }
+    }
+
     // If the current function is a unit level function
     if (astNode instanceof Program)
     {
@@ -407,6 +416,8 @@ function stmtListToIRFunc(
             e + '\n' + cfg.toString()
         );
     }
+
+    //print(newFunc);
 
     //print('done generating IR for function');
 
