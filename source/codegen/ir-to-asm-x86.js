@@ -1946,7 +1946,10 @@ StoreInstr.prototype.regAlloc.usedRegisters = function (instr, params)
  
     // On x86 32 bits, reserve one of EAX, EBX or EDX 
     // in case the src operand is not allocated to one of those 
-    return [0];
+    //return [0];
+    
+    // FIXME: until stronger register hints are implemented
+    return arrayRange(params.target.backendCfg.physReg.length);
 };
 
 StoreInstr.prototype.genCode = function (tltor, opnds)
@@ -1991,8 +1994,6 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     const target = tltor.params.target; 
     const width = target.ptrSizeBits;
 
-    const xAX = reg.rax.subReg(width);
-
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)
     {
@@ -2027,9 +2028,34 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
             (srcReg !== reg.al || srcReg !== reg.bl || 
              srcReg !== reg.cl || srcReg !== reg.dl))
         {
+            // FIXME: ugly code below to temporarily deal with x86 gayness 
+            // without help from the register allocator
+            //          ______   ________                      
+            // ___  ___/  __  \ /  _____/   ________ _____  ___
+            // \  \/  />      </   __  \   /  ___/  |  \  \/  /
+            //  >    </   --   \  |__\  \  \___ \|  |  />    < 
+            // /__/\_ \______  /\_____  / /____  >____//__/\_ \
+            //       \/      \/       \/       \/            \/
+
+            /*
+            const xAX = reg.rax.subReg(width);     
+
             // xAX has been reserved for this case
             tltor.asm.mov(opnds[2], xAX);    
             srcReg = reg.al;
+            */
+
+            var lowRegs = [reg.eax, reg.ebx, reg.ecx, reg.edx];
+
+            arraySetRem(lowRegs, opnds[0]);
+            arraySetRem(lowRegs, opnds[1]);
+
+            var newSrc = lowRegs[0];
+            var newSrcLow = newSrc.subReg(8);
+
+            // xAX has been reserved for this case
+            tltor.asm.mov(opnds[2], newSrc);    
+            srcReg = newSrcLow;
         }
 
         // Store the value to memory
