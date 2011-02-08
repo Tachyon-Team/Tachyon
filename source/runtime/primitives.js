@@ -1523,7 +1523,7 @@ function putElemArr(arr, index, elemVal)
     var len = iir.icast(IRType.pint, get_arr_len(arr));
 
     // Get the array table
-    var tbl = get_arr_tbl(arr);
+    var tbl = get_arr_arr(arr);
 
     // If the index is outside the current size of the array
     if (index >= len)
@@ -1580,7 +1580,7 @@ function extArrTable(arr, curTbl, curLen, curSize)
     set_arr_cap(arr, iir.icast(IRType.u32, newSize));
 
     // Update the table reference in the array
-    set_arr_tbl(arr, newTbl);
+    set_arr_arr(arr, newTbl);
 
     return newTbl;
 }
@@ -1605,7 +1605,7 @@ function getElemArr(arr, index)
     if (index >= len)
         return UNDEFINED;
 
-    var tbl = get_arr_tbl(arr);
+    var tbl = get_arr_arr(arr);
 
     return get_arrtbl_tbl(tbl, index);
 }
@@ -1635,7 +1635,7 @@ function setArrayLength(arr, newLen)
         var cap = iir.icast(IRType.pint, get_arr_cap(arr));
 
         // Get a reference to the array table
-        var tbl = get_arr_tbl(arr);
+        var tbl = get_arr_arr(arr);
 
         // If the new length would exceed the capacity
         if (newLen > cap)
@@ -1679,9 +1679,12 @@ function putPropVal(obj, propName, propVal)
         else if (propName === 'length')
         {
             setArrayLength(obj, propVal);
-        }    
+
+            // Return early
+            return;
+        }
     }
-    
+
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
@@ -1973,6 +1976,8 @@ function getPropNames(obj)
                     // If this is a valid key, return it
                     if (keyVal !== UNDEFINED)
                     {
+                        print('got obj key');
+
                         ++curIdx;
                         return keyVal;
                     }
@@ -2031,11 +2036,7 @@ function getPropNames(obj)
 
         while (true)
         {
-            print('in loop');
-
             var propName = nextProp();
-
-            print('got name ' + propName);
 
             if (isShadowed(propName))
                 continue;
