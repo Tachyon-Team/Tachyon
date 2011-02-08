@@ -63,7 +63,7 @@ Object.prototype.toString = function ()
 */
 Object.prototype.hasOwnProperty = function (prop)
 {
-    return (prop in this);
+    return boolToBox(hasOwnPropVal(this, prop));
 };
 
 /**

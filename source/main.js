@@ -51,13 +51,42 @@ function tachyonRepl()
     function printHelp()
     {
         print('Available special commands:');
-        print('  /help           print a help listing');
-        print('  /exit           exit the read-eval-print loop');
+        print('  /load <filename>    load and execute a script');
+        print('  /help               print a help listing');
+        print('  /exit               exit the read-eval-print loop');
+    }
+
+    // Load and execute a script
+    function loadScript(fileName)
+    {
+        print('Loading script: "' + fileName + '"');
+
+        var ir = compileSrcFile(fileName, config.hostParams);
+
+        var bridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            'int'
+        );
+
+        bridge(config.hostParams.ctxPtr);
     }
 
     // Execute a special command
     function execSpecial(cmd)
     {
+        var spaceIdx = cmd.indexOf(' ');
+        if (spaceIdx != -1)
+        {
+            var args = cmd.slice(spaceIdx + 1);
+            var cmd = cmd.slice(0, spaceIdx);
+        }
+        else
+        {
+            var args = '';
+        }
+
         switch (cmd)
         {
             case 'exit':
@@ -65,6 +94,10 @@ function tachyonRepl()
 
             case 'help':
             printHelp();
+            break;
+
+            case 'load':
+            loadScript(args);
             break;
 
             default:

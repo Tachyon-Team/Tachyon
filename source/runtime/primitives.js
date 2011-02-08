@@ -385,7 +385,6 @@ function makeError(errorCtor, message)
 
 // TODO: implement the following primitives
 function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-function getPropNames(obj) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
 
 /**
 Create a new object with no properties
@@ -1418,68 +1417,83 @@ function extObjHashTable(obj, curTbl, curSize)
 /**
 Get a property from an object
 */
+function getOwnPropObj(obj, propName, propHash)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+    "tachyon:arg propHash pint";
+
+    // Get a pointer to the hash table
+    var tblPtr = get_obj_tbl(obj);
+
+    // Get the size of the hash table
+    var tblSize = iir.icast(
+        IRType.pint,
+        get_obj_tblsize(obj)
+    );
+
+    // Get the hash table index for this hash value
+    // compute this using unsigned modulo to always obtain a positive value
+    var hashIndex = iir.icast(
+        IRType.pint,
+        iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
+    );
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the key value at this hash slot
+        var keyVal = get_hashtbl_tbl_key(tblPtr, hashIndex);
+
+        // If this is the key we want
+        if (keyVal === propName)
+        {
+            // Load the property value
+            var propVal = get_hashtbl_tbl_val(tblPtr, hashIndex);
+
+            /*
+            if (isGetterSetter(propVal))
+                return callGetter(obj, propVal);
+            else 
+                return propVal;
+            */
+
+            // TODO
+            return propVal;
+        }
+
+        // Otherwise, if we have reached an empty slot
+        else if (keyVal === UNDEFINED)
+        {
+            break;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = (hashIndex + pint(1)) % tblSize;
+    }
+
+    // Property not found, return a special bit pattern
+    return iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND);
+}
+
+/**
+Get a property from an object or its prototype chain
+*/
 function getPropObj(obj, propName, propHash)
 {
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
-    //print("prop lookup");
-    //print(propName);
-
     // Until we reach the end of the prototype chain
     do
     {
-        // Get a pointer to the hash table
-        var tblPtr = get_obj_tbl(obj);
+        // Lookup the property in the object
+        var prop = getOwnPropObj(obj, propName, propHash);
 
-        // Get the size of the hash table
-        var tblSize = iir.icast(
-            IRType.pint,
-            get_obj_tblsize(obj)
-        );
-
-        // Get the hash table index for this hash value
-        // compute this using unsigned modulo to always obtain a positive value
-        var hashIndex = iir.icast(
-            IRType.pint,
-            iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
-        );
-
-        //printInt(boxInt(hashIndex));
-
-        // Until the key is found, or a free slot is encountered
-        while (true)
-        {
-            // Get the key value at this hash slot
-            var keyVal = get_hashtbl_tbl_key(tblPtr, hashIndex);
-
-            // If this is the key we want
-            if (keyVal === propName)
-            {
-                // Load the property value
-                var propVal = get_hashtbl_tbl_val(tblPtr, hashIndex);
-
-                /*
-                if (isGetterSetter(propVal))
-                    return callGetter(obj, propVal);
-                else 
-                    return propVal;
-                */
-
-                // TODO
-                return propVal;
-            }
-
-            // Otherwise, if we have reached an empty slot
-            else if (keyVal === UNDEFINED)
-            {
-                break;
-            }
-
-            // Move to the next hash table slot
-            hashIndex = (hashIndex + pint(1)) % tblSize;
-        }
+        // If the property was found, return it
+        if (prop !== iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND))
+            return prop;
 
         // Move up in the prototype chain
         var obj = get_obj_proto(obj);
@@ -1677,7 +1691,8 @@ function putPropVal(obj, propName, propVal)
 }
 
 /**
-Test if a property exists on a value using a value as a key
+Test if a property exists on a value or in its prototype chain
+using a value as a key
 */
 function hasPropVal(obj, propName)
 {
@@ -1722,6 +1737,57 @@ function hasPropVal(obj, propName)
 
     // Attempt to find the property on the object
     var prop = getPropObj(obj, propName, propHash);
+
+    // Test if the property was found
+    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+}
+
+/**
+Test if a property exists on a value without looking at its prototype chain
+*/
+function hasOwnPropVal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret bool";
+
+    // If this is an array
+    if (boxIsArray(obj))
+    {
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0)
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, propName);
+
+                // If the element is not undefined, return true
+                if (elem !== UNDEFINED)
+                    return TRUE_BOOL;
+            }
+        }
+
+        else if (propName === 'length')
+        {
+            return TRUE_BOOL;
+        }
+    }
+
+    // If this is a string
+    else if (boxIsString(obj))
+    {
+        if (propName === 'length')
+        {
+            return TRUE_BOOL;
+        }
+    }
+
+    // Get the hash code for the property
+    // Boxed value, may be a string or an int
+    var propHash = getHash(propName);
+
+    // Attempt to find the property on the object
+    var prop = getOwnPropObj(obj, propName, propHash);
 
     // Test if the property was found
     return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
@@ -1845,6 +1911,119 @@ function getGlobalFunc(obj, propName, propHash)
             throw makeError(TypeError, "global property is not a function" + propName);
         }
     }
+}
+
+/**
+Used to enumerate properties in a for-in loop
+*/
+function getPropNames(obj)
+{ 
+    "tachyon:static"; 
+    "tachyon:nothrow"; 
+
+    var curObj = obj;
+    var curIdx = 0;
+
+    // Check if a property is currently shadowed
+    function shadowCheck(propName)
+    {
+        // TODO: shadowing check function?
+        return false;
+    }
+
+    // Move to the next available property
+    function nextProp()
+    {
+        while (true)
+        {
+            /*
+            // FIXME: for now, no support for non-enumerable properties
+            if (curObj === get_ctx_objproto(iir.get_ctx())  || 
+                curObj === get_ctx_arrproto(iir.get_ctx())  || 
+                curObj === get_ctx_funcproto(iir.get_ctx()) ||
+                curObj === get_ctx_strproto(iir.get_ctx()))
+                return UNDEFINED;
+
+            // If we are at the end of the prototype chain, stop
+            if (curObj === null)
+                return UNDEFINED;
+            */
+
+            // Get a pointer to the hash table
+            var tblPtr = get_obj_tbl(curObj);
+
+            // Get the size of the hash table
+            var tblSize = iir.icast(
+                IRType.pint,
+                get_obj_tblsize(curObj)
+            );
+
+
+
+            // Until the key is found, or a free slot is encountered
+            //for (; pint(0) < tblSize; )
+            while (true)
+            {
+                if (unboxInt(curIdx) < tblSize)
+                    break;
+
+
+                /*
+                // Get the key value at this hash slot
+                var keyVal = get_hashtbl_tbl_key(tblPtr, unboxInt(curIdx));
+
+                // If this is a valid key, return it
+                if (keyVal !== UNDEFINED)
+                    return keyVal;
+                */
+            }
+
+            break;
+
+
+            /*
+            if (boxIsArray(curObj))
+            
+                var len = get_array_len(obj)
+
+                var idx = curIdx;
+                    
+                curIdx++;
+
+                if (curIdx >= len)
+                {
+                    curObj = get_obj_proto(curObj);
+                    curIdx = pint(0);
+                }
+
+                return boxInt(idx);
+            }
+
+            else if (boxIsString(curObj))
+            {
+
+
+
+
+            }
+
+            else
+            {
+
+            }
+            */
+
+        }
+    }
+
+    // Enumerator function, returns a new property name with
+    // each call, undefined when no more properties found
+    function enumerator()
+    {
+
+    }
+
+    return enumerator;
 }
 
 /**
