@@ -1023,8 +1023,8 @@ allocator.orderBlocks = function (cfg)
                 loopIndex       : -1,   
                 // Loop nesting depth
                 loopDepth       : 0,    
-                // For loop ends, corresponding loop header
-                loopHeader      : null, 
+                // For loop ends, corresponding loop headers
+                loopHeaders      : null, 
                 // For loop headers, last corresponding loop end block
                 lastLoopEnd     : null, 
                 // For loop blocks, loops to which it belongs
@@ -1051,7 +1051,7 @@ allocator.orderBlocks = function (cfg)
 
             cfg.blocks[i].regAlloc.loopIndex       = -1;   
             cfg.blocks[i].regAlloc.loopDepth       = 0;    
-            cfg.blocks[i].regAlloc.loopHeader      = null; 
+            cfg.blocks[i].regAlloc.loopHeaders     = null; 
             cfg.blocks[i].regAlloc.lastLoopEnd     = null; 
             cfg.blocks[i].regAlloc.loops           = [];   
 
@@ -1113,7 +1113,13 @@ allocator.orderBlocks = function (cfg)
                 succ.regAlloc.numBackBranch++;
 
                 // Set the loop header for this loop end
-                block.regAlloc.loopHeader = succ;
+                if (block.regAlloc.loopHeaders === null)
+                {
+                    block.regAlloc.loopHeaders = [succ];
+                } else
+                {
+                    block.regAlloc.loopHeaders.push(succ);
+                }
 
                 // Add this block to the loop end list
                 loopEnds.push(block);
@@ -1139,39 +1145,44 @@ allocator.orderBlocks = function (cfg)
         var loopEnd = loopEnds[i];
 
         // Get the loop header for this loop
-        var loopHeader = loopEnd.regAlloc.loopHeader;
+        var loopHeaders = loopEnd.regAlloc.loopHeaders;
 
-        // Array to mark visited blocks
-        var visited = [];
-
-        // Stack for the CFG traversal
-        var stack = [loopEnd];
-
-        // Until the stack is empty
-        while (stack.length > 0)
+        for (var k = 0; k < loopHeaders.length; ++k)
         {
-            var block = stack.pop();
+            var loopHeader = loopHeaders[0];
 
-            // Mark this block as visited
-            visited[block.blockId] = true;
+            // Array to mark visited blocks
+            var visited = [];
 
-            // Update the loop set for this block
-            block.regAlloc.loops.push(loopHeader);
+            // Stack for the CFG traversal
+            var stack = [loopEnd];
 
-            // Update the loop depth for this block
-            block.regAlloc.loopDepth = block.regAlloc.loops.length;
-
-            // If this is the loop header, don't visit predecessors
-            if (block === loopHeader)
-                continue;
-
-            // For each predecessor
-            for (var j = 0; j < block.preds.length; ++j)
+            // Until the stack is empty
+            while (stack.length > 0)
             {
-                var pred = block.preds[j];
+                var block = stack.pop();
 
-                if (!visited[pred.blockId])
-                    stack.push(pred);
+                // Mark this block as visited
+                visited[block.blockId] = true;
+
+                // Update the loop set for this block
+                block.regAlloc.loops.push(loopHeader);
+
+                // Update the loop depth for this block
+                block.regAlloc.loopDepth = block.regAlloc.loops.length;
+
+                // If this is the loop header, don't visit predecessors
+                if (block === loopHeader)
+                    continue;
+
+                // For each predecessor
+                for (var j = 0; j < block.preds.length; ++j)
+                {
+                    var pred = block.preds[j];
+
+                    if (!visited[pred.blockId])
+                        stack.push(pred);
+                }
             }
         }
     }
@@ -1243,8 +1254,13 @@ allocator.orderBlocks = function (cfg)
     {
         var block = blockOrder[i];
 
-        if (block.regAlloc.loopHeader)
-            block.regAlloc.loopHeader.regAlloc.lastLoopEnd = block;
+        if (block.regAlloc.loopHeaders !== null)
+        {
+            block.regAlloc.loopHeaders.forEach(function (loopHeader)
+            {
+                loopHeader.regAlloc.lastLoopEnd = block;
+            });
+        }
     }
 
     /*
@@ -1407,10 +1423,16 @@ allocator.liveIntervals = function (cfg, order, params)
                 }
             }
 
-            // If this is our loop header, skip it
-            if (block.regAlloc.loopHeader === succ)
+            // If this is one of our loop headers, skip it
+            if (block.regAlloc.loopHeaders !== null &&
+                arraySetHas(block.regAlloc.loopHeaders, succ))
+            {
                 continue;
+            }
 
+            assert(live !== null && succ.regAlloc.liveIn !== null,
+                   "Invalid live or liveIn set");
+                
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
         }
