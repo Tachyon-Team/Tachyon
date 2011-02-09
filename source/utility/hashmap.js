@@ -213,7 +213,6 @@ function HashMap(hashFunc, equalFunc)
                 // Decrement the number of items stored
                 this.numItems--;
 
-
                 // If we are under the minimum load factor, shrink the internal array
                 // numItems < ratio * numSlots 
                 // numItems < num/denom * numSlots 

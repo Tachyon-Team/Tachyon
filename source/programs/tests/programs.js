@@ -244,9 +244,9 @@ tests.nested_loops.main = genTest(
 /**
 Object property put/get unit test.
 */
-tests.object_props = tests.testSuite();
-tests.object_props.main = genTest(
-    'programs/object_props/object_props.js',
+tests.obj_props = tests.testSuite();
+tests.obj_props.main = genTest(
+    'programs/obj_props/obj_props.js',
     'foo',
     [33],
     1584
@@ -390,6 +390,17 @@ Constructor, prototype and toString method test.
 tests.obj_tostring = tests.testSuite(); 
 tests.obj_tostring.main = genTest(
     'programs/obj_tostring/obj_tostring.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Property deletion on objects.
+*/
+tests.obj_delete = tests.testSuite(); 
+tests.obj_delete.main = genTest(
+    'programs/obj_delete/obj_delete.js',
     'test',
     [],
     0

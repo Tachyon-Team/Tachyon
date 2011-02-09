@@ -3,7 +3,7 @@
 Implementation of ECMAScript 5 string string routines.
 
 @author
-Maxime Chevalier-Boisvert
+Bruno Dufour, Maxime Chevalier-Boisvert
 
 @copyright
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
@@ -37,6 +37,18 @@ function String(value)
 15.5.3.1 String prototype object
 */
 String.prototype = {};
+
+/**
+Anonymous function to initialize this library
+*/
+(function ()
+{
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the String prototype object in the context
+    set_ctx_strproto(ctx, String.prototype);
+})();
 
 //-----------------------------------------------------------------------------
 

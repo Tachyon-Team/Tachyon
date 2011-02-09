@@ -383,9 +383,6 @@ function makeError(errorCtor, message)
 //
 //=============================================================================
 
-// TODO: implement the following primitives
-function delPropVal(obj, propName) { "tachyon:static"; "tachyon:nothrow"; return UNDEFINED; }
-
 /**
 Create a new object with no properties
 */
@@ -432,9 +429,9 @@ function newArray()
     // Allocate space for an array
     var arr = alloc_arr();
 
-    // Initialize the prototype object
-    // TODO: this should be set to the array prototype
-    set_obj_proto(arr, null);
+    // Set the prototype to the array prototype object
+    var arrproto = get_ctx_arrproto(iir.get_ctx());
+    set_obj_proto(arr, arrproto);
 
     // Initialize the hash table size and number of properties
     set_obj_tblsize(arr, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
@@ -534,18 +531,22 @@ function makeCell()
 }
 
 /**
-Create the arguments object. This function must be inlined as it must run
-in the same stack frame as the caller.
+Create the arguments object.
 */
+
+// TODO: funcObj, numArgs, arrTable
+// TODO: create array object with object prototype, arr table
+
 function makeArgObj(numArgs)
 {
-    "tachyon:inline"; 
+    "tachyon:static"; 
     "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
 
     // Create an object to store the arguments
-    var argObj = newObject(null);
+    var objproto = get_ctx_objproto(iir.get_ctx());
+    var argObj = newObject(objproto);
 
     // For each visible argument
     for (var i = pint(2); i < numArgs; i++)
@@ -1505,6 +1506,114 @@ function getPropObj(obj, propName, propHash)
 }
 
 /**
+Delete a property from an object
+*/
+function delPropObj(obj, propName, propHash)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+    "tachyon:arg propHash pint";
+
+    // Get a pointer to the hash table
+    var tblPtr = get_obj_tbl(obj);
+
+    // Get the size of the hash table
+    var tblSize = iir.icast(
+        IRType.pint,
+        get_obj_tblsize(obj)
+    );
+
+    // Get the hash table index for this hash value
+    // compute this using unsigned modulo to always obtain a positive value
+    var hashIndex = iir.icast(
+        IRType.pint,
+        iir.icast(IRType.u32, propHash) % iir.icast(IRType.u32, tblSize)
+    );
+
+    // Until the key is found, or a free slot is encountered
+    while (true)
+    {
+        // Get the key value at this hash slot
+        var keyVal = get_hashtbl_tbl_key(tblPtr, hashIndex);
+
+        // If this is the key we want
+        if (keyVal === propName)
+        {
+            // Initialize the current free index to the removed item index
+            var curFreeIndex = hashIndex;
+
+            // Initialize the shift index to the next item
+            var shiftIndex = (hashIndex + pint(1)) % tblSize;
+
+            // For every subsequent item, until we encounter a free slot
+            while (true)
+            {
+                // Get the key for the item at the shift index
+                var shiftKey = get_hashtbl_tbl_key(tblPtr, shiftIndex);
+
+                // If we have reached an empty slot, stop
+                if (shiftKey === UNDEFINED)
+                    break;
+
+                // Calculate the index at which this item's hash key maps
+                var origIndex = getHash(shiftKey) % tblSize;
+
+                // Compute the distance from the element to its origin mapping
+                var distToOrig =
+                    (shiftIndex < origIndex)? 
+                    (shiftIndex + tblSize - origIndex):
+                    (shiftIndex - origIndex);
+
+                // Compute the distance from the element to the current free index
+                var distToFree =
+                    (shiftIndex < curFreeIndex)?
+                    (shiftIndex + tblSize - curFreeIndex):
+                    (shiftIndex - curFreeIndex);                    
+
+                // If the free slot is between the element and its origin
+                if (distToFree <= distToOrig)
+                {
+                    // Move the item into the free slot
+                    var key = get_hashtbl_tbl_key(tblPtr, shiftIndex);
+                    var val = get_hashtbl_tbl_val(tblPtr, shiftIndex);
+                    set_hashtbl_tbl_key(tblPtr, curFreeIndex, key);
+                    set_hashtbl_tbl_val(tblPtr, curFreeIndex, val);
+
+                    // Update the current free index
+                    curFreeIndex = shiftIndex;
+                }
+
+                // Move to the next item
+                shiftIndex = (shiftIndex + pint(1)) % tblSize;
+            }
+
+            // Clear the hash key at the current free position
+            set_hashtbl_tbl_key(tblPtr, curFreeIndex, UNDEFINED);
+
+            // Decrement the number of items stored
+            var numProps = get_obj_numprops(obj);
+            numProps--;
+            set_obj_numprops(obj, numProps);
+
+            // Property deleted
+            return true;
+        }
+
+        // Otherwise, if we have reached an empty slot
+        else if (keyVal === UNDEFINED)
+        {
+            break;
+        }
+
+        // Move to the next hash table slot
+        hashIndex = (hashIndex + pint(1)) % tblSize;
+    }
+
+    // Property not found
+    return false;
+}
+
+/**
 Set an element of an array
 */
 function putElemArr(arr, index, elemVal)
@@ -1608,6 +1717,43 @@ function getElemArr(arr, index)
     var tbl = get_arr_arr(arr);
 
     return get_arrtbl_tbl(tbl, index);
+}
+
+/**
+Delete an element of an array
+*/
+function delElemArr(arr, index)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+
+    assert (
+        index >= 0,
+        'negative array index'
+    );
+
+    index = unboxInt(index); 
+
+    // Get the array length
+    var len = iir.icast(IRType.pint, get_arr_len(arr));
+
+    // If this is the last array element
+    if (index === len - pint(1))
+    {
+        // Compute the new length
+        var newLen = index;
+
+        // Update the array length
+        set_arr_len(arr, iir.icast(IRType.u32, newLen));
+    }
+    else
+    {
+        // Get the array table
+        var tbl = get_arr_arr(arr);
+
+        // Set the array element to undefined
+        set_arrtbl_tbl(tbl, index, UNDEFINED);
+    }
 }
 
 /**
@@ -1876,7 +2022,10 @@ function getGlobal(obj, propName, propHash)
     if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
     {
         // Throw a ReferenceError exception
-        throw makeError(ReferenceError, "global property not defined" + propName);
+        throw makeError(
+            ReferenceError, 
+            'global property not defined "' + propName + '"'
+        );
     }
 
     // Return the property
@@ -1906,14 +2055,45 @@ function getGlobalFunc(obj, propName, propHash)
         if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
         {
             // Throw a ReferenceError exception
-            throw makeError(ReferenceError, "global property not defined" + propName);
+            throw makeError(ReferenceError, "global property not defined " + propName);
         }
         else
         {
             // Throw a TypeError exception
-            throw makeError(TypeError, "global property is not a function" + propName);
+            throw makeError(TypeError, "global property is not a function " + propName);
         }
     }
+}
+
+/**
+Delete a property from a value
+*/
+function delPropVal(obj, propName)
+{ 
+    "tachyon:static"; 
+    "tachyon:nothrow";
+
+    if (boxIsArray(obj))
+    {
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0)
+            {
+                // Delete the property and return early
+                delElemArr(obj, propName);
+                return;
+            }
+        }
+    }
+
+    // Get the hash code for the property
+    // Boxed value, may be a string or an int
+    var propHash = getHash(propName);
+
+    // Delete the property on the object
+    delPropObj(obj, propName, propHash);
+
+    return true;
 }
 
 /**
