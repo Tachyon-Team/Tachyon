@@ -1976,8 +1976,6 @@ function getPropNames(obj)
                     // If this is a valid key, return it
                     if (keyVal !== UNDEFINED)
                     {
-                        print('got obj key');
-
                         ++curIdx;
                         return keyVal;
                     }

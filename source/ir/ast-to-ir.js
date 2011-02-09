@@ -1231,6 +1231,7 @@ function stmtToIR(context)
         var entryLocals = new HashMap();
         var brkCtxList = [];
         var cntCtxList = [];
+        initContext.labels = context.labels;
         var testContext = createLoopEntry(
             astStmt,
             astStmt.expr2,
@@ -1318,30 +1319,25 @@ function stmtToIR(context)
         var setCtx = context.pursue(astStmt.set_expr);
         exprToIR(setCtx);
 
-        // Get the property names of the set object        
-        var propNameArr = insertPrimCallIR(
+        // Get the property names accessor function
+        var propNameFunc = insertPrimCallIR(
             setCtx, 
             'getPropNames', 
             [setCtx.getOutValue()]
         );
 
-        // Get the length of the property name array minus one
-        var numPropNames = insertPrimCallIR(
+        // Get the function pointer from the closure object
+        var propNameFuncPtr = insertPrimCallIR(
             setCtx, 
-            'getPropVal', 
-            [propNameArr, ConstValue.getConst('length')]
-        );
-        var numPropNamesMin1 = setCtx.addInstr(
-            new SubInstr(
-                numPropNames,
-                ConstValue.getConst(1)
-            )
+            'get_clos_funcptr', 
+            [propNameFunc]
         );
 
         // Create a context for the loop entry (the loop test)
         var entryLocals = new HashMap();
         var brkCtxList = [];
         var cntCtxList = [];
+        setCtx.labels = context.labels;
         var testCtx = createLoopEntry(
             astStmt,
             astStmt,
@@ -1351,39 +1347,33 @@ function stmtToIR(context)
             cntCtxList,
             'loop_test'
         );
-
-        // Create a phi node for the current property index
-        var propIndex = testCtx.addInstr(
-            new PhiInstr(
-                [numPropNamesMin1],
-                [setCtx.getExitBlock()]
-            )
-        );
-
-        // Test that the current property index is valid
-        var testVal = testCtx.addInstr(
-            new GeInstr(
-                propIndex,
-                ConstValue.getConst(0)
-            )
-        );
-      
+  
         // Bridge the test context
         testCtx.bridge();
-  
+
+        // Get the current property
+        var curPropName = insertCallIR(
+        testCtx,
+            new CallFuncInstr(
+                [
+                    propNameFuncPtr, 
+                    propNameFunc,
+                    ConstValue.getConst(undefined)
+                ]
+            )
+        );
+
+        // Test that the property is not equal to undefined
+        var testVal = testCtx.addInstr(
+            new NeInstr(curPropName, ConstValue.getConst(undefined))
+        );
+
         // Create a context for the loop body
         var loopBody = context.cfg.getNewBlock('loop_body');
         var bodyCtx = testCtx.branch(
             astStmt.lhs_expr,
             loopBody,
             testCtx.localMap.copy()
-        );
-        
-        // Get the current property
-        var curPropName = insertPrimCallIR(
-            bodyCtx, 
-            'getPropVal',
-            [propNameArr, propIndex]
         );
 
         // Assign the current prop name to LHS expr
@@ -1399,46 +1389,20 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyStmtCtx); 
 
-        // Merge the break contexts
-        var incrLocals = new HashMap();
-        var loopIncr = mergeContexts(
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
             cntCtxList,
-            incrLocals,
-            context.cfg,
-            'loop_incr'
+            entryLocals,
+            testCtx.entryBlock
         );
 
-        // If there were non-terminated break contexts
-        if (loopIncr)
-        {
-            // Create a context for the loop incrementation
-            var incrContext = testCtx.branch(
-                astStmt,
-                loopIncr,
-                incrLocals
-            );
-
-            // Compute the current property index - 1
-            var incrVal = incrContext.addInstr(
-                new SubInstr(
-                    propIndex,
-                    ConstValue.getConst(1)
-                )
-            );
-
-            // Add an incoming value to the property index phi node
-            propIndex.addIncoming(incrVal, incrContext.entryBlock);
-
-            // Bridge the incrementation context
-            incrContext.bridge();
-
-            // Merge the continue contexts with the loop entry
-            mergeLoopEntry(
-                [incrContext],
-                entryLocals,
-                testCtx.entryBlock
-            );
-        }        
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localMap,
+            context.cfg,
+            'loop_exit'
+        );    
 
         // Merge the break contexts
         var loopExit = mergeContexts(

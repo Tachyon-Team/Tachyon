@@ -396,6 +396,17 @@ tests.obj_tostring.main = genTest(
 );
 
 /**
+For-in loop, property enumeration.
+*/
+tests.for_in = tests.testSuite(); 
+tests.for_in.main = genTest(
+    'programs/for_in/for_in.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Arguments object test.
 */
 tests.arg_obj = tests.testSuite(); 
