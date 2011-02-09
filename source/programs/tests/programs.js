@@ -128,6 +128,28 @@ tests.basic_cmp.main = genTest(
 );
 
 /**
+Arithmetic operators test.
+*/
+tests.basic_arith = tests.testSuite();
+tests.basic_arith.main = genTest(
+    'programs/basic_arith/basic_arith.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Arithmetic shift test.
+*/
+tests.basic_shift = tests.testSuite(); 
+tests.basic_shift.main = genTest(
+    'programs/basic_shift/basic_shift.js',
+    'foo',
+    [],
+    0
+);
+
+/**
 Passing arguments and getting a return value from an FFI function
 */
 tests.ffi_sum = tests.testSuite();
@@ -428,13 +450,3 @@ tests.arg_obj.main = genTest(
     55
 );
 
-/**
-Arithmetic shift test.
-*/
-tests.shift = tests.testSuite(); 
-tests.shift.main = genTest(
-    'programs/shift/shift.js',
-    'foo',
-    [],
-    0
-);
