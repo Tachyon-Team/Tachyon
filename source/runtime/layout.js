@@ -152,7 +152,7 @@ MemLayout.extend = function (baseLayout, name, tagName)
         'invalid layout name'
     );
     assert (
-        typeof tagName === 'string',
+        !(baseLayout.ptrType === IRType.box && typeof tagName !== 'string'),
         'invalid tag name'
     );
 
