@@ -211,7 +211,7 @@ irToAsm.translator = function (params)
     that.falseVal = $(0);
 
     // Get the memory location for the temporary register in the context
-    var tempOffset = params.memLayouts.ctx.getFieldOffset([backendCfg.tempName]);
+    var tempOffset = backendCfg.ctxLayout.getFieldOffset([backendCfg.tempName]);
     that.temp = mem(tempOffset, backendCfg.context);
 
     return that;
