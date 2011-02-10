@@ -139,6 +139,17 @@ tests.basic_arith.main = genTest(
 );
 
 /**
+Bitwise operators test.
+*/
+tests.basic_bitops = tests.testSuite(); 
+tests.basic_bitops.main = genTest(
+    'programs/basic_bitops/basic_bitops.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Arithmetic shift test.
 */
 tests.basic_shift = tests.testSuite(); 
