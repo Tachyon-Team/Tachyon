@@ -184,12 +184,12 @@ function getTachyonSrcs(params)
         'runtime/layout.js',
         'runtime/context.js',
         'runtime/objects.js',    
-        'codegen/asm.js',
-        'codegen/asm-x86.js',
-        'codegen/linearscan.js',
-        'codegen/backend.js',
-        'codegen/ir-to-asm-x86.js',
-        'codegen/regalloc-config-x86.js',
+        'backend/asm.js',
+        'backend/backend.js',
+        'backend/linearscan.js',
+        "backend/regalloc.js",
+        'backend/x86/ir-to-asm.js',
+        'backend/x86/asm.js',
         'main.js'
     ];
 
