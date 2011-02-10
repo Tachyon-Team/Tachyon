@@ -63,6 +63,9 @@ var iir =
     // Function call instruction
     call        : CallFuncInstr,
 
+    // Function call with apply instruction
+    call_apply  : CallApplyInstr,
+
     // FFI call instruction
     call_ffi    : CallFFIInstr
 };

@@ -50,9 +50,28 @@ Function.prototype.toString = function ()
 */
 Function.prototype.apply = function (thisArg, argArray)
 {
-    // TODO
+    if (boxIsFunc(this) === FALSE_BOOL)
+        throw makeError(TypeError, 'apply on non-function');
 
-    // iir.call_apply(..., argArray.table, argArray.length)
+    if (argArray === null || argArray === UNDEFINED)
+        argArray = [];
+
+    if (boxIsArray(argArray) === FALSE_BOOL)
+        throw makeError(TypeError, 'invalid arguments array');
+
+    // Get the function pointer for the function
+    var funcPtr = get_clos_funcptr(this);
+
+    // Get the arguments table from the array
+    var argTable = unboxRef(get_arr_arr(argArray));
+
+    // Get the number of arguments
+    var numArgs = iir.icast(IRType.pint, get_arr_len(argArray));
+
+    // Perform the call using the apply instruction
+    var retVal = iir.call_apply(funcPtr, this, thisArg, argTable, numArgs);
+
+    return retVal;
 };
 
 /**
@@ -64,6 +83,8 @@ Function.prototype.call = function (thisArg)
     for (var i = 1; i < arguments.length; ++i)
         argArray.push(arguments[i]);
 
-    this.apply(thisArg, argArray);
+    var retVal = this.apply(thisArg, argArray);
+
+    return retVal;
 };
 

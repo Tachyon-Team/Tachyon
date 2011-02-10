@@ -1031,8 +1031,7 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 
     assert (
         (
-            (inputVals[0].type === IRType.box ||
-            inputVals[0].type === IRType.rptr)
+            inputVals[0].type.isPtr()
             &&
             (inputVals[1].type === IRType.box ||
             inputVals[1].type === IRType.pint)
@@ -1451,8 +1450,6 @@ var CallFuncInstr = instrMaker(
     'call',
     function (typeParams, inputVals, branchTargets)
     {
-        this.mnemonic = 'call';
-
         // 3 base arguments required for any call
         const NUM_BASE_ARGS = 3;
 
@@ -1539,6 +1536,62 @@ CallFuncInstr.prototype.readsMem = function ()
 };
 
 /**
+@class Constructor call with function object reference
+@augments CallInstr
+*/
+var ConstructInstr = instrMaker(
+    'construct',
+    function (typeParams, inputVals, branchTargets)
+    {
+        // 3 base arguments required
+        const NUM_BASE_ARGS = 3;
+
+        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
+        instrMaker.validType(inputVals[0], IRType.rptr);
+        instrMaker.validType(inputVals[1], IRType.box);
+        instrMaker.validType(inputVals[2], IRType.box);
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.box;
+
+        for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
+        {
+            assert (
+                inputVals[i].type === IRType.box,
+                'constructor calls can only take boxed values as input'
+            );
+        }
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
+@class Constructor call with function object reference
+@augments CallApplyInstr
+*/
+var CallApplyInstr = instrMaker(
+    'call_apply',
+    function (typeParams, inputVals, branchTargets)
+    {
+        // 5 arguments are required
+        instrMaker.validNumInputs(inputVals, 5, 5);
+
+        instrMaker.validType(inputVals[0], IRType.rptr);
+        instrMaker.validType(inputVals[1], IRType.box);
+        instrMaker.validType(inputVals[2], IRType.box);
+        instrMaker.validType(inputVals[3], IRType.ref);
+        instrMaker.validType(inputVals[4], IRType.pint);
+
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.box;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
+
+/**
 @class FFI function call instruction
 @augments CallInstr
 */
@@ -1546,8 +1599,6 @@ var CallFFIInstr = instrMaker(
     'call_ffi',
     function (typeParams, inputVals, branchTargets)
     {
-        this.mnemonic = 'call_ffi';
-
         instrMaker.validNumInputs(inputVals, 1);
         instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 0);
@@ -1582,39 +1633,6 @@ By default, conservatively assume all calls read and write to/from memory
 */
 CallFFIInstr.prototype.writesMem = function () { return true; };
 CallFFIInstr.prototype.readsMem = function () { return true; };
-
-/**
-@class Constructor call with function object reference
-@augments CallInstr
-*/
-var ConstructInstr = instrMaker(
-    'construct',
-    function (typeParams, inputVals, branchTargets)
-    {
-        this.mnemonic = 'construct';
-
-        // 3 base arguments required
-        const NUM_BASE_ARGS = 3;
-
-        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
-        instrMaker.validType(inputVals[0], IRType.rptr);
-        instrMaker.validType(inputVals[1], IRType.box);
-        instrMaker.validType(inputVals[2], IRType.box);
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.box;
-
-        for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
-        {
-            assert (
-                inputVals[i].type === IRType.box,
-                'constructor calls can only take boxed values as input'
-            );
-        }
-    },
-    ['continue', 'throw'],
-    new CallInstr()
-);
 
 //=============================================================================
 //
@@ -1713,7 +1731,7 @@ var GetArgTableInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 0, 0);
         
         // The table is an array table object
-        this.type = IRType.box;
+        this.type = IRType.ref;
     }
 );
 
@@ -1737,13 +1755,15 @@ var ICastInstr = instrMaker(
             (inputVals[0].type.isInt() || 
              inputVals[0].type === IRType.bool ||
              inputVals[0].type === IRType.box ||
+             inputVals[0].type === IRType.ref ||
              inputVals[0].type === IRType.rptr) 
             &&
             (typeParams[0].isInt() ||
              typeParams[0] === IRType.bool ||
              typeParams[0] === IRType.box ||
+             typeParams[0] === IRType.ref ||
              typeParams[0] === IRType.rptr),
-            'type parameters must be integer, boolean, boxed or raw pointer'
+            'type parameters must be integer, boolean, boxed, reference or raw pointer'
         );
         
         this.type = typeParams[0];

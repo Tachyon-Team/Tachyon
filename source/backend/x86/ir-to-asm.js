@@ -1893,8 +1893,9 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     const dst = this.regAlloc.dest;
 
     assert (
-        this.uses[0].type === IRType.rptr,
-        'load can only operate on raw pointers'
+        this.uses[0].type === IRType.rptr ||
+        this.uses[0].type === IRType.ref,
+        'load can only operate on raw pointers or references'
     );
 
     // If the offset is a register
@@ -1985,8 +1986,9 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     );
 
     assert (
-        this.uses[0].type === IRType.rptr,
-        'store can only operate on raw pointers'
+        this.uses[0].type === IRType.rptr ||
+        this.uses[0].type === IRType.ref,
+        'load can only operate on raw pointers or references'
     );
 
     // Assembler imports
