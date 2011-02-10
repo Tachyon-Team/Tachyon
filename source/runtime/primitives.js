@@ -42,9 +42,9 @@ function unboxInt(boxVal)
 }
 
 /**
-Box a reference value
+Box a raw pointer value
 */
-function boxRef(rawPtr, tagVal)
+function boxPtr(rawPtr, tagVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
@@ -56,16 +56,30 @@ function boxRef(rawPtr, tagVal)
 }
 
 /**
+Box a reference value
+*/
+function boxRef(refVal, tagVal)
+{
+    "tachyon:inline";
+    "tachyon:nothrow";
+    "tachyon:arg refVal ref";
+    "tachyon:arg tagVal pint";
+
+    // Box the raw pointer
+    return iir.icast(IRType.box, refVal | tagVal);
+}
+
+/**
 Unbox a reference value
 */
 function unboxRef(boxVal)
 {
     "tachyon:inline";
     "tachyon:nothrow";
-    "tachyon:ret rptr";
+    "tachyon:ret ref";
 
     // Box the raw pointer
-    return iir.icast(IRType.rptr, boxVal & ~TAG_REF_MASK);
+    return iir.icast(IRType.ref, boxVal & ~TAG_REF_MASK);
 }
 
 /**
@@ -539,12 +553,13 @@ function allocArgTable(numArgs)
     "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
+    "tachyon:ret ref";
 
     // Allocate space for an array table
     var arrtbl = alloc_arrtbl(numArgs);
 
     // Return the table reference
-    return arrtbl;
+    return unboxRef(arrtbl);
 }
 
 /**
@@ -556,6 +571,7 @@ function makeArgObj(funcObj, numArgs, argTable)
     "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
+    "tachyon:arg argTable ref";
 
     // Allocate space for an array
     var arr = alloc_arr();
@@ -571,6 +587,9 @@ function makeArgObj(funcObj, numArgs, argTable)
     // Initialize the array table capacity and the array length
     set_arr_cap(arr, iir.icast(IRType.u32, ARRAY_TBL_INIT_SIZE));
     set_arr_len(arr, iir.icast(IRType.u32, numArgs));
+
+    // Box the arguments table reference
+    argTable = boxRef(argTable, TAG_OTHER);
 
     // Set the array table pointer to the arguments table
     set_arr_arr(arr, argTable);

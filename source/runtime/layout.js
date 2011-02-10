@@ -496,7 +496,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxRef(ptr, ' + this.tagName + ');\n';
+            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
         else
             sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
@@ -529,7 +529,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxRef(ptr, ' + this.tagName + ');\n';
+            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
         else
             sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';

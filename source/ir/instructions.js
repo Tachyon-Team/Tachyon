@@ -1031,8 +1031,7 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
 
     assert (
         (
-            (inputVals[0].type === IRType.box ||
-            inputVals[0].type === IRType.rptr)
+            inputVals[0].type.isPtr()
             &&
             (inputVals[1].type === IRType.box ||
             inputVals[1].type === IRType.pint)
@@ -1581,7 +1580,7 @@ var CallApplyInstr = instrMaker(
         instrMaker.validType(inputVals[0], IRType.rptr);
         instrMaker.validType(inputVals[1], IRType.box);
         instrMaker.validType(inputVals[2], IRType.box);
-        instrMaker.validType(inputVals[3], IRType.box);
+        instrMaker.validType(inputVals[3], IRType.ref);
         instrMaker.validType(inputVals[4], IRType.pint);
 
         instrMaker.validNumBranches(branchTargets, 0, 2);
@@ -1732,7 +1731,7 @@ var GetArgTableInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 0, 0);
         
         // The table is an array table object
-        this.type = IRType.box;
+        this.type = IRType.ref;
     }
 );
 
@@ -1756,13 +1755,15 @@ var ICastInstr = instrMaker(
             (inputVals[0].type.isInt() || 
              inputVals[0].type === IRType.bool ||
              inputVals[0].type === IRType.box ||
+             inputVals[0].type === IRType.ref ||
              inputVals[0].type === IRType.rptr) 
             &&
             (typeParams[0].isInt() ||
              typeParams[0] === IRType.bool ||
              typeParams[0] === IRType.box ||
+             typeParams[0] === IRType.ref ||
              typeParams[0] === IRType.rptr),
-            'type parameters must be integer, boolean, boxed or raw pointer'
+            'type parameters must be integer, boolean, boxed, reference or raw pointer'
         );
         
         this.type = typeParams[0];

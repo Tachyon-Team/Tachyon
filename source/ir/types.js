@@ -36,6 +36,7 @@ Test if the type is a pointer type
 IRType.prototype.isPtr = function ()
 {
     return this === IRType.rptr ||
+           this === IRType.ref  ||
            this === IRType.box;
 };
 
@@ -121,8 +122,9 @@ IRType.prototype.getSizeBytes = function (target)
         return 8;
 
         // These types take the size of the pointer on the target architecture
-        case IRType.box:
         case IRType.rptr:
+        case IRType.ref:
+        case IRType.box:
         case IRType.bool:
         case IRType.pint:
         return target.ptrSizeBytes;
@@ -186,6 +188,9 @@ IRType.none = new IRType('none');
 // Boxed value type
 // Contains an immediate integer or an object pointer, and a tag
 IRType.box  = new IRType('box');
+
+// Untagged reference to a garbage collected object
+IRType.ref = new IRType('ref');
 
 // Raw pointer to any memory address
 IRType.rptr = new IRType('rptr');
