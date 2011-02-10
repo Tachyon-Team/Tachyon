@@ -15,6 +15,7 @@ Compile and initialize the Tachyon compiler using Tachyon
 function bootstrap(allCode, params)
 {
     // Create the context and object layouts
+    params.target.backendCfg.makeContextLayout(params);
     makeContextLayout(params);
     makeObjectLayouts(params);
 
@@ -188,6 +189,7 @@ function getTachyonSrcs(params)
         'backend/backend.js',
         'backend/linearscan.js',
         "backend/regalloc.js",
+        "backend/x86/config.js",
         'backend/x86/ir-to-asm.js',
         'backend/x86/asm.js',
         'main.js'

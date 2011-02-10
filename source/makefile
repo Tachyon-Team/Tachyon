@@ -21,8 +21,6 @@ BASE_SRCS =                             \
     utility/misc.js                     \
     utility/xml.js                      \
     utility/html.js                     \
-    backend/asm.js                      \
-    backend/x86/asm.js                  \
     compiler/targets.js                 \
     compiler/params.js                  \
     compiler/config.js                  \
@@ -51,9 +49,12 @@ BASE_SRCS =                             \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
+    backend/asm.js                      \
     backend/regalloc.js                 \
     backend/linearscan.js               \
     backend/backend.js                  \
+    backend/x86/asm.js                  \
+    backend/x86/config.js               \
     backend/x86/ir-to-asm.js            
 
 # Standard library source files
