@@ -2185,3 +2185,8 @@ GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
     and(ctx, dest);
 };
 
+GetArgTableInstr.prototype.genCode = function (tltor, opnds)
+{
+    // TODO
+};
+

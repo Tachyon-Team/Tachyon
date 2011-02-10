@@ -531,41 +531,66 @@ function makeCell()
 }
 
 /**
-Create the arguments object.
+Allocate the arguments table for the arguments object.
 */
-
-// TODO: funcObj, numArgs, arrTable
-// TODO: create array object with object prototype, arr table
-
-function makeArgObj(numArgs)
+function allocArgTable(numArgs)
 {
     "tachyon:static"; 
     "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
 
-    // Create an object to store the arguments
+    // Allocate space for an array table
+    var arrtbl = alloc_arrtbl(numArgs);
+
+    // Return the table reference
+    return arrtbl;
+}
+
+/**
+Create the arguments object.
+*/
+function makeArgObj(funcObj, numArgs, argTable)
+{
+    "tachyon:static"; 
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+    "tachyon:arg numArgs pint";
+
+    // Allocate space for an array
+    var arr = alloc_arr();
+
+    // Set the prototype to the object prototype object
     var objproto = get_ctx_objproto(iir.get_ctx());
-    var argObj = newObject(objproto);
+    set_obj_proto(arr, objproto);
 
-    // For each visible argument
-    for (var i = pint(2); i < numArgs; i++)
-    {
-        // Get this argument
-        var argVal = iir.get_arg(i);
+    // Initialize the hash table size and number of properties
+    set_obj_tblsize(arr, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    set_obj_numprops(arr, u32(0));
 
-        // Compute the argument index
-        var argIndex = boxInt(i - pint(2));
+    // Initialize the array table capacity and the array length
+    set_arr_cap(arr, iir.icast(IRType.u32, ARRAY_TBL_INIT_SIZE));
+    set_arr_len(arr, iir.icast(IRType.u32, numArgs));
 
-        // Put the argument in the object
-        argObj[argIndex] = argVal;
-    }
+    // Set the array table pointer to the arguments table
+    set_arr_arr(arr, argTable);
 
-    // Set the number of arguments
-    argObj.length = boxInt(numArgs - pint(2));
+    // Initialize the hash table pointer to null to prevent GC errors
+    set_obj_tbl(arr, null);
 
-    // Return the argument object
-    return argObj;
+    // Allocate space for a hash table and set the hash table reference
+    var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+    set_obj_tbl(arr, hashtbl);
+
+    // Initialize the hash table
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
+        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
+
+    // Initialize the callee variable to the function object
+    arr.callee = funcObj;
+
+    // Return the array reference
+    return arr;
 }
 
 /**
