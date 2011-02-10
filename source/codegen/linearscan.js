@@ -11,28 +11,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 /** @namespace */
 var allocator = {};
 
-
-
-/**
-*   Root object for all allocation information.  Register indexes are
-*   indexes into the physical register list containing the explicit
-*   platform specific registers.
-*/
-IRValue.prototype.regAlloc = {
-
-    /** Returns a register index preference for a given operand position */
-    opndsRegHint:function (instr, config, position) { return null; },
-
-    /** Returns a register index preference for the output value */
-    outRegHint:function (instr, config) { return null; },
-
-    /** Tells if operands of an instruction must be in registers */
-    opndsRegRequired:false,
-
-    /** List all register indices used by a given instruction */
-    usedRegisters:function (instr, config) { return null; }
-};
-
 //-----------------------------------------------------------------------------
 
 // Generic Algorithms and Data Structures
@@ -2197,7 +2175,7 @@ allocator.resolve = function (cfg, intervals, order, params)
 
         for (; itr.valid(); itr.next())
         {
-            if (itr.get().regAlloc !== undefined &&
+            if (itr.get().regAlloc.id !== null &&
                 itr.get().regAlloc.id >= pos)
             {
                 break;
@@ -2497,7 +2475,7 @@ allocator.validate = function (cfg, params)
             // jump may have been inserted after register
             // allocation resolution.  Those instructions
             // won't have a regAlloc.id
-            if (instr.regAlloc.id === undefined) return;
+            if (instr.regAlloc.id === null) return;
             
             assertInstrCompatible(given, opnds, instr.uses, instr);
 

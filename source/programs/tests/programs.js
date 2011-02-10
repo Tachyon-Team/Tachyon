@@ -386,7 +386,7 @@ tests.object_tostring.main = genTest(
 
 /**
 Arguments object test.
-*/
+
 tests.arg_obj = tests.testSuite(); 
 tests.arg_obj.main = genTest(
     'programs/arg_obj/arg_obj.js',
@@ -394,6 +394,7 @@ tests.arg_obj.main = genTest(
     [],
     55
 );
+*/
 
 /**
 Arithmetic shift test.

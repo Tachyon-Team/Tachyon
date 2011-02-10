@@ -51,6 +51,7 @@ BASE_SRCS =                             \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
+    codegen/regalloc.js                 \
     codegen/linearscan.js               \
     codegen/backend.js                  \
     codegen/ir-to-asm-x86.js            

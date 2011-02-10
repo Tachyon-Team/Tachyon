@@ -296,7 +296,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         {
             var opnds;
 
-            if (instr.regAlloc.opnds === undefined)
+            if (instr.regAlloc.opnds === null)
             {
                 opnds = instr.uses.map(replace, instr);
 
@@ -470,6 +470,7 @@ irToAsm.translator.prototype.prelude = function ()
         -----------------
         */
 
+        /*
         const retAddrOrigOffset = (spoffset*refByteNb);
         const retAddrNewOffset  = (spillNb*refByteNb);
 
@@ -484,6 +485,7 @@ irToAsm.translator.prototype.prelude = function ()
             that.asm.
             mov(reg, mem((index + spillNb + 1)*refByteNb, stack));
         });
+        */
     }
 };
 
@@ -492,6 +494,7 @@ irToAsm.translator.prototype.prelude = function ()
 // Translation of IR instructions to x86 machine code
 //
 //=============================================================================
+IRInstr.prototype.regAlloc = regAlloc.instr(); 
 
 /* code generation for each ir instruction */
 PhiInstr.prototype.genCode = function (tltor, opnds)
@@ -502,7 +505,7 @@ PhiInstr.prototype.genCode = function (tltor, opnds)
 /**
 *   Allocation information for argument value instructions 
 */
-ArgValInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+ArgValInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 ArgValInstr.prototype.regAlloc.outRegHint = function (instr, params)
 {
@@ -676,7 +679,7 @@ SubInstr.prototype.genCode = function (tltor, opnds)
 /**
 Allocation information for multiplication instruction
 */
-MulInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+MulInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 MulInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
@@ -781,7 +784,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
 /**
 Allocation information for division instruction
 */
-DivInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+DivInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 DivInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
@@ -1302,7 +1305,7 @@ JumpInstr.prototype.genCode = function (tltor, opnds)
 /**
 *   Allocation information for return instructions   
 */
-RetInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+RetInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 RetInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
@@ -1424,7 +1427,7 @@ ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 /**
 *   Allocation information for Call Instructions 
 */
-CallInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+CallInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 CallInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
 {
@@ -1855,7 +1858,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
 /**
 Allocation information for store instruction
 */
-LoadInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+LoadInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 // All operands must be in registers
 LoadInstr.prototype.regAlloc.opndsRegRequired = true;
@@ -1931,7 +1934,7 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
 /**
 Allocation information for store instruction
 */
-StoreInstr.prototype.regAlloc = Object.create(IRValue.prototype.regAlloc);
+StoreInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
 
 // All operands must be in registers
 StoreInstr.prototype.regAlloc.opndsRegRequired = true;
