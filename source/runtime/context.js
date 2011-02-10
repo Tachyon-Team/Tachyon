@@ -30,7 +30,8 @@ function makeContextLayout(params)
     /**
     Run-time context layout object
     */
-    var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
+    //var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
+    var ctxLayout = MemLayout.extend(params.target.backendCfg.ctxLayout, 'ctx');
 
     // Global object
     ctxLayout.addField(
@@ -47,12 +48,6 @@ function makeContextLayout(params)
     // Object prototype object
     ctxLayout.addField(
         'objproto',
-        IRType.box
-    );
-
-    // Temporary slot for Memory to Memory moves
-    ctxLayout.addField(
-        'temp',
         IRType.box
     );
 

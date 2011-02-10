@@ -138,8 +138,15 @@ x86BackendCfg.prototype.makeContextLayout = function (params)
     // Argument table for constructing the argument object
     ctxLayout.addField(
         "argtbl",
-        IRType.rptr
+        IRType.ref
     );
+
+    // Temporary slot for Memory to Memory moves
+    ctxLayout.addField(
+        'temp',
+        IRType.box
+    );
+
 
     // Finalize the context layout
     ctxLayout.finalize();
