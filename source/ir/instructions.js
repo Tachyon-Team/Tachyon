@@ -1701,6 +1701,22 @@ var GetNumArgsInstr = instrMaker(
     }
 );
 
+/**
+@class Get the arguments table containing all arguments passed to a
+       function. This is used to build the arguments object.
+@augments IRInstr
+*/
+var GetArgTableInstr = instrMaker(
+    'get_arg_table',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0, 0);
+        
+        // The table is an array table object
+        this.type = IRType.box;
+    }
+);
+
 //=============================================================================
 //
 // Type conversion instructions

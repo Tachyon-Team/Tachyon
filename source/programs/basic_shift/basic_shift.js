@@ -8,7 +8,6 @@ function lshift_test2(x)
     return x << 3;
 }
 
-
 function rshift_test(x,y)
 {
     return x >> y;
@@ -78,5 +77,4 @@ function foo()
 
     return 0;
 }
-
 

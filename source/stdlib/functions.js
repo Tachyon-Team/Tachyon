@@ -23,6 +23,20 @@ function Function()
 Function.prototype = {};
 
 /**
+Anonymous function to initialize this library
+*/
+(function ()
+{
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the function prototype object in the context
+    set_ctx_funcproto(ctx, Function.prototype);
+})();
+
+//-----------------------------------------------------------------------------
+
+/**
 15.3.4.2 Function.prototype.toString ()
 */
 Function.prototype.toString = function ()
@@ -37,6 +51,8 @@ Function.prototype.toString = function ()
 Function.prototype.apply = function (thisArg, argArray)
 {
     // TODO
+
+    // iir.call_apply(..., argArray.table, argArray.length)
 };
 
 /**

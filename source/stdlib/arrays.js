@@ -3,29 +3,10 @@
 Implementation of ECMAScript 5 array library routines.
 
 @author
-15.5.3.1
+Marc Feeley, Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
-*/
-
-/*
-TODO: establish functionality needed for initial bootstrap
-
-Array.prototype.toString()
-Array.prototype.concat([ item1 [, item2 [, … ]]])
-Array.prototype.join(separator)
-Array.prototype.pop()
-Array.prototype.push ([item1 [, item2 [, … ]]])
-Array.prototype.reverse()
-Array.prototype.shift()
-Array.prototype.slice(start, end)
-Array.prototype.sort(comparefn)
-Array.prototype.splice(start, deleteCount [, item1 [, item2 [, … ]]])
-Array.prototype.unshift ([item1 [, item2 [, … ]]])
-Array.prototype.forEach(callbackfn [, thisArg])
-Array.prototype.map(callbackfn [, thisArg])
-...
+Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
@@ -34,18 +15,27 @@ new Array (len)
 new Array ([item0 [, item1 [, … ]]])
 Array ([item0 [, item1 [, … ]]])
 */
-/*
 function Array(len)
 {
-    var a = [];
-
-    a.length = len;
-}*/
+    // TODO
+}
 
 /**
 15.4.3.1 Array prototype object
 */
-//Array.prototype = {};
+Array.prototype = {};
+
+/**
+Anonymous function to initialize this library
+*/
+(function ()
+{
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the Array prototype object in the context
+    set_ctx_arrproto(ctx, Array.prototype);
+})();
 
 //-----------------------------------------------------------------------------
 
@@ -511,6 +501,7 @@ Array.prototype.array_filter      = array_filter;
 
 //-----------------------------------------------------------------------------
 
+/*
 // Check correctness.
 
 function check_toString(arr)
@@ -1056,5 +1047,6 @@ check_filter([1]);
 check_filter([1,2]);
 check_filter([1,2,3]);
 check_filter([1,2,3,4]);
+*/
 
 //-----------------------------------------------------------------------------

@@ -65,35 +65,6 @@ function initHeap(heapPtr)
 }
 
 /**
-Initialize the standard library once the basic runtime components are ready.
-*/
-function initStdlib()
-{
-    "tachyon:static";
-
-    var ctx = iir.get_ctx();
-
-    // Set the object prototype object in the context
-    set_ctx_objproto(ctx, Object.prototype);
-
-    // TODO: set array, function proto in ctx
-    set_ctx_arrproto(ctx, null);
-
-    // Set the function prototype object reference in the context
-    //set_ctx_funcproto(ctx, Function.prototype);
-    set_ctx_funcproto(ctx, null);
-
-    // Set the string prototype object reference in the context
-    set_ctx_strproto(ctx, String.prototype);
-
-    // Get a reference to the global object
-    var globalObj = get_ctx_globalobj(ctx);
-
-    // Set the global object prototype
-    set_obj_proto(globalObj, Object.prototype);
-}
-
-/**
 Allocate/get a reference to a string object containing a given value
 @param fpVal 64 bit floating-point value
 */
