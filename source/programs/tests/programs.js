@@ -429,6 +429,17 @@ tests.obj_tostring.main = genTest(
 );
 
 /**
+Bubble-sort implementation. Uses closures and string conversion of arrays.
+*/
+tests.bubble_sort = tests.testSuite(); 
+tests.bubble_sort.main = genTest(
+    'programs/bubble_sort/bubble_sort.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Property deletion on objects.
 */
 tests.obj_delete = tests.testSuite(); 
