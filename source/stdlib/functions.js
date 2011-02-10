@@ -50,9 +50,19 @@ Function.prototype.toString = function ()
 */
 Function.prototype.apply = function (thisArg, argArray)
 {
-    // TODO
+    if (argArray === null || argArray === UNDEFINED)
+        argArray = [];
 
-    // iir.call_apply(..., argArray.table, argArray.length)
+    if (boxIsArray(argArray) === FALSE_BOOL)
+        throw makeError(TypeError, 'argument array must be an array');
+
+    var funcPtr = get_clos_funcptr(this);
+
+    var argTable = get_arr_arr(argArray);
+
+    var numArgs = iir.icast(IRType.pint, get_arr_len(argArray));
+
+    iir.call_apply(funcPtr, this, thisArg, argTable, numArgs);
 };
 
 /**
