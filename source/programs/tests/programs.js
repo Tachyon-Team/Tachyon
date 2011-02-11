@@ -440,6 +440,18 @@ tests.for_in.main = genTest(
 );
 
 /**
+Variable number of arguments test.
+*/
+tests.var_args = tests.testSuite(); 
+tests.var_args.main = genTest(
+    'programs/var_args/var_args.js',
+    'foo_proxy',
+    [],
+    0,
+    true
+);
+
+/**
 Arguments object test.
 */
 tests.arg_obj = tests.testSuite(); 
@@ -447,7 +459,6 @@ tests.arg_obj.main = genTest(
     'programs/arg_obj/arg_obj.js',
     'foo_proxy',
     [],
-    55,
-    true
+    55
 );
 

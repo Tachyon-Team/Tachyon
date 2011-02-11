@@ -585,7 +585,6 @@ irToAsm.translator.prototype.prelude = function ()
             }
         }
         
-        /*
         // Handle a variable number of arguments
         assert(argsRegNb + 2 <= backendCfg.physReg.length,
                "Current handling of variable number of arguments needs 2 registers to operate");
@@ -631,7 +630,6 @@ irToAsm.translator.prototype.prelude = function ()
 
         // If some argument were passed on the stack
         this.asm.
-
         mov(temp, ctxTemp).
         mov(stack, argPtr);
 
@@ -667,13 +665,6 @@ irToAsm.translator.prototype.prelude = function ()
         // Adjust stack pointer
         sal($(2), argOffset).
         add(argOffset, stack);
-
-        this.asm.
-
-        // Store the current number of arguments
-        mov($(expCallArgs), numArgs, width);
-        */
-
 
         this.asm.
         label(frameOk);
@@ -2336,6 +2327,7 @@ GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
     const mem = x86.Assembler.prototype.memory; 
+    const $ = x86.Assembler.prototype.immediateValue;
 
     // Configuration imports
     const backendCfg = tltor.params.target.backendCfg;
@@ -2346,7 +2338,8 @@ GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
     const dest = this.regAlloc.dest;
 
     tltor.asm.
-    mov(numArgs, dest);
+    mov(numArgs, dest).
+    sub($(2), dest);
 };
 
 GetArgTableInstr.prototype.genCode = function (tltor, opnds)
