@@ -60,7 +60,7 @@ function foo()
         return 5;
     }
 
-    if (rshift_test3(-2, 1) !== -1)
+    if (rshift_test3(-2) !== -1)
     {
         return 6;
     }

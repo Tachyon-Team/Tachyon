@@ -43,7 +43,7 @@ function makeErrorCtor(errorName, protoParent)
     }
 
     // Create the prototype object for this error constructor
-    ErrorCtor.prototype = Object.create(protoParent);
+    ErrorCtor.prototype = Object.create(protoParent, UNDEFINED);
 
     // Define the prototype property for the error constructor
     Object.defineProperty(
