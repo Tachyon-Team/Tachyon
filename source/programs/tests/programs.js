@@ -462,6 +462,17 @@ tests.for_in.main = genTest(
 );
 
 /**
+Matrix computations, uses arrays, constructors, strings, closures.
+*/
+tests.matrix_comp = tests.testSuite(); 
+tests.matrix_comp.main = genTest(
+    'programs/matrix_comp/matrix_comp.js',
+    'test',
+    [],
+    10
+);
+
+/**
 Arguments object test.
 
 tests.arg_obj = tests.testSuite(); 
