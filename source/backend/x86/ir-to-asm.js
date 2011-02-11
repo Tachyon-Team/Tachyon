@@ -1484,19 +1484,18 @@ RetInstr.prototype.genCode = function (tltor, opnds)
             pop(reg.rbp).
             pop(reg.rbx);
         }
-    }
-  
-    // Return address is just under the stack pointer
-    if (tltor.fct.usesArguments)
+
+        tltor.asm.ret();
+    } else
     {
         // Stack frame has been modified, pop the 
         // arguments passed in registers that were 
         // moved to the stack
         const argsRegNb = backendCfg.argsReg.length;
-        tltor.asm.ret($(argsRegNb*refByteNb));
-    } else
-    {
-        tltor.asm.ret();
+        const expNumArgs = tltor.fct.argVars.length;
+        const retOffset = expNumArgs + 2 - argsRegNb;
+
+        tltor.asm.ret($((retOffset > 0 ? retOffset : 0)*refByteNb));
     }
 };
 
@@ -1738,29 +1737,23 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     );
 
     const ctx = backendCfg.context;
-    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+    //const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
 
     // Store the number of arguments in the lower bits of the context register
-    assert(ctxAlign === 256, "Invalid alignment for context object");
-    assert(funcArgs.length < ctxAlign,
-           "Too many arguments for call instruction, number of arguments" +
-           " is currently limited to " + (ctxAlign - 1));
+    //assert(ctxAlign === 256, "Invalid alignment for context object");
+    //assert(funcArgs.length < ctxAlign,
+    //       "Too many arguments for call instruction, number of arguments" +
+    //       " is currently limited to " + (ctxAlign - 1));
 
 
     if (!tltor.fct.cProxy)
     {
-        // Store the number of arguments in the lowest bits of the context register
+        // Store the number of arguments in the context register
         tltor.asm.mov($(funcArgs.length), numArgs, width);
     }
 
     // Call the function by its address
     tltor.asm.call(funcPtr);
-    
-    // Remove return address and extra args
-    if (spillOffset > 0)
-    {
-        tltor.asm.add($(spillOffset), stack);
-    }
 
     // If this function has a continuation label
     if (this.targets[0] !== undefined)
