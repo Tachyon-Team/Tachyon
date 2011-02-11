@@ -345,7 +345,7 @@ MemLayout.prototype.getFieldOffset = function (query)
         curOffset += spec.offset;
 
         // If an index is supplied
-        if (query[i+1] instanceof IRValue)
+        if ((typeof query[i+1]) === "number")
         {
             var fieldIndex = query[i+1];
             ++i;

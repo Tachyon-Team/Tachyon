@@ -24,7 +24,6 @@ var iir =
 
     // Run-time Function Call protocol
     get_num_args: GetNumArgsInstr,
-    get_arg     : GetArgValInstr,
 
     // Type conversion
     icast       : ICastInstr,

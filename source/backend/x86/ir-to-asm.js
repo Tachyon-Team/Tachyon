@@ -14,15 +14,22 @@ var irToAsm = {};
     @private
     Returns an entry point for the function.
 */
-irToAsm.getEntryPoint = function (irfunc, name, params)
+irToAsm.getEntryPoint = function (irfunc, name, params, type)
 {
     if (name === undefined)
+    {
         name = "default";
+    }
+
+    if (type === undefined)
+    {
+        type = "addr";
+    }
     
     const width = params.target.ptrSizeBits;
     var ep;
 
-    function setEntryPoint (ep, name)
+    function setEntryPoint(ep, name)
     {
         if (name === undefined)
             name = "default";
@@ -30,13 +37,23 @@ irToAsm.getEntryPoint = function (irfunc, name, params)
         this.entryPoints[name] = ep;
     };
 
-    function getEntryPoint (name)
+    function getEntryPoint(name)
     {
         if (name === undefined)
             name = "default";
 
         return this.entryPoints[name];
     };
+
+    const offset = params.target.ptrSizeBytes;
+    function linkValueOffset(dstAddr) 
+    { 
+        var bytes = dstAddr
+                    .addOffset(offset)
+                    .getAddrOffsetBytes(this.srcAddr);
+        return bytes;
+    };
+
 
     // Assign an entry point to this irfunc
     // if it doesn't exist
@@ -59,6 +76,15 @@ irToAsm.getEntryPoint = function (irfunc, name, params)
         irfunc.linking.setEntryPoint(ep, name);
     }
 
+    // Customize the return entry point object behavior
+    assert(type === "addr" || type === "offset", "Invalid entry point type");
+    
+    if (type === "offset")
+    {
+        ep = Object.create(ep);
+        ep.linkValue = linkValueOffset;       
+    }
+    
     return ep;
 };
 
@@ -240,31 +266,16 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         if (opnd instanceof IRFunction)
         {
             // Get the function entry point
-            var entryPoint = irToAsm.getEntryPoint(
+            return irToAsm.getEntryPoint(
                 opnd,
                 undefined, 
-                that.params
+                that.params,
+                (this instanceof CallInstr && index === 0) ? "offset" : "addr"
             );
-            
-            // Only static calls to IRFunctions should
-            // calculate an offset
-            if (this instanceof CallInstr && index === 0)
-            {
-                entryPoint = Object.create(entryPoint);
-                entryPoint.linkValue = function (dstAddr) 
-                { 
-                    var bytes = dstAddr
-                                .addOffset(offset)
-                                .getAddrOffsetBytes(this.srcAddr);
-                    return bytes;
-                };
-            }
-
-            return entryPoint;            
         }
 
         // If this is a string
-        if (opnd instanceof ConstValue && typeof opnd.value === "string")
+        else if (opnd instanceof ConstValue && typeof opnd.value === "string")
         {
             return that.stringValue(opnd.value);
         }
@@ -386,6 +397,7 @@ irToAsm.translator.prototype.prelude = function ()
     const refByteNb = target.ptrSizeBytes;
     const backendCfg = target.backendCfg;
     const stack = backendCfg.stack;
+    const context = backendCfg.context;
 
     const cstack =  reg.rsp.subReg(width);
     const scratch = backendCfg.physReg[backendCfg.physReg.length - 1];
@@ -396,7 +408,7 @@ irToAsm.translator.prototype.prelude = function ()
                                 argsRegNb : 0);
 
 
-    // Add an entry point for static calls
+    // Add an entry point for regular static calls
     var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.params);
     this.asm.provide(lobj);
 
@@ -428,64 +440,161 @@ irToAsm.translator.prototype.prelude = function ()
         // Put the stack pointer where tachyon expects it to be
         if (cstack !== stack)
         {
-            tltor.asm.
+            this.asm.
             mov(cstack, stack);
         }
+    } else
+    {
+        if (this.fct.usesArguments)
+        {
+            // TODO: Should be moved into a separate handler
+
+            /*
+            At first we have the following stack frame:
+
+            -----------------
+            Return Address     <-- stack pointer
+            -----------------
+            Arguments (only those not passed in registers)
+            -----------------
+
+
+            In the end, we want the following stack frame:
+
+            -----------------
+            Return Address     <-- stack pointer
+            -----------------
+            Arguments passed in registers
+            Arguments passed on stack
+            -----------------
+            */
+
+            const retAddrOrigOffset = (argsRegNb*refByteNb);
+            const retAddrNewOffset  = 0;
+
+            // Change return address location on stack
+            if (retAddrOrigOffset !== retAddrNewOffset)
+            {
+                // Create space on stack for the arguments in registers
+                this.asm.
+                sub($(argsRegNb*refByteNb), stack);
+
+                // Move return address
+                this.asm.
+                mov(mem(retAddrOrigOffset, stack), scratch).
+                mov(scratch, mem(retAddrNewOffset, stack));
+
+                // Push each argument passed in registers on stack
+                // (overwrites the previous return address location)
+                backendCfg.argsReg.forEach(function (reg, index) {
+                    that.asm.
+                    mov(reg, mem((index + 1)*refByteNb, stack));
+                });
+            }
+
+            // Retrieve pointer to argument table
+            assert(backendCfg.argsReg.length >= 3, "Unsupported calling convention");
+
+            const fstOpnd = backendCfg.argsReg[2];
+
+            const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
+            const numArgs = mem(numArgsOffset, context);
+            const argTblOffset = backendCfg.ctxLayout.getFieldOffset(["argtbl"]);
+            const argTbl  = mem(argTblOffset, context);
+            const tblOffset = this.params.memLayouts.arrtbl.getFieldOffset(
+                                 ["tbl", 0]
+                              );
+    
+            const allocArgTbl   = irToAsm.getEntryPoint(
+                                    this.params.staticEnv.getBinding("allocArgTable"),
+                                    "fast",
+                                    this.params, 
+                                    "offset"
+                                );
+
+            const printInt = irToAsm.getEntryPoint(
+                                    this.params.staticEnv.getBinding("printInt"),
+                                    "default",
+                                    this.params, 
+                                    "offset"
+                                );
+
+            const xAX = reg.rax.subReg(width);
+            const xBX = reg.rbx.subReg(width);
+            const xDX = reg.rdx.subReg(width);
+            const xSI = reg.rsi.subReg(width);
+
+            const loop = this.asm.labelObj(); 
+            const end  = this.asm.labelObj(); 
+
+            this.asm.
+            // Move numArgs into corresponding register
+            sub($(2), numArgs, width).
+            mov(numArgs, fstOpnd).
+
+            // Preserve the number of argument accross calls
+            push(fstOpnd).
+
+            // Call handler, result is in xAX
+            call(allocArgTbl).
+
+            // Restore the number of arguments
+            // And copy arguments into argument table
+            pop(xBX).          // n = numArgs
+            mov(xBX, numArgs).
+
+            mov($(0), xSI).    // i = 0
+            label(loop).       // for(i=0, i<n, ++i) {
+            cmp(xBX, xSI).    
+            jge(end).
+
+            mov(mem(3*refByteNb, stack, xSI, refByteNb), xDX). // temp = sp[i] + 3
+            mov(xDX, mem(tblOffset, xAX, xSI, refByteNb)).   // argTbl[i] = temp
+
+            inc(xSI).                                      
+            jmp(loop).         // }
+            label(end).
+
+            // Store argument table on the context
+            mov(xAX, argTbl);
+
+            // Restore stack frame
+            if (retAddrOrigOffset !== retAddrNewOffset)
+            {
+                // Move arguments back in registers
+                backendCfg.argsReg.forEach(function (reg, index) {
+                    that.asm.
+                    mov(mem((index + 1)*refByteNb, stack), reg);
+                });
+
+                // Restore return address
+                this.asm.
+                mov(mem(retAddrNewOffset, stack), scratch).
+                mov(scratch, mem(retAddrOrigOffset, stack)).
+                add($(argsRegNb*refByteNb), stack);
+            }
+        }
+
+        // Handle a variable number of arguments
+
+        // TODO: Correctly handle a number of arguments
+        //       passed lesser than the number of arguments
+        //       expected
     }
 
-    // TODO: Correctly handle a number of arguments
-    //       passed lesser than the number of arguments
-    //       expected
+    // Sets a handler entry point to avoid the previous overhead for static
+    // calls to a handler
+    const fastEp = irToAsm.getEntryPoint(
+                        this.fct,
+                        "fast",
+                        this.params
+                    );
+    this.asm.
+    provide(fastEp);
+
     if (spoffset > 0)
     {
         this.asm.sub($(spoffset*refByteNb), stack);
-    }
-
-    if (this.fct.usesArguments)
-    {
-
-        /*
-        At first we have the following stack frame:
-
-        -----------------
-        Spills            <-- stack pointer
-        -----------------
-        Empty
-        -----------------
-        Return Address      
-        -----------------
-        Arguments (only those not passed in registers)
-        -----------------
-
-
-        In the end, we want the following stack frame:
-
-        -----------------
-        Spills            <-- stack pointer
-        -----------------
-        Return Address      
-        -----------------
-        Arguments passed in registers
-        Arguments passed on stack
-        -----------------
-        */
-
-        /*
-        const retAddrOrigOffset = (spoffset*refByteNb);
-        const retAddrNewOffset  = (spillNb*refByteNb);
-
-        // Change return address location on stack
-        this.asm.
-        mov(mem(retAddrOrigOffset, stack), scratch).
-        mov(scratch, mem(retAddrNewOffset, stack));
-
-        // Push each argument passed in registers on stack
-        // (overwrites the previous return address location)
-        backendCfg.argsReg.forEach(function (reg, index) {
-            that.asm.
-            mov(reg, mem((index + spillNb + 1)*refByteNb, stack));
-        });
-        */
     }
 };
 
@@ -550,8 +659,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const regAllocSpillNb = tltor.fct.regAlloc.spillNb; 
 
     // Index on the call site argument space
-    const callSiteArgIndex = (tltor.fct.usesArguments === true ?
-                              argIndex : (argIndex - argRegNb));
+    const callSiteArgIndex = (argIndex - argRegNb);
     
     // Offset due to C calling convention 
     const ccallOffset = (tltor.fct.cProxy === true) ?
@@ -570,7 +678,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
         return;
     }
 
-    if ((argIndex < argRegNb) && !tltor.fct.usesArguments)
+    if ((argIndex < argRegNb))
     {
         // The argument is in a register
         assert(
@@ -1463,6 +1571,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     const target = tltor.params.target;
     const backendCfg = target.backendCfg;
     const refByteNb = target.ptrSizeBytes;
+    const context = backendCfg.context;
+    const width = target.ptrSizeBits;
 
     // Register used for the return value
     const dest = this.regAlloc.dest;
@@ -1486,6 +1596,10 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Register to be used for the function pointer
     const funcPtrIndex = backendCfg.funcPtrIndex;
     const funcPtrReg = backendCfg.physReg[funcPtrIndex];
+    
+    // Num args location
+    const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
+    const numArgs = mem(numArgsOffset, context);
 
     // Used for loop iterations
     var i;
@@ -1632,9 +1746,12 @@ CallInstr.prototype.genCode = function (tltor, opnds)
            "Too many arguments for call instruction, number of arguments" +
            " is currently limited to " + (ctxAlign - 1));
 
-    // FIXME
-    // Store the number of arguments in the lowest bits of the context register
-    //tltor.asm.mov($(funcArgs.length), ctx.subReg(8));
+
+    if (!tltor.fct.cProxy)
+    {
+        // Store the number of arguments in the lowest bits of the context register
+        tltor.asm.mov($(funcArgs.length), numArgs, width);
+    }
 
     // Call the function by its address
     tltor.asm.call(funcPtr);
@@ -2093,9 +2210,7 @@ GetCtxInstr.prototype.genCode = function (tltor, opnds)
     //assert(ctx === dest, "Invalid register assigned to context object");
     assert(ctxAlign === 256, "Invalid alignment value for context object");
     
-    // Mask the lower bits of the context object to ensure a valid reference
     tltor.asm.
-    mov($(0), ctx.subReg(8)).
     mov(ctx, dest);
 };
 
@@ -2134,64 +2249,38 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-GetArgValInstr.prototype.genCode = function (tltor, opnds)
+GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
 {
-    assert(tltor.fct.usesArguments || tltor.fct.funcName === "makeArgObj",
-           "get_arg_val should only be used in function using the arguments" + 
-           " object"
-    );
     // Assembler imports
     const mem = x86.Assembler.prototype.memory; 
 
     // Configuration imports
-    const target = tltor.params.target; 
-    const backendCfg = target.backendCfg;
-    const refByteNb = target.ptrSizeBytes;
-
-    const dest = this.regAlloc.dest;
-    const stack = backendCfg.stack;
-    const spillNb = tltor.fct.regAlloc.spillNb;
-    const spoffset = (spillNb + 1) * refByteNb;
-
-    if (opnds[0].type === x86.type.REG)
-    {
-        tltor.asm.
-        mov(mem(spoffset, stack, opnds[0], refByteNb), dest);
-    }
-    else
-    {
-        assert(opnds[0].type === x86.type.MEM,
-               "Invalid index operand type");
-        tltor.asm.
-        mov(opnds[0], dest).
-        mov(mem(spoffset, stack, dest, refByteNb), dest);
-    }
-};
-
-GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
-{
-    // Assembler imports
-    const $ = x86.Assembler.prototype.immediateValue;
-    const reg = x86.Assembler.prototype.register;
-
-    // Configuration imports
     const backendCfg = tltor.params.target.backendCfg;
+    const context = backendCfg.context;
 
+    const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
+    const numArgs = mem(numArgsOffset, context);
     const dest = this.regAlloc.dest;
-    const ctx  = backendCfg.context;
 
-    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
-    const mask = ctxAlign - 1;
-
-    // For now, assume the number of arguments is always representable
-    // on the number of bits available on the context register
     tltor.asm.
-    mov($(mask), dest).
-    and(ctx, dest);
+    mov(numArgs, dest);
 };
 
 GetArgTableInstr.prototype.genCode = function (tltor, opnds)
 {
-    // TODO
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory; 
+
+    // Configuration imports
+    const backendCfg = tltor.params.target.backendCfg;
+    const context = backendCfg.context;
+
+    const argTblOffset = backendCfg.ctxLayout.getFieldOffset(["argtbl"]);
+    const argTbl = mem(argTblOffset, context);
+    const dest = this.regAlloc.dest;
+
+    tltor.asm.
+    mov(argTbl, dest);
+
 };
 

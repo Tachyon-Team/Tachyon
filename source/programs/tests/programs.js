@@ -441,13 +441,13 @@ tests.for_in.main = genTest(
 
 /**
 Arguments object test.
-
+*/
 tests.arg_obj = tests.testSuite(); 
 tests.arg_obj.main = genTest(
     'programs/arg_obj/arg_obj.js',
     'foo_proxy',
     [],
-    55
+    55,
+    true
 );
-*/
 

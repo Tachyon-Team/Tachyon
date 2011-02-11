@@ -1689,22 +1689,6 @@ ArgValInstr.prototype.copy = function ()
 };
 
 /**
-@class Get a function argument value based on its index. This is used
-       to build the arguments object.
-@augments IRInstr
-*/
-var GetArgValInstr = instrMaker(
-    'get_arg',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 1, 1);
-        instrMaker.validType(inputVals[0], IRType.pint);
-        
-        this.type = IRType.box;
-    }
-);
-
-/**
 @class Get the number of arguments passed to a function. This is used
        to build the arguments object.
 @augments IRInstr
