@@ -17,7 +17,7 @@ function initialize(boot)
     // Initialize the Tachyon configuration
     initConfig();
 
-    // config.hostParams.print = print;
+    //config.hostParams.print = print;
 
     try
     {

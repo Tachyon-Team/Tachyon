@@ -50,6 +50,8 @@ function bootstrap(allCode, params)
     // Execute the standard library code units
     for (var i = 0; i < libIRs.length; ++i)
     {
+        print(libSrcs[i]);
+        //print(libIRs[i]);
         execUnit(libIRs[i], params);
     }
 

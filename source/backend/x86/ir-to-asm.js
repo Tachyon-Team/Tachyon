@@ -265,10 +265,15 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         // If this is a static function reference
         if (opnd instanceof IRFunction)
         {
+            const isStaticCall = (this instanceof CallInstr && index === 0);
+            const expNumArgs = opnd.argVars.length;
+            const numArgs = this.uses.length - 3;
+            const callType = (isStaticCall && expNumArgs === numArgs) ? 
+                             "fast" : "default";
             // Get the function entry point
             return irToAsm.getEntryPoint(
                 opnd,
-                undefined, 
+                callType, 
                 that.params,
                 (this instanceof CallInstr && index === 0) ? "offset" : "addr"
             );
@@ -401,6 +406,7 @@ irToAsm.translator.prototype.prelude = function ()
 
     const cstack =  reg.rsp.subReg(width);
     const scratch = backendCfg.physReg[backendCfg.physReg.length - 1];
+    const scratch2 = backendCfg.physReg[backendCfg.physReg.length - 2];
 
     const argsRegNb = backendCfg.argsReg.length;
     const spillNb = this.fct.regAlloc.spillNb;
@@ -445,6 +451,24 @@ irToAsm.translator.prototype.prelude = function ()
         }
     } else
     {
+        const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
+        const numArgs = mem(numArgsOffset, context);
+
+        const tempOffset = backendCfg.ctxLayout.getFieldOffset(["temp"]);
+        const ctxTemp = mem(tempOffset, context);
+
+        const xAX = reg.rax.subReg(width);
+        const xBX = reg.rbx.subReg(width);
+        const xDX = reg.rdx.subReg(width);
+        const xSI = reg.rsi.subReg(width);
+
+        const printInt = irToAsm.getEntryPoint(
+                                this.params.staticEnv.getBinding("printInt"),
+                                "fast",
+                                this.params, 
+                                "offset"
+                            );
+
         if (this.fct.usesArguments)
         {
             // TODO: Should be moved into a separate handler
@@ -497,8 +521,6 @@ irToAsm.translator.prototype.prelude = function ()
 
             const fstOpnd = backendCfg.argsReg[2];
 
-            const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
-            const numArgs = mem(numArgsOffset, context);
             const argTblOffset = backendCfg.ctxLayout.getFieldOffset(["argtbl"]);
             const argTbl  = mem(argTblOffset, context);
             const tblOffset = this.params.memLayouts.arrtbl.getFieldOffset(
@@ -512,17 +534,7 @@ irToAsm.translator.prototype.prelude = function ()
                                     "offset"
                                 );
 
-            const printInt = irToAsm.getEntryPoint(
-                                    this.params.staticEnv.getBinding("printInt"),
-                                    "default",
-                                    this.params, 
-                                    "offset"
-                                );
 
-            const xAX = reg.rax.subReg(width);
-            const xBX = reg.rbx.subReg(width);
-            const xDX = reg.rdx.subReg(width);
-            const xSI = reg.rsi.subReg(width);
 
             const loop = this.asm.labelObj(); 
             const end  = this.asm.labelObj(); 
@@ -556,7 +568,8 @@ irToAsm.translator.prototype.prelude = function ()
             label(end).
 
             // Store argument table on the context
-            mov(xAX, argTbl);
+            mov(xAX, argTbl).
+            add($(2), numArgs, width);
 
             // Restore stack frame
             if (retAddrOrigOffset !== retAddrNewOffset)
@@ -574,12 +587,99 @@ irToAsm.translator.prototype.prelude = function ()
                 add($(argsRegNb*refByteNb), stack);
             }
         }
-
+        
+        /*
         // Handle a variable number of arguments
+        assert(argsRegNb + 2 <= backendCfg.physReg.length,
+               "Current handling of variable number of arguments needs 2 registers to operate");
+        const frameOk = this.asm.labelObj();
+        const frameTooBig   = this.asm.labelObj();
+        const tbDone        = this.asm.labelObj();
+        const tbLoop        = this.asm.labelObj();
 
-        // TODO: Correctly handle a number of arguments
-        //       passed lesser than the number of arguments
-        //       expected
+        const expNumArgs  = this.fct.argVars.length;
+        const expCallArgs = expNumArgs + 2; 
+        const frameNumArgs = expCallArgs - argsRegNb;
+
+        const argOffset = scratch;
+        const argPtr    = scratch2;
+        const temp      = xAX;
+
+        this.asm.
+        mov(numArgs, argOffset).
+        sub($(expCallArgs), argOffset).
+        test(argOffset, argOffset).
+        je(frameOk);
+
+        this.asm.
+        // Frame is either too big or too small
+        cmp($(0), argOffset).
+        jg(frameTooBig).
+
+        // Frame is too small
+
+        // Move stack
+
+        // Copy slot values to their new location
+
+        // Put undefined values in remaining slots
+
+        jmp(frameOk).
+
+        label(frameTooBig);
+
+
+        // Frame is too big
+
+
+        // If some argument were passed on the stack
+        this.asm.
+
+        mov(temp, ctxTemp).
+        mov(stack, argPtr);
+
+        if (expCallArgs < argsRegNb)
+        {
+            this.asm.
+            sub($(argsRegNb - expCallArgs), argOffset);
+        }
+
+        if (frameNumArgs > 0)
+        {
+            this.asm.
+            add($(frameNumArgs*refByteNb), argPtr);
+        }
+
+        this.asm.
+        // Copy slot values to their new location 
+        label(tbLoop).
+        cmp(stack, argPtr).
+        jl(tbDone).
+
+        // Move the value on the stack
+        mov(mem(0,argPtr), temp).
+        mov(temp, mem(0,argPtr, argOffset, refByteNb)).
+        sub($(refByteNb), argPtr).
+        
+        jmp(tbLoop).
+        label(tbDone). 
+
+        // Restore the value in register
+        mov(ctxTemp, temp).
+        
+        // Adjust stack pointer
+        sal($(2), argOffset).
+        add(argOffset, stack);
+
+        this.asm.
+
+        // Store the current number of arguments
+        mov($(expCallArgs), numArgs, width);
+        */
+
+
+        this.asm.
+        label(frameOk);
     }
 
     // Sets a handler entry point to avoid the previous overhead for static
@@ -1433,17 +1533,18 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     const backendCfg = tltor.params.target.backendCfg;
     const width = target.ptrSizeBits;
     const refByteNb = target.ptrSizeBytes;
+    const spillNb = tltor.fct.regAlloc.spillNb;
 
     // Register used for the return value
-    const offset = tltor.fct.regAlloc.spillNb;
     const retValReg = (tltor.fct.cProxy === false) ? 
                       backendCfg.retValReg : reg.rax.subReg(width);
     const cstack = reg.rsp.subReg(width);
+    const stack = backendCfg.stack;
 
     // Remove all spilled values from stack
-    if (offset > 0)
+    if (spillNb > 0)
     {
-        tltor.asm.add($(offset*refByteNb), backendCfg.stack);
+        tltor.asm.add($(spillNb*refByteNb), stack);
     }
 
     // If there is a value to return and it isn't in the return value register
@@ -1456,10 +1557,10 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     if (tltor.fct.cProxy)
     {
         // Put the stack pointer where C expects it to be
-        if (backendCfg.stack !== cstack)
+        if (stack !== cstack)
         {
             tltor.asm.
-            mov(backendCfg.stack, cstack);
+            mov(stack, cstack);
         }
 
         if (tltor.asm.target === x86.target.x86)
@@ -1737,14 +1838,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     );
 
     const ctx = backendCfg.context;
-    //const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
-
-    // Store the number of arguments in the lower bits of the context register
-    //assert(ctxAlign === 256, "Invalid alignment for context object");
-    //assert(funcArgs.length < ctxAlign,
-    //       "Too many arguments for call instruction, number of arguments" +
-    //       " is currently limited to " + (ctxAlign - 1));
-
 
     if (!tltor.fct.cProxy)
     {
