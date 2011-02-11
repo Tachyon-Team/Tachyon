@@ -1,4 +1,4 @@
-function foo()
+function foo(x0,x1,x2,x3,x4,x5,x6,x7,x8,x9)
 {
     return arguments.length + 
            arguments[0] + 
@@ -15,7 +15,6 @@ function foo()
 
 function foo_proxy()
 {
-    //return foo(0,1,2,3,4,5,6,7,8,9);
-    return 55;
+    return foo(0,1,2,3,4,5,6,7,8,9);
 }
 

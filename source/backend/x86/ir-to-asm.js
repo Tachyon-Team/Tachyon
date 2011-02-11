@@ -404,9 +404,6 @@ irToAsm.translator.prototype.prelude = function ()
 
     const argsRegNb = backendCfg.argsReg.length;
     const spillNb = this.fct.regAlloc.spillNb;
-    const spoffset = spillNb + (this.fct.usesArguments === true ? 
-                                argsRegNb : 0);
-
 
     // Add an entry point for regular static calls
     var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.params);
@@ -592,9 +589,9 @@ irToAsm.translator.prototype.prelude = function ()
     this.asm.
     provide(fastEp);
 
-    if (spoffset > 0)
+    if (spillNb > 0)
     {
-        this.asm.sub($(spoffset*refByteNb), stack);
+        this.asm.sub($(spillNb*refByteNb), stack);
     }
 };
 
