@@ -389,9 +389,6 @@ irToAsm.translator.prototype.stringValue = function (s)
 
 irToAsm.translator.prototype.prelude = function ()
 {
-    // TODO: Correctly handle a number of arguments
-    //       passed lesser than the number of arguments
-    //       expected
     const reg = x86.Assembler.prototype.register;
     const mem = x86.Assembler.prototype.memory;
     const $ = x86.Assembler.prototype.immediateValue;
@@ -412,7 +409,7 @@ irToAsm.translator.prototype.prelude = function ()
     const argsRegNb = backendCfg.argsReg.length;
     const spillNb = this.fct.regAlloc.spillNb;
 
-    // Add an entry point for regular static calls
+    // Add an entry point for default static calls
     var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.params);
     this.asm.provide(lobj);
 
