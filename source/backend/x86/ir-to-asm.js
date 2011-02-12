@@ -408,6 +408,7 @@ irToAsm.translator.prototype.prelude = function ()
     const scratch = backendCfg.physReg[backendCfg.physReg.length - 1];
     const scratch2 = backendCfg.physReg[backendCfg.physReg.length - 2];
 
+    const argsReg   = backendCfg.argsReg;
     const argsRegNb = backendCfg.argsReg.length;
     const spillNb = this.fct.regAlloc.spillNb;
 
@@ -507,7 +508,7 @@ irToAsm.translator.prototype.prelude = function ()
 
                 // Push each argument passed in registers on stack
                 // (overwrites the previous return address location)
-                backendCfg.argsReg.forEach(function (reg, index) {
+                argsReg.forEach(function (reg, index) {
                     that.asm.
                     mov(reg, mem((index + 1)*refByteNb, stack));
                 });
@@ -572,7 +573,7 @@ irToAsm.translator.prototype.prelude = function ()
             if (retAddrOrigOffset !== retAddrNewOffset)
             {
                 // Move arguments back in registers
-                backendCfg.argsReg.forEach(function (reg, index) {
+                argsReg.forEach(function (reg, index) {
                     that.asm.
                     mov(mem((index + 1)*refByteNb, stack), reg);
                 });
@@ -587,11 +588,14 @@ irToAsm.translator.prototype.prelude = function ()
         
         // Handle a variable number of arguments
         assert(argsRegNb + 2 <= backendCfg.physReg.length,
-               "Current handling of variable number of arguments needs 2 registers to operate");
+               "Current handling of variable number of arguments need " +
+               "2 registers to operate");
         const frameOk = this.asm.labelObj();
         const frameTooBig   = this.asm.labelObj();
         const tbDone        = this.asm.labelObj();
         const tbLoop        = this.asm.labelObj();
+        const tsDone        = this.asm.labelObj();
+        const tsLoop        = this.asm.labelObj();
 
         const expNumArgs  = this.fct.argVars.length;
         const expCallArgs = expNumArgs + 2; 
@@ -600,6 +604,8 @@ irToAsm.translator.prototype.prelude = function ()
         const argOffset = scratch;
         const argPtr    = scratch2;
         const temp      = xAX;
+        const undefImm = $(this.params.staticEnv
+                          .getBinding("BIT_PATTERN_UNDEF").value);
 
         this.asm.
         mov(numArgs, argOffset).
@@ -610,16 +616,84 @@ irToAsm.translator.prototype.prelude = function ()
         this.asm.
         // Frame is either too big or too small
         cmp($(0), argOffset).
-        jg(frameTooBig).
+        jg(frameTooBig);
 
-        // Frame is too small
 
-        // Move stack
+        const undef = scratch2;
 
-        // Copy slot values to their new location
+        this.asm.
+        mov(undefImm, undef).
+        mov(numArgs, scratch);
 
-        // Put undefined values in remaining slots
+        // Handle the case where some registers should be
+        // initialized to undefined
+        argsReg.forEach(function (reg, index)
+        {
+            if (expCallArgs >= index + 1)
+            {
+                that.asm.
+                cmp($(index), scratch).
+                cmovle(undef, reg); 
+            }
+        });
 
+        if (expCallArgs > argsRegNb)
+        {
+            const index = xBX;
+
+            this.asm.
+
+            mov(temp, ctxTemp).
+            mov($(0), temp).
+
+            // Calculate the remaining amount of undefined values to
+            // add on stack
+            mov($(argsRegNb), argPtr).
+            sub(numArgs, argPtr).
+            cmovl(temp, argPtr).
+
+            mov(numArgs, argOffset).
+            sub($(expCallArgs), argOffset).
+            add(argPtr, argOffset).
+            mov(ctxTemp, temp).
+
+            // Adjust stack
+            lea(mem(0,stack,argOffset,refByteNb), stack).
+            // Initialize argument iterator
+            mov(stack, argPtr).
+            // Preserve registers
+            push(temp).
+            push(index).
+            // Take the positive value
+            not(argOffset).
+            inc(argOffset).
+            // Initialize index to the return address position
+            mov($(frameNumArgs), index).
+
+            // For each stack frame slot on stack
+            label(tsLoop).
+            cmp($(0), index).
+            jl(tsDone).
+
+            // If it is already defined, copy it, 
+            // otherwise set it to undefined
+            cmp(argOffset, index).
+            mov(undefImm, temp).
+            cmovnl(mem(0,argPtr,argOffset,refByteNb), temp).
+            mov(temp, mem(0,argPtr)).
+
+            // Next stack frame slot
+            add($(refByteNb), argPtr).
+            dec(index).
+            jmp(tsLoop).
+
+            label(tsDone).
+            // Restore registers
+            pop(index).
+            pop(temp);
+        }
+
+        this.asm.
         jmp(frameOk).
 
         label(frameTooBig);
