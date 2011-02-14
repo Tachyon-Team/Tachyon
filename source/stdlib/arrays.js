@@ -17,9 +17,24 @@ Array ([item0 [, item1 [, … ]]])
 */
 function Array(len)
 {
-    //
-    // TODO
-    //
+    // Constructor call with length
+    if (isGlobalObj(this) === false && 
+        typeof len === 'number' && 
+        arguments.length === 1)
+    {
+        var a = [];
+        a.length = len;
+
+        return a;
+    }
+        
+    var a = [];
+    a.length = arguments.length;
+
+    for (var i = 0; i < arguments.length; ++i)
+        a[i] = arguments[i];
+
+    return a;
 }
 
 /**
@@ -90,7 +105,18 @@ function array_join(separator)
 
     var str = "";
     for (var i=o.length-1; i>=0; i--)
-        str = ((i===0?"":separator) + o[i].toString()) + str; // FIXME: O(N^2) due to string concatenation
+    {
+        var e = o[i];
+
+        var estr = (i !== 0)? separator:'';
+
+        if (e !== UNDEFINED)
+        {
+            estr = estr + String(e);
+        }
+
+        str = estr + str;
+    }
 
     return str;
 }
@@ -114,28 +140,11 @@ function array_pop()
 
 function array_push()
 {
-    print('in push');
-
-    print('num args: ' + arguments.length);
-
     var o = array_toObject(this);
     var len = o.length;
 
-    print('got array obj');
-
-    print('start len: ' + len);
-
     for (var i=0; i<arguments.length; i++)
-    {
-        print(arguments[i]);
         o[len+i] = arguments[i];
-    }
-
-    print('pushed arguments');
-
-    print('final len: ' + o.length);
-
-    print(o);
 
     return o.length;
 }
