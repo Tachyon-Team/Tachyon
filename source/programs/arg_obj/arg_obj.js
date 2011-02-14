@@ -13,8 +13,28 @@ function foo()
            arguments[9];
 }
 
+function foo2(x)
+{
+    return arguments.length;
+}
+
 function foo_proxy()
 {
-    return foo(0,1,2,3,4,5,6,7,8,9);
+    if (foo(0,1,2,3,4,5,6,7,8,9) !== 55)
+    {
+        return 1;
+    }
+
+    if (foo2(1) !== 1)
+    {
+        return 2;
+    }
+
+    if (foo2() !== 0)
+    {
+        return 3;
+    }
+
+    return 0;
 }
 
