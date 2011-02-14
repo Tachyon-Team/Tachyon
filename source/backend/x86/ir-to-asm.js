@@ -699,7 +699,7 @@ irToAsm.translator.prototype.prelude = function ()
         // Frame is too big
 
 
-        // If some argument were passed on the stack
+        // If some arguments were passed on the stack
         this.asm.
         mov(temp, ctxTemp).
         mov(stack, argPtr);
@@ -707,7 +707,14 @@ irToAsm.translator.prototype.prelude = function ()
         if (expCallArgs < argsRegNb)
         {
             this.asm.
-            sub($(argsRegNb - expCallArgs), argOffset);
+            // Remove from the offset the arguments
+            // that were passed in registers
+            sub($(argsRegNb - expCallArgs), argOffset).
+
+            // If the argOffset is less or equal to zero,
+            // there is nothing to be done
+            cmp($(0), argOffset).
+            jle(frameOk);
         }
 
         if (frameNumArgs > 0)

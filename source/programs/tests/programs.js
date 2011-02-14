@@ -481,7 +481,7 @@ tests.arg_obj.main = genTest(
     'programs/arg_obj/arg_obj.js',
     'foo_proxy',
     [],
-    55
+    0
 );
 
 /**
