@@ -17,10 +17,18 @@ function initialize(boot)
     // Initialize the Tachyon configuration
     initConfig();
 
-    //config.hostParams.print = print;
+    // config.hostParams.print = print;
 
-    // Compile and initialize the Tachyon primitives
-    bootstrap(boot, boot? config.bootParams:config.hostParams);
+    try
+    {
+        // Compile and initialize the Tachyon primitives
+        bootstrap(boot, boot? config.bootParams:config.hostParams);
+    } catch (e)
+    {
+        print(e.stack);
+        return false;
+    }
+    return true;
 }
 
 /**

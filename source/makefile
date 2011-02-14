@@ -1,4 +1,4 @@
-# JavaScript VM command
+#JavaScript VM command
 JSVM = d8 --allow_natives_syntax
 
 # JavaScript VM command with rlwrap
@@ -49,12 +49,13 @@ BASE_SRCS =                             \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
-    codegen/asm.js                      \
-    codegen/asm-x86.js                  \
-    codegen/linearscan.js               \
-    codegen/backend.js                  \
-    codegen/ir-to-asm-x86.js            \
-    codegen/regalloc-config-x86.js
+    backend/asm.js                      \
+    backend/regalloc.js                 \
+    backend/linearscan.js               \
+    backend/backend.js                  \
+    backend/x86/asm.js                  \
+    backend/x86/config.js               \
+    backend/x86/ir-to-asm.js            
 
 # Standard library source files
 STDLIB_SRCS =                           \
@@ -75,7 +76,7 @@ TEST_SPEC_SRCS =                        \
     stdlib/tests/*.js                   \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
-    codegen/tests/*.js                  \
+    backend/tests/*.js                  \
     programs/tests/programs.js          \
     tests/testmain.js                   \
 

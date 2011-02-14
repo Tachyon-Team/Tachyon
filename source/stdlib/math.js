@@ -6,21 +6,7 @@ Implementation of ECMAScript 5 math library routines.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
-*/
-
-/*
-TODO: establish functionality needed for initial bootstrap
-
-For now, fixnum support only
-
-Math.abs
-Math.ceil
-Math.floor
-Math.max
-Math.min
-Math.pow
-...
+Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**

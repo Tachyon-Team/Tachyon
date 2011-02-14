@@ -20,6 +20,16 @@ function initHeap(heapPtr)
     "tachyon:arg heapPtr rptr";
     "tachyon:ret rptr";
 
+    // Align the context object in memory
+    //
+    // The division then multiplication is done since
+    // a javascript bitwise and operation operates only on 32 bits
+    var heapPtrInt = iir.icast(IRType.pint, heapPtr);
+    heapPtrInt = (heapPtrInt % CTX_ALIGN) === pint(0) ?  
+                  heapPtrInt : 
+                  ((heapPtrInt + CTX_ALIGN) / CTX_ALIGN) * CTX_ALIGN;
+    heapPtr = iir.icast(IRType.rptr, heapPtrInt);
+
     // Treat first address as the address of context object and initialize
     // the allocation pointer
     iir.set_ctx(heapPtr);
@@ -41,8 +51,11 @@ function initHeap(heapPtr)
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
 
-    // Initially, set the object prototype to null
+    // Initially, set the prototype references to null
     set_ctx_objproto(ctxObj, null);
+    set_ctx_arrproto(ctxObj, null);
+    set_ctx_funcproto(ctxObj, null);
+    set_ctx_strproto(ctxObj, null);
 
     // Initialize the string table
     initStrTable();
@@ -52,31 +65,7 @@ function initHeap(heapPtr)
 }
 
 /**
-Initialize the standard library once the basic runtime components are ready.
-*/
-function initStdlib()
-{
-    "tachyon:static";
-
-    var ctx = iir.get_ctx();
-
-    // Set the object prototype object in the context
-    set_ctx_objproto(ctx, Object.prototype);
-
-    // Set the string prototype object reference in the context
-    set_ctx_strproto(ctx, String.prototype);
-
-    // TODO: set array, function proto in ctx
-
-    // Get a reference to the global object
-    var globalObj = get_ctx_globalobj(ctx);
-
-    // Set the global object prototype
-    set_obj_proto(globalObj, Object.prototype);
-}
-
-/**
-Allocate/get a reference to a string object containing a given value
+Allocate/get a reference to a float object containing a given value
 @param fpVal 64 bit floating-point value
 */
 function getFloatObj(fpVal)

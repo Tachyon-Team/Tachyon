@@ -3,29 +3,10 @@
 Implementation of ECMAScript 5 array library routines.
 
 @author
-15.5.3.1
+Marc Feeley, Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
-*/
-
-/*
-TODO: establish functionality needed for initial bootstrap
-
-Array.prototype.toString()
-Array.prototype.concat([ item1 [, item2 [, … ]]])
-Array.prototype.join(separator)
-Array.prototype.pop()
-Array.prototype.push ([item1 [, item2 [, … ]]])
-Array.prototype.reverse()
-Array.prototype.shift()
-Array.prototype.slice(start, end)
-Array.prototype.sort(comparefn)
-Array.prototype.splice(start, deleteCount [, item1 [, item2 [, … ]]])
-Array.prototype.unshift ([item1 [, item2 [, … ]]])
-Array.prototype.forEach(callbackfn [, thisArg])
-Array.prototype.map(callbackfn [, thisArg])
-...
+Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
@@ -34,18 +15,27 @@ new Array (len)
 new Array ([item0 [, item1 [, … ]]])
 Array ([item0 [, item1 [, … ]]])
 */
-/*
 function Array(len)
 {
-    var a = [];
-
-    a.length = len;
-}*/
+    // TODO
+}
 
 /**
 15.4.3.1 Array prototype object
 */
-//Array.prototype = {};
+Array.prototype = {};
+
+/**
+Anonymous function to initialize this library
+*/
+(function ()
+{
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the Array prototype object in the context
+    set_ctx_arrproto(ctx, Array.prototype);
+})();
 
 //-----------------------------------------------------------------------------
 
@@ -60,7 +50,7 @@ function array_toString()
 {
     var o = array_toObject(this);
 
-    return o.join();
+    return o.join(',');
 }
 
 function array_concat()
@@ -486,31 +476,29 @@ function array_filter(callbackfn, thisArg)
 
 // Setup Array.prototype .
 //
-// Note: in final version the array_ prefix to the method names
-// should be dropped, i.e.
-//
 // Array.prototype.toString = array_toString;
 // ...
 
-Array.prototype.array_toString    = array_toString;
-Array.prototype.array_concat      = array_concat;
-Array.prototype.array_join        = array_join;
-Array.prototype.array_pop         = array_pop;
-Array.prototype.array_push        = array_push;
-Array.prototype.array_reverse     = array_reverse;
-Array.prototype.array_shift       = array_shift;
-Array.prototype.array_slice       = array_slice;
-Array.prototype.array_sort        = array_sort;
-Array.prototype.array_splice      = array_splice;
-Array.prototype.array_unshift     = array_unshift;
-Array.prototype.array_indexOf     = array_indexOf;
-Array.prototype.array_lastIndexOf = array_lastIndexOf;
-Array.prototype.array_forEach     = array_forEach;
-Array.prototype.array_map         = array_map;
-Array.prototype.array_filter      = array_filter;
+Array.prototype.toString    = array_toString;
+Array.prototype.concat      = array_concat;
+Array.prototype.join        = array_join;
+Array.prototype.pop         = array_pop;
+Array.prototype.push        = array_push;
+Array.prototype.reverse     = array_reverse;
+Array.prototype.shift       = array_shift;
+Array.prototype.slice       = array_slice;
+Array.prototype.sort        = array_sort;
+Array.prototype.splice      = array_splice;
+Array.prototype.unshift     = array_unshift;
+Array.prototype.indexOf     = array_indexOf;
+Array.prototype.lastIndexOf = array_lastIndexOf;
+Array.prototype.forEach     = array_forEach;
+Array.prototype.map         = array_map;
+Array.prototype.filter      = array_filter;
 
 //-----------------------------------------------------------------------------
 
+/*
 // Check correctness.
 
 function check_toString(arr)
@@ -1056,5 +1044,6 @@ check_filter([1]);
 check_filter([1,2]);
 check_filter([1,2,3]);
 check_filter([1,2,3,4]);
+*/
 
 //-----------------------------------------------------------------------------

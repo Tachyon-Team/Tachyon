@@ -14,10 +14,24 @@ Create the context object layout for a given architecture
 */
 function makeContextLayout(params)
 {
+    /** 
+    Static environment constants for the context object 
+    */
+   
+    // Alignment for heap allocation 
+    params.staticEnv.regBinding(
+        'CTX_ALIGN',
+        ConstValue.getConst(
+            256,
+            IRType.pint
+        )
+    );
+
     /**
     Run-time context layout object
     */
-    var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
+    //var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
+    var ctxLayout = MemLayout.extend(params.target.backendCfg.ctxLayout, 'ctx');
 
     // Global object
     ctxLayout.addField(
@@ -37,12 +51,6 @@ function makeContextLayout(params)
         IRType.box
     );
 
-    // Temporary slot for Memory to Memory moves
-    ctxLayout.addField(
-        'temp',
-        IRType.box
-    );
-
     // Function prototype object
     ctxLayout.addField(
         'funcproto',
@@ -58,6 +66,12 @@ function makeContextLayout(params)
     // String prototype object
     ctxLayout.addField(
         'strproto',
+        IRType.box
+    );
+
+    // Number prototype object
+    ctxLayout.addField(
+        'numproto',
         IRType.box
     );
 

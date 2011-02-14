@@ -16,7 +16,7 @@ Entry point for the Tachyon VM.
 function main()
 {
     // Parse the command-line arguments
-    var args = parseCmdLine()
+    var args = parseCmdLine();
 
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
@@ -51,13 +51,43 @@ function tachyonRepl()
     function printHelp()
     {
         print('Available special commands:');
-        print('  /help           print a help listing');
-        print('  /exit           exit the read-eval-print loop');
+        print('  /load <filename>    load and execute a script');
+        print('  /time <command>     time the execution of a command');
+        print('  /help               print a help listing');
+        print('  /exit               exit the read-eval-print loop');
+    }
+
+    // Load and execute a script
+    function loadScript(fileName)
+    {
+        print('Loading script: "' + fileName + '"');
+
+        var ir = compileSrcFile(fileName, config.hostParams);
+
+        var bridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            'int'
+        );
+
+        bridge(config.hostParams.ctxPtr);
     }
 
     // Execute a special command
     function execSpecial(cmd)
     {
+        var spaceIdx = cmd.indexOf(' ');
+        if (spaceIdx != -1)
+        {
+            var args = cmd.slice(spaceIdx + 1);
+            var cmd = cmd.slice(0, spaceIdx);
+        }
+        else
+        {
+            var args = '';
+        }
+
         switch (cmd)
         {
             case 'exit':
@@ -65,6 +95,18 @@ function tachyonRepl()
 
             case 'help':
             printHelp();
+            break;
+
+            case 'load':
+            loadScript(args);
+            break;
+
+            case 'time':
+            var startTimeMs = (new Date()).getTime();
+            execCode(args);
+            var endTimeMs = (new Date()).getTime();
+            var time = (endTimeMs - startTimeMs) / 1000;
+            print('time: ' + time + 's');
             break;
 
             default:
@@ -76,6 +118,9 @@ function tachyonRepl()
     // Execute a code string
     function execCode(str)
     {
+        // Add an extra semicolon to avoid syntax errors
+        str += ';';
+
         var ir = compileSrcString(str, config.hostParams);
 
         var bridge = makeBridge(
@@ -110,9 +155,6 @@ function tachyonRepl()
         }
         else
         {
-            // Add an extra semicolon to avoid syntax errors
-            cmd += ';';
-
             // Execute the code string
             execCode(cmd);
         }

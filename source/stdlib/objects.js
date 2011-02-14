@@ -1,6 +1,6 @@
 /**
 @fileOverview
-Implementation of ECMAScript 5 object methods and prototype.
+Implementation of ECMAScript 5 Object methods and prototype.
 
 @author
 Maxime Chevalier-Boisvert
@@ -20,6 +20,34 @@ function Object(value)
 }
 
 /**
+15.2.3.1 Object prototype object
+*/
+Object.prototype = {};
+
+/**
+Anonymous function to initialize this library
+*/
+(function ()
+{
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the object prototype object in the context
+    set_ctx_objproto(ctx, Object.prototype);
+
+    // Get a reference to the global object
+    var globalObj = get_ctx_globalobj(ctx);
+
+    // Set the global object prototype
+    set_obj_proto(globalObj, Object.prototype);
+
+    // Set the undefined value on the global object
+    globalObj.undefined = UNDEFINED;
+})();
+
+//-----------------------------------------------------------------------------
+
+/**
 15.2.3.2 Get the prototype of an object
 */
 Object.getPrototypeOf = function (obj)
@@ -32,7 +60,7 @@ Object.getPrototypeOf = function (obj)
     var proto = get_obj_proto(obj);
 
     return proto;
-}
+};
 
 /**
 15.2.3.5 Object.create ( O [, Properties] )
@@ -43,12 +71,17 @@ Object.create = function (obj, props)
     var newObj = newObject(obj);
 
     return newObj;
-}
+};
 
 /**
-15.2.3.1 Object prototype object
+15.2.3.6 Object.defineProperty ( O, P, Attributes )
+FIXME: for now, we ignore most attributes
 */
-Object.prototype = {};
+Object.defineProperty = function (obj, prop, attribs)
+{
+    if (attribs.hasOwnProperty('value'))
+        obj.prop = attribs.value;
+};
 
 /**
 15.2.4.2 Default object to string conversion function
@@ -63,8 +96,8 @@ Object.prototype.toString = function ()
 */
 Object.prototype.hasOwnProperty = function (prop)
 {
-    return (prop in this);
-}
+    return boolToBox(hasOwnPropVal(this, prop));
+};
 
 /**
 15.2.4.6 Test that an object is the prototype of another
@@ -74,5 +107,5 @@ Object.prototype.isPrototypeOf = function (obj)
     var proto = Object.getPrototypeOf(obj);
 
     return (this === proto);
-}
+};
 

@@ -152,7 +152,7 @@ MemLayout.extend = function (baseLayout, name, tagName)
         'invalid layout name'
     );
     assert (
-        typeof tagName === 'string',
+        !(baseLayout.ptrType === IRType.box && typeof tagName !== 'string'),
         'invalid tag name'
     );
 
@@ -306,6 +306,71 @@ MemLayout.prototype.finalize = function ()
 };
 
 /**
+Compute a fixed offset to access a given field or sub-field
+*/
+MemLayout.prototype.getFieldOffset = function (query)
+{
+    assert (
+        query.length > 0,
+        'empty field access query'
+    );
+
+    assert (
+        this.ptrType !== undefined,
+        'cannot generate access IR for layout, pointer type unspecified (' +
+        this.name + ')'
+    );
+
+    // Declare a variable for the current offset value
+    var curOffset = 0;
+
+    // Initialize the current type
+    var curType = this;
+
+    // For each element of the query
+    for (var i = 0; i < query.length; ++i)
+    {
+        var fieldName = query[i];
+        var spec = curType.fieldMap[fieldName];
+
+        assert (
+            spec instanceof FieldSpec,
+            'field not found: "' + fieldName + '"'
+        );
+
+        // Move to the layout of the field, if applicable
+        var curType = spec.type;
+
+        // Update the total offset
+        curOffset += spec.offset;
+
+        // If an index is supplied
+        if (query[i+1] instanceof IRValue)
+        {
+            var fieldIndex = query[i+1];
+            ++i;
+
+            // Add the index offset to the total offset
+            var fieldSize = spec.elemSize;
+            var idxOffset = fieldSize * fieldIndex;
+            curOffset += idxOffset;
+        }
+        else
+        {
+            // Ensure that an index is supplied if the current
+            // field has variable size
+            assert (
+                spec.numElems !== false,
+                'must specify index for variable size fields'
+            );
+        }
+    }
+
+    // Return the computed offset value
+    return curOffset;
+}
+
+/**
 Generate the offset computation to access a given field or sub-field
 @arg query list of field name strings and index values
 */
@@ -356,6 +421,15 @@ MemLayout.prototype.genfieldAccessIR = function (context, query)
             var fieldSize = ConstValue.getConst(spec.elemSize, IRType.pint);
             var idxOffset = context.addInstr(new MulInstr(fieldSize, fieldIndex));
             context.addInstr(new AddInstr(curOffset, idxOffset));
+        }
+        else
+        {
+            // Ensure that an index is supplied if the current
+            // field has variable size
+            assert (
+                spec.numElems !== false,
+                'must specify index for variable size fields'
+            );
         }
     }
 
@@ -422,7 +496,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxRef(ptr, ' + this.tagName + ');\n';
+            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
         else
             sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
@@ -455,7 +529,7 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxRef(ptr, ' + this.tagName + ');\n';
+            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
         else
             sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';

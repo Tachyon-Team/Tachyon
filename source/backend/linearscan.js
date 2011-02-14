@@ -11,7 +11,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 /** @namespace */
 var allocator = {};
 
-
 //-----------------------------------------------------------------------------
 
 // Generic Algorithms and Data Structures
@@ -1002,8 +1001,8 @@ allocator.orderBlocks = function (cfg)
                 loopIndex       : -1,   
                 // Loop nesting depth
                 loopDepth       : 0,    
-                // For loop ends, corresponding loop header
-                loopHeader      : null, 
+                // For loop ends, corresponding loop headers
+                loopHeaders      : null, 
                 // For loop headers, last corresponding loop end block
                 lastLoopEnd     : null, 
                 // For loop blocks, loops to which it belongs
@@ -1030,7 +1029,7 @@ allocator.orderBlocks = function (cfg)
 
             cfg.blocks[i].regAlloc.loopIndex       = -1;   
             cfg.blocks[i].regAlloc.loopDepth       = 0;    
-            cfg.blocks[i].regAlloc.loopHeader      = null; 
+            cfg.blocks[i].regAlloc.loopHeaders     = null; 
             cfg.blocks[i].regAlloc.lastLoopEnd     = null; 
             cfg.blocks[i].regAlloc.loops           = [];   
 
@@ -1092,7 +1091,13 @@ allocator.orderBlocks = function (cfg)
                 succ.regAlloc.numBackBranch++;
 
                 // Set the loop header for this loop end
-                block.regAlloc.loopHeader = succ;
+                if (block.regAlloc.loopHeaders === null)
+                {
+                    block.regAlloc.loopHeaders = [succ];
+                } else
+                {
+                    block.regAlloc.loopHeaders.push(succ);
+                }
 
                 // Add this block to the loop end list
                 loopEnds.push(block);
@@ -1118,39 +1123,44 @@ allocator.orderBlocks = function (cfg)
         var loopEnd = loopEnds[i];
 
         // Get the loop header for this loop
-        var loopHeader = loopEnd.regAlloc.loopHeader;
+        var loopHeaders = loopEnd.regAlloc.loopHeaders;
 
-        // Array to mark visited blocks
-        var visited = [];
-
-        // Stack for the CFG traversal
-        var stack = [loopEnd];
-
-        // Until the stack is empty
-        while (stack.length > 0)
+        for (var k = 0; k < loopHeaders.length; ++k)
         {
-            var block = stack.pop();
+            var loopHeader = loopHeaders[0];
 
-            // Mark this block as visited
-            visited[block.blockId] = true;
+            // Array to mark visited blocks
+            var visited = [];
 
-            // Update the loop set for this block
-            block.regAlloc.loops.push(loopHeader);
+            // Stack for the CFG traversal
+            var stack = [loopEnd];
 
-            // Update the loop depth for this block
-            block.regAlloc.loopDepth = block.regAlloc.loops.length;
-
-            // If this is the loop header, don't visit predecessors
-            if (block === loopHeader)
-                continue;
-
-            // For each predecessor
-            for (var j = 0; j < block.preds.length; ++j)
+            // Until the stack is empty
+            while (stack.length > 0)
             {
-                var pred = block.preds[j];
+                var block = stack.pop();
 
-                if (!visited[pred.blockId])
-                    stack.push(pred);
+                // Mark this block as visited
+                visited[block.blockId] = true;
+
+                // Update the loop set for this block
+                block.regAlloc.loops.push(loopHeader);
+
+                // Update the loop depth for this block
+                block.regAlloc.loopDepth = block.regAlloc.loops.length;
+
+                // If this is the loop header, don't visit predecessors
+                if (block === loopHeader)
+                    continue;
+
+                // For each predecessor
+                for (var j = 0; j < block.preds.length; ++j)
+                {
+                    var pred = block.preds[j];
+
+                    if (!visited[pred.blockId])
+                        stack.push(pred);
+                }
             }
         }
     }
@@ -1222,8 +1232,13 @@ allocator.orderBlocks = function (cfg)
     {
         var block = blockOrder[i];
 
-        if (block.regAlloc.loopHeader)
-            block.regAlloc.loopHeader.regAlloc.lastLoopEnd = block;
+        if (block.regAlloc.loopHeaders !== null)
+        {
+            block.regAlloc.loopHeaders.forEach(function (loopHeader)
+            {
+                loopHeader.regAlloc.lastLoopEnd = block;
+            });
+        }
     }
 
     /*
@@ -1251,7 +1266,7 @@ allocator.orderBlocks = function (cfg)
 /**
 Perform instruction numbering on a control flow graph
 */
-allocator.numberInstrs = function (cfg, order, config)
+allocator.numberInstrs = function (cfg, order, params)
 {
     var nextNo = 2;
     var inc = allocator.numberInstrs.inc;
@@ -1312,7 +1327,7 @@ allocator.numberInstrs = function (cfg, order, config)
         {
             instr = block.instrs[j];
 
-            if (instr.regAlloc.usedRegisters(instr, config))
+            if (instr.regAlloc.usedRegisters(instr, params))
             {
                 // For instructions using supplementary registers, 
                 // we need to increment by twice the value
@@ -1353,7 +1368,7 @@ allocator.numberInstrs.inc = 2;
 /**
 Compute the live intervals for the temporaries of a CFG
 */
-allocator.liveIntervals = function (cfg, order, config)
+allocator.liveIntervals = function (cfg, order, params)
 {
     var pos, it;
 
@@ -1386,10 +1401,16 @@ allocator.liveIntervals = function (cfg, order, config)
                 }
             }
 
-            // If this is our loop header, skip it
-            if (block.regAlloc.loopHeader === succ)
+            // If this is one of our loop headers, skip it
+            if (block.regAlloc.loopHeaders !== null &&
+                arraySetHas(block.regAlloc.loopHeaders, succ))
+            {
                 continue;
+            }
 
+            assert(live !== null && succ.regAlloc.liveIn !== null,
+                   "Invalid live or liveIn set");
+                
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
         }
@@ -1423,7 +1444,7 @@ allocator.liveIntervals = function (cfg, order, config)
                 //print( instr.instrId + " startPos: " + instr.regAlloc.id);
                 //print( "new interval: " + instr.regAlloc.interval);
                 instr.regAlloc.interval.regHint = 
-                    instr.regAlloc.outRegHint(instr, config);
+                    instr.regAlloc.outRegHint(instr, params);
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
@@ -1448,7 +1469,7 @@ allocator.liveIntervals = function (cfg, order, config)
                 // instruction
                 //print( use.regAlloc.interval);
 
-                if (instr.regAlloc.usedRegisters(instr, config))
+                if (instr.regAlloc.usedRegisters(instr, params))
                 {
                     // For instructions using supplementary registers, 
                     // we separate argument position from return
@@ -1470,7 +1491,7 @@ allocator.liveIntervals = function (cfg, order, config)
                 }
 
                 use.regAlloc.interval.regHint = 
-                    instr.regAlloc.opndsRegHint(instr, config, k);
+                    instr.regAlloc.opndsRegHint(instr, params, k);
 
                 if (instr.regAlloc.opndsRegRequired)
                 {
@@ -1545,10 +1566,12 @@ allocator.liveIntervals = function (cfg, order, config)
     return liveIntervals;
 };
 
-allocator.fixedIntervals = function (cfg, config)
+allocator.fixedIntervals = function (cfg, params)
 {
+    const backendCfg = params.target.backendCfg;
+
     // Create new fixed intervals
-    const fixedItrvls = arrayRange(config.physReg.length).map(function (i) 
+    const fixedItrvls = arrayRange(backendCfg.physReg.length).map(function (i) 
     { 
         const it = allocator.interval();
         it.reg = i;
@@ -1560,7 +1583,7 @@ allocator.fixedIntervals = function (cfg, config)
     // Add the fixed registers for each instruction requiring them
     cfg.getInstrItr().forEach(function (instr) 
     {
-        const usedRegs = instr.regAlloc.usedRegisters(instr, config);
+        const usedRegs = instr.regAlloc.usedRegisters(instr, params);
         if (usedRegs !== null)
         {
             // Add a fixed interval between the arguments position
@@ -1588,7 +1611,7 @@ allocator.fixedIntervals = function (cfg, config)
     The mems object should have a newSlot() method returning 
     a new memory location for spilling.
 
-    @param {Object} config   configuration containing platform specific
+    @param {Object} params configuration containing platform specific
                              register information
     @param {Array} unhandled list of unassigned intervals
     @param {Object} mems     object allocating memory locations used 
@@ -1596,8 +1619,9 @@ allocator.fixedIntervals = function (cfg, config)
     @param {Array} fixed     list of intervals where registers
                              are unavailable
 */ 
-allocator.linearScan = function (config, unhandled, mems, fixed)
+allocator.linearScan = function (params, unhandled, mems, fixed)
 {
+    const backendCfg = params.target.backendCfg;
 
     // Print function used for debugging purposes
     function printState() 
@@ -1609,7 +1633,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
         };
 
         print("Available registers:");
-        print(config.physReg);
+        print(backendCfg.physReg);
         print("Free until pos:");
         print(freeUntilPos);
         print("Next use pos");
@@ -1628,7 +1652,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
     //       Interval registers are indexes into the pregs array during
     //       allocation, but are replaced by their pregs object
     //       at the end.
-    const pregs = config.physReg;
+    const pregs = backendCfg.physReg;
     
     // Queue of all unhandled intervals, sorted by start position,
     // using a copy of unhandled
@@ -2053,7 +2077,7 @@ allocator.linearScan = function (config, unhandled, mems, fixed)
 
     @param cfg          Control Flow Graph 
 */
-allocator.assign = function (cfg, config)
+allocator.assign = function (cfg, params)
 {
     cfg.getInstrItr().forEach(function (instr) 
     {
@@ -2072,7 +2096,7 @@ allocator.assign = function (cfg, config)
                     // register as used for SSA deconstruction
                     opnds.push(use.regAlloc.interval.
                               regAtPos(instr.getPredecessor(use).regAlloc.to));
-                } else if (instr.regAlloc.usedRegisters(instr, config))
+                } else if (instr.regAlloc.usedRegisters(instr, params))
                 {
                     // Special case for instructions for which
                     // the inputs where separated from the outputs
@@ -2105,10 +2129,17 @@ allocator.assign = function (cfg, config)
     @param cfg          Control Flow Graph 
     @param intervals    Intervals after register allocation
     @param order        A Linear order of all the basic blocks
-    @param config       Compilation specific information
+    @param params       Compilation specific information
 */
-allocator.resolve = function (cfg, intervals, order, config)
+allocator.resolve = function (cfg, intervals, order, params)
 {
+    const backendCfg = params.target.backendCfg;
+
+    const mem = x86.Assembler.prototype.memory;
+
+    var tempOffset = params.memLayouts.ctx.getFieldOffset([backendCfg.tempName]);
+    var temp = mem(tempOffset, backendCfg.context);
+
     function getLiveAtBeginFct (succ)
     {
         var pos = succ.regAlloc.from;
@@ -2144,7 +2175,7 @@ allocator.resolve = function (cfg, intervals, order, config)
 
         for (; itr.valid(); itr.next())
         {
-            if (itr.get().regAlloc !== undefined &&
+            if (itr.get().regAlloc.id !== null &&
                 itr.get().regAlloc.id >= pos)
             {
                 break;
@@ -2165,8 +2196,7 @@ allocator.resolve = function (cfg, intervals, order, config)
         } else
         {
             // We got multiple moves to insert
-            moves.orderAndInsertMoves(getInsertFct(block,insertPos), 
-                                      config.temp);
+            moves.orderAndInsertMoves(getInsertFct(block,insertPos), temp);
         }
     };
     
@@ -2249,7 +2279,6 @@ allocator.resolve = function (cfg, intervals, order, config)
             continue;
         }
 
-        
         lastInstr = edge.pred.getLastInstr();
 
         // Order and insert moves
@@ -2279,8 +2308,7 @@ allocator.resolve = function (cfg, intervals, order, config)
                 // the move instructions
                 block = cfg.getNewBlock("ssa_dec");     
                 blocksToInsert.push({edge:edge, block:block});
-                mapping.orderAndInsertMoves(getInsertFct(block, 0), 
-                                            config.temp);
+                mapping.orderAndInsertMoves(getInsertFct(block, 0), temp);
             }
         }
     }
@@ -2319,8 +2347,9 @@ allocator.resolve = function (cfg, intervals, order, config)
     introduced, ensuring that for each instruction, temporaries
     are in the expected registers or memory slot.
 */
-allocator.validate = function (cfg, config)
+allocator.validate = function (cfg, params)
 {
+    const backendCfg = params.target.backendCfg;
 
     function printIt(instr)
     {
@@ -2345,7 +2374,7 @@ allocator.validate = function (cfg, config)
         for (var i = 0; i < slots.length; ++i)
         {
             slot  = slots[i];
-            if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+            if (slot.type === backendCfg.REG || slot.type === backendCfg.MEM)
             {
                 value = values[i]; 
                 assert(given.compatible(slot, value), 
@@ -2427,7 +2456,7 @@ allocator.validate = function (cfg, config)
         {
             const opnds = instr.regAlloc.opnds;
             const dest = instr.regAlloc.dest;
-            var blocked = instr.regAlloc.usedRegisters(instr, config);
+            var blocked = instr.regAlloc.usedRegisters(instr, params);
 
             // They already have been handled
             if (instr instanceof PhiInstr) return;
@@ -2446,7 +2475,7 @@ allocator.validate = function (cfg, config)
             // jump may have been inserted after register
             // allocation resolution.  Those instructions
             // won't have a regAlloc.id
-            if (instr.regAlloc.id === undefined) return;
+            if (instr.regAlloc.id === null) return;
             
             assertInstrCompatible(given, opnds, instr.uses, instr);
 
@@ -2455,7 +2484,7 @@ allocator.validate = function (cfg, config)
             {
                 blocked = blocked.map(function (index) 
                 { 
-                    return config.physReg[index]; 
+                    return backendCfg.physReg[index]; 
                 });
                 given.invalidate(blocked, instr);
             }
@@ -2482,7 +2511,7 @@ allocator.validate = function (cfg, config)
     });
 
     // The cfg entry block mapping is empty
-    block.regAlloc.expected = allocator.slotMapping();
+    block.regAlloc.expected = allocator.slotMapping(backendCfg);
 
     stack.push(block);
 
@@ -2522,12 +2551,15 @@ allocator.validate = function (cfg, config)
 /**
     Mapping from memory slots and registers to IRValues.
 */
-allocator.slotMapping = function ()
+allocator.slotMapping = function (backendCfg)
 {
+    assert(backendCfg !== undefined, "No backend configuration supplied");
+
     var that = Object.create(allocator.slotMapping.prototype);
 
     that.mapping = {};
     that.debug   = {};
+    that.backendCfg = backendCfg;
 
     return that;
 };
@@ -2544,7 +2576,7 @@ allocator.slotMapping = function ()
 */
 allocator.slotMapping.prototype.compatible = function (slot, value)
 {
-    if (slot.type === x86.type.REG || slot.type === x86.type.MEM)
+    if (slot.type === this.backendCfg.REG || slot.type === this.backendCfg.MEM)
     {
         currentValue = this.mapping[slot];
 
@@ -2568,7 +2600,7 @@ allocator.slotMapping.prototype.compatible = function (slot, value)
 allocator.slotMapping.prototype.update = function (slot, value, instr)
 {
     assert(
-        slot.type === x86.type.REG || slot.type === x86.type.MEM,
+        slot.type === this.backendCfg.REG || slot.type === this.backendCfg.MEM,
         'slot must be register or memory'
     );
 
@@ -2595,7 +2627,7 @@ allocator.slotMapping.prototype.update = function (slot, value, instr)
 */
 allocator.slotMapping.prototype.move = function (orig, dest, instr)
 {
-    const value = (orig.type === x86.type.REG || orig.type === x86.type.MEM) ?
+    const value = (orig.type === this.backendCfg.REG || orig.type === this.backendCfg.MEM) ?
                   this.mapping[orig] : orig;
 
     this.update(dest, value, instr);
@@ -2658,6 +2690,7 @@ allocator.slotMapping.prototype.copy = function ()
 */
 allocator.slotMapping.prototype.toString = function (debugSlots)
 {
+    const that = this;
     const tab = "\t";
     const mapping = this.mapping;
     const debug = this.debug;
@@ -2708,7 +2741,7 @@ allocator.slotMapping.prototype.toString = function (debugSlots)
         s += "DEBUG: \n";
         debugSlots.forEach(function (slot)
         {
-            if (slot.type !== x86.type.REG && slot.type !== x86.type.MEM)
+            if (slot.type !== that.backendCfg.REG && slot.type !== that.backendCfg.MEM)
                 return
 
 

@@ -128,6 +128,39 @@ tests.basic_cmp.main = genTest(
 );
 
 /**
+Arithmetic operators test.
+*/
+tests.basic_arith = tests.testSuite();
+tests.basic_arith.main = genTest(
+    'programs/basic_arith/basic_arith.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Bitwise operators test.
+*/
+tests.basic_bitops = tests.testSuite(); 
+tests.basic_bitops.main = genTest(
+    'programs/basic_bitops/basic_bitops.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Arithmetic shift test.
+*/
+tests.basic_shift = tests.testSuite(); 
+tests.basic_shift.main = genTest(
+    'programs/basic_shift/basic_shift.js',
+    'foo',
+    [],
+    0
+);
+
+/**
 Passing arguments and getting a return value from an FFI function
 */
 tests.ffi_sum = tests.testSuite();
@@ -244,9 +277,9 @@ tests.nested_loops.main = genTest(
 /**
 Object property put/get unit test.
 */
-tests.object_props = tests.testSuite();
-tests.object_props.main = genTest(
-    'programs/object_props/object_props.js',
+tests.obj_props = tests.testSuite();
+tests.obj_props.main = genTest(
+    'programs/obj_props/obj_props.js',
     'foo',
     [33],
     1584
@@ -341,6 +374,17 @@ tests.clos_capt.main = genTest(
 );
 
 /**
+Calls across closure boundaries.
+*/
+tests.clos_xcall = tests.testSuite(); 
+tests.clos_xcall.main = genTest(
+    'programs/clos_xcall/clos_xcall.js',
+    'test',
+    [5],
+    5
+);
+
+/**
 Constructor/new test.
 */
 tests.ctor_new = tests.testSuite(); 
@@ -361,4 +405,82 @@ tests.ctor_proto.main = genTest(
     [5],
     9
 );
+
+/**
+Constructor and instanceof test
+*/
+tests.ctor_instof = tests.testSuite(); 
+tests.ctor_instof.main = genTest(
+    'programs/ctor_instof/ctor_instof.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Constructor, prototype and toString method test.
+*/
+tests.obj_tostring = tests.testSuite(); 
+tests.obj_tostring.main = genTest(
+    'programs/obj_tostring/obj_tostring.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Bubble-sort implementation. Uses closures and string conversion of arrays.
+*/
+tests.bubble_sort = tests.testSuite(); 
+tests.bubble_sort.main = genTest(
+    'programs/bubble_sort/bubble_sort.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Property deletion on objects.
+*/
+tests.obj_delete = tests.testSuite(); 
+tests.obj_delete.main = genTest(
+    'programs/obj_delete/obj_delete.js',
+    'test',
+    [],
+    0
+);
+
+/**
+For-in loop, property enumeration.
+*/
+tests.for_in = tests.testSuite(); 
+tests.for_in.main = genTest(
+    'programs/for_in/for_in.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Matrix computations, uses arrays, constructors, strings, closures.
+*/
+tests.matrix_comp = tests.testSuite(); 
+tests.matrix_comp.main = genTest(
+    'programs/matrix_comp/matrix_comp.js',
+    'test',
+    [],
+    10
+);
+
+/**
+Arguments object test.
+
+tests.arg_obj = tests.testSuite(); 
+tests.arg_obj.main = genTest(
+    'programs/arg_obj/arg_obj.js',
+    'foo_proxy',
+    [],
+    55
+);
+*/
 

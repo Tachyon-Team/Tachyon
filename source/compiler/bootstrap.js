@@ -15,6 +15,7 @@ Compile and initialize the Tachyon compiler using Tachyon
 function bootstrap(allCode, params)
 {
     // Create the context and object layouts
+    params.target.backendCfg.makeContextLayout(params);
     makeContextLayout(params);
     makeObjectLayouts(params);
 
@@ -51,9 +52,6 @@ function bootstrap(allCode, params)
     {
         execUnit(libIRs[i], params);
     }
-
-    // Initialize the standard library bindings in the run-time
-    initLibRuntime(params);
 
     // If all code should be compiled
     if (allCode === true)
@@ -124,10 +122,14 @@ Get a source code listing for the standard library files
 */
 function getLibSrcs(params)
 {
-    // For now, compile only the string code
     var stdlibSrcs = [
         'stdlib/objects.js',
-        'stdlib/strings.js'
+        'stdlib/functions.js',
+        'stdlib/arrays.js',
+        'stdlib/numbers.js',
+        'stdlib/strings.js',
+        'stdlib/math.js',
+        'stdlib/errors.js'
     ];
 
     return stdlibSrcs;
@@ -183,16 +185,13 @@ function getTachyonSrcs(params)
         'runtime/layout.js',
         'runtime/context.js',
         'runtime/objects.js',    
-        'codegen/asm.js',
-        'codegen/asm-x86.js',
-        'codegen/linearscan.js',
-        'codegen/backend.js',
-        'codegen/ir-to-asm-x86.js',
-        'codegen/regalloc-config-x86.js',
-        'stdlib/errors.js',
-        'stdlib/math.js',
-        'stdlib/arrays.js',
-        'stdlib/strings.js',
+        'backend/asm.js',
+        'backend/backend.js',
+        'backend/linearscan.js',
+        "backend/regalloc.js",
+        "backend/x86/config.js",
+        'backend/x86/ir-to-asm.js',
+        'backend/x86/asm.js',
         'main.js'
     ];
 
@@ -420,30 +419,5 @@ function execUnit(unitFunc, params)
 
     // Call the compiled unit with the context pointer
     unitBridge(params.ctxPtr);
-}
-
-/**
-Initialize the standard library bindings in the run-time
-*/
-function initLibRuntime(params)
-{
-    assert (
-        params.ctxPtr !== null,
-        'cannot execute unit without context pointer'
-    );
-
-    // Get the stdlib initialization function
-    var initLib = params.staticEnv.getBinding('initStdlib');
-
-    // Create a bridge to call the function
-    var initLibBridge = makeBridge(
-        initLib,
-        params,
-        [],
-        'int'
-    );
-
-    // Initialize the bindings
-    initLibBridge(params.ctxPtr);
 }
 

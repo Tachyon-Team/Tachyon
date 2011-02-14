@@ -1,3 +1,6 @@
 *swp
 *~
 .gitignore
+source/buildv8.sh
+doc/*
+tests/*

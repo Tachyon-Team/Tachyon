@@ -3,24 +3,10 @@
 Implementation of ECMAScript 5 string string routines.
 
 @author
-Maxime Chevalier-Boisvert
+Bruno Dufour, Maxime Chevalier-Boisvert
 
 @copyright
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
-*/
-
-/*
-TODO: implement functionality needed for initial bootstrap
-
-String.fromCharCode([char0 [, char1 [, … ]]])
-String.prototype.charAt(pos)
-String.prototype.charCodeAt(pos)
-String.prototype.slice(start, end)
-String.prototype.split(separator, limit)
-String.prototype.substring(start, end)
-String.prototype.toString()
-String.prototype.toUpperCase()
-...
 */
 
 /**
@@ -30,6 +16,21 @@ String(value)
 */
 function String(value)
 {
+    // If this is a constructor call (new String)
+    if (isGlobalObj(this) === false)
+    {
+        // Convert the value to a string
+        var strVal = boxToString(value);
+
+        // Store the value in the new object
+        // TODO: this should be a hidden/internal property
+        this.value = strVal;
+    }
+    else
+    {
+        // Convert the value to a string
+        return boxToString(value);
+    }
 }
 
 /**
@@ -38,21 +39,35 @@ function String(value)
 String.prototype = {};
 
 /**
-Test function, should be callable on string literals.
+Anonymous function to initialize this library
 */
-String.prototype.foo = function ()
+(function ()
 {
-    return 1337;
-};
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the String prototype object in the context
+    set_ctx_strproto(ctx, String.prototype);
+})();
 
 //-----------------------------------------------------------------------------
 
 // Operations on String objects.
 
-function string_internal_charCodeAt(x, pos)
+function string_internal_charCodeAt(s, pos)
 {
-    // FIXME: implement this in IIR
-    return x.charCodeAt(pos);
+    var idx = unboxInt(pos);
+
+    var ch = get_str_data(s, idx);
+
+    return boxInt(iir.icast(IRType.pint, ch));
+}
+
+function string_internal_getLength(s)
+{
+    var strLen = iir.icast(IRType.pint, get_str_len(s));
+
+    return boxInt(strLen);
 }
 
 function string_internal_toCharCodeArray(x)
@@ -76,16 +91,9 @@ function string_internal_fromCharCodeArray(a)
     return String.fromCharCode.apply(null, a);
 }
 
-function string_internal_getLength(s)
+function string_internal_toString(s)
 {
-    // TODO: implement this in IIR
-    return s.length;
-}
-
-function string_internal_toString(x)
-{
-    // FIXME: implement this in IIR
-    return x.toString();
+    return s;
 }
 
 function string_toString()
@@ -107,6 +115,7 @@ function string_fromCharCode()
 function string_charCodeAt(pos)
 {
     var len = string_internal_getLength(this);
+
     if (pos >= 0 && pos < len)
     {
         return string_internal_charCodeAt(this, pos);
@@ -437,41 +446,35 @@ function string_trim()
     return string_internal_fromCharCodeArray(a.slice(from, to));
 }
 
-// Setup String.prototype .
-//
-// Note: in final version the string_ prefix to the method names
-// should be dropped, i.e.
-//
-// String.prototype.toString = string_toString;
-// ...
+// Setup string methods
+String.fromCharCode = string_fromCharCode;
 
-String.string_fromCharCode = string_fromCharCode;
-String.prototype.string_toString = string_toString;
-String.prototype.string_charCodeAt = string_charCodeAt;
-String.prototype.string_valueOf = string_valueOf;
-String.prototype.string_charAt = string_charAt;
-String.prototype.string_charCodeAt = string_charCodeAt;
-String.prototype.string_concat = string_concat;
-String.prototype.string_indexOf = string_indexOf;
-String.prototype.string_lastIndexOf = string_lastIndexOf;
-String.prototype.string_localeCompare = string_localeCompare;
-String.prototype.string_slice = string_slice;
-String.prototype.string_match = string_match;
-String.prototype.string_replace = string_replace;
-String.prototype.string_search = string_search;
-String.prototype.string_split = string_split;
-String.prototype.string_substring = string_substring;
-String.prototype.string_toLowerCase = string_toLowerCase;
-String.prototype.string_toLocaleLowerCase = string_toLocaleLowerCase;
-String.prototype.string_toUpperCase = string_toUpperCase;
-String.prototype.string_toLocaleUpperCase = string_toLocaleUpperCase;
-String.prototype.string_internal_isWhiteSpace = string_internal_isWhiteSpace;
-String.prototype.string_trim = string_trim;
-
-/*
+// Setup String.prototype
+String.prototype.toString = string_toString;
+String.prototype.charCodeAt = string_charCodeAt;
+String.prototype.valueOf = string_valueOf;
+String.prototype.charAt = string_charAt;
+String.prototype.charCodeAt = string_charCodeAt;
+String.prototype.concat = string_concat;
+String.prototype.indexOf = string_indexOf;
+String.prototype.lastIndexOf = string_lastIndexOf;
+String.prototype.localeCompare = string_localeCompare;
+String.prototype.slice = string_slice;
+String.prototype.match = string_match;
+String.prototype.replace = string_replace;
+String.prototype.search = string_search;
+String.prototype.split = string_split;
+String.prototype.substring = string_substring;
+String.prototype.toLowerCase = string_toLowerCase;
+String.prototype.toLocaleLowerCase = string_toLocaleLowerCase;
+String.prototype.toUpperCase = string_toUpperCase;
+String.prototype.toLocaleUpperCase = string_toLocaleUpperCase;
+String.prototype.internal_isWhiteSpace = string_internal_isWhiteSpace;
+String.prototype.trim = string_trim;
 
 //-----------------------------------------------------------------------------
 
+/*
 function fail(expected, actual, f)
 {
     var msg;

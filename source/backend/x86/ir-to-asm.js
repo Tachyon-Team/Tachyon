@@ -10,89 +10,17 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 /** @namespace */
 var irToAsm = {};
 
-(function () { // local namespace
-
-const reg = x86.Assembler.prototype.register;
-const ESP = reg.esp;
-const EBP = reg.ebp;
-const EAX = reg.eax;
-const EBX = reg.ebx;
-const ECX = reg.ecx;
-const EDX = reg.edx;
-const ESI = reg.esi;
-const EDI = reg.edi;
-const $   = x86.Assembler.prototype.immediateValue;
-const mem = x86.Assembler.prototype.memory;
-
-/** @namespace */
-irToAsm.config = {};
-
-// Constant values
-// TODO: Remove once put_prop and get_prop are not used anymore
-irToAsm.config.NULL  = $(0);
-
-/*
-// Global object configuration
-// TODO: Remove once the global object exist in the heap
-irToAsm.config.maxGlobalEntries = 16;
-*/
-
-// Register configuration
-// TODO: replace stack handling in ir_call and ir_ret to allow
-//       using EBP instead of ESP
-irToAsm.config.stack   = ESP;
-irToAsm.config.context = ESI;
-
-// Registers available for register allocation.
-irToAsm.config.physReg = [EAX, EBX, ECX, EDX, EBP, EDI];
-
-// Reserved registers are indexes into the physReg array since the 
-// register allocation algorithm assumes an index into the physReg
-// array to stay platform-independent.
-
-// Register index for call's return value
-irToAsm.config.retValIndex = 0;
-
-// Registers for the corresponding CallInstr operands. The first
-// operands will be assigned those registers in their order of 
-// appearance. The remaining operands will be passed on the stack.
-// The first position corresponds to arg 0 index, the second to arg 1, etc.
-irToAsm.config.argsIndex = [2, 1, 0, 3];
-
-// For convenience in the ir-to-asm code, references to registers
-// are derived from the argsIndex
-irToAsm.config.retValReg = irToAsm.config.physReg[irToAsm.config.retValIndex];
-irToAsm.config.argsReg = 
-    irToAsm.config.argsIndex.map( 
-        function (index) { return irToAsm.config.physReg[index]; });
-
-// Register to be used for the function pointer during a call
-irToAsm.config.funcPtrIndex = irToAsm.config.physReg.length - 2;
-
-// TODO: Would we want to have distinct caller and callee save registers?
-
-// Target
-irToAsm.config.target = x86.target.x86;
-
-// Let's reserve a temporary location on the context object for cases where
-// all registers are in use
-irToAsm.config.temp = mem(3*(irToAsm.config.target === x86.target.x86 ? 4 : 8),
-                          irToAsm.config.context);
-
-irToAsm.config.stackAlignByteNb = 16;
-
 /** 
     @private
     Returns an entry point for the function.
 */
-irToAsm.getEntryPoint = function (irfunc, name, config)
+irToAsm.getEntryPoint = function (irfunc, name, params)
 {
     if (name === undefined)
         name = "default";
     
+    const width = params.target.ptrSizeBits;
     var ep;
-    const width = (config.target === x86.target.x86) ? 32 : 64;
-    const offset = width >> 3;
 
     function setEntryPoint (ep, name)
     {
@@ -140,22 +68,111 @@ irToAsm.getEntryPoint = function (irfunc, name, config)
 Returns an object allocating stack slots for spilling during
 register allocation.
 */
-irToAsm.spillAllocator = function (config)
+irToAsm.spillAllocator = function (params)
 {
     var that = Object.create(irToAsm.spillAllocator.prototype);
     that.slots = [];
-    that.config = config;
+    that.target = params.target;
     return that;
 };
 /** Returns a new assembly memory object */
 irToAsm.spillAllocator.prototype.newSlot = function ()
 {
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory; 
+
     // Memory is byte addressed
-    var offset = (this.slots.length * this.config.stack.width()) >> 3;
-    var s = mem(offset, this.config.stack);
+    const offset = this.slots.length * this.target.ptrSizeBytes;
+    const s = mem(offset, this.target.backendCfg.stack);
     this.slots.push(s);
     return s;
 };
+
+/**
+@private
+Maker function for creating the genCode method of shift instructions
+*/
+irToAsm.shiftMaker = function (irinstr, name)
+{
+    // Register allocation hints and constraints
+    irinstr.prototype.regAlloc = Object.create(irinstr.prototype.regAlloc);
+   
+    irinstr.prototype.regAlloc.usedRegisters = function (instr, params)
+    {
+        const width = params.target.ptrSizeBits;
+        if (width === 32 && instr.uses[0] instanceof IRInstr)
+        {
+            // Block xDX
+            return [2];
+        } else
+        {
+            return null;
+        }
+    };
+
+   
+    // Code generation
+    irinstr.prototype.genCode = function (tltor, opnds) 
+    {
+        // Assembler imports
+        const reg = x86.Assembler.prototype.register;
+        const $ = x86.Assembler.prototype.immediateValue;
+
+        const dest = this.regAlloc.dest;
+
+        var shiftAmt;
+        if (opnds[1].type == x86.type.IMM_VAL)
+        {
+            assert(
+                opnds[1].value > 0, 
+                "Shift amount should be a positive integer"
+            );
+
+            shiftAmt = $(opnds[1].value % 256);
+        } else
+        {
+            if (tltor.asm.target === x86.target.x86 &&
+                opnds[1].type === x86.type.REG &&
+                opnds[1] !== reg.eax &&
+                opnds[1] !== reg.ebx &&
+                opnds[1] !== reg.ecx &&
+                opnds[1] !== reg.edx)
+            {
+                // x86 32 bits only permit access to lower 8 bits
+                // of eax, ebx, ecx and edx 
+                tltor.asm.
+                // 32 bit move
+                mov(opnds[1], reg.edx).
+                // 8 bit move
+                mov(reg.dl, reg.cl);
+            } else if (opnds[1].type === x86.type.MEM)
+            {
+                tltor.asm.mov(opnds[1], reg.cl);
+            } else
+            {
+                tltor.asm.mov(opnds[1].subReg(8), reg.cl);
+            }
+            shiftAmt = reg.cl;
+        }
+
+        if (opnds[0] === dest)
+        {
+            tltor.asm[name](shiftAmt, dest);
+        }
+        else
+        {
+            tltor.asm.
+            mov(opnds[0], dest);
+
+            tltor.asm[name](shiftAmt, dest);
+        }
+
+        if (opnds[1].type !== x86.type.IMM_VAL)
+        {
+            tltor.asm.mov($(0), reg.cl);
+        }
+    };
+}
 
 //=============================================================================
 //
@@ -167,29 +184,35 @@ irToAsm.spillAllocator.prototype.newSlot = function ()
 @class
 Returns a new translator object to translate IR to Assembly.
 */
-irToAsm.translator = function (config, params)
+irToAsm.translator = function (params)
 {
     assert(
-        config !== undefined,
-        'invalid translator config'
+        params !== undefined,
+        'invalid translator params'
     );
 
     var that = Object.create(irToAsm.translator.prototype);
+    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+    const backendCfg = params.target.backendCfg;
 
     // Store the compilation parameters on the translator
     that.params = params;
 
-    that.asm = new x86.Assembler(config.target);
+    that.asm = new x86.Assembler(params.target.ptrSizeBits === 64 ? 
+                                 x86.target.x86_64 : x86.target.x86);
     that.asm.codeBlock.bigEndian = false;
     that.fct = null;
 
-    that.config = config;
-
     // Use the context register value as a true (nonzero) boolean
-    that.trueVal = config.stack;
+    that.trueVal = backendCfg.stack;
 
     // The false boolean must be 0
     that.falseVal = $(0);
+
+    // Get the memory location for the temporary register in the context
+    var tempOffset = backendCfg.ctxLayout.getFieldOffset([backendCfg.tempName]);
+    that.temp = mem(tempOffset, backendCfg.context);
 
     return that;
 };
@@ -204,8 +227,8 @@ specified in blockList.
 irToAsm.translator.prototype.genFunc = function (fct, blockList)
 {
     const that = this;
-    const width = (this.config.target === x86.target.x86) ? 32 : 64;
-    const offset = width >> 3;
+    const offset = this.params.target.ptrSizeBytes;
+    const $ = x86.Assembler.prototype.immediateValue;
 
     // Maintain the function object throughout the translation
     // to have to information from register allocation 
@@ -220,7 +243,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
             var entryPoint = irToAsm.getEntryPoint(
                 opnd,
                 undefined, 
-                that.config
+                that.params
             );
             
             // Only static calls to IRFunctions should
@@ -273,7 +296,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         {
             var opnds;
 
-            if (instr.regAlloc.opnds === undefined)
+            if (instr.regAlloc.opnds === null)
             {
                 opnds = instr.uses.map(replace, instr);
 
@@ -353,26 +376,41 @@ irToAsm.translator.prototype.prelude = function ()
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
     //       expected
- 
-    const byteLength = this.config.stack.width() >> 3;
-    const cstack = this.asm.target === x86.target.x86 ? ESP : reg.rsp;
-    var spillNb = this.fct.regAlloc.spillNb;
+    const reg = x86.Assembler.prototype.register;
+    const mem = x86.Assembler.prototype.memory;
+    const $ = x86.Assembler.prototype.immediateValue;
+
+    const that = this; 
+    const target = this.params.target;
+    const width = target.ptrSizeBits;
+    const refByteNb = target.ptrSizeBytes;
+    const backendCfg = target.backendCfg;
+    const stack = backendCfg.stack;
+
+    const cstack =  reg.rsp.subReg(width);
+    const scratch = backendCfg.physReg[backendCfg.physReg.length - 1];
+
+    const argsRegNb = backendCfg.argsReg.length;
+    const spillNb = this.fct.regAlloc.spillNb;
+    const spoffset = spillNb + (this.fct.usesArguments === true ? 
+                                argsRegNb : 0);
+
 
     // Add an entry point for static calls
-    var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.config);
+    var lobj = irToAsm.getEntryPoint(this.fct, undefined, this.params);
     this.asm.provide(lobj);
 
     if (this.fct.cProxy)
     {
-        if (this.asm.target === x86.target.x86)
+        if (target.ptrSizeBits === 32)
         {
             // We follow 32 bits Windows, Linux, BSD and Mac OS X
             // callee-save convention
             this.asm.
-            push(EBX).
-            push(ESI).
-            push(EDI).
-            push(EBP);
+            push(reg.ebx).
+            push(reg.esi).
+            push(reg.edi).
+            push(reg.ebp);
         }
         else
         {
@@ -388,19 +426,66 @@ irToAsm.translator.prototype.prelude = function ()
         }
 
         // Put the stack pointer where tachyon expects it to be
-        if (cstack !== this.config.stack)
+        if (cstack !== stack)
         {
             tltor.asm.
-            mov(cstack, this.config.stack);
+            mov(cstack, stack);
         }
     }
 
     // TODO: Correctly handle a number of arguments
     //       passed lesser than the number of arguments
     //       expected
-    if (spillNb > 0)
+    if (spoffset > 0)
     {
-        this.asm.sub($(spillNb*byteLength), this.config.stack);
+        this.asm.sub($(spoffset*refByteNb), stack);
+    }
+
+    if (this.fct.usesArguments)
+    {
+
+        /*
+        At first we have the following stack frame:
+
+        -----------------
+        Spills            <-- stack pointer
+        -----------------
+        Empty
+        -----------------
+        Return Address      
+        -----------------
+        Arguments (only those not passed in registers)
+        -----------------
+
+
+        In the end, we want the following stack frame:
+
+        -----------------
+        Spills            <-- stack pointer
+        -----------------
+        Return Address      
+        -----------------
+        Arguments passed in registers
+        Arguments passed on stack
+        -----------------
+        */
+
+        /*
+        const retAddrOrigOffset = (spoffset*refByteNb);
+        const retAddrNewOffset  = (spillNb*refByteNb);
+
+        // Change return address location on stack
+        this.asm.
+        mov(mem(retAddrOrigOffset, stack), scratch).
+        mov(scratch, mem(retAddrNewOffset, stack));
+
+        // Push each argument passed in registers on stack
+        // (overwrites the previous return address location)
+        backendCfg.argsReg.forEach(function (reg, index) {
+            that.asm.
+            mov(reg, mem((index + spillNb + 1)*refByteNb, stack));
+        });
+        */
     }
 };
 
@@ -409,6 +494,7 @@ irToAsm.translator.prototype.prelude = function ()
 // Translation of IR instructions to x86 machine code
 //
 //=============================================================================
+IRInstr.prototype.regAlloc = regAlloc.instr(); 
 
 /* code generation for each ir instruction */
 PhiInstr.prototype.genCode = function (tltor, opnds)
@@ -416,8 +502,34 @@ PhiInstr.prototype.genCode = function (tltor, opnds)
     // Do nothing
 };
 
+/**
+*   Allocation information for argument value instructions 
+*/
+ArgValInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+ArgValInstr.prototype.regAlloc.outRegHint = function (instr, params)
+{
+    const backendCfg = params.target.backendCfg;
+
+    if (instr.argIndex < backendCfg.argsIndex.length)
+    {
+        return backendCfg.argsIndex[instr.argIndex];
+    } 
+    else 
+    {
+        return null;
+    }
+};
+
 ArgValInstr.prototype.genCode = function (tltor, opnds)
 {
+    // Configuration imports
+    const target = tltor.params.target;
+    const backendCfg = target.backendCfg;
+
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory;
+
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
@@ -425,20 +537,21 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const argIndex = this.argIndex;
 
     // Array of registers reserved for passing arguments
-    const argsReg = tltor.config.argsReg;
+    const argsReg = backendCfg.argsReg;
 
     // Number of registers used for passing arguments
     const argRegNb = (tltor.fct.cProxy === true) ? 0 
-                     : tltor.config.argsIndex.length;
+                     : backendCfg.argsIndex.length;
 
     // Number of bytes in a reference
-    const refByteNb = tltor.config.stack.width() >> 3;
+    const refByteNb = target.ptrSizeBytes;
 
     // Number of variables spilled during register allocation
     const regAllocSpillNb = tltor.fct.regAlloc.spillNb; 
 
     // Index on the call site argument space
-    const callSiteArgIndex = argIndex - argRegNb;
+    const callSiteArgIndex = (tltor.fct.usesArguments === true ?
+                              argIndex : (argIndex - argRegNb));
     
     // Offset due to C calling convention 
     const ccallOffset = (tltor.fct.cProxy === true) ?
@@ -449,7 +562,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
                       ccallOffset + 1) * refByteNb;
 
     // Stack pointer
-    const stack = tltor.config.stack;
+    const stack = backendCfg.stack;
 
     // Ignore if the argument is not required
     if (dest === null)
@@ -457,7 +570,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
         return;
     }
 
-    if (argIndex < argRegNb)
+    if ((argIndex < argRegNb) && !tltor.fct.usesArguments)
     {
         // The argument is in a register
         assert(
@@ -517,8 +630,6 @@ SubInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the output value
     const dest = this.regAlloc.dest;
-    const stack = tltor.config.stack;
-    const refByteNb = stack.width() >> 3;
  
     if (opnds[1].type === x86.type.IMM_VAL)
     {
@@ -550,9 +661,9 @@ SubInstr.prototype.genCode = function (tltor, opnds)
 
         // TODO: Change when register allocation spilling is done differently
         tltor.asm.
-        mov(opnds[1], tltor.config.temp).
+        mov(opnds[1], tltor.temp).
         mov(opnds[0], dest).
-        sub(tltor.config.temp, dest);
+        sub(tltor.temp, dest);
     }
     else
     {
@@ -565,8 +676,48 @@ SubInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+/**
+Allocation information for multiplication instruction
+*/
+MulInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+MulInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
+{
+    if (instr.type.isSigned())
+        return null;
+
+    // Operand 0 should be placed in xAX if possible (not guaranteed)
+    if (position === 0) 
+        return 0;
+    else
+        return null;
+};
+
+MulInstr.prototype.regAlloc.outRegHint = function (instr, params)
+{
+    if (instr.type.isSigned())
+        return null;
+
+    // The output will be in xAX
+    return 0; 
+};
+
+MulInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
+{
+    if (instr.type.isSigned())
+        return null;
+ 
+    // xDX:xAX are reserved for the multiplier,
+    return [0,2];
+};
+
 MulInstr.prototype.genCode = function (tltor, opnds)
 {
+    const reg = x86.Assembler.prototype.register;
+    const width = tltor.params.target.ptrSizeBits;
+    const xAX = reg.rax.subReg(width);
+    const xDX = reg.rdx.subReg(width);
+
     // Register used for the output value
     const dst = this.regAlloc.dest;
 
@@ -574,26 +725,26 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     if (this.type.isUnsigned())
     {
         // Make sure that one of the operands is in EAX
-        if (opnds[0] === EAX)
+        if (opnds[0] === xAX)
         {
             var op1 = opnds[1];
         }
-        else if (opnds[1] === EAX)
+        else if (opnds[1] === xAX)
         {
             var op1 = opnds[0];
         }
         else
         {
             // Put operand 0 in eax
-            tltor.asm.mov(opnds[0], EAX);
+            tltor.asm.mov(opnds[0], xAX);
             var op1 = opnds[1];
         }
         
         // If operand 1 is an immediate value, put it into EDX
         if (op1.type === x86.type.IMM_VAL)
         {
-            tltor.asm.mov(op1, EDX);
-            var op1 = EDX;
+            tltor.asm.mov(op1, xDX);
+            var op1 = xDX;
         }
 
         tltor.asm.mul(op1, this.type.getSizeBits(tltor.params.target));
@@ -630,19 +781,55 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+/**
+Allocation information for division instruction
+*/
+DivInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+DivInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
+{
+    // Operand 0 should be placed in xAX if possible (not guaranteed)
+    if (position === 0) 
+        return 0;
+    else if (position === 1)
+        return 1;
+    else
+        return null;
+};
+
+DivInstr.prototype.regAlloc.outRegHint =  function (instr, params)
+{ 
+    // The output will be in xAX
+    return 0; 
+};
+
+DivInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
+{ 
+    // xDX:xAX are reserved for the dividend,
+    // xBX is reverved as a scratch register
+    return [0,1,2];
+};
+
 DivInstr.prototype.genCode = function (tltor, opnds)
 {
+    // Configuration imports
+    const width = tltor.params.target.ptrSizeBits;
+
+    // Assembler imports
+    const reg = x86.Assembler.prototype.register;
+    const $ = x86.Assembler.prototype.immediateValue;
+
     // In the end, we want to have:
-    // - Dividend in EAX
-    // - Divisor NOT in EAX or EDX
+    // - Dividend in xAX
+    // - Divisor NOT in xAX or xDX
 
     const dvnd    = {reg:null, value:opnds[0]};
     const dsor    = {reg:null, value:opnds[1]};
     const scratch = {reg:null, value:null};
 
-    const xAX     = {physReg:tltor.config.physReg[0], value:null};
-    const xBX     = {physReg:tltor.config.physReg[1], value:null};
-    const xDX     = {physReg:tltor.config.physReg[3], value:null};
+    const xAX     = {physReg:reg.rax.subReg(width), value:null};
+    const xBX     = {physReg:reg.rbx.subReg(width), value:null};
+    const xDX     = {physReg:reg.rdx.subReg(width), value:null};
 
     function setReg(reg)
     {
@@ -739,7 +926,7 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     if (this.type.isUnsigned())
     {
         // Extend the value into EDX
-        tltor.asm.mov($(0), EDX);
+        tltor.asm.mov($(0), xDX.physReg);
 
         tltor.asm.div(dsor.value, this.type.getSizeBits(tltor.params.target));
     }
@@ -750,6 +937,17 @@ DivInstr.prototype.genCode = function (tltor, opnds)
 
         tltor.asm.idiv(dsor.value, this.type.getSizeBits(tltor.params.target));
     }
+};
+
+/**
+Allocation information for modulo instruction
+*/
+ModInstr.prototype.regAlloc = Object.create(DivInstr.prototype.regAlloc);
+
+ModInstr.prototype.regAlloc.outRegHint =  function (instr, params)
+{ 
+    // The output will be in xDX
+    return 2; 
 };
 
 // Same code as division instruction, different register hint for output
@@ -782,6 +980,11 @@ SubOvfInstr.prototype.genCode = function (tltor, opnds)
     jno(tltor.label(normalTarget, normalTarget.label)).
     jmp(tltor.label(overflowTarget, overflowTarget.label));
 };
+
+/**
+Allocation information for multiplication with overflow instruction
+*/
+MulOvfInstr.prototype.regAlloc = Object.create(MulInstr.prototype.regAlloc);
 
 MulOvfInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -897,73 +1100,9 @@ XorInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-LsftInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    if (opnds[0] === dest)
-    {
-        tltor.asm.sal(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        sal(shiftAmt, dest);
-    }
-};
-
-RsftInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    // Use the arithmetic right shift
-    if (opnds[0] === dest)
-    {
-        tltor.asm.sar(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        sar(shiftAmt, dest);
-    }
-};
-
-UrsftInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    var shiftAmt;
-    if (opnds[0].type == x86.type.IMM_VAL)
-        shiftAmt = opnds[1].value % 256;
-    else
-        shiftAmt = opnds[1];
-
-    // Use the logical right shift
-    if (opnds[0] === dest)
-    {
-        tltor.asm.shr(shiftAmt, dest);
-    }
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        shr(shiftAmt, dest);
-    }
-};
+irToAsm.shiftMaker(LsftInstr, "sal"); 
+irToAsm.shiftMaker(RsftInstr, "sar"); 
+irToAsm.shiftMaker(UrsftInstr, "shr"); 
 
 LtInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -1163,19 +1302,40 @@ JumpInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.jmp(tltor.label(cont, cont.label));
 };
 
+/**
+*   Allocation information for return instructions   
+*/
+RetInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+RetInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
+{
+    return params.target.backendCfg.retValIndex;
+};
+
+RetInstr.prototype.regAlloc.opndsRegRequired = true;
+
 RetInstr.prototype.genCode = function (tltor, opnds)
 {
+    // Assembler imports
+    const reg = x86.Assembler.prototype.register;
+    const $ = x86.Assembler.prototype.immediateValue;
+
+    // Configuration imports
+    const target = tltor.params.target;
+    const backendCfg = tltor.params.target.backendCfg;
+    const width = target.ptrSizeBits;
+    const refByteNb = target.ptrSizeBytes;
+
     // Register used for the return value
     const offset = tltor.fct.regAlloc.spillNb;
-    const refByteNb = tltor.config.stack.width() >> 3;
-    const retValReg = (tltor.fct.cProxy === false) ? tltor.config.retValReg 
-                      : ((tltor.asm.target === x86.target.x86) ? EAX : reg.rax);
-    const cstack = tltor.asm.target === x86.target.x86 ? ESP : reg.rsp;
+    const retValReg = (tltor.fct.cProxy === false) ? 
+                      backendCfg.retValReg : reg.rax.subReg(width);
+    const cstack = reg.rsp.subReg(width);
 
-    // Remove all spilled values and return address from stack
+    // Remove all spilled values from stack
     if (offset > 0)
     {
-        tltor.asm.add($(offset*refByteNb), tltor.config.stack);
+        tltor.asm.add($(offset*refByteNb), backendCfg.stack);
     }
 
     // If there is a value to return and it isn't in the return value register
@@ -1188,10 +1348,10 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     if (tltor.fct.cProxy)
     {
         // Put the stack pointer where C expects it to be
-        if (tltor.config.stack !== cstack)
+        if (backendCfg.stack !== cstack)
         {
             tltor.asm.
-            mov(tltor.config.stack, cstack);
+            mov(backendCfg.stack, cstack);
         }
 
         if (tltor.asm.target === x86.target.x86)
@@ -1199,10 +1359,10 @@ RetInstr.prototype.genCode = function (tltor, opnds)
             // We follow 32 bits Windows, Linux, BSD and Mac OS X
             // callee-save convention
             tltor.asm.
-            pop(EBP).
-            pop(EDI).
-            pop(ESI).
-            pop(EBX);
+            pop(reg.ebp).
+            pop(reg.edi).
+            pop(reg.esi).
+            pop(reg.ebx);
         } 
         else 
         {
@@ -1219,11 +1379,24 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     }
   
     // Return address is just under the stack pointer
-    tltor.asm.ret();
+    if (tltor.fct.usesArguments)
+    {
+        // Stack frame has been modified, pop the 
+        // arguments passed in registers that were 
+        // moved to the stack
+        const argsRegNb = backendCfg.argsReg.length;
+        tltor.asm.ret($(argsRegNb*refByteNb));
+    } else
+    {
+        tltor.asm.ret();
+    }
 };
 
 IfInstr.prototype.genCode = function (tltor, opnds)
 {
+    // Assembler imports
+    const $ = x86.Assembler.prototype.immediateValue;
+
     const trueLabel = tltor.label(this.targets[0], this.targets[0].label);
     const falseLabel = tltor.label(this.targets[1], this.targets[1].label);
 
@@ -1251,30 +1424,68 @@ ThrowInstr.prototype.genCode = RetInstr.prototype.genCode;
 
 //CatchInstr
 
+/**
+*   Allocation information for Call Instructions 
+*/
+CallInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+CallInstr.prototype.regAlloc.opndsRegHint = function (instr, params, position)
+{
+    const backendCfg = params.target.backendCfg;
+
+    if (position > 0 && position - 1 < backendCfg.argsIndex.length)
+    {
+        return backendCfg.argsIndex[position - 1];
+    } 
+    else
+    {
+        return null;
+    }
+};
+
+CallInstr.prototype.regAlloc.outRegHint = function (instr, params)
+{
+    return params.target.backendCfg.retValIndex;
+};
+
+CallInstr.prototype.regAlloc.usedRegisters = function (instr, params)
+{
+    return arrayRange(params.target.backendCfg.physReg.length);
+};
+
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
+    // Assembler imports
+    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+
+    // Configuration imports
+    const target = tltor.params.target;
+    const backendCfg = target.backendCfg;
+    const refByteNb = target.ptrSizeBytes;
+
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
     // Let's arbitrarily take the last phys reg as a scratch register
-    const scratchIndex = tltor.config.physReg.length - 1;
-    const scratch = tltor.config.physReg[scratchIndex];
+    const scratchIndex = backendCfg.physReg.length - 1;
+    const scratch = backendCfg.physReg[scratchIndex];
 
     // Number of available register for register allocation
-    const avbleRegNb = tltor.config.physReg.length;
+    const avbleRegNb = backendCfg.physReg.length;
 
     // Stack register
-    const stack = tltor.config.stack;
+    const stack = backendCfg.stack;
 
     // Array of registers reserved for passing arguments
-    const argsReg = tltor.config.argsReg;
+    const argsReg = backendCfg.argsReg;
 
     // Number of registers used for passing arguments
-    const argRegNb = tltor.config.argsIndex.length;
+    const argRegNb = backendCfg.argsIndex.length;
 
     // Register to be used for the function pointer
-    const funcPtrIndex = tltor.config.funcPtrIndex;
-    const funcPtrReg = tltor.config.physReg[funcPtrIndex];
+    const funcPtrIndex = backendCfg.funcPtrIndex;
+    const funcPtrReg = backendCfg.physReg[funcPtrIndex];
 
     // Used for loop iterations
     var i;
@@ -1286,7 +1497,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     var map;
 
     assert(
-        dest === tltor.config.retValReg || dest === null,
+        dest === backendCfg.retValReg || dest === null,
         'invalid destination register for function call'
     );
 
@@ -1298,7 +1509,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
     // Make sure it is not used to pass arguments
     assert (
-        !(scratchIndex in tltor.config.argsIndex),
+        !(scratchIndex in backendCfg.argsIndex),
         'invalid scratch register index'
     );
 
@@ -1324,9 +1535,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
     // Get the function arguments
     var funcArgs = opnds.slice(1);
-
-    // Number of bytes in a reference
-    const refByteNb = tltor.config.stack.width() >> 3;
 
     // Index for the last argument passed in a register 
     const lastArgIndex = argRegNb - 1;
@@ -1408,12 +1616,25 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     );
 
     // The first operand should be the function address
-    assert (
+    assert(
         opnds[0].type === x86.type.REG || 
         opnds[0].type === x86.type.MEM ||
         opnds[0].type === x86.type.LINK,
         "Invalid CallInstr function operand '" + opnds[0] + "'"
     );
+
+    const ctx = backendCfg.context;
+    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+
+    // Store the number of arguments in the lower bits of the context register
+    assert(ctxAlign === 256, "Invalid alignment for context object");
+    assert(funcArgs.length < ctxAlign,
+           "Too many arguments for call instruction, number of arguments" +
+           " is currently limited to " + (ctxAlign - 1));
+
+    // FIXME
+    // Store the number of arguments in the lowest bits of the context register
+    //tltor.asm.mov($(funcArgs.length), ctx.subReg(8));
 
     // Call the function by its address
     tltor.asm.call(funcPtr);
@@ -1437,19 +1658,32 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
 CallFFIInstr.prototype.genCode = function (tltor, opnds)
 {
-    const argsReg = tltor.config.argsReg;
+    // Assembler imports
+    const reg = x86.Assembler.prototype.register; 
+    const mem = x86.Assembler.prototype.memory;
+    const $ = x86.Assembler.prototype.immediateValue;
 
-    const refByteNb = tltor.config.stack.width() >> 3;
+    // Configuration imports
+    const target = tltor.params.target; 
+    const backendCfg = target.backendCfg;
+    const refByteNb = target.ptrSizeBytes; 
+    const width = target.ptrSizeBits;
 
-    const stack = tltor.config.stack;
+    const argsReg = backendCfg.argsReg;
 
-    const context = tltor.config.context;
+    const stack = backendCfg.stack;
 
-    const altStack = EBP;
+    const context = backendCfg.context;
 
-    const scratchReg = EDI;
+    const altStack = reg.rbp.subReg(width);
 
-    const stackAlignByteNb = tltor.config.stackAlignByteNb;
+    const scratchReg = reg.rdi.subReg(width);
+
+    const xSP = reg.rsp.subReg(width);
+
+    const xAX = reg.rax.subReg(width);
+
+    const stackAlignByteNb = backendCfg.stackAlignByteNb;
 
     const cfct = this.uses[0];
 
@@ -1464,11 +1698,11 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
                     
     const numArgs = opnds.length - 1;        
 
-    assert(stack.width() === 32, "Only 32-bits FFI calls are supported for now"); 
+    assert(width === 32, "Only 32-bits FFI calls are supported for now"); 
 
     assert(altStack !== scratchReg, 'alt stack reg is the same as scratch reg');
-    tltor.config.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
-    tltor.config.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
+    backendCfg.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
+    backendCfg.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
 
     // Iteration
     var i;
@@ -1493,9 +1727,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         argStackSpace += opndSizeBytes;
 
         // Align the offset for the next argument
-        var rem = argStackSpace % tltor.params.target.ptrSizeBytes;
+        var rem = argStackSpace % refByteNb;
         if (rem != 0)
-            argStackSpace += tltor.params.target.ptrSizeBytes - rem;
+            argStackSpace += refByteNb - rem;
     }
 
     /*
@@ -1532,6 +1766,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     sub($(totalStackSpace), stack).
 
     // Save the context pointer
+    mov($(0), context.subReg(8)).
     mov(context, mem(-refByteNb, altStack)).
 
     // Align the new stack pointer
@@ -1572,10 +1807,10 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // Prepare stack pointer for C calling convention
-    if (stack !== ESP)
+    if (stack !== xSP)
     {
         tltor.asm.
-        mov(stack, ESP);
+        mov(stack, xSP);
     }
 
     // Call the C function
@@ -1583,15 +1818,15 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     call(callDest);
 
     // Move return value into Tachyon calling convention register
-    if (tltor.config.retValReg !== EAX)
+    if (backendCfg.retValReg !== xAX)
     {
         tltor.asm.
-        mov(EAX, tltor.config.retValReg);
+        mov(xAX, backendCfg.retValReg);
     }
 
     // Restore runtime specific registers
     tltor.asm.
-    mov(mem(argStackSpace, ESP), altStack).
+    mov(mem(argStackSpace, xSP), altStack).
     mov(mem(-refByteNb, altStack), context).
     mov(altStack, stack);
 };
@@ -1620,6 +1855,14 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
 
 //FPToIInstr
 
+/**
+Allocation information for store instruction
+*/
+LoadInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+// All operands must be in registers
+LoadInstr.prototype.regAlloc.opndsRegRequired = true;
+
 LoadInstr.prototype.genCode = function (tltor, opnds)
 {
     /*
@@ -1644,11 +1887,15 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
         'cannot use memory locations as offsets'
     );
 
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory; 
+
     const dst = this.regAlloc.dest;
 
     assert (
-        this.uses[0].type === IRType.rptr,
-        'load can only operate on raw pointers'
+        this.uses[0].type === IRType.rptr ||
+        this.uses[0].type === IRType.ref,
+        'load can only operate on raw pointers or references'
     );
 
     // If the offset is a register
@@ -1685,6 +1932,30 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+/**
+Allocation information for store instruction
+*/
+StoreInstr.prototype.regAlloc = Object.create(IRInstr.prototype.regAlloc);
+
+// All operands must be in registers
+StoreInstr.prototype.regAlloc.opndsRegRequired = true;
+
+StoreInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
+{
+    const srcOpnd = instr.uses[2];
+
+    if ((!srcOpnd instanceof IRInstr) || 
+        srcOpnd.type.getSizeBits(params.target) !== 8)
+        return null;
+ 
+    // On x86 32 bits, reserve one of EAX, EBX or EDX 
+    // in case the src operand is not allocated to one of those 
+    //return [0];
+    
+    // FIXME: until stronger register hints are implemented
+    return arrayRange(params.target.backendCfg.physReg.length);
+};
+
 StoreInstr.prototype.genCode = function (tltor, opnds)
 {
     /*
@@ -1714,12 +1985,19 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         'cannot perform store from memory to memory'
     );
 
-    const dst = this.regAlloc.dest;
-
     assert (
-        this.uses[0].type === IRType.rptr,
-        'store can only operate on raw pointers'
+        this.uses[0].type === IRType.rptr ||
+        this.uses[0].type === IRType.ref,
+        'load can only operate on raw pointers or references'
     );
+
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory; 
+    const reg = x86.Assembler.prototype.register;  
+
+    // Configuration imports
+    const target = tltor.params.target; 
+    const width = target.ptrSizeBits;
 
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)
@@ -1749,6 +2027,42 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         // Get the register corresponding to the type size
         var srcReg = opnds[2].subReg(typeSize);
 
+        // On x86 32 bits, only AL, BL, CL, DL can be accessed directly
+        if (typeSize === 8 && 
+            tltor.asm.target === x86.target.x86 && 
+            (srcReg !== reg.al || srcReg !== reg.bl || 
+             srcReg !== reg.cl || srcReg !== reg.dl))
+        {
+            // FIXME: ugly code below to temporarily deal with x86 gayness 
+            // without help from the register allocator
+            //          ______   ________                      
+            // ___  ___/  __  \ /  _____/   ________ _____  ___
+            // \  \/  />      </   __  \   /  ___/  |  \  \/  /
+            //  >    </   --   \  |__\  \  \___ \|  |  />    < 
+            // /__/\_ \______  /\_____  / /____  >____//__/\_ \
+            //       \/      \/       \/       \/            \/
+
+            /*
+            const xAX = reg.rax.subReg(width);     
+
+            // xAX has been reserved for this case
+            tltor.asm.mov(opnds[2], xAX);    
+            srcReg = reg.al;
+            */
+
+            var lowRegs = [reg.eax, reg.ebx, reg.ecx, reg.edx];
+
+            arraySetRem(lowRegs, opnds[0]);
+            arraySetRem(lowRegs, opnds[1]);
+
+            var newSrc = lowRegs[0];
+            var newSrcLow = newSrc.subReg(8);
+
+            // xAX has been reserved for this case
+            tltor.asm.mov(opnds[2], newSrc);    
+            srcReg = newSrcLow;
+        }
+
         // Store the value to memory
         tltor.asm.mov(srcReg, memLoc, typeSize);
     }
@@ -1756,26 +2070,63 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
 
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
-    // No op
+    // Assembler imports
+    const reg = x86.Assembler.prototype.register;
+    const $ = x86.Assembler.prototype.immediateValue;
+
+    // Configuration imports
+    const target = tltor.params.target; 
+    const backendCfg = target.backendCfg;
+    const width = target.ptrSizeBits;
+
+    const xAX = reg.rax.subReg(width);
+    const xBX = reg.rbx.subReg(width);
+    const xCX = reg.rcx.subReg(width);
+    const xDX = reg.rdx.subReg(width);
+
+    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+    const ctx = backendCfg.context; 
+    const dest = this.regAlloc.dest;
+
+    assert(ctx === xAX || ctx === xBX || ctx === xCX || ctx === xDX,
+           "Invalid register for context object");
+    //assert(ctx === dest, "Invalid register assigned to context object");
+    assert(ctxAlign === 256, "Invalid alignment value for context object");
+    
+    // Mask the lower bits of the context object to ensure a valid reference
+    tltor.asm.
+    mov($(0), ctx.subReg(8)).
+    mov(ctx, dest);
 };
 
 SetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
-    tltor.asm.mov(opnds[0], tltor.config.context);
+    // Configuration imports
+    const backendCfg = tltor.params.target.backendCfg;
+
+    tltor.asm.mov(opnds[0], backendCfg.context);
 };
 
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {
-    const temp = tltor.config.temp;
+    // Assembler imports
+    const reg = x86.Assembler.prototype.register;
+
+    // Configuration imports
+    const target = tltor.params.target; 
+    const backendCfg = target.backendCfg;
+    const width = target.ptrSizeBits;
+
+    const xAX = reg.rax.subReg(width);
 
     if (opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM)
     {
         tltor.asm.
-        mov(EAX, temp).
-        mov(opnds[0], EAX).
-        mov(EAX, opnds[1]).
-        mov(temp, EAX);
+        mov(xAX, tltor.temp).
+        mov(opnds[0], xAX).
+        mov(xAX, opnds[1]).
+        mov(tltor.temp, xAX);
     } else
     {
         tltor.asm.
@@ -1783,4 +2134,64 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-})(); // end of local namespace
+GetArgValInstr.prototype.genCode = function (tltor, opnds)
+{
+    assert(tltor.fct.usesArguments || tltor.fct.funcName === "makeArgObj",
+           "get_arg_val should only be used in function using the arguments" + 
+           " object"
+    );
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory; 
+
+    // Configuration imports
+    const target = tltor.params.target; 
+    const backendCfg = target.backendCfg;
+    const refByteNb = target.ptrSizeBytes;
+
+    const dest = this.regAlloc.dest;
+    const stack = backendCfg.stack;
+    const spillNb = tltor.fct.regAlloc.spillNb;
+    const spoffset = (spillNb + 1) * refByteNb;
+
+    if (opnds[0].type === x86.type.REG)
+    {
+        tltor.asm.
+        mov(mem(spoffset, stack, opnds[0], refByteNb), dest);
+    }
+    else
+    {
+        assert(opnds[0].type === x86.type.MEM,
+               "Invalid index operand type");
+        tltor.asm.
+        mov(opnds[0], dest).
+        mov(mem(spoffset, stack, dest, refByteNb), dest);
+    }
+};
+
+GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Assembler imports
+    const $ = x86.Assembler.prototype.immediateValue;
+    const reg = x86.Assembler.prototype.register;
+
+    // Configuration imports
+    const backendCfg = tltor.params.target.backendCfg;
+
+    const dest = this.regAlloc.dest;
+    const ctx  = backendCfg.context;
+
+    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
+    const mask = ctxAlign - 1;
+
+    // For now, assume the number of arguments is always representable
+    // on the number of bits available on the context register
+    tltor.asm.
+    mov($(mask), dest).
+    and(ctx, dest);
+};
+
+GetArgTableInstr.prototype.genCode = function (tltor, opnds)
+{
+    // TODO
+};
+
