@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2010-12-31 11:18:24 feeley>
+// File: "scanner.js", Time-stamp: <2011-02-14 11:28:40 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -449,7 +449,7 @@ Scanner.prototype.parse_number = function ()
             if (!accepted_char(c))
                 break;
             that.advance(1);
-            n = n * base + char_value(c);
+            n = num_add(num_mul(n, base), char_value(c));
         }
         return n;
     };

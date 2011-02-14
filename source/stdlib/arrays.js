@@ -50,7 +50,7 @@ function array_toString()
 {
     var o = array_toObject(this);
 
-    return o.join();
+    return o.join(',');
 }
 
 function array_concat()
@@ -476,28 +476,25 @@ function array_filter(callbackfn, thisArg)
 
 // Setup Array.prototype .
 //
-// Note: in final version the array_ prefix to the method names
-// should be dropped, i.e.
-//
 // Array.prototype.toString = array_toString;
 // ...
 
-Array.prototype.array_toString    = array_toString;
-Array.prototype.array_concat      = array_concat;
-Array.prototype.array_join        = array_join;
-Array.prototype.array_pop         = array_pop;
-Array.prototype.array_push        = array_push;
-Array.prototype.array_reverse     = array_reverse;
-Array.prototype.array_shift       = array_shift;
-Array.prototype.array_slice       = array_slice;
-Array.prototype.array_sort        = array_sort;
-Array.prototype.array_splice      = array_splice;
-Array.prototype.array_unshift     = array_unshift;
-Array.prototype.array_indexOf     = array_indexOf;
-Array.prototype.array_lastIndexOf = array_lastIndexOf;
-Array.prototype.array_forEach     = array_forEach;
-Array.prototype.array_map         = array_map;
-Array.prototype.array_filter      = array_filter;
+Array.prototype.toString    = array_toString;
+Array.prototype.concat      = array_concat;
+Array.prototype.join        = array_join;
+Array.prototype.pop         = array_pop;
+Array.prototype.push        = array_push;
+Array.prototype.reverse     = array_reverse;
+Array.prototype.shift       = array_shift;
+Array.prototype.slice       = array_slice;
+Array.prototype.sort        = array_sort;
+Array.prototype.splice      = array_splice;
+Array.prototype.unshift     = array_unshift;
+Array.prototype.indexOf     = array_indexOf;
+Array.prototype.lastIndexOf = array_lastIndexOf;
+Array.prototype.forEach     = array_forEach;
+Array.prototype.map         = array_map;
+Array.prototype.filter      = array_filter;
 
 //-----------------------------------------------------------------------------
 

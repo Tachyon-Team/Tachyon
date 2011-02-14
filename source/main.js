@@ -52,6 +52,7 @@ function tachyonRepl()
     {
         print('Available special commands:');
         print('  /load <filename>    load and execute a script');
+        print('  /time <command>     time the execution of a command');
         print('  /help               print a help listing');
         print('  /exit               exit the read-eval-print loop');
     }
@@ -100,6 +101,14 @@ function tachyonRepl()
             loadScript(args);
             break;
 
+            case 'time':
+            var startTimeMs = (new Date()).getTime();
+            execCode(args);
+            var endTimeMs = (new Date()).getTime();
+            var time = (endTimeMs - startTimeMs) / 1000;
+            print('time: ' + time + 's');
+            break;
+
             default:
             print('Unknown special command: "' + cmd + '"');
             break;
@@ -109,6 +118,9 @@ function tachyonRepl()
     // Execute a code string
     function execCode(str)
     {
+        // Add an extra semicolon to avoid syntax errors
+        str += ';';
+
         var ir = compileSrcString(str, config.hostParams);
 
         var bridge = makeBridge(
@@ -143,9 +155,6 @@ function tachyonRepl()
         }
         else
         {
-            // Add an extra semicolon to avoid syntax errors
-            cmd += ';';
-
             // Execute the code string
             execCode(cmd);
         }

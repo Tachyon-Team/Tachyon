@@ -19,6 +19,7 @@ BASE_SRCS =                             \
     utility/strings.js                  \
     utility/modules.js                  \
     utility/misc.js                     \
+    utility/num.js                      \
     utility/xml.js                      \
     utility/html.js                     \
     compiler/targets.js                 \

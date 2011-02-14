@@ -771,6 +771,14 @@ function eq(v1, v2)
         // Compare the immediate integers directly without unboxing them
         return iir.eq(v1, v2)? true:false;
     }
+
+    // If both values have the same type
+    else if (getRefTag(v1) === getRefTag(v2))
+    {
+        // Compare the references directly without unboxing them
+        return iir.eq(v1, v2)? true:false;        
+    }
+
     else
     {
         // TODO: implement general case in separate (non-inlined) function
@@ -786,17 +794,8 @@ function ne(v1, v2)
     "tachyon:inline";
     "tachyon:nothrow";
 
-    // If both values are immediate integers
-    if (boxIsInt(v1) && boxIsInt(v2))
-    {
-        // Compare the immediate integers directly without unboxing them
-        return iir.ne(v1, v2)? true:false;
-    }
-    else
-    {
-        // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
-    }
+    // Perform the negation of the equality comparison
+    return !eq(v1, v2);
 }
 
 /**
@@ -2031,6 +2030,16 @@ function getPropVal(obj, propName)
             // Lookup the property on the string prototype object
             return getPropVal(strproto, propName);
         }
+    }
+
+    // If this is a boxed integer
+    else if (boxIsInt(obj))
+    {
+        // Get the number prorotype object
+        var numproto = get_ctx_numproto(iir.get_ctx());
+
+        // Lookup the property on the number prototype object
+        return getPropVal(numproto, propName);
     }
 
     // Get the hash code for the property

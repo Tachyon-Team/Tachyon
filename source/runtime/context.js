@@ -69,6 +69,12 @@ function makeContextLayout(params)
         IRType.box
     );
 
+    // Number prototype object
+    ctxLayout.addField(
+        'numproto',
+        IRType.box
+    );
+
     // Range error constructor
     ctxLayout.addField(
         'rangeerror',

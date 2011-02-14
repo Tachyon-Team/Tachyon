@@ -139,6 +139,17 @@ tests.basic_arith.main = genTest(
 );
 
 /**
+Bitwise operators test.
+*/
+tests.basic_bitops = tests.testSuite(); 
+tests.basic_bitops.main = genTest(
+    'programs/basic_bitops/basic_bitops.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Arithmetic shift test.
 */
 tests.basic_shift = tests.testSuite(); 
@@ -418,6 +429,17 @@ tests.obj_tostring.main = genTest(
 );
 
 /**
+Bubble-sort implementation. Uses closures and string conversion of arrays.
+*/
+tests.bubble_sort = tests.testSuite(); 
+tests.bubble_sort.main = genTest(
+    'programs/bubble_sort/bubble_sort.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Property deletion on objects.
 */
 tests.obj_delete = tests.testSuite(); 
@@ -462,3 +484,13 @@ tests.arg_obj.main = genTest(
     55
 );
 
+/**
+Matrix computations, uses arrays, constructors, strings, closures.
+*/
+tests.matrix_comp = tests.testSuite(); 
+tests.matrix_comp.main = genTest(
+    'programs/matrix_comp/matrix_comp.js',
+    'test',
+    [],
+    10
+);

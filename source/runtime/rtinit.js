@@ -65,7 +65,7 @@ function initHeap(heapPtr)
 }
 
 /**
-Allocate/get a reference to a string object containing a given value
+Allocate/get a reference to a float object containing a given value
 @param fpVal 64 bit floating-point value
 */
 function getFloatObj(fpVal)
