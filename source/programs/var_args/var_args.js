@@ -3,7 +3,6 @@ function foo()
     return 1;
 }
 
-
 function foo1(x)
 {
     return x;

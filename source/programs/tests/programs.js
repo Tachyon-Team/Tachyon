@@ -494,3 +494,15 @@ tests.matrix_comp.main = genTest(
     [],
     10
 );
+
+/**
+Standard library array code tests.
+*/
+tests.stdlib_arrays = tests.testSuite(); 
+tests.stdlib_arrays.main = genTest(
+    'programs/stdlib_arrays/stdlib_arrays.js',
+    'test',
+    [],
+    0
+);
+

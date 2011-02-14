@@ -17,7 +17,9 @@ Array ([item0 [, item1 [, … ]]])
 */
 function Array(len)
 {
+    //
     // TODO
+    //
 }
 
 /**
@@ -112,11 +114,28 @@ function array_pop()
 
 function array_push()
 {
+    print('in push');
+
+    print('num args: ' + arguments.length);
+
     var o = array_toObject(this);
     var len = o.length;
 
+    print('got array obj');
+
+    print('start len: ' + len);
+
     for (var i=0; i<arguments.length; i++)
+    {
+        print(arguments[i]);
         o[len+i] = arguments[i];
+    }
+
+    print('pushed arguments');
+
+    print('final len: ' + o.length);
+
+    print(o);
 
     return o.length;
 }

@@ -50,8 +50,8 @@ function bootstrap(allCode, params)
     // Execute the standard library code units
     for (var i = 0; i < libIRs.length; ++i)
     {
-        print(libSrcs[i]);
-        //print(libIRs[i]);
+        print('Executing unit for: "' + libSrcs[i] + '"');
+
         execUnit(libIRs[i], params);
     }
 
@@ -156,6 +156,7 @@ function getTachyonSrcs(params)
         'utility/linkedlist.js',
         'utility/strings.js',
         'utility/modules.js',
+        'utility/num.js',
         'utility/misc.js',
         'utility/xml.js',
         'utility/html.js',
