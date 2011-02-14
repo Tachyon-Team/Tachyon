@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2010-12-31 11:34:47 feeley>
+// File: "parser.js", Time-stamp: <2011-02-14 11:37:32 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -89,17 +89,17 @@ Parser.prototype.consume = function ()
 
         if (this.input.cat === NUMBER_CAT && this.number_literal_warning)
         {
-            if (Math.floor(this.input.value) !== this.input.value)
+            if (!this.input.value instanceof Array &&
+                Math.floor(this.input.value) !== this.input.value)
                 this.warning(this.input.loc,
                              "number literal is not an integer");
-
-            /* FIXME: 1073741824 is outside 30 bit integer range
-            else if (this.input.value < -1073741824 ||
-                     this.input.value > 1073741823)
+            /* FIXME: 1073741824 is outside 30 bit integer range */
+            else if (num_lt(this.input.value, -1073741823-1) ||
+                     num_gt(this.input.value, 1073741823))
                 this.warning(this.input.loc,
                              "number literal is outside 30 bit integer range");
 
-            */
+/*            */
         }
 
         if ((this.input.cat === DIVEQUAL_CAT || this.input.cat === DIV_CAT) &&
