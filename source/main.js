@@ -121,16 +121,27 @@ function tachyonRepl()
         // Add an extra semicolon to avoid syntax errors
         str += ';';
 
-        var ir = compileSrcString(str, config.hostParams);
+        try
+        {
+            var ir = compileSrcString(str, config.hostParams);
 
-        var bridge = makeBridge(
-            ir,
-            config.hostParams,
-            [],
-            'int'
-        );
+            var bridge = makeBridge(
+                ir,
+                config.hostParams,
+                [],
+                'int'
+            );
 
-        bridge(config.hostParams.ctxPtr);
+            bridge(config.hostParams.ctxPtr);
+        }
+
+        catch (e)
+        {
+            if (e.stack)
+                print(e.stack);
+            else
+                print(e);
+        }
     }
 
     print('');
