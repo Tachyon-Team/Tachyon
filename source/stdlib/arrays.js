@@ -343,7 +343,7 @@ function array_sort(comparefn)
 
 function array_sort_comparefn_default(x, y)
 {
-    if (x.toString() > y.toString())
+    if (String(x) > String(y))
         return 1;
     else
         return -1;

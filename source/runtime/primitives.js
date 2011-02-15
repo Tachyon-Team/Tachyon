@@ -202,7 +202,7 @@ function boxIsString(boxVal)
 }
 
 /**
-Convert a boxed value to a one-byte boolean value
+Convert a boxed value to a boolean value
 */
 function boxToBool(boxVal)
 {
@@ -257,6 +257,99 @@ function boolToBox(boolVal)
     "tachyon:arg boolVal bool";
 
     return boolVal? true:false;
+}
+
+/**
+Convert a boxed value to a primitive value.
+*/
+function boxToPrim(boxVal)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    if (boxIsObjExt(boxVal))
+        return boxToString(boxVal);
+
+    return boxVal;
+}
+
+/**
+Attempt to convert a boxed value to a number. If this fails,
+return undefined.
+*/
+function boxToNumber(boxVal)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:noglobal";
+
+    if (boxIsInt(boxVal))
+        return boxVal;
+
+    if (boxIsString(boxVal))
+        return strToInt(boxVal);
+
+    if (boxIsObjExt(boxVal))
+        return strToInt(boxToString(boxVal));
+
+    if (boxVal === null)
+        return 0;
+
+    if (boxVal === true)
+        return 1;
+
+    if (boxVal === false)
+        return 0;
+
+    // TODO: return NaN when available
+    return UNDEFINED;
+}
+
+/**
+Convert a boxed value to a string
+*/
+function boxToString(val)
+{
+    "tachyon:static";
+
+    if (boxIsInt(val))
+    {
+        return getIntStr(unboxInt(val));
+    }
+
+    if (boxIsString(val))
+    {
+        return val;
+    }
+
+    if (boxIsObjExt(val))
+    {
+        var res = val.toString();
+
+        if (boxIsObjExt(res))
+            throw makeError(TypeError, 'Cannot convert object to string');
+        else
+            return boxToString(res);
+    }
+
+    switch (val)
+    {
+        case UNDEFINED:
+        return 'undefined';
+
+        case null:
+        return 'null';
+
+        case true:
+        return 'true';
+
+        case false:
+        return 'false';
+
+        default:
+        error('unsupported value type in boxToString');
+    }
 }
 
 /**
@@ -644,7 +737,36 @@ function ltGeneral(v1, v2)
     "tachyon:nothrow";
     "tachyon:ret bool";
 
-    // TODO
+    // Convert both values to primitives
+    var px = boxToPrim(v1);
+    var py = boxToPrim(v2);
+
+    // If both values are immediate integers
+    if (boxIsInt(px) && boxIsInt(py))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.lt(px, py);
+    }
+
+    // If both values are strings
+    if (boxIsString(px) && boxIsString(py))
+    {
+        // Perform string comparison
+        return strcmp(px, py) < pint(0);
+    }
+
+    // Attempt to convert both values to numbers
+    var nx = boxToNumber(px);
+    var ny = boxToNumber(py);
+    
+    // If both values are immediate integers
+    if (boxIsInt(nx) && boxIsInt(ny))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.lt(nx, ny);
+    }
+
+    // The values are not comparable
     return FALSE_BOOL;
 }
 
@@ -680,7 +802,36 @@ function leGeneral(v1, v2)
     "tachyon:nothrow";
     "tachyon:ret bool";
 
-    // TODO
+    // Convert both values to primitives
+    var px = boxToPrim(v1);
+    var py = boxToPrim(v2);
+
+    // If both values are immediate integers
+    if (boxIsInt(px) && boxIsInt(py))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.le(px, py);
+    }
+
+    // If both values are strings
+    if (boxIsString(px) && boxIsString(py))
+    {
+        // Perform string comparison
+        return strcmp(px, py) <= pint(0);
+    }
+
+    // Attempt to convert both values to numbers
+    var nx = boxToNumber(px);
+    var ny = boxToNumber(py);
+    
+    // If both values are immediate integers
+    if (boxIsInt(nx) && boxIsInt(ny))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.le(nx, ny);
+    }
+
+    // The values are not comparable
     return FALSE_BOOL;
 }
 
@@ -716,7 +867,36 @@ function gtGeneral(v1, v2)
     "tachyon:nothrow";
     "tachyon:ret bool";
 
-    // TODO
+    // Convert both values to primitives
+    var px = boxToPrim(v1);
+    var py = boxToPrim(v2);
+
+    // If both values are immediate integers
+    if (boxIsInt(px) && boxIsInt(py))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.gt(px, py);
+    }
+
+    // If both values are strings
+    if (boxIsString(px) && boxIsString(py))
+    {
+        // Perform string comparison
+        return strcmp(px, py) > pint(0);
+    }
+
+    // Attempt to convert both values to numbers
+    var nx = boxToNumber(px);
+    var ny = boxToNumber(py);
+    
+    // If both values are immediate integers
+    if (boxIsInt(nx) && boxIsInt(ny))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.gt(nx, ny);
+    }
+
+    // The values are not comparable
     return FALSE_BOOL;
 }
 
@@ -743,7 +923,6 @@ function ge(v1, v2)
     return boolToBox(tv);
 }
 
-
 /**
 Non-inline case for HIR greater-than-or-equal instruction
 */
@@ -753,7 +932,36 @@ function geGeneral(v1, v2)
     "tachyon:nothrow";
     "tachyon:ret bool";
 
-    // TODO
+    // Convert both values to primitives
+    var px = boxToPrim(v1);
+    var py = boxToPrim(v2);
+
+    // If both values are immediate integers
+    if (boxIsInt(px) && boxIsInt(py))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.ge(px, py);
+    }
+
+    // If both values are strings
+    if (boxIsString(px) && boxIsString(py))
+    {
+        // Perform string comparison
+        return strcmp(px, py) >= pint(0);
+    }
+
+    // Attempt to convert both values to numbers
+    var nx = boxToNumber(px);
+    var ny = boxToNumber(py);
+    
+    // If both values are immediate integers
+    if (boxIsInt(nx) && boxIsInt(ny))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.ge(nx, ny);
+    }
+
+    // The values are not comparable
     return FALSE_BOOL;
 }
 
@@ -769,21 +977,65 @@ function eq(v1, v2)
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.eq(v1, v2)? true:false;
+        var tv = iir.eq(v1, v2);
     }
 
     // If both values have the same type
     else if (getRefTag(v1) === getRefTag(v2))
     {
         // Compare the references directly without unboxing them
-        return iir.eq(v1, v2)? true:false;        
+        var tv = iir.eq(v1, v2);
     }
 
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        // Call the general case function
+        var tv = eqGeneral(v1, v2);
     }
+
+    return boolToBox(tv);
+}
+
+/**
+Non-inline case for HIR equal instruction
+*/
+function eqGeneral(v1, v2)
+{
+    "tachyon:static";
+    "tachyon:nothrow";
+    "tachyon:ret bool";
+
+    // Convert both values to primitives
+    var px = boxToPrim(v1);
+    var py = boxToPrim(v2);
+
+    // If both values are immediate integers
+    if (boxIsInt(px) && boxIsInt(py))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.eq(px, py);
+    }
+
+    // If both values are strings
+    if (boxIsString(px) && boxIsString(py))
+    {
+        // Perform string comparison
+        return streq(px, py);
+    }
+
+    // Attempt to convert both values to numbers
+    var nx = boxToNumber(px);
+    var ny = boxToNumber(py);
+    
+    // If both values are immediate integers
+    if (boxIsInt(nx) && boxIsInt(ny))
+    {
+        // Compare the immediate integers directly without unboxing them
+        return iir.eq(nx, ny);
+    }
+
+    // The values are not comparable
+    return FALSE_BOOL;
 }
 
 /**

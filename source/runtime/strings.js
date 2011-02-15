@@ -283,7 +283,7 @@ function strcmp(str1, str2)
 
         if (ch1 < ch2)
             return pint(-1);
-        else if (ch2 > ch1)
+        else if (ch1 > ch2)
             return pint(1);
     }
 
@@ -577,7 +577,7 @@ function getIntStr(intVal)
 }
 
 /**
-Create a string representing the integer value
+Create a string representing an integer value
 */
 function intToStr(intVal)
 {
@@ -646,44 +646,57 @@ function intToStr(intVal)
 }
 
 /**
-Convert a boxed value to a string
+Compute the integer value of a string
 */
-function boxToString(val)
+function strToInt(strVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    if (boxIsInt(val))
+    assert (
+        boolToBox(boxIsString(strVal)),
+        'expected string value in strToInt'
+    );
+
+    var hashCode = get_str_hash(strVal);
+
+    if (hashCode < HASH_CODE_STR_OFFSET)
     {
-        return getIntStr(unboxInt(val));
+        return boxInt(iir.icast(IRType.pint, hashCode));
     }
 
-    if (boxIsString(val))
+    // TODO: rewrite this function when FP support is in
+    // TODO: support whitespace, better verification
+
+    var strLen = iir.icast(IRType.pint, get_str_len(strVal));
+
+    var intVal = pint(0);
+
+    var neg = FALSE_BOOL;
+
+    // For each string character, in reverse order
+    for (var i = pint(0); i < strLen; ++i)
     {
-        return val;
+        var ch = iir.icast(IRType.pint, get_str_data(strVal, i));
+
+        // If this is a minus sign
+        if (ch === pint(45))
+        {
+            neg = TRUE_BOOL;
+            continue;
+        }
+
+        if (ch < pint(48) || ch > pint(57))
+            return UNDEFINED;
+
+        var digit = ch - pint(48)
+
+        intVal = pint(10) * intVal + digit;
     }
 
-    if (boxIsObjExt(val))
-    {
-        return val.toString();
-    }
+    if (neg)
+        intVal *= pint(-1);
 
-    switch (val)
-    {
-        case UNDEFINED:
-        return 'undefined';
-
-        case null:
-        return 'null';
-
-        case true:
-        return 'true';
-
-        case false:
-        return 'false';
-
-        default:
-        error('unsupported value type in boxToString');
-    }
+    return boxInt(intVal);
 }
 

@@ -135,14 +135,12 @@ function test_slice()
 
 function test_splice()
 {
-    /* TODO: Check standard, this matches V8's response, standard is unclear
     var a = [0,1,2,3];
     var b = a.splice(0);
     if (!array_eq(b, [0,1,2,3]))
         return 1;
     if (!array_eq(a, []))
         return 2;
-    */
 
     var a = [0,1,2,3];
     var b = a.splice(1,2);

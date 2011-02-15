@@ -496,6 +496,17 @@ tests.matrix_comp.main = genTest(
 );
 
 /**
+Standard conformance test for comparison operators.
+*/
+tests.es5_cmp = tests.testSuite(); 
+tests.es5_cmp.main = genTest(
+    'programs/es5_cmp/es5_cmp.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Standard library array code tests.
 */
 tests.stdlib_arrays = tests.testSuite(); 
