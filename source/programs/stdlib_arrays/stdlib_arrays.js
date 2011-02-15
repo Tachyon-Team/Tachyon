@@ -173,11 +173,21 @@ function test_reverse()
     return 0;
 }
 
+function numeric_comparefn(x, y)
+{
+    if (x < y)
+        return -1;
+    else if (x > y)
+        return 1;
+    else
+        return 0;
+}
+
 function test_sort()
 {
     var a = [0,-5,3,15,12,-33,7];
 
-    a.sort();
+    a.sort(numeric_comparefn);
 
     var b = [-33,-5,0,3,7,12,15];
 
