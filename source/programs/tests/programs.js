@@ -517,3 +517,14 @@ tests.stdlib_arrays.main = genTest(
     0
 );
 
+/**
+Standard library string code tests.
+*/
+tests.stdlib_strings = tests.testSuite(); 
+tests.stdlib_strings.main = genTest(
+    'programs/stdlib_strings/stdlib_strings.js',
+    'test',
+    [],
+    0
+);
+

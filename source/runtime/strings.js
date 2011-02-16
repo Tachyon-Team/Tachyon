@@ -689,7 +689,7 @@ function strToInt(strVal)
         if (ch < pint(48) || ch > pint(57))
             return UNDEFINED;
 
-        var digit = ch - pint(48)
+        var digit = ch - pint(48);
 
         intVal = pint(10) * intVal + digit;
     }
