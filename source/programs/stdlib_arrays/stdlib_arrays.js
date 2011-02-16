@@ -347,17 +347,13 @@ function test()
     if (r != 0)
         return 1300 + r;
 
-    /*
     var r = test_map();
     if (r != 0)
         return 1400 + r;
-    */
 
-    /*
     var r = test_forEach();
     if (r != 0)
         return 1500 + r;
-    */
 
     return 0;
 }

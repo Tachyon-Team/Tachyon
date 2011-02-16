@@ -262,13 +262,9 @@ function test()
     if (r != 0)
         return 1300 + r;
 
-    // TODO
-    // Uses .call
-    /*
     var r = test_fromCharCode();
     if (r != 0)
         return 1400 + r;
-    */
 
     return 0;
 }
