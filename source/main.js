@@ -47,6 +47,15 @@ Tachyon read-eval-print loop
 */
 function tachyonRepl()
 {
+    /* TODO
+
+        /hir <command>
+        /lir <command>
+        /asm <command>  produce assembly listing for command
+
+        Compile and log
+    */
+
     // Print a help listing
     function printHelp()
     {

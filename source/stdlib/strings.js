@@ -168,7 +168,8 @@ function string_charAt(pos)
 function string_concat()
 {
     var a = string_internal_toCharCodeArray(this);
-    for (var i in arguments)
+
+    for (var i = 0; i < arguments.length; ++i)
     {
         var arg = arguments[i];
         a = a.concat(string_internal_toCharCodeArray(arg));
@@ -326,16 +327,19 @@ function string_split(separator, limit)
     var len = string_internal_getLength(this);
     if (len === 0) return res;
 
-    var pos = this.string_indexOf(separator);
+    if (separator === undefined)
+        return [this];
+
+    var pos = this.indexOf(separator);
     var start = 0;
     var sepLen = string_internal_getLength(separator);
 
     while (pos >= 0)
     {
-        res.push(this.string_substring(start, pos));
+        res.push(this.substring(start, pos));
         if (res.length === limit) return res;
         start = pos + sepLen;
-        pos = this.string_indexOf(separator, pos + sepLen);
+        pos = this.indexOf(separator, pos + sepLen);
     }
 
     if (start <= len)
@@ -400,7 +404,7 @@ function string_toLowerCase()
 function string_toLocaleLowerCase()
 {
     // FIXME: not quire correct for the full Unicode
-    return this.string_toLowerCase();
+    return this.toLowerCase();
 }
 
 function string_toUpperCase()
@@ -431,7 +435,7 @@ function string_toUpperCase()
 function string_toLocaleUpperCase()
 {
     // FIXME: not quire correct for the full Unicode
-    return this.string_toUpperCase();
+    return this.toUpperCase();
 }
 
 function string_internal_isWhiteSpace(c)

@@ -528,3 +528,15 @@ tests.stdlib_strings.main = genTest(
     0
 );
 
+/**
+Print the state of the Tachyon VM.
+*/
+tests.tachyon_state = tests.testSuite(); 
+tests.tachyon_state.main = genTest(
+    'programs/tachyon_state/tachyon_state.js',
+    'printState',
+    [],
+    0,
+    true
+);
+

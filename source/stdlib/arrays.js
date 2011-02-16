@@ -76,7 +76,11 @@ function array_concat()
     var len = o.length;
 
     for (var i=arguments.length-1; i>=0; i--)
-        len += arguments[i].length;
+    {
+        var x = arguments[i];
+
+        len += (x instanceof Array)? x.length:1;
+    }
 
     var a = new Array(len);
 
@@ -84,8 +88,15 @@ function array_concat()
     {
         var x = arguments[i];
 
-        for (var j=x.length-1; j>=0; j--)
-            a[--len] = x[j];
+        if (x instanceof Array)
+        {
+            for (var j=x.length-1; j>=0; j--)
+                a[--len] = x[j];
+        }
+        else
+        {
+            a[--len] = x;
+        }
     }
 
     for (var j=o.length-1; j>=0; j--)

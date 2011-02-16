@@ -42,6 +42,24 @@ function test_indexOf()
     return 0;
 }
 
+function test_lastIndexOf()
+{
+    var a = ['a', 'b', 'c', 'd', 'c', 'c'];
+
+    if (a.lastIndexOf('a') != 0)
+        return 1;
+    if (a.lastIndexOf('b') != 1)
+        return 2;
+    if (a.lastIndexOf('c') != 5)
+        return 3;
+    if (a.lastIndexOf('d') != 3)
+        return 4;
+    if (a.lastIndexOf('e') != -1)
+        return 5;
+
+    return 0;
+}
+
 function test_push()
 {
     var a = [0,1,2];
@@ -133,6 +151,60 @@ function test_slice()
     return 0;
 }
 
+function test_concat()
+{
+    if (!array_eq([].concat([]), []))
+        return 1;
+
+    if (!array_eq([].concat([1]), [1]))
+        return 2;
+
+    if (!array_eq([].concat([1,2]), [1,2]))
+        return 3;
+
+    if (!array_eq([].concat(1), [1]))
+        return 4;
+
+    if (!array_eq([1,2].concat([]), [1,2]))
+        return 5;
+
+    if (!array_eq([1,2].concat([3,4]), [1,2,3,4]))
+        return 6;
+
+    if (!array_eq([1,2].concat([3,4],5), [1,2,3,4,5]))
+        return 7;
+
+    if (!array_eq([1,2].concat([3,4],5,[6]), [1,2,3,4,5,6]))
+        return 8;
+
+    return 0;
+}
+
+function test_join()
+{
+    var o = { toString: function () { return 'foo'; } };
+
+    if ([].join() != '')
+        return 1;
+
+    if ([].join(',') != '')
+        return 2;
+
+    if ([1].join(',') != '1')
+        return 3;
+
+    if ([1,2].join() != '1,2')
+        return 4;
+
+    if ([1,o,2].join() != '1,foo,2')
+        return 5;
+
+    if ([1,o,2].join('!?') != '1!?foo!?2')
+        return 6;
+
+    return 0;
+}
+
 function test_splice()
 {
     var a = [0,1,2,3];
@@ -171,18 +243,18 @@ function test_reverse()
     return 0;
 }
 
-function numeric_comparefn(x, y)
-{
-    if (x < y)
-        return -1;
-    else if (x > y)
-        return 1;
-    else
-        return 0;
-}
-
 function test_sort()
 {
+    function numeric_comparefn(x, y)
+    {
+        if (x < y)
+            return -1;
+        else if (x > y)
+            return 1;
+        else
+            return 0;
+    }
+
     var a = [0,-5,3,15,12,-33,7];
 
     a.sort(numeric_comparefn);
@@ -209,12 +281,14 @@ function test_map()
 
 function test_forEach()
 {
-    // TODO
+    var a = [0,1,2,3,4,5];
 
+    var o = [];
 
+    a.forEach(function (v) { o.push(2*v + 1); });
 
-
-
+    if (!array_eq(o, [1,3,5,7,9,11]))
+        return 1;
 
     return 0;
 }
@@ -229,48 +303,60 @@ function test()
     if (r != 0)
         return 200 + r;
 
-    var r = test_push();
+    var r = test_lastIndexOf();
     if (r != 0)
         return 300 + r;
 
-    var r = test_pop();
+    var r = test_push();
     if (r != 0)
         return 400 + r;
 
-    var r = test_unshift();
+    var r = test_pop();
     if (r != 0)
         return 500 + r;
 
-    var r = test_shift();
+    var r = test_unshift();
     if (r != 0)
         return 600 + r;
 
-    var r = test_slice();
+    var r = test_shift();
     if (r != 0)
         return 700 + r;
 
-    var r = test_splice();
+    var r = test_slice();
     if (r != 0)
         return 800 + r;
 
-    var r = test_reverse();
+    var r = test_concat();
     if (r != 0)
         return 900 + r;
 
-    var r = test_sort();
+    var r = test_join();
     if (r != 0)
         return 1000 + r;
+
+    var r = test_splice();
+    if (r != 0)
+        return 1100 + r;
+
+    var r = test_reverse();
+    if (r != 0)
+        return 1200 + r;
+
+    var r = test_sort();
+    if (r != 0)
+        return 1300 + r;
 
     /*
     var r = test_map();
     if (r != 0)
-        return 400 + r;
+        return 1400 + r;
     */
 
     /*
     var r = test_forEach();
     if (r != 0)
-        return 500 + r;
+        return 1500 + r;
     */
 
     return 0;
