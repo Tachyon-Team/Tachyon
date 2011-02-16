@@ -2611,15 +2611,36 @@ function opToIR(context)
                     argVals[0].type
                 );
             }
-            else {
-            // Subtract the argument value from the constant 0
+            else 
+            {
+                // Subtract the argument value from the constant 0
+                var opVal = makeOp(
+                    argsContext,
+                    'sub',
+                    SubInstr,
+                    [ConstValue.getConst(0, argVals[0].type), argVals[0]]
+                );
+            }
+
+            // Set the subtraction's output value as the output
+            context.setOutput(argsContext.getExitBlock(), opVal);
+        }
+        break;
+
+        // If this is the unary plus operator
+        case '+ x':
+        { 
+            // Compile the argument values
+            var argsContext = context.pursue(exprs);
+            var argVals = exprListToIR(argsContext);
+
+            // Add the argument value to the constant 0
             var opVal = makeOp(
                 argsContext,
-                'sub',
-                SubInstr,
+                'add',
+                AddInstr,
                 [ConstValue.getConst(0, argVals[0].type), argVals[0]]
             );
-            }
 
             // Set the subtraction's output value as the output
             context.setOutput(argsContext.getExitBlock(), opVal);

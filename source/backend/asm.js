@@ -80,7 +80,7 @@ asm.CodeBlock.prototype.extend = function (x)
 /** Adds an 8 bit number at the end of the code block. Can be chained. */
 asm.CodeBlock.prototype.gen8 = function (n)
 {
-    this.extend(n & 0xff);
+    this.extend(num_and(n, 0xff));
     return this;
 };
 
@@ -102,7 +102,7 @@ asm.CodeBlock.prototype.gen16 = function (n)
 */ 
 asm.CodeBlock.prototype.gen16BE = function (n)
 {
-    this.gen8(n >> 8);
+    this.gen8(num_shift(n, -8));
     this.gen8(n);
     return this;
 };
@@ -115,7 +115,7 @@ asm.CodeBlock.prototype.gen16BE = function (n)
 asm.CodeBlock.prototype.gen16LE = function (n)
 {
     this.gen8(n);
-    this.gen8(n >> 8);
+    this.gen8(num_shift(n, -8));
     return this;
 };
 
@@ -138,7 +138,7 @@ asm.CodeBlock.prototype.gen32 = function (n)
 */ 
 asm.CodeBlock.prototype.gen32BE = function (n)
 {
-    this.gen16(n >> 16);
+    this.gen16(num_shift(n, -16));
     this.gen16(n);
     return this;
 };
@@ -152,14 +152,13 @@ asm.CodeBlock.prototype.gen32BE = function (n)
 asm.CodeBlock.prototype.gen32LE = function (n)
 {
     this.gen16(n);
-    this.gen16(n >> 16);
+    this.gen16(num_shift(n, -16));
     return this;
 };
 
 /** Adds a 64 bit number at the end of the code block. Can be chained. */
 asm.CodeBlock.prototype.gen64 = function (n)
 {
-    // TODO: in JS n is a double, so only 52 bits are significant.
     if (this.bigEndian)
         this.gen64BE(n);
     else
@@ -175,8 +174,7 @@ asm.CodeBlock.prototype.gen64 = function (n)
 */ 
 asm.CodeBlock.prototype.gen64BE = function (n)
 {
-    // TODO: in JS n is a double, so only 52 bits are significant.
-    this.gen32(n >> 32);
+    this.gen32(num_shift(n, -32));
     this.gen32(n);
     return this;
 };
@@ -188,9 +186,8 @@ asm.CodeBlock.prototype.gen64BE = function (n)
 */ 
 asm.CodeBlock.prototype.gen64LE = function (n)
 {
-    // TODO: in JS n is a double, so only 52 bits are significant.
     this.gen32(n);
-    this.gen32(n >> 32);
+    this.gen32(num_shift(n, -32));
     return this;
 };
 
@@ -1004,6 +1001,7 @@ asm.link = function (mcb)
 };
 
 /** Represents a machine address */
+/* TODO: replace with "num" type */
 asm.address = function (byteArray, bigEndian)
 {
     if (bigEndian === undefined)

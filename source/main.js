@@ -47,6 +47,15 @@ Tachyon read-eval-print loop
 */
 function tachyonRepl()
 {
+    /* TODO
+
+        /hir <command>
+        /lir <command>
+        /asm <command>  produce assembly listing for command
+
+        Compile and log
+    */
+
     // Print a help listing
     function printHelp()
     {
@@ -121,16 +130,27 @@ function tachyonRepl()
         // Add an extra semicolon to avoid syntax errors
         str += ';';
 
-        var ir = compileSrcString(str, config.hostParams);
+        try
+        {
+            var ir = compileSrcString(str, config.hostParams);
 
-        var bridge = makeBridge(
-            ir,
-            config.hostParams,
-            [],
-            'int'
-        );
+            var bridge = makeBridge(
+                ir,
+                config.hostParams,
+                [],
+                'int'
+            );
 
-        bridge(config.hostParams.ctxPtr);
+            bridge(config.hostParams.ctxPtr);
+        }
+
+        catch (e)
+        {
+            if (e.stack)
+                print(e.stack);
+            else
+                print(e);
+        }
     }
 
     print('');

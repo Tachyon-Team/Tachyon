@@ -65,6 +65,8 @@ function string_internal_charCodeAt(s, pos)
 
 function string_internal_getLength(s)
 {
+    "tachyon:noglobal";
+
     var strLen = iir.icast(IRType.pint, get_str_len(s));
 
     return boxInt(strLen);
@@ -72,14 +74,13 @@ function string_internal_getLength(s)
 
 function string_internal_toCharCodeArray(x)
 {
-    // TODO: implement this in IIR?
     var s = x.toString();
     var a = new Array(s.length);
 
     var i;
     for (i = 0; i < s.length; i++)
     {
-        a[i] = string_internal_charCodeAt(s, i); // Using built-in function
+        a[i] = string_internal_charCodeAt(s, i);
     }
 
     return a;
@@ -87,8 +88,35 @@ function string_internal_toCharCodeArray(x)
 
 function string_internal_fromCharCodeArray(a)
 {
-    // TODO: implement this in IIR
-    return String.fromCharCode.apply(null, a);
+    "tachyon:noglobal";
+
+    // Get the array length
+    var len = iir.icast(IRType.pint, get_arr_len(a));
+
+    // Allocate a string object
+    var strObj = alloc_str(len);
+    
+    // Set the string length in the string object
+    set_str_len(strObj, iir.icast(IRType.u32, len));
+
+    // Get a reference to the array table
+    var arrtbl = get_arr_arr(a);
+
+    // Copy the data into the string
+    for (var i = pint(0); i < len; ++i)
+    {
+        var ch = get_arrtbl_tbl(arrtbl, i);
+
+        ch = iir.icast(IRType.u16, unboxInt(ch));
+
+        set_str_data(strObj, i, ch);
+    }
+
+    // Compute the hash code for the new string
+    compStrHash(strObj);
+
+    // Attempt to find the string in the string table
+    return getTableStr(strObj);
 }
 
 function string_internal_toString(s)
@@ -130,18 +158,18 @@ function string_charAt(pos)
 {
     if (pos < 0 || pos >= string_internal_getLength(this))
     {
-        return string_internal_fromCharCodeArray([]);
+        return '';
     }
 
-    var ch = this.string_charCodeAt(pos);
+    var ch = this.charCodeAt(pos);
     return string_internal_fromCharCodeArray([ch]);
-    // return this.string_substring(pos, pos+1);
 }
 
 function string_concat()
 {
     var a = string_internal_toCharCodeArray(this);
-    for (var i in arguments)
+
+    for (var i = 0; i < arguments.length; ++i)
     {
         var arg = arguments[i];
         a = a.concat(string_internal_toCharCodeArray(arg));
@@ -275,12 +303,12 @@ function string_replace(searchValue, replaceValue)
 {
     // FIXME: support function as replaceValue
     // FIXME: support regexp
-    var pos = this.string_indexOf(searchValue);
+    var pos = this.indexOf(searchValue);
     if (pos >= 0)
     {
-        return this.string_substring(0, pos).concat(
+        return this.substring(0, pos).concat(
                 replaceValue.toString(),
-                this.string_substring(pos + string_internal_getLength(searchValue)));
+                this.substring(pos + string_internal_getLength(searchValue)));
     }
 
     return this.toString();
@@ -299,16 +327,19 @@ function string_split(separator, limit)
     var len = string_internal_getLength(this);
     if (len === 0) return res;
 
-    var pos = this.string_indexOf(separator);
+    if (separator === undefined)
+        return [this];
+
+    var pos = this.indexOf(separator);
     var start = 0;
     var sepLen = string_internal_getLength(separator);
 
     while (pos >= 0)
     {
-        res.push(this.string_substring(start, pos));
+        res.push(this.substring(start, pos));
         if (res.length === limit) return res;
         start = pos + sepLen;
-        pos = this.string_indexOf(separator, pos + sepLen);
+        pos = this.indexOf(separator, pos + sepLen);
     }
 
     if (start <= len)
@@ -373,7 +404,7 @@ function string_toLowerCase()
 function string_toLocaleLowerCase()
 {
     // FIXME: not quire correct for the full Unicode
-    return this.string_toLowerCase();
+    return this.toLowerCase();
 }
 
 function string_toUpperCase()
@@ -404,7 +435,7 @@ function string_toUpperCase()
 function string_toLocaleUpperCase()
 {
     // FIXME: not quire correct for the full Unicode
-    return this.string_toUpperCase();
+    return this.toUpperCase();
 }
 
 function string_internal_isWhiteSpace(c)

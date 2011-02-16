@@ -506,3 +506,48 @@ tests.matrix_comp.main = genTest(
     10
 );
 
+/**
+Standard conformance test for comparison operators.
+*/
+tests.es5_cmp = tests.testSuite(); 
+tests.es5_cmp.main = genTest(
+    'programs/es5_cmp/es5_cmp.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Standard library array code tests.
+*/
+tests.stdlib_arrays = tests.testSuite(); 
+tests.stdlib_arrays.main = genTest(
+    'programs/stdlib_arrays/stdlib_arrays.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Standard library string code tests.
+*/
+tests.stdlib_strings = tests.testSuite(); 
+tests.stdlib_strings.main = genTest(
+    'programs/stdlib_strings/stdlib_strings.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Print the state of the Tachyon VM.
+*/
+tests.tachyon_state = tests.testSuite(); 
+tests.tachyon_state.main = genTest(
+    'programs/tachyon_state/tachyon_state.js',
+    'printState',
+    [],
+    0,
+    true
+);
+

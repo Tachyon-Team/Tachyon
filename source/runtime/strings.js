@@ -224,8 +224,9 @@ function getStrObj(rawStr, strLen)
 }
 
 /**
-Compare two string objects by iterating over UTF-16 code units
-This conforms to section 11.8.5 of the ECMAScript 262 specification
+Compare two string objects for equality by iterating over UTF-16 code
+units. This conforms to section 11.8.5 of the ECMAScript 262
+specification.
 NOTE: this is used to find strings in the hash consing table
 */
 function streq(str1, str2)
@@ -254,6 +255,44 @@ function streq(str1, str2)
 
     // The strings are equal
     return TRUE_BOOL;
+}
+
+/**
+Compare two string objects lexicographically by iterating over UTF-16
+code units. This conforms to section 11.8.5 of the ECMAScript 262
+specification.
+*/
+function strcmp(str1, str2)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret pint";
+
+    // Get the length of both strings
+    var len1 = iir.icast(IRType.pint, get_str_len(str1));
+    var len2 = iir.icast(IRType.pint, get_str_len(str2));
+
+    // Compute the minimum of both string lengths
+    var minLen = (len1 < len2)? len1:len2;
+
+    // For each character to be compared
+    for (var i = pint(0); i < minLen; i++)
+    {
+        var ch1 = get_str_data(str1, i);
+        var ch2 = get_str_data(str2, i);
+
+        if (ch1 < ch2)
+            return pint(-1);
+        else if (ch1 > ch2)
+            return pint(1);
+    }
+
+    if (len1 < len2)
+        return pint(-1);
+    else if (len2 > len1)
+        return pint(1);
+    else
+        return pint(0);
 }
 
 /**
@@ -538,7 +577,7 @@ function getIntStr(intVal)
 }
 
 /**
-Create a string representing the integer value
+Create a string representing an integer value
 */
 function intToStr(intVal)
 {
@@ -607,44 +646,57 @@ function intToStr(intVal)
 }
 
 /**
-Convert a boxed value to a string
+Compute the integer value of a string
 */
-function boxToString(val)
+function strToInt(strVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    if (boxIsInt(val))
+    assert (
+        boolToBox(boxIsString(strVal)),
+        'expected string value in strToInt'
+    );
+
+    var hashCode = get_str_hash(strVal);
+
+    if (hashCode < HASH_CODE_STR_OFFSET)
     {
-        return getIntStr(unboxInt(val));
+        return boxInt(iir.icast(IRType.pint, hashCode));
     }
 
-    if (boxIsString(val))
+    // TODO: rewrite this function when FP support is in
+    // TODO: support whitespace, better verification
+
+    var strLen = iir.icast(IRType.pint, get_str_len(strVal));
+
+    var intVal = pint(0);
+
+    var neg = FALSE_BOOL;
+
+    // For each string character, in reverse order
+    for (var i = pint(0); i < strLen; ++i)
     {
-        return val;
+        var ch = iir.icast(IRType.pint, get_str_data(strVal, i));
+
+        // If this is a minus sign
+        if (ch === pint(45))
+        {
+            neg = TRUE_BOOL;
+            continue;
+        }
+
+        if (ch < pint(48) || ch > pint(57))
+            return UNDEFINED;
+
+        var digit = ch - pint(48);
+
+        intVal = pint(10) * intVal + digit;
     }
 
-    if (boxIsObjExt(val))
-    {
-        return val.toString();
-    }
+    if (neg)
+        intVal *= pint(-1);
 
-    switch (val)
-    {
-        case UNDEFINED:
-        return 'undefined';
-
-        case null:
-        return 'null';
-
-        case true:
-        return 'true';
-
-        case false:
-        return 'false';
-
-        default:
-        error('unsupported value type in boxToString');
-    }
+    return boxInt(intVal);
 }
 

@@ -62,8 +62,7 @@ Parser.prototype.token_cat = function (tok)
 
 Parser.prototype.error = function (loc, msg)
 {
-    print(loc.to_string() + ": syntax error -- " + msg);
-    quit(); // exit process
+    error(loc.to_string() + ": syntax error -- " + msg);
 };
 
 
