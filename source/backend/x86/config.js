@@ -147,6 +147,15 @@ x86BackendCfg.prototype.makeContextLayout = function (params)
         IRType.box
     );
 
+    // Slots to spill arguments that might be in registers
+    this.physReg.forEach(function (reg, index) {
+        ctxLayout.addField(
+            'reg' + index,
+            IRType.box
+        );
+    });
+
+
 
     // Finalize the context layout
     ctxLayout.finalize();

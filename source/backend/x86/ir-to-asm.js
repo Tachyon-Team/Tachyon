@@ -387,6 +387,85 @@ irToAsm.translator.prototype.stringValue = function (s)
     );
 };
 
+/**
+    @private
+    Returns an array of unused registers
+*/
+irToAsm.translator.prototype.freeRegisters = function (used)
+{
+    // Configuration imports
+    const backendCfg = this.params.target.backendCfg;
+    const freeRegs = backendCfg.physReg.slice(0);
+    arraySetRemAll(freeRegs, used);
+    return freeRegs;
+};
+
+/**
+    @private
+
+    If moveMem is false,
+        Move up to n register values from 'used' on the context.  Moved values on 'used'
+        are replace by their memory location on context.
+    If moveMem if true, 
+        Move n 'used' values that are registers or memory operands to context.
+    
+    Returns all available free registers after operation.
+*/
+irToAsm.translator.prototype.spillOnCtx = function (n, used, moveMem)
+{
+    const that = this;
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory;
+    
+    // Configuration imports
+    const backendCfg = this.params.target.backendCfg;
+    const ctxLayout = backendCfg.ctxLayout;
+    const context = backendCfg.context;
+    
+    const free = this.freeRegisters(used);
+    // If free.length === 0 then temp won't be needed
+    // so it might be undefined
+    const temp = free[0];
+
+    if (moveMem === true)
+    {
+        assert(
+            n <= backendCfg.physReg.length, 
+            "Insufficient number of slots available on context"
+        );
+    }
+
+
+    var i = 0;
+    used.forEach(function (slot, index) {
+
+        const ctxSlotOffset = ctxLayout.getFieldOffset(["reg" + i]);
+        const ctxSlot = mem(ctxSlotOffset, context);
+
+        if (i < n && (slot.type === x86.type.REG || 
+                      (moveMem && slot.type === x86.type.MEM)))
+        {
+            if (slot.type === x86.type.REG)
+            {
+                that.asm.
+                mov(slot, ctxSlot); 
+
+                free.push(slot);
+            } else
+            {
+                that.asm.
+                mov(slot, temp).
+                mov(temp, ctxSlot);
+            }
+
+            used[index] = ctxSlot;
+            i++;
+        }
+    });
+
+    return free;
+}
+
 irToAsm.translator.prototype.prelude = function ()
 {
     const reg = x86.Assembler.prototype.register;
@@ -1802,6 +1881,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // used for the arguments or scratch
     if (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg)
     {
+        // TODO: Save an operand that might be in the register for funcPtrReg
+
         tltor.asm.mov(opnds[0], funcPtrReg);
         var funcPtr = funcPtrReg;
     }
@@ -1809,6 +1890,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     {
         var funcPtr = opnds[0];
     }
+
+    // TODO: Save an operand that might be in scratch register
 
     // Test if this is a static call
     var staticCall = (funcPtr.type === x86.type.LINK);
@@ -1819,12 +1902,12 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Index for the last argument passed in a register 
     const lastArgIndex = argRegNb - 1;
 
-    // Number of operands that must be spilled at the call site
-    var spillNb = funcArgs.length - argRegNb;
-    spillNb = (spillNb < 0) ? 0 : spillNb;
+    // Number of operands that must be passed on stack
+    var argStackNb = funcArgs.length - argRegNb;
+    argStackNb = (argStackNb < 0) ? 0 : argStackNb;
     
-    // Stack pointer offset for all spilled operands
-    const spillOffset = spillNb * refByteNb;
+    // Stack pointer offset for all operands passed on stack
+    const stackOffset = argStackNb * refByteNb;
 
     // Stack pointer offset
     var spoffset;
@@ -1833,9 +1916,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     var opnd;
 
     // Allocate space on stack for extra args
-    if (spillOffset > 0)
+    if (stackOffset > 0)
     {
-        tltor.asm.sub($(spillOffset), stack);
+        tltor.asm.sub($(stackOffset), stack);
 
         for (i = argRegNb, spoffset = 0; i < funcArgs.length; ++i, spoffset += refByteNb)
         {
@@ -1847,7 +1930,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
                 // Adjust the offset to take the displacement of the stack pointer
                 // into account
                 arg = Object.create(arg);
-                arg.disp += spillOffset;
+                arg.disp += stackOffset;
 
                 tltor.asm.
                 mov(arg, scratch).
@@ -1880,7 +1963,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
                 // Adjust the offset to take the displacement of the stack pointer
                 // into account
-                arg.disp += spillOffset;
+                arg.disp += stackOffset;
             }
 
             map.add(arg, reg);
@@ -1924,6 +2007,132 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.jmp(continue_label);
     }
 };
+
+CallApplyInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
+
+CallApplyInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory;
+    const $ = x86.Assembler.prototype.immediateValue;
+
+    // Configuration imports
+    const target = tltor.params.target;
+    const backendCfg = tltor.params.target.backendCfg;
+    const stack = backendCfg.stack;
+    const argsReg = backendCfg.argsReg;
+    const argsRegNb = argsReg.length;
+    const funcPtrIndex = backendCfg.funcPtrIndex;
+    const funcPtrReg = backendCfg.physReg[funcPtrIndex];
+    const context = backendCfg.context;
+
+    const refByteNb = target.ptrSizeBytes;
+
+    const numArgsCtxOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
+    const numArgsCtx = mem(numArgsCtxOffset, context);
+    
+    // Move all operands on context
+    const freeRegs = tltor.spillOnCtx(opnds.length, opnds, true);
+
+    // Implicit number of arguments to call
+    const impArgNb = 2;
+
+    // Call apply operands are now on context
+    const funcPtr  = opnds[0];
+    const funcObj  = opnds[1];
+    const thisArg  = opnds[2];
+    const argTable = opnds[3];
+    const numArgs  = opnds[4];
+
+    //assert(freeRegs.length >= 3, "Insufficient number of registers available");
+
+    const scratchRegs = freeRegs.slice(0);
+    arraySetRemAll(scratchRegs, argsReg);
+    assert(
+        scratchRegs.length >= 2, 
+        "Insufficient number of scratch registers available"
+    );
+    const index   = scratchRegs[0];
+    const temp    = scratchRegs[1];
+
+    const otherRegs = freeRegs.slice(0);
+    arraySetRemAll(otherRegs, scratchRegs);
+    assert(
+        otherRegs.length >= 1,
+        "Insufficient number of non-scratch registers available"
+    );
+    const srcPtr  = otherRegs[0];
+
+    const cpLoop  = tltor.asm.labelObj();
+    const cpDone  = tltor.asm.labelObj();
+
+    const shiftAmt = (refByteNb === 4) ? 2 : 3;
+
+    tltor.asm.
+    
+    // Initialize loop
+    mov(numArgs, index).
+    mov(argTable, srcPtr).
+
+    // Add space for argTable values and 
+    // implicit arguments
+    mov(index, temp).
+    sal($(shiftAmt), temp).
+    sub(temp, stack).
+    sub($(impArgNb*refByteNb), stack).
+
+    // Copy implicit arguments on stack
+    mov(funcObj, temp).
+    mov(temp, mem(0, stack)).
+    mov(thisArg, temp).
+    mov(temp, mem(refByteNb, stack)).
+
+    // Loop over entries and copy on stack
+    label(cpLoop).
+    cmp($(0), index).
+    jle(cpDone).
+
+    mov(mem(-refByteNb, srcPtr, index, refByteNb), temp).
+    mov(temp, mem((impArgNb-1)*refByteNb, stack, index, refByteNb)).
+
+    dec(index).
+    jmp(cpLoop).
+    label(cpDone).
+
+    mov(numArgs, index).
+    add($(impArgNb), index).
+
+    // Store the number of arguments in context
+    mov(index, numArgsCtx);
+
+    // Move values that should be in registers
+    argsReg.forEach(function (reg, i) {
+        tltor.asm.
+        cmp($(i), index).
+        cmovnle(mem(i*refByteNb, stack), reg);
+    });
+
+    // Adjust stack pointer
+    tltor.asm.
+    mov($(argsRegNb), temp).
+    cmp(temp, index).
+    cmovnle(temp, index).
+    lea(mem(0, stack, index, refByteNb), stack).
+
+    // Call function 
+    call(funcPtr);
+
+    // If this function call has a continuation label
+    if (this.targets[0] !== undefined)
+    {
+        // Label for the continuation
+        const continue_label = tltor.label(this.targets[0], this.targets[0].label);
+
+        // Jump to continue_label
+        tltor.asm.jmp(continue_label);
+    }
+};
+
 
 CallFFIInstr.prototype.genCode = function (tltor, opnds)
 {
@@ -2437,4 +2646,6 @@ GetArgTableInstr.prototype.genCode = function (tltor, opnds)
     mov(argTbl, dest);
 
 };
+
+
 

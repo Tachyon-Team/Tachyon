@@ -485,6 +485,17 @@ tests.arg_obj.main = genTest(
 );
 
 /**
+Apply test.
+*/
+tests.basic_apply = tests.testSuite();
+tests.basic_apply.main = genTest(
+    'programs/basic_apply/basic_apply.js',
+    'foo_proxy',
+    [],
+    0
+);
+
+/**
 Matrix computations, uses arrays, constructors, strings, closures.
 */
 tests.matrix_comp = tests.testSuite(); 
@@ -494,3 +505,4 @@ tests.matrix_comp.main = genTest(
     [],
     10
 );
+

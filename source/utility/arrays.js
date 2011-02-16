@@ -52,6 +52,19 @@ function arraySetRem(array, val)
 }
 
 /**
+Remove all values from an array set in the second array
+*/
+function arraySetRemAll(arr1, arr2)
+{
+    for (var i = arr2.length - 1; i >= 0; --i)
+    {
+        arraySetRem(arr1, arr2[i]);
+    }
+
+    return null;
+};
+
+/**
 Perform the union operation on an array set
 */
 function arraySetUnion(arr1, arr2)
