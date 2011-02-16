@@ -2558,10 +2558,20 @@ function instanceOf(obj, ctor)
         'instanceof expects function as constructor'
     );
 
-    var objProto = get_obj_proto(obj);
-
     var ctorProto = ctor.prototype;
 
-    return (objProto === ctorProto);
+    // Until we went all the way through the prototype chain
+    do
+    {
+        var objProto = get_obj_proto(obj);
+
+        if (objProto === ctorProto)
+            return true;
+
+        obj = objProto;
+
+    } while (obj != null);
+
+    return false;
 }
 
