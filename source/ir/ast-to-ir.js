@@ -2635,7 +2635,7 @@ function opToIR(context)
             if (argVals[0] instanceof ConstValue && argVals[0].isNumber())
             {
                 var opVal = ConstValue.getConst(
-                    -argVals[0].value,
+                    num_mul(argVals[0].value, -1),
                     argVals[0].type
                 );
             }

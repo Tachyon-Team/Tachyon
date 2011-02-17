@@ -18,7 +18,7 @@ function ConstValue(value, type)
     // Ensure that the specified value is valid
     assert (
         !(type.isInt() && 
-        (typeof value !== 'number' || Math.floor(value) !== value)),
+        (num_instance(value) !== true || num_integer(value) !== true)),
         'integer constants require integer values'
     );
     assert (
@@ -57,9 +57,9 @@ ConstValue.prototype.toString = function ()
     {
        return '"' + escapeJSString(this.value) + '"';
     }
-    else if (typeof this.value === 'number')
+    else if (num_instance(this.value))
     {
-        return this.type + ':' + String(this.value);
+        return this.type + ':' + num_to_string(this.value);
     }
     else if (this.value instanceof Function)
     {
@@ -85,7 +85,7 @@ Test if a constant is a number
 */
 ConstValue.prototype.isNumber = function ()
 {
-    return (typeof this.value === 'number');
+    return (num_instance(this.value) === true);
 };
 
 /**
@@ -93,7 +93,7 @@ Test if a constant is an integer
 */
 ConstValue.prototype.isInt = function ()
 {
-    return (this.isNumber() && this.value === Math.floor(this.value));
+    return (this.isNumber() && num_integer(this.value));
 };
 
 /**
@@ -111,8 +111,8 @@ ConstValue.prototype.isBoxInt = function (params)
     return (
         this.type === IRType.box &&
         this.isInt() && 
-        this.value >= getIntMin(BOX_NUM_BITS_INT, false) && 
-        this.value <= getIntMax(BOX_NUM_BITS_INT, false)
+        num_ge(this.value, getIntMin(BOX_NUM_BITS_INT, false)) && 
+        num_le(this.value, getIntMax(BOX_NUM_BITS_INT, false))
     );
 };
 
@@ -193,7 +193,7 @@ ConstValue.prototype.getImmValue = function (params)
 
     if (this.isBoxInt(params))
     {
-        return (this.value << params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
+        return num_shift(this.value, params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
     }
 
     if (this.type.isInt() && this.type !== IRType.box)
@@ -238,9 +238,31 @@ ConstValue.prototype.getImmValue = function (params)
 };
 
 /**
+Hash function to be used for the constant map.
+*/
+ConstValue.hashFunc = function (val)
+{
+    if (bignum_instance(val))
+        return defHashFunc(bignum_to_string(val));
+    else
+        return defHashFunc(val);
+}
+
+/**
+Equality function to be used for the constant map.
+*/
+ConstValue.equalFunc = function (key1, key2)
+{
+    if (num_instance(key1) && num_instance(key2))
+        return num_eq(key1, key2);
+    else
+        return defEqualFunc(key1, key2);
+}
+
+/**
 Map of values to maps of types to IR constants
 */
-ConstValue.constMap = new HashMap();
+ConstValue.constMap = new HashMap(ConstValue.hashFunc, ConstValue.equalFunc);
 
 /**
 Get the unique constant instance for a given value
