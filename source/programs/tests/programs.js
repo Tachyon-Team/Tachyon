@@ -9,7 +9,7 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 /**
 Compile and run a source file, returning the result.
 */
-function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
+function compileAndRunSrcs(srcFiles, funcName, inputArgs, hostParams)
 {
     var argTypes = [];
     for (var i = 0; i < inputArgs.length; ++i)
@@ -26,33 +26,43 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
     else
         var params = config.clientParams;
 
-    //if (funcName === 'linkedlist')
-    //    params.print = print;
+    // For each source file
+    for (var i = 0; i < srcFiles.length; ++i)
+    {
+        var srcFile = srcFiles[i];
 
-    // Compile the unit
-    var ir = compileSrcFile(srcFile, params);
+        // Compile the unit
+        var ir = compileSrcFile(srcFile, params);
 
-    //params.print = undefined;
+        // Create a bridge to execute this unit
+        var unitBridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            'int'
+        );
 
-    // Get the function of the specified name in the unit
-    var func = ir.getChild(funcName);
+        // Execute the compilation unit to initialize it
+        unitBridge(params.ctxPtr);
 
-    var unitBridge = makeBridge(
-        ir,
-        config.hostParams,
-        [],
-        'int'
-    );
+        // Try to find the function of the specified name in the unit
+        var func = ir.getChild(funcName);
+
+        if (func !== null)
+            var funcIR = func;
+    }
     
+    assert (
+        funcIR !== null,
+        'test function not found'
+    );
+
     var funcBridge = makeBridge(
-        func,
+        funcIR,
         config.hostParams,
         argTypes,
         'int'
     );
-
-    // Execute the compilation unit to initialize it
-    unitBridge(params.ctxPtr);
 
     // Call the function with the given arguments
     var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
@@ -64,12 +74,15 @@ function compileAndRunSrc(srcFile, funcName, inputArgs, hostParams)
 Generate a unit test for a source file, testing the return value
 obtained after execution.
 */
-function genTest(srcFile, funcName, inputArgs, expectResult, hostParams)
+function genTest(srcFiles, funcName, inputArgs, expectResult, hostParams)
 {
+    if (typeof srcFiles === 'string')
+        srcFiles = [srcFiles];
+
     return function()
     {
-        var result = compileAndRunSrc(
-            srcFile, 
+        var result = compileAndRunSrcs(
+            srcFiles, 
             funcName,
             inputArgs,
             hostParams
@@ -156,6 +169,17 @@ tests.basic_shift = tests.testSuite();
 tests.basic_shift.main = genTest(
     'programs/basic_shift/basic_shift.js',
     'foo',
+    [],
+    0
+);
+
+/**
+Multiple files/units test
+*/
+tests.multi_file = tests.testSuite(); 
+tests.multi_file.main = genTest(
+    ['programs/multi_file/file1.js', 'programs/multi_file/file2.js'],
+    'test',
     [],
     0
 );
