@@ -141,6 +141,23 @@ function arrayRange(from, to, step)
 }
 
 /**
+Returns the index of the first element for which
+func returns true, -1 if none.
+*/
+function arrayFind(arr, func)
+{
+    for (var i = 0; i < arr.length; ++i)
+    {
+        if (func(arr[i]))
+        {
+            return i;
+        }   
+    }
+
+    return -1;
+}
+
+/**
     @class
     Iterates over an array.
 
