@@ -356,6 +356,16 @@ tests.programs.array_length = genTest(
 );
 
 /**
+Array size extension test.
+*/
+tests.programs.array_ext = genTest(
+    'programs/array_ext/array_ext.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Recursive n-queens solver. Uses arrays extensively.
 */
 tests.programs.nqueens = genTest(
@@ -529,7 +539,6 @@ tests.programs.stdlib_strings = genTest(
 /**
 Tachyon hash map utility code test
 */
-/*
 tests.programs.tachyon_hashmap = genTest(
     [
         'utility/debug.js',
@@ -540,7 +549,6 @@ tests.programs.tachyon_hashmap = genTest(
     [],
     0
 );
-*/
 
 /**
 Print the state of the Tachyon VM.

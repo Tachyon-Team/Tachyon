@@ -564,6 +564,10 @@ function newArray()
     var arrtbl = alloc_arrtbl(ARRAY_TBL_INIT_SIZE);
     set_arr_arr(arr, arrtbl);
 
+    // Initialize the array table
+    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
+        set_arrtbl_tbl(arrtbl, i, UNDEFINED);
+
     // Return the array reference
     return arr;
 }
@@ -1941,13 +1945,14 @@ function putElemArr(arr, index, elemVal)
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
-            // Extend the internal table
-            tbl = extArrTable(arr, tbl, len, cap);
-        }
+            // Compute the new size to resize to
+            var newSize = pint(2) * cap;
+            if (newLen > newSize)
+                newSize = newLen;
 
-        // Initialize new entries before the index to undefined
-        for (var i = len; i < index; i++)
-            set_arrtbl_tbl(tbl, i, UNDEFINED);
+            // Extend the internal table
+            tbl = extArrTable(arr, tbl, len, cap, newSize);
+        }
 
         // Update the array length
         set_arr_len(arr, iir.icast(IRType.u32, newLen));
@@ -1960,15 +1965,13 @@ function putElemArr(arr, index, elemVal)
 /**
 Extend the internal array table of an array
 */
-function extArrTable(arr, curTbl, curLen, curSize)
+function extArrTable(arr, curTbl, curLen, curSize, newSize)
 {
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg curLen pint";
     "tachyon:arg curSize pint";
-
-    // Compute the new size
-    var newSize = pint(2) * curSize;
+    "tachyon:arg newSize pint";
 
     // Allocate the new table
     var newTbl = alloc_arrtbl(newSize);
@@ -1978,6 +1981,12 @@ function extArrTable(arr, curTbl, curLen, curSize)
     {
         var elem = get_arrtbl_tbl(curTbl, i);
         set_arrtbl_tbl(newTbl, i, elem);
+    }
+
+    // Initialize the remaining table entries to undefined
+    for (var i = curLen; i < newSize; i++)
+    {
+        set_arrtbl_tbl(newTbl, i, UNDEFINED);
     }
 
     // Update the table capacity in the array
@@ -2029,6 +2038,12 @@ function delElemArr(arr, index)
 
     index = unboxInt(index); 
 
+    // Get the array table
+    var tbl = get_arr_arr(arr);
+
+    // Set the array element to undefined
+    set_arrtbl_tbl(tbl, index, UNDEFINED);
+
     // Get the array length
     var len = iir.icast(IRType.pint, get_arr_len(arr));
 
@@ -2040,14 +2055,6 @@ function delElemArr(arr, index)
 
         // Update the array length
         set_arr_len(arr, iir.icast(IRType.u32, newLen));
-    }
-    else
-    {
-        // Get the array table
-        var tbl = get_arr_arr(arr);
-
-        // Set the array element to undefined
-        set_arrtbl_tbl(tbl, index, UNDEFINED);
     }
 }
 
@@ -2075,20 +2082,25 @@ function setArrayLength(arr, newLen)
         // Get the array capacity
         var cap = iir.icast(IRType.pint, get_arr_cap(arr));
 
-        // Get a reference to the array table
-        var tbl = get_arr_arr(arr);
-
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
-            // Extend the internal table
-            tbl = extArrTable(arr, tbl, len, cap);
-        }
+            // Get a reference to the array table
+            var tbl = get_arr_arr(arr);
 
-        // Initialize new entries to undefined
-        for (var i = len; i < newLen; i++)
+            // Extend the internal table
+            extArrTable(arr, tbl, len, cap, newLen);
+        }
+    }
+    else
+    {
+        // Get a reference to the array table
+        var tbl = get_arr_arr(arr);
+
+        // Initialize removed entries to undefined
+        for (var i = newLen; i < len; i++)
             set_arrtbl_tbl(tbl, i, UNDEFINED);
-    }  
+    }
 
     // Update the array length
     set_arr_len(arr, iir.icast(IRType.u32, newLen));
