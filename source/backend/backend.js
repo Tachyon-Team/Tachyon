@@ -48,7 +48,8 @@ backend.compileIRToCB = function (ir, params)
 
     for (k=0; k<fcts.length; ++k)
     {
-        print("Translation of function: '" + fcts[k].funcName + "'");
+        if (params.printRegAlloc === true)
+            print("Translation of function: '" + fcts[k].funcName + "'");
 
         // Add register allocation information on the function
         fcts[k].regAlloc = fcts[k].regAlloc || {};
@@ -59,8 +60,9 @@ backend.compileIRToCB = function (ir, params)
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order, params);
 
-    
-        print("******* Before register allocation ******");
+        if (params.printRegAlloc === true)
+            print("******* Before register allocation ******");
+
         var block;
         var tab = "\t";
         var instr;
@@ -91,7 +93,8 @@ backend.compileIRToCB = function (ir, params)
             }   
         }
 
-        print(cfg.toString(function () { return order; }, undefined, undefined, 
+        if (params.printRegAlloc === true)
+            print(cfg.toString(function () { return order; }, undefined, undefined, 
                            lnPfxFormatFn));
 
         liveIntervals = allocator.liveIntervals(cfg, order, params);
@@ -120,32 +123,30 @@ backend.compileIRToCB = function (ir, params)
         // SSA form deconstruction and linear scan resolution 
         order = allocator.resolve(cfg, liveIntervals, order, params);
 
-        print("******* After register allocation *******");
-
-
-
-
-
-        function inFormatFn(instr, pos)
+        if (params.printRegAlloc === true)
         {
-            opnd = instr.regAlloc.opnds[pos];
-            if (opnd instanceof IRValue)
+            print("******* After register allocation *******");
+
+            function inFormatFn(instr, pos)
             {
-                return opnd.getValName();
-            } else
-            {
-                return String(opnd);
+                opnd = instr.regAlloc.opnds[pos];
+                if (opnd instanceof IRValue)
+                {
+                    return opnd.getValName();
+                } else
+                {
+                    return String(opnd);
+                }
             }
+
+            function outFormatFn(instr)
+            {
+                return String(instr.regAlloc.dest);
+            }
+
+            print(cfg.toString(function () { return order; }, outFormatFn, inFormatFn,
+                               lnPfxFormatFn));
         }
-
-        function outFormatFn(instr)
-        {
-            return String(instr.regAlloc.dest);
-        }
-
-        print(cfg.toString(function () { return order; }, outFormatFn, inFormatFn,
-                           lnPfxFormatFn));
-
 
         fcts[k].regAlloc.spillNb = mems.slots.length;
 
@@ -172,12 +173,13 @@ backend.compileIRToCB = function (ir, params)
         });
         */
         
-        print("*****************************************");
-        print("Number of spills: " + fcts[k].regAlloc.spillNb);
-        print();
-
+        if (params.printRegAlloc === true)
+        {
+            print("*****************************************");
+            print("Number of spills: " + fcts[k].regAlloc.spillNb);
+            print();
+        }
     }
-
 
     // Add the initialization code at the beginning
     // and reassemble
@@ -185,7 +187,6 @@ backend.compileIRToCB = function (ir, params)
 
     return translator.asm.codeBlock;
 };
-
 
 /** 
     Compile an IRFunction to a machine code block.
@@ -196,7 +197,7 @@ backend.compileIRToMCB = function (ir, params)
 {
     var cb = backend.compileIRToCB(ir, params);
     
-    if (params.print !== undefined)
+    if (params.printASM === true)
         params.print(backend.listing(cb));
 
     return cb.assembleToMachineCodeBlock(); // assemble it

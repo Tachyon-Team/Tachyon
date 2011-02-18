@@ -91,5 +91,36 @@ function CompParams(cfgObj)
     @field
     */
     this.getStrObj = null;
+
+    /**
+    Function used to print output during the compilation.
+    By default this is the global print function.
+    @field
+    */
+    this.print = print;
+
+    /**
+    Flag to print the HIR generated during the compilation
+    @field
+    */
+    this.printHIR = false;
+
+    /**
+    Flag to print the LIR generated during the compilation
+    @field
+    */
+    this.printLIR = false;
+
+    /**
+    Flag to print the register allocation information during the compilation
+    @field
+    */
+    this.printRegAlloc = false;
+
+    /**
+    Flag to print the assembler code generated during the compilation
+    @field
+    */
+    this.printASM = false;
 }
 
