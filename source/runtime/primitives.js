@@ -2570,7 +2570,7 @@ function instanceOf(obj, ctor)
 
         obj = objProto;
 
-    } while (obj != null);
+    } while (obj !== null);
 
     return false;
 }

@@ -869,7 +869,7 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
     for (var i=0; i<this.code.length; i++)
     {
         var x = this.code[i];
-        if (typeof x == "number")
+        if (typeof x === "number")
             block[pos++] = x;
     }
 

@@ -688,7 +688,7 @@ ControlFlowGraph.prototype.validate = function ()
     mustReachIn[this.entry.blockId] = [];
 
     // Compute the set of blocks in a merge position
-    var mergeBlocks = []
+    var mergeBlocks = [];
     for (var itr = this.getBlockItr(); itr.valid(); itr.next())
     {
         var block = itr.get();

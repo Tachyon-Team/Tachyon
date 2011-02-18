@@ -142,12 +142,12 @@ function bignum_cmp(bignum_a, bignum_b)
     if (bignum_nonneg(bignum_a))
     {
         if (!bignum_nonneg(bignum_b))
-            return 1
+            return 1;
     }
     else
     {
         if (bignum_nonneg(bignum_b))
-            return -1
+            return -1;
     }
 
     // bignums have same sign

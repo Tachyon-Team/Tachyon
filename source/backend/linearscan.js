@@ -1219,7 +1219,7 @@ allocator.orderBlocks = function (cfg)
                 numForwSeen[succ.blockId]++;
 
             // If all forward branches have been seen
-            if (numForwSeen[succ.blockId] == succ.regAlloc.numForwBranch)
+            if (numForwSeen[succ.blockId] === succ.regAlloc.numForwBranch)
             {
                 // Add the block to the work list, sorted by decreasing weight
                 workList.addSorted(succ, blockSortFunc);
@@ -2742,7 +2742,7 @@ allocator.slotMapping.prototype.toString = function (debugSlots)
         debugSlots.forEach(function (slot)
         {
             if (slot.type !== that.backendCfg.REG && slot.type !== that.backendCfg.MEM)
-                return
+                return;
 
 
             debugList = (debug[slot] === undefined) ?  [] : 
@@ -2869,7 +2869,7 @@ allocator.moves.prototype.addMapping = function (mapping, pos)
 allocator.moves.prototype.getItr = function ()
 {
     return new FilterIterator(new ArrayIterator(this.positions),
-                              function (move) { return move !== undefined });
+                              function (move) { return move !== undefined; });
 };
 
 /** 

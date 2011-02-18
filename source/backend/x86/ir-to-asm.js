@@ -147,7 +147,7 @@ irToAsm.shiftMaker = function (irinstr, name)
         const dest = this.regAlloc.dest;
 
         var shiftAmt;
-        if (opnds[1].type == x86.type.IMM_VAL)
+        if (opnds[1].type === x86.type.IMM_VAL)
         {
             assert(
                 opnds[1].value > 0, 
@@ -198,7 +198,7 @@ irToAsm.shiftMaker = function (irinstr, name)
             tltor.asm.mov($(0), reg.cl);
         }
     };
-}
+};
 
 //=============================================================================
 //
@@ -402,16 +402,13 @@ irToAsm.translator.prototype.freeRegisters = function (used)
 
 /**
     @private
-
-    If moveMem is false,
-        Move up to n register values from 'used' on the context.  Moved values on 'used'
-        are replace by their memory location on context.
-    If moveMem if true, 
-        Move n 'used' values that are registers or memory operands to context.
+    
+    Move all operands in 'wanted' on context, replacing their occurence
+    in 'used' by their memory location on context.
     
     Returns all available free registers after operation.
 */
-irToAsm.translator.prototype.spillOnCtx = function (n, used, moveMem)
+irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
 {
     const that = this;
     // Assembler imports
@@ -421,50 +418,74 @@ irToAsm.translator.prototype.spillOnCtx = function (n, used, moveMem)
     const backendCfg = this.params.target.backendCfg;
     const ctxLayout = backendCfg.ctxLayout;
     const context = backendCfg.context;
-    
+
+    assert(
+        wanted.length <= backendCfg.physReg.length, 
+        "Insufficient number of slots available on context"
+    );
+
+    // Allow destructive modification
+    wanted = wanted.slice(0);
+
     const free = this.freeRegisters(used);
-    // If free.length === 0 then temp won't be needed
-    // so it might be undefined
-    const temp = free[0];
-
-    if (moveMem === true)
-    {
-        assert(
-            n <= backendCfg.physReg.length, 
-            "Insufficient number of slots available on context"
-        );
-    }
-
-
+    var temp;
+    var tempIdx = -1;
     var i = 0;
-    used.forEach(function (slot, index) {
+    function spill(index)
+    {
+        if (index === -1)
+        {
+            // Nothing to spill
+            return;
+        }
+
+        const slot = used[index];
 
         const ctxSlotOffset = ctxLayout.getFieldOffset(["reg" + i]);
         const ctxSlot = mem(ctxSlotOffset, context);
-
-        if (i < n && (slot.type === x86.type.REG || 
-                      (moveMem && slot.type === x86.type.MEM)))
+        if (slot.type === x86.type.REG)
         {
-            if (slot.type === x86.type.REG)
-            {
-                that.asm.
-                mov(slot, ctxSlot); 
+            that.asm.
+            mov(slot, ctxSlot); 
 
-                free.push(slot);
-            } else
-            {
-                that.asm.
-                mov(slot, temp).
-                mov(temp, ctxSlot);
-            }
+            free.push(slot);
+        } else
+        {
+            that.asm.
+            mov(slot, temp).
+            mov(temp, ctxSlot);
+        }
 
-            used[index] = ctxSlot;
-            i++;
+        used[index] = ctxSlot;
+
+        i++;
+        return ctxSlot;
+    }
+
+    if (free.length === 0)
+    {
+        // Move a register value on context first
+        tempIdx = arrayFind(used, function (u)
+        {
+            return u.type === x86.type.REG;
+        });
+        temp = spill(tempIdx);
+    } else 
+    {
+        temp = free[0]; 
+    }
+
+    wanted.forEach(function (slot) {
+        const index = used.indexOf(slot);
+
+        if (index !== tempIdx)
+        {
+            spill(index); 
         }
     });
 
     return free;
-}
+};
 
 irToAsm.translator.prototype.prelude = function ()
 {
@@ -1371,7 +1392,7 @@ NotInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (dest != opnds[0])
+    if (dest !== opnds[0])
     {
         tltor.asm.mov(opnds[0], dest);
     }
@@ -1877,21 +1898,24 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'function pointer reg conflicts with scratch'
     );
 
-    // If the function pointer is in a register that will be
-    // used for the arguments or scratch
-    if (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg)
-    {
-        // TODO: Save an operand that might be in the register for funcPtrReg
+    const funcPtrWrongReg = (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg);
 
+    const toSpill = [scratch]; 
+    if (funcPtrWrongReg)
+    {
+        toSpill.push(funcPtrReg);
+    }
+
+    tltor.spillOnCtx(toSpill, opnds);
+
+    if (funcPtrWrongReg)
+    {
         tltor.asm.mov(opnds[0], funcPtrReg);
         var funcPtr = funcPtrReg;
-    }
-    else
+    } else
     {
         var funcPtr = opnds[0];
     }
-
-    // TODO: Save an operand that might be in scratch register
 
     // Test if this is a static call
     var staticCall = (funcPtr.type === x86.type.LINK);
@@ -2032,7 +2056,7 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     const numArgsCtx = mem(numArgsCtxOffset, context);
     
     // Move all operands on context
-    const freeRegs = tltor.spillOnCtx(opnds.length, opnds, true);
+    const freeRegs = tltor.spillOnCtx(opnds, opnds);
 
     // Implicit number of arguments to call
     const impArgNb = 2;
@@ -2043,8 +2067,6 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     const thisArg  = opnds[2];
     const argTable = opnds[3];
     const numArgs  = opnds[4];
-
-    //assert(freeRegs.length >= 3, "Insufficient number of registers available");
 
     const scratchRegs = freeRegs.slice(0);
     arraySetRemAll(scratchRegs, argsReg);
@@ -2182,6 +2204,9 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     backendCfg.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
     backendCfg.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
 
+    // Spill an operand on the context if it is in the scratch register
+    tltor.spillOnCtx([scratchReg, altStack], opnds);
+
     // Iteration
     var i;
     var offset;
@@ -2206,7 +2231,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
         // Align the offset for the next argument
         var rem = argStackSpace % refByteNb;
-        if (rem != 0)
+        if (rem !== 0)
             argStackSpace += refByteNb - rem;
     }
 
@@ -2244,7 +2269,6 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     sub($(totalStackSpace), stack).
 
     // Save the context pointer
-    mov($(0), context.subReg(8)).
     mov(context, mem(-refByteNb, altStack)).
 
     // Align the new stack pointer

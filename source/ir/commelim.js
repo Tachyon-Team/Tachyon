@@ -138,7 +138,7 @@ function commElim(cfg, maxItrs)
         mustReachIn[cfg.entry.blockId] = [];
 
         // Compute the set of blocks in a merge position
-        var mergeBlocks = []
+        var mergeBlocks = [];
         for (var itr = cfg.getBlockItr(); itr.valid(); itr.next())
         {
             var block = itr.get();
