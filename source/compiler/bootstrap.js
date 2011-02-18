@@ -131,7 +131,8 @@ function getLibSrcs(params)
         'stdlib/numbers.js',
         'stdlib/strings.js',
         'stdlib/math.js',
-        'stdlib/errors.js'
+        'stdlib/errors.js',
+        'stdlib/extensions.js',
     ];
 
     return stdlibSrcs;

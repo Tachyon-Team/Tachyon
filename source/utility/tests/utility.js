@@ -105,7 +105,7 @@ tests.utility.hashMap.consistency = function ()
 /**
 Test of hash map iterators
 */
-tests.utility.hashMap.consistency = function ()
+tests.utility.hashMap.iterator = function ()
 {
     var input = [1,2,3,4,55];
 

@@ -17,8 +17,8 @@ function error(errorStr)
     "tachyon:static";
     "tachyon:noglobal";
 
-    print('*** RUN-TIME ERROR ***');
-    print(errorStr);
+    printBox('*** RUN-TIME ERROR ***');
+    printBox(errorStr);
     exit(0);
 }
 
@@ -39,13 +39,16 @@ function assert(testVal, errorStr)
 /**
 Print values to the console
 */
-function print(val)
+function printBox(val)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
     // Convert the value to a string
     var strVal = boxToString(val);
+
+    // TODO: use printf directly when wrapper supports strings?
+    // Perhaps puts
        
     // Print the string
     var cstr = makeCString(strVal);
@@ -87,8 +90,8 @@ function printTachyonState()
     var globalobj = get_ctx_globalobj(ctx);
     var numGlobals = iir.icast(IRType.pint, get_obj_numprops(globalobj));
 
-    print('Heap size  : ' + boxInt(heapSize) + ' KB');
-    print('Num strings: ' + boxInt(numStrings));
-    print('Num globals: ' + boxInt(numGlobals));
+    printBox('Heap size  : ' + boxInt(heapSize) + ' KB');
+    printBox('Num strings: ' + boxInt(numStrings));
+    printBox('Num globals: ' + boxInt(numGlobals));
 }
 

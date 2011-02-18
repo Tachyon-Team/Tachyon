@@ -258,3 +258,4 @@ function memberStr(ch, chars)
 
     return i >= 0;
 }
+
