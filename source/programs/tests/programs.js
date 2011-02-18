@@ -97,10 +97,14 @@ function genTest(srcFiles, funcName, inputArgs, expectResult, hostParams)
 }
 
 /**
-Value return test
+Test suite for test programs.
 */
-tests.basic_ret = tests.testSuite();
-tests.basic_ret.main = genTest(
+tests.programs = tests.testSuite();
+
+/**
+Value return test.
+*/
+tests.programs.basic_ret = genTest(
     'programs/basic_ret/basic_ret.js', 
     'f', 
     [20], 
@@ -110,8 +114,7 @@ tests.basic_ret.main = genTest(
 /**
 If statement test.
 */
-tests.basic_if = tests.testSuite();
-tests.basic_if.main = genTest(
+tests.programs.basic_if = genTest(
     'programs/basic_if/basic_if.js', 
     'f', 
     [],
@@ -121,8 +124,7 @@ tests.basic_if.main = genTest(
 /**
 Argument passing test.
 */
-tests.basic_many_args = tests.testSuite();
-tests.basic_many_args.main = genTest(
+tests.programs.basic_many_args = genTest(
     'programs/basic_many_args/basic_many_args.js', 
     'f',
     [0,0,0,0,20],
@@ -132,8 +134,7 @@ tests.basic_many_args.main = genTest(
 /**
 Comparison operators test
 */
-tests.basic_cmp = tests.testSuite();
-tests.basic_cmp.main = genTest(
+tests.programs.basic_cmp = genTest(
     'programs/basic_cmp/basic_cmp.js',
     'test',
     [5],
@@ -143,8 +144,7 @@ tests.basic_cmp.main = genTest(
 /**
 Arithmetic operators test.
 */
-tests.basic_arith = tests.testSuite();
-tests.basic_arith.main = genTest(
+tests.programs.basic_arith = genTest(
     'programs/basic_arith/basic_arith.js',
     'test',
     [],
@@ -154,8 +154,7 @@ tests.basic_arith.main = genTest(
 /**
 Bitwise operators test.
 */
-tests.basic_bitops = tests.testSuite(); 
-tests.basic_bitops.main = genTest(
+tests.programs.basic_bitops = genTest(
     'programs/basic_bitops/basic_bitops.js',
     'test',
     [],
@@ -165,8 +164,7 @@ tests.basic_bitops.main = genTest(
 /**
 Arithmetic shift test.
 */
-tests.basic_shift = tests.testSuite(); 
-tests.basic_shift.main = genTest(
+tests.programs.basic_shift = genTest(
     'programs/basic_shift/basic_shift.js',
     'foo',
     [],
@@ -176,8 +174,7 @@ tests.basic_shift.main = genTest(
 /**
 Multiple files/units test
 */
-tests.multi_file = tests.testSuite(); 
-tests.multi_file.main = genTest(
+tests.programs.multi_file = genTest(
     ['programs/multi_file/file1.js', 'programs/multi_file/file2.js'],
     'test',
     [],
@@ -187,8 +184,7 @@ tests.multi_file.main = genTest(
 /**
 Passing arguments and getting a return value from an FFI function
 */
-tests.ffi_sum = tests.testSuite();
-tests.ffi_sum.main = genTest(
+tests.programs.ffi_sum = genTest(
     'programs/ffi_sum/ffi_sum.js',
     'f',
     [10,15],
@@ -201,8 +197,7 @@ This test is meant to ensure that values are correctly merged after
 conditionals and that local variable values are properly preserved across
 calls.
 */
-tests.cond_calls = tests.testSuite();
-tests.cond_calls.main = genTest(
+tests.programs.cond_calls = genTest(
     'programs/cond_calls/cond_calls.js',
     'fee',
     [],
@@ -213,8 +208,7 @@ tests.cond_calls.main = genTest(
 /**
 Test of multiple function calls with computations in between.
 */
-tests.two_calls = tests.testSuite();
-tests.two_calls.main = genTest(
+tests.programs.two_calls = genTest(
     'programs/two_calls/two_calls.js',
     'foo',
     [],
@@ -224,8 +218,7 @@ tests.two_calls.main = genTest(
 /**
 Fibonacci implementation to test recursive calls.
 */
-tests.fib = tests.testSuite();
-tests.fib.main = genTest(
+tests.programs.fib = genTest(
     'programs/fib/fib.js',
     'fib',
     [20],
@@ -235,8 +228,7 @@ tests.fib.main = genTest(
 /**
 Test of a loop computing a sum.
 */
-tests.loop_sum = tests.testSuite();
-tests.loop_sum.main = genTest(
+tests.programs.loop_sum = genTest(
     'programs/loop_sum/loop_sum.js',
     'loop_sum',
     [10],
@@ -246,8 +238,7 @@ tests.loop_sum.main = genTest(
 /**
 Test of a function call followed by a loop.
 */
-tests.call_loop = tests.testSuite();
-tests.call_loop.main = genTest(
+tests.programs.call_loop = genTest(
     'programs/call_loop/call_loop.js',
     'foo',
     [],
@@ -257,8 +248,7 @@ tests.call_loop.main = genTest(
 /**
 Test of function calls before, inside and after a loop.
 */
-tests.loop_calls = tests.testSuite();
-tests.loop_calls.main = genTest(
+tests.programs.loop_calls = genTest(
     'programs/loop_calls/loop_calls.js',
     'foo',
     [1],
@@ -268,8 +258,7 @@ tests.loop_calls.main = genTest(
 /**
 Test of two loops, one after the other, each performing function calls.
 */
-tests.loop_loop = tests.testSuite();
-tests.loop_loop.main = genTest(
+tests.programs.loop_loop = genTest(
     'programs/loop_loop/loop_loop.js',
     'foo',
     [5],
@@ -279,8 +268,7 @@ tests.loop_loop.main = genTest(
 /**
 Loop with enough variables to force spilling of phi nodes.
 */
-tests.loop_spills = tests.testSuite(); 
-tests.loop_spills.main = genTest(
+tests.programs.loop_spills = genTest(
     'programs/loop_spills/loop_spills.js',
     'foo',
     [42],
@@ -290,8 +278,7 @@ tests.loop_spills.main = genTest(
 /**
 Nested loops unit test.
 */
-tests.nested_loops = tests.testSuite();
-tests.nested_loops.main = genTest(
+tests.programs.nested_loops = genTest(
     'programs/nested_loops/nested_loops.js',
     'foo',
     [3],
@@ -301,8 +288,7 @@ tests.nested_loops.main = genTest(
 /**
 Object property put/get unit test.
 */
-tests.obj_props = tests.testSuite();
-tests.obj_props.main = genTest(
+tests.programs.obj_props = genTest(
     'programs/obj_props/obj_props.js',
     'foo',
     [33],
@@ -312,8 +298,7 @@ tests.obj_props.main = genTest(
 /**
 Linked list unit test.
 */
-tests.linked_list = tests.testSuite();
-tests.linked_list.main = genTest(
+tests.programs.linked_list = genTest(
     'programs/linked_list/linked_list.js',
     'linkedlist',
     [5],
@@ -323,8 +308,7 @@ tests.linked_list.main = genTest(
 /**
 String equality and non-equality.
 */
-tests.str_equality = tests.testSuite(); 
-tests.str_equality.main = genTest(
+tests.programs.str_equality = genTest(
     'programs/str_equality/str_equality.js',
     'foo',
     [],
@@ -334,8 +318,7 @@ tests.str_equality.main = genTest(
 /**
 String concatenation with another string.
 */
-tests.str_cat_str = tests.testSuite(); 
-tests.str_cat_str.main = genTest(
+tests.programs.str_cat_str = genTest(
     'programs/str_cat_str/str_cat_str.js',
     'foo',
     [],
@@ -345,8 +328,7 @@ tests.str_cat_str.main = genTest(
 /**
 String concatenation with integers.
 */
-tests.str_cat_str = tests.testSuite(); 
-tests.str_cat_str.main = genTest(
+tests.programs.str_cat_str = genTest(
     'programs/str_cat_int/str_cat_int.js',
     'foo',
     [],
@@ -356,8 +338,7 @@ tests.str_cat_str.main = genTest(
 /**
 Array indexing test.
 */
-tests.array_idx = tests.testSuite(); 
-tests.array_idx.main = genTest(
+tests.programs.array_idx = genTest(
     'programs/array_idx/array_idx.js',
     'foo',
     [12],
@@ -367,8 +348,7 @@ tests.array_idx.main = genTest(
 /**
 Array length property test.
 */
-tests.array_length = tests.testSuite(); 
-tests.array_length.main = genTest(
+tests.programs.array_length = genTest(
     'programs/array_length/array_length.js',
     'foo',
     [],
@@ -378,8 +358,7 @@ tests.array_length.main = genTest(
 /**
 Recursive n-queens solver. Uses arrays extensively.
 */
-tests.nqueens = tests.testSuite(); 
-tests.nqueens.main = genTest(
+tests.programs.nqueens = genTest(
     'programs/nqueens/nqueens.js',
     'test',
     [],
@@ -389,8 +368,7 @@ tests.nqueens.main = genTest(
 /**
 Closure variable capture.
 */
-tests.clos_capt = tests.testSuite(); 
-tests.clos_capt.main = genTest(
+tests.programs.clos_capt = genTest(
     'programs/clos_capt/clos_capt.js',
     'foo',
     [5],
@@ -400,8 +378,7 @@ tests.clos_capt.main = genTest(
 /**
 Calls across closure boundaries.
 */
-tests.clos_xcall = tests.testSuite(); 
-tests.clos_xcall.main = genTest(
+tests.programs.clos_xcall = genTest(
     'programs/clos_xcall/clos_xcall.js',
     'test',
     [5],
@@ -411,8 +388,7 @@ tests.clos_xcall.main = genTest(
 /**
 Constructor/new test.
 */
-tests.ctor_new = tests.testSuite(); 
-tests.ctor_new.main = genTest(
+tests.programs.ctor_new = genTest(
     'programs/ctor_new/ctor_new.js',
     'foo',
     [5],
@@ -422,8 +398,7 @@ tests.ctor_new.main = genTest(
 /**
 Constructor, prototype and methods test.
 */
-tests.ctor_proto = tests.testSuite(); 
-tests.ctor_proto.main = genTest(
+tests.programs.ctor_proto = genTest(
     'programs/ctor_proto/ctor_proto.js',
     'test',
     [5],
@@ -433,8 +408,7 @@ tests.ctor_proto.main = genTest(
 /**
 Constructor and instanceof test
 */
-tests.ctor_instof = tests.testSuite(); 
-tests.ctor_instof.main = genTest(
+tests.programs.ctor_instof = genTest(
     'programs/ctor_instof/ctor_instof.js',
     'test',
     [],
@@ -444,8 +418,7 @@ tests.ctor_instof.main = genTest(
 /**
 Constructor, prototype and toString method test.
 */
-tests.obj_tostring = tests.testSuite(); 
-tests.obj_tostring.main = genTest(
+tests.programs.obj_tostring = genTest(
     'programs/obj_tostring/obj_tostring.js',
     'test',
     [],
@@ -455,8 +428,7 @@ tests.obj_tostring.main = genTest(
 /**
 Bubble-sort implementation. Uses closures and string conversion of arrays.
 */
-tests.bubble_sort = tests.testSuite(); 
-tests.bubble_sort.main = genTest(
+tests.programs.bubble_sort = genTest(
     'programs/bubble_sort/bubble_sort.js',
     'test',
     [],
@@ -466,8 +438,7 @@ tests.bubble_sort.main = genTest(
 /**
 Property deletion on objects.
 */
-tests.obj_delete = tests.testSuite(); 
-tests.obj_delete.main = genTest(
+tests.programs.obj_delete = genTest(
     'programs/obj_delete/obj_delete.js',
     'test',
     [],
@@ -477,8 +448,7 @@ tests.obj_delete.main = genTest(
 /**
 For-in loop, property enumeration.
 */
-tests.for_in = tests.testSuite(); 
-tests.for_in.main = genTest(
+tests.programs.for_in = genTest(
     'programs/for_in/for_in.js',
     'test',
     [],
@@ -488,8 +458,7 @@ tests.for_in.main = genTest(
 /**
 Variable number of arguments test.
 */
-tests.var_args = tests.testSuite(); 
-tests.var_args.main = genTest(
+tests.programs.var_args = genTest(
     'programs/var_args/var_args.js',
     'foo_proxy',
     [],
@@ -500,8 +469,7 @@ tests.var_args.main = genTest(
 /**
 Arguments object test.
 */
-tests.arg_obj = tests.testSuite(); 
-tests.arg_obj.main = genTest(
+tests.programs.arg_obj = genTest(
     'programs/arg_obj/arg_obj.js',
     'foo_proxy',
     [],
@@ -509,11 +477,10 @@ tests.arg_obj.main = genTest(
 );
 
 /**
-Apply test.
+Function apply test.
 */
-tests.basic_apply = tests.testSuite();
-tests.basic_apply.main = genTest(
-    'programs/basic_apply/basic_apply.js',
+tests.programs.apply = genTest(
+    'programs/apply/apply.js',
     'foo_proxy',
     [],
     0
@@ -522,8 +489,7 @@ tests.basic_apply.main = genTest(
 /**
 Matrix computations, uses arrays, constructors, strings, closures.
 */
-tests.matrix_comp = tests.testSuite(); 
-tests.matrix_comp.main = genTest(
+tests.programs.matrix_comp = genTest(
     'programs/matrix_comp/matrix_comp.js',
     'test',
     [],
@@ -533,8 +499,7 @@ tests.matrix_comp.main = genTest(
 /**
 Standard conformance test for comparison operators.
 */
-tests.es5_cmp = tests.testSuite(); 
-tests.es5_cmp.main = genTest(
+tests.programs.es5_cmp = genTest(
     'programs/es5_cmp/es5_cmp.js',
     'test',
     [],
@@ -544,8 +509,7 @@ tests.es5_cmp.main = genTest(
 /**
 Standard library array code tests.
 */
-tests.stdlib_arrays = tests.testSuite(); 
-tests.stdlib_arrays.main = genTest(
+tests.programs.stdlib_arrays = genTest(
     'programs/stdlib_arrays/stdlib_arrays.js',
     'test',
     [],
@@ -555,8 +519,7 @@ tests.stdlib_arrays.main = genTest(
 /**
 Standard library string code tests.
 */
-tests.stdlib_strings = tests.testSuite(); 
-tests.stdlib_strings.main = genTest(
+tests.programs.stdlib_strings = genTest(
     'programs/stdlib_strings/stdlib_strings.js',
     'test',
     [],
@@ -564,10 +527,25 @@ tests.stdlib_strings.main = genTest(
 );
 
 /**
+Tachyon hash map utility code test
+*/
+/*
+tests.programs.tachyon_hashmap = genTest(
+    [
+        'utility/debug.js',
+        'utility/hashmap.js',
+        'programs/tachyon_hashmap/tachyon_hashmap.js'
+    ],
+    'test',
+    [],
+    0
+);
+*/
+
+/**
 Print the state of the Tachyon VM.
 */
-tests.tachyon_state = tests.testSuite(); 
-tests.tachyon_state.main = genTest(
+tests.programs.tachyon_state = genTest(
     'programs/tachyon_state/tachyon_state.js',
     'printState',
     [],
