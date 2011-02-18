@@ -99,10 +99,34 @@ tests.constprop.divmul = tests.constprop.helpers.genTest(
 );
 
 /**
-Complex expression test
+Complex arithmetic expression test
 */
-tests.constprop.expr = tests.constprop.helpers.genTest(
+tests.constprop.arithexpr = tests.constprop.helpers.genTest(
     'return ((6 / 3) + 2) * 3;',
     ConstValue.getConst(12)
+);
+
+/**
+Left shift test
+*/
+tests.constprop.lsft = tests.constprop.helpers.genTest(
+    'return 3 << 1;',
+    ConstValue.getConst(6)
+);
+
+/**
+Right shift test
+*/
+tests.constprop.rsft = tests.constprop.helpers.genTest(
+    'return 8 >> 1;',
+    ConstValue.getConst(4)
+);
+
+/**
+Unsigned right shift test
+*/
+tests.constprop.ursft = tests.constprop.helpers.genTest(
+    'return 8 >> 1;',
+    ConstValue.getConst(4)
 );
 

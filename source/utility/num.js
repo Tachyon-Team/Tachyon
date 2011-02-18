@@ -855,6 +855,24 @@ function num_shift(a, shift) // a is a JS integer or bignum, shift is a JS integ
     return num_to_js(bignum_shift(num_from_js(a), shift));
 }
 
+/**
+Unsigned right shift.
+*/
+function num_urshift(n, shift, width)
+{
+    assert (
+        shift >= 0,
+        'shift amount must be positive'
+    );
+
+    assert (
+        typeof width === 'number',
+        'width must be specified'
+    );
+
+    return num_shift(num_and(n, num_not(num_shift(-1,width))), -shift);
+}
+
 function num_to_string(a, radix) // a is a JS integer or bignum, radix is a JS integer
 {
     if (bignum_instance(a) === true) // bignum?

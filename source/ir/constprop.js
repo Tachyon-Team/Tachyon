@@ -542,7 +542,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
             if (IRType.i32.valInRange(v0, params.target) &&
                 IRType.i32.valInRange(v1, params.target))
             {
-                var result = opFunc(v0, v1);
+                var result = opFunc(v0, v1, this.type);
 
                 if (this.type === IRType.box)
                     result = num_shift(result, -params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
@@ -685,10 +685,9 @@ RsftInstr.prototype.constEval = BitOpInstr.genConstEval(
 );
 
 UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
-    function (v0, v1)
+    function (v0, v1, type)
     {
-        // FIXME: oh noes!
-        return v0 >>> v1;
+        return num_urshift(v0, v1, type.getSizeBits());
     }
 );
 
