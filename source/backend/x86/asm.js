@@ -2159,7 +2159,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
         // 0F BF/r
         genOp('movsx', 15, 191, dst, src);
     }
-    else if (srcWidth === 32 && dst.width() == 64 && signExt)
+    else if (srcWidth === 32 && dst.width() === 64 && signExt)
     {
         // 63/r
         genOp('movsxd', 99, undefined, dst, src);
