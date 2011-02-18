@@ -87,7 +87,7 @@ function tachyonRepl()
     function execSpecial(cmd)
     {
         var spaceIdx = cmd.indexOf(' ');
-        if (spaceIdx != -1)
+        if (spaceIdx !== -1)
         {
             var args = cmd.slice(spaceIdx + 1);
             var cmd = cmd.slice(0, spaceIdx);

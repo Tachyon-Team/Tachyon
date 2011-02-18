@@ -107,6 +107,30 @@ tests.constprop.arithexpr = tests.constprop.helpers.genTest(
 );
 
 /**
+Bitwise AND operator
+*/
+tests.constprop.and = tests.constprop.helpers.genTest(
+    'return 3 & 1;',
+    ConstValue.getConst(1)
+);
+
+/**
+Bitwise OR operator
+*/
+tests.constprop.or = tests.constprop.helpers.genTest(
+    'return 5 | 2;',
+    ConstValue.getConst(7)
+);
+
+/**
+Bitwise XOR operator
+*/
+tests.constprop.xor = tests.constprop.helpers.genTest(
+    'return 5 ^ 3;',
+    ConstValue.getConst(6)
+);
+
+/**
 Left shift test
 */
 tests.constprop.lsft = tests.constprop.helpers.genTest(
@@ -128,5 +152,21 @@ Unsigned right shift test
 tests.constprop.ursft = tests.constprop.helpers.genTest(
     'return 8 >> 1;',
     ConstValue.getConst(4)
+);
+
+/**
+If conditional test
+*/
+tests.constprop.condIf = tests.constprop.helpers.genTest(
+    'if (1) return 2; else return 3;',
+    ConstValue.getConst(2)
+);
+
+/**
+Conditional operator test
+*/
+tests.constprop.condOp = tests.constprop.helpers.genTest(
+    'return 0? 2:3;',
+    ConstValue.getConst(3)
 );
 
