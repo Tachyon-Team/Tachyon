@@ -329,7 +329,7 @@ function CProxy(
     var funcName = findFreeName(
         function (n) { return params.staticEnv.hasBinding(n); }, 
         irFunction.funcName + '_tproxy'
-    )
+    );
 
     // Bind the function in the static environment
     params.staticEnv.regBinding(funcName, irFunction);

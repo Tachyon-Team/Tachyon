@@ -71,7 +71,7 @@ x86.Assembler = function (target)
 x86.Assembler.prototype.isImmediate = function (obj)
 {
     return obj.type === x86.type.IMM_VAL || obj.type === x86.type.LINK;
-}
+};
 
 /** Returns whether the current compilation target is x86_64 */
 x86.Assembler.prototype.is64bitMode = function ()
@@ -2128,7 +2128,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
     const that = this;
     function genOp(mnem, opb1, opb2, reg, opnd)
     {
-        if (srcWidth == 32 && dst.width() == 64 && signExt)
+        if (srcWidth === 32 && dst.width() === 64 && signExt)
             that.opndPrefixOpnd(32, opnd);
 
         that.gen8(opb1);
@@ -2149,32 +2149,32 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
         }
     }
 
-    if (srcWidth == 8 && signExt)
+    if (srcWidth === 8 && signExt)
     {
         // 0F BE/r
         genOp('movsx', 15, 190, dst, src);
     }
-    else if (srcWidth == 16 && signExt)
+    else if (srcWidth === 16 && signExt)
     {
         // 0F BF/r
         genOp('movsx', 15, 191, dst, src);
     }
-    else if (srcWidth == 32 && dst.width() == 64 && signExt)
+    else if (srcWidth === 32 && dst.width() == 64 && signExt)
     {
         // 63/r
         genOp('movsxd', 99, undefined, dst, src);
     }
-    else if (srcWidth == 8 && !signExt)
+    else if (srcWidth === 8 && !signExt)
     {
         // 0F B6/r
         genOp('movzx', 15, 182, dst, src);
     }
-    else if (srcWidth == 16 && !signExt)
+    else if (srcWidth === 16 && !signExt)
     {
         // 0F B7/r
         genOp('movzx', 15, 183, dst, src);
     }
-    else if (srcWidth == 32 && dst.width() == 64 && !signExt)
+    else if (srcWidth === 32 && dst.width() === 64 && !signExt)
     {
         // 63/r
         genOp('movsxd', 99, undefined, dst, src);
@@ -2941,7 +2941,7 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
     width = src.width ? src.width() : (dst.width ? dst.width() : width);
 
     assert (
-        width && (width == 32 || width == 64),
+        width && (width === 32 || width === 64),
         'only 32 and 64 bit encodings supported'
     );
 
@@ -2962,7 +2962,7 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
                     'xchg',
                     x86.regWidthSuffix(dst),
                     src,
-                    (width == 32)? that.register.eax:that.register.rax
+                    (width === 32)? that.register.eax:that.register.rax
                 )
             );
         }

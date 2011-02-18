@@ -147,7 +147,7 @@ irToAsm.shiftMaker = function (irinstr, name)
         const dest = this.regAlloc.dest;
 
         var shiftAmt;
-        if (opnds[1].type == x86.type.IMM_VAL)
+        if (opnds[1].type === x86.type.IMM_VAL)
         {
             assert(
                 opnds[1].value > 0, 
@@ -198,7 +198,7 @@ irToAsm.shiftMaker = function (irinstr, name)
             tltor.asm.mov($(0), reg.cl);
         }
     };
-}
+};
 
 //=============================================================================
 //
@@ -485,7 +485,7 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
     });
 
     return free;
-}
+};
 
 irToAsm.translator.prototype.prelude = function ()
 {
@@ -1392,7 +1392,7 @@ NotInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
-    if (dest != opnds[0])
+    if (dest !== opnds[0])
     {
         tltor.asm.mov(opnds[0], dest);
     }
@@ -2231,7 +2231,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
         // Align the offset for the next argument
         var rem = argStackSpace % refByteNb;
-        if (rem != 0)
+        if (rem !== 0)
             argStackSpace += refByteNb - rem;
     }
 

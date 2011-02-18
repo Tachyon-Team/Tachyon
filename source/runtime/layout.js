@@ -188,7 +188,7 @@ MemLayout.extend = function (baseLayout, name, tagName)
 
     // Return the new layout object
     return newLayout;
-}
+};
 
 /**
 Get the current size of an object using this layout
@@ -368,7 +368,7 @@ MemLayout.prototype.getFieldOffset = function (query)
 
     // Return the computed offset value
     return curOffset;
-}
+};
 
 /**
 Generate the offset computation to access a given field or sub-field

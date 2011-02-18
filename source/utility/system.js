@@ -43,7 +43,7 @@ function parseCmdLine()
         var arg = args[argIdx];
 
         // If this is not an option argument, stop
-        if (arg.charAt(0) != '-')
+        if (arg.charAt(0) !== '-')
             break;
 
         // Get the option name

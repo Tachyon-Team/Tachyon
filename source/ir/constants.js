@@ -246,7 +246,7 @@ ConstValue.hashFunc = function (val)
         return defHashFunc(bignum_to_string(val));
     else
         return defHashFunc(val);
-}
+};
 
 /**
 Equality function to be used for the constant map.
@@ -257,7 +257,7 @@ ConstValue.equalFunc = function (key1, key2)
         return num_eq(key1, key2);
     else
         return defEqualFunc(key1, key2);
-}
+};
 
 /**
 Map of values to maps of types to IR constants
