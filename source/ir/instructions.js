@@ -1450,6 +1450,8 @@ var CallFuncInstr = instrMaker(
     'call',
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'call';
+
         // 3 base arguments required for any call
         const NUM_BASE_ARGS = 3;
 
@@ -1543,6 +1545,8 @@ var ConstructInstr = instrMaker(
     'construct',
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'construct';
+
         // 3 base arguments required
         const NUM_BASE_ARGS = 3;
 
@@ -1574,6 +1578,8 @@ var CallApplyInstr = instrMaker(
     'call_apply',
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'call_apply';
+
         // 5 arguments are required
         instrMaker.validNumInputs(inputVals, 5, 5);
 
@@ -1599,6 +1605,8 @@ var CallFFIInstr = instrMaker(
     'call_ffi',
     function (typeParams, inputVals, branchTargets)
     {
+        this.mnemonic = 'call_ffi';
+
         instrMaker.validNumInputs(inputVals, 1);
         instrMaker.validType(inputVals[0], IRType.box);
         instrMaker.validNumBranches(branchTargets, 0, 0);

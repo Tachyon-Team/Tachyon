@@ -6,7 +6,7 @@ Definition of Intermediate Representation (IR) instructions types.
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -180,6 +180,22 @@ IRType.prototype.getMaxVal = function (target)
         return getIntMax(30, false);
     }
 
+};
+
+/**
+Test if an integer value is in the range supported by this type.
+*/
+IRType.prototype.valInRange = function (val, target)
+{
+    assert (
+        this.isInt() || this === IRType.box,
+        'valInRange only applies to integer types'
+    );
+
+    return (
+        num_ge(val, this.getMinVal(target, this.isUnsigned())) && 
+        num_le(val, this.getMaxVal(target, this.isUnsigned()))
+    );
 };
 
 // Type given when there is no output value

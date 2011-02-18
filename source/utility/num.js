@@ -111,6 +111,14 @@ function bignum_to_js(bignum)
     return n;
 }
 
+/**
+Test that a value is a bignum instance
+*/
+function bignum_instance(val)
+{
+    return (val instanceof Array);
+}
+
 function bignum_nonneg(bignum)
 {
     // Tests if a normalized bignum is nonnegative.
@@ -694,7 +702,7 @@ function bignum_normalize(bignum)
 
 function num_from_js(n) // n is a JS integer or bignum
 {
-    if (n instanceof Array) // bignum?
+    if (bignum_instance(n) === true) // bignum?
         return n;
     else
         return bignum_from_js(n);
@@ -710,9 +718,25 @@ function num_to_js(bignum)
     return result;
 }
 
+/**
+Test that a value is a num instance
+*/
+function num_instance(val)
+{
+    return (bignum_instance(val) === true || typeof val === 'number');
+}
+
+/**
+Test that a num value is integer
+*/
+function num_integer(val)
+{
+    return (bignum_instance(val) === true || Math.floor(val) === val);
+}
+
 function num_nonneg(n) // n is a JS integer or bignum
 {
-    if (n instanceof Array) // bignum?
+    if (bignum_instance(n) === true) // bignum?
         return bignum_nonneg(n);
     else
         return n >= 0;
@@ -720,7 +744,7 @@ function num_nonneg(n) // n is a JS integer or bignum
 
 function num_zero(n) // n is a JS integer or bignum
 {
-    if (n instanceof Array) // bignum?
+    if (bignum_instance(n) === true) // bignum?
         return bignum_zero(n);
     else
         return n === 0;
@@ -728,26 +752,41 @@ function num_zero(n) // n is a JS integer or bignum
 
 function num_lt(a, b) // a and b are JS integers or bignums
 {
-    if (a instanceof Array || b instanceof Array) // bignum case?
+    if (bignum_instance(a) === true || bignum_instance(b) === true) // bignum case?
         return bignum_lt(num_from_js(a), num_from_js(b));
     else
         return a < b;
 }
 
+function num_gt(a, b) // a and b are JS integers or bignums
+{
+    if (bignum_instance(a) === true || bignum_instance(b) === true) // bignum case?
+        return bignum_gt(num_from_js(a), num_from_js(b));
+    else
+        return a > b;
+}
+
 function num_eq(a, b) // a and b are JS integers or bignums
 {
-    if (a instanceof Array || b instanceof Array) // bignum case?
+    if (bignum_instance(a) === true || bignum_instance(b) === true) // bignum case?
         return bignum_eq(num_from_js(a), num_from_js(b));
     else
         return a === b;
 }
 
-function num_gt(a, b) // a and b are JS integers or bignums
+function num_ne(a, b)
 {
-    if (a instanceof Array || b instanceof Array) // bignum case?
-        return bignum_gt(num_from_js(a), num_from_js(b));
-    else
-        return a > b;
+    return num_eq(a, b) === false;
+}
+
+function num_le(a, b)
+{
+    return (num_lt(a,b) || num_eq(a,b));
+}
+
+function num_ge(a, b)
+{
+    return (num_gt(a,b) || num_eq(a,b));
 }
 
 function num_abs(a) // a is a JS integer or bignum
@@ -816,9 +855,27 @@ function num_shift(a, shift) // a is a JS integer or bignum, shift is a JS integ
     return num_to_js(bignum_shift(num_from_js(a), shift));
 }
 
+/**
+Unsigned right shift.
+*/
+function num_urshift(n, shift, width)
+{
+    assert (
+        shift >= 0,
+        'shift amount must be positive'
+    );
+
+    assert (
+        typeof width === 'number',
+        'width must be specified'
+    );
+
+    return num_shift(num_and(n, num_not(num_shift(-1,width))), -shift);
+}
+
 function num_to_string(a, radix) // a is a JS integer or bignum, radix is a JS integer
 {
-    if (a instanceof Array) // bignum?
+    if (bignum_instance(a) === true) // bignum?
         return bignum_to_string(a, radix);
     else
         return a.toString();

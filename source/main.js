@@ -62,6 +62,10 @@ function tachyonRepl()
         print('Available special commands:');
         print('  /load <filename>    load and execute a script');
         print('  /time <command>     time the execution of a command');
+        print('  /hir  <command>     view HIR produced for a command');
+        print('  /lir  <command>     view LIR produced for a command');
+        print('  /asm  <command>     view ASM produced for a command');
+        print('  /reg  <command>     view register allocation for a command');
         print('  /help               print a help listing');
         print('  /exit               exit the read-eval-print loop');
     }
@@ -87,7 +91,7 @@ function tachyonRepl()
     function execSpecial(cmd)
     {
         var spaceIdx = cmd.indexOf(' ');
-        if (spaceIdx != -1)
+        if (spaceIdx !== -1)
         {
             var args = cmd.slice(spaceIdx + 1);
             var cmd = cmd.slice(0, spaceIdx);
@@ -100,6 +104,7 @@ function tachyonRepl()
         switch (cmd)
         {
             case 'exit':
+            case 'quit':
             return true;
 
             case 'help':
@@ -118,6 +123,30 @@ function tachyonRepl()
             print('time: ' + time + 's');
             break;
 
+            case 'hir':
+            config.hostParams.printHIR = true;
+            compCode(args);
+            config.hostParams.printHIR = false;
+            break;
+
+            case 'lir':
+            config.hostParams.printLIR = true;
+            compCode(args);
+            config.hostParams.printLIR = false;
+            break;
+
+            case 'asm':
+            config.hostParams.printASM = true;
+            compCode(args);
+            config.hostParams.printASM = false;
+            break;
+
+            case 'reg':
+            config.hostParams.printRegAlloc = true;
+            compCode(args);
+            config.hostParams.printRegAlloc = false;
+            break;
+
             default:
             print('Unknown special command: "' + cmd + '"');
             break;
@@ -127,12 +156,9 @@ function tachyonRepl()
     // Execute a code string
     function execCode(str)
     {
-        // Add an extra semicolon to avoid syntax errors
-        str += ';';
-
         try
         {
-            var ir = compileSrcString(str, config.hostParams);
+            var ir = compCode(str);
 
             var bridge = makeBridge(
                 ir,
@@ -151,6 +177,28 @@ function tachyonRepl()
             else
                 print(e);
         }
+    }
+
+    // Compile a code string
+    function compCode(str)
+    {
+        // Add an extra semicolon to avoid syntax errors
+        str += ';';
+
+        try
+        {
+            var ir = compileSrcString(str, config.hostParams);
+        }
+
+        catch (e)
+        {
+            if (e.stack)
+                print(e.stack);
+            else
+                print(e);
+        }
+
+        return ir;
     }
 
     print('');

@@ -343,9 +343,7 @@ IRFunction.prototype.getChild = function (name)
             return this.childFuncs[i];
     }
 
-    assert (
-        false,
-        'child function not found: "' + name + '"'
-    );
+    // Child function not found
+    return null;
 };
 

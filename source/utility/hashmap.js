@@ -26,8 +26,8 @@ function defHashFunc(val)
     if (typeof val === 'number')
     {
         return Math.floor(val);
-    }     
- 
+    }
+
     else if (typeof val === 'string')  
     {
         var hashCode = 0;

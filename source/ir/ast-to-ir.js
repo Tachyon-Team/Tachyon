@@ -358,21 +358,49 @@ function stmtListToIRFunc(
     // If the current function is a unit level function
     if (astNode instanceof Program)
     {
+        // Get the global object
+        var globalObj = insertGetGlobal(bodyContext);
+
         // For each variable in the local variable map
         for (var itr = localMap.getItr(); itr.valid(); itr.next())
         {
             var varName = itr.get().key;
             var varVal = itr.get().value;
 
-            // Get the global object
-            var globalObj = insertGetGlobal(bodyContext);
+            // If the variable's initial value is undefined
+            if (varVal === ConstValue.getConst(undefined))
+            {
+                // Check if the property exists on the global object
+                var hasProp = insertPrimCallIR(
+                    bodyContext, 
+                    'hasPropVal', 
+                    [globalObj, ConstValue.getConst(varName)]
+                );
 
-            // Bind the variable's initial value in the global environment
-            insertPrimCallIR(
-                bodyContext, 
-                'putPropVal', 
-                [globalObj, ConstValue.getConst(varName), varVal]
-            );
+                // If the property doesn't exist, initialize it to undefined
+                insertCondIR(
+                    bodyContext,
+                    hasProp,
+                    undefined,
+                    function (condCtx)
+                    {
+                        insertPrimCallIR(
+                            condCtx,
+                            'putPropVal', 
+                            [globalObj, ConstValue.getConst(varName), varVal]
+                        );
+                    }
+                );
+            }
+            else
+            {
+                // Bind the variable's initial value in the global environment
+                insertPrimCallIR(
+                    bodyContext,
+                    'putPropVal', 
+                    [globalObj, ConstValue.getConst(varName), varVal]
+                );
+            }
         }
     }
 
@@ -2607,7 +2635,7 @@ function opToIR(context)
             if (argVals[0] instanceof ConstValue && argVals[0].isNumber())
             {
                 var opVal = ConstValue.getConst(
-                    -argVals[0].value,
+                    num_mul(argVals[0].value, -1),
                     argVals[0].type
                 );
             }
@@ -3528,38 +3556,90 @@ function insertGetGlobal(context)
 }
 
 /**
-Throw an error object containing an error message if a test fails
+Insert IR to be conditionally executed.
 */
-function insertCondErrorIR(context, testVal, errorName, errorMsg)
+function insertCondIR(context, testVal, trueGenFunc, falseGenFunc)
 {
     // Create a basic block for the non-error case
-    var contBlock = context.cfg.getNewBlock('test_success');
+    var contBlock = context.cfg.getNewBlock('test_cont');
 
-    // Create a context for the error case
-    var errorCtx = context.branch(
-        null,
-        context.cfg.getNewBlock('test_fail'),
-        context.localMap.copy()
-    );
+    // If a true case is defined
+    if (trueGenFunc !== undefined)
+    {
+        // Create a context for the true case
+        var trueCtx = context.branch(
+            null,
+            context.cfg.getNewBlock('test_true'),
+            context.localMap.copy()
+        );
+    }
+
+    // If a false case is defined
+    if (falseGenFunc !== undefined)
+    {
+        // Create a context for the false case
+        var falseCtx = context.branch(
+            null,
+            context.cfg.getNewBlock('test_false'),
+            context.localMap.copy()
+        );
+    }
 
     // Branch based on the test value
     context.addInstr(
         new IfInstr(
             testVal,
-            contBlock,
-            errorCtx.entryBlock
+            (trueCtx !== undefined)? trueCtx.entryBlock:contBlock,
+            (falseCtx !== undefined)? falseCtx.entryBlock:contBlock
         )
-    );    
-
-    // Generate code to throw an error
-    insertErrorIR(
-        errorCtx, 
-        errorName, 
-        errorMsg
     );
+
+    // If a true case is defined
+    if (trueGenFunc !== undefined)
+    {
+        // Generate the code for the conditional branch
+        trueGenFunc(trueCtx);
+
+        // If the block is not terminated, add a jump to the continuation
+        if (trueCtx.isTerminated() === false)
+            trueCtx.addInstr(new JumpInstr(contBlock));
+    }
+
+    // If a false case is defined
+    if (falseGenFunc !== undefined)
+    {
+        // Generate the code for the conditional branch
+        falseGenFunc(falseCtx);
+
+        // If the block is not terminated, add a jump to the continuation
+        if (falseCtx.isTerminated() === false)
+            falseCtx.addInstr(new JumpInstr(contBlock));
+    }
 
     // Splice the non-error block into the context
     context.splice(contBlock);
+}
+
+/**
+Throw an error object containing an error message if a test fails
+*/
+function insertCondErrorIR(context, testVal, errorName, errorMsg)
+{
+    // If the test fails, execute the error code
+    insertCondIR(
+        context,
+        testVal,
+        undefined,
+        function (errorCtx)
+        {
+            // Generate code to throw an error
+            insertErrorIR(
+                errorCtx, 
+                errorName, 
+                errorMsg
+            );
+        }
+    );
 }
 
 /**

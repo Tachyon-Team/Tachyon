@@ -28,6 +28,9 @@ function lowerIRFunc(irFunc, params)
         'expected compilation parameters'
     );
 
+    if (params.printHIR === true)
+        print(irFunc);
+
     // For each function in the IR
     var funcList = irFunc.getChildrenList();
     for (var i = 0; i < funcList.length; ++i)
@@ -43,6 +46,9 @@ function lowerIRFunc(irFunc, params)
     }
 
     //print('lowerIRFunc done for "' + irFunc.funcName + '"');
+
+    if (params.printLIR === true)
+        print(irFunc);
 }
 
 /**
@@ -54,8 +60,6 @@ function lowerIRCFG(cfg, params)
         params instanceof CompParams,
         'expected compilation parameters'
     );
-
-    //print(cfg.ownerFunc);
 
     // For each instruction in the CFG
     for (var itr = cfg.getInstrItr(); itr.valid(); itr.next())
