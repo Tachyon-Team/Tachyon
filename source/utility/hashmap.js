@@ -99,7 +99,7 @@ function HashMap(hashFunc, equalFunc)
         // Until a free item slot is found
         while (this.array[index] !== freeHashKey)
             index = (index + 2) % this.array.length;
-    
+
         // Insert the new item at the free slot
         this.array[index] = key;
         this.array[index + 1] = value;

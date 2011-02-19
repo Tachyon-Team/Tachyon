@@ -15,7 +15,7 @@ $(PAPER).pdf: $(PAPER).tex $(BIBLIO).bib $(SECTIONS) makefile
 	latex $(PAPER).tex
 	dvips -tletter -Ppdf -o $(PAPER).ps $(PAPER).dvi
 	ps2pdf $(PAPER).ps $(PAPER).pdf
-	open $(PAPER).pdf # comment out if not on a Mac
+	#open $(PAPER).pdf # comment out if not on a Mac
 
 clean:
 	rm -f *~ $(PAPER).log $(PAPER).aux $(PAPER).out $(PAPER).dvi $(PAPER).bbl $(PAPER).blg $(PAPER).ps $(PAPER).pdf
