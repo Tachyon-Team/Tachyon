@@ -1617,21 +1617,21 @@ var CallFFIInstr = instrMaker(
         );
 
         assert (
-            inputVals.length - 1 === inputVals[0].cArgTypes.length,
+            inputVals.length - 1 === inputVals[0].cArgIRTypes.length,
             'incorrect number of arguments to FFI function'
         );
 
         for (var i = 1; i < inputVals.length; ++i)
         {
             assert (
-                inputVals[i].type === inputVals[0].cArgTypes[i-1],
+                inputVals[i].type === inputVals[0].cArgIRTypes[i-1],
                 'argument type does not match (arg' + (i-1) + ' ' +
                 inputVals[i].type + ', ' +
                 inputVals[0].funcName + ')'
             );
         }
 
-        this.type = inputVals[0].cRetType;
+        this.type = inputVals[0].cRetIRType;
     },
     new CallInstr()
 );

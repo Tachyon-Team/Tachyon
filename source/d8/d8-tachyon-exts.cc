@@ -484,11 +484,6 @@ void printInt(int val)
     printf("%d\n", val);
 }
 
-void printStr(const char* str)
-{
-    printf("%s\n", str);
-}
-
 int sum2Ints(int v1, int v2)
 {
     return v1 + v2;
@@ -515,10 +510,10 @@ v8::Handle<v8::Value> getFuncAddr(const v8::Arguments& args)
         address = (FPTR)(free);
     else if (strcmp(fName, "exit") == 0)
         address = (FPTR)(exit);
+    else if (strcmp(fName, "puts") == 0)
+        address = (FPTR)(puts);
     else if (strcmp(fName, "printInt") == 0)
         address = (FPTR)(printInt);
-    else if (strcmp(fName, "printStr") == 0)
-        address = (FPTR)(printStr);
     else if (strcmp(fName, "sum2Ints") == 0)
         address = (FPTR)(sum2Ints);
 

@@ -46,14 +46,9 @@ function printBox(val)
 
     // Convert the value to a string
     var strVal = boxToString(val);
-
-    // TODO: use printf directly when wrapper supports strings?
-    // Perhaps puts
        
     // Print the string
-    var cstr = makeCString(strVal);
-    printStr(cstr);
-    freeCString(cstr);
+    puts(strVal);
 }
 
 /**

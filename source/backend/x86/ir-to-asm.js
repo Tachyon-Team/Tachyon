@@ -2155,6 +2155,7 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
+CallFFIInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
 
 CallFFIInstr.prototype.genCode = function (tltor, opnds)
 {
