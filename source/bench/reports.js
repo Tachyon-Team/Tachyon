@@ -99,7 +99,7 @@ bench.genReport = function (repFile)
 
             var row = []
             rows.push(row);
-        
+
             // For each platform
             for (var platIdx = 0; platIdx < bench.platList.length; ++platIdx)
             {
@@ -160,7 +160,7 @@ bench.genReport = function (repFile)
 
             table.addRow();
             table.addCell(benchmark.dir);
-        
+
             // For each platform
             for (var platIdx = 0; platIdx < bench.platList.length; ++platIdx)
             {
@@ -168,8 +168,8 @@ bench.genReport = function (repFile)
 
                 curVal = rows[benchIdx][platIdx];
 
-                var attribs = { 
-                    "bgcolor":((curVal == bestVals[benchIdx])? "#00CC00":"#CCCCCC") 
+                var attribs = {
+                    "bgcolor":((curVal == bestVals[benchIdx])? "#00CC00":"#CCCCCC")
                 };
 
                 table.addCell(String(curVal), attribs);
@@ -188,8 +188,6 @@ Produce information about the system we are running on
 */
 bench.getSystemInfo = function ()
 {
-    // TODO: For mac, system_profiler
-
     function parseLines(str, delim)
     {
         var inLines = str.split('\n');
@@ -219,29 +217,42 @@ bench.getSystemInfo = function ()
         return outLines;
     }
 
-    var osInfo = stripStr(shellCommand('uname -s -r -o'));
+    var output = '';
 
-    var cpuInfo = shellCommand('cat /proc/cpuinfo');
+    var cpuInfo = shellCommand('if [ -e /proc/cpuinfo ] ; then cat /proc/cpuinfo ; fi');
 
-    var ramInfo = shellCommand('free -m');
+    if (cpuInfo === "")
+    {
+        // Probably not Linux
 
-    var cpuInfo = parseLines(cpuInfo, ':').filter(
-        function (l) { return l[0] == 'cpu MHz' || l[0] == 'model name'; }
-    );
+        var sysInfo = shellCommand('if [ -x /usr/sbin/system_profiler ] ; then (/usr/sbin/system_profiler | sed -n "/Model Name:/,/Bus Speed:/p") ; fi');
 
-    var ramInfo = parseLines(ramInfo, ' ').filter(
-        function (l) { return l[0] == 'Mem:'; }
-    );
+        output += sysInfo;
+    }
+    else
+    {
+        // Probably Linux
 
-    output = '';
+        var osInfo = stripStr(shellCommand('uname -s -r'));
 
-    output += 'OS: ' + osInfo + '\n\n';
-    
-    output += 'RAM: ' + ramInfo[0][1] + 'MB' + '\n\n';
+        var ramInfo = shellCommand('free -m');
 
-    output += 'CPU cores:';
-    for (var i = 0; i < cpuInfo.length; ++i)
-        output += '\n' + cpuInfo[i][0] + ': ' + cpuInfo[i][1];
+        cpuInfo = parseLines(cpuInfo, ':').filter(
+            function (l) { return l[0] == 'cpu MHz' || l[0] == 'model name'; }
+        );
+
+        var ramInfo = parseLines(ramInfo, ' ').filter(
+            function (l) { return l[0] == 'Mem:'; }
+        );
+
+        output += 'OS: ' + osInfo + '\n\n';
+
+        output += 'RAM: ' + ramInfo[0][1] + 'MB' + '\n\n';
+
+        output += 'CPU cores:';
+        for (var i = 0; i < cpuInfo.length; ++i)
+            output += '\n' + cpuInfo[i][0] + ': ' + cpuInfo[i][1];
+    }
 
     return output;
 }
