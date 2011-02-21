@@ -990,6 +990,9 @@ allocator.orderBlocks = function (cfg)
         if (cfg.blocks[i].regAlloc === undefined)
         {
             cfg.blocks[i].regAlloc = {
+                // Index of the block in the final ordering
+                blockIndex      : 0,
+
                 // Number of forward branches to this block
                 numForwBranch   : 0,    
                 // Number of backward branches to this block
@@ -1002,7 +1005,7 @@ allocator.orderBlocks = function (cfg)
                 // Loop nesting depth
                 loopDepth       : 0,    
                 // For loop ends, corresponding loop headers
-                loopHeaders      : null, 
+                loopHeaders     : [], 
                 // For loop headers, last corresponding loop end block
                 lastLoopEnd     : null, 
                 // For loop blocks, loops to which it belongs
@@ -1021,15 +1024,18 @@ allocator.orderBlocks = function (cfg)
                 expected        : null
 
             };
-        } else
+        }
+        else
         {
+            cfg.blocks[i].regAlloc.blockIndex      = 0;
+
             cfg.blocks[i].regAlloc.numForwBranch   = 0;    
             cfg.blocks[i].regAlloc.numBackBranch   = 0;    
             cfg.blocks[i].regAlloc.numExcpBranch   = 0;    
 
             cfg.blocks[i].regAlloc.loopIndex       = -1;   
             cfg.blocks[i].regAlloc.loopDepth       = 0;    
-            cfg.blocks[i].regAlloc.loopHeaders     = null; 
+            cfg.blocks[i].regAlloc.loopHeaders     = []; 
             cfg.blocks[i].regAlloc.lastLoopEnd     = null; 
             cfg.blocks[i].regAlloc.loops           = [];   
 
@@ -1091,13 +1097,7 @@ allocator.orderBlocks = function (cfg)
                 succ.regAlloc.numBackBranch++;
 
                 // Set the loop header for this loop end
-                if (block.regAlloc.loopHeaders === null)
-                {
-                    block.regAlloc.loopHeaders = [succ];
-                } else
-                {
-                    block.regAlloc.loopHeaders.push(succ);
-                }
+                block.regAlloc.loopHeaders.push(succ);
 
                 // Add this block to the loop end list
                 loopEnds.push(block);
@@ -1122,12 +1122,17 @@ allocator.orderBlocks = function (cfg)
     {
         var loopEnd = loopEnds[i];
 
-        // Get the loop header for this loop
+        //print('Loop end: ' + loopEnd.getBlockName());
+
+        // Get the loop headers for this loop
         var loopHeaders = loopEnd.regAlloc.loopHeaders;
 
+        // For each loop header
         for (var k = 0; k < loopHeaders.length; ++k)
         {
-            var loopHeader = loopHeaders[0];
+            var loopHeader = loopHeaders[k];
+
+            //print('Loop header: ' + loopHeader.getBlockName());
 
             // Array to mark visited blocks
             var visited = [];
@@ -1140,26 +1145,33 @@ allocator.orderBlocks = function (cfg)
             {
                 var block = stack.pop();
 
+                // If this block was already visited, skip it
+                if (visited[block.blockId] === true)
+                    continue;
+
+                //print('Visiting: ' + block.getBlockName());
+
                 // Mark this block as visited
                 visited[block.blockId] = true;
 
                 // Update the loop set for this block
-                block.regAlloc.loops.push(loopHeader);
+                //block.regAlloc.loops.push(loopHeader);
+                //block.regAlloc.loops = arraySetIntr(block.regAlloc.loops, loopHeaders);
+                arraySetAdd(block.regAlloc.loops, loopHeader);
 
                 // Update the loop depth for this block
                 block.regAlloc.loopDepth = block.regAlloc.loops.length;
 
                 // If this is the loop header, don't visit predecessors
-                if (block === loopHeader)
+                //if (block === loopHeader)
+                if (arraySetHas(loopHeaders, block))
                     continue;
 
                 // For each predecessor
                 for (var j = 0; j < block.preds.length; ++j)
                 {
                     var pred = block.preds[j];
-
-                    if (!visited[pred.blockId])
-                        stack.push(pred);
+                    stack.push(pred);
                 }
             }
         }
@@ -1169,8 +1181,13 @@ allocator.orderBlocks = function (cfg)
     function blockWeight(block)
     {
         // Loop nesting increases the weight
-        // Exception handlers get weighed down
-        return (block.regAlloc.loopDepth) - (5 * block.regAlloc.numExcpBranch);
+        // Being a loop header incurs a weight penalty
+        // Exception handlers get severely penalized
+        return (
+            block.regAlloc.loopDepth + 
+            -1 * ((block.regAlloc.lastLoopEnd !== null)? 1:0) +
+            -5 * block.regAlloc.numExcpBranch
+        );
     }
 
     // Assign a weight to each block
@@ -1205,6 +1222,7 @@ allocator.orderBlocks = function (cfg)
         var block = workList.remFirst();
 
         // Append the block to the block ordering
+        block.regAlloc.blockIndex = blockOrder.length;
         blockOrder.push(block);
 
         // For each successor of the block
@@ -1227,19 +1245,105 @@ allocator.orderBlocks = function (cfg)
         }
     }
 
+    assert (
+        blockOrder.length <= cfg.blocks.length,
+        'blocks appear multiple times in block ordering'
+    );
+
     // Compute the last loop end for header blocks
     for (var i = 0; i < blockOrder.length; ++i)
     {
         var block = blockOrder[i];
 
-        if (block.regAlloc.loopHeaders !== null)
+        block.regAlloc.loopHeaders.forEach(function (loopHeader)
         {
-            block.regAlloc.loopHeaders.forEach(function (loopHeader)
+            loopHeader.regAlloc.lastLoopEnd = block;
+        });
+    }
+
+    //print('CFG: ' + cfg.ownerFunc.funcName);
+    //print(cfg.ownerFunc);
+
+    // Stack of loop headers
+    var loopHeaders = [];
+
+    // For each block
+    for (var i = 0; i < blockOrder.length; ++i)
+    {
+        var block = blockOrder[i];
+
+        /*
+        print('Visiting: ' + block.getBlockName() + ' (weight ' + blockWeight(block) + ')');
+        print('');
+        */
+
+        // If this is a loop header
+        if (block.regAlloc.lastLoopEnd !== null)
+        {
+            var curEnd = block.regAlloc.lastLoopEnd;
+            var curEndIdx = curEnd.regAlloc.blockIndex;
+
+            /*
+            print('Found header: ' + block.getBlockName());
+            print('Last end: ' + curEnd.getBlockName());
+            print('');
+            */
+
+            // For each outer loop header
+            for (var j = loopHeaders.length - 1; j >= 0; --j)
             {
-                loopHeader.regAlloc.lastLoopEnd = block;
-            });
+                var header = loopHeaders[j];
+
+                var prevEnd = header.regAlloc.lastLoopEnd;
+                var prevEndIdx = prevEnd.regAlloc.blockIndex;
+
+                // If the loop end of the nested loop is after that of the
+                // outer loop
+                if (curEndIdx > prevEndIdx)
+                {
+                    header.regAlloc.lastLoopEnd = curEnd;
+
+                    /*
+                    print('Changing last end for: ' + header.getBlockName());
+                    print('');
+                    */
+
+                    curEnd.regAlloc.loopHeaders.push(header);
+                }
+            }
+
+            loopHeaders.push(block);
+        }
+
+        // Pop headers for which this is the last loop end
+        while (
+            loopHeaders.length > 0 && 
+            loopHeaders[loopHeaders.length-1].regAlloc.lastLoopEnd === block)
+        {
+            /*
+            print('Popping header: ' + loopHeaders[loopHeaders.length-1].getBlockName());
+            print('With end: ' + block.getBlockName());
+            print('');
+            */
+
+            loopHeaders.pop();
         }
     }
+
+    if (loopHeaders.length !== 0)
+    {
+        //print(cfg.ownerFunc);
+
+        for (var i = 0; i < loopHeaders.length; ++i)
+        {
+            print('REMAINING HEADER: ' + loopHeaders[i].getBlockName());
+        }
+    }
+
+    assert (
+        loopHeaders.length === 0,
+        'failed to correct loop end order'
+    );
 
     /*
     print('Loop depth:');
@@ -1402,8 +1506,7 @@ allocator.liveIntervals = function (cfg, order, params)
             }
 
             // If this is one of our loop headers, skip it
-            if (block.regAlloc.loopHeaders !== null &&
-                arraySetHas(block.regAlloc.loopHeaders, succ))
+            if (arraySetHas(block.regAlloc.loopHeaders, succ))
             {
                 continue;
             }

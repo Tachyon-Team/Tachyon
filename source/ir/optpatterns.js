@@ -993,11 +993,12 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
     }
 
+    /* TODO: handle negative dividend case
     // If this is a modulo operation
     if (instr instanceof ModInstr)
     {
-        // If this is a modulo of a power of 2
-        if (isPow2(instr.uses[1]))
+        // If the result is not boxed
+        if (instr.type !== IRType.box)
         {
             // Replace the modulo by a bitwise AND instruction
             replArith(
@@ -1005,8 +1006,8 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 undefined,
                 instr.uses[0],
                 ConstValue.getConst(
-                    instr.uses[1].getImmValue(params) - 1,
-                    (instr.uses[0].type === IRType.box)? IRType.pint:instr.uses[0].type
+                    num_sub(instr.uses[1].value, 1),
+                    instr.uses[0].type
                 )
             );
 
@@ -1014,6 +1015,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             return true;
         }
     }
+    */
 
     /*
     // If this is a logical OR instruction

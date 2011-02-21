@@ -266,6 +266,16 @@ tests.programs.loop_loop = genTest(
 );
 
 /**
+Test of a for loop inside a while loop.
+*/
+tests.programs.while_for = genTest(
+    'programs/while_for/while_for.js',
+    'foo',
+    [5],
+    225
+);
+
+/**
 Loop with enough variables to force spilling of phi nodes.
 */
 tests.programs.loop_spills = genTest(

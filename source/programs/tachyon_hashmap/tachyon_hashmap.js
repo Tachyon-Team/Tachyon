@@ -17,11 +17,11 @@ function test()
         valList.push('v' + i);
     }
 
+    /*
     print('num items: ' + map.numItems);
     print('num slots: ' + map.numSlots);
     print('array length: ' + map.array.length);
-
-    print('adding items');
+    */
 
     for (var i = 0; i < keyList.length; ++i)
     {

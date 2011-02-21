@@ -219,10 +219,17 @@ Replace a use
 */
 IRInstr.prototype.replUse = function (oldUse, newUse)
 {
+    assert (
+        oldUse.type === newUse.type,
+        'cannot replace use by one of a different type'
+    );
+
     for (var i = 0; i < this.uses.length; ++i)
     {
         if (this.uses[i] === oldUse)
+        {
             this.uses[i] = newUse;
+        }
     }
 };
 
@@ -446,7 +453,7 @@ PhiInstr.prototype.addIncoming = function (value, pred)
     if (this.uses.length !== 0)
     {
         assert (
-            value.type === this.uses[0].type,
+            value.type === this.type,
             'all phi inputs must have the same type'       
         );
     }
@@ -502,6 +509,15 @@ Make a shallow copy of the instruction
 */
 PhiInstr.prototype.copy = function ()
 {
+    /*
+    print('Copying: ' + this);
+
+    for (var i = 0; i < this.uses.length; ++i)
+    {
+        print(this.uses[i].type);
+    }
+    */
+
     return this.baseCopy(new PhiInstr(this.uses.slice(0), this.preds.slice(0)));
 };
 
@@ -959,8 +975,8 @@ ArithOvfInstr.initFuncUntag = function (typeParams, inputVals, branchTargets)
         'invalid input types'
     );
     
-    // The return type is pint, even if the inputs are boxed
-    this.type = IRType.pint;
+    // The return type is that of the first argument
+    this.type = inputVals[0].type;
 };
 
 /**
