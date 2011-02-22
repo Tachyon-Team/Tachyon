@@ -91,11 +91,11 @@ IRType.prototype.isNumber = function ()
 /**
 Get the type size in bytes
 */
-IRType.prototype.getSizeBytes = function (target)
+IRType.prototype.getSizeBytes = function (params)
 {
     assert (
-        target instanceof Target,
-        'expected compilation target'
+        params instanceof CompParams,
+        'expected compilation parameters'
     );
 
     switch (this)
@@ -126,28 +126,30 @@ IRType.prototype.getSizeBytes = function (target)
         case IRType.box:
         case IRType.bool:
         case IRType.pint:
-        return target.ptrSizeBytes;
+        return params.target.ptrSizeBytes;
     }
 };
 
 /**
 Get the type size in bits
 */
-IRType.prototype.getSizeBits = function (target)
+IRType.prototype.getSizeBits = function (params)
 {
-    return this.getSizeBytes(target) * 8;
+    return this.getSizeBytes(params) * 8;
 };
 
 /**
 Get the minimum value this type can represent
 */
-IRType.prototype.getMinVal = function (target)
+IRType.prototype.getMinVal = function (params)
 {
+    const width  = params.staticEnv.getBinding("BOX_NUM_BITS_INT").value;
+
     // If this is an integer type
     if (this.isInt())
     {
         // Compute the minimum value
-        return getIntMin(this.getSizeBits(target), this.isUnsigned());
+        return getIntMin(this.getSizeBits(params), this.isUnsigned());
     }
 
     // Otherwise, if this is the boxed type
@@ -155,20 +157,22 @@ IRType.prototype.getMinVal = function (target)
     {
         // TODO: make this infinity when supported, boxed
         // values can be floats
-        return getIntMin(30, false);
+        return getIntMin(width, false);
     }
 };
 
 /**
 Get the maximum value this type can represent
 */
-IRType.prototype.getMaxVal = function (target)
+IRType.prototype.getMaxVal = function (params)
 {
+    const width  = params.staticEnv.getBinding("BOX_NUM_BITS_INT").value;
+
     // If this is an integer type
     if (this.isInt())
     {
         // Compute the maximum value
-        return getIntMax(this.getSizeBits(target), this.isUnsigned());
+        return getIntMax(this.getSizeBits(params), this.isUnsigned());
     }
 
     // Otherwise, if this is the boxed type
@@ -176,7 +180,7 @@ IRType.prototype.getMaxVal = function (target)
     {
         // TODO: make this infinity when supported, boxed
         // values can be floats
-        return getIntMax(30, false);
+        return getIntMax(width, false);
     }
 
 };
@@ -184,7 +188,7 @@ IRType.prototype.getMaxVal = function (target)
 /**
 Test if an integer value is in the range supported by this type.
 */
-IRType.prototype.valInRange = function (val, target)
+IRType.prototype.valInRange = function (val, params)
 {
     assert (
         this.isInt() || this === IRType.box,
@@ -192,8 +196,8 @@ IRType.prototype.valInRange = function (val, target)
     );
 
     return (
-        num_ge(val, this.getMinVal(target, this.isUnsigned())) && 
-        num_le(val, this.getMaxVal(target, this.isUnsigned()))
+        num_ge(val, this.getMinVal(params)) && 
+        num_le(val, this.getMaxVal(params))
     );
 };
 

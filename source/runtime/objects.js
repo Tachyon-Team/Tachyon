@@ -61,7 +61,7 @@ function makeObjectLayouts(params)
     params.staticEnv.regBinding(
         'BOX_NUM_BITS_INT',
         ConstValue.getConst(
-            IRType.pint.getSizeBits(params.target) - 
+            IRType.pint.getSizeBits(params) - 
             params.staticEnv.getBinding('TAG_NUM_BITS_INT').value,
             IRType.pint
         )

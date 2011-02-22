@@ -37,7 +37,6 @@ Parser.prototype.error_cat = 1; // encoding of "error" category
 Parser.prototype.accept_op = 999999; // action table encoding of "accept"
 Parser.prototype.error_op  = 999998; // action table encoding of "error"
 
-
 // encoding of action table
 
 Parser.prototype.action_cat = function (a) { return a & 255;  };

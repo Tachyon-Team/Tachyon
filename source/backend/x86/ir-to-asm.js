@@ -1121,7 +1121,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
             var op1 = xDX;
         }
 
-        tltor.asm.mul(op1, this.type.getSizeBits(tltor.params.target));
+        tltor.asm.mul(op1, this.type.getSizeBits(tltor.params));
     }
 
     // Otherwise, a signed result is expected
@@ -1129,28 +1129,53 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     {
         if (opnds[0].type === x86.type.IMM_VAL)
         {
-            tltor.asm.imul(opnds[1], dst, opnds[0], this.type.getSizeBits(tltor.params.target));
+            tltor.asm.imul(
+                opnds[1], 
+                dst, 
+                opnds[0], 
+                this.type.getSizeBits(tltor.params)
+            );
         }
 
         else if (opnds[1].type === x86.type.IMM_VAL)
         {
-            tltor.asm.imul(opnds[0], dst, opnds[1], this.type.getSizeBits(tltor.params.target));
+            tltor.asm.imul(
+                opnds[0], 
+                dst, 
+                opnds[1], 
+                this.type.getSizeBits(tltor.params)
+            );
         }
 
         else if (opnds[0] === dst)
         {
-            tltor.asm.imul(opnds[1], dst, undefined, this.type.getSizeBits(tltor.params.target));
+            tltor.asm.imul(
+                opnds[1], 
+                dst, 
+                undefined, 
+                this.type.getSizeBits(tltor.params)
+            );
         }
 
         else if (opnds[1] === dst)
         {
-            tltor.asm.imul(opnds[0], dst, undefined, this.type.getSizeBits(tltor.params.target));
+            tltor.asm.imul(
+                opnds[0], 
+                dst, 
+                undefined, 
+                this.type.getSizeBits(tltor.params)
+            );
         }
 
         else
         {
             tltor.asm.mov(opnds[0], dst);
-            tltor.asm.imul(opnds[1], dst, undefined, this.type.getSizeBits(tltor.params.target));
+            tltor.asm.imul(
+                opnds[1], 
+                dst, 
+                undefined, 
+                this.type.getSizeBits(tltor.params)
+            );
         }
     }
 };
@@ -1302,14 +1327,14 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         // Extend the value into EDX
         tltor.asm.mov($(0), xDX.physReg);
 
-        tltor.asm.div(dsor.value, this.type.getSizeBits(tltor.params.target));
+        tltor.asm.div(dsor.value, this.type.getSizeBits(tltor.params));
     }
     else
     {
         // Sign-extend EAX into EDX:EAX using CDQ
         tltor.asm.cdq();
 
-        tltor.asm.idiv(dsor.value, this.type.getSizeBits(tltor.params.target));
+        tltor.asm.idiv(dsor.value, this.type.getSizeBits(tltor.params));
     }
 };
 
@@ -1506,7 +1531,7 @@ LtInstr.prototype.genCode = function (tltor, opnds)
             opnds[1],
             opnds[0],
             (opnds[0].width === undefined && opnds[1].width === undefined)?
-            this.type.getSizeBits(tltor.params.target):undefined
+            this.type.getSizeBits(tltor.params):undefined
         );
     }
 
@@ -1536,7 +1561,11 @@ LeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.getSizeBits(tltor.params.target));
+        tltor.asm.cmp(
+            opnds[1], 
+            opnds[0], 
+            this.uses[0].type.getSizeBits(tltor.params)
+        );
     }
 
     tltor.asm.
@@ -1565,7 +1594,11 @@ GtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
+        tltor.asm.cmp(
+            opnds[1], 
+            opnds[0], 
+            this.type.getSizeBits(tltor.params)
+        );
     }
 
     tltor.asm.
@@ -1594,7 +1627,11 @@ GeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.type.getSizeBits(tltor.params.target));
+        tltor.asm.cmp(
+            opnds[1], 
+            opnds[0], 
+            this.type.getSizeBits(tltor.params)
+        );
     }
 
     tltor.asm.
@@ -1623,7 +1660,11 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.uses[0].type.getSizeBits(tltor.params.target));
+        tltor.asm.cmp(
+            opnds[1], 
+            opnds[0], 
+            this.uses[0].type.getSizeBits(tltor.params)
+        );
     }
     else
     {
@@ -1658,7 +1699,11 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(opnds[1], opnds[0], this.uses[1].type.getSizeBits(tltor.params.target));
+        tltor.asm.cmp(
+            opnds[1], 
+            opnds[0], 
+            this.uses[1].type.getSizeBits(tltor.params)
+        );
     }
     else
     {
@@ -1787,7 +1832,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
     {
         // Use the compare instruction
         tltor.asm.
-        cmp($(0), opnds[0], this.uses[0].type.getSizeBits(tltor.params.target)).
+        cmp($(0), opnds[0], this.uses[0].type.getSizeBits(tltor.params)).
         je(falseLabel).
         jmp(trueLabel);
     }
@@ -2226,7 +2271,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     {
         argOffsets.push(argStackSpace);
 
-        var opndSizeBytes = this.uses[i+1].type.getSizeBytes(tltor.params.target); 
+        var opndSizeBytes = this.uses[i+1].type.getSizeBytes(tltor.params); 
 
         argStackSpace += opndSizeBytes;
 
@@ -2283,7 +2328,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     {
         var opnd = opnds[i+1];
 
-        var opndSizeBits = this.uses[i+1].type.getSizeBits(tltor.params.target);
+        var opndSizeBits = this.uses[i+1].type.getSizeBits(tltor.params);
 
         var offset = argOffsets[i];
 
@@ -2414,24 +2459,25 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // If the value we are loading needs to be extended
-    if (this.type.getSizeBits(tltor.params.target) < IRType.pint.getSizeBits(tltor.params.target))
+    if (this.type.getSizeBits(tltor.params) < 
+        IRType.pint.getSizeBits(tltor.params))
     {
         // If we are loading a signed value
         if (this.type.isSigned())
         {
             // Sign-extend the value
-            tltor.asm.movsx(memLoc, dst, this.type.getSizeBits(tltor.params.target));
+            tltor.asm.movsx(memLoc, dst, this.type.getSizeBits(tltor.params));
         }
         else
         {
             // Zero-extend the value
-            tltor.asm.movzx(memLoc, dst, this.type.getSizeBits(tltor.params.target));
+            tltor.asm.movzx(memLoc, dst, this.type.getSizeBits(tltor.params));
         }
     }
     else
     {
         // Load the value directly
-        tltor.asm.mov(memLoc, dst, this.type.getSizeBits(tltor.params.target));
+        tltor.asm.mov(memLoc, dst, this.type.getSizeBits(tltor.params));
     }
 };
 
@@ -2448,7 +2494,7 @@ StoreInstr.prototype.regAlloc.usedRegisters = function (instr, params)
     const srcOpnd = instr.uses[2];
 
     if ((!srcOpnd instanceof IRInstr) || 
-        srcOpnd.type.getSizeBits(params.target) !== 8)
+        srcOpnd.type.getSizeBits(params) !== 8)
         return null;
  
     // On x86 32 bits, reserve one of EAX, EBX or EDX 
@@ -2515,7 +2561,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // Get the size of the value to be stored
-    var typeSize = this.uses[2].type.getSizeBits(tltor.params.target);
+    var typeSize = this.uses[2].type.getSizeBits(tltor.params);
 
     // If the value to store is an immediate
     if (opnds[2].type === x86.type.IMM_VAL)

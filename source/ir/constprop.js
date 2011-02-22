@@ -401,7 +401,7 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
                 result = num_shift(result, -params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
 
             // If there was no overflow, return the result
-            if (this.type.valInRange(result, params.target))
+            if (this.type.valInRange(result, params))
             {
                 return ConstValue.getConst(
                     result,
@@ -539,16 +539,16 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
             v1 = v1.getImmValue(params);
 
             // If both values fit in the int32 range
-            if (IRType.i32.valInRange(v0, params.target) &&
-                IRType.i32.valInRange(v1, params.target))
+            if (IRType.i32.valInRange(v0, params) &&
+                IRType.i32.valInRange(v1, params))
             {
-                var result = opFunc(v0, v1, this.type);
+                var result = opFunc(v0, v1, this.type, params);
 
                 if (this.type === IRType.box)
                     result = num_shift(result, -params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
 
                 // If the result is within the range of the output type, return it
-                if (this.type.valInRange(result, params.target))
+                if (this.type.valInRange(result, params))
                 {
                     return ConstValue.getConst(
                         result,
@@ -699,9 +699,9 @@ RsftInstr.prototype.constEval = BitOpInstr.genConstEval(
 );
 
 UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
-    function (v0, v1, type)
+    function (v0, v1, type, params)
     {
-        return num_urshift(v0, v1, type.getSizeBits());
+        return num_urshift(v0, v1, type.getSizeBits(params));
     },
     function (u0, u1, type)
     {
@@ -730,7 +730,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
 
         else if (v0.type.isInt() && this.type.isInt())
         {
-            if (this.type.valInRange(v0.value, params.target))
+            if (this.type.valInRange(v0.value, params))
                 result = v0.value;
         }
 
@@ -738,7 +738,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
         {
             var castVal = v0.getImmValue(params);
             
-            if (this.type.valInRange(v0.value, params.target))
+            if (this.type.valInRange(v0.value, params))
                 result = castVal;
         }
 
@@ -753,7 +753,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
             {
                 var castVal = num_shift(v0.value, -TAG_NUM_BITS_INT);
 
-                if (this.type.valInRange(castVal, params.target))
+                if (this.type.valInRange(castVal, params))
                     result = castVal;
             }
         }
@@ -895,7 +895,7 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
                 result = num_shift(result, -params.staticEnv.getBinding('TAG_NUM_BITS_INT').value);
 
             // If there was no overflow
-            if (this.type.valInRange(result, params.target))
+            if (this.type.valInRange(result, params))
             {
                 // Add the normal (non-overflow) branch to the work list
                 queueEdge(this, this.targets[0]);

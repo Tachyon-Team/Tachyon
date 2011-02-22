@@ -271,7 +271,7 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
     // Compute the element size for this field
     var elemSize = 
         (type instanceof IRType)?
-        type.getSizeBytes(this.params.target):
+        type.getSizeBytes(this.params):
         type.getSize(subSize);
 
     // Create a new field-specification object
