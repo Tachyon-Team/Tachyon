@@ -113,8 +113,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         // R1 block
         addInstr(
             new MulInstr(
-                ConstValue.getConst(7),
-                ConstValue.getConst(8)
+                ConstValue.getConst(7, IRType.pint),
+                ConstValue.getConst(8, IRType.pint)
             ),
             r1
         );
@@ -152,8 +152,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         );
         addInstr(
             new LsftInstr(
-                ConstValue.getConst(1), 
-                ConstValue.getConst(2)
+                ConstValue.getConst(1, IRType.pint), 
+                ConstValue.getConst(2, IRType.pint)
             ),
             merge,
             'foo',

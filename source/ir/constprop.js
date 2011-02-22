@@ -674,6 +674,13 @@ LsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return num_shift(v0, v1);
+    },
+    function (u0, u1, type)
+    {
+        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -681,6 +688,13 @@ RsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {
         return num_shift(v0, -v1);
+    },
+    function (u0, u1, type)
+    {
+        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+            return u0;
+
+        return BOT;
     }
 );
 
@@ -688,6 +702,13 @@ UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1, type)
     {
         return num_urshift(v0, v1, type.getSizeBits());
+    },
+    function (u0, u1, type)
+    {
+        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+            return u0;
+
+        return BOT;
     }
 );
 

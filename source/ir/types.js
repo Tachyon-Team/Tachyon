@@ -85,8 +85,7 @@ Test if the type is an integer or floating-point type
 */
 IRType.prototype.isNumber = function ()
 {
-    return this.isInt() ||
-           this.isFP();
+    return this.isInt() || this.isFP();
 };
 
 /**
@@ -189,7 +188,7 @@ IRType.prototype.valInRange = function (val, target)
 {
     assert (
         this.isInt() || this === IRType.box,
-        'valInRange only applies to integer types'
+        'valInRange only applies to integer and boxed types'
     );
 
     return (

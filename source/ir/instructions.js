@@ -800,24 +800,19 @@ ArithInstr.initFunc = function (typeParams, inputVals, branchTargets)
 
 /**
 Initialization function for arithmetic instructions which can interfere
-with tag bits
+with tag bits, and thus should not operate on tagged values.
 */
 ArithInstr.initFuncUntag = function (typeParams, inputVals, branchTargets)
 {
     instrMaker.validNumInputs(inputVals, 2, 2);
 
     assert (
-        (inputVals[0].type === IRType.box ||
-         inputVals[0].type.isNumber())
-        &&
+        inputVals[0].type.isNumber() &&
         inputVals[1].type === inputVals[0].type,
         'invalid input types'
     );
 
-    if (inputVals[0].type === IRType.box)
-        this.type = IRType.pint;
-    else
-        this.type = inputVals[0].type;
+    this.type = inputVals[0].type;
 };
 
 /**
@@ -875,10 +870,8 @@ var SubInstr = instrMaker(
             'invalid input types'
         );
         
-        if (
-            inputVals[0].type === IRType.rptr && 
-            inputVals[1].type === IRType.rptr
-        )
+        if (inputVals[0].type === IRType.rptr && 
+            inputVals[1].type === IRType.rptr)
             this.type = IRType.pint;
         else
             this.type = inputVals[0].type;
@@ -946,10 +939,7 @@ ArithOvfInstr.initFunc = function (typeParams, inputVals, branchTargets)
          inputVals[1].type === inputVals[0].type)
         ||
         (inputVals[0].type === IRType.box &&
-         inputVals[1].type === inputVals[0].type)
-        ||
-        (inputVals[0].type === IRType.box &&
-         inputVals[1].type === IRType.pint),
+         inputVals[1].type === inputVals[0].type),
         'invalid input types'
     );
     
@@ -958,24 +948,17 @@ ArithOvfInstr.initFunc = function (typeParams, inputVals, branchTargets)
 
 /**
 Initialization function for arithmetic instructions w/ overflow which can
-interfere with tag bits.
+interfere with tag bits, and thus should only operate on integer values.
 */
 ArithOvfInstr.initFuncUntag = function (typeParams, inputVals, branchTargets)
 {
     instrMaker.validNumInputs(inputVals, 2, 2);
     assert (
         (inputVals[0].type === IRType.pint &&
-         inputVals[1].type === inputVals[0].type)
-        ||
-        (inputVals[0].type === IRType.box &&
-         inputVals[1].type === inputVals[0].type)
-        ||
-        (inputVals[0].type === IRType.box &&
-         inputVals[1].type === IRType.pint),
+         inputVals[1].type === inputVals[0].type),
         'invalid input types'
     );
-    
-    // The return type is that of the first argument
+
     this.type = inputVals[0].type;
 };
 
@@ -1041,7 +1024,7 @@ BitOpInstr.prototype = new IRInstr();
 /**
 Default initialization function for bitwise operation instructions
 */
-BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
+BitOpInstr.initFunc = function (typeParams, inputVals, branchTargets)
 {
     instrMaker.validNumInputs(inputVals, 2, 2);
 
@@ -1059,6 +1042,23 @@ BitOpInstr.prototype.initFunc = function (typeParams, inputVals, branchTargets)
     );
     
     this.type = inputVals[1].type;
+};
+
+/**
+Initialization function for bitwise operation instructions that can only
+operate on integer values.
+*/
+BitOpInstr.initFuncUntag = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2, 2);
+
+    assert (
+        (inputVals[0].type.isInt() &&
+         inputVals[1].type === inputVals[0].type),
+        'invalid input types'
+    );
+    
+    this.type = inputVals[0].type;
 };
 
 /**
@@ -1089,7 +1089,7 @@ var NotInstr = instrMaker(
 */
 var AndInstr = instrMaker(
     'and',
-    undefined,
+    BitOpInstr.initFunc,
     undefined,
     new BitOpInstr()
 );
@@ -1100,7 +1100,7 @@ var AndInstr = instrMaker(
 */
 var OrInstr = instrMaker(
     'or',
-    undefined,
+    BitOpInstr.initFunc,
     undefined,
     new BitOpInstr()
 );
@@ -1111,7 +1111,7 @@ var OrInstr = instrMaker(
 */
 var XorInstr = instrMaker(
     'xor',
-    undefined,
+    BitOpInstr.initFunc,
     undefined,
     new BitOpInstr()
 );
@@ -1122,7 +1122,7 @@ var XorInstr = instrMaker(
 */
 var LsftInstr = instrMaker(
     'lsft',
-    undefined,
+    BitOpInstr.initFuncUntag,
     undefined,
     new BitOpInstr()
 );
@@ -1133,7 +1133,7 @@ var LsftInstr = instrMaker(
 */
 var RsftInstr = instrMaker(
     'rsft',
-    undefined,
+    BitOpInstr.initFuncUntag,
     undefined,
     new BitOpInstr()
 );
@@ -1144,7 +1144,7 @@ var RsftInstr = instrMaker(
 */
 var UrsftInstr = instrMaker(
     'ursft',
-    undefined,
+    BitOpInstr.initFuncUntag,
     undefined,
     new BitOpInstr()
 );

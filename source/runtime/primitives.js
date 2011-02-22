@@ -1255,13 +1255,17 @@ function mul(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
+        // Cast the values to the pint type
+        v1 = iir.icast(IRType.pint, v1);
+        v2 = iir.icast(IRType.pint, v2);
+
         // Attempt a multiply with overflow check
         var intResult;
         if (intResult = iir.mul_ovf(v1, v2))
         {
-            // If there is no overflow, return the result
             // Normalize by shifting right by the number of integer tag bits
-            return iir.icast(IRType.box, intResult >> TAG_NUM_BITS_INT);
+            intResult = iir.icast(IRType.box, intResult >> TAG_NUM_BITS_INT);
+            return intResult;
         }
         else
         {
@@ -1287,6 +1291,10 @@ function div(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
+        // Cast the values to the pint type
+        v1 = iir.icast(IRType.pint, v1);
+        v2 = iir.icast(IRType.pint, v2);
+
         // Perform a raw machine division
         // The tag bits will cancel out
         var divRes = iir.div(v1, v2);
@@ -1423,7 +1431,7 @@ function lsft(v1, v2)
     {
         // Perform a raw machine left shift on the boxed value
         // after unboxing the shift amount
-        return iir.icast(IRType.box, iir.lsft(v1, unboxInt(v2)));
+        return iir.icast(IRType.box, iir.lsft(iir.icast(IRType.pint, v1), unboxInt(v2)));
     }
     else
     {
