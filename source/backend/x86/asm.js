@@ -2867,16 +2867,16 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
             );
 
             // If the immediate value fits in an int8
-            if (imm.value >= getIntMin(8) &&
-                imm.value <= getIntMax(8))
+            if (num_ge(imm.value, getIntMin(8)) &&
+                num_le(imm.value, getIntMax(8)))
             {
                 // Generate the operation
                 genOp(0x6b, undefined, function () { that.gen8(imm.value); });
             }
 
             // If the immediate value fits in an int32
-            else if (imm.value >= getIntMin(32) &&
-                     imm.value <= getIntMax(32))
+            else if (num_ge(imm.value, getIntMin(32)) &&
+                     num_le(imm.value, getIntMax(32)))
             {
                 // Generate the operation
                 genOp(0x69, undefined, function () { that.gen32(imm.value); });

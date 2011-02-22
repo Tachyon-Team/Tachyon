@@ -7,9 +7,10 @@
 //=============================================================================
 
 
-function Parser(scanner, warnings)
+function Parser(scanner, warnings, params)
 {
     this.scanner = scanner;
+
     this.atable  = action_table;
     this.gtable  = goto_table;
     this.rtable  = reduction_table;
@@ -26,6 +27,8 @@ function Parser(scanner, warnings)
     this.input_valid = false;
     this.input = null;
     this.previous_input = null; // for automatic semicolon insertion
+
+    this.params  = params;
 }
 
 
@@ -91,13 +94,10 @@ Parser.prototype.consume = function ()
                 Math.floor(this.input.value) !== this.input.value)
                 this.warning(this.input.loc,
                              "number literal is not an integer");
-            /* FIXME: 1073741824 is outside 30 bit integer range */
-            else if (num_lt(this.input.value, -1073741823-1) ||
-                     num_gt(this.input.value, 1073741823))
+            else if (this.params !== undefined &&
+                     !IRType.box.valInRange(this.input.value, this.params))
                 this.warning(this.input.loc,
-                             "number literal is outside 30 bit integer range");
-
-/*            */
+                             "number literal is outside integer range");
         }
 
         if ((this.input.cat === DIVEQUAL_CAT || this.input.cat === DIV_CAT) &&

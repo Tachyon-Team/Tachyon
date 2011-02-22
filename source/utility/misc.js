@@ -69,7 +69,7 @@ function getIntMin(numBits, unsigned)
     // If this is a signed integer type
     else
     {
-        return -Math.pow(2, numBits - 1);
+        return num_shift(-1, numBits-1);
     }
 }
 
@@ -82,13 +82,13 @@ function getIntMax(numBits, unsigned)
     // If this is an unsigned integer type
     if (unsigned)
     {
-        return Math.pow(2, numBits) - 1;
+        return num_sub(num_shift(1, numBits), 1);
     }
 
     // If this is a signed integer type
     else
     {
-        return Math.pow(2, numBits - 1) - 1;
+        return num_sub(num_shift(1, numBits-1), 1);
     }
 }
 

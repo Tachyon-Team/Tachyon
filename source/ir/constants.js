@@ -111,8 +111,7 @@ ConstValue.prototype.isBoxInt = function (params)
     return (
         this.type === IRType.box &&
         this.isInt() && 
-        num_ge(this.value, getIntMin(BOX_NUM_BITS_INT, false)) && 
-        num_le(this.value, getIntMax(BOX_NUM_BITS_INT, false))
+        this.type.valInRange(this.value, params)
     );
 };
 

@@ -119,7 +119,7 @@ function parse_src_port(port, params)
         'expected compilation parameters'
     );
 
-    var p = new Parser(new Scanner(port), params.parserWarnings);
+    var p = new Parser(new Scanner(port), params.parserWarnings, params);
     var ast = p.parse();
     var normalized_ast = ast_normalize(ast, false);
 
