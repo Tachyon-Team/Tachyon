@@ -1535,8 +1535,11 @@ function getHash(key)
     "tachyon:inline";
     "tachyon:ret pint";
 
-    // TODO: assert int or string
-    // toPrimitive...
+    assert (
+        boolToBox(boxIsInt(key)) === true ||
+        boolToBox(boxIsString(key)) === true,
+        'getHash of non-integer, non-string key'
+    );
 
     // If the property is integer
     if (boxIsInt(key))
@@ -1562,11 +1565,10 @@ function putPropObj(obj, propName, propHash, propVal)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
-    //printInt(13371);
-    //printInt(propName);
-    //printInt(boxInt(propHash));
-    //print("prop set");
-    //print(propName);
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'putPropObj on non-object'
+    );
 
     //
     // TODO: find if getter-setter exists?
@@ -1793,6 +1795,11 @@ function getPropObj(obj, propName, propHash)
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
 
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'getPropObj on non-object'
+    );
+
     // Until we reach the end of the prototype chain
     do
     {
@@ -1820,6 +1827,11 @@ function delPropObj(obj, propName, propHash)
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
+
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'delPropObj on non-object'
+    );
 
     // Get a pointer to the hash table
     var tblPtr = get_obj_tbl(obj);
@@ -2122,6 +2134,13 @@ function putPropVal(obj, propName, propVal)
     "tachyon:static";
     "tachyon:noglobal";
 
+    // If the property name is not integer or string, convert it to a string
+    if (boxIsInt(propName) === FALSE_BOOL &&
+        boxIsString(propName) === FALSE_BOOL)
+    {
+        propName = boxToString(propName);
+    }
+
     // If this is an array element
     if (boxIsArray(obj))
     {
@@ -2163,6 +2182,13 @@ function hasPropVal(obj, propName)
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:ret bool";
+
+    // If the property name is not integer or string, convert it to a string
+    if (boxIsInt(propName) === FALSE_BOOL &&
+        boxIsString(propName) === FALSE_BOOL)
+    {
+        propName = boxToString(propName);
+    }
 
     // If this is an array
     if (boxIsArray(obj))
@@ -2215,6 +2241,13 @@ function hasOwnPropVal(obj, propName)
     "tachyon:noglobal";
     "tachyon:ret bool";
 
+    // If the property name is not integer or string, convert it to a string
+    if (boxIsInt(propName) === FALSE_BOOL &&
+        boxIsString(propName) === FALSE_BOOL)
+    {
+        propName = boxToString(propName);
+    }
+
     // If this is an array
     if (boxIsArray(obj))
     {
@@ -2264,6 +2297,13 @@ function getPropVal(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
+
+    // If the property name is not integer or string, convert it to a string
+    if (boxIsInt(propName) === FALSE_BOOL &&
+        boxIsString(propName) === FALSE_BOOL)
+    {
+        propName = boxToString(propName);
+    }
 
     // If this is an array
     if (boxIsArray(obj))
@@ -2398,6 +2438,14 @@ function delPropVal(obj, propName)
     "tachyon:static"; 
     "tachyon:nothrow";
 
+    // If the property name is not integer or string, convert it to a string
+    if (boxIsInt(propName) === FALSE_BOOL &&
+        boxIsString(propName) === FALSE_BOOL)
+    {
+        propName = boxToString(propName);
+    }
+
+    // If the object is an array
     if (boxIsArray(obj))
     {
         if (boxIsInt(propName))
@@ -2429,6 +2477,11 @@ function getPropNames(obj)
     "tachyon:static"; 
     "tachyon:nothrow"; 
     "tachyon:noglobal";
+
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'non-object in getPropNames'
+    );
 
     var curObj = obj;
     var curIdx = 0;

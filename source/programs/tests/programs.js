@@ -9,7 +9,7 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 /**
 Compile and run a source file, returning the result.
 */
-function compileAndRunSrcs(srcFiles, funcName, inputArgs, hostParams)
+function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
 {
     var argTypes = [];
     for (var i = 0; i < inputArgs.length; ++i)
@@ -21,10 +21,15 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, hostParams)
         argTypes.push('int');
     }
 
-    if (hostParams === true)
-        var params = config.hostParams;
-    else
-        var params = config.clientParams;
+    if (compParams === undefined)
+        compParams = 'clientParams';
+
+    var params = config[compParams];
+
+    assert (
+        params instanceof CompParams,
+        'invalid compilation parameters'
+    );
 
     // For each source file
     for (var i = 0; i < srcFiles.length; ++i)
@@ -51,7 +56,7 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, hostParams)
         if (func !== null)
             var funcIR = func;
     }
-    
+
     assert (
         funcIR !== null,
         'test function not found'
@@ -74,7 +79,7 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, hostParams)
 Generate a unit test for a source file, testing the return value
 obtained after execution.
 */
-function genTest(srcFiles, funcName, inputArgs, expectResult, hostParams)
+function genTest(srcFiles, funcName, inputArgs, expectResult, compParams)
 {
     if (typeof srcFiles === 'string')
         srcFiles = [srcFiles];
@@ -85,7 +90,7 @@ function genTest(srcFiles, funcName, inputArgs, expectResult, hostParams)
             srcFiles, 
             funcName,
             inputArgs,
-            hostParams
+            compParams
         );
 
         assert (
@@ -179,7 +184,7 @@ tests.programs.basic_opts = genTest(
     'proxy',
     [],
     0,
-    true
+    'hostParams'
 );
 
 /**
@@ -200,7 +205,7 @@ tests.programs.ffi_sum = genTest(
     'f',
     [10,15],
     25,
-    true
+    'hostParams'
 );
 
 /**
@@ -212,8 +217,7 @@ tests.programs.cond_calls = genTest(
     'programs/cond_calls/cond_calls.js',
     'fee',
     [],
-    20,
-    true
+    20
 );
 
 /**
@@ -457,6 +461,16 @@ tests.programs.obj_tostring = genTest(
 );
 
 /**
+Test of the use of objects as properties.
+*/
+tests.programs.obj_objprops = genTest(
+    'programs/obj_objprops/obj_objprops.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Bubble-sort implementation. Uses closures and string conversion of arrays.
 */
 tests.programs.bubble_sort = genTest(
@@ -493,8 +507,7 @@ tests.programs.var_args = genTest(
     'programs/var_args/var_args.js',
     'foo_proxy',
     [],
-    0,
-    true
+    0
 );
 
 /**
@@ -572,6 +585,23 @@ tests.programs.tachyon_hashmap = genTest(
 );
 
 /**
+Tachyon graph utility code test
+*/
+tests.programs.tachyon_graph = genTest(
+    [
+        'utility/debug.js',
+        'utility/iterators.js',
+        'utility/arrays.js',
+        'utility/graph.js',
+        'programs/tachyon_graph/tachyon_graph.js'
+    ],
+    'test',
+    [],
+    0/*,
+    'clientDebugParams'*/
+);
+
+/**
 Print the state of the Tachyon VM.
 */
 tests.programs.tachyon_state = genTest(
@@ -579,6 +609,6 @@ tests.programs.tachyon_state = genTest(
     'printState',
     [],
     0,
-    true
+    'hostParams'
 );
 

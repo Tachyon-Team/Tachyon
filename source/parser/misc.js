@@ -120,8 +120,10 @@ function parse_src_port(port, params)
     );
 
     var p = new Parser(new Scanner(port), params.parserWarnings);
+
     var ast = p.parse();
-    var normalized_ast = ast_normalize(ast, false);
+
+    var normalized_ast = ast_normalize(ast, params.debugTrace);
 
     return normalized_ast;
 }

@@ -102,7 +102,6 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         res = this.g.removeCycle();
         assert(res === null);
-
     };
 
     t.removeCycleDelayedCycle = function ()
