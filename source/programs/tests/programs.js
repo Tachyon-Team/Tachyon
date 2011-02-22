@@ -172,6 +172,17 @@ tests.programs.basic_shift = genTest(
 );
 
 /**
+Test of basic optimization patterns.
+*/
+tests.programs.basic_opts = genTest(
+    'programs/basic_opts/basic_opts.js',
+    'proxy',
+    [],
+    0,
+    true
+);
+
+/**
 Multiple files/units test
 */
 tests.programs.multi_file = genTest(
