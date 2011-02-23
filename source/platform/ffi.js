@@ -11,6 +11,232 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
+Base class for mapping of Tachyon types to C types.
+*/
+function CTypeMapping()
+{
+    /**
+    Name of the C type
+    */
+    this.cTypeName = null;
+
+    /**
+    IR type matching the C type
+    */
+    this.cIRType = null;
+
+    /**
+    IR type of the Tachyon value
+    */
+    this.jsIRType = null;
+
+    /**
+    Flag to indicate we should free produced values
+    @field
+    */
+    this.freeAfterSnd = false;
+
+    /**
+    Flag to indicate we should free received values
+    @field
+    */
+    this.freeAfterRcv = false;
+}
+CTypeMapping.prototype = {};
+
+/**
+Representation of the C void type.
+*/
+function CVoid()
+{
+    this.cTypeName = 'void';
+
+    this.cIRType = IRType.none;
+
+    this.jsIRType = IRType.none;
+}
+CVoid.prototype = new CTypeMapping();
+
+/**
+Conversion of boxed values to C string types and vice-versa.
+*/
+function CStringAsBox(freeRcv)
+{
+    // By default, C strings received as return values will be freed
+    if (freeRcv === undefined)
+        freeRcv = true;
+
+    this.cTypeName = 'char*';
+
+    this.cIRType = IRType.rptr;
+
+    this.jsIRType = IRType.box;
+
+    this.freeAfterSnd = true;
+
+    this.freeAfterRcv = freeRcv;
+}
+CStringAsBox.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CStringAsBox.prototype.jsToC = function (inVar)
+{
+    return 'boxToCString(' + inVar + ')';
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CStringAsBox.prototype.cToJS = function (inVar)
+{
+    return 'cStringToBox(' + inVar + ')';
+};
+
+/**
+Generate to free a C string value
+*/
+CStringAsBox.prototype.free = function (inVar)
+{
+    return 'free(' + inVar + ')';
+};
+
+/**
+Conversion of boxed integers to C integers and vice-versa.
+*/
+function CIntAsBox()
+{
+    this.cTypeName = 'int';
+
+    this.cIRType = IRType.pint;
+
+    this.jsIRType = IRType.box;
+}
+CIntAsBox.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CIntAsBox.prototype.jsToC = function (inVar)
+{
+    return 'unboxInt(' + inVar + ')';
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CIntAsBox.prototype.cToJS = function (inVar)
+{
+    return 'boxInt(' + inVar + ')';
+};
+
+/**
+C integer to raw IR integer type. The IR type can be specified on construction
+or on conversion.
+*/
+function CIntAsInt(irIntType)
+{
+    assert (
+        irIntType === undefined || irIntType instanceof IRType,
+        'Invalid IR integer type specified'
+    );
+
+    if (irIntType !== undefined)
+
+    this.cTypeName = 'int';
+
+    this.cIRType = IRType.pint;
+
+    this.jsIRType = irIntType;
+}
+CIntAsInt.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CIntAsInt.prototype.jsToC = function (inVar)
+{
+    return 'iir.icast(IRType.' + this.cIRType + ', ' + inVar + ')';
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CIntAsInt.prototype.cToJS = function (inVar, jsIRType)
+{
+    assert (
+        this.jsIRType !== undefined || jsIRType !== undefined,
+        'JS IR type not specified'
+    );
+
+    jsIRType = (jsIRType !== undefined)? jsIRType:this.jsIRType;
+
+    return 'iir.icast(IRType.' + jsIRType + ', ' + inVar + ')';
+};
+
+/**
+Conversion of pointers to byte arrays and vice-versa.
+*/
+function CPtrAsBytes()
+{
+    this.cTypeName = 'void*';
+
+    this.cIRType = IRType.rptr;
+
+    this.jsIRType = IRType.box;
+}
+CPtrAsBytes.prototype = new CTypeMapping();
+
+//
+// TODO: conversion functions
+//
+
+/**
+C pointer to raw IR pointer type.
+*/
+function CPtrAsPtr()
+{
+    this.cTypeName = 'void*';
+
+    this.cIRType = IRType.rptr;
+
+    this.jsIRType = IRType.rptr;
+}
+CPtrAsPtr.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CPtrAsPtr.prototype.jsToC = function (inVar)
+{
+    return inVar;
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CPtrAsPtr.prototype.cToJS = function (inVar)
+{
+    return inVar;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
 Convert from a C type name to the corresponding C type
 */
 function cTypeToIRType(cType, params)
@@ -61,7 +287,7 @@ function genTypeConv(inType, outType, cTypeName, inVar)
                 return 'iir.icast(IRType.rptr,' + inVar + ')';
 
                 case 'char*':
-                return 'makeCString(' + inVar + ')';
+                return 'boxToCString(' + inVar + ')';
             }
             break;
 
@@ -119,46 +345,32 @@ Represents a C FFI function
 */
 function CFunction(
     funcName,
-    cArgTypes,
-    cRetType,
-    params,
-    tachArgTypes,
-    tachRetType
+    argTypes,
+    retType,
+    params
 )
 {
     assert (
-        cArgTypes instanceof Array && cRetType !== undefined,
-        'invalid C arguments or return type'
+        argTypes instanceof Array && retType !== undefined,
+        'invalid arguments or return type'
     );
     assert (
         params instanceof CompParams,
         'expected compilation parameters'
     );
 
-    // If tachyon argument types are not specified
-    if (tachArgTypes === undefined)
+    for (var i = 0; i < argTypes.length; ++i)
     {
-        tachArgTypes = [];
-        for (var i = 0; i < cArgTypes.length; ++i)
-            tachArgTypes.push(IRType.box);
-    }
-
-    // If the tachyon return type was not specified
-    if (tachRetType === undefined)
-    {
-        tachRetType = IRType.box;
+        assert (
+            argTypes[i].jsIRType instanceof IRType,
+            'invalid argument type'
+        );
     }
 
     assert (
-        tachArgTypes.length === cArgTypes.length,
-        'must have the same number of Tachyon arguments as C arguments'
+        retType.jsIRType instanceof IRType,
+        'invalid return type'
     );
-
-    // Convert the C argument types to IR types
-    var cArgIRTypes = cArgTypes.map(function (t) { return cTypeToIRType(t, params); });
-
-    // Convert the C return type to an IR type
-    var cRetIRType = cTypeToIRType(cRetType, params);
 
     /**
     Name of the C function
@@ -167,40 +379,16 @@ function CFunction(
     this.funcName = funcName;
 
     /**
-    Argument types of the C function
+    Argument type mappings
     @field
     */
-    this.cArgTypes = cArgTypes;
+    this.argTypes = argTypes;
 
     /**
-    Return type of the C function
+    Return type mapping
     @field
     */
-    this.cRetType = cRetType;
-
-    /**
-    IR types for the argument types of the C function
-    @field
-    */
-    this.cArgIRTypes = cArgIRTypes;
-
-    /**
-    IR type for the return type of the C function
-    @field
-    */
-    this.cRetIRType = cRetIRType;
-
-    /**
-    Argument types of the wrapper
-    @field
-    */
-    this.tachArgTypes = tachArgTypes;
-
-    /**
-    Return type of the wrapper
-    @field
-    */
-    this.tachRetType = tachRetType;
+    this.retType = retType;
 
     /**
     Address of the C function
@@ -233,10 +421,10 @@ CFunction.prototype.genWrapper = function ()
 
     sourceStr += 'function ' + this.funcName + '(';
 
-    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    for (var i = 0; i < this.argTypes.length; ++i)
     {
         sourceStr += 'a' + i;        
-        if (i !== this.tachArgTypes.length - 1)
+        if (i !== this.argTypes.length - 1)
             sourceStr += ', ';
     }
 
@@ -244,35 +432,29 @@ CFunction.prototype.genWrapper = function ()
     sourceStr += '{\n';
     sourceStr += '\t"tachyon:static";\n';
     sourceStr += '\t"tachyon:noglobal";\n';
-    sourceStr += '\t"tachyon:ret ' + this.tachRetType + '";\n';
+    sourceStr += '\t"tachyon:ret ' + this.retType.jsIRType + '";\n';
 
-    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    for (var i = 0; i < this.argTypes.length; ++i)
     {
-        var argType = this.tachArgTypes[i];
+        var argType = this.argTypes[i].jsIRType;
         sourceStr += '\t"tachyon:arg a' + i + ' ' + argType + '";\n';
     }
 
     // Generate type conversions
-    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    for (var i = 0; i < this.argTypes.length; ++i)
     {
-        var cType = this.cArgTypes[i];
-        var cIRType = this.cArgIRTypes[i];
-        var tType = this.tachArgTypes[i];
-
-        if (cType === tType)
-            continue;
-
+        var argType = this.argTypes[i];
         var varName = 'a' + i;
 
         sourceStr += '\t' + varName + ' = ';
-        sourceStr += genTypeConv(tType, cIRType, cType, varName) + ';\n';
+        sourceStr += argType.jsToC(varName) + ';\n';
     }
     
-    var retVoid = this.cRetIRType === IRType.none;
+    var retVoid = (this.retType instanceof CVoid);
 
     sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + 'iir.call_ffi(ffi_' + this.funcName;
 
-    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    for (var i = 0; i < this.argTypes.length; ++i)
     {
         sourceStr += ', a' + i;
     }
@@ -280,24 +462,35 @@ CFunction.prototype.genWrapper = function ()
     sourceStr += ');\n';
 
     // Free allocated C strings, if any
-    for (var i = 0; i < this.tachArgTypes.length; ++i)
+    for (var i = 0; i < this.argTypes.length; ++i)
     {
-        var cType = this.cArgTypes[i];
-        var tType = this.tachArgTypes[i];
+        var argType = this.argTypes[i];
 
-        if (tType !== IRType.box || cType !== 'char*')
+        if (argType.freeAfterSnd !== true)
             continue;
 
         var varName = 'a' + i;
 
-        sourceStr += '\tfreeCString(' + varName + ');\n';
+        sourceStr += '\t' + argType.free(varName) + ';\n';
     }
 
-    // Generate the return statement
-    sourceStr += '\treturn';
+    // If we are returning a value
     if (retVoid === false)
-        sourceStr += ' ' + genTypeConv(this.cRetIRType, this.tachRetType, this.cRetType, 'r');
-    sourceStr += ';\n';
+    {
+        // Convert the return value
+        sourceStr += '\tvar rJS = ' + this.retType.cToJS('r') + ';\n';
+
+        if (this.retType.freeAfterRcv === true)
+        {
+            sourceStr += '\t' + this.retType.free('r') + ';\n';
+        }
+
+        sourceStr += '\treturn rJS;\n';        
+    }
+    else
+    {
+        sourceStr += '\treturn;\n';
+    }
 
     sourceStr += '}\n';
 
@@ -608,49 +801,50 @@ function initFFI(params)
 
     regFFI(new CFunction(
         'malloc', 
-        ['int'], 
-        'void*',
-        params,
-        [IRType.pint],
-        IRType.rptr
+        [new CIntAsInt(IRType.pint)], 
+        new CPtrAsPtr(),
+        params
     ));
 
     regFFI(new CFunction(
         'free', 
-        ['void*'],
-        'void',
-        params,
-        [IRType.rptr],
-        IRType.none
+        [new CPtrAsPtr()],
+        new CVoid(),
+        params
     ));
 
     regFFI(new CFunction(
         'exit', 
-        ['int'],
-        'void',
+        [new CIntAsBox()],
+        new CVoid(),
         params
     ));
 
     regFFI(new CFunction(
         'puts',
-        ['char*'], 
-        'int',
-        params,
-        [IRType.box],
-        IRType.pint
+        [new CStringAsBox()], 
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'shellCommand',
+        [new CStringAsBox()], 
+        new CStringAsBox(),
+        params
     ));
 
     regFFI(new CFunction(
         'printInt', 
-        ['int'],
-        'void',
+        [new CIntAsBox()],
+        new CVoid(),
         params
     ));
 
     regFFI(new CFunction(
         'sum2Ints', 
-        ['int', 'int'], 
-        'int',
+        [new CIntAsBox(), new CIntAsBox()],
+        new CIntAsBox(),
         params
     ));
 }

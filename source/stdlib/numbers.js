@@ -19,7 +19,12 @@ function Number(value)
     // If this is a constructor call (new Number)
     if (isGlobalObj(this) === false)
     {
-        // TODO: convert the value to a number
+        // Convert the value to a number
+        var numVal = boxToNumber(value);
+
+        // If the value is not a number, return it directly
+        if (typeof numval !== 'number')
+            return numVal;
 
         // Store the value in the new object
         // TODO: this should be a hidden/internal property

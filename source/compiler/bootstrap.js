@@ -112,6 +112,8 @@ function getPrimSrcs(params)
         'runtime/primitives.js',
         // Source code for string operations
         'runtime/strings.js',
+        // Source code for FFI interfacing
+        'runtime/ffi.js',
         // Source code for the runtime initialization
         'runtime/rtinit.js'
     ];

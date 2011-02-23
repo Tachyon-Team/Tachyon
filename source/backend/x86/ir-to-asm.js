@@ -1662,7 +1662,9 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.cmp(
             opnds[1], 
-            opnds[0], 
+            opnds[0],
+            (opnds[0].width !== undefined)?
+            opnds[0].width():
             this.uses[0].type.getSizeBits(tltor.params)
         );
     }
