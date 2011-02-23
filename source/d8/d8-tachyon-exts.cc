@@ -232,6 +232,12 @@ uint8_t *alloc_machine_code_block(int size)
         0
     );
 
+    if (p == MAP_FAILED)
+    {
+        printf("alloc_machine_code_block: Could not allocate memory");
+        exit(1);
+    }
+
     return (uint8_t*)p;
 }
 
