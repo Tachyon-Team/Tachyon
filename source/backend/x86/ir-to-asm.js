@@ -2529,8 +2529,12 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         'cannot use memory locations as offsets'
     );
 
+    if (opnds[2].type !== x86.type.REG && !tltor.asm.isImmediate(opnds[2]))
+    {
+        print(opnds[2].type);
+    }
     assert (
-        opnds[2].type === x86.type.REG || opnds[2].type === x86.type.IMM_VAL,
+        opnds[2].type === x86.type.REG || tltor.asm.isImmediate(opnds[2]),
         'cannot perform store from memory to memory'
     );
 
@@ -2547,6 +2551,8 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     // Configuration imports
     const target = tltor.params.target; 
     const width = target.ptrSizeBits;
+    const backendCfg = target.backendCfg;
+    const context = backendCfg.context;
 
     // If the offset is a register
     if (opnds[1].type === x86.type.REG)
@@ -2564,11 +2570,39 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     var typeSize = this.uses[2].type.getSizeBits(tltor.params);
 
     // If the value to store is an immediate
-    if (opnds[2].type === x86.type.IMM_VAL)
+    if (tltor.asm.isImmediate(opnds[2]))
     {
         // Store it directly
         tltor.asm.mov(opnds[2], memLoc, typeSize);
     }
+
+    /*
+    else if (opnds[2].type === x86.type.MEM)
+    {
+        // For a store memory to memory, we need a temporary register 
+        const tempOffset = backendCfg.ctxLayout.getFieldOffset(["temp"]);
+        const temp = mem(tempOffset, context);
+
+        // On x86 32 bits, only AL, BL, CL, DL can be accessed directly
+        // in case the typeSize is 8
+        const avlbRegs = (tltor.asm.target === x86.target.x86) ? [
+            reg.rax.subReg(width),
+            reg.rbx.subReg(width),
+            reg.rcx.subReg(width),
+            reg.rdx.subReg(width)
+        ] : backendCfg.physReg;
+        arraySetRem(avlbRegs, context);
+        arraySetRemAll(avlbRegs, opnds); 
+
+        assert(avlbRegs.length > 0, "No scratch register available");
+        const scratch = avlbRegs[0];
+
+        tltor.asm.
+        mov(scratch, temp).
+        mov(opnds[2], scratch).
+        mov(scratch.subReg(typeSize), memLoc, typeSize).
+        mov(temp, scratch);
+    } */ 
 
     // Otherwise, the value to store is in a register
     else
@@ -2607,7 +2641,6 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
             var newSrc = lowRegs[0];
             var newSrcLow = newSrc.subReg(8);
 
-            // xAX has been reserved for this case
             tltor.asm.mov(opnds[2], newSrc);    
             srcReg = newSrcLow;
         }
@@ -2717,6 +2750,3 @@ GetArgTableInstr.prototype.genCode = function (tltor, opnds)
     mov(argTbl, dest);
 
 };
-
-
-

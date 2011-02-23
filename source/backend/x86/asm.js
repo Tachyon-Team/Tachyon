@@ -40,7 +40,7 @@ x86.isSigned8 = function (num) { return (num >= -128 && num <= 127); };
 /** @private test if num is a valid 32 bit signed value */
 x86.isSigned32 = function (num)
 {
-    return (num >= -2147483648 && num <= 2147483647);
+    return num_ge(num, getIntMin(32)) && num_le(num, getIntMax(32));
 };
 
 /**
@@ -183,23 +183,13 @@ x86.Assembler.prototype._genImmNum = function (k, width)
     /** @ignore */
     function signedLo32(k)
     {
-        // Javascript performs bitwise operations on
-        // values already coerced to signed 32 bits, therefore
-        // we only need to retrieve the bits
-        return (k & 0xffffffff);
+        return num_and(k, getIntMax(32, true));     
     };
 
     /** @ignore */
     function signedLo64(k)
     {
-        /*
-        assert( k <= 9007199254740991 || k >= -9007199254740991,
-                  "Internal error: current scheme cannot garantee an exact" +
-                  " representation for signed numbers greater than (2^53-1)" +
-                  " or lesser than -(2^53-1)");
-        return k;
-        */
-        error("Internal error: 64 bits value cannot be represented");
+        return num_and(k, getIntMax(64, true));
     };
 
     if (width === 8)
@@ -280,7 +270,7 @@ x86.Assembler.prototype.immediateValue = function (value)
     if (value === undefined)
         value = 0;
 
-    assert(typeof value === "number",
+    assert(num_instance(value),
            "'value' argument must be a number");
 
     var that = Object.create(x86.Assembler.prototype.immediateValue.prototype);
