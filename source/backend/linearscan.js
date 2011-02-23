@@ -159,36 +159,41 @@ allocator.set.prototype.toString = function ()
     @class Priority queue that doesn't allow priorities of element 
            already inserted to be changed 
     @param {Array} a initial set of values in priority queue
-    @param {Function} cmpFunction compare function for sorting
+    @param {Function} compFunc compare function for sorting
 */  
-allocator.priorityQueue = function (a, cmpFunction)
+allocator.priorityQueue = function (a, compFunc)
 {
     var that = Object.create(allocator.priorityQueue.prototype);
 
-    if (a !== undefined)
-        that.innerArray = a;
-
-    if (cmpFunction !== undefined)
-        that.cmpFunction = cmpFunction;
-
-    // Ensure an initial stable sort
-    var a2 = arrayRange(a.length); 
-    var fct = function (u,v)
+    if (a === undefined)
     {
-        const cmp = cmpFunction(a[u],a[v]);
-        return (cmp !== 0) ? cmp : u - v;
-    };
+        a = [];
+    }
 
-    a2.sort(fct);
+    if (compFunc !== undefined)
+    {
+        that.compFunc = compFunc;
+    }
 
-    that.innerArray = a2.map(function (i) { return a[i]; });
+    a.forEach(function (v)
+    {
+        if (v.insertNb !== undefined)
+        {
+            v.insertNb = that.insertNb++;
+        }
+    });
+
+    that.heap = new Heap(that.compFunc);
+    that.heap.fromArray(a);
 
     return that;
 };
-/** @private inner array maintained in a sorted state */  
-allocator.priorityQueue.prototype.innerArray = [];
+/** @private inner heap */  
+allocator.priorityQueue.prototype.heap = null;
+/** @private insertion number to ensure FIFO operation order */
+allocator.priorityQueue.prototype.insertNb = 0;
 /** @private compare function used to maintain the sorted property */   
-allocator.priorityQueue.prototype.cmpFunction = 
+allocator.priorityQueue.prototype.compFunc = 
     function (a,b) 
     { 
         return (a-b);
@@ -199,75 +204,36 @@ allocator.priorityQueue.prototype.cmpFunction =
   */ 
 allocator.priorityQueue.prototype.enqueue = function (value)
 {
-    var a = this.innerArray;
-    var maxIndex = this.innerArray.length;
-    var minIndex = 0;
-    var current  = (maxIndex + minIndex) >> 1;
-    var cmp = 0;
-    var i;
-
-    // Binary Search
-    while (maxIndex !== minIndex)
+    if (value.insertNb !== undefined)
     {
-        cmp = this.cmpFunction(value, a[current]);
-        if (cmp < 0)
-        {
-            maxIndex = current;
-        } else if (cmp === 0)
-        {
-            break;
-        } else
-        {
-            minIndex = current + 1;
-        }
-        current  = (maxIndex + minIndex) >> 1;
+        value.insertNb = this.insertNb++;
     }
-
-    // Maintain a FIFO order for equal values 
-    for (i=current; i < maxIndex; i++)
-    {
-        if (this.cmpFunction(a[i], a[current]) !== 0)
-        {
-            break;
-        }
-    }
-    current = i;
-
-    // Add the element at the current position
-    this.innerArray.splice(current, 0, value);
+    this.heap.insert(value);
 };
 
 /** Remove the value with the highest priority from the priority queue   */ 
 allocator.priorityQueue.prototype.dequeue = function ()
 {
-    return this.innerArray.shift();
+    return this.heap.extract();
 };
 
 /** Return the value with the highest priority from the priority queue,
     without removing it  */ 
 allocator.priorityQueue.prototype.peek = function ()
 {
-    return this.innerArray[0];
+    return this.heap.root();
 };
 
 /** Return the number of elements in the queue  */ 
-// TODO: Refactor to getter when getter/setter are supported
 allocator.priorityQueue.prototype.length = function ()
 {
-    return this.innerArray.length;
+    return this.heap.length;
 };
 
 /** Print the priority queue */
 allocator.priorityQueue.prototype.toString = function ()
 {
-    
-    var i;
-    var s = [];
-    for (i=0; i < this.innerArray.length; i++)
-    {
-        s.push(String(this.innerArray[i]));
-    }
-    return "PriorityQueue [" + s.join(",\n") + "]";
+    return "PriorityQueue: " + this.heap.toString();
 };
 
 
@@ -448,6 +414,8 @@ allocator.interval.prototype.id     = 0;
 allocator.interval.prototype.vreg   = null;
 /** Instruction defining the interval */
 allocator.interval.prototype.instr  = null;
+/** Insertion number in the priority queue */
+allocator.interval.prototype.insertNb = 0;
 
 /** Returns the first starting position of all ranges */ 
 allocator.interval.prototype.startPos = function ()
@@ -1762,14 +1730,23 @@ allocator.linearScan = function (params, unhandled, mems, fixed)
     var unhandledQueue = allocator.priorityQueue(unhandled.slice(0),
         function (it1, it2)
         {
-            const cmp = it1.startPos() - it2.startPos();
+            // Start Position comparison
+            const cmp = it2.startPos() - it1.startPos();
+            // Next use position comparison
+            const useCmp = it2.nextUse() - it1.nextUse();
+            // Insertion time in queue comparison
+            // (garantees a FIFO order when retrieving elements)
+            const insCmp = it2.insertNb - it1.insertNb;
 
             if (cmp !== 0) 
             {
                 return cmp;
+            } else if (useCmp !== 0)
+            {
+                return useCmp;
             } else
             {
-                return it1.nextUse() - it2.nextUse();
+                return insCmp;
             }
         });
 

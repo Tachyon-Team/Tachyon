@@ -109,7 +109,7 @@ Heap.prototype.heapify = function (i)
         var l = this.left(root);
         var r = this.right(root);
 
-        if (l <= size && this.compFunc(a[l], a[root]) > 0)
+        if (l < size && this.compFunc(a[l], a[root]) > 0)
         {
             largest = l; 
         } else
@@ -117,7 +117,7 @@ Heap.prototype.heapify = function (i)
             largest = root;
         }
 
-        if (r <= size && this.compFunc(a[r], a[largest]) > 0)
+        if (r < size && this.compFunc(a[r], a[largest]) > 0)
         {
             largest = r;
         }
