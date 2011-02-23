@@ -375,7 +375,7 @@ function bignum_mod(bignum_a, bignum_b)
 
     var qr = bignum_nonneg_quorem(bignum_abs(bignum_a), bignum_abs(bignum_b));
 
-    if (bignum_nonneg(bignum_a) === bignum_nonneg(bignum_b))
+    if (bignum_nonneg(bignum_a))
         return qr.rem;
     else
         return bignum_neg(qr.rem);
