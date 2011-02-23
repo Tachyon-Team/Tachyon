@@ -100,8 +100,9 @@ backend.compileIRToCB = function (ir, params)
 
         //print("Computing live intervals");
         liveIntervals = allocator.liveIntervals(cfg, order, params);
+
         //print("Computing fixed intervals");
-        fixedIntervals = allocator.fixedIntervals(cfg, params);
+        fixedIntervals = allocator.fixedIntervals(order, params);
 
         // Print intervals before allocation
         /*
