@@ -200,13 +200,3 @@ Heap.prototype.toArray = function ()
 {
     return this.innerArray.slice(0);
 };
-
-/**
-Create a heap form an array's content
-*/
-Heap.fromArray = function (arr)
-{
-    var h = new Heap;
-    h.fromArray(arr);
-    return h;
-};
