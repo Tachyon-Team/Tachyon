@@ -36,7 +36,7 @@ tests.fooSuite.trivialInit = function ()
 
 
 @copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /** @namespace for all tests */

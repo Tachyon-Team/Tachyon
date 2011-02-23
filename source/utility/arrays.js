@@ -37,6 +37,11 @@ Remove a value from an array set
 */
 function arraySetRem(array, val)
 {
+    assert (
+        array instanceof Array,
+        'expected array in arraySetRem'
+    );
+
     for (var i = 0; i < array.length; ++i)
     {
         if (array[i] === val)
@@ -126,7 +131,6 @@ function arrayRange(from, to, step)
         step = 1;
     }
 
-    
     assert(from >= 0, 'from must be >= 0');
     assert(step > 0, 'step must be > 0');
 

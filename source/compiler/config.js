@@ -28,6 +28,7 @@ function initConfig()
         tachyonSrc      : true,
         debug           : true,
         parserWarnings  : true,
+        debugTrace      : false,
         staticEnv       : new StaticEnv()
     });
 
@@ -41,6 +42,13 @@ function initConfig()
     config.clientParams.parserWarnings = false;
 
     /**
+    Compilation parameters for debugging client code.
+    */
+    config.clientDebugParams = Object.create(config.clientParams);
+    config.clientDebugParams.debug = true;
+    config.clientDebugParams.debugTrace = true;
+
+    /**
     Compilation parameters used to bootstrap Tachyon
     */
     config.bootParams = new CompParams({
@@ -48,6 +56,7 @@ function initConfig()
         tachyonSrc      : true,
         debug           : true,
         parserWarnings  : true,
+        debugTrace      : false,
         staticEnv       : new StaticEnv()
     });
 

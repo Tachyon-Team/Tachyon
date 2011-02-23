@@ -9,10 +9,6 @@ Maxime Chevalier-Boisvert, Erick Lavoie
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
-/*
-TODO: Should we include runtime, object representation here?
-*/
-
 /**
 @class Description/grouping of compilation parameters required to compile a
        unit of source code.
@@ -37,6 +33,11 @@ function CompParams(cfgObj)
     assert (
         cfgObj.parserWarnings === true || cfgObj.parserWarnings === false,
         'invalid parser warnings flag'
+    );
+
+    assert (
+        cfgObj.debugTrace === true || cfgObj.debugTrace === false,
+        'invalid debug trace flag'
     );
 
     assert (
@@ -67,6 +68,12 @@ function CompParams(cfgObj)
     @field
     */
     this.parserWarnings = cfgObj.parserWarnings;
+
+    /**
+    Enable generation of a debug trace
+    @field
+    */
+    this.debugTrace = cfgObj.debugTrace;
 
     /**
     Static definitions to be used during compilation

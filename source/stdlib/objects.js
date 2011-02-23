@@ -68,6 +68,14 @@ FIXME: for now, we ignore the properties
 */
 Object.create = function (obj, props)
 {
+    if (boolToBox(boxIsObjExt(obj)) === false && obj !== null)
+    {
+        throw makeError(
+            TypeError, 
+            'can only create object from object or null prototype'
+        );
+    }
+
     var newObj = newObject(obj);
 
     return newObj;
@@ -79,6 +87,11 @@ FIXME: for now, we ignore most attributes
 */
 Object.defineProperty = function (obj, prop, attribs)
 {
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'non-object value in defineProperty'
+    );
+
     if (attribs.hasOwnProperty('value'))
         obj.prop = attribs.value;
 };

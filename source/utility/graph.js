@@ -409,7 +409,6 @@ graph.adjencyList.prototype.isConnected = function (node)
     O(|E| + |N|) where |E| is the number of edges 
     and |N| is the number of nodes.
 
-
 */
 graph.adjencyList.prototype.getNodeItr = function (type)
 {

@@ -8,6 +8,9 @@ var o_num = { toString: function () { return 3; } };
 var tests = [
     // v1     v2      <  <= >  >= == != === !==
     [1      , 2     , T, T, F, F, F, T, F, T],
+    [1      , '1'   , F, T, F, T, T, F, F, T],
+    [1      , ' 1'  , F, T, F, T, T, F, F, T],
+    [1      , '1 '  , F, T, F, T, T, F, F, T],
     ['1'    , 2     , T, T, F, F, F, T, F, T],
     [1      , '2'   , T, T, F, F, F, T, F, T],
     ['1'    , '2'   , T, T, F, F, F, T, F, T],
@@ -16,6 +19,9 @@ var tests = [
     [undef  , '2'   , F, F, F, F, F, T, F, T],
 
     [2      , 1     , F, F, T, T, F, T, F, T],
+    ['1'    , 1     , F, T, F, T, T, F, F, T],
+    [' 1'   , 1     , F, T, F, T, T, F, F, T],
+    ['1 '   , 1     , F, T, F, T, T, F, F, T],
     [2      , '1'   , F, F, T, T, F, T, F, T],
     ['2'    , 1     , F, F, T, T, F, T, F, T],
     ['2'    , '1'   , F, F, T, T, F, T, F, T],

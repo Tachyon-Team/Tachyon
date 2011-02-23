@@ -27,7 +27,8 @@ function Number(value)
     }
     else
     {
-        // TODO: convert the value to a number
+        // Convert the value to a number
+        return boxToNumber(value);
     }
 }
 
