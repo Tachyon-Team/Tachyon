@@ -48,8 +48,8 @@ backend.compileIRToCB = function (ir, params)
 
     for (k=0; k<fcts.length; ++k)
     {
-        if (params.printRegAlloc === true)
-            print("Translation of function: '" + fcts[k].funcName + "'");
+        //if (params.printRegAlloc === true)
+        print("Translation of function: '" + fcts[k].funcName + "'");
 
         // Add register allocation information on the function
         fcts[k].regAlloc = fcts[k].regAlloc || {};
@@ -57,6 +57,7 @@ backend.compileIRToCB = function (ir, params)
 
         cfg = fcts[k].virginCFG.copy();
 
+        print("Order blocks");
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order, params);
 
@@ -97,7 +98,9 @@ backend.compileIRToCB = function (ir, params)
             print(cfg.toString(function () { return order; }, undefined, undefined, 
                            lnPfxFormatFn));
 
+        print("Computing live intervals");
         liveIntervals = allocator.liveIntervals(cfg, order, params);
+        print("Computing fixed intervals");
         fixedIntervals = allocator.fixedIntervals(cfg, params);
 
         // Print intervals before allocation
@@ -111,15 +114,18 @@ backend.compileIRToCB = function (ir, params)
 
         mems = irToAsm.spillAllocator(params);
 
+        print("Linear Scan");
         allocator.linearScan(params, 
                              liveIntervals, 
                              mems, 
                              fixedIntervals);
 
+        print("Assign");
         // Add physical registers and memory location to operands
         // of every instruction
         allocator.assign(cfg, params); 
     
+        print("Resolve");
         // SSA form deconstruction and linear scan resolution 
         order = allocator.resolve(cfg, liveIntervals, order, params);
 
@@ -158,10 +164,12 @@ backend.compileIRToCB = function (ir, params)
         //print(translator.asm.codeBlock.listingString(startIndex));
         //startIndex = translator.asm.codeBlock.code.length;
 
+        /*
         assert(
             allocator.validate(cfg, params),
             'validation failed'
         );
+        */
         /*
         print("******* Mapping validation **************");
 

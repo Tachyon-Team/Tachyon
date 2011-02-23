@@ -148,6 +148,7 @@ function getTachyonSrcs(params)
     //       populates source file names in the makefile
   
     var tachyonSrcs = [
+        /*
         'utility/debug.js',
         'utility/system.js',
         'utility/iterators.js',
@@ -169,7 +170,7 @@ function getTachyonSrcs(params)
         'compiler/init.js',
         'compiler/bootstrap.js',
         'parser/misc.js',
-        'parser/scanner.js',
+        'parser/scanner.js',*/
         'parser/parser.js',
         'parser/pp.js',
         'parser/ast-passes.js',
