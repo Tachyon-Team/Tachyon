@@ -666,7 +666,6 @@ function strToInt(strVal)
     }
 
     // TODO: rewrite this function when FP support is in
-    // TODO: support whitespace, better verification
 
     var strLen = iir.icast(IRType.pint, get_str_len(strVal));
 
@@ -674,7 +673,91 @@ function strToInt(strVal)
 
     var neg = FALSE_BOOL;
 
-    // For each string character, in reverse order
+    var state = 'PREWS';
+
+    // For each string character
+    for (var i = pint(0); i < strLen;)
+    {
+        var ch = iir.icast(IRType.pint, get_str_data(strVal, i));
+
+        switch (state)
+        {
+            case 'PREWS':
+            {
+                // space or tab
+                if (ch === pint(32) || ch === pint(9))
+                {
+                    ++i;
+                }
+
+                // + or -
+                else if (ch === pint(43) || ch === pint(45))
+                {
+                    state = 'SIGN';
+                }
+
+                // Any other character
+                else
+                {
+                    state = 'DIGITS';
+                }
+            }
+            break;
+
+            case 'SIGN':
+            {
+                // Plus sign
+                if (ch === pint(43))
+                {
+                    ++i;
+                }
+
+                // Minus sign
+                else if (ch === pint(45))
+                {
+                    neg = TRUE_BOOL;
+                    ++i;
+                }
+
+                state = 'DIGITS';
+            }
+            break;
+
+            case 'DIGITS':
+            {
+                if (ch < pint(48) || ch > pint(57))
+                {
+                    state = 'POSTWS';
+                    continue;
+                }
+
+                var digit = ch - pint(48);
+
+                intVal = pint(10) * intVal + digit;
+
+                ++i;
+            }
+            break;
+
+            case 'POSTWS':
+            {
+                // If this is not a space or tab
+                if (ch !== pint(32) && ch !== pint(9))
+                {
+                    // Invalid number
+                    return UNDEFINED;
+                }
+
+                ++i;
+            }
+            break;
+        }
+    }
+
+    // TODO: support whitespace, better verification
+
+    /*
+    // For each string character
     for (var i = pint(0); i < strLen; ++i)
     {
         var ch = iir.icast(IRType.pint, get_str_data(strVal, i));
@@ -693,6 +776,7 @@ function strToInt(strVal)
 
         intVal = pint(10) * intVal + digit;
     }
+    */
 
     if (neg)
         intVal *= pint(-1);
