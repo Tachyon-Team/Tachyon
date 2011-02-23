@@ -748,6 +748,21 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
     var newRange = allocator.range(startPos, endPos);
     var deleteNb, insertPos;
 
+    // Empty case
+    if (this.ranges.length === 0)
+    {
+        this.ranges.push(newRange);
+        return;
+    }
+
+    // Fast case for adding a range at the end
+    const lastRange = this.ranges[this.ranges.length - 1];
+    if (lastRange.endPos < startPos)
+    {
+        this.ranges.push(newRange);
+        return;
+    }
+
 
     // Find the first range which is not strictly
     // less than the new range.
@@ -1637,7 +1652,7 @@ allocator.liveIntervals = function (cfg, order, params)
     return liveIntervals;
 };
 
-allocator.fixedIntervals = function (cfg, params)
+allocator.fixedIntervals = function (order, params)
 {
     const backendCfg = params.target.backendCfg;
 
@@ -1652,23 +1667,27 @@ allocator.fixedIntervals = function (cfg, params)
     const fixedInstrs = [];
 
     // Add the fixed registers for each instruction requiring them
-    cfg.getInstrItr().forEach(function (instr) 
+    order.forEach(function (block)
     {
-        const usedRegs = instr.regAlloc.usedRegisters(instr, params);
-        if (usedRegs !== null)
+        block.instrs.forEach(function (instr)
         {
-            // Add a fixed interval between the arguments position
-            // and the return value position
-            const argPos = instr.regAlloc.id - allocator.numberInstrs.inc; 
+            const usedRegs = instr.regAlloc.usedRegisters(instr, params);
+            if (usedRegs !== null)
+            {
+                // Add a fixed interval between the arguments position
+                // and the return value position
+                const argPos = instr.regAlloc.id - allocator.numberInstrs.inc; 
 
-            fixedInstrs[argPos] = instr;
+                fixedInstrs[argPos] = instr;
 
-            usedRegs.forEach(function (index) 
-            { 
-               fixedItrvls[index].addRange(argPos, argPos + 1); 
-            });
-        }
+                usedRegs.forEach(function (index) 
+                { 
+                   fixedItrvls[index].addRange(argPos, argPos + 1); 
+                });
+            }
+        });
     });
+
     return {intervals:fixedItrvls, instrs:fixedInstrs};
 };
 
