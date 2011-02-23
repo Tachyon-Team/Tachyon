@@ -14,6 +14,7 @@ BASE_SRCS =                             \
     utility/iterators.js                \
     utility/graph.js                    \
     utility/arrays.js                   \
+    utility/heap.js                     \
     utility/hashmap.js                  \
     utility/linkedlist.js               \
     utility/strings.js                  \
@@ -99,6 +100,9 @@ ALL_SRCS =                              \
     $(TEST_SPEC_SRCS)
 
 all: run
+
+load:
+	$(JSVM) $(BASE_SRCS) --shell
 
 run: 
 	$(JSVM) $(MAIN_SRCS)

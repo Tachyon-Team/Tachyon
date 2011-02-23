@@ -153,6 +153,7 @@ function getTachyonSrcs(params)
         'utility/iterators.js',
         'utility/graph.js',
         'utility/arrays.js',
+        'utility/heap.js',
         'utility/hashmap.js',
         'utility/linkedlist.js',
         'utility/strings.js',
