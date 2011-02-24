@@ -432,51 +432,6 @@ function compStrHash(strObj)
 }
 
 /**
-Create/allocatr a C (UTF-8) string from a string object.
-*/
-function makeCString(strVal)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:ret rptr";
-
-    // Get the string length
-    var strLen = iir.icast(IRType.pint, get_str_len(strVal));
-
-    // Allocate memory for the C string
-    var strPtr = malloc(strLen + pint(1));
-
-    // For each character
-    for (var i = pint(0); i < strLen; i++)
-    {
-        var ch = get_str_data(strVal, i);
-
-        var cCh = iir.icast(IRType.i8, ch);
-
-        iir.store(IRType.i8, strPtr, i, cCh);
-    }
-
-    // Store the null terminator
-    iir.store(IRType.i8, strPtr, i, i8(0));
-
-    return strPtr;
-}
-
-/**
-Free a C string's memory buffer
-*/
-function freeCString(strPtr)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg strPtr rptr";
-
-    free(strPtr);
-
-    return;
-}
-
-/**
 Get the string representation for an integer
 */
 function getIntStr(intVal)
@@ -753,30 +708,6 @@ function strToInt(strVal)
             break;
         }
     }
-
-    // TODO: support whitespace, better verification
-
-    /*
-    // For each string character
-    for (var i = pint(0); i < strLen; ++i)
-    {
-        var ch = iir.icast(IRType.pint, get_str_data(strVal, i));
-
-        // If this is a minus sign
-        if (ch === pint(45))
-        {
-            neg = TRUE_BOOL;
-            continue;
-        }
-
-        if (ch < pint(48) || ch > pint(57))
-            return UNDEFINED;
-
-        var digit = ch - pint(48);
-
-        intVal = pint(10) * intVal + digit;
-    }
-    */
 
     if (neg)
         intVal *= pint(-1);
