@@ -1485,6 +1485,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
                     arraySetAdd(live, instr.getIncoming(block));
+                    //live.add(instr.getIncoming(block));
                 }
             }
 
@@ -1499,6 +1500,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 
             // Add all live temps at the successor input to the live set
             live = arraySetUnion(live, succ.regAlloc.liveIn);
+            //live.union(succ.regAlloc.liveIn);
         }
         
         // For each instruction in the live set
@@ -1534,6 +1536,7 @@ allocator.liveIntervals = function (cfg, order, params)
 
                 // Remove the instruction from the live set
                 arraySetRem(live, instr);
+                //live.rem(instr);
             }
 
             // Input operands for phi instructions are added to the live set
@@ -1595,6 +1598,7 @@ allocator.liveIntervals = function (cfg, order, params)
 
                 // Add this input operand to the live set
                 arraySetAdd(live, use);
+                //live.add(use);
             }
         }
 
@@ -1607,6 +1611,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 break;
 
             arraySetRem(live, instr);
+            //live.rem(instr);
         }
 
         // Get the last loop end associated with this block, if any
