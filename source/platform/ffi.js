@@ -668,26 +668,6 @@ function initFFI(params)
         params.staticEnv.regBinding('ffi_' + ffiFunc.funcName, ffiFunc);
     }
 
-    /* TODO:
-    Missing functions:
-    - allocMachineCodeBlock
-    - freeMachineCodeBlock
-    - getBlockAddr
-    - callTachyonFFI
-
-    Currently, allocMachineCodeBlock, in v8, returns a byte array mapped to
-    a real memory region. This can be accessed through the [] operator.
-
-    Can potentially create a raw FFI mapping to get the block address directly.
-    On top of this, we can build a proxy that allocates an object in which 
-    to store the memory block address. Accessor functions can be written to
-    address the machine code block object. Equivalent proxy code can be written
-    for D8.
-
-    Need to write a custom proxy for callTachyonFFI. This proxy can write
-    function arguments into a memory vector allocated with malloc.
-    */
-
     regFFI(new CFunction(
         'malloc', 
         [new CIntAsInt(IRType.pint)], 
@@ -717,6 +697,20 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'printInt', 
+        [new CIntAsBox()],
+        new CVoid(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'sum2Ints', 
+        [new CIntAsBox(), new CIntAsBox()],
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'writeFile',
         [new CStringAsBox(), new CStringAsBox()],
         new CIntAsBox(),
@@ -738,16 +732,16 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
-        'printInt', 
-        [new CIntAsBox()],
-        new CVoid(),
+        'rawAllocMachineCodeBlock', 
+        [new CIntAsInt(IRType.pint)], 
+        new CPtrAsPtr(),
         params
     ));
 
     regFFI(new CFunction(
-        'sum2Ints', 
-        [new CIntAsBox(), new CIntAsBox()],
-        new CIntAsBox(),
+        'rawFreeMachineCodeBlock', 
+        [new CPtrAsPtr(), new CIntAsInt(IRType.pint)], 
+        new CVoid(),
         params
     ));
 }

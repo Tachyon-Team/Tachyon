@@ -15,6 +15,16 @@ Configuration object for the compiler
 var config = {};
 
 /**
+Variable to indicate we are running in Tachyon. This will be false
+under d8, true under Tachyon.
+*/
+config.inTachyon = (function ()
+{
+    var iir = { add: function() { return 0; } };
+    return (iir.add(1,2) === 3);
+})();
+
+/**
 Initialize the Tachyon configuration
 */
 function initConfig()

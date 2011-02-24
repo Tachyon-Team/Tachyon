@@ -81,3 +81,28 @@ function cStringToBox(strPtr)
     return getTableStr(strObj);
 }
 
+/**
+Convert a raw pointer to a byte array
+*/
+function ptrToByteArray(ptr)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+
+    var array = [];
+
+    var ptrInt = iir.icast(IRType.pint, ptr);
+
+    for (var i = 0; i < boxInt(PTR_NUM_BYTES); ++i)
+    {
+        var byteVal = ptrInt % pint(256);
+
+        ptrInt /= pint(256);
+
+        array[i] = boxInt(byteVal);
+    }
+
+    return array;
+}
+
