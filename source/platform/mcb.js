@@ -58,7 +58,7 @@ if (config.inTachyon)
         );
 
         var ptr = get_memblock_ptr(blockObj);
-        var size = get_memblock_size(blockObj);
+        var size = iir.icast(IRType.pint, get_memblock_size(blockObj));
 
         rawFreeMachineCodeBlock(ptr, size);
     };
@@ -75,15 +75,16 @@ if (config.inTachyon)
         );
 
         var ptr = get_memblock_ptr(blockObj);
-        var size = get_memblock_size(blockObj);
+        var size = iir.icast(IRType.pint, get_memblock_size(blockObj));
 
         assert (
-            unboxInt(index) < size,
+            boolToBox(unboxInt(index) < size),
             'invalid index in mcb'
         );
 
         var addr = ptr + unboxInt(index);
 
+        // Convert the pointer to a byte array
         return ptrToByteArray(addr);
     };
 
@@ -98,10 +99,10 @@ if (config.inTachyon)
         );
 
         var ptr = get_memblock_ptr(blockObj);
-        var size = get_memblock_size(blockObj);
+        var size = iir.icast(IRType.pint, get_memblock_size(blockObj));
 
         assert (
-            unboxInt(index) < size,
+            boolToBox(unboxInt(index) < size),
             'invalid index in mcb'
         );
 
@@ -111,7 +112,7 @@ if (config.inTachyon)
         );
 
         // Store the value in the block
-        iir.store(IRType.u8, ptr, unboxInt(index), i8(byteVal));
+        iir.store(IRType.i8, ptr, unboxInt(index), i8(byteVal));
     };
 }
 
