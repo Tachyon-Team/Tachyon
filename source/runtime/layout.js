@@ -480,7 +480,6 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += 'function get_size_' + this.name + '()\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
         sourceStr += '\treturn pint(' + objSize + ');\n';
@@ -491,7 +490,6 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += 'function alloc_' + this.name + '()\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
@@ -508,7 +506,6 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += 'function get_size_' + this.name + '(size)\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret pint";\n';
@@ -523,7 +520,6 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += 'function alloc_' + this.name + '(size)\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:nothrow";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
@@ -642,7 +638,6 @@ MemLayout.prototype.genMethods = function ()
         1,
         '"tachyon:arg obj ' + this.ptrType + '";\n' +
         '"tachyon:inline";\n' + 
-        '"tachyon:nothrow";\n' +
         '"tachyon:noglobal";\n',
         'var offset = pint(0);\n'
     );

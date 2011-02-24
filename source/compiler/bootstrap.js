@@ -338,8 +338,8 @@ function initRuntime(params)
     var initHeapBridge = makeBridge(
         initHeap,
         params,
-        ['void*'],
-        'void*'
+        [new CPtrAsPtr()],
+        new CPtrAsPtr()
     );
 
     // Initialize the heap
@@ -355,8 +355,8 @@ function initRuntime(params)
     var getStrObjBridge = makeBridge(
         getStrObj,
         params,
-        ['void*', 'int'],
-        'void*'
+        [new CPtrAsPtr(), new CIntAsInt()],
+        new CPtrAsBox()
     );
 
     /**
@@ -422,7 +422,7 @@ function execUnit(unitFunc, params)
         unitFunc,
         params,
         [],
-        'int'
+        new CIntAsBox()
     );
 
     // Call the compiled unit with the context pointer

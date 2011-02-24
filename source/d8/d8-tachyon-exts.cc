@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-extensions.cc", Time-stamp: <2011-01-20 15:48:04 feeley> */
+/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-02-24 10:12:48 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -8,8 +8,8 @@
 /*===========================================================================*/
 
 /*
- * This file contains the extensions to the D8 executable.  It implements
- * some auxiliary functions for the Tachyon compiler:
+ * This file contains the extensions to the D8 executable needed by the
+ * Tachyon compiler.  It implements some auxiliary functions, in particular:
  *
  * - writeFile("filename", "text")  save text to the file
  * - allocMachineCodeBlock(n)       allocate a machine code block of length n
@@ -22,16 +22,20 @@
  *    var block = allocMachineCodeBlock(2);
  *    block[0] = 0x90;  // x86 "nop"
  *    block[1] = 0xc3;  // x86 "ret"
- *    execMachineCodeBlock(block);
+ *    execMachineCodeBlock(block);  // execute the code
  */
 
 /*
- * To extend D8, the file src/d8.cc must me modified, followed by a
+ * To extend D8, the file <V8>/src/d8.cc must be modified as explained
+ * below, the d8-tachyon-exts.cc file must be copied (or soft linked) to
+ * the <V8>/src directory, and the following command must be executed in
+ * the <V8> directory:
  *
  *   % scons d8
  *
  * There are two modifications; just before and inside of the definition of
- * the method Shell::Initialize().  The code should be modified like this:
+ * the method Shell::Initialize() in <V8>/src/d8.cc .  The code should be
+ * modified like this:
  *
  *  #include "d8-tachyon-exts.cc"    // <====== ADDED!
  *
@@ -48,10 +52,6 @@
  */
 
 /*---------------------------------------------------------------------------*/
-
-//
-// TODO: implement raw C functions for file access, command-line, etc.
-//
 
 int writeFile(const char* fileName, const char* content)
 {
@@ -74,7 +74,7 @@ v8::Handle<v8::Value> v8Proxy_writeFile(const v8::Arguments& args)
 {
     if (args.Length() != 2)
     {
-        printf("Error in WriteFile -- 2 arguments expected\n");
+        printf("Error in writeFile -- 2 arguments expected\n");
         exit(1);
     }
     else
@@ -90,13 +90,69 @@ v8::Handle<v8::Value> v8Proxy_writeFile(const v8::Arguments& args)
     return v8::Undefined();
 }
 
+char* readFile(const char* fileName)
+{
+    FILE* inFile = fopen(fileName, "r");
+    if (inFile == NULL)
+    {
+        printf("Error in readFile -- can't open file\n");
+        exit(1);
+    }
+
+    char buffer[255];
+
+    char* outStr = NULL;
+    size_t strLen = 0;
+
+    while (!feof(inFile))
+    {
+        int numRead = fread(buffer, 1, sizeof(buffer), inFile);
+
+        if (ferror(inFile))
+        {
+            printf("Error in readFile -- failed to read file");
+            exit(1);        
+        }
+
+        outStr = (char*)realloc(outStr, strLen + numRead + 1);
+        memcpy(outStr + strLen, buffer, numRead);
+        strLen += numRead;
+    }
+
+    outStr[strLen] = '\0';
+
+    pclose(inFile);
+
+    return outStr;
+}
+
+v8::Handle<v8::Value> v8Proxy_readFile(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in readFile -- 1 argument expected\n");
+        exit(1);
+    }
+
+    v8::String::Utf8Value fileStrObj(args[0]);  
+    const char* fileName = *fileStrObj;
+
+    char* outStr = readFile(fileName);
+
+    v8::Local<v8::String> v8Str = v8::String::New(outStr);
+
+    delete [] outStr;
+
+    return v8Str;
+}
+
 char* shellCommand(const char* command)
 {
     FILE* pipeFile = popen(command, "r");
 
     if (!pipeFile)
     {
-        printf("Error in openPipe -- failed to execute command \"%s\"\n", command);
+        printf("Error in shellCommand -- failed to execute command \"%s\"\n", command);
         exit(1);        
     }
 
@@ -111,7 +167,7 @@ char* shellCommand(const char* command)
 
         if (ferror(pipeFile))
         {
-            printf("Error in openPipe -- failed to read output");
+            printf("Error in shellCommand -- failed to read output");
             exit(1);        
         }
 
@@ -131,7 +187,7 @@ v8::Handle<v8::Value> v8Proxy_shellCommand(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in openPipe -- 1 argument expected\n");
+        printf("Error in shellCommand -- 1 argument expected\n");
         exit(1);
     }
 
@@ -221,7 +277,7 @@ typedef union
     uint8_t* data_ptr;
 }   data_to_fn_ptr_caster;
 
-uint8_t *alloc_machine_code_block(int size)
+uint8_t* allocMachineCodeBlock(int size)
 {
     void* p = mmap(
         0,
@@ -241,21 +297,9 @@ uint8_t *alloc_machine_code_block(int size)
     return (uint8_t*)p;
 }
 
-void free_machine_code_block(uint8_t* code, int size)
+void freeMachineCodeBlock(uint8_t* code, int size)
 {
     munmap(code, size);
-}
-
-uint8_t *alloc_memory_block(int size)
-{
-    void* block = malloc(size);
-
-    return (uint8_t*)block;
-}
-
-void free_memory_block(uint8_t* block)
-{
-    free(block);
 }
 
 v8::Handle<v8::Value> v8Proxy_allocMachineCodeBlock(const v8::Arguments& args)
@@ -267,10 +311,11 @@ v8::Handle<v8::Value> v8Proxy_allocMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        int len = args[0]->Int32Value();
-        uint8_t* block = static_cast<uint8_t*>(alloc_machine_code_block(len));
         v8::Handle<v8::Object> obj = v8::Object::New();
         i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*obj);
+
+        int len = args[0]->Int32Value();
+        uint8_t* block = static_cast<uint8_t*>(allocMachineCodeBlock(len));
 
         /* Set the elements to be the external array. */
         obj->SetIndexedPropertiesToExternalArrayData(
@@ -292,17 +337,16 @@ v8::Handle<v8::Value> v8Proxy_freeMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-        i::JSObject* jsobj = i::JSObject::cast(*obj);
+        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
+            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
         );
 
         uint32_t len = static_cast<uint32_t>(array->length());
         uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
 
-        free_machine_code_block(block, len);
+        freeMachineCodeBlock(block, len);
 
         return Undefined();
     }
@@ -317,11 +361,10 @@ v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-        i::JSObject* jsobj = i::JSObject::cast(*obj);
+        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
+            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
         );
 
         uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
@@ -336,60 +379,10 @@ v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
     }
 }
 
-v8::Handle<v8::Value> v8Proxy_allocMemoryBlock(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in allocMemoryBlock -- 1 argument expected\n");
-        exit(1);
-    }
-    else
-    {
-        int len = args[0]->Int32Value();
-        uint8_t* block = static_cast<uint8_t*>(alloc_memory_block(len));
-        v8::Handle<v8::Object> obj = v8::Object::New();
-
-        /* Set the elements to be the external array. */
-        obj->SetIndexedPropertiesToExternalArrayData(
-            block,
-            v8::kExternalUnsignedByteArray,
-            len
-        );
-
-        return obj;
-    }
-}
-
-v8::Handle<v8::Value> v8Proxy_freeMemoryBlock(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in freeMemoryBlock -- 1 argument expected\n");
-        exit(1);
-    }
-    else
-    {
-        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-        i::JSObject* jsobj = i::JSObject::cast(*obj);
-
-        Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
-        );
-
-        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-
-        free_memory_block(block);
-
-        return Undefined();
-    }
-}
-
 // Convert an array of bytes to a value
 template <class T> T arrayToVal(const v8::Value* arrayVal)
 {
-    //i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(arrayVal);
-
-    const v8::Local<v8::Object> jsObj = arrayVal->ToObject();
+    const v8::Handle<v8::Object> jsObj = arrayVal->ToObject();
 
     T val;
 
@@ -403,7 +396,7 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
             exit(1);
         }
 
-        const v8::Local<v8::Value> jsVal = jsObj->Get(i);        
+        const v8::Handle<v8::Value> jsVal = jsObj->Get(i);        
 
         int intVal = jsVal->Int32Value();
 
@@ -453,10 +446,9 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
     }
 
     // Get the address of the block
-    i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-    i::JSObject* blockObj = i::JSObject::cast(*obj);
+    i::Handle<i::JSObject> blockObj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
 
-    Handle<v8::internal::ExternalUnsignedByteArray> array(
+    i::Handle<v8::internal::ExternalUnsignedByteArray> array(
         v8::internal::ExternalUnsignedByteArray::cast(blockObj->elements())
     );
     uint8_t* blockPtr = static_cast<uint8_t*>(array->external_pointer());
@@ -484,6 +476,8 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 }
 
 /*---------------------------------------------------------------------------*/
+
+// Simple FFI.
 
 void printInt(int val)
 {
@@ -518,16 +512,22 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
         address = (FPTR)(exit);
     else if (strcmp(fName, "puts") == 0)
         address = (FPTR)(puts);
-    else if (strcmp(fName, "writeFile") == 0)
-        address = (FPTR)(writeFile);
-    else if (strcmp(fName, "shellCommand") == 0)
-        address = (FPTR)(shellCommand);
-    else if (strcmp(fName, "readConsole") == 0)
-        address = (FPTR)(readConsole);
     else if (strcmp(fName, "printInt") == 0)
         address = (FPTR)(printInt);
     else if (strcmp(fName, "sum2Ints") == 0)
         address = (FPTR)(sum2Ints);
+    else if (strcmp(fName, "writeFile") == 0)
+        address = (FPTR)(writeFile);
+    else if (strcmp(fName, "readFile") == 0)
+        address = (FPTR)(readFile);
+    else if (strcmp(fName, "shellCommand") == 0)
+        address = (FPTR)(shellCommand);
+    else if (strcmp(fName, "readConsole") == 0)
+        address = (FPTR)(readConsole);
+    else if (strcmp(fName, "allocMachineCodeBlock") == 0)
+        address = (FPTR)(allocMachineCodeBlock);
+    else if (strcmp(fName, "freeMachineCodeBlock") == 0)
+        address = (FPTR)(freeMachineCodeBlock);
 
     if (address == NULL)
     {
@@ -759,6 +759,11 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     );
 
     global_template->Set(
+        v8::String::New("readFile"), 
+        v8::FunctionTemplate::New(v8Proxy_readFile)
+    );
+
+    global_template->Set(
         v8::String::New("shellCommand"), 
         v8::FunctionTemplate::New(v8Proxy_shellCommand)
     );
@@ -781,16 +786,6 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("execMachineCodeBlock"),
         v8::FunctionTemplate::New(v8Proxy_execMachineCodeBlock)
-    );
-
-    global_template->Set(
-        v8::String::New("allocMemoryBlock"), 
-        v8::FunctionTemplate::New(v8Proxy_allocMemoryBlock)
-    );
-
-    global_template->Set(
-        v8::String::New("freeMemoryBlock"), 
-        v8::FunctionTemplate::New(v8Proxy_freeMemoryBlock)
     );
 
     global_template->Set(
