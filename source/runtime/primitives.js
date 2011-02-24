@@ -21,7 +21,6 @@ Box an integer value
 function boxInt(intVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:arg intVal pint";
 
     // Box the integer
@@ -34,7 +33,6 @@ Unbox an integer value
 function unboxInt(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret pint";
 
     // Unbox the integer
@@ -47,7 +45,6 @@ Box a raw pointer value
 function boxPtr(rawPtr, tagVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:arg rawPtr rptr";
     "tachyon:arg tagVal pint";
 
@@ -61,7 +58,6 @@ Box a reference value
 function boxRef(refVal, tagVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:arg refVal ref";
     "tachyon:arg tagVal pint";
 
@@ -75,7 +71,6 @@ Unbox a reference value
 function unboxRef(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret ref";
 
     // Box the raw pointer
@@ -88,7 +83,6 @@ Get the reference tag of a boxed value
 function getRefTag(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret pint";
 
     // Mask out the non-tag part
@@ -101,7 +95,6 @@ Test if a boxed value has a specific reference tag
 function boxHasTag(boxVal, tagVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:arg tagVal pint";
     "tachyon:ret bool";
 
@@ -115,7 +108,6 @@ Test if a boxed value is integer
 function boxIsInt(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Test if the value has the int tag
@@ -128,7 +120,6 @@ Test if a boxed value is an object
 function boxIsObj(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Compare the reference tag
@@ -141,7 +132,6 @@ Test if a boxed value is a function
 function boxIsFunc(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Compare the reference tag
@@ -154,7 +144,6 @@ Test if a boxed value is an array
 function boxIsArray(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Compare the reference tag
@@ -167,7 +156,6 @@ Test if a boxed value is an object or an object extension (array or function)
 function boxIsObjExt(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Test that the tag is either array, function or object
@@ -181,7 +169,6 @@ Test if a boxed value is a floating-point value
 function boxIsFloat(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Compare the reference tag
@@ -194,7 +181,6 @@ Test if a boxed value is a string
 function boxIsString(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Compare the reference tag
@@ -207,7 +193,6 @@ Convert a boxed value to a boolean value
 function boxToBool(boxVal)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:ret bool";
 
@@ -253,7 +238,6 @@ Convert a boolean value to a boxed boolean value
 function boolToBox(boolVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:arg boolVal bool";
 
     return boolVal? true:false;
@@ -265,7 +249,6 @@ Convert a boxed value to a primitive value.
 function boxToPrim(boxVal)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
 
     if (boxIsObjExt(boxVal))
@@ -281,7 +264,6 @@ return undefined.
 function boxToNumber(boxVal)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
 
     if (boxIsInt(boxVal))
@@ -358,7 +340,6 @@ Cast a boxed integer value to the pint type
 function pint(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret pint";
 
     // Unbox the integer directly
@@ -371,7 +352,6 @@ Cast a boxed integer value to the i32 type
 function i32(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret i32";
 
     // Unbox the integer and cast it
@@ -384,7 +364,6 @@ Cast a boxed integer value to the u32 type
 function u32(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret u32";
 
     // Unbox the integer and cast it
@@ -397,7 +376,6 @@ Cast a boxed integer value to the i16 type
 function i16(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret i16";
 
     // Unbox the integer and cast it
@@ -410,7 +388,6 @@ Cast a boxed integer value to the u16 type
 function u16(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret u16";
 
     // Unbox the integer and cast it
@@ -423,7 +400,6 @@ Cast a boxed integer value to the i8 type
 function i8(boxVal)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
     "tachyon:ret i8";
 
     // Unbox the integer and cast it
@@ -476,7 +452,6 @@ Create an exception with a given constructor
 function makeError(errorCtor, message)
 {
     "tachyon:static";
-    "tachyon:nothrow";
 
     // FIXME: for now, constructors and exceptions unsupported
     error(message);
@@ -496,7 +471,6 @@ Create a new object with no properties
 function newObject(proto)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
 
     // Allocate space for an object
@@ -530,7 +504,6 @@ Create a new empty array
 function newArray()
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
 
     // Allocate space for an array
@@ -578,7 +551,6 @@ Create a closure for a function
 function makeClos(funcPtr, numCells)
 {
     "tachyon:static"; 
-    "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg funcPtr rptr";
     "tachyon:arg numCells pint";
@@ -628,7 +600,6 @@ Create a mutable closure cell
 function makeCell() 
 { 
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
 
     // Allocate space for the cell
@@ -647,7 +618,6 @@ Allocate the arguments table for the arguments object.
 function allocArgTable(numArgs)
 {
     "tachyon:static"; 
-    "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
     "tachyon:ret ref";
@@ -665,7 +635,6 @@ Create the arguments object.
 function makeArgObj(funcObj, numArgs, argTable)
 {
     "tachyon:static"; 
-    "tachyon:nothrow";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
     "tachyon:arg argTable ref";
@@ -715,7 +684,6 @@ Implementation of HIR less-than instruction
 function lt(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -738,7 +706,6 @@ Non-inline case for HIR less-than instruction
 function ltGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Convert both values to primitives
@@ -780,8 +747,7 @@ Implementation of HIR less-than-or-equal instruction
 function le(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -803,7 +769,6 @@ Non-inline case for HIR less-than-or-equal instruction
 function leGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Convert both values to primitives
@@ -845,8 +810,7 @@ Implementation of HIR greater-than instruction
 function gt(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -868,7 +832,6 @@ Non-inline case for HIR greater-than instruction
 function gtGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Convert both values to primitives
@@ -910,8 +873,7 @@ Implementation of HIR greater-than-or-equal instruction
 function ge(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -933,7 +895,6 @@ Non-inline case for HIR greater-than-or-equal instruction
 function geGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Convert both values to primitives
@@ -975,8 +936,7 @@ Implementation of HIR eq instruction
 function eq(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1006,7 +966,6 @@ Non-inline case for HIR equal instruction
 function eqGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:ret bool";
 
     // Convert both values to primitives
@@ -1048,8 +1007,7 @@ Implementation of HIR ne instruction
 function ne(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // Perform the negation of the equality comparison
     return !eq(v1, v2);
 }
@@ -1060,8 +1018,7 @@ Implementation of HIR strict-equality instruction
 function seq(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are floating-point
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
@@ -1083,8 +1040,7 @@ Implementation of HIR strict-inequality instruction
 function nseq(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are floating-point
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
@@ -1106,8 +1062,7 @@ Implementation of the HIR add instruction
 function add(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1138,8 +1093,7 @@ Non-inline overflow case for HIR add instruction
 function addOverflow(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
-
+    
     // TODO
     return UNDEFINED;
 }
@@ -1150,8 +1104,7 @@ Non-inline general case for HIR add instruction
 function addGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
-
+    
     // If the left value is a string
     if (boxIsString(v1))
     {
@@ -1194,8 +1147,7 @@ Implementation of the HIR sub instruction
 function sub(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-    
+        
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1226,8 +1178,7 @@ Non-inline overflow case for HIR sub instruction
 function subOverflow(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
-
+    
     // TODO
     return UNDEFINED;
 }
@@ -1238,8 +1189,7 @@ Non-inline general case for HIR sub instruction
 function subGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:nothrow";
-
+    
     // TODO
     return UNDEFINED;
 }
@@ -1250,8 +1200,7 @@ Implementation of the HIR mul instruction
 function mul(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1286,8 +1235,7 @@ Implementation of the HIR div instruction
 function div(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1315,8 +1263,7 @@ Implementation of the HIR div instruction
 function mod(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1337,8 +1284,7 @@ Unary bitwise negation operator
 function not(v) 
 { 
     "tachyon:inline";
-    "tachyon:nothrow";
-    
+        
     // If the value is an immediate integer
     if (boxIsInt(v))
     {
@@ -1358,8 +1304,7 @@ Bitwise AND primitive
 function and(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1380,8 +1325,7 @@ Bitwise OR primitive
 function or(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1402,8 +1346,7 @@ Bitwise XOR primitive
 function xor(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1424,8 +1367,7 @@ Bitwise left shift primitive
 function lsft(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1446,8 +1388,7 @@ Bitwise right shift primitive
 function rsft(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1468,8 +1409,7 @@ Bitwise unsigned right shift primitive
 function ursft(v1, v2)
 {
     "tachyon:inline";
-    "tachyon:nothrow";
-
+    
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1490,8 +1430,7 @@ Logical negation operator
 function logNot(v) 
 { 
     "tachyon:static";
-    "tachyon:nothrow";
-
+    
     var boolVal = boxToBool(v);
 
     return boolVal? false:true;
@@ -1503,7 +1442,6 @@ Typeof unary operator
 function typeOf(val)
 { 
     "tachyon:static";
-    "tachyon:nothrow";
     "tachyon:noglobal";
 
     if (boxIsInt(val) || boxIsFloat(val))
@@ -2436,8 +2374,7 @@ Delete a property from a value
 function delPropVal(obj, propName)
 { 
     "tachyon:static"; 
-    "tachyon:nothrow";
-
+    
     // If the property name is not integer or string, convert it to a string
     if (boxIsInt(propName) === FALSE_BOOL &&
         boxIsString(propName) === FALSE_BOOL)
@@ -2475,7 +2412,6 @@ Used to enumerate properties in a for-in loop
 function getPropNames(obj)
 { 
     "tachyon:static"; 
-    "tachyon:nothrow"; 
     "tachyon:noglobal";
 
     assert (
@@ -2610,8 +2546,7 @@ Implementation of the "in" operator
 function inOp(x, y) 
 { 
     "tachyon:static"; 
-    "tachyon:nothrow";
-
+    
     return boolToBox(hasPropVal(y, x));
 }
 
@@ -2621,8 +2556,7 @@ Implementation of the "instanceof" operator
 function instanceOf(obj, ctor)
 { 
     "tachyon:static";
-    "tachyon:nothrow";
-
+    
     if (boxIsObj(obj) === FALSE_BOOL)
         return false;
 

@@ -565,12 +565,6 @@ function getIRFuncObj(
             newFunc.staticLink = true;
         }
 
-        // If this is a no throw annotation
-        else if (tokens.length === 1 && tokens[0] === 'nothrow')
-        {
-            newFunc.noThrow = true;
-        }
-
         // If this is a no global accesses annotation
         else if (tokens.length === 1 && tokens[0] === 'noglobal')
         {
@@ -620,7 +614,7 @@ function getIRFuncObj(
         // Otherwise, if the annotation was not recognized
         else
         {
-            throw 'unrecognized annotation: "' + annotation + '"';
+            error('unrecognized annotation: "' + annotation + '"');
         }
     }
 
@@ -3855,8 +3849,8 @@ and throw targets and splice this into the current context
 */
 function insertCallIR(context, instr)
 {
-    // If this call may throw exceptions
-    if (!(instr.uses[0] instanceof IRFunction) || !instr.uses[0].noThrow)
+    // If we are in a try block
+    if (context.throwList !== null)
     {
         // Create a basic block for the call continuation
         var contBlock = context.cfg.getNewBlock(instr.mnemonic + '_cont');
@@ -3864,20 +3858,16 @@ function insertCallIR(context, instr)
         // Set the continue target for the instruction
         instr.setContTarget(contBlock);
 
-        // If we are in a try block
-        if (context.throwList !== null)
-        {
-            // Create a new context and bridge it
-            var newCtx = context.pursue(null);
-            newCtx.bridge();
+        // Create a new context and bridge it
+        var newCtx = context.pursue(null);
+        newCtx.bridge();
 
-            // Copy the local map so as to not make available
-            // new bindings after the throw
-            newCtx.localMap = newCtx.localMap.copy();
+        // Copy the local map so as to not make available
+        // new bindings after the throw
+        newCtx.localMap = newCtx.localMap.copy();
 
-            // Add the new context to the list of throw contexts
-            context.throwList.push(newCtx);
-        }
+        // Add the new context to the list of throw contexts
+        context.throwList.push(newCtx);
 
         // Add the call instruction to the current context
         context.addInstr(instr);
