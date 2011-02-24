@@ -81,7 +81,7 @@ function tachyonRepl()
             ir,
             config.hostParams,
             [],
-            'int'
+            new CIntAsBox()
         );
 
         bridge(config.hostParams.ctxPtr);
@@ -164,7 +164,7 @@ function tachyonRepl()
                 ir,
                 config.hostParams,
                 [],
-                'int'
+                new CIntAsBox()
             );
 
             bridge(config.hostParams.ctxPtr);

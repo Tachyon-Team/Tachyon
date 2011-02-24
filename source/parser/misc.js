@@ -10,7 +10,7 @@
 
 function read_file(filename)
 {
-    return read(filename);
+    return readFile(filename);
 }
 
 //-----------------------------------------------------------------------------

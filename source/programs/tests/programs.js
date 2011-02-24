@@ -18,7 +18,7 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
             isInt(inputArgs[i]),
             'only integer arguments supported for now'
         );
-        argTypes.push('int');
+        argTypes.push(new CIntAsBox());
     }
 
     if (compParams === undefined)
@@ -44,7 +44,7 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
             ir,
             config.hostParams,
             [],
-            'int'
+            new CIntAsBox()
         );
 
         // Execute the compilation unit to initialize it
@@ -66,7 +66,7 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
         funcIR,
         config.hostParams,
         argTypes,
-        'int'
+        new CIntAsBox()
     );
 
     // Call the function with the given arguments
