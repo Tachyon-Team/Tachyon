@@ -743,10 +743,7 @@ allocator.interval.prototype.setStartPos = function (pos)
 */
 allocator.interval.prototype.addRange = function (startPos, endPos)
 {
-    var i = 0;
-    var current = null;
     var newRange = allocator.range(startPos, endPos);
-    var deleteNb, insertPos;
 
     // Empty case
     if (this.ranges.length === 0)
@@ -754,16 +751,36 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
         this.ranges.push(newRange);
         return;
     }
-
-    // Fast case for adding a range at the end
+    
     const lastRange = this.ranges[this.ranges.length - 1];
-    if (lastRange.endPos < startPos)
+    // Fast case for merging with a range at the end
+    if (lastRange.endPos === startPos)
+    {
+        lastRange.endPos = endPos;
+        return;
+    } 
+    // Fast case for adding a range at the end 
+    else if (lastRange.endPos < startPos)
     {
         this.ranges.push(newRange);
         return;
     }
 
 
+    // Fast case for merging with a range at the beginning
+    const firstRange = this.ranges[0];
+    if (endPos === firstRange.startPos)
+    {
+        firstRange.startPos = startPos;
+        return;
+    }
+
+    var i = 0;
+    var current = null;
+    var deleteNb, insertPos;
+
+    // FIXME: Should be logarithmic instead of linear since
+    //        ranges are sorted and mutually exclusives
     // Find the first range which is not strictly
     // less than the new range.
     for (i=0; i < this.ranges.length; ++i)
@@ -1628,7 +1645,7 @@ allocator.liveIntervals = function (cfg, order, params)
         }
 
         // Store the live temp set at the block entry
-        block.regAlloc.liveIn = live.copy();
+        block.regAlloc.liveIn = live;
     }
 
     var liveIntervals = [];
