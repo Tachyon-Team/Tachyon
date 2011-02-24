@@ -48,7 +48,7 @@ backend.compileIRToCB = function (ir, params)
 
     for (k=0; k<fcts.length; ++k)
     {
-        if (params.printRegAlloc === true)
+        //if (params.printRegAlloc === true)
             print("Translation of function: '" + fcts[k].funcName + "'");
 
         // Add register allocation information on the function
@@ -57,7 +57,7 @@ backend.compileIRToCB = function (ir, params)
 
         cfg = fcts[k].virginCFG.copy();
 
-        //print("Order blocks");
+        print("Order blocks");
         order = allocator.orderBlocks(cfg);
         allocator.numberInstrs(cfg, order, params);
 
@@ -98,9 +98,9 @@ backend.compileIRToCB = function (ir, params)
             print(cfg.toString(function () { return order; }, undefined, undefined, 
                            lnPfxFormatFn));
 
-        //print("Computing live intervals");
+        print("Computing live intervals");
         liveIntervals = allocator.liveIntervals(cfg, order, params);
-        //print("Computing fixed intervals");
+        print("Computing fixed intervals");
         fixedIntervals = allocator.fixedIntervals(order, params);
 
         // Print intervals before allocation
@@ -114,18 +114,18 @@ backend.compileIRToCB = function (ir, params)
 
         mems = irToAsm.spillAllocator(params);
 
-        //print("Linear Scan");
+        print("Linear Scan");
         allocator.linearScan(params, 
                              liveIntervals, 
                              mems, 
                              fixedIntervals);
 
-        //print("Assign");
+        print("Assign");
         // Add physical registers and memory location to operands
         // of every instruction
         allocator.assign(cfg, params); 
     
-        //print("Resolve");
+        print("Resolve");
         // SSA form deconstruction and linear scan resolution 
         order = allocator.resolve(cfg, liveIntervals, order, params);
 
@@ -188,10 +188,13 @@ backend.compileIRToCB = function (ir, params)
             print();
         }
     }
-
+    
+    print("Assemble");
     // Add the initialization code at the beginning
     // and reassemble
     translator.asm.codeBlock.assemble();
+
+    print("done");
 
     return translator.asm.codeBlock;
 };
