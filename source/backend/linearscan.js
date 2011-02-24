@@ -1465,7 +1465,7 @@ allocator.liveIntervals = function (cfg, order, params)
         var block = order[i];
 
         // Variable for the currently live set
-        var live = [];
+        var live = new HashSet();
 
         // For each successor
         for (var j = 0; j < block.succs.length; ++j)
@@ -1484,8 +1484,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 // Add the phi node's input from this block to the live set
                 if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
-                    arraySetAdd(live, instr.getIncoming(block));
-                    //live.add(instr.getIncoming(block));
+                    live.add(instr.getIncoming(block));
                 }
             }
 
@@ -1499,15 +1498,13 @@ allocator.liveIntervals = function (cfg, order, params)
                    "Invalid live or liveIn set");
                 
             // Add all live temps at the successor input to the live set
-            live = arraySetUnion(live, succ.regAlloc.liveIn);
-            //live.union(succ.regAlloc.liveIn);
+            live.union(succ.regAlloc.liveIn);
         }
         
         // For each instruction in the live set
-        for (var j = 0; j < live.length; ++j)
+        for (var instrItr = live.getItr(); instrItr.valid(); instrItr.next())
         {
-            var instr = live[j];
-           
+            var instr = instrItr.get();
             // Add a live range spanning this block to its interval
             instr.regAlloc.interval.addRange(
                 block.regAlloc.from,
@@ -1535,8 +1532,7 @@ allocator.liveIntervals = function (cfg, order, params)
                     instr.regAlloc.outRegHint(instr, params);
 
                 // Remove the instruction from the live set
-                arraySetRem(live, instr);
-                //live.rem(instr);
+                live.rem(instr);
             }
 
             // Input operands for phi instructions are added to the live set
@@ -1597,8 +1593,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 //print( use.regAlloc.interval);
 
                 // Add this input operand to the live set
-                arraySetAdd(live, use);
-                //live.add(use);
+                live.add(use);
             }
         }
 
@@ -1610,8 +1605,7 @@ allocator.liveIntervals = function (cfg, order, params)
             if (!(instr instanceof PhiInstr))
                 break;
 
-            arraySetRem(live, instr);
-            //live.rem(instr);
+            live.rem(instr);
         }
 
         // Get the last loop end associated with this block, if any
@@ -1622,10 +1616,9 @@ allocator.liveIntervals = function (cfg, order, params)
         {
             // For each temp in the live set at the block entry 
             // (live before the block)
-            for (var j = 0; j < live.length; ++j)
+            for (var instrItr = live.getItr(); instrItr.valid(); instrItr.next())
             {
-                var instr = live[j];
-
+                var instr = instrItr.get();
                 // Add a live range spanning the whole loop
                 instr.regAlloc.interval.addRange(
                     block.regAlloc.from,
@@ -1635,7 +1628,7 @@ allocator.liveIntervals = function (cfg, order, params)
         }
 
         // Store the live temp set at the block entry
-        block.regAlloc.liveIn = live;
+        block.regAlloc.liveIn = live.copy();
     }
 
     var liveIntervals = [];

@@ -42,7 +42,7 @@ Add a value to the set
 */
 HashSet.prototype.add = function (val)
 {
-    this.hashMap.addItem(val, val);
+    this.hashMap.setItem(val, val);
     this.length = this.hashMap.numItems;
     return this;
 };
@@ -178,5 +178,27 @@ HashSet.prototype.copy = function ()
     var h = Object.create(this);
     h.hashMap = this.hashMap.copy(); 
     return h;
+};
+
+/**
+Iterate through all items
+*/
+HashSet.prototype.getItr = function ()
+{
+    // Redefine the get function because we only need to 
+    // iterate through keys
+    function get()
+    {
+        assert(
+            this.valid(),
+            'cannot get current list item, iterator not valid'
+        );
+
+        return this.map.array[this.index];
+    }
+
+    var itr = this.hashMap.getItr();
+    itr.get = get;
+    return itr;
 };
 
