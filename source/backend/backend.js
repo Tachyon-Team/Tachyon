@@ -194,6 +194,13 @@ backend.compileIRToCB = function (ir, params)
     // and reassemble
     translator.asm.codeBlock.assemble();
 
+    for (k=0; k<fcts.length; ++k)
+    {
+        allocator.clean(fcts[k]);
+        //fcts[k].virginCFG = null;
+        fcts[k].finalCFG = null;
+    }
+
     print("done");
 
     return translator.asm.codeBlock;

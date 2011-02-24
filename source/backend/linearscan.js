@@ -2663,6 +2663,29 @@ allocator.validate = function (cfg, params)
 };
 
 /**
+Clean all the intermediairies data structures kept on cfg, blocks and
+instructions.
+*/
+allocator.clean = function (fct)
+{
+    const cfg = fct.virginCFG;
+
+    cfg.getBlockItr().forEach(function (block) 
+    {
+        block.getInstrItr().forEach(function (instr)
+        {
+            instr.regAlloc = undefined;
+        });
+
+        block.regAlloc = undefined;
+    });
+
+    cfg.regAlloc = undefined;
+};
+
+
+
+/**
     Mapping from memory slots and registers to IRValues.
 */
 allocator.slotMapping = function (backendCfg)
