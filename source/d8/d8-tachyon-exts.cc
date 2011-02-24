@@ -277,7 +277,7 @@ typedef union
     uint8_t* data_ptr;
 }   data_to_fn_ptr_caster;
 
-uint8_t *alloc_machine_code_block(int size)
+uint8_t* allocMachineCodeBlock(int size)
 {
     void* p = mmap(
         0,
@@ -297,21 +297,9 @@ uint8_t *alloc_machine_code_block(int size)
     return (uint8_t*)p;
 }
 
-void free_machine_code_block(uint8_t* code, int size)
+void freeMachineCodeBlock(uint8_t* code, int size)
 {
     munmap(code, size);
-}
-
-uint8_t *alloc_memory_block(int size)
-{
-    void* block = malloc(size);
-
-    return (uint8_t*)block;
-}
-
-void free_memory_block(uint8_t* block)
-{
-    free(block);
 }
 
 v8::Handle<v8::Value> v8Proxy_allocMachineCodeBlock(const v8::Arguments& args)
@@ -323,10 +311,11 @@ v8::Handle<v8::Value> v8Proxy_allocMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        int len = args[0]->Int32Value();
-        uint8_t* block = static_cast<uint8_t*>(alloc_machine_code_block(len));
         v8::Handle<v8::Object> obj = v8::Object::New();
         i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*obj);
+
+        int len = args[0]->Int32Value();
+        uint8_t* block = static_cast<uint8_t*>(allocMachineCodeBlock(len));
 
         /* Set the elements to be the external array. */
         obj->SetIndexedPropertiesToExternalArrayData(
@@ -348,17 +337,16 @@ v8::Handle<v8::Value> v8Proxy_freeMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-        i::JSObject* jsobj = i::JSObject::cast(*obj);
+        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
+            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
         );
 
         uint32_t len = static_cast<uint32_t>(array->length());
         uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
 
-        free_machine_code_block(block, len);
+        freeMachineCodeBlock(block, len);
 
         return Undefined();
     }
@@ -373,11 +361,10 @@ v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-        i::JSObject* jsobj = i::JSObject::cast(*obj);
+        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
+            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
         );
 
         uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
@@ -392,60 +379,10 @@ v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
     }
 }
 
-v8::Handle<v8::Value> v8Proxy_allocMemoryBlock(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in allocMemoryBlock -- 1 argument expected\n");
-        exit(1);
-    }
-    else
-    {
-        int len = args[0]->Int32Value();
-        uint8_t* block = static_cast<uint8_t*>(alloc_memory_block(len));
-        v8::Handle<v8::Object> obj = v8::Object::New();
-
-        /* Set the elements to be the external array. */
-        obj->SetIndexedPropertiesToExternalArrayData(
-            block,
-            v8::kExternalUnsignedByteArray,
-            len
-        );
-
-        return obj;
-    }
-}
-
-v8::Handle<v8::Value> v8Proxy_freeMemoryBlock(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in freeMemoryBlock -- 1 argument expected\n");
-        exit(1);
-    }
-    else
-    {
-        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-        i::JSObject* jsobj = i::JSObject::cast(*obj);
-
-        Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
-        );
-
-        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-
-        free_memory_block(block);
-
-        return Undefined();
-    }
-}
-
 // Convert an array of bytes to a value
 template <class T> T arrayToVal(const v8::Value* arrayVal)
 {
-    //i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(arrayVal);
-
-    const v8::Local<v8::Object> jsObj = arrayVal->ToObject();
+    const v8::Handle<v8::Object> jsObj = arrayVal->ToObject();
 
     T val;
 
@@ -459,7 +396,7 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
             exit(1);
         }
 
-        const v8::Local<v8::Value> jsVal = jsObj->Get(i);        
+        const v8::Handle<v8::Value> jsVal = jsObj->Get(i);        
 
         int intVal = jsVal->Int32Value();
 
@@ -509,10 +446,9 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
     }
 
     // Get the address of the block
-    i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-    i::JSObject* blockObj = i::JSObject::cast(*obj);
+    i::Handle<i::JSObject> blockObj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
 
-    Handle<v8::internal::ExternalUnsignedByteArray> array(
+    i::Handle<v8::internal::ExternalUnsignedByteArray> array(
         v8::internal::ExternalUnsignedByteArray::cast(blockObj->elements())
     );
     uint8_t* blockPtr = static_cast<uint8_t*>(array->external_pointer());
@@ -576,6 +512,10 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
         address = (FPTR)(exit);
     else if (strcmp(fName, "puts") == 0)
         address = (FPTR)(puts);
+    else if (strcmp(fName, "printInt") == 0)
+        address = (FPTR)(printInt);
+    else if (strcmp(fName, "sum2Ints") == 0)
+        address = (FPTR)(sum2Ints);
     else if (strcmp(fName, "writeFile") == 0)
         address = (FPTR)(writeFile);
     else if (strcmp(fName, "readFile") == 0)
@@ -584,10 +524,10 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
         address = (FPTR)(shellCommand);
     else if (strcmp(fName, "readConsole") == 0)
         address = (FPTR)(readConsole);
-    else if (strcmp(fName, "printInt") == 0)
-        address = (FPTR)(printInt);
-    else if (strcmp(fName, "sum2Ints") == 0)
-        address = (FPTR)(sum2Ints);
+    else if (strcmp(fName, "allocMachineCodeBlock") == 0)
+        address = (FPTR)(allocMachineCodeBlock);
+    else if (strcmp(fName, "freeMachineCodeBlock") == 0)
+        address = (FPTR)(freeMachineCodeBlock);
 
     if (address == NULL)
     {
@@ -846,16 +786,6 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("execMachineCodeBlock"),
         v8::FunctionTemplate::New(v8Proxy_execMachineCodeBlock)
-    );
-
-    global_template->Set(
-        v8::String::New("allocMemoryBlock"), 
-        v8::FunctionTemplate::New(v8Proxy_allocMemoryBlock)
-    );
-
-    global_template->Set(
-        v8::String::New("freeMemoryBlock"), 
-        v8::FunctionTemplate::New(v8Proxy_freeMemoryBlock)
     );
 
     global_template->Set(
