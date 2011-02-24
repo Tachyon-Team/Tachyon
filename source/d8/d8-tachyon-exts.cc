@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-extensions.cc", Time-stamp: <2011-01-20 15:48:04 feeley> */
+/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-02-24 10:12:48 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -8,8 +8,8 @@
 /*===========================================================================*/
 
 /*
- * This file contains the extensions to the D8 executable.  It implements
- * some auxiliary functions for the Tachyon compiler:
+ * This file contains the extensions to the D8 executable needed by the
+ * Tachyon compiler.  It implements some auxiliary functions, in particular:
  *
  * - writeFile("filename", "text")  save text to the file
  * - allocMachineCodeBlock(n)       allocate a machine code block of length n
@@ -22,16 +22,20 @@
  *    var block = allocMachineCodeBlock(2);
  *    block[0] = 0x90;  // x86 "nop"
  *    block[1] = 0xc3;  // x86 "ret"
- *    execMachineCodeBlock(block);
+ *    execMachineCodeBlock(block);  // execute the code
  */
 
 /*
- * To extend D8, the file src/d8.cc must me modified, followed by a
+ * To extend D8, the file <V8>/src/d8.cc must be modified as explained
+ * below, the d8-tachyon-exts.cc file must be copied (or soft linked) to
+ * the <V8>/src directory, and the following command must be executed in
+ * the <V8> directory:
  *
  *   % scons d8
  *
  * There are two modifications; just before and inside of the definition of
- * the method Shell::Initialize().  The code should be modified like this:
+ * the method Shell::Initialize() in <V8>/src/d8.cc .  The code should be
+ * modified like this:
  *
  *  #include "d8-tachyon-exts.cc"    // <====== ADDED!
  *
@@ -74,7 +78,7 @@ v8::Handle<v8::Value> v8Proxy_writeFile(const v8::Arguments& args)
 {
     if (args.Length() != 2)
     {
-        printf("Error in WriteFile -- 2 arguments expected\n");
+        printf("Error in writeFile -- 2 arguments expected\n");
         exit(1);
     }
     else
@@ -96,7 +100,7 @@ char* shellCommand(const char* command)
 
     if (!pipeFile)
     {
-        printf("Error in openPipe -- failed to execute command \"%s\"\n", command);
+        printf("Error in shellCommand -- failed to execute command \"%s\"\n", command);
         exit(1);        
     }
 
@@ -111,7 +115,7 @@ char* shellCommand(const char* command)
 
         if (ferror(pipeFile))
         {
-            printf("Error in openPipe -- failed to read output");
+            printf("Error in shellCommand -- failed to read output");
             exit(1);        
         }
 
@@ -131,7 +135,7 @@ v8::Handle<v8::Value> v8Proxy_shellCommand(const v8::Arguments& args)
 {
     if (args.Length() != 1)
     {
-        printf("Error in openPipe -- 1 argument expected\n");
+        printf("Error in shellCommand -- 1 argument expected\n");
         exit(1);
     }
 
@@ -484,6 +488,8 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 }
 
 /*---------------------------------------------------------------------------*/
+
+// Simple FFI.
 
 void printInt(int val)
 {
