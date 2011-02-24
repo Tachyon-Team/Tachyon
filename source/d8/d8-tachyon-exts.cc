@@ -292,7 +292,8 @@ v8::Handle<v8::Value> v8Proxy_freeMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*args[0]);
+        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
+        i::JSObject* jsobj = i::JSObject::cast(*obj);
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
             v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
@@ -316,7 +317,8 @@ v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*args[0]);
+        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
+        i::JSObject* jsobj = i::JSObject::cast(*obj);
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
             v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
@@ -346,7 +348,6 @@ v8::Handle<v8::Value> v8Proxy_allocMemoryBlock(const v8::Arguments& args)
         int len = args[0]->Int32Value();
         uint8_t* block = static_cast<uint8_t*>(alloc_memory_block(len));
         v8::Handle<v8::Object> obj = v8::Object::New();
-        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*obj);
 
         /* Set the elements to be the external array. */
         obj->SetIndexedPropertiesToExternalArrayData(
@@ -368,7 +369,8 @@ v8::Handle<v8::Value> v8Proxy_freeMemoryBlock(const v8::Arguments& args)
     }
     else
     {
-        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*args[0]);
+        i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
+        i::JSObject* jsobj = i::JSObject::cast(*obj);
 
         Handle<v8::internal::ExternalUnsignedByteArray> array(
             v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
@@ -422,7 +424,7 @@ template <class T> v8::Handle<v8::Value> valToArray(T val)
 {
     // Create an array to store the pointer data
     i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(val));
-    ASSERT(array->IsJSArray() && array->HasFastElements());
+    ASSERT(ptrArray->IsJSArray() && ptrArray->HasFastElements());
 
     // Write the value into the array, byte-per-byte
     for (size_t i = 0; i < sizeof(val); ++i) 
@@ -451,7 +453,9 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
     }
 
     // Get the address of the block
-    i::Handle<i::JSObject> blockObj = v8::Utils::OpenHandle(*args[0]);
+    i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
+    i::JSObject* blockObj = i::JSObject::cast(*obj);
+
     Handle<v8::internal::ExternalUnsignedByteArray> array(
         v8::internal::ExternalUnsignedByteArray::cast(blockObj->elements())
     );
