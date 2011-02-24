@@ -53,10 +53,6 @@
 
 /*---------------------------------------------------------------------------*/
 
-//
-// TODO: implement raw C functions for file access, command-line, etc.
-//
-
 int writeFile(const char* fileName, const char* content)
 {
     FILE *out = fopen(fileName, "w");
@@ -92,6 +88,62 @@ v8::Handle<v8::Value> v8Proxy_writeFile(const v8::Arguments& args)
     }
 
     return v8::Undefined();
+}
+
+char* readFile(const char* fileName)
+{
+    FILE* inFile = fopen(fileName, "r");
+    if (inFile == NULL)
+    {
+        printf("Error in readFile -- can't open file\n");
+        exit(1);
+    }
+
+    char buffer[255];
+
+    char* outStr = NULL;
+    size_t strLen = 0;
+
+    while (!feof(inFile))
+    {
+        int numRead = fread(buffer, 1, sizeof(buffer), inFile);
+
+        if (ferror(inFile))
+        {
+            printf("Error in readFile -- failed to read file");
+            exit(1);        
+        }
+
+        outStr = (char*)realloc(outStr, strLen + numRead + 1);
+        memcpy(outStr + strLen, buffer, numRead);
+        strLen += numRead;
+    }
+
+    outStr[strLen] = '\0';
+
+    pclose(inFile);
+
+    return outStr;
+}
+
+v8::Handle<v8::Value> v8Proxy_readFile(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in readFile -- 1 argument expected\n");
+        exit(1);
+    }
+
+    v8::String::Utf8Value fileStrObj(args[0]);  
+    const char* fileName = *fileStrObj;
+
+    char* outStr = readFile(fileName);
+
+    v8::Local<v8::String> v8Str = v8::String::New(outStr);
+
+    delete [] outStr;
+
+    return v8Str;
 }
 
 char* shellCommand(const char* command)
@@ -526,6 +578,8 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
         address = (FPTR)(puts);
     else if (strcmp(fName, "writeFile") == 0)
         address = (FPTR)(writeFile);
+    else if (strcmp(fName, "readFile") == 0)
+        address = (FPTR)(readFile);
     else if (strcmp(fName, "shellCommand") == 0)
         address = (FPTR)(shellCommand);
     else if (strcmp(fName, "readConsole") == 0)
@@ -762,6 +816,11 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("writeFile"), 
         v8::FunctionTemplate::New(v8Proxy_writeFile)
+    );
+
+    global_template->Set(
+        v8::String::New("readFile"), 
+        v8::FunctionTemplate::New(v8Proxy_readFile)
     );
 
     global_template->Set(

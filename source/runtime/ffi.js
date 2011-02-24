@@ -81,7 +81,3 @@ function cStringToBox(strPtr)
     return getTableStr(strObj);
 }
 
-//
-// TODO: pointer to/from byte array conversion
-//
-

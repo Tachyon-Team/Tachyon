@@ -94,7 +94,7 @@ bench.loadOutput = function (dataFile, loadConfig)
     this.dataFile = dataFile;
 
     // Parse JSON code from the output file
-    var out = JSON.parse(read(dataFile));
+    var out = JSON.parse(readFile(dataFile));
 
     // Store the config file path
     bench.cfgFile = out.cfgFile;
@@ -146,7 +146,7 @@ bench.loadConfig = function (cfgFile)
         var inclFile = value.include;
 
         // Parse JSON code from the include file
-        var obj = JSON.parse(read(inclFile), reviver);
+        var obj = JSON.parse(readFile(inclFile), reviver);
 
         return obj;
     }
@@ -225,7 +225,7 @@ bench.loadConfig = function (cfgFile)
     }
 
     // Parse JSON code from the config file
-    var cfg = JSON.parse(read(cfgFile), reviver);
+    var cfg = JSON.parse(readFile(cfgFile), reviver);
 
     // Store the path to the config file
     bench.cfgFile = cfgFile;
@@ -276,7 +276,7 @@ bench.runBenchs = function ()
         var avail = false;
         try
         {
-            read(dataFile);
+            readFile(dataFile);
         }
         catch (e)
         {
