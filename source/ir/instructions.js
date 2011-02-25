@@ -1504,11 +1504,11 @@ var CallFuncInstr = instrMaker(
 
             for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
             {
-                assert (
+                 assert (
                     inputVals[i].type === funcPtr.argTypes[i-NUM_BASE_ARGS],
                     'argument type does not match (' + 
                     funcPtr.argVars[i-NUM_BASE_ARGS].toString() + ' = ' +
-                    inputVals[i].type + ') in ' + funcPtr.funcName
+                    inputVals[i].type + ') for ' + funcPtr.funcName
                 );
             }
 

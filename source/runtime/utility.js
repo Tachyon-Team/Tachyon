@@ -76,8 +76,9 @@ function printTachyonState()
 
     var ctx = iir.get_ctx();
 
-    var allocptr = get_ctx_allocptr(ctx);
-    var heapSize = (allocptr - ctx) / pint(1024);
+    var allocPtr = get_ctx_allocptr(ctx);
+    var heapStart = get_ctx_heapstart(ctx);
+    var heapSize = (allocPtr - heapStart) / pint(1024);
 
     var strtbl = get_ctx_strtbl(ctx);
     var numStrings = iir.icast(IRType.pint, get_strtbl_numstrs(strtbl));

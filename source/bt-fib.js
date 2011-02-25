@@ -1,7 +1,17 @@
+printTachyonState();
+
 print("Running after initialization of boostrap code");
 print("x86: " + x86);
 print("asm: " + asm);
+print("IRType: " + IRType);
 print("IRType.box: " + IRType.box);
+
+print('Initializing Tachyon');
+
+// Initialize Tachyon in minimal mode
+initialize(false);
+
+printTachyonState();
 
 /*
 try

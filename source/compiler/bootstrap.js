@@ -334,7 +334,8 @@ function initRuntime(params)
     print('Initializing run-time');
 
     // Allocate a 64MB heap
-    var heapBlock = allocMachineCodeBlock(Math.pow(2, 26));
+    var heapSize = Math.pow(2, 26);
+    var heapBlock = allocMachineCodeBlock(heapSize);
     var heapAddr = getBlockAddr(heapBlock, 0);
 
     // Get the heap initialization function
@@ -344,12 +345,16 @@ function initRuntime(params)
     var initHeapBridge = makeBridge(
         initHeap,
         params,
-        [new CPtrAsPtr()],
+        [new CPtrAsPtr(), new CIntAsInt()],
         new CPtrAsPtr()
     );
 
     // Initialize the heap
-    var ctxPtr = initHeapBridge(asm.address([0,0,0,0]).getBytes(), heapAddr);
+    var ctxPtr = initHeapBridge(
+        asm.address([0,0,0,0]).getBytes(),
+        heapAddr,
+        heapSize
+    );
 
     // Store the context pointer in the compilation parameters
     params.ctxPtr = ctxPtr;

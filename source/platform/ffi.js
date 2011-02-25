@@ -138,7 +138,8 @@ or on conversion.
 function CIntAsInt(irIntType)
 {
     assert (
-        irIntType === undefined || irIntType instanceof IRType,
+        irIntType === undefined || 
+        (irIntType instanceof IRType && irIntType.isInt()),
         'Invalid IR integer type specified'
     );
 
@@ -163,12 +164,12 @@ Generate code for a conversion from a C value
 */
 CIntAsInt.prototype.cToJS = function (inVar, jsIRType)
 {
-    assert (
-        this.jsIRType !== undefined || jsIRType !== undefined,
-        'JS IR type not specified'
-    );
-
     jsIRType = (jsIRType !== undefined)? jsIRType:this.jsIRType;
+
+    assert (
+        jsIRType instanceof IRType && jsIRType.isInt(),
+        'JS IR type not specified or non-integer'
+    );
 
     return 'iir.icast(IRType.' + jsIRType + ', ' + inVar + ')';
 };
@@ -229,6 +230,35 @@ Generate code for a conversion from a C value
 CPtrAsBox.prototype.cToJS = function (inVar)
 {
     return 'iir.icast(IRType.rptr, ' + inVar + ')';
+};
+
+/**
+C pointer to byte array mapping.
+*/
+function CPtrAsBytes()
+{
+    this.cTypeName = 'void*';
+
+    this.cIRType = IRType.rptr;
+
+    this.jsIRType = IRType.box;
+}
+CPtrAsBytes.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CPtrAsBytes.prototype.jsToC = function (inVar)
+{
+    return 'byteArrayToPtr(' + inVar + ')';
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CPtrAsBytes.prototype.cToJS = function (inVar)
+{
+    return 'ptrToByteArray(' + inVar + ')';
 };
 
 /**
@@ -627,13 +657,13 @@ function makeBridge(
     var cRetType = retType.cTypeName;
 
     // Get pointer to entry point of compiled wrapper function
-    var funcAddr = wrapper.linking.getEntryPoint('default').getAddr();
+    var funcPtr = wrapper.linking.getEntryPoint('default').getAddr();
 
     // Callable bridge function
     function bridge(ctxPtr)
     {
         //print(ctxPtr);
-        //print(funcAddr.getBytes());
+        //print(funcPtr.getBytes());
 
         var argArray = [];
         for (var i = 1; i < arguments.length; ++i)
@@ -644,7 +674,7 @@ function makeBridge(
             [
                 cArgTypes,
                 cRetType,
-                funcAddr.getBytes(),
+                funcPtr.getBytes(),
                 ctxPtr
             ].concat(argArray)
         );
@@ -655,6 +685,118 @@ function makeBridge(
     };
 
     return bridge;
+}
+
+// If we are running inside Tachyon
+if (config.inTachyon)
+{
+    /**
+    Call a Tachyon function through a C FFI wrapper
+    */
+    var callTachyonFFI = function (cArgTypes, cRetType, funcPtrBytes, ctxPtrBytes)
+    {
+        "tachyon:noglobal";
+
+        // Collect the call arguments into an array
+        var argArray = [];
+        for (var i = 4; i < arguments.length; ++i)
+            argArray.push(arguments[i]);
+
+        // Get raw pointer values for the function address and context pointer
+        var funcPtr = byteArrayToPtr(funcPtrBytes);
+        var ctxPtr = byteArrayToPtr(ctxPtrBytes);
+
+        // Get the number of arguments
+        var numArgs = unboxInt(cArgTypes.length);
+
+        // Compute the size of the argument data
+        var argDataSize = numArgs * PTR_NUM_BYTES;
+
+        // Allocate memory for the argument data
+        var argData = malloc(argDataSize);
+
+        // Current offset into the argument data
+        var curOffset = pint(0);
+
+        // For each argument
+        for (var i = pint(0); i < numArgs; ++i)
+        {
+            var cArgType = cArgTypes[boxInt(i)];
+            var argVal = argArray[boxInt(i)];
+
+            switch (cArgType)
+            {
+                case 'int':
+                {
+                    assert (
+                        boolToBox(boxIsInt(argVal)),
+                        'expected integer argument'
+                    );
+
+                    var arg = unboxInt(argVal);
+                    iir.store(IRType.pint, argData, curOffset, arg);
+                }
+                break;
+
+                case 'void*':
+                {
+                    assert (
+                        boolToBox(boxIsArray(argVal)),
+                        'expected byte array argument'
+                    );
+
+                    var arg = byteArrayToPtr(argVal);
+                    iir.store(IRType.rptr, argData, curOffset, arg);
+                }
+                break;
+
+                default:
+                {
+                    assert(
+                        false,
+                        'Unsupported C argument type: "' + cArgType + '"'
+                    );
+                }
+            };
+            
+            curOffset += PTR_NUM_BYTES;
+        }
+
+        // Call the function through the FFI interface
+        var retValInt = rawCallTachyonFFI(
+            funcPtr,
+            ctxPtr,
+            numArgs,
+            argData
+        );
+
+        // Free the argument data
+        free(argData);
+
+        // Switch on the C return type
+        switch (cRetType)
+        {
+            case 'int':
+            {
+                return boxInt(retValInt);
+            }
+            break;
+
+            case 'void*':
+            {
+                return ptrToByteArray(iir.icast(IRType.rptr, retValInt));
+            }
+            break;
+
+            default:
+            {
+                assert(
+                    false,
+                    'Unsupported C return type: "' + cRetType + '"'
+                );
+            }
+        };
+    };
 }
 
 /**
@@ -745,11 +887,22 @@ function initFFI(params)
         params
     ));
 
-    // TODO: use CPtrAsBytes for this function
+    regFFI(new CFunction(
+        'rawCallTachyonFFI', 
+        [
+            new CPtrAsPtr(),
+            new CPtrAsPtr(),
+            new CIntAsInt(IRType.pint),
+            new CPtrAsPtr()
+        ],
+        new CIntAsInt(IRType.pint),
+        params
+    ));
+
     regFFI(new CFunction(
         'getFuncAddr', 
         [new CStringAsBox()],
-        new CPtrAsPtr(),
+        new CPtrAsBytes(),
         params
     ));
 }
