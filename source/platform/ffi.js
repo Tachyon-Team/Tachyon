@@ -744,5 +744,13 @@ function initFFI(params)
         new CVoid(),
         params
     ));
+
+    // TODO: use CPtrAsBytes for this function
+    regFFI(new CFunction(
+        'getFuncAddr', 
+        [new CStringAsBox()],
+        new CPtrAsPtr(),
+        params
+    ));
 }
 

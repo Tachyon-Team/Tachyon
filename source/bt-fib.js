@@ -1,7 +1,8 @@
 print("Running after initialization of boostrap code");
-print(x86);
-print(asm);
-print(IRType.box.toString());
+print("x86: " + x86);
+print("asm: " + asm);
+print("IRType.box: " + IRType.box);
+
 /*
 try
 {
@@ -44,5 +45,4 @@ try
 
 // Call the Tachyon read-eval-print loop
 //tachyonRepl();
-
 

@@ -64,12 +64,12 @@ function bootstrap(allCode, params)
         // Compile the Tachyon sources
         var tachyonIRs = compSources(tachyonSrcs, params);
 
-        tachyonIRs.forEach(function (ir, i)
+        // Execute the Tachyon code units
+        for (var i = 0; i < tachyonIRs.length; ++i)
         {
             print('Executing unit for: "' + tachyonSrcs[i] + '"'); 
-            execUnit(ir, params);
-        });
-
+            execUnit(tachyonIRs[i], params);
+        }
     }
 
     print('Tachyon initialization complete');
@@ -162,7 +162,7 @@ function getTachyonSrcs(params)
         'utility/arrays.js',
         'utility/heap.js',
         'utility/hashmap.js',
-        'utility/set.js',
+        'utility/hashset.js',
         'utility/linkedlist.js',
         'utility/strings.js',
         'utility/modules.js',
@@ -399,7 +399,10 @@ function initRuntime(params)
 
         //print(strObj);
 
-        freeMachineCodeBlock(memBlock);
+        if (numBytes > 0)
+        {
+            freeMachineCodeBlock(memBlock);
+        }
 
         return strObj;
     }

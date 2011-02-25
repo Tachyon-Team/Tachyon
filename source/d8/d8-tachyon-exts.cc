@@ -335,21 +335,27 @@ v8::Handle<v8::Value> v8Proxy_freeMachineCodeBlock(const v8::Arguments& args)
         printf("Error in freeMachineCodeBlock -- 1 argument expected\n");
         exit(1);
     }
-    else
+
+    i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
+
+    if (!obj->IsJSObject())
     {
-        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
-
-        Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
-        );
-
-        uint32_t len = static_cast<uint32_t>(array->length());
-        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-
-        freeMachineCodeBlock(block, len);
-
-        return Undefined();
+        printf("Error in freeMachineCodeBlock -- invalid object passed\n");
+        exit(1);
     }
+
+    i::Handle<i::JSObject> jsObj = i::Handle<i::JSObject>::cast(obj);
+
+    Handle<v8::internal::ExternalUnsignedByteArray> array(
+        v8::internal::ExternalUnsignedByteArray::cast(jsObj->elements())
+    );
+
+    uint32_t len = static_cast<uint32_t>(array->length());
+    uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
+
+    freeMachineCodeBlock(block, len);
+
+    return Undefined();
 }
 
 v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
@@ -491,6 +497,46 @@ int sum2Ints(int v1, int v2)
 
 typedef void (*FPTR)();
 
+FPTR getFuncAddr(const char* funcName)
+{
+    FPTR address = NULL;
+
+    if (strcmp(funcName, "malloc") == 0)
+        address = (FPTR)(malloc);
+    else if (strcmp(funcName, "free") == 0)
+        address = (FPTR)(free);
+    else if (strcmp(funcName, "exit") == 0)
+        address = (FPTR)(exit);
+    else if (strcmp(funcName, "puts") == 0)
+        address = (FPTR)(puts);
+    else if (strcmp(funcName, "printInt") == 0)
+        address = (FPTR)(printInt);
+    else if (strcmp(funcName, "sum2Ints") == 0)
+        address = (FPTR)(sum2Ints);
+    else if (strcmp(funcName, "writeFile") == 0)
+        address = (FPTR)(writeFile);
+    else if (strcmp(funcName, "readFile") == 0)
+        address = (FPTR)(readFile);
+    else if (strcmp(funcName, "shellCommand") == 0)
+        address = (FPTR)(shellCommand);
+    else if (strcmp(funcName, "readConsole") == 0)
+        address = (FPTR)(readConsole);
+    else if (strcmp(funcName, "rawAllocMachineCodeBlock") == 0)
+        address = (FPTR)(allocMachineCodeBlock);
+    else if (strcmp(funcName, "rawFreeMachineCodeBlock") == 0)
+        address = (FPTR)(freeMachineCodeBlock);
+    else if (strcmp(funcName, "getFuncAddr") == 0)
+        address = (FPTR)(getFuncAddr);
+
+    if (address == NULL)
+    {
+        printf("Error in getFuncAddr -- C function not found: \"%s\"\n", funcName);
+        exit(1);
+    }
+
+    return address;
+}
+
 v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
 {
     if (args.Length() != 1)
@@ -499,41 +545,10 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
         exit(1);
     }
 
-    v8::String::Utf8Value funcName(args[0]);  
-    char* fName = *funcName;
+    v8::String::Utf8Value str(args[0]);
+    char* funcName = *str;
 
-    FPTR address = NULL;
-
-    if (strcmp(fName, "malloc") == 0)
-        address = (FPTR)(malloc);
-    else if (strcmp(fName, "free") == 0)
-        address = (FPTR)(free);
-    else if (strcmp(fName, "exit") == 0)
-        address = (FPTR)(exit);
-    else if (strcmp(fName, "puts") == 0)
-        address = (FPTR)(puts);
-    else if (strcmp(fName, "printInt") == 0)
-        address = (FPTR)(printInt);
-    else if (strcmp(fName, "sum2Ints") == 0)
-        address = (FPTR)(sum2Ints);
-    else if (strcmp(fName, "writeFile") == 0)
-        address = (FPTR)(writeFile);
-    else if (strcmp(fName, "readFile") == 0)
-        address = (FPTR)(readFile);
-    else if (strcmp(fName, "shellCommand") == 0)
-        address = (FPTR)(shellCommand);
-    else if (strcmp(fName, "readConsole") == 0)
-        address = (FPTR)(readConsole);
-    else if (strcmp(fName, "rawAllocMachineCodeBlock") == 0)
-        address = (FPTR)(allocMachineCodeBlock);
-    else if (strcmp(fName, "rawFreeMachineCodeBlock") == 0)
-        address = (FPTR)(freeMachineCodeBlock);
-
-    if (address == NULL)
-    {
-        printf("C function not found: \"%s\"\n", fName);
-        exit(1);
-    }
+    FPTR address = getFuncAddr(funcName);
 
     return valToArray(address);
 }
