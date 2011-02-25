@@ -524,9 +524,9 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
         address = (FPTR)(shellCommand);
     else if (strcmp(fName, "readConsole") == 0)
         address = (FPTR)(readConsole);
-    else if (strcmp(fName, "allocMachineCodeBlock") == 0)
+    else if (strcmp(fName, "rawAllocMachineCodeBlock") == 0)
         address = (FPTR)(allocMachineCodeBlock);
-    else if (strcmp(fName, "freeMachineCodeBlock") == 0)
+    else if (strcmp(fName, "rawFreeMachineCodeBlock") == 0)
         address = (FPTR)(freeMachineCodeBlock);
 
     if (address == NULL)

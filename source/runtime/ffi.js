@@ -81,3 +81,59 @@ function cStringToBox(strPtr)
     return getTableStr(strObj);
 }
 
+/**
+Convert a raw pointer to a byte array
+*/
+function ptrToByteArray(ptr)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+
+    var array = [];
+
+    // FIXME: doesn't go through back-end
+    /*
+    var ptrInt = iir.icast(IRType.pint, ptr);
+
+    for (var i = 0; i < boxInt(PTR_NUM_BYTES); ++i)
+    {
+        var byteVal = ptrInt % pint(256);
+
+        ptrInt /= pint(256);
+
+        array[i] = boxInt(byteVal);
+    }
+    */
+
+    return array;
+}
+
+/**
+Convert a byte array to a pointer
+*/
+function byteArrayToPtr(array)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret rptr";
+
+    assert (
+        array.length === boxInt(PTR_NUM_BYTES),
+        'invalid array length in byteArrayToPtr'
+    );
+
+    var ptrInt = pint(0);
+
+    for (var i = boxInt(PTR_NUM_BYTES) - 1; i >= 0; --i)
+    {
+        var byteVal = unboxInt(array[i]);
+
+        ptrInt = pint(256) * ptrInt + byteVal;
+
+        array[i] = boxInt(byteVal);
+    }
+
+    return iir.icast(IRType.rptr, ptrInt);
+}
+

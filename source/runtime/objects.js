@@ -48,6 +48,15 @@ function makeObjectLayouts(params)
     //
     //=============================================================================
 
+    // Size of a pointer in bytes
+    params.staticEnv.regBinding(
+        'PTR_NUM_BYTES',
+        ConstValue.getConst(
+            params.target.ptrSizeBytes,
+            IRType.pint
+        )
+    );
+
     // Number of integer tag bits
     params.staticEnv.regBinding(
         'TAG_NUM_BITS_INT',
@@ -596,4 +605,35 @@ function makeObjectLayouts(params)
 
     // Finalize the cell layout
     cellLayout.finalize();
+
+    //=============================================================================
+    //
+    // Memory block object layout
+    //
+    //=============================================================================
+
+    /**
+    Memory block object layout
+    */
+    var memBlockLayout = new MemLayout('memblock', IRType.box, 'TAG_OTHER', params);
+
+    //
+    // TODO: header
+    //
+
+    // String table size
+    memBlockLayout.addField(
+        'ptr',
+        IRType.rptr
+    );
+
+    // Number of strings
+    memBlockLayout.addField(
+        'size',
+        IRType.u32
+    );
+
+    // Finalize the string table layout
+    memBlockLayout.finalize();
 }
+
