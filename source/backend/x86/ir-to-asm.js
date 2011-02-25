@@ -227,6 +227,8 @@ irToAsm.translator = function (params)
 
     that.asm = new x86.Assembler(params.target.ptrSizeBits === 64 ? 
                                  x86.target.x86_64 : x86.target.x86);
+
+    that.asm.useListing = params.printASM;
     that.asm.codeBlock.bigEndian = false;
     that.fct = null;
 

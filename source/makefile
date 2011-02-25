@@ -132,6 +132,9 @@ run:
 shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
+btfib:
+	$(JSVM) $(BASE_SRCS) bt-fib.js
+
 bootstrap:
 	$(JSVM) $(MAIN_SRCS) -- -bootstrap true
 

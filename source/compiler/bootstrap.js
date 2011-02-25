@@ -64,7 +64,12 @@ function bootstrap(allCode, params)
         // Compile the Tachyon sources
         var tachyonIRs = compSources(tachyonSrcs, params);
 
-        // TODO: execute compiled Tachyon units
+        tachyonIRs.forEach(function (ir, i)
+        {
+            print('Executing unit for: "' + tachyonSrcs[i] + '"'); 
+            execUnit(ir, params);
+        });
+
     }
 
     print('Tachyon initialization complete');
@@ -161,8 +166,8 @@ function getTachyonSrcs(params)
         'utility/linkedlist.js',
         'utility/strings.js',
         'utility/modules.js',
-        'utility/num.js',
         'utility/misc.js',
+        'utility/num.js',
         'utility/xml.js',
         'utility/html.js',
         'compiler/targets.js',
@@ -192,15 +197,15 @@ function getTachyonSrcs(params)
         'platform/ffi.js',
         'runtime/layout.js',
         'runtime/context.js',
-        'runtime/objects.js',    
+        'runtime/objects.js',
         'backend/asm.js',
-        'backend/backend.js',
+        'backend/regalloc.js',
         'backend/linearscan.js',
-        "backend/regalloc.js",
-        "backend/x86/config.js",
-        'backend/x86/ir-to-asm.js',
+        'backend/backend.js',
         'backend/x86/asm.js',
-        'main.js'
+        'backend/x86/config.js',
+        'backend/x86/ir-to-asm.js',
+        'bt-fib.js'
     ];
 
     //var tachyonSrcs = ['parser/parser.js'];
