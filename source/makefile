@@ -4,7 +4,7 @@
 JSVMPROG = d8
 
 #JavaScript VM command options
-JSVMOPTS = --allow_natives_syntax
+JSVMOPTS = --allow_natives_syntax --nocollect_maps
 
 #JavaScript VM command
 JSVM = $(JSVMPROG) $(JSVMOPTS)
