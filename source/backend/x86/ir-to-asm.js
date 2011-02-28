@@ -2029,7 +2029,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         if (arg !== reg)
         {
             // Fix the offset since the stack pointer has been moved
-            if (arg.type === x86.type.MEM)
+            if (arg.type === x86.type.MEM && 
+                arg.base === stack)
             {
                 // Make a copy of the object with the same properties
                 arg = Object.create(arg);
