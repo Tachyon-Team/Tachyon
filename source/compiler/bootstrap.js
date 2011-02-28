@@ -17,6 +17,14 @@ function bootstrap(allCode, params)
     print('bootstrap');
     print("IRType: " + IRType);
 
+    if (config.inTachyon)
+    {
+        var ctx = iir.get_ctx();
+        var glob = get_ctx_globalobj(ctx);
+        print('Context ptr: ' + ptrToByteArray(ctx));
+        print('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
+    }
+
     print('Creating backend context layout');
     // Create the context and object layouts
     params.target.backendCfg.makeContextLayout(params);
@@ -25,6 +33,13 @@ function bootstrap(allCode, params)
     print('Creating object layouts');
     makeObjectLayouts(params);
 
+    if (config.inTachyon)
+    {
+        var ctx = iir.get_ctx();
+        var glob = get_ctx_globalobj(ctx);
+        print('Context ptr: ' + ptrToByteArray(ctx));
+        print('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
+    }
     
     // Initialize the FFI functions
     print('Initialize FFI functions');

@@ -804,6 +804,24 @@ Initialize FFI functions for the current configuration
 */
 function initFFI(params)
 {
+    /*
+    var ctx = iir.get_ctx();
+    var glob = get_ctx_globalobj(ctx);
+    puts('Context ptr: ' + ptrToByteArray(ctx));
+    puts('Global ptr : ' + ptrToByteArray(glob));
+    */
+
+
+    if (config.inTachyon)
+    {
+        var ctx = iir.get_ctx();
+        var glob = get_ctx_globalobj(ctx);
+        print('Context ptr: ' + ptrToByteArray(ctx));
+        print('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
+    }
+
+
+
     print('initFFI');
     print("IRType: " + IRType);
 

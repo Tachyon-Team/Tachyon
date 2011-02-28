@@ -13,6 +13,19 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 if (config.inTachyon)
 {
     /**
+    Machine code block wrapper object
+    */
+    function MCBWrapper(mcbObj)
+    {
+        assert (
+            boolToBox(getRefTag(mcbObj) === TAG_OTHER),
+            'invalid mcb reference'
+        );
+
+        this.mcb = mcbObj;
+    }
+
+    /**
     Allocate a machine code block.
     */
     var allocMachineCodeBlock = function (size)
@@ -26,7 +39,7 @@ if (config.inTachyon)
         set_memblock_ptr(blockObj, blockPtr);
         set_memblock_size(blockObj, u32(size));
 
-        return blockObj;
+        return new MCBWrapper(blockObj);
     };
 
     /**
@@ -36,13 +49,15 @@ if (config.inTachyon)
     {
         "tachyon:noglobal";
 
+        var mcb = blockObj.mcb;
+
         assert (
-            boolToBox(getRefTag(blockObj) === TAG_OTHER),
+            boolToBox(getRefTag(mcb) === TAG_OTHER),
             'invalid mcb reference'
         );
 
-        var ptr = get_memblock_ptr(blockObj);
-        var size = iir.icast(IRType.pint, get_memblock_size(blockObj));
+        var ptr = get_memblock_ptr(mcb);
+        var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         rawFreeMachineCodeBlock(ptr, size);
     };
@@ -55,13 +70,15 @@ if (config.inTachyon)
     {
         "tachyon:noglobal";
 
+        var mcb = blockObj.mcb;
+
         assert (
-            boolToBox(getRefTag(blockObj) === TAG_OTHER),
+            boolToBox(getRefTag(mcb) === TAG_OTHER),
             'invalid mcb reference'
         );
 
-        var ptr = get_memblock_ptr(blockObj);
-        var size = iir.icast(IRType.pint, get_memblock_size(blockObj));
+        var ptr = get_memblock_ptr(mcb);
+        var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         assert (
             boolToBox(unboxInt(index) < size),
@@ -81,13 +98,15 @@ if (config.inTachyon)
     {
         "tachyon:noglobal";
 
+        var mcb = blockObj.mcb;
+
         assert (
-            boolToBox(getRefTag(blockObj) === TAG_OTHER),
+            boolToBox(getRefTag(mcb) === TAG_OTHER),
             'invalid mcb reference'
         );
 
-        var ptr = get_memblock_ptr(blockObj);
-        var size = iir.icast(IRType.pint, get_memblock_size(blockObj));
+        var ptr = get_memblock_ptr(mcb);
+        var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         assert (
             boolToBox(unboxInt(index) < size),
