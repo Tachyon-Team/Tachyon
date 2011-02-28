@@ -2140,7 +2140,8 @@ allocator.linearScan = function (params, unhandled, mems, fixed)
 
                     assert(reg !== null, "Invalid register");
 
-                    if ((fixedRegs[position] & bitSetValue(reg)) === 0)
+                    if ((typeof reg) === "number" &&
+                        (fixedRegs[position] & bitSetValue(reg)) === 0)
                     {
                         fixedItrvls[reg].addRange(position, position + 1);
                         fixedRegs[position] = (fixedRegs[position] | bitSetValue(reg));
