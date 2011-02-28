@@ -100,8 +100,8 @@ Parser.prototype.consume = function ()
                      !IRType.box.valInRange(this.input.value, this.params))
             {
                 print('num box bits: ' + this.params.staticEnv.getBinding("BOX_NUM_BITS_INT").value);
-                print('box min: ' + IRType.getMinVal(this.params));
-                print('box max: ' + IRType.getMaxVal(this.params));
+                print('box min: ' + IRType.box.getMinVal(this.params));
+                print('box max: ' + IRType.box.getMaxVal(this.params));
 
                 this.warning(
                     this.input.loc,
