@@ -62,10 +62,10 @@ function tachyonRepl()
         print('Available special commands:');
         print('  /load <filename>    load and execute a script');
         print('  /time <command>     time the execution of a command');
-        print('  /hir  <command>     view HIR produced for a command');
-        print('  /lir  <command>     view LIR produced for a command');
-        print('  /asm  <command>     view ASM produced for a command');
-        print('  /reg  <command>     view register allocation for a command');
+        print('  /hir  <command>     view HIR produced for a command/file');
+        print('  /lir  <command>     view LIR produced for a command/file');
+        print('  /asm  <command>     view ASM produced for a command/file');
+        print('  /reg  <command>     view register allocation for a command/file');
         print('  /help               print a help listing');
         print('  /exit               exit the read-eval-print loop');
     }
@@ -85,6 +85,12 @@ function tachyonRepl()
         );
 
         bridge(config.hostParams.ctxPtr);
+    }
+
+    // Test if a string could be a source file name
+    function isSrcFile(str)
+    {
+        return str.indexOf('.js') === (str.length - 3);
     }
 
     // Execute a special command
@@ -125,25 +131,37 @@ function tachyonRepl()
 
             case 'hir':
             config.hostParams.printHIR = true;
-            compCode(args);
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
             config.hostParams.printHIR = false;
             break;
 
             case 'lir':
             config.hostParams.printLIR = true;
-            compCode(args);
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
             config.hostParams.printLIR = false;
             break;
 
             case 'asm':
             config.hostParams.printASM = true;
-            compCode(args);
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
             config.hostParams.printASM = false;
             break;
 
             case 'reg':
             config.hostParams.printRegAlloc = true;
-            compCode(args);
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
             config.hostParams.printRegAlloc = false;
             break;
 
@@ -158,7 +176,7 @@ function tachyonRepl()
     {
         try
         {
-            var ir = compCode(str);
+            var ir = compString(str);
 
             var bridge = makeBridge(
                 ir,
@@ -180,7 +198,7 @@ function tachyonRepl()
     }
 
     // Compile a code string
-    function compCode(str)
+    function compString(str)
     {
         // Add an extra semicolon to avoid syntax errors
         str += ';';
@@ -188,6 +206,25 @@ function tachyonRepl()
         try
         {
             var ir = compileSrcString(str, config.hostParams);
+        }
+
+        catch (e)
+        {
+            if (e.stack)
+                print(e.stack);
+            else
+                print(e);
+        }
+
+        return ir;
+    }
+
+    // Compile a source file
+    function compFile(str)
+    {
+        try
+        {
+            var ir = compileSrcFile(str, config.hostParams);
         }
 
         catch (e)

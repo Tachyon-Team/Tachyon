@@ -13,19 +13,6 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 if (config.inTachyon)
 {
     /**
-    Machine code block wrapper object
-    */
-    function MCBWrapper(mcbObj)
-    {
-        assert (
-            boolToBox(getRefTag(mcbObj) === TAG_OTHER),
-            'invalid mcb reference'
-        );
-
-        this.mcb = mcbObj;
-    }
-
-    /**
     Allocate a machine code block.
     */
     var allocMachineCodeBlock = function (size)
@@ -39,7 +26,7 @@ if (config.inTachyon)
         set_memblock_ptr(blockObj, blockPtr);
         set_memblock_size(blockObj, u32(size));
 
-        return new MCBWrapper(blockObj);
+        return { mcb: blockObj };
     };
 
     /**

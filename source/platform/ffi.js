@@ -812,12 +812,18 @@ function initFFI(params)
     */
 
 
-    if (config.inTachyon)
+    var inTachyon = (function ()
+    {
+        var iir = { add: function() { return 0; } };
+        return (iir.add(1,2) === 3);
+    })();
+
+    if (inTachyon)
     {
         var ctx = iir.get_ctx();
         var glob = get_ctx_globalobj(ctx);
-        print('Context ptr: ' + ptrToByteArray(ctx));
-        print('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
+        puts('Context ptr: ' + ptrToByteArray(ctx));
+        puts('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
     }
 
 
