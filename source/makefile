@@ -136,6 +136,9 @@ run:
 shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
+bt-parser:
+	$(JSVM) $(BASE_SRCS) bt-parser.js
+
 bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
