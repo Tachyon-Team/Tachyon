@@ -246,6 +246,24 @@ client code.
 */
 function compSources(srcList, params)
 {
+
+
+    var inTachyon = (function ()
+    {
+        var iir = { add: function() { return 0; } };
+        return (iir.add(1,2) === 3);
+    })();
+
+    if (inTachyon)
+    {
+        var ctx = iir.get_ctx();
+        var glob = get_ctx_globalobj(ctx);
+        puts('Context ptr: ' + ptrToByteArray(ctx));
+        puts('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
+    }
+
+
+
     assert (
         params instanceof CompParams,
         'expected compilation parameters'
