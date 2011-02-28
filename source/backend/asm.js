@@ -870,7 +870,10 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
     {
         var x = this.code[i];
         if (typeof x === "number")
-            block[pos++] = x;
+        {
+            //block[pos++] = x;
+            writeToMachineCodeBlock(block, pos++, x);
+        }
     }
 
     // Create all the required objects
@@ -994,7 +997,8 @@ asm.link = function (mcb)
 
         for (var i = 0; i < bytes.length ; ++i)
         {
-            mcb[offset + i] = bytes[i]; 
+            //mcb[offset + i] = bytes[i]; 
+            writeToMachineCodeBlock(mcb, offset+i, bytes[i]);
         }
     }
 
