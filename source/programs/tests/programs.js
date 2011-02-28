@@ -411,6 +411,16 @@ tests.programs.clos_capt = genTest(
 );
 
 /**
+Closure variable access.
+*/
+tests.programs.clos_access = genTest(
+    'programs/clos_access/clos_access.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Calls across closure boundaries.
 */
 tests.programs.clos_xcall = genTest(
@@ -418,6 +428,16 @@ tests.programs.clos_xcall = genTest(
     'test',
     [5],
     5
+);
+
+/**
+Closure and global variable test.
+*/
+tests.programs.clos_globals = genTest(
+    'programs/clos_globals/clos_globals.js',
+    'test',
+    [],
+    0
 );
 
 /**
