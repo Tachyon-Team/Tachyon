@@ -132,6 +132,8 @@ function bootstrap(allCode, params)
     // If all code should be compiled
     if (allCode === true)
     {
+        params.regAlloc = "onthefly"; 
+
         // Get the Tachyon compiler source code
         var tachyonSrcs = getTachyonSrcs(params);
         var tachyonIRs;

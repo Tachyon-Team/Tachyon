@@ -2530,10 +2530,11 @@ allocator.validate = function (cfg, params)
     {
         for (var i = 0; i < slots.length; ++i)
         {
-            slot  = slots[i];
+            var slot  = slots[i];
             if (slot.type === backendCfg.REG || slot.type === backendCfg.MEM)
             {
-                value = values[i]; 
+                var value = values[i]; 
+                var it = given.getValue(slot);
                 assert(given.compatible(slot, value), 
                         "RegAlloc expected:\n" + value +
                         "\n in:\n" +
@@ -2542,8 +2543,8 @@ allocator.validate = function (cfg, params)
                         "\n for '" +
                         instr.getValName() + "' at pos " + instr.regAlloc.id +
                         "\n" +
-                        "in mapping " + given.toString([slot]) + "\n" +
-                        printIt(given.getValue(slot)));
+                        "in mapping " + given.toString([slot]) + "\n"/* +
+                        (it === null) ? "" : printIt(it)*/);
             }
         }
     };
@@ -2628,13 +2629,17 @@ allocator.validate = function (cfg, params)
                 return;
             };
             
+            // TODO: Check if it still applies 
             // Some control flow instructions like
             // jump may have been inserted after register
             // allocation resolution.  Those instructions
             // won't have a regAlloc.id
-            if (instr.regAlloc.id === null) return;
-            
-            assertInstrCompatible(given, opnds, instr.uses, instr);
+            //if (instr.regAlloc.id === null) return;
+
+            if (instr.uses.length > 0)
+            {
+                assertInstrCompatible(given, opnds, instr.uses, instr);
+            }
 
             // We record invalidation of registers
             if (blocked !== null)
@@ -3223,19 +3228,18 @@ allocator.mapping.prototype.orderAndInsertMoves = function (insertFct, temp)
 
 allocator.mapping.prototype.toString = function ()
 {
-    var i;
-    var p;
     var s = "";
-
-    for (p in this.read)
+    for (var p in this.read)
     {
         if (this.read.hasOwnProperty(p))
         {
-            s += p + " : ";
-            for(i=0; i < this.read[p].length; ++i)
+            s += p + " : " + this.read[p].map(String).join("\n");
+            /*
+            for(var i=0; i < this.read[p].length; ++i)
             {
-                s += this.read[p][i] + "\n";
+                s += String(this.read[p][i]) + "\n";
             }
+            */
         }
     }
 

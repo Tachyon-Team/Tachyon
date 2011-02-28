@@ -319,6 +319,10 @@ function tachyonRepl()
             config.hostParams.printRegAlloc = false;
             break;
 
+            case 'onthefly':
+            config.hostParams.regAlloc = "onthefly";
+            break;
+
             default:
             print('Unknown special command: "' + cmd + '"');
             break;
