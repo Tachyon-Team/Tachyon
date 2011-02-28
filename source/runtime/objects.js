@@ -361,7 +361,7 @@ function makeObjectLayouts(params)
     params.staticEnv.regBinding(
         'HASH_MAP_INIT_SIZE',
         ConstValue.getConst(
-            11,
+            7,
             IRType.pint
         )
     );
@@ -438,7 +438,7 @@ function makeObjectLayouts(params)
     params.staticEnv.regBinding(
         'ARRAY_TBL_INIT_SIZE',
         ConstValue.getConst(
-            8,
+            4,
             IRType.pint
         )
     );

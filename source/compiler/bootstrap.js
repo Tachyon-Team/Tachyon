@@ -15,15 +15,6 @@ Compile and initialize the Tachyon compiler using Tachyon
 function bootstrap(allCode, params)
 {
     print('bootstrap');
-    print("IRType: " + IRType);
-
-    if (config.inTachyon)
-    {
-        var ctx = iir.get_ctx();
-        var glob = get_ctx_globalobj(ctx);
-        print('Context ptr: ' + ptrToByteArray(ctx));
-        print('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
-    }
 
     print('Creating backend context layout');
     // Create the context and object layouts
@@ -32,14 +23,6 @@ function bootstrap(allCode, params)
     makeContextLayout(params);
     print('Creating object layouts');
     makeObjectLayouts(params);
-
-    if (config.inTachyon)
-    {
-        var ctx = iir.get_ctx();
-        var glob = get_ctx_globalobj(ctx);
-        print('Context ptr: ' + ptrToByteArray(ctx));
-        print('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
-    }
     
     // Initialize the FFI functions
     print('Initialize FFI functions');
@@ -247,24 +230,6 @@ client code.
 */
 function compSources(srcList, params)
 {
-
-
-    var inTachyon = (function ()
-    {
-        var iir = { add: function() { return 0; } };
-        return (iir.add(1,2) === 3);
-    })();
-
-    if (inTachyon)
-    {
-        var ctx = iir.get_ctx();
-        var glob = get_ctx_globalobj(ctx);
-        puts('Context ptr: ' + ptrToByteArray(ctx));
-        puts('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
-    }
-
-
-
     assert (
         params instanceof CompParams,
         'expected compilation parameters'

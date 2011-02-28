@@ -804,32 +804,7 @@ Initialize FFI functions for the current configuration
 */
 function initFFI(params)
 {
-    /*
-    var ctx = iir.get_ctx();
-    var glob = get_ctx_globalobj(ctx);
-    puts('Context ptr: ' + ptrToByteArray(ctx));
-    puts('Global ptr : ' + ptrToByteArray(glob));
-    */
-
-
-    var inTachyon = (function ()
-    {
-        var iir = { add: function() { return 0; } };
-        return (iir.add(1,2) === 3);
-    })();
-
-    if (inTachyon)
-    {
-        var ctx = iir.get_ctx();
-        var glob = get_ctx_globalobj(ctx);
-        puts('Context ptr: ' + ptrToByteArray(ctx));
-        puts('Global ptr : ' + ptrToByteArray(iir.icast(IRType.rptr, glob)));
-    }
-
-
-
     print('initFFI');
-    print("IRType: " + IRType);
 
     function regFFI(ffiFunc)
     {
@@ -838,7 +813,6 @@ function initFFI(params)
     }
 
     print('creating malloc');
-    print("IRType: " + IRType);
     regFFI(new CFunction(
         'malloc', 
         [new CIntAsInt(IRType.pint)], 
