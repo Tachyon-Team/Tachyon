@@ -804,12 +804,17 @@ Initialize FFI functions for the current configuration
 */
 function initFFI(params)
 {
+    print('initFFI');
+    print("IRType: " + IRType);
+
     function regFFI(ffiFunc)
     {
         params.ffiFuncs[ffiFunc.funcName] = ffiFunc;
         params.staticEnv.regBinding('ffi_' + ffiFunc.funcName, ffiFunc);
     }
 
+    print('creating malloc');
+    print("IRType: " + IRType);
     regFFI(new CFunction(
         'malloc', 
         [new CIntAsInt(IRType.pint)], 
@@ -817,6 +822,8 @@ function initFFI(params)
         params
     ));
 
+    print('creating free');
+    print("IRType: " + IRType);
     regFFI(new CFunction(
         'free',
         [new CPtrAsPtr()],

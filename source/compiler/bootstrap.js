@@ -14,18 +14,28 @@ Compile and initialize the Tachyon compiler using Tachyon
 */
 function bootstrap(allCode, params)
 {
+    print('bootstrap');
+    print("IRType: " + IRType);
+
+    print('Creating backend context layout');
     // Create the context and object layouts
     params.target.backendCfg.makeContextLayout(params);
+    print('Creating fronted context layout');
     makeContextLayout(params);
+    print('Creating object layouts');
     makeObjectLayouts(params);
 
+    
     // Initialize the FFI functions
+    print('Initialize FFI functions');
     initFFI(params);
 
     // Get the source code for the primitives
+    print('Get primitives source code');
     var primSrcs = getPrimSrcs(params);
 
     // Compile the primitives
+    print('Compile primitives source code');
     var primIRs = compSources(primSrcs, params);
 
     // Initialize the runtime
