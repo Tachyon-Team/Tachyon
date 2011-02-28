@@ -90,14 +90,25 @@ Parser.prototype.consume = function ()
 
         if (this.input.cat === NUMBER_CAT && this.number_literal_warning)
         {
-            if (!this.input.value instanceof Array &&
+            if (!bignum_instance(this.input.value) &&
                 Math.floor(this.input.value) !== this.input.value)
+            {
                 this.warning(this.input.loc,
                              "number literal is not an integer");
+            }
             else if (this.params !== undefined &&
                      !IRType.box.valInRange(this.input.value, this.params))
-                this.warning(this.input.loc,
-                             "number literal is outside integer range");
+            {
+                print(params.staticEnv.getBinding("BOX_NUM_BITS_INT").value);
+                print('box min: ' + IRType.getMinVal(this.params));
+                print('box max: ' + IRType.getMaxVal(this.params));
+
+                this.warning(
+                    this.input.loc,
+                    "number literal is outside boxed integer range: " + 
+                    num_to_string(this.input.value)
+                );
+            }
         }
 
         if ((this.input.cat === DIVEQUAL_CAT || this.input.cat === DIV_CAT) &&

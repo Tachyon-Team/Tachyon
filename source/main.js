@@ -15,6 +15,20 @@ Entry point for the Tachyon VM.
 */
 function main()
 {
+    // If we are running in bootstrap mode
+    if (config.inTachyon)
+    {
+        // Initialize Tachyon in minimal mode
+        initialize(false);
+
+        tachyonRepl();
+
+        // Uninitialize Tachyon
+        uninitialize();
+
+        return;
+    }
+
     // Parse the command-line arguments
     var args = parseCmdLine();
 

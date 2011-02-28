@@ -231,6 +231,7 @@ function getTachyonSrcs(params)
         'backend/x86/asm.js',
         'backend/x86/config.js',
         'backend/x86/ir-to-asm.js',
+        //'main.js'
         'bt-fib.js'
     ];
 
@@ -376,8 +377,8 @@ function initRuntime(params)
 {
     print('Initializing run-time');
 
-    // Allocate a 64MB heap
-    var heapSize = Math.pow(2, 26);
+    // Allocate a 256MB heap
+    var heapSize = Math.pow(2, 28);
     var heapBlock = allocMachineCodeBlock(heapSize);
     var heapAddr = getBlockAddr(heapBlock, 0);
 
