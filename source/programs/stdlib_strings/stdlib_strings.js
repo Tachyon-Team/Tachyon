@@ -6,6 +6,9 @@ function test_ctor()
     if (String('foo') !== 'foo')
         return 2;
 
+    if (String(new String('foo')) !== 'foo')
+        return 3;
+
     // TODO: add more tests for constructor
 
     return 0;
@@ -101,6 +104,8 @@ function test_slice()
         return 2;
     if ('foobar'.slice(1,4) !== 'oob')
         return 3;
+    if ((new String('foobar')).slice(1,4) !== 'oob')
+        return 4;
 
     return 0;
 }

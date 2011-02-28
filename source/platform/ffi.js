@@ -812,7 +812,6 @@ function initFFI(params)
         params.staticEnv.regBinding('ffi_' + ffiFunc.funcName, ffiFunc);
     }
 
-    print('creating malloc');
     regFFI(new CFunction(
         'malloc', 
         [new CIntAsInt(IRType.pint)], 
@@ -820,8 +819,6 @@ function initFFI(params)
         params
     ));
 
-    print('creating free');
-    print("IRType: " + IRType);
     regFFI(new CFunction(
         'free',
         [new CPtrAsPtr()],

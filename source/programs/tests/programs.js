@@ -632,6 +632,21 @@ tests.programs.tachyon_graph = genTest(
 );
 
 /**
+Tachyon bignum utility code test
+*/
+tests.programs.tachyon_num = genTest(
+    [
+        'utility/debug.js',
+        'utility/num.js',
+        'utility/misc.js',
+        'programs/tachyon_num/tachyon_num.js'
+    ],
+    'test',
+    [],
+    0
+);
+
+/**
 Print the state of the Tachyon VM.
 */
 tests.programs.tachyon_state = genTest(

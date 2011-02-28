@@ -1033,7 +1033,8 @@ function seq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
-        return UNDEFINED;
+        error('seq on float values');
+        //return UNDEFINED;
     }
     else
     {
@@ -1055,6 +1056,7 @@ function nseq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
+        //error('seq on float values');
         return UNDEFINED;
     }
     else
@@ -1105,7 +1107,9 @@ function addOverflow(v1, v2)
     "tachyon:static";
     
     // TODO
-    return UNDEFINED;
+
+    // FIXME: uncommenting this line causes a backend crash
+    //error('addition overflow');
 }
 
 /**

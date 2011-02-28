@@ -576,7 +576,9 @@ function bignum_shift(bignum_a, shift)
     var len = len_a + dig_shift + (bit_shift===0 ? 0 : 1);
 
     if (len <= 0)
+    {
         return bignum_from_js((bignum_a[len_a-1] < bignum_radix_div2) ? 0 : -1);
+    }
     else
     {
         var bignum = new Array(len);

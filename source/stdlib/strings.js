@@ -121,6 +121,9 @@ function string_internal_fromCharCodeArray(a)
 
 function string_internal_toString(s)
 {
+    if (s instanceof String)
+        return s.value;
+
     return s;
 }
 
