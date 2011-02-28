@@ -113,8 +113,8 @@ else
     var writeToMachineCodeBlock = function (blockObj, index, byteVal)
     {
         assert (
-            byteVal > 0 && byteVal <= 255,
-            'byte value out of range'
+            byteVal >= 0 && byteVal <= 255,
+            "byte value '" + byteVal + "' out of range"
         );
 
         blockObj[index] = byteVal;
