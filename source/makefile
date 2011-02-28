@@ -6,6 +6,9 @@ JSVMPROG = d8
 #JavaScript VM command options
 JSVMOPTS = --allow_natives_syntax --nocollect_maps
 
+#JavaScript VM command options when debugging
+JSVMOPTSDEBUG = $(JSVMOPTS) --noopt
+
 #JavaScript VM command
 JSVM = $(JSVMPROG) $(JSVMOPTS)
 
@@ -134,11 +137,11 @@ shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
 bootstrap:
-	$(JSVM) $(MAIN_SRCS) -- -bootstrap true
+	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
 bootstrap-debug:
-	echo "run $(JSVMOPTS) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
-	echo "bt"                                              >> gdb-command
+	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
+	echo "bt"                                                   >> gdb-command
 	time gdb --command=gdb-command $(JSVMPROG)
 
 test: 
