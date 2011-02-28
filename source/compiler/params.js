@@ -197,5 +197,11 @@ function CompParams(cfgObj)
      @field
      */ 
     this.printMCB = false;
+
+    /**
+    Register allocation algorithm to use
+    @field
+    */
+    this.regAlloc = "linearScan";
 }
 

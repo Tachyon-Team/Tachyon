@@ -326,7 +326,6 @@ function tachyonRepl()
             }
             var func = config.hostParams.staticEnv.getBinding(args);
             print(func);
-            break;
 
             default:
             print('Unknown special command: "' + cmd + '"');

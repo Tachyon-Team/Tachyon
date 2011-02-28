@@ -90,12 +90,6 @@ regAlloc.block = function ()
 {
     var that = Object.create(regAlloc.block.prototype);
 
-    /**
-    Position at the beginning of the block
-    @field
-    */
-    that.from = -1;
-
     return that;
 };
 
@@ -105,12 +99,6 @@ regAlloc.block = function ()
 regAlloc.instr = function ()
 {
     var that = Object.create(regAlloc.instr.prototype);
-
-    /**
-    Position of the instruction
-    @field
-    */
-    that.id = null;
 
     /**
     Operand list for this instruction.  Should be either a register,
@@ -145,7 +133,7 @@ regAlloc.instr.prototype.opndsRegHint = function (instr, params, position)
 };
 
 /** Returns a register index preference for the output value */
-regAlloc.instr.prototype.outRegHint = function (instr, config) 
+regAlloc.instr.prototype.outRegHint = function (instr, params) 
 { 
     return null; 
 };
@@ -154,7 +142,7 @@ regAlloc.instr.prototype.outRegHint = function (instr, config)
 regAlloc.instr.prototype.opndsRegRequired = false;
 
 /** List all register indices used by a given instruction */
-regAlloc.instr.prototype.usedRegisters = function (instr, config) 
+regAlloc.instr.prototype.usedRegisters = function (instr, params) 
 { 
     return null; 
 };
