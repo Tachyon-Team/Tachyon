@@ -91,9 +91,6 @@ function ptrToByteArray(ptr)
     "tachyon:arg ptr rptr";
 
     var array = [];
-
-    // FIXME: doesn't go through back-end
-    /*
     var ptrInt = iir.icast(IRType.pint, ptr);
 
     for (var i = 0; i < boxInt(PTR_NUM_BYTES); ++i)
@@ -104,7 +101,6 @@ function ptrToByteArray(ptr)
 
         array[i] = boxInt(byteVal);
     }
-    */
 
     return array;
 }

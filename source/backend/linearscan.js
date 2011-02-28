@@ -743,10 +743,7 @@ allocator.interval.prototype.setStartPos = function (pos)
 */
 allocator.interval.prototype.addRange = function (startPos, endPos)
 {
-    var i = 0;
-    var current = null;
     var newRange = allocator.range(startPos, endPos);
-    var deleteNb, insertPos;
 
     // Empty case
     if (this.ranges.length === 0)
@@ -754,16 +751,36 @@ allocator.interval.prototype.addRange = function (startPos, endPos)
         this.ranges.push(newRange);
         return;
     }
-
-    // Fast case for adding a range at the end
+    
     const lastRange = this.ranges[this.ranges.length - 1];
-    if (lastRange.endPos < startPos)
+    // Fast case for merging with a range at the end
+    if (lastRange.endPos === startPos)
+    {
+        lastRange.endPos = endPos;
+        return;
+    } 
+    // Fast case for adding a range at the end 
+    else if (lastRange.endPos < startPos)
     {
         this.ranges.push(newRange);
         return;
     }
 
 
+    // Fast case for merging with a range at the beginning
+    const firstRange = this.ranges[0];
+    if (endPos === firstRange.startPos)
+    {
+        firstRange.startPos = startPos;
+        return;
+    }
+
+    var i = 0;
+    var current = null;
+    var deleteNb, insertPos;
+
+    // FIXME: Should be logarithmic instead of linear since
+    //        ranges are sorted and mutually exclusives
     // Find the first range which is not strictly
     // less than the new range.
     for (i=0; i < this.ranges.length; ++i)
@@ -1465,7 +1482,7 @@ allocator.liveIntervals = function (cfg, order, params)
         var block = order[i];
 
         // Variable for the currently live set
-        var live = [];
+        var live = new HashSet();
 
         // For each successor
         for (var j = 0; j < block.succs.length; ++j)
@@ -1484,8 +1501,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 // Add the phi node's input from this block to the live set
                 if (!(instr.getIncoming(block) instanceof ConstValue))
                 {
-                    arraySetAdd(live, instr.getIncoming(block));
-                    //live.add(instr.getIncoming(block));
+                    live.add(instr.getIncoming(block));
                 }
             }
 
@@ -1499,15 +1515,13 @@ allocator.liveIntervals = function (cfg, order, params)
                    "Invalid live or liveIn set");
                 
             // Add all live temps at the successor input to the live set
-            live = arraySetUnion(live, succ.regAlloc.liveIn);
-            //live.union(succ.regAlloc.liveIn);
+            live.union(succ.regAlloc.liveIn);
         }
         
         // For each instruction in the live set
-        for (var j = 0; j < live.length; ++j)
+        for (var instrItr = live.getItr(); instrItr.valid(); instrItr.next())
         {
-            var instr = live[j];
-           
+            var instr = instrItr.get();
             // Add a live range spanning this block to its interval
             instr.regAlloc.interval.addRange(
                 block.regAlloc.from,
@@ -1535,8 +1549,7 @@ allocator.liveIntervals = function (cfg, order, params)
                     instr.regAlloc.outRegHint(instr, params);
 
                 // Remove the instruction from the live set
-                arraySetRem(live, instr);
-                //live.rem(instr);
+                live.rem(instr);
             }
 
             // Input operands for phi instructions are added to the live set
@@ -1597,8 +1610,7 @@ allocator.liveIntervals = function (cfg, order, params)
                 //print( use.regAlloc.interval);
 
                 // Add this input operand to the live set
-                arraySetAdd(live, use);
-                //live.add(use);
+                live.add(use);
             }
         }
 
@@ -1610,8 +1622,7 @@ allocator.liveIntervals = function (cfg, order, params)
             if (!(instr instanceof PhiInstr))
                 break;
 
-            arraySetRem(live, instr);
-            //live.rem(instr);
+            live.rem(instr);
         }
 
         // Get the last loop end associated with this block, if any
@@ -1622,10 +1633,9 @@ allocator.liveIntervals = function (cfg, order, params)
         {
             // For each temp in the live set at the block entry 
             // (live before the block)
-            for (var j = 0; j < live.length; ++j)
+            for (var instrItr = live.getItr(); instrItr.valid(); instrItr.next())
             {
-                var instr = live[j];
-
+                var instr = instrItr.get();
                 // Add a live range spanning the whole loop
                 instr.regAlloc.interval.addRange(
                     block.regAlloc.from,
@@ -2130,7 +2140,8 @@ allocator.linearScan = function (params, unhandled, mems, fixed)
 
                     assert(reg !== null, "Invalid register");
 
-                    if ((fixedRegs[position] & bitSetValue(reg)) === 0)
+                    if ((typeof reg) === "number" &&
+                        (fixedRegs[position] & bitSetValue(reg)) === 0)
                     {
                         fixedItrvls[reg].addRange(position, position + 1);
                         fixedRegs[position] = (fixedRegs[position] | bitSetValue(reg));
@@ -2651,6 +2662,29 @@ allocator.validate = function (cfg, params)
 
     return true;
 };
+
+/**
+Clean all the intermediairies data structures kept on cfg, blocks and
+instructions.
+*/
+allocator.clean = function (fct)
+{
+    const cfg = fct.virginCFG;
+
+    cfg.getBlockItr().forEach(function (block) 
+    {
+        block.getInstrItr().forEach(function (instr)
+        {
+            instr.regAlloc = undefined;
+        });
+
+        block.regAlloc = undefined;
+    });
+
+    cfg.regAlloc = undefined;
+};
+
+
 
 /**
     Mapping from memory slots and registers to IRValues.

@@ -27,7 +27,7 @@ BASE_SRCS =                             \
     utility/arrays.js                   \
     utility/heap.js                     \
     utility/hashmap.js                  \
-    utility/set.js                      \
+    utility/hashset.js                  \
     utility/linkedlist.js               \
     utility/strings.js                  \
     utility/modules.js                  \

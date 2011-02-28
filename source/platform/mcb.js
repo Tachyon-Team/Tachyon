@@ -9,26 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-/* TODO:
-Missing functions:
-- allocMachineCodeBlock
-- freeMachineCodeBlock
-- getBlockAddr
-- callTachyonFFI
-
-Currently, allocMachineCodeBlock, in v8, returns a byte array mapped to
-a real memory region. This can be accessed through the [] operator.
-
-Can potentially create a raw FFI mapping to get the block address directly.
-On top of this, we can build a proxy that allocates an object in which 
-to store the memory block address. Accessor functions can be written to
-address the machine code block object. Equivalent proxy code can be written
-for D8.
-
-Need to write a custom proxy for callTachyonFFI. This proxy can write
-function arguments into a memory vector allocated with malloc.
-*/
-
 // If we are running inside Tachyon
 if (config.inTachyon)
 {
@@ -37,6 +17,8 @@ if (config.inTachyon)
     */
     var allocMachineCodeBlock = function (size)
     {
+        "tachyon:noglobal";
+
         var blockPtr = rawAllocMachineCodeBlock(unboxInt(size));
 
         var blockObj = alloc_memblock();
@@ -50,10 +32,12 @@ if (config.inTachyon)
     /**
     Free a machine code block.
     */
-    var freeMachineCodeBlock = function (mcb)
+    var freeMachineCodeBlock = function (blockObj)
     {
+        "tachyon:noglobal";
+
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            boolToBox(getRefTag(blockObj) === TAG_OTHER),
             'invalid mcb reference'
         );
 
@@ -67,10 +51,12 @@ if (config.inTachyon)
     Get the address of an offset into the block, expressed
     as an array of bytes.
     */
-    var getBlockAddr = function (mcb, index)
+    var getBlockAddr = function (blockObj, index)
     {
+        "tachyon:noglobal";
+
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            boolToBox(getRefTag(blockObj) === TAG_OTHER),
             'invalid mcb reference'
         );
 
@@ -91,10 +77,12 @@ if (config.inTachyon)
     /**
     Write a byte to a machine code block.
     */
-    var writeToMachineCodeBlock = function (mcb, index, byteVal)
+    var writeToMachineCodeBlock = function (blockObj, index, byteVal)
     {
+        "tachyon:noglobal";
+
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            boolToBox(getRefTag(blockObj) === TAG_OTHER),
             'invalid mcb reference'
         );
 
@@ -122,14 +110,14 @@ else
     /**
     Write a byte to a machine code block.
     */
-    var writeToMachineCodeBlock = function (mcb, index, byteVal)
+    var writeToMachineCodeBlock = function (blockObj, index, byteVal)
     {
         assert (
             byteVal > 0 && byteVal <= 255,
             'byte value out of range'
         );
 
-        mcb[index] = byteVal;
+        blockObj[index] = byteVal;
     };
 }
 

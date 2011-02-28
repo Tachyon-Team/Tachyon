@@ -14,18 +14,28 @@ Compile and initialize the Tachyon compiler using Tachyon
 */
 function bootstrap(allCode, params)
 {
+    print('bootstrap');
+    print("IRType: " + IRType);
+
+    print('Creating backend context layout');
     // Create the context and object layouts
     params.target.backendCfg.makeContextLayout(params);
+    print('Creating fronted context layout');
     makeContextLayout(params);
+    print('Creating object layouts');
     makeObjectLayouts(params);
 
+    
     // Initialize the FFI functions
+    print('Initialize FFI functions');
     initFFI(params);
 
     // Get the source code for the primitives
+    print('Get primitives source code');
     var primSrcs = getPrimSrcs(params);
 
     // Compile the primitives
+    print('Compile primitives source code');
     var primIRs = compSources(primSrcs, params);
 
     // Initialize the runtime
@@ -64,7 +74,12 @@ function bootstrap(allCode, params)
         // Compile the Tachyon sources
         var tachyonIRs = compSources(tachyonSrcs, params);
 
-        // TODO: execute compiled Tachyon units
+        // Execute the Tachyon code units
+        for (var i = 0; i < tachyonIRs.length; ++i)
+        {
+            print('Executing unit for: "' + tachyonSrcs[i] + '"'); 
+            execUnit(tachyonIRs[i], params);
+        }
     }
 
     print('Tachyon initialization complete');
@@ -157,12 +172,12 @@ function getTachyonSrcs(params)
         'utility/arrays.js',
         'utility/heap.js',
         'utility/hashmap.js',
-        'utility/set.js',
+        'utility/hashset.js',
         'utility/linkedlist.js',
         'utility/strings.js',
         'utility/modules.js',
-        'utility/num.js',
         'utility/misc.js',
+        'utility/num.js',
         'utility/xml.js',
         'utility/html.js',
         'compiler/targets.js',
@@ -193,15 +208,15 @@ function getTachyonSrcs(params)
         'platform/mcb.js',
         'runtime/layout.js',
         'runtime/context.js',
-        'runtime/objects.js',    
+        'runtime/objects.js',
         'backend/asm.js',
-        'backend/backend.js',
+        'backend/regalloc.js',
         'backend/linearscan.js',
-        "backend/regalloc.js",
-        "backend/x86/config.js",
-        'backend/x86/ir-to-asm.js',
+        'backend/backend.js',
         'backend/x86/asm.js',
-        'main.js'
+        'backend/x86/config.js',
+        'backend/x86/ir-to-asm.js',
+        'bt-fib.js'
     ];
 
     //var tachyonSrcs = ['parser/parser.js'];
@@ -329,7 +344,8 @@ function initRuntime(params)
     print('Initializing run-time');
 
     // Allocate a 64MB heap
-    var heapBlock = allocMachineCodeBlock(Math.pow(2, 26));
+    var heapSize = Math.pow(2, 26);
+    var heapBlock = allocMachineCodeBlock(heapSize);
     var heapAddr = getBlockAddr(heapBlock, 0);
 
     // Get the heap initialization function
@@ -339,12 +355,16 @@ function initRuntime(params)
     var initHeapBridge = makeBridge(
         initHeap,
         params,
-        [new CPtrAsPtr()],
+        [new CPtrAsPtr(), new CIntAsInt()],
         new CPtrAsPtr()
     );
 
     // Initialize the heap
-    var ctxPtr = initHeapBridge(asm.address([0,0,0,0]).getBytes(), heapAddr);
+    var ctxPtr = initHeapBridge(
+        asm.address([0,0,0,0]).getBytes(),
+        heapAddr,
+        heapSize
+    );
 
     // Store the context pointer in the compilation parameters
     params.ctxPtr = ctxPtr;
@@ -394,7 +414,10 @@ function initRuntime(params)
 
         //print(strObj);
 
-        freeMachineCodeBlock(memBlock);
+        if (numBytes > 0)
+        {
+            freeMachineCodeBlock(memBlock);
+        }
 
         return strObj;
     }

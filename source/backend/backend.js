@@ -188,10 +188,20 @@ backend.compileIRToCB = function (ir, params)
             print();
         }
     }
-
+    
+    //print("Assemble");
     // Add the initialization code at the beginning
     // and reassemble
     translator.asm.codeBlock.assemble();
+
+    for (k=0; k<fcts.length; ++k)
+    {
+        allocator.clean(fcts[k]);
+        //fcts[k].virginCFG = null;
+        fcts[k].finalCFG = null;
+    }
+
+    //print("done");
 
     return translator.asm.codeBlock;
 };

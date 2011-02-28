@@ -53,6 +53,8 @@
 
 /*---------------------------------------------------------------------------*/
 
+#include <cassert>
+
 int writeFile(const char* fileName, const char* content)
 {
     FILE *out = fopen(fileName, "w");
@@ -335,21 +337,27 @@ v8::Handle<v8::Value> v8Proxy_freeMachineCodeBlock(const v8::Arguments& args)
         printf("Error in freeMachineCodeBlock -- 1 argument expected\n");
         exit(1);
     }
-    else
+
+    i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
+
+    if (!obj->IsJSObject())
     {
-        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
-
-        Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
-        );
-
-        uint32_t len = static_cast<uint32_t>(array->length());
-        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-
-        freeMachineCodeBlock(block, len);
-
-        return Undefined();
+        printf("Error in freeMachineCodeBlock -- invalid object passed\n");
+        exit(1);
     }
+
+    i::Handle<i::JSObject> jsObj = i::Handle<i::JSObject>::cast(obj);
+
+    Handle<v8::internal::ExternalUnsignedByteArray> array(
+        v8::internal::ExternalUnsignedByteArray::cast(jsObj->elements())
+    );
+
+    uint32_t len = static_cast<uint32_t>(array->length());
+    uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
+
+    freeMachineCodeBlock(block, len);
+
+    return Undefined();
 }
 
 v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
@@ -479,76 +487,154 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 
 // Simple FFI.
 
-void printInt(int val)
-{
-    printf("%d\n", val);
-}
+// Tachyon argument/return value type definition
+typedef int TachVal;
 
-int sum2Ints(int v1, int v2)
-{
-    return v1 + v2;
-}
-
-typedef void (*FPTR)();
-
-v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in getFuncAddr -- 1 argument expected\n");
-        exit(1);
-    }
-
-    v8::String::Utf8Value funcName(args[0]);  
-    char* fName = *funcName;
-
-    FPTR address = NULL;
-
-    if (strcmp(fName, "malloc") == 0)
-        address = (FPTR)(malloc);
-    else if (strcmp(fName, "free") == 0)
-        address = (FPTR)(free);
-    else if (strcmp(fName, "exit") == 0)
-        address = (FPTR)(exit);
-    else if (strcmp(fName, "puts") == 0)
-        address = (FPTR)(puts);
-    else if (strcmp(fName, "printInt") == 0)
-        address = (FPTR)(printInt);
-    else if (strcmp(fName, "sum2Ints") == 0)
-        address = (FPTR)(sum2Ints);
-    else if (strcmp(fName, "writeFile") == 0)
-        address = (FPTR)(writeFile);
-    else if (strcmp(fName, "readFile") == 0)
-        address = (FPTR)(readFile);
-    else if (strcmp(fName, "shellCommand") == 0)
-        address = (FPTR)(shellCommand);
-    else if (strcmp(fName, "readConsole") == 0)
-        address = (FPTR)(readConsole);
-    else if (strcmp(fName, "rawAllocMachineCodeBlock") == 0)
-        address = (FPTR)(allocMachineCodeBlock);
-    else if (strcmp(fName, "rawFreeMachineCodeBlock") == 0)
-        address = (FPTR)(freeMachineCodeBlock);
-
-    if (address == NULL)
-    {
-        printf("C function not found: \"%s\"\n", fName);
-        exit(1);
-    }
-
-    return valToArray(address);
-}
-
-// Union type for values returned by Tachyon functions
-union TachVal
+union TachValCaster
 {
     int intVal;
     void* ptrVal;
 };
 
+int tachValToInt(const TachVal& v)
+{
+    return v;
+}
+
+void* tachValToPtr(const TachVal& v)
+{
+    TachValCaster c;
+    c.intVal = v;
+    return c.ptrVal;
+}
+
+TachVal tachValFromInt(int i)
+{
+    return i;
+}
+
+TachVal tachValFromPtr(void* p)
+{
+    TachValCaster c;
+    c.ptrVal = p;
+    return c.intVal;
+}
+
 // Pointer to a Tachyon function
-typedef int (*TACHYON_FPTR)(void*, ...);
+typedef TachVal (*TACHYON_FPTR)(void*, ...);
 
 // Call a Tachyon function through its FFI
+// First arg: function pointer
+// Second arg: context pointer
+// Third arg: number of arguments passed
+// Fourth arg: argument data pointer
+int callTachyonFFI(
+    TACHYON_FPTR funcPtr,
+    uint8_t* ctxPtr,
+    int numArgs,
+    uint8_t* argData
+)
+{
+    assert (
+        sizeof(TachVal) == sizeof(int) &&
+        sizeof(TachVal) == sizeof(void*)
+    );
+
+    // Allocate memory for the argument values
+    TachVal* tachArgs = new TachVal[numArgs];
+
+    // Pointer to the current argument
+    uint8_t* argPtr = argData;
+
+    // Read the argument values from the argument data
+    for (int i = 0; i < numArgs; ++i)
+    {
+        memcpy(&tachArgs[i], argPtr, sizeof(TachVal));
+        argPtr += sizeof(TachVal);
+    }
+
+    // Variable to store the return value
+    TachVal retVal;
+
+    // Switch on the number of arguments to pass
+    switch (numArgs)
+    {
+        case 0:
+        retVal = funcPtr(
+            ctxPtr
+        );
+        break;
+
+        case 1:
+        retVal = funcPtr(
+            ctxPtr,
+            tachArgs[0]
+        );
+        break;
+
+        case 2:
+        retVal = funcPtr(
+            ctxPtr, 
+            tachArgs[0],
+            tachArgs[1]
+        );
+        break;
+
+        case 3:
+        //printf("Calling Tachyon func with 3 arguments\n");
+        retVal = funcPtr(
+            ctxPtr,
+            tachArgs[0],
+            tachArgs[1],
+            tachArgs[2]
+        );
+        //printf("Returned from Tachyon func\n");
+        break;
+
+        case 4:
+        retVal = funcPtr(
+            ctxPtr,
+            tachArgs[0],
+            tachArgs[1],
+            tachArgs[2],
+            tachArgs[3]
+        );
+        break;
+
+        case 5:
+        retVal = funcPtr(
+            ctxPtr,
+            tachArgs[0],
+            tachArgs[1],
+            tachArgs[2],
+            tachArgs[3],
+            tachArgs[4]
+        );
+        break;
+
+        case 6:
+        retVal = funcPtr(
+            ctxPtr,
+            tachArgs[0],
+            tachArgs[1],
+            tachArgs[2],
+            tachArgs[3],
+            tachArgs[4],
+            tachArgs[5]
+        );
+        break;
+
+        default:
+        printf("Error in callTachyonFFI -- unsupported argument count: %d\n", (int)numArgs);
+        exit(1);
+    }
+
+    // Delete the argument objects
+    delete [] tachArgs;
+
+    return retVal;
+}
+
 // First arg: vector of strings describing arg types
 // Second arg: string describing return type
 // Third arg: function pointer
@@ -576,12 +662,15 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     
     // Get the context pointer
     uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[3]);
-    
-    //printf("Got func ptr and ctx ptr\n");
 
-    // Allocate memory for the argument values
+    // Get the number of call arguments
     size_t numArgs = args.Length() - MIN_ARG_COUNT;
-    TachVal* tachArgs = new TachVal[numArgs];
+
+    // Allocate memory for the argument data
+    uint8_t* argData = new uint8_t[numArgs * sizeof(TachVal)];
+
+    // Pointer to the current argument
+    uint8_t* argPtr = argData;
 
     // For each argument to be passed
     for (size_t i = 0; i < numArgs; ++i)
@@ -600,15 +689,15 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         v8::String::Utf8Value argTypeStrObj(argTypeArray->Get(i));
         const char* argTypeStr = *argTypeStrObj;
 
-        // Get a reference to the Tachyon argument object
-        TachVal& tachArg = tachArgs[i];
+        // Value for the current argument
+        TachVal tachArg;
 
         // If this is an integer argument
         if (!strcmp(argTypeStr, "int"))
         {
             if (arg->IsNumber())
             {
-                tachArg.intVal = arg->Int32Value();
+                tachArg = tachValFromInt(arg->Int32Value());
                 //printf("Arg %d = %d\n", i, tachArg.intVal);
             }
             else
@@ -623,7 +712,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         {
             if (arg->IsArray())
             {
-                tachArg.ptrVal = arrayToVal<void*>(arg);
+                tachArg = tachValFromPtr(arrayToVal<void*>(arg));
                 //printf("Arg %d = %p\n", i, tachArg.ptrVal);
             }
             else
@@ -639,86 +728,22 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             printf("Error in callTachyonFFI -- unsupported argument type: \"%s\"\n", argTypeStr);
             exit(1);
         }
+
+        // Copy the argument value into the argument data
+        memcpy(argPtr, &tachArg, sizeof(tachArg));
+        argPtr += sizeof(tachArg);
     }
 
-    // Variable to store the return value
-    TachVal retVal;
+    // Call the function
+    TachVal retVal = callTachyonFFI(
+        funcPtr,
+        ctxPtr,
+        numArgs,
+        argData
+    );
 
-    // Switch on the number of arguments to pass
-    switch (numArgs)
-    {
-        case 0:
-        retVal.intVal = funcPtr(
-            ctxPtr
-        );
-        break;
-
-        case 1:
-        retVal.intVal = funcPtr(
-            ctxPtr,
-            tachArgs[0].intVal
-        );
-        break;
-
-        case 2:
-        retVal.intVal = funcPtr(
-            ctxPtr, 
-            tachArgs[0].intVal, 
-            tachArgs[1].intVal
-        );
-        break;
-
-        case 3:
-        //printf("Calling Tachyon func with 3 arguments\n");
-        retVal.intVal = funcPtr(
-            ctxPtr,
-            tachArgs[0].intVal,
-            tachArgs[1].intVal,
-            tachArgs[2].intVal
-        );
-        //printf("Returned from Tachyon func\n");
-        break;
-
-        case 4:
-        retVal.intVal = funcPtr(
-            ctxPtr,
-            tachArgs[0].intVal,
-            tachArgs[1].intVal,
-            tachArgs[2].intVal,
-            tachArgs[3].intVal
-        );
-        break;
-
-        case 5:
-        retVal.intVal = funcPtr(
-            ctxPtr,
-            tachArgs[0].intVal,
-            tachArgs[1].intVal,
-            tachArgs[2].intVal,
-            tachArgs[3].intVal,
-            tachArgs[4].intVal
-        );
-        break;
-
-        case 6:
-        retVal.intVal = funcPtr(
-            ctxPtr,
-            tachArgs[0].intVal,
-            tachArgs[1].intVal,
-            tachArgs[2].intVal,
-            tachArgs[3].intVal,
-            tachArgs[4].intVal,
-            tachArgs[5].intVal
-        );
-        break;
-
-        default:
-        printf("Error in callTachyonFFI -- unsupported argument count: %d\n", (int)numArgs);
-        exit(1);
-    }
-
-    // Delete the argument objects
-    delete [] tachArgs;
+    // Delete the argument data
+    delete [] argData;
 
     // Variable for the V8 return value
     v8::Handle<v8::Value> v8RetVal;
@@ -726,13 +751,13 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     // If the return value is integer
     if (!strcmp(retTypeStr, "int"))
     {
-        v8RetVal = v8::Number::New(retVal.intVal);
+        v8RetVal = v8::Number::New(tachValToInt(retVal));
     }
 
     // If the return value is a pointer
     else if (!strcmp(retTypeStr, "void*") || !strcmp(retTypeStr, "char*"))
     {
-        v8RetVal = valToArray(retVal.ptrVal);
+        v8RetVal = valToArray(tachValToPtr(retVal));
     }
 
     // Otherwise, if an unsupported type is passed    
@@ -745,6 +770,76 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     //printf("returning from tachyonCallFFI\n");
 
     return v8RetVal;
+}
+
+void printInt(int val)
+{
+    printf("%d\n", val);
+}
+
+int sum2Ints(int v1, int v2)
+{
+    return v1 + v2;
+}
+
+typedef void (*FPTR)();
+
+FPTR getFuncAddr(const char* funcName)
+{
+    FPTR address = NULL;
+
+    if (strcmp(funcName, "malloc") == 0)
+        address = (FPTR)(malloc);
+    else if (strcmp(funcName, "free") == 0)
+        address = (FPTR)(free);
+    else if (strcmp(funcName, "exit") == 0)
+        address = (FPTR)(exit);
+    else if (strcmp(funcName, "puts") == 0)
+        address = (FPTR)(puts);
+    else if (strcmp(funcName, "printInt") == 0)
+        address = (FPTR)(printInt);
+    else if (strcmp(funcName, "sum2Ints") == 0)
+        address = (FPTR)(sum2Ints);
+    else if (strcmp(funcName, "writeFile") == 0)
+        address = (FPTR)(writeFile);
+    else if (strcmp(funcName, "readFile") == 0)
+        address = (FPTR)(readFile);
+    else if (strcmp(funcName, "shellCommand") == 0)
+        address = (FPTR)(shellCommand);
+    else if (strcmp(funcName, "readConsole") == 0)
+        address = (FPTR)(readConsole);
+    else if (strcmp(funcName, "rawAllocMachineCodeBlock") == 0)
+        address = (FPTR)(allocMachineCodeBlock);
+    else if (strcmp(funcName, "rawFreeMachineCodeBlock") == 0)
+        address = (FPTR)(freeMachineCodeBlock);
+    else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
+        address = (FPTR)(callTachyonFFI);
+    else if (strcmp(funcName, "getFuncAddr") == 0)
+        address = (FPTR)(getFuncAddr);
+
+    if (address == NULL)
+    {
+        printf("Error in getFuncAddr -- C function not found: \"%s\"\n", funcName);
+        exit(1);
+    }
+
+    return address;
+}
+
+v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in getFuncAddr -- 1 argument expected\n");
+        exit(1);
+    }
+
+    v8::String::Utf8Value str(args[0]);
+    char* funcName = *str;
+
+    FPTR address = getFuncAddr(funcName);
+
+    return valToArray(address);
 }
 
 /*---------------------------------------------------------------------------*/

@@ -105,6 +105,18 @@ function makeContextLayout(params)
         IRType.box
     );
 
+    // Heap start pointer
+    ctxLayout.addField(
+        'heapstart',
+        IRType.rptr
+    );
+
+    // Heap limit pointer
+    ctxLayout.addField(
+        'heaplimit',
+        IRType.rptr
+    );
+
     // Heap allocation pointer
     ctxLayout.addField(
         'allocptr',

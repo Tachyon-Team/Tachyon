@@ -431,6 +431,16 @@ function heapAlloc(size)
     // Increment the allocation pointer by the object size
     var nextPtr = allocPtr + size;
 
+    // Get the heap limit pointer
+    var heapLimit = get_ctx_heaplimit(ctx);
+
+    // if this allocation exceeds the heap limit
+    if (nextPtr >= heapLimit)
+    {
+        // Report an error and abort
+        error('allocation exceeds heap limit');
+    }
+
     // Align the next allocation pointer
     var rem = iir.icast(IRType.pint, nextPtr) % HEAP_ALIGN;
     if (rem !== pint(0))

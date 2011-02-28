@@ -13,27 +13,29 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 Allocate and initialize a context object and a global object on the heap
 @param heapPtr pointer to the start of the heap
 */
-function initHeap(heapPtr)
+function initHeap(heapPtr, heapSize)
 {
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg heapPtr rptr";
+    "tachyon:arg heapSize pint";
     "tachyon:ret rptr";
 
     // Align the context object in memory
-    //
-    // The division then multiplication is done since
-    // a javascript bitwise and operation operates only on 32 bits
     var heapPtrInt = iir.icast(IRType.pint, heapPtr);
-    heapPtrInt = (heapPtrInt % CTX_ALIGN) === pint(0) ?  
-                  heapPtrInt : 
-                  ((heapPtrInt + CTX_ALIGN) / CTX_ALIGN) * CTX_ALIGN;
-    heapPtr = iir.icast(IRType.rptr, heapPtrInt);
+    var ctxPtrInt = (heapPtrInt % CTX_ALIGN) === pint(0)?  
+                    heapPtrInt : 
+                    (heapPtrInt - (heapPtrInt % CTX_ALIGN));
+    var ctxPtr = iir.icast(IRType.rptr, ctxPtrInt);
 
     // Treat first address as the address of context object and initialize
     // the allocation pointer
-    iir.set_ctx(heapPtr);
-    set_ctx_allocptr(heapPtr, heapPtr);
+    iir.set_ctx(ctxPtr);
+    set_ctx_allocptr(ctxPtr, ctxPtr);
+
+    // Set the heap pointer and heap limit
+    set_ctx_heapstart(ctxPtr, heapPtr);
+    set_ctx_heaplimit(ctxPtr, heapPtr + heapSize);
 
     // Allocate the context object, incrementing the allocation pointer
     var ctxObj = alloc_ctx();
