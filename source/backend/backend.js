@@ -59,6 +59,8 @@ backend.compileIRToCB = function (ir, params)
 
         //print("Order blocks");
         order = allocator.orderBlocks(cfg);
+        //print("nb of blocks: " + order.length);
+
         allocator.numberInstrs(cfg, order, params);
 
         if (params.printRegAlloc === true)
@@ -100,6 +102,7 @@ backend.compileIRToCB = function (ir, params)
 
         //print("Computing live intervals");
         liveIntervals = allocator.liveIntervals(cfg, order, params);
+        //print("nb of live intervals: " + liveIntervals.length);
         //print("Computing fixed intervals");
         fixedIntervals = allocator.fixedIntervals(order, params);
 
