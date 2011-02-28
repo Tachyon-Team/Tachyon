@@ -441,6 +441,16 @@ tests.programs.clos_globals = genTest(
 );
 
 /**
+Closure capturing an argument and global variable access test.
+*/
+tests.programs.clos_arg = genTest(
+    'programs/clos_arg/clos_arg.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Constructor/new test.
 */
 tests.programs.ctor_new = genTest(
