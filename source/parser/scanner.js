@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2011-03-01 09:09:02 feeley>
+// File: "scanner.js", Time-stamp: <2011-03-01 09:23:24 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -396,6 +396,9 @@ Scanner.prototype.hexadecimal_class = function (c)
 
 Scanner.prototype.parse_identifier_old = function ()
 {
+    // This iterative algorithm extends the Array of characters using the
+    // "push" method.  The growth of the array generates garbage.
+
     var start_pos = this.lookahead_pos(0);
     var chars = [];
     var h = 0;
@@ -438,6 +441,10 @@ Scanner.prototype.parse_identifier_string = function ()
 
 Scanner.prototype.parse_identifier_string_loop = function (n)
 {
+    // This recursive algorithm saves the characters on the stack
+    // and allocates an array of the correct size to hold them.
+    // It does not generate garbage.
+
     var chars;
     var c = this.lookahead_char(0);
 
