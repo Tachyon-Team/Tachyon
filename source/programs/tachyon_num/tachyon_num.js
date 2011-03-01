@@ -1,40 +1,39 @@
 function test()
 {
-    /*
     var min = getIntMin(30, false);
     var max = getIntMax(30, false);
 
-    print('min: ' + num_to_string(min));
-    print('max: ' + num_to_string(max));
+    if (!num_lt(min, max))
+        return 1;
 
-    // num_sub(num_shift(1, numBits-1), 1);
+    if (!num_lt(min, 0))
+        return 2;
 
-    var a = num_shift(1, 29)
-    print('(1<<29): ' + num_to_string(a));
-    var b = num_sub(a, 1);
-    print('(1<<29)-1: ' + num_to_string(b));
-    */
+    if (!num_gt(max, 0))
+        return 3;
 
-    /*
-    print('radix    : ' + bignum_radix);
-    print('radix - 1: ' + (bignum_radix-1))
-    print('n&(r-1)  : ' + (1 & (bignum_radix-1)));
-    */
+    var a = num_shift(1, 29);
 
-    /*
-    var n = bignum_from_js(1);
-    print('bignum 1: ' + num_to_string(n));
-    */
+    if (!num_gt(a, 1))
+        return 4;
 
-    var a = num_shift(1, 29)
-    print('(1<<29): ' + num_to_string(a));
-    var b = num_sub(a, 1);
-    print('(1<<29)-1: ' + num_to_string(b));
+    var b = num_shift(a, -2);
 
+    if (!num_gt(b, 1))
+        return 5;
 
+    if (!num_gt(a, b))
+        return 6;
 
+    var c = num_sub(b, 1);
+    var d = num_add(c, 1);
 
+    if (!num_eq(d, b))
+        return 7;
 
+    //print('min: ' + num_to_string(min));
+    //print('max: ' + num_to_string(max));
+    //print('(1<<29): ' + num_to_string(a));
 
     return 0;
 }

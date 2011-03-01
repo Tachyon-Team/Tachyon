@@ -6,7 +6,7 @@ Intermediate Representation (IR) translation implementation
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // TODO: Explain result of translation in function description comments 
@@ -2470,37 +2470,48 @@ function opToIR(context)
         case 'x && y':
         {
             // Compile the first expression
-            var fstContext = context.pursue(exprs[0]);
+            var fstEntry = context.cfg.getNewBlock('log_and_fst');
+            var fstContext = context.branch(
+                exprs[0],
+                fstEntry,
+                context.localMap.copy()
+            );
             exprToIR(fstContext);
 
             // Compile the second expression
+            var secEntry = context.cfg.getNewBlock('log_and_sec');
             var secContext = context.branch(
                 exprs[1],
-                context.cfg.getNewBlock('log_and_sec'),
+                secEntry,
                 fstContext.localMap.copy()
             );
             exprToIR(secContext);
 
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('log_and_join');
-
-            // If the first expression evaluates to true, evaluate the second
-            fstContext.addInstr(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    secContext.entryBlock,
-                    joinBlock
-                )
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [fstContext, secContext],
+                context.localMap,
+                context.cfg,
+                'log_and_join'
             );
-
-            // Make the second context branch to the join block directly
-            secContext.addInstr(new JumpInstr(joinBlock));
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
                 new PhiInstr(
                     [fstContext.getOutValue(), secContext.getOutValue()],
                     [fstContext.getExitBlock(), secContext.getExitBlock()]
+                )
+            );
+
+            // Jump to the first expression evaluation
+            context.addInstr(new JumpInstr(fstEntry));
+
+            // If the first expression evaluates to false, evaluate the second
+            fstContext.getExitBlock().replBranch(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    secEntry,
+                    joinBlock
                 )
             );
 
@@ -2513,37 +2524,48 @@ function opToIR(context)
         case 'x || y':
         {
             // Compile the first expression
-            var fstContext = context.pursue(exprs[0]);
+            var fstEntry = context.cfg.getNewBlock('log_or_fst');
+            var fstContext = context.branch(
+                exprs[0],
+                fstEntry,
+                context.localMap.copy()
+            );
             exprToIR(fstContext);
 
             // Compile the second expression
+            var secEntry = context.cfg.getNewBlock('log_or_sec');
             var secContext = context.branch(
                 exprs[1],
-                context.cfg.getNewBlock('log_or_sec'),
+                secEntry,
                 fstContext.localMap.copy()
             );
             exprToIR(secContext);
 
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('log_or_join');
-
-            // If the first expression evaluates to false, evaluate the second
-            fstContext.addInstr(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    joinBlock,
-                    secContext.entryBlock
-                )
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [fstContext, secContext],
+                context.localMap,
+                context.cfg,
+                'log_or_join'
             );
-
-            // Make the second context branch to the join block directly
-            secContext.addInstr(new JumpInstr(joinBlock));
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
                 new PhiInstr(
                     [fstContext.getOutValue(), secContext.getOutValue()],
                     [fstContext.getExitBlock(), secContext.getExitBlock()]
+                )
+            );
+
+            // Jump to the first expression evaluation
+            context.addInstr(new JumpInstr(fstEntry));
+
+            // If the first expression evaluates to false, evaluate the second
+            fstContext.getExitBlock().replBranch(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    joinBlock,
+                    secEntry
                 )
             );
 
