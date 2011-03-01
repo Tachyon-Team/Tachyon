@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "ast-passes.js", Time-stamp: <2010-12-31 11:23:53 feeley>
+// File: "ast-passes.js", Time-stamp: <2011-03-01 13:20:29 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -267,7 +267,9 @@ function ast_walk_exprs(asts, ctx)
 
 function ast_pass1_ctx()
 {
+    this.fn_decl = null;
 }
+
 
 ast_pass1_ctx.prototype.walk_statement = function (ast)
 {
@@ -278,12 +280,68 @@ ast_pass1_ctx.prototype.walk_statement = function (ast)
     }
     else if (ast instanceof Program)
     {
-        ast.block.statements.unshift(new VariableStatement(ast.loc,
-                                                           [new Decl(ast.loc,
-                                                                     new Token(IDENT_CAT, "debug$print", ast.loc),
-                                                                     new Ref(ast.loc,
-                                                                             new Token(IDENT_CAT, "print", ast.loc)))]));
-        return ast_walk_statement(ast, this);
+        var debug_lib = "                                                   \
+                                                                            \
+          var debug$print = print;                                          \
+          var debug$nesting = 0;                                            \
+                                                                            \
+          function debug$nest(loc, fn, enter)                               \
+          { var level = enter ? ++debug$nesting : debug$nesting--;          \
+            var prefix = \"\";                                              \
+            if (level > 9) { prefix = \"|[\"+level+\"] \"; level = 8; }     \
+            while (level-- > 0) prefix = \"|  \" + prefix;                  \
+            debug$print(prefix+(enter?\"((\":\"))\")+\" \"+loc+\": \"+fn);  \
+          }                                                                 \
+                                                                            \
+          function debug$enter(loc, fn)                                     \
+          { debug$nest(loc, fn, true); }                                    \
+                                                                            \
+          function debug$return0(loc, fn)                                   \
+          { debug$nest(loc, fn, false); }                                   \
+                                                                            \
+          function debug$return1(loc, fn, result)                           \
+          { debug$nest(loc, fn, false);                                     \
+            return result;                                                  \
+          }                                                                 \
+                                                                            \
+        ";
+
+        var s = new Scanner(new String_input_port(debug_lib));
+        var p = new Parser(s, false);
+        var prog = p.parse();
+
+        ast_walk_statement(ast, this);
+
+        ast.block.statements = prog.block.statements.concat(ast.block.statements);
+        return ast;
+    }
+    else if (ast instanceof FunctionDeclaration)
+    {
+        var save_fn_decl = this.fn_decl;
+        this.fn_decl = ast;
+        ast.funct = this.walk_expr(ast.funct);
+        this.fn_decl = save_fn_decl;
+        return ast;
+    }
+    else if (ast instanceof ReturnStatement)
+    {
+        ast.expr = this.walk_expr(ast.expr);
+        if (!this.filter_debug(ast))
+        {
+            return ast;
+        }
+        else if (ast.expr !== null)
+        {
+            ast.expr = this.call_debug("debug$return1", ast.loc, ast.expr);
+            return ast;
+        }
+        else
+        {
+            return new BlockStatement(ast.loc,
+                                      [new ExprStatement(ast.loc,
+                                                        this.call_debug("debug$return0", ast.loc)),
+                                       ast]);
+        }
     }
     else
     {
@@ -300,13 +358,17 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
     }
     else if (ast instanceof FunctionExpr)
     {
-        ast.body.unshift(new ExprStatement(ast.loc,
-                                           new CallExpr(ast.loc,
-                                                        new Ref(ast.loc,
-                                                                new Token(IDENT_CAT, "debug$print", ast.loc)),
-                                                        [new Literal(ast.loc,
-                                                                     ast.loc.to_string()+":")])));
         ast_walk_statements(ast.body, this);
+
+        if (this.filter_debug(ast))
+        {
+            ast.body.unshift(new ExprStatement(ast.loc,
+                                               this.call_debug("debug$enter",
+                                                               ast.loc)));
+            ast.body.push(new ExprStatement(ast.loc,
+                                            this.call_debug("debug$return0", ast.loc)));
+        }
+
         return ast;
     }
     else
@@ -314,6 +376,36 @@ ast_pass1_ctx.prototype.walk_expr = function (ast)
         return ast_walk_expr(ast, this);
     }
 };
+
+ast_pass1_ctx.prototype.call_debug = function (fn, loc, result)
+{
+    var args = [new Literal(loc,
+                            loc.to_string()),
+                new Literal(loc,
+                            (this.fn_decl !== null)
+                            ? this.fn_decl.id.toString()
+                            : "?")];
+
+    if (result !== undefined)
+        args.push(result);
+                    
+    return new CallExpr(loc,
+                        new Ref(loc,
+                                new Token(IDENT_CAT, fn, loc)),
+                        args);
+}
+
+ast_pass1_ctx.prototype.filter_debug = function (ast)
+{
+    // TODO: This filtering should be user configurable from a command line option.
+    if (ast.loc.filename === "parser/parser.js" ||
+        ast.loc.filename === "parser/scanner.js" ||
+//        ast.loc.filename === "utility/debug.js" ||
+        (this.fn_decl !== null &&
+         this.fn_decl.id.toString() === "assert"))
+        return false;
+    return true;
+}
 
 function ast_pass1(ast)
 {
@@ -329,7 +421,7 @@ function ast_pass1(ast)
 //
 // NOTE: this is not done through free variables for two reasons:
 // 1. Free variables can come from nested sub-functions.
-// 2. Free variable resolution and must be done after pass 1
+// 2. Free variable resolution and must be done after pass 2
 
 function ast_pass2_ctx(ast)
 {
