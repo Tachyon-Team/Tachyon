@@ -18,6 +18,9 @@ RLWJSVM = rlwrap $(JSVM)
 # For bootstrapping with Tachyon JavaScript to Scheme compiler
 JS2SCM = parser/js2scm
 
+# For debugging Tachyon
+JS2JS = parser/js2js
+
 # Base program source files
 BASE_SRCS =                             \
     utility/debug.js                    \
@@ -163,6 +166,9 @@ bootstrap-js2scm:
 
 bootstrap-js2scm-debug:
 	$(JS2SCM) -scm -debug $(MAIN_SRCS)
+
+tachyon-debug.js: $(MAIN_SRCS)
+	$(JS2JS) -debug $(MAIN_SRCS) > tachyon-debug.js
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)
