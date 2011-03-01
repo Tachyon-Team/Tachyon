@@ -588,14 +588,19 @@ function getIRFuncObj(
             }
 
             if (type !== IRType.box && newFunc.usesArguments)
-                throw 'functions taking non-boxed arguments cannot ' + 
-                    'use the arguments object';
+                error(
+                    'functions taking non-boxed arguments cannot ' + 
+                    'use the arguments object'
+                );
 
             if (argNo === -1)
-                throw 'invalid argument name in argument type annotation';
+                error('invalid argument name in argument type annotation');
 
             if (!type)
-                throw 'invalid type in argument type annotation (' + funcName + ')';
+                error(
+                    'invalid type in argument type annotation (' + 
+                    funcName + ')'
+                );
 
             newFunc.argTypes[argNo] = type;
         }
@@ -606,7 +611,7 @@ function getIRFuncObj(
             var type = IRType[tokens[1]];
 
             if (!type)
-                throw 'invalid type in return type annotation';
+                error('invalid type in return type annotation');
 
             newFunc.retType = type;
         }

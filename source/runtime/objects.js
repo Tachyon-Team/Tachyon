@@ -493,6 +493,53 @@ function makeObjectLayouts(params)
 
     //=============================================================================
     //
+    // String buffer memory layout
+    //
+    //=============================================================================
+
+    /**
+    String buffer layout object
+    */
+    var strbufLayout = new MemLayout('strbuf', IRType.box, 'TAG_OTHER', params);
+
+    //
+    // TODO: header
+    //
+
+    // Buffer capacity
+    strbufLayout.addField(
+        'cap',
+        IRType.pint
+    );
+
+    // String length
+    strbufLayout.addField(
+        'len',
+        IRType.pint
+    );
+
+    // Character data (UTF-16)
+    strbufLayout.addField(
+        'data',
+        IRType.u16,
+        undefined,
+        false
+    );
+
+    // Finalize the string buffer layout
+    strbufLayout.finalize();
+
+    // Default size of the string buffer
+    params.staticEnv.regBinding(
+        'STR_BUF_DEF_SIZE',
+        ConstValue.getConst(
+            8192,
+            IRType.pint
+        )
+    );
+
+    //=============================================================================
+    //
     // String table layout (hash consing)
     //
     //=============================================================================

@@ -43,13 +43,6 @@ function initHeap(heapPtr, heapSize)
     // Allocate the global object
     var globalObj = newObject(null);
 
-    // TODO: allocate object prototype object
-    // set global object proto
-    // set boxed reference in context
-    // TODO: allocate other basic objects
-    // Possibly, this should be done elsewhere, in a later initialization phase
-    // However, it must be done before code that can throw JS exceptions is run
-
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
 
@@ -59,8 +52,8 @@ function initHeap(heapPtr, heapSize)
     set_ctx_funcproto(ctxObj, null);
     set_ctx_strproto(ctxObj, null);
 
-    // Initialize the string table
-    initStrTable();
+    // Initialize the string hash consing system
+    initStrings();
 
     // Return a pointer to the context object
     return ctxObj;
