@@ -183,7 +183,7 @@ MemLayout.extend = function (baseLayout, name, tagName)
     newLayout.fields = baseLayout.fields.slice(0);
 
     // Copy the field names from the base layout
-    for (key in baseLayout.fieldMap)
+    for (var key in baseLayout.fieldMap)
         newLayout.fieldMap[key] = baseLayout.fieldMap[key];
 
     // Return the new layout object

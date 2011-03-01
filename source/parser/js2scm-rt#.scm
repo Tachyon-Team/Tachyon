@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-18 09:27:50 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2011-03-01 16:56:25 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -96,7 +96,7 @@
 
 (define-macro (js.new ctor . args)
   `(let* ((ctor ,ctor)
-          (self (make-Object ctor (get-prototype ctor) (make-assoc-table)))
+          (self (make-obj ctor))
           (retval (ctor self ,@args)))
      (if (##eq? retval (js.undefined))
          self
@@ -196,7 +196,48 @@
 
 (define-macro (js.switch-clauses . clauses)
   (if (assq 'js.case-fall-through clauses)
-      (error "switch with fall-through not implemented" clauses)
+
+      (let* ((default-case
+               #f)
+             (fns-curr (map (lambda (clause)
+                              (if (equal? (cadr clause) '(js.default))
+                                  (set! default-case clause))
+                              (cons clause (gensym)))
+                            clauses))
+             (fns-next (map cons
+                            clauses
+                            (append (map cdr (cdr fns-curr))
+                                    (list #f)))))
+
+        (define (gen clauses default-fn)
+          (if (pair? clauses)
+              (let* ((clause (car clauses))
+                     (curr-fn (cdr (assq clause fns-curr)))
+                     (case-expr (cadr clause)))
+                (if (equal? case-expr '(js.default))
+                    (gen (cdr clauses) curr-fn)
+                    `(if (js.=== switch-val ,case-expr)
+                         (,curr-fn)
+                         ,(gen (cdr clauses) default-fn))))
+              (if default-fn
+                  `(,default-fn)
+                  `(js.undefined))))
+
+        `(letrec ,(map (lambda (clause)
+                         (let ((curr-fn (cdr (assq clause fns-curr)))
+                               (next-fn (cdr (assq clause fns-next))))
+                           `(,curr-fn
+                             (lambda ()
+                               ,(if (and (eq? 'js.case-fall-through
+                                              (car clause))
+                                         #;next-fn)
+                                    `(begin
+                                       ,(caddr clause)
+                                       (,next-fn))
+                                    `,(caddr clause))))))
+                       clauses)
+           ,(gen clauses #f)))
+
       (let ()
 
         (define (gen clauses default-clause)

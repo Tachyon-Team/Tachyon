@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2010-12-22 10:32:54 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2011-03-01 17:01:54 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -176,6 +176,16 @@
   at ;; assoc-table
 )
 
+(define (make-obj ctor)
+  (cond ((eq? ctor _Array)
+         (make-empty-Array))
+        (else
+         (let ((proto (get-prototype ctor))
+               (at (make-assoc-table)))
+           (make-Object ctor
+                        proto
+                        at)))))
+
 (define (_Object this . args)
   (if (pair? args)
       (error "Object with 1 argument not implemented")
@@ -260,6 +270,40 @@
 
 (define (_String this #!optional (value "") . args)
   (to-string value))
+
+(define (_getFuncAddr this fn)
+  (let ((addr
+         (cond ((equal? fn "malloc")
+                0)
+               ((equal? fn "free")
+                1)
+               ((equal? fn "exit")
+                2)
+               ((equal? fn "puts")
+                3)
+               ((equal? fn "printInt")
+                4)
+               ((equal? fn "sum2Ints")
+                5)
+               ((equal? fn "writeFile")
+                6)
+               ((equal? fn "readFile")
+                7)
+               ((equal? fn "shellCommand")
+                8)
+               ((equal? fn "readConsole")
+                9)
+               ((equal? fn "rawAllocMachineCodeBlock")
+                10)
+               ((equal? fn "rawFreeMachineCodeBlock")
+                11)
+               ((equal? fn "rawCallTachyonFFI")
+                12)
+               ((equal? fn "getFuncAddr")
+                13)
+               (else
+                (error "getFuncAddr: unknown function" fn)))))
+    (list->Array (list addr 0 0 0))))
 
 ;;;----------------------------------------------------------------------------
 
