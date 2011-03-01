@@ -6,6 +6,6 @@ for line in lines:
         l = [token.split("=") for token in line.split(" ")[:-1]]
 
         d = dict(l)
-        used += int(d["total_size_before"]) - int(d["total_size_after"])
+        used += int(d["allocated"])
 
 print "Memory used: %i MB"%(used/1000000.0)

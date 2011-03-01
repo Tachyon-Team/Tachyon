@@ -140,7 +140,7 @@ bt-parser:
 	$(JSVM) $(BASE_SRCS) bt-parser.js
 
 mem-fib:
-	$(JSVM) --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
+	$(JSVM) --no-opt --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
 
 bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
