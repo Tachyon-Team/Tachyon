@@ -1509,6 +1509,15 @@ LtInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
+
     if ((opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM) ||
         (opnds[0].type === x86.type.IMM_VAL &&
@@ -1529,12 +1538,7 @@ LtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(
-            opnds[1],
-            opnds[0],
-            (opnds[0].width === undefined && opnds[1].width === undefined)?
-            this.type.getSizeBits(tltor.params):undefined
-        );
+        tltor.asm.cmp(opnds[1], opnds[0], width);
     }
 
     tltor.asm.
@@ -1546,6 +1550,15 @@ LeInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
+
     if ((opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM) ||
         (opnds[0].type === x86.type.IMM_VAL &&
@@ -1563,11 +1576,7 @@ LeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(
-            opnds[1], 
-            opnds[0], 
-            this.uses[0].type.getSizeBits(tltor.params)
-        );
+        tltor.asm.cmp(opnds[1], opnds[0], width);
     }
 
     tltor.asm.
@@ -1579,6 +1588,15 @@ GtInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
+
     if ((opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM) ||
         (opnds[0].type === x86.type.IMM_VAL &&
@@ -1596,11 +1614,7 @@ GtInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(
-            opnds[1], 
-            opnds[0], 
-            this.type.getSizeBits(tltor.params)
-        );
+        tltor.asm.cmp(opnds[1], opnds[0], width);
     }
 
     tltor.asm.
@@ -1612,6 +1626,15 @@ GeInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
+
     if ((opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM) ||
         (opnds[0].type === x86.type.IMM_VAL &&
@@ -1629,11 +1652,7 @@ GeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else
     {
-        tltor.asm.cmp(
-            opnds[1], 
-            opnds[0], 
-            this.type.getSizeBits(tltor.params)
-        );
+        tltor.asm.cmp(opnds[1], opnds[0], width);
     }
 
     tltor.asm.
@@ -1644,6 +1663,15 @@ GeInstr.prototype.genCode = function (tltor, opnds)
 EqInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
+
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
 
     if (opnds[0].type === x86.type.REG && opnds[0].value === 0) 
     {
@@ -1662,17 +1690,11 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(
-            opnds[1], 
-            opnds[0],
-            (opnds[0].width !== undefined)?
-            opnds[0].width():
-            this.uses[0].type.getSizeBits(tltor.params)
-        );
+        tltor.asm.cmp(opnds[1], opnds[0], width);
     }
     else
     {
-        tltor.asm.cmp(opnds[0], opnds[1]);
+        tltor.asm.cmp(opnds[0], opnds[1], width);
     }
 
     tltor.asm.
@@ -1683,6 +1705,15 @@ EqInstr.prototype.genCode = function (tltor, opnds)
 NeInstr.prototype.genCode = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
+
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
 
     if (opnds[0].type === x86.type.REG && opnds[1].value === 0) 
     {
@@ -1703,15 +1734,11 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(
-            opnds[1], 
-            opnds[0], 
-            this.uses[1].type.getSizeBits(tltor.params)
-        );
+        tltor.asm.cmp(opnds[1], opnds[0], width);
     }
     else
     {
-        tltor.asm.cmp(opnds[0], opnds[1]);
+        tltor.asm.cmp(opnds[0], opnds[1], width);
     }
 
     tltor.asm.

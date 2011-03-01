@@ -30,7 +30,6 @@ function makeContextLayout(params)
     /**
     Run-time context layout object
     */
-    //var ctxLayout = new MemLayout('ctx', IRType.rptr, undefined, params);
     var ctxLayout = MemLayout.extend(params.target.backendCfg.ctxLayout, 'ctx');
 
     // Global object
@@ -39,9 +38,33 @@ function makeContextLayout(params)
         IRType.box
     );
 
+    // Heap start pointer
+    ctxLayout.addField(
+        'heapstart',
+        IRType.rptr
+    );
+
+    // Heap limit pointer
+    ctxLayout.addField(
+        'heaplimit',
+        IRType.rptr
+    );
+
+    // Heap allocation pointer
+    ctxLayout.addField(
+        'allocptr',
+        IRType.rptr
+    );
+
     // String table
     ctxLayout.addField(
         'strtbl',
+        IRType.box
+    );
+
+    // String buffer
+    ctxLayout.addField(
+        'strbuf',
         IRType.box
     );
 
@@ -103,24 +126,6 @@ function makeContextLayout(params)
     ctxLayout.addField(
         'urierror',
         IRType.box
-    );
-
-    // Heap start pointer
-    ctxLayout.addField(
-        'heapstart',
-        IRType.rptr
-    );
-
-    // Heap limit pointer
-    ctxLayout.addField(
-        'heaplimit',
-        IRType.rptr
-    );
-
-    // Heap allocation pointer
-    ctxLayout.addField(
-        'allocptr',
-        IRType.rptr
     );
 
     // Finalize the context layout

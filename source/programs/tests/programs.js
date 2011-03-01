@@ -188,6 +188,17 @@ tests.programs.basic_opts = genTest(
 );
 
 /**
+Test of assignment expressions.
+*/
+tests.programs.basic_assign = genTest(
+    'programs/basic_assign/basic_assign.js',
+    'proxy',
+    [],
+    0,
+    'clientParams'
+);
+
+/**
 Multiple files/units test
 */
 tests.programs.multi_file = genTest(
