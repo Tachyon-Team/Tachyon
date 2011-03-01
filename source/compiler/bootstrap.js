@@ -342,8 +342,8 @@ function initRuntime(params)
 {
     print('Initializing run-time');
 
-    // Allocate a 256MB heap
-    var heapSize = Math.pow(2, 28);
+    // Allocate a 512MB heap
+    var heapSize = Math.pow(2, 29);
     var heapBlock = allocMachineCodeBlock(heapSize);
     var heapAddr = getBlockAddr(heapBlock, 0);
 
