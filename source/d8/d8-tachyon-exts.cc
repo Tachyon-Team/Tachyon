@@ -485,6 +485,27 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 
 /*---------------------------------------------------------------------------*/
 
+// Dummy GC code, to be included from another file
+
+void gcCollect(void* ctxPtr)
+{
+    printf("Entering gcCollect\n");
+    printf("Context pointer = %p\n", ctxPtr);
+
+
+
+    //
+    // TODO
+    //
+
+
+
+
+    printf("Leaving gcCollect\n");
+}
+
+/*---------------------------------------------------------------------------*/
+
 // Simple FFI.
 
 // Tachyon argument/return value type definition
@@ -812,6 +833,8 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(allocMachineCodeBlock);
     else if (strcmp(funcName, "rawFreeMachineCodeBlock") == 0)
         address = (FPTR)(freeMachineCodeBlock);
+    else if (strcmp(funcName, "gcCollect") == 0)
+        address = (FPTR)(gcCollect);
     else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
         address = (FPTR)(callTachyonFFI);
     else if (strcmp(funcName, "getFuncAddr") == 0)

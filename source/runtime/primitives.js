@@ -413,6 +413,32 @@ function i8(boxVal)
 //=============================================================================
 
 /**
+Align a pointer to a given number of bytes.
+*/
+function alignPtr(ptr, alignBytes)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+    "tachyon:arg alignBytes pint";
+    "tachyon:ret rptr";
+
+    // Compute the pointer modulo the given alignment boundary
+    var rem = iir.icast(IRType.pint, ptr) % alignBytes;
+
+    // If the pointer is already aligned, return it
+    if (rem === pint(0))
+        return ptr;
+
+    // Pad the pointer by the necessary amount to align it
+    var pad = alignBytes - rem;
+    ptr += pad;
+
+    // Return the aligned pointer
+    return ptr;
+}
+
+/**
 Allocate a memory block of a given size on the heap
 */
 function heapAlloc(size)
@@ -428,13 +454,34 @@ function heapAlloc(size)
     // Get the current allocation pointer
     var allocPtr = get_ctx_allocptr(ctx);
 
-    // Increment the allocation pointer by the object size
+    // Compute the next allocation pointer
     var nextPtr = allocPtr + size;
 
     // Get the heap limit pointer
     var heapLimit = get_ctx_heaplimit(ctx);
 
-    // if this allocation exceeds the heap limit
+    // If this allocation exceeds the heap limit
+    if (nextPtr >= heapLimit)
+    {
+        // Log that we are going to perform GC
+        puts('Performing garbage collection');
+
+        // TODO: call backend gc_prepare instruction here?
+
+        // Call the garbage collector
+        gcCollect(ctx);
+
+        // Get the new allocation pointer
+        allocPtr = get_ctx_allocptr(ctx);
+
+        // Compute the next allocation pointer
+        nextPtr = allocPtr + size;
+
+        // Get the new limit pointer
+        heapLimit = get_ctx_heaplimit(ctx);
+    }
+
+    // If this allocation still exceeds the heap limit
     if (nextPtr >= heapLimit)
     {
         // Report an error and abort
@@ -442,13 +489,8 @@ function heapAlloc(size)
     }
 
     // Align the next allocation pointer
-    var rem = iir.icast(IRType.pint, nextPtr) % HEAP_ALIGN;
-    if (rem !== pint(0))
-    {
-        var pad = HEAP_ALIGN - rem;
-        nextPtr += pad;
-    }
-    
+    nextPtr = alignPtr(nextPtr, HEAP_ALIGN);
+        
     // Update the allocation pointer in the context object
     set_ctx_allocptr(ctx, nextPtr);
 

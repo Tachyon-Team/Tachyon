@@ -890,6 +890,13 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'gcCollect', 
+        [new CPtrAsPtr()],
+        new CVoid(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'rawCallTachyonFFI', 
         [
             new CPtrAsPtr(),

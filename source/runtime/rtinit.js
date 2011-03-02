@@ -22,11 +22,7 @@ function initHeap(heapPtr, heapSize)
     "tachyon:ret rptr";
 
     // Align the context object in memory
-    var heapPtrInt = iir.icast(IRType.pint, heapPtr);
-    var ctxPtrInt = (heapPtrInt % CTX_ALIGN) === pint(0)?  
-                    heapPtrInt : 
-                    (heapPtrInt - (heapPtrInt % CTX_ALIGN));
-    var ctxPtr = iir.icast(IRType.rptr, ctxPtrInt);
+    var ctxPtr = alignPtr(heapPtr, CTX_ALIGN);
 
     // Treat first address as the address of context object and initialize
     // the allocation pointer
