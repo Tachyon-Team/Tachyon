@@ -209,6 +209,17 @@ tests.programs.multi_file = genTest(
 );
 
 /**
+Test of typed IIR variables.
+*/
+tests.programs.iir_vars = genTest(
+    'programs/iir_vars/iir_vars.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 Passing arguments and getting a return value from an FFI function
 */
 tests.programs.ffi_sum = genTest(

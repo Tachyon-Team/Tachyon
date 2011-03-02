@@ -410,8 +410,6 @@ function stmtListToIRFunc(
     // Generate code for the function body
     stmtListToIR(bodyContext);
 
-    //print('done generating IR');
-
     // If the context is not terminated and this function has a boxed return value
     if (!bodyContext.isTerminated() && newFunc.retType === IRType.box)
     {
@@ -421,8 +419,8 @@ function stmtListToIRFunc(
         );
     }
 
-    //print(cfg);
-    //print('');
+    //print('done generating IR');
+    //print(cfg.ownerFunc);
 
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
@@ -1176,6 +1174,7 @@ function stmtToIR(context)
         mergeLoopEntry(
             [testContext],
             entryLocals,
+            context.localMap,
             bodyContext.entryBlock
         );
 
@@ -1219,19 +1218,20 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyContext);  
 
-        // Merge the continue contexts with the loop entry
-        mergeLoopEntry(
-            cntCtxList,
-            entryLocals,
-            testContext.entryBlock
-        );
-
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
             context.localMap,
             context.cfg,
             'loop_exit'
+        );
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            cntCtxList,
+            entryLocals,
+            context.localMap,
+            testContext.entryBlock
         );
 
         // Replace the jump added by the context merging at the test exit
@@ -1290,6 +1290,14 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyContext); 
 
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localMap,
+            context.cfg,
+            'loop_exit'
+        );
+
         // Merge the continue contexts
         var incrLocals = new HashMap();
         var loopIncr = mergeContexts(
@@ -1299,7 +1307,7 @@ function stmtToIR(context)
             'loop_incr'
         );
 
-        // If there were non-terminated break contexts
+        // If there were non-terminated continue contexts
         if (loopIncr)
         {
             // Compile the loop incrementation
@@ -1314,17 +1322,10 @@ function stmtToIR(context)
             mergeLoopEntry(
                 [incrContext],
                 entryLocals,
+                context.localMap,
                 testContext.entryBlock
             );
         }        
-
-        // Merge the break contexts
-        var loopExit = mergeContexts(
-            brkCtxList,
-            context.localMap,
-            context.cfg,
-            'loop_exit'
-        );
 
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
@@ -1420,13 +1421,6 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyStmtCtx); 
 
-        // Merge the continue contexts with the loop entry
-        mergeLoopEntry(
-            cntCtxList,
-            entryLocals,
-            testCtx.entryBlock
-        );
-
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
@@ -1441,6 +1435,14 @@ function stmtToIR(context)
             context.localMap,
             context.cfg,
             'loop_exit'
+        );
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            cntCtxList,
+            entryLocals,
+            context.localMap,
+            testCtx.entryBlock
         );
 
         // Replace the jump added by the context merging at the test exit
@@ -1723,6 +1725,7 @@ function stmtToIR(context)
                     mergeLoopEntry(
                         [prevStmtCtx],
                         defaultLocals,
+                        defaultLocals,
                         stmtCtx.entryBlock
                     );
                 }
@@ -1750,6 +1753,7 @@ function stmtToIR(context)
             // Merge the context from the default case into the default entry
             mergeLoopEntry(
                 [nextTestCtx],
+                defaultLocals,
                 defaultLocals,
                 defaultEntry
             );
@@ -4113,6 +4117,7 @@ Merge contexts for a loop entry block
 function mergeLoopEntry(
     contexts,
     entryLocals,
+    contLocals,
     entryBlock
 )
 {
@@ -4124,20 +4129,6 @@ function mergeLoopEntry(
     {
         var varName = localVars[i];
         var phiNode = entryLocals.getItem(varName);
-
-        /*
-        // Compute properties of the current incoming values
-        var numUndef = 0;
-        var numTyped = 0;
-        for (var j = 0; j < phiNode.uses.length; ++j)
-        {
-            var useValue = phiNode.uses[j];
-            if (useValue instanceof ConstValue && useValue.isUndef())
-                numUndef++;
-            if (phiNode.uses[j].type !== IRType.box)
-                numTyped++;
-        }
-        */
 
         // For each incoming context
         for (var j = 0; j < contexts.length; ++j)
@@ -4164,8 +4155,10 @@ function mergeLoopEntry(
                     );
                 }
 
-                // Replace the phi node by the undefined value
+                // Replace the phi node by the undefined value in the loop
+                // entry and the continuation locals
                 entryLocals.setItem(varName, ConstValue.getConst(undefined));
+                contLocals.setItem(varName, ConstValue.getConst(undefined));
 
                 // Remove the phi node
                 entryBlock.remInstr(phiNode);
