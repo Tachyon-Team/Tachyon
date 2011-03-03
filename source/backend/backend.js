@@ -57,11 +57,21 @@ backend.compileIRToCB = function (ir, params)
 
         cfg = fcts[k].virginCFG.copy();
 
-        //print("Order blocks");
-        order = allocator.orderBlocks(cfg);
-        //print("nb of blocks: " + order.length);
+        measurePerformance(
+            "Order blocks",
+            function ()
+            {
+                //print("Order blocks");
+                order = allocator.orderBlocks(cfg);
+                //print("nb of blocks: " + order.length);
+            });
 
-        allocator.numberInstrs(cfg, order, params);
+        measurePerformance(
+            "Number instructions",
+            function ()
+            {
+                allocator.numberInstrs(cfg, order, params);
+            });
 
         if (params.printRegAlloc === true)
             print("******* Before register allocation ******");
@@ -100,11 +110,22 @@ backend.compileIRToCB = function (ir, params)
             print(cfg.toString(function () { return order; }, undefined, undefined, 
                            lnPfxFormatFn));
 
-        //print("Computing live intervals");
-        liveIntervals = allocator.liveIntervals(cfg, order, params);
-        //print("nb of live intervals: " + liveIntervals.length);
-        //print("Computing fixed intervals");
-        fixedIntervals = allocator.fixedIntervals(order, params);
+        measurePerformance(
+            "Computing live intervals",
+            function ()
+            {
+                //print("Computing live intervals");
+                liveIntervals = allocator.liveIntervals(cfg, order, params);
+                //print("nb of live intervals: " + liveIntervals.length);
+            });
+
+        measurePerformance(
+            "Computing fixed intervals",
+            function ()
+            {
+                //print("Computing fixed intervals");
+                fixedIntervals = allocator.fixedIntervals(order, params);
+            });
 
         // Print intervals before allocation
         /*
@@ -117,20 +138,35 @@ backend.compileIRToCB = function (ir, params)
 
         mems = irToAsm.spillAllocator(params);
 
-        //print("Linear Scan");
-        allocator.linearScan(params, 
-                             liveIntervals, 
-                             mems, 
-                             fixedIntervals);
+        measurePerformance(
+            "Linear scan",
+            function ()
+            {
+                //print("Linear Scan");
+                allocator.linearScan(params, 
+                                     liveIntervals, 
+                                     mems, 
+                                     fixedIntervals);
+            });
 
-        //print("Assign");
-        // Add physical registers and memory location to operands
-        // of every instruction
-        allocator.assign(cfg, params); 
+        measurePerformance(
+            "Operand assignment",
+            function ()
+            {
+                //print("Assign");
+                // Add physical registers and memory location to operands
+                // of every instruction
+                allocator.assign(cfg, params); 
+            });
     
-        //print("Resolve");
-        // SSA form deconstruction and linear scan resolution 
-        order = allocator.resolve(cfg, liveIntervals, order, params);
+        measurePerformance(
+            "Resolution",
+            function ()
+            {
+                //print("Resolve");
+                // SSA form deconstruction and linear scan resolution 
+                order = allocator.resolve(cfg, liveIntervals, order, params);
+            });
 
         if (params.printRegAlloc === true)
         {
@@ -159,8 +195,13 @@ backend.compileIRToCB = function (ir, params)
 
         fcts[k].regAlloc.spillNb = mems.slots.length;
 
-        // Translate from IR to ASM
-        translator.genFunc(fcts[k], order);
+        measurePerformance(
+            "IR to ASM translation",
+            function ()
+            {
+                // Translate from IR to ASM
+                translator.genFunc(fcts[k], order);
+            });
 
         //translator.asm.codeBlock.assemble();
         //print("******* Listing *************************");
@@ -192,10 +233,15 @@ backend.compileIRToCB = function (ir, params)
         }
     }
     
-    //print("Assemble");
-    // Add the initialization code at the beginning
-    // and reassemble
-    translator.asm.codeBlock.assemble();
+    measurePerformance(
+        "Assembly",
+        function ()
+        {
+            //print("Assemble");
+            // Add the initialization code at the beginning
+            // and reassemble
+            translator.asm.codeBlock.assemble();
+        });
 
     for (k=0; k<fcts.length; ++k)
     {

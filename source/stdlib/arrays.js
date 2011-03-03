@@ -79,7 +79,7 @@ function array_concat()
     {
         var x = arguments[i];
 
-        len += (x instanceof Array)? x.length:1;
+        len += (x instanceof Array) ? x.length : 1;
     }
 
     var a = new Array(len);
@@ -119,7 +119,7 @@ function array_join(separator)
     {
         var e = o[i];
 
-        var estr = (i !== 0)? separator:'';
+        var estr = (i !== 0) ? separator : "";
 
         if (e !== UNDEFINED)
         {

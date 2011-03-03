@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-02-24 10:12:48 feeley> */
+/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-03-03 16:38:58 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -260,6 +260,36 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
     delete [] buffer;
 
     return v8Str;
+}
+
+v8::Handle<v8::Value> v8Proxy_timeCurrentMillis(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in timeCurrentMillis -- 0 argument expected\n");
+        exit(1);
+    }
+
+    return v8::Number::New(v8::internal::OS::TimeCurrentMillis());
+}
+
+extern "C" {
+#ifdef ACTIVATE_HEAP_PROFILING
+extern double bytes_allocated, bytes_alive_at_last_gc; // defined in src/heap.cc
+#else
+double bytes_allocated = 0, bytes_alive_at_last_gc = 0;
+#endif
+}
+
+v8::Handle<v8::Value> v8Proxy_bytesAllocated(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in bytesAllocated -- 0 argument expected\n");
+        exit(1);
+    }
+
+    return v8::Number::New(bytes_allocated + (v8::internal::Heap::SizeOfObjects()-bytes_alive_at_last_gc));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -866,6 +896,16 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("readConsole"), 
         v8::FunctionTemplate::New(v8Proxy_readConsole)
+    );
+
+    global_template->Set(
+        v8::String::New("timeCurrentMillis"), 
+        v8::FunctionTemplate::New(v8Proxy_timeCurrentMillis)
+    );
+
+    global_template->Set(
+        v8::String::New("bytesAllocated"), 
+        v8::FunctionTemplate::New(v8Proxy_bytesAllocated)
     );
 
     global_template->Set(

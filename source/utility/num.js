@@ -14,8 +14,8 @@ This library implements infinite precision integers using bignums.
 For convenience it also provides an abstraction, the "num" type, which
 is a combination of the JavaScript number representation and the
 bignum representation.  The JavaScript number representation is used
-when the integer fits in a JavaScript number.  Otherwise the bignum
-representation is used.
+when the value fits in a JavaScript 30 bit signed integer.  Otherwise
+the bignum representation is used.
 */
 
 //-----------------------------------------------------------------------------
@@ -56,7 +56,7 @@ For example, if bignum_radix_log2 = 2, here is how the numbers from
 
 */
 
-const bignum_radix_log2 = 14; // must be between 5 and 14 (could be as low as 1 except for division by 10 required by bignum_to_string)
+const bignum_radix_log2 = 14; // must be between 5 and 14 (could be as low as 1 if it wasn't for the division by 10 required by bignum_to_string)
 const bignum_radix = 1 << bignum_radix_log2;
 const bignum_radix_div2 = 1 << (bignum_radix_log2-1);
 
@@ -92,7 +92,8 @@ function bignum_from_js(n)
 function bignum_to_js(bignum)
 {
     // Converts a bignum to a plain JavaScript integer.  If the number
-    // does not fit in a JavaScript integer, false is returned.
+    // does not fit in a JavaScript 30 bit signed integer, false is
+    // returned.
 
     var len = bignum.length;
     var i = len-1;
@@ -100,11 +101,14 @@ function bignum_to_js(bignum)
 
     while (i >= 0)
     {
+        if ((n < (-1 << (30-1-bignum_radix_log2))) ||
+            (n >= (1 << (30-1-bignum_radix_log2))))
+            return false; // bignum does not fit in 30 bit signed integer
         var d = bignum[i--];
         var x = (n << bignum_radix_log2) + d;
-        if ((x >> bignum_radix_log2) !== n || // check for overflow
-            (x & (bignum_radix-1)) !== d)
-            return false;
+//        if ((x >> bignum_radix_log2) !== n || // check for overflow
+//            (x & (bignum_radix-1)) !== d)
+//            return false;
         n = x;
     }
 
@@ -699,12 +703,13 @@ function bignum_normalize(bignum)
 
 // The following functions are generic.  Their parameters can be
 // JavaScript integers or bignums.  The parameters will be converted
-// automatically, and if the result can fit in a JavaScript integer
-// then it will be returned, otherwise a bignum is returned.
+// automatically, and if the result can fit in a JavaScript 30 bit
+// signed integer then it will be returned, otherwise a bignum is
+// returned.
 
 function num_from_js(n) // n is a JS integer or bignum
 {
-    if (bignum_instance(n) === true) // bignum?
+    if (bignum_instance(n)) // bignum?
         return n;
     else
         return bignum_from_js(n);
@@ -725,7 +730,7 @@ Test that a value is a num instance
 */
 function num_instance(val)
 {
-    return (bignum_instance(val) === true || typeof val === 'number');
+    return (bignum_instance(val) || typeof val === "number");
 }
 
 /**
@@ -733,12 +738,12 @@ Test that a num value is integer
 */
 function num_integer(val)
 {
-    return (bignum_instance(val) === true || Math.floor(val) === val);
+    return (bignum_instance(val) || Math.floor(val) === val);
 }
 
 function num_nonneg(n) // n is a JS integer or bignum
 {
-    if (bignum_instance(n) === true) // bignum?
+    if (bignum_instance(n)) // bignum?
         return bignum_nonneg(n);
     else
         return n >= 0;
@@ -746,7 +751,7 @@ function num_nonneg(n) // n is a JS integer or bignum
 
 function num_zero(n) // n is a JS integer or bignum
 {
-    if (bignum_instance(n) === true) // bignum?
+    if (bignum_instance(n)) // bignum?
         return bignum_zero(n);
     else
         return n === 0;
@@ -754,7 +759,7 @@ function num_zero(n) // n is a JS integer or bignum
 
 function num_lt(a, b) // a and b are JS integers or bignums
 {
-    if (bignum_instance(a) === true || bignum_instance(b) === true) // bignum case?
+    if (bignum_instance(a) || bignum_instance(b)) // bignum case?
         return bignum_lt(num_from_js(a), num_from_js(b));
     else
         return a < b;
@@ -762,7 +767,7 @@ function num_lt(a, b) // a and b are JS integers or bignums
 
 function num_gt(a, b) // a and b are JS integers or bignums
 {
-    if (bignum_instance(a) === true || bignum_instance(b) === true) // bignum case?
+    if (bignum_instance(a) || bignum_instance(b)) // bignum case?
         return bignum_gt(num_from_js(a), num_from_js(b));
     else
         return a > b;
@@ -770,7 +775,7 @@ function num_gt(a, b) // a and b are JS integers or bignums
 
 function num_eq(a, b) // a and b are JS integers or bignums
 {
-    if (bignum_instance(a) === true || bignum_instance(b) === true) // bignum case?
+    if (bignum_instance(a) || bignum_instance(b)) // bignum case?
         return bignum_eq(num_from_js(a), num_from_js(b));
     else
         return a === b;
@@ -864,12 +869,12 @@ function num_urshift(n, shift, width)
 {
     assert (
         shift >= 0,
-        'shift amount must be positive'
+        "shift amount must be positive"
     );
 
     assert (
-        typeof width === 'number',
-        'width must be specified'
+        typeof width === "number",
+        "width must be specified"
     );
 
     return num_shift(num_and(n, num_not(num_shift(-1,width))), -shift);
@@ -877,10 +882,12 @@ function num_urshift(n, shift, width)
 
 function num_to_string(a, radix) // a is a JS integer or bignum, radix is a JS integer
 {
-    if (bignum_instance(a) === true) // bignum?
+    if (bignum_instance(a)) // bignum?
         return bignum_to_string(a, radix);
-    else
+    else if (radix === 10)
         return a.toString();
+    else
+        return bignum_to_string(num_from_js(a), radix);
 }
 
 //-----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2011-03-01 16:56:25 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2011-03-01 19:48:23 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -305,7 +305,7 @@
   `(TODO-js.auto--x))
 
 (define-macro (js.~ x)
-  `(TODO-js.~))
+  `(fxnot ,x))
 
 (define-macro (js.! x)
   `(not (let ((x ,x))
@@ -475,52 +475,27 @@
          (set! ,x res)
          res)))
 
-(define-macro (js.+= x y)
+(define-macro (js.op= op x y)
   (if (and (pair? x)
            (eq? (car x) 'js.index))
-      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (js.+ (js.index self key) y)))
+      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (,op (js.index self key) y)))
          (js.index-set! self key res)
          res)
-      `(let* ((y ,y) (res (js.+ ,x y)))
+      `(let* ((y ,y) (res (,op ,x y)))
          (set! ,x res)
          res)))
 
-(define-macro (js.-= x y)
-  (if (and (pair? x)
-           (eq? (car x) 'js.index))
-      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (js.- (js.index self key) y)))
-         (js.index-set! self key res)
-         res)
-      `(let* ((y ,y) (res (js.- ,x y)))
-         (set! ,x res)
-         res)))
-
-(define-macro (js.*= x y)
-  `(TODO-js.*=))
-
-(define-macro (js./= x y)
-  `(TODO-js./=))
-
-(define-macro (js.<<= x y)
-  `(TODO-js.<<=))
-
-(define-macro (js.>>= x y)
-  `(TODO-js.>>=))
-
-(define-macro (js.>>>= x y)
-  `(TODO-js.>>>=))
-
-(define-macro (js.&= x y)
-  `(TODO-js.&=))
-
-(define-macro (js.^= x y)
-  `(TODO-js.^=))
-
-(define-macro (|js.\|=| x y)
-  `(|TODO-js.\|=|))
-
-(define-macro (js.%= x y)
-  `(TODO-js.%=))
+(define-macro (js.+= x y) `(js.op= js.+ ,x ,y))
+(define-macro (js.-= x y) `(js.op= js.- ,x ,y))
+(define-macro (js.*= x y) `(js.op= js.* ,x ,y))
+(define-macro (js./= x y) `(js.op= js./ ,x ,y))
+(define-macro (js.<<= x y) `(js.op= js.<< ,x ,y))
+(define-macro (js.>>= x y) `(js.op= js.>> ,x ,y))
+(define-macro (js.>>>= x y) `(js.op= js.>>> ,x ,y))
+(define-macro (js.&= x y) `(js.op= js.& ,x ,y))
+(define-macro (js.^= x y) `(js.op= js.^ ,x ,y))
+(define-macro (|js.\|=| x y) `(js.op= |js.\|| ,x ,y))
+(define-macro (js.%= x y) `(js.op= js.% ,x ,y))
 
 (define-macro (js.x?y:z x y z)
   `(if (let ((x ,x))
