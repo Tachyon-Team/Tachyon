@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt.scm", Time-stamp: <2011-03-01 17:01:54 feeley>
+;;; File: "js2scm-rt.scm", Time-stamp: <2011-03-01 23:46:57 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -271,6 +271,61 @@
 (define (_String this #!optional (value "") . args)
   (to-string value))
 
+;;;----------------------------------------------------------------------------
+
+(define memory (make-table))
+
+(define memory-addr 50)
+
+(define (_malloc this size)
+  (let ((addr (list->Array (list memory-addr 0 0 0))))
+    (set! memory-addr (+ 1 memory-addr))
+    (table-set! memory addr (make-u8vector size))
+    addr))
+
+(define (_free this addr)
+  (table-set! memory addr)
+  (js.undefined))
+
+(define (_exit this status)
+  (exit status))
+
+(define (_puts this str)
+  (println str)
+  (js.undefined))
+
+(define (_writeFile this filename str)
+  (call-with-output-file
+      filename
+    (lambda (port)
+      (display str port)
+      (js.undefined))))
+
+(define (_readFile this filename)
+  (call-with-input-file
+      filename
+    (lambda (port)
+      (read-line port #f))))
+
+(define (_shellCommand this command)
+  (call-with-input-process
+   (list path: "/bin/sh" arguments: (list "-c" command))
+   (lambda (port)
+     (read-line port #f))))
+
+(define (_readConsole this)
+  (read-line))
+
+(define (_rawAllocMachineCodeBlock this size)
+  (_malloc this size))
+
+(define (_rawFreeMachineCodeBlock this addr)
+  (_free this addr))
+
+(define (_rawCallTachyonFFI this . args)
+  (pp (cons '_rawCallTachyonFFI (cons this args)))
+  (js.undefined))
+
 (define (_getFuncAddr this fn)
   (let ((addr
          (cond ((equal? fn "malloc")
@@ -398,40 +453,6 @@
               0
               (vector (js.undefined))))
 
-(define (Array-push arr x)
-  (let ((i (Array-len arr))
-        (v (Array-vect arr)))
-    (if (fx< i (vector-length v))
-        (begin
-          (vector-set! v i x)
-          (Array-len-set! arr (fx+ i 1)))
-        (let* ((n (fx+ 1 (fx* 2 (vector-length v))))
-               (new-v (make-vector n (js.undefined))))
-          (subvector-move! v 0 i new-v 0)
-          (vector-set! new-v i x)
-          (Array-len-set! arr (fx+ i 1))
-          (Array-vect-set! arr new-v)))))
-
-(define (Array-pop arr)
-  (let ((len (Array-len arr)))
-    (if (fx> len 0)
-        (let* ((v (Array-vect arr))
-               (x (vector-ref v (fx- len 1))))
-          (Array-len-set! arr (fx- len 1))
-          (Array-vect-set! arr (subvector v 0 (fx- len 1)))
-          x)
-        (js.undefined))))
-
-(define (Array-shift arr)
-  (let ((len (Array-len arr)))
-    (if (fx> len 0)
-        (let* ((v (Array-vect arr))
-               (x (vector-ref v 0)))
-          (Array-len-set! arr (fx- len 1))
-          (Array-vect-set! arr (subvector v 1 len))
-          x)
-        (js.undefined))))
-
 (define (Array-resize-if-needed arr len)
   (let ((v (Array-vect arr)))
     (if (fx< (vector-length v) len)
@@ -466,81 +487,187 @@
 (define (list->Array lst)
   (vector->Array (list->vector lst)))
 
-(js:index-set!
- (js:index _Array "prototype")
- "concat"
- (lambda (self . args)
-   (vector->Array
-    (apply vector-append
-           (map Array->vector (cons self args))))))
+(define (Array-toString self)
+  (Array-join self ","))
 
-(js:index-set!
- (js:index _Array "prototype")
- "slice"
- (lambda (self start #!optional (end (js.undefined)))
-   (let* ((len (Array-len self))
-          (s (if (fx< start 0)
-                 (max 0 (fx+ len start))
-                 (min start len)))
-          (e (if (eq? end (js.undefined))
-                 len
-                 (max s
-                      (if (fx< end 0)
-                          (fx+ len end)
-                          (min end len))))))
-     (vector->Array
-      (subvector (Array-vect self) s e)))))
+(define (Array-concat self . args)
+  (let ((a (list->vector args)))
+    (let loop1 ((i (fx- (vector-length a) 1)) (len (Array-len self)))
+      (if (fx>= i 0)
+          (let ((x (vector-ref a i)))
+            (loop1 (fx- i 1)
+                   (fx+ len (if (Array? x) (Array-len x) 1))))
+          (let ((v (make-vector len)))
+            (let loop2 ((i (fx- (vector-length a) 1)) (len len))
+              (if (fx>= i 0)
+                  (let ((x (vector-ref a i)))
+                    (if (Array? x)
+                        (let loop3 ((j (fx- (Array-len x) 1)) (len len))
+                          (if (fx>= j 0)
+                              (let ((len (fx- len 1)))
+                                (vector-set! v len (vector-ref (Array-vect x) j))
+                                (loop3 (fx- j 1)
+                                       len))
+                              (loop2 (fx- i 1)
+                                     len)))
+                        (let ((len (fx- len 1)))
+                          (vector-set! v len x)
+                          (loop2 (fx- i 1)
+                                 len))))
+                  (let loop4 ((j (fx- (Array-len self) 1)) (len len))
+                    (if (fx>= j 0)
+                        (let ((len (fx- len 1)))
+                          (vector-set! v len (vector-ref (Array-vect self) j))
+                          (loop4 (fx- j 1)
+                                 len))
+                        (vector->Array v))))))))))
 
-(js:index-set!
- (js:index _Array "prototype")
- "splice"
- (lambda (self start delcount . items)
-   (let* ((v (Array-vect self))
-          (v0 (subvector v start (fx+ start delcount)))
-          (v1 (subvector v 0 start))
-          (v2 (list->vector items))
-          (v3 (subvector v (fx+ start delcount) (Array-len self)))
-          (new-v (vector-append v1 v2 v3)))
-     (Array-vect-set! self new-v)
-     (Array-len-set! self (vector-length new-v))
-     (vector->Array v0))))
+(define (Array-join self #!optional (separator (js.undefined)))
+  (let* ((sep (if (eq? separator (js.undefined)) "," (to-string separator)))
+         (v (Array-vect self)))
+    (let loop ((i 0) (str "") (s ""))
+      (if (fx< i (vector-length v))
+          (loop (fx+ i 1)
+                (string-append str s (to-string (vector-ref v i)))
+                sep)
+          str))))
 
-(js:index-set!
- (js:index _Array "prototype")
- "push"
- Array-push)
+(define (Array-pop self)
+  (let ((len (Array-len self)))
+    (if (fx> len 0)
+        (let* ((v (Array-vect self))
+               (x (vector-ref v (fx- len 1))))
+          (Array-len-set! self (fx- len 1))
+          (Array-vect-set! self (subvector v 0 (fx- len 1)))
+          x)
+        (js.undefined))))
 
-(js:index-set!
- (js:index _Array "prototype")
- "pop"
- Array-pop)
+(define (Array-push self x)
+  (let ((i (Array-len self))
+        (v (Array-vect self)))
+    (if (fx< i (vector-length v))
+        (begin
+          (vector-set! v i x)
+          (Array-len-set! self (fx+ i 1)))
+        (let* ((n (fx+ 1 (fx* 2 (vector-length v))))
+               (new-v (make-vector n (js.undefined))))
+          (subvector-move! v 0 i new-v 0)
+          (vector-set! new-v i x)
+          (Array-len-set! self (fx+ i 1))
+          (Array-vect-set! self new-v)))))
 
-(js:index-set!
- (js:index _Array "prototype")
- "shift"
- Array-shift)
+(define (Array-reverse self)
+  (list->Array
+   (reverse
+    (Array->list self))))
 
-(js:index-set!
- (js:index _Array "prototype")
- "forEach"
- (lambda (self callback)
-   (let loop ((i 0))
-     (if (fx< i (Array-len self))
-         (let ((value (vector-ref (Array-vect self) i)))
-           (callback '() value i self)
-           (loop (fx+ i 1)))))))
+(define (Array-shift self)
+  (let ((len (Array-len self)))
+    (if (fx> len 0)
+        (let* ((v (Array-vect self))
+               (x (vector-ref v 0)))
+          (Array-len-set! self (fx- len 1))
+          (Array-vect-set! self (subvector v 1 len))
+          x)
+        (js.undefined))))
 
-(js:index-set!
- (js:index _Array "prototype")
- "map"
- (lambda (self callback)
-   (let ((result (make-empty-Array)))
-     (let loop ((i 0))
-       (if (fx< i (Array-len self))
-           (let ((value (vector-ref (Array-vect self) i)))
-             (Array-push result (callback '() value i self))
-             (loop (fx+ i 1)))
-           result)))))
+(define (Array-slice self start #!optional (end (js.undefined)))
+  (let* ((len (Array-len self))
+         (s (if (fx< start 0)
+                (max 0 (fx+ len start))
+                (min start len)))
+         (e (if (eq? end (js.undefined))
+                len
+                (max s
+                     (if (fx< end 0)
+                         (fx+ len end)
+                         (min end len))))))
+    (vector->Array
+     (subvector (Array-vect self) s e))))
+
+(define (Array-sort self #!optional (comparefn (js.undefined)))
+  (error "Array-sort unimplemented"))
+
+(define (Array-splice self start delcount . items)
+  (let* ((v (Array-vect self))
+         (v0 (subvector v start (fx+ start delcount)))
+         (v1 (subvector v 0 start))
+         (v2 (list->vector items))
+         (v3 (subvector v (fx+ start delcount) (Array-len self)))
+         (new-v (vector-append v1 v2 v3)))
+    (Array-vect-set! self new-v)
+    (Array-len-set! self (vector-length new-v))
+    (vector->Array v0)))
+
+(define (Array-unshift self . args)
+  (error "Array-unshift unimplemented"))
+
+(define (Array-indexOf self #!optional (elem (js.undefined)) (from (js.undefined)))
+  (let* ((len (Array-len self))
+         (f (if (eq? from (js.undefined))
+                0
+                (if (fx< from 0)
+                    (let ((f (fx+ len from)))
+                      (if (fx< f 0)
+                          0
+                          f))
+                    from))))
+    (let loop ((i f))
+      (if (fx< i len)
+          (if (js:=== elem (vector-ref (Array-vect self) i))
+              i
+              (loop (fx+ i 1)))
+          -1))))
+
+(define (Array-lastIndexOf self #!optional (elem (js.undefined)) (from (js.undefined)))
+  (let* ((len (Array-len self))
+         (f (if (or (eq? from (js.undefined)) (fx>= from len))
+                (fx- len 1)
+                (if (fx< from 0)
+                    (fx+ len from)
+                    from))))
+    (let loop ((i f))
+      (if (fx>= i 0)
+          (if (js:=== elem (vector-ref (Array-vect self) i))
+              i
+              (loop (fx- i 1)))
+          -1))))
+
+(define (Array-forEach self callback)
+  (let loop ((i 0))
+    (if (fx< i (Array-len self))
+        (let ((value (vector-ref (Array-vect self) i)))
+          (callback '() value i self)
+          (loop (fx+ i 1))))))
+
+(define (Array-map self callback)
+  (let ((result (make-empty-Array)))
+    (let loop ((i 0))
+      (if (fx< i (Array-len self))
+          (let ((value (vector-ref (Array-vect self) i)))
+            (Array-push result (callback '() value i self))
+            (loop (fx+ i 1)))
+          result))))
+
+(define (Array-filter self callback)
+  (error "Array-filter unimplemented"))
+
+(js:index-set! (js:index _Array "prototype") "toString"    Array-toString)
+(js:index-set! (js:index _Array "prototype") "concat"      Array-concat)
+(js:index-set! (js:index _Array "prototype") "join"        Array-join)
+(js:index-set! (js:index _Array "prototype") "pop"         Array-pop)
+(js:index-set! (js:index _Array "prototype") "push"        Array-push)
+(js:index-set! (js:index _Array "prototype") "reverse"     Array-reverse)
+(js:index-set! (js:index _Array "prototype") "shift"       Array-shift)
+(js:index-set! (js:index _Array "prototype") "slice"       Array-slice)
+(js:index-set! (js:index _Array "prototype") "sort"        Array-sort)
+(js:index-set! (js:index _Array "prototype") "splice"      Array-splice)
+(js:index-set! (js:index _Array "prototype") "unshift"     Array-unshift)
+(js:index-set! (js:index _Array "prototype") "indexOf"     Array-indexOf)
+(js:index-set! (js:index _Array "prototype") "lastIndexOf" Array-lastIndexOf)
+(js:index-set! (js:index _Array "prototype") "forEach"     Array-forEach)
+(js:index-set! (js:index _Array "prototype") "map"         Array-map)
+(js:index-set! (js:index _Array "prototype") "filter"      Array-filter)
 
 ;;;----------------------------------------------------------------------------
 
