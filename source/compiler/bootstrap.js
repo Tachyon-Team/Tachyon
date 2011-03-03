@@ -40,7 +40,8 @@ function bootstrap(allCode, params)
             // Compile the primitives
             print('Compile primitives source code');
             primIRs = compSources(primSrcs, params);
-        });
+        }
+    );
 
     // Initialize the runtime
     initRuntime(params);
@@ -63,7 +64,8 @@ function bootstrap(allCode, params)
         {
             // Compile the standard library
             libIRs = compSources(libSrcs, params);
-        });
+        }
+    );
 
     print('Initializing standard library');
 
@@ -291,8 +293,8 @@ function compSources(srcList, params)
                 // Add the parsed AST to the list
                 astList.push(ast);
             }
-        });
-
+        }
+    );
 
     // List for parsed IR function objects
     var irList = [];
@@ -314,7 +316,8 @@ function compSources(srcList, params)
                 // Add the IR function to the list
                 irList.push(ir);
             }
-        });
+        }
+    );
 
     measurePerformance(
         "IR lowering",
@@ -337,9 +340,8 @@ function compSources(srcList, params)
 
                 //print('Done validation for: "' + getSrcName(i) + '"');
             }
-        });
-
-    //params.print = print;
+        }
+    );
 
     measurePerformance(
         "Machine code generation",
@@ -354,9 +356,8 @@ function compSources(srcList, params)
 
                 compileIR(ir, params);
             }
-        });
-
-    //params.print = undefined;
+        }
+    );
 
     measurePerformance(
         "Machine code linking",
@@ -374,7 +375,8 @@ function compSources(srcList, params)
 
                 linkIR(ir, params);
             }
-        });
+        }
+    );
 
     // Return the list of IR functions
     return irList;

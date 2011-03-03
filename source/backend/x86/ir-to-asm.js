@@ -2167,6 +2167,9 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
 
     const shiftAmt = (refByteNb === 4) ? 2 : 3;
 
+    // Get the table offset in the arguments table
+    const tblOffset = tltor.params.memLayouts.arrtbl.getFieldOffset(["tbl", 0]);
+
     tltor.asm.
     
     // Initialize loop
@@ -2191,7 +2194,7 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     cmp($(0), index).
     jle(cpDone).
 
-    mov(mem(-refByteNb, srcPtr, index, refByteNb), temp).
+    mov(mem(tblOffset - refByteNb, srcPtr, index, refByteNb), temp).
     mov(temp, mem((impArgNb-1)*refByteNb, stack, index, refByteNb)).
 
     dec(index).

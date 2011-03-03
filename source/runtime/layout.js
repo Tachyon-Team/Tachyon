@@ -135,6 +135,28 @@ function MemLayout(name, ptrType, tagName, params)
     @field
     */
     this.finalized = false;
+
+    // If this is a heap-allocated object
+    if (ptrType === IRType.box || ptrType === IRType.ref)
+    {
+        // Add a header as the first layout field
+        this.addField(
+            'header',
+            IRType.u32
+        );
+
+        // Assign a unique type identifier to this layout
+        var typeId = 0;
+        for (var f in params.memLayouts)
+            ++typeId;
+    }
+
+    /**
+    Integer type identifier for this layout. This only applies
+    to heap-allocated objects.
+    @field
+    */
+    this.typeId = typeId;
 }
 MemLayout.prototype = {};
 
@@ -262,11 +284,15 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
     {
         // Compute the offset to be after the last field
         var offset = this.getSize();
-    }
 
-    //
-    // TODO: memory alignment of fields?
-    //
+        // Align the offset to the pointer size of the platform
+        var align = this.params.target.ptrSizeBytes;
+        var rem = offset % align;
+        if (rem !== 0)
+        {
+            offset += align - rem;
+        }
+    }
 
     // Compute the element size for this field
     var elemSize = 
@@ -494,9 +520,8 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
-        else
-            sourceStr += '\treturn ptr;\n';
+            sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+        sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
     }
@@ -525,9 +550,8 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
         sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
-        else
-            sourceStr += '\treturn ptr;\n';
+            sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+        sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
     }

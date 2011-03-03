@@ -306,10 +306,6 @@ function makeObjectLayouts(params)
     */
     var hashTblLayout = new MemLayout('hashtbl', IRType.box, 'TAG_OTHER', params);
 
-    //
-    // TODO: header
-    //
-
     // Hash table entries
     hashTblLayout.addField(
         'tbl',
@@ -325,10 +321,6 @@ function makeObjectLayouts(params)
     Object layout object
     */
     var objLayout = new MemLayout('obj', IRType.box, 'TAG_OBJECT', params);
-
-    //
-    // TODO: header
-    //
 
     // Prototype reference
     objLayout.addField(
@@ -393,10 +385,6 @@ function makeObjectLayouts(params)
     */
     var arrTblLayout = new MemLayout('arrtbl', IRType.box, 'TAG_OTHER', params);
 
-    //
-    // TODO: header
-    //
-
     // Array entries
     arrTblLayout.addField(
         'tbl',
@@ -454,10 +442,6 @@ function makeObjectLayouts(params)
     */
     var strLayout = new MemLayout('str', IRType.box, 'TAG_STRING', params);
 
-    //
-    // TODO: header
-    //
-
     // String length
     strLayout.addField(
         'len',
@@ -501,10 +485,6 @@ function makeObjectLayouts(params)
     Hash table entry layout object
     */
     var strTblLayout = new MemLayout('strtbl', IRType.box, 'TAG_OTHER', params);
-
-    //
-    // TODO: header
-    //
 
     // String table size
     strTblLayout.addField(
@@ -593,10 +573,6 @@ function makeObjectLayouts(params)
     */
     var cellLayout = new MemLayout('cell', IRType.box, 'TAG_OTHER', params);
 
-    //
-    // TODO: header
-    //
-
     // String length
     cellLayout.addField(
         'val',
@@ -616,10 +592,6 @@ function makeObjectLayouts(params)
     Memory block object layout
     */
     var memBlockLayout = new MemLayout('memblock', IRType.box, 'TAG_OTHER', params);
-
-    //
-    // TODO: header
-    //
 
     // String table size
     memBlockLayout.addField(
