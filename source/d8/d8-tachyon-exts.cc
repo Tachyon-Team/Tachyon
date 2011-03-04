@@ -297,9 +297,10 @@ v8::Handle<v8::Value> v8Proxy_bytesAllocated(const v8::Arguments& args)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/mman.h>
 
-typedef int word; // must correspond to natural word width of CPU
+typedef intptr_t word; // must correspond to natural word width of CPU
 
 typedef word (*mach_code_ptr)();
 
@@ -539,11 +540,11 @@ void gcCollect(void* ctxPtr)
 // Simple FFI.
 
 // Tachyon argument/return value type definition
-typedef int TachVal;
+typedef intptr_t TachVal;
 
 union TachValCaster
 {
-    int intVal;
+    intptr_t intVal;
     void* ptrVal;
 };
 
@@ -587,7 +588,7 @@ int callTachyonFFI(
 )
 {
     assert (
-        sizeof(TachVal) == sizeof(int) &&
+        sizeof(TachVal) == sizeof(intptr_t) &&
         sizeof(TachVal) == sizeof(void*)
     );
 
