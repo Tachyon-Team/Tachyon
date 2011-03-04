@@ -20,8 +20,7 @@ function initStrings()
     // Allocate the string table object
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
-    // Initialize the string table size and number of properties
-    set_strtbl_tblsize(strtbl, iir.icast(IRType.u32, STR_TBL_INIT_SIZE));
+    // Initialize the number of properties
     set_strtbl_numstrs(strtbl, u32(0));
 
     // Initialize the string table entries
@@ -59,7 +58,7 @@ function getTableStr(strObj)
     // Get the size of the string table
     var tblSize = iir.icast(
         IRType.pint,
-        get_strtbl_tblsize(strtbl)
+        get_strtbl_size(strtbl)
     );
 
     // Get the hash code from the string object
@@ -144,8 +143,7 @@ function extStrTable(curTbl, curSize, numStrings)
     for (var i = pint(0); i < newSize; i++)
         set_strtbl_tbl(newTbl, i, UNDEFINED);
 
-    // Set the new size and the number of strings stored
-    set_strtbl_tblsize(newTbl, iir.icast(IRType.u32, newSize));
+    // Set the number of strings stored
     set_strtbl_numstrs(newTbl, iir.icast(IRType.u32, numStrings));
 
     // For each entry in the current table
@@ -457,7 +455,7 @@ function getIntStr(intVal)
     // Get the size of the string table
     var tblSize = iir.icast(
         IRType.pint,
-        get_strtbl_tblsize(strtbl)
+        get_strtbl_size(strtbl)
     );
 
     // Get the hash table index for this hash value

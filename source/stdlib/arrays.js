@@ -22,15 +22,18 @@ function Array(len)
         typeof len === 'number' &&
         arguments.length === 1)
     {
-        var a = [];
+        // Allocate an array of the desired capacity and set its length
+        var a = newArray(unboxInt(len));
         a.length = len;
 
         return a;
     }
 
-    var a = [];
+    // Allocate an array of the desired capacity and set its length
+    var a = newArray(unboxInt(arguments.length));
     a.length = arguments.length;
 
+    // Copy the arguments into the array
     for (var i = 0; i < arguments.length; ++i)
         a[i] = arguments[i];
 
