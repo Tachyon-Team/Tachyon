@@ -54,10 +54,13 @@ Test if the type is an unsigned integer type
 */
 IRType.prototype.isUnsigned = function ()
 {
-    return this === IRType.u8  ||
-           this === IRType.u16 ||
-           this === IRType.u32 ||
-           this === IRType.u64;
+    return (
+        this === IRType.u8  ||
+        this === IRType.u16 ||
+        this === IRType.u32 ||
+        this === IRType.u64 ||
+        this === IRType.puint
+    );
 };
 
 /**
@@ -65,11 +68,13 @@ Test if the type is a signed integer type
 */
 IRType.prototype.isSigned = function ()
 {
-    return this === IRType.i8  ||
-           this === IRType.i16 ||
-           this === IRType.i32 ||
-           this === IRType.i64 ||
-           this === IRType.pint;
+    return (
+        this === IRType.i8  ||
+        this === IRType.i16 ||
+        this === IRType.i32 ||
+        this === IRType.i64 ||
+        this === IRType.pint
+    );
 };
 
 /**
@@ -126,6 +131,7 @@ IRType.prototype.getSizeBytes = function (params)
         case IRType.box:
         case IRType.bool:
         case IRType.pint:
+        case IRType.puint:
         return params.target.ptrSizeBytes;
     }
 };
@@ -220,6 +226,10 @@ IRType.bool = new IRType('bool');
 // Integer type of width specific to the platform
 // (same width as the pointer size)
 IRType.pint = new IRType('pint');
+
+// Unsigned integer type of width specific to the platform
+// (same width as the pointer size)
+IRType.puint = new IRType('puint');
 
 // Unboxed unsigned integer types
 IRType.u8   = new IRType('u8');

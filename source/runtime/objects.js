@@ -442,12 +442,6 @@ function makeObjectLayouts(params)
     */
     var strLayout = new MemLayout('str', IRType.box, 'TAG_STRING', params);
 
-    // String length
-    strLayout.addField(
-        'len',
-        IRType.u32
-    );
-
     // Precomputed hash code
     strLayout.addField(
         'hash',

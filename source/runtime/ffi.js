@@ -19,7 +19,7 @@ function boxToCString(strVal)
     "tachyon:ret rptr";
 
     // Get the string length
-    var strLen = iir.icast(IRType.pint, get_str_len(strVal));
+    var strLen = iir.icast(IRType.pint, get_str_size(strVal));
 
     // Allocate memory for the C string
     var strPtr = malloc(strLen + pint(1));
@@ -60,9 +60,6 @@ function cStringToBox(strPtr)
 
     // Allocate a string object
     var strObj = alloc_str(strLen);
-    
-    // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.u32, strLen));
 
     // For each character
     for (var i = pint(0); i < strLen; i++)

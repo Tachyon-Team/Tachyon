@@ -221,7 +221,7 @@ function boxToBool(boxVal)
 
     else if (boxIsString(boxVal))
     {
-        var len = iir.icast(IRType.pint, get_str_len(boxVal));
+        var len = iir.icast(IRType.pint, get_str_size(boxVal));
 
         if (len !== pint(0))
             return TRUE_BOOL;
@@ -344,6 +344,18 @@ function pint(boxVal)
 
     // Unbox the integer directly
     return unboxInt(boxVal);
+}
+
+/**
+Cast a boxed integer value to the puint type
+*/
+function puint(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret puint";
+
+    // Unbox the integer directly
+    return iir.icast(IRType.puint, unboxInt(boxVal));
 }
 
 /**
@@ -2326,7 +2338,7 @@ function getPropVal(obj, propName)
     {
         if (propName === 'length')
         {
-            return boxInt(iir.icast(IRType.pint, get_str_len(obj)));
+            return boxInt(iir.icast(IRType.pint, get_str_size(obj)));
         }
         else
         {
@@ -2554,7 +2566,7 @@ function getPropNames(obj)
             // If the object is a string
             else if (boxIsString(curObj))
             {
-                var len = boxInt(iir.icast(IRType.pint, get_str_len(curObj)));
+                var len = boxInt(iir.icast(IRType.pint, get_str_size(curObj)));
 
                 if (curIdx < len)
                 {

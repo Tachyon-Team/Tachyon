@@ -274,6 +274,15 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
         'only the last field can have variable length'
     );
 
+    // If this is a variable-length field, add a size field before it
+    if (numElems === false)
+    {
+        this.addField(
+            'size',
+            IRType.pint
+        );
+    }
+
     // If the layout is empty
     if (this.fields.length === 0)
     {
@@ -503,7 +512,7 @@ MemLayout.prototype.genMethods = function ()
         var objSize = lastField.offset + lastField.elemSize * numElems;
 
         // Generate code for the size function
-        sourceStr += 'function get_size_' + this.name + '()\n';
+        sourceStr += 'function sizeof_' + this.name + '()\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
@@ -518,9 +527,11 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-        sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
+        sourceStr += '\tvar ptr = heapAlloc(sizeof_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
             sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+        if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
+            sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
         sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
@@ -528,7 +539,7 @@ MemLayout.prototype.genMethods = function ()
     else
     {
         // Generate code for the size function
-        sourceStr += 'function get_size_' + this.name + '(size)\n';
+        sourceStr += 'function sizeof_' + this.name + '(size)\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
@@ -541,6 +552,8 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '}\n';
         sourceStr += '\n';
 
+        //sourceStr += '\tvar size = get_' + this.name + '_size();\n';
+
         // Generate code for the allocation function
         sourceStr += 'function alloc_' + this.name + '(size)\n';
         sourceStr += '{\n';
@@ -548,9 +561,12 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-        sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
+        sourceStr += '\tvar ptr = heapAlloc(sizeof_' + this.name + '(size));\n';
         if (this.ptrType === IRType.box)
             sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+        sourceStr += '\tset_' + this.name + '_size(ptr, size);\n';
+        if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
+            sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
         sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
