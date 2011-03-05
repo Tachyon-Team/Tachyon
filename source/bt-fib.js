@@ -13,6 +13,24 @@ initialize(false);
 
 printTachyonState();
 
+print("Fib: compiling source code to a code block");
+var fibIR = compileSrcString("function fib(n) { if (n < 2) { return n; } else { return fib(n-1) + fib(n-2); } }", config.hostParams);
+var fibCB = backend.compileIRToCB(fibIR, config.hostParams); 
+
+print("Fib listing:");
+print(backend.listing(fibCB));
+
+print("Fib: compiling source code to a machine code block");
+var bridge = makeBridge(
+    fibIR,
+    config.hostParams,
+    [new CIntAsBox()],
+    new CIntAsBox()
+);
+
+bridge(config.hostParams.ctxPtr);
+
+
 /*
 try
 {
