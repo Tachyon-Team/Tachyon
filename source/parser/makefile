@@ -1,4 +1,4 @@
-# File: "makefile", Time-stamp: <2010-12-20 15:18:42 feeley>
+# File: "makefile", Time-stamp: <2011-03-01 10:59:46 feeley>
 
 # Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -70,9 +70,9 @@ parser.js: parser-tables.js
 	rm -f part1.js part2.js
 
 bootstrap:
-	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js misc.js scanner.js parser.js pp.js ast-passes.js js.js
-	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js misc.js scanner.js parser.js pp.js ast-passes.js js2js.js
-	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js misc.js scanner.js parser.js pp.js ast-passes.js scheme.js js2scm.js
+	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js ../utility/num.js misc.js scanner.js parser.js pp.js ast-passes.js js.js
+	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js ../utility/num.js misc.js scanner.js parser.js pp.js ast-passes.js js2js.js
+	time ./js2scm -exe ../utility/debug.js ../utility/system.js ../utility/hashmap.js ../utility/num.js misc.js scanner.js parser.js pp.js ast-passes.js scheme.js js2scm.js
 
 clean realclean:
 	rm -f $(GRAMMAR).y.js tokens.js keywords.js scanner-tables.js parser-tables.js build-keyword-ht.o*

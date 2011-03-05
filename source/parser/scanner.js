@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2011-02-14 11:28:40 feeley>
+// File: "scanner.js", Time-stamp: <2011-03-01 09:23:24 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -394,8 +394,11 @@ Scanner.prototype.hexadecimal_class = function (c)
 
 // method parse_identifier()
 
-Scanner.prototype.parse_identifier = function ()
+Scanner.prototype.parse_identifier_old = function ()
 {
+    // This iterative algorithm extends the Array of characters using the
+    // "push" method.  The growth of the array generates garbage.
+
     var start_pos = this.lookahead_pos(0);
     var chars = [];
     var h = 0;
@@ -415,6 +418,49 @@ Scanner.prototype.parse_identifier = function ()
     else
         return this.valued_token(IDENT_CAT, id, start_pos);
 };
+
+Scanner.prototype.parse_identifier = function ()
+{
+    var start_pos = this.lookahead_pos(0);
+    var id = this.parse_identifier_string();
+    var h = 0;
+    for (var i=0; i<id.length; i++)
+        h = (h * HASH_MULT + id.charCodeAt(i)) % HASH_MOD;
+    var x = keyword_hashtable[h];
+    if (x !== null && x.id === id)
+        return this.valued_token(x.cat, id, start_pos);
+    else
+        return this.valued_token(IDENT_CAT, id, start_pos);
+};
+
+Scanner.prototype.parse_identifier_string = function ()
+{
+    return String.fromCharCode.apply(null,
+                                     this.parse_identifier_string_loop(0));
+}
+
+Scanner.prototype.parse_identifier_string_loop = function (n)
+{
+    // This recursive algorithm saves the characters on the stack
+    // and allocates an array of the correct size to hold them.
+    // It does not generate garbage.
+
+    var chars;
+    var c = this.lookahead_char(0);
+
+    if (this.identifier_class(c) || this.decimal_class(c))
+    {
+        this.advance(1);
+        chars = this.parse_identifier_string_loop(n+1);
+        chars[n] = c;
+    }
+    else
+    {
+        chars = new Array(n);
+    }
+
+    return chars;
+}
 
 
 // method parse_number()
@@ -607,7 +653,7 @@ Scanner.prototype.parse_string = function ()
             else if (c === LOWER_U_CH)
                 error("\\uXXXX string syntax not supported");
             chars.push(c);
-        }                    
+        }
         else
             chars.push(c);
     }

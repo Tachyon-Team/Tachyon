@@ -31,10 +31,17 @@ function bootstrap(allCode, params)
     // Get the source code for the primitives
     print('Get primitives source code');
     var primSrcs = getPrimSrcs(params);
+    var primIRs;
 
-    // Compile the primitives
-    print('Compile primitives source code');
-    var primIRs = compSources(primSrcs, params);
+    measurePerformance(
+        "Compiling runtime",
+        function ()
+        {
+            // Compile the primitives
+            print('Compile primitives source code');
+            primIRs = compSources(primSrcs, params);
+        }
+    );
 
     // Initialize the runtime
     initRuntime(params);
@@ -49,9 +56,16 @@ function bootstrap(allCode, params)
 
     // Get the source code for the standard library
     var libSrcs = getLibSrcs(params);
+    var libIRs;
 
-    // Compile the standard library
-    var libIRs = compSources(libSrcs, params);
+    measurePerformance(
+        "Compiling stdlib",
+        function ()
+        {
+            // Compile the standard library
+            libIRs = compSources(libSrcs, params);
+        }
+    );
 
     print('Initializing standard library');
 
@@ -68,9 +82,17 @@ function bootstrap(allCode, params)
     {
         // Get the Tachyon compiler source code
         var tachyonSrcs = getTachyonSrcs(params);
+        var tachyonIRs;
 
-        // Compile the Tachyon sources
-        var tachyonIRs = compSources(tachyonSrcs, params);
+        measurePerformance(
+            "Compiling Tachyon",
+            function ()
+            {
+                // Compile the Tachyon sources
+                tachyonIRs = compSources(tachyonSrcs, params);
+            });
+
+        reportPerformance();
 
         // Execute the Tachyon code units
         for (var i = 0; i < tachyonIRs.length; ++i)
@@ -248,87 +270,113 @@ function compSources(srcList, params)
     // List for parsed ASTs
     var astList = [];
 
-    // For each source unit
-    for (var i = 0; i < srcList.length; ++i)
-    {
-        var src = srcList[i];
+    measurePerformance(
+        "Parsing",
+        function ()
+        {
+            // For each source unit
+            for (var i = 0; i < srcList.length; ++i)
+            {
+                var src = srcList[i];
 
-        print('Parsing Tachyon source: "' + getSrcName(i) + '"');
+                print('Parsing Tachyon source: "' + getSrcName(i) + '"');
 
-        // Parse the source unit
-        if (typeof src === 'object')
-            var ast = parse_src_str(src.str, params);
-        else
-            var ast = parse_src_file(src, params);
+                // Parse the source unit
+                if (typeof src === 'object')
+                    var ast = parse_src_str(src.str, params);
+                else
+                    var ast = parse_src_file(src, params);
 
-        // Parse static bindings in the unit
-        params.staticEnv.parseUnit(ast);
+                // Parse static bindings in the unit
+                params.staticEnv.parseUnit(ast);
 
-        // Add the parsed AST to the list
-        astList.push(ast);
-    }
+                // Add the parsed AST to the list
+                astList.push(ast);
+            }
+        }
+    );
 
     // List for parsed IR function objects
     var irList = [];
 
-    // For each AST
-    for (var i = 0; i < astList.length; ++i)
-    {
-        var ast = astList[i];
+    measurePerformance(
+        "IR generation",
+        function ()
+        {
+            // For each AST
+            for (var i = 0; i < astList.length; ++i)
+            {
+                var ast = astList[i];
 
-        print('Generating IR for: "' + getSrcName(i) + '"');
+                print('Generating IR for: "' + getSrcName(i) + '"');
 
-        // Generate IR from the AST
-        var ir = unitToIR(ast, params);
+                // Generate IR from the AST
+                var ir = unitToIR(ast, params);
 
-        // Add the IR function to the list
-        irList.push(ir);
-    }
+                // Add the IR function to the list
+                irList.push(ir);
+            }
+        }
+    );
 
-    // For each IR
-    for (var i = 0; i < irList.length; ++i)
-    {
-        var ir = irList[i];
+    measurePerformance(
+        "IR lowering",
+        function ()
+        {
+            // For each IR
+            for (var i = 0; i < irList.length; ++i)
+            {
+                var ir = irList[i];
 
-        print('Performing IR lowering for: "' + getSrcName(i) + '"');
+                print('Performing IR lowering for: "' + getSrcName(i) + '"');
 
-        // Perform IR lowering on the primitives
-        lowerIRFunc(ir, params);
+                // Perform IR lowering on the primitives
+                lowerIRFunc(ir, params);
 
-        //print('Done lowering for: "' + getSrcName(i) + '"');
+                //print('Done lowering for: "' + getSrcName(i) + '"');
 
-        // Validate the resulting code
-        ir.validate();
+                // Validate the resulting code
+                ir.validate();
 
-        //print('Done validation for: "' + getSrcName(i) + '"');
-    }
+                //print('Done validation for: "' + getSrcName(i) + '"');
+            }
+        }
+    );
 
-    //params.print = print;
+    measurePerformance(
+        "Machine code generation",
+        function ()
+        {
+            // Compile the IR functions to machine code
+            for (var i = 0; i < irList.length; ++i)
+            {
+                var ir = irList[i];
 
-    // Compile the IR functions to machine code
-    for (var i = 0; i < irList.length; ++i)
-    {
-        var ir = irList[i];
+                print('Generating machine code for: "' + getSrcName(i) + '"');
 
-        print('Generating machine code for: "' + getSrcName(i) + '"');
+                compileIR(ir, params);
+            }
+        }
+    );
 
-        compileIR(ir, params);
-    }
+    measurePerformance(
+        "Machine code linking",
+        function ()
+        {
+            // Link the primitives with each other
+            for (var i = 0; i < irList.length; ++i)
+            {
+                var ir = irList[i];
 
-    //params.print = undefined;
+                if (ir.linking.linked)
+                    continue;
 
-    // Link the primitives with each other
-    for (var i = 0; i < irList.length; ++i)
-    {
-        var ir = irList[i];
+                print('Linking machine code for: "' + getSrcName(i) + '"');
 
-        if (ir.linking.linked)
-            continue;
-
-        print('Linking machine code for: "' + getSrcName(i) + '"');
-
-        linkIR(ir, params);
-    }
+                linkIR(ir, params);
+            }
+        }
+    );
 
     // Return the list of IR functions
     return irList;

@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-02-24 10:12:48 feeley> */
+/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-03-03 16:38:58 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -262,14 +262,45 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
     return v8Str;
 }
 
+v8::Handle<v8::Value> v8Proxy_timeCurrentMillis(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in timeCurrentMillis -- 0 argument expected\n");
+        exit(1);
+    }
+
+    return v8::Number::New(v8::internal::OS::TimeCurrentMillis());
+}
+
+extern "C" {
+#ifdef ACTIVATE_HEAP_PROFILING
+extern double bytes_allocated, bytes_alive_at_last_gc; // defined in src/heap.cc
+#else
+double bytes_allocated = 0, bytes_alive_at_last_gc = 0;
+#endif
+}
+
+v8::Handle<v8::Value> v8Proxy_bytesAllocated(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in bytesAllocated -- 0 argument expected\n");
+        exit(1);
+    }
+
+    return v8::Number::New(bytes_allocated + (v8::internal::Heap::SizeOfObjects()-bytes_alive_at_last_gc));
+}
+
 /*---------------------------------------------------------------------------*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/mman.h>
 
-typedef int word; // must correspond to natural word width of CPU
+typedef intptr_t word; // must correspond to natural word width of CPU
 
 typedef word (*mach_code_ptr)();
 
@@ -485,14 +516,35 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 
 /*---------------------------------------------------------------------------*/
 
+// Dummy GC code, to be included from another file
+
+void gcCollect(void* ctxPtr)
+{
+    printf("Entering gcCollect\n");
+    printf("Context pointer = %p\n", ctxPtr);
+
+
+
+    //
+    // TODO
+    //
+
+
+
+
+    printf("Leaving gcCollect\n");
+}
+
+/*---------------------------------------------------------------------------*/
+
 // Simple FFI.
 
 // Tachyon argument/return value type definition
-typedef int TachVal;
+typedef intptr_t TachVal;
 
 union TachValCaster
 {
-    int intVal;
+    intptr_t intVal;
     void* ptrVal;
 };
 
@@ -536,7 +588,7 @@ int callTachyonFFI(
 )
 {
     assert (
-        sizeof(TachVal) == sizeof(int) &&
+        sizeof(TachVal) == sizeof(intptr_t) &&
         sizeof(TachVal) == sizeof(void*)
     );
 
@@ -812,6 +864,8 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(allocMachineCodeBlock);
     else if (strcmp(funcName, "rawFreeMachineCodeBlock") == 0)
         address = (FPTR)(freeMachineCodeBlock);
+    else if (strcmp(funcName, "gcCollect") == 0)
+        address = (FPTR)(gcCollect);
     else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
         address = (FPTR)(callTachyonFFI);
     else if (strcmp(funcName, "getFuncAddr") == 0)
@@ -866,6 +920,16 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("readConsole"), 
         v8::FunctionTemplate::New(v8Proxy_readConsole)
+    );
+
+    global_template->Set(
+        v8::String::New("timeCurrentMillis"), 
+        v8::FunctionTemplate::New(v8Proxy_timeCurrentMillis)
+    );
+
+    global_template->Set(
+        v8::String::New("bytesAllocated"), 
+        v8::FunctionTemplate::New(v8Proxy_bytesAllocated)
     );
 
     global_template->Set(

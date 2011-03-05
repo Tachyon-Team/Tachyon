@@ -188,6 +188,17 @@ tests.programs.basic_opts = genTest(
 );
 
 /**
+Test of assignment expressions.
+*/
+tests.programs.basic_assign = genTest(
+    'programs/basic_assign/basic_assign.js',
+    'proxy',
+    [],
+    0,
+    'clientParams'
+);
+
+/**
 Multiple files/units test
 */
 tests.programs.multi_file = genTest(
@@ -195,6 +206,17 @@ tests.programs.multi_file = genTest(
     'test',
     [],
     0
+);
+
+/**
+Test of typed IIR variables.
+*/
+tests.programs.iir_vars = genTest(
+    'programs/iir_vars/iir_vars.js',
+    'test',
+    [],
+    0,
+    'hostParams'
 );
 
 /**

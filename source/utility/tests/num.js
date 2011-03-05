@@ -109,7 +109,7 @@ tests.utility.num.arithmetic = function ()
 
     for (var a=-711; a<=711; a++)
     {
-        for (var shift=-20; shift<=20; shift++)
+        for (var shift=-19; shift<=19; shift++)
         {
             var res;
 

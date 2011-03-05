@@ -306,10 +306,6 @@ function makeObjectLayouts(params)
     */
     var hashTblLayout = new MemLayout('hashtbl', IRType.box, 'TAG_OTHER', params);
 
-    //
-    // TODO: header
-    //
-
     // Hash table entries
     hashTblLayout.addField(
         'tbl',
@@ -326,10 +322,6 @@ function makeObjectLayouts(params)
     */
     var objLayout = new MemLayout('obj', IRType.box, 'TAG_OBJECT', params);
 
-    //
-    // TODO: header
-    //
-
     // Prototype reference
     objLayout.addField(
         'proto',
@@ -340,12 +332,6 @@ function makeObjectLayouts(params)
     objLayout.addField(
         'tbl',
         IRType.box
-    );
-
-    // Hash table size
-    objLayout.addField(
-        'tblsize',
-        IRType.u32
     );
 
     // Number of properties
@@ -393,10 +379,6 @@ function makeObjectLayouts(params)
     */
     var arrTblLayout = new MemLayout('arrtbl', IRType.box, 'TAG_OTHER', params);
 
-    //
-    // TODO: header
-    //
-
     // Array entries
     arrTblLayout.addField(
         'tbl',
@@ -419,12 +401,6 @@ function makeObjectLayouts(params)
         IRType.box
     );
 
-    // Array table capacity
-    arrLayout.addField(
-        'cap',
-        IRType.u32
-    );
-
     // Array length
     arrLayout.addField(
         'len',
@@ -433,15 +409,6 @@ function makeObjectLayouts(params)
 
     // Finalize the array layout
     arrLayout.finalize();
-
-    // Initial array table size
-    params.staticEnv.regBinding(
-        'ARRAY_TBL_INIT_SIZE',
-        ConstValue.getConst(
-            4,
-            IRType.pint
-        )
-    );
 
     //=============================================================================
     //
@@ -453,16 +420,6 @@ function makeObjectLayouts(params)
     String layout object
     */
     var strLayout = new MemLayout('str', IRType.box, 'TAG_STRING', params);
-
-    //
-    // TODO: header
-    //
-
-    // String length
-    strLayout.addField(
-        'len',
-        IRType.u32
-    );
 
     // Precomputed hash code
     strLayout.addField(
@@ -501,16 +458,6 @@ function makeObjectLayouts(params)
     Hash table entry layout object
     */
     var strTblLayout = new MemLayout('strtbl', IRType.box, 'TAG_OTHER', params);
-
-    //
-    // TODO: header
-    //
-
-    // String table size
-    strTblLayout.addField(
-        'tblsize',
-        IRType.u32
-    );
 
     // Number of strings
     strTblLayout.addField(
@@ -571,12 +518,6 @@ function makeObjectLayouts(params)
         IRType.rptr
     );
 
-    // Number of closure cells
-    closLayout.addField(
-        'numcells',
-        IRType.u32
-    );
-
     // Closure cell references
     closLayout.addField(
         'cells',
@@ -592,10 +533,6 @@ function makeObjectLayouts(params)
     Mutable cell layout object
     */
     var cellLayout = new MemLayout('cell', IRType.box, 'TAG_OTHER', params);
-
-    //
-    // TODO: header
-    //
 
     // String length
     cellLayout.addField(
@@ -617,17 +554,13 @@ function makeObjectLayouts(params)
     */
     var memBlockLayout = new MemLayout('memblock', IRType.box, 'TAG_OTHER', params);
 
-    //
-    // TODO: header
-    //
-
-    // String table size
+    // Pointer to the memory block
     memBlockLayout.addField(
         'ptr',
         IRType.rptr
     );
 
-    // Number of strings
+    // Size of the memory block
     memBlockLayout.addField(
         'size',
         IRType.u32

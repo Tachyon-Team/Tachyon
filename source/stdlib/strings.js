@@ -67,7 +67,7 @@ function string_internal_getLength(s)
 {
     "tachyon:noglobal";
 
-    var strLen = iir.icast(IRType.pint, get_str_len(s));
+    var strLen = iir.icast(IRType.pint, get_str_size(s));
 
     return boxInt(strLen);
 }
@@ -95,9 +95,6 @@ function string_internal_fromCharCodeArray(a)
 
     // Allocate a string object
     var strObj = alloc_str(len);
-    
-    // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.u32, len));
 
     // Get a reference to the array table
     var arrtbl = get_arr_arr(a);

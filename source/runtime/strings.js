@@ -10,9 +10,9 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
-Allocate and initialize the string table, used for hash consing
+Initialize the resources needed for the string hash consing system.
 */
-function initStrTable()
+function initStrings()
 {
     "tachyon:static";
     "tachyon:noglobal";
@@ -20,8 +20,7 @@ function initStrTable()
     // Allocate the string table object
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
-    // Initialize the string table size and number of properties
-    set_strtbl_tblsize(strtbl, iir.icast(IRType.u32, STR_TBL_INIT_SIZE));
+    // Initialize the number of properties
     set_strtbl_numstrs(strtbl, u32(0));
 
     // Initialize the string table entries
@@ -59,7 +58,7 @@ function getTableStr(strObj)
     // Get the size of the string table
     var tblSize = iir.icast(
         IRType.pint,
-        get_strtbl_tblsize(strtbl)
+        get_strtbl_size(strtbl)
     );
 
     // Get the hash code from the string object
@@ -144,8 +143,7 @@ function extStrTable(curTbl, curSize, numStrings)
     for (var i = pint(0); i < newSize; i++)
         set_strtbl_tbl(newTbl, i, UNDEFINED);
 
-    // Set the new size and the number of strings stored
-    set_strtbl_tblsize(newTbl, iir.icast(IRType.u32, newSize));
+    // Set the number of strings stored
     set_strtbl_numstrs(newTbl, iir.icast(IRType.u32, numStrings));
 
     // For each entry in the current table
@@ -236,8 +234,8 @@ function streq(str1, str2)
     "tachyon:ret bool";
 
     // Get the length of both strings
-    var len1 = iir.icast(IRType.pint, get_str_len(str1));
-    var len2 = iir.icast(IRType.pint, get_str_len(str2));
+    var len1 = iir.icast(IRType.pint, get_str_size(str1));
+    var len2 = iir.icast(IRType.pint, get_str_size(str2));
 
     // If the lengths aren't equal, the strings aren't equal
     if (len1 !== len2)
@@ -269,8 +267,8 @@ function strcmp(str1, str2)
     "tachyon:ret pint";
 
     // Get the length of both strings
-    var len1 = iir.icast(IRType.pint, get_str_len(str1));
-    var len2 = iir.icast(IRType.pint, get_str_len(str2));
+    var len1 = iir.icast(IRType.pint, get_str_size(str1));
+    var len2 = iir.icast(IRType.pint, get_str_size(str2));
 
     // Compute the minimum of both string lengths
     var minLen = (len1 < len2)? len1:len2;
@@ -304,17 +302,14 @@ function strcat(str1, str2)
     "tachyon:noglobal";
 
     // Get the length of both strings
-    var len1 = iir.icast(IRType.pint, get_str_len(str1));
-    var len2 = iir.icast(IRType.pint, get_str_len(str2));
+    var len1 = iir.icast(IRType.pint, get_str_size(str1));
+    var len2 = iir.icast(IRType.pint, get_str_size(str2));
 
     // Compute the length of the new string
     var newLen = len1 + len2;
 
     // Allocate a string object
     var newStr = alloc_str(newLen);
-    
-    // Set the string length in the new string object
-    set_str_len(newStr, iir.icast(IRType.u32, newLen));
 
     // Copy the character data from the first string
     for (var i = pint(0); i < len1; i++)
@@ -351,9 +346,6 @@ function rawStrToObj(rawStr, strLen)
 
     // Allocate a string object
     var strObj = alloc_str(strLen);
-    
-    // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.u32, strLen));
 
     // Copy the character data into the string object
     for (var index = pint(0); index < strLen; index++)
@@ -381,7 +373,7 @@ function compStrHash(strObj)
     "tachyon:noglobal";
 
     // Get the string length
-    var len = iir.icast(IRType.pint, get_str_len(strObj));
+    var len = iir.icast(IRType.pint, get_str_size(strObj));
 
     // Initialize the hash code to 0
     var hashCode = u32(0);
@@ -463,7 +455,7 @@ function getIntStr(intVal)
     // Get the size of the string table
     var tblSize = iir.icast(
         IRType.pint,
-        get_strtbl_tblsize(strtbl)
+        get_strtbl_size(strtbl)
     );
 
     // Get the hash table index for this hash value
@@ -567,9 +559,6 @@ function intToStr(intVal)
 
     // Allocate a string object
     var strObj = alloc_str(strLen);
-    
-    // Set the string length in the string object
-    set_str_len(strObj, iir.icast(IRType.u32, strLen));
 
     // If the string is negative, write the minus sign
     if (neg)
@@ -622,7 +611,7 @@ function strToInt(strVal)
 
     // TODO: rewrite this function when FP support is in
 
-    var strLen = iir.icast(IRType.pint, get_str_len(strVal));
+    var strLen = iir.icast(IRType.pint, get_str_size(strVal));
 
     var intVal = pint(0);
 

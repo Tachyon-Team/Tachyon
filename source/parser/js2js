@@ -9,7 +9,7 @@ FILES=""
 
 DIR=`dirname $0`
 
-JS2JS="d8 $DIR/../utility/debug.js $DIR/../utility/system.js $DIR/../utility/hashmap.js $DIR/misc.js $DIR/scanner.js $DIR/parser.js $DIR/pp.js $DIR/ast-passes.js $DIR/js2js.js --"
+JS2JS="d8 $DIR/../utility/debug.js $DIR/../utility/system.js $DIR/../utility/hashmap.js $DIR/../utility/num.js $DIR/misc.js $DIR/scanner.js $DIR/parser.js $DIR/pp.js $DIR/ast-passes.js $DIR/js2js.js --"
 
 # After a "make boostrap" this can be used instead:
 #

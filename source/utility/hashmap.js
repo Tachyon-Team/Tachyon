@@ -9,15 +9,6 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-// Initial hash map size
-HashMap.INIT_SIZE = 89;
-
-// Hash map min and max load factors
-HashMap.MIN_LOAD_NUM = 1;
-HashMap.MIN_LOAD_DENOM = 10;
-HashMap.MAX_LOAD_NUM = 6;
-HashMap.MAX_LOAD_DENOM = 10;
-
 /**
 Default hash function implementation
 */
@@ -416,6 +407,15 @@ function HashMap(hashFunc, equalFunc)
     */
     this.equalFunc = equalFunc;
 }
+
+// Initial hash map size
+HashMap.INIT_SIZE = 89;
+
+// Hash map min and max load factors
+HashMap.MIN_LOAD_NUM = 1;
+HashMap.MIN_LOAD_DENOM = 10;
+HashMap.MAX_LOAD_NUM = 6;
+HashMap.MAX_LOAD_DENOM = 10;
 
 /**
 @class Hash map iterator

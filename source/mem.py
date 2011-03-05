@@ -8,4 +8,4 @@ for line in lines:
         d = dict(l)
         used += int(d["allocated"])
 
-print "Memory used: %i MB"%(used/1000000.0)
+print "Memory used: %f MB"%(used/1000000.0)

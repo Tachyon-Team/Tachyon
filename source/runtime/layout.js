@@ -135,6 +135,28 @@ function MemLayout(name, ptrType, tagName, params)
     @field
     */
     this.finalized = false;
+
+    // If this is a heap-allocated object
+    if (ptrType === IRType.box || ptrType === IRType.ref)
+    {
+        // Add a header as the first layout field
+        this.addField(
+            'header',
+            IRType.u32
+        );
+
+        // Assign a unique type identifier to this layout
+        var typeId = 0;
+        for (var f in params.memLayouts)
+            ++typeId;
+    }
+
+    /**
+    Integer type identifier for this layout. This only applies
+    to heap-allocated objects.
+    @field
+    */
+    this.typeId = typeId;
 }
 MemLayout.prototype = {};
 
@@ -183,7 +205,7 @@ MemLayout.extend = function (baseLayout, name, tagName)
     newLayout.fields = baseLayout.fields.slice(0);
 
     // Copy the field names from the base layout
-    for (key in baseLayout.fieldMap)
+    for (var key in baseLayout.fieldMap)
         newLayout.fieldMap[key] = baseLayout.fieldMap[key];
 
     // Return the new layout object
@@ -252,6 +274,15 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
         'only the last field can have variable length'
     );
 
+    // If this is a variable-length field, add a size field before it
+    if (numElems === false)
+    {
+        this.addField(
+            'size',
+            IRType.pint
+        );
+    }
+
     // If the layout is empty
     if (this.fields.length === 0)
     {
@@ -262,11 +293,15 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
     {
         // Compute the offset to be after the last field
         var offset = this.getSize();
-    }
 
-    //
-    // TODO: memory alignment of fields?
-    //
+        // Align the offset to the pointer size of the platform
+        var align = this.params.target.ptrSizeBytes;
+        var rem = offset % align;
+        if (rem !== 0)
+        {
+            offset += align - rem;
+        }
+    }
 
     // Compute the element size for this field
     var elemSize = 
@@ -477,7 +512,7 @@ MemLayout.prototype.genMethods = function ()
         var objSize = lastField.offset + lastField.elemSize * numElems;
 
         // Generate code for the size function
-        sourceStr += 'function get_size_' + this.name + '()\n';
+        sourceStr += 'function sizeof_' + this.name + '()\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
@@ -492,18 +527,19 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-        sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '());\n';
+        sourceStr += '\tvar ptr = heapAlloc(sizeof_' + this.name + '());\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
-        else
-            sourceStr += '\treturn ptr;\n';
+            sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+        if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
+            sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
+        sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
     }
     else
     {
         // Generate code for the size function
-        sourceStr += 'function get_size_' + this.name + '(size)\n';
+        sourceStr += 'function sizeof_' + this.name + '(size)\n';
         sourceStr += '{\n';
         sourceStr += '\t"tachyon:inline";\n';
         sourceStr += '\t"tachyon:noglobal";\n';
@@ -516,6 +552,8 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '}\n';
         sourceStr += '\n';
 
+        //sourceStr += '\tvar size = get_' + this.name + '_size();\n';
+
         // Generate code for the allocation function
         sourceStr += 'function alloc_' + this.name + '(size)\n';
         sourceStr += '{\n';
@@ -523,11 +561,13 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\t"tachyon:noglobal";\n';
         sourceStr += '\t"tachyon:arg size pint";\n';
         sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-        sourceStr += '\tvar ptr = heapAlloc(get_size_' + this.name + '(size));\n';
+        sourceStr += '\tvar ptr = heapAlloc(sizeof_' + this.name + '(size));\n';
         if (this.ptrType === IRType.box)
-            sourceStr += '\treturn boxPtr(ptr, ' + this.tagName + ');\n';
-        else
-            sourceStr += '\treturn ptr;\n';
+            sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+        sourceStr += '\tset_' + this.name + '_size(ptr, size);\n';
+        if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
+            sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
+        sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';
         sourceStr += '\n';
     }

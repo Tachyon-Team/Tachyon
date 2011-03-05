@@ -1,6 +1,6 @@
 ;;;============================================================================
 
-;;; File: "js2scm-rt#.scm", Time-stamp: <2010-12-18 09:27:50 feeley>
+;;; File: "js2scm-rt#.scm", Time-stamp: <2011-03-01 19:48:23 feeley>
 
 ;;; Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -96,7 +96,7 @@
 
 (define-macro (js.new ctor . args)
   `(let* ((ctor ,ctor)
-          (self (make-Object ctor (get-prototype ctor) (make-assoc-table)))
+          (self (make-obj ctor))
           (retval (ctor self ,@args)))
      (if (##eq? retval (js.undefined))
          self
@@ -196,7 +196,48 @@
 
 (define-macro (js.switch-clauses . clauses)
   (if (assq 'js.case-fall-through clauses)
-      (error "switch with fall-through not implemented" clauses)
+
+      (let* ((default-case
+               #f)
+             (fns-curr (map (lambda (clause)
+                              (if (equal? (cadr clause) '(js.default))
+                                  (set! default-case clause))
+                              (cons clause (gensym)))
+                            clauses))
+             (fns-next (map cons
+                            clauses
+                            (append (map cdr (cdr fns-curr))
+                                    (list #f)))))
+
+        (define (gen clauses default-fn)
+          (if (pair? clauses)
+              (let* ((clause (car clauses))
+                     (curr-fn (cdr (assq clause fns-curr)))
+                     (case-expr (cadr clause)))
+                (if (equal? case-expr '(js.default))
+                    (gen (cdr clauses) curr-fn)
+                    `(if (js.=== switch-val ,case-expr)
+                         (,curr-fn)
+                         ,(gen (cdr clauses) default-fn))))
+              (if default-fn
+                  `(,default-fn)
+                  `(js.undefined))))
+
+        `(letrec ,(map (lambda (clause)
+                         (let ((curr-fn (cdr (assq clause fns-curr)))
+                               (next-fn (cdr (assq clause fns-next))))
+                           `(,curr-fn
+                             (lambda ()
+                               ,(if (and (eq? 'js.case-fall-through
+                                              (car clause))
+                                         #;next-fn)
+                                    `(begin
+                                       ,(caddr clause)
+                                       (,next-fn))
+                                    `,(caddr clause))))))
+                       clauses)
+           ,(gen clauses #f)))
+
       (let ()
 
         (define (gen clauses default-clause)
@@ -264,7 +305,7 @@
   `(TODO-js.auto--x))
 
 (define-macro (js.~ x)
-  `(TODO-js.~))
+  `(fxnot ,x))
 
 (define-macro (js.! x)
   `(not (let ((x ,x))
@@ -434,52 +475,27 @@
          (set! ,x res)
          res)))
 
-(define-macro (js.+= x y)
+(define-macro (js.op= op x y)
   (if (and (pair? x)
            (eq? (car x) 'js.index))
-      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (js.+ (js.index self key) y)))
+      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (,op (js.index self key) y)))
          (js.index-set! self key res)
          res)
-      `(let* ((y ,y) (res (js.+ ,x y)))
+      `(let* ((y ,y) (res (,op ,x y)))
          (set! ,x res)
          res)))
 
-(define-macro (js.-= x y)
-  (if (and (pair? x)
-           (eq? (car x) 'js.index))
-      `(let* ((y ,y) (self ,(cadr x)) (key ,(caddr x)) (res (js.- (js.index self key) y)))
-         (js.index-set! self key res)
-         res)
-      `(let* ((y ,y) (res (js.- ,x y)))
-         (set! ,x res)
-         res)))
-
-(define-macro (js.*= x y)
-  `(TODO-js.*=))
-
-(define-macro (js./= x y)
-  `(TODO-js./=))
-
-(define-macro (js.<<= x y)
-  `(TODO-js.<<=))
-
-(define-macro (js.>>= x y)
-  `(TODO-js.>>=))
-
-(define-macro (js.>>>= x y)
-  `(TODO-js.>>>=))
-
-(define-macro (js.&= x y)
-  `(TODO-js.&=))
-
-(define-macro (js.^= x y)
-  `(TODO-js.^=))
-
-(define-macro (|js.\|=| x y)
-  `(|TODO-js.\|=|))
-
-(define-macro (js.%= x y)
-  `(TODO-js.%=))
+(define-macro (js.+= x y) `(js.op= js.+ ,x ,y))
+(define-macro (js.-= x y) `(js.op= js.- ,x ,y))
+(define-macro (js.*= x y) `(js.op= js.* ,x ,y))
+(define-macro (js./= x y) `(js.op= js./ ,x ,y))
+(define-macro (js.<<= x y) `(js.op= js.<< ,x ,y))
+(define-macro (js.>>= x y) `(js.op= js.>> ,x ,y))
+(define-macro (js.>>>= x y) `(js.op= js.>>> ,x ,y))
+(define-macro (js.&= x y) `(js.op= js.& ,x ,y))
+(define-macro (js.^= x y) `(js.op= js.^ ,x ,y))
+(define-macro (|js.\|=| x y) `(js.op= |js.\|| ,x ,y))
+(define-macro (js.%= x y) `(js.op= js.% ,x ,y))
 
 (define-macro (js.x?y:z x y z)
   `(if (let ((x ,x))

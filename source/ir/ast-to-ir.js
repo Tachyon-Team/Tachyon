@@ -6,7 +6,7 @@ Intermediate Representation (IR) translation implementation
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // TODO: Explain result of translation in function description comments 
@@ -410,8 +410,6 @@ function stmtListToIRFunc(
     // Generate code for the function body
     stmtListToIR(bodyContext);
 
-    //print('done generating IR');
-
     // If the context is not terminated and this function has a boxed return value
     if (!bodyContext.isTerminated() && newFunc.retType === IRType.box)
     {
@@ -421,8 +419,8 @@ function stmtListToIRFunc(
         );
     }
 
-    //print(cfg);
-    //print('');
+    //print('done generating IR');
+    //print(cfg.ownerFunc);
 
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
@@ -588,14 +586,19 @@ function getIRFuncObj(
             }
 
             if (type !== IRType.box && newFunc.usesArguments)
-                throw 'functions taking non-boxed arguments cannot ' + 
-                    'use the arguments object';
+                error(
+                    'functions taking non-boxed arguments cannot ' + 
+                    'use the arguments object'
+                );
 
             if (argNo === -1)
-                throw 'invalid argument name in argument type annotation';
+                error('invalid argument name in argument type annotation');
 
             if (!type)
-                throw 'invalid type in argument type annotation (' + funcName + ')';
+                error(
+                    'invalid type in argument type annotation (' + 
+                    funcName + ')'
+                );
 
             newFunc.argTypes[argNo] = type;
         }
@@ -606,7 +609,7 @@ function getIRFuncObj(
             var type = IRType[tokens[1]];
 
             if (!type)
-                throw 'invalid type in return type annotation';
+                error('invalid type in return type annotation');
 
             newFunc.retType = type;
         }
@@ -1171,6 +1174,7 @@ function stmtToIR(context)
         mergeLoopEntry(
             [testContext],
             entryLocals,
+            context.localMap,
             bodyContext.entryBlock
         );
 
@@ -1214,19 +1218,20 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyContext);  
 
-        // Merge the continue contexts with the loop entry
-        mergeLoopEntry(
-            cntCtxList,
-            entryLocals,
-            testContext.entryBlock
-        );
-
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
             context.localMap,
             context.cfg,
             'loop_exit'
+        );
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            cntCtxList,
+            entryLocals,
+            context.localMap,
+            testContext.entryBlock
         );
 
         // Replace the jump added by the context merging at the test exit
@@ -1285,6 +1290,14 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyContext); 
 
+        // Merge the break contexts
+        var loopExit = mergeContexts(
+            brkCtxList,
+            context.localMap,
+            context.cfg,
+            'loop_exit'
+        );
+
         // Merge the continue contexts
         var incrLocals = new HashMap();
         var loopIncr = mergeContexts(
@@ -1294,7 +1307,7 @@ function stmtToIR(context)
             'loop_incr'
         );
 
-        // If there were non-terminated break contexts
+        // If there were non-terminated continue contexts
         if (loopIncr)
         {
             // Compile the loop incrementation
@@ -1309,17 +1322,10 @@ function stmtToIR(context)
             mergeLoopEntry(
                 [incrContext],
                 entryLocals,
+                context.localMap,
                 testContext.entryBlock
             );
         }        
-
-        // Merge the break contexts
-        var loopExit = mergeContexts(
-            brkCtxList,
-            context.localMap,
-            context.cfg,
-            'loop_exit'
-        );
 
         // Replace the jump added by the context merging at the test exit
         // by the if branching instruction
@@ -1415,13 +1421,6 @@ function stmtToIR(context)
         // Add the body exit to the continue context list
         cntCtxList.push(bodyStmtCtx); 
 
-        // Merge the continue contexts with the loop entry
-        mergeLoopEntry(
-            cntCtxList,
-            entryLocals,
-            testCtx.entryBlock
-        );
-
         // Merge the break contexts
         var loopExit = mergeContexts(
             brkCtxList,
@@ -1436,6 +1435,14 @@ function stmtToIR(context)
             context.localMap,
             context.cfg,
             'loop_exit'
+        );
+
+        // Merge the continue contexts with the loop entry
+        mergeLoopEntry(
+            cntCtxList,
+            entryLocals,
+            context.localMap,
+            testCtx.entryBlock
         );
 
         // Replace the jump added by the context merging at the test exit
@@ -1718,6 +1725,7 @@ function stmtToIR(context)
                     mergeLoopEntry(
                         [prevStmtCtx],
                         defaultLocals,
+                        defaultLocals,
                         stmtCtx.entryBlock
                     );
                 }
@@ -1745,6 +1753,7 @@ function stmtToIR(context)
             // Merge the context from the default case into the default entry
             mergeLoopEntry(
                 [nextTestCtx],
+                defaultLocals,
                 defaultLocals,
                 defaultEntry
             );
@@ -2212,7 +2221,7 @@ function exprToIR(context)
         var newArray = insertPrimCallIR(
             elemCtx, 
             'newArray', 
-            []
+            [ConstValue.getConst(elemVals.length, IRType.pint)]
         );
 
         // Set the value of each element in the new array
@@ -2470,37 +2479,48 @@ function opToIR(context)
         case 'x && y':
         {
             // Compile the first expression
-            var fstContext = context.pursue(exprs[0]);
+            var fstEntry = context.cfg.getNewBlock('log_and_fst');
+            var fstContext = context.branch(
+                exprs[0],
+                fstEntry,
+                context.localMap.copy()
+            );
             exprToIR(fstContext);
 
             // Compile the second expression
+            var secEntry = context.cfg.getNewBlock('log_and_sec');
             var secContext = context.branch(
                 exprs[1],
-                context.cfg.getNewBlock('log_and_sec'),
+                secEntry,
                 fstContext.localMap.copy()
             );
             exprToIR(secContext);
 
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('log_and_join');
-
-            // If the first expression evaluates to true, evaluate the second
-            fstContext.addInstr(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    secContext.entryBlock,
-                    joinBlock
-                )
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [fstContext, secContext],
+                context.localMap,
+                context.cfg,
+                'log_and_join'
             );
-
-            // Make the second context branch to the join block directly
-            secContext.addInstr(new JumpInstr(joinBlock));
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
                 new PhiInstr(
                     [fstContext.getOutValue(), secContext.getOutValue()],
                     [fstContext.getExitBlock(), secContext.getExitBlock()]
+                )
+            );
+
+            // Jump to the first expression evaluation
+            context.addInstr(new JumpInstr(fstEntry));
+
+            // If the first expression evaluates to false, evaluate the second
+            fstContext.getExitBlock().replBranch(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    secEntry,
+                    joinBlock
                 )
             );
 
@@ -2513,37 +2533,48 @@ function opToIR(context)
         case 'x || y':
         {
             // Compile the first expression
-            var fstContext = context.pursue(exprs[0]);
+            var fstEntry = context.cfg.getNewBlock('log_or_fst');
+            var fstContext = context.branch(
+                exprs[0],
+                fstEntry,
+                context.localMap.copy()
+            );
             exprToIR(fstContext);
 
             // Compile the second expression
+            var secEntry = context.cfg.getNewBlock('log_or_sec');
             var secContext = context.branch(
                 exprs[1],
-                context.cfg.getNewBlock('log_or_sec'),
+                secEntry,
                 fstContext.localMap.copy()
             );
             exprToIR(secContext);
 
-            // Create a block to join the contexts
-            var joinBlock = context.cfg.getNewBlock('log_or_join');
-
-            // If the first expression evaluates to false, evaluate the second
-            fstContext.addInstr(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    joinBlock,
-                    secContext.entryBlock
-                )
+            // Merge the local maps using phi nodes
+            var joinBlock = mergeContexts(
+                [fstContext, secContext],
+                context.localMap,
+                context.cfg,
+                'log_or_join'
             );
-
-            // Make the second context branch to the join block directly
-            secContext.addInstr(new JumpInstr(joinBlock));
 
             // Create a phi node to merge the values
             var phiValue = joinBlock.addInstr(
                 new PhiInstr(
                     [fstContext.getOutValue(), secContext.getOutValue()],
                     [fstContext.getExitBlock(), secContext.getExitBlock()]
+                )
+            );
+
+            // Jump to the first expression evaluation
+            context.addInstr(new JumpInstr(fstEntry));
+
+            // If the first expression evaluates to false, evaluate the second
+            fstContext.getExitBlock().replBranch(
+                new IfInstr(
+                    fstContext.getOutValue(),
+                    joinBlock,
+                    secEntry
                 )
             );
 
@@ -4086,6 +4117,7 @@ Merge contexts for a loop entry block
 function mergeLoopEntry(
     contexts,
     entryLocals,
+    contLocals,
     entryBlock
 )
 {
@@ -4097,20 +4129,6 @@ function mergeLoopEntry(
     {
         var varName = localVars[i];
         var phiNode = entryLocals.getItem(varName);
-
-        /*
-        // Compute properties of the current incoming values
-        var numUndef = 0;
-        var numTyped = 0;
-        for (var j = 0; j < phiNode.uses.length; ++j)
-        {
-            var useValue = phiNode.uses[j];
-            if (useValue instanceof ConstValue && useValue.isUndef())
-                numUndef++;
-            if (phiNode.uses[j].type !== IRType.box)
-                numTyped++;
-        }
-        */
 
         // For each incoming context
         for (var j = 0; j < contexts.length; ++j)
@@ -4137,8 +4155,10 @@ function mergeLoopEntry(
                     );
                 }
 
-                // Replace the phi node by the undefined value
+                // Replace the phi node by the undefined value in the loop
+                // entry and the continuation locals
                 entryLocals.setItem(varName, ConstValue.getConst(undefined));
+                contLocals.setItem(varName, ConstValue.getConst(undefined));
 
                 // Remove the phi node
                 entryBlock.remInstr(phiNode);

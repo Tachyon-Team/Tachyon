@@ -22,15 +22,18 @@ function Array(len)
         typeof len === 'number' &&
         arguments.length === 1)
     {
-        var a = [];
+        // Allocate an array of the desired capacity and set its length
+        var a = newArray(unboxInt(len));
         a.length = len;
 
         return a;
     }
 
-    var a = [];
+    // Allocate an array of the desired capacity and set its length
+    var a = newArray(unboxInt(arguments.length));
     a.length = arguments.length;
 
+    // Copy the arguments into the array
     for (var i = 0; i < arguments.length; ++i)
         a[i] = arguments[i];
 
@@ -79,7 +82,7 @@ function array_concat()
     {
         var x = arguments[i];
 
-        len += (x instanceof Array)? x.length:1;
+        len += (x instanceof Array) ? x.length : 1;
     }
 
     var a = new Array(len);
@@ -119,7 +122,7 @@ function array_join(separator)
     {
         var e = o[i];
 
-        var estr = (i !== 0)? separator:'';
+        var estr = (i !== 0) ? separator : "";
 
         if (e !== UNDEFINED)
         {
