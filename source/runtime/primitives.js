@@ -543,8 +543,7 @@ function newObject(proto)
     // Initialize the prototype object
     set_obj_proto(obj, proto);
 
-    // Initialize the hash table size and number of properties
-    set_obj_tblsize(obj, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    // Initialize the number of properties
     set_obj_numprops(obj, u32(0));
 
     // Initialize the hash table pointer to null to prevent GC errors
@@ -565,10 +564,11 @@ function newObject(proto)
 /**
 Create a new empty array
 */
-function newArray()
+function newArray(capacity)
 {
     "tachyon:static";
     "tachyon:noglobal";
+    "tachyon:arg capacity pint";
 
     // Allocate space for an array
     var arr = alloc_arr();
@@ -577,12 +577,10 @@ function newArray()
     var arrproto = get_ctx_arrproto(iir.get_ctx());
     set_obj_proto(arr, arrproto);
 
-    // Initialize the hash table size and number of properties
-    set_obj_tblsize(arr, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    // Initialize the number of properties
     set_obj_numprops(arr, u32(0));
 
-    // Initialize the array table capacity and the array length
-    set_arr_cap(arr, iir.icast(IRType.u32, ARRAY_TBL_INIT_SIZE));
+    // Initialize the array length
     set_arr_len(arr, u32(0));
 
     // Initialize the hash table and array table pointers to null to prevent GC errors
@@ -598,11 +596,11 @@ function newArray()
         set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Allocate space for an array table and set the table reference
-    var arrtbl = alloc_arrtbl(ARRAY_TBL_INIT_SIZE);
+    var arrtbl = alloc_arrtbl(capacity);
     set_arr_arr(arr, arrtbl);
 
     // Initialize the array table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
+    for (var i = pint(0); i < capacity; i++)
         set_arrtbl_tbl(arrtbl, i, UNDEFINED);
 
     // Return the array reference
@@ -632,8 +630,7 @@ function makeClos(funcPtr, numCells)
     // Set the function pointer
     set_clos_funcptr(clos, funcPtr);
 
-    // Initialize the hash table size and number of properties
-    set_obj_tblsize(clos, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    // Initialize the number of properties
     set_obj_numprops(clos, u32(0));
 
     // Initialize the hash table pointer and closure cell references to null
@@ -710,12 +707,10 @@ function makeArgObj(funcObj, numArgs, argTable)
     var objproto = get_ctx_objproto(iir.get_ctx());
     set_obj_proto(arr, objproto);
 
-    // Initialize the hash table size and number of properties
-    set_obj_tblsize(arr, iir.icast(IRType.u32, HASH_MAP_INIT_SIZE));
+    // Initialize the number of properties
     set_obj_numprops(arr, u32(0));
 
-    // Initialize the array table capacity and the array length
-    set_arr_cap(arr, iir.icast(IRType.u32, ARRAY_TBL_INIT_SIZE));
+    // Initialize the array length
     set_arr_len(arr, iir.icast(IRType.u32, numArgs));
 
     // Box the arguments table reference
@@ -1587,7 +1582,7 @@ function putPropObj(obj, propName, propHash, propVal)
     // Get the size of the hash table
     var tblSize = iir.icast(
         IRType.pint,
-        get_obj_tblsize(obj)
+        get_hashtbl_size(tblPtr)
     );
 
     // Get the hash table index for this hash value
@@ -1725,9 +1720,8 @@ function extObjHashTable(obj, curTbl, curSize)
         }
     }
 
-    // Update the hash table pointer and the table size for the object
+    // Update the hash table pointer
     set_obj_tbl(obj, newTbl);
-    set_obj_tblsize(obj, iir.icast(IRType.u32, newSize));
 }
 
 /**
@@ -1745,7 +1739,7 @@ function getOwnPropObj(obj, propName, propHash)
     // Get the size of the hash table
     var tblSize = iir.icast(
         IRType.pint,
-        get_obj_tblsize(obj)
+        get_hashtbl_size(tblPtr)
     );
 
     // Get the hash table index for this hash value
@@ -1845,7 +1839,7 @@ function delPropObj(obj, propName, propHash)
     // Get the size of the hash table
     var tblSize = iir.icast(
         IRType.pint,
-        get_obj_tblsize(obj)
+        get_hashtbl_size(tblPtr)
     );
 
     // Get the hash table index for this hash value
@@ -1966,7 +1960,7 @@ function putElemArr(arr, index, elemVal)
         var newLen = index + pint(1);
 
         // Get the array capacity
-        var cap = iir.icast(IRType.pint, get_arr_cap(arr));
+        var cap = iir.icast(IRType.pint, get_arrtbl_size(tbl));
 
         // If the new length would exceed the capacity
         if (newLen > cap)
@@ -2014,9 +2008,6 @@ function extArrTable(arr, curTbl, curLen, curSize, newSize)
     {
         set_arrtbl_tbl(newTbl, i, UNDEFINED);
     }
-
-    // Update the table capacity in the array
-    set_arr_cap(arr, iir.icast(IRType.u32, newSize));
 
     // Update the table reference in the array
     set_arr_arr(arr, newTbl);
@@ -2102,27 +2093,24 @@ function setArrayLength(arr, newLen)
     // Get the current array length
     var len = iir.icast(IRType.pint, get_arr_len(arr));
 
+    // Get a reference to the array table
+    var tbl = get_arr_arr(arr);
+
     // If the array length is increasing
     if (newLen > len)
     {
         // Get the array capacity
-        var cap = iir.icast(IRType.pint, get_arr_cap(arr));
+        var cap = iir.icast(IRType.pint, get_arrtbl_size(tbl));
 
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
-            // Get a reference to the array table
-            var tbl = get_arr_arr(arr);
-
             // Extend the internal table
             extArrTable(arr, tbl, len, cap, newLen);
         }
     }
     else
     {
-        // Get a reference to the array table
-        var tbl = get_arr_arr(arr);
-
         // Initialize removed entries to undefined
         for (var i = newLen; i < len; i++)
             set_arrtbl_tbl(tbl, i, UNDEFINED);
@@ -2526,7 +2514,7 @@ function getPropNames(obj)
                 // Get the size of the hash table
                 var tblSize = iir.icast(
                     IRType.pint,
-                    get_obj_tblsize(curObj)
+                    get_hashtbl_size(tblPtr)
                 );
 
                 // Until the key is found, or a free slot is encountered

@@ -297,9 +297,10 @@ v8::Handle<v8::Value> v8Proxy_bytesAllocated(const v8::Arguments& args)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/mman.h>
 
-typedef int word; // must correspond to natural word width of CPU
+typedef intptr_t word; // must correspond to natural word width of CPU
 
 typedef word (*mach_code_ptr)();
 
@@ -539,11 +540,11 @@ void gcCollect(void* ctxPtr)
 // Simple FFI.
 
 // Tachyon argument/return value type definition
-typedef int TachVal;
+typedef intptr_t TachVal;
 
 union TachValCaster
 {
-    int intVal;
+    intptr_t intVal;
     void* ptrVal;
 };
 
@@ -587,7 +588,7 @@ int callTachyonFFI(
 )
 {
     assert (
-        sizeof(TachVal) == sizeof(int) &&
+        sizeof(TachVal) == sizeof(intptr_t) &&
         sizeof(TachVal) == sizeof(void*)
     );
 
@@ -895,6 +896,22 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
     return valToArray(address);
 }
 
+// Temp profiler extensions
+
+v8::Handle<v8::Value> resumeV8Profile(const v8::Arguments& args)
+{
+    fprintf(stderr, "[PROF] Resuming profiler\n");
+    V8::ResumeProfiler();
+    return Undefined();
+}
+
+v8::Handle<v8::Value> pauseV8Profile(const v8::Arguments& args)
+{
+    fprintf(stderr, "[PROF] Pausing profiler\n");
+    V8::PauseProfiler();
+    return Undefined();
+}
+
 /*---------------------------------------------------------------------------*/
 
 #define INIT_D8_EXTENSIONS init_d8_extensions(global_template)
@@ -959,6 +976,16 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("callTachyonFFI"),
         v8::FunctionTemplate::New(v8Proxy_callTachyonFFI)
+    );
+
+    global_template->Set(
+        v8::String::New("resumeV8Profile"),
+        v8::FunctionTemplate::New(resumeV8Profile)
+    );
+
+    global_template->Set(
+        v8::String::New("pauseV8Profile"),
+        v8::FunctionTemplate::New(pauseV8Profile)
     );
 }
 

@@ -2221,7 +2221,7 @@ function exprToIR(context)
         var newArray = insertPrimCallIR(
             elemCtx, 
             'newArray', 
-            []
+            [ConstValue.getConst(elemVals.length, IRType.pint)]
         );
 
         // Set the value of each element in the new array

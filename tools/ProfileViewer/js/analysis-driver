@@ -1,0 +1,17 @@
+#!/bin/sh
+
+DRIVER_DIR=$(cd "${0%/*}" 2>/dev/null; echo "${PWD}")
+
+d8 "${DRIVER_DIR}/v8/splaytree.js" \
+   "${DRIVER_DIR}/v8/codemap.js" \
+   "${DRIVER_DIR}/v8/csvparser.js" \
+   "${DRIVER_DIR}/v8/consarray.js" \
+   "${DRIVER_DIR}/v8/profile.js" \
+   "${DRIVER_DIR}/v8/profile_view.js" \
+   "${DRIVER_DIR}/v8/logreader.js" \
+   "${DRIVER_DIR}/v8/tickprocessor.js" \
+   "${DRIVER_DIR}/v8/tickprocessor-driver.js" \
+   "${DRIVER_DIR}/worker-env.js" \
+   "${DRIVER_DIR}/analysis.js" \
+   "${DRIVER_DIR}/d8-analysis-driver.js" \
+   -- $@
