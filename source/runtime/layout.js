@@ -505,6 +505,32 @@ MemLayout.prototype.genMethods = function ()
     // Get the number of elements in the last field
     var numElems = lastField.numElems;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // If the number of elements is not variable
     if (numElems !== false)
     {
@@ -571,6 +597,83 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '}\n';
         sourceStr += '\n';
     }
+
+
+
+
+
+
+
+
+
+    /*
+    Want recursive function to process each field
+
+    some fields are not instantiable (they are layouts)
+    leaf fields are the ones that interest us.
+    want to be able to call some function on each leaf field
+
+
+    */
+
+
+    function forEachField(
+        curLayout,
+        fieldSpecs,
+        fieldFunc
+    )
+    {
+        // For each field in the current layout
+        for (var fname in curLayout.fieldMap)
+        {
+            // Get the field specification for this field
+            var spec = curLayout.fieldMap[fname];
+
+
+
+            // If this is a sub-layout, not a leaf field
+            if (spec.type instanceof MemLayout)
+            {
+                // Call this function recursively
+                forEachField(
+
+
+
+
+                );
+            }
+            else
+            {
+
+                // Call the field function
+                fieldFunc(
+
+
+
+                );
+
+            }
+
+
+
+
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Generate code for the accessor functions for a given layout
     function genAccessFuncs(

@@ -1083,7 +1083,6 @@ function seq(v1, v2)
     {
         // TODO: implement FP case in separate(non-inlined) function
         error('seq on float values');
-        //return UNDEFINED;
     }
     else
     {
@@ -1105,8 +1104,7 @@ function nseq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
-        //error('seq on float values');
-        return UNDEFINED;
+        error('seq on float values');
     }
     else
     {
@@ -1241,7 +1239,7 @@ function subOverflow(v1, v2)
     "tachyon:static";
     
     // TODO
-    return UNDEFINED;
+    error('subtraction overflow');
 }
 
 /**
@@ -1252,7 +1250,7 @@ function subGeneral(v1, v2)
     "tachyon:static";
     
     // TODO
-    return UNDEFINED;
+    error('subtraction of non-integer values');
 }
 
 /**
@@ -1280,13 +1278,13 @@ function mul(v1, v2)
         else
         {
             // TODO: overflow handling: need to create FP objects
-            return UNDEFINED;
+            error('multiplication overflow');
         }    
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('multiplication of non-integer values');
     }
 }
 
@@ -1314,7 +1312,7 @@ function div(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('division of non-integer values');
     }
 }
 
@@ -1335,7 +1333,7 @@ function mod(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('modulo of non-integer values');
     }
 }
 
@@ -1355,7 +1353,7 @@ function not(v)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise NOT of non-integer value');
     }    
 }
 
@@ -1376,7 +1374,7 @@ function and(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise AND of non-integer values')
     }
 }
 
@@ -1397,7 +1395,7 @@ function or(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise OR of non-integer values')
     }
 }
 
@@ -1418,7 +1416,7 @@ function xor(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise XOR of non-integer values')
     }
 }
 
@@ -1439,7 +1437,7 @@ function lsft(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('left shift of non-integer values')
     }
 }
 
@@ -1460,7 +1458,7 @@ function rsft(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('right shift of non-integer values')
     }
 }
 
@@ -1481,7 +1479,7 @@ function ursft(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('unsigned right shift of non-integer values')
     }
 }
 
