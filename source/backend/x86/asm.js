@@ -222,7 +222,7 @@ x86.Assembler.prototype._genImmNum = function (k, width)
     Cannot be chained.
     @param {Number} k
     @param {Number} width Width of the value in number of bits.
-                          Minimum of 32. Defaults to 32.
+                          Maximum of 32. Defaults to 32.
 */
 x86.Assembler.prototype.genImmNum = function (k, width)
 {
@@ -1442,7 +1442,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
     }
 
     /** @ignore generate a constant value */
-    function cstValue(width)
+    function cstValue(width, max32)
     {
         var value;
 
@@ -1450,9 +1450,12 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         {
             value = src;
             that.require(value);
-        } else
+        } else if (max32 === true)
         {
             value = that.genImmNum(k, width);
+        } else
+        {
+            value = that._genImmNum(k, width);
         }
         
         listing(width, value);
@@ -1468,7 +1471,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         //      or #xb8-#xbf (for 16/32/64 bit registers)
         that.gen8( ((width === 8) ? 0xb0 : 0xb8) + (7 & dest.field()) );
 
-        cstValue(width);
+        cstValue(width, false);
     }
 
     /** @ignore general case */
@@ -1479,7 +1482,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
         gen8((width === 8) ? 0xc6 : 0xc7).  // opcode
         opndModRMSIB(0,dest); // ModR/M
 
-        cstValue(width);
+        cstValue(width, true);
     }
 
     assert((dest.type === x86.type.REG) ?
