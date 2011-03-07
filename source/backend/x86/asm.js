@@ -1426,7 +1426,7 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
 
     const that = this;
     const isLink = src.type === x86.type.LINK;
-    const k = (isLink) ? 0 : src.value;
+    const k = (isLink) ? src : src.value;
 
     /** @ignore generate listing */
     function listing(width,v)
@@ -1492,7 +1492,9 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
 
     if (dest.type === x86.type.REG)
     {
-        if (dest.width() === 64 && x86.isSigned32(k))
+        if (dest.width() === 64 && 
+            num_instance(k) &&
+            x86.isSigned32(k))
         {
             general(dest.width());
         }

@@ -995,6 +995,8 @@ asm.link = function (mcb)
         bytes  = it.get().linkValue();
         offset = it.get().getOffset();
 
+        assert(bytes.length !== undefined, "Invalid link value, expected array of bytes");
+
         for (var i = 0; i < bytes.length ; ++i)
         {
             //mcb[offset + i] = bytes[i]; 

@@ -710,6 +710,8 @@ function bignum_normalize(bignum)
 
 function num_from_js(n) // n is a JS integer or bignum
 {
+    assert(num_instance(n), "Invalid number");
+    
     if (bignum_instance(n)) // bignum?
         return n;
     else
