@@ -1156,9 +1156,7 @@ function addOverflow(v1, v2)
     "tachyon:static";
     
     // TODO
-
-    // FIXME: uncommenting this line causes a backend crash
-    //error('addition overflow');
+    error('addition overflow');
 }
 
 /**

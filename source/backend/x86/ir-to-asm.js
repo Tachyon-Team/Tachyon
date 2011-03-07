@@ -146,6 +146,8 @@ irToAsm.shiftMaker = function (irinstr, name)
 
         const dest = this.regAlloc.dest;
 
+        assert(dest !== null, "Destination register should have a value");
+
         var shiftAmt;
         if (opnds[1].type === x86.type.IMM_VAL)
         {
@@ -968,6 +970,8 @@ AddInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the output value
     const dest = this.regAlloc.dest;
 
+    assert(dest !== null, "Destination register should have a value");
+
     if (opnds[1].type === x86.type.IMM_VAL)
     {
         // Case where one of the operands is an immediate
@@ -1007,6 +1011,8 @@ SubInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the output value
     const dest = this.regAlloc.dest;
  
+    assert(dest !== null, "Destination register should have a value");
+
     if (opnds[1].type === x86.type.IMM_VAL)
     {
         // Case where one of the operands is an immediate
@@ -1096,6 +1102,8 @@ MulInstr.prototype.genCode = function (tltor, opnds)
 
     // Register used for the output value
     const dst = this.regAlloc.dest;
+
+    assert(dst !== null, "Destination register should have a value");
 
     // If an unsigned integer result is expected
     if (this.type.isUnsigned())

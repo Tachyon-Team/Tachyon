@@ -84,7 +84,8 @@ function bignum_from_js(n)
         } 
     }
 
-    bignum[i++] = n & (bignum_radix-1);
+    //FIXME: support in backend bignum[i++] = n & (bignum_radix-1);
+    bignum[i] = n & (bignum_radix-1);
 
     return bignum;
 }
@@ -258,7 +259,7 @@ function bignum_neg(bignum_a)
 
     var ext_a = (bignum_a[i-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
-    bignum[i++] = ((bignum_radix-1) - ext_a + carry) & (bignum_radix-1); 
+    bignum[i] = ((bignum_radix-1) - ext_a + carry) & (bignum_radix-1); 
 
     return bignum_normalize(bignum);
 }
@@ -302,7 +303,7 @@ function bignum_add(bignum_a, bignum_b)
 
     var ext_a = (bignum_a[i-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
-    bignum[i++] = (ext_a + ext_b + carry) & (bignum_radix-1); 
+    bignum[i] = (ext_a + ext_b + carry) & (bignum_radix-1); 
 
     return bignum_normalize(bignum);
 }
@@ -350,7 +351,7 @@ function bignum_mul(bignum_a, bignum_b)
             bignum[k++] = ab & (bignum_radix-1);
             carry = ab >> bignum_radix_log2;
         }
-        bignum[k++] = carry;
+        bignum[k] = carry;
     }
 
     bignum = bignum_normalize(bignum);
@@ -435,7 +436,7 @@ function bignum_not(bignum_a)
 
     var ext_a = (bignum_a[i-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
-    bignum[i++] = (bignum_radix-1) ^ ext_a;
+    bignum[i] = (bignum_radix-1) ^ ext_a;
 
     return bignum_normalize(bignum);
 }
@@ -476,7 +477,7 @@ function bignum_and(bignum_a, bignum_b)
 
     var ext_a = (bignum_a[i-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
-    bignum[i++] = ext_a & ext_b;
+    bignum[i] = ext_a & ext_b;
 
     return bignum_normalize(bignum);
 }
@@ -517,7 +518,7 @@ function bignum_or(bignum_a, bignum_b)
 
     var ext_a = (bignum_a[i-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
-    bignum[i++] = ext_a | ext_b;
+    bignum[i] = ext_a | ext_b;
 
     return bignum_normalize(bignum);
 }
@@ -558,7 +559,7 @@ function bignum_xor(bignum_a, bignum_b)
 
     var ext_a = (bignum_a[i-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
-    bignum[i++] = ext_a ^ ext_b;
+    bignum[i] = ext_a ^ ext_b;
 
     return bignum_normalize(bignum);
 }
@@ -632,7 +633,7 @@ function bignum_shift(bignum_a, shift)
             var ext_a = (bignum_a[len_a-1] < bignum_radix_div2) ? 0 : bignum_radix-1;
 
             reg = (reg >> bignum_radix_log2) + (ext_a << bit_shift);
-            bignum[i++] = reg & (bignum_radix-1);
+            bignum[i] = reg & (bignum_radix-1);
         }
 
         return bignum_normalize(bignum);
