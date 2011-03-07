@@ -279,7 +279,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
                 opnd,
                 callType, 
                 that.params,
-                (this instanceof CallInstr && index === 0) ? "offset" : "addr"
+                "addr"
             );
         }
 
@@ -1982,7 +1982,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'function pointer reg conflicts with scratch'
     );
 
-    const funcPtrWrongReg = (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg);
+    const funcPtrWrongReg = ((opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg) ||
+                             opnds[0].type === x86.type.LINK);
 
     const toSpill = [scratch]; 
     if (funcPtrWrongReg)
@@ -2000,9 +2001,6 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     {
         var funcPtr = opnds[0];
     }
-
-    // Test if this is a static call
-    var staticCall = (funcPtr.type === x86.type.LINK);
 
     // Get the function arguments
     var funcArgs = opnds.slice(1);
@@ -2280,9 +2278,10 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const callDest  = tltor.asm.linked(
                     cfct.funcName, 
-                    function (dstAddr) { return dstAddr
-                                                .addOffset(4)
-                                                .getAddrOffsetBytes(fctAddr); },
+                    //function (dstAddr) { return dstAddr
+                    //                            .addOffset(4)
+                    //                            .getAddrOffsetBytes(fctAddr); },
+                    function (dstAddr) { return fctAddr.getBytes(); },
                     fctAddr.width());
                     
     const numArgs = opnds.length - 1;        
@@ -2406,7 +2405,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     // Call the C function
     tltor.asm.
-    call(callDest);
+    mov(callDest, scratchReg).
+    call(scratchReg);
 
     // Move return value into Tachyon calling convention register
     if (backendCfg.retValReg !== xAX)
