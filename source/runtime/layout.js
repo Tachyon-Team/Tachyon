@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 @class Represents a field specification for a memory-allocatable object
 */
-function FieldSpec(name, type, subSize, elemSize, numElems, offset)
+function FieldSpec(name, type, initVal, subSize, elemSize, numElems, offset)
 {
     assert (
         name !== undefined,
@@ -41,6 +41,12 @@ function FieldSpec(name, type, subSize, elemSize, numElems, offset)
     @field
     */
     this.type = type;
+
+    /**
+    Field initialization value
+    @field
+    */
+    this.initVal = initVal;
 
     /**
     Size parameter of the sub-object
@@ -247,7 +253,7 @@ Add a new field specification
 @param numElems number of elements in the field. Use value false for a
                 variable-size field.
 */
-MemLayout.prototype.addField = function(name, type, subSize, numElems)
+MemLayout.prototype.addField = function(name, type, initVal, subSize, numElems)
 {
     assert (
         name !== undefined,
@@ -266,6 +272,11 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
 
     if (type instanceof IRType && numElems === undefined)
         numElems = 1;
+
+    assert (
+        initVal === undefined || typeof initVal == 'string',
+        'the initialization value, if specified, must be a string'
+    );
 
     assert (
         !(numElems === false &&
@@ -310,7 +321,15 @@ MemLayout.prototype.addField = function(name, type, subSize, numElems)
         type.getSize(subSize);
 
     // Create a new field-specification object
-    var newField = new FieldSpec(name, type, subSize, elemSize, numElems, offset);
+    var newField = new FieldSpec(
+        name,
+        type,
+        initVal,
+        subSize,
+        elemSize,
+        numElems,
+        offset
+    );
 
     // Add the new field to the list
     this.fields.push(newField);
@@ -481,6 +500,55 @@ MemLayout.prototype.isInstantiable = function ()
 };
 
 /**
+Apply a function to each field and sub-field of this layout, in order
+*/
+MemLayout.prototype.forEachField = function (fieldFunc)
+{
+    function forEachField(
+        rootLayout,
+        curLayout,
+        fieldSpecs,
+        fieldFunc
+    )
+    {
+        // For each field in the current layout
+        for (var fname in curLayout.fieldMap)
+        {
+            // Get the field specification for this field
+            var spec = curLayout.fieldMap[fname];
+
+            // If this is a sub-layout, not a leaf field
+            if (spec.type instanceof MemLayout)
+            {
+                // Call this function recursively
+                forEachField(
+                    rootLayout,
+                    spec.type,
+                    fieldSpecs.concat(spec),
+                    fieldFunc
+                );
+            }
+            else
+            {
+                // Call the field function
+                fieldFunc(
+                    rootLayout,
+                    spec,
+                    fieldSpecs.concat(spec)
+                );
+            }
+        }
+    }
+
+    forEachField(
+        this,
+        this,
+        [],
+        fieldFunc
+    );
+};
+
+/**
 Generate functions to manipulate a given layout
 */
 MemLayout.prototype.genMethods = function ()
@@ -505,101 +573,175 @@ MemLayout.prototype.genMethods = function ()
     // Get the number of elements in the last field
     var numElems = lastField.numElems;
 
+    // Test if this layout has a variable size
+    var varSize = (numElems === false);
+
+
+
+
+
+    // TODO: alloc_ with initialization
+
+    /*
+    Initialization code. For each field and sub-field, need to initialize
+    to a default value. May need multiple nested loops for some fields...
+
+    Could separate this into an init_ function, for simplicity? No.
+    */
+
+
+
+    // TODO: alloc_noinit_ without initialization
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // If the number of elements is not variable
-    if (numElems !== false)
-    {
-        // Compute the object size
-        var objSize = lastField.offset + lastField.elemSize * numElems;
-
-        // Generate code for the size function
-        sourceStr += 'function sizeof_' + this.name + '()\n';
-        sourceStr += '{\n';
-        sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:noglobal";\n';
-        sourceStr += '\t"tachyon:ret pint";\n';
-        sourceStr += '\treturn pint(' + objSize + ');\n';
-        sourceStr += '}\n';
-        sourceStr += '\n';
-
-        // Generate code for the allocation function
-        sourceStr += 'function alloc_' + this.name + '()\n';
-        sourceStr += '{\n';
-        sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:noglobal";\n';
-        sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-        sourceStr += '\tvar ptr = heapAlloc(sizeof_' + this.name + '());\n';
-        if (this.ptrType === IRType.box)
-            sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
-        if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
-            sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
-        sourceStr += '\treturn ptr;\n';
-        sourceStr += '}\n';
-        sourceStr += '\n';
-    }
-    else
-    {
-        // Generate code for the size function
-        sourceStr += 'function sizeof_' + this.name + '(size)\n';
-        sourceStr += '{\n';
-        sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:noglobal";\n';
+    // Generate code for the size computation function
+    sourceStr += 'function comp_size_' + this.name + '(' +
+                 (varSize? 'size':'') + ')\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:inline";\n';
+    sourceStr += '\t"tachyon:noglobal";\n';
+    if (varSize)    
         sourceStr += '\t"tachyon:arg size pint";\n';
-        sourceStr += '\t"tachyon:ret pint";\n';
-        sourceStr += '\tvar baseSize = pint(' + lastField.offset + ');\n';
-        sourceStr += '\tvar elemSize = pint(' + lastField.elemSize + ');\n';
-        sourceStr += '\tvar objSize = baseSize + elemSize * size;\n';
-        sourceStr += '\treturn objSize;\n';
-        sourceStr += '}\n';
-        sourceStr += '\n';
+    sourceStr += '\t"tachyon:ret pint";\n';
+    sourceStr += '\tvar baseSize = pint(' + lastField.offset + ');\n';
+    sourceStr += '\tvar elemSize = pint(' + lastField.elemSize + ');\n';
+    if (!varSize)
+        sourceStr += '\tvar size = pint(' + numElems + ');\n';
+    sourceStr += '\tvar objSize = baseSize + elemSize * size;\n';
+    sourceStr += '\treturn objSize;\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
 
-        //sourceStr += '\tvar size = get_' + this.name + '_size();\n';
+    // Generate code for the sizeof function
+    sourceStr += 'function sizeof_' + this.name + '(obj' +
+                 (varSize? ', size':'') + ')\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:inline";\n';
+    sourceStr += '\t"tachyon:noglobal";\n';
+    sourceStr += '\t"tachyon:arg obj ' + this.ptrType + '";\n';
+    sourceStr += '\t"tachyon:ret pint";\n';
+    if (varSize)
+        sourceStr += '\tvar size = get_' + this.name + '_size(obj);\n';
+    sourceStr += '\treturn comp_size_' + this.name + '(' +
+                 (varSize? 'size':'') + ');\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
 
-        // Generate code for the allocation function
-        sourceStr += 'function alloc_' + this.name + '(size)\n';
-        sourceStr += '{\n';
-        sourceStr += '\t"tachyon:inline";\n';
-        sourceStr += '\t"tachyon:noglobal";\n';
-        sourceStr += '\t"tachyon:arg size pint";\n';
-        sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-        sourceStr += '\tvar ptr = heapAlloc(sizeof_' + this.name + '(size));\n';
-        if (this.ptrType === IRType.box)
-            sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
-        sourceStr += '\tset_' + this.name + '_size(ptr, size);\n';
-        if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
-            sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
-        sourceStr += '\treturn ptr;\n';
-        sourceStr += '}\n';
-        sourceStr += '\n';
+
+
+
+
+
+
+
+
+
+    // String for the field initialization code
+    var initCode = '';
+
+
+
+
+
+    // Generate the field initialization code
+    function genInitCode(
+        rootLayout,
+        curLayout,
+        fieldSpecs,
+        args,
+        fname
+    )
+    {
+        initCode = '';
+
+        // For each field in the current layout
+        for (var field in curLayout.fieldMap)
+        {
+            // Get the field specification for this field
+            var spec = curLayout.fieldMap[field];
+
+    
+            var curArgs = args;
+
+            // If there are many elements, or a variable number of elements
+            if (spec.numElems !== 1)
+            {
+                var varName = 'i' + fieldSpecs.length;
+
+                // Add the index variable to the argument string
+                curArgs += ', ' + varName;
+            }
+
+            // Add the spec name to the field name
+            var curFieldName = fname + '_' + spec.name;
+
+
+            var subSrc = '';
+
+            // If this is a sub-layout, not a leaf field
+            if (spec.type instanceof MemLayout)
+            {
+                // Call this function recursively
+                subSrc = genInitCode(
+                    rootLayout,
+                    spec.type,
+                    fieldSpecs.concat(spec),
+                    curArgs,
+                    curFieldName
+                );
+            }
+            else
+            {
+                subSrc += 'set_' + rootLayout.name + curFieldName + 
+                        '(' + curArgs + ', ' + spec.initVal + ');\n';
+            }
+
+
+            if (subSrc)
+            {
+                // If there are many elements, or a variable number of elements
+                if (spec.numElems !== 1)
+                {
+                    // Generate code to loop over each element
+                    initCode += 'for (var ' + varName + ' = pint(0); ';
+                    initCode += varName + ' < ';
+                    initCode += (spec.numElems !== false)? 
+                            'pint(' + spec.numElems + ')':'size'
+                    initCode += '; ++' + varName + ')\n';
+                    initCode += '{\n';
+
+                    initCode += indentText(subSrc);
+
+                    initCode += '}\n';
+                }
+                else
+                {
+                    initCode += subSrc;
+                }
+            }
+
+        }
+
+        return initCode;
     }
 
+    initCode += genInitCode(
+        this,
+        this,
+        [],
+        'ptr',
+        ''
+    );
 
 
+
+
+    //if (initCode)
+    //    print(initCode);
 
 
 
@@ -607,132 +749,176 @@ MemLayout.prototype.genMethods = function ()
 
 
     /*
-    Want recursive function to process each field
+    // Generate field initialization code
+    this.forEachField(
+        function (layout, spec, fieldSpecs)
+        {
+            // If this field is not to be initialized, stop
+            if (spec.initVal === undefined)
+                return;
 
-    some fields are not instantiable (they are layouts)
-    leaf fields are the ones that interest us.
-    want to be able to call some function on each leaf field
+            var code = '';
+            var indent = '';
+            var args = 'ptr';
+            var closeBraces = '';
+
+            // For each level of field nesting
+            for (var i = 0; i < fieldSpecs.length; ++i)
+            {
+                var curSpec = fieldSpecs[i];
+
+                // If there are many elements, or a variable number of elements
+                if (curSpec.numElems !== 1)
+                {
+                    var varName = 'i' + i;
+
+                    // Generate code to loop over each element
+                    code += indent + 'for (var ' + varName + ' = pint(0); ';
+                    code += varName + ' < ';
+                    code += (curSpec.numElems !== false)? 
+                            'pint(' + curSpec.numElems + ')':'size'
+                    code += '; ++' + varName + ')\n';
+                    code += indent + '{\n';
+
+                    // Add the index variable to the argument string
+                    args += ', ' + varName;
+
+                    closeBraces = indent + '}\n' + closeBraces;
+
+                    indent += '\t';
+                }
+            }
+
+            // Assemble the field name
+            var fname = '';
+            for (var i = 0; i < fieldSpecs.length; ++i)
+                fname += '_' + fieldSpecs[i].name;
+
+            code += indent + 'set_' + layout.name + fname + '(' + args + ', ' + 
+                     spec.initVal + ');\n';
+
+            code += closeBraces;
+
+            initCode += code;
+        }
+    );
 
 
+
+    if (initCode)
+        print(initCode);
     */
 
 
-    function forEachField(
-        curLayout,
-        fieldSpecs,
-        fieldFunc
-    )
-    {
-        // For each field in the current layout
-        for (var fname in curLayout.fieldMap)
+
+
+
+
+
+
+
+    // Generate code for the allocation function
+    sourceStr += 'function alloc_' + this.name + '(' +
+                 (varSize? 'size':'') + ')\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:inline";\n';
+    sourceStr += '\t"tachyon:noglobal";\n';
+    if (varSize)
+        sourceStr += '\t"tachyon:arg size pint";\n';
+    sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
+    sourceStr += '\tvar ptr = heapAlloc(comp_size_' + this.name + '(' +
+                 (varSize? 'size':'') + '));\n';
+    if (this.ptrType === IRType.box)
+        sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
+    if (varSize)
+        sourceStr += '\tset_' + this.name + '_size(ptr, size);\n';
+    if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
+        sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
+    sourceStr += '\treturn ptr;\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Generate code for the accessor functions for this layout
+    this.forEachField(
+        function (layout, spec, fieldSpecs)
         {
-            // Get the field specification for this field
-            var spec = curLayout.fieldMap[fname];
+            // String for the accessor name
+            var nameStr = layout.name;
 
+            // String for the argument names
+            var argStr = 'obj';
 
+            // Number of arguments
+            var numArgs = 1;
 
-            // If this is a sub-layout, not a leaf field
-            if (spec.type instanceof MemLayout)
-            {
-                // Call this function recursively
-                forEachField(
+            // String for the prologue annotations
+            var proStr = '';
+            proStr += '"tachyon:arg obj ' + layout.ptrType + '";\n';
+            proStr += '"tachyon:inline";\n';
+            proStr += '"tachyon:noglobal";\n';
 
+            // String for the offset computation
+            var offsetStr = '';
+            offsetStr += 'var offset = pint(0);\n';
 
+            // For each field spec
+            fieldSpecs.forEach(
+                function (spec, idx)
+                {
+                    // Add the field name to the name string
+                    nameStr += '_' + spec.name;
 
+                    // Add the field offset to the current offset
+                    offsetStr += 'offset += pint(' + spec.offset + ');\n';
 
-                );
-            }
-            else
-            {
+                    // If there are many elements, or a variable number of elements
+                    if (spec.numElems !== 1)
+                    {
+                        // Create an index variable for this field
+                        var idxVar = 'idx' + (numArgs - 1);
+                        numArgs += 1;
+                        proStr += '"tachyon:arg ' + idxVar + ' pint";\n';
 
-                // Call the field function
-                fieldFunc(
-
-
-
-                );
-
-            }
-
-
-
-
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // Generate code for the accessor functions for a given layout
-    function genAccessFuncs(
-        curLayout,
-        nameStr,
-        argStr,
-        numArgs,
-        proStr,
-        offsetStr
-    )
-    {
-        // Generate code for a given field and sub-fields
-        function genAccessField(
-            spec,
-            nameStr,
-            argStr,
-            numArgs,
-            proStr,
-            offsetStr
-        )
-        {
-            // Add the field name to the name string
-            nameStr += '_' + fname;
-
-            // Add the field offset to the current offset
-            offsetStr += 'offset += pint(' + spec.offset + ');\n';
-
-            // If there are many elements, or a variable number of elements
-            if (spec.numElems !== 1)
-            {
-                // Create an index variable for this field
-                var idxVar = 'idx' + (numArgs - 1);
-                numArgs += 1;
-                proStr += '"tachyon:arg ' + idxVar + ' pint";\n';
-
-                // Integrate the index argument in the computation
-                argStr += ', ' + idxVar;
-                offsetStr +=
-                    'offset += pint(' + spec.elemSize +
-                    ') * ' + idxVar + ';\n';
-                ;
-            }
-
-            // If there can't be accessors for this field
-            if (spec.type instanceof MemLayout)
-            {
-                // Recurse on the layout
-                genAccessFuncs(
-                    spec.type,
-                    nameStr,
-                    argStr,
-                    numArgs,
-                    proStr,
-                    offsetStr
-                );
-
-                // Do not generate accessor methods
-                return;
-            }
+                        // Integrate the index argument in the computation
+                        argStr += ', ' + idxVar;
+                        offsetStr +=
+                            'offset += pint(' + spec.elemSize +
+                            ') * ' + idxVar + ';\n';
+                        ;
+                    }
+                }
+            );
 
             // Generate the getter method
             sourceStr += 'function get_' + nameStr + '(' + argStr + ')\n';
@@ -754,35 +940,6 @@ MemLayout.prototype.genMethods = function ()
             sourceStr += '}\n';
             sourceStr += '\n';
         }
-
-        // For each field
-        for (var fname in curLayout.fieldMap)
-        {
-            // Get the field specification for this field
-            var spec = curLayout.fieldMap[fname];
-
-            // Generate code for this field and sub-fields
-            genAccessField(
-                spec,
-                nameStr,
-                argStr,
-                numArgs,
-                proStr,
-                offsetStr
-            );
-        }
-    }
-
-    // Generate the getter and setter functions
-    genAccessFuncs(
-        this,
-        this.name,
-        'obj',
-        1,
-        '"tachyon:arg obj ' + this.ptrType + '";\n' +
-        '"tachyon:inline";\n' + 
-        '"tachyon:noglobal";\n',
-        'var offset = pint(0);\n'
     );
 
     // Return the generated code

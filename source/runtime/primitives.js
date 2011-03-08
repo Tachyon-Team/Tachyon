@@ -1374,7 +1374,7 @@ function and(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        error('bitwise AND of non-integer values')
+        error('bitwise AND of non-integer values');
     }
 }
 
@@ -1395,7 +1395,7 @@ function or(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        error('bitwise OR of non-integer values')
+        error('bitwise OR of non-integer values');
     }
 }
 
@@ -1416,7 +1416,7 @@ function xor(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        error('bitwise XOR of non-integer values')
+        error('bitwise XOR of non-integer values');
     }
 }
 
@@ -1437,7 +1437,7 @@ function lsft(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        error('left shift of non-integer values')
+        error('left shift of non-integer values');
     }
 }
 
@@ -1458,7 +1458,7 @@ function rsft(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        error('right shift of non-integer values')
+        error('right shift of non-integer values');
     }
 }
 
@@ -1479,7 +1479,7 @@ function ursft(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        error('unsigned right shift of non-integer values')
+        error('unsigned right shift of non-integer values');
     }
 }
 
