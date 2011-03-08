@@ -290,7 +290,7 @@ function makeObjectLayouts(params)
     hashEntryLayout.addField(
         'key',
         IRType.box,
-        'undefined'
+        'UNDEFINED'
     );
 
     // Hash table value

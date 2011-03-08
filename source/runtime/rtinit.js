@@ -42,12 +42,6 @@ function initHeap(heapPtr, heapSize)
     // Set the global object reference in the context object
     set_ctx_globalobj(ctxObj, globalObj);
 
-    // Initially, set the prototype references to null
-    set_ctx_objproto(ctxObj, null);
-    set_ctx_arrproto(ctxObj, null);
-    set_ctx_funcproto(ctxObj, null);
-    set_ctx_strproto(ctxObj, null);
-
     // Initialize the string hash consing system
     initStrings();
 

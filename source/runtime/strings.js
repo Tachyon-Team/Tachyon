@@ -23,10 +23,6 @@ function initStrings()
     // Initialize the number of properties
     set_strtbl_numstrs(strtbl, u32(0));
 
-    // Initialize the string table entries
-    for (var i = pint(0); i < STR_TBL_INIT_SIZE; i++)
-        set_strtbl_tbl(strtbl, i, UNDEFINED);
-
     // Get a pointer to the context
     var ctx = iir.get_ctx();
 
@@ -138,10 +134,6 @@ function extStrTable(curTbl, curSize, numStrings)
 
     // Allocate a new, larger hash table
     var newTbl = alloc_strtbl(newSize);
-
-    // Initialize the new table entries
-    for (var i = pint(0); i < newSize; i++)
-        set_strtbl_tbl(newTbl, i, UNDEFINED);
 
     // Set the number of strings stored
     set_strtbl_numstrs(newTbl, iir.icast(IRType.u32, numStrings));

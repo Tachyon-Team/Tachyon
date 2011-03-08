@@ -576,28 +576,6 @@ MemLayout.prototype.genMethods = function ()
     // Test if this layout has a variable size
     var varSize = (numElems === false);
 
-
-
-
-
-    // TODO: alloc_ with initialization
-
-    /*
-    Initialization code. For each field and sub-field, need to initialize
-    to a default value. May need multiple nested loops for some fields...
-
-    Could separate this into an init_ function, for simplicity? No.
-    */
-
-
-
-    // TODO: alloc_noinit_ without initialization
-
-
-
-
-
-
     // Generate code for the size computation function
     sourceStr += 'function comp_size_' + this.name + '(' +
                  (varSize? 'size':'') + ')\n';
@@ -631,23 +609,7 @@ MemLayout.prototype.genMethods = function ()
     sourceStr += '}\n';
     sourceStr += '\n';
 
-
-
-
-
-
-
-
-
-
-    // String for the field initialization code
-    var initCode = '';
-
-
-
-
-
-    // Generate the field initialization code
+    // Function to generate the field initialization code
     function genInitCode(
         rootLayout,
         curLayout,
@@ -656,7 +618,8 @@ MemLayout.prototype.genMethods = function ()
         fname
     )
     {
-        initCode = '';
+        // String for the generated code
+        var initCode = '';
 
         // For each field in the current layout
         for (var field in curLayout.fieldMap)
@@ -664,7 +627,7 @@ MemLayout.prototype.genMethods = function ()
             // Get the field specification for this field
             var spec = curLayout.fieldMap[field];
 
-    
+            // By defaults, no new arguments are added
             var curArgs = args;
 
             // If there are many elements, or a variable number of elements
@@ -679,7 +642,7 @@ MemLayout.prototype.genMethods = function ()
             // Add the spec name to the field name
             var curFieldName = fname + '_' + spec.name;
 
-
+            // String for the code generated at higher nesting levels
             var subSrc = '';
 
             // If this is a sub-layout, not a leaf field
@@ -696,11 +659,15 @@ MemLayout.prototype.genMethods = function ()
             }
             else
             {
-                subSrc += 'set_' + rootLayout.name + curFieldName + 
+                // If there is an initialization value for this field
+                if (spec.initVal !== undefined)
+                {
+                    subSrc = 'set_' + rootLayout.name + curFieldName + 
                         '(' + curArgs + ', ' + spec.initVal + ');\n';
+                }
             }
 
-
+            // If code was generated at higher nesting levels
             if (subSrc)
             {
                 // If there are many elements, or a variable number of elements
@@ -726,10 +693,12 @@ MemLayout.prototype.genMethods = function ()
 
         }
 
+        // Return the generated code
         return initCode;
     }
 
-    initCode += genInitCode(
+    // Generate the field initialization code
+    var initCode = genInitCode(
         this,
         this,
         [],
@@ -737,137 +706,51 @@ MemLayout.prototype.genMethods = function ()
         ''
     );
 
+    // Function to generate the allocation function code
+    function genAllocCode(namePrefix, layout, initCode)
+    {
+        var sourceStr = '';
 
+        sourceStr += 'function ' + namePrefix + '_' + layout.name + '(' +
+                     (varSize? 'size':'') + ')\n';
+        sourceStr += '{\n';
+        sourceStr += '\t"tachyon:inline";\n';
+        sourceStr += '\t"tachyon:noglobal";\n';
+        if (varSize)
+            sourceStr += '\t"tachyon:arg size pint";\n';
+        sourceStr += '\t"tachyon:ret ' + layout.ptrType + '";\n';
 
+        sourceStr += '\tvar ptr = heapAlloc(comp_size_' + layout.name + '(' +
+                     (varSize? 'size':'') + '));\n';
 
-    //if (initCode)
-    //    print(initCode);
+        // If this layout uses a boxed reference type, box the pointer
+        if (layout.ptrType === IRType.box)
+            sourceStr += '\tptr = boxPtr(ptr, ' + layout.tagName + ');\n';
 
+        // If the layout has a variable size, set its size
+        if (varSize)
+            sourceStr += '\tset_' + layout.name + '_size(ptr, size);\n';
 
+        // If this is a heap-allocated layout, set its type id
+        if (layout.ptrType === IRType.box || layout.ptrType === IRType.ref)
+            sourceStr += '\tset_' + layout.name + '_header(ptr, u32(' + layout.typeId + '));\n';
 
+        // If initialization code was specified, include it
+        if (initCode)
+            sourceStr += indentText(initCode);
 
+        sourceStr += '\treturn ptr;\n';
+        sourceStr += '}\n';
+        sourceStr += '\n';
 
+        return sourceStr
+    }
 
-    /*
-    // Generate field initialization code
-    this.forEachField(
-        function (layout, spec, fieldSpecs)
-        {
-            // If this field is not to be initialized, stop
-            if (spec.initVal === undefined)
-                return;
+    // Generate the allocation function with initialization
+    sourceStr += genAllocCode('alloc', this, initCode);
 
-            var code = '';
-            var indent = '';
-            var args = 'ptr';
-            var closeBraces = '';
-
-            // For each level of field nesting
-            for (var i = 0; i < fieldSpecs.length; ++i)
-            {
-                var curSpec = fieldSpecs[i];
-
-                // If there are many elements, or a variable number of elements
-                if (curSpec.numElems !== 1)
-                {
-                    var varName = 'i' + i;
-
-                    // Generate code to loop over each element
-                    code += indent + 'for (var ' + varName + ' = pint(0); ';
-                    code += varName + ' < ';
-                    code += (curSpec.numElems !== false)? 
-                            'pint(' + curSpec.numElems + ')':'size'
-                    code += '; ++' + varName + ')\n';
-                    code += indent + '{\n';
-
-                    // Add the index variable to the argument string
-                    args += ', ' + varName;
-
-                    closeBraces = indent + '}\n' + closeBraces;
-
-                    indent += '\t';
-                }
-            }
-
-            // Assemble the field name
-            var fname = '';
-            for (var i = 0; i < fieldSpecs.length; ++i)
-                fname += '_' + fieldSpecs[i].name;
-
-            code += indent + 'set_' + layout.name + fname + '(' + args + ', ' + 
-                     spec.initVal + ');\n';
-
-            code += closeBraces;
-
-            initCode += code;
-        }
-    );
-
-
-
-    if (initCode)
-        print(initCode);
-    */
-
-
-
-
-
-
-
-
-
-    // Generate code for the allocation function
-    sourceStr += 'function alloc_' + this.name + '(' +
-                 (varSize? 'size':'') + ')\n';
-    sourceStr += '{\n';
-    sourceStr += '\t"tachyon:inline";\n';
-    sourceStr += '\t"tachyon:noglobal";\n';
-    if (varSize)
-        sourceStr += '\t"tachyon:arg size pint";\n';
-    sourceStr += '\t"tachyon:ret ' + this.ptrType + '";\n';
-    sourceStr += '\tvar ptr = heapAlloc(comp_size_' + this.name + '(' +
-                 (varSize? 'size':'') + '));\n';
-    if (this.ptrType === IRType.box)
-        sourceStr += '\tptr = boxPtr(ptr, ' + this.tagName + ');\n';
-    if (varSize)
-        sourceStr += '\tset_' + this.name + '_size(ptr, size);\n';
-    if (this.ptrType === IRType.box || this.ptrType === IRType.ref)
-        sourceStr += '\tset_' + this.name + '_header(ptr, u32(' + this.typeId + '));\n';
-    sourceStr += '\treturn ptr;\n';
-    sourceStr += '}\n';
-    sourceStr += '\n';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // Generate the allocation function without initialization
+    sourceStr += genAllocCode('alloc_noinit', this);
 
     // Generate code for the accessor functions for this layout
     this.forEachField(
@@ -944,5 +827,19 @@ MemLayout.prototype.genMethods = function ()
 
     // Return the generated code
     return sourceStr;
+};
+
+/**
+Generate C code to manipulate this layout
+*/
+MemLayout.prototype.genCMethods = function ()
+{
+    //
+    // TODO
+    //
+
+
+
+
 };
 
