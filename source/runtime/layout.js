@@ -850,6 +850,7 @@ MemLayout.prototype.genCMethods = function ()
             if (spec.type !== IRType.rptr && 
                 spec.type !== IRType.box &&
                 spec.type !== IRType.ref &&
+                (spec.type !== IRType.u32 || spec.name !== 'header') &&
                 (spec.type !== IRType.pint || spec.name !== 'size'))
                 return;
 
@@ -951,51 +952,156 @@ MemLayout.prototype.genCMethods = function ()
     sourceStr += '}\n';
     sourceStr += '\n';
 
-
     /*
     TODO: visit_ functions for each collectable object
     
     Check algorithm in compiler book before implementing!
+
+    Warning: avoid stack overflows...
+    Call gc_visit function defined externally
+
+    GC must be able to update references. Should ideally have table of offsets
+    for layouts?
     */
-
-
 
     // GC visit function    
     sourceStr += 'void visit_' + this.name + '(' + this.ptrType + ' obj)\n';
     sourceStr += '{\n';
+    sourceStr += '\tref refVal;\n';
+    sourceStr += '\tbox boxVal;\n';
+    sourceStr += '\tpint tagVal;\n';
+
+    if (varSize)
+        sourceStr += '\tpint size = get_' + this.name + '_size(obj);\n';
+
+    // Function to generate code to visit/update each reference field
+    function genVisitCode(
+        rootLayout,
+        curLayout,
+        fieldSpecs,
+        args,
+        fname
+    )
+    {
+        // String for the generated code
+        var initCode = '';
+
+        // For each field in the current layout
+        for (var field in curLayout.fieldMap)
+        {
+            // Get the field specification for this field
+            var spec = curLayout.fieldMap[field];
+
+            // By defaults, no new arguments are added
+            var curArgs = args;
+
+            // If there are many elements, or a variable number of elements
+            if (spec.numElems !== 1)
+            {
+                var varName = 'i' + fieldSpecs.length;
+
+                // Add the index variable to the argument string
+                curArgs += ', ' + varName;
+            }
+
+            // Add the spec name to the field name
+            var curFieldName = fname + '_' + spec.name;
+
+            // String for the code generated at higher nesting levels
+            var subSrc = '';
+
+            // If this is a sub-layout, not a leaf field
+            if (spec.type instanceof MemLayout)
+            {
+                // Call this function recursively
+                subSrc = genVisitCode(
+                    rootLayout,
+                    spec.type,
+                    fieldSpecs.concat(spec),
+                    curArgs,
+                    curFieldName
+                );
+            }
+            else
+            {
+                // If this is a reference field
+                if (spec.type == IRType.box || spec.type == IRType.ref)
+                {
+                    subSrc += 
+                        ((spec.type === IRType.box)? 'boxVal':'refVal') + ' = ' +
+                        'get_' + rootLayout.name + curFieldName + 
+                        '(' + curArgs + ');\n';
+
+                    if (spec.type == IRType.box)
+                    {
+                        subSrc += 'tagVal = getRefTag(boxVal);\n';
+                        subSrc += 'refVal = unboxRef(boxVal);\n';
+                    }
+
+                    //
+                    // TODO: call gc visit func here!!!!
+                    // refVal = gc_visit(refVal);
+                    //
 
 
-    // TODO!
+                    if (spec.type == IRType.box)
+                    {
+                        subSrc += 'boxVal = boxRef(refVal, tagVal);\n';
+                    }
 
+                    subSrc += 'set_' + rootLayout.name + curFieldName + 
+                        '(' + curArgs + ', ' + 
+                        ((spec.type === IRType.box)? 'boxVal':'refVal') +
+                        ');\n';
+                }
+
+                //
+                // TODO: if this is a pointer field, add validation
+                //
+            }
+
+            // If code was generated at higher nesting levels
+            if (subSrc)
+            {
+                // If there are many elements, or a variable number of elements
+                if (spec.numElems !== 1)
+                {
+                    // Generate code to loop over each element
+                    initCode += 'for (pint ' + varName + ' = 0; ';
+                    initCode += varName + ' < ';
+                    initCode += (spec.numElems !== false)? spec.numElems:'size'
+                    initCode += '; ++' + varName + ')\n';
+                    initCode += '{\n';
+
+                    initCode += indentText(subSrc);
+
+                    initCode += '}\n';
+                }
+                else
+                {
+                    initCode += subSrc;
+                }
+            }
+
+        }
+
+        // Return the generated code
+        return initCode;
+    }
+
+    // Generate code to visit/update each reference field
+    var visitCode = genVisitCode(
+        this,
+        this,
+        [],
+        'obj',
+        ''
+    );
+
+    sourceStr += indentText(visitCode);
 
     sourceStr += '}\n';
     sourceStr += '\n';
-
-
-
-
-
-
-
-
-    // TODO: high-level visit functions
-    // visitBox
-    // visitRef
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // Return the generated code
     return sourceStr;
@@ -1012,6 +1118,8 @@ function genGCCode(params)
     makeObjectLayouts(params);
 
     const TAG_REF_MASK = params.staticEnv.getValue('TAG_REF_MASK');
+    const TAG_INT_MASK = params.staticEnv.getValue('TAG_INT_MASK');
+    const TAG_INT = params.staticEnv.getValue('TAG_INT');
 
     // Declare a variable for the generated code
     var sourceStr = '';
@@ -1022,6 +1130,7 @@ function genGCCode(params)
     sourceStr += '\n';
 
     // Useful type definitions
+    sourceStr += 'typedef uint32_t u32;\n';
     sourceStr += 'typedef intptr_t pint;\n';
     sourceStr += 'typedef intptr_t box;\n';
     sourceStr += 'typedef int8_t* ref;\n'
@@ -1049,12 +1158,26 @@ function genGCCode(params)
     sourceStr += '}\n';
     sourceStr += '\n';
 
+    // Test if a boxed value is a reference
+    sourceStr += 'bool boxIsRef(box boxVal)\n';
+    sourceStr += '{\n';
+    sourceStr += '\treturn (boxVal & ' + TAG_INT_MASK + ') != ' + TAG_INT + ';\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+
+
 
 
     // TODO: function assert a boxed reference is in the heap
-
-
     // TODO: function to assert a raw pointer does not point in the heap
+    // Function to test that pointer is in heap can be the basis for both
+
+
+
+    // TODO: high-level visit function
+    // visitRef
+    // visitBox --> No, just unbox it.
 
 
 
