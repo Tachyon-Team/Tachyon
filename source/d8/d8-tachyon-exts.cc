@@ -432,6 +432,8 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
         if (!jsObj->Has(i))
         {
             printf("Error in arrayToVal -- array does not match value size\n");
+            printf("Expected size: %i\n", int(sizeof(T)));
+            printf("Failed on index: %i\n", int(i));
             exit(1);
         }
 
@@ -580,7 +582,7 @@ typedef TachVal (*TACHYON_FPTR)(void*, ...);
 // Second arg: context pointer
 // Third arg: number of arguments passed
 // Fourth arg: argument data pointer
-int callTachyonFFI(
+TachVal callTachyonFFI(
     TACHYON_FPTR funcPtr,
     uint8_t* ctxPtr,
     int numArgs,
@@ -608,6 +610,7 @@ int callTachyonFFI(
     // Variable to store the return value
     TachVal retVal;
 
+    //printf("Calling Tachyon func with %i arguments\n", int(numArgs));
     // Switch on the number of arguments to pass
     switch (numArgs)
     {
@@ -724,6 +727,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     // Pointer to the current argument
     uint8_t* argPtr = argData;
 
+    //printf("v8Proxy_callTachyonFFI received %i arguments\n", int(numArgs));
     // For each argument to be passed
     for (size_t i = 0; i < numArgs; ++i)
     {
@@ -750,7 +754,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             if (arg->IsNumber())
             {
                 tachArg = tachValFromInt(arg->Int32Value());
-                //printf("Arg %d = %d\n", i, tachArg.intVal);
+                //printf("Arg %d = %d\n", int(i), tachValToInt(tachArg));
             }
             else
             {
@@ -765,7 +769,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             if (arg->IsArray())
             {
                 tachArg = tachValFromPtr(arrayToVal<void*>(arg));
-                //printf("Arg %d = %p\n", i, tachArg.ptrVal);
+                //printf("Arg %d = %p\n", int(i), tachValToPtr(tachArg));
             }
             else
             {
