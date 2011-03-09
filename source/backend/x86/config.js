@@ -122,6 +122,15 @@ function x86BackendCfg(is64bit)
     @field
     */
     this.x64ArgsReg = [reg.rdi, reg.rsi, reg.rdx, reg.rcx, reg.r8, reg.r9];
+
+
+    // Configuration sanity checks
+
+    if (width === 64)
+    {
+        assert(!arraySetHas(this.x64ArgsReg, this.stack.subReg(width)),
+               "Stack register conflicts with x64 calling convention");
+    }
 }
 
 /**

@@ -2066,20 +2066,19 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.sub($(stackOffset), stack);
 
-        for (i = argRegNb, spoffset = 0; i < funcArgs.length; ++i, spoffset += refByteNb)
+        for (i = argRegNb, spoffset = 0; 
+             i < funcArgs.length; 
+             ++i, spoffset += refByteNb)
         {
             var arg = funcArgs[i];
 
             if (arg.type === x86.type.MEM)
             {
                 // Source memory location
-                // Adjust the offset to take the displacement of the stack pointer
-                // into account
-                arg = Object.create(arg);
-                arg.disp += stackOffset;
-
+                // Adjust the offset to take the displacement of the 
+                // stack pointer into account
                 tltor.asm.
-                mov(arg, scratch).
+                mov(mem(arg.disp + stackOffset, arg.base), scratch).
                 mov(scratch, mem(spoffset, stack));
             } 
             else
@@ -2105,12 +2104,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             if (arg.type === x86.type.MEM && 
                 arg.base === stack)
             {
-                // Make a copy of the object with the same properties
-                arg = Object.create(arg);
-
-                // Adjust the offset to take the displacement of the stack pointer
-                // into account
-                arg.disp += stackOffset;
+                arg = mem(arg.disp + stackOffset, stack);
             }
 
             map.add(arg, reg);
@@ -2302,9 +2296,6 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const context = backendCfg.context;
 
-    const altStack = reg.rbp.subReg(width);
-
-    const scratchReg = reg.rdi.subReg(width);
 
     const xSP = reg.rsp.subReg(width);
 
@@ -2318,26 +2309,33 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const callDest  = tltor.asm.linked(
                     cfct.funcName, 
-                    //function (dstAddr) { return dstAddr
-                    //                            .addOffset(4)
-                    //                            .getAddrOffsetBytes(fctAddr); },
                     function (dstAddr) { return fctAddr.getBytes(); },
                     fctAddr.width());
                     
     const numArgs = opnds.length - 1;        
 
-    //assert(width === 32, "Only 32-bits FFI calls are supported for now"); 
+    const is64 = tltor.asm.target === x86.target.x86_64;
 
-    assert(altStack !== scratchReg, 'alt stack reg is the same as scratch reg');
-    backendCfg.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
-    backendCfg.argsReg.forEach(function (r) { assert(scratchReg !== r, 'invalid scratch reg'); });
+    const firstIndex = is64 ? 6 : 0;
 
-    // Spill an operand on the context if it is in the scratch register
-    tltor.spillOnCtx([scratchReg, altStack], opnds);
 
-    // Iteration
-    var i;
-    var offset;
+
+    if (is64)
+    {
+        // Use registers not required by the target calling convention 
+        var altStack   = reg.r10;
+        var scratchReg = reg.r11;
+    } else
+    {
+        // No registers are required by the target calling convention,
+        // but prefer registers that would less frequently contain 
+        // operands
+        var altStack   = reg.ebp;
+        var scratchReg = reg.edi;
+    }
+
+    // Spill an operand on the context if it is in one of the reserved registers
+    tltor.spillOnCtx([altStack, scratchReg], opnds);
 
     // Invariant: opnds are constants, registers or memory location
     //            containing C-valid object or primitive values
@@ -2349,7 +2347,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     var argOffsets = [];
 
     // For each argument
-    for (i = 0; i < numArgs; ++i)
+    for (var i = firstIndex; i < numArgs; ++i)
     {
         argOffsets.push(argStackSpace);
 
@@ -2386,7 +2384,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     // the old stack pointer and arguments
     var totalStackSpace = (2 * refByteNb) + argStackSpace;
 
-    // TODO: Find a way to calculate the mask for 64 bits pointer values
+    // Mask works both for 32 and 64 bits because the value will 
+    // be signed extended to 64 bits
     const alignMask = ~(stackAlignByteNb - 1);
 
     // Move the current stack pointer into alternate register
@@ -2405,8 +2404,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     // Save the old stack pointer below the arguments
     mov(altStack, mem(argStackSpace, stack));
 
-    // Write argument on stack in reverse order
-    for (i = 0; i < numArgs; ++i)
+    // Write arguments on stack in reverse order
+    for (i = firstIndex; i < numArgs; ++i)
     {
         var opnd = opnds[i+1];
 
@@ -2437,16 +2436,36 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // If we are on 64 bits, the first 6 arguments should be in registers
-    if (tltor.asm.target === x86.target.x86_64)
+    if (is64)
     {
-        // Temporary hack: copy the arguments on stack in registers,
-        //                 it will break for more than 6 arguments
-        // We should instead adjust the stack for the right number of
-        // arguments
-        for (var i = 0; i < backendCfg.x64ArgsReg.length; ++i)
+        // Move arguments in the right registers
+        map = allocator.mapping();
+        for (var i = 0; i < 6 && i < numArgs; ++i)
         {
-            tltor.asm.mov(mem(i*refByteNb, stack), backendCfg.x64ArgsReg[i]);
+            var arg = opnds[i+1];
+            
+            var x64Arg = backendCfg.x64ArgsReg[i];
+            
+            if (arg !== x64Arg)
+            {
+                // Fix the offset since the stack pointer has been moved
+                if (arg.type === x86.type.MEM && 
+                    arg.base === stack)
+                {
+                    arg = mem(arg.disp, altStack);
+                }
+                
+                map.add(arg, x64Arg);
+            }
         }
+
+        map.orderAndInsertMoves( 
+            function (move)
+            {
+                tltor.asm.mov(move.uses[0], move.uses[1]);
+            },
+            scratchReg
+        );
     }
 
     // Prepare stack pointer for C calling convention
