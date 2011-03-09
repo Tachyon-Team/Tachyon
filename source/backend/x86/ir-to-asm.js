@@ -520,7 +520,7 @@ irToAsm.translator.prototype.prelude = function ()
 
     if (this.fct.cProxy)
     {
-        if (target.ptrSizeBits === 32)
+        if (this.asm.target === x86.target.x86)
         {
             // We follow 32 bits Windows, Linux, BSD and Mac OS X
             // callee-save convention
@@ -2074,11 +2074,16 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
             if (arg.type === x86.type.MEM)
             {
+                if (arg.base === stack)
+                {
+                    // Adjust the offset to take the displacement of the 
+                    // stack pointer into account
+                    arg = mem(arg.disp + stackOffset, stack);
+                } 
+
                 // Source memory location
-                // Adjust the offset to take the displacement of the 
-                // stack pointer into account
                 tltor.asm.
-                mov(mem(arg.disp + stackOffset, arg.base), scratch).
+                mov(arg, scratch).
                 mov(scratch, mem(spoffset, stack));
             } 
             else
