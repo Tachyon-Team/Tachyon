@@ -408,11 +408,11 @@ function initRuntime(params)
 
     // Initialize the heap
     var ctxPtr = initHeapBridge(
-        asm.address([0,0,0,0]).getBytes(),
+        asm.address.null(params.target.ptrSizeBits).getBytes(),
         heapAddr,
         heapSize
     );
-
+    
     // Store the context pointer in the compilation parameters
     params.ctxPtr = ctxPtr;
 
@@ -446,7 +446,8 @@ function initRuntime(params)
         }
         else
         {
-            var blockAddr = [0,0,0,0];
+            var blockAddr = asm.address.
+                            null(params.target.ptrSizeBits).getBytes();
         }
 
         for (var i = 0; i < jsStr.length; ++i)

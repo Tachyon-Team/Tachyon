@@ -3,6 +3,8 @@
 #JavaScript VM program
 JSVMPROG = d8
 
+JSVMPROG64 = d8_64
+
 #JavaScript VM command options
 JSVMOPTS = --allow_natives_syntax --nocollect_maps
 
@@ -11,6 +13,7 @@ JSVMOPTSDEBUG = $(JSVMOPTS) --noopt
 
 #JavaScript VM command
 JSVM = $(JSVMPROG) $(JSVMOPTS)
+JSVM64 = $(JSVMPROG64) $(JSVMOPTS)
 
 # JavaScript VM command with rlwrap
 RLWJSVM = rlwrap $(JSVM)
@@ -155,6 +158,9 @@ bootstrap-debug:
 
 test: 
 	$(JSVM) $(TEST_SRCS)
+
+test64: 
+	$(JSVM64) $(TEST_SRCS) -- -x64 true
 
 perf: 
 	./bench/d8.sh                                   \

@@ -27,14 +27,19 @@ config.inTachyon = (function ()
 /**
 Initialize the Tachyon configuration
 */
-function initConfig()
+function initConfig(is64bitMode)
 {
+    if (is64bitMode === undefined)
+    {
+        is64bitMode = false;
+    }
+
     /**
     Compilation parameters for the currently running Tachyon VM.
     The tachyon code has special privileges.
     */
     config.hostParams = new CompParams({
-        target          : Target.x86_32,
+        target          : is64bitMode ? Target.x86_64 : Target.x86_32,
         tachyonSrc      : true,
         debug           : true,
         parserWarnings  : true,
@@ -62,7 +67,7 @@ function initConfig()
     Compilation parameters used to bootstrap Tachyon
     */
     config.bootParams = new CompParams({
-        target          : Target.x86_32,
+        target          : is64bitMode ? Target.x86_64 : Target.x86_32,
         tachyonSrc      : true,
         debug           : true,
         parserWarnings  : true,

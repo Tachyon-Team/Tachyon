@@ -69,7 +69,7 @@ irToAsm.getEntryPoint = function (irfunc, name, params, type)
     if (ep === undefined)
     {
         ep = x86.Assembler.prototype.linked(
-            irfunc.funcName,
+            irfunc.funcName + "_" + name,
             function (dstAddr) { return this.getAddr().getBytes(); },
             width
         );
@@ -384,7 +384,8 @@ irToAsm.translator.prototype.stringValue = function (s)
             }
             else
             {
-                return [0,0,0,0];
+                return asm.address.
+                       null(that.params.target.ptrSizeBits).getBytes();
             }
         },
         that.params.target.ptrSizeBits
@@ -531,6 +532,13 @@ irToAsm.translator.prototype.prelude = function ()
         }
         else
         {
+            // Push the arguments that were passed in registers on stack
+            for (var i= Math.min(this.fct.argVars.length-1, 5); i >= 0; --i)
+            {
+                this.asm.
+                push(backendCfg.x64ArgsReg[i]);
+            }
+
             // We follow 64 bits Linux, BSD, Mac OS X
             // callee-save convention
             this.asm.
@@ -560,13 +568,6 @@ irToAsm.translator.prototype.prelude = function ()
         const xBX = reg.rbx.subReg(width);
         const xDX = reg.rdx.subReg(width);
         const xSI = reg.rsi.subReg(width);
-
-        const printInt = irToAsm.getEntryPoint(
-                                this.params.staticEnv.getBinding("printInt"),
-                                "fast",
-                                this.params, 
-                                "offset"
-                            );
 
         if (this.fct.usesArguments)
         {
@@ -630,7 +631,7 @@ irToAsm.translator.prototype.prelude = function ()
                                     this.params.staticEnv.getBinding("allocArgTable"),
                                     "fast",
                                     this.params, 
-                                    "offset"
+                                    "addr"
                                 );
 
 
@@ -647,7 +648,8 @@ irToAsm.translator.prototype.prelude = function ()
             push(fstOpnd).
 
             // Call handler, result is in xAX
-            call(allocArgTbl).
+            mov(allocArgTbl, scratch).
+            call(scratch).
 
             // Restore the number of arguments
             // And copy arguments into argument table
@@ -931,13 +933,20 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     // Index on the call site argument space
     const callSiteArgIndex = (argIndex - argRegNb);
     
-    // Offset due to C calling convention 
+    // Offset due to spilling of callee-save registers
+    // from C calling convention 
     const ccallOffset = (tltor.fct.cProxy === true) ?
                         ((tltor.asm.target === x86.target.x86) ? 4 : 6) : 0;
 
+    // On 64 bits, we spill arguments passed in registers on stack
+    // at the entry of the function
+    const retAddrOffset = (tltor.fct.cProxy === true &&
+                           tltor.asm.target === x86.target.x86_64 &&
+                           argIndex < 6) ? 0 : 1;
+
     // Offset to the argument on the stack
     const spoffset = (regAllocSpillNb + callSiteArgIndex + 
-                      ccallOffset + 1) * refByteNb;
+                      ccallOffset + retAddrOffset) * refByteNb;
 
     // Stack pointer
     const stack = backendCfg.stack;
@@ -1095,8 +1104,16 @@ MulInstr.prototype.regAlloc.usedRegisters = function (instr, params)
 
 MulInstr.prototype.genCode = function (tltor, opnds)
 {
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
+
     const reg = x86.Assembler.prototype.register;
-    const width = tltor.params.target.ptrSizeBits;
     const xAX = reg.rax.subReg(width);
     const xDX = reg.rdx.subReg(width);
 
@@ -1131,7 +1148,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
             var op1 = xDX;
         }
 
-        tltor.asm.mul(op1, this.type.getSizeBits(tltor.params));
+        tltor.asm.mul(op1, width);
     }
 
     // Otherwise, a signed result is expected
@@ -1143,7 +1160,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
                 opnds[1], 
                 dst, 
                 opnds[0], 
-                this.type.getSizeBits(tltor.params)
+                width
             );
         }
 
@@ -1153,7 +1170,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
                 opnds[0], 
                 dst, 
                 opnds[1], 
-                this.type.getSizeBits(tltor.params)
+                width
             );
         }
 
@@ -1163,7 +1180,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
                 opnds[1], 
                 dst, 
                 undefined, 
-                this.type.getSizeBits(tltor.params)
+                width
             );
         }
 
@@ -1173,7 +1190,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
                 opnds[0], 
                 dst, 
                 undefined, 
-                this.type.getSizeBits(tltor.params)
+                width
             );
         }
 
@@ -1184,7 +1201,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
                 opnds[1], 
                 dst, 
                 undefined, 
-                this.type.getSizeBits(tltor.params)
+                width
             );
         }
     }
@@ -1222,7 +1239,15 @@ DivInstr.prototype.regAlloc.usedRegisters = function (instr, params)
 DivInstr.prototype.genCode = function (tltor, opnds)
 {
     // Configuration imports
-    const width = tltor.params.target.ptrSizeBits;
+    //const width = tltor.params.target.ptrSizeBits;
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
 
     // Assembler imports
     const reg = x86.Assembler.prototype.register;
@@ -1337,14 +1362,14 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         // Extend the value into EDX
         tltor.asm.mov($(0), xDX.physReg);
 
-        tltor.asm.div(dsor.value, this.type.getSizeBits(tltor.params));
+        tltor.asm.div(dsor.value, width);
     }
     else
     {
         // Sign-extend EAX into EDX:EAX using CDQ
         tltor.asm.cdq();
 
-        tltor.asm.idiv(dsor.value, this.type.getSizeBits(tltor.params));
+        tltor.asm.idiv(dsor.value, width);
     }
 };
 
@@ -1681,13 +1706,17 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     else
         width = this.uses[0].type.getSizeBits(tltor.params);
 
-    if (opnds[0].type === x86.type.REG && opnds[0].value === 0) 
-    {
-        tltor.asm.test(opnds[1], opnds[1]);
-    } 
-    else if (opnds[1].type === x86.type.REG && opnds[1].value === 0)
+    if (opnds[0].type === x86.type.REG && 
+        opnds[1].type === x86.type.IMM_VAL &&
+        opnds[1].value === 0) 
     {
         tltor.asm.test(opnds[0], opnds[0]);
+    } 
+    else if (opnds[1].type === x86.type.REG && 
+             opnds[0].type === x86.type.IMM_VAL &&
+             opnds[0].value === 0)
+    {
+        tltor.asm.test(opnds[1], opnds[1]);
     } 
     else if ((opnds[0].type === x86.type.MEM || tltor.asm.isImmediate(opnds[0])) &&
              (opnds[1].type === x86.type.MEM || tltor.asm.isImmediate(opnds[1])))
@@ -1723,11 +1752,15 @@ NeInstr.prototype.genCode = function (tltor, opnds)
     else
         width = this.uses[0].type.getSizeBits(tltor.params);
 
-    if (opnds[0].type === x86.type.REG && opnds[1].value === 0) 
+    if (opnds[0].type === x86.type.REG && 
+        opnds[1].type === x86.type.IMM_VAL &&
+        opnds[1].value === 0) 
     {
         tltor.asm.test(opnds[0], opnds[0]);
     } 
-    else if (opnds[1].type === x86.type.REG && opnds[0].value === 0)
+    else if (opnds[1].type === x86.type.REG && 
+             opnds[0].type === x86.type.IMM_VAL &&
+             opnds[0].value === 0)
     {
         tltor.asm.test(opnds[1], opnds[1]);
     } 
@@ -1834,6 +1867,13 @@ RetInstr.prototype.genCode = function (tltor, opnds)
             pop(reg.r12).
             pop(reg.rbp).
             pop(reg.rbx);
+
+            // Pop the arguments that were passed in registers from stack
+            for (var i=0; i < Math.min(tltor.fct.argVars.length, 6); ++i)
+            {
+                tltor.asm.
+                pop(backendCfg.x64ArgsReg[i]);
+            }
         }
 
         tltor.asm.ret();
@@ -2286,7 +2326,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
                     
     const numArgs = opnds.length - 1;        
 
-    assert(width === 32, "Only 32-bits FFI calls are supported for now"); 
+    //assert(width === 32, "Only 32-bits FFI calls are supported for now"); 
 
     assert(altStack !== scratchReg, 'alt stack reg is the same as scratch reg');
     backendCfg.argsReg.forEach(function (r) { assert(altStack !== r, 'invalid alt stack reg'); });
@@ -2396,6 +2436,19 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         }
     }
 
+    // If we are on 64 bits, the first 6 arguments should be in registers
+    if (tltor.asm.target === x86.target.x86_64)
+    {
+        // Temporary hack: copy the arguments on stack in registers,
+        //                 it will break for more than 6 arguments
+        // We should instead adjust the stack for the right number of
+        // arguments
+        for (var i = 0; i < backendCfg.x64ArgsReg.length; ++i)
+        {
+            tltor.asm.mov(mem(i*refByteNb, stack), backendCfg.x64ArgsReg[i]);
+        }
+    }
+
     // Prepare stack pointer for C calling convention
     if (stack !== xSP)
     {
@@ -2405,8 +2458,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     // Call the C function
     tltor.asm.
-    mov(callDest, scratchReg).
-    call(scratchReg);
+    mov(callDest, xAX).
+    call(xAX);
 
     // Move return value into Tachyon calling convention register
     if (backendCfg.retValReg !== xAX)

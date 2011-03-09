@@ -12,10 +12,14 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Initialize the resources required by the Tachyon VM.
 */
-function initialize(boot)
+function initialize(boot, is64bitMode)
 {
     // Initialize the Tachyon configuration
-    initConfig();
+    initConfig(is64bitMode);
+
+    //config.hostParams.printLIR = true;
+    //config.hostParams.printRegAlloc = true;
+    //config.hostParams.printASM = true;
 
     //config.hostParams.print = print;
 

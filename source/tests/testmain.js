@@ -6,8 +6,10 @@ Entry point for the testing mode.
 Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 */
 
+var args = parseCmdLine();
+
 // Initialize Tachyon
-assert(initialize(), "Initialization failed");
+assert(initialize(false, args.options["x64"]), "Initialization failed");
 
 // config.hostParams.print = print;
 

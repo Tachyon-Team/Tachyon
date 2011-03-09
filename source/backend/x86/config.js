@@ -116,6 +116,12 @@ function x86BackendCfg(is64bit)
     @field
     */
     this.MEM = x86.type.MEM;
+
+    /**
+    Registers used for passing arguments in x64 calling convention
+    @field
+    */
+    this.x64ArgsReg = [reg.rdi, reg.rsi, reg.rdx, reg.rcx, reg.r8, reg.r9];
 }
 
 /**
