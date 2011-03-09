@@ -838,6 +838,25 @@ MemLayout.prototype.genCMethods = function ()
     // TODO
     //
 
+    // TODO: get_ functions
+
+    // TODO: sizeof_ function
+    // requires get_size function
+
+    // TODO: visit_ functions for each collectable object
+
+    // TODO: high-level visit functions
+    // visitBox
+    // visitRef
+
+
+
+
+
+
+
+
+
 
 
 
