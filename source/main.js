@@ -48,22 +48,8 @@ function main()
         // Initialize the Tachyon configuration
         initConfig();
 
-        // Declare a variable for the layout source
-        var layoutSrc = '';
-
-        // Generate C methods for the instantiable layouts
-        for (var l in config.hostParams.memLayouts)
-        {
-            var layout = config.hostParams.memLayouts[l];
-
-            if (layout.isInstantiable() === false)
-                continue;
-     
-            layoutSrc += layout.genCMethods();
-        }
-
-        // Write the generated code to a file
-        writeFile('d8/gc-generated.c', layoutSrc);
+        // Generate the GC code
+        genGCCode(config.hostParams);
     }
 
     // Otherwise, assume we are running in shell mode

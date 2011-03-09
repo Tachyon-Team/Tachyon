@@ -595,8 +595,7 @@ MemLayout.prototype.genMethods = function ()
     sourceStr += '\n';
 
     // Generate code for the sizeof function
-    sourceStr += 'function sizeof_' + this.name + '(obj' +
-                 (varSize? ', size':'') + ')\n';
+    sourceStr += 'function sizeof_' + this.name + '(obj)\n';
     sourceStr += '{\n';
     sourceStr += '\t"tachyon:inline";\n';
     sourceStr += '\t"tachyon:noglobal";\n';
@@ -834,16 +833,150 @@ Generate C code to manipulate this layout
 */
 MemLayout.prototype.genCMethods = function ()
 {
-    //
-    // TODO
-    //
+    // String for the generated source code
+    var sourceStr = '';
 
-    // TODO: get_ functions
+    // Output the layout name
+    sourceStr += '//\n';
+    sourceStr += '// ' + this.name + '\n';
+    sourceStr += '//\n';
+    sourceStr += '\n';
 
-    // TODO: sizeof_ function
-    // requires get_size function
+    // Generate code for the accessor functions for this layout
+    this.forEachField(
+        function (layout, spec, fieldSpecs)
+        {
+            // If no getter should be generated for this field, skip it
+            if (spec.type !== IRType.rptr && 
+                spec.type !== IRType.box &&
+                spec.type !== IRType.ref &&
+                (spec.type !== IRType.pint || spec.name !== 'size'))
+                return;
 
-    // TODO: visit_ functions for each collectable object
+            // String for the accessor name
+            var nameStr = layout.name;
+
+            // String for the argument names
+            var argStr = layout.ptrType + ' obj';
+
+            // Number of arguments
+            var numArgs = 1;
+
+            // String for the offset computation
+            var offsetStr = '';
+            offsetStr += 'pint offset = 0;\n';
+
+            // For each field spec
+            fieldSpecs.forEach(
+                function (spec, idx)
+                {
+                    // Add the field name to the name string
+                    nameStr += '_' + spec.name;
+
+                    // Add the field offset to the current offset
+                    offsetStr += 'offset += ' + spec.offset + ';\n';
+
+                    // If there are many elements, or a variable number of elements
+                    if (spec.numElems !== 1)
+                    {
+                        // Create an index variable for this field
+                        var idxVar = 'idx' + (numArgs - 1);
+                        numArgs += 1;
+
+                        // Integrate the index argument in the computation
+                        argStr += ', pint ' + idxVar;
+                        offsetStr +=
+                            'offset += ' + spec.elemSize +
+                            ' * ' + idxVar + ';\n';
+                        ;
+                    }
+                }
+            );
+
+            // Generate the getter method
+            sourceStr += spec.type + ' get_' + nameStr + '(' + argStr + ')\n';
+            sourceStr += '{\n';
+            sourceStr += indentText(offsetStr);
+            if (layout.ptrType === IRType.box)
+                sourceStr += '\tref ptr = unboxRef(obj);\n';
+            else
+                sourceStr += '\tref ptr = obj;\n';
+            sourceStr += '\treturn *((' + spec.type + '*)(ptr + offset));\n';
+            sourceStr += '}\n';
+            sourceStr += '\n';
+
+            // Generate the setter method
+            sourceStr += 'void set_' + nameStr + '(' + argStr + ', ' + spec.type + ' val)\n';
+            sourceStr += '{\n';
+            sourceStr += indentText(offsetStr);
+            if (layout.ptrType === IRType.box)
+                sourceStr += '\tref ptr = unboxRef(obj);\n';
+            else
+                sourceStr += '\tref ptr = obj;\n';
+            sourceStr += '\t*((' + spec.type + '*)(ptr + offset)) = val;\n';
+            sourceStr += '}\n';
+            sourceStr += '\n';
+        }
+    );
+
+    // Get a reference to the last field
+    var lastField = this.fields[this.fields.length-1];
+
+    // Get the number of elements in the last field
+    var numElems = lastField.numElems;
+
+    // Test if this layout has a variable size
+    var varSize = (numElems === false);
+
+    // Generate code for the size computation function
+    sourceStr += 'pint comp_size_' + this.name + '(' +
+                 (varSize? 'pint size':'') + ')\n';
+    sourceStr += '{\n';
+    sourceStr += '\tpint baseSize = ' + lastField.offset + ';\n';
+    sourceStr += '\tpint elemSize = ' + lastField.elemSize + ';\n';
+    if (!varSize)
+        sourceStr += '\tpint size = ' + numElems + ';\n';
+    sourceStr += '\tpint objSize = baseSize + elemSize * size;\n';
+    sourceStr += '\treturn objSize;\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+    // Generate code for the sizeof function
+    sourceStr += 'pint sizeof_' + this.name + '(' + this.ptrType + ' obj)\n';
+    sourceStr += '{\n';
+    if (varSize)
+        sourceStr += '\tpint size = get_' + this.name + '_size(obj);\n';
+    sourceStr += '\treturn comp_size_' + this.name + '(' +
+                 (varSize? 'size':'') + ');\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+
+    /*
+    TODO: visit_ functions for each collectable object
+    
+    Check algorithm in compiler book before implementing!
+    */
+
+
+
+    // GC visit function    
+    sourceStr += 'void visit_' + this.name + '(' + this.ptrType + ' obj)\n';
+    sourceStr += '{\n';
+
+
+    // TODO!
+
+
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+
+
+
+
+
+
 
     // TODO: high-level visit functions
     // visitBox
@@ -860,5 +993,87 @@ MemLayout.prototype.genCMethods = function ()
 
 
 
+
+
+
+
+    // Return the generated code
+    return sourceStr;
 };
+
+/**
+Auto-generate C code required for the GC
+*/
+function genGCCode(params)
+{
+    // Create the context and object layouts
+    params.target.backendCfg.makeContextLayout(params);
+    makeContextLayout(params);
+    makeObjectLayouts(params);
+
+    const TAG_REF_MASK = params.staticEnv.getValue('TAG_REF_MASK');
+
+    // Declare a variable for the generated code
+    var sourceStr = '';
+
+    // Header files
+    sourceStr += '#include <cassert>\n';
+    sourceStr += '#include <stdint.h>\n';
+    sourceStr += '\n';
+
+    // Useful type definitions
+    sourceStr += 'typedef intptr_t pint;\n';
+    sourceStr += 'typedef intptr_t box;\n';
+    sourceStr += 'typedef int8_t* ref;\n'
+    sourceStr += 'typedef int8_t* rptr;\n'
+    sourceStr += '\n';
+
+    // Reference unboxing
+    sourceStr += 'ref unboxRef(box boxVal)\n';
+    sourceStr += '{\n';
+    sourceStr += '\treturn (ref)(boxVal & ~' + TAG_REF_MASK + ');\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+    // Reference boxing
+    sourceStr += 'box boxRef(ref refVal, pint tagVal)\n';
+    sourceStr += '{\n';
+    sourceStr += '\treturn (box)((pint)refVal | tagVal);\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+    // Reference tag extraction
+    sourceStr += 'pint getRefTag(box boxVal)\n';
+    sourceStr += '{\n';
+    sourceStr += '\treturn (boxVal & ' + TAG_REF_MASK + ');\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+
+
+    // TODO: function assert a boxed reference is in the heap
+
+
+    // TODO: function to assert a raw pointer does not point in the heap
+
+
+
+    // Generate C methods for the instantiable layouts
+    for (var l in params.memLayouts)
+    {
+        var layout = params.memLayouts[l];
+
+        if (layout.isInstantiable() === false)
+            continue;
+
+        // If this is not a heap-allocated layout, skip it
+        if (layout.ptrType === IRType.rptr)
+            continue;
+     
+        sourceStr += layout.genCMethods();
+    }
+
+    // Write the generated code to a file
+    writeFile('d8/gc-generated.cc', sourceStr);
+}
 
