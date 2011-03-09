@@ -1039,6 +1039,13 @@ asm.address = function (byteArray, bigEndian)
     return that;
 };
 
+/** Returns a null address */
+asm.address.null = function (width, bigEndian)
+{
+    var byteArray = (width === 32) ? [0,0,0,0] : [0,0,0,0,0,0,0,0];
+    return asm.address(byteArray, bigEndian);
+};
+
 /** Returns the number of bits in the address */
 asm.address.prototype.width = function ()
 {
