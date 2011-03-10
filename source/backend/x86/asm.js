@@ -2919,6 +2919,20 @@ x86.Assembler.prototype.cdq = function ()
 };
 
 /** Can be chained */
+x86.Assembler.prototype.cqo = function ()
+{
+    this.gen8(0x48);
+    this.gen8(0x99);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat('cqo'));
+    }
+
+    return this;
+};
+
+/** Can be chained */
 x86.Assembler.prototype.div = function (src, width)
 {
     return this.oneOpnd(0xf6, 6, "div", src, width);

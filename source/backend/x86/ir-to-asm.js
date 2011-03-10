@@ -1367,7 +1367,13 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     else
     {
         // Sign-extend EAX into EDX:EAX using CDQ
-        tltor.asm.cdq();
+        if (width === 32)
+        {
+            tltor.asm.cdq();
+        } else
+        {
+            tltor.asm.cqo();
+        }
 
         tltor.asm.idiv(dsor.value, width);
     }
