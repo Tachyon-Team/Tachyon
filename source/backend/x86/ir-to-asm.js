@@ -146,6 +146,8 @@ irToAsm.shiftMaker = function (irinstr, name)
 
         const dest = this.regAlloc.dest;
 
+        const width = this.type.getSizeBits(tltor.params);
+
         assert(dest !== null, "Destination register should have a value");
 
         var shiftAmt;
@@ -185,14 +187,14 @@ irToAsm.shiftMaker = function (irinstr, name)
 
         if (opnds[0] === dest)
         {
-            tltor.asm[name](shiftAmt, dest);
+            tltor.asm[name](shiftAmt, dest.subReg(width));
         }
         else
         {
             tltor.asm.
             mov(opnds[0], dest);
 
-            tltor.asm[name](shiftAmt, dest);
+            tltor.asm[name](shiftAmt, dest.subReg(width));
         }
 
         if (opnds[1].type !== x86.type.IMM_VAL)
@@ -2514,14 +2516,47 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
 
     const dest = this.regAlloc.dest;
 
-    if (opnds[0] === dest)
+    const dstWidth = this.type.getSizeBits(tltor.params);
+    const srcWidth = this.uses[0].type.getSizeBits(tltor.params);
+
+    assert(
+        dest.type === x86.type.REG, 
+        "Destination should be a register"
+    );
+            
+
+    if (opnds[0] === dest && srcWidth === dstWidth)
     {
         // Do nothing
     }
-    else
+    else if (srcWidth === dstWidth)
     {
         tltor.asm.
         mov(opnds[0], dest);
+    }
+    else if (srcWidth > dstWidth)
+    {
+        if (opnds[0].type === x86.type.REG)
+        {
+            tltor.asm.
+            mov(opnds[0].subReg(dstWidth), dest.subReg(dstWidth));
+        } else 
+        {
+            tltor.asm.
+            mov(opnds[0], dest.subReg(dstWidth), dstWidth);
+        }
+    } else
+    {
+        // Always do a sign extension
+        if (opnds[0].type === x86.type.REG)
+        {
+            tltor.asm.
+            movxx(opnds[0].subReg(srcWidth), dest.subReg(dstWidth), true);
+        } else
+        {
+            tltor.asm.
+            movxx(opnds[0], dest.subReg(dstWidth), true, srcWidth);
+        }
     }
 };
 
