@@ -1391,9 +1391,12 @@ function lsft(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Perform a raw machine left shift on the boxed value
-        // after unboxing the shift amount
-        return iir.icast(IRType.box, iir.lsft(iir.icast(IRType.pint, v1), unboxInt(v2)));
+        v1 = iir.icast(IRType.i32, unboxInt(v1));
+        v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+        var res = iir.lsft(v1, v2);
+
+        return boxInt(iir.icast(IRType.pint, res));
     }
     else
     {
@@ -1412,9 +1415,12 @@ function rsft(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Perform a raw machine right shift on the unboxed values
-        // and re-box the result
-        return boxInt(iir.rsft(unboxInt(v1), unboxInt(v2)));
+        v1 = iir.icast(IRType.i32, unboxInt(v1));
+        v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+        var res = iir.rsft(v1, v2);
+
+        return boxInt(iir.icast(IRType.pint, res));
     }
     else
     {
@@ -1433,9 +1439,12 @@ function ursft(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Perform a raw machine unsigned right shift on the unboxed
-        // values and re-box the result
-        return boxInt(iir.ursft(unboxInt(v1), unboxInt(v2)));
+        v1 = iir.icast(IRType.i32, unboxInt(v1));
+        v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+        var res = iir.ursft(v1, v2);
+
+        return boxInt(iir.icast(IRType.pint, res));
     }
     else
     {

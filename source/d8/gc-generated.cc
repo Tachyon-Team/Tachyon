@@ -7,6 +7,9 @@ typedef intptr_t box;
 typedef int8_t* ref;
 typedef int8_t* rptr;
 
+// TODO: implement this GC function to visit/move objects
+ref gcVisitRef(ref ptr);
+
 ref unboxRef(box boxVal)
 {
 	return (ref)(boxVal & ~7);
@@ -121,6 +124,7 @@ void visit_hashtbl(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	pint size = get_hashtbl_size(obj);
 	for (pint i0 = 0; i0 < size; ++i0)
@@ -128,11 +132,13 @@ void visit_hashtbl(box obj)
 		boxVal = get_hashtbl_tbl_key(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
+		refVal = gcVisitRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_hashtbl_tbl_key(obj, i0, boxVal);
 		boxVal = get_hashtbl_tbl_val(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
+		refVal = gcVisitRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_hashtbl_tbl_val(obj, i0, boxVal);
 	}
@@ -208,15 +214,18 @@ void visit_obj(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	boxVal = get_obj_proto(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_obj_proto(obj, boxVal);
 	boxVal = get_obj_tbl(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_obj_tbl(obj, boxVal);
 }
@@ -293,6 +302,7 @@ void visit_arrtbl(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	pint size = get_arrtbl_size(obj);
 	for (pint i0 = 0; i0 < size; ++i0)
@@ -300,6 +310,7 @@ void visit_arrtbl(box obj)
 		boxVal = get_arrtbl_tbl(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
+		refVal = gcVisitRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_arrtbl_tbl(obj, i0, boxVal);
 	}
@@ -391,20 +402,24 @@ void visit_arr(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	boxVal = get_arr_proto(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_arr_proto(obj, boxVal);
 	boxVal = get_arr_tbl(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_arr_tbl(obj, boxVal);
 	boxVal = get_arr_arr(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_arr_arr(obj, boxVal);
 }
@@ -463,6 +478,7 @@ void visit_str(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	pint size = get_str_size(obj);
 }
@@ -539,6 +555,7 @@ void visit_strtbl(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	pint size = get_strtbl_size(obj);
 	for (pint i0 = 0; i0 < size; ++i0)
@@ -546,6 +563,7 @@ void visit_strtbl(box obj)
 		boxVal = get_strtbl_tbl(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
+		refVal = gcVisitRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_strtbl_tbl(obj, i0, boxVal);
 	}
@@ -671,23 +689,28 @@ void visit_clos(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	pint size = get_clos_size(obj);
 	boxVal = get_clos_proto(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_clos_proto(obj, boxVal);
 	boxVal = get_clos_tbl(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_clos_tbl(obj, boxVal);
+	ptrVal = get_clos_funcptr(obj);
 	for (pint i0 = 0; i0 < size; ++i0)
 	{
 		boxVal = get_clos_cells(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
+		refVal = gcVisitRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_clos_cells(obj, i0, boxVal);
 	}
@@ -747,10 +770,12 @@ void visit_cell(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
 	boxVal = get_cell_val(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
+	refVal = gcVisitRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_cell_val(obj, boxVal);
 }
@@ -809,6 +834,8 @@ void visit_memblock(box obj)
 {
 	ref refVal;
 	box boxVal;
+	rptr ptrVal;
 	pint tagVal;
+	ptrVal = get_memblock_ptr(obj);
 }
 

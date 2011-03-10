@@ -969,6 +969,7 @@ MemLayout.prototype.genCMethods = function ()
     sourceStr += '{\n';
     sourceStr += '\tref refVal;\n';
     sourceStr += '\tbox boxVal;\n';
+    sourceStr += '\trptr ptrVal;\n';
     sourceStr += '\tpint tagVal;\n';
 
     if (varSize)
@@ -1022,16 +1023,24 @@ MemLayout.prototype.genCMethods = function ()
                     curFieldName
                 );
             }
-            else
+            else if (spec.type === IRType.box || 
+                     spec.type === IRType.ref ||
+                     spec.type === IRType.rptr)
             {
+                var fieldVar;
+                switch (spec.type)
+                {
+                    case IRType.box: fieldVar = 'boxVal'; break;
+                    case IRType.ref: fieldVar = 'refVal'; break;
+                    case IRType.rptr: fieldVar = 'ptrVal'; break;
+                }
+
+                subSrc += fieldVar + ' = get_' + rootLayout.name + 
+                    curFieldName + '(' + curArgs + ');\n';
+
                 // If this is a reference field
                 if (spec.type == IRType.box || spec.type == IRType.ref)
                 {
-                    subSrc += 
-                        ((spec.type === IRType.box)? 'boxVal':'refVal') + ' = ' +
-                        'get_' + rootLayout.name + curFieldName + 
-                        '(' + curArgs + ');\n';
-
                     if (spec.type == IRType.box)
                     {
                         subSrc += 'tagVal = getRefTag(boxVal);\n';
@@ -1039,10 +1048,11 @@ MemLayout.prototype.genCMethods = function ()
                     }
 
                     //
-                    // TODO: call gc visit func here!!!!
-                    // refVal = gc_visit(refVal);
+                    // TODO: add validation
                     //
 
+                    // Have the GC visit the reference
+                    subSrc += 'refVal = gcVisitRef(refVal);\n';
 
                     if (spec.type == IRType.box)
                     {
@@ -1050,9 +1060,7 @@ MemLayout.prototype.genCMethods = function ()
                     }
 
                     subSrc += 'set_' + rootLayout.name + curFieldName + 
-                        '(' + curArgs + ', ' + 
-                        ((spec.type === IRType.box)? 'boxVal':'refVal') +
-                        ');\n';
+                        '(' + curArgs + ', ' + fieldVar + ');\n';
                 }
 
                 //
@@ -1135,6 +1143,11 @@ function genGCCode(params)
     sourceStr += 'typedef intptr_t box;\n';
     sourceStr += 'typedef int8_t* ref;\n'
     sourceStr += 'typedef int8_t* rptr;\n'
+    sourceStr += '\n';
+
+    // TODO
+    sourceStr += '// TODO: implement this GC function to visit/move objects\n';
+    sourceStr += 'ref gcVisitRef(ref ptr);\n';
     sourceStr += '\n';
 
     // Reference unboxing
