@@ -127,7 +127,7 @@ x86BackendCfg.prototype.makeContextLayout = function (params)
     /**
     Run-time context layout object
     */
-    var ctxLayout = new MemLayout("x86ctx", IRType.rptr, undefined, params);
+    var ctxLayout = new MemLayout("x86ctx", IRType.ref, undefined, params);
 
     // Number of arguments passed to the function
     ctxLayout.addField(

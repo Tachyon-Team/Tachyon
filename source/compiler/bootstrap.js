@@ -403,7 +403,7 @@ function initRuntime(params)
         initHeap,
         params,
         [new CPtrAsPtr(), new CIntAsInt()],
-        new CPtrAsPtr()
+        new CPtrAsRef()
     );
 
     // Initialize the heap
