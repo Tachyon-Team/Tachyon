@@ -2123,8 +2123,7 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
     const that = this;
     function genOp(mnem, opb1, opb2, reg, opnd)
     {
-        if (srcWidth === 32 && dst.width() === 64 && signExt)
-            that.opndPrefixOpnd(32, opnd);
+        that.opndPrefix(reg.width(), reg.field(), opnd);
 
         that.gen8(opb1);
         if (opb2) that.gen8(opb2);
@@ -2171,8 +2170,8 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
     }
     else if (srcWidth === 32 && dst.width() === 64 && !signExt)
     {
-        // 63/r
-        genOp('movsxd', 99, undefined, dst, src);
+        // Use a regular move
+        that.mov(src, dst.subReg(32));
     }
     else
     {
