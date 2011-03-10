@@ -833,6 +833,11 @@ void printInt(int val)
     printf("%d\n", val);
 }
 
+void printPtr(void* ptr)
+{
+    printf("%p\n", ptr);
+}
+
 int sum2Ints(int v1, int v2)
 {
     return v1 + v2;
@@ -854,6 +859,8 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(puts);
     else if (strcmp(funcName, "printInt") == 0)
         address = (FPTR)(printInt);
+    else if (strcmp(funcName, "printPtr") == 0)
+        address = (FPTR)(printPtr);
     else if (strcmp(funcName, "sum2Ints") == 0)
         address = (FPTR)(sum2Ints);
     else if (strcmp(funcName, "writeFile") == 0)
