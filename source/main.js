@@ -42,6 +42,16 @@ function main()
         // Profit        
     }
 
+    // If gc code generation is requested
+    else if (args.options['gc'])
+    {
+        // Initialize the Tachyon configuration
+        initConfig();
+
+        // Generate the GC code
+        genGCCode(config.hostParams);
+    }
+
     // Otherwise, assume we are running in shell mode
     else
     {

@@ -546,16 +546,9 @@ function newObject(proto)
     // Initialize the number of properties
     set_obj_numprops(obj, u32(0));
 
-    // Initialize the hash table pointer to null to prevent GC errors
-    set_obj_tbl(obj, null);
-
     // Allocate space for a hash table and set the hash table reference
     var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
     set_obj_tbl(obj, hashtbl);
-
-    // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
-        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Return the object reference
     return obj;
@@ -583,25 +576,13 @@ function newArray(capacity)
     // Initialize the array length
     set_arr_len(arr, u32(0));
 
-    // Initialize the hash table and array table pointers to null to prevent GC errors
-    set_obj_tbl(arr, null);
-    set_arr_arr(arr, null);
-
     // Allocate space for a hash table and set the hash table reference
     var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
     set_obj_tbl(arr, hashtbl);
 
-    // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
-        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
-
     // Allocate space for an array table and set the table reference
     var arrtbl = alloc_arrtbl(capacity);
     set_arr_arr(arr, arrtbl);
-
-    // Initialize the array table
-    for (var i = pint(0); i < capacity; i++)
-        set_arrtbl_tbl(arrtbl, i, UNDEFINED);
 
     // Return the array reference
     return arr;
@@ -633,19 +614,9 @@ function makeClos(funcPtr, numCells)
     // Initialize the number of properties
     set_obj_numprops(clos, u32(0));
 
-    // Initialize the hash table pointer and closure cell references to null
-    // to prevent GC errors
-    set_obj_tbl(clos, null);
-    for (var i = pint(0); i < numCells; i++)
-        set_clos_cells(clos, i, null);
-
     // Allocate space for a hash table and set the hash table reference
     var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
     set_obj_tbl(clos, hashtbl);
-
-    // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
-        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Create a prototype object for the function
     var objproto = get_ctx_objproto(ctx);
@@ -660,14 +631,11 @@ Create a mutable closure cell
 */
 function makeCell() 
 { 
-    "tachyon:static";
+    "tachyon:inline";
     "tachyon:noglobal";
 
     // Allocate space for the cell
     var cell = alloc_cell();
-
-    // Initialize the value to null to avoid GC issues
-    set_cell_val(cell, null);
 
     // Return a reference to the cell
     return cell;
@@ -719,16 +687,9 @@ function makeArgObj(funcObj, numArgs, argTable)
     // Set the array table pointer to the arguments table
     set_arr_arr(arr, argTable);
 
-    // Initialize the hash table pointer to null to prevent GC errors
-    set_obj_tbl(arr, null);
-
     // Allocate space for a hash table and set the hash table reference
     var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
     set_obj_tbl(arr, hashtbl);
-
-    // Initialize the hash table
-    for (var i = pint(0); i < HASH_MAP_INIT_SIZE; i++)
-        set_hashtbl_tbl_key(hashtbl, i, UNDEFINED);
 
     // Initialize the callee variable to the function object
     arr.callee = funcObj;
@@ -1083,7 +1044,6 @@ function seq(v1, v2)
     {
         // TODO: implement FP case in separate(non-inlined) function
         error('seq on float values');
-        //return UNDEFINED;
     }
     else
     {
@@ -1105,8 +1065,7 @@ function nseq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
-        //error('seq on float values');
-        return UNDEFINED;
+        error('seq on float values');
     }
     else
     {
@@ -1241,7 +1200,7 @@ function subOverflow(v1, v2)
     "tachyon:static";
     
     // TODO
-    return UNDEFINED;
+    error('subtraction overflow');
 }
 
 /**
@@ -1252,7 +1211,7 @@ function subGeneral(v1, v2)
     "tachyon:static";
     
     // TODO
-    return UNDEFINED;
+    error('subtraction of non-integer values');
 }
 
 /**
@@ -1280,13 +1239,13 @@ function mul(v1, v2)
         else
         {
             // TODO: overflow handling: need to create FP objects
-            return UNDEFINED;
+            error('multiplication overflow');
         }    
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('multiplication of non-integer values');
     }
 }
 
@@ -1314,7 +1273,7 @@ function div(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('division of non-integer values');
     }
 }
 
@@ -1335,7 +1294,7 @@ function mod(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('modulo of non-integer values');
     }
 }
 
@@ -1355,7 +1314,7 @@ function not(v)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise NOT of non-integer value');
     }    
 }
 
@@ -1376,7 +1335,7 @@ function and(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise AND of non-integer values');
     }
 }
 
@@ -1397,7 +1356,7 @@ function or(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise OR of non-integer values');
     }
 }
 
@@ -1418,7 +1377,7 @@ function xor(v1, v2)
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('bitwise XOR of non-integer values');
     }
 }
 
@@ -1432,14 +1391,17 @@ function lsft(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Perform a raw machine left shift on the boxed value
-        // after unboxing the shift amount
-        return iir.icast(IRType.box, iir.lsft(iir.icast(IRType.pint, v1), unboxInt(v2)));
+        v1 = iir.icast(IRType.i32, unboxInt(v1));
+        v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+        var res = iir.lsft(v1, v2);
+
+        return boxInt(iir.icast(IRType.pint, res));
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('left shift of non-integer values');
     }
 }
 
@@ -1453,14 +1415,17 @@ function rsft(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Perform a raw machine right shift on the unboxed values
-        // and re-box the result
-        return boxInt(iir.rsft(unboxInt(v1), unboxInt(v2)));
+        v1 = iir.icast(IRType.i32, unboxInt(v1));
+        v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+        var res = iir.rsft(v1, v2);
+
+        return boxInt(iir.icast(IRType.pint, res));
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('right shift of non-integer values');
     }
 }
 
@@ -1474,14 +1439,17 @@ function ursft(v1, v2)
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Perform a raw machine unsigned right shift on the unboxed
-        // values and re-box the result
-        return boxInt(iir.ursft(unboxInt(v1), unboxInt(v2)));
+        v1 = iir.icast(IRType.i32, unboxInt(v1));
+        v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+        var res = iir.ursft(v1, v2);
+
+        return boxInt(iir.icast(IRType.pint, res));
     }
     else
     {
         // TODO: implement general case in separate (non-inlined) function
-        return UNDEFINED;
+        error('unsigned right shift of non-integer values');
     }
 }
 
@@ -1655,12 +1623,6 @@ function extObjHashTable(obj, curTbl, curSize)
 
     // Allocate a new, larger hash table
     var newTbl = alloc_hashtbl(newSize);
-
-    // Initialize the keys in the new hash table
-    for (var i = pint(0); i < newSize; i++)
-    {
-        set_hashtbl_tbl_key(newTbl, i, UNDEFINED);
-    }
 
     // For each entry in the current table
     for (var curIdx = pint(0); 
@@ -1991,8 +1953,8 @@ function extArrTable(arr, curTbl, curLen, curSize, newSize)
     "tachyon:arg curSize pint";
     "tachyon:arg newSize pint";
 
-    // Allocate the new table
-    var newTbl = alloc_arrtbl(newSize);
+    // Allocate the new table without initializing it, for performance
+    var newTbl = alloc_noinit_arrtbl(newSize);
 
     // Copy elements from the old table to the new
     for (var i = pint(0); i < curLen; i++)
@@ -2520,6 +2482,14 @@ function getPropNames(obj)
                 {
                     // Get the key value at this hash slot
                     var keyVal = get_hashtbl_tbl_key(tblPtr, unboxInt(curIdx));
+
+                    // FIXME: until we have support for non-enumerable properties
+                    if (keyVal === 'length' ||
+                        keyVal === 'callee')
+                    {
+                        ++curIdx;
+                        continue;
+                    }
 
                     // If this is a valid key, return it
                     if (keyVal !== UNDEFINED)

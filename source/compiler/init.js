@@ -21,17 +21,17 @@ function initialize(boot, is64bitMode)
     //config.hostParams.printRegAlloc = true;
     //config.hostParams.printASM = true;
 
-    //config.hostParams.print = print;
-
     try
     {
         // Compile and initialize the Tachyon primitives
         bootstrap(boot, boot? config.bootParams:config.hostParams);
-    } catch (e)
+    } 
+    catch (e)
     {
         print(e.stack);
         return false;
     }
+
     return true;
 }
 

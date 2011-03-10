@@ -64,6 +64,18 @@ function StaticEnv()
 StaticEnv.prototype = {};
 
 /**
+Get the value of a constant binding
+*/
+StaticEnv.prototype.getValue = function (name)
+{
+    var val = this.getBinding(name);
+
+    assert (val instanceof ConstValue);
+
+    return val.value;
+}
+
+/**
 Parse static bindings in a code unit
 */
 StaticEnv.prototype.parseUnit = function (astUnit)

@@ -28,14 +28,15 @@ function makeContextLayout(params)
     );
 
     /**
-    Run-time context layout object
+    Run-time context layout object. This layout extends the backend context.
     */
     var ctxLayout = MemLayout.extend(params.target.backendCfg.ctxLayout, 'ctx');
 
     // Global object
     ctxLayout.addField(
         'globalobj',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Heap start pointer
@@ -59,73 +60,78 @@ function makeContextLayout(params)
     // String table
     ctxLayout.addField(
         'strtbl',
-        IRType.box
-    );
-
-    // String buffer
-    ctxLayout.addField(
-        'strbuf',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Object prototype object
     ctxLayout.addField(
         'objproto',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Function prototype object
     ctxLayout.addField(
         'funcproto',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Array prototype object
     ctxLayout.addField(
         'arrproto',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // String prototype object
     ctxLayout.addField(
         'strproto',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Number prototype object
     ctxLayout.addField(
         'numproto',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Range error constructor
     ctxLayout.addField(
         'rangeerror',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Reference error constructor
     ctxLayout.addField(
         'referror',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Syntax error constructor
     ctxLayout.addField(
         'syntaxerror',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Type error constructor
     ctxLayout.addField(
         'typeerror',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // URI error constructor
     ctxLayout.addField(
         'urierror',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Finalize the context layout

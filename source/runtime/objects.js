@@ -289,13 +289,15 @@ function makeObjectLayouts(params)
     // Hash table key
     hashEntryLayout.addField(
         'key',
-        IRType.box
+        IRType.box,
+        'UNDEFINED'
     );
 
     // Hash table value
     hashEntryLayout.addField(
         'val',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Finalize the hash table entry layout
@@ -311,6 +313,7 @@ function makeObjectLayouts(params)
         'tbl',
         hashEntryLayout,
         undefined,
+        undefined,
         false
     );
 
@@ -325,13 +328,15 @@ function makeObjectLayouts(params)
     // Prototype reference
     objLayout.addField(
         'proto',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Hash table
     objLayout.addField(
         'tbl',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Number of properties
@@ -383,6 +388,7 @@ function makeObjectLayouts(params)
     arrTblLayout.addField(
         'tbl',
         IRType.box,
+        'UNDEFINED',
         undefined,
         false
     );
@@ -398,7 +404,8 @@ function makeObjectLayouts(params)
     // Array table
     arrLayout.addField(
         'arr',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Array length
@@ -431,6 +438,7 @@ function makeObjectLayouts(params)
     strLayout.addField(
         'data',
         IRType.u16,
+        undefined,
         undefined,
         false
     );
@@ -469,6 +477,7 @@ function makeObjectLayouts(params)
     strTblLayout.addField(
         'tbl',
         IRType.box,
+        'UNDEFINED',
         undefined,
         false
     );
@@ -522,6 +531,7 @@ function makeObjectLayouts(params)
     closLayout.addField(
         'cells',
         IRType.box,
+        'null',
         undefined,
         false
     );
@@ -537,7 +547,8 @@ function makeObjectLayouts(params)
     // String length
     cellLayout.addField(
         'val',
-        IRType.box
+        IRType.box,
+        'null'
     );
 
     // Finalize the cell layout
