@@ -706,6 +706,7 @@ irToAsm.translator.prototype.prelude = function ()
         const temp      = xAX;
         const undefImm = $(this.params.staticEnv
                           .getBinding("BIT_PATTERN_UNDEF").value);
+        const shiftAmt = (refByteNb === 4) ? 2 : 3;
 
         this.asm.
         mov(numArgs, argOffset).
@@ -844,7 +845,7 @@ irToAsm.translator.prototype.prelude = function ()
         mov(ctxTemp, temp).
         
         // Adjust stack pointer
-        sal($(2), argOffset).
+        sal($(shiftAmt), argOffset).
         add(argOffset, stack);
 
         this.asm.
