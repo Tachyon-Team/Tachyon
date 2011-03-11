@@ -1984,9 +1984,10 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         {
             var arg = funcArgs[i];
 
-            if (arg.type === x86.type.MEM)
+            if (arg.type === x86.type.MEM ||
+                arg.type === x86.type.LINK && arg.width() === 64)
             {
-                if (arg.base === stack)
+                if (arg.type === x86.type.MEM && arg.base === stack)
                 {
                     // Adjust the offset to take the displacement of the 
                     // stack pointer into account
@@ -2031,7 +2032,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     map.orderAndInsertMoves( 
         function (move)
         {
-            tltor.asm.mov(move.uses[0], move.uses[1]);
+            move.genCode(tltor, move.uses);
         },
         scratch
     );
@@ -2706,7 +2707,8 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
     const scratchReg = target.backendCfg.scratchReg;
     const width = target.ptrSizeBits;
 
-    if (opnds[0].type === x86.type.MEM &&
+    if ((opnds[0].type === x86.type.MEM || 
+         (opnds[0].type === x86.type.LINK && opnds[0].width() === 64)) &&
         opnds[1].type === x86.type.MEM)
     {
         tltor.asm.
