@@ -1541,9 +1541,16 @@ irToAsm.shiftMaker(LsftInstr, "sal");
 irToAsm.shiftMaker(RsftInstr, "sar"); 
 irToAsm.shiftMaker(UrsftInstr, "shr"); 
 
-LtInstr.prototype.genCode = function (tltor, opnds)
+LtInstr.prototype.genCodeCmp = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
+
+    assert(
+        opnds[0].type !== x86.type.LINK &&
+        opnds[1].type !== x86.type.LINK,
+        "Invalid link object as operand"
+    );
+       
 
     // Get the operand width
     var width;
@@ -1556,8 +1563,8 @@ LtInstr.prototype.genCode = function (tltor, opnds)
 
     if ((opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM) ||
-        (opnds[0].type === x86.type.IMM_VAL &&
-        opnds[1].type === x86.type.IMM_VAL))
+        (tltor.asm.isImmediate(opnds[0]) &&
+         tltor.asm.isImmediate(opnds[1])))
     {
         tltor.asm.
         mov(opnds[0], dest).
@@ -1576,127 +1583,52 @@ LtInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.cmp(opnds[1], opnds[0], width);
     }
+};
 
+LtInstr.prototype.genCode = function (tltor, opnds)
+{
+    this.genCodeCmp(tltor, opnds);
+
+    const dest = this.regAlloc.dest;
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovl(tltor.trueVal, dest);
 };
 
+LeInstr.prototype.genCodeCmp = LtInstr.prototype.genCodeCmp;
 LeInstr.prototype.genCode = function (tltor, opnds)
 {
+    this.genCodeCmp(tltor, opnds);
+
     const dest = this.regAlloc.dest;
-
-    // Get the operand width
-    var width;
-    if (opnds[0].width !== undefined)
-        width = opnds[0].width();
-    else if (opnds[1].width !== undefined)
-        width = opnds[1].width();
-    else
-        width = this.uses[0].type.getSizeBits(tltor.params);
-
-    if ((opnds[0].type === x86.type.MEM &&
-        opnds[1].type === x86.type.MEM) ||
-        (opnds[0].type === x86.type.IMM_VAL &&
-        opnds[1].type === x86.type.IMM_VAL))
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else if (opnds[0].type === x86.type.IMM_VAL)
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else
-    {
-        tltor.asm.cmp(opnds[1], opnds[0], width);
-    }
-
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovle(tltor.trueVal, dest);
 };
 
+GtInstr.prototype.genCodeCmp = LtInstr.prototype.genCodeCmp;
 GtInstr.prototype.genCode = function (tltor, opnds)
 {
+    this.genCodeCmp(tltor, opnds);
+
     const dest = this.regAlloc.dest;
-
-    // Get the operand width
-    var width;
-    if (opnds[0].width !== undefined)
-        width = opnds[0].width();
-    else if (opnds[1].width !== undefined)
-        width = opnds[1].width();
-    else
-        width = this.uses[0].type.getSizeBits(tltor.params);
-
-    if ((opnds[0].type === x86.type.MEM &&
-        opnds[1].type === x86.type.MEM) ||
-        (opnds[0].type === x86.type.IMM_VAL &&
-        opnds[1].type === x86.type.IMM_VAL))
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else if (opnds[0].type === x86.type.IMM_VAL)
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else
-    {
-        tltor.asm.cmp(opnds[1], opnds[0], width);
-    }
-
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovnle(tltor.trueVal, dest);
 };
 
+GeInstr.prototype.genCodeCmp = LtInstr.prototype.genCodeCmp;
 GeInstr.prototype.genCode = function (tltor, opnds)
 {
+    this.genCodeCmp(tltor, opnds);
+
     const dest = this.regAlloc.dest;
-
-    // Get the operand width
-    var width;
-    if (opnds[0].width !== undefined)
-        width = opnds[0].width();
-    else if (opnds[1].width !== undefined)
-        width = opnds[1].width();
-    else
-        width = this.uses[0].type.getSizeBits(tltor.params);
-
-    if ((opnds[0].type === x86.type.MEM &&
-        opnds[1].type === x86.type.MEM) ||
-        (opnds[0].type === x86.type.IMM_VAL &&
-        opnds[1].type === x86.type.IMM_VAL))
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else if (opnds[0].type === x86.type.IMM_VAL)
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else
-    {
-        tltor.asm.cmp(opnds[1], opnds[0], width);
-    }
-
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovnl(tltor.trueVal, dest);
 };
 
-EqInstr.prototype.genCodeEq = function (tltor, opnds)
+EqInstr.prototype.genCodeCmp = function (tltor, opnds)
 {
     const scratchReg = tltor.params.target.backendCfg.scratchReg;
     const dest = this.regAlloc.dest;
@@ -1752,13 +1684,23 @@ EqInstr.prototype.genCodeEq = function (tltor, opnds)
     }
     else
     {
-        tltor.asm.cmp(opnds[0], opnds[1], width);
+        if (opnds[0].type === x86.type.LINK && opnds[0].width() === 64)
+        {
+            // Cmp cannot have a 64 bit immediate value as operand
+            var opnd = scratchReg;
+            tltor.asm.mov(opnds[0], scratchReg);
+
+        } else
+        {
+            var opnd = opnds[0];
+        }
+        tltor.asm.cmp(opnd, opnds[1], width);
     }
 };
 
 EqInstr.prototype.genCode = function (tltor, opnds)
 {
-    this.genCodeEq(tltor, opnds);
+    this.genCodeCmp(tltor, opnds);
 
     const dest = this.regAlloc.dest;
     tltor.asm.
@@ -1766,9 +1708,10 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     cmovz(tltor.trueVal, dest);
 };
 
+NeInstr.prototype.genCodeCmp = EqInstr.prototype.genCodeCmp;
 NeInstr.prototype.genCode = function (tltor, opnds)
 {
-    EqInstr.prototype.genCodeEq.apply(this, [tltor, opnds]);
+    this.genCodeCmp(tltor, opnds);
 
     const dest = this.regAlloc.dest;
     tltor.asm.

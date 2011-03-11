@@ -73,6 +73,19 @@ x86.Assembler.prototype.isImmediate = function (obj)
     return obj.type === x86.type.IMM_VAL || obj.type === x86.type.LINK;
 };
 
+x86.Assembler.prototype.is32bitImm = function (obj)
+{
+    assert(this.isImmediate(obj), "Invalid immediate object");
+
+    if (obj.type === x86.type.IMM_VAL)
+    {
+        return x86.isSigned32(obj.value);
+    } else if (obj.type === x86.type.LINK)
+    {
+        return obj.width() <= 32;
+    }
+};
+
 /** Returns whether the current compilation target is x86_64 */
 x86.Assembler.prototype.is64bitMode = function ()
 {
@@ -143,6 +156,30 @@ x86.Assembler.prototype.gen64 = function (n)
     this.codeBlock.gen64(n); return this;
 };
 
+/** Returns the signed value of k coerced to a width of 8 */
+x86.Assembler.prototype.signedLo8 = function (k)
+{
+    return ((k + 0x80) & 0xff) - 0x80;
+};
+
+/** Returns the signed value of k coerced to a width of 16 */
+x86.Assembler.prototype.signedLo16 = function (k)
+{
+    return ((k + 0x8000) & 0xffff) - 0x8000;
+};
+
+/** Returns the signed value of k coerced to a width of 32 */
+x86.Assembler.prototype.signedLo32 = function (k)
+{
+    return num_and(k, getIntMax(32, true));     
+};
+
+/** Returns the signed value of k coerced to a width of 64 */
+x86.Assembler.prototype.signedLo64 = function (k)
+{
+    return num_and(k, getIntMax(64, true));
+};
+
 /** @private
     The value returned is the signed value 'k' coerced to the given
     width 'n'.
@@ -167,50 +204,25 @@ x86.Assembler.prototype.gen64 = function (n)
 x86.Assembler.prototype._genImmNum = function (k, width)
 {
     var n;
-
-    /** @ignore */
-    function signedLo8(k)
-    {
-        return ((k + 0x80) & 0xff) - 0x80;
-    };
-
-    /** @ignore */
-    function signedLo16(k)
-    {
-        return ((k + 0x8000) & 0xffff) - 0x8000;
-    };
-
-    /** @ignore */
-    function signedLo32(k)
-    {
-        return num_and(k, getIntMax(32, true));     
-    };
-
-    /** @ignore */
-    function signedLo64(k)
-    {
-        return num_and(k, getIntMax(64, true));
-    };
-
     if (width === 8)
     {
-        n = signedLo8(k);
+        n = this.signedLo8(k);
         this.gen8(n);
         return n;
     } else if (width === 16)
     {
-        n = signedLo16(k);
+        n = this.signedLo16(k);
         this.gen16(n);
         return n;
     } else if (width === 32)
     {
-        n = signedLo32(k);
+        n = this.signedLo32(k);
         this.gen32(n);
         return n;
     }
     else
     {
-        n = signedLo64(k);
+        n = this.signedLo64(k);
         this.gen64(n);
         return n;
     }
@@ -1560,6 +1572,11 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
         } 
         else
         {
+            assert(
+                this.is32bitImm(src), 
+                "Immediate value '" + src + 
+                 "' should have a width less or equal to 32"
+            );
             this.opImm(op, mnemonic, src, dest, width);
         }
     }
