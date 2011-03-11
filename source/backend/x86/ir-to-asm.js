@@ -509,8 +509,8 @@ irToAsm.translator.prototype.prelude = function ()
     const context = backendCfg.context;
 
     const cstack =  reg.rsp.subReg(width);
-    const scratch = backendCfg.physReg[backendCfg.physReg.length - 1];
-    const scratch2 = backendCfg.physReg[backendCfg.physReg.length - 2];
+    const scratch  = backendCfg.nonArgsReg[0];
+    const scratch2 = backendCfg.scratchReg;
 
     const argsReg   = backendCfg.argsReg;
     const argsRegNb = backendCfg.argsReg.length;
@@ -692,9 +692,6 @@ irToAsm.translator.prototype.prelude = function ()
         }
         
         // Handle a variable number of arguments
-        assert(argsRegNb + 2 <= backendCfg.physReg.length,
-               "Current handling of variable number of arguments need " +
-               "2 registers to operate");
         const frameOk = this.asm.labelObj();
         const frameTooBig   = this.asm.labelObj();
         const tbDone        = this.asm.labelObj();
@@ -1701,7 +1698,7 @@ GeInstr.prototype.genCode = function (tltor, opnds)
     cmovnl(tltor.trueVal, dest);
 };
 
-EqInstr.prototype.genCode = function (tltor, opnds)
+EqInstr.prototype.genCodeEq = function (tltor, opnds)
 {
     const dest = this.regAlloc.dest;
 
@@ -1735,13 +1732,28 @@ EqInstr.prototype.genCode = function (tltor, opnds)
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
-        tltor.asm.cmp(opnds[1], opnds[0], width);
+        if (opnds[1].type === x86.type.LINK && opnds[1].width() === 64)
+        {
+            // Cmp cannot have a 64 bit immediate value as operand
+            tltor.asm.
+            mov(opnds[1], dest).
+            cmp(dest, opnds[0]);
+        } else
+        {
+            tltor.asm.cmp(opnds[1], opnds[0], width);
+        }
     }
     else
     {
         tltor.asm.cmp(opnds[0], opnds[1], width);
     }
+};
 
+EqInstr.prototype.genCode = function (tltor, opnds)
+{
+    this.genCodeEq(tltor, opnds);
+
+    const dest = this.regAlloc.dest;
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovz(tltor.trueVal, dest);
@@ -1749,47 +1761,9 @@ EqInstr.prototype.genCode = function (tltor, opnds)
 
 NeInstr.prototype.genCode = function (tltor, opnds)
 {
+    EqInstr.prototype.genCodeEq.apply(this, [tltor, opnds]);
+
     const dest = this.regAlloc.dest;
-
-    // Get the operand width
-    var width;
-    if (opnds[0].width !== undefined)
-        width = opnds[0].width();
-    else if (opnds[1].width !== undefined)
-        width = opnds[1].width();
-    else
-        width = this.uses[0].type.getSizeBits(tltor.params);
-
-    if (opnds[0].type === x86.type.REG && 
-        opnds[1].type === x86.type.IMM_VAL &&
-        opnds[1].value === 0) 
-    {
-        tltor.asm.test(opnds[0], opnds[0]);
-    } 
-    else if (opnds[1].type === x86.type.REG && 
-             opnds[0].type === x86.type.IMM_VAL &&
-             opnds[0].value === 0)
-    {
-        tltor.asm.test(opnds[1], opnds[1]);
-    } 
-    else if ((opnds[0].type === x86.type.MEM &&
-               opnds[1].type === x86.type.MEM) ||
-               (tltor.asm.isImmediate(opnds[0]) &&
-                tltor.asm.isImmediate(opnds[1])))
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        cmp(opnds[1], dest);
-    } 
-    else if (tltor.asm.isImmediate(opnds[1]))
-    {
-        tltor.asm.cmp(opnds[1], opnds[0], width);
-    }
-    else
-    {
-        tltor.asm.cmp(opnds[0], opnds[1], width);
-    }
-
     tltor.asm.
     mov(tltor.falseVal, dest).
     cmovnz(tltor.trueVal, dest);
@@ -1975,12 +1949,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Register used for the return value
     const dest = this.regAlloc.dest;
 
-    // Let's arbitrarily take the last phys reg as a scratch register
-    const scratchIndex = backendCfg.physReg.length - 1;
-    const scratch = backendCfg.physReg[scratchIndex];
-
-    // Number of available register for register allocation
-    const avbleRegNb = backendCfg.physReg.length;
+    // Scratch register
+    const scratch = backendCfg.scratchReg;
 
     // Stack register
     const stack = backendCfg.stack;
@@ -1992,8 +1962,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     const argRegNb = backendCfg.argsIndex.length;
 
     // Register to be used for the function pointer
-    const funcPtrIndex = backendCfg.funcPtrIndex;
-    const funcPtrReg = backendCfg.physReg[funcPtrIndex];
+    const funcPtrReg = backendCfg.funcPtrReg;
     
     // Num args location
     const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
@@ -2013,25 +1982,10 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'invalid destination register for function call'
     );
 
-    // Make sure we still have a register left for scratch
-    assert (
-        argRegNb < avbleRegNb,
-        'no register left for scratch'
+    const funcPtrWrongReg = (
+        (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg) ||
+        opnds[0].type === x86.type.LINK
     );
-
-    // Make sure it is not used to pass arguments
-    assert (
-        !(scratchIndex in backendCfg.argsIndex),
-        'invalid scratch register index'
-    );
-
-    assert (
-        scratch !== funcPtrReg,
-        'function pointer reg conflicts with scratch'
-    );
-
-    const funcPtrWrongReg = ((opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg) ||
-                             opnds[0].type === x86.type.LINK);
 
     const toSpill = [scratch]; 
     if (funcPtrWrongReg)
@@ -2176,8 +2130,7 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     const stack = backendCfg.stack;
     const argsReg = backendCfg.argsReg;
     const argsRegNb = argsReg.length;
-    const funcPtrIndex = backendCfg.funcPtrIndex;
-    const funcPtrReg = backendCfg.physReg[funcPtrIndex];
+    const funcPtrReg = backendCfg.funcPtrReg;
     const context = backendCfg.context;
 
     const refByteNb = target.ptrSizeBytes;
@@ -2201,11 +2154,11 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     const scratchRegs = freeRegs.slice(0);
     arraySetRemAll(scratchRegs, argsReg);
     assert(
-        scratchRegs.length >= 2, 
+        scratchRegs.length >= 1, 
         "Insufficient number of scratch registers available"
     );
     const index   = scratchRegs[0];
-    const temp    = scratchRegs[1];
+    const temp    = backendCfg.scratchReg;
 
     const otherRegs = freeRegs.slice(0);
     arraySetRemAll(otherRegs, scratchRegs);
@@ -2337,7 +2290,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     {
         // Use registers not required by the target calling convention 
         var altStack   = reg.r10;
-        var scratchReg = reg.r11;
+        var scratchReg = backendCfg.scratchReg;
     } else
     {
         // No registers are required by the target calling convention,
@@ -2737,34 +2690,6 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.mov(opnds[2], memLoc, typeSize);
     }
 
-    /*
-    else if (opnds[2].type === x86.type.MEM)
-    {
-        // For a store memory to memory, we need a temporary register 
-        const tempOffset = backendCfg.ctxLayout.getFieldOffset(["temp"]);
-        const temp = mem(tempOffset, context);
-
-        // On x86 32 bits, only AL, BL, CL, DL can be accessed directly
-        // in case the typeSize is 8
-        const avlbRegs = (tltor.asm.target === x86.target.x86) ? [
-            reg.rax.subReg(width),
-            reg.rbx.subReg(width),
-            reg.rcx.subReg(width),
-            reg.rdx.subReg(width)
-        ] : backendCfg.physReg;
-        arraySetRem(avlbRegs, context);
-        arraySetRemAll(avlbRegs, opnds); 
-
-        assert(avlbRegs.length > 0, "No scratch register available");
-        const scratch = avlbRegs[0];
-
-        tltor.asm.
-        mov(scratch, temp).
-        mov(opnds[2], scratch).
-        mov(scratch.subReg(typeSize), memLoc, typeSize).
-        mov(temp, scratch);
-    } */ 
-
     // Otherwise, the value to store is in a register
     else
     {
@@ -2817,35 +2742,19 @@ GetCtxInstr.prototype.genCode = function (tltor, opnds)
     const reg = x86.Assembler.prototype.register;
     const $ = x86.Assembler.prototype.immediateValue;
 
-    // Configuration imports
-    const target = tltor.params.target; 
-    const backendCfg = target.backendCfg;
-    const width = target.ptrSizeBits;
-
-    const xAX = reg.rax.subReg(width);
-    const xBX = reg.rbx.subReg(width);
-    const xCX = reg.rcx.subReg(width);
-    const xDX = reg.rdx.subReg(width);
-
-    const ctxAlign = tltor.params.staticEnv.getBinding("CTX_ALIGN").value;
-    const ctx = backendCfg.context; 
+    const ctx = tltor.params.target.backendCfg.context; 
     const dest = this.regAlloc.dest;
 
-    assert(ctx === xAX || ctx === xBX || ctx === xCX || ctx === xDX,
-           "Invalid register for context object");
-    //assert(ctx === dest, "Invalid register assigned to context object");
-    assert(ctxAlign === 256, "Invalid alignment value for context object");
-    
-    tltor.asm.
-    mov(ctx, dest);
+    if (ctx !== dest)
+    {
+        tltor.asm.mov(ctx, dest);
+    }
 };
 
 SetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Configuration imports
-    const backendCfg = tltor.params.target.backendCfg;
-
-    tltor.asm.mov(opnds[0], backendCfg.context);
+    tltor.asm.
+    mov(opnds[0], tltor.params.target.backendCfg.context);
 };
 
 MoveInstr.prototype.genCode = function (tltor, opnds)

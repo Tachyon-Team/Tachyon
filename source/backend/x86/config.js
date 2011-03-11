@@ -51,7 +51,6 @@ function x86BackendCfg(is64bit)
                     reg.rbx.subReg(width),
                     reg.rdx.subReg(width),
                     reg.rsi.subReg(width),
-                    reg.rbp.subReg(width),
                     reg.rdi.subReg(width)];
 
     /**
@@ -86,11 +85,20 @@ function x86BackendCfg(is64bit)
         return that.physReg[index]; 
     });
 
+    /**
+    Registers possibly available as scratch registers during
+    function calls operations
+    @field
+    */
+    this.nonArgsReg = this.physReg.slice(0);
+    arraySetRemAll(this.nonArgsReg, this.argsReg);
+
+
     /** 
     Register to be used for the function pointer during a call
     @field
     */
-    this.funcPtrIndex = this.physReg.length - 2;
+    this.funcPtrReg = this.physReg[this.physReg.length - 1];
 
     /**
     Temporary location in the context for cases where all registers are in use
@@ -124,9 +132,48 @@ function x86BackendCfg(is64bit)
     this.x64ArgsReg = [reg.rdi, reg.rsi, reg.rdx, reg.rcx, reg.r8, reg.r9];
 
 
-    // Configuration sanity checks
+    // FIXME: Remove scratch register when the register allocator 
+    //        correctly supports allocating a scratch register only
+    //        for instructions that need it.
+    /**
+    Scratch register
+    @field
+    */
+    this.scratchReg = reg.rbp.subReg(width);
 
-    if (width === 64)
+    // Configuration sanity checks
+    assert(
+        !arraySetHas(this.argsReg, this.funcPtrReg),
+        "Invalid funcPtr register"
+    );
+
+    assert(
+        !arraySetHas(this.argsReg, this.scratch) && 
+        !arraySetHas(this.physReg, this.scratch) &&
+        !arraySetHas(this.x64ArgsReg, this.scratch),
+        "Invalid scratch register"
+    );
+
+    assert(
+        this.scratchReg !== this.funcPtrReg,
+        "scratch and funcPtr registers must be distinct"
+    );
+
+    assert(
+        this.context === reg.rax.subReg(width) ||
+        this.context === reg.rbx.subReg(width) || 
+        this.context === reg.rcx.subReg(width) || 
+        this.context === reg.rdx.subReg(width),
+        "Invalid register for context object"
+    );
+
+    assert(
+        this.nonArgsReg.length >= 1,
+        "At least one physical register should not be used " + 
+        "for passing arguments"
+    );
+
+    if (is64bit)
     {
         assert(!arraySetHas(this.x64ArgsReg, this.stack.subReg(width)),
                "Stack register conflicts with x64 calling convention");
@@ -176,6 +223,15 @@ x86BackendCfg.prototype.makeContextLayout = function (params)
     ctxLayout.finalize();
 
     this.ctxLayout = ctxLayout;
+};
+
+/**
+Sanity checks run after the initialization is completed.
+*/
+x86BackendCfg.prototype.validate = function (params)
+{
+    const ctxAlign = params.staticEnv.getBinding("CTX_ALIGN").value;
+    assert(ctxAlign === 256, "Invalid alignment value for context object");
 };
 
 

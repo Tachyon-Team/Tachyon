@@ -23,6 +23,9 @@ function bootstrap(allCode, params)
     makeContextLayout(params);
     print('Creating object layouts');
     makeObjectLayouts(params);
+
+    // Validate the backend configuration
+    params.target.backendCfg.validate(params);
     
     // Initialize the FFI functions
     print('Initialize FFI functions');
@@ -53,11 +56,13 @@ function bootstrap(allCode, params)
     {
         linkIR(primIRs[i], params);
     }
+    print("After linking");
 
     // Get the source code for the standard library
     var libSrcs = getLibSrcs(params);
     var libIRs;
 
+    print("Compiling stdlib");
     measurePerformance(
         "Compiling stdlib",
         function ()
