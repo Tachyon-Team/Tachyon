@@ -619,8 +619,6 @@ irToAsm.translator.prototype.prelude = function ()
             }
 
             // Retrieve pointer to argument table
-            assert(backendCfg.argsReg.length >= 3, "Unsupported calling convention");
-
             const fstOpnd = backendCfg.argsReg[2];
 
             const argTblOffset = backendCfg.ctxLayout.getFieldOffset(["argtbl"]);
@@ -1700,6 +1698,7 @@ GeInstr.prototype.genCode = function (tltor, opnds)
 
 EqInstr.prototype.genCodeEq = function (tltor, opnds)
 {
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
     const dest = this.regAlloc.dest;
 
     // Get the operand width
@@ -1726,9 +1725,17 @@ EqInstr.prototype.genCodeEq = function (tltor, opnds)
     else if ((opnds[0].type === x86.type.MEM || tltor.asm.isImmediate(opnds[0])) &&
              (opnds[1].type === x86.type.MEM || tltor.asm.isImmediate(opnds[1])))
     {
+        if (tltor.asm.target === x86.target.x86_64 && opnds[1].type === x86.type.LINK)
+        {
+            tltor.asm.mov(opnds[1], scratchReg);
+            var opnd = scratchReg;
+        } else
+        {
+            var opnd = opnds[1];
+        }
         tltor.asm.
         mov(opnds[0], dest).
-        cmp(opnds[1], dest);
+        cmp(opnd, dest);
     } 
     else if (tltor.asm.isImmediate(opnds[1]))
     {
@@ -2643,10 +2650,6 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
         'cannot use memory locations as offsets'
     );
 
-    if (opnds[2].type !== x86.type.REG && !tltor.asm.isImmediate(opnds[2]))
-    {
-        print(opnds[2].type);
-    }
     assert (
         opnds[2].type === x86.type.REG || tltor.asm.isImmediate(opnds[2]),
         'cannot perform store from memory to memory'
@@ -2738,10 +2741,6 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
 
 GetCtxInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Assembler imports
-    const reg = x86.Assembler.prototype.register;
-    const $ = x86.Assembler.prototype.immediateValue;
-
     const ctx = tltor.params.target.backendCfg.context; 
     const dest = this.regAlloc.dest;
 
@@ -2759,28 +2758,21 @@ SetCtxInstr.prototype.genCode = function (tltor, opnds)
 
 MoveInstr.prototype.genCode = function (tltor, opnds)
 {
-    // Assembler imports
-    const reg = x86.Assembler.prototype.register;
-
     // Configuration imports
     const target = tltor.params.target; 
-    const backendCfg = target.backendCfg;
+    const scratchReg = target.backendCfg.scratchReg;
     const width = target.ptrSizeBits;
-
-    const xAX = reg.rax.subReg(width);
 
     if (opnds[0].type === x86.type.MEM &&
         opnds[1].type === x86.type.MEM)
     {
         tltor.asm.
-        mov(xAX, tltor.temp).
-        mov(opnds[0], xAX).
-        mov(xAX, opnds[1]).
-        mov(tltor.temp, xAX);
+        mov(opnds[0], scratchReg).
+        mov(scratchReg, opnds[1]);
     } else
     {
         tltor.asm.
-        mov(opnds[0], opnds[1], tltor.params.target.ptrSizeBits);
+        mov(opnds[0], opnds[1], width);
     }
 };
 

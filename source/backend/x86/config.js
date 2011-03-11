@@ -173,6 +173,13 @@ function x86BackendCfg(is64bit)
         "for passing arguments"
     );
 
+    assert(
+        this.argsReg.length >= 3,
+        "prelude: allocating the argument table requires a calling" + 
+        " convention passing at least 3 arguments in registers"
+    );
+         
+
     if (is64bit)
     {
         assert(!arraySetHas(this.x64ArgsReg, this.stack.subReg(width)),
