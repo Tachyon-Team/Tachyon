@@ -413,7 +413,7 @@ function initRuntime(params)
 
     // Initialize the heap
     var ctxPtr = initHeapBridge(
-        asm.address.null(params.target.ptrSizeBits).getBytes(),
+        asm.address.nullAddr(params.target.ptrSizeBits).getBytes(),
         heapAddr,
         heapSize
     );
@@ -452,7 +452,7 @@ function initRuntime(params)
         else
         {
             var blockAddr = asm.address.
-                            null(params.target.ptrSizeBits).getBytes();
+                            nullAddr(params.target.ptrSizeBits).getBytes();
         }
 
         for (var i = 0; i < jsStr.length; ++i)

@@ -1040,7 +1040,7 @@ asm.address = function (byteArray, bigEndian)
 };
 
 /** Returns a null address */
-asm.address.null = function (width, bigEndian)
+asm.address.nullAddr = function (width, bigEndian)
 {
     var byteArray = (width === 32) ? [0,0,0,0] : [0,0,0,0,0,0,0,0];
     return asm.address(byteArray, bigEndian);

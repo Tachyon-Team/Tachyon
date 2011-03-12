@@ -387,7 +387,7 @@ irToAsm.translator.prototype.stringValue = function (s)
             else
             {
                 return asm.address.
-                       null(that.params.target.ptrSizeBits).getBytes();
+                       nullAddr(that.params.target.ptrSizeBits).getBytes();
             }
         },
         that.params.target.ptrSizeBits
