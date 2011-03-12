@@ -144,11 +144,14 @@ irToAsm.shiftMaker = function (irinstr, name)
         const reg = x86.Assembler.prototype.register;
         const $ = x86.Assembler.prototype.immediateValue;
 
-        const dest = this.regAlloc.dest;
-
         const width = this.type.getSizeBits(tltor.params);
 
-        assert(dest !== null, "Destination register should have a value");
+        var dest = this.regAlloc.dest;
+
+        if (dest === null)
+        {
+            dest = tltor.params.target.backendCfg.scratchReg;
+        }
 
         var shiftAmt;
         if (opnds[1].type === x86.type.IMM_VAL)
@@ -975,9 +978,12 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
 AddInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the output value
-    const dest = this.regAlloc.dest;
+    var dest = this.regAlloc.dest;
 
-    assert(dest !== null, "Destination register should have a value");
+    if (dest === null)
+    {
+        dest = tltor.params.target.backendCfg.scratchReg;
+    }
 
     if (opnds[1].type === x86.type.IMM_VAL)
     {
@@ -1016,9 +1022,12 @@ AddInstr.prototype.genCode = function (tltor, opnds)
 SubInstr.prototype.genCode = function (tltor, opnds)
 {
     // Register used for the output value
-    const dest = this.regAlloc.dest;
+    var dest = this.regAlloc.dest;
  
-    assert(dest !== null, "Destination register should have a value");
+    if (dest === null)
+    {
+        dest = tltor.params.target.backendCfg.scratchReg;
+    }
 
     if (opnds[1].type === x86.type.IMM_VAL)
     {
@@ -1116,9 +1125,12 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     const xDX = reg.rdx.subReg(width);
 
     // Register used for the output value
-    const dst = this.regAlloc.dest;
+    var dest = this.regAlloc.dest;
 
-    assert(dst !== null, "Destination register should have a value");
+    if (dest === null)
+    {
+        dest = tltor.params.target.backendCfg.scratchReg;
+    }
 
     // If an unsigned integer result is expected
     if (this.type.isUnsigned())
@@ -1156,7 +1168,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
         {
             tltor.asm.imul(
                 opnds[1], 
-                dst, 
+                dest, 
                 opnds[0], 
                 width
             );
@@ -1166,27 +1178,27 @@ MulInstr.prototype.genCode = function (tltor, opnds)
         {
             tltor.asm.imul(
                 opnds[0], 
-                dst, 
+                dest, 
                 opnds[1], 
                 width
             );
         }
 
-        else if (opnds[0] === dst)
+        else if (opnds[0] === dest)
         {
             tltor.asm.imul(
                 opnds[1], 
-                dst, 
+                dest, 
                 undefined, 
                 width
             );
         }
 
-        else if (opnds[1] === dst)
+        else if (opnds[1] === dest)
         {
             tltor.asm.imul(
                 opnds[0], 
-                dst, 
+                dest, 
                 undefined, 
                 width
             );
@@ -1194,10 +1206,10 @@ MulInstr.prototype.genCode = function (tltor, opnds)
 
         else
         {
-            tltor.asm.mov(opnds[0], dst);
+            tltor.asm.mov(opnds[0], dest);
             tltor.asm.imul(
                 opnds[1], 
-                dst, 
+                dest, 
                 undefined, 
                 width
             );
