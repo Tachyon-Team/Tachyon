@@ -19,34 +19,37 @@ function initHeap(heapPtr, heapSize)
     "tachyon:noglobal";
     "tachyon:arg heapPtr rptr";
     "tachyon:arg heapSize pint";
-    "tachyon:ret rptr";
+    "tachyon:ret ref";
 
     // Align the context object in memory
     var ctxPtr = alignPtr(heapPtr, CTX_ALIGN);
 
+    // Cast the context pointer to an unboxed reference type
+    var ctx = iir.icast(IRType.ref, ctxPtr);
+
     // Treat first address as the address of context object and initialize
     // the allocation pointer
-    iir.set_ctx(ctxPtr);
-    set_ctx_allocptr(ctxPtr, ctxPtr);
+    iir.set_ctx(ctx);
+    set_ctx_allocptr(ctx, ctxPtr);
 
     // Set the heap pointer and heap limit
-    set_ctx_heapstart(ctxPtr, heapPtr);
-    set_ctx_heaplimit(ctxPtr, heapPtr + heapSize);
+    set_ctx_heapstart(ctx, heapPtr);
+    set_ctx_heaplimit(ctx, heapPtr + heapSize);
 
     // Allocate the context object, incrementing the allocation pointer
-    var ctxObj = alloc_ctx();
+    var ctx = alloc_ctx();
 
     // Allocate the global object
     var globalObj = newObject(null);
 
     // Set the global object reference in the context object
-    set_ctx_globalobj(ctxObj, globalObj);
+    set_ctx_globalobj(ctx, globalObj);
 
     // Initialize the string hash consing system
     initStrings();
 
     // Return a pointer to the context object
-    return ctxObj;
+    return ctx;
 }
 
 /**

@@ -32,6 +32,12 @@ function makeContextLayout(params)
     */
     var ctxLayout = MemLayout.extend(params.target.backendCfg.ctxLayout, 'ctx');
 
+    // Ensure that the context pointer type is valid
+    assert (
+        ctxLayout.ptrType === IRType.ref,
+        'invalid pointer type for context layout'
+    );
+
     // Global object
     ctxLayout.addField(
         'globalobj',

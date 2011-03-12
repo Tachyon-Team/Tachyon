@@ -1,4 +1,6 @@
 #include <cassert>
+#include <cstdio>
+#include <cstdlib>
 #include <stdint.h>
 
 typedef uint32_t u32;
@@ -8,7 +10,16 @@ typedef int8_t* ref;
 typedef int8_t* rptr;
 
 // TODO: implement this GC function to visit/move objects
-ref gcVisitRef(ref ptr);
+ref gcUpdateRef(ref ptr);
+
+// TODO: implement this GC function to test that a pointer points in the heap
+bool ptrInHeap(rptr ptr);
+
+const pint TAG_OTHER = 1;
+const pint TAG_OBJECT = 7;
+const pint TAG_ARRAY = 5;
+const pint TAG_STRING = 2;
+const pint TAG_FUNCTION = 6;
 
 ref unboxRef(box boxVal)
 {
@@ -28,6 +39,911 @@ pint getRefTag(box boxVal)
 bool boxIsRef(box boxVal)
 {
 	return (boxVal & 3) != 0;
+}
+
+u32 getObjHeader(ref obj)
+{
+	return *((u32*)obj);
+}
+
+//
+// x86ctx
+//
+
+u32 get_x86ctx_header(ref obj)
+{
+	pint offset = 0;
+	offset += 0;
+	ref ptr = obj;
+	return *((u32*)(ptr + offset));
+}
+
+void set_x86ctx_header(ref obj, u32 val)
+{
+	pint offset = 0;
+	offset += 0;
+	ref ptr = obj;
+	*((u32*)(ptr + offset)) = val;
+}
+
+ref get_x86ctx_argtbl(ref obj)
+{
+	pint offset = 0;
+	offset += 8;
+	ref ptr = obj;
+	return *((ref*)(ptr + offset));
+}
+
+void set_x86ctx_argtbl(ref obj, ref val)
+{
+	pint offset = 0;
+	offset += 8;
+	ref ptr = obj;
+	*((ref*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_temp(ref obj)
+{
+	pint offset = 0;
+	offset += 12;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_temp(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 12;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_reg0(ref obj)
+{
+	pint offset = 0;
+	offset += 16;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_reg0(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 16;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_reg1(ref obj)
+{
+	pint offset = 0;
+	offset += 20;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_reg1(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 20;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_reg2(ref obj)
+{
+	pint offset = 0;
+	offset += 24;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_reg2(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 24;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_reg3(ref obj)
+{
+	pint offset = 0;
+	offset += 28;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_reg3(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 28;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_reg4(ref obj)
+{
+	pint offset = 0;
+	offset += 32;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_reg4(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 32;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_x86ctx_reg5(ref obj)
+{
+	pint offset = 0;
+	offset += 36;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_x86ctx_reg5(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 36;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+pint comp_size_x86ctx()
+{
+	pint baseSize = 36;
+	pint elemSize = 4;
+	pint size = 1;
+	pint objSize = baseSize + elemSize * size;
+	return objSize;
+}
+
+pint sizeof_x86ctx(ref obj)
+{
+	return comp_size_x86ctx();
+}
+
+void visit_x86ctx(ref obj)
+{
+	ref refVal;
+	box boxVal;
+	rptr ptrVal;
+	pint tagVal;
+	refVal = get_x86ctx_argtbl(obj);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_argtbl points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	set_x86ctx_argtbl(obj, refVal);
+	boxVal = get_x86ctx_temp(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_temp points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_temp(obj, boxVal);
+	boxVal = get_x86ctx_reg0(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_reg0 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_reg0(obj, boxVal);
+	boxVal = get_x86ctx_reg1(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_reg1 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_reg1(obj, boxVal);
+	boxVal = get_x86ctx_reg2(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_reg2 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_reg2(obj, boxVal);
+	boxVal = get_x86ctx_reg3(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_reg3 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_reg3(obj, boxVal);
+	boxVal = get_x86ctx_reg4(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_reg4 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_reg4(obj, boxVal);
+	boxVal = get_x86ctx_reg5(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field x86ctx_reg5 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_x86ctx_reg5(obj, boxVal);
+}
+
+//
+// ctx
+//
+
+u32 get_ctx_header(ref obj)
+{
+	pint offset = 0;
+	offset += 0;
+	ref ptr = obj;
+	return *((u32*)(ptr + offset));
+}
+
+void set_ctx_header(ref obj, u32 val)
+{
+	pint offset = 0;
+	offset += 0;
+	ref ptr = obj;
+	*((u32*)(ptr + offset)) = val;
+}
+
+ref get_ctx_argtbl(ref obj)
+{
+	pint offset = 0;
+	offset += 8;
+	ref ptr = obj;
+	return *((ref*)(ptr + offset));
+}
+
+void set_ctx_argtbl(ref obj, ref val)
+{
+	pint offset = 0;
+	offset += 8;
+	ref ptr = obj;
+	*((ref*)(ptr + offset)) = val;
+}
+
+box get_ctx_temp(ref obj)
+{
+	pint offset = 0;
+	offset += 12;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_temp(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 12;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_reg0(ref obj)
+{
+	pint offset = 0;
+	offset += 16;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_reg0(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 16;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_reg1(ref obj)
+{
+	pint offset = 0;
+	offset += 20;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_reg1(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 20;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_reg2(ref obj)
+{
+	pint offset = 0;
+	offset += 24;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_reg2(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 24;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_reg3(ref obj)
+{
+	pint offset = 0;
+	offset += 28;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_reg3(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 28;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_reg4(ref obj)
+{
+	pint offset = 0;
+	offset += 32;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_reg4(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 32;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_reg5(ref obj)
+{
+	pint offset = 0;
+	offset += 36;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_reg5(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 36;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_globalobj(ref obj)
+{
+	pint offset = 0;
+	offset += 40;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_globalobj(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 40;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+rptr get_ctx_heapstart(ref obj)
+{
+	pint offset = 0;
+	offset += 44;
+	ref ptr = obj;
+	return *((rptr*)(ptr + offset));
+}
+
+void set_ctx_heapstart(ref obj, rptr val)
+{
+	pint offset = 0;
+	offset += 44;
+	ref ptr = obj;
+	*((rptr*)(ptr + offset)) = val;
+}
+
+rptr get_ctx_heaplimit(ref obj)
+{
+	pint offset = 0;
+	offset += 48;
+	ref ptr = obj;
+	return *((rptr*)(ptr + offset));
+}
+
+void set_ctx_heaplimit(ref obj, rptr val)
+{
+	pint offset = 0;
+	offset += 48;
+	ref ptr = obj;
+	*((rptr*)(ptr + offset)) = val;
+}
+
+rptr get_ctx_allocptr(ref obj)
+{
+	pint offset = 0;
+	offset += 52;
+	ref ptr = obj;
+	return *((rptr*)(ptr + offset));
+}
+
+void set_ctx_allocptr(ref obj, rptr val)
+{
+	pint offset = 0;
+	offset += 52;
+	ref ptr = obj;
+	*((rptr*)(ptr + offset)) = val;
+}
+
+box get_ctx_strtbl(ref obj)
+{
+	pint offset = 0;
+	offset += 56;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_strtbl(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 56;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_objproto(ref obj)
+{
+	pint offset = 0;
+	offset += 60;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_objproto(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 60;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_funcproto(ref obj)
+{
+	pint offset = 0;
+	offset += 64;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_funcproto(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 64;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_arrproto(ref obj)
+{
+	pint offset = 0;
+	offset += 68;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_arrproto(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 68;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_strproto(ref obj)
+{
+	pint offset = 0;
+	offset += 72;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_strproto(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 72;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_numproto(ref obj)
+{
+	pint offset = 0;
+	offset += 76;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_numproto(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 76;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_rangeerror(ref obj)
+{
+	pint offset = 0;
+	offset += 80;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_rangeerror(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 80;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_referror(ref obj)
+{
+	pint offset = 0;
+	offset += 84;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_referror(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 84;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_syntaxerror(ref obj)
+{
+	pint offset = 0;
+	offset += 88;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_syntaxerror(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 88;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_typeerror(ref obj)
+{
+	pint offset = 0;
+	offset += 92;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_typeerror(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 92;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+box get_ctx_urierror(ref obj)
+{
+	pint offset = 0;
+	offset += 96;
+	ref ptr = obj;
+	return *((box*)(ptr + offset));
+}
+
+void set_ctx_urierror(ref obj, box val)
+{
+	pint offset = 0;
+	offset += 96;
+	ref ptr = obj;
+	*((box*)(ptr + offset)) = val;
+}
+
+pint comp_size_ctx()
+{
+	pint baseSize = 96;
+	pint elemSize = 4;
+	pint size = 1;
+	pint objSize = baseSize + elemSize * size;
+	return objSize;
+}
+
+pint sizeof_ctx(ref obj)
+{
+	return comp_size_ctx();
+}
+
+void visit_ctx(ref obj)
+{
+	ref refVal;
+	box boxVal;
+	rptr ptrVal;
+	pint tagVal;
+	refVal = get_ctx_argtbl(obj);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_argtbl points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	set_ctx_argtbl(obj, refVal);
+	boxVal = get_ctx_temp(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_temp points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_temp(obj, boxVal);
+	boxVal = get_ctx_reg0(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_reg0 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_reg0(obj, boxVal);
+	boxVal = get_ctx_reg1(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_reg1 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_reg1(obj, boxVal);
+	boxVal = get_ctx_reg2(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_reg2 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_reg2(obj, boxVal);
+	boxVal = get_ctx_reg3(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_reg3 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_reg3(obj, boxVal);
+	boxVal = get_ctx_reg4(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_reg4 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_reg4(obj, boxVal);
+	boxVal = get_ctx_reg5(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_reg5 points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_reg5(obj, boxVal);
+	boxVal = get_ctx_globalobj(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_globalobj points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_globalobj(obj, boxVal);
+	ptrVal = get_ctx_heapstart(obj);
+	if (ptrInHeap(ptrVal))
+	{
+		printf("pointer for field ctx_heapstart points inside the heap (%p)\n", ptrVal);
+		exit(1);
+	}
+	ptrVal = get_ctx_heaplimit(obj);
+	if (ptrInHeap(ptrVal))
+	{
+		printf("pointer for field ctx_heaplimit points inside the heap (%p)\n", ptrVal);
+		exit(1);
+	}
+	ptrVal = get_ctx_allocptr(obj);
+	if (ptrInHeap(ptrVal))
+	{
+		printf("pointer for field ctx_allocptr points inside the heap (%p)\n", ptrVal);
+		exit(1);
+	}
+	boxVal = get_ctx_strtbl(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_strtbl points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_strtbl(obj, boxVal);
+	boxVal = get_ctx_objproto(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_objproto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_objproto(obj, boxVal);
+	boxVal = get_ctx_funcproto(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_funcproto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_funcproto(obj, boxVal);
+	boxVal = get_ctx_arrproto(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_arrproto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_arrproto(obj, boxVal);
+	boxVal = get_ctx_strproto(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_strproto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_strproto(obj, boxVal);
+	boxVal = get_ctx_numproto(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_numproto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_numproto(obj, boxVal);
+	boxVal = get_ctx_rangeerror(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_rangeerror points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_rangeerror(obj, boxVal);
+	boxVal = get_ctx_referror(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_referror points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_referror(obj, boxVal);
+	boxVal = get_ctx_syntaxerror(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_syntaxerror points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_syntaxerror(obj, boxVal);
+	boxVal = get_ctx_typeerror(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_typeerror points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_typeerror(obj, boxVal);
+	boxVal = get_ctx_urierror(obj);
+	tagVal = getRefTag(boxVal);
+	refVal = unboxRef(boxVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field ctx_urierror points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
+	boxVal = boxRef(refVal, tagVal);
+	set_ctx_urierror(obj, boxVal);
 }
 
 //
@@ -132,13 +1048,23 @@ void visit_hashtbl(box obj)
 		boxVal = get_hashtbl_tbl_key(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
-		refVal = gcVisitRef(refVal);
+		if (!ptrInHeap((rptr)refVal))
+		{
+			printf("reference for field hashtbl_tbl_key points outside the heap (%p)\n", (rptr)refVal);
+			exit(1);
+		}
+		refVal = gcUpdateRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_hashtbl_tbl_key(obj, i0, boxVal);
 		boxVal = get_hashtbl_tbl_val(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
-		refVal = gcVisitRef(refVal);
+		if (!ptrInHeap((rptr)refVal))
+		{
+			printf("reference for field hashtbl_tbl_val points outside the heap (%p)\n", (rptr)refVal);
+			exit(1);
+		}
+		refVal = gcUpdateRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_hashtbl_tbl_val(obj, i0, boxVal);
 	}
@@ -219,13 +1145,23 @@ void visit_obj(box obj)
 	boxVal = get_obj_proto(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field obj_proto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_obj_proto(obj, boxVal);
 	boxVal = get_obj_tbl(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field obj_tbl points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_obj_tbl(obj, boxVal);
 }
@@ -310,7 +1246,12 @@ void visit_arrtbl(box obj)
 		boxVal = get_arrtbl_tbl(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
-		refVal = gcVisitRef(refVal);
+		if (!ptrInHeap((rptr)refVal))
+		{
+			printf("reference for field arrtbl_tbl points outside the heap (%p)\n", (rptr)refVal);
+			exit(1);
+		}
+		refVal = gcUpdateRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_arrtbl_tbl(obj, i0, boxVal);
 	}
@@ -407,19 +1348,34 @@ void visit_arr(box obj)
 	boxVal = get_arr_proto(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field arr_proto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_arr_proto(obj, boxVal);
 	boxVal = get_arr_tbl(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field arr_tbl points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_arr_tbl(obj, boxVal);
 	boxVal = get_arr_arr(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field arr_arr points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_arr_arr(obj, boxVal);
 }
@@ -563,7 +1519,12 @@ void visit_strtbl(box obj)
 		boxVal = get_strtbl_tbl(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
-		refVal = gcVisitRef(refVal);
+		if (!ptrInHeap((rptr)refVal))
+		{
+			printf("reference for field strtbl_tbl points outside the heap (%p)\n", (rptr)refVal);
+			exit(1);
+		}
+		refVal = gcUpdateRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_strtbl_tbl(obj, i0, boxVal);
 	}
@@ -695,22 +1656,42 @@ void visit_clos(box obj)
 	boxVal = get_clos_proto(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field clos_proto points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_clos_proto(obj, boxVal);
 	boxVal = get_clos_tbl(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field clos_tbl points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_clos_tbl(obj, boxVal);
 	ptrVal = get_clos_funcptr(obj);
+	if (ptrInHeap(ptrVal))
+	{
+		printf("pointer for field clos_funcptr points inside the heap (%p)\n", ptrVal);
+		exit(1);
+	}
 	for (pint i0 = 0; i0 < size; ++i0)
 	{
 		boxVal = get_clos_cells(obj, i0);
 		tagVal = getRefTag(boxVal);
 		refVal = unboxRef(boxVal);
-		refVal = gcVisitRef(refVal);
+		if (!ptrInHeap((rptr)refVal))
+		{
+			printf("reference for field clos_cells points outside the heap (%p)\n", (rptr)refVal);
+			exit(1);
+		}
+		refVal = gcUpdateRef(refVal);
 		boxVal = boxRef(refVal, tagVal);
 		set_clos_cells(obj, i0, boxVal);
 	}
@@ -775,7 +1756,12 @@ void visit_cell(box obj)
 	boxVal = get_cell_val(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
-	refVal = gcVisitRef(refVal);
+	if (!ptrInHeap((rptr)refVal))
+	{
+		printf("reference for field cell_val points outside the heap (%p)\n", (rptr)refVal);
+		exit(1);
+	}
+	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_cell_val(obj, boxVal);
 }
@@ -837,5 +1823,57 @@ void visit_memblock(box obj)
 	rptr ptrVal;
 	pint tagVal;
 	ptrVal = get_memblock_ptr(obj);
+	if (ptrInHeap(ptrVal))
+	{
+		printf("pointer for field memblock_ptr points inside the heap (%p)\n", ptrVal);
+		exit(1);
+	}
+}
+
+//
+// High-level visit function.
+//
+void visitRef(ref obj)
+{
+	u32 typeId = getObjHeader(obj);
+	switch (typeId)
+	{
+		case 1:
+		visit_x86ctx(obj);
+		break;
+		case 2:
+		visit_ctx(obj);
+		break;
+		case 4:
+		visit_hashtbl(boxRef(obj, TAG_OTHER));
+		break;
+		case 5:
+		visit_obj(boxRef(obj, TAG_OBJECT));
+		break;
+		case 6:
+		visit_arrtbl(boxRef(obj, TAG_OTHER));
+		break;
+		case 7:
+		visit_arr(boxRef(obj, TAG_ARRAY));
+		break;
+		case 8:
+		visit_str(boxRef(obj, TAG_STRING));
+		break;
+		case 9:
+		visit_strtbl(boxRef(obj, TAG_OTHER));
+		break;
+		case 10:
+		visit_clos(boxRef(obj, TAG_FUNCTION));
+		break;
+		case 11:
+		visit_cell(boxRef(obj, TAG_OTHER));
+		break;
+		case 12:
+		visit_memblock(boxRef(obj, TAG_OTHER));
+		break;
+		default:
+		printf("invalid type id value (%i)\n", typeId);
+		exit(1);
+	}
 }
 

@@ -1885,7 +1885,7 @@ var GetCtxInstr = instrMaker(
     {
         instrMaker.validNumInputs(inputVals, 0, 0);
         
-        this.type = IRType.rptr;
+        this.type = IRType.ref;
     }
 );
 
@@ -1903,7 +1903,7 @@ var SetCtxInstr = instrMaker(
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 1, 1);
-        instrMaker.validType(inputVals[0], IRType.rptr);
+        instrMaker.validType(inputVals[0], IRType.ref);
         
         this.type = IRType.none;
     }

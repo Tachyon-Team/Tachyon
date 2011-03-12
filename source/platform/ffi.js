@@ -204,7 +204,7 @@ CPtrAsPtr.prototype.cToJS = function (inVar)
 };
 
 /**
-C pointer to raw box type.
+C pointer to box type.
 */
 function CPtrAsBox()
 {
@@ -230,6 +230,35 @@ Generate code for a conversion from a C value
 CPtrAsBox.prototype.cToJS = function (inVar)
 {
     return 'iir.icast(IRType.rptr, ' + inVar + ')';
+};
+
+/**
+C pointer to unboxed reference type.
+*/
+function CPtrAsRef()
+{
+    this.cTypeName = 'void*';
+
+    this.cIRType = IRType.rptr;
+
+    this.jsIRType = IRType.ref;
+}
+CPtrAsRef.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CPtrAsRef.prototype.jsToC = function (inVar)
+{
+    return 'iir.icast(IRType.rptr, ' + inVar + ')';
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CPtrAsRef.prototype.cToJS = function (inVar)
+{
+    return 'iir.icast(IRType.ref, ' + inVar + ')';
 };
 
 /**
@@ -527,7 +556,7 @@ CProxy.prototype.genProxy = function ()
 
     if (this.ctxVal === undefined)
     {
-        sourceStr += 'ctx';
+        sourceStr += 'ctxPtr';
 
         if (this.irFunction.argTypes.length > 0)
             sourceStr += ', ';
@@ -547,7 +576,7 @@ CProxy.prototype.genProxy = function ()
 
     if (this.ctxVal === undefined)
     {
-        sourceStr += '\t"tachyon:arg ctx rptr";\n';
+        sourceStr += '\t"tachyon:arg ctxPtr rptr";\n';
     }
 
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
@@ -561,13 +590,14 @@ CProxy.prototype.genProxy = function ()
     
     if (this.ctxVal === undefined)
     {
+        sourceStr += '\tvar ctx = iir.icast(IRType.ref, ctxPtr);\n';
         sourceStr += '\tiir.set_ctx(ctx);\n';
     }
 
     // Get the global object from the context if available
     sourceStr += '\tvar global = ';
     if (this.ctxVal === undefined)
-        sourceStr += '(ctx !== NULL_PTR)? get_ctx_globalobj(ctx):UNDEFINED';
+        sourceStr += '(ctxPtr !== NULL_PTR)? get_ctx_globalobj(ctx):UNDEFINED';
     else
         sourceStr += 'UNDEFINED';
     sourceStr += ';\n';
@@ -898,7 +928,7 @@ function initFFI(params)
 
     regFFI(new CFunction(
         'gcCollect', 
-        [new CPtrAsPtr()],
+        [new CPtrAsRef()],
         new CVoid(),
         params
     ));

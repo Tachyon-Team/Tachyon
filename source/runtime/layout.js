@@ -290,9 +290,15 @@ MemLayout.prototype.addField = function(name, type, initVal, subSize, numElems)
     {
         this.addField(
             'size',
-            IRType.pint
+            IRType.u32
         );
     }
+
+    // Compute the element size for this field
+    var elemSize = 
+        (type instanceof IRType)?
+        type.getSizeBytes(this.params):
+        type.getSize(subSize);
 
     // If the layout is empty
     if (this.fields.length === 0)
@@ -305,20 +311,18 @@ MemLayout.prototype.addField = function(name, type, initVal, subSize, numElems)
         // Compute the offset to be after the last field
         var offset = this.getSize();
 
-        // Align the offset to the pointer size of the platform
+        // Compute the amount of padding bytes to align to the pointer size
         var align = this.params.target.ptrSizeBytes;
         var rem = offset % align;
-        if (rem !== 0)
+        var pad = (rem === 0)? 0:(align - rem);
+
+        // If the element size for the next field is larger than the alignment
+        // padding amount, align the next field
+        if (elemSize > pad)
         {
-            offset += align - rem;
+           offset += pad; 
         }
     }
-
-    // Compute the element size for this field
-    var elemSize = 
-        (type instanceof IRType)?
-        type.getSizeBytes(this.params):
-        type.getSize(subSize);
 
     // Create a new field-specification object
     var newField = new FieldSpec(
@@ -602,7 +606,8 @@ MemLayout.prototype.genMethods = function ()
     sourceStr += '\t"tachyon:arg obj ' + this.ptrType + '";\n';
     sourceStr += '\t"tachyon:ret pint";\n';
     if (varSize)
-        sourceStr += '\tvar size = get_' + this.name + '_size(obj);\n';
+        sourceStr += '\tvar size = iir.icast(IRType.pint, get_' + 
+            this.name + '_size(obj));\n';
     sourceStr += '\treturn comp_size_' + this.name + '(' +
                  (varSize? 'size':'') + ');\n';
     sourceStr += '}\n';
@@ -722,13 +727,15 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\tvar ptr = heapAlloc(comp_size_' + layout.name + '(' +
                      (varSize? 'size':'') + '));\n';
 
-        // If this layout uses a boxed reference type, box the pointer
+        // Convert the layout pointer type as appropriate
         if (layout.ptrType === IRType.box)
             sourceStr += '\tptr = boxPtr(ptr, ' + layout.tagName + ');\n';
+        else if (layout.ptrType === IRType.ref)
+            sourceStr += '\tptr = iir.icast(IRType.ref, ptr);\n';
 
         // If the layout has a variable size, set its size
         if (varSize)
-            sourceStr += '\tset_' + layout.name + '_size(ptr, size);\n';
+            sourceStr += '\tset_' + layout.name + '_size(ptr, iir.icast(IRType.u32, size));\n';
 
         // If this is a heap-allocated layout, set its type id
         if (layout.ptrType === IRType.box || layout.ptrType === IRType.ref)
@@ -952,18 +959,6 @@ MemLayout.prototype.genCMethods = function ()
     sourceStr += '}\n';
     sourceStr += '\n';
 
-    /*
-    TODO: visit_ functions for each collectable object
-    
-    Check algorithm in compiler book before implementing!
-
-    Warning: avoid stack overflows...
-    Call gc_visit function defined externally
-
-    GC must be able to update references. Should ideally have table of offsets
-    for layouts?
-    */
-
     // GC visit function    
     sourceStr += 'void visit_' + this.name + '(' + this.ptrType + ' obj)\n';
     sourceStr += '{\n';
@@ -1047,12 +1042,17 @@ MemLayout.prototype.genCMethods = function ()
                         subSrc += 'refVal = unboxRef(boxVal);\n';
                     }
 
-                    //
-                    // TODO: add validation
-                    //
+                    // Validate that the reference points inside the heap
+                    var errorStr = 'reference for field ' + rootLayout.name + 
+                        curFieldName + ' points outside the heap';
+                    subSrc += 'if (!ptrInHeap((rptr)refVal))\n';
+                    subSrc += '{\n';
+                    subSrc += '\tprintf("' + errorStr + ' (%p)\\n", (rptr)refVal);\n';
+                    subSrc += '\texit(1);\n';
+                    subSrc += '}\n';
 
-                    // Have the GC visit the reference
-                    subSrc += 'refVal = gcVisitRef(refVal);\n';
+                    // Have the GC visit/update the reference
+                    subSrc += 'refVal = gcUpdateRef(refVal);\n';
 
                     if (spec.type == IRType.box)
                     {
@@ -1063,9 +1063,18 @@ MemLayout.prototype.genCMethods = function ()
                         '(' + curArgs + ', ' + fieldVar + ');\n';
                 }
 
-                //
-                // TODO: if this is a pointer field, add validation
-                //
+                // If this is a raw pointer field
+                if (spec.type === IRType.rptr)
+                {
+                    // Validate that the pointer does not point in the heap
+                    var errorStr = 'pointer for field ' + rootLayout.name + 
+                        curFieldName + ' points inside the heap';
+                    subSrc += 'if (ptrInHeap(ptrVal))\n';
+                    subSrc += '{\n';
+                    subSrc += '\tprintf("' + errorStr + ' (%p)\\n", ptrVal);\n';
+                    subSrc += '\texit(1);\n';
+                    subSrc += '}\n';
+                }
             }
 
             // If code was generated at higher nesting levels
@@ -1134,6 +1143,8 @@ function genGCCode(params)
 
     // Header files
     sourceStr += '#include <cassert>\n';
+    sourceStr += '#include <cstdio>\n';
+    sourceStr += '#include <cstdlib>\n';
     sourceStr += '#include <stdint.h>\n';
     sourceStr += '\n';
 
@@ -1147,7 +1158,29 @@ function genGCCode(params)
 
     // TODO
     sourceStr += '// TODO: implement this GC function to visit/move objects\n';
-    sourceStr += 'ref gcVisitRef(ref ptr);\n';
+    sourceStr += 'ref gcUpdateRef(ref ptr);\n';
+    sourceStr += '\n';
+
+    // TODO
+    sourceStr += '// TODO: implement this GC function to test that a pointer points in the heap\n';
+    sourceStr += 'bool ptrInHeap(rptr ptr);\n';
+    sourceStr += '\n';
+
+    // Output the tag values used by layouts
+    var outputTags = {};
+    for (var l in params.memLayouts)
+    {
+        var layout = params.memLayouts[l];
+
+        if (layout.tagName === undefined || outputTags[layout.tagName] === true)
+            continue;
+
+        var tagVal = params.staticEnv.getValue(layout.tagName);
+
+        sourceStr += 'const pint ' + layout.tagName + ' = ' + tagVal + ';\n';
+
+        outputTags[layout.tagName] = true;
+    }
     sourceStr += '\n';
 
     // Reference unboxing
@@ -1178,21 +1211,12 @@ function genGCCode(params)
     sourceStr += '}\n';
     sourceStr += '\n';
 
-
-
-
-
-    // TODO: function assert a boxed reference is in the heap
-    // TODO: function to assert a raw pointer does not point in the heap
-    // Function to test that pointer is in heap can be the basis for both
-
-
-
-    // TODO: high-level visit function
-    // visitRef
-    // visitBox --> No, just unbox it.
-
-
+    // Get an object header
+    sourceStr += 'u32 getObjHeader(ref obj)\n';
+    sourceStr += '{\n';
+    sourceStr += '\treturn *((u32*)obj);\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
 
     // Generate C methods for the instantiable layouts
     for (var l in params.memLayouts)
@@ -1208,6 +1232,49 @@ function genGCCode(params)
      
         sourceStr += layout.genCMethods();
     }
+
+    sourceStr += '//\n';
+    sourceStr += '// High-level visit function.\n';
+    sourceStr += '//\n';
+
+    sourceStr += 'void visitRef(ref obj)\n';
+    sourceStr += '{\n';
+    sourceStr += '\tu32 typeId = getObjHeader(obj);\n';
+
+    // Switch on the object type id
+    sourceStr += '\tswitch (typeId)\n';
+    sourceStr += '\t{\n';
+
+    // Generate dispatch code for each layout
+    for (var l in params.memLayouts)
+    {
+        var layout = params.memLayouts[l];
+
+        if (layout.isInstantiable() === false)
+            continue;
+
+        // If this is not a heap-allocated layout, skip it
+        if (layout.ptrType === IRType.rptr)
+            continue;
+
+        sourceStr += '\t\tcase ' + layout.typeId + ':\n';
+
+        if (layout.ptrType === IRType.ref)
+            sourceStr += '\t\tvisit_' + layout.name + '(obj);\n';
+        else
+            sourceStr += '\t\tvisit_' + layout.name + 
+                '(boxRef(obj, ' + layout.tagName + '));\n';
+        sourceStr += '\t\tbreak;\n';
+    }
+
+    // If the type id does not match, produce an error
+    sourceStr += '\t\tdefault:\n';
+    sourceStr += '\t\tprintf("invalid type id value (%i)\\n", typeId);\n';
+    sourceStr += '\t\texit(1);\n';
+
+    sourceStr += '\t}\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
 
     // Write the generated code to a file
     writeFile('d8/gc-generated.cc', sourceStr);

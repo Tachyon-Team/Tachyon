@@ -565,16 +565,16 @@ function makeObjectLayouts(params)
     */
     var memBlockLayout = new MemLayout('memblock', IRType.box, 'TAG_OTHER', params);
 
-    // Pointer to the memory block
-    memBlockLayout.addField(
-        'ptr',
-        IRType.rptr
-    );
-
     // Size of the memory block
     memBlockLayout.addField(
         'size',
         IRType.u32
+    );
+
+    // Pointer to the memory block
+    memBlockLayout.addField(
+        'ptr',
+        IRType.rptr
     );
 
     // Finalize the string table layout
