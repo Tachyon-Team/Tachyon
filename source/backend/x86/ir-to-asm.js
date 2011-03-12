@@ -1676,8 +1676,8 @@ EqInstr.prototype.genCodeCmp = function (tltor, opnds)
         {
             // Cmp cannot have a 64 bit immediate value as operand
             tltor.asm.
-            mov(opnds[1], dest).
-            cmp(dest, opnds[0]);
+            mov(opnds[1], scratchReg).
+            cmp(scratchReg, opnds[0]);
         } else
         {
             tltor.asm.cmp(opnds[1], opnds[0], width);
