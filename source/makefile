@@ -155,6 +155,9 @@ gc:
 bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
+bootstrap64:
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x64 true
+
 bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
 	echo "bt"                                                   >> gdb-command
