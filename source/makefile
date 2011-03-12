@@ -143,7 +143,10 @@ shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
 bt-parser:
-	$(JSVM) $(BASE_SRCS) bt-parser.js
+	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
+
+bt-parser64:
+	$(JSVM64) $(BASE_SRCS) bt-parser.js bt-parser64.js
 
 mem-fib:
 	$(JSVM) --no-opt --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
@@ -153,10 +156,10 @@ gc:
 	gcc -c -o d8/gc-generated.o d8/gc-generated.cc
 
 bootstrap:
-	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
+	time $(JSVM) $(MAIN_SRCS) bt-fib32.js -- -bootstrap true
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x64 true
+	time $(JSVM64) $(MAIN_SRCS) bt-fib64.js -- -bootstrap true -x64 true
 
 bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command

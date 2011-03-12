@@ -88,26 +88,31 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
     return result;
 }
 
-initialize();
+function btparser(is64bit)
+{
+    initialize(false, is64bit);
 
-print("Creating parser test");
-var tachyon_parser_test = genTest(
-    [
-        'utility/debug.js',
-        'utility/hashmap.js',
-        'utility/num.js',
-        'parser/misc.js',
-        'parser/scanner.js',
-        'parser/parser.js',
-        'parser/pp.js',
-        'parser/ast-passes.js',
-        'programs/tachyon_parser/tachyon_parser.js'
-    ],
-    'test',
-    [],
-    0
-);
+    print("Creating parser test");
+    var tachyon_parser_test = genTest(
+        [
+            'utility/debug.js',
+            'utility/hashmap.js',
+            'utility/num.js',
+            'parser/misc.js',
+            'parser/scanner.js',
+            'parser/parser.js',
+            'parser/pp.js',
+            'parser/ast-passes.js',
+            'programs/tachyon_parser/tachyon_parser.js'
+        ],
+        'test',
+        [],
+        0
+    );
 
-tachyon_parser_test();
+    tachyon_parser_test();
 
-uninitialize();
+    print("Test succeeded");
+
+    uninitialize();
+}
