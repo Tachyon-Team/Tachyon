@@ -70,7 +70,10 @@ StaticEnv.prototype.getValue = function (name)
 {
     var val = this.getBinding(name);
 
-    assert (val instanceof ConstValue);
+    assert (
+        val instanceof ConstValue, 
+        "val must be an instanceof ConstValue"
+    );
 
     return val.value;
 }
