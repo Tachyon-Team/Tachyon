@@ -103,6 +103,35 @@ CStringAsBox.prototype.free = function (inVar)
 };
 
 /**
+C boolean to IR boolean type.
+*/
+function CBoolAsBool()
+{
+    this.cTypeName = 'bool';
+
+    this.cIRType = IRType.bool;
+
+    this.jsIRType = IRType.bool;
+}
+CBoolAsBool.prototype = new CTypeMapping();
+
+/**
+Generate code for a conversion to a C value
+*/
+CBoolAsBool.prototype.jsToC = function (inVar)
+{
+    return inVar;
+};
+
+/**
+Generate code for a conversion from a C value
+*/
+CBoolAsBool.prototype.cToJS = function (inVar)
+{
+    return inVar;
+};
+
+/**
 Conversion of boxed integers to C integers and vice-versa.
 */
 function CIntAsBox()
@@ -913,14 +942,14 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
-        'rawAllocMachineCodeBlock', 
-        [new CIntAsInt(IRType.pint)], 
+        'rawAllocMemoryBlock', 
+        [new CIntAsInt(IRType.pint), new CBoolAsBool()], 
         new CPtrAsPtr(),
         params
     ));
 
     regFFI(new CFunction(
-        'rawFreeMachineCodeBlock', 
+        'rawFreeMemoryBlock', 
         [new CPtrAsPtr(), new CIntAsInt(IRType.pint)], 
         new CVoid(),
         params

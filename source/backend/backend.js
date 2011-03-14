@@ -292,7 +292,7 @@ backend.executeCB = function (codeBlock)
 
     var block = codeBlock.assembleToMachineCodeBlock(); // assemble it
     var x = execMachineCodeBlock(block); // execute the code generated
-    freeMachineCodeBlock(block);
+    freeMemoryBlock(block);
     return x;
 };
 

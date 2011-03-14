@@ -15,11 +15,11 @@ if (config.inTachyon)
     /**
     Allocate a machine code block.
     */
-    var allocMachineCodeBlock = function (size)
+    var allocMemoryBlock = function (size, exec)
     {
         "tachyon:noglobal";
 
-        var blockPtr = rawAllocMachineCodeBlock(unboxInt(size));
+        var blockPtr = rawAllocMemoryBlock(unboxInt(size), boxToBool(exec));
 
         var blockObj = alloc_memblock();
 
@@ -32,7 +32,7 @@ if (config.inTachyon)
     /**
     Free a machine code block.
     */
-    var freeMachineCodeBlock = function (blockObj)
+    var freeMemoryBlock = function (blockObj)
     {
         "tachyon:noglobal";
 
@@ -46,7 +46,7 @@ if (config.inTachyon)
         var ptr = get_memblock_ptr(mcb);
         var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
-        rawFreeMachineCodeBlock(ptr, size);
+        rawFreeMemoryBlock(ptr, size);
     };
 
     /**
@@ -81,7 +81,7 @@ if (config.inTachyon)
     /**
     Write a byte to a machine code block.
     */
-    var writeToMachineCodeBlock = function (blockObj, index, byteVal)
+    var writeToMemoryBlock = function (blockObj, index, byteVal)
     {
         "tachyon:noglobal";
 
@@ -116,7 +116,7 @@ else
     /**
     Write a byte to a machine code block.
     */
-    var writeToMachineCodeBlock = function (blockObj, index, byteVal)
+    var writeToMemoryBlock = function (blockObj, index, byteVal)
     {
         assert (
             byteVal >= 0 && byteVal <= 255,

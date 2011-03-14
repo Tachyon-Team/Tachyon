@@ -12,14 +12,14 @@
  * Tachyon compiler.  It implements some auxiliary functions, in particular:
  *
  * - writeFile("filename", "text")  save text to the file
- * - allocMachineCodeBlock(n)       allocate a machine code block of length n
- * - freeMachineCodeBlock(block)    free a machine code block
+ * - allocMemoryBlock(n)            allocate a machine code block of length n
+ * - freeMemoryBlock(block)         free a machine code block
  * - execMachineCodeBlock(block)    execute a machine code block
  *
  * Note: a MachineCodeBlock is an array of bytes which can be accessed
  * like other JS arrays, in particular you can assign to it.  For example:
  *
- *    var block = allocMachineCodeBlock(2);
+ *    var block = allocMemoryBlock(2);
  *    block[0] = 0x90;  // x86 "nop"
  *    block[1] = 0xc3;  // x86 "ret"
  *    execMachineCodeBlock(block);  // execute the code
@@ -310,12 +310,12 @@ typedef union
     uint8_t* data_ptr;
 }   data_to_fn_ptr_caster;
 
-uint8_t* allocMachineCodeBlock(int size)
+uint8_t* allocMemoryBlock(size_t size, bool exec)
 {
     void* p = mmap(
         0,
         size,
-        PROT_READ | PROT_WRITE | PROT_EXEC,
+        PROT_READ | PROT_WRITE | (exec? PROT_EXEC:0),
         MAP_PRIVATE | MAP_ANON,
         -1,
         0
@@ -330,92 +330,14 @@ uint8_t* allocMachineCodeBlock(int size)
     return (uint8_t*)p;
 }
 
-void freeMachineCodeBlock(uint8_t* code, int size)
+void freeMemoryBlock(uint8_t* code, size_t size)
 {
     munmap(code, size);
 }
 
-v8::Handle<v8::Value> v8Proxy_allocMachineCodeBlock(const v8::Arguments& args)
+void writeToMemoryBlock(uint8_t* block, size_t index, uint8_t byteVal)
 {
-    if (args.Length() != 1)
-    {
-        printf("Error in allocMachineCodeBlock -- 1 argument expected\n");
-        exit(1);
-    }
-    else
-    {
-        v8::Handle<v8::Object> obj = v8::Object::New();
-        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*obj);
-
-        int len = args[0]->Int32Value();
-        uint8_t* block = static_cast<uint8_t*>(allocMachineCodeBlock(len));
-
-        /* Set the elements to be the external array. */
-        obj->SetIndexedPropertiesToExternalArrayData(
-            block,
-            v8::kExternalUnsignedByteArray,
-            len
-        );
-
-        return obj;
-    }
-}
-
-v8::Handle<v8::Value> v8Proxy_freeMachineCodeBlock(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in freeMachineCodeBlock -- 1 argument expected\n");
-        exit(1);
-    }
-
-    i::Handle<i::Object> obj = v8::Utils::OpenHandle(*args[0]);
-
-    if (!obj->IsJSObject())
-    {
-        printf("Error in freeMachineCodeBlock -- invalid object passed\n");
-        exit(1);
-    }
-
-    i::Handle<i::JSObject> jsObj = i::Handle<i::JSObject>::cast(obj);
-
-    Handle<v8::internal::ExternalUnsignedByteArray> array(
-        v8::internal::ExternalUnsignedByteArray::cast(jsObj->elements())
-    );
-
-    uint32_t len = static_cast<uint32_t>(array->length());
-    uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-
-    freeMachineCodeBlock(block, len);
-
-    return Undefined();
-}
-
-v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
-{
-    if (args.Length() != 1)
-    {
-        printf("Error in execMachineCodeBlock -- 1 argument expected\n");
-        exit(1);
-    }
-    else
-    {
-        i::Handle<i::JSObject> obj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
-
-        Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(obj->elements())
-        );
-
-        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-
-        data_to_fn_ptr_caster ptr;
-        ptr.data_ptr = block;
-    
-        // Execute the code
-        word result = ptr.fn_ptr();
-
-        return v8::Number::New(result);
-    }
+    block[index] = byteVal;
 }
 
 // Convert an array of bytes to a value
@@ -478,6 +400,157 @@ template <class T> v8::Handle<v8::Value> valToArray(T val)
     return Utils::ToLocal(ptrArray);
 }
 
+/*
+class MemBlock
+{
+public:
+
+    uint8_t* blockPtr;
+    size_t size;
+    bool exec;
+};
+*/
+
+v8::Handle<v8::Value> v8Proxy_allocMemoryBlock(const v8::Arguments& args)
+{
+    if (args.Length() != 2)
+    {
+        printf("Error in allocMemoryBlock -- 2 arguments expected\n");
+        exit(1);
+    }
+
+    /*
+    // Allocate the memory block
+    size_t size = args[0]->IntegerValue();
+    bool exec = args[1]->BooleanValue();
+    uint8_t* blockPtr = allocMemoryBlock(size, exec);
+
+    MemBlock* block = new MemBlock();
+    block->blockPtr = blockPtr;
+    block->size = size;
+    block->exec = exec;
+
+    return v8::External::Wrap(block);
+    */
+
+    size_t allocSize = args[0]->IntegerValue();
+    bool execFlag = args[1]->BooleanValue();
+
+    uint8_t* block = allocMemoryBlock(allocSize, execFlag);
+
+    v8::Handle<v8::Object> obj = v8::Object::New();
+    
+    int arraySize = allocSize;
+    if (arraySize > i::ExternalArray::kMaxLength)
+        arraySize = i::ExternalArray::kMaxLength;
+
+    // Set the elements to be the external array.
+    obj->SetIndexedPropertiesToExternalArrayData(
+        block,
+        v8::kExternalUnsignedByteArray,
+        arraySize
+    );
+
+    // Set the real array size in a hidden property
+    obj->SetHiddenValue(v8::String::New("tachyon::size"), v8::Number::New(allocSize));
+        
+    return obj;
+}
+
+v8::Handle<v8::Value> v8Proxy_freeMemoryBlock(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in freeMemoryBlock -- 1 argument expected\n");
+        exit(1);
+    }
+    
+    /*
+    assert (args[0]->IsObject());
+
+    v8::Local<v8::Object> obj = args[0]->ToObject();
+    
+    uint8_t* blockPtr = (uint8_t*)obj->GetPointerFromInternalField(0);
+    size_t size = obj->GetInternalField(1)->IntegerValue();
+
+    freeMemoryBlock(blockPtr, size);
+    */
+
+    if (!args[0]->IsObject())
+    {
+        printf("Error in freeMemoryBlock -- invalid object passed\n");
+        exit(1);
+    }
+
+    Local<Object> obj = args[0]->ToObject();
+
+    uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
+    size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
+
+    freeMemoryBlock(blockPtr, size);
+
+    return Undefined();
+}
+
+v8::Handle<v8::Value> v8Proxy_writeToMemoryBlock(const v8::Arguments& args)
+{
+    if (args.Length() != 3)
+    {
+        printf("Error in writeToMemoryBlock -- 3 argument expected\n");
+        exit(1);
+    }
+
+    if (!args[0]->IsObject())
+    {
+        printf("Error in writeToMemoryBlock -- invalid object passed\n");
+        exit(1);
+    }
+
+    Local<Object> obj = args[0]->ToObject();
+
+    uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
+    size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
+
+    size_t index = args[1]->IntegerValue();
+
+    assert (index < size);
+
+    int byteVal = args[2]->IntegerValue();
+
+    assert (byteVal >= 0 && byteVal <= 255);
+
+    writeToMemoryBlock(blockPtr, index, byteVal);
+
+    return Undefined();
+}
+
+v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in execMachineCodeBlock -- 1 argument expected\n");
+        exit(1);
+    }
+
+    if (!args[0]->IsObject())
+    {
+        printf("Error in execMachineCodeBlock -- invalid object passed\n");
+        exit(1);
+    }
+
+    Local<Object> obj = args[0]->ToObject();
+
+    uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
+
+    data_to_fn_ptr_caster ptr;
+    ptr.data_ptr = blockPtr;
+    
+    // Execute the code
+    word result = ptr.fn_ptr();
+
+    return v8::Number::New(result);
+}
+
 v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 {
     if (args.Length() < 1 || args.Length() > 2)
@@ -486,14 +559,16 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
         exit(1);
     }
 
-    // Get the address of the block
-    i::Handle<i::JSObject> blockObj = i::Handle<i::JSObject>::cast(v8::Utils::OpenHandle(*args[0]));
+    if (!args[0]->IsObject())
+    {
+        printf("Error in getBlockAddr -- invalid object passed\n");
+        exit(1);
+    }
 
-    i::Handle<v8::internal::ExternalUnsignedByteArray> array(
-        v8::internal::ExternalUnsignedByteArray::cast(blockObj->elements())
-    );
-    uint8_t* blockPtr = static_cast<uint8_t*>(array->external_pointer());
-    uint32_t len = static_cast<uint32_t>(array->length());
+    Local<Object> obj = args[0]->ToObject();
+
+    uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
+    size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
 
     // Get the index value
     size_t idxVal = 0;
@@ -504,7 +579,7 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
     }
 
     // Ensure that the index is valid
-    if (idxVal >= len)
+    if (idxVal >= size)
     {
         printf("Error in getBlockAddr -- index is past end of block\n");
         exit(1);
@@ -871,10 +946,10 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(shellCommand);
     else if (strcmp(funcName, "readConsole") == 0)
         address = (FPTR)(readConsole);
-    else if (strcmp(funcName, "rawAllocMachineCodeBlock") == 0)
-        address = (FPTR)(allocMachineCodeBlock);
-    else if (strcmp(funcName, "rawFreeMachineCodeBlock") == 0)
-        address = (FPTR)(freeMachineCodeBlock);
+    else if (strcmp(funcName, "rawAllocMemoryBlock") == 0)
+        address = (FPTR)(allocMemoryBlock);
+    else if (strcmp(funcName, "rawFreeMemoryBlock") == 0)
+        address = (FPTR)(freeMemoryBlock);
     else if (strcmp(funcName, "gcCollect") == 0)
         address = (FPTR)(gcCollect);
     else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
@@ -960,13 +1035,18 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     );
 
     global_template->Set(
-        v8::String::New("allocMachineCodeBlock"), 
-        v8::FunctionTemplate::New(v8Proxy_allocMachineCodeBlock)
+        v8::String::New("allocMemoryBlock"), 
+        v8::FunctionTemplate::New(v8Proxy_allocMemoryBlock)
     );
 
     global_template->Set(
-        v8::String::New("freeMachineCodeBlock"), 
-        v8::FunctionTemplate::New(v8Proxy_freeMachineCodeBlock)
+        v8::String::New("freeMemoryBlock"), 
+        v8::FunctionTemplate::New(v8Proxy_freeMemoryBlock)
+    );
+
+    global_template->Set(
+        v8::String::New("writeToMemoryBlock"), 
+        v8::FunctionTemplate::New(v8Proxy_writeToMemoryBlock)
     );
 
     global_template->Set(
