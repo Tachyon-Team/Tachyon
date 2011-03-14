@@ -862,7 +862,7 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
     const that = this;
 
     const len = this.assemble();
-    const block = allocMachineCodeBlock(len);
+    const block = allocMemoryBlock(len, true);
     const baseAddr = asm.address(getBlockAddr(block));
     var pos = 0;
 
@@ -872,7 +872,7 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
         if (typeof x === "number")
         {
             //block[pos++] = x;
-            writeToMachineCodeBlock(block, pos++, x);
+            writeToMemoryBlock(block, pos++, x);
         }
     }
 
@@ -1000,7 +1000,7 @@ asm.link = function (mcb)
         for (var i = 0; i < bytes.length ; ++i)
         {
             //mcb[offset + i] = bytes[i]; 
-            writeToMachineCodeBlock(mcb, offset+i, bytes[i]);
+            writeToMemoryBlock(mcb, offset+i, bytes[i]);
         }
     }
 

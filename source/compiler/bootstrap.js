@@ -397,7 +397,7 @@ function initRuntime(params)
 
     // Allocate a 512MB heap
     var heapSize = Math.pow(2, 29);
-    var heapBlock = allocMachineCodeBlock(heapSize);
+    var heapBlock = allocMemoryBlock(heapSize, false);
     var heapAddr = getBlockAddr(heapBlock, 0);
 
     // Get the heap initialization function
@@ -446,7 +446,7 @@ function initRuntime(params)
 
         if (numBytes > 0)
         {
-            var memBlock = allocMachineCodeBlock(numBytes);
+            var memBlock = allocMemoryBlock(numBytes, false);
             var blockAddr = getBlockAddr(memBlock, 0);
         }
         else
@@ -469,7 +469,7 @@ function initRuntime(params)
 
         if (numBytes > 0)
         {
-            freeMachineCodeBlock(memBlock);
+            freeMemoryBlock(memBlock);
         }
 
         return strObj;

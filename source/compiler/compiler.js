@@ -44,7 +44,7 @@ compiler.link = function ()
     this.linked = true;
 };
 
-/** 
+/**
 Compiles an IRFunction and assigns linking and runtime
 information to it. The runtime.mcb properties on the 
 IRFunction should be freed once it is no longer used.
