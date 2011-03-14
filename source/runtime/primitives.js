@@ -1226,14 +1226,14 @@ function mul(v1, v2)
     {
         // Cast the values to the pint type
         v1 = iir.icast(IRType.pint, v1);
+        v1 = v1 >> TAG_NUM_BITS_INT;
         v2 = iir.icast(IRType.pint, v2);
 
         // Attempt a multiply with overflow check
         var intResult;
         if (intResult = iir.mul_ovf(v1, v2))
         {
-            // Normalize by shifting right by the number of integer tag bits
-            intResult = iir.icast(IRType.box, intResult >> TAG_NUM_BITS_INT);
+            intResult = iir.icast(IRType.box, intResult);
             return intResult;
         }
         else
