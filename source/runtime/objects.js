@@ -12,7 +12,7 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // FIXME: some variables are currently defined globally here because from
 // inside V8, we cannot access a previously defined static environment. This
 // will no longer be a problem once Tachyon is bootstrapped.
-var MAX_FIXNUM = Math.pow(2, 30) - 1;
+var MAX_FIXNUM = ~(-1<<30); // Compute 2^30-1 without overflowing fixnum range
 
 //
 // TODO: separate object-related code from tag bit code, string code, etc.
