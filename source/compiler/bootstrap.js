@@ -118,6 +118,7 @@ function getPrimSrcs(params)
     // Declare a variable for the layout source
     var layoutSrc = '';
 
+    print("Generate methods for the instantiable layouts");
     // Generate methods for the instantiable layouts
     for (var l in params.memLayouts)
     {
@@ -132,6 +133,7 @@ function getPrimSrcs(params)
     // Declare a variable for the FFI wrapper source
     var wrapperSrc = '';
 
+    print("Generate wrapper code for the FFI functions");
     // Generate wrapper code for the FFI functions
     for (var f in params.ffiFuncs)
     {
@@ -140,6 +142,7 @@ function getPrimSrcs(params)
         wrapperSrc += func.genWrapper();
     }
 
+    print("Building list of the primitives");
     // Build a list of the primitive source code units
     var primSrcs = [
         // Generated code for the object layouts
@@ -158,6 +161,7 @@ function getPrimSrcs(params)
         'runtime/rtinit.js'
     ];
 
+    print("Returning the primitives");
     return primSrcs;
 }
 
@@ -242,7 +246,8 @@ function getTachyonSrcs(params)
         'backend/x86/config.js',
         'backend/x86/ir-to-asm.js',
         //'main.js'
-        'bt-fib.js'
+        'bt-fib.js',
+        ((params.target === Target.x86_32) ? 'bt-fib32.js' : 'bt-fib64.js')
     ];
 
     //var tachyonSrcs = ['parser/parser.js'];
