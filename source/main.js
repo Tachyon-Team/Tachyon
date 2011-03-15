@@ -16,7 +16,7 @@ Entry point for the Tachyon VM.
 function main()
 {
     // If we are running in bootstrap mode
-    if (config.inTachyon)
+    if (RUNNING_IN_TACHYON)
     {
         // Initialize Tachyon in minimal mode
         initialize(false);

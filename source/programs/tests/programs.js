@@ -669,6 +669,21 @@ tests.programs.tachyon_num = genTest(
 );
 
 /**
+Tachyon machine code block test code.
+*/
+tests.programs.tachyon_mcb = genTest(
+    [
+        'utility/debug.js',
+        'platform/mcb.js',
+        'programs/tachyon_mcb/tachyon_mcb.js'
+    ],
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 Print the state of the Tachyon VM.
 */
 tests.programs.tachyon_state = genTest(
