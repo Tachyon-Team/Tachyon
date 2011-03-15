@@ -79,7 +79,8 @@ function funcToIR(
 )
 {
     // Ensure that the top-level AST is a program
-    assert (astFunc instanceof FunctionExpr, 'function must be AST function expression');
+    assert (astFunc instanceof FunctionExpr,
+            'function must be AST function expression');
 
     // Compile the function
     return stmtListToIRFunc(
@@ -90,6 +91,7 @@ function funcToIR(
         astFunc.esc_vars,
         astFunc.funcs,
         astFunc.body,
+        //FIXME: what about astFunc.annotations ?
         astFunc,
         params
     );
@@ -513,6 +515,15 @@ function getIRFuncObj(
         newFunc.usesEval = true;
 
     // TODO: temporary, manually extract function prologue annotations
+
+    // FIXME: Now the parser puts a list of the annotations in
+    // astNode.annotations when astNode is a FunctionExpr.  So use it.
+
+    // FIXME: What should be done with a block???  Can annotations
+    // appear in blocks also?  In that case, the parser should have
+    // a node for "body" (function body, or block body) and store the
+    // annotations there.
+
     var annotations = [];
     var bodyStmts = 
         (astNode instanceof FunctionExpr)?
