@@ -177,6 +177,17 @@ tests.programs.basic_shift = genTest(
 );
 
 /**
+Test of limits of integer overflow handling.
+*/
+tests.programs.basic_ovf = genTest(
+    'programs/basic_ovf/basic_ovf.js',
+    'proxy',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 Test of basic optimization patterns.
 */
 tests.programs.basic_opts = genTest(
