@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "pp.js", Time-stamp: <2010-12-31 11:21:02 feeley>
+// File: "pp.js", Time-stamp: <2011-03-15 13:47:52 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -222,6 +222,9 @@ function pp_indent(ast, indent)
         for (var p in ast.params)
             pp_loc(ast.params[p].loc, pp_prefix(indent) + "|-param= " + ast.params[p].toString());
 
+        for (var a in ast.annotations)
+            pp_loc(ast.annotations[a].loc, pp_prefix(indent) + "|-annotation= \"" + ast.annotations[a].value + "\"");
+
         if (ast.vars !== null)
         {
             for (var v in ast.vars)
@@ -415,6 +418,12 @@ function ast_to_js(ast, ctx)
     function js_indent_end(ctx)
     {
         ctx.indent--;
+    }
+
+    function js_annotation(annotation, ctx)
+    {
+        js_indent(ctx);
+        js_out("\"" + annotation + "\";\n", ctx);
     }
 
     function js_var(id, ctx)
@@ -822,6 +831,9 @@ function ast_to_js(ast, ctx)
         js_indent(ctx);
         js_out("{\n", ctx);
         js_indent_begin(ctx);
+
+        for (var a in ast.annotations)
+            js_annotation(ast.annotations[a].value, ctx);
 
         for (var v in ast.vars)
             if (!ast.vars[v].is_param)

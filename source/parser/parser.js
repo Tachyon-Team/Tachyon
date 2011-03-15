@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "parser.js", Time-stamp: <2011-02-23 16:52:04 feeley>
+// File: "parser.js", Time-stamp: <2011-03-15 13:40:21 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
@@ -696,8 +696,35 @@ function FunctionExpr(loc, id, params, body)
     this.id = id; // null when id not supplied
     this.params = params;
     this.body = body;
+    this.annotations = extract_annotations(body);
     this.usesArguments = false;
     this.usesEval = false;
+}
+
+function extract_annotations(body)
+{
+    var annotations = [];
+    var i;
+
+    for (i=0; i<body.length; i++)
+    {
+        var stat = body[i];
+
+        if (stat instanceof ExprStatement &&
+            stat.expr instanceof Literal &&
+            typeof stat.expr.value === "string")
+        {
+            annotations.push(stat.expr);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    //body.splice(0, i); // remove the annotations at head of body
+
+    return annotations;
 }
 
 function Arguments(loc, args)
