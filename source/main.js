@@ -36,7 +36,7 @@ function main()
     if (args.options['bootstrap'])
     {
         // Initialize Tachyon in bootstrap mode
-        initialize(true, args.options['x64']);
+        initialize(true, args.options['x86_64']);
 
         // ???
         // Profit        
@@ -56,7 +56,7 @@ function main()
     else
     {
         // Initialize Tachyon in minimal mode
-        initialize(false, args.options['x64']);
+        initialize(false, args.options['x86_64']);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
