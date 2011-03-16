@@ -11,9 +11,7 @@ function test(v1, v2, vHalfMax, vHalfMin)
 
 function proxy()
 {
-    const INT_MAX = ~(-1 << boxInt(BOX_NUM_BITS_INT));
-
-    const HALF_MAX = INT_MAX >> 1;
+    const HALF_MAX = MAX_FIXNUM >> 1;
 
     return test(1, 2, HALF_MAX, -HALF_MAX);
 }
