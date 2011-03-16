@@ -2,7 +2,6 @@
 
 #JavaScript VM program
 JSVMPROG = d8
-
 JSVMPROG64 = d8_64
 
 #JavaScript VM command options
@@ -17,6 +16,7 @@ JSVM64 = $(JSVMPROG64) $(JSVMOPTS)
 
 # JavaScript VM command with rlwrap
 RLWJSVM = rlwrap $(JSVM)
+RLWJSVM64 = rlwrap $(JSVM64)
 
 # For bootstrapping with Tachyon JavaScript to Scheme compiler
 JS2SCM = parser/js2scm
@@ -141,6 +141,9 @@ run:
 
 shell:
 	$(RLWJSVM) $(MAIN_SRCS)
+
+shell64:
+	$(RLWJSVM64) $(MAIN_SRCS) -- -x64 true
 
 bt-parser:
 	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
