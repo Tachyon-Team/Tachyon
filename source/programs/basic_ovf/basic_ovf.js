@@ -12,7 +12,8 @@ function test(v1, v2, vHalfMax, vHalfMin)
 function proxy()
 {
     const HALF_MAX = MAX_FIXNUM >> 1;
+    const HALF_MIN = MIN_FIXNUM >> 1;
 
-    return test(1, 2, HALF_MAX, -HALF_MAX);
+    return test(1, 2, HALF_MAX, HALF_MIN);
 }
 

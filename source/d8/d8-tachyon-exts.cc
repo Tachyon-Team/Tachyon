@@ -262,15 +262,25 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
     return v8Str;
 }
 
-v8::Handle<v8::Value> v8Proxy_timeCurrentMillis(const v8::Arguments& args)
+// Time since the initialization of the extensions
+double initTime = 0;
+
+int currentTimeMillis()
+{
+    double curTime = v8::internal::OS::TimeCurrentMillis() - initTime;
+
+    return curTime;
+}
+
+v8::Handle<v8::Value> v8Proxy_currentTimeMillis(const v8::Arguments& args)
 {
     if (args.Length() != 0)
     {
-        printf("Error in timeCurrentMillis -- 0 argument expected\n");
+        printf("Error in currentTimeMillis -- 0 argument expected\n");
         exit(1);
     }
 
-    return v8::Number::New(v8::internal::OS::TimeCurrentMillis());
+    return v8::Number::New(currentTimeMillis());
 }
 
 #define ACTIVATE_HEAP_PROFILING_not
@@ -981,6 +991,8 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(shellCommand);
     else if (strcmp(funcName, "readConsole") == 0)
         address = (FPTR)(readConsole);
+    else if (strcmp(funcName, "currentTimeMillis") == 0)
+        address = (FPTR)(currentTimeMillis);
     else if (strcmp(funcName, "rawAllocMemoryBlock") == 0)
         address = (FPTR)(allocMemoryBlock);
     else if (strcmp(funcName, "rawFreeMemoryBlock") == 0)
@@ -1039,6 +1051,9 @@ v8::Handle<v8::Value> pauseV8Profile(const v8::Arguments& args)
 
 void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
 {
+    // Store the initialization time
+    initTime = v8::internal::OS::TimeCurrentMillis();
+
     global_template->Set(
         v8::String::New("writeFile"), 
         v8::FunctionTemplate::New(v8Proxy_writeFile)
@@ -1060,8 +1075,8 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     );
 
     global_template->Set(
-        v8::String::New("timeCurrentMillis"), 
-        v8::FunctionTemplate::New(v8Proxy_timeCurrentMillis)
+        v8::String::New("currentTimeMillis"), 
+        v8::FunctionTemplate::New(v8Proxy_currentTimeMillis)
     );
 
     global_template->Set(
