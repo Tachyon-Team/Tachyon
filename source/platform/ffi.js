@@ -942,6 +942,13 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'currentTimeMillis',
+        [],
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'rawAllocMemoryBlock', 
         [new CIntAsInt(IRType.pint), new CBoolAsBool()], 
         new CPtrAsPtr(),

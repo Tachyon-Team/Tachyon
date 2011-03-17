@@ -395,13 +395,13 @@ function measurePerformance(bucket, thunk)
 
     perfBuckets = perfInfo.buckets;
 
-    var start_time = timeCurrentMillis();
+    var start_time = currentTimeMillis();
     var start_bytes_alloc = bytesAllocated();
 
     var result = thunk();
 
     var bytes_alloc = bytesAllocated() - start_bytes_alloc;
-    var time = timeCurrentMillis() - start_time;
+    var time = currentTimeMillis() - start_time;
 
     perfBuckets = perfBucketsOld;
 

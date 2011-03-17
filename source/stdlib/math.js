@@ -90,7 +90,7 @@ The length property of the max method is 2.
 */
 Math.max = function ()
 {
-    var m = -MAX_FIXNUM;
+    var m = MIN_FIXNUM;
 
     for (var i = 0; i < arguments.length; ++i)
         if (arguments[i] > m)

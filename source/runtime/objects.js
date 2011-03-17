@@ -12,7 +12,8 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 // FIXME: some variables are currently defined globally here because from
 // inside V8, we cannot access a previously defined static environment. This
 // will no longer be a problem once Tachyon is bootstrapped.
-var MAX_FIXNUM = ~(-1<<30); // Compute 2^30-1 without overflowing fixnum range
+var MAX_FIXNUM = ~(-1<<29); // Compute 2^29-1 without overflowing fixnum range
+var MIN_FIXNUM = -1<<29;
 
 //
 // TODO: separate object-related code from tag bit code, string code, etc.
@@ -80,7 +81,16 @@ function makeObjectLayouts(params)
     params.staticEnv.regBinding(
         'MAX_FIXNUM',
         ConstValue.getConst(
-            ~(-1 << params.staticEnv.getValue('TAG_NUM_BITS_INT')),
+            ~(-1 << (params.staticEnv.getValue('BOX_NUM_BITS_INT') - 1)),
+            IRType.box
+        )
+    );
+
+    // Minimum value that can be stored in a boxed integer
+    params.staticEnv.regBinding(
+        'MIN_FIXNUM',
+        ConstValue.getConst(
+            -1 << (params.staticEnv.getValue('BOX_NUM_BITS_INT') - 1),
             IRType.box
         )
     );
