@@ -49,16 +49,20 @@ function test()
         return 5;
 
     if (evals_false(null) !== true)
-        return 3;
+        return 6;
     if (evals_false(undefined) !== true)
-        return 3;
+        return 7;
 
+    if (evals_false('') !== true)
+        return 8;
+    if (evals_true('foo') !== true)
+        return 9;
 
+    if (evals_true([]) !== true)
+        return 10;
 
-
-
-
-
+    if (evals_true({}) !== true)
+        return 11;
 
     return 0;
 }
