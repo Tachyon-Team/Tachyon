@@ -91,7 +91,6 @@ function funcToIR(
         astFunc.esc_vars,
         astFunc.funcs,
         astFunc.body,
-        //FIXME: what about astFunc.annotations ?
         astFunc,
         params
     );
@@ -475,9 +474,12 @@ function getIRFuncObj(
     if (astNode.irFunc !== undefined)
         return astNode.irFunc;
 
-    // Create arrays for the argument and closure variables
+    // Arrays for the argument and closure variables
     var argVars = [];
     var closVars = [];
+
+    // Array for the prologue annotations
+    var annotations = [];
 
     // If this is a top-level program node
     if (astNode instanceof Program)
@@ -495,6 +497,10 @@ function getIRFuncObj(
         // Extract the closure variable names
         for (var i in astNode.clos_vars)
             closVars.push(astNode.clos_vars[i].toString());
+
+        // Extract the function annotations
+        for (var i in astNode.annotations)
+            annotations.push(astNode.annotations[i].value);
     }
 
     // Create a new function object for the function
@@ -513,36 +519,6 @@ function getIRFuncObj(
         newFunc.usesArguments = true;
     if (astNode.usesEval)
         newFunc.usesEval = true;
-
-    // TODO: temporary, manually extract function prologue annotations
-
-    // FIXME: Now the parser puts a list of the annotations in
-    // astNode.annotations when astNode is a FunctionExpr.  So use it.
-
-    // FIXME: What should be done with a block???  Can annotations
-    // appear in blocks also?  In that case, the parser should have
-    // a node for "body" (function body, or block body) and store the
-    // annotations there.
-
-    var annotations = [];
-    var bodyStmts = 
-        (astNode instanceof FunctionExpr)?
-        astNode.body:
-        astNode.block.statements;
-    ;
-    for (var i = 0; i < bodyStmts.length; ++i)
-    {
-        var stmt = bodyStmts[i];
-
-        if (
-            stmt instanceof ExprStatement && 
-            stmt.expr instanceof Literal &&
-            typeof stmt.expr.value === 'string'
-        )
-        {
-            annotations.push(stmt.expr.value);
-        }
-    }
 
     // For each annotation
     for (var i = 0; i < annotations.length; ++i)

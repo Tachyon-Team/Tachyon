@@ -177,6 +177,17 @@ tests.programs.basic_shift = genTest(
 );
 
 /**
+Test of limits of integer overflow handling.
+*/
+tests.programs.basic_ovf = genTest(
+    'programs/basic_ovf/basic_ovf.js',
+    'proxy',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 Test of basic optimization patterns.
 */
 tests.programs.basic_opts = genTest(
@@ -193,6 +204,17 @@ Test of assignment expressions.
 tests.programs.basic_assign = genTest(
     'programs/basic_assign/basic_assign.js',
     'proxy',
+    [],
+    0,
+    'clientParams'
+);
+
+/**
+Test of boolean value evaluation.
+*/
+tests.programs.basic_bool_eval = genTest(
+    'programs/basic_bool_eval/basic_bool_eval.js',
+    'test',
     [],
     0,
     'clientParams'
@@ -423,6 +445,16 @@ tests.programs.nqueens = genTest(
 );
 
 /**
+Closure variable initialization.
+*/
+tests.programs.clos_init = genTest(
+    'programs/clos_init/clos_init.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Closure variable capture.
 */
 tests.programs.clos_capt = genTest(
@@ -603,6 +635,16 @@ tests.programs.es5_cmp = genTest(
 );
 
 /**
+Standard library math code tests.
+*/
+tests.programs.stdlib_math = genTest(
+    'programs/stdlib_math/stdlib_math.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Standard library array code tests.
 */
 tests.programs.stdlib_arrays = genTest(
@@ -666,6 +708,21 @@ tests.programs.tachyon_num = genTest(
     'test',
     [],
     0
+);
+
+/**
+Tachyon machine code block test code.
+*/
+tests.programs.tachyon_mcb = genTest(
+    [
+        'utility/debug.js',
+        'platform/mcb.js',
+        'programs/tachyon_mcb/tachyon_mcb.js'
+    ],
+    'test',
+    [],
+    0,
+    'hostParams'
 );
 
 /**

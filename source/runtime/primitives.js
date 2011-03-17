@@ -418,6 +418,18 @@ function i8(boxVal)
     return iir.icast(IRType.i8, unboxInt(boxVal));
 }
 
+/**
+Cast a boxed integer value to the u8 type
+*/
+function u8(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:ret u8";
+
+    // Unbox the integer and cast it
+    return iir.icast(IRType.u8, unboxInt(boxVal));
+}
+
 //=============================================================================
 //
 // Utility functions

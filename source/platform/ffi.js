@@ -747,7 +747,7 @@ function makeBridge(
 }
 
 // If we are running inside Tachyon
-if (config.inTachyon)
+if (RUNNING_IN_TACHYON)
 {
     /**
     Call a Tachyon function through a C FFI wrapper

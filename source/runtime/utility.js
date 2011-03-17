@@ -30,7 +30,7 @@ function assert(testVal, errorStr)
     "tachyon:static";
     "tachyon:noglobal";
 
-    if (testVal !== true)
+    if (!testVal)
     {
         error(errorStr);
     }

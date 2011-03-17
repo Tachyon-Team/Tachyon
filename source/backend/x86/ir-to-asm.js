@@ -2439,8 +2439,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
     assert(
         dest.type === x86.type.REG, 
         "Destination should be a register"
-    );
-            
+    );   
 
     if (opnds[0] === dest && srcWidth === dstWidth)
     {
@@ -2451,7 +2450,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.
         mov(opnds[0], dest);
     }
-    else if (srcWidth > dstWidth)
+    else if (srcWidth > dstWidth || this.uses[0].type.isUnsigned())
     {
         if (opnds[0].type === x86.type.REG)
         {
@@ -2462,7 +2461,8 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.
             mov(opnds[0], dest.subReg(dstWidth), dstWidth);
         }
-    } else
+    } 
+    else
     {
         // Always do a sign extension
         if (opnds[0].type === x86.type.REG)

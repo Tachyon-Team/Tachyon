@@ -10,10 +10,10 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // If we are running inside Tachyon
-if (config.inTachyon)
+if (RUNNING_IN_TACHYON)
 {
     /**
-    Allocate a machine code block.
+    Allocate a memory block.
     */
     var allocMemoryBlock = function (size, exec)
     {
@@ -30,7 +30,7 @@ if (config.inTachyon)
     };
 
     /**
-    Free a machine code block.
+    Free a memory block.
     */
     var freeMemoryBlock = function (blockObj)
     {
@@ -79,7 +79,7 @@ if (config.inTachyon)
     };
 
     /**
-    Write a byte to a machine code block.
+    Write a byte to a memory block.
     */
     var writeToMemoryBlock = function (blockObj, index, byteVal)
     {
@@ -101,12 +101,41 @@ if (config.inTachyon)
         );
 
         assert (
-            byteVal > 0 && byteVal <= 255,
-            'byte value out of range'
+            byteVal >= 0 && byteVal <= 255,
+            "byte value '" + byteVal + "' out of range"
         );
 
         // Store the value in the block
-        iir.store(IRType.i8, ptr, unboxInt(index), i8(byteVal));
+        iir.store(IRType.u8, ptr, unboxInt(index), u8(byteVal));
+    };
+
+    /**
+    Read a byte from a memory block.
+    */
+    var readFromMemoryBlock = function (blockObj, index)
+    {
+        "tachyon:noglobal";
+
+        var mcb = blockObj.mcb;
+
+        assert (
+            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            'invalid mcb reference'
+        );
+
+        var ptr = get_memblock_ptr(mcb);
+        var size = iir.icast(IRType.pint, get_memblock_size(mcb));
+
+        assert (
+            boolToBox(unboxInt(index) < size),
+            'invalid index in mcb'
+        );
+
+        // Load the value from the block
+        var byteVal = iir.load(IRType.u8, ptr, unboxInt(index));
+
+        // Box the byte value
+        return boxInt(iir.icast(IRType.pint, byteVal));
     };
 }
 
@@ -114,7 +143,7 @@ if (config.inTachyon)
 else
 {
     /**
-    Write a byte to a machine code block.
+    Write a byte to a memory block.
     */
     var writeToMemoryBlock = function (blockObj, index, byteVal)
     {
@@ -124,6 +153,14 @@ else
         );
 
         blockObj[index] = byteVal;
+    };
+
+    /**
+    Read a byte from a memory block.
+    */
+    var readFromMemoryBlock = function (blockObj, index)
+    {
+        return blockObj[index];
     };
 }
 

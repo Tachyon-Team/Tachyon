@@ -2,7 +2,6 @@
 
 #JavaScript VM program
 JSVMPROG = d8
-
 JSVMPROG64 = d8_64
 
 #JavaScript VM command options
@@ -17,6 +16,7 @@ JSVM64 = $(JSVMPROG64) $(JSVMOPTS)
 
 # JavaScript VM command with rlwrap
 RLWJSVM = rlwrap $(JSVM)
+RLWJSVM64 = rlwrap $(JSVM64)
 
 # For bootstrapping with Tachyon JavaScript to Scheme compiler
 JS2SCM = parser/js2scm
@@ -142,6 +142,9 @@ run:
 shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
+shell64:
+	$(RLWJSVM64) $(MAIN_SRCS) -- -x86_64 true
+
 bt-parser:
 	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
 
@@ -159,7 +162,7 @@ bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x64 true
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x86_64 true
 
 bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
@@ -170,7 +173,7 @@ test:
 	$(JSVM) $(TEST_SRCS)
 
 test64: 
-	$(JSVM64) $(TEST_SRCS) -- -x64 true
+	$(JSVM64) $(TEST_SRCS) -- -x86_64 true
 
 perf: 
 	./bench/d8.sh                                   \

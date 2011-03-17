@@ -342,6 +342,11 @@ void writeToMemoryBlock(uint8_t* block, size_t index, uint8_t byteVal)
     block[index] = byteVal;
 }
 
+uint8_t readFromMemoryBlock(uint8_t* block, size_t index)
+{
+    return block[index];
+}
+
 // Convert an array of bytes to a value
 template <class T> T arrayToVal(const v8::Value* arrayVal)
 {
@@ -524,6 +529,34 @@ v8::Handle<v8::Value> v8Proxy_writeToMemoryBlock(const v8::Arguments& args)
     writeToMemoryBlock(blockPtr, index, byteVal);
 
     return Undefined();
+}
+
+v8::Handle<v8::Value> v8Proxy_readFromMemoryBlock(const v8::Arguments& args)
+{
+    if (args.Length() != 2)
+    {
+        printf("Error in readFromMemoryBlock -- 2 argument expected\n");
+        exit(1);
+    }
+
+    if (!args[0]->IsObject())
+    {
+        printf("Error in readFromMemoryBlock -- invalid object passed\n");
+        exit(1);
+    }
+
+    Local<Object> obj = args[0]->ToObject();
+
+    uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
+    size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
+
+    size_t index = args[1]->IntegerValue();
+
+    assert (index < size);
+
+    uint8_t byte = readFromMemoryBlock(blockPtr, index);
+
+    return v8::Number::New(byte);
 }
 
 v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
@@ -1049,6 +1082,11 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("writeToMemoryBlock"), 
         v8::FunctionTemplate::New(v8Proxy_writeToMemoryBlock)
+    );
+
+    global_template->Set(
+        v8::String::New("readFromMemoryBlock"), 
+        v8::FunctionTemplate::New(v8Proxy_readFromMemoryBlock)
     );
 
     global_template->Set(

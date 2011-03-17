@@ -10,19 +10,17 @@ Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
+Constant to indicate we are running in Tachyon. This will be false
+under d8, true under Tachyon. Note that when running under Tachyon,
+this becomes a static binding, and does not require global variable
+access.
+*/
+const RUNNING_IN_TACHYON = false;
+
+/**
 Configuration object for the compiler
 */
 var config = {};
-
-/**
-Variable to indicate we are running in Tachyon. This will be false
-under d8, true under Tachyon.
-*/
-config.inTachyon = (function ()
-{
-    var iir = { add: function() { return 0; } };
-    return (iir.add(1,2) === 3);
-})();
 
 /**
 Initialize the Tachyon configuration
@@ -75,10 +73,17 @@ function initConfig(is64bitMode)
         staticEnv       : new StaticEnv()
     });
 
-    /**
-    Configuration for the run-time options
-    */
-    config.runtime = {};
+    // Set the running in Tachyon constant for the host config
+    config.hostParams.staticEnv.regBinding(
+        'RUNNING_IN_TACHYON', 
+        ConstValue.getConst(true)
+    );
+
+    // Set the running in Tachyon constant for the bootstrap config
+    config.bootParams.staticEnv.regBinding(
+        'RUNNING_IN_TACHYON', 
+        ConstValue.getConst(true)
+    );
 
     // TODO: object representation choice
     // TODO: GC parameters

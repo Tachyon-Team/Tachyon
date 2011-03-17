@@ -71,8 +71,17 @@ function makeObjectLayouts(params)
         'BOX_NUM_BITS_INT',
         ConstValue.getConst(
             IRType.pint.getSizeBits(params) - 
-            params.staticEnv.getBinding('TAG_NUM_BITS_INT').value,
+            params.staticEnv.getValue('TAG_NUM_BITS_INT'),
             IRType.pint
+        )
+    );
+
+    // Maximum value that can be stored in a boxed integer
+    params.staticEnv.regBinding(
+        'MAX_FIXNUM',
+        ConstValue.getConst(
+            ~(-1 << params.staticEnv.getValue('TAG_NUM_BITS_INT')),
+            IRType.box
         )
     );
 
