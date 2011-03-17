@@ -285,23 +285,34 @@ v8::Handle<v8::Value> v8Proxy_currentTimeMillis(const v8::Arguments& args)
 
 #define ACTIVATE_HEAP_PROFILING_not
 
-extern "C" {
+extern "C" 
+{
 #ifdef ACTIVATE_HEAP_PROFILING
-extern double bytes_allocated, bytes_alive_at_last_gc; // defined in src/heap.cc
-#else
-static double bytes_allocated = 0, bytes_alive_at_last_gc = 0;
+    extern double bytes_allocated, bytes_alive_at_last_gc; // defined in src/heap.cc
 #endif
 }
 
-v8::Handle<v8::Value> v8Proxy_bytesAllocated(const v8::Arguments& args)
+v8::Handle<v8::Value> v8Proxy_memAllocatedKBs(const v8::Arguments& args)
 {
     if (args.Length() != 0)
     {
-        printf("Error in bytesAllocated -- 0 argument expected\n");
+        printf("Error in memAllocatedKBs -- 0 argument expected\n");
         exit(1);
     }
 
-    return v8::Number::New(bytes_allocated + (v8::internal::Heap::SizeOfObjects()-bytes_alive_at_last_gc));
+#ifdef ACTIVATE_HEAP_PROFILING
+
+    double allocatedBytes = bytes_allocated + (v8::internal::Heap::SizeOfObjects()-bytes_alive_at_last_gc);
+
+    int allocatedKBs = int(allocatedBytes / 1024);
+
+    return v8::Number::New(allocatedKBs);
+
+#else
+
+    return v8::Number::New(0);
+
+#endif
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1080,8 +1091,8 @@ void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
     );
 
     global_template->Set(
-        v8::String::New("bytesAllocated"), 
-        v8::FunctionTemplate::New(v8Proxy_bytesAllocated)
+        v8::String::New("memAllocatedKBs"), 
+        v8::FunctionTemplate::New(v8Proxy_memAllocatedKBs)
     );
 
     global_template->Set(

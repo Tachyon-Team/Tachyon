@@ -67,6 +67,23 @@ function isGlobalObj(obj)
 }
 
 /**
+Get the amount of memory allocated in KBs
+*/
+function memAllocatedKBs()
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    var ctx = iir.get_ctx();
+
+    var allocPtr = get_ctx_allocptr(ctx);
+    var heapStart = get_ctx_heapstart(ctx);
+    var heapSizeKBs = (allocPtr - heapStart) / pint(1024);
+
+    return boxInt(heapSizeKBs);
+}
+
+/**
 Print information about the state of the Tachyon VM
 */
 function printTachyonState()
@@ -76,9 +93,7 @@ function printTachyonState()
 
     var ctx = iir.get_ctx();
 
-    var allocPtr = get_ctx_allocptr(ctx);
-    var heapStart = get_ctx_heapstart(ctx);
-    var heapSize = (allocPtr - heapStart) / pint(1024);
+    var heapSizeKB = memAllocatedKBs();
 
     var strtbl = get_ctx_strtbl(ctx);
     var numStrings = iir.icast(IRType.pint, get_strtbl_numstrs(strtbl));
@@ -86,7 +101,7 @@ function printTachyonState()
     var globalobj = get_ctx_globalobj(ctx);
     var numGlobals = iir.icast(IRType.pint, get_obj_numprops(globalobj));
 
-    printBox('Heap size  : ' + boxInt(heapSize) + ' KB');
+    printBox('Heap size  : ' + heapSizeKB + ' KB');
     printBox('Num strings: ' + boxInt(numStrings));
     printBox('Num globals: ' + boxInt(numGlobals));
 }
