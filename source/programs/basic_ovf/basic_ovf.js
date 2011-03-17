@@ -11,6 +11,16 @@ function test(v1, v2, vHalfMax, vHalfMin)
 
 function proxy()
 {
+    assert (
+        MAX_FIXNUM > 10000,
+        'MAX_FIXNUM is wrongly defined'
+    );
+
+    assert (
+        MIN_FIXNUM < -10000,
+        'MIN_FIXNUM is wrongly defined'
+    );
+
     const HALF_MAX = MAX_FIXNUM >> 1;
     const HALF_MIN = MIN_FIXNUM >> 1;
 

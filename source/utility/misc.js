@@ -371,7 +371,7 @@ function findFreeName(nameTaken, startName)
 function PerfInfo()
 {
     this.time = 0;
-    this.bytes_alloc = 0;
+    this.kbs_alloc = 0;
     this.buckets = {};
 }
 
@@ -396,17 +396,17 @@ function measurePerformance(bucket, thunk)
     perfBuckets = perfInfo.buckets;
 
     var start_time = currentTimeMillis();
-    var start_bytes_alloc = bytesAllocated();
+    var start_kbs_alloc = memAllocatedKBs();
 
     var result = thunk();
 
-    var bytes_alloc = bytesAllocated() - start_bytes_alloc;
+    var kbs_alloc = memAllocatedKBs() - start_kbs_alloc;
     var time = currentTimeMillis() - start_time;
 
     perfBuckets = perfBucketsOld;
 
     perfInfo.time += time;
-    perfInfo.bytes_alloc += bytes_alloc;
+    perfInfo.kbs_alloc += kbs_alloc;
 
     return result;
 }
@@ -420,9 +420,11 @@ function reportPerformance()
         var perfInfo = perfBuckets[bucket];
 
         print("");
-        print(bucket + ": " +
-              perfInfo.time/1000 + " s, " +
-              perfInfo.bytes_alloc/(1024*1024) + " MB allocated");
+        print(
+            bucket + ": " +
+            (perfInfo.time/1000) + " s, " +
+            (perfInfo.kbs_alloc/1024) + " MB allocated"
+        );
 
         reportPerformanceSubBuckets(perfInfo, perfInfo.buckets, "");
     }
@@ -441,18 +443,23 @@ function reportPerformanceSubBuckets(overall, buckets, indent)
         sortedBuckets.push(bucket);
 
     sortedBuckets = sortedBuckets.sort(
-                        function (x, y)
-                        { return buckets[x].time < buckets[y].time; });
+        function (x, y)
+        {
+            return buckets[x].time < buckets[y].time; 
+        }
+    );
 
     for (var i = 0; i<sortedBuckets.length; i++)
     {
         var bucket = sortedBuckets[i];
         var perfInfo = buckets[bucket];
 
-        print(indent +
-              "time=" + Math.floor(perfInfo.time*100/overall.time) + "% " +
-              "alloc=" + Math.floor(perfInfo.bytes_alloc*100/overall.bytes_alloc) + "%" +
-              " -- " + bucket);
+        print(
+            indent +
+            "time=" + Math.floor(100*perfInfo.time/overall.time) + "% " +
+            "alloc=" + Math.floor(100*perfInfo.kbs_alloc/overall.kbs_alloc) + "%" +
+            " -- " + bucket
+        );
 
         reportPerformanceSubBuckets(overall, perfInfo.buckets, indent);
     }
