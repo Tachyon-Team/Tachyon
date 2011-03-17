@@ -722,7 +722,7 @@ function extract_annotations(body)
         }
     }
 
-    //body.splice(0, i); // remove the annotations at head of body
+    body.splice(0, i); // remove the annotations at head of body
 
     return annotations;
 }

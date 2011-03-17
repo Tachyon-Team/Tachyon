@@ -210,6 +210,17 @@ tests.programs.basic_assign = genTest(
 );
 
 /**
+Test of boolean value evaluation.
+*/
+tests.programs.basic_bool_eval = genTest(
+    'programs/basic_bool_eval/basic_bool_eval.js',
+    'test',
+    [],
+    0,
+    'clientParams'
+);
+
+/**
 Multiple files/units test
 */
 tests.programs.multi_file = genTest(
