@@ -96,7 +96,7 @@ function lowerIRCFG(cfg, params)
                 )
             );
 
-            // Add the instruction before the load
+            // Add the unbox instruction before the load
             cfg.addInstr(itr, unboxVal);
 
             var instr = itr.get();

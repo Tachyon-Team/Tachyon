@@ -434,6 +434,16 @@ tests.programs.nqueens = genTest(
 );
 
 /**
+Closure variable initialization.
+*/
+tests.programs.clos_init = genTest(
+    'programs/clos_init/clos_init.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Closure variable capture.
 */
 tests.programs.clos_capt = genTest(

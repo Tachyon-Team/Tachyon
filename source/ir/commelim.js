@@ -213,13 +213,14 @@ function commElim(cfg, maxItrs)
                 var valNo = getValNo(instr);            
 
                 // If this instruction writes memory, kill any reaching instruction
-                // that reads memory, except get_ctx
+                // that reads or writes memory, except get_ctx
                 if (instr.writesMem())
                 {
                     for (var j = 0; j < mustReachCur.length; ++j)
                     {
                         var rinstr = mustReachCur[j];
-                        if (rinstr.readsMem() && !(rinstr instanceof GetCtxInstr))
+                        if ((rinstr.readsMem() || rinstr.writesMem()) && 
+                            !(rinstr instanceof GetCtxInstr))
                         {
                             //print('killing: ' + rinstr);
                             //print('with: ' + instr);
@@ -335,7 +336,7 @@ function commElim(cfg, maxItrs)
             if ((instr instanceof CallInstr || !instr.isBranch()) && 
                 rinstr !== undefined && !arraySetHas(remSet, rinstr))
             {
-                /*     
+                /*   
                 print('********************');
                 print(instr + ' ==> ' + rinstr);
                 */
