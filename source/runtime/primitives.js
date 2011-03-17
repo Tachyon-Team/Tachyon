@@ -123,7 +123,7 @@ function boxIsObj(boxVal)
     "tachyon:ret bool";
 
     // Compare the reference tag
-    return getRefTag(boxVal) >= TAG_ARRAY;
+    return getRefTag(boxVal) === TAG_OBJECT;
 }
 
 /**
@@ -2593,7 +2593,7 @@ function instanceOf(obj, ctor)
 { 
     "tachyon:static";
     
-    if (boxIsObj(obj) === FALSE_BOOL)
+    if (boxIsObjExt(obj) === FALSE_BOOL)
         return false;
 
     assert (

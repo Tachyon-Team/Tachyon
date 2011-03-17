@@ -3749,7 +3749,7 @@ function insertConstructIR(context, funcVal, argVals)
     var protoMerge = context.cfg.getNewBlock('proto_merge');
     var testVal = insertPrimCallIR(
         context,
-        'boxIsObj',
+        'boxIsObjExt',
         [funcProto]
     );
     context.addInstr(
@@ -3830,7 +3830,7 @@ function insertConstructIR(context, funcVal, argVals)
     var retMerge = context.cfg.getNewBlock('ret_merge');
     var testVal = insertPrimCallIR(
         context,
-        'boxIsObj',
+        'boxIsObjExt',
         [retVal]
     );
     context.addInstr(
