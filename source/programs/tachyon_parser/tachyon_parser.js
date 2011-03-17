@@ -1,5 +1,6 @@
 function test()
 {
+    printTachyonState();
     print("Opening string port");
     
     var port = new String_input_port(
@@ -47,6 +48,7 @@ function test()
     print(exp_str);
     //assert(pp_str === exp_str, "Invalid string from parsing " + pp_str + " expected " + exp_str);
 
+    printTachyonState();
     if (pp_str === exp_str)
     {
         return 0;

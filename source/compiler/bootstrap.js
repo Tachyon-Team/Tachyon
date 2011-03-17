@@ -401,14 +401,19 @@ function initRuntime(params)
     print('Initializing run-time');
 
     // Allocate a 512MB heap
-    var heapSize = Math.pow(2, 29);
+    print('Computing heap size');
+    var heapSize = params.heapSize;
+    print('Allocating memory');
     var heapBlock = allocMemoryBlock(heapSize, false);
+    print('Retrieving block address');
     var heapAddr = getBlockAddr(heapBlock, 0);
 
     // Get the heap initialization function
+    print('Get heap initialization function');
     var initHeap = params.staticEnv.getBinding('initHeap');
 
     // Create a bridge to call the heap init function
+    print('Creating bridge to call the heap init function');
     var initHeapBridge = makeBridge(
         initHeap,
         params,
@@ -417,6 +422,7 @@ function initRuntime(params)
     );
 
     // Initialize the heap
+    print('Calling init heap');
     var ctxPtr = initHeapBridge(
         asm.address.nullAddr(params.target.ptrSizeBits).getBytes(),
         heapAddr,
@@ -427,9 +433,11 @@ function initRuntime(params)
     params.ctxPtr = ctxPtr;
 
     // Get the string allocation function
+    print('Get the string allocation function');
     var getStrObj = params.staticEnv.getBinding('getStrObj');
 
     // Create a bridge to call the string allocation function
+    print('Creating bridge to the getStrObj');
     var getStrObjBridge = makeBridge(
         getStrObj,
         params,
