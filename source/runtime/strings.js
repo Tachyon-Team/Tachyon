@@ -424,96 +424,11 @@ function getIntStr(intVal)
     "tachyon:noglobal";
     "tachyon:arg intVal pint";
 
-    // If this integer value can't be interpreted as a string hash code
-    if (intVal < pint(0) || intVal >= iir.icast(IRType.pint, HASH_CODE_STR_OFFSET))
-    {
-        // Create a string for the integer value
-        var strObj = intToStr(intVal);
-
-        // Attempt to find the string in the string table
-        return getTableStr(strObj);
-    }
-
-    //
-    // Hash table lookup
-    //
-
-    // Get a pointer to the context
-    var ctx = iir.get_ctx();
-
-    // Get a pointer to the string table
-    var strtbl = get_ctx_strtbl(ctx);
-
-    // Get the size of the string table
-    var tblSize = iir.icast(
-        IRType.pint,
-        get_strtbl_size(strtbl)
-    );
-
-    // Get the hash table index for this hash value
-    // compute this using unsigned modulo to always obtain a positive value
-    var hashIndex = iir.icast(
-        IRType.pint,
-        iir.icast(IRType.u32, intVal) % iir.icast(IRType.u32, tblSize)
-    );
-
-    // Until the key is found, or a free slot is encountered
-    while (true)
-    {
-        // Get the string value at this hash slot
-        var strVal = get_strtbl_tbl(strtbl, hashIndex);
-
-        // If we have reached an empty slot
-        if (strVal === UNDEFINED)
-        {
-            break;
-        }
-
-        // FIXME
-        // Otherwise, if this is the string we want
-        else if (get_str_hash(strVal) === iir.icast(IRType.u32, intVal))
-        {
-            // Return a reference to the string we found in the table
-            return strVal;
-        }
-
-        // Move to the next hash table slot
-        hashIndex = (hashIndex + pint(1)) % tblSize;
-    }
-
-    //
-    // String not found in table
-    //
-
     // Create a string for the integer value
     var strObj = intToStr(intVal);
 
-    //
-    // Hash table updating
-    //
-
-    // Set the corresponding key and value in the slot
-    set_strtbl_tbl(strtbl, hashIndex, strObj);
-
-    // Get the number of strings and increment it
-    var numStrings = get_strtbl_numstrs(strtbl);
-    numStrings++;
-    set_strtbl_numstrs(strtbl, numStrings);
-    numStrings = iir.icast(IRType.pint, numStrings);
-
-    // Test if resizing of the string table is needed
-    // numStrings > ratio * tblSize
-    // numStrings > num/denom * tblSize
-    // numStrings * denom > tblSize * num
-    if (numStrings * STR_TBL_MAX_LOAD_DENOM >
-        tblSize * STR_TBL_MAX_LOAD_NUM)
-    {
-        // Extend the string table
-        extStrTable(strtbl, tblSize, numStrings);
-    }
-
-    // Return a reference to the string object created
-    return strObj;
+    // Attempt to find the string in the string table
+    return getTableStr(strObj);
 }
 
 /**

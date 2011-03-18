@@ -397,9 +397,19 @@ tests.programs.str_cat_str = genTest(
 /**
 String concatenation with integers.
 */
-tests.programs.str_cat_str = genTest(
+tests.programs.str_cat_int = genTest(
     'programs/str_cat_int/str_cat_int.js',
     'foo',
+    [],
+    0
+);
+
+/**
+String conversion from/to integer
+*/
+tests.programs.str_int_conv = genTest(
+    'programs/str_int_conv/str_int_conv.js',
+    'test',
     [],
     0
 );
