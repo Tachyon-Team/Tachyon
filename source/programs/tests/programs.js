@@ -635,6 +635,17 @@ tests.programs.es5_cmp = genTest(
 );
 
 /**
+Standard library objects code tests.
+*/
+tests.programs.stdlib_objects = genTest(
+    'programs/stdlib_objects/stdlib_objects.js',
+    'test',
+    [],
+    0
+);
+
+
+/**
 Standard library function code tests.
 */
 tests.programs.stdlib_functions = genTest(
