@@ -35,7 +35,7 @@ function initConfig(is64bit)
     // Determine the heap size
     var heapSize;
     if (is64bit)
-        heapSize = Math.pow(2,30); // 1GB
+        heapSize = Math.pow(2,31); // 2GB
     else if (RUNNING_IN_TACHYON)
         heapSize = MAX_FIXNUM;
     else

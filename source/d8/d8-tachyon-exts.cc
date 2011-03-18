@@ -689,7 +689,7 @@ union TachValCaster
     void* ptrVal;
 };
 
-int tachValToInt(const TachVal& v)
+intptr_t tachValToInt(const TachVal& v)
 {
     return v;
 }
@@ -701,7 +701,7 @@ void* tachValToPtr(const TachVal& v)
     return c.ptrVal;
 }
 
-TachVal tachValFromInt(int i)
+TachVal tachValFromInt(intptr_t i)
 {
     return i;
 }
@@ -892,7 +892,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         {
             if (arg->IsNumber())
             {
-                tachArg = tachValFromInt(arg->Int32Value());
+                tachArg = tachValFromInt((intptr_t)arg->NumberValue());
                 //printf("Arg %d = %d\n", int(i), tachValToInt(tachArg));
             }
             else
@@ -967,9 +967,9 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     return v8RetVal;
 }
 
-void printInt(int val)
+void printInt(intptr_t val)
 {
-    printf("%d\n", val);
+    printf("%ld\n", val);
 }
 
 void printPtr(void* ptr)
