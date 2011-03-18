@@ -52,6 +52,20 @@ function printBox(val)
 }
 
 /**
+Get a reference to the global object
+*/
+function getGlobalObj()
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+
+    // Get a reference to the global object
+    var globalObj = get_ctx_globalobj(iir.get_ctx());
+
+    return globalObj;
+}
+
+/**
 Test of an object is the global object
 */
 function isGlobalObj(obj)
@@ -60,7 +74,7 @@ function isGlobalObj(obj)
     "tachyon:noglobal";
 
     // Get a reference to the global object
-    var globalObj = get_ctx_globalobj(iir.get_ctx());
+    var globalObj = getGlobalObj();
 
     // Test if our object is the global object
     return (obj === globalObj);

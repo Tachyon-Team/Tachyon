@@ -635,6 +635,16 @@ tests.programs.es5_cmp = genTest(
 );
 
 /**
+Standard library function code tests.
+*/
+tests.programs.stdlib_functions = genTest(
+    'programs/stdlib_functions/stdlib_functions.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Standard library math code tests.
 */
 tests.programs.stdlib_math = genTest(
