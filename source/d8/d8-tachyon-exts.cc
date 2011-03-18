@@ -974,6 +974,27 @@ int sum2Ints(int v1, int v2)
     return v1 + v2;
 }
 
+void* testCallFFI(void* ctxPtr, void* p1, int v1)
+{
+    printf("self ptr: %p\n", (void*)(intptr_t)testCallFFI);
+    printf("ctx ptr: %p\n", ctxPtr);
+
+    printf("p1 ptr: %p\n", p1);
+
+    void* val = p1;
+    for (int i = 0; i < (int)sizeof(val); ++i) 
+    {
+        uint8_t* bytePtr = ((uint8_t*)&val) + i;
+        int byteVal = *bytePtr;
+
+        printf("p1 byte #%i = %i\n", i, byteVal);
+    }
+
+    printf("v1: %i\n", v1);
+
+    return p1;
+}
+
 typedef void (*FPTR)();
 
 FPTR getFuncAddr(const char* funcName)
@@ -1012,6 +1033,8 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(gcCollect);
     else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
         address = (FPTR)(callTachyonFFI);
+    else if (strcmp(funcName, "testCallFFI") == 0)
+        address = (FPTR)(testCallFFI);
     else if (strcmp(funcName, "getFuncAddr") == 0)
         address = (FPTR)(getFuncAddr);
 

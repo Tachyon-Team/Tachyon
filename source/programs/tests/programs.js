@@ -747,6 +747,21 @@ tests.programs.tachyon_mcb = genTest(
 );
 
 /**
+Tachyon bridge test code.
+*/
+tests.programs.tachyon_bridge = genTest(
+    [
+        'programs/tachyon_bridge/tachyon_bridge.js',
+        'utility/debug.js',
+        'platform/ffi.js',
+    ],
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 Print the state of the Tachyon VM.
 */
 tests.programs.tachyon_state = genTest(
