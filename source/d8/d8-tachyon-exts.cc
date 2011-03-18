@@ -969,7 +969,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
 
 void printInt(intptr_t val)
 {
-    printf("%ld\n", val);
+    printf("%ld\n", (long int)val);
 }
 
 void printPtr(void* ptr)

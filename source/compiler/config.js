@@ -35,11 +35,17 @@ function initConfig(is64bit)
     // Determine the heap size
     var heapSize;
     if (is64bit)
-        heapSize = Math.pow(2,31); // 2GB
-    else if (RUNNING_IN_TACHYON)
-        heapSize = MAX_FIXNUM;
+    {
+        // Tachyon 64bit => 2GB
+        heapSize = Math.pow(2,31);
+    }
     else
-        heapSize = Math.pow(2,30); // 1GB
+    {        
+        if (RUNNING_IN_TACHYON)
+            heapSize = MAX_FIXNUM;      // Tachyon under Tachyon 32-bit => 512MB
+        else
+            heapSize = Math.pow(2,30);  // Tachyon under v8 32bit => 1GB
+    }
 
     /**
     Compilation parameters for the currently running Tachyon VM.
