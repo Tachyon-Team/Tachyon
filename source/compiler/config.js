@@ -25,24 +25,33 @@ var config = {};
 /**
 Initialize the Tachyon configuration
 */
-function initConfig(is64bitMode)
+function initConfig(is64bit)
 {
-    if (is64bitMode === undefined)
-    {
-        is64bitMode = false;
-    }
+    if (is64bit === undefined)
+        is64bit = false;
+
+    print('Initializing config (' + (is64bit? '64':'32') + 'bit)');
+
+    // Determine the heap size
+    var heapSize;
+    if (is64bit)
+        heapSize = Math.pow(2,32); // 4GB
+    else if (RUNNING_IN_TACHYON)
+        heapSize = MAX_FIXNUM;
+    else
+        heapSize = Math.pow(2,30); // 1GB
 
     /**
     Compilation parameters for the currently running Tachyon VM.
     The tachyon code has special privileges.
     */
     config.hostParams = new CompParams({
-        target          : is64bitMode ? Target.x86_64 : Target.x86_32,
+        target          : is64bit? Target.x86_64 : Target.x86_32,
         tachyonSrc      : true,
         debug           : true,
         parserWarnings  : true,
         debugTrace      : false,
-        heapSize        : MAX_FIXNUM,
+        heapSize        : heapSize,
         staticEnv       : new StaticEnv()
     });
 
@@ -66,12 +75,12 @@ function initConfig(is64bitMode)
     Compilation parameters used to bootstrap Tachyon
     */
     config.bootParams = new CompParams({
-        target          : is64bitMode ? Target.x86_64 : Target.x86_32,
+        target          : is64bit ? Target.x86_64 : Target.x86_32,
         tachyonSrc      : true,
         debug           : true,
         parserWarnings  : true,
         debugTrace      : false,
-        heapSize        : (RUNNING_IN_TACHYON ? MAX_FIXNUM:Math.pow(2,30)),
+        heapSize        : heapSize,
         staticEnv       : new StaticEnv()
     });
 

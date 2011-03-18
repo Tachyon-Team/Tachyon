@@ -469,6 +469,7 @@ function getIntStr(intVal)
             break;
         }
 
+        // FIXME
         // Otherwise, if this is the string we want
         else if (get_str_hash(strVal) === iir.icast(IRType.u32, intVal))
         {

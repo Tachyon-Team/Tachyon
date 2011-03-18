@@ -400,13 +400,14 @@ function initRuntime(params)
 {
     print('Initializing run-time');
 
-    // Allocate a 512MB heap
-    print('Computing heap size');
+    // Allocate the heap
     var heapSize = params.heapSize;
-    print('Allocating memory');
+    print('Allocating heap (' + heapSize + ' bytes)');
     var heapBlock = allocMemoryBlock(heapSize, false);
     print('Retrieving block address');
     var heapAddr = getBlockAddr(heapBlock, 0);
+
+    print('Heap address: ' + heapAddr);
 
     // Get the heap initialization function
     print('Get heap initialization function');

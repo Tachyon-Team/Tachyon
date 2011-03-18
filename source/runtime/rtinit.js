@@ -32,21 +32,36 @@ function initHeap(heapPtr, heapSize)
     iir.set_ctx(ctx);
     set_ctx_allocptr(ctx, ctxPtr);
 
+    // Compute the heap limit pointer
+    var heapLimit = heapPtr + heapSize;
+
+    //printInt(heapSize);
+    //printPtr(heapPtr);
+    //printPtr(heapLimit);
+
     // Set the heap pointer and heap limit
     set_ctx_heapstart(ctx, heapPtr);
-    set_ctx_heaplimit(ctx, heapPtr + heapSize);
+    set_ctx_heaplimit(ctx, heapLimit);
 
     // Allocate the context object, incrementing the allocation pointer
     var ctx = alloc_ctx();
 
+    //printInt(pint(333));
+
     // Allocate the global object
     var globalObj = newObject(null);
+
+    //printInt(pint(444));
 
     // Set the global object reference in the context object
     set_ctx_globalobj(ctx, globalObj);
 
+    //printInt(pint(555));
+
     // Initialize the string hash consing system
     initStrings();
+
+    //printInt(pint(666));
 
     // Return a pointer to the context object
     return ctx;

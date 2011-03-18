@@ -1564,7 +1564,6 @@ LtInstr.prototype.genCodeCmp = function (tltor, opnds)
         "Invalid link object as operand"
     );
        
-
     // Get the operand width
     var width;
     if (opnds[0].width !== undefined)
@@ -1586,11 +1585,7 @@ LtInstr.prototype.genCodeCmp = function (tltor, opnds)
     else if (opnds[0].type === x86.type.IMM_VAL)
     {
         tltor.asm.
-        cmp(opnds[0], dest).
-        mov(tltor.falseVal, dest).
-        cmovnl(tltor.trueVal, dest);
-
-        return;
+        cmp(opnds[0], dest);
     } 
     else
     {
@@ -1604,8 +1599,12 @@ LtInstr.prototype.genCode = function (tltor, opnds)
 
     const dest = this.regAlloc.dest;
     tltor.asm.
-    mov(tltor.falseVal, dest).
-    cmovl(tltor.trueVal, dest);
+    mov(tltor.falseVal, dest);
+
+    if (this.uses[0].type.isSigned() || this.uses[0].type === IRType.box)
+        tltor.asm.cmovl(tltor.trueVal, dest);
+    else
+        tltor.asm.cmovb(tltor.trueVal, dest);
 };
 
 LeInstr.prototype.genCodeCmp = LtInstr.prototype.genCodeCmp;
@@ -1615,8 +1614,12 @@ LeInstr.prototype.genCode = function (tltor, opnds)
 
     const dest = this.regAlloc.dest;
     tltor.asm.
-    mov(tltor.falseVal, dest).
-    cmovle(tltor.trueVal, dest);
+    mov(tltor.falseVal, dest);
+
+    if (this.uses[0].type.isSigned() || this.uses[0].type === IRType.box)
+        tltor.asm.cmovle(tltor.trueVal, dest);
+    else
+        tltor.asm.cmovbe(tltor.trueVal, dest);
 };
 
 GtInstr.prototype.genCodeCmp = LtInstr.prototype.genCodeCmp;
@@ -1626,8 +1629,12 @@ GtInstr.prototype.genCode = function (tltor, opnds)
 
     const dest = this.regAlloc.dest;
     tltor.asm.
-    mov(tltor.falseVal, dest).
-    cmovnle(tltor.trueVal, dest);
+    mov(tltor.falseVal, dest);
+
+    if (this.uses[0].type.isSigned() || this.uses[0].type === IRType.box)
+        tltor.asm.cmovnle(tltor.trueVal, dest);
+    else
+        tltor.asm.cmovnbe(tltor.trueVal, dest);
 };
 
 GeInstr.prototype.genCodeCmp = LtInstr.prototype.genCodeCmp;
@@ -1637,8 +1644,12 @@ GeInstr.prototype.genCode = function (tltor, opnds)
 
     const dest = this.regAlloc.dest;
     tltor.asm.
-    mov(tltor.falseVal, dest).
-    cmovnl(tltor.trueVal, dest);
+    mov(tltor.falseVal, dest);
+
+    if (this.uses[0].type.isSigned() || this.uses[0].type === IRType.box)
+        tltor.asm.cmovnl(tltor.trueVal, dest);
+    else
+        tltor.asm.cmovnb(tltor.trueVal, dest);
 };
 
 EqInstr.prototype.genCodeCmp = function (tltor, opnds)

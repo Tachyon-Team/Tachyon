@@ -694,7 +694,7 @@ function makeBridge(
     retType
 )
 {
-    print('entering makeBridge');
+    //print('entering makeBridge');
 
     assert (
         params instanceof CompParams,
@@ -709,7 +709,7 @@ function makeBridge(
         retType
     );
     
-    print('generating C proxy');
+    //print('generating C proxy');
 
     var wrapper = proxy.genProxy();
 
@@ -719,7 +719,7 @@ function makeBridge(
     var cArgTypes = argTypes.map(function (t) { return t.cTypeName; });
     var cRetType = retType.cTypeName;
 
-    print('getting entry point for proxy');
+    //print('getting entry point for proxy');
 
     // Get pointer to entry point of compiled wrapper function
     var funcPtr = wrapper.linking.getEntryPoint('default').getAddr();
@@ -734,7 +734,7 @@ function makeBridge(
         for (var i = 1; i < arguments.length; ++i)
             argArray.push(arguments[i]);
 
-        print('calling callTachyonFFI');
+        //print('calling callTachyonFFI');
 
         var result = callTachyonFFI.apply(
             null,
@@ -746,7 +746,7 @@ function makeBridge(
             ].concat(argArray)
         );
 
-        print('returned from callTachyonFFI');
+        //print('returned from callTachyonFFI');
 
         //print(result);
 
@@ -836,7 +836,7 @@ if (RUNNING_IN_TACHYON)
             curOffset += PTR_NUM_BYTES;
         }
 
-        puts('calling FFI with rawCallTachyonFFI');
+        //puts('calling FFI with rawCallTachyonFFI');
 
         // Call the function through the FFI interface
         var retValInt = rawCallTachyonFFI(
@@ -846,7 +846,7 @@ if (RUNNING_IN_TACHYON)
             argData
         );
 
-        puts('returned from FFI call');
+        //puts('returned from FFI call');
 
         // Free the argument data
         free(argData);
@@ -920,14 +920,14 @@ function initFFI(params)
 
     regFFI(new CFunction(
         'printInt', 
-        [new CIntAsBox()],
+        [new CIntAsInt(IRType.pint)],
         new CVoid(),
         params
     ));
 
     regFFI(new CFunction(
         'printPtr', 
-        [new CPtrAsBox()],
+        [new CPtrAsPtr()],
         new CVoid(),
         params
     ));

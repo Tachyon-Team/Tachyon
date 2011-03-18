@@ -464,13 +464,19 @@ v8::Handle<v8::Value> v8Proxy_allocMemoryBlock(const v8::Arguments& args)
     size_t allocSize = args[0]->IntegerValue();
     bool execFlag = args[1]->BooleanValue();
 
+    //printf("Allocating memory block (%lu bytes)\n", (unsigned long)allocSize);
+
     uint8_t* block = allocMemoryBlock(allocSize, execFlag);
+
+    //printf("memory allocated\n");
 
     v8::Handle<v8::Object> obj = v8::Object::New();
     
     int arraySize = allocSize;
     if (arraySize > i::ExternalArray::kMaxLength)
         arraySize = i::ExternalArray::kMaxLength;
+
+    //printf("setting indexed properties\n");
 
     // Set the elements to be the external array.
     obj->SetIndexedPropertiesToExternalArrayData(
@@ -482,6 +488,8 @@ v8::Handle<v8::Value> v8Proxy_allocMemoryBlock(const v8::Arguments& args)
     // Set the real array size in a hidden property
     obj->SetHiddenValue(v8::String::New("tachyon::size"), v8::Number::New(allocSize));
         
+    //printf("returning object\n");
+
     return obj;
 }
 
@@ -976,9 +984,9 @@ int sum2Ints(int v1, int v2)
 
 void* testCallFFI(void* ctxPtr, void* p1, int v1)
 {
+    /*
     printf("self ptr: %p\n", (void*)(intptr_t)testCallFFI);
     printf("ctx ptr: %p\n", ctxPtr);
-
     printf("p1 ptr: %p\n", p1);
 
     void* val = p1;
@@ -991,6 +999,7 @@ void* testCallFFI(void* ctxPtr, void* p1, int v1)
     }
 
     printf("v1: %i\n", v1);
+    */
 
     return p1;
 }

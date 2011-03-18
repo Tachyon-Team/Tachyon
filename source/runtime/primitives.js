@@ -484,9 +484,14 @@ function heapAlloc(size)
     // Get the heap limit pointer
     var heapLimit = get_ctx_heaplimit(ctx);
 
+    //printPtr(nextPtr);
+    //printPtr(heapLimit);
+
     // If this allocation exceeds the heap limit
     if (nextPtr >= heapLimit)
     {
+        //printInt(pint(1111111));
+
         // Log that we are going to perform GC
         puts('Performing garbage collection');
 
@@ -503,13 +508,13 @@ function heapAlloc(size)
 
         // Get the new limit pointer
         heapLimit = get_ctx_heaplimit(ctx);
-    }
 
-    // If this allocation still exceeds the heap limit
-    if (nextPtr >= heapLimit)
-    {
-        // Report an error and abort
-        error('allocation exceeds heap limit');
+        // If this allocation still exceeds the heap limit
+        if (nextPtr >= heapLimit)
+        {
+            // Report an error and abort
+            error('allocation exceeds heap limit');
+        }
     }
 
     // Align the next allocation pointer
@@ -807,7 +812,7 @@ function leGeneral(v1, v2)
     var px = boxToPrim(v1);
     var py = boxToPrim(v2);
 
-    // If both values are immediate integers
+    // If both values are boxed integers
     if (boxIsInt(px) && boxIsInt(py))
     {
         // Compare the immediate integers directly without unboxing them
