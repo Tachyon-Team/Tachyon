@@ -92,9 +92,9 @@ function ptrToByteArray(ptr)
 
     for (var i = 0; i < boxInt(PTR_NUM_BYTES); ++i)
     {
-        var byteVal = ptrInt % pint(256);
+        var byteVal = ptrInt & pint(0xff);
 
-        ptrInt /= pint(256);
+        ptrInt >>= pint(8);
 
         array[i] = boxInt(byteVal);
     }
@@ -122,7 +122,7 @@ function byteArrayToPtr(array)
     {
         var byteVal = unboxInt(array[i]);
 
-        ptrInt = pint(256) * ptrInt + byteVal;
+        ptrInt = (ptrInt << pint(8)) + byteVal;
 
         array[i] = boxInt(byteVal);
     }

@@ -2609,7 +2609,7 @@ x86.Assembler.prototype.cmovbe = function (src, dest)
 /** Can be chained */
 x86.Assembler.prototype.cmovnbe= function (src, dest)
 {
-    return this.cmoveGeneral(x86.opcode.cmovnb, "cmovnb", src, dest);
+    return this.cmoveGeneral(x86.opcode.cmovnbe, "cmovnbe", src, dest);
 };
 
 ///** Can be chained */
