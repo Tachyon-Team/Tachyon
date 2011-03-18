@@ -40,6 +40,11 @@ function CompParams(cfgObj)
         'invalid debug trace flag'
     );
 
+    assert(
+        typeof cfgObj.heapSize === "number",
+        'invalid heapSize'
+    );
+
     assert (
         cfgObj.staticEnv instanceof StaticEnv,
         'invalid static environment'
@@ -74,6 +79,12 @@ function CompParams(cfgObj)
     @field
     */
     this.debugTrace = cfgObj.debugTrace;
+
+    /**
+    Heap size for runtime
+    @field
+     */
+    this.heapSize = cfgObj.heapSize;
 
     /**
     Static definitions to be used during compilation

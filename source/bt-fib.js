@@ -1,3 +1,9 @@
+function measurePerformance(msg, fct)
+{
+    //print(msg);
+    fct();
+}
+
 function btfib(is64bit)
 {
     printTachyonState();

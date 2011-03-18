@@ -118,6 +118,7 @@ function getPrimSrcs(params)
     // Declare a variable for the layout source
     var layoutSrc = '';
 
+    print("Generate methods for the instantiable layouts");
     // Generate methods for the instantiable layouts
     for (var l in params.memLayouts)
     {
@@ -132,6 +133,7 @@ function getPrimSrcs(params)
     // Declare a variable for the FFI wrapper source
     var wrapperSrc = '';
 
+    print("Generate wrapper code for the FFI functions");
     // Generate wrapper code for the FFI functions
     for (var f in params.ffiFuncs)
     {
@@ -140,6 +142,7 @@ function getPrimSrcs(params)
         wrapperSrc += func.genWrapper();
     }
 
+    print("Building list of the primitives");
     // Build a list of the primitive source code units
     var primSrcs = [
         // Generated code for the object layouts
@@ -158,6 +161,7 @@ function getPrimSrcs(params)
         'runtime/rtinit.js'
     ];
 
+    print("Returning the primitives");
     return primSrcs;
 }
 
@@ -242,7 +246,8 @@ function getTachyonSrcs(params)
         'backend/x86/config.js',
         'backend/x86/ir-to-asm.js',
         //'main.js'
-        'bt-fib.js'
+        'bt-fib.js',
+        ((params.target === Target.x86_32) ? 'bt-fib32.js' : 'bt-fib64.js')
     ];
 
     //var tachyonSrcs = ['parser/parser.js'];
@@ -396,14 +401,19 @@ function initRuntime(params)
     print('Initializing run-time');
 
     // Allocate a 512MB heap
-    var heapSize = Math.pow(2, 29);
+    print('Computing heap size');
+    var heapSize = params.heapSize;
+    print('Allocating memory');
     var heapBlock = allocMemoryBlock(heapSize, false);
+    print('Retrieving block address');
     var heapAddr = getBlockAddr(heapBlock, 0);
 
     // Get the heap initialization function
+    print('Get heap initialization function');
     var initHeap = params.staticEnv.getBinding('initHeap');
 
     // Create a bridge to call the heap init function
+    print('Creating bridge to call the heap init function');
     var initHeapBridge = makeBridge(
         initHeap,
         params,
@@ -412,6 +422,7 @@ function initRuntime(params)
     );
 
     // Initialize the heap
+    print('Calling init heap');
     var ctxPtr = initHeapBridge(
         asm.address.nullAddr(params.target.ptrSizeBits).getBytes(),
         heapAddr,
@@ -422,9 +433,11 @@ function initRuntime(params)
     params.ctxPtr = ctxPtr;
 
     // Get the string allocation function
+    print('Get the string allocation function');
     var getStrObj = params.staticEnv.getBinding('getStrObj');
 
     // Create a bridge to call the string allocation function
+    print('Creating bridge to the getStrObj');
     var getStrObjBridge = makeBridge(
         getStrObj,
         params,

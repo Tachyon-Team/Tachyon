@@ -42,6 +42,7 @@ function initConfig(is64bitMode)
         debug           : true,
         parserWarnings  : true,
         debugTrace      : false,
+        heapSize        : MAX_FIXNUM,
         staticEnv       : new StaticEnv()
     });
 
@@ -70,6 +71,7 @@ function initConfig(is64bitMode)
         debug           : true,
         parserWarnings  : true,
         debugTrace      : false,
+        heapSize        : (RUNNING_IN_TACHYON ? MAX_FIXNUM:Math.pow(2,30)),
         staticEnv       : new StaticEnv()
     });
 

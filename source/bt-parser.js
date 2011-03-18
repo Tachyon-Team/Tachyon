@@ -107,7 +107,8 @@ function btparser(is64bit)
         ],
         'test',
         [],
-        0
+        0,
+        'hostParams'
     );
 
     tachyon_parser_test();

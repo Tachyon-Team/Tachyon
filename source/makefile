@@ -159,10 +159,10 @@ gc:
 	gcc -c -o d8/gc-generated.o d8/gc-generated.cc
 
 bootstrap:
-	time $(JSVM) $(MAIN_SRCS) bt-fib32.js -- -bootstrap true
+	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) bt-fib64.js -- -bootstrap true -x86_64 true
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x86_64 true
 
 bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
