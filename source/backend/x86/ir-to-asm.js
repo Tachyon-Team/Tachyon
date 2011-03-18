@@ -2647,7 +2647,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     if (tltor.asm.isImmediate(opnds[2]))
     {
         // Store it directly
-        tltor.asm.mov(opnds[2], memLoc, typeSize);
+        MoveInstr.prototype.genMov(tltor, opnds[2], memLoc, typeSize);
     }
 
     // Otherwise, the value to store is in a register
@@ -2717,20 +2717,28 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
 {
     // Configuration imports
     const target = tltor.params.target; 
-    const scratchReg = target.backendCfg.scratchReg;
     const width = target.ptrSizeBits;
 
-    if ((opnds[0].type === x86.type.MEM || 
-         (opnds[0].type === x86.type.LINK && opnds[0].width() === 64)) &&
-        opnds[1].type === x86.type.MEM)
+    this.genMov(tltor, opnds[0], opnds[1], width);
+};
+
+MoveInstr.prototype.genMov = function (tltor, src, dest, width)
+{
+    // Configuration imports
+    const target = tltor.params.target; 
+    const scratchReg = target.backendCfg.scratchReg;
+
+    if ((src.type === x86.type.MEM || 
+         (!tltor.asm.is32bitImm(src))) &&
+        dest.type === x86.type.MEM)
     {
         tltor.asm.
-        mov(opnds[0], scratchReg).
-        mov(scratchReg, opnds[1]);
+        mov(src, scratchReg).
+        mov(scratchReg, dest);
     } else
     {
         tltor.asm.
-        mov(opnds[0], opnds[1], width);
+        mov(src, dest, width);
     }
 };
 
