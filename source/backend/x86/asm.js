@@ -75,7 +75,10 @@ x86.Assembler.prototype.isImmediate = function (obj)
 
 x86.Assembler.prototype.is32bitImm = function (obj)
 {
-    assert(this.isImmediate(obj), "Invalid immediate object");
+    if(!this.isImmediate(obj))
+    {
+        return false;
+    }
 
     if (obj.type === x86.type.IMM_VAL)
     {
@@ -1489,6 +1492,12 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
     /** @ignore general case */
     function general(width)
     {
+        assert(
+            that.is32bitImm(src), 
+            "Immediate value '" + src + 
+             "' should have a width less or equal to 32"
+        );
+
         that.opndPrefixOpnd(width, dest);
         that.
         gen8((width === 8) ? 0xc6 : 0xc7).  // opcode
@@ -1498,8 +1507,8 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
     }
 
     assert((dest.type === x86.type.REG) ?
-            (!width || (dest.width() === width)) : width,
-            "missing or inconsistent operand width '" + width + "'"
+        (!width || (dest.width() === width)) : width,
+        "missing or inconsistent operand width '" + width + "'"
     );
 
     if (dest.type === x86.type.REG)
@@ -1566,6 +1575,7 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
 
     if (src.type === x86.type.IMM_VAL || src.type === x86.type.LINK)
     {
+
         if (op === 17)
         {
             this.movImm(dest, src, width);
