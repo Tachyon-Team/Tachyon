@@ -93,7 +93,7 @@ Object.defineProperty = function (obj, prop, attribs)
     );
 
     if (attribs.hasOwnProperty('value'))
-        obj.prop = attribs.value;
+        obj[prop] = attribs.value;
 };
 
 /**
