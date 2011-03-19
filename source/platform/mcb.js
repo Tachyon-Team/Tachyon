@@ -137,6 +137,23 @@ if (RUNNING_IN_TACHYON)
         // Box the byte value
         return boxInt(iir.icast(IRType.pint, byteVal));
     };
+
+    /**
+     Get memory block size
+     */
+    var getMemoryBlockSize = function (blockObj)
+    {
+        "tachyon:noglobal";
+
+        var mcb = blockObj.mcb;
+
+        assert (
+            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            'invalid mcb reference'
+        );
+
+        return boxInt(iir.icast(IRType.pint, get_memblock_size(mcb)));
+    };
 }
 
 // Otherwise, if we are running inside D8
@@ -161,6 +178,14 @@ else
     var readFromMemoryBlock = function (blockObj, index)
     {
         return blockObj[index];
+    };
+
+    /**
+     Get memory block size
+     */
+    var getMemoryBlockSize = function (blockObj)
+    {
+        return blockObj.length;
     };
 }
 

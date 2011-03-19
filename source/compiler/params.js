@@ -140,5 +140,11 @@ function CompParams(cfgObj)
     @field
     */
     this.printASM = false;
+
+    /**
+     Flag to print the mcb block bytes after linking
+     @field
+     */ 
+    this.printMCB = false;
 }
 

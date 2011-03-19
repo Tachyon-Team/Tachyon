@@ -360,7 +360,9 @@ Scanner.prototype.get_token = function ()
         else if (c === DOUBLEQUOTE_CH || c === QUOTE_CH)
             return this.parse_string();
         else
-            error("unknown token");
+        {
+            error("unknown token: " + c);
+        }
     }
 };
 

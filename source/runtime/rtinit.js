@@ -59,6 +59,17 @@ function initHeap(heapPtr, heapSize)
     return ctx;
 }
 
+function initHeap2(heapPtr, heapSize)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg heapPtr rptr";
+    "tachyon:arg heapSize pint";
+    "tachyon:ret ref";
+
+    return iir.icast(IRType.ref, heapPtr);
+}
+
 /**
 Allocate/get a reference to a float object containing a given value
 @param fpVal 64 bit floating-point value

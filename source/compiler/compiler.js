@@ -90,6 +90,20 @@ function compileAst(ast, params)
     compileIR(ir, params);
     linkIR(ir, params);
 
+    if (params.printMCB)
+    {
+        print("printing MCB information");
+        var blockObj = ir.runtime.mcb;
+        var size = getMemoryBlockSize(blockObj);
+        //var size = blockObj.length;
+        print("MCB " + size + " bytes for " + ir.funcName);
+
+        for (var i = 0; i < size; ++i)
+        {
+            print(readFromMemoryBlock(blockObj, i));
+        }
+    }
+
     // Return the compiled IR function
     return ir;
 };

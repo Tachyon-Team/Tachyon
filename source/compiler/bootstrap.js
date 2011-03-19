@@ -411,10 +411,13 @@ function initRuntime(params)
 
     // Get the heap initialization function
     print('Get heap initialization function');
-    var initHeap = params.staticEnv.getBinding('initHeap');
+    var initHeap = params.staticEnv.getBinding((RUNNING_IN_TACHYON ? 'initHeap2' : 'initHeap'));
 
     // Create a bridge to call the heap init function
     print('Creating bridge to call the heap init function');
+    params.printRegAlloc = true;
+    params.printASM = true;
+    params.printMCB = true;
     var initHeapBridge = makeBridge(
         initHeap,
         params,
@@ -423,12 +426,17 @@ function initRuntime(params)
     );
 
     // Initialize the heap
-    print('Calling init heap');
+    print('Calling ' + initHeap.funcName);
     var ctxPtr = initHeapBridge(
         asm.address.nullAddr(params.target.ptrSizeBits).getBytes(),
         heapAddr,
         heapSize
     );
+    params.printRegAlloc = false;
+    params.printASM = false;
+    params.printMCB = false;
+
+    print('Context pointer: ' + ctxPtr);
     
     // Store the context pointer in the compilation parameters
     params.ctxPtr = ctxPtr;
