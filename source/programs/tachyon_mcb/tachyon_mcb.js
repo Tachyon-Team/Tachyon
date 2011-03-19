@@ -11,7 +11,12 @@ function test()
 {
     var testVals = [0, 15, 152, 223, 255, 243, 0, 13];
 
-    var mcb = allocMemoryBlock(testVals.length, false);
+    var mcb = allocMemoryBlock(testVals.length, true);
+
+    var addr = getBlockAddr(mcb, 0);
+
+    if (addr.length !== boxInt(PTR_NUM_BYTES))
+        return 1;
 
     for (var i = 0; i < testVals.length; ++i)
     {
@@ -29,7 +34,7 @@ function test()
                 ', expected ' + testVals[i]
             );
 
-            return 1;
+            return 2;
         }
     }
 
