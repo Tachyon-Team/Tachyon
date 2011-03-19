@@ -44,6 +44,22 @@ function test_charAt()
     return 0;
 }
 
+function test_indexing()
+{
+    var s = 'foo';
+
+    if (s[0] !== 'f')
+        return 1;
+    if (s[1] !== 'o')
+        return 2;
+    if (s[2] !== 'o')
+        return 3;
+    if (s[3] !== undefined)
+        return 4;
+
+    return 0;
+}
+
 function test_indexOf()
 {
     if ('foo'.indexOf('f') != 0)
@@ -227,49 +243,53 @@ function test()
     if (r != 0)
         return 300 + r;
 
-    var r = test_indexOf();
+    var r = test_indexing();
     if (r != 0)
         return 400 + r;
 
-    var r = test_lastIndexOf();
+    var r = test_indexOf();
     if (r != 0)
         return 500 + r;
 
-    var r = test_toLowerCase();
+    var r = test_lastIndexOf();
     if (r != 0)
         return 600 + r;
 
-    var r = test_toUpperCase();
+    var r = test_toLowerCase();
     if (r != 0)
         return 700 + r;
 
-    var r = test_slice();
+    var r = test_toUpperCase();
     if (r != 0)
         return 800 + r;
 
-    var r = test_substring();
+    var r = test_slice();
     if (r != 0)
         return 900 + r;
 
-    var r = test_concat();
+    var r = test_substring();
     if (r != 0)
         return 1000 + r;
 
-    var r = test_replace();
+    var r = test_concat();
     if (r != 0)
         return 1100 + r;
 
-    var r = test_split();
+    var r = test_replace();
     if (r != 0)
         return 1200 + r;
 
-    var r = test_trim();
+    var r = test_split();
     if (r != 0)
         return 1300 + r;
 
-    var r = test_fromCharCode();
+    var r = test_trim();
     if (r != 0)
         return 1400 + r;
+
+    var r = test_fromCharCode();
+    if (r != 0)
+        return 1500 + r;
 
     return 0;
 }
