@@ -229,7 +229,7 @@ backend.compileIRToCB = function (ir, params)
         {
             print("*****************************************");
             print("Number of spills: " + fcts[k].regAlloc.spillNb);
-            print();
+            print("");
         }
     }
     

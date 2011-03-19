@@ -764,6 +764,7 @@ tests.programs.tachyon_bridge = genTest(
         'programs/tachyon_bridge/tachyon_bridge.js',
         'utility/debug.js',
         'platform/ffi.js',
+        'platform/mcb.js',
     ],
     'test',
     [],

@@ -57,6 +57,11 @@ if (RUNNING_IN_TACHYON)
     {
         "tachyon:noglobal";
 
+        if (index === UNDEFINED)
+        {
+            index = 0;
+        }
+
         var mcb = blockObj.mcb;
 
         assert (
