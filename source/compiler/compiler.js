@@ -38,9 +38,9 @@ of a linking property of an IRFunction.
 It links the current machine code block in the runtime
 property to its dependencies.
 */
-compiler.link = function () 
+compiler.link = function (params) 
 {
-    this.rt.mcb.link();
+    this.rt.mcb.link(params);
     this.linked = true;
 };
 
@@ -72,7 +72,7 @@ function compileIR(ir, params)
 */
 function linkIR(ir, params) 
 {
-    ir.linking.link();
+    ir.linking.link(params);
 };
 
 /**
@@ -95,13 +95,15 @@ function compileAst(ast, params)
         print("printing MCB information");
         var blockObj = ir.runtime.mcb;
         var size = getMemoryBlockSize(blockObj);
-        //var size = blockObj.length;
-        print("MCB " + size + " bytes for " + ir.funcName);
+        var addr = getBlockAddr(blockObj, 0);
+        print("MCB " + size + " bytes starting at " + addr);
 
-        for (var i = 0; i < size; ++i)
-        {
-            print(readFromMemoryBlock(blockObj, i));
-        }
+        //for (var i = 0; i < size; ++i)
+        //{
+        //    print(readFromMemoryBlock(blockObj, i));
+        //}
+
+
     }
 
     // Return the compiled IR function

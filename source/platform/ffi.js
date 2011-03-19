@@ -836,7 +836,11 @@ if (RUNNING_IN_TACHYON)
             curOffset += PTR_NUM_BYTES;
         }
 
-        puts('calling FFI with rawCallTachyonFFI');
+        //puts('calling FFI with rawCallTachyonFFI');
+        //printPtr(funcPtr);
+        //printPtr(ctxPtr);
+        //printInt(numArgs);
+        //printPtr(argData);
 
         // Call the function through the FFI interface
         var retValInt = rawCallTachyonFFI(
@@ -846,7 +850,7 @@ if (RUNNING_IN_TACHYON)
             argData
         );
 
-        puts('returned from FFI call');
+        //puts('returned from FFI call');
 
         // Free the argument data
         free(argData);

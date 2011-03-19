@@ -767,11 +767,13 @@ TachVal callTachyonFFI(
         break;
 
         case 2:
+        //printf("Calling Tachyon func with 2 arguments\n");
         retVal = funcPtr(
             ctxPtr, 
             tachArgs[0],
             tachArgs[1]
         );
+        //printf("Returned from Tachyon func\n");
         break;
 
         case 3:

@@ -869,7 +869,7 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
     const len = this.assemble();
     const block = allocMemoryBlock(len, true);
     block.length = len;
-    const baseAddr = asm.address(getBlockAddr(block));
+    const baseAddr = asm.address(getBlockAddr(block, 0));
     var pos = 0;
 
     for (var i=0; i<this.code.length; i++)
@@ -905,13 +905,13 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
             const srcAddr = baseAddr.addOffset(offset);
 
             assert(srcAddr !== null, 'source address is null');
-            
+
             o.linkObj.setAddr(srcAddr);
 
         });
 
     // Add a linking function for convenience
-    block.link = function () { asm.link(this); };
+    block.link = function (params) { asm.link(this, params); };
 
     return block;
 };
@@ -989,7 +989,7 @@ asm.CodeBlock.prototype.genProvided = function (linkObj)
     - 'getOffset()', returns the offset in number of bytes from 
                      the beginning of the mcb
 */
-asm.link = function (mcb)
+asm.link = function (mcb, params)
 {
     var bytes, offset;
 
@@ -1000,6 +1000,12 @@ asm.link = function (mcb)
     {
         bytes  = it.get().linkValue();
         offset = it.get().getOffset();
+
+        if (params.printMCB)
+        {
+            print("Linking value " + it.get().linkObj + 
+            " at offset " + offset + " with bytes " + bytes);
+        }
 
         assert(bytes.length !== undefined, "Invalid link value, expected array of bytes");
 

@@ -381,7 +381,9 @@ function compSources(srcList, params)
                 if (ir.linking.linked)
                     continue;
 
-                print('Linking machine code for: "' + getSrcName(i) + '"');
+                var addr = getBlockAddr(ir.runtime.mcb, 0);
+                print('Linking machine code for: "' + getSrcName(i) + 
+                      '" at address ' + addr);
 
                 linkIR(ir, params);
             }
@@ -411,19 +413,21 @@ function initRuntime(params)
 
     // Get the heap initialization function
     print('Get heap initialization function');
-    var initHeap = params.staticEnv.getBinding((RUNNING_IN_TACHYON ? 'initHeap2' : 'initHeap'));
+    var initHeap = params.staticEnv.getBinding('initHeap');
 
     // Create a bridge to call the heap init function
     print('Creating bridge to call the heap init function');
-    params.printRegAlloc = true;
-    params.printASM = true;
-    params.printMCB = true;
+    //params.printRegAlloc = true;
+    //params.printASM = true;
+    //params.printMCB = true;
+
     var initHeapBridge = makeBridge(
         initHeap,
         params,
         [new CPtrAsPtr(), new CIntAsInt()],
         new CPtrAsRef()
     );
+    print('initHeap address: ' + initHeap.linking.getEntryPoint('fast').getAddr());
 
     // Initialize the heap
     print('Calling ' + initHeap.funcName);
@@ -432,9 +436,9 @@ function initRuntime(params)
         heapAddr,
         heapSize
     );
-    params.printRegAlloc = false;
-    params.printASM = false;
-    params.printMCB = false;
+    //params.printRegAlloc = false;
+    //params.printASM = false;
+    //params.printMCB = false;
 
     print('Context pointer: ' + ctxPtr);
     
