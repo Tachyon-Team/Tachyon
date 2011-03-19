@@ -2305,14 +2305,20 @@ function getPropVal(obj, propName)
         {
             return boxInt(iir.icast(IRType.pint, get_str_size(obj)));
         }
-        else
-        {
-            // Get the string prorotype object
-            var strproto = get_ctx_strproto(iir.get_ctx());
 
-            // Lookup the property on the string prototype object
-            return getPropVal(strproto, propName);
+        else if (boxIsInt(propName))
+        {
+            if (propName >= 0 && propName < obj.length)
+            {
+                return obj.charAt(propName);
+            }
         }
+
+        // Get the string prorotype object
+        var strproto = get_ctx_strproto(iir.get_ctx());
+
+        // Lookup the property on the string prototype object
+        return getPropVal(strproto, propName);
     }
 
     // If this is a boxed integer
