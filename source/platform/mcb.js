@@ -19,6 +19,11 @@ if (RUNNING_IN_TACHYON)
     {
         "tachyon:noglobal";
 
+        assert (
+            exec === true || exec === false,
+            'executable flag not specified'
+        );
+
         var blockPtr = rawAllocMemoryBlock(unboxInt(size), boxToBool(exec));
 
         var blockObj = alloc_memblock();
@@ -58,9 +63,7 @@ if (RUNNING_IN_TACHYON)
         "tachyon:noglobal";
 
         if (index === UNDEFINED)
-        {
             index = 0;
-        }
 
         var mcb = blockObj.mcb;
 
@@ -101,6 +104,11 @@ if (RUNNING_IN_TACHYON)
         var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         assert (
+            boolToBox(boxIsInt(index)),
+            'index should be integer'
+        );
+
+        assert (
             boolToBox(unboxInt(index) < size),
             'invalid index in mcb'
         );
@@ -130,6 +138,11 @@ if (RUNNING_IN_TACHYON)
 
         var ptr = get_memblock_ptr(mcb);
         var size = iir.icast(IRType.pint, get_memblock_size(mcb));
+
+        assert (
+            boolToBox(boxIsInt(index)),
+            'index should be integer'
+        );
 
         assert (
             boolToBox(unboxInt(index) < size),
