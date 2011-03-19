@@ -386,8 +386,13 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
     const posWidth  =  6;
     const byteWidth =  3;
 
+    const digits = 
+        ["0", "1", "2", "3", "4", "5", "6" , "7", "8", "9", 
+         "a", "b", "c", "d", "e", "f"];
+             
+
     /** @ignore */
-    function printDigit(d) { return "0123456789abcdef"[d]; };
+    function printDigit(d) { return digits[d]; };
     /** @ignore */
     function printByte(b) 
     { 
