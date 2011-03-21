@@ -488,8 +488,10 @@ function initRuntime(params)
         {
             var ch = jsStr.charCodeAt(i);
 
-            memBlock[2 * i] = ch & 0xFF;
-            memBlock[2 * i + 1] = ch >> 8;
+            //print('ch #' + i + ' = ' + ch);
+
+            writeToMemoryBlock(memBlock, 2 * i, ch & 0xFF);
+            writeToMemoryBlock(memBlock, 2 * i + 1, ch >> 8);
         }
 
         var strObj = getStrObjBridge(ctxPtr, blockAddr, jsStr.length);
