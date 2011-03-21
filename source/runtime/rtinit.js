@@ -18,7 +18,7 @@ function initHeap(heapPtr, heapSize)
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg heapPtr rptr";
-    "tachyon:arg heapSize pint";
+    "tachyon:arg heapSize puint";
     "tachyon:ret ref";
 
     // Align the context object in memory
@@ -35,7 +35,7 @@ function initHeap(heapPtr, heapSize)
     // Compute the heap limit pointer
     var heapLimit = heapPtr + heapSize;
 
-    printInt(heapSize);
+    //printInt(heapSize);
     printPtr(heapPtr);
     printPtr(heapLimit);
 
@@ -47,18 +47,13 @@ function initHeap(heapPtr, heapSize)
     var ctx = alloc_ctx();
 
     assert (
-        boolToBox(heapSize > pint(0)),
+        boolToBox(heapLimit > heapPtr),
         1
     );
 
     assert (
-        boolToBox(heapLimit > heapPtr),
-        2
-    );
-
-    assert (
         boolToBox(iir.icast(IRType.rptr, ctx) >= heapPtr),
-        3
+        2
     );
 
     // Allocate the global object
@@ -66,12 +61,12 @@ function initHeap(heapPtr, heapSize)
 
     assert (
         boolToBox(boxIsObj(globalObj)),
-        4
+        3
     );
 
     assert (
         boolToBox(iir.icast(IRType.rptr, unboxRef(globalObj)) > iir.icast(IRType.rptr, ctx)),
-        5
+        4
     );
 
     // Set the global object reference in the context object

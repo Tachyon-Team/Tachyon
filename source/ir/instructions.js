@@ -829,6 +829,9 @@ var AddInstr = instrMaker(
             (inputVals[0].type === IRType.rptr &&
              inputVals[1].type === IRType.pint)
             ||
+            (inputVals[0].type === IRType.rptr &&
+             inputVals[1].type === IRType.puint)
+            ||
             (
                 (inputVals[0].type === IRType.box ||
                  inputVals[0].type.isNumber())
@@ -857,6 +860,9 @@ var SubInstr = instrMaker(
         assert (
             (inputVals[0].type === IRType.rptr &&
              inputVals[1].type === IRType.pint)
+            ||
+            (inputVals[0].type === IRType.rptr &&
+             inputVals[1].type === IRType.puint)
             ||
             (inputVals[0].type === IRType.rptr &&
              inputVals[1].type === IRType.rptr)
