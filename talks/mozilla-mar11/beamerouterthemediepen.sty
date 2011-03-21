@@ -1,0 +1,114 @@
+% Copyright 2006 by Guido Diepen <diepen@cs.uu.nl>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\RequirePackage{calc}
+\RequirePackage{tikz}
+
+
+\def\diepen@backgroundimagefile{defaultBackground}
+\def\diepen@opacity{0.825}
+
+\DeclareOptionBeamer{opacity}{\def\diepen@opacity{#1}}
+\DeclareOptionBeamer{backgroundimagefile}{\def\diepen@backgroundimagefile{#1}}
+
+
+\ProcessOptionsBeamer
+
+\mode<presentation>
+
+
+
+
+
+
+\pgfdeclareimage[interpolate=true ,height=\the\paperheight, width=\the\paperwidth]{backgroundImage}{\diepen@backgroundimagefile}
+
+
+\setbeamertemplate{background}{
+	\begin{tikzpicture}
+		\useasboundingbox (0,0) rectangle (\the\paperwidth, \the\paperheight) ; 
+
+		\pgftext[at=\pgfpoint{0cm}{0cm},left,base]{\pgfuseimage{backgroundImage}} ; 
+
+
+		\ifnum\thepage>1\relax%
+			\fill[white, opacity=\diepen@opacity] (0cm, 0cm) -- (0cm , 0.851150203\paperheight) -- (1.0\paperwidth, 0.851150203\paperheight) -- (1.0\paperwidth, 0.847090663\paperheight) -- (0.0425963489\paperwidth, 0.847090663\paperheight) -- (0.0425963489\paperwidth, 0.841677943\paperheight) -- (1.0\paperwidth, 0.841677943\paperheight) -- (1.0\paperwidth, 0cm) ; 
+			
+
+			\fill[white, opacity=\diepen@opacity] (0cm, 0.953991881\paperheight) -- (0.0425963489\paperwidth, 0.953991881\paperheight) -- (0.0425963489\paperwidth, 0.853856563\paperheight) -- (0cm, 0.853856563\paperheight) ; 
+
+
+			\fill[white, opacity=\diepen@opacity] (0cm, 0.956698241\paperheight) -- (0cm, 1.0\paperheight) -- (1.0\paperwidth, 1.0\paperheight) -- (1.0\paperwidth, 0.956698241\paperheight) ; 
+
+		\fi
+	\end{tikzpicture}
+}
+
+
+
+
+%%%%%\defbeamertemplate*{navigation symbols}{theme diepen}
+%%%%%{%
+%%%%%%  \hbox{%
+%%%%%%    \hbox{\insertslidenavigationsymbol}
+%%%%%%    \hbox{\insertframenavigationsymbol}
+%%%%%%    \hbox{\insertsubsectionnavigationsymbol}
+%%%%%%    \hbox{\insertsectionnavigationsymbol}
+%%%%%%    \hbox{\insertdocnavigationsymbol}
+%%%%%%    \hbox{\insertbackfindforwardnavigationsymbol}%
+%%%%%%  }%
+%%%%%}
+
+
+%%%%%\defbeamertemplate*{footline}{infolines theme}
+%%%%%{
+%%%%%  \leavevmode%
+%%%%%  \hbox{%
+%%%%%	  \begin{beamercolorbox}[wd=.45\paperwidth,ht=2.25ex,dp=1ex,left]{page in footline}%
+%%%%%		  \hspace{1ex} \insertframenumber{} % \hspace*{2ex} 
+%%%%%	  \end{beamercolorbox}
+%%%%%	  \begin{beamercolorbox}[wd=.55\paperwidth,ht=2.25ex,dp=1ex,right]{navigation symbols}%
+%%%%%		  %\hspace*{2ex} \insertframenumber{} % \hspace*{2ex} 
+%%%%%		  \hbox{
+%%%%%			  \hbox{\insertslidenavigationsymbol}
+%%%%%			  \hbox{\insertframenavigationsymbol}
+%%%%%			  \hbox{\insertsubsectionnavigationsymbol}
+%%%%%			  \hbox{\insertsectionnavigationsymbol}
+%%%%%			  \hbox{\insertdocnavigationsymbol}
+%%%%%			  \hbox{\insertbackfindforwardnavigationsymbol}%
+%%%%%		  }
+%%%%%		  \hspace*{1ex}
+%%%%%	  \end{beamercolorbox}
+%%%%%  }%
+%%%%%  \vskip0pt%
+%%%%%}
+
+
+
+\defbeamertemplate*{frametitle}{diepen theme}[1][left]
+{
+  \ifbeamercolorempty[bg]{frametitle}{}{\nointerlineskip}%
+  \@tempdima=\textwidth%
+  \advance\@tempdima by\beamer@leftmargin%
+  \advance\@tempdima by\beamer@rightmargin%
+
+
+
+  \begin{beamercolorbox}[sep=0.6cm,#1,wd=\the\@tempdima]{frametitle}
+    \usebeamerfont{my frametitle}%
+    \vbox{}\vskip-1ex%
+    \if@tempswa\else\csname beamer@fte#1\endcsname\fi%
+    \strut\insertframetitle\strut\par%
+    {%
+      \ifx\insertframesubtitle\@empty%
+      \else%
+      {\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}\insertframesubtitle\strut\par}%
+      \fi
+    }%
+    \vskip-1ex%
+    \if@tempswa\else\vskip-.3cm\fi% set inside beamercolorbox... evil here...
+  \end{beamercolorbox}%
+}
+
+\def\beamer@fteright{\vskip0.35cm\advance\leftskip by 1.7cm\advance\rightskip by1.7cm}
+
