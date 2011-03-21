@@ -26,7 +26,15 @@
     var str = 'Hello World!';
     var strPtr = iir.icast(IRType.rptr, unboxRef(str));
     printPtr(strPtr);
+    var strLen = iir.icast(IRType.pint, get_str_size(str));
+    printInt(strLen);
     puts(str);
+
+    var str2 = 'Hello ' + 'World!';
+    if (str === str2)
+        printInt(pint(333));
+    else
+        printInt(pint(000));
 
     putPropVal(globalObj, str, 13372);
     var propVal = getPropVal(globalObj, str);
