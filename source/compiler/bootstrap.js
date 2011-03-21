@@ -62,24 +62,27 @@ function bootstrap(allCode, params)
     var libSrcs = getLibSrcs(params);
     var libIRs;
 
-    print("Compiling stdlib");
-    measurePerformance(
-        "Compiling stdlib",
-        function ()
-        {
-            // Compile the standard library
-            libIRs = compSources(libSrcs, params);
-        }
-    );
-
-    print('Initializing standard library');
-
-    // Execute the standard library code units
-    for (var i = 0; i < libIRs.length; ++i)
+    if (!RUNNING_IN_TACHYON)
     {
-        print('Executing unit for: "' + libSrcs[i] + '"');
+        print("Compiling stdlib");
+        measurePerformance(
+            "Compiling stdlib",
+            function ()
+            {
+                // Compile the standard library
+                libIRs = compSources(libSrcs, params);
+            }
+        );
 
-        execUnit(libIRs[i], params);
+        print('Initializing standard library');
+
+        // Execute the standard library code units
+        for (var i = 0; i < libIRs.length; ++i)
+        {
+            print('Executing unit for: "' + libSrcs[i] + '"');
+
+            execUnit(libIRs[i], params);
+        }
     }
 
     // If all code should be compiled
