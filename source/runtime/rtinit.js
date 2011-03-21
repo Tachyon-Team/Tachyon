@@ -80,6 +80,10 @@ function initHeap(heapPtr, heapSize)
     // Initialize the string hash consing system
     initStrings();
 
+    printPtr(iir.icast(IRType.rptr, ctx));
+    printPtr(iir.icast(IRType.rptr, unboxRef(globalObj)));
+    printPtr(iir.icast(IRType.rptr, unboxRef(get_ctx_strtbl(ctx))));
+
     // Return a pointer to the context object
     return ctx;
 }

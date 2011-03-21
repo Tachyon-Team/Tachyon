@@ -1010,7 +1010,7 @@ void runtimeError(char* errorStr, int errorCode)
 {
     printf("*** RUN-TIME ERROR ***\n");
 
-    if (errorStr !== NULL)
+    if (errorStr != NULL)
         printf("%s\n", errorStr);
     else
         printf("error code: %i\n", errorCode);

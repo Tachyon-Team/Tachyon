@@ -23,10 +23,6 @@ function error(errorVal)
     exit(0);
     */
 
-    // TODO: call fail FFI function?
-    // runtimeError(str); ?
-
-
     if (boxIsString(errorVal))
         runtimeError(errorVal, 0);
     else if (boxIsInt(errorVal))
