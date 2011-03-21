@@ -416,7 +416,12 @@ template <class T> v8::Handle<v8::Value> valToArray(T val)
         uint8_t* bytePtr = ((uint8_t*)&val) + i;
         i::Object* element = i::Smi::FromInt(*bytePtr);
 
-        v8::internal::MaybeObject* v = ptrArray->SetFastElement(i, element);
+        v8::internal::MaybeObject* v = ptrArray->SetFastElement(
+            i,
+            element,
+            v8::internal::kStrictMode,
+            false
+        );
 
         if (v->IsFailure())
         {
