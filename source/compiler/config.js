@@ -42,9 +42,9 @@ function initConfig(is64bit)
     else
     {        
         if (RUNNING_IN_TACHYON)
-            heapSize = MAX_FIXNUM;      // Tachyon under Tachyon 32-bit => 512MB
+            heapSize = Math.pow(2, 28);     // Tachyon/Tachyon 32-bit => 256MB
         else
-            heapSize = Math.pow(2,30);  // Tachyon under v8 32bit => 1GB
+            heapSize = 1 * Math.pow(2,30);  // Tachyon/V8 32bit => 1GB
     }
 
     /**

@@ -41,6 +41,11 @@ function getTableStr(strObj)
     "tachyon:static";
     "tachyon:noglobal";
 
+    assert (
+        boolToBox(boxIsString(strObj)),
+        'getTableStr on non-string'
+    );
+
     //
     // Hash table lookup
     //
@@ -203,11 +208,21 @@ function getStrObj(rawStr, strLen)
     "tachyon:arg rawStr rptr";
     "tachyon:arg strLen pint";
 
+    assert (
+        boolToBox(iir.icast(IRType.rptr, iir.get_ctx()) !== NULL_PTR),
+        10
+    );
+
     // Create a string object from the raw string data
     var strObj = rawStrToObj(rawStr, strLen);
 
     // Find/put the string in the string table
     var str = getTableStr(strObj);
+
+    assert (
+        boolToBox(boxIsString(str)),
+        11
+    );
 
     // Return the string from the string table
     return str;

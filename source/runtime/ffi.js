@@ -18,6 +18,10 @@ function boxToCString(strVal)
     "tachyon:noglobal";
     "tachyon:ret rptr";
 
+    // If the string value is null, return the null pointer
+    if (strVal === null)
+        return NULL_PTR;
+
     // Get the string length
     var strLen = iir.icast(IRType.pint, get_str_size(strVal));
 
@@ -48,6 +52,10 @@ function cStringToBox(strPtr)
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg strPtr rptr";
+
+    // If the string pointer is null, return the JS null value
+    if (strPtr === NULL_PTR)
+        return null;
 
     // Compute the string length
     for (var strLen = pint(0); ; strLen++)

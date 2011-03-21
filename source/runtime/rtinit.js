@@ -46,8 +46,33 @@ function initHeap(heapPtr, heapSize)
     // Allocate the context object, incrementing the allocation pointer
     var ctx = alloc_ctx();
 
+    assert (
+        boolToBox(heapSize > pint(0)),
+        1
+    );
+
+    assert (
+        boolToBox(heapLimit > heapPtr),
+        2
+    );
+
+    assert (
+        boolToBox(iir.icast(IRType.rptr, ctx) >= heapPtr),
+        3
+    );
+
     // Allocate the global object
     var globalObj = newObject(null);
+
+    assert (
+        boolToBox(boxIsObj(globalObj)),
+        4
+    );
+
+    assert (
+        boolToBox(iir.icast(IRType.rptr, unboxRef(globalObj)) > iir.icast(IRType.rptr, ctx)),
+        5
+    );
 
     // Set the global object reference in the context object
     set_ctx_globalobj(ctx, globalObj);
@@ -57,17 +82,6 @@ function initHeap(heapPtr, heapSize)
 
     // Return a pointer to the context object
     return ctx;
-}
-
-function initHeap2(heapPtr, heapSize)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg heapPtr rptr";
-    "tachyon:arg heapSize pint";
-    "tachyon:ret ref";
-
-    return iir.icast(IRType.ref, heapPtr);
 }
 
 /**

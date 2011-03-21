@@ -554,6 +554,11 @@ function newObject(proto)
     "tachyon:static";
     "tachyon:noglobal";
 
+    assert (
+        proto === null || boolToBox(boxIsObjExt(proto)),
+        'invalid object prototype'
+    );
+
     // Allocate space for an object
     var obj = alloc_obj();
 
@@ -1635,6 +1640,11 @@ function extObjHashTable(obj, curTbl, curSize)
     "tachyon:noglobal";
     "tachyon:arg curSize pint";
 
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'extObjHashTable on non-object'
+    );
+
     // Compute the new table size
     var newSize = curSize * pint(2) + pint(1);
 
@@ -1709,6 +1719,11 @@ function getOwnPropObj(obj, propName, propHash)
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg propHash pint";
+
+    assert (
+        boolToBox(boxIsObjExt(obj)),
+        'getOwnPropObj on non-object'
+    );
 
     // Get a pointer to the hash table
     var tblPtr = get_obj_tbl(obj);
@@ -1918,6 +1933,11 @@ function putElemArr(arr, index, elemVal)
     "tachyon:noglobal";
 
     assert (
+        boolToBox(boxIsArray(arr)),
+        'putElemArr on non-array'
+    );
+
+    assert (
         index >= 0,
         'negative array index'
     );
@@ -1970,6 +1990,11 @@ function extArrTable(arr, curTbl, curLen, curSize, newSize)
     "tachyon:arg curSize pint";
     "tachyon:arg newSize pint";
 
+    assert (
+        boolToBox(boxIsArray(arr)),
+        'extArrTable on non-array'
+    );
+
     // Allocate the new table without initializing it, for performance
     var newTbl = alloc_noinit_arrtbl(newSize);
 
@@ -2001,6 +2026,11 @@ function getElemArr(arr, index)
     "tachyon:noglobal";
 
     assert (
+        boolToBox(boxIsArray(arr)),
+        'getElemArr on non-array'
+    );
+
+    assert (
         index >= 0,
         'negative array index'
     );
@@ -2024,6 +2054,11 @@ function delElemArr(arr, index)
 {
     "tachyon:inline";
     "tachyon:noglobal";
+
+    assert (
+        boolToBox(boxIsArray(arr)),
+        'delElemArr on non-array'
+    );
 
     assert (
         index >= 0,
@@ -2059,6 +2094,11 @@ function setArrayLength(arr, newLen)
 {
     "tachyon:static";
     "tachyon:noglobal";
+
+    assert (
+        boolToBox(boxIsArray(arr)),
+        'setArrayLength on non-array'
+    );
 
     assert (
         newLen >= 0,

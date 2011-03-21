@@ -12,13 +12,18 @@ Compile and run a source file, returning the result.
 function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
 {
     var argTypes = [];
-    for (var i = 0; i < inputArgs.length; ++i)
+
+    // If input arguments are specified
+    if (inputArgs !== undefined)
     {
-        assert (
-            isInt(inputArgs[i]),
-            'only integer arguments supported for now'
-        );
-        argTypes.push(new CIntAsBox());
+        for (var i = 0; i < inputArgs.length; ++i)
+        {
+            assert (
+                isInt(inputArgs[i]),
+                'only integer arguments supported for now'
+            );
+            argTypes.push(new CIntAsBox());
+        }
     }
 
     if (compParams === undefined)
@@ -57,20 +62,24 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
             var funcIR = func;
     }
 
-    assert (
-        funcIR !== null,
-        'test function not found'
-    );
+    // If a function to be called was specified
+    if (funcName !== undefined)
+    {
+        assert (
+            funcIR !== null,
+            'test function not found'
+        );
 
-    var funcBridge = makeBridge(
-        funcIR,
-        config.hostParams,
-        argTypes,
-        new CIntAsBox()
-    );
+        var funcBridge = makeBridge(
+            funcIR,
+            config.hostParams,
+            argTypes,
+            new CIntAsBox()
+        );
 
-    // Call the function with the given arguments
-    var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
+        // Call the function with the given arguments
+        var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
+    }
 
     return result;
 }
@@ -94,6 +103,7 @@ function genTest(srcFiles, funcName, inputArgs, expectResult, compParams)
         );
 
         assert (
+            (inputArgs === undefined && expectResult === undefined) ||
             result === expectResult,
             'Invalid return value "' + result + 
             '", expected "' + expectResult + '"'
@@ -694,6 +704,18 @@ tests.programs.stdlib_strings = genTest(
     [],
     0
 );
+
+/**
+Tests for sunspider.
+*/
+tests.programs.sunspider = tests.testSuite();
+tests.programs.sunspider['controlflow-recursive'] = genTest(
+    'programs/sunspider/controlflow-recursive.js'
+);
+/* Uses Math.random 
+tests.programs.sunspider['string-base64'] = genTest(
+    'programs/sunspider/string-base64.js'
+);*/
 
 /**
 Tachyon hash map utility code test

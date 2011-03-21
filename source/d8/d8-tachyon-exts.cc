@@ -1006,6 +1006,18 @@ void* testCallFFI(void* ctxPtr, void* p1, int v1)
     return p1;
 }
 
+void runtimeError(char* errorStr, int errorCode)
+{
+    printf("*** RUN-TIME ERROR ***\n");
+
+    if (errorStr !== NULL)
+        printf("%s\n", errorStr);
+    else
+        printf("error code: %i\n", errorCode);
+
+    exit(0);
+}
+
 typedef void (*FPTR)();
 
 FPTR getFuncAddr(const char* funcName)
@@ -1026,6 +1038,10 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(printPtr);
     else if (strcmp(funcName, "sum2Ints") == 0)
         address = (FPTR)(sum2Ints);
+    else if (strcmp(funcName, "testCallFFI") == 0)
+        address = (FPTR)(testCallFFI);
+    else if (strcmp(funcName, "runtimeError") == 0)
+        address = (FPTR)(runtimeError);
     else if (strcmp(funcName, "writeFile") == 0)
         address = (FPTR)(writeFile);
     else if (strcmp(funcName, "readFile") == 0)
@@ -1044,8 +1060,6 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(gcCollect);
     else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
         address = (FPTR)(callTachyonFFI);
-    else if (strcmp(funcName, "testCallFFI") == 0)
-        address = (FPTR)(testCallFFI);
     else if (strcmp(funcName, "getFuncAddr") == 0)
         address = (FPTR)(getFuncAddr);
 

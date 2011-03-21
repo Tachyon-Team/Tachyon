@@ -12,27 +12,40 @@ Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Print an error string and stop the execution
 */
-function error(errorStr)
+function error(errorVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
+    /*
     printBox('*** RUN-TIME ERROR ***');
     printBox(errorStr);
     exit(0);
+    */
+
+    // TODO: call fail FFI function?
+    // runtimeError(str); ?
+
+
+    if (boxIsString(errorVal))
+        runtimeError(errorVal, 0);
+    else if (boxIsInt(errorVal))
+        runtimeError(null, errorVal);
+    else
+        runtimeError(null, 0);
 }
 
 /**
 Perform an assertion test
 */
-function assert(testVal, errorStr)
+function assert(testVal, errorVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
     if (!testVal)
     {
-        error(errorStr);
+        error(errorVal);
     }
 }
 

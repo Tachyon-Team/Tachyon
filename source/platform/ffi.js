@@ -1005,6 +1005,13 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'runtimeError',
+        [new CStringAsBox(), new CIntAsBox()],
+        new CVoid(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'getFuncAddr', 
         [new CStringAsBox()],
         new CPtrAsBytes(),
