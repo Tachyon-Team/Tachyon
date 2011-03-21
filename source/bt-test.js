@@ -20,11 +20,16 @@
     var propVal = getPropVal(globalObj, 1);
     printInt(unboxInt(propVal));
 
+    var intStr = getIntStr(pint(777));
+    puts(intStr);
+
     var str = 'Hello World!';
     var strPtr = iir.icast(IRType.rptr, unboxRef(str));
     printPtr(strPtr);
+    puts(str);
 
-    var intStr = getIntStr(pint(777));
-    puts(intStr);
+    putPropVal(globalObj, str, 13372);
+    var propVal = getPropVal(globalObj, str);
+    printInt(unboxInt(propVal));
 
 })();
