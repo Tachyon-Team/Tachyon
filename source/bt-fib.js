@@ -21,20 +21,29 @@ function btfib(is64bit)
 
     printTachyonState();
 
-    print("Fib: compiling source code to a code block");
-    var fibIR = compileSrcString("function fib(n) { if (n < 2) { return n; } else { return fib(n-1) + fib(n-2); } }", config.hostParams);
-    var fibCB = backend.compileIRToCB(fibIR, config.hostParams); 
+    print("Fib: compiling source code");
+    //config.hostParams.printRegAlloc = true;
+    //config.hostParams.printASM = true;
+    //var ir = compileSrcString("function fib(n) { if (n < 2) { return n; } else { return fib(n-1) + fib(n-2); } }; printInt(unboxInt(fib(10)));", config.hostParams);
+    //var ir = compileSrcString("puts('hello world'); printInt(unboxInt((function (n) { return n; })(10)));", config.hostParams);
+    var ir = compileSrcString("(function () { function fib(n) { if (n < 2) return n; else return fib(n-1) + fib(n-2); } printInt(unboxInt(fib(10))); })();", config.hostParams);
+    //config.hostParams.printRegAlloc = false;
+    //config.hostParams.printASM = false;
+    //var ir = compileSrcString("printInt(unboxInt(1));", config.hostParams);
+    //var fibCB = backend.compileIRToCB(fibIR, config.hostParams); 
 
-    print("Fib listing:");
-    print(backend.listing(fibCB));
-
-    print("Fib: compiling source code to a machine code block");
+    //print("Fib listing:");
+    //print(backend.listing(fibCB));
+    
+    print('Fib: Creating bridge');
     var bridge = makeBridge(
-        fibIR,
+        ir,
         config.hostParams,
-        [new CIntAsBox()],
+        [],
         new CIntAsBox()
     );
 
+    print("Fib: Executing");
+    print(config.hostParams.ctxPtr);
     bridge(config.hostParams.ctxPtr);
 }
