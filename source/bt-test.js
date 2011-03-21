@@ -17,9 +17,14 @@
     printInt(iir.icast(IRType.pint, numStrings));
 
     putPropVal(globalObj, 1, 1337);
-
     var propVal = getPropVal(globalObj, 1);
-
     printInt(unboxInt(propVal));
+
+    var str = 'Hello World!';
+    var strPtr = iir.icast(IRType.rptr, unboxRef(str));
+    printPtr(strPtr);
+
+    var intStr = getIntStr(pint(777));
+    puts(intStr);
 
 })();
