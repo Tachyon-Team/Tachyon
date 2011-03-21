@@ -1,0 +1,111 @@
+\documentclass{beamer}
+
+% -- Theme ---------------------------------------------------------------------
+
+\usetheme[backgroundimagefile=images/bg-light,useblacktitletext,opacity=0]{diepen}
+\useinnertheme{circles}
+\setbeamercolor{item}{fg=black}
+\setbeamercolor{structure}{fg=black}
+
+% Alternatively:
+%\usetheme{Amsterdam}
+
+% -- Required packages ---------------------------------------------------------
+
+\usepackage{graphics}
+\usepackage{courier}
+\usepackage{listings}
+
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  ndkeywordstyle=\bfseries,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+        language=JavaScript,
+        basicstyle=\footnotesize\ttfamily, % use fixed-width font
+        keywordstyle=\bfseries, % bold keywords
+        identifierstyle=,       % nothing happens
+        commentstyle=\ttfamily, 
+        stringstyle=\bfseries\ttfamily,  % typewriter type for strings
+        showstringspaces=false, % no special string spaces
+        columns=fullflexible,   % Use flexible column format (for comments)
+        %backgroundcolor=\color{lightgrey},%
+        %rulecolor=\color{darkgrey},%
+        %frame=single,%
+        %frameround=tttt,
+        %framerule=0.6pt,%
+        %framesep=5mm,%
+        %captionpos=b,%
+        %xleftmargin=5mm,%
+        %xrightmargin=5mm,%
+        %float,%
+        %morekeywords={@Model},
+        %abovecaptionskip=0pt,
+        %belowskip=0pt
+}
+
+% -- Command definitions -------------------------------------------------------
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+% -- Presentation data ---------------------------------------------------------
+
+\mode<presentation>
+
+\title[Tachyon Overview]{Tachyon: a Meta-circular Optimizing JavaScript Virtual Machine}
+
+\author[Chevalier-Boisvert, Lavoie, Dufour, Feeley]
+{
+  Maxime~Chevalier-Boisvert \and
+  Erick~Lavoie \and
+  Bruno~Dufour \and
+  Marc~Feeley
+}
+
+\institute[UdeM]
+{
+  DIRO\\
+  Universit\'e de Montr\'eal, Canada
+}
+
+\date[Mozilla 2011]
+{Mozilla, March 28 2011}
+
+\begin{document}
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+  \titlepage
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+%% \begin{frame}{Outline}
+%%   \tableofcontents
+%% \end{frame}
+% ------------------------------------------------------------------------------
+
+\input{slides/slides}
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}{}
+\begin{center}
+{\huge\bfseries Thanks for listening!}
+
+\vspace{5mm}%
+{\large\bfseries We welcome your questions/comments}
+
+\vspace{5mm}%
+Feel free to contact the Tachyon team:\\
+{\small\ttfamily \{chevalma,lavoeric,feeley,dufour\}@iro.umontreal.ca}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+\end{document}

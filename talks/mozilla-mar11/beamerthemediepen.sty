@@ -1,0 +1,39 @@
+% Copyright 2006 by Guido Diepen <diepen@cs.uu.nl>
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\ProvidesPackage{beamerthemediepen}
+
+\RequirePackage{beamerbasethemes}[2004/10/07]
+
+\RequirePackage{calc}
+\RequirePackage{ifthen}
+
+
+
+\newif\ifdiepen@useblacktitletext
+\diepen@useblacktitletextfalse
+
+
+
+\DeclareOptionBeamer{backgroundimagefile}{
+	\PassOptionsToPackage{backgroundimagefile=#1}{beamerouterthemediepen}
+}
+
+\DeclareOptionBeamer{opacity}{
+	\PassOptionsToPackage{opacity=#1}{beamerouterthemediepen}
+}
+
+
+
+
+\DeclareOptionBeamer{useblacktitletext}{\diepen@useblacktitletexttrue}
+
+
+\ProcessOptionsBeamer
+
+
+\mode<presentation>
+
+
+\usecolortheme{diepen}
+\usefonttheme{diepen}
+\useoutertheme{diepen}
