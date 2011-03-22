@@ -283,7 +283,7 @@ v8::Handle<v8::Value> v8Proxy_currentTimeMillis(const v8::Arguments& args)
     return v8::Number::New(currentTimeMillis());
 }
 
-#define ACTIVATE_HEAP_PROFILING
+#define ACTIVATE_HEAP_PROFILING_not
 
 extern "C" 
 {
