@@ -61,6 +61,35 @@ function printBox(val)
 }
 
 /**
+Get a string representation for a pointer
+*/
+function ptrToStr(ptr)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+
+    var ptrInt = iir.icast(IRType.puint, ptr);
+
+    var str = '';
+
+    for (var i = pint(0); i < PTR_NUM_BYTES; ++i)
+    {
+        var byteVal = iir.icast(IRType.pint, ptrInt & puint(0xFF));
+        ptrInt >>= puint(8);
+
+        var byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+
+        str = byteStr + str;
+    }
+
+    str = '0x' + str;
+
+    return str;
+}
+
+/**
 Get a reference to the global object
 */
 function getGlobalObj()
