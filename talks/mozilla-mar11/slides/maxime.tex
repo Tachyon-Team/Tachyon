@@ -24,17 +24,29 @@
 %   - Machine code generation
 %
 % Optimistic optimizations
+% - Optimization issues
+% - Getting rid of guards
 % - Picture(s)
-%
-%
-%
+%   - Specialization
+%   - Execution model
+% - Less about type profiling?
+% - Less about related work?
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{High-Level IR}
     \begin{itemize}
-        \item Core JS semantics implemented in terms of primitive functions
+        \item Core JS semantics expressed in terms of HIR instructions
         \begin{itemize}
             \item Act on boxed (dynamic) types
+            \item Annotated for performance
+                \begin{itemize}
+                    \item Static linkage, force inlining, no exceptions, etc.
+                \end{itemize}
+        \end{itemize}
+
+        \item Currently, HIR instructions implemented directly by function calls
+        \begin{itemize}
+            \item Primitives implemented in terms of extended JS
             \item Annotated for performance
                 \begin{itemize}
                     \item Static linkage, force inlining, no exceptions, etc.
@@ -46,8 +58,6 @@
             \item Arithmetic/comparison operators (+, -, *, /, $<$, \ldots)
             \item Property accesses (getProp, putProp, hasProp, \ldots)
         \end{itemize}
-
-        \item Primitives implemented in terms of extended JS
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------

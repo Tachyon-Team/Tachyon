@@ -29,7 +29,7 @@ if (RUNNING_IN_TACHYON)
         var blockObj = alloc_memblock();
 
         set_memblock_ptr(blockObj, blockPtr);
-        set_memblock_size(blockObj, u32(size));
+        set_memblock_size(blockObj, puint(size));
 
         return { mcb: blockObj };
     };
