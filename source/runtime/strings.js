@@ -433,14 +433,15 @@ function compStrHash(strObj)
 /**
 Get the string representation for an integer
 */
-function getIntStr(intVal)
+function getIntStr(intVal, radix)
 {
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg intVal pint";
+    "tachyon:arg radix pint";
 
     // Create a string for the integer value
-    var strObj = intToStr(intVal);
+    var strObj = intToStr(intVal, radix);
 
     // Attempt to find the string in the string table
     return getTableStr(strObj);
@@ -449,11 +450,17 @@ function getIntStr(intVal)
 /**
 Create a string representing an integer value
 */
-function intToStr(intVal)
+function intToStr(intVal, radix)
 {
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg intVal pint";
+    "tachyon:arg radix pint";
+
+    assert (
+        boolToBox(radix > pint(0) && radix <= pint(36)),
+        'invalid radix'
+    );
 
     var strLen;
     var neg;
@@ -476,7 +483,7 @@ function intToStr(intVal)
     do
     {
         strLen++;
-        intVal2 /= pint(10);
+        intVal2 /= radix;
 
     } while (intVal2 !== pint(0));
 
@@ -489,17 +496,19 @@ function intToStr(intVal)
         set_str_data(strObj, pint(0), u16(45));
     }
 
+    var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+
     // Write the digits in the string
     var i = strLen - pint(1);
     do
     {
-        var digit = intVal % pint(10);
+        var digit = intVal % radix;
 
-        var ch = iir.icast(IRType.u16, digit + pint(48));
+        var ch = get_str_data(digits, digit);
 
         set_str_data(strObj, i, ch);
 
-        intVal /= pint(10);       
+        intVal /= radix; 
 
         i--;
 

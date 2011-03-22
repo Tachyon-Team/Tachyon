@@ -587,7 +587,7 @@ function makeObjectLayouts(params)
     // Size of the memory block
     memBlockLayout.addField(
         'size',
-        IRType.u32
+        IRType.puint
     );
 
     // Pointer to the memory block

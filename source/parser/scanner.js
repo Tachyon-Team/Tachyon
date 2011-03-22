@@ -1,6 +1,6 @@
 //=============================================================================
 
-// File: "scanner.js", Time-stamp: <2011-03-01 09:23:24 feeley>
+// File: "scanner.js", Time-stamp: <2011-03-22 14:05:07 feeley>
 
 // Copyright (c) 2010 by Marc Feeley, All Rights Reserved.
 
