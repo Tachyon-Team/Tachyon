@@ -1,4 +1,4 @@
-# makefile for research paper
+# makefile for talk at Mozilla
 
 TARGET=mozilla-talk
 SOURCES=$(shell ls slides/*.tex) $(TARGET).tex
@@ -11,7 +11,7 @@ all: $(TARGET).pdf
 
 $(TARGET).pdf: $(SOURCES) makefile
 	pdflatex $(TARGET).tex
-	$(PDFVIEWER) $(TARGET).pdf # comment out if not on a Mac
+	$(PDFVIEWER) $(TARGET).pdf
 
 clean:
 	rm -f *~ $(TARGET).log $(TARGET).aux $(TARGET).out $(TARGET).bbl $(TARGET).blg $(TARGET).nav $(TARGET).snm $(TARGET).toc $(TARGET).pdf
