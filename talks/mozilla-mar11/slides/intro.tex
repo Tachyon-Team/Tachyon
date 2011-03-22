@@ -1,0 +1,115 @@
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}{About the Tachyon Project}
+    \begin{itemize}
+        \item Began in summer 2010
+        \item Compiler lab at UdeM
+        \item Two students:
+        \begin{itemize}
+            \item Erick Lavoie (M.Sc.)
+            \item Maxime Chevalier-Boisvert (Ph.D.)
+        \end{itemize}
+        \item Professor Marc Feeley
+        \begin{itemize}
+            \item Gambit Scheme
+        \end{itemize}
+        \item Professor Bruno Dufour
+        \begin{itemize}
+            \item Dynamic program analysis
+        \end{itemize}
+        \item Big project, because we like challenges
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}{What is JavaScript?}
+    \begin{itemize}
+        \item JavaScript $\neq$ Java in the browser
+        \item Dynamic (scripting) language
+        \item Dynamic typing
+        \begin{itemize}
+            \item No type annotations
+        \end{itemize}
+        \item Basic types include:
+        \begin{itemize}
+            \item Doubles (no int!), strings, booleans, objects, arrays, first-class functions
+        \end{itemize}
+        \item Objects as hash maps
+        \begin{itemize}
+            \item Can add/remove properties at any time
+            \item Prototype-based, no classes
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}{Why JavaScript?}
+    \begin{itemize}
+        \item JavaScript is very popular, it's everywhere
+        \begin{itemize}
+            \item JavaScript is the only language for web applications.
+            \item Volume of JS code increasing fast, becoming more complex
+        \end{itemize}
+
+        \item Many competing implementations
+        \begin{itemize}
+            \item Push to move desktop apps to browsers
+            \item Performance is insufficient
+        \end{itemize}
+        
+        \item Compiling dynamic languages efficiently is challenging
+        \begin{itemize}
+            \item Dynamic typing, eval, etc
+            \item Researchers definitely care!
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}{State of the Art}
+    \begin{itemize}
+        \item Firefox / JaegerMonkey
+        \begin{itemize}
+            \item Tracing JIT
+            \item Compiles/specializes loop code traces
+        \end{itemize}
+
+        \item Chrome / V8
+        \begin{itemize}
+            \item Hidden classes
+            \item Inline caches, code patching
+            \item Very fast JIT compiler
+            \item Very efficient GC
+        \end{itemize}
+
+        \item Is this the best we can do?
+        \begin{itemize}
+            \item We believe there is potential for more optimization
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}{Our Objectives}
+    \begin{itemize}
+        \item Full JavaScript (ECMAScript 5) support
+        \item Retargetable JIT compiler (x86, x86-64)
+        \item Meta-circularity of the VM
+        \item Framework for dynamic language optimizations
+        \begin{itemize}
+            \item Better object representations
+            \item Optimistic optimization with recompilation
+            \item Fast \& efficient x86 back-end
+        \end{itemize}
+        \item Integration into a web-browser
+        \begin{itemize}
+            \item Demonstrate viability on “real” applications
+        \end{itemize}
+        \item Free software / OSS
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+

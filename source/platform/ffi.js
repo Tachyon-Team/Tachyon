@@ -965,6 +965,13 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'readConsole',
+        [new CStringAsBox()], 
+        new CStringAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'currentTimeMillis',
         [],
         new CIntAsBox(),

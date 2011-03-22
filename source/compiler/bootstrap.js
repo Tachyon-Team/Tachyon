@@ -62,7 +62,7 @@ function bootstrap(allCode, params)
     var libSrcs = getLibSrcs(params);
     var libIRs;
 
-    if (!RUNNING_IN_TACHYON)
+    if (params.target === Target.x86_64 || !RUNNING_IN_TACHYON)
     {
         print("Compiling stdlib");
         measurePerformance(
@@ -249,6 +249,8 @@ function getTachyonSrcs(params)
         'backend/x86/config.js',
         'backend/x86/ir-to-asm.js',
         //'main.js'
+        //'bt-parser.js',
+        //((params.target === Target.x86_32) ? 'bt-parser32.js' : 'bt-parser64.js')
         'bt-fib.js',
         ((params.target === Target.x86_32) ? 'bt-fib32.js' : 'bt-fib64.js')
     ];

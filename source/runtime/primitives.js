@@ -297,7 +297,7 @@ function boxToString(val)
 
     if (boxIsInt(val))
     {
-        return getIntStr(unboxInt(val));
+        return getIntStr(unboxInt(val), pint(10));
     }
 
     if (boxIsString(val))
@@ -668,7 +668,7 @@ Allocate the arguments table for the arguments object.
 */
 function allocArgTable(numArgs)
 {
-    "tachyon:static"; 
+    "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg numArgs pint";
     "tachyon:ret ref";
