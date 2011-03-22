@@ -19,7 +19,7 @@ function main()
     if (RUNNING_IN_TACHYON)
     {
         // Initialize Tachyon in minimal mode
-        initialize(false);
+        initialize(false, boolToBox(PTR_NUM_BYTES === pint(8)));
 
         tachyonRepl();
 
