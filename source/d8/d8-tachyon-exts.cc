@@ -1,6 +1,6 @@
 /*===========================================================================*/
 
-/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-03-15 11:21:46 feeley> */
+/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-03-22 14:23:35 feeley> */
 
 /* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
 /* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
@@ -97,7 +97,7 @@ char* readFile(const char* fileName)
     FILE* inFile = fopen(fileName, "r");
     if (inFile == NULL)
     {
-        printf("Error in readFile -- can't open file\n");
+        printf("Error in readFile -- can't open file \"%s\"\n", fileName);
         exit(1);
     }
 
@@ -123,7 +123,7 @@ char* readFile(const char* fileName)
 
     outStr[strLen] = '\0';
 
-    pclose(inFile);
+    fclose(inFile);
 
     return outStr;
 }
@@ -283,7 +283,7 @@ v8::Handle<v8::Value> v8Proxy_currentTimeMillis(const v8::Arguments& args)
     return v8::Number::New(currentTimeMillis());
 }
 
-#define ACTIVATE_HEAP_PROFILING_not
+#define ACTIVATE_HEAP_PROFILING
 
 extern "C" 
 {

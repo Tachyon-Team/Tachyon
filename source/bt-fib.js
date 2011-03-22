@@ -24,11 +24,11 @@ function btfib(is64bit)
     print("Fib: compiling source code");
     //config.hostParams.printRegAlloc = true;
     //config.hostParams.printASM = true;
-    //var ir = compileSrcString("function fib(n) { if (n < 2) { return n; } else { return fib(n-1) + fib(n-2); } }; printInt(unboxInt(fib(10)));", config.hostParams);
+    var ir = compileSrcString("function fib(n) { if (n < 2) { return n; } else { return fib(n-1) + fib(n-2); } }; printInt(unboxInt(fib(10)));", config.hostParams);
     //var ir = compileSrcString("puts('hello world'); printInt(unboxInt((function (n) { return n; })(10)));", config.hostParams);
     //var ir = compileSrcString("(function () { function fib(n) { if (n < 2) return n; else return fib(n-1) + fib(n-2); } printInt(unboxInt(fib(10))); })();", config.hostParams);
 
-    var ir = compileSrcFile('bt-test.js', config.hostParams);
+    //var ir = compileSrcFile('bt-test.js', config.hostParams);
 
     //config.hostParams.printRegAlloc = false;
     //config.hostParams.printASM = false;
