@@ -945,9 +945,9 @@ x86.opndFormatGNU = function (opnd)
                 result = ((opnd.disp === 0) ? "" : opnd.disp) + "(" +
                          x86.opndFormatGNU(opnd.base) +
                          ((opnd.index === null) ?
-                              "" : " + " + x86.opndFormatGNU(opnd.index)) +
+                              "" : ", " + x86.opndFormatGNU(opnd.index)) +
                          ((opnd.index === null || opnd.scale === 1) ?
-                              "" : "*" + opnd.scale.toString()) +
+                              "" : ", " + opnd.scale.toString()) +
                          ")";
             } else
             {
@@ -2173,27 +2173,27 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
     if (srcWidth === 8 && signExt)
     {
         // 0F BE/r
-        genOp('movsx', 15, 190, dst, src);
+        genOp('movs', 15, 190, dst, src);
     }
     else if (srcWidth === 16 && signExt)
     {
         // 0F BF/r
-        genOp('movsx', 15, 191, dst, src);
+        genOp('movs', 15, 191, dst, src);
     }
     else if (srcWidth === 32 && dst.width() === 64 && signExt)
     {
         // 63/r
-        genOp('movsxd', 99, undefined, dst, src);
+        genOp('movsd', 99, undefined, dst, src);
     }
     else if (srcWidth === 8 && !signExt)
     {
         // 0F B6/r
-        genOp('movzx', 15, 182, dst, src);
+        genOp('movz', 15, 182, dst, src);
     }
     else if (srcWidth === 16 && !signExt)
     {
         // 0F B7/r
-        genOp('movzx', 15, 183, dst, src);
+        genOp('movz', 15, 183, dst, src);
     }
     else if (srcWidth === 32 && dst.width() === 64 && !signExt)
     {
