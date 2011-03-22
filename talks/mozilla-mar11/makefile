@@ -1,7 +1,7 @@
 # makefile for talk at Mozilla
 
 TARGET=mozilla-talk
-SOURCES=$(shell ls slides/*.tex) $(TARGET).tex
+SOURCES=$(shell ls slides/*.tex) $(shell ls images/*) $(TARGET).tex
 PDFVIEWER=open # change according to environment
 
 .SUFFIXES:

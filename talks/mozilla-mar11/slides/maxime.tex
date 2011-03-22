@@ -35,29 +35,32 @@
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{High-Level IR}
     \begin{itemize}
+
         \item Core JS semantics expressed in terms of HIR instructions
         \begin{itemize}
-            \item Act on boxed (dynamic) types
-            \item Annotated for performance
-                \begin{itemize}
-                    \item Static linkage, force inlining, no exceptions, etc.
-                \end{itemize}
-        \end{itemize}
-
-        \item Currently, HIR instructions implemented directly by function calls
-        \begin{itemize}
-            \item Primitives implemented in terms of extended JS
-            \item Annotated for performance
-                \begin{itemize}
-                    \item Static linkage, force inlining, no exceptions, etc.
-                \end{itemize}
+            \item Act on boxed, high-level (dynamic) types
+            \begin{itemize}
+                \item Strings, numbers, objects, \ldots
+            \end{itemize}
+            \item May produce exceptions in some cases
         \end{itemize}
 
         \item Examples
         \begin{itemize}
             \item Arithmetic/comparison operators (+, -, *, /, $<$, \ldots)
             \item Property accesses (getProp, putProp, hasProp, \ldots)
+            \item Other misc. JavaScript operators (typeof, instanceof, \ldots)
         \end{itemize}
+
+        \item Currently, HIR implemented directly by primitive functions
+        \begin{itemize}
+            \item Primitives written in terms of extended JS
+            \item Annotated for performance
+                \begin{itemize}
+                    \item Static linkage, force inlining, no exceptions, etc.
+                \end{itemize}
+        \end{itemize}
+
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -93,7 +96,7 @@
         \item Type-annotated
         \begin{itemize}
             \item Integers, floats, booleans, raw pointers
-            \item Boxed values
+            \item Boxed values, references
         \end{itemize}
         \item Low-level
         \begin{itemize}
@@ -122,6 +125,35 @@
 \lstinputlisting{images/boxIsInt.js}
 \end{frame}
 % ------------------------------------------------------------------------------
+
+\begin{frame}{Primitive Functions}
+    \begin{itemize}
+        \item Writing code using IIR not as painful as it sounds
+        \item Using IIR does not take away JS capabilities!
+        \begin{itemize}
+            \item Still get dynamic typing, strings, closures
+        \end{itemize}
+
+        \item Don't need to annotate the type of every local variable
+
+        \item Also facilitated by auto-generated code
+
+        \item Auto-generated accessor methods for heap objects
+        \begin{itemize}
+            \item allo\_str(len), get\_str\_len(str), get\_str\_data(str, i)
+        \end{itemize}
+
+        \item Auto-generated C FFI wrappers
+        \begin{itemize}
+            \item puts('Hello World!'), malloc(size), free(ptr), exit(intval)
+        \end{itemize}
+
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{}
+\lstinputlisting[scale=0.8]{images/newObject.js}
+\end{frame}
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{Optimistic Optimizations}
@@ -215,14 +247,6 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Naïve JavaScript Compilation}
-\begin{center}
-\includegraphics[width=3in]{images/transforms1}
-\end{center}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
 \begin{frame}{What Would Tachyon Do (WWTD)?}
 \begin{center}
 \includegraphics[width=3in]{images/transforms2}
@@ -242,13 +266,17 @@
 \begin{frame}{Key Ideas}
     \begin{itemize}
         \item Crucial to capture info about run time behavior
+        \begin{itemize}
+            \item Tracing JITs do this, but leave many run-time checks
+        \end{itemize}
+
         \item Program needs to be correct at all times
         \begin{itemize}
             \item Don't need to run the same code at all times
             \item Multiple optimized versions correct at different times
         \end{itemize}
 
-        \item Can make optimistic assumptions that may be invalidated later
+        \item Can make optimistic assumptions that may be invalidated
         \begin{itemize}
             \item So long as we can repair our mistakes in time
             \item Code with broken assumptions must never be executed
