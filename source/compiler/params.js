@@ -118,6 +118,12 @@ function CompParams(cfgObj)
     this.print = print;
 
     /**
+    Flag to print the ASTs generated during the compilation
+    @field
+    */
+    this.printAST = false;
+
+    /**
     Flag to print the HIR generated during the compilation
     @field
     */

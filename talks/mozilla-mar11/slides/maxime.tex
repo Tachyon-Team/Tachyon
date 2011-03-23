@@ -114,6 +114,29 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
+\begin{frame}{Primitive Functions}
+    \begin{itemize}
+        \item All Tachyon functions can use extended JS, meaning:
+        \begin{itemize}
+            \item Special function annotations
+            \item Typed local variables
+            \item Inline IR (IIR) instructions
+        \end{itemize}
+        \item Core of the run-time makes more use of this
+        \begin{itemize}
+            \item Rest of Tachyon mostly uses "standard" JS
+        \end{itemize}
+        \item Annotations can make functions:
+        \begin{itemize}
+            \item Have static linkage (no dynamic lookup)
+            \item Always be inlined
+            \item Be prevented from accessing the global object
+            \item Use typed argument values
+            \item Use a typed return value
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{}
 \lstinputlisting{images/lt.js}

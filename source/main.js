@@ -71,21 +71,13 @@ Tachyon read-eval-print loop
 */
 function tachyonRepl()
 {
-    /* TODO
-
-        /hir <command>
-        /lir <command>
-        /asm <command>  produce assembly listing for command
-
-        Compile and log
-    */
-
     // Print a help listing
     function printHelp()
     {
         print('Available special commands:');
         print('  /load <filename>    load and execute a script');
         print('  /time <command>     time the execution of a command');
+        print('  /ast  <command>     view AST produced for a command/file');
         print('  /hir  <command>     view HIR produced for a command/file');
         print('  /lir  <command>     view LIR produced for a command/file');
         print('  /asm  <command>     view ASM produced for a command/file');
@@ -151,6 +143,15 @@ function tachyonRepl()
             var endTimeMs = (new Date()).getTime();
             var time = (endTimeMs - startTimeMs) / 1000;
             print('time: ' + time + 's');
+            break;
+
+            case 'ast':
+            config.hostParams.printAST = true;
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
+            config.hostParams.printAST = false;
             break;
 
             case 'hir':
