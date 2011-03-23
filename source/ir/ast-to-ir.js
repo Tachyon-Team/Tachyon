@@ -3803,7 +3803,8 @@ function insertConstructIR(context, funcVal, argVals)
             context, 
             testVal, 
             'TypeError',
-            'constructor is not a function'
+            'constructor is not a function (' +
+            context.astNode.loc.to_string() + ')'
         );
     }
 

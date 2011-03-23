@@ -376,6 +376,13 @@ function string_substring(start, end)
     return string_internal_fromCharCodeArray(a.slice(from, to));
 }
 
+function string_substr(start, len)
+{
+    var end = (len === undefined)? undefined:(start + len);
+
+    return string_substring.apply(this, [start, end]);
+}
+
 function string_toLowerCase()
 {
     var a = string_internal_toCharCodeArray(this);
@@ -496,6 +503,7 @@ String.prototype.replace = string_replace;
 String.prototype.search = string_search;
 String.prototype.split = string_split;
 String.prototype.substring = string_substring;
+String.prototype.substr = string_substr;
 String.prototype.toLowerCase = string_toLowerCase;
 String.prototype.toLocaleLowerCase = string_toLocaleLowerCase;
 String.prototype.toUpperCase = string_toUpperCase;
