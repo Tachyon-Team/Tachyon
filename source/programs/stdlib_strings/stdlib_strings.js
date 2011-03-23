@@ -138,6 +138,20 @@ function test_substring()
     return 0;
 }
 
+function test_substr()
+{
+    if ('foo'.substr(0) !== 'foo')
+        return 1;
+    if ('foo'.substr(1, 1) !== 'o')
+        return 2;
+    if ('foobar'.substr(1,3) !== 'oob')
+        return 3;
+    if ('foo'.substr(1,5) !== 'oo')
+        return 4;
+
+    return 0;
+}
+
 function test_concat()
 {
     if (''.concat() !== '')
@@ -271,25 +285,29 @@ function test()
     if (r != 0)
         return 1000 + r;
 
-    var r = test_concat();
+    var r = test_substr();
     if (r != 0)
         return 1100 + r;
 
-    var r = test_replace();
+    var r = test_concat();
     if (r != 0)
         return 1200 + r;
 
-    var r = test_split();
+    var r = test_replace();
     if (r != 0)
         return 1300 + r;
 
-    var r = test_trim();
+    var r = test_split();
     if (r != 0)
         return 1400 + r;
 
-    var r = test_fromCharCode();
+    var r = test_trim();
     if (r != 0)
         return 1500 + r;
+
+    var r = test_fromCharCode();
+    if (r != 0)
+        return 1600 + r;
 
     return 0;
 }

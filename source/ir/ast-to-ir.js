@@ -2142,7 +2142,8 @@ function exprToIR(context)
                     lastContext, 
                     testVal, 
                     'TypeError',
-                    'callee is not a function'
+                    'callee is not a function (' + 
+                    context.astNode.loc.to_string() + ')'
                 );
 
                 // Get the function pointer from the closure object
@@ -3802,7 +3803,8 @@ function insertConstructIR(context, funcVal, argVals)
             context, 
             testVal, 
             'TypeError',
-            'constructor is not a function'
+            'constructor is not a function (' +
+            context.astNode.loc.to_string() + ')'
         );
     }
 
