@@ -1035,8 +1035,8 @@ function constEvalBool(val)
 CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     // If this is a call to boxToBool
-    if (this.uses[0] instanceof IRFunction && 
-        this.uses[0].funcName === 'boxToBool')
+    if (this.getCallee() instanceof IRFunction && 
+        this.getCallee() === params.staticEnv.getBinding('boxToBool'))
     {
         // Evaluate the boolean value
         var boolVal = constEvalBool(this.uses[this.uses.length-1]);

@@ -130,9 +130,9 @@ function lowerIRCFG(cfg, params)
                 }
 
                 // If this is a function call to a known function
-                if (instr instanceof CallInstr && instr.uses[0] instanceof IRFunction)
+                if (instr instanceof CallFuncInstr && instr.getCallee() instanceof IRFunction)
                 {
-                    var calleeFunc = instr.uses[0];
+                    var calleeFunc = instr.getCallee();
 
                     // If the callee is marked inline and is inlinable
                     if (calleeFunc.inline && isInlinable(calleeFunc))

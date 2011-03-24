@@ -1538,6 +1538,38 @@ var CallFuncInstr = instrMaker(
 );
 
 /**
+Get the function callee, if known
+*/
+CallFuncInstr.prototype.getCallee = function ()
+{
+    if (this.uses[0] instanceof IRFunction)
+        return this.uses[0];
+    else
+        return undefined;
+}
+
+/**
+Get the this argument
+*/
+CallFuncInstr.prototype.getThisArg = function ()
+{
+    return this.uses[2];
+}
+
+/**
+Get an argument by number
+*/
+CallFuncInstr.prototype.getArg = function (argIdx)
+{
+    assert (
+        argIdx < this.uses.length + 3,
+        'invalid argument index'
+    );
+
+    return this.uses[3 + argIdx];
+}
+
+/**
 Test if a call instruction writes to memory
 */
 CallFuncInstr.prototype.writesMem = function ()
