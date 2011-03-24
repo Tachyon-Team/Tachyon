@@ -164,7 +164,8 @@ function lowerIRCFG(cfg, params)
             //print('*** validating after patterns ***');
 
             // Validate the CFG
-            cfg.validate();
+            if (params.debug)
+                cfg.validate();
         }
     );
 
@@ -182,7 +183,8 @@ function lowerIRCFG(cfg, params)
             //print(cfg.ownerFunc);
 
             // Validate the CFG
-            cfg.validate();
+            if (params.debug)
+                cfg.validate();
         }
     );
 
@@ -194,7 +196,8 @@ function lowerIRCFG(cfg, params)
             applyPatternsCFG(cfg, params);
 
             // Validate the CFG
-            cfg.validate();
+            if (params.debug)
+                cfg.validate();
         }
     );
 
@@ -210,7 +213,8 @@ function lowerIRCFG(cfg, params)
             //print('*** done ***');
 
             // Validate the CFG
-            cfg.validate();
+            if (params.debug)
+                cfg.validate();
         }
     );
 
