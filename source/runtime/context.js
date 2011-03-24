@@ -23,7 +23,7 @@ function makeContextLayout(params)
         'CTX_ALIGN',
         ConstValue.getConst(
             256,
-            IRType.pint
+            IRType.puint
         )
     );
 
