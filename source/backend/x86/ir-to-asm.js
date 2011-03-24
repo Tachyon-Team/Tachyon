@@ -1267,116 +1267,53 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     // - Dividend in xAX
     // - Divisor NOT in xAX or xDX
 
-    const dvnd    = {reg:null, value:opnds[0]};
-    const dsor    = {reg:null, value:opnds[1]};
-    const scratch = {reg:null, value:null};
+    // We have no support for sign extension on 
+    // less than 32 bits for now
+    assert(
+        width >= 32,
+        "Unsupported width " + width
+    );
+    
+    var dvnd = opnds[0];
+    var dsor = opnds[1]; 
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
 
-    const xAX     = {physReg:reg.rax.subReg(width), value:null};
-    const xBX     = {physReg:reg.rbx.subReg(width), value:null};
-    const xDX     = {physReg:reg.rdx.subReg(width), value:null};
+    var xAX = reg.rax.subReg(width);
+    var xDX = reg.rdx.subReg(width);
 
-    function setReg(reg)
+    if (dsor === xAX && dvnd.type === x86.type.REG && dvnd !== xDX)
     {
-        if (reg.physReg === dvnd.value)
-        {
-            reg.value = dvnd;
-            dvnd.reg  = reg;
-        } else if (reg.physReg === dsor.value)
-        {
-            reg.value = dsor;
-            dsor.reg  = reg;
-        }
-    };
-
-    function setScratch(scratch)
+        tltor.asm.
+        xchg(xAX, dvnd);
+        dsor = dvnd;
+    } else
     {
-        if (xAX.value === null)
+        if (dsor === xAX || dsor === xDX || tltor.asm.isImmediate(dsor))
         {
-            scratch.reg = xAX;
-        } else if (xBX.value === null)
-        {
-            scratch.reg = xBX;
-        } else
-        {
-            scratch.reg = xDX;
-        }
-    };
-
-    function xchg(opnd1, opnd2)
-    {
-        if (opnd1 === scratch)
-        {
-            tltor.asm.mov(opnd2.reg.physReg, scratch.reg.physReg);
-        } else if (opnd2 === scratch)
-        {
-            tltor.asm.mov(opnd1.reg.physReg, scratch.reg.physReg);
-        } else
-        {
-            tltor.asm.xchg(opnd1.reg.physReg, opnd2.reg.physReg);
+            tltor.asm.
+            mov(dsor, scratchReg);
+            dsor = scratchReg;
         }
 
-        var treg = opnd1.reg;
-        var tvalue = opnd1.value;
-
-        opnd1.reg       = opnd2.reg;
-        opnd1.reg.value = opnd1;
-        opnd1.value     = opnd1.reg.physReg;
-
-        opnd2.reg       = treg;
-        opnd2.reg.value = opnd2;
-        opnd2.value     = treg.physReg;
-    };
-
-    function moveOpndToReg(opnd, reg)
-    {
-        // Move the operand value in the given register
-        tltor.asm.mov(opnd.value, reg.physReg);
-        
-        reg.value  = opnd;
-        opnd.reg   = reg;
-        opnd.value = reg.physReg;
-    };
-
-    setReg(xAX);
-    setReg(xBX);
-    setReg(xDX);
-
-    setScratch(scratch);
-
-    // If the dividend is not xAX register
-    if (xAX.value !== dvnd)
-    {
-        // If xAX already contains an operand,
-        // move it to the scratch register
-        if (xAX.value !== null && xAX.value !== scratch)
+        if (dvnd !== xAX)
         {
-            xchg(xAX.value, scratch);
+            tltor.asm.
+            mov(dvnd, xAX);
         }
-
-        // Move the dividend value in xAX
-        moveOpndToReg(dvnd, xAX);
     }
-
-    // If the divisor is in xDX or is a 
-    // memory location, move it to 
-    // xBX, otherwise use it directly
-    if (xDX.value === dsor || tltor.asm.isImmediate(dsor.value))
-    {
-        moveOpndToReg(dsor, xBX);
-    }
-
+    
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        // Extend the value into EDX
-        tltor.asm.mov($(0), xDX.physReg);
+        // Extend the value into xDX
+        tltor.asm.mov($(0), xDX);
 
-        tltor.asm.div(dsor.value, width);
+        tltor.asm.div(dsor, width);
     }
     else
     {
-        // Sign-extend EAX into EDX:EAX using CDQ
+        // Sign-extend xAX into xDX:xAX using CDQ or CQO
         if (width === 32)
         {
             tltor.asm.cdq();
@@ -1385,7 +1322,7 @@ DivInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.cqo();
         }
 
-        tltor.asm.idiv(dsor.value, width);
+        tltor.asm.idiv(dsor, width);
     }
 };
 
@@ -2439,11 +2376,11 @@ ConstructInstr.prototype.genCode = CallFuncInstr.prototype.genCode;
 
 ICastInstr.prototype.genCode = function (tltor, opnds)
 {
-    // TODO: for now, move from input to output
-    // Eventually, should always use same register... noop
+    const reg = x86.Assembler.prototype.register; 
 
     const dest = this.regAlloc.dest;
 
+    const configWidth = tltor.params.target.ptrSizeBits;
     const dstWidth = this.type.getSizeBits(tltor.params);
     const srcWidth = this.uses[0].type.getSizeBits(tltor.params);
 
@@ -2451,6 +2388,28 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         dest.type === x86.type.REG, 
         "Destination should be a register"
     );   
+
+    if (dstWidth === 8 && configWidth === 32)
+    {
+        assert(
+            dest === reg.rax.subReg(configWidth) ||
+            dest === reg.rbx.subReg(configWidth) ||
+            dest === reg.rcx.subReg(configWidth) ||
+            dest === reg.rdx.subReg(configWidth),
+            "Invalid destination register '" + dest + "' on 32 bits "
+        );
+    }
+
+    if (srcWidth === 8 && configWidth === 32)
+    {
+        assert(
+            opnds[0] === reg.rax.subReg(configWidth) ||
+            opnds[0] === reg.rbx.subReg(configWidth) ||
+            opnds[0] === reg.rcx.subReg(configWidth) ||
+            opnds[0] === reg.rdx.subReg(configWidth),
+            "Invalid operand register '" + opnds[0] + "' on 32 bits "
+        );
+    }
 
     if (opnds[0] === dest && srcWidth === dstWidth)
     {
@@ -2461,7 +2420,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.
         mov(opnds[0], dest);
     }
-    else if (srcWidth > dstWidth || this.uses[0].type.isUnsigned())
+    else if (srcWidth > dstWidth)
     {
         if (opnds[0].type === x86.type.REG)
         {
@@ -2472,18 +2431,25 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.
             mov(opnds[0], dest.subReg(dstWidth), dstWidth);
         }
+
+        if (dstWidth !== 32)
+        {
+            tltor.asm.
+            movxx(dest.subReg(dstWidth), dest, false);
+        }
     } 
     else
     {
-        // Always do a sign extension
+        const isSigned = this.uses[0].type.isSigned() && this.type.isSigned();
+
         if (opnds[0].type === x86.type.REG)
         {
             tltor.asm.
-            movxx(opnds[0].subReg(srcWidth), dest.subReg(dstWidth), true);
+            movxx(opnds[0].subReg(srcWidth), dest.subReg(dstWidth), isSigned);
         } else
         {
             tltor.asm.
-            movxx(opnds[0], dest.subReg(dstWidth), true, srcWidth);
+            movxx(opnds[0], dest.subReg(dstWidth), isSigned, srcWidth);
         }
     }
 };

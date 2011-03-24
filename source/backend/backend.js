@@ -207,7 +207,7 @@ backend.compileIRToCB = function (ir, params)
         //print("******* Listing *************************");
         //print(translator.asm.codeBlock.listingString(startIndex));
         //startIndex = translator.asm.codeBlock.code.length;
-
+    
         /*
         assert(
             allocator.validate(cfg, params),

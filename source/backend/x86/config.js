@@ -160,6 +160,12 @@ function x86BackendCfg(is64bit)
     );
 
     assert(
+        this.scratchReg !== reg.rax.subReg(width) &&
+        this.scratchReg !== reg.rdx.subReg(width),
+        "xAX and xDX are reserved for multiplication and division"
+    );
+
+    assert(
         this.context === reg.rax.subReg(width) ||
         this.context === reg.rbx.subReg(width) || 
         this.context === reg.rcx.subReg(width) || 
