@@ -65,11 +65,12 @@ BASE_SRCS =                             \
     ir/commelim.js                      \
     ir/inlining.js                      \
     ir/lowering.js                      \
-    platform/ffi.js                     \
-    platform/mcb.js                     \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
+    runtime/misc.js                     \
+    platform/ffi.js                     \
+    platform/mcb.js                     \
     backend/asm.js                      \
     backend/regalloc.js                 \
     backend/linearscan.js               \
@@ -88,14 +89,16 @@ RUNTIME_SRCS =                          \
 
 # Standard library source files
 STDLIB_SRCS =                           \
-    stdlib/arrays.js                    \
-    stdlib/errors.js                    \
-    stdlib/extensions.js                \
-    stdlib/functions.js                 \
+    stdlib/object.js                    \
+    stdlib/function.js                  \
+    stdlib/array.js                     \
+    stdlib/error.js                     \
+    stdlib/number.js                    \
+    stdlib/string.js                    \
     stdlib/math.js                      \
-    stdlib/numbers.js                   \
-    stdlib/objects.js                   \
-    stdlib/strings.js
+    stdlib/date.js                      \
+    stdlib/json.js                      \
+    stdlib/extensions.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \

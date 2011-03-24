@@ -59,6 +59,14 @@ Anonymous function to initialize this library
 
 //-----------------------------------------------------------------------------
 
+/**
+15.4.3.2 Test if a value is an array
+*/
+Array.isArray = function (arg)
+{
+    return boolToBox(boxIsArray(arg));
+}
+
 // Operations on Array objects.
 
 function array_toObject(x)

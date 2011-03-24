@@ -25,6 +25,11 @@ function Object(value)
 Object.prototype = {};
 
 /**
+15.2.4.1 Object.prototype.constructor
+*/
+Object.prototype.constructor = Object;
+
+/**
 Anonymous function to initialize this library
 */
 (function ()
@@ -95,6 +100,24 @@ Object.defineProperty = function (obj, prop, attribs)
     if (attribs.hasOwnProperty('value'))
         obj[prop] = attribs.value;
 };
+
+/**
+15.2.3.12 Object.isFrozen ( O )
+FIXME: for now, all objects are extensible
+*/
+Object.isFrozen = function (obj)
+{
+    return false;
+}
+
+/**
+15.2.3.13 Object.isExtensible ( O )
+FIXME: for now, all objects are extensible
+*/
+Object.isExtensible = function (obj)
+{
+    return true;
+}
 
 /**
 15.2.4.2 Default object to string conversion function
