@@ -3040,5 +3040,31 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
     return this;
 };
 
+// ------------------- Syntactic sugar for common constructions ---------------
+
+/**
+*   Decrementing for loop 
+*/
+x86.Assembler.prototype.forLoop = function (index, limit, body)
+{
+    const loop = this.labelObj();
+    const end  = this.labelObj();
+
+    this.
+    label(loop).
+    cmp(limit, index).
+    jl(end);
+
+    body.call(this);
+     
+    this.
+    dec(index).
+    jmp(loop).
+    label(end);
+
+    return this;
+};
+
+
 
 

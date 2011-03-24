@@ -497,6 +497,163 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
     return free;
 };
 
+/**
+    Generate code to move arguments passed in registers on stack,
+    generate some code and move arguments back in registers.
+*/
+irToAsm.translator.prototype.withNormalizedFrame = function (code)
+{
+    const $   = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+
+    const that = this;
+
+    const target     = this.params.target;
+    const backendCfg = target.backendCfg;
+    const argsRegNb  = backendCfg.argsReg.length;
+    const refByteNb  = target.ptrSizeBytes; 
+
+    const stack   = backendCfg.stack;
+    const scratch = backendCfg.scratchReg;
+    const argsReg = backendCfg.argsReg;
+
+    /*
+    At first we have the following stack frame:
+
+    -----------------
+    Return Address     <-- stack pointer
+    -----------------
+    Arguments (only those not passed in registers)
+    -----------------
+
+
+    In the end, we want the following stack frame:
+
+    -----------------
+    Return Address     <-- stack pointer
+    -----------------
+    Arguments passed in registers
+    Arguments passed on stack
+    -----------------
+    */
+
+    const retAddrOrigOffset = (argsRegNb*refByteNb);
+    const retAddrNewOffset  = 0;
+
+    // Change return address location on stack
+    if (retAddrOrigOffset !== retAddrNewOffset)
+    {
+        // Create space on stack for the arguments in registers
+        this.asm.
+        sub($(argsRegNb*refByteNb), stack);
+
+        // Move return address
+        this.asm.
+        mov(mem(retAddrOrigOffset, stack), scratch).
+        mov(scratch, mem(retAddrNewOffset, stack));
+
+        // Push each argument passed in registers on stack
+        // (overwrites the previous return address location)
+        argsReg.forEach(function (reg, index) {
+            that.asm.
+            mov(reg, mem((index + 1)*refByteNb, stack));
+        });
+    }
+
+    code.call(this);
+
+    // Restore stack frame
+    if (retAddrOrigOffset !== retAddrNewOffset)
+    {
+        // Move arguments back in registers
+        argsReg.forEach(function (reg, index) {
+            that.asm.
+            mov(mem((index + 1)*refByteNb, stack), reg);
+        });
+
+        // Restore return address
+        this.asm.
+        mov(mem(retAddrNewOffset, stack), scratch).
+        mov(scratch, mem(retAddrOrigOffset, stack)).
+        add($(argsRegNb*refByteNb), stack);
+    }
+};
+
+/**
+    
+*/
+irToAsm.translator.prototype.populateArgTable = function ()
+{
+    const $   = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+    const reg = x86.Assembler.prototype.register;
+    const target     = this.params.target;
+    const backendCfg = target.backendCfg;
+    const context = backendCfg.context;
+    const width = target.ptrSizeBits;
+    const implArgsRegNb = backendCfg.implArgsRegNb;
+    const ctxNumArgs = backendCfg.getCtxField("numargs");
+    const ctxArgTbl  = backendCfg.getCtxField("argtbl");
+    const refByteNb = target.ptrSizeBytes; 
+    const tblOffset = this.params.memLayouts.arrtbl.getFieldOffset(
+                         ["tbl", 0]
+                      );
+
+    const allocArgTbl   = irToAsm.getEntryPoint(
+                            this.params.staticEnv.getBinding("allocArgTable"),
+                            "fast",
+                            this.params, 
+                            "addr"
+                        );
+
+    // The return address and implementation related values are also on 
+    // stack but should not be copied in argument table
+    const spOffset = (implArgsRegNb + 1)*refByteNb;
+
+    const index      = backendCfg.argsReg[0];
+    const argTblPtr  = backendCfg.retValReg;
+    const scratch    = backendCfg.scratchReg;
+    const stack      = backendCfg.stack;
+    const fstOpnd    = backendCfg.argsReg[implArgsRegNb];
+
+    assert(
+        index !== argTblPtr,
+        "Incompatible index and argTblPtr"
+    );
+
+    this.asm.
+    // Move numArgs into corresponding register
+    mov(ctxNumArgs, fstOpnd).
+
+    // Preserve the number of argument accross calls
+    push(fstOpnd).
+    
+    // Only retain user-visible arguments nb
+    sub($(implArgsRegNb), fstOpnd).
+
+    // Call handler, result is in argTblPtr
+    mov(allocArgTbl, scratch).
+    call(scratch).
+
+    // Restore the number of arguments
+    pop(index).          
+    mov(index, ctxNumArgs).
+
+    // Copy arguments into argument table
+    sub($(1 + implArgsRegNb), index).    // i = ctxNumArgs - 1 - implArgsRegNb
+
+    forLoop(index, $(0), function ()    // for (;i >= 0; --i)
+    {
+        this.
+        mov(mem(spOffset, stack, index, refByteNb), scratch). // temp = sp[i] + 3
+        mov(scratch, mem(tblOffset, argTblPtr, index, refByteNb));   // argTbl[i] = temp
+    }).
+
+    // Store argument table on the context
+    mov(argTblPtr, ctxArgTbl);
+
+};
+
 irToAsm.translator.prototype.prelude = function ()
 {
     const reg = x86.Assembler.prototype.register;
@@ -563,133 +720,18 @@ irToAsm.translator.prototype.prelude = function ()
         }
     } else
     {
+        const a0  = backendCfg.argsReg[0];
+        const a1  = backendCfg.argsReg[1];
+
         const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
         const numArgs = mem(numArgsOffset, context);
 
         const tempOffset = backendCfg.ctxLayout.getFieldOffset(["temp"]);
         const ctxTemp = mem(tempOffset, context);
 
-        const xAX = reg.rax.subReg(width);
-        const xBX = reg.rbx.subReg(width);
-        const xDX = reg.rdx.subReg(width);
-        const xSI = reg.rsi.subReg(width);
-
         if (this.fct.usesArguments)
         {
-            // TODO: Should be moved into a separate handler
-
-            /*
-            At first we have the following stack frame:
-
-            -----------------
-            Return Address     <-- stack pointer
-            -----------------
-            Arguments (only those not passed in registers)
-            -----------------
-
-
-            In the end, we want the following stack frame:
-
-            -----------------
-            Return Address     <-- stack pointer
-            -----------------
-            Arguments passed in registers
-            Arguments passed on stack
-            -----------------
-            */
-
-            const retAddrOrigOffset = (argsRegNb*refByteNb);
-            const retAddrNewOffset  = 0;
-
-            // Change return address location on stack
-            if (retAddrOrigOffset !== retAddrNewOffset)
-            {
-                // Create space on stack for the arguments in registers
-                this.asm.
-                sub($(argsRegNb*refByteNb), stack);
-
-                // Move return address
-                this.asm.
-                mov(mem(retAddrOrigOffset, stack), scratch).
-                mov(scratch, mem(retAddrNewOffset, stack));
-
-                // Push each argument passed in registers on stack
-                // (overwrites the previous return address location)
-                argsReg.forEach(function (reg, index) {
-                    that.asm.
-                    mov(reg, mem((index + 1)*refByteNb, stack));
-                });
-            }
-
-            // Retrieve pointer to argument table
-            const fstOpnd = backendCfg.argsReg[2];
-
-            const argTblOffset = backendCfg.ctxLayout.getFieldOffset(["argtbl"]);
-            const argTbl  = mem(argTblOffset, context);
-            const tblOffset = this.params.memLayouts.arrtbl.getFieldOffset(
-                                 ["tbl", 0]
-                              );
-    
-            const allocArgTbl   = irToAsm.getEntryPoint(
-                                    this.params.staticEnv.getBinding("allocArgTable"),
-                                    "fast",
-                                    this.params, 
-                                    "addr"
-                                );
-
-
-
-            const loop = this.asm.labelObj(); 
-            const end  = this.asm.labelObj(); 
-
-            this.asm.
-            // Move numArgs into corresponding register
-            sub($(2), numArgs, width).
-            mov(numArgs, fstOpnd).
-
-            // Preserve the number of argument accross calls
-            push(fstOpnd).
-
-            // Call handler, result is in xAX
-            mov(allocArgTbl, scratch).
-            call(scratch).
-
-            // Restore the number of arguments
-            // And copy arguments into argument table
-            pop(xBX).          // n = numArgs
-            mov(xBX, numArgs).
-
-            mov($(0), xSI).    // i = 0
-            label(loop).       // for(i=0, i<n, ++i) {
-            cmp(xBX, xSI).    
-            jge(end).
-
-            mov(mem(3*refByteNb, stack, xSI, refByteNb), xDX). // temp = sp[i] + 3
-            mov(xDX, mem(tblOffset, xAX, xSI, refByteNb)).   // argTbl[i] = temp
-
-            inc(xSI).                                      
-            jmp(loop).         // }
-            label(end).
-
-            // Store argument table on the context
-            mov(xAX, argTbl).
-            add($(2), numArgs, width);
-
-            // Restore stack frame
-            if (retAddrOrigOffset !== retAddrNewOffset)
-            {
-                // Move arguments back in registers
-                argsReg.forEach(function (reg, index) {
-                    that.asm.
-                    mov(mem((index + 1)*refByteNb, stack), reg);
-                });
-
-                // Restore return address
-                this.asm.
-                mov(mem(retAddrNewOffset, stack), scratch).
-                mov(scratch, mem(retAddrOrigOffset, stack)).
-                add($(argsRegNb*refByteNb), stack);
-            }
+            this.withNormalizedFrame(this.populateArgTable);
         }
         
         // Handle a variable number of arguments
@@ -700,13 +742,14 @@ irToAsm.translator.prototype.prelude = function ()
         const tsDone        = this.asm.labelObj();
         const tsLoop        = this.asm.labelObj();
 
+        
         const expNumArgs  = this.fct.argVars.length;
         const expCallArgs = expNumArgs + 2; 
         const frameNumArgs = expCallArgs - argsRegNb;
 
         const argOffset = scratch;
         const argPtr    = scratch2;
-        const temp      = xAX;
+        const temp      = a0;
         const undefImm = $(this.params.staticEnv
                           .getBinding("BIT_PATTERN_UNDEF").value);
         const shiftAmt = (refByteNb === 4) ? 2 : 3;
@@ -743,7 +786,7 @@ irToAsm.translator.prototype.prelude = function ()
 
         if (expCallArgs > argsRegNb)
         {
-            const index = xBX;
+            const index = a1;
 
             this.asm.
 

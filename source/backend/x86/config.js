@@ -141,6 +141,14 @@ function x86BackendCfg(is64bit)
     */
     this.scratchReg = reg.rbp.subReg(width);
 
+    /**
+    Number of implementation related arguments used in a call.
+    @field
+    */
+    this.implArgsRegNb = 2;
+
+    
+
     // Configuration sanity checks
     assert(
         !arraySetHas(this.argsReg, this.funcPtrReg),
@@ -194,8 +202,8 @@ function x86BackendCfg(is64bit)
 }
 
 /**
-    Creates the layout for the context object used by the backend and 
-    assigns it to the ctxLayout field.
+Creates the layout for the context object used by the backend and 
+assigns it to the ctxLayout field.
 */
 x86BackendCfg.prototype.makeContextLayout = function (params)
 {
@@ -236,6 +244,16 @@ x86BackendCfg.prototype.makeContextLayout = function (params)
     ctxLayout.finalize();
 
     this.ctxLayout = ctxLayout;
+};
+
+/**
+Get a context memory field.
+*/
+x86BackendCfg.prototype.getCtxField = function (name)
+{
+    const mem = x86.Assembler.prototype.memory;
+    const fieldOffset = this.ctxLayout.getFieldOffset([name]);
+    return mem(fieldOffset, this.context);
 };
 
 /**
