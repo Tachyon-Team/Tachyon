@@ -41,13 +41,43 @@
 \end{center}
 \end{frame}
 
-
-
 %
-% TODO: example of program JS->AST->HIR->LIR->ASM
+% Example of program JS->AST->HIR->LIR->ASM
 %
 
+\begin{frame}{Example: Simple Function}
+\lstinputlisting{images/ex_source.js}
+\end{frame}
 
+\begin{frame}{Example: Abstract Syntax Tree}
+\tiny\verbatiminput{images/ex_ast.txt}
+\end{frame}
+
+\begin{frame}{Example: High-level IR}
+\tiny\verbatiminput{images/ex_hir.txt}
+\end{frame}
+
+\begin{frame}{Example: Low-level IR}
+\tiny\verbatiminput{images/ex_lir.txt}
+\end{frame}
+
+\begin{frame}{Example: Machine Code}
+\begin{columns}[t]
+
+\begin{column}{0.33\textwidth}
+\tiny\verbatiminput{images/ex_asm1.txt}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\tiny\verbatiminput{images/ex_asm2.txt}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\tiny\verbatiminput{images/ex_asm3.txt}
+\end{column}
+
+\end{columns}
+\end{frame}
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{High-Level IR}
