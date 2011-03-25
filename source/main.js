@@ -75,15 +75,17 @@ function tachyonRepl()
     function printHelp()
     {
         print('Available special commands:');
-        print('  /load <filename>    load and execute a script');
-        print('  /time <command>     time the execution of a command');
-        print('  /ast  <command>     view AST produced for a command/file');
-        print('  /hir  <command>     view HIR produced for a command/file');
-        print('  /lir  <command>     view LIR produced for a command/file');
-        print('  /asm  <command>     view ASM produced for a command/file');
-        print('  /reg  <command>     view register allocation for a command/file');
-        print('  /help               print a help listing');
-        print('  /exit               exit the read-eval-print loop');
+        print('  /load <filename>       load and execute a script');
+        print('  /time <command>        time the compilation/execution of a command');
+        print('  /time_comp <command>   time the compilation of a command');
+        print('  /time_exec <command>   time the execution of a command');
+        print('  /ast  <command>        view AST produced for a command/file');
+        print('  /hir  <command>        view HIR produced for a command/file');
+        print('  /lir  <command>        view LIR produced for a command/file');
+        print('  /asm  <command>        view ASM produced for a command/file');
+        print('  /reg  <command>        view register allocation for a command/file');
+        print('  /help                  print a help listing');
+        print('  /exit                  exit the read-eval-print loop');
     }
 
     // Load and execute a script
@@ -140,6 +142,29 @@ function tachyonRepl()
             case 'time':
             var startTimeMs = (new Date()).getTime();
             execCode(args);
+            var endTimeMs = (new Date()).getTime();
+            var time = (endTimeMs - startTimeMs) / 1000;
+            print('time: ' + time + 's');
+            break;
+
+            case 'time_comp':
+            var startTimeMs = (new Date()).getTime();
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
+            var endTimeMs = (new Date()).getTime();
+            var time = (endTimeMs - startTimeMs) / 1000;
+            print('time: ' + time + 's');
+            break;
+
+            case 'time_exec':
+            if (isSrcFile(args))
+                var ir = compFile(args)
+            else
+                var ir = compString(args);
+            var startTimeMs = (new Date()).getTime();
+            execIR(ir);
             var endTimeMs = (new Date()).getTime();
             var time = (endTimeMs - startTimeMs) / 1000;
             print('time: ' + time + 's');
@@ -203,14 +228,7 @@ function tachyonRepl()
         {
             var ir = compString(str);
 
-            var bridge = makeBridge(
-                ir,
-                config.hostParams,
-                [],
-                new CIntAsBox()
-            );
-
-            bridge(config.hostParams.ctxPtr);
+            execIR(ir);
         }
 
         catch (e)
@@ -220,6 +238,19 @@ function tachyonRepl()
             else
                 print(e);
         }
+    }
+
+    // Execute a compiled IR function
+    function execIR(ir)
+    {
+        var bridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            new CIntAsBox()
+        );
+
+        bridge(config.hostParams.ctxPtr);
     }
 
     // Compile a code string

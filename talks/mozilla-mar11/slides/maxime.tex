@@ -53,17 +53,17 @@
 
 \begin{frame}[fragile]
 \frametitle{\bf Example: Abstract Syntax Tree}
-\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}
+\scalebox{1.15}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}}
 \end{frame}
 
 \begin{frame}
 \frametitle{\bf Example: High-level IR}
-\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}
+\scalebox{0.7}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}}
 \end{frame}
 
 \begin{frame}
 \frametitle{\bf Example: Low-level IR}
-\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir.txt}
+\scalebox{0.65}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir.txt}}
 \end{frame}
 
 \begin{frame}
@@ -71,15 +71,15 @@
 \begin{columns}[t]
 
 \begin{column}{0.33\textwidth}
-\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}}
 \end{column}
 
 \begin{column}{0.33\textwidth}
-\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}}
 \end{column}
 
 \begin{column}{0.33\textwidth}
-\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}}
 \end{column}
 
 \end{columns}
@@ -130,7 +130,7 @@
         \item Tachyon is written in JS w/ “unsafe” extensions
         \begin{itemize}
             \item Minimizes the need to write C code (FFI)
-            \item Maximizes performance
+            \item Exposes potential optimization opportunities
             \begin{itemize}
                 \item FFIs are optimization boundaries
             \end{itemize}
@@ -181,7 +181,7 @@
         \end{itemize}
         \item Core of the run-time makes more use of this
         \begin{itemize}
-            \item Rest of Tachyon mostly uses "standard" JS
+            \item Rest of Tachyon mostly uses `standard' JS
         \end{itemize}
         \item Annotations can make functions:
         \begin{itemize}
@@ -202,7 +202,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\lstinputlisting[language=JavaScript]{images/boxIsInt.js}
+\scalebox{1.2}{\lstinputlisting[language=JavaScript]{images/boxIsInt.js}}
 \end{frame}
 % ------------------------------------------------------------------------------
 
@@ -224,7 +224,7 @@
             \item allo\_str(len), get\_str\_len(str), get\_str\_data(str, i)
         \end{itemize}
 
-        \item Auto-generated C FFI wrappers
+        \item Auto-generated wrappers for C FFI wrappers
         \begin{itemize}
             \item puts('Hello World!'), malloc(size), free(ptr), exit(intval)
         \end{itemize}
@@ -233,33 +233,69 @@
 \end{frame}
 
 \begin{frame}
-\lstinputlisting[scale=0.8]{images/newObject.js}
+\scalebox{0.9}{\lstinputlisting[]{images/newObject.js}} 
 \end{frame}
 
 \begin{frame}
-\lstinputlisting[scale=0.8]{images/boxToCString.js}
+\scalebox{0.9}{\lstinputlisting[]{images/boxToCString.js}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Foreign Function Interface (FFI)}
+    \begin{itemize}
+        \item Can both import and export functions
+
+        \item Auto-generated wrapper functions
+        \begin{itemize}
+            \item Present C functions as JS functions
+            \item Present JS functions as C functions
+            \item Automatic type conversions
+        \end{itemize}
+
+        \item For now: C code never touches JS objects
+
+        \item Minimal number of C functions exposed
+        \begin{itemize}
+            \item Memory management, file/console IO, profiling
+        \end{itemize}
+
+        \item Built for speed
+        \begin{itemize}
+            \item FFI calls are JITed and statically linked
+            \item Wrapper functions are inlinable
+        \end{itemize}
+
+    \end{itemize}
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf Optimistic Optimizations}
     \begin{itemize}
+
         \item Traditional optimizations are conservative
         \begin{itemize}
-            \item Can't prove it, can't do it
             \item Dynamic languages offer little static type information
             \item Dynamic constructs problematic for analysis
             \begin{itemize}
-                \item eval, load
+                \item \code{eval}, \code{load}
             \end{itemize}
             \item Often can't prove validity conservatively
+            \item Can't prove it, can't do it
         \end{itemize}
 
         \item Optimistic optimizations
         \begin{itemize}
-            \item Valid now, assume valid until proven otherwise
-            \item Most dynamic programs not that dynamic
-            \item Many optimizations do apply
+            \item Most JavaScript programs not that dynamic
+            \item Many optimizations do apply in practice
+            \begin{itemize}
+                \item But you can't always prove it conservatively
+            \end{itemize}
+            \item Valid now, presume valid until proven otherwise
+            \begin{itemize}
+                \item Innocent until proven guilty (faulty?)
+            \end{itemize}
+
         \end{itemize}
     \end{itemize}
 \end{frame}
@@ -280,7 +316,7 @@
             \item Can't trivially perform inlining
             \item \code{f} could possibly change \code{list.length}
         \end{itemize}
-        \item What if we add an eval?
+        \item What if we add an \code{eval}?
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -310,7 +346,7 @@
 \begin{frame}
 \frametitle{\bf What Would Tachyon Do (WWTD)?}
 \begin{itemize}
-    \item A VM can observe the types of global variables as a program is executing
+    \item A VM can observe global variables types during execution
     \begin{itemize}
         \item Can assume that these types will not change
         \begin{itemize}
@@ -319,11 +355,11 @@
         \item Compile functions with these assumptions
     \end{itemize}
 
-    \item A VM can observe what types input arguments to a function have
+    \item A VM can observe function arguments types
     \begin{itemize}
         \item Can specialize functions based on these
         \begin{itemize}
-            \item e.g.: sum(list) is always called with arrays of integers
+            \item e.g.: \code{sum(list)} is always called with arrays of integers
         \end{itemize}
     \end{itemize}
 
@@ -390,7 +426,7 @@
             \item Types of values stored in object fields
         \end{itemize}
 
-        \item Goal: build fairly accurate profile of program behavior w.r.t. types
+        \item Goal: build accurate profile of program behavior w.r.t. types
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
