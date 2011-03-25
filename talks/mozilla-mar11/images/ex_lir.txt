@@ -16,12 +16,12 @@ box function inc(box n) []
     iir_false:
     ref $t_10 = get_ctx;
     box global_2 = load_box $t_10, pint:36;
-    box $t_12 = call <fn "addOverflow">, undefined, global_2, n, box:1;
+    box $t_12 = call <fn "addOverflow">, undef, global_2, n, box:1;
     jump call_res;
         
     if_false:
     ref $t_19 = get_ctx;
     box global_3 = load_box $t_19, pint:36;
-    box $t_21 = call <fn "addGeneral">, undefined, global_3, n, box:1;
+    box $t_21 = call <fn "addGeneral">, undef, global_3, n, box:1;
     jump call_res;
 }
