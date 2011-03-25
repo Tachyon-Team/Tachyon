@@ -5,7 +5,7 @@
   \includegraphics[height=0.5in]{images/tachyon-icon.png}
   \begin{minipage}[b]{3.5in}
     \begin{center}
-      {\em A hypothetical particle that travels faster than light.} \\
+      {\em Tachyon:~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\\ a hypothetical particle that travels faster than light.} \\
       -- Oxford Dictionary
     \end{center}
   \end{minipage}
@@ -20,13 +20,17 @@
   \item {\bf IR and optimization} -- {\em Maxime Chevalier-Boisvert}
     \smallskip
 
-  \item {\bf Self hosting and back-end} -- {\em Erick Lavoie}
-    \smallskip
-
-  \item {\bf Profiling and conclusion} -- {\em Bruno Dufour}
+  \item {\bf Back-end, profiling and benchmarks} -- {\em Bruno Dufour}
     \smallskip
 
   \end{itemize}
+
+  \bigskip
+  \bigskip
+
+  Unfortunately {\em Erick Lavoie} could not be here (responsible
+  for back-end and register allocator)
+
 \end{frame}
 % ------------------------------------------------------------------------------
 
@@ -47,20 +51,79 @@
 
     \bigskip
 
-  \item Goal \#1: compiler for research on dynamic languages
+  \item Goal \#1: compiler for {\bf research on dynamic languages}
     \begin{itemize}
-    \item optimistic optimizations
+    \item optimistic optimization
     \item object representation / garbage collection
     \item profiling real-world applications
     \item language extensions: exact arithmetic, continuations, tail calls, exceptions, concurrency, distributed computing, Harmony,~...
     \end{itemize}
     \smallskip
 
-  \item Goal \#2: production-quality high-performance open-source
+  \item Goal \#2: {\bf production-quality} high-performance open-source
     JS compiler for client-side and server-side scripting
 
   \end{itemize}
 
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf JIT Compilation}
+
+  \begin{itemize}
+
+  \item JIT compilers are efficient because they
+    \begin{itemize}
+      \item[1.] mostly compile the program parts where speed matters
+      \item[2.] {\bf adapt/specialize the program} to the run time conditions
+    \end{itemize}
+    \smallskip
+
+  \item In theory, {\bf dynamic recompilation may outperform static compilation}
+    \smallskip
+
+  \item {\bf Recompilation time must be kept small}
+    \begin{itemize}
+    \item Avoid expensive optimizations
+    \item Use hand-tuned algorithms
+    \item ...
+    \end{itemize}
+    \smallskip
+
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Self-Hosting JIT Thesis}
+
+  \begin{itemize}
+
+  \item Our idea: {\bf dynamically recompile the JIT compiler}
+    \bigskip
+    \bigskip
+
+  \item {\bf Adapts the JIT compiler to the program being compiled}
+    \smallskip
+
+  \item The cost of JIT compiler adaptation is amortized over
+    {\bf repeated recompilations of the same program}
+    \bigskip
+    \bigskip
+
+  \item Other self-hosting benefits:
+    \begin{itemize}
+      \item single runtime system (one heap, GC, I/O, ...)
+      \item easy introspection and dynamic language extension
+    \end{itemize}
+    \smallskip
+
+  \item We are more productive in JS than C/C++
+
+  \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
@@ -87,7 +150,7 @@
     \item regular expressions
     \item getters and setters, property attributes
     \item {\tt eval} and most metaprogramming features
-    \item no GC!
+    \item no GC yet!
     \end{itemize}
     \smallskip
 
@@ -147,7 +210,7 @@
   \item {\bf js2js} -- instrument JS code with function entry/exit tracing
     \smallskip
 
-\begin{block}<+->{Execution trace for Tachyon}
+\begin{block}<+->{Execution trace of Tachyon compiler}
 \begin{lstlisting}[language=]
 bash$ ./js2js -debug tachyon.js > tachyon-debug.js
 bash$ d8 tachyon-debug.js
