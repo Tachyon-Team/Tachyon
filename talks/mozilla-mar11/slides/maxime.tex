@@ -33,64 +33,11 @@
 % - Less about related work?
 
 % TODO list:
-% - [ ] Wrap some lines, change undefined to undef, scale up listing text
-% - [ ] Cut type profiling slides
-% - [ ] Cut related work slides
-% - [ ] Add slide for C sum code. Question, in bold: Could we eliminate all conditional
-%       checks from this program?
-
-%
-% Slide about compilation phases, with graphic
-%
-\begin{frame}
-\frametitle{\bf Compilation Phases}
-\begin{center}
-\includegraphics[width=4.5in]{images/phases}
-\end{center}
-\end{frame}
-
-%
-% Example of program JS->AST->HIR->LIR->ASM
-%
-
-\begin{frame}
-\frametitle{\bf Example: Simple JS Function}
-\lstinputlisting[language=JavaScript,basicstyle=\bfseries\Large\ttfamily]{images/ex_source.js}
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{\bf Example: Abstract Syntax Tree}
-\scalebox{1.15}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}}
-\end{frame}
-
-\begin{frame}
-\frametitle{\bf Example: High-level IR}
-\scalebox{0.7}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}}
-\end{frame}
-
-\begin{frame}
-\frametitle{\bf Example: Low-level IR}
-\scalebox{0.65}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir.txt}}
-\end{frame}
-
-\begin{frame}
-\frametitle{\bf Example: x86 Machine Code}
-\begin{columns}[t]
-
-\begin{column}{0.33\textwidth}
-\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}}
-\end{column}
-
-\begin{column}{0.33\textwidth}
-\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}}
-\end{column}
-
-\begin{column}{0.33\textwidth}
-\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}}
-\end{column}
-
-\end{columns}
-\end{frame}
+% - [X] Wrap some lines, change undefined to undef, scale up listing text
+% - [X] Cut type profiling slides
+% - [X] Cut related work slides
+% - [X] Add slide for C sum code. Question, in bold: Could we eliminate all
+%       conditional checks from this program?
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
@@ -114,65 +61,14 @@
         \end{itemize}
 
         \item Currently, HIR implemented directly by primitive functions
-        \begin{itemize}
-            \item Primitives written in terms of extended JS
-            \item Annotated for performance
-                \begin{itemize}
-                    \item Static linkage, force inlining, no exceptions, etc.
-                \end{itemize}
-        \end{itemize}
+        % \begin{itemize}
+        %     \item Primitives written in terms of extended JS
+        %     \item Annotated for performance
+        %         \begin{itemize}
+        %             \item Static linkage, force inlining, no exceptions, etc.
+        %         \end{itemize}
+        % \end{itemize}
 
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf JavaScript Extensions}
-    \begin{itemize}
-        \item JavaScript has no access to raw memory
-        \begin{itemize}
-            \item Essential to implement a VM/JIT
-        \end{itemize}
-        \item Tachyon is written in JS w/ “unsafe” extensions
-        \begin{itemize}
-            \item Minimizes the need to write C code (FFI)
-            \item Exposes potential optimization opportunities
-            \begin{itemize}
-                \item FFIs are optimization boundaries
-            \end{itemize}
-        \end{itemize}
-        \item JS code translated to low-level typed IR
-        \begin{itemize}
-            \item JS extensions: insert typed instructions in code as it is translated (Inline IR / IIR)
-        \end{itemize}
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Low-Level IR}
-    \begin{itemize}
-        \item Some similarities with LLVM
-        \item SSA-based
-        \item Type-annotated
-        \begin{itemize}
-            \item Integers, floats, booleans, raw pointers
-            \item Boxed values, references
-        \end{itemize}
-        \item Low-level
-        \begin{itemize}
-            \item Mirrors instructions commonly found on most CPUs
-            \begin{itemize}
-                \item add/sub/mul/div, and/or/shift, jump/if/call, load/store, etc.
-            \end{itemize}
-            \item Still tries to be “machine agnostic”
-            \begin{itemize}
-                \item No specific endianness, no registers
-            \end{itemize}
-            \item Allows expressing more optimizations (specialization)
-        \end{itemize}
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -213,8 +109,68 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}[fragile]
+\frametitle{\bf Tachyon's Extended JavaScript}
+    \begin{itemize}
+        \item JavaScript has no access to raw memory
+        \begin{itemize}
+            \item Essential to implement a VM/JIT
+        \end{itemize}
+        \item Tachyon is written in JS w/ “unsafe” extensions
+        \begin{itemize}
+            \item Minimizes the need to write C code (FFI)
+            \item Exposes potential optimization opportunities
+            \begin{itemize}
+                \item FFIs are optimization boundaries
+            \end{itemize}
+        \end{itemize}
+        \item JS code translated to low-level typed IR
+        \begin{itemize}
+            \item JS extension: insert inline IR (IIR) in source code
+        \end{itemize}
+    \end{itemize}
+
+\begin{block}<+->{Inline IR example}
+\begin{lstlisting}[language=JavaScript]
+if (boxIsInt(v1) && boxIsInt(v2)) {
+    // Compare immediate integers without unboxing
+    var tv = iir.lt(v1, v2);
+}
+\end{lstlisting}
+\end{block}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Primitive Functions}
+\frametitle{\bf Low-Level IR}
+    \begin{itemize}
+        \item Some similarities with LLVM
+        \item SSA-based
+        \item Type-annotated
+        \begin{itemize}
+            \item Integers, floats, booleans, raw pointers
+            \item Boxed values, references
+        \end{itemize}
+        \item Low-level
+        \begin{itemize}
+            \item Mirrors instructions commonly found on most CPUs
+            \begin{itemize}
+                \item add/sub/mul/div, and/or/shift, jump/if/call, load/store, etc.
+            \end{itemize}
+            \item Still tries to be “machine agnostic”
+            \begin{itemize}
+                \item No specific endianness, no registers
+            \end{itemize}
+            \item Allows expressing more optimizations (specialization)
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+\begin{frame}
+\frametitle{\bf IIR $\neq$ Assembly}
     \begin{itemize}
         \item Writing code using IIR not as painful as it sounds
         \item Using IIR does not take away JS capabilities!
@@ -228,7 +184,7 @@
 
         \item Auto-generated accessor methods for heap objects
         \begin{itemize}
-            \item allo\_str(len), get\_str\_len(str), get\_str\_data(str, i)
+            \item alloc\_str(len), get\_str\_len(str), get\_str\_data(str, i)
         \end{itemize}
 
         \item Auto-generated wrappers for C FFI wrappers
@@ -273,6 +229,92 @@
         \end{itemize}
 
     \end{itemize}
+\end{frame}
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf V8 Extensions}
+
+  \begin{itemize}
+
+  \item Memory allocation (for data and code)
+    \begin{itemize}
+    \item {\tt allocMemoryBlock}, {\tt freeMemoryBlock}
+    \item {\tt readFromMemoryBlock}, {\tt writeToMemoryBlock}
+    \item {\tt execMachineCodeBlock}
+    \end{itemize}
+
+  \item I/O (for source code and REPL)
+    \begin{itemize}
+    \item {\tt readFile}, {\tt writeFile}
+    \item {\tt readConsole}
+    \end{itemize}
+
+  \item Profiling
+    \begin{itemize}
+    \item {\tt currentTimeMillis}, {\tt memAllocatedKBs}
+    \item {\tt pauseV8Profile}, {\tt resumeV8Profile}
+    \item {\tt shellCommand}
+    \end{itemize}
+
+  \item FFI
+    \begin{itemize}
+    \item {\tt getFuncAddr} (to get {\tt \&puts}, {\tt \&exit}, ...)
+    \item {\tt getBlockAddr}
+    \item {\tt callTachyonFFI}
+    \end{itemize}
+
+  \end{itemize}
+
+\end{frame}
+% ------------------------------------------------------------------------------
+
+%
+% Example of program JS->AST->HIR->LIR->ASM
+%
+
+\begin{frame}
+\frametitle{\bf Example: Simple JS Function}
+\lstinputlisting[language=JavaScript,basicstyle=\bfseries\Large\ttfamily]{images/ex_source.js}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{\bf Example: Abstract Syntax Tree (AST)}
+\scalebox{1.15}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: High-level IR (HIR)}
+\scalebox{0.8}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: Low-level IR (LIR)}
+\scalebox{0.8}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir1.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: Low-level IR (LIR) contd.}
+\scalebox{0.8}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir2.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: x86 Machine Code}
+\begin{columns}[t]
+
+\begin{column}{0.33\textwidth}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}}
+\end{column}
+
+\end{columns}
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------
@@ -335,7 +377,7 @@
         \item As programmers, it's fairly obvious to us that:
         \begin{itemize}
             \item function \code{f} is extremely unlikely to be redefined
-            \item list will likely always be array of integers
+            \item \code{list} will likely always be array of integers
         \end{itemize}
 
         \item Not obvious to a compiler, but, in general:
@@ -375,6 +417,15 @@
         \item Type propagation, simple dataflow analysis
     \end{itemize}
 \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf The Optimistic Goal}
+    Could we eliminate \textbf{all} dynamic checks from the sum program?
+    \lstinputlisting[language=C]{images/sum_c.c}
 \end{frame}
 % ------------------------------------------------------------------------------
 
@@ -423,49 +474,11 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Type Profiling}
-    \begin{itemize}
-        \item Type profiling can observe:
-        \begin{itemize}
-            \item Frequency of calls
-            \item Types of arguments to calls
-            \item Types of values stored into globals
-            \item Types of values stored in object fields
-        \end{itemize}
-
-        \item Goal: build accurate profile of program behavior w.r.t. types
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Type Propagation}
-    \begin{itemize}
-        \item Form of type inference
-        \item Dataflow analysis
-        \item Local or whole program
-        \item Rules depend on language semantics, e.g.:
-        \begin{itemize}
-            \item add int, int $\rightarrow$ int
-            \item add float, float $\rightarrow$ float
-            \item mul m4x2, m2x1 $\rightarrow$ m4x1
-            \item getprop o, “a” $\rightarrow$ prop\_type(o, “a”)
-        \end{itemize}
-
-        \item In the local case, inputs are function argument types, globals types, closure variable types
-        \item Output: local variable types, return type
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
 \frametitle{\bf Potential Difficulties}
     \begin{itemize}
-        \item Cost of profiling
+        \item Cost of accurate type profiling
         \begin{itemize}
-            \item Need accurate information
+            \item Code-patching and self-limiting profiling
         \end{itemize}
         \item Cost of recompilation
         \begin{itemize}
@@ -477,64 +490,7 @@
         \end{itemize}
         \item Inherent complexity
         \begin{itemize}
-            \item Find more students!
-        \end{itemize}
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Related Work: Type Analysis}
-    \begin{itemize}
-        \item M Chevalier-Boisvert, L Hendren, C Verbrugge. \textit{Optimizing
-        MATLAB through just-in-time specialization}. CC 2010.
-        \item F Logozzo, H Venter. \textit{RATA: Rapid Atomic Type Analysis by
-        Abstract Interpretation–Application to JavaScript Optimization}. CC
-        2010.
-        \item S Jensen, A M\o{}ller et al. \textit{Type analysis for JavaScript}. SAS 2009.
-        \item And much more\ldots
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Related work: Deoptimization}
-    \begin{itemize}
-        \item I Pechtchanski, V Sarkar. \textit{Dynamic optimistic
-            interprocedural analysis: a framework and an application}. OOPSLA 2001.
-        \begin{itemize}
-            \item Systematic optimistic interprocedural type analysis to optimize polymorphic call sites
-        \end{itemize}
-        \item Speculative inlining
-        \begin{itemize}
-            \item In Java, dynamic class loading can invalidate inlining decisions
-            \item Implemented in Java HotSpot VM
-        \end{itemize}
-        \item Polymorphic inline cache
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Related Work: Tracing JITs}
-    \begin{itemize}
-        \item HotpathVM, TraceMonkey, LuaJIT, etc.
-        \item Tracing JITs are another dynamic compilation model
-
-        \item Same basic underlying principle
-        \begin{itemize}
-            \item Observe program as it runs, gather data about behavior
-            \item Assume current behavior will likely persist, use data to specialize program, minimize dynamic checks
-        \end{itemize}
-
-        \item Main limitations
-        \begin{itemize}
-            \item Local approach, detects \& examines loops
-            \item Knows little about what goes on outside loops
-            \item No real way of dealing with global data, optimizing object layout, etc.
+            \item Work hard!
         \end{itemize}
     \end{itemize}
 \end{frame}

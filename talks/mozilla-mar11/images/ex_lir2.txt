@@ -1,0 +1,12 @@
+    ...
+
+    if_false:
+    ref $t_19 = get_ctx;
+    box global_3 = load_box $t_19, pint:36;
+    box $t_21 = call <fn "addGeneral">, undef, global_3, n, box:1;
+    jump call_res;
+
+    call_res:
+    box phires = phi [$t_12 iir_false], [$t_21 if_false], [$t_16 and_sec];
+    ret phires;
+}

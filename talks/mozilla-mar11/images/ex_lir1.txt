@@ -4,24 +4,15 @@ box function inc(box n) []
     box n = arg 2;
     pint $t_4 = and_box_pint n, pint:3;
     bool $t_6 = eq_pint $t_4, pint:0;
-    if_bool $t_6 then log_and_sec else if_false;
+    if_bool $t_6 then and_sec else if_false;
         
-    log_and_sec:
+    and_sec:
     box $t_16 = add_ovf n, box:1 normal call_res overflow iir_false;
-        
-    call_res:
-    box phires = phi [$t_12 iir_false], [$t_21 if_false], [$t_16 log_and_sec];
-    ret phires;
-        
+                
     iir_false:
     ref $t_10 = get_ctx;
     box global_2 = load_box $t_10, pint:36;
     box $t_12 = call <fn "addOverflow">, undef, global_2, n, box:1;
     jump call_res;
-        
-    if_false:
-    ref $t_19 = get_ctx;
-    box global_3 = load_box $t_19, pint:36;
-    box $t_21 = call <fn "addGeneral">, undef, global_3, n, box:1;
-    jump call_res;
-}
+
+    ...
