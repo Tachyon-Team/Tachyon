@@ -232,3 +232,42 @@ bash$ d8 tachyon-debug.js
 
 \end{frame}
 % ------------------------------------------------------------------------------
+
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Extensions}
+
+  \begin{itemize}
+
+  \item Memory allocation (for data and code)
+    \begin{itemize}
+    \item {\tt allocMemoryBlock}, {\tt freeMemoryBlock}
+    \item {\tt readFromMemoryBlock}, {\tt writeToMemoryBlock}
+    \item {\tt execMachineCodeBlock}
+    \end{itemize}
+
+  \item I/O (for source code and REPL)
+    \begin{itemize}
+    \item {\tt readFile}, {\tt writeFile}
+    \item {\tt readConsole}
+    \end{itemize}
+
+  \item Profiling
+    \begin{itemize}
+    \item {\tt currentTimeMillis}, {\tt memAllocatedKBs}
+    \item {\tt pauseV8Profile}, {\tt resumeV8Profile}
+    \item {\tt shellCommand}
+    \end{itemize}
+
+  \item FFI
+    \begin{itemize}
+    \item {\tt getFuncAddr} (to get {\tt \&puts}, {\tt \&exit}, ...)
+    \item {\tt getBlockAddr}
+    \item {\tt callTachyonFFI}
+    \end{itemize}
+
+  \end{itemize}
+
+\end{frame}
+% ------------------------------------------------------------------------------
