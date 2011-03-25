@@ -345,8 +345,8 @@ blockPatterns.ifPhiElim = new optPattern(
                 ||
                 (block.instrs.length === 3 &&
                  block.instrs[1] instanceof CallFuncInstr &&
-                 block.instrs[1].uses[0] === params.staticEnv.getBinding('boxToBool') &&
-                 block.instrs[1].uses[2] === block.instrs[0] &&
+                 block.instrs[1].getCallee() === params.staticEnv.getBinding('boxToBool') &&
+                 block.instrs[1].getArg(0) === block.instrs[0] &&
                  block.instrs[2] instanceof IfInstr &&
                  block.instrs[2].uses[0] === block.instrs[1])
             )

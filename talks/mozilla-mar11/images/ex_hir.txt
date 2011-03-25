@@ -1,0 +1,18 @@
+box function () []
+{
+    box function inc(box n) []
+    {
+        entry:
+        box n = arg 2;
+        box $t_4 = call <fn "add">, undefined, undefined, n, box:1;
+        ret $t_4;
+    }
+
+    entry:
+    box $t_3 = call <fn "makeClos">, undefined, undefined, <fn "inc">, pint:0;
+    ref $t_4 = get_ctx;
+    pint $t_5 = add_pint pint:0, pint:36;
+    box global = load_box $t_4, $t_5;
+    box $t_7 = call <fn "putPropVal">, undefined, undefined, global, "inc", $t_3;
+    ret undefined;
+}

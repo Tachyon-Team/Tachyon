@@ -136,7 +136,6 @@ irToAsm.shiftMaker = function (irinstr, name)
         }
     };
 
-   
     // Code generation
     irinstr.prototype.genCode = function (tltor, opnds) 
     {
@@ -203,6 +202,83 @@ irToAsm.shiftMaker = function (irinstr, name)
         if (opnds[1].type !== x86.type.IMM_VAL)
         {
             tltor.asm.mov($(0), reg.cl);
+        }
+    };
+};
+
+/**
+@private
+Maker function for creating the genCode method of bitwise instructions
+*/
+irToAsm.bitOpMaker = function (irinstr, name)
+{
+    /*
+        if (tltor.asm.target === x86.target.x86_64 && opnds[1].type === x86.type.LINK)
+        {
+            tltor.asm.mov(opnds[1], scratchReg);
+            var opnd = scratchReg;
+        } else
+        {
+            var opnd = opnds[1];
+        }
+    */
+
+    /*
+    if ((src.type === x86.type.MEM || 
+         (!tltor.asm.is32bitImm(src))) &&
+        dest.type === x86.type.MEM)
+    {
+        tltor.asm.
+        mov(src, scratchReg).
+        mov(scratchReg, dest);
+    } else
+    {
+        tltor.asm.
+        mov(src, dest, width);
+    }
+    */
+
+    // Code generation
+    irinstr.prototype.genCode = function (tltor, opnds) 
+    {
+        const dest = this.regAlloc.dest;
+        const scratchReg = tltor.params.target.backendCfg.scratchReg;
+
+        const width = this.type.getSizeBits(tltor.params);
+
+        var opndL = opnds[0];
+        var opndR = opnds[1];
+
+        assert (
+            !(tltor.asm.isImmediate(opndL) && tltor.asm.isImmediate(opndR)),
+            'no support for two immediate operands'
+        );
+
+        if (tltor.asm.isImmediate(opndL) && !tltor.asm.is32bitImm(opndL))
+        {
+            tltor.asm.mov(opndL, scratchReg);
+            opndL = scratchReg;
+        }
+
+        else if (tltor.asm.isImmediate(opndR) && !tltor.asm.is32bitImm(opndR))
+        {
+            tltor.asm.mov(opndR, scratchReg);
+            opndR = scratchReg;
+        }
+
+        if (opndL.type === x86.type.REG && opndL === dest)
+        {
+            tltor.asm[name](opndR, dest);
+        }
+        else if (opndR.type === x86.type.REG && opndR === dest)
+        {
+            tltor.asm[name](opndL, dest);
+        } 
+        else
+        {
+            tltor.asm.
+            mov(opndL, dest)
+            [name](opndR, dest, width);
         }
     };
 };
@@ -1476,79 +1552,9 @@ NotInstr.prototype.genCode = function (tltor, opnds)
     tltor.asm.not(dest);
 };
 
-AndInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-    } 
-    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
-    {
-        tltor.asm.and(opnds[1], dest);
-    } 
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.and(opnds[0], dest);
-    } 
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        and(opnds[1], dest);
-    }
-};
-
-OrInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    if (opnds[0].type === x86.type.REG && opnds[0] === opnds[1])
-    {
-        if (opnds[0] !== dest)
-        {
-            tltor.asm.mov(opnds[0], dest);
-        }
-    }
-    else if (opnds[0].type === x86.type.REG && opnds[0] === dest)
-    {
-        tltor.asm.or(opnds[1], dest);
-    }
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.or(opnds[0], dest);
-    } 
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        or(opnds[1], dest);
-    }
-};
-
-XorInstr.prototype.genCode = function (tltor, opnds)
-{
-    const dest = this.regAlloc.dest;
-
-    if (opnds[0].type === x86.type.REG && opnds[0] === dest)
-    {
-        tltor.asm.xor(opnds[1], dest);
-    }
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
-    {
-        tltor.asm.xor(opnds[0], dest);
-    } 
-    else
-    {
-        tltor.asm.
-        mov(opnds[0], dest).
-        xor(opnds[1], dest);
-    }
-};
+irToAsm.bitOpMaker(AndInstr, "and"); 
+irToAsm.bitOpMaker(OrInstr, "or"); 
+irToAsm.bitOpMaker(XorInstr, "xor");
 
 irToAsm.shiftMaker(LsftInstr, "sal"); 
 irToAsm.shiftMaker(RsftInstr, "sar"); 

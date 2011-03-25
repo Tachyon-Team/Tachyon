@@ -6,7 +6,7 @@ Implementation of runtime context objects
 Maxime Chevalier-Boisvert
 
 @copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**

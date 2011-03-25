@@ -102,8 +102,6 @@ function compileAst(ast, params)
         //{
         //    print(readFromMemoryBlock(blockObj, i));
         //}
-
-
     }
 
     // Return the compiled IR function

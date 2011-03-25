@@ -32,6 +32,53 @@
 % - Less about type profiling?
 % - Less about related work?
 
+%
+% Slide about compilation phases, with graphic
+%
+\begin{frame}{Compilation Phases}
+\begin{center}
+\includegraphics[width=4.5in]{images/phases}
+\end{center}
+\end{frame}
+
+%
+% Example of program JS->AST->HIR->LIR->ASM
+%
+
+\begin{frame}{Example: Simple Function}
+\lstinputlisting{images/ex_source.js}
+\end{frame}
+
+\begin{frame}{Example: Abstract Syntax Tree}
+\tiny\verbatiminput{images/ex_ast.txt}
+\end{frame}
+
+\begin{frame}{Example: High-level IR}
+\tiny\verbatiminput{images/ex_hir.txt}
+\end{frame}
+
+\begin{frame}{Example: Low-level IR}
+\tiny\verbatiminput{images/ex_lir.txt}
+\end{frame}
+
+\begin{frame}{Example: Machine Code}
+\begin{columns}[t]
+
+\begin{column}{0.33\textwidth}
+\tiny\verbatiminput{images/ex_asm1.txt}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\tiny\verbatiminput{images/ex_asm2.txt}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\tiny\verbatiminput{images/ex_asm3.txt}
+\end{column}
+
+\end{columns}
+\end{frame}
+
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{High-Level IR}
     \begin{itemize}
@@ -114,6 +161,29 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
+\begin{frame}{Primitive Functions}
+    \begin{itemize}
+        \item All Tachyon functions can use extended JS, meaning:
+        \begin{itemize}
+            \item Special function annotations
+            \item Typed local variables
+            \item Inline IR (IIR) instructions
+        \end{itemize}
+        \item Core of the run-time makes more use of this
+        \begin{itemize}
+            \item Rest of Tachyon mostly uses "standard" JS
+        \end{itemize}
+        \item Annotations can make functions:
+        \begin{itemize}
+            \item Have static linkage (no dynamic lookup)
+            \item Always be inlined
+            \item Be prevented from accessing the global object
+            \item Use typed argument values
+            \item Use a typed return value
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}{}
 \lstinputlisting{images/lt.js}
@@ -153,6 +223,10 @@
 
 \begin{frame}{}
 \lstinputlisting[scale=0.8]{images/newObject.js}
+\end{frame}
+
+\begin{frame}{}
+\lstinputlisting[scale=0.8]{images/boxToCString.js}
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------

@@ -426,7 +426,8 @@ function stmtListToIRFunc(
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
 
-    cfg.validate();
+    if (params.debug)
+        cfg.validate();
 
     //print('Applying opt patterns');
 
@@ -436,16 +437,19 @@ function stmtListToIRFunc(
     //print('validating');    
 
     // Run a validation test on the CFG
-    try
+    if (params.debug)
     {
-        cfg.validate();
-    }
-    catch (e)
-    {
-        error(
-            'Invalid CFG for function "' + funcName + '":\n' + 
-            e + '\n' + cfg.toString()
-        );
+        try
+        {
+            cfg.validate();
+        }
+        catch (e)
+        {
+            error(
+                'Invalid CFG for function "' + funcName + '":\n' + 
+                e + '\n' + cfg.toString()
+            );
+        }
     }
 
     //print(newFunc);

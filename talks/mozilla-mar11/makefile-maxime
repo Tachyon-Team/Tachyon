@@ -11,9 +11,8 @@ all: $(TARGET).pdf
 
 $(TARGET).pdf: $(SOURCES) makefile-maxime
 	pdflatex $(TARGET).tex
-	$(PDFVIEWER) $(TARGET).pdf
 
-view:
+view: $(TARGET).pdf
 	$(PDFVIEWER) $(TARGET).pdf
 
 clean:
