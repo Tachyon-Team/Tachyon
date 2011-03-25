@@ -1,25 +1,106 @@
-% Back-end
-% - Overview
-% - Linker
-% - Register allocator
-% - x86 and x86 64 bit support
-%    - Syntax
-%    - Data structures
-% - Calling convention
-% - FFI support
-%
-% Object representations
-% - Objects
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Backend Overview}
+
+% TODO: diagram
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Linker}
+
+% used for static fn calls + strings
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Register allocator}
+
+\begin{itemize}
+    \item Based on a modified linear scan allocator
+    \item Extended the algorithm to allow hints
+    \begin{itemize}
+        \item Required to support intricacies of x86 architecture
+    \end{itemize}
+    \item 2 types of hints supported for a given position in the code:
+    \begin{itemize}
+        \item Register should be free at that point
+        \item SSA variable should be assigned to a particular register at that point
+    \end{itemize}
+    \item Hints are weak properties and may not be respected, so code generation must enforce
+    them when required
+\end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}[fragile]
+\frametitle{\bf Supported architectures}
+
+\begin{itemize}
+    \item Tachyon uses its own assembler for maximum flexibility
+    \item Retargettable backend currently supports x86 and x86\_64
+    \item Assembly code produced by a chain of calls that resemble ASM
+    listings
+\end{itemize}
+
+\begin{block}<+->{Assembly framework example}
+\begin{lstlisting}[language=]
+    this.asm.
+
+    mov(temp, ctxTemp).
+    mov($(0), temp).
+    
+    mov($(argsRegNb), argPtr).
+    sub(numArgs, argPtr).
+    cmovl(temp, argPtr).
+\end{lstlisting}
+\end{block}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Calling protocol}
+
+\begin{itemize}
+    \item 
+
+    % context passed in registers
+    
+    % n first args passed in registers 
+\end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Object representations}
+
+% Objects
 % - Functions/Closures
 % - Numbers
 % - Strings
 % - Arrays
-%
-% Memory management
-% - Allocator
-% - Executable code
-%
-% Meta-circularity
+
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Memory management}
+% 
+% % - Allocator
+% % - Executable code
+% \end{frame}
+% % ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Meta-circularity}
+
 % - Standard library
 % - Primitives
 % - FFI as bridge
@@ -28,8 +109,13 @@
 %   - Memory block
 % - Numbers
 %   - Representation limits
-%
-% Javascript limitations wrt to compiler writing
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Limitations of JS for compiling writing}
+
 % - Infinite precision numbers
 % - Absence of native hash tables, sets, lists, etc.
 % - Bitwise operations limited to 32 bits
@@ -37,12 +123,29 @@
 % - Modules
 % - I/O
 % - Memory access
-%
-% Experience
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Experience}
+
 % - Dynamicity and testing/refactoring
 % - Metacircularity and intuitive understanding of the language usage patterns
-%
-% Performance
-% - Compilation Time
-% - Execution Time
-% - Bootstrapping Time
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Performance}
+                          % Sunspider control flow recursive (200 iterations)
+% - Compilation Time  :   0.8 s tachyon, 0.82 s v8 (combined) 
+% - Execution Time    :   5.0 s tachyon,
+% - Bootstrapping Time: 6 mins v8, ~1hr tachyon
+%                       40-50 gb heap (no gc)
+%                       v8 < 1 gb
+
+% d8 version 3.2.3.1
+\end{frame}
+% ------------------------------------------------------------------------------
+
