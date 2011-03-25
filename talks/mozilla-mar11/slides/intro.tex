@@ -1,115 +1,168 @@
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{About the Tachyon Project}
-    \begin{itemize}
-        \item Began in summer 2010
-        \item Compiler lab at UdeM
-        \item Two students:
-        \begin{itemize}
-            \item Erick Lavoie (M.Sc.)
-            \item Maxime Chevalier-Boisvert (Ph.D.)
-        \end{itemize}
-        \item Professor Marc Feeley
-        \begin{itemize}
-            \item Gambit Scheme
-        \end{itemize}
-        \item Professor Bruno Dufour
-        \begin{itemize}
-            \item Dynamic program analysis
-        \end{itemize}
-        \item Big project, because we like challenges
-    \end{itemize}
+\begin{frame}
+\frametitle{\bf Outline}
+
+  \includegraphics[height=0.5in]{images/tachyon-icon.png}
+  \begin{minipage}[b]{3.5in}
+    \begin{center}
+      {\em A hypothetical particle that travels faster than light.} \\
+      -- Oxford Dictionary
+    \end{center}
+  \end{minipage}
+
+  \bigskip
+
+  \begin{itemize}
+
+  \item {\bf System overview} -- {\em Marc Feeley}
+    \smallskip
+
+  \item {\bf IR and optimization} -- {\em Maxime Chevalier-Boisvert}
+    \smallskip
+
+  \item {\bf Self hosting and back-end} -- {\em Erick Lavoie}
+    \smallskip
+
+  \item {\bf Profiling and conclusion} -- {\em Bruno Dufour}
+    \smallskip
+
+  \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{What is JavaScript?}
+\begin{frame}
+\frametitle{\bf Goals}
+
+  \begin{itemize}
+
+  \item Tachyon JS project started March 2010
+    \smallskip
+
+  \item JS is a key language with a bright future
+    \smallskip
+
+  \item 2010 JS VMs performance... {\bf We can do better!}
+    \smallskip
+
+    \bigskip
+
+  \item Goal \#1: compiler for research on dynamic languages
     \begin{itemize}
-        \item JavaScript $\neq$ Java in the browser
-        \item Dynamic (scripting) language
-        \item Dynamic typing
-        \begin{itemize}
-            \item No type annotations
-        \end{itemize}
-        \item Basic types include:
-        \begin{itemize}
-            \item Doubles (no int!), strings, booleans, objects, arrays, first-class functions
-        \end{itemize}
-        \item Objects as hash maps
-        \begin{itemize}
-            \item Can add/remove properties at any time
-            \item Prototype-based, no classes
-        \end{itemize}
+    \item optimistic optimizations
+    \item object representation / garbage collection
+    \item profiling real-world applications
+    \item language extensions: exact arithmetic, continuations, tail calls, exceptions, concurrency, distributed computing, Harmony,~...
     \end{itemize}
+    \smallskip
+
+  \item Goal \#2: production-quality high-performance open-source
+    JS compiler for client-side and server-side scripting
+
+  \end{itemize}
+
 \end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Why JavaScript?}
-    \begin{itemize}
-        \item JavaScript is very popular, it's everywhere
-        \begin{itemize}
-            \item JavaScript is the only language for web applications.
-            \item Volume of JS code increasing fast, becoming more complex
-        \end{itemize}
+\begin{frame}
+\frametitle{\bf Current State}
 
-        \item Many competing implementations
-        \begin{itemize}
-            \item Push to move desktop apps to browsers
-            \item Performance is insufficient
-        \end{itemize}
-        
-        \item Compiling dynamic languages efficiently is challenging
-        \begin{itemize}
-            \item Dynamic typing, eval, etc
-            \item Researchers definitely care!
-        \end{itemize}
+  \begin{itemize}
+
+  \item Compiler is written in a subset of JS (roughly 40 KLOC)
+    \begin{itemize}
+    \item parsing
+    \item analysis/optimization of intermediate representation
+    \item in-memory assembly and linking
     \end{itemize}
+    \smallskip
+
+  \item Few extensions to the host VM (readFile, malloc, etc.)
+    \smallskip
+
+  \item Implements ES5 spec except:
+    \begin{itemize}
+    \item floating point (only fixnums are supported)
+    \item regular expressions
+    \item setters and getters
+    \item {\tt eval} and most metaprogramming features
+    \item no GC!
+    \end{itemize}
+    \smallskip
+
+  \item Back-end supports {\bf x86} and {\bf x86\_64}
+    \smallskip
+
+  \item Tachyon self-bootstrap achieved March 2011
+    \smallskip
+
+  \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{State of the Art}
+\begin{frame}
+\frametitle{\bf Parser}
+
+  \begin{itemize}
+
+  \item Based on WebKit's yacc grammar
     \begin{itemize}
-        \item Firefox / JaegerMonkey
-        \begin{itemize}
-            \item Tracing JIT
-            \item Compiles/specializes loop code traces
-        \end{itemize}
-
-        \item Chrome / V8
-        \begin{itemize}
-            \item Hidden classes
-            \item Inline caches, code patching
-            \item Very fast JIT compiler
-            \item Very efficient GC
-        \end{itemize}
-
-        \item Is this the best we can do?
-        \begin{itemize}
-            \item We believe there is potential for more optimization
-        \end{itemize}
+    \item {\tt Grammar.y} converted to LALR-SCM parser generator spec
+    \item LALR-SCM tables pretty-printed as JS arrays (6 KLOC)
+    \item hand written LALR driver (.3 KLOC) and scanner (1 KLOC)
     \end{itemize}
+    \smallskip
+
+  \item Parses 100 KLOC per second
+    \smallskip
+
+  \item AST keeps track of source location
+
+  \end{itemize}
+
+  \begin{center}
+    \includegraphics[height=1.5in]{images/tachyon-lint.png}
+  \end{center}
+
 \end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Our Objectives}
-    \begin{itemize}
-        \item Full JavaScript (ECMAScript 5) support
-        \item Retargetable JIT compiler (x86, x86-64)
-        \item Meta-circularity of the VM
-        \item Framework for dynamic language optimizations
-        \begin{itemize}
-            \item Better object representations
-            \item Optimistic optimization with recompilation
-            \item Fast \& efficient x86 back-end
-        \end{itemize}
-        \item Integration into a web-browser
-        \begin{itemize}
-            \item Demonstrate viability on “real” applications
-        \end{itemize}
-        \item Free software / OSS
-    \end{itemize}
+\begin{frame}[fragile]
+\frametitle{\bf Parser Derivatives for Debugging}
+
+  \begin{itemize}
+
+  \item {\bf JS pretty-printer} -- dump or pretty print AST
+    \smallskip
+
+  \item {\bf js2scm} -- compile JS to Scheme
+    \smallskip
+
+  \item {\bf js2js} -- instrument JS code with function entry/exit tracing
+    \smallskip
+
+\begin{block}<+->{Execution trace for Tachyon}
+\begin{lstlisting}[language=]
+bash$ ./js2js -debug tachyon.js > tachyon-debug.js
+bash$ d8 tachyon-debug.js
+|  (( "utility/iterators.js"@13.1-17.2: Iterator
+|  |  (( "utility/debug.js"@73.1-77.2: assertNew
+|  |  |  (( "utility/debug.js"@62.1-68.2: isGlobal
+|  |  |  |  (( "utility/debug.js"@65.19-65.47: isGlobal
+|  |  |  |  )) "utility/debug.js"@65.33-65.45: isGlobal
+|  |  |  )) "utility/debug.js"@67.5-67.27: isGlobal
+|  |  )) "utility/debug.js"@73.1-77.2: assertNew
+|  )) "utility/iterators.js"@16.5-16.17: Iterator
+|  (( "utility/iterators.js"@13.1-17.2: Iterator
+|  |  (( "utility/debug.js"@73.1-77.2: assertNew
+...
+\end{lstlisting}
+\end{block}
+
+  \end{itemize}
+
 \end{frame}
 % ------------------------------------------------------------------------------
-

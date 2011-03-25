@@ -35,7 +35,8 @@
 %
 % Slide about compilation phases, with graphic
 %
-\begin{frame}{Compilation Phases}
+\begin{frame}
+\frametitle{\bf Compilation Phases}
 \begin{center}
 \includegraphics[width=4.5in]{images/phases}
 \end{center}
@@ -45,42 +46,48 @@
 % Example of program JS->AST->HIR->LIR->ASM
 %
 
-\begin{frame}{Example: Simple Function}
-\lstinputlisting{images/ex_source.js}
+\begin{frame}
+\frametitle{\bf Example: Simple JS Function}
+\lstinputlisting[language=JavaScript,basicstyle=\bfseries\Large\ttfamily]{images/ex_source.js}
 \end{frame}
 
-\begin{frame}{Example: Abstract Syntax Tree}
-\tiny\verbatiminput{images/ex_ast.txt}
+\begin{frame}[fragile]
+\frametitle{\bf Example: Abstract Syntax Tree}
+\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}
 \end{frame}
 
-\begin{frame}{Example: High-level IR}
-\tiny\verbatiminput{images/ex_hir.txt}
+\begin{frame}
+\frametitle{\bf Example: High-level IR}
+\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}
 \end{frame}
 
-\begin{frame}{Example: Low-level IR}
-\tiny\verbatiminput{images/ex_lir.txt}
+\begin{frame}
+\frametitle{\bf Example: Low-level IR}
+\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir.txt}
 \end{frame}
 
-\begin{frame}{Example: Machine Code}
+\begin{frame}
+\frametitle{\bf Example: x86 Machine Code}
 \begin{columns}[t]
 
 \begin{column}{0.33\textwidth}
-\tiny\verbatiminput{images/ex_asm1.txt}
+\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}
 \end{column}
 
 \begin{column}{0.33\textwidth}
-\tiny\verbatiminput{images/ex_asm2.txt}
+\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}
 \end{column}
 
 \begin{column}{0.33\textwidth}
-\tiny\verbatiminput{images/ex_asm3.txt}
+\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}
 \end{column}
 
 \end{columns}
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{High-Level IR}
+\begin{frame}
+\frametitle{\bf High-Level IR}
     \begin{itemize}
 
         \item Core JS semantics expressed in terms of HIR instructions
@@ -113,7 +120,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{JavaScript Extensions}
+\begin{frame}
+\frametitle{\bf JavaScript Extensions}
     \begin{itemize}
         \item JavaScript has no access to raw memory
         \begin{itemize}
@@ -136,7 +144,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Low-Level IR}
+\begin{frame}
+\frametitle{\bf Low-Level IR}
     \begin{itemize}
         \item Some similarities with LLVM
         \item SSA-based
@@ -161,7 +170,8 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
-\begin{frame}{Primitive Functions}
+\begin{frame}
+\frametitle{\bf Primitive Functions}
     \begin{itemize}
         \item All Tachyon functions can use extended JS, meaning:
         \begin{itemize}
@@ -185,18 +195,19 @@
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{}
-\lstinputlisting{images/lt.js}
+\begin{frame}
+\lstinputlisting[language=JavaScript]{images/lt.js}
 \end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{}
-\lstinputlisting{images/boxIsInt.js}
+\begin{frame}
+\lstinputlisting[language=JavaScript]{images/boxIsInt.js}
 \end{frame}
 % ------------------------------------------------------------------------------
 
-\begin{frame}{Primitive Functions}
+\begin{frame}
+\frametitle{\bf Primitive Functions}
     \begin{itemize}
         \item Writing code using IIR not as painful as it sounds
         \item Using IIR does not take away JS capabilities!
@@ -221,16 +232,17 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{}
+\begin{frame}
 \lstinputlisting[scale=0.8]{images/newObject.js}
 \end{frame}
 
-\begin{frame}{}
+\begin{frame}
 \lstinputlisting[scale=0.8]{images/boxToCString.js}
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Optimistic Optimizations}
+\begin{frame}
+\frametitle{\bf Optimistic Optimizations}
     \begin{itemize}
         \item Traditional optimizations are conservative
         \begin{itemize}
@@ -254,8 +266,9 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Example: Optimization Issues}
-    \lstinputlisting{images/sum.js}
+\begin{frame}
+\frametitle{\bf Example: Optimization Issues}
+    \lstinputlisting[language=JavaScript]{images/sum.js}
     \begin{itemize}
         \item Don't know type of \code{list} and its elements
         \begin{itemize}
@@ -273,7 +286,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Realistic Assumptions}
+\begin{frame}
+\frametitle{\bf Realistic Assumptions}
     \begin{itemize}
         \item As programmers, it's fairly obvious to us that:
         \begin{itemize}
@@ -293,7 +307,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{What Would Tachyon Do (WWTD)?}
+\begin{frame}
+\frametitle{\bf What Would Tachyon Do (WWTD)?}
 \begin{itemize}
     \item A VM can observe the types of global variables as a program is executing
     \begin{itemize}
@@ -321,7 +336,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{What Would Tachyon Do (WWTD)?}
+\begin{frame}
+\frametitle{\bf What Would Tachyon Do (WWTD)?}
 \begin{center}
 \includegraphics[width=3in]{images/transforms2}
 \end{center}
@@ -329,7 +345,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{What Would Tachyon Do (WWTD)?}
+\begin{frame}
+\frametitle{\bf What Would Tachyon Do (WWTD)?}
 \begin{center}
 \includegraphics[height=2.8in]{images/execmodel}
 \end{center}
@@ -337,7 +354,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Key Ideas}
+\begin{frame}
+\frametitle{\bf Key Ideas}
     \begin{itemize}
         \item Crucial to capture info about run time behavior
         \begin{itemize}
@@ -361,7 +379,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Type Profiling}
+\begin{frame}
+\frametitle{\bf Type Profiling}
     \begin{itemize}
         \item Type profiling can observe:
         \begin{itemize}
@@ -377,7 +396,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Type Propagation}
+\begin{frame}
+\frametitle{\bf Type Propagation}
     \begin{itemize}
         \item Form of type inference
         \item Dataflow analysis
@@ -397,7 +417,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Potential Difficulties}
+\begin{frame}
+\frametitle{\bf Potential Difficulties}
     \begin{itemize}
         \item Cost of profiling
         \begin{itemize}
@@ -420,7 +441,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Related Work: Type Analysis}
+\begin{frame}
+\frametitle{\bf Related Work: Type Analysis}
     \begin{itemize}
         \item M Chevalier-Boisvert, L Hendren, C Verbrugge. \textit{Optimizing
         MATLAB through just-in-time specialization}. CC 2010.
@@ -434,7 +456,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Related work: Deoptimization}
+\begin{frame}
+\frametitle{\bf Related work: Deoptimization}
     \begin{itemize}
         \item I Pechtchanski, V Sarkar. \textit{Dynamic optimistic
             interprocedural analysis: a framework and an application}. OOPSLA 2001.
@@ -452,7 +475,8 @@
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Related Work: Tracing JITs}
+\begin{frame}
+\frametitle{\bf Related Work: Tracing JITs}
     \begin{itemize}
         \item HotpathVM, TraceMonkey, LuaJIT, etc.
         \item Tracing JITs are another dynamic compilation model

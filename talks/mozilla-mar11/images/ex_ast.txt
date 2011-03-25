@@ -1,25 +1,22 @@
-Program                                           ("<string>"@1.1-1.35:)
-|-var= inc [global]                               ("<string>"@1.1-1.35:)
-|-func= inc [global]                              ("<string>"@1.1-1.35:)
+Program                                    ("<string>"@1.1-1.35:)
+|-var= inc [global]                        ("<string>"@1.1-1.35:)
+|-func= inc [global]                       ("<string>"@1.1-1.35:)
 |-block=
-|   BlockStatement                                ("<string>"@1.1-1.35:)
+|   BlockStatement                         ("<string>"@1.1-1.35:)
 |   |-statements=
-|   |   FunctionDeclaration                       ("<string>"@1.1-1.34:)
-|   |   |-id= inc [global]                        ("<string>"@1.1-1.35:)
+|   |   FunctionDeclaration                ("<string>"@1.1-1.34:)
+|   |   |-id= inc [global]                 ("<string>"@1.1-1.35:)
 |   |   |-funct=
-|   |   |   FunctionExpr                          ("<string>"@1.1-1.34:)
-|   |   |   |-param= n                            ("<string>"@1.14-1.15:)
-|   |   |   |-var= n [local]                      ("<string>"@1.1-1.34:)
+|   |   |   FunctionExpr                   ("<string>"@1.1-1.34:)
+|   |   |   |-param= n                     ("<string>"@1.14-1.15:)
+|   |   |   |-var= n [local]               ("<string>"@1.1-1.34:)
 |   |   |   |-body=
-|   |   |   |   ReturnStatement                   ("<string>"@1.19-1.32:)
+|   |   |   |   ReturnStatement            ("<string>"@1.19-1.32:)
 |   |   |   |   |-expr=
-|   |   |   |   |   OpExpr                        ("<string>"@1.26-1.31:)
+|   |   |   |   |   OpExpr                 ("<string>"@1.26-1.31:)
 |   |   |   |   |   |-op= "x + y"
 |   |   |   |   |   |-exprs=
-|   |   |   |   |   |   Ref                       ("<string>"@1.26-1.27:)
-|   |   |   |   |   |   |-id= n [local]           ("<string>"@1.1-1.34:)
-|   |   |   |   |   |   Literal                   ("<string>"@1.30-1.31:)
+|   |   |   |   |   |   Ref                ("<string>"@1.26-1.27:)
+|   |   |   |   |   |   |-id= n [local]    ("<string>"@1.1-1.34:)
+|   |   |   |   |   |   Literal            ("<string>"@1.30-1.31:)
 |   |   |   |   |   |   |-value= 1
-|   |   BlockStatement                            ("<string>"@1.34-1.35:)
-|   |   |-statements=
-
