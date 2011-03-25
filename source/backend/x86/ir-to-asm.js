@@ -1284,9 +1284,8 @@ DivInstr.prototype.regAlloc.outRegHint =  function (instr, params)
 
 DivInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
 { 
-    // xDX:xAX are reserved for the dividend,
-    // xBX is reverved as a scratch register
-    return [0,1,2];
+    // xDX:xAX are blocked for the dividend
+    return [0,2];
 };
 
 DivInstr.prototype.genCode = function (tltor, opnds)
@@ -2251,8 +2250,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         // No registers are required by the target calling convention,
         // but prefer registers that would less frequently contain 
         // operands
-        var altStack   = reg.ebp;
-        var scratchReg = reg.edi;
+        var altStack   = backendCfg.nonArgsReg[0];
+        var scratchReg = backendCfg.scratchReg;
     }
 
     // Spill an operand on the context if it is in one of the reserved registers

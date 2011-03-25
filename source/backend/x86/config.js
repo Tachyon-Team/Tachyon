@@ -48,7 +48,7 @@ function x86BackendCfg(is64bit)
     @field
     */
     this.physReg = [reg.rax.subReg(width), 
-                    reg.rbx.subReg(width),
+                    reg.rbp.subReg(width),
                     reg.rdx.subReg(width),
                     reg.rsi.subReg(width),
                     reg.rdi.subReg(width)];
@@ -139,7 +139,7 @@ function x86BackendCfg(is64bit)
     Scratch register
     @field
     */
-    this.scratchReg = reg.rbp.subReg(width);
+    this.scratchReg = reg.rbx.subReg(width);
 
     /**
     Number of implementation related arguments used in a call.
@@ -184,7 +184,7 @@ function x86BackendCfg(is64bit)
     assert(
         this.nonArgsReg.length >= 1,
         "At least one physical register should not be used " + 
-        "for passing arguments"
+        "for passing arguments and ffi calls on 32 bits"
     );
 
     assert(
