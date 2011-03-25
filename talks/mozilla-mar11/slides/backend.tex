@@ -3,6 +3,16 @@
 \frametitle{\bf Backend Overview}
 
 % TODO: diagram
+\begin{itemize}
+    \item Basic block ordering
+    \item Instruction numbering and intervals
+    \item Hints
+    \item Operand assignment
+    \item SSA deconstruction
+    \item Translation
+    \item Linking and assembly
+\end{itemize}
+
 \end{frame}
 % ------------------------------------------------------------------------------
 
@@ -66,11 +76,12 @@
 \frametitle{\bf Calling protocol}
 
 \begin{itemize}
-    \item 
-
-    % context passed in registers
-    
-    % n first args passed in registers 
+    \item Stack pointer and context pointer have dedicated registers
+    \item Return values are passed in a register (currently EAX)
+    \item Up to $n$ first arguments passed using registers (currently, $n =
+    4$)
+    \item Caller-save protocol
+    \item Callee pops the activation record to support tail call optimisations
 \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -79,9 +90,30 @@
 \begin{frame}
 \frametitle{\bf Object representations}
 
+\begin{itemize}
+    \item Flexible object representation through JS layout objects
+    \begin{itemize}
+        \item Accessor functions dynamically generated for each layout
+        \item 3 basic layouts: basic objects, functions and arrays
+    \end{itemize}
+    \begin{itemize}
+        \item Basic objects contain a header and a map (pointer to a
+        hashtable)
+        \item Arrays also contain a pointer to an external table
+        \item Functions also contain a pointer to mutable cells (to support
+        closures)
+    \end{itemize}
+    \item Other objects are heap objects
+    \begin{itemize}
+        \item context objects, strings, etc.
+    \end{itemize}
+\end{itemize}
+
+% header (32bits) contains type ID
+
 % Objects
-% - Functions/Closures
-% - Numbers
+% - Functions/Closures (no diff)
+% - Numbers - fixnums have 2 LSBs == 0
 % - Strings
 % - Arrays
 

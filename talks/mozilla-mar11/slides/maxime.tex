@@ -32,59 +32,6 @@
 % - Less about type profiling?
 % - Less about related work?
 
-%
-% Slide about compilation phases, with graphic
-%
-\begin{frame}
-\frametitle{\bf Compilation Phases}
-\begin{center}
-\includegraphics[width=4.5in]{images/phases}
-\end{center}
-\end{frame}
-
-%
-% Example of program JS->AST->HIR->LIR->ASM
-%
-
-\begin{frame}
-\frametitle{\bf Example: Simple JS Function}
-\lstinputlisting[language=JavaScript,basicstyle=\bfseries\Large\ttfamily]{images/ex_source.js}
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{\bf Example: Abstract Syntax Tree}
-\scalebox{1.15}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}}
-\end{frame}
-
-\begin{frame}
-\frametitle{\bf Example: High-level IR}
-\scalebox{0.7}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}}
-\end{frame}
-
-\begin{frame}
-\frametitle{\bf Example: Low-level IR}
-\scalebox{0.65}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir.txt}}
-\end{frame}
-
-\begin{frame}
-\frametitle{\bf Example: x86 Machine Code}
-\begin{columns}[t]
-
-\begin{column}{0.33\textwidth}
-\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}}
-\end{column}
-
-\begin{column}{0.33\textwidth}
-\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}}
-\end{column}
-
-\begin{column}{0.33\textwidth}
-\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}}
-\end{column}
-
-\end{columns}
-\end{frame}
-
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf High-Level IR}
@@ -107,65 +54,14 @@
         \end{itemize}
 
         \item Currently, HIR implemented directly by primitive functions
-        \begin{itemize}
-            \item Primitives written in terms of extended JS
-            \item Annotated for performance
-                \begin{itemize}
-                    \item Static linkage, force inlining, no exceptions, etc.
-                \end{itemize}
-        \end{itemize}
+        % \begin{itemize}
+        %     \item Primitives written in terms of extended JS
+        %     \item Annotated for performance
+        %         \begin{itemize}
+        %             \item Static linkage, force inlining, no exceptions, etc.
+        %         \end{itemize}
+        % \end{itemize}
 
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf JavaScript Extensions}
-    \begin{itemize}
-        \item JavaScript has no access to raw memory
-        \begin{itemize}
-            \item Essential to implement a VM/JIT
-        \end{itemize}
-        \item Tachyon is written in JS w/ “unsafe” extensions
-        \begin{itemize}
-            \item Minimizes the need to write C code (FFI)
-            \item Exposes potential optimization opportunities
-            \begin{itemize}
-                \item FFIs are optimization boundaries
-            \end{itemize}
-        \end{itemize}
-        \item JS code translated to low-level typed IR
-        \begin{itemize}
-            \item JS extensions: insert typed instructions in code as it is translated (Inline IR / IIR)
-        \end{itemize}
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Low-Level IR}
-    \begin{itemize}
-        \item Some similarities with LLVM
-        \item SSA-based
-        \item Type-annotated
-        \begin{itemize}
-            \item Integers, floats, booleans, raw pointers
-            \item Boxed values, references
-        \end{itemize}
-        \item Low-level
-        \begin{itemize}
-            \item Mirrors instructions commonly found on most CPUs
-            \begin{itemize}
-                \item add/sub/mul/div, and/or/shift, jump/if/call, load/store, etc.
-            \end{itemize}
-            \item Still tries to be “machine agnostic”
-            \begin{itemize}
-                \item No specific endianness, no registers
-            \end{itemize}
-            \item Allows expressing more optimizations (specialization)
-        \end{itemize}
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -206,8 +102,69 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}[fragile]
+\frametitle{\bf Tachyon's Extended JavaScript}
+    \begin{itemize}
+        \item JavaScript has no access to raw memory
+        \begin{itemize}
+            \item Essential to implement a VM/JIT
+        \end{itemize}
+        \item Tachyon is written in JS w/ “unsafe” extensions
+        \begin{itemize}
+            \item Minimizes the need to write C code (FFI)
+            \item Exposes potential optimization opportunities
+            \begin{itemize}
+                \item FFIs are optimization boundaries
+            \end{itemize}
+        \end{itemize}
+        \item JS code translated to low-level typed IR
+        \begin{itemize}
+            \item JS extensions: insert typed instructions in code as it is translated (Inline IR / IIR)
+        \end{itemize}
+    \end{itemize}
+
+\begin{block}<+->{Inline IR example}
+\begin{lstlisting}[language=JavaScript]
+    if (boxIsInt(v1) && boxIsInt(v2))
+    {
+        // Compare immediate integers without unboxing
+        var tv = iir.lt(v1, v2);
+    }
+\end{lstlisting}
+\end{block}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Primitive Functions}
+\frametitle{\bf Low-Level IR}
+    \begin{itemize}
+        \item Some similarities with LLVM
+        \item SSA-based
+        \item Type-annotated
+        \begin{itemize}
+            \item Integers, floats, booleans, raw pointers
+            \item Boxed values, references
+        \end{itemize}
+        \item Low-level
+        \begin{itemize}
+            \item Mirrors instructions commonly found on most CPUs
+            \begin{itemize}
+                \item add/sub/mul/div, and/or/shift, jump/if/call, load/store, etc.
+            \end{itemize}
+            \item Still tries to be “machine agnostic”
+            \begin{itemize}
+                \item No specific endianness, no registers
+            \end{itemize}
+            \item Allows expressing more optimizations (specialization)
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+\begin{frame}
+\frametitle{\bf IIR $\neq$ Assembly}
     \begin{itemize}
         \item Writing code using IIR not as painful as it sounds
         \item Using IIR does not take away JS capabilities!
@@ -221,7 +178,7 @@
 
         \item Auto-generated accessor methods for heap objects
         \begin{itemize}
-            \item allo\_str(len), get\_str\_len(str), get\_str\_data(str, i)
+            \item alloc\_str(len), get\_str\_len(str), get\_str\_data(str, i)
         \end{itemize}
 
         \item Auto-generated wrappers for C FFI wrappers
@@ -266,6 +223,87 @@
         \end{itemize}
 
     \end{itemize}
+\end{frame}
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf V8 Extensions}
+
+  \begin{itemize}
+
+  \item Memory allocation (for data and code)
+    \begin{itemize}
+    \item {\tt allocMemoryBlock}, {\tt freeMemoryBlock}
+    \item {\tt readFromMemoryBlock}, {\tt writeToMemoryBlock}
+    \item {\tt execMachineCodeBlock}
+    \end{itemize}
+
+  \item I/O (for source code and REPL)
+    \begin{itemize}
+    \item {\tt readFile}, {\tt writeFile}
+    \item {\tt readConsole}
+    \end{itemize}
+
+  \item Profiling
+    \begin{itemize}
+    \item {\tt currentTimeMillis}, {\tt memAllocatedKBs}
+    \item {\tt pauseV8Profile}, {\tt resumeV8Profile}
+    \item {\tt shellCommand}
+    \end{itemize}
+
+  \item FFI
+    \begin{itemize}
+    \item {\tt getFuncAddr} (to get {\tt \&puts}, {\tt \&exit}, ...)
+    \item {\tt getBlockAddr}
+    \item {\tt callTachyonFFI}
+    \end{itemize}
+
+  \end{itemize}
+
+\end{frame}
+% ------------------------------------------------------------------------------
+
+%
+% Example of program JS->AST->HIR->LIR->ASM
+%
+
+\begin{frame}
+\frametitle{\bf Example: Simple JS Function}
+\lstinputlisting[language=JavaScript,basicstyle=\bfseries\Large\ttfamily]{images/ex_source.js}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{\bf Example: Abstract Syntax Tree}
+\scalebox{1.15}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\tiny\ttfamily]{images/ex_ast.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: High-level IR}
+\scalebox{0.7}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_hir.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: Low-level IR}
+\scalebox{0.65}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_lir.txt}}
+\end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: x86 Machine Code}
+\begin{columns}[t]
+
+\begin{column}{0.33\textwidth}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm1.txt}}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm2.txt}}
+\end{column}
+
+\begin{column}{0.33\textwidth}
+\scalebox{0.68}{\lstinputlisting[language=,keepspaces=true,basicstyle=\bfseries\footnotesize\ttfamily]{images/ex_asm3.txt}}
+\end{column}
+
+\end{columns}
 \end{frame}
 
 % -- Slide ---------------------------------------------------------------------
@@ -328,7 +366,7 @@
         \item As programmers, it's fairly obvious to us that:
         \begin{itemize}
             \item function \code{f} is extremely unlikely to be redefined
-            \item list will likely always be array of integers
+            \item \code{list} will likely always be array of integers
         \end{itemize}
 
         \item Not obvious to a compiler, but, in general:
