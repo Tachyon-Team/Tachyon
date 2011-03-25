@@ -1,0 +1,7 @@
+#! /bin/sh
+
+DIR=`dirname $0`
+
+TACHYON_LINT="d8 $DIR/../utility/debug.js $DIR/../utility/system.js $DIR/../utility/hashmap.js $DIR/../utility/num.js $DIR/misc.js $DIR/scanner.js $DIR/parser.js $DIR/pp.js $DIR/ast-passes.js $DIR/tachyon-lint.js --"
+
+$TACHYON_LINT "$@"
