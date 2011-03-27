@@ -55,12 +55,12 @@
 
         \item Examples
         \begin{itemize}
-            \item Arithmetic/comparison operators (+, -, *, /, $<$, \ldots)
+            \item Arithmetic/comparison operators (\code{+}, \code{-}, \code{==} \ldots)
             \item Property accesses (getProp, putProp, hasProp, \ldots)
-            \item Other misc. JavaScript operators (typeof, instanceof, \ldots)
+            \item Misc.~JavaScript operators (\code{typeof}, \code{instanceof}, \ldots)
         \end{itemize}
 
-        \item Currently, HIR implemented directly by primitive functions
+        \item Currently, HIR implemented directly by {\bf primitive functions}
         % \begin{itemize}
         %     \item Primitives written in terms of extended JS
         %     \item Annotated for performance
@@ -76,13 +76,13 @@
 \begin{frame}
 \frametitle{\bf Primitive Functions}
     \begin{itemize}
-        \item All Tachyon functions can use extended JS, meaning:
+        \item All Tachyon functions can use our extended JS, meaning:
         \begin{itemize}
             \item Special function annotations
             \item Typed local variables
             \item Inline IR (IIR) instructions
         \end{itemize}
-        \item Core of the run-time makes more use of this
+        \item Core of the runtime makes more use of this
         \begin{itemize}
             \item Rest of Tachyon mostly uses `standard' JS
         \end{itemize}
@@ -453,7 +453,7 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
     \begin{itemize}
         \item Crucial to capture info about run time behavior
         \begin{itemize}
-            \item Tracing JITs do this, but leave many run-time checks
+            \item Tracing JITs do this, but leave many run time checks
         \end{itemize}
 
         \item Program needs to be correct at all times

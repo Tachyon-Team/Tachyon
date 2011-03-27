@@ -19,7 +19,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Projet Status}
+\frametitle{\bf Project Status}
     \begin{itemize}
         \item ECMAScript 5 parser
         \item Translation of ASTs to SSA-based IR
@@ -41,29 +41,31 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Projet Roadmap}
+\frametitle{\bf Project Roadmap}
     \begin{enumerate}[1.]
-        \item Bootstrap (Feb 2011)
+
+        \item Bootstrap (March 2011)
         \begin{enumerate}[1.]
-            \item Simple object representation, GC, std. lib., FFI
-            \item Exceptions, closures
+            \item Simple object representation, stdlib, FFI
+            \item {\bf very few optimizations} (but careful to allow future opt)
+        \end{enumerate}
+
+        \item Competitive (September 2011)
+        \begin{enumerate}[1.]
+            \item GC + better object representation, full stdlib, FFI
             \item Image loader/writer
+            \item Improve tools: profiler, debugger
+            \item {\bf speed within factor of 2 of best JIT}
         \end{enumerate}
 
-        \item Competitive (June 2011)
+        \item Gravy (January 2012)
         \begin{enumerate}[1.]
-            \item Better object representation, GC, full std. lib., FFI
-            \item Improved profiler, debugger
-        \end{enumerate}
-
-        \item Gravy (Dec 2011)
-        \begin{enumerate}[1.]
-            \item Threads 
+            \item Continuations, threads
             \item Code-patching, optimistic optimizations
-            \item Browser integration
+            \item Browser integration, real benchmarks
         \end{enumerate}
 
-        \item Groovy (Post Dec. 21, 2012)
+        \item Groovy (long term)
         \begin{enumerate}[1.]
             \item Persistance, contextualization
             \item On-stack replacement
