@@ -2,27 +2,31 @@
 \begin{frame}
 \frametitle{\bf Backend Overview}
 
-% TODO: diagram
-\begin{itemize}
-    \item Basic block ordering
-    \item Instruction numbering and intervals
-    \item Hints
-    \item Operand assignment
-    \item SSA deconstruction
-    \item Translation
-    \item Linking and assembly
-\end{itemize}
-
+% \begin{itemize}
+%     \item Basic block ordering
+%     \item Register allocation (linear scan)
+%     \begin{itemize}
+%         \item Instruction numbering and intervals
+%         \item Hints
+%     \end{itemize}
+%     \item Operand assignment
+%     \item SSA deconstruction
+%     \item Translation
+%     \item Linking and assembly
+% \end{itemize}
+\begin{center}
+\includegraphics[width=4in]{images/backend}
+\end{center}
 \end{frame}
 % ------------------------------------------------------------------------------
 
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Linker}
-
-% used for static fn calls + strings
-\end{frame}
-% ------------------------------------------------------------------------------
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Linker}
+% 
+% % used for static fn calls + strings
+% \end{frame}
+% % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
@@ -58,6 +62,10 @@
 
 \begin{block}<+->{Assembly framework example}
 \begin{lstlisting}[language=]
+    this.asm = new x86.Assembler(params.target.ptrSizeBits === 64
+                           ?  x86.target.x86_64 : x86.target.x86);
+
+
     this.asm.
 
     mov(temp, ctxTemp).
@@ -76,6 +84,7 @@
 \frametitle{\bf Calling protocol}
 
 \begin{itemize}
+    \item Flexible calling convention through configurable parameters
     \item Stack pointer and context pointer have dedicated registers
     \item Return values are passed in a register (currently EAX)
     \item Up to $n$ first arguments passed using registers (currently, $n =
@@ -96,14 +105,14 @@
         \item Accessor functions dynamically generated for each layout
         \item 3 basic layouts: basic objects, functions and arrays
     \end{itemize}
-    \begin{itemize}
-        \item Basic objects contain a header and a map (pointer to a
-        hashtable)
-        \item Arrays also contain a pointer to an external table
-        \item Functions also contain a pointer to mutable cells (to support
-        closures)
-    \end{itemize}
-    \item Other objects are heap objects
+    % \begin{itemize}
+    %     \item Basic objects contain a header and a map (pointer to a
+    %     hashtable)
+    %     \item Arrays also contain a pointer to an external table
+    %     \item Functions also contain a pointer to mutable cells (to support
+    %     closures)
+    % \end{itemize}
+    \item Other objects are heap objects but not JS objects
     \begin{itemize}
         \item context objects, strings, etc.
     \end{itemize}
@@ -120,6 +129,46 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Basic Object Layout}
+
+\begin{center}
+\includegraphics[width=3.5in]{images/obj_layout_basic}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Array Object Layout}
+
+\begin{center}
+\includegraphics[width=4in]{images/obj_layout_array}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Function Object Layout}
+
+\begin{center}
+\includegraphics[width=4in]{images/obj_layout_func}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf String Object Layout}
+
+\begin{center}
+\includegraphics[width=4in]{images/obj_layout_str}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------
+
 % % -- Slide ---------------------------------------------------------------------
 % \begin{frame}
 % \frametitle{\bf Memory management}
@@ -129,47 +178,60 @@
 % \end{frame}
 % % ------------------------------------------------------------------------------
 
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Meta-circularity}
-
-% - Standard library
-% - Primitives
-% - FFI as bridge
-% - Memory access
-%   - Pointers representation
-%   - Memory block
-% - Numbers
-%   - Representation limits
-\end{frame}
-% ------------------------------------------------------------------------------
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Meta-circularity}
+% 
+% % - Standard library
+% % - Primitives
+% % - FFI as bridge
+% % - Memory access
+% %   - Pointers representation
+% %   - Memory block
+% % - Numbers
+% %   - Representation limits
+% \end{frame}
+% % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf Limitations of JS for compiling writing}
 
-% - Infinite precision numbers
-% - Absence of native hash tables, sets, lists, etc.
-% - Bitwise operations limited to 32 bits
-% - Allocation behavior of standard operations
-% - Modules
-% - I/O
-% - Memory access
+    \begin{itemize}
+        \item Limited precision in number representation
+        \begin{itemize}
+            \item e.g. 64-bit precision numbers
+        \end{itemize}
+        \item Minimal standard library
+        \begin{itemize}
+            \item No standard data structures
+        \end{itemize}
+        \item Bitwise operations limited to 32 bits
+        \item Unpredictable allocation behaviour of common operations
+        \item Lack of modules
+        \item No standard I/O operations
+        \item No direct access to memory
+    \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Experience}
+% 
+% % - Dynamicity and testing/refactoring
+% % - Metacircularity and intuitive understanding of the language usage patterns
+% \end{frame}
+% % ------------------------------------------------------------------------------
+
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Experience}
+\frametitle{\bf Performance - Sunspider Cflow Recursive}
 
-% - Dynamicity and testing/refactoring
-% - Metacircularity and intuitive understanding of the language usage patterns
-\end{frame}
-% ------------------------------------------------------------------------------
+\begin{center}
+\includegraphics[width=3in]{images/perf-sunspider}
+\end{center}
 
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Performance}
                           % Sunspider control flow recursive (200 iterations)
 % - Compilation Time  :   0.8 s tachyon, 0.82 s v8 (combined) 
 % - Execution Time    :   5.0 s tachyon,
@@ -181,3 +243,22 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Performance - Tachyon Bootstrap}
+
+\begin{center}
+\includegraphics[width=3in]{images/perf-bootstrap}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Allocated Memory - Tachyon Bootstrap}
+
+\begin{center}
+\includegraphics[width=3in]{images/perf-bootstrap-mem}
+\end{center}
+\end{frame}
+% ------------------------------------------------------------------------------

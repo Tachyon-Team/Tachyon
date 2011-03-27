@@ -1,69 +1,70 @@
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Distinguishing Features}
-    \begin{itemize}
-        \item Meta-circular with dynamic language
-        \item Self-optimizing
-        \item Systematic optimistic optimizations
-        \item Implementation flexibility
-        \begin{itemize}
-            \item Function call protocol
-            \item Object layout
-            \item Intermediate representation
-        \end{itemize}
-        \item Inline IR
-        \item Multithreaded compiler
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Distinguishing Features}
+%     \begin{itemize}
+%         \item Meta-circular with dynamic language
+%         \item Self-optimizing
+%         \item Systematic optimistic optimizations
+%         \item Implementation flexibility
+%         \begin{itemize}
+%             \item Function call protocol
+%             \item Object layout
+%             \item Intermediate representation
+%         \end{itemize}
+%         \item Inline IR
+%         \item Multithreaded compiler
+%     \end{itemize}
+% \end{frame}
+% % ------------------------------------------------------------------------------
 
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Projet Status}
-    \begin{itemize}
-        \item ECMAScript 5 parser
-        \item Translation of ASTs to SSA-based IR
-        \item Simple optimizations on IR
-        \begin{itemize}
-            \item SCCP, value numbering, peepholes
-        \end{itemize}
-        \item x86 32/64 back-end with linear-scan reg. alloc.
-        \item Linking of static function calls
-        \item Compilation of simple programs
-        \begin{itemize}
-            \item Fibonacci, loops
-        \end{itemize}
-        \item Instruction-level statistical profiler
-        \item Benchmarking framework
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Projet Status}
+%     \begin{itemize}
+%         \item ECMAScript 5 parser
+%         \item Translation of ASTs to SSA-based IR
+%         \item Simple optimizations on IR
+%         \begin{itemize}
+%             \item SCCP, value numbering, peepholes
+%         \end{itemize}
+%         \item x86 32/64 back-end with linear-scan reg. alloc.
+%         \item Linking of static function calls
+%         \item Compilation of simple programs
+%         \begin{itemize}
+%             \item Fibonacci, loops
+%         \end{itemize}
+%         \item Instruction-level statistical profiler
+%         \item Benchmarking framework
+%     \end{itemize}
+% \end{frame}
+% % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf Projet Roadmap}
     \begin{enumerate}[1.]
-        \item Bootstrap (Feb 2011)
+        \item Bootstrap (March 2011)
         \begin{enumerate}[1.]
-            \item Simple object representation, GC, std. lib., FFI
-            \item Exceptions, closures
+            \item Simple object representation, basic stdlib, FFI, closures
             \item Image loader/writer
+            \item Basic profiler
         \end{enumerate}
 
-        \item Competitive (June 2011)
+        \item Competitive (Summer 2011)
         \begin{enumerate}[1.]
-            \item Better object representation, GC, full std. lib., FFI
+            \item Better object representation, GC, full stdlib, exceptions
+            \item Image writer + loader
             \item Improved profiler, debugger
         \end{enumerate}
 
-        \item Gravy (Dec 2011)
+        \item Gravy (Winter 2011)
         \begin{enumerate}[1.]
             \item Threads 
             \item Code-patching, optimistic optimizations
             \item Browser integration
         \end{enumerate}
 
-        \item Groovy (Post Dec. 21, 2012)
+        \item Groovy (2012)
         \begin{enumerate}[1.]
             \item Persistance, contextualization
             \item On-stack replacement
