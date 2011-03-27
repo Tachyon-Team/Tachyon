@@ -245,6 +245,25 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
+\frametitle{\bf Ballpark Performance Comparison on \code{fib(38)}}
+
+\begin{center}
+\rowcolors{1}{RoyalBlue!10}{RoyalBlue!5}
+\begin{tabular}{lll}
+Tachyon     & 8.110s & (7.20x) \\
+WebKit INT  & 7.334s & (6.51x) \\
+WebKit      & 1.406s & (1.25x) \\
+V8          & 1.127s & (1.00x) \\
+gcc -O2     & 0.626s & (0.56x) \\
+gcc -O3     & 0.224s & (0.20x)
+\end{tabular}
+\end{center}
+
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
 \frametitle{\bf Performance - Tachyon Bootstrap}
 
 \begin{center}
