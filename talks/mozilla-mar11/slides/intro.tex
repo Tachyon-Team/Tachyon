@@ -57,7 +57,7 @@
     \item object representation / garbage collection
     \item profiling real-world applications
     \item language extensions: exact arithmetic, continuations, tail calls, exceptions, concurrency, distributed computing, Harmony,~...
-    \item {\bf must stay flexible!} e.g.~calling protocol, reg assignment, ...
+    \item {\bf must stay flexible!} e.g.~calling protocol, object layout, ...
     \end{itemize}
     \smallskip
 
@@ -71,27 +71,32 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf JIT Compilation}
+\frametitle{\bf Self-Hosting in a Dynamic Language}
 
   \begin{itemize}
 
   \item JIT compilers are efficient because they
     \begin{itemize}
-      \item[1.] mostly compile the program parts where speed matters
+      \item[1.] compile the program parts where speed matters
       \item[2.] {\bf adapt/specialize the program} to the run time conditions
     \end{itemize}
     \smallskip
 
-  \item In theory, {\bf dynamic recompilation may outperform static compilation}
+  \item {\bf Particularly useful to speed up dynamic languages}
     \smallskip
 
-  \item {\bf Recompilation time must be kept small}
+  \item {\bf Dynamic compilation may outperform static compilation}
+    \smallskip
+
+  \item ... but only if {\bf compilation time is kept small}
     \begin{itemize}
-    \item Avoid expensive optimizations
-    \item Use hand-tuned algorithms
-    \item ...
+    \item avoid expensive optimizations
+    \item use hand-tuned algorithms
+    \item break abstraction barriers
     \end{itemize}
     \smallskip
+
+  \item {\bf Not obvious when host is a dynamic language!}
 
   \end{itemize}
 \end{frame}
@@ -114,17 +119,16 @@
     {\bf repeated recompilations of the same program}
     \smallskip
 
-  \item Host language must also be JIT compiled... {\bf use the same!}
+  \item Host language must also be JIT compiled... {\bf Recursion!}
     \bigskip
 
   \item Other self-hosting benefits:
     \begin{itemize}
       \item single runtime system (one heap, GC, I/O, ...)
       \item easy introspection and dynamic language extension
+      \item we are more productive in JS than C/C++!
     \end{itemize}
     \smallskip
-
-  \item We are more productive in JS than C/C++
 
   \end{itemize}
 \end{frame}
@@ -136,15 +140,14 @@
 
   \begin{itemize}
 
-  \item Compiler is written in a subset of JS (roughly 40 KLOC)
+  \item Compiler is written in a subset of JS (roughly 40 KLOC):
     \begin{itemize}
     \item parsing
-    \item analysis/optimization of intermediate representation
-    \item in-memory assembly and linking
+    \item analysis/optimization of IR
+    \item linear-scan reg.~alloc.
+    \item assembler and linker for {\bf x86} and {\bf x86\_64}
+    \item stdlib in JS
     \end{itemize}
-    \smallskip
-
-  \item Few extensions to the host VM (readFile, malloc, etc.)
     \smallskip
 
   \item Implements ES5 spec except:
@@ -152,18 +155,15 @@
     \item floating point (only fixnums are supported)
     \item regular expressions
     \item getters and setters, property attributes
-    \item {\tt eval} and most meta-object features
+    \item {\tt eval} and most meta-object protocol features
     \item no GC yet!
     \end{itemize}
     \smallskip
 
-  \item Back-end supports {\bf x86} and {\bf x86\_64}
+  \item Goodies: interactive shell, profiler, benchmarking framework
     \smallskip
 
-  \item Interactive shell since February 2011
-    \smallskip
-
-  \item Tachyon self-bootstrap achieved March 2011
+  \item March 2011: Tachyon self-bootstrap using V8
     \smallskip
 
   \end{itemize}
@@ -174,7 +174,7 @@
 % Slide about compilation phases, with graphic
 %
 \begin{frame}
-\frametitle{\bf Compilation Phases}
+\frametitle{\bf Tachyon Compiler Pipeline}
 \begin{center}
 \includegraphics[width=4.5in]{images/phases}
 \end{center}
@@ -190,14 +190,14 @@
     \begin{itemize}
     \item {\tt Grammar.y} converted to LALR-SCM parser generator spec
     \item LALR-SCM tables pretty-printed as JS arrays (6 KLOC)
-    \item hand written LALR driver (.3 KLOC) and scanner (1 KLOC)
+    \item hand written scanner (1 KLOC) and LALR driver (.3 KLOC)
     \end{itemize}
     \smallskip
 
   \item Parses 100 KLOC per second
     \smallskip
 
-  \item AST keeps track of source location
+  \item Source location attached to all AST nodes
 
   \end{itemize}
 
@@ -223,7 +223,6 @@
   \item {\bf js2js} -- instrument JS code with function entry/exit tracing
     \smallskip
 
-\begin{block}<+->{Execution trace of Tachyon compiler}
 \begin{lstlisting}[language=]
 bash$ ./js2js -debug tachyon.js > tachyon-debug.js
 bash$ d8 tachyon-debug.js
@@ -239,7 +238,6 @@ bash$ d8 tachyon-debug.js
 |  |  (( "utility/debug.js"@73.1-77.2: assertNew
 ...
 \end{lstlisting}
-\end{block}
 
   \end{itemize}
 

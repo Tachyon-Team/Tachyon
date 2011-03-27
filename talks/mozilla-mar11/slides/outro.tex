@@ -1,74 +1,66 @@
-% % -- Slide ---------------------------------------------------------------------
-% \begin{frame}
-% \frametitle{\bf Distinguishing Features}
-%     \begin{itemize}
-%         \item Meta-circular with dynamic language
-%         \item Self-optimizing
-%         \item Systematic optimistic optimizations
-%         \item Implementation flexibility
-%         \begin{itemize}
-%             \item Function call protocol
-%             \item Object layout
-%             \item Intermediate representation
-%         \end{itemize}
-%         \item Inline IR
-%         \item Multithreaded compiler
-%     \end{itemize}
-% \end{frame}
-% % ------------------------------------------------------------------------------
-
-% % -- Slide ---------------------------------------------------------------------
-% \begin{frame}
-% \frametitle{\bf Projet Status}
-%     \begin{itemize}
-%         \item ECMAScript 5 parser
-%         \item Translation of ASTs to SSA-based IR
-%         \item Simple optimizations on IR
-%         \begin{itemize}
-%             \item SCCP, value numbering, peepholes
-%         \end{itemize}
-%         \item x86 32/64 back-end with linear-scan reg. alloc.
-%         \item Linking of static function calls
-%         \item Compilation of simple programs
-%         \begin{itemize}
-%             \item Fibonacci, loops
-%         \end{itemize}
-%         \item Instruction-level statistical profiler
-%         \item Benchmarking framework
-%     \end{itemize}
-% \end{frame}
-% % ------------------------------------------------------------------------------
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Distinguishing Features of Tachyon}
+    \begin{itemize}
+        \item Implementation flexibility
+        \item Self-hosted with dynamic language
+        \item Self-optimizing JIT
+        \item Extensions allow using JS for stdlib (possibly even GC)
+        \item Systematic optimistic optimizations
+        \item Multithreaded compiler
+    \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Projet Roadmap}
+\frametitle{\bf Ballpark Performance Comparison on \code{fib(38)}}
+
+\begin{center}
+\rowcolors{1}{RoyalBlue!10}{RoyalBlue!5}
+\begin{tabular}{lll}
+Tachyon     & 8.110s & (7.20x) \\
+WebKit INT  & 7.334s & (6.51x) \\
+WebKit      & 1.406s & (1.25x) \\
+V8          & 1.127s & (1.00x) \\
+gcc -O2     & 0.626s & (0.56x) \\
+gcc -O3     & 0.224s & (0.20x)
+\end{tabular}
+\end{center}
+
+\end{frame}
+% ------------------------------------------------------------------------------
+
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf Project Roadmap}
     \begin{enumerate}[1.]
         \item Bootstrap (March 2011)
-        \begin{enumerate}[1.]
-            \item Simple object representation, basic stdlib, FFI, closures
+        \begin{itemize}
+            \item Simple object representation, stdlib, FFI
+            \item {\bf very few optimizations} (but careful to allow future opt)
+        \end{itemize}
+
+        \item Competitive (September 2011)
+        \begin{itemize}
+            \item GC + better object representation, full stdlib, FFI
             \item Image loader/writer
-            \item Basic profiler
-        \end{enumerate}
+            \item Improve tools: profiler, debugger
+            \item {\bf speed within factor of 2 of best JS JIT}
+        \end{itemize}
 
-        \item Competitive (Summer 2011)
-        \begin{enumerate}[1.]
-            \item Better object representation, GC, full stdlib, exceptions
-            \item Image writer + loader
-            \item Improved profiler, debugger
-        \end{enumerate}
-
-        \item Gravy (Winter 2011)
-        \begin{enumerate}[1.]
-            \item Threads 
+        \item Gravy (January 2012)
+        \begin{itemize}
+            \item Continuations, threads
             \item Code-patching, optimistic optimizations
-            \item Browser integration
-        \end{enumerate}
+            \item Browser integration, real benchmarks
+        \end{itemize}
 
-        \item Groovy (2012)
-        \begin{enumerate}[1.]
+        \item Groovy (long term)
+        \begin{itemize}
             \item Persistance, contextualization
             \item On-stack replacement
-        \end{enumerate}
+        \end{itemize}
     \end{enumerate}
 \end{frame}
 % ------------------------------------------------------------------------------
