@@ -62,9 +62,7 @@
 
 \begin{block}<+->{Assembly framework example}
 \begin{lstlisting}[language=]
-    this.asm = new x86.Assembler(params.target.ptrSizeBits === 64
-                           ?  x86.target.x86_64 : x86.target.x86);
-
+    this.asm = new x86.Assembler(x86.target.x86);
 
     this.asm.
 
