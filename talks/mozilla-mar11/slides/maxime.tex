@@ -86,7 +86,7 @@
         \begin{itemize}
             \item Rest of Tachyon mostly uses `standard' JS
         \end{itemize}
-        \item Annotations can make functions:
+        \item Annotations allow functions to:
         \begin{itemize}
             \item Have static linkage (no dynamic lookup)
             \item Always be inlined
@@ -324,13 +324,13 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 
         \item Traditional optimizations are conservative
         \begin{itemize}
+            \item Can't prove it, can't do it
             \item Dynamic languages offer little static type information
             \item Dynamic constructs problematic for analysis
             \begin{itemize}
                 \item \code{eval}, \code{load}
             \end{itemize}
             \item Often can't prove validity conservatively
-            \item Can't prove it, can't do it
         \end{itemize}
 
         \item Optimistic optimizations
@@ -353,7 +353,9 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf Example: Optimization Issues}
-    \lstinputlisting[language=JavaScript]{images/sum.js}
+    \begin{center}
+    \scalebox{1}{\lstinputlisting[language=JavaScript]{images/sum.js}}
+    \end{center}
     \begin{itemize}
         \item Don't know type of \code{list} and its elements
         \begin{itemize}
@@ -424,8 +426,20 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf The Optimistic Goal}
-    Could we eliminate \textbf{all} dynamic checks from the sum program?
-    \lstinputlisting[language=C]{images/sum_c.c}
+    \begin{itemize}
+    \item Could we eliminate \textbf{all} dynamic checks from the sum program?
+    \end{itemize}
+
+    \begin{center}
+    \scalebox{1}{\lstinputlisting[language=C]{images/sum_c.c}}
+    \end{center}
+
+    \begin{itemize}
+        \item Perhaps we could replace the said checks
+        \item Instead of fetching f globally, checking it is a function
+        at each call, assuming it can have any possible side-effects, could we
+        check that it is not redefined instead?
+    \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
