@@ -15,7 +15,7 @@
 %     \item Linking and assembly
 % \end{itemize}
 \begin{center}
-\includegraphics[width=4in]{images/backend}
+\includegraphics[height=2.5in]{images/backend}
 \end{center}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -30,7 +30,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Register allocator}
+\frametitle{\bf Register Allocator}
 
 \begin{itemize}
     \item Based on a modified linear scan allocator
@@ -51,7 +51,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}[fragile]
-\frametitle{\bf Supported architectures}
+\frametitle{\bf Supported Architectures}
 
 \begin{itemize}
     \item Tachyon uses its own assembler for maximum flexibility
@@ -79,7 +79,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Calling protocol}
+\frametitle{\bf Calling Protocol}
 
 \begin{itemize}
     \item Flexible calling convention through configurable parameters
@@ -95,7 +95,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Object representations}
+\frametitle{\bf Object Representations}
 
 \begin{itemize}
     \item Flexible object representation through JS layout objects
@@ -193,7 +193,7 @@
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Limitations of JS for compiling writing}
+\frametitle{\bf Limitations of JS for Compiler Writing}
 
     \begin{itemize}
         \item Limited precision in number representation
@@ -222,24 +222,24 @@
 % \end{frame}
 % % ------------------------------------------------------------------------------
 
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Performance - Sunspider Cflow Recursive}
-
-\begin{center}
-\includegraphics[width=3in]{images/perf-sunspider}
-\end{center}
-
-                          % Sunspider control flow recursive (200 iterations)
-% - Compilation Time  :   0.8 s tachyon, 0.82 s v8 (combined) 
-% - Execution Time    :   5.0 s tachyon,
-% - Bootstrapping Time: 6 mins v8, ~1hr tachyon
-%                       40-50 gb heap (no gc)
-%                       v8 < 1 gb
-
-% d8 version 3.2.3.1
-\end{frame}
-% ------------------------------------------------------------------------------
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Performance - Sunspider Cflow Recursive}
+% 
+% \begin{center}
+% \includegraphics[width=3in]{images/perf-sunspider}
+% \end{center}
+% 
+%                           % Sunspider control flow recursive (200 iterations)
+% % - Compilation Time  :   0.8 s tachyon, 0.82 s v8 (combined) 
+% % - Execution Time    :   5.0 s tachyon,
+% % - Bootstrapping Time: 6 mins v8, ~1hr tachyon
+% %                       40-50 gb heap (no gc)
+% %                       v8 < 1 gb
+% 
+% % d8 version 3.2.3.1
+% \end{frame}
+% % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
