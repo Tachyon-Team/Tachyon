@@ -42,9 +42,8 @@
 \usepackage{listings}
 
 \lstdefinelanguage{JavaScript}{
-  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, for, else, case, break},
   ndkeywords={class, export, boolean, throw, implements, import, this},
-  ndkeywordstyle=\bfseries,
   comment=[l]{//},
   morecomment=[s]{/*}{*/},
   morestring=[b]',
@@ -55,6 +54,7 @@
         language=JavaScript,
         basicstyle=\bfseries\scriptsize\ttfamily, % use fixed-width font
         keywordstyle=\bfseries\color{red}, % bold keywords
+        ndkeywordstyle=\bfseries\color{violet}, % bold keywords
         identifierstyle=,       % nothing happens
         commentstyle=\ttfamily\color{blue}, 
         stringstyle=\bfseries\ttfamily,  % typewriter type for strings
