@@ -201,10 +201,6 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 \end{frame}
 
 \begin{frame}
-\scalebox{0.9}{\lstinputlisting[]{images/boxToCString.js}}
-\end{frame}
-
-\begin{frame}
 \frametitle{\bf Foreign Function Interface (FFI)}
     \begin{itemize}
         \item Can both import and export functions
@@ -260,7 +256,8 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 
   \item FFI
     \begin{itemize}
-    \item {\tt getFuncAddr} (to get {\tt \&puts}, {\tt \&exit}, ...)
+    \item {\tt getFuncAddr} (to get {\tt puts}, {\tt malloc}, {\tt free}, {\tt
+    runtimeError}, \ldots)
     \item {\tt getBlockAddr}
     \item {\tt callTachyonFFI}
     \end{itemize}
@@ -370,6 +367,29 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 \scalebox{0.95}{\lstinputlisting[language=JavaScript]{images/sum_checks.js}}
 \end{frame}
 
+% -- Slide ---------------------------------------------------------------------
+\begin{frame}
+\frametitle{\bf What Would Tachyon Do (WWTD)?}
+\begin{itemize}
+    \item A VM can observe global variables types during execution
+    \begin{itemize}
+        \item Can assume that these types will not change
+        \item Compile functions with these assumptions
+    \end{itemize}
+
+    \item A VM can observe function arguments types
+    \begin{itemize}
+        \item Can specialize functions based on these
+    \end{itemize}
+
+    \item Types inside of function bodies can be inferred from types of globals and arguments
+    \begin{itemize}
+        \item Type propagation, simple dataflow analysis
+    \end{itemize}
+\end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+
 \begin{frame}
 \frametitle{\bf Example: Guarded Code - Rough Sketch}
 \scalebox{0.92}{\lstinputlisting[language=JavaScript]{images/sum_guarded.js}}
@@ -394,35 +414,6 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 %        \end{itemize}
 %    \end{itemize}
 %\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf What Would Tachyon Do (WWTD)?}
-\begin{itemize}
-    \item A VM can observe global variables types during execution
-    \begin{itemize}
-        \item Can assume that these types will not change
-        \begin{itemize}
-            \item e.g.: assume that \code{f()} will not be redefined
-        \end{itemize}
-        \item Compile functions with these assumptions
-    \end{itemize}
-
-    \item A VM can observe function arguments types
-    \begin{itemize}
-        \item Can specialize functions based on these
-        \begin{itemize}
-            \item e.g.: \code{sum(list)} is always called with arrays of integers
-        \end{itemize}
-    \end{itemize}
-
-    \item Types inside of function bodies can be inferred from types of globals and arguments
-    \begin{itemize}
-        \item Type propagation, simple dataflow analysis
-    \end{itemize}
-\end{itemize}
-\end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
@@ -459,27 +450,27 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 \end{frame}
 % ------------------------------------------------------------------------------
 
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf Potential Difficulties}
-    \begin{itemize}
-        \item Cost of accurate type profiling
-        \begin{itemize}
-            \item Code-patching and self-limiting profiling
-        \end{itemize}
-        \item Cost of recompilation
-        \begin{itemize}
-            \item Usage of external threads
-        \end{itemize}
-        \item Frequency of recompilation
-        \begin{itemize}
-            \item Progressive pessimization
-        \end{itemize}
-        \item Inherent complexity
-        \begin{itemize}
-            \item Work hard!
-        \end{itemize}
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
+% % -- Slide ---------------------------------------------------------------------
+% \begin{frame}
+% \frametitle{\bf Potential Difficulties}
+%     \begin{itemize}
+%         \item Cost of accurate type profiling
+%         \begin{itemize}
+%             \item Code-patching and self-limiting profiling
+%         \end{itemize}
+%         \item Cost of recompilation
+%         \begin{itemize}
+%             \item Usage of external threads
+%         \end{itemize}
+%         \item Frequency of recompilation
+%         \begin{itemize}
+%             \item Progressive pessimization
+%         \end{itemize}
+%         \item Inherent complexity
+%         \begin{itemize}
+%             \item Work hard!
+%         \end{itemize}
+%     \end{itemize}
+% \end{frame}
+% % ------------------------------------------------------------------------------
 

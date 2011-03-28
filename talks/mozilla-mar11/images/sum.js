@@ -5,7 +5,7 @@ function sum(list) {
     for (var i = 0; i < list.length; ++i)
     {
         var t = list[i];
-        sum = sum + t;
+        sum = sum + t; // Addition or concatenation
     }
     return sum;
 }
