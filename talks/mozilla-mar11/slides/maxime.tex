@@ -359,39 +359,41 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
     \end{center}
     \begin{itemize}
         \item Don't know type of \code{list} and its elements
-        \begin{itemize}
-            \item Dynamic type checks needed
-        \end{itemize}
-        \item Name \code{f} is global, can be redefined
-        \begin{itemize}
-            \item Fetch from global object, is-function check needed
-            \item Can't trivially perform inlining
-            \item \code{f} could possibly change \code{list.length}
-        \end{itemize}
-        \item What if we add an \code{eval}?
+        \item Type of \code{zero} could change
+        \item Dynamic type checks needed
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
-% -- Slide ---------------------------------------------------------------------
 \begin{frame}
-\frametitle{\bf Realistic Assumptions}
-    \begin{itemize}
-        \item As programmers, it's fairly obvious to us that:
-        \begin{itemize}
-            \item function \code{f} is extremely unlikely to be redefined
-            \item \code{list} will likely always be array of integers
-        \end{itemize}
-
-        \item Not obvious to a compiler, but, in general:
-        \begin{itemize}
-            \item How often are global functions redefined?
-            \item How many call sites are truly polymorphic?
-            \item How many function arguments can have more than one type?
-            \item How often do people use eval to change local variable types?
-        \end{itemize}
-    \end{itemize}
+\frametitle{\bf Example: Dynamic Checks - Rough Sketch}
+\scalebox{0.95}{\lstinputlisting[language=JavaScript]{images/sum_checks.js}}
 \end{frame}
+
+\begin{frame}
+\frametitle{\bf Example: Guarded Code - Rough Sketch}
+\scalebox{0.92}{\lstinputlisting[language=JavaScript]{images/sum_guarded.js}}
+\end{frame}
+
+% -- Slide ---------------------------------------------------------------------
+%\begin{frame}
+%\frametitle{\bf Realistic Assumptions}
+%    \begin{itemize}
+%        \item As programmers, it's fairly obvious to us that:
+%        \begin{itemize}
+%            \item function \code{f} is extremely unlikely to be redefined
+%            \item \code{list} will likely always be array of integers
+%        \end{itemize}
+%
+%        \item Not obvious to a compiler, but, in general:
+%        \begin{itemize}
+%            \item How often are global functions redefined?
+%            \item How many call sites are truly polymorphic?
+%            \item How many function arguments can have more than one type?
+%            \item How often do people use eval to change local variable types?
+%        \end{itemize}
+%    \end{itemize}
+%\end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
@@ -423,41 +425,11 @@ if (boxIsInt(v1) && boxIsInt(v2)) {
 \end{frame}
 % ------------------------------------------------------------------------------
 
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf The Optimistic Goal}
-    \begin{itemize}
-    \item Could we eliminate \textbf{all} dynamic checks from the sum program?
-    \end{itemize}
-
-    \begin{center}
-    \scalebox{1}{\lstinputlisting[language=C]{images/sum_c.c}}
-    \end{center}
-
-    \begin{itemize}
-        \item Perhaps we could replace the said checks
-        \item Instead of fetching f globally, checking it is a function
-        at each call, assuming it can have any possible side-effects, could we
-        check that it is not redefined instead?
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
 % -- Slide ---------------------------------------------------------------------
 \begin{frame}
 \frametitle{\bf What Would Tachyon Do (WWTD)?}
 \begin{center}
 \includegraphics[width=3in]{images/transforms2}
-\end{center}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}
-\frametitle{\bf What Would Tachyon Do (WWTD)?}
-\begin{center}
-\includegraphics[height=2.8in]{images/execmodel}
 \end{center}
 \end{frame}
 % ------------------------------------------------------------------------------
