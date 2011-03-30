@@ -2176,12 +2176,22 @@ function putPropVal(obj, propName, propVal)
         }
     }
 
+    // If the value is not an object
+    if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Return the property value
+        return propVal;
+    }
+
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
 
     // Set the property on the object
     putPropObj(obj, propName, propHash, propVal);
+
+    // Return the property value
+    return propVal;
 }
 
 /**
@@ -2371,6 +2381,13 @@ function getPropVal(obj, propName)
         return getPropVal(numproto, propName);
     }
 
+    // If the value is not an object
+    if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Return the undefined value
+        return UNDEFINED;
+    }
+
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
@@ -2405,7 +2422,7 @@ function getGlobal(obj, propName, propHash)
     {
         // Throw a ReferenceError exception
         throw makeError(
-            ReferenceError, 
+            get_ctx_referror(iir.get_ctx()), 
             'global property not defined "' + propName + '"'
         );
     }
@@ -2437,12 +2454,18 @@ function getGlobalFunc(obj, propName, propHash)
         if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
         {
             // Throw a ReferenceError exception
-            throw makeError(ReferenceError, "global property not defined " + propName);
+            throw makeError(
+                get_ctx_referror(iir.get_ctx()),
+                "global property not defined " + propName
+            );
         }
         else
         {
             // Throw a TypeError exception
-            throw makeError(TypeError, "global property is not a function " + propName);
+            throw makeError(
+                get_ctx_typeerror(iir.get_ctx()),
+                "global property is not a function " + propName
+            );
         }
     }
 }
@@ -2453,7 +2476,7 @@ Delete a property from a value
 function delPropVal(obj, propName)
 { 
     "tachyon:static"; 
-    
+
     // If the property name is not integer or string, convert it to a string
     if (boxIsInt(propName) === FALSE_BOOL &&
         boxIsString(propName) === FALSE_BOOL)
@@ -2475,6 +2498,13 @@ function delPropVal(obj, propName)
         }
     }
 
+    // If the value is not an object
+    if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Operation succeeded
+        return true;
+    }
+
     // Get the hash code for the property
     // Boxed value, may be a string or an int
     var propHash = getHash(propName);
@@ -2482,6 +2512,7 @@ function delPropVal(obj, propName)
     // Delete the property on the object
     delPropObj(obj, propName, propHash);
 
+    // Operation succeeded
     return true;
 }
 
@@ -2493,10 +2524,15 @@ function getPropNames(obj)
     "tachyon:static"; 
     "tachyon:noglobal";
 
-    assert (
-        boolToBox(boxIsObjExt(obj)),
-        'non-object in getPropNames'
-    );
+    // If the value is not an object
+    if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Return the empty enumeration function
+        return function ()
+        {
+            return UNDEFINED
+        }
+    }
 
     var curObj = obj;
     var curIdx = 0;
@@ -2630,11 +2666,30 @@ function getPropNames(obj)
 /**
 Implementation of the "in" operator
 */
-function inOp(x, y) 
+function inOp(propName, obj) 
 { 
     "tachyon:static"; 
     
-    return boolToBox(hasPropVal(y, x));
+    // If the value is not an object
+    if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Throw a TypeError exception
+        throw makeError(
+            get_ctx_typeerror(iir.get_ctx()),
+            'in operator expects object'
+        );
+    }
+
+    // If the property is not integer or string, convert it to a string
+    if (boxIsString(propName) === FALSE_BOOL)
+    {
+        if (boxIsInt(propName) === FALSE_BOOL)
+        {
+            propName = boxToString(propName);
+        }
+    }
+
+    return boolToBox(hasPropVal(obj, propName));
 }
 
 /**
@@ -2643,15 +2698,25 @@ Implementation of the "instanceof" operator
 function instanceOf(obj, ctor)
 { 
     "tachyon:static";
-    
+
+    // If the constructor is not a function
+    if (boxIsFunc(ctor) === FALSE_BOOL)
+    {
+        // Throw a TypeError exception
+        throw makeError(
+            get_ctx_typeerror(iir.get_ctx()),
+            'instanceOf expects function as constructor'
+        );
+    }
+
+    // If the value is not an object    
     if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Return the false value
         return false;
+    }
 
-    assert (
-        boolToBox(boxIsFunc(ctor)),
-        'instanceof expects function as constructor'
-    );
-
+    // Get the prototype for the constructor function
     var ctorProto = ctor.prototype;
 
     // Until we went all the way through the prototype chain
