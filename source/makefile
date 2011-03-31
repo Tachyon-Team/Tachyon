@@ -77,7 +77,7 @@ BASE_SRCS =                             \
     backend/backend.js                  \
     backend/x86/asm.js                  \
     backend/x86/config.js               \
-    backend/x86/ir-to-asm.js            
+    backend/x86/ir-to-asm.js
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
@@ -134,12 +134,17 @@ ALL_SRCS =                              \
     $(MAIN_SPEC_SRCS)                   \
     $(TEST_SPEC_SRCS)
 
-all: run
+all: tachyon
+
+tachyon: makefile tachyon.in
+	rm -f tachyon
+	sed -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
+	chmod +x tachyon
 
 load:
 	$(JSVM) $(BASE_SRCS) --shell
 
-run: 
+run:
 	$(JSVM) $(MAIN_SRCS)
 
 shell:
@@ -172,13 +177,13 @@ bootstrap-debug:
 	echo "bt"                                                   >> gdb-command
 	time gdb --command=gdb-command $(JSVMPROG)
 
-test: 
+test:
 	$(JSVM) $(TEST_SRCS)
 
-test64: 
+test64:
 	$(JSVM64) $(TEST_SRCS) -- -x86_64 true
 
-perf: 
+perf:
 	./bench/d8.sh                                   \
         -cfgFile "bench/configs/time_benchs.json"   \
         -genReport "benchreport.html"

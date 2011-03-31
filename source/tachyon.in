@@ -1,0 +1,49 @@
+#!/bin/sh
+
+#==============================================================================
+
+# File: "tachyon"
+
+# Copyright (c) 2011 by Marc Feeley, All Rights Reserved.
+
+#==============================================================================
+
+# The "tachyon" script executes the Tachyon JavaScript VM.  This shell
+# script will eventually be replaced by an executable binary.
+
+#==============================================================================
+
+# Which host VM is to be used.
+
+TACHYON_HOST_VM="${TACHYON_HOST_VM:-d8}"
+
+# Set the root directory of the Tachyon installation.
+
+TACHYON_ROOT_DIR="${TACHYON_ROOT_DIR:-/Users/feeley/project-tachyon/tachyon}"
+TACHYON_SOURCE_DIR="${TACHYON_ROOT_DIR}/source"
+
+# The Tachyon source files.
+
+TACHYON_BASE_SRCS="@BASE_SRCS@"
+TACHYON_RUNTIME_SRCS="@RUNTIME_SRCS@"
+TACHYON_STDLIB_SRCS="@STDLIB_SRCS@"
+TACHYON_MAIN_SPEC_SRCS="@MAIN_SPEC_SRCS@"
+TACHYON_TEST_SPEC_SRCS="@TEST_SPEC_SRCS@"
+
+TACHYON_MAIN_SRCS="${TACHYON_BASE_SRCS} ${TACHYON_MAIN_SPEC_SRCS}"
+TACHYON_TEST_SRCS="${TACHYON_BASE_SRCS} ${TACHYON_TEST_SPEC_SRCS}"
+
+TACHYON_MAIN_SRCS_ABS=`echo " ${TACHYON_MAIN_SRCS}" | sed "s: : ${TACHYON_SOURCE_DIR}/:g"`
+
+TACHYON_TEST_SRCS_ABS=`echo " ${TACHYON_TEST_SRCS}" | sed "s: : ${TACHYON_SOURCE_DIR}/:g"`
+
+#==============================================================================
+
+# TODO: the handling of command line arguments by "main.js" should be
+# reworked so that it is easy to get to all the functionnality that is
+# needed (compiling/executing JS files, running tests, bootstrapping,
+# etc).
+
+"${TACHYON_HOST_VM}" ${TACHYON_MAIN_SRCS_ABS} -- $@
+
+#==============================================================================
