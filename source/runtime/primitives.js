@@ -2145,14 +2145,7 @@ function putPropVal(obj, propName, propVal)
     "tachyon:static";
     "tachyon:noglobal";
 
-    // If the property name is not integer or string, convert it to a string
-    if (boxIsInt(propName) === FALSE_BOOL &&
-        boxIsString(propName) === FALSE_BOOL)
-    {
-        propName = boxToString(propName);
-    }
-
-    // If this is an array element
+    // If this is an array
     if (boxIsArray(obj))
     {
         if (boxIsInt(propName))
@@ -2167,12 +2160,32 @@ function putPropVal(obj, propName, propVal)
             }
         }
 
-        else if (propName === 'length')
+        else
         {
-            setArrayLength(obj, propVal);
+            var numProp = boxToNumber(propName);
 
-            // Return early
-            return;
+            if (boxIsInt(numProp))
+            {
+                if (numProp >= 0)
+                {
+                    // Write the element in the array
+                    putElemArr(obj, numProp, propVal);
+
+                    // Return early
+                    return;
+                }
+            }
+        
+            if (boxIsString(propName) === FALSE_BOOL)
+                propName = boxToString(propName);
+                
+            if (propName === 'length')
+            {
+                setArrayLength(obj, propVal);
+
+                // Return early
+                return;
+            }
         }
     }
 
@@ -2183,9 +2196,12 @@ function putPropVal(obj, propName, propVal)
         return propVal;
     }
 
+    // If the property is not a string, get its string value
+    if (boxIsString(propName) === FALSE_BOOL)
+        propName = boxToString(propName);
+
     // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
+    var propHash = iir.icast(IRType.pint, get_str_hash(propName));
 
     // Set the property on the object
     putPropObj(obj, propName, propHash, propVal);
@@ -2195,136 +2211,12 @@ function putPropVal(obj, propName, propVal)
 }
 
 /**
-Test if a property exists on a value or in its prototype chain
-using a value as a key
-*/
-function hasPropVal(obj, propName)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:ret bool";
-
-    // If the property name is not integer or string, convert it to a string
-    if (boxIsInt(propName) === FALSE_BOOL &&
-        boxIsString(propName) === FALSE_BOOL)
-    {
-        propName = boxToString(propName);
-    }
-
-    // If this is an array
-    if (boxIsArray(obj))
-    {
-        if (boxIsInt(propName))
-        {
-            if (propName >= 0)
-            {
-                // Get the element from the array
-                var elem = getElemArr(obj, propName);
-
-                // If the element is not undefined, return true
-                if (elem !== UNDEFINED)
-                    return TRUE_BOOL;
-            }
-        }
-
-        else if (propName === 'length')
-        {
-            return TRUE_BOOL;
-        }
-    }
-
-    // If this is a string
-    else if (boxIsString(obj))
-    {
-        if (propName === 'length')
-        {
-            return TRUE_BOOL;
-        }
-    }
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Attempt to find the property on the object
-    var prop = getPropObj(obj, propName, propHash);
-
-    // Test if the property was found
-    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
-}
-
-/**
-Test if a property exists on a value without looking at its prototype chain
-*/
-function hasOwnPropVal(obj, propName)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:ret bool";
-
-    // If the property name is not integer or string, convert it to a string
-    if (boxIsInt(propName) === FALSE_BOOL &&
-        boxIsString(propName) === FALSE_BOOL)
-    {
-        propName = boxToString(propName);
-    }
-
-    // If this is an array
-    if (boxIsArray(obj))
-    {
-        if (boxIsInt(propName))
-        {
-            if (propName >= 0)
-            {
-                // Get the element from the array
-                var elem = getElemArr(obj, propName);
-
-                // If the element is not undefined, return true
-                if (elem !== UNDEFINED)
-                    return TRUE_BOOL;
-            }
-        }
-
-        else if (propName === 'length')
-        {
-            return TRUE_BOOL;
-        }
-    }
-
-    // If this is a string
-    else if (boxIsString(obj))
-    {
-        if (propName === 'length')
-        {
-            return TRUE_BOOL;
-        }
-    }
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Attempt to find the property on the object
-    var prop = getOwnPropObj(obj, propName, propHash);
-
-    // Test if the property was found
-    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
-}
-
-/**
 Get a property from a value using a value as a key
 */
 function getPropVal(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
-
-    // If the property name is not integer or string, convert it to a string
-    if (boxIsInt(propName) === FALSE_BOOL &&
-        boxIsString(propName) === FALSE_BOOL)
-    {
-        propName = boxToString(propName);
-    }
 
     // If this is an array
     if (boxIsArray(obj))
@@ -2342,9 +2234,27 @@ function getPropVal(obj, propName)
             }
         }
 
-        else if (propName === 'length')
+        else
         {
-            return boxInt(iir.icast(IRType.pint, get_arr_len(obj)));
+            var numProp = boxToNumber(propName);
+
+            if (boxIsInt(numProp))
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, numProp);
+
+                // If the element is not undefined, return it
+                if (elem !== UNDEFINED)
+                    return elem;
+            }
+        
+            if (boxIsString(propName) === FALSE_BOOL)
+                propName = boxToString(propName);
+                
+            if (propName === 'length')
+            {
+                return boxInt(iir.icast(IRType.pint, get_arr_len(obj)));
+            }
         }
     }
 
@@ -2364,33 +2274,51 @@ function getPropVal(obj, propName)
             }
         }
 
-        // Get the string prorotype object
-        var strproto = get_ctx_strproto(iir.get_ctx());
+        else
+        {
+            var numProp = boxToNumber(propName);
+
+            if (boxIsInt(propName))
+            {
+                if (propName >= 0 && propName < obj.length)
+                {
+                    return obj.charAt(propName);
+                }
+            }
+        
+            if (boxIsString(propName) === FALSE_BOOL)
+                propName = boxToString(propName);
+                
+            if (propName === 'length')
+            {
+                return boxInt(iir.icast(IRType.pint, get_str_size(obj)));
+            }
+        }
 
         // Lookup the property on the string prototype object
-        return getPropVal(strproto, propName);
+        obj = get_ctx_strproto(iir.get_ctx());
     }
 
     // If this is a boxed integer
     else if (boxIsInt(obj))
     {
-        // Get the number prorotype object
-        var numproto = get_ctx_numproto(iir.get_ctx());
-
         // Lookup the property on the number prototype object
-        return getPropVal(numproto, propName);
+        obj = get_ctx_numproto(iir.get_ctx());
     }
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === FALSE_BOOL)
+    else if (boxIsObjExt(obj) === FALSE_BOOL)
     {
         // Return the undefined value
         return UNDEFINED;
     }
 
+    // If the property is not a string, get its string value
+    if (boxIsString(propName) === FALSE_BOOL)
+        propName = boxToString(propName);
+
     // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
+    var propHash = iir.icast(IRType.pint, get_str_hash(propName));
 
     // Attempt to find the property on the object
     var prop = getPropObj(obj, propName, propHash);
@@ -2404,6 +2332,246 @@ function getPropVal(obj, propName)
 
     // Return the property value we found
     return prop;
+}
+
+/**
+Test if a property exists on a value or in its prototype chain
+using a value as a key
+*/
+function hasPropVal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret bool";
+
+    // If this is an array
+    if (boxIsArray(obj))
+    {
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0)
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, propName);
+
+                // If the element is not undefined, return true
+                if (elem !== UNDEFINED)
+                    return TRUE_BOOL;
+            }
+        }
+
+        else
+        {
+            var numProp = boxToNumber(propName);
+
+            if (boxIsInt(numProp))
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, numProp);
+
+                // If the element is not undefined, return it
+                if (elem !== UNDEFINED)
+                    return TRUE_BOOL;
+            }
+        
+            if (boxIsString(propName) === FALSE_BOOL)
+                propName = boxToString(propName);
+                
+            if (propName === 'length')
+            {
+                return TRUE_BOOL;
+            }
+        }
+    }
+
+    // If this is a string
+    else if (boxIsString(obj))
+    {
+        var numProp = boxToNumber(propName);
+
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0 && propName < obj.length)
+            {
+                return TRUE_BOOL;
+            }
+        }
+        
+        if (boxIsString(propName) === FALSE_BOOL)
+            propName = boxToString(propName);
+                
+        if (propName === 'length')
+        {
+            return TRUE_BOOL;
+        }
+
+        // Lookup the property on the string prototype object
+        obj = get_ctx_strproto(iir.get_ctx());
+    }
+
+    // If this is a boxed integer
+    else if (boxIsInt(obj))
+    {
+        // Lookup the property on the number prototype object
+        obj = get_ctx_numproto(iir.get_ctx());
+    }
+
+    // If the property is not a string, get its string value
+    if (boxIsString(propName) === FALSE_BOOL)
+        propName = boxToString(propName);
+
+    // Get the hash code for the property
+    var propHash = iir.icast(IRType.pint, get_str_hash(propName));
+
+    // Attempt to find the property on the object
+    var prop = getPropObj(obj, propName, propHash);
+
+    // Test if the property was found
+    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+}
+
+/**
+Test if a property exists on a value without looking at its prototype chain
+*/
+function hasOwnPropVal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:ret bool";
+
+    // If this is an array
+    if (boxIsArray(obj))
+    {
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0)
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, propName);
+
+                // If the element is not undefined, return true
+                if (elem !== UNDEFINED)
+                    return TRUE_BOOL;
+            }
+        }
+
+        else
+        {
+            var numProp = boxToNumber(propName);
+
+            if (boxIsInt(numProp))
+            {
+                // Get the element from the array
+                var elem = getElemArr(obj, numProp);
+
+                // If the element is not undefined, return it
+                if (elem !== UNDEFINED)
+                    return TRUE_BOOL;
+            }
+        
+            if (boxIsString(propName) === FALSE_BOOL)
+                propName = boxToString(propName);
+                
+            if (propName === 'length')
+            {
+                return TRUE_BOOL;
+            }
+        }
+    }
+
+    // If this is a string
+    else if (boxIsString(obj))
+    {
+        var numProp = boxToNumber(propName);
+
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0 && propName < obj.length)
+            {
+                return TRUE_BOOL;
+            }
+        }
+        
+        if (boxIsString(propName) === FALSE_BOOL)
+            propName = boxToString(propName);
+                
+        if (propName === 'length')
+        {
+            return TRUE_BOOL;
+        }
+
+        return FALSE_BOOL;
+    }
+
+    // If the property is not a string, get its string value
+    if (boxIsString(propName) === FALSE_BOOL)
+        propName = boxToString(propName);
+
+    // Get the hash code for the property
+    var propHash = iir.icast(IRType.pint, get_str_hash(propName));
+
+    // Attempt to find the property on the object
+    var prop = getOwnPropObj(obj, propName, propHash);
+
+    // Test if the property was found
+    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+}
+
+/**
+Delete a property from a value
+*/
+function delPropVal(obj, propName)
+{ 
+    "tachyon:static"; 
+
+    // If the object is an array
+    if (boxIsArray(obj))
+    {
+        if (boxIsInt(propName))
+        {
+            if (propName >= 0)
+            {
+                // Delete the property and return early
+                delElemArr(obj, propName);
+                return;
+            }
+        }
+
+        else
+        {
+            var numProp = boxToNumber(propName);
+
+            if (boxIsInt(numProp))
+            {
+                if (propName >= 0)
+                {
+                    // Delete the property and return early
+                    delElemArr(obj, propName);
+                    return;
+                }
+            }
+        }
+    }
+
+    // If the value is not an object
+    if (boxIsObjExt(obj) === FALSE_BOOL)
+    {
+        // Operation succeeded
+        return true;
+    }
+
+    // If the property is not a string, get its string value
+    if (boxIsString(propName) === FALSE_BOOL)
+        propName = boxToString(propName);
+
+    // Get the hash code for the property
+    var propHash = iir.icast(IRType.pint, get_str_hash(propName));
+
+    // Delete the property on the object
+    delPropObj(obj, propName, propHash);
+
+    // Operation succeeded
+    return true;
 }
 
 /**
@@ -2468,52 +2636,6 @@ function getGlobalFunc(obj, propName, propHash)
             );
         }
     }
-}
-
-/**
-Delete a property from a value
-*/
-function delPropVal(obj, propName)
-{ 
-    "tachyon:static"; 
-
-    // If the property name is not integer or string, convert it to a string
-    if (boxIsInt(propName) === FALSE_BOOL &&
-        boxIsString(propName) === FALSE_BOOL)
-    {
-        propName = boxToString(propName);
-    }
-
-    // If the object is an array
-    if (boxIsArray(obj))
-    {
-        if (boxIsInt(propName))
-        {
-            if (propName >= 0)
-            {
-                // Delete the property and return early
-                delElemArr(obj, propName);
-                return;
-            }
-        }
-    }
-
-    // If the value is not an object
-    if (boxIsObjExt(obj) === FALSE_BOOL)
-    {
-        // Operation succeeded
-        return true;
-    }
-
-    // Get the hash code for the property
-    // Boxed value, may be a string or an int
-    var propHash = getHash(propName);
-
-    // Delete the property on the object
-    delPropObj(obj, propName, propHash);
-
-    // Operation succeeded
-    return true;
 }
 
 /**
@@ -2678,15 +2800,6 @@ function inOp(propName, obj)
             get_ctx_typeerror(iir.get_ctx()),
             'in operator expects object'
         );
-    }
-
-    // If the property is not integer or string, convert it to a string
-    if (boxIsString(propName) === FALSE_BOOL)
-    {
-        if (boxIsInt(propName) === FALSE_BOOL)
-        {
-            propName = boxToString(propName);
-        }
     }
 
     return boolToBox(hasPropVal(obj, propName));
