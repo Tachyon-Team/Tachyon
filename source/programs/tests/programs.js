@@ -377,7 +377,7 @@ tests.programs.obj_props = genTest(
 /**
 Object access run-time primitives test.
 */
-tests.programs.obj_props = genTest(
+tests.programs.obj_prims = genTest(
     'programs/obj_prims/obj_prims.js',
     'test',
     [],
