@@ -31,7 +31,7 @@ if (RUNNING_IN_TACHYON)
 
         if (exec)
         {
-            codeBytesAllocated += size;
+            this.codeBytesAllocated += size;
         }
 
         var blockPtr = rawAllocMemoryBlock(unboxInt(size), boxToBool(exec));
