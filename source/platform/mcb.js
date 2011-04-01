@@ -9,6 +9,11 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
+/**
+Total amount of machine code bytes allocated.
+*/
+var codeBytesAllocated = 0;
+
 // If we are running inside Tachyon
 if (RUNNING_IN_TACHYON)
 {
@@ -23,6 +28,11 @@ if (RUNNING_IN_TACHYON)
             exec === true || exec === false,
             'executable flag not specified'
         );
+
+        if (exec)
+        {
+            codeBytesAllocated += size;
+        }
 
         var blockPtr = rawAllocMemoryBlock(unboxInt(size), boxToBool(exec));
 
@@ -177,6 +187,20 @@ if (RUNNING_IN_TACHYON)
 // Otherwise, if we are running inside D8
 else
 {
+    /**
+    Allocate a memory block.
+    */
+    var v8AllocMemoryBlock = allocMemoryBlock;
+    var allocMemoryBlock = function (size, exec)
+    {
+        if (exec)
+        {
+            codeBytesAllocated += size;
+        }
+
+        return v8AllocMemoryBlock(size, exec);
+    }
+
     /**
     Write a byte to a memory block.
     */

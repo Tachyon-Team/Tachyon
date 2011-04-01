@@ -104,6 +104,8 @@ function bootstrap(allCode, params)
 
         reportPerformance();
 
+        print("Code bytes allocated: " + codeBytesAllocated);
+
         // Execute the Tachyon code units
         for (var i = 0; i < tachyonIRs.length; ++i)
         {
