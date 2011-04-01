@@ -199,7 +199,7 @@ else
         }
 
         return v8AllocMemoryBlock(size, exec);
-    }
+    };
 
     /**
     Write a byte to a memory block.
