@@ -1517,35 +1517,6 @@ function typeOf(val)
 }
 
 /**
-Get the hash value for a given string or integer key
-*/
-function getHash(key)
-{
-    "tachyon:inline";
-    "tachyon:ret pint";
-
-    assert (
-        boolToBox(boxIsInt(key)) === true ||
-        boolToBox(boxIsString(key)) === true,
-        'getHash of non-integer, non-string key'
-    );
-
-    // If the property is integer
-    if (boxIsInt(key))
-    {    
-        // Unbox the integer key
-        return unboxInt(key);
-    }
-
-    // Otherwise, the key is a string
-    else
-    {
-        // Read the hash code from the string object
-        return iir.icast(IRType.pint, get_str_hash(key));
-    }
-}
-
-/**
 Set a property on an object
 */
 function putPropObj(obj, propName, propHash, propVal)
@@ -1557,6 +1528,11 @@ function putPropObj(obj, propName, propHash, propVal)
     assert (
         boolToBox(boxIsObjExt(obj)),
         'putPropObj on non-object'
+    );
+
+    assert (
+        boolToBox(boxIsString(propName)),
+        'putPropObj with non-string property'
     );
 
     //
@@ -1668,8 +1644,7 @@ function extObjHashTable(obj, curTbl, curSize)
         var propVal = get_hashtbl_tbl_val(curTbl, curIdx);
 
         // Get the hash code for the property
-        // Boxed value, may be a string or an int
-        var propHash = getHash(propKey);
+        var propHash = iir.icast(IRType.pint, get_str_hash(propKey));
 
         // Get the hash table index for this hash value in the new table
         // compute this using unsigned modulo to always obtain a positive value
@@ -1723,6 +1698,11 @@ function getOwnPropObj(obj, propName, propHash)
     assert (
         boolToBox(boxIsObjExt(obj)),
         'getOwnPropObj on non-object'
+    );
+
+    assert (
+        boolToBox(boxIsString(propName)),
+        'getOwnPropObj with non-string property'
     );
 
     // Get a pointer to the hash table
@@ -1792,6 +1772,11 @@ function getPropObj(obj, propName, propHash)
         'getPropObj on non-object'
     );
 
+    assert (
+        boolToBox(boxIsString(propName)),
+        'getPropObj with non-string property'
+    );
+
     // Until we reach the end of the prototype chain
     do
     {
@@ -1823,6 +1808,11 @@ function delPropObj(obj, propName, propHash)
     assert (
         boolToBox(boxIsObjExt(obj)),
         'delPropObj on non-object'
+    );
+
+    assert (
+        boolToBox(boxIsString(propName)),
+        'delPropObj with non-string property'
     );
 
     // Get a pointer to the hash table
@@ -1867,7 +1857,7 @@ function delPropObj(obj, propName, propHash)
                     break;
 
                 // Calculate the index at which this item's hash key maps
-                var origIndex = getHash(shiftKey) % tblSize;
+                var origIndex = iir.icast(IRType.pint, get_str_hash(shiftKey)) % tblSize;
 
                 // Compute the distance from the element to its origin mapping
                 var distToOrig =
