@@ -1,5 +1,7 @@
 function test_putProp()
 {
+    var op1 = { toString: function () { return 'b'; } };
+
     var a = {};
     a.b = 1;
 
@@ -12,11 +14,34 @@ function test_putProp()
     if (c !== 1)
         return 2;
 
+    a[0] = 1;
+
+    if (a[0] !== 1)
+        return 3;
+
+    if (a['0'] !== 1)
+        return 4;
+
+    a['1'] = 2;
+
+    if (a['1'] !== 2)
+        return 3;
+
+    if (a[1] !== 2)
+        return 5;
+
+    a[op1] = 7;
+
+    if (a.b !== 7)
+        return 6;
+
     return 0;
 }
 
 function test_getProp()
 {
+    var op1 = { toString: function () { return 'b'; } };
+
     var a = { b:1 };
 
     if (a.b !== 1)
@@ -25,17 +50,22 @@ function test_getProp()
     if (a.c !== undefined)
         return 2;
 
+    if (a[op1] !== 1)
+        return 3;
+
     var b = 1;
 
     if (b.a !== undefined)
-        return 3;
+        return 4;
 
     return 0;
 }
 
 function test_delProp()
 {
-    var a = { b:1 };
+    var op1 = { toString: function () { return 'c'; } };
+
+    var a = { b:1, c:2 };
 
     if (a.b !== 1)
         return 1;
@@ -48,12 +78,20 @@ function test_delProp()
     if (a.b !== undefined)
         return 3;    
 
+    if (a.c !== 2)
+        return 4;
+
+    delete a[op1];
+
+    if (a.c !== undefined)
+        return 5;
+
     var b = 1;
     
     var c = (delete b.a);
 
     if (c !== true)
-        return 4;
+        return 6;
 
     return 0;
 }
@@ -73,6 +111,9 @@ function test_enum()
 
 function test_in()
 {
+    var op1 = { toString: function () { return 'a'; } };
+    var op2 = { toString: function () { return 'd'; } };
+
     var o = { a:1, b:1, c:3 };
 
     if (!('a' in o))
@@ -81,14 +122,19 @@ function test_in()
     if ('d' in o)
         return 2;
 
-    var op1 = { toString: function () { return 'a'; } };
-    var op2 = { toString: function () { return 'd'; } };
-
     if (!(op1 in o))
         return 3;
 
     if (op2 in o)
         return 4;
+
+    o[0] = 1337;
+
+    if (!(0 in o))
+        return 5;
+
+    if (!('0' in o))
+        return 6;
 
     return 0;
 }
