@@ -1,5 +1,7 @@
 # makefile for Tachyon JavaScript compiler
 
+ROOT_DIR = `(cd ..;pwd)`
+
 #JavaScript VM program
 JSVMPROG = d8
 JSVMPROG64 = d8_64
@@ -138,7 +140,7 @@ all: tachyon
 
 tachyon: makefile tachyon.in
 	rm -f tachyon
-	sed -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
+	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
 	chmod +x tachyon
 
 load:
@@ -151,7 +153,7 @@ shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
 shell64:
-	$(RLWJSVM64) $(MAIN_SRCS) -- -x86_64 true
+	$(RLWJSVM64) $(MAIN_SRCS) -- -x86_64
 
 bt-parser:
 	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
@@ -163,25 +165,25 @@ mem-fib:
 	$(JSVM) --no-opt --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
 
 gc:
-	$(JSVM) $(MAIN_SRCS) -- -gc true
+	$(JSVM) $(MAIN_SRCS) -- -gc
 	gcc -c -o d8/gc-generated.o d8/gc-generated.cc
 
 bootstrap:
-	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
+	time $(JSVM) $(MAIN_SRCS) -- -bootstrap
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x86_64 true
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -x86_64
 
 bootstrap-debug:
-	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
-	echo "bt"                                                   >> gdb-command
+	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap" > gdb-command
+	echo "bt"                                              >> gdb-command
 	time gdb --command=gdb-command $(JSVMPROG)
 
 test:
 	$(JSVM) $(TEST_SRCS)
 
 test64:
-	$(JSVM64) $(TEST_SRCS) -- -x86_64 true
+	$(JSVM64) $(TEST_SRCS) -- -x86_64
 
 perf:
 	./bench/d8.sh                                   \

@@ -5,9 +5,11 @@ command-line arguments, etc.
 
 @author
 Maxime Chevalier-Boisvert
+Marc Feeley
 
 @copyright
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2011 Marc Feeley, All Rights Reserved
 */
 
 /**
@@ -52,14 +54,57 @@ function main()
         genGCCode(config.hostParams);
     }
 
-    // Otherwise, assume we are running in shell mode
-    else
+    // If there are no filenames on the command line, start shell mode
+    else if (args.files.length === 0)
     {
         // Initialize Tachyon in minimal mode
         initialize(false, args.options['x86_64']);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
+    }
+    else
+    {
+        // Initialize Tachyon in minimal mode
+        initialize(false, args.options["x86_64"]);
+
+        config.hostParams.printAST = args.options["ast"];
+        config.hostParams.printHIR = args.options["hir"];
+        config.hostParams.printLIR = args.options["lir"];
+        config.hostParams.printASM = args.options["asm"];
+
+        for (var i = 0; i < args.files.length; i++)
+        {
+            if (args.options["time"])
+            {
+                print("Executing " + args.files[i]);
+            }
+
+            var startTimeMs = (new Date()).getTime();
+
+            var ir = compileSrcFile(args.files[i], config.hostParams);
+
+            var midTimeMs = (new Date()).getTime();
+
+            var bridge = makeBridge(
+                ir,
+                config.hostParams,
+                [],
+                new CIntAsBox()
+            );
+
+            bridge(config.hostParams.ctxPtr);
+
+            var endTimeMs = (new Date()).getTime();
+            var compTimeMs = midTimeMs - startTimeMs;
+            var execTimeMs = endTimeMs - midTimeMs;
+
+            if (args.options["time"])
+            {
+                print("  compilation time: " + compTimeMs + " ms");
+                print("  execution time:   " + execTimeMs + " ms");
+            }
+        }
     }
 
     // Uninitialize Tachyon
@@ -334,4 +379,3 @@ catch (e)
     else
         print(e);
 }
-

@@ -15,11 +15,11 @@
 
 # Which host VM is to be used.
 
-TACHYON_HOST_VM="${TACHYON_HOST_VM:-d8}"
+TACHYON_JSVMPROG="${TACHYON_JSVMPROG:-@JSVMPROG@}"
 
 # Set the root directory of the Tachyon installation.
 
-TACHYON_ROOT_DIR="${TACHYON_ROOT_DIR:-/Users/feeley/project-tachyon/tachyon}"
+TACHYON_ROOT_DIR="${TACHYON_ROOT_DIR:-@ROOT_DIR@}"
 TACHYON_SOURCE_DIR="${TACHYON_ROOT_DIR}/source"
 
 # The Tachyon source files.
@@ -44,6 +44,6 @@ TACHYON_TEST_SRCS_ABS=`echo " ${TACHYON_TEST_SRCS}" | sed "s: : ${TACHYON_SOURCE
 # needed (compiling/executing JS files, running tests, bootstrapping,
 # etc).
 
-"${TACHYON_HOST_VM}" ${TACHYON_MAIN_SRCS_ABS} -- $@
+"${TACHYON_JSVMPROG}" ${TACHYON_MAIN_SRCS_ABS} -- "$@"
 
 #==============================================================================
