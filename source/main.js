@@ -348,6 +348,7 @@ function tachyonRepl()
     for (;;)
     {
         var cmd = readConsole('\nt> ');
+        if (cmd === undefined || cmd === null) return;
 
         // Remove extra whitespaces from the command
         cmd = stripStr(cmd);

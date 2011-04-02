@@ -219,7 +219,13 @@ char* readConsole(const char* promptStr)
     {
         char ch = getchar();
 
-        if (ch == EOF || ch == '\n')
+        if (ch == EOF)
+        {
+            delete [] buffer;
+            return NULL;
+        }
+        
+        if (ch == '\n')
             break;
 
         buffer[strLen] = ch;
@@ -255,11 +261,16 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
 
     char* buffer = readConsole(promptStr);
 
-    v8::Local<v8::String> v8Str = v8::String::New(buffer);
-
-    delete [] buffer;
-
-    return v8Str;
+    if (buffer != NULL)
+    {
+        v8::Local<v8::String> v8Str = v8::String::New(buffer);
+        delete [] buffer;
+        return v8Str;
+    }
+    else
+    {
+        return Undefined();
+    }
 }
 
 // Time since the initialization of the extensions
