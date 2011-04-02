@@ -49,15 +49,16 @@ function parseCmdLine()
         // Get the option name
         var optName = arg.slice(1);
 
-        // If no option value is present, report an error
-        if (argIdx >= args.length - 1)
-        {
-            error('missing value for command-line option "' + optName + '"');
-        }
+        var eqIndex = optName.indexOf("=");
 
-        // Read the option value
-        var optVal = args[argIdx + 1];
-        argIdx++;
+        if (eqIndex === -1)
+        {
+            var optVal = true;
+        }
+        else
+        {
+            var optVal = optName.slice(eqIndex+1);
+        }
 
         // Store the option value
         options[optName] = optVal;

@@ -375,6 +375,16 @@ tests.programs.obj_props = genTest(
 );
 
 /**
+Object access run-time primitives test.
+*/
+tests.programs.obj_prims = genTest(
+    'programs/obj_prims/obj_prims.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Linked list unit test.
 */
 tests.programs.linked_list = genTest(

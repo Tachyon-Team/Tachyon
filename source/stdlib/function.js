@@ -102,6 +102,11 @@ Function.prototype.apply = function (thisArg, argArray)
 */
 Function.prototype.call = function (thisArg)
 {
+    // If the this argument is null or undefined,
+    // make it the global object
+    if (thisArg === null || thisArg === undefined)
+        thisArg = getGlobalObj();
+
     var argArray = [];
     for (var i = 1; i < arguments.length; ++i)
         argArray.push(arguments[i]);
