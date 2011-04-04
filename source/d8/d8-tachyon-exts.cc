@@ -418,7 +418,7 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
 template <class T> v8::Handle<v8::Value> valToArray(T val)
 {
     // Create an array to store the pointer data
-    i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(val));
+    i::Handle<i::JSArray> ptrArray = i::Isolate::Current()->factory()->NewJSArray(sizeof(val));
     ASSERT(ptrArray->IsJSArray() && ptrArray->HasFastElements());
 
     // Write the value into the array, byte-per-byte
