@@ -257,15 +257,15 @@ function constProp(cfg, params)
             //print('\tval: ' + val);
 
             // If this is an if instruction
-            if (instr instanceof IfInstr)
+            if (instr instanceof IfInstr && val instanceof ConstValue)
             {
                 // If only one if branch is reachable, replace the if by a jump
-                if (val instanceof ConstValue && val.value === true)
+                if (val.value === true)
                 {
                     block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
                     ++numBranches;
                 }
-                else if (val instanceof ConstValue && val.value === false)
+                else if (val.value === false)
                 {
                     block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
                     ++numBranches;
@@ -279,21 +279,8 @@ function constProp(cfg, params)
                 //print(instr + ' ==> ' + val);
                 //print(instr.parentBlock.parentCFG.ownerFunc.funcName);
 
-                // Remap the dests to the replacement instruction
-                while (instr.dests.length > 0)
-                {
-                    var dest = instr.dests[0];
-
-                    dest.replUse(instr, val);
-
-                    if (val instanceof IRInstr)
-                        val.addDest(dest);
-
-                    instr.remDest(dest);
-                }
-
                 // Replace the instruction by a jump to the normal branch
-                block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
+                block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]), val);
                 ++numBranches;
             }
 
@@ -303,7 +290,7 @@ function constProp(cfg, params)
                 //print(instr + ' ==> ' + val);
 
                 // Replace the instruction by the constant value
-                block.replInstrAtIndex(j, val);
+                block.replInstrAtIndex(j, undefined, val);
                 --j;
             }
 
