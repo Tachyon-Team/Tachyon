@@ -439,7 +439,6 @@ function initRuntime(params)
         [new CPtrAsPtr(), new CIntAsInt()],
         new CPtrAsRef()
     );
-    print('initHeap address: ' + initHeap.linking.getEntryPoint('fast').getAddr());
 
     // Initialize the heap
     print('Calling ' + initHeap.funcName);

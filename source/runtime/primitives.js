@@ -2642,8 +2642,8 @@ function getPropNames(obj)
         // Return the empty enumeration function
         return function ()
         {
-            return UNDEFINED
-        }
+            return UNDEFINED;
+        };
     }
 
     var curObj = obj;
