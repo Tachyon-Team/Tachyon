@@ -426,7 +426,7 @@ function stmtListToIRFunc(
     // Remove dead blocks from the CFG
     cfg.remDeadBlocks();
 
-    if (params.debug)
+    if (DEBUG)
         cfg.validate();
 
     //print('Applying opt patterns');
@@ -437,7 +437,7 @@ function stmtListToIRFunc(
     //print('validating');    
 
     // Run a validation test on the CFG
-    if (params.debug)
+    if (DEBUG)
     {
         try
         {
@@ -2047,7 +2047,8 @@ function exprToIR(context)
     else if (astExpr instanceof CallExpr)
     {
         // If this is an assertion and we are not in debug mode
-        if (astExpr.fn instanceof Ref && astExpr.fn.id.toString() === 'assert' &&
+        if (astExpr.fn instanceof Ref && 
+            astExpr.fn.id.toString() === 'assert' &&
             context.params.debug === false)
         {
             // Set the undefined value as the context output

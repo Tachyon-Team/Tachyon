@@ -783,7 +783,7 @@ HIRInstr.prototype = new IRInstr();
 /**
 Create an HIR instruction constructor
 */
-function hirInstrMaker(instrName, numInputs, mayThrow)
+function hirInstrMaker(instrName, numInputs, mayThrow, proto)
 {
     var InstrCtor = instrMaker(
         instrName,
@@ -798,7 +798,7 @@ function hirInstrMaker(instrName, numInputs, mayThrow)
             this.type = IRType.box;
         },
         mayThrow? ['continue', 'throw']:undefined,
-        new HIRInstr()
+        proto? proto:new HIRInstr()
     );
 
     return InstrCtor;
@@ -824,15 +824,38 @@ var PutPropInstr = hirInstrMaker(
     true
 );
 
+/**
+@class Base class for HIR arithmetic instructions
+@augments HIRInstr
+*/
+var HIRArithInstr = function ()
+{
+};
+HIRArithInstr.prototype = new HIRInstr();
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var HIRAddInstr = hirInstrMaker(
+    'hir_add',
+    2,
+    false,
+    new HIRArithInstr()
+);
+
+
 
 
 //
 // TODO: fill in other HIR instructions
 //
 
-// TODO: HIRArithInstr?
+//
+// TODO: lowering function for HIR instructions, in lowering.js
+//
 
-
+// TODO: HIR load/store?
 
 
 

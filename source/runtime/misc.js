@@ -26,6 +26,14 @@ does not require global variable access.
 const TACHYON_GEN_NUMBER = 0;
 
 /**
+Constant to indicate that we are running in debug mmode. This will be
+true under d8, and change depending on the bootstrap configuration.
+Note that when running under Tachyon, this becomes a static binding,
+and does not require global variable access.
+*/
+const DEBUG = true;
+
+/**
 Create the Tachyon-specific constants
 */
 function makeTachyonConsts(params)
@@ -41,6 +49,15 @@ function makeTachyonConsts(params)
         'TACHYON_GEN_NUMBER',
         ConstValue.getConst(
             TACHYON_GEN_NUMBER + 1,
+            IRType.box
+        )
+    );
+
+    // Bind the debug flag constant
+    params.staticEnv.regBinding(
+        'DEBUG',
+        ConstValue.getConst(
+            params.debug,
             IRType.box
         )
     );

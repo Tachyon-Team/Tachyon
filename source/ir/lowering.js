@@ -10,13 +10,11 @@ Maxime Chevalier-Boisvert
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
-/*
-TODO: 
-- Reintroduce HIRInstr class with descendents for arith ops, putprop, getprop.
-- Have lowering function for each HIRInstr class
-- Default lowering can be translation to primitive call
-- Perform const prop on IR before lowering begins, using HIR instructions
-*/
+//=============================================================================
+//
+// HIR function lowering code
+//
+//=============================================================================
 
 /**
 Perform IR lowering on a function and its subfunctions
@@ -164,7 +162,7 @@ function lowerIRCFG(cfg, params)
             //print('*** validating after patterns ***');
 
             // Validate the CFG
-            if (params.debug)
+            if (DEBUG)
                 cfg.validate();
         }
     );
@@ -183,7 +181,7 @@ function lowerIRCFG(cfg, params)
             //print(cfg.ownerFunc);
 
             // Validate the CFG
-            if (params.debug)
+            if (DEBUG)
                 cfg.validate();
         }
     );
@@ -196,7 +194,7 @@ function lowerIRCFG(cfg, params)
             applyPatternsCFG(cfg, params);
 
             // Validate the CFG
-            if (params.debug)
+            if (DEBUG)
                 cfg.validate();
         }
     );
@@ -213,7 +211,7 @@ function lowerIRCFG(cfg, params)
             //print('*** done ***');
 
             // Validate the CFG
-            if (params.debug)
+            if (DEBUG)
                 cfg.validate();
         }
     );
@@ -251,5 +249,65 @@ function lowerIRCFG(cfg, params)
     );
 
     //print('*** lowering done ***');
+}
+
+//=============================================================================
+//
+// HIR instruction lowering functions
+//
+//=============================================================================
+
+/*
+TODO: 
+- Reintroduce HIRInstr class with descendents for arith ops, putprop, getprop.
+- Have lowering function for each HIRInstr class
+- Default lowering can be translation to primitive call
+- Perform const prop on IR before lowering begins, using HIR instructions
+*/
+
+/*
+
+TODO #1: implement function to split a basic block into two
+
+TODO #2: begin by implementing lowering/specialization for HIR add, getprop only,
+use this to perfect structure. Other HIR instructions still primitive calls for
+now.
+
+
+Ideally, would like to reuse IR generation code. Could produce an IR conversion
+context with a new basic block for lowering, jump to the new basic block. Patch
+jump to next block in the CFG afterwards. Either way, will need to insert new
+code in the middle of a basic block.
+
+This is not really necessary if simply inlining. Already done by inlining
+function. Could modify current inlining function to work in the same way.
+Pre-split caller block? No. Need inlining function as-is for inlining
+optimizations!
+Solution: replace HIR instruction by call, have inlining pass happen after.
+
+HIRInstr.lower(entryBlock)
+- Returns exit block?
+- Add jump to next block
+
+This implies that we have to split the current block. May actually be faster
+than inserting many instructions in the middle of it... Want unified treatment.
+
+
+
+*/
+
+/**
+TODO: implement default lowering function which simply does inlining
+- Use for HasPropInstr
+*/
+function makeLowerFunc(primName)
+{
+}
+
+/**
+HIR add instruction
+*/
+HIRAddInstr.prototype.lower = function ()
+{
 }
 
