@@ -767,6 +767,77 @@ instrMaker.validType = function (value, expectedType)
 
 //=============================================================================
 //
+// High-level IR (HIR) instructions
+//
+//=============================================================================
+
+/**
+@class Base class for HIR instructions
+@augments IRInstr
+*/
+var HIRInstr = function ()
+{
+};
+HIRInstr.prototype = new IRInstr();
+
+/**
+Create an HIR instruction constructor
+*/
+function hirInstrMaker(instrName, numInputs, mayThrow)
+{
+    var InstrCtor = instrMaker(
+        instrName,
+        function (typeParams, inputVals, branchTargets)
+        {
+            instrMaker.validNumInputs(inputVals, numInputs, numInputs);
+            instrMaker.allValsBoxed(inputVals);
+
+            if (mayThrow)
+                instrMaker.validNumBranches(branchTargets, 2, 2);
+            
+            this.type = IRType.box;
+        },
+        mayThrow? ['continue', 'throw']:undefined,
+        new HIRInstr()
+    );
+
+    return InstrCtor;
+};
+
+/**
+@class Property read instruction
+@augments HIRInstr
+*/
+var GetPropInstr = hirInstrMaker(
+    'get_prop',
+    2,
+    true
+);
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var PutPropInstr = hirInstrMaker(
+    'put_prop',
+    3,
+    true
+);
+
+
+
+//
+// TODO: fill in other HIR instructions
+//
+
+// TODO: HIRArithInstr?
+
+
+
+
+
+//=============================================================================
+//
 // Arithmetic operations without overflow handling
 //
 //=============================================================================
