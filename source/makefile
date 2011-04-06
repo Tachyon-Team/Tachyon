@@ -43,6 +43,7 @@ BASE_SRCS =                             \
     utility/num.js                      \
     utility/xml.js                      \
     utility/html.js                     \
+    compiler/sources.js                 \
     compiler/targets.js                 \
     compiler/params.js                  \
     compiler/config.js                  \
@@ -136,12 +137,57 @@ ALL_SRCS =                              \
     $(MAIN_SPEC_SRCS)                   \
     $(TEST_SPEC_SRCS)
 
-all: tachyon
+all: tachyon compiler/sources.js
 
 tachyon: makefile tachyon.in
-	rm -f tachyon
-	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
+	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
 	chmod +x tachyon
+
+compiler/sources.js: makefile compiler/sources.js.in
+	cp compiler/sources.js.in compiler/sources.js
+	@echo "var TACHYON_ROOT_DIR = \"$(ROOT_DIR)\";"  >> compiler/sources.js
+	@echo ""                                         >> compiler/sources.js
+	@echo "var TACHYON_SOURCE_DIR = \"$(ROOT_DIR)/source\";" >> compiler/sources.js
+	@echo ""                                         >> compiler/sources.js
+	@echo "var TACHYON_BASE_SRCS = ["                >> compiler/sources.js
+	@sep=""
+	@for f in $(BASE_SRCS); do \
+	  echo "$$sep\"$$f\"" >> compiler/sources.js; \
+	  sep=","; \
+	done
+	@echo "];"                                       >> compiler/sources.js
+	@echo ""                                         >> compiler/sources.js
+	@echo "var TACHYON_RUNTIME_SRCS = ["             >> compiler/sources.js
+	@sep=""
+	@for f in $(RUNTIME_SRCS); do \
+	  echo "$$sep\"$$f\"" >> compiler/sources.js; \
+	  sep=","; \
+	done
+	@echo "];"                                       >> compiler/sources.js
+	@echo ""                                         >> compiler/sources.js
+	@echo "var TACHYON_STDLIB_SRCS = ["              >> compiler/sources.js
+	@sep=""
+	@for f in $(STDLIB_SRCS); do \
+	  echo "$$sep\"$$f\"" >> compiler/sources.js; \
+	  sep=","; \
+	done
+	@echo "];"                                       >> compiler/sources.js
+	@echo ""                                         >> compiler/sources.js
+	@echo "var TACHYON_MAIN_SPEC_SRCS = ["           >> compiler/sources.js
+	@sep=""
+	@for f in $(MAIN_SPEC_SRCS); do \
+	  echo "$$sep\"$$f\"" >> compiler/sources.js; \
+	  sep=","; \
+	done
+	@echo "];"                                       >> compiler/sources.js
+	@echo ""                                         >> compiler/sources.js
+	@echo "var TACHYON_TEST_SPEC_SRCS = [         "  >> compiler/sources.js
+	@sep=""
+	@for f in $(TEST_SPEC_SRCS); do \
+	  echo "$$sep\"$$f\"" >> compiler/sources.js; \
+	  sep=","; \
+	done
+	@echo "];"                                       >> compiler/sources.js
 
 load:
 	$(JSVM) $(BASE_SRCS) --shell
