@@ -1152,6 +1152,51 @@ ControlFlowGraph.prototype.insertBetween = function (pred, succ, block)
 };
 
 /**
+Split a basic block into two
+*/
+ControlFlowGraph.prototype.splitBlock = function (block, fromIdx)
+{
+    assert (
+        fromIdx < block.instrs.length,
+        'invalid block split index'
+    );
+
+    // Create a new block to move the instructions to
+    var newBlock = this.getNewBlock();
+
+    // Move all instructions from the index to the resolution block
+    while (block.instrs.length > fromIdx)
+    {
+        var instr = block.instrs[fromIdx];
+        block.remInstrAtIndex(fromIdx);
+        newBlock.addInstr(instr, instr.outName);
+    }
+
+    // For each successor of the new block
+    for (var i = 0; i < newBlock.succs.length; ++i)
+    {
+        var succ = newBlock.succs[i];
+
+        // For each instruction of the successor's successor
+        for (var k = 0; k < succSucc.instrs.length; ++k)
+        {
+            var instr = succ.instrs[k];
+                
+            // If the instruction is not a phi node, stop
+            if (!(instr instanceof PhiInstr))
+                break;
+
+            // Change references to the split block to references
+            // to the new block instead
+            instr.replPred(block, newBlock);
+        }
+    }
+
+    // Return the new block
+    return newBlock;
+}
+
+/**
 @class Class to represent a basic block
 */
 function BasicBlock(cfg)
