@@ -33,11 +33,35 @@
  *
  *   % scons d8
  *
- * There are two modifications; just before and inside of the definition of
- * the method Shell::Initialize() in <V8>/src/d8.cc .  The code should be
- * modified like this:
+ * You should then copy the files in this directory to the <V8>/src
+ * directory, or create symbolic links to the said files.
  *
- *  #include "d8-tachyon-exts.cc"    // <====== ADDED!
+ * Once this is done, add d8-tachyon-exts.cc to the list of source files
+ * to be compiled found in <V8>/src/SConstruct:
+ *
+ *  ...
+ *  SOURCES = {
+ *    'all': Split("""
+ *      tachyon-exts.cc         // <====== ADDED!
+ *      d8-tachyon-exts.cc      // <====== ADDED!
+ *      accessors.cc
+ *      allocation.cc
+ *      api.cc
+ *      ...
+ *
+ * Finally, there are two modifications to make to the D8 source. Near the
+ * top of <V8>/src/d8.cc, add an include for the d8-tachyon-exts.h file:
+ *  
+ *  ...
+ *  #include "platform.h"
+ *  
+ *  #include "d8-tachyon-exts.h"    // <====== ADDED!
+ *  
+ *  namespace v8 {
+ *  ...
+ * 
+ * Inside of the definition of the method Shell::Initialize() in <V8>/src/d8.cc
+ * The code should be modified as follows:
  *
  *  void Shell::Initialize() {
  *  ...
@@ -51,9 +75,29 @@
  *  }
  */
 
-/*---------------------------------------------------------------------------*/
+// V8 headers
+#include "v8.h"
+#include "d8.h"
+#include "d8-debug.h"
+#include "debug.h"
+#include "api.h"
+#include "natives.h"
+#include "platform.h"
 
+// Tachyon headers
+#include "tachyon-exts.h"
+
+// Posix headers
+#include <sys/mman.h>
+
+// C/C++ headers
 #include <cassert>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+/*---------------------------------------------------------------------------*/
 
 int writeFile(const char* fileName, const char* content)
 {
@@ -269,7 +313,7 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
     }
     else
     {
-        return Undefined();
+        return v8::Undefined();
     }
 }
 
@@ -327,12 +371,6 @@ v8::Handle<v8::Value> v8Proxy_memAllocatedKBs(const v8::Arguments& args)
 }
 
 /*---------------------------------------------------------------------------*/
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <sys/mman.h>
 
 typedef intptr_t word; // must correspond to natural word width of CPU
 
@@ -420,7 +458,7 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
 template <class T> v8::Handle<v8::Value> valToArray(T val)
 {
     // Create an array to store the pointer data
-    Local<Array> ptrArray = v8::Array::New(sizeof(val));
+    v8::Local<v8::Array> ptrArray = v8::Array::New(sizeof(val));
 
     // Write the value into the array, byte-per-byte
     for (size_t i = 0; i < sizeof(val); ++i) 
@@ -531,14 +569,14 @@ v8::Handle<v8::Value> v8Proxy_freeMemoryBlock(const v8::Arguments& args)
         exit(1);
     }
 
-    Local<Object> obj = args[0]->ToObject();
+    v8::Local<v8::Object> obj = args[0]->ToObject();
 
     uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
     size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
 
     freeMemoryBlock(blockPtr, size);
 
-    return Undefined();
+    return v8::Undefined();
 }
 
 v8::Handle<v8::Value> v8Proxy_writeToMemoryBlock(const v8::Arguments& args)
@@ -555,7 +593,7 @@ v8::Handle<v8::Value> v8Proxy_writeToMemoryBlock(const v8::Arguments& args)
         exit(1);
     }
 
-    Local<Object> obj = args[0]->ToObject();
+    v8::Local<v8::Object> obj = args[0]->ToObject();
 
     uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
     size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
@@ -570,7 +608,7 @@ v8::Handle<v8::Value> v8Proxy_writeToMemoryBlock(const v8::Arguments& args)
 
     writeToMemoryBlock(blockPtr, index, byteVal);
 
-    return Undefined();
+    return v8::Undefined();
 }
 
 v8::Handle<v8::Value> v8Proxy_readFromMemoryBlock(const v8::Arguments& args)
@@ -587,7 +625,7 @@ v8::Handle<v8::Value> v8Proxy_readFromMemoryBlock(const v8::Arguments& args)
         exit(1);
     }
 
-    Local<Object> obj = args[0]->ToObject();
+    v8::Local<v8::Object> obj = args[0]->ToObject();
 
     uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
     size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
@@ -615,7 +653,7 @@ v8::Handle<v8::Value> v8Proxy_execMachineCodeBlock(const v8::Arguments& args)
         exit(1);
     }
 
-    Local<Object> obj = args[0]->ToObject();
+    v8::Local<v8::Object> obj = args[0]->ToObject();
 
     uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
 
@@ -642,7 +680,7 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
         exit(1);
     }
 
-    Local<Object> obj = args[0]->ToObject();
+    v8::Local<v8::Object> obj = args[0]->ToObject();
 
     uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
     size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
@@ -1113,22 +1151,32 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
 v8::Handle<v8::Value> resumeV8Profile(const v8::Arguments& args)
 {
     fprintf(stderr, "[PROF] Resuming profiler\n");
-    V8::ResumeProfiler();
-    return Undefined();
+
+    fprintf(stderr, "Profiler currently deactivated\n");
+    exit(0);
+
+    // FIXME:
+    //V8::ResumeProfiler();
+
+    return v8::Undefined();
 }
 
 v8::Handle<v8::Value> pauseV8Profile(const v8::Arguments& args)
 {
     fprintf(stderr, "[PROF] Pausing profiler\n");
-    V8::PauseProfiler();
-    return Undefined();
+
+    fprintf(stderr, "Profiler currently deactivated\n");
+    exit(0);
+
+    // FIXME:
+    //V8::PauseProfiler();
+
+    return v8::Undefined();
 }
 
 /*---------------------------------------------------------------------------*/
 
-#define INIT_D8_EXTENSIONS init_d8_extensions(global_template)
-
-void init_d8_extensions(v8::Handle<ObjectTemplate> global_template)
+void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
 {
     // Store the initialization time
     initTime = v8::internal::OS::TimeCurrentMillis();
