@@ -14,27 +14,27 @@ Compile and initialize the Tachyon compiler using Tachyon
 */
 function bootstrap(allCode, params)
 {
-    print('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
+    log.trace('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
-    print('Creating backend context layout');
+    log.trace('Creating backend context layout');
     // Create the context and object layouts
     params.target.backendCfg.makeContextLayout(params);
-    print('Creating fronted context layout');
+    log.trace('Creating fronted context layout');
     makeContextLayout(params);
-    print('Creating object layouts');
+    log.trace('Creating object layouts');
     makeObjectLayouts(params);
-    print('Creating Tachyon constants');
+    log.trace('Creating Tachyon constants');
     makeTachyonConsts(params);
 
     // Validate the backend configuration
     params.target.backendCfg.validate(params);
     
     // Initialize the FFI functions
-    print('Initialize FFI functions');
+    log.trace('Initialize FFI functions');
     initFFI(params);
 
     // Get the source code for the primitives
-    print('Get primitives source code');
+    log.trace('Get primitives source code');
     var primSrcs = getPrimSrcs(params);
     var primIRs;
 
@@ -43,7 +43,7 @@ function bootstrap(allCode, params)
         function ()
         {
             // Compile the primitives
-            print('Compile primitives source code');
+            log.trace('Compile primitives source code');
             primIRs = compSources(primSrcs, params);
         }
     );
@@ -51,14 +51,14 @@ function bootstrap(allCode, params)
     // Initialize the runtime
     initRuntime(params);
 
-    print('Re-linking primitives');
+    log.trace('Re-linking primitives');
 
     // Re-link the primitives with each other to link strings
     for (var i = 0; i < primIRs.length; ++i)
     {
         linkIR(primIRs[i], params);
     }
-    print("After linking");
+    log.trace("After linking");
 
     // Get the source code for the standard library
     var libSrcs = getLibSrcs(params);
@@ -66,7 +66,7 @@ function bootstrap(allCode, params)
 
     if (params.target === Target.x86_64 || !RUNNING_IN_TACHYON)
     {
-        print("Compiling stdlib");
+        log.trace("Compiling stdlib");
         measurePerformance(
             "Compiling stdlib",
             function ()
@@ -76,12 +76,12 @@ function bootstrap(allCode, params)
             }
         );
 
-        print('Initializing standard library');
+        log.trace('Initializing standard library');
 
         // Execute the standard library code units
         for (var i = 0; i < libIRs.length; ++i)
         {
-            print('Executing unit for: "' + libSrcs[i] + '"');
+            log.trace('Executing unit for: "' + libSrcs[i] + '"');
 
             execUnit(libIRs[i], params);
         }
@@ -104,17 +104,17 @@ function bootstrap(allCode, params)
 
         reportPerformance();
 
-        print("Code bytes allocated: " + codeBytesAllocated);
+        log.trace("Code bytes allocated: " + codeBytesAllocated);
 
         // Execute the Tachyon code units
         for (var i = 0; i < tachyonIRs.length; ++i)
         {
-            print('Executing unit for: "' + tachyonSrcs[i] + '"'); 
+            log.trace('Executing unit for: "' + tachyonSrcs[i] + '"'); 
             execUnit(tachyonIRs[i], params);
         }
     }
 
-    print('Tachyon initialization complete');
+    log.trace('Tachyon initialization complete');
 }
 
 /**
@@ -125,7 +125,7 @@ function getPrimSrcs(params)
     // Declare a variable for the layout source
     var layoutSrc = '';
 
-    print("Generate methods for the instantiable layouts");
+    log.trace("Generate methods for the instantiable layouts");
     // Generate methods for the instantiable layouts
     for (var l in params.memLayouts)
     {
@@ -140,7 +140,7 @@ function getPrimSrcs(params)
     // Declare a variable for the FFI wrapper source
     var wrapperSrc = '';
 
-    print("Generate wrapper code for the FFI functions");
+    log.trace("Generate wrapper code for the FFI functions");
     // Generate wrapper code for the FFI functions
     for (var f in params.ffiFuncs)
     {
@@ -149,7 +149,7 @@ function getPrimSrcs(params)
         wrapperSrc += func.genWrapper();
     }
 
-    print("Building list of the primitives");
+    log.trace("Building list of the primitives");
     // Build a list of the primitive source code units
     var primSrcs = [
         // Generated code for the object layouts
@@ -168,7 +168,7 @@ function getPrimSrcs(params)
         'runtime/rtinit.js'
     ];
 
-    print("Returning the primitives");
+    log.trace("Returning the primitives");
     return primSrcs;
 }
 
@@ -203,6 +203,7 @@ function getTachyonSrcs(params)
     //       populates source file names in the makefile
   
     var tachyonSrcs = [
+        'utility/log.js',
         'utility/debug.js',
         'utility/system.js',
         'utility/iterators.js',
@@ -301,7 +302,7 @@ function compSources(srcList, params)
             {
                 var src = srcList[i];
 
-                print('Parsing Tachyon source: "' + getSrcName(i) + '"');
+                log.trace('Parsing Tachyon source: "' + getSrcName(i) + '"');
 
                 // Parse the source unit
                 if (typeof src === 'object')
@@ -330,7 +331,7 @@ function compSources(srcList, params)
             {
                 var ast = astList[i];
 
-                print('Generating IR for: "' + getSrcName(i) + '"');
+                log.trace('Generating IR for: "' + getSrcName(i) + '"');
 
                 // Generate IR from the AST
                 var ir = unitToIR(ast, params);
@@ -350,7 +351,7 @@ function compSources(srcList, params)
             {
                 var ir = irList[i];
 
-                print('Performing IR lowering for: "' + getSrcName(i) + '"');
+                log.trace('Performing IR lowering for: "' + getSrcName(i) + '"');
 
                 // Perform IR lowering on the primitives
                 lowerIRFunc(ir, params);
@@ -374,7 +375,7 @@ function compSources(srcList, params)
             {
                 var ir = irList[i];
 
-                print('Generating machine code for: "' + getSrcName(i) + '"');
+                log.trace('Generating machine code for: "' + getSrcName(i) + '"');
 
                 compileIR(ir, params);
             }
@@ -394,7 +395,7 @@ function compSources(srcList, params)
                     continue;
 
                 var addr = getBlockAddr(ir.runtime.mcb, 0);
-                print('Linking machine code for: "' + getSrcName(i) + 
+                log.trace('Linking machine code for: "' + getSrcName(i) + 
                       '" at address ' + addr);
 
                 linkIR(ir, params);
@@ -412,23 +413,23 @@ and the global object.
 */
 function initRuntime(params)
 {
-    print('Initializing run-time');
+    log.trace('Initializing run-time');
 
     // Allocate the heap
     var heapSize = params.heapSize;
-    print('Allocating heap (' + heapSize + ' bytes)');
+    log.trace('Allocating heap (' + heapSize + ' bytes)');
     var heapBlock = allocMemoryBlock(heapSize, false);
-    print('Retrieving block address');
+    log.trace('Retrieving block address');
     var heapAddr = getBlockAddr(heapBlock, 0);
 
-    print('Heap address: ' + heapAddr);
+    log.trace('Heap address: ' + heapAddr);
 
     // Get the heap initialization function
-    print('Get heap initialization function');
+    log.trace('Get heap initialization function');
     var initHeap = params.staticEnv.getBinding('initHeap');
 
     // Create a bridge to call the heap init function
-    print('Creating bridge to call the heap init function');
+    log.trace('Creating bridge to call the heap init function');
     //params.printRegAlloc = true;
     //params.printASM = true;
     //params.printMCB = true;
@@ -441,7 +442,7 @@ function initRuntime(params)
     );
 
     // Initialize the heap
-    print('Calling ' + initHeap.funcName);
+    log.trace('Calling ' + initHeap.funcName);
     var ctxPtr = initHeapBridge(
         asm.address.nullAddr(params.target.ptrSizeBits).getBytes(),
         heapAddr,
@@ -451,17 +452,17 @@ function initRuntime(params)
     //params.printASM = false;
     //params.printMCB = false;
 
-    print('Context pointer: ' + ctxPtr);
+    log.trace('Context pointer: ' + ctxPtr);
     
     // Store the context pointer in the compilation parameters
     params.ctxPtr = ctxPtr;
 
     // Get the string allocation function
-    print('Get the string allocation function');
+    log.trace('Get the string allocation function');
     var getStrObj = params.staticEnv.getBinding('getStrObj');
 
     // Create a bridge to call the string allocation function
-    print('Creating bridge to the getStrObj');
+    log.trace('Creating bridge to the getStrObj');
     var getStrObjBridge = makeBridge(
         getStrObj,
         params,

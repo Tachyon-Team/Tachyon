@@ -887,7 +887,7 @@ Initialize FFI functions for the current configuration
 */
 function initFFI(params)
 {
-    print('initFFI');
+    log.trace('initFFI');
 
     function regFFI(ffiFunc)
     {

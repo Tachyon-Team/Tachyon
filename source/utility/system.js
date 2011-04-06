@@ -49,15 +49,28 @@ function parseCmdLine()
         // Get the option name
         var optName = arg.slice(1);
 
-        var eqIndex = optName.indexOf("=");
-
-        if (eqIndex === -1)
+        if (optName === 'e')
         {
-            var optVal = true;
+            ++argIdx;
+            if (argIdx >= args.length)
+            {
+                error("No argument specified for -e");
+            }
+            var optVal = args[argIdx];
         }
         else
         {
-            var optVal = optName.slice(eqIndex+1);
+            var eqIndex = optName.indexOf("=");
+
+            if (eqIndex === -1)
+            {
+                var optVal = true;
+            }
+            else
+            {
+                var optVal = optName.slice(eqIndex+1);
+                optName = optName.slice(0, eqIndex);
+            }
         }
 
         // Store the option value

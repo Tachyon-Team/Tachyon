@@ -20,7 +20,7 @@ TACHYON_JSVMPROG="${TACHYON_JSVMPROG:-@JSVMPROG@}"
 # Set the root directory of the Tachyon installation.
 
 TACHYON_ROOT_DIR="${TACHYON_ROOT_DIR:-@ROOT_DIR@}"
-TACHYON_SOURCE_DIR="${TACHYON_ROOT_DIR}/source"
+TACHYON_SOURCE_DIR="${TACHYON_SOURCE_DIR:-@SOURCE_DIR@}"
 
 # The Tachyon source files.
 

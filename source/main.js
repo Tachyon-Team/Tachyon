@@ -34,11 +34,13 @@ function main()
     // Parse the command-line arguments
     var args = parseCmdLine();
 
+    var verbosity = log.level(args.options['v']);
+
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
     {
         // Initialize Tachyon in bootstrap mode
-        initialize(true, args.options['x86_64']);
+        initialize(true, args.options['x86_64'], verbosity);
 
         // ???
         // Profit        
@@ -48,30 +50,35 @@ function main()
     else if (args.options['gc'])
     {
         // Initialize the Tachyon configuration
-        initConfig();
+        initConfig(undefined, verbosity);
 
         // Generate the GC code
         genGCCode(config.hostParams);
     }
 
-    // If there are no filenames on the command line, start shell mode
-    else if (args.files.length === 0)
+    
+    else if (args.files.length > 0 || args.options['e'])
     {
         // Initialize Tachyon in minimal mode
-        initialize(false, args.options['x86_64']);
-
-        // Call the Tachyon read-eval-print loop
-        tachyonRepl();
-    }
-    else
-    {
-        // Initialize Tachyon in minimal mode
-        initialize(false, args.options["x86_64"]);
+        initialize(false, args.options["x86_64"], verbosity);
 
         config.hostParams.printAST = args.options["ast"];
         config.hostParams.printHIR = args.options["hir"];
         config.hostParams.printLIR = args.options["lir"];
         config.hostParams.printASM = args.options["asm"];
+
+        if (args.options['e'])
+        {
+            var ir = compileSrcString(args.options['e'] + ";", config.hostParams);
+            var bridge = makeBridge(
+                ir,
+                config.hostParams,
+                [],
+                new CIntAsBox()
+            );
+
+            bridge(config.hostParams.ctxPtr);
+        }
 
         for (var i = 0; i < args.files.length; i++)
         {
@@ -105,6 +112,16 @@ function main()
                 print("  execution time:   " + execTimeMs + " ms");
             }
         }
+    }
+
+    // If there are no filenames on the command line, start shell mode
+    else
+    {
+        // Initialize Tachyon in minimal mode
+        initialize(false, args.options['x86_64'], verbosity);
+
+        // Call the Tachyon read-eval-print loop
+        tachyonRepl();
     }
 
     // Uninitialize Tachyon
