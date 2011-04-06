@@ -17,12 +17,17 @@ var config = {};
 /**
 Initialize the Tachyon configuration
 */
-function initConfig(is64bit)
+function initConfig(is64bit, verbosity)
 {
     if (is64bit === undefined)
         is64bit = false;
 
-    print('Initializing config (' + (is64bit? '64':'32') + 'bit)');
+    if (verbosity === undefined)
+        verbosity = log.ALL;
+
+    config.verbosity = verbosity;
+
+    log.trace('Initializing config (' + (is64bit? '64':'32') + 'bit)');
 
     // Determine the heap size
     var heapSize;

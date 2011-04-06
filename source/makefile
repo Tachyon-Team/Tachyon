@@ -28,6 +28,7 @@ JS2JS = parser/js2js
 
 # Base program source files
 BASE_SRCS =                             \
+    utility/log.js                      \
     utility/debug.js                    \
     utility/system.js                   \
     utility/iterators.js                \
