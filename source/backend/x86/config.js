@@ -48,7 +48,7 @@ function x86BackendCfg(is64bit)
     @field
     */
     this.physReg = [reg.rax.subReg(width), 
-                    reg.rbx.subReg(width),
+                    reg.rbp.subReg(width),
                     reg.rdx.subReg(width),
                     reg.rsi.subReg(width),
                     reg.rdi.subReg(width)];
@@ -139,7 +139,15 @@ function x86BackendCfg(is64bit)
     Scratch register
     @field
     */
-    this.scratchReg = reg.rbp.subReg(width);
+    this.scratchReg = reg.rbx.subReg(width);
+
+    /**
+    Number of implementation related arguments used in a call.
+    @field
+    */
+    this.implArgsRegNb = 2;
+
+    
 
     // Configuration sanity checks
     assert(
@@ -160,6 +168,12 @@ function x86BackendCfg(is64bit)
     );
 
     assert(
+        this.scratchReg !== reg.rax.subReg(width) &&
+        this.scratchReg !== reg.rdx.subReg(width),
+        "xAX and xDX are reserved for multiplication and division"
+    );
+
+    assert(
         this.context === reg.rax.subReg(width) ||
         this.context === reg.rbx.subReg(width) || 
         this.context === reg.rcx.subReg(width) || 
@@ -170,7 +184,7 @@ function x86BackendCfg(is64bit)
     assert(
         this.nonArgsReg.length >= 1,
         "At least one physical register should not be used " + 
-        "for passing arguments"
+        "for passing arguments and ffi calls on 32 bits"
     );
 
     assert(
@@ -188,8 +202,8 @@ function x86BackendCfg(is64bit)
 }
 
 /**
-    Creates the layout for the context object used by the backend and 
-    assigns it to the ctxLayout field.
+Creates the layout for the context object used by the backend and 
+assigns it to the ctxLayout field.
 */
 x86BackendCfg.prototype.makeContextLayout = function (params)
 {
@@ -230,6 +244,16 @@ x86BackendCfg.prototype.makeContextLayout = function (params)
     ctxLayout.finalize();
 
     this.ctxLayout = ctxLayout;
+};
+
+/**
+Get a context memory field.
+*/
+x86BackendCfg.prototype.getCtxField = function (name)
+{
+    const mem = x86.Assembler.prototype.memory;
+    const fieldOffset = this.ctxLayout.getFieldOffset([name]);
+    return mem(fieldOffset, this.context);
 };
 
 /**

@@ -444,14 +444,14 @@ function alignPtr(ptr, alignBytes)
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg ptr rptr";
-    "tachyon:arg alignBytes pint";
+    "tachyon:arg alignBytes puint";
     "tachyon:ret rptr";
 
     // Compute the pointer modulo the given alignment boundary
-    var rem = iir.icast(IRType.pint, ptr) % alignBytes;
+    var rem = iir.icast(IRType.puint, ptr) % alignBytes;
 
     // If the pointer is already aligned, return it
-    if (rem === pint(0))
+    if (rem === puint(0))
         return ptr;
 
     // Pad the pointer by the necessary amount to align it

@@ -1001,7 +1001,7 @@ asm.link = function (mcb, params)
         bytes  = it.get().linkValue();
         offset = it.get().getOffset();
 
-        if (params.printMCB)
+        if (params !== undefined && params.printMCB)
         {
             print("Linking value " + it.get().linkObj + 
             " at offset " + offset + " with bytes " + bytes);

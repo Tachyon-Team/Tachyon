@@ -573,6 +573,163 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
     return free;
 };
 
+/**
+    Generate code to move arguments passed in registers on stack,
+    generate some code and move arguments back in registers.
+*/
+irToAsm.translator.prototype.withNormalizedFrame = function (code)
+{
+    const $   = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+
+    const that = this;
+
+    const target     = this.params.target;
+    const backendCfg = target.backendCfg;
+    const argsRegNb  = backendCfg.argsReg.length;
+    const refByteNb  = target.ptrSizeBytes; 
+
+    const stack   = backendCfg.stack;
+    const scratch = backendCfg.scratchReg;
+    const argsReg = backendCfg.argsReg;
+
+    /*
+    At first we have the following stack frame:
+
+    -----------------
+    Return Address     <-- stack pointer
+    -----------------
+    Arguments (only those not passed in registers)
+    -----------------
+
+
+    In the end, we want the following stack frame:
+
+    -----------------
+    Return Address     <-- stack pointer
+    -----------------
+    Arguments passed in registers
+    Arguments passed on stack
+    -----------------
+    */
+
+    const retAddrOrigOffset = (argsRegNb*refByteNb);
+    const retAddrNewOffset  = 0;
+
+    // Change return address location on stack
+    if (retAddrOrigOffset !== retAddrNewOffset)
+    {
+        // Create space on stack for the arguments in registers
+        this.asm.
+        sub($(argsRegNb*refByteNb), stack);
+
+        // Move return address
+        this.asm.
+        mov(mem(retAddrOrigOffset, stack), scratch).
+        mov(scratch, mem(retAddrNewOffset, stack));
+
+        // Push each argument passed in registers on stack
+        // (overwrites the previous return address location)
+        argsReg.forEach(function (reg, index) {
+            that.asm.
+            mov(reg, mem((index + 1)*refByteNb, stack));
+        });
+    }
+
+    code.call(this);
+
+    // Restore stack frame
+    if (retAddrOrigOffset !== retAddrNewOffset)
+    {
+        // Move arguments back in registers
+        argsReg.forEach(function (reg, index) {
+            that.asm.
+            mov(mem((index + 1)*refByteNb, stack), reg);
+        });
+
+        // Restore return address
+        this.asm.
+        mov(mem(retAddrNewOffset, stack), scratch).
+        mov(scratch, mem(retAddrOrigOffset, stack)).
+        add($(argsRegNb*refByteNb), stack);
+    }
+};
+
+/**
+    
+*/
+irToAsm.translator.prototype.populateArgTable = function ()
+{
+    const $   = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+    const reg = x86.Assembler.prototype.register;
+    const target     = this.params.target;
+    const backendCfg = target.backendCfg;
+    const context = backendCfg.context;
+    const width = target.ptrSizeBits;
+    const implArgsRegNb = backendCfg.implArgsRegNb;
+    const ctxNumArgs = backendCfg.getCtxField("numargs");
+    const ctxArgTbl  = backendCfg.getCtxField("argtbl");
+    const refByteNb = target.ptrSizeBytes; 
+    const tblOffset = this.params.memLayouts.arrtbl.getFieldOffset(
+                         ["tbl", 0]
+                      );
+
+    const allocArgTbl   = irToAsm.getEntryPoint(
+                            this.params.staticEnv.getBinding("allocArgTable"),
+                            "fast",
+                            this.params, 
+                            "addr"
+                        );
+
+    // The return address and implementation related values are also on 
+    // stack but should not be copied in argument table
+    const spOffset = (implArgsRegNb + 1)*refByteNb;
+
+    const index      = backendCfg.argsReg[0];
+    const argTblPtr  = backendCfg.retValReg;
+    const scratch    = backendCfg.scratchReg;
+    const stack      = backendCfg.stack;
+    const fstOpnd    = backendCfg.argsReg[implArgsRegNb];
+
+    assert(
+        index !== argTblPtr,
+        "Incompatible index and argTblPtr"
+    );
+
+    this.asm.
+    // Move numArgs into corresponding register
+    mov(ctxNumArgs, fstOpnd).
+
+    // Preserve the number of argument accross calls
+    push(fstOpnd).
+    
+    // Only retain user-visible arguments nb
+    sub($(implArgsRegNb), fstOpnd).
+
+    // Call handler, result is in argTblPtr
+    mov(allocArgTbl, scratch).
+    call(scratch).
+
+    // Restore the number of arguments
+    pop(index).          
+    mov(index, ctxNumArgs).
+
+    // Copy arguments into argument table
+    sub($(1 + implArgsRegNb), index).    // i = ctxNumArgs - 1 - implArgsRegNb
+
+    forLoop(index, $(0), function ()    // for (;i >= 0; --i)
+    {
+        this.
+        mov(mem(spOffset, stack, index, refByteNb), scratch). // temp = sp[i] + 3
+        mov(scratch, mem(tblOffset, argTblPtr, index, refByteNb));   // argTbl[i] = temp
+    }).
+
+    // Store argument table on the context
+    mov(argTblPtr, ctxArgTbl);
+
+};
+
 irToAsm.translator.prototype.prelude = function ()
 {
     const reg = x86.Assembler.prototype.register;
@@ -639,133 +796,18 @@ irToAsm.translator.prototype.prelude = function ()
         }
     } else
     {
+        const a0  = backendCfg.argsReg[0];
+        const a1  = backendCfg.argsReg[1];
+
         const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
         const numArgs = mem(numArgsOffset, context);
 
         const tempOffset = backendCfg.ctxLayout.getFieldOffset(["temp"]);
         const ctxTemp = mem(tempOffset, context);
 
-        const xAX = reg.rax.subReg(width);
-        const xBX = reg.rbx.subReg(width);
-        const xDX = reg.rdx.subReg(width);
-        const xSI = reg.rsi.subReg(width);
-
         if (this.fct.usesArguments)
         {
-            // TODO: Should be moved into a separate handler
-
-            /*
-            At first we have the following stack frame:
-
-            -----------------
-            Return Address     <-- stack pointer
-            -----------------
-            Arguments (only those not passed in registers)
-            -----------------
-
-
-            In the end, we want the following stack frame:
-
-            -----------------
-            Return Address     <-- stack pointer
-            -----------------
-            Arguments passed in registers
-            Arguments passed on stack
-            -----------------
-            */
-
-            const retAddrOrigOffset = (argsRegNb*refByteNb);
-            const retAddrNewOffset  = 0;
-
-            // Change return address location on stack
-            if (retAddrOrigOffset !== retAddrNewOffset)
-            {
-                // Create space on stack for the arguments in registers
-                this.asm.
-                sub($(argsRegNb*refByteNb), stack);
-
-                // Move return address
-                this.asm.
-                mov(mem(retAddrOrigOffset, stack), scratch).
-                mov(scratch, mem(retAddrNewOffset, stack));
-
-                // Push each argument passed in registers on stack
-                // (overwrites the previous return address location)
-                argsReg.forEach(function (reg, index) {
-                    that.asm.
-                    mov(reg, mem((index + 1)*refByteNb, stack));
-                });
-            }
-
-            // Retrieve pointer to argument table
-            const fstOpnd = backendCfg.argsReg[2];
-
-            const argTblOffset = backendCfg.ctxLayout.getFieldOffset(["argtbl"]);
-            const argTbl  = mem(argTblOffset, context);
-            const tblOffset = this.params.memLayouts.arrtbl.getFieldOffset(
-                                 ["tbl", 0]
-                              );
-    
-            const allocArgTbl   = irToAsm.getEntryPoint(
-                                    this.params.staticEnv.getBinding("allocArgTable"),
-                                    "fast",
-                                    this.params, 
-                                    "addr"
-                                );
-
-
-
-            const loop = this.asm.labelObj(); 
-            const end  = this.asm.labelObj(); 
-
-            this.asm.
-            // Move numArgs into corresponding register
-            sub($(2), numArgs, width).
-            mov(numArgs, fstOpnd).
-
-            // Preserve the number of argument accross calls
-            push(fstOpnd).
-
-            // Call handler, result is in xAX
-            mov(allocArgTbl, scratch).
-            call(scratch).
-
-            // Restore the number of arguments
-            // And copy arguments into argument table
-            pop(xBX).          // n = numArgs
-            mov(xBX, numArgs).
-
-            mov($(0), xSI).    // i = 0
-            label(loop).       // for(i=0, i<n, ++i) {
-            cmp(xBX, xSI).    
-            jge(end).
-
-            mov(mem(3*refByteNb, stack, xSI, refByteNb), xDX). // temp = sp[i] + 3
-            mov(xDX, mem(tblOffset, xAX, xSI, refByteNb)).   // argTbl[i] = temp
-
-            inc(xSI).                                      
-            jmp(loop).         // }
-            label(end).
-
-            // Store argument table on the context
-            mov(xAX, argTbl).
-            add($(2), numArgs, width);
-
-            // Restore stack frame
-            if (retAddrOrigOffset !== retAddrNewOffset)
-            {
-                // Move arguments back in registers
-                argsReg.forEach(function (reg, index) {
-                    that.asm.
-                    mov(mem((index + 1)*refByteNb, stack), reg);
-                });
-
-                // Restore return address
-                this.asm.
-                mov(mem(retAddrNewOffset, stack), scratch).
-                mov(scratch, mem(retAddrOrigOffset, stack)).
-                add($(argsRegNb*refByteNb), stack);
-            }
+            this.withNormalizedFrame(this.populateArgTable);
         }
         
         // Handle a variable number of arguments
@@ -776,13 +818,14 @@ irToAsm.translator.prototype.prelude = function ()
         const tsDone        = this.asm.labelObj();
         const tsLoop        = this.asm.labelObj();
 
+        
         const expNumArgs  = this.fct.argVars.length;
         const expCallArgs = expNumArgs + 2; 
         const frameNumArgs = expCallArgs - argsRegNb;
 
         const argOffset = scratch;
         const argPtr    = scratch2;
-        const temp      = xAX;
+        const temp      = a0;
         const undefImm = $(this.params.staticEnv
                           .getBinding("BIT_PATTERN_UNDEF").value);
         const shiftAmt = (refByteNb === 4) ? 2 : 3;
@@ -819,7 +862,7 @@ irToAsm.translator.prototype.prelude = function ()
 
         if (expCallArgs > argsRegNb)
         {
-            const index = xBX;
+            const index = a1;
 
             this.asm.
 
@@ -1317,9 +1360,8 @@ DivInstr.prototype.regAlloc.outRegHint =  function (instr, params)
 
 DivInstr.prototype.regAlloc.usedRegisters = function (instr, params) 
 { 
-    // xDX:xAX are reserved for the dividend,
-    // xBX is reverved as a scratch register
-    return [0,1,2];
+    // xDX:xAX are blocked for the dividend
+    return [0,2];
 };
 
 DivInstr.prototype.genCode = function (tltor, opnds)
@@ -1343,116 +1385,53 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     // - Dividend in xAX
     // - Divisor NOT in xAX or xDX
 
-    const dvnd    = {reg:null, value:opnds[0]};
-    const dsor    = {reg:null, value:opnds[1]};
-    const scratch = {reg:null, value:null};
+    // We have no support for sign extension on 
+    // less than 32 bits for now
+    assert(
+        width >= 32,
+        "Unsupported width " + width
+    );
+    
+    var dvnd = opnds[0];
+    var dsor = opnds[1]; 
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
 
-    const xAX     = {physReg:reg.rax.subReg(width), value:null};
-    const xBX     = {physReg:reg.rbx.subReg(width), value:null};
-    const xDX     = {physReg:reg.rdx.subReg(width), value:null};
+    var xAX = reg.rax.subReg(width);
+    var xDX = reg.rdx.subReg(width);
 
-    function setReg(reg)
+    if (dsor === xAX && dvnd.type === x86.type.REG && dvnd !== xDX)
     {
-        if (reg.physReg === dvnd.value)
-        {
-            reg.value = dvnd;
-            dvnd.reg  = reg;
-        } else if (reg.physReg === dsor.value)
-        {
-            reg.value = dsor;
-            dsor.reg  = reg;
-        }
-    };
-
-    function setScratch(scratch)
+        tltor.asm.
+        xchg(xAX, dvnd);
+        dsor = dvnd;
+    } else
     {
-        if (xAX.value === null)
+        if (dsor === xAX || dsor === xDX || tltor.asm.isImmediate(dsor))
         {
-            scratch.reg = xAX;
-        } else if (xBX.value === null)
-        {
-            scratch.reg = xBX;
-        } else
-        {
-            scratch.reg = xDX;
-        }
-    };
-
-    function xchg(opnd1, opnd2)
-    {
-        if (opnd1 === scratch)
-        {
-            tltor.asm.mov(opnd2.reg.physReg, scratch.reg.physReg);
-        } else if (opnd2 === scratch)
-        {
-            tltor.asm.mov(opnd1.reg.physReg, scratch.reg.physReg);
-        } else
-        {
-            tltor.asm.xchg(opnd1.reg.physReg, opnd2.reg.physReg);
+            tltor.asm.
+            mov(dsor, scratchReg);
+            dsor = scratchReg;
         }
 
-        var treg = opnd1.reg;
-        var tvalue = opnd1.value;
-
-        opnd1.reg       = opnd2.reg;
-        opnd1.reg.value = opnd1;
-        opnd1.value     = opnd1.reg.physReg;
-
-        opnd2.reg       = treg;
-        opnd2.reg.value = opnd2;
-        opnd2.value     = treg.physReg;
-    };
-
-    function moveOpndToReg(opnd, reg)
-    {
-        // Move the operand value in the given register
-        tltor.asm.mov(opnd.value, reg.physReg);
-        
-        reg.value  = opnd;
-        opnd.reg   = reg;
-        opnd.value = reg.physReg;
-    };
-
-    setReg(xAX);
-    setReg(xBX);
-    setReg(xDX);
-
-    setScratch(scratch);
-
-    // If the dividend is not xAX register
-    if (xAX.value !== dvnd)
-    {
-        // If xAX already contains an operand,
-        // move it to the scratch register
-        if (xAX.value !== null && xAX.value !== scratch)
+        if (dvnd !== xAX)
         {
-            xchg(xAX.value, scratch);
+            tltor.asm.
+            mov(dvnd, xAX);
         }
-
-        // Move the dividend value in xAX
-        moveOpndToReg(dvnd, xAX);
     }
-
-    // If the divisor is in xDX or is a 
-    // memory location, move it to 
-    // xBX, otherwise use it directly
-    if (xDX.value === dsor || tltor.asm.isImmediate(dsor.value))
-    {
-        moveOpndToReg(dsor, xBX);
-    }
-
+    
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
     if (this.type.isUnsigned())
     {
-        // Extend the value into EDX
-        tltor.asm.mov($(0), xDX.physReg);
+        // Extend the value into xDX
+        tltor.asm.mov($(0), xDX);
 
-        tltor.asm.div(dsor.value, width);
+        tltor.asm.div(dsor, width);
     }
     else
     {
-        // Sign-extend EAX into EDX:EAX using CDQ
+        // Sign-extend xAX into xDX:xAX using CDQ or CQO
         if (width === 32)
         {
             tltor.asm.cdq();
@@ -1461,7 +1440,7 @@ DivInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.cqo();
         }
 
-        tltor.asm.idiv(dsor.value, width);
+        tltor.asm.idiv(dsor, width);
     }
 };
 
@@ -2277,8 +2256,8 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
         // No registers are required by the target calling convention,
         // but prefer registers that would less frequently contain 
         // operands
-        var altStack   = reg.ebp;
-        var scratchReg = reg.edi;
+        var altStack   = backendCfg.nonArgsReg[0];
+        var scratchReg = backendCfg.scratchReg;
     }
 
     // Spill an operand on the context if it is in one of the reserved registers
@@ -2445,11 +2424,11 @@ ConstructInstr.prototype.genCode = CallFuncInstr.prototype.genCode;
 
 ICastInstr.prototype.genCode = function (tltor, opnds)
 {
-    // TODO: for now, move from input to output
-    // Eventually, should always use same register... noop
+    const reg = x86.Assembler.prototype.register; 
 
     const dest = this.regAlloc.dest;
 
+    const configWidth = tltor.params.target.ptrSizeBits;
     const dstWidth = this.type.getSizeBits(tltor.params);
     const srcWidth = this.uses[0].type.getSizeBits(tltor.params);
 
@@ -2457,6 +2436,28 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         dest.type === x86.type.REG, 
         "Destination should be a register"
     );   
+
+    if (dstWidth === 8 && configWidth === 32)
+    {
+        assert(
+            dest === reg.rax.subReg(configWidth) ||
+            dest === reg.rbx.subReg(configWidth) ||
+            dest === reg.rcx.subReg(configWidth) ||
+            dest === reg.rdx.subReg(configWidth),
+            "Invalid destination register '" + dest + "' on 32 bits "
+        );
+    }
+
+    if (srcWidth === 8 && configWidth === 32)
+    {
+        assert(
+            opnds[0] === reg.rax.subReg(configWidth) ||
+            opnds[0] === reg.rbx.subReg(configWidth) ||
+            opnds[0] === reg.rcx.subReg(configWidth) ||
+            opnds[0] === reg.rdx.subReg(configWidth),
+            "Invalid operand register '" + opnds[0] + "' on 32 bits "
+        );
+    }
 
     if (opnds[0] === dest && srcWidth === dstWidth)
     {
@@ -2467,7 +2468,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.
         mov(opnds[0], dest);
     }
-    else if (srcWidth > dstWidth || this.uses[0].type.isUnsigned())
+    else if (srcWidth > dstWidth)
     {
         if (opnds[0].type === x86.type.REG)
         {
@@ -2478,18 +2479,25 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.
             mov(opnds[0], dest.subReg(dstWidth), dstWidth);
         }
+
+        if (dstWidth !== 32)
+        {
+            tltor.asm.
+            movxx(dest.subReg(dstWidth), dest, false);
+        }
     } 
     else
     {
-        // Always do a sign extension
+        const isSigned = this.uses[0].type.isSigned() && this.type.isSigned();
+
         if (opnds[0].type === x86.type.REG)
         {
             tltor.asm.
-            movxx(opnds[0].subReg(srcWidth), dest.subReg(dstWidth), true);
+            movxx(opnds[0].subReg(srcWidth), dest.subReg(dstWidth), isSigned);
         } else
         {
             tltor.asm.
-            movxx(opnds[0], dest.subReg(dstWidth), true, srcWidth);
+            movxx(opnds[0], dest.subReg(dstWidth), isSigned, srcWidth);
         }
     }
 };

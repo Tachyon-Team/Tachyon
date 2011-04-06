@@ -127,6 +127,58 @@ function lowerIRCFG(cfg, params)
                     var instr = itr.get();
                 }
 
+                // If this is an HIR instruction
+                if (instr instanceof HIRInstr)
+                {
+                    print('lowering HIR instruction: ' + instr);
+
+                    //
+                    // TODO
+                    //
+
+                    // If HIR instruction is found, split current block.
+                    // Create IR conversion context?
+
+                    var instrBlock = instr.parentBlock;
+                    var instrIndex = instrItr.instrIt.getIndex();
+
+                    // Split the block containing the instruction
+                    var exitBlock = cfg.splitBlock(instrBlock, instrIndex);
+
+                    // Remove the HIR instruction from the block
+                    instrBlock.remInstrAtIndex(instrIndex);
+
+                    // Create an IR conversion context for the lowering
+                    var context = new IRConvContext(
+                        null, 
+                        instrBlock,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        cfg,
+                        cfg.ownerFunc,
+                        ConstValue.getConst(undefined),
+                        params
+                    );
+
+                    // TODO: adjust IR conv context to accept null values for
+                    // most unneeded parameters
+
+
+
+
+
+
+
+
+                    var instr = itr.get();
+                }
+
                 // If this is a function call to a known function
                 if (instr instanceof CallFuncInstr && instr.getCallee() instanceof IRFunction)
                 {
@@ -307,7 +359,7 @@ function makeLowerFunc(primName)
 /**
 HIR add instruction
 */
-HIRAddInstr.prototype.lower = function ()
+HIRAddInstr.prototype.lower = function (context)
 {
 }
 
