@@ -341,30 +341,18 @@ function commElim(cfg, maxItrs)
                 print(instr + ' ==> ' + rinstr);
                 */
 
-                // Replace uses of the instruction
-                for (var i = 0; i < instr.dests.length; ++i)
-                {
-                    var dest = instr.dests[i];
-                    dest.replUse(instr, rinstr);
-                    rinstr.addDest(dest);
-                }
-
-                // Remove the instruction
-                cfg.remInstr(itr, rinstr);
-
                 // If this is a call instruction in a branch position,
                 // add a jump to the call continuation block
-                if (instr instanceof CallInstr && instr.isBranch())
-                {
-                    //print('*** replacing branch call: ' + instr);
-                    //print('*** by: ' + rinstr);
-                    var callBlock = instr.parentBlock;
-                    callBlock.addInstr(
-                        new JumpInstr(instr.getContTarget()),
-                        undefined,
-                        undefined
-                    );
-                }
+                var replBranch = 
+                    (instr instanceof CallInstr && instr.isBranch())?
+                    new JumpInstr(instr.getContTarget()):
+                    undefined;
+
+                // Replace the instruction by the value
+                cfg.replInstr(itr,
+                    replBranch,
+                    rinstr
+                );
 
                 // Add the instruction to the set of removed instructions
                 arraySetAdd(remSet, instr);

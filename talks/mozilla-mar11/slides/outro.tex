@@ -1,70 +1,47 @@
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Distinguishing Features}
+\begin{frame}
+\frametitle{\bf Distinguishing Features of Tachyon}
     \begin{itemize}
-        \item Meta-circular with dynamic language
-        \item Self-optimizing
-        \item Systematic optimistic optimizations
         \item Implementation flexibility
-        \begin{itemize}
-            \item Function call protocol
-            \item Object layout
-            \item Intermediate representation
-        \end{itemize}
-        \item Inline IR
+        \item Self-hosted with dynamic language
+        \item Self-optimizing JIT
+        \item Extensions allow using JS for stdlib (possibly even GC)
+        \item Systematic optimistic optimizations
         \item Multithreaded compiler
     \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 
 % -- Slide ---------------------------------------------------------------------
-\begin{frame}{Projet Status}
-    \begin{itemize}
-        \item ECMAScript 5 parser
-        \item Translation of ASTs to SSA-based IR
-        \item Simple optimizations on IR
-        \begin{itemize}
-            \item SCCP, value numbering, peepholes
-        \end{itemize}
-        \item x86 32/64 back-end with linear-scan reg. alloc.
-        \item Linking of static function calls
-        \item Compilation of simple programs
-        \begin{itemize}
-            \item Fibonacci, loops
-        \end{itemize}
-        \item Instruction-level statistical profiler
-        \item Benchmarking framework
-    \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-
-% -- Slide ---------------------------------------------------------------------
-\begin{frame}{Projet Roadmap}
+\begin{frame}
+\frametitle{\bf Project Roadmap}
     \begin{enumerate}[1.]
-        \item Bootstrap (Feb 2011)
-        \begin{enumerate}[1.]
-            \item Simple object representation, GC, std. lib., FFI
-            \item Exceptions, closures
+        \item Bootstrap (March 2011)
+        \begin{itemize}
+            \item Simple object representation, stdlib, FFI
+            \item {\bf very few optimizations} (but careful to allow future opt)
+        \end{itemize}
+
+        \item Competitive (September 2011)
+        \begin{itemize}
+            \item GC + better object representation, full stdlib, FFI
             \item Image loader/writer
-        \end{enumerate}
+            \item Improve tools: profiler, debugger
+            \item {\bf speed within factor of 2 of best JS JIT}
+        \end{itemize}
 
-        \item Competitive (June 2011)
-        \begin{enumerate}[1.]
-            \item Better object representation, GC, full std. lib., FFI
-            \item Improved profiler, debugger
-        \end{enumerate}
-
-        \item Gravy (Dec 2011)
-        \begin{enumerate}[1.]
-            \item Threads 
+        \item Gravy (January 2012)
+        \begin{itemize}
+            \item Continuations, threads
             \item Code-patching, optimistic optimizations
-            \item Browser integration
-        \end{enumerate}
+            \item Browser integration, real benchmarks
+        \end{itemize}
 
-        \item Groovy (Post Dec. 21, 2012)
-        \begin{enumerate}[1.]
+        \item Groovy (long term)
+        \begin{itemize}
             \item Persistance, contextualization
             \item On-stack replacement
-        \end{enumerate}
+        \end{itemize}
     \end{enumerate}
 \end{frame}
 % ------------------------------------------------------------------------------

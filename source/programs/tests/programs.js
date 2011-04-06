@@ -375,6 +375,16 @@ tests.programs.obj_props = genTest(
 );
 
 /**
+Object access run-time primitives test.
+*/
+tests.programs.obj_prims = genTest(
+    'programs/obj_prims/obj_prims.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Linked list unit test.
 */
 tests.programs.linked_list = genTest(
@@ -657,8 +667,8 @@ tests.programs.es5_cmp = genTest(
 /**
 Standard library objects code tests.
 */
-tests.programs.stdlib_objects = genTest(
-    'programs/stdlib_objects/stdlib_objects.js',
+tests.programs.stdlib_object = genTest(
+    'programs/stdlib_object/stdlib_object.js',
     'test',
     [],
     0
@@ -668,8 +678,8 @@ tests.programs.stdlib_objects = genTest(
 /**
 Standard library function code tests.
 */
-tests.programs.stdlib_functions = genTest(
-    'programs/stdlib_functions/stdlib_functions.js',
+tests.programs.stdlib_function = genTest(
+    'programs/stdlib_function/stdlib_function.js',
     'test',
     [],
     0
@@ -688,8 +698,8 @@ tests.programs.stdlib_math = genTest(
 /**
 Standard library array code tests.
 */
-tests.programs.stdlib_arrays = genTest(
-    'programs/stdlib_arrays/stdlib_arrays.js',
+tests.programs.stdlib_array = genTest(
+    'programs/stdlib_array/stdlib_array.js',
     'test',
     [],
     0
@@ -698,8 +708,8 @@ tests.programs.stdlib_arrays = genTest(
 /**
 Standard library string code tests.
 */
-tests.programs.stdlib_strings = genTest(
-    'programs/stdlib_strings/stdlib_strings.js',
+tests.programs.stdlib_string = genTest(
+    'programs/stdlib_string/stdlib_string.js',
     'test',
     [],
     0

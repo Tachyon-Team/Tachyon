@@ -345,8 +345,8 @@ blockPatterns.ifPhiElim = new optPattern(
                 ||
                 (block.instrs.length === 3 &&
                  block.instrs[1] instanceof CallFuncInstr &&
-                 block.instrs[1].uses[0] === params.staticEnv.getBinding('boxToBool') &&
-                 block.instrs[1].uses[2] === block.instrs[0] &&
+                 block.instrs[1].getCallee() === params.staticEnv.getBinding('boxToBool') &&
+                 block.instrs[1].getArg(0) === block.instrs[0] &&
                  block.instrs[2] instanceof IfInstr &&
                  block.instrs[2].uses[0] === block.instrs[1])
             )
@@ -820,31 +820,15 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     }
 
     // Replace an instruction by a value
-    function replByVal(val)
+    function replByVal(value)
     {    
-        // Remap the dests to the replacement value/instruction
-        while (instr.dests.length > 0)
-        {
-            var dest = instr.dests[0];
-
-            dest.replUse(instr, val);
-
-            if (val instanceof IRInstr)
-                val.addDest(dest);
-
-            instr.remDest(dest);
-        }
-
-        if (instr instanceof ArithOvfInstr)
-        {
-            // Replace the instruction by a jump to the normal branch
-            block.replInstrAtIndex(index, new JumpInstr(instr.targets[0]));
-        }
-        else
-        {
-            // Remove the instruction
-            block.remInstrAtIndex(index);
-        }
+        // Replace the instruction by a jump to the normal branch
+        block.replInstrAtIndex(
+            index, 
+            (instr instanceof ArithOvfInstr)?
+            new JumpInstr(instr.targets[0]):undefined,
+            value
+        );
     }
 
     /*

@@ -78,10 +78,7 @@ function inlineCall(callInstr, calleeFunc)
             phiRes.addIncoming(branchInstr.uses[0], block);
 
             // Replace the return instruction by a jump
-            block.replInstrAtIndex(
-                block.instrs.length - 1,
-                new JumpInstr(resBlock)
-            );
+            block.replBranch(new JumpInstr(resBlock));
         }
 
         // If the call instruction has a throw target and the branch is an 

@@ -5,9 +5,11 @@ command-line arguments, etc.
 
 @author
 Maxime Chevalier-Boisvert
+Marc Feeley
 
 @copyright
 Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2011 Marc Feeley, All Rights Reserved
 */
 
 /**
@@ -52,14 +54,57 @@ function main()
         genGCCode(config.hostParams);
     }
 
-    // Otherwise, assume we are running in shell mode
-    else
+    // If there are no filenames on the command line, start shell mode
+    else if (args.files.length === 0)
     {
         // Initialize Tachyon in minimal mode
         initialize(false, args.options['x86_64']);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
+    }
+    else
+    {
+        // Initialize Tachyon in minimal mode
+        initialize(false, args.options["x86_64"]);
+
+        config.hostParams.printAST = args.options["ast"];
+        config.hostParams.printHIR = args.options["hir"];
+        config.hostParams.printLIR = args.options["lir"];
+        config.hostParams.printASM = args.options["asm"];
+
+        for (var i = 0; i < args.files.length; i++)
+        {
+            if (args.options["time"])
+            {
+                print("Executing " + args.files[i]);
+            }
+
+            var startTimeMs = (new Date()).getTime();
+
+            var ir = compileSrcFile(args.files[i], config.hostParams);
+
+            var midTimeMs = (new Date()).getTime();
+
+            var bridge = makeBridge(
+                ir,
+                config.hostParams,
+                [],
+                new CIntAsBox()
+            );
+
+            bridge(config.hostParams.ctxPtr);
+
+            var endTimeMs = (new Date()).getTime();
+            var compTimeMs = midTimeMs - startTimeMs;
+            var execTimeMs = endTimeMs - midTimeMs;
+
+            if (args.options["time"])
+            {
+                print("  compilation time: " + compTimeMs + " ms");
+                print("  execution time:   " + execTimeMs + " ms");
+            }
+        }
     }
 
     // Uninitialize Tachyon
@@ -71,27 +116,21 @@ Tachyon read-eval-print loop
 */
 function tachyonRepl()
 {
-    /* TODO
-
-        /hir <command>
-        /lir <command>
-        /asm <command>  produce assembly listing for command
-
-        Compile and log
-    */
-
     // Print a help listing
     function printHelp()
     {
         print('Available special commands:');
-        print('  /load <filename>    load and execute a script');
-        print('  /time <command>     time the execution of a command');
-        print('  /hir  <command>     view HIR produced for a command/file');
-        print('  /lir  <command>     view LIR produced for a command/file');
-        print('  /asm  <command>     view ASM produced for a command/file');
-        print('  /reg  <command>     view register allocation for a command/file');
-        print('  /help               print a help listing');
-        print('  /exit               exit the read-eval-print loop');
+        print('  /load <filename>       load and execute a script');
+        print('  /time <command>        time the compilation/execution of a command');
+        print('  /time_comp <command>   time the compilation of a command');
+        print('  /time_exec <command>   time the execution of a command');
+        print('  /ast  <command>        view AST produced for a command/file');
+        print('  /hir  <command>        view HIR produced for a command/file');
+        print('  /lir  <command>        view LIR produced for a command/file');
+        print('  /asm  <command>        view ASM produced for a command/file');
+        print('  /reg  <command>        view register allocation for a command/file');
+        print('  /help                  print a help listing');
+        print('  /exit                  exit the read-eval-print loop');
     }
 
     // Load and execute a script
@@ -153,6 +192,38 @@ function tachyonRepl()
             print('time: ' + time + 's');
             break;
 
+            case 'time_comp':
+            var startTimeMs = (new Date()).getTime();
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
+            var endTimeMs = (new Date()).getTime();
+            var time = (endTimeMs - startTimeMs) / 1000;
+            print('time: ' + time + 's');
+            break;
+
+            case 'time_exec':
+            if (isSrcFile(args))
+                var ir = compFile(args)
+            else
+                var ir = compString(args);
+            var startTimeMs = (new Date()).getTime();
+            execIR(ir);
+            var endTimeMs = (new Date()).getTime();
+            var time = (endTimeMs - startTimeMs) / 1000;
+            print('time: ' + time + 's');
+            break;
+
+            case 'ast':
+            config.hostParams.printAST = true;
+            if (isSrcFile(args))
+                compFile(args)
+            else
+                compString(args);
+            config.hostParams.printAST = false;
+            break;
+
             case 'hir':
             config.hostParams.printHIR = true;
             if (isSrcFile(args))
@@ -202,14 +273,7 @@ function tachyonRepl()
         {
             var ir = compString(str);
 
-            var bridge = makeBridge(
-                ir,
-                config.hostParams,
-                [],
-                new CIntAsBox()
-            );
-
-            bridge(config.hostParams.ctxPtr);
+            execIR(ir);
         }
 
         catch (e)
@@ -219,6 +283,19 @@ function tachyonRepl()
             else
                 print(e);
         }
+    }
+
+    // Execute a compiled IR function
+    function execIR(ir)
+    {
+        var bridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            new CIntAsBox()
+        );
+
+        bridge(config.hostParams.ctxPtr);
     }
 
     // Compile a code string
@@ -271,6 +348,7 @@ function tachyonRepl()
     for (;;)
     {
         var cmd = readConsole('\nt> ');
+        if (cmd === undefined || cmd === null) return;
 
         // Remove extra whitespaces from the command
         cmd = stripStr(cmd);
@@ -302,4 +380,3 @@ catch (e)
     else
         print(e);
 }
-

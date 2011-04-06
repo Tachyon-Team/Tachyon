@@ -1,0 +1,26 @@
+movl $4,4(%ecx)
+call *%edi
+jmp call_res
+
+log_and_sec:
+movl %eax,%ebx
+addl $4,%ebx
+jno ssa_dec
+jmp iir_false
+
+ssa_dec:
+movl %ebx,%eax
+jmp call_res
+
+iir_false:
+movl %ecx,%ebx
+movl 36(%ebx),%ebx
+movl <addOverflow_fast>,%edi
+movl $25,%edx
+movl $4,%esi
+movl $4,4(%ecx)
+call *%edi
+jmp call_res
+
+call_res:
+ret $0

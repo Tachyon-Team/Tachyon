@@ -14,7 +14,7 @@ Compile and initialize the Tachyon compiler using Tachyon
 */
 function bootstrap(allCode, params)
 {
-    print('bootstrap');
+    print('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
     print('Creating backend context layout');
     // Create the context and object layouts
@@ -23,6 +23,8 @@ function bootstrap(allCode, params)
     makeContextLayout(params);
     print('Creating object layouts');
     makeObjectLayouts(params);
+    print('Creating Tachyon constants');
+    makeTachyonConsts(params);
 
     // Validate the backend configuration
     params.target.backendCfg.validate(params);
@@ -102,6 +104,8 @@ function bootstrap(allCode, params)
 
         reportPerformance();
 
+        print("Code bytes allocated: " + codeBytesAllocated);
+
         // Execute the Tachyon code units
         for (var i = 0; i < tachyonIRs.length; ++i)
         {
@@ -174,13 +178,15 @@ Get a source code listing for the standard library files
 function getLibSrcs(params)
 {
     var stdlibSrcs = [
-        'stdlib/objects.js',
-        'stdlib/functions.js',
-        'stdlib/arrays.js',
-        'stdlib/numbers.js',
-        'stdlib/strings.js',
+        'stdlib/object.js',
+        'stdlib/function.js',
+        'stdlib/array.js',
+        'stdlib/error.js',
+        'stdlib/number.js',
+        'stdlib/string.js',
         'stdlib/math.js',
-        'stdlib/errors.js',
+        'stdlib/date.js',
+        'stdlib/json.js',
         'stdlib/extensions.js',
     ];
 
@@ -236,11 +242,12 @@ function getTachyonSrcs(params)
         'ir/commelim.js',
         'ir/inlining.js',
         'ir/lowering.js',
-        'platform/ffi.js',
-        'platform/mcb.js',
         'runtime/layout.js',
         'runtime/context.js',
         'runtime/objects.js',
+        'runtime/misc.js',
+        'platform/ffi.js',
+        'platform/mcb.js',
         'backend/asm.js',
         'backend/regalloc.js',
         'backend/linearscan.js',
@@ -432,7 +439,6 @@ function initRuntime(params)
         [new CPtrAsPtr(), new CIntAsInt()],
         new CPtrAsRef()
     );
-    print('initHeap address: ' + initHeap.linking.getEntryPoint('fast').getAddr());
 
     // Initialize the heap
     print('Calling ' + initHeap.funcName);

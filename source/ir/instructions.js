@@ -767,6 +767,100 @@ instrMaker.validType = function (value, expectedType)
 
 //=============================================================================
 //
+// High-level IR (HIR) instructions
+//
+//=============================================================================
+
+/**
+@class Base class for HIR instructions
+@augments IRInstr
+*/
+var HIRInstr = function ()
+{
+};
+HIRInstr.prototype = new IRInstr();
+
+/**
+Create an HIR instruction constructor
+*/
+function hirInstrMaker(instrName, numInputs, mayThrow, proto)
+{
+    var InstrCtor = instrMaker(
+        instrName,
+        function (typeParams, inputVals, branchTargets)
+        {
+            instrMaker.validNumInputs(inputVals, numInputs, numInputs);
+            instrMaker.allValsBoxed(inputVals);
+
+            if (mayThrow)
+                instrMaker.validNumBranches(branchTargets, 2, 2);
+            
+            this.type = IRType.box;
+        },
+        mayThrow? ['continue', 'throw']:undefined,
+        proto? proto:new HIRInstr()
+    );
+
+    return InstrCtor;
+};
+
+/**
+@class Property read instruction
+@augments HIRInstr
+*/
+var GetPropInstr = hirInstrMaker(
+    'get_prop',
+    2,
+    true
+);
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var PutPropInstr = hirInstrMaker(
+    'put_prop',
+    3,
+    true
+);
+
+/**
+@class Base class for HIR arithmetic instructions
+@augments HIRInstr
+*/
+var HIRArithInstr = function ()
+{
+};
+HIRArithInstr.prototype = new HIRInstr();
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var HIRAddInstr = hirInstrMaker(
+    'hir_add',
+    2,
+    false,
+    new HIRArithInstr()
+);
+
+
+
+
+//
+// TODO: fill in other HIR instructions
+//
+
+//
+// TODO: lowering function for HIR instructions, in lowering.js
+//
+
+// TODO: HIR load/store?
+
+
+
+//=============================================================================
+//
 // Arithmetic operations without overflow handling
 //
 //=============================================================================
@@ -1536,6 +1630,38 @@ var CallFuncInstr = instrMaker(
     ['continue', 'throw'],
     new CallInstr()
 );
+
+/**
+Get the function callee, if known
+*/
+CallFuncInstr.prototype.getCallee = function ()
+{
+    if (this.uses[0] instanceof IRFunction)
+        return this.uses[0];
+    else
+        return undefined;
+}
+
+/**
+Get the this argument
+*/
+CallFuncInstr.prototype.getThisArg = function ()
+{
+    return this.uses[2];
+}
+
+/**
+Get an argument by number
+*/
+CallFuncInstr.prototype.getArg = function (argIdx)
+{
+    assert (
+        argIdx < this.uses.length + 3,
+        'invalid argument index'
+    );
+
+    return this.uses[3 + argIdx];
+}
 
 /**
 Test if a call instruction writes to memory

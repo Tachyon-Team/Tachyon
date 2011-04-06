@@ -1,0 +1,22 @@
+Program                                    ("inc.js"@1.1-1.35:)
+|-var= inc [global]                        ("inc.js"@1.1-1.35:)
+|-func= inc [global]                       ("inc.js"@1.1-1.35:)
+|-block=
+|   BlockStatement                         ("inc.js"@1.1-1.35:)
+|   |-statements=
+|   |   FunctionDeclaration                ("inc.js"@1.1-1.34:)
+|   |   |-id= inc [global]                 ("inc.js"@1.1-1.35:)
+|   |   |-funct=
+|   |   |   FunctionExpr                   ("inc.js"@1.1-1.34:)
+|   |   |   |-param= n                     ("inc.js"@1.14-1.15:)
+|   |   |   |-var= n [local]               ("inc.js"@1.1-1.34:)
+|   |   |   |-body=
+|   |   |   |   ReturnStatement            ("inc.js"@1.19-1.32:)
+|   |   |   |   |-expr=
+|   |   |   |   |   OpExpr                 ("inc.js"@1.26-1.31:)
+|   |   |   |   |   |-op= "x + y"
+|   |   |   |   |   |-exprs=
+|   |   |   |   |   |   Ref                ("inc.js"@1.26-1.27:)
+|   |   |   |   |   |   |-id= n [local]    ("inc.js"@1.1-1.34:)
+|   |   |   |   |   |   Literal            ("inc.js"@1.30-1.31:)
+|   |   |   |   |   |   |-value= 1

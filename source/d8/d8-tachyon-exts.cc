@@ -219,7 +219,13 @@ char* readConsole(const char* promptStr)
     {
         char ch = getchar();
 
-        if (ch == EOF || ch == '\n')
+        if (ch == EOF)
+        {
+            delete [] buffer;
+            return NULL;
+        }
+        
+        if (ch == '\n')
             break;
 
         buffer[strLen] = ch;
@@ -255,11 +261,16 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
 
     char* buffer = readConsole(promptStr);
 
-    v8::Local<v8::String> v8Str = v8::String::New(buffer);
-
-    delete [] buffer;
-
-    return v8Str;
+    if (buffer != NULL)
+    {
+        v8::Local<v8::String> v8Str = v8::String::New(buffer);
+        delete [] buffer;
+        return v8Str;
+    }
+    else
+    {
+        return Undefined();
+    }
 }
 
 // Time since the initialization of the extensions
@@ -391,6 +402,8 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
 
         int intVal = jsVal->Int32Value();
 
+        //printf("Reading byte %d\n", intVal);
+
         if (intVal < 0 || intVal > 255)
         {
             printf("Error in arrayToVal -- value outside of byte range\n");
@@ -407,30 +420,25 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
 template <class T> v8::Handle<v8::Value> valToArray(T val)
 {
     // Create an array to store the pointer data
-    i::Handle<i::JSArray> ptrArray = i::Factory::NewJSArray(sizeof(val));
-    ASSERT(ptrArray->IsJSArray() && ptrArray->HasFastElements());
+    Local<Array> ptrArray = v8::Array::New(sizeof(val));
 
     // Write the value into the array, byte-per-byte
     for (size_t i = 0; i < sizeof(val); ++i) 
     {
         uint8_t* bytePtr = ((uint8_t*)&val) + i;
-        i::Object* element = i::Smi::FromInt(*bytePtr);
 
-        v8::internal::MaybeObject* v = ptrArray->SetFastElement(
-            i,
-            element,
-            v8::internal::kStrictMode,
-            false
-        );
+        //printf("Writing byte: %d\n", int(*bytePtr));
 
-        if (v->IsFailure())
+        bool r = ptrArray->Set(i, v8::Number::New(*bytePtr));
+
+        if (!r)
         {
-            printf("Error in valToArray -- SetFastElement failed\n");
+            printf("Error in valToArray -- Set failed\n");
             exit(1);
         }
     }
 
-    return Utils::ToLocal(ptrArray);
+    return ptrArray;
 }
 
 /*
@@ -773,6 +781,9 @@ TachVal callTachyonFFI(
 
         case 2:
         //printf("Calling Tachyon func with 2 arguments\n");
+        //printf("fun ptr = %p\n", (void*)(intptr_t)funcPtr);
+        //printf("ptr arg = %p\n", (void*)tachArgs[0]);
+        //printf("int arg = %ld\n", (long)tachArgs[1]);
         retVal = funcPtr(
             ctxPtr, 
             tachArgs[0],
@@ -861,6 +872,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     // Get the function pointer
     TACHYON_FPTR funcPtr = arrayToVal<TACHYON_FPTR>(*args[2]);
     
+    //printf("fun ptr = %p\n", (void*)(intptr_t)funcPtr);
+
     // Get the context pointer
     uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[3]);
 
@@ -900,7 +913,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             if (arg->IsNumber())
             {
                 tachArg = tachValFromInt((intptr_t)arg->NumberValue());
-                //printf("Arg %d = %d\n", int(i), tachValToInt(tachArg));
+                //printf("Arg %d = %ld\n", int(i), tachValToInt(tachArg));
             }
             else
             {
@@ -919,7 +932,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             }
             else
             {
-                printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
+                //printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
                 exit(1);
             }
         }
@@ -1089,6 +1102,8 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
     char* funcName = *str;
 
     FPTR address = getFuncAddr(funcName);
+
+    //printf("fun ptr = %p\n", (void*)(intptr_t)address);
 
     return valToArray(address);
 }

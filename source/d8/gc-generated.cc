@@ -178,25 +178,9 @@ void set_x86ctx_reg4(ref obj, box val)
 	*((box*)(ptr + offset)) = val;
 }
 
-box get_x86ctx_reg5(ref obj)
-{
-	pint offset = 0;
-	offset += 36;
-	ref ptr = obj;
-	return *((box*)(ptr + offset));
-}
-
-void set_x86ctx_reg5(ref obj, box val)
-{
-	pint offset = 0;
-	offset += 36;
-	ref ptr = obj;
-	*((box*)(ptr + offset)) = val;
-}
-
 pint comp_size_x86ctx()
 {
-	pint baseSize = 36;
+	pint baseSize = 32;
 	pint elemSize = 4;
 	pint size = 1;
 	pint objSize = baseSize + elemSize * size;
@@ -288,17 +272,6 @@ void visit_x86ctx(ref obj)
 	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_x86ctx_reg4(obj, boxVal);
-	boxVal = get_x86ctx_reg5(obj);
-	tagVal = getRefTag(boxVal);
-	refVal = unboxRef(boxVal);
-	if (!ptrInHeap((rptr)refVal))
-	{
-		printf("reference for field x86ctx_reg5 points outside the heap (%p)\n", (rptr)refVal);
-		exit(1);
-	}
-	refVal = gcUpdateRef(refVal);
-	boxVal = boxRef(refVal, tagVal);
-	set_x86ctx_reg5(obj, boxVal);
 }
 
 //
@@ -433,26 +406,10 @@ void set_ctx_reg4(ref obj, box val)
 	*((box*)(ptr + offset)) = val;
 }
 
-box get_ctx_reg5(ref obj)
-{
-	pint offset = 0;
-	offset += 36;
-	ref ptr = obj;
-	return *((box*)(ptr + offset));
-}
-
-void set_ctx_reg5(ref obj, box val)
-{
-	pint offset = 0;
-	offset += 36;
-	ref ptr = obj;
-	*((box*)(ptr + offset)) = val;
-}
-
 box get_ctx_globalobj(ref obj)
 {
 	pint offset = 0;
-	offset += 40;
+	offset += 36;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -460,7 +417,7 @@ box get_ctx_globalobj(ref obj)
 void set_ctx_globalobj(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 40;
+	offset += 36;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -468,7 +425,7 @@ void set_ctx_globalobj(ref obj, box val)
 rptr get_ctx_heapstart(ref obj)
 {
 	pint offset = 0;
-	offset += 44;
+	offset += 40;
 	ref ptr = obj;
 	return *((rptr*)(ptr + offset));
 }
@@ -476,7 +433,7 @@ rptr get_ctx_heapstart(ref obj)
 void set_ctx_heapstart(ref obj, rptr val)
 {
 	pint offset = 0;
-	offset += 44;
+	offset += 40;
 	ref ptr = obj;
 	*((rptr*)(ptr + offset)) = val;
 }
@@ -484,7 +441,7 @@ void set_ctx_heapstart(ref obj, rptr val)
 rptr get_ctx_heaplimit(ref obj)
 {
 	pint offset = 0;
-	offset += 48;
+	offset += 44;
 	ref ptr = obj;
 	return *((rptr*)(ptr + offset));
 }
@@ -492,7 +449,7 @@ rptr get_ctx_heaplimit(ref obj)
 void set_ctx_heaplimit(ref obj, rptr val)
 {
 	pint offset = 0;
-	offset += 48;
+	offset += 44;
 	ref ptr = obj;
 	*((rptr*)(ptr + offset)) = val;
 }
@@ -500,7 +457,7 @@ void set_ctx_heaplimit(ref obj, rptr val)
 rptr get_ctx_allocptr(ref obj)
 {
 	pint offset = 0;
-	offset += 52;
+	offset += 48;
 	ref ptr = obj;
 	return *((rptr*)(ptr + offset));
 }
@@ -508,7 +465,7 @@ rptr get_ctx_allocptr(ref obj)
 void set_ctx_allocptr(ref obj, rptr val)
 {
 	pint offset = 0;
-	offset += 52;
+	offset += 48;
 	ref ptr = obj;
 	*((rptr*)(ptr + offset)) = val;
 }
@@ -516,7 +473,7 @@ void set_ctx_allocptr(ref obj, rptr val)
 box get_ctx_strtbl(ref obj)
 {
 	pint offset = 0;
-	offset += 56;
+	offset += 52;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -524,7 +481,7 @@ box get_ctx_strtbl(ref obj)
 void set_ctx_strtbl(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 56;
+	offset += 52;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -532,7 +489,7 @@ void set_ctx_strtbl(ref obj, box val)
 box get_ctx_objproto(ref obj)
 {
 	pint offset = 0;
-	offset += 60;
+	offset += 56;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -540,7 +497,7 @@ box get_ctx_objproto(ref obj)
 void set_ctx_objproto(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 60;
+	offset += 56;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -548,7 +505,7 @@ void set_ctx_objproto(ref obj, box val)
 box get_ctx_funcproto(ref obj)
 {
 	pint offset = 0;
-	offset += 64;
+	offset += 60;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -556,7 +513,7 @@ box get_ctx_funcproto(ref obj)
 void set_ctx_funcproto(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 64;
+	offset += 60;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -564,7 +521,7 @@ void set_ctx_funcproto(ref obj, box val)
 box get_ctx_arrproto(ref obj)
 {
 	pint offset = 0;
-	offset += 68;
+	offset += 64;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -572,7 +529,7 @@ box get_ctx_arrproto(ref obj)
 void set_ctx_arrproto(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 68;
+	offset += 64;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -580,7 +537,7 @@ void set_ctx_arrproto(ref obj, box val)
 box get_ctx_strproto(ref obj)
 {
 	pint offset = 0;
-	offset += 72;
+	offset += 68;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -588,7 +545,7 @@ box get_ctx_strproto(ref obj)
 void set_ctx_strproto(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 72;
+	offset += 68;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -596,7 +553,7 @@ void set_ctx_strproto(ref obj, box val)
 box get_ctx_numproto(ref obj)
 {
 	pint offset = 0;
-	offset += 76;
+	offset += 72;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -604,7 +561,7 @@ box get_ctx_numproto(ref obj)
 void set_ctx_numproto(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 76;
+	offset += 72;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -612,7 +569,7 @@ void set_ctx_numproto(ref obj, box val)
 box get_ctx_rangeerror(ref obj)
 {
 	pint offset = 0;
-	offset += 80;
+	offset += 76;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -620,7 +577,7 @@ box get_ctx_rangeerror(ref obj)
 void set_ctx_rangeerror(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 80;
+	offset += 76;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -628,7 +585,7 @@ void set_ctx_rangeerror(ref obj, box val)
 box get_ctx_referror(ref obj)
 {
 	pint offset = 0;
-	offset += 84;
+	offset += 80;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -636,7 +593,7 @@ box get_ctx_referror(ref obj)
 void set_ctx_referror(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 84;
+	offset += 80;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -644,7 +601,7 @@ void set_ctx_referror(ref obj, box val)
 box get_ctx_syntaxerror(ref obj)
 {
 	pint offset = 0;
-	offset += 88;
+	offset += 84;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -652,7 +609,7 @@ box get_ctx_syntaxerror(ref obj)
 void set_ctx_syntaxerror(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 88;
+	offset += 84;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -660,7 +617,7 @@ void set_ctx_syntaxerror(ref obj, box val)
 box get_ctx_typeerror(ref obj)
 {
 	pint offset = 0;
-	offset += 92;
+	offset += 88;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -668,7 +625,7 @@ box get_ctx_typeerror(ref obj)
 void set_ctx_typeerror(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 92;
+	offset += 88;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
@@ -676,7 +633,7 @@ void set_ctx_typeerror(ref obj, box val)
 box get_ctx_urierror(ref obj)
 {
 	pint offset = 0;
-	offset += 96;
+	offset += 92;
 	ref ptr = obj;
 	return *((box*)(ptr + offset));
 }
@@ -684,14 +641,14 @@ box get_ctx_urierror(ref obj)
 void set_ctx_urierror(ref obj, box val)
 {
 	pint offset = 0;
-	offset += 96;
+	offset += 92;
 	ref ptr = obj;
 	*((box*)(ptr + offset)) = val;
 }
 
 pint comp_size_ctx()
 {
-	pint baseSize = 96;
+	pint baseSize = 92;
 	pint elemSize = 4;
 	pint size = 1;
 	pint objSize = baseSize + elemSize * size;
@@ -783,17 +740,6 @@ void visit_ctx(ref obj)
 	refVal = gcUpdateRef(refVal);
 	boxVal = boxRef(refVal, tagVal);
 	set_ctx_reg4(obj, boxVal);
-	boxVal = get_ctx_reg5(obj);
-	tagVal = getRefTag(boxVal);
-	refVal = unboxRef(boxVal);
-	if (!ptrInHeap((rptr)refVal))
-	{
-		printf("reference for field ctx_reg5 points outside the heap (%p)\n", (rptr)refVal);
-		exit(1);
-	}
-	refVal = gcUpdateRef(refVal);
-	boxVal = boxRef(refVal, tagVal);
-	set_ctx_reg5(obj, boxVal);
 	boxVal = get_ctx_globalobj(obj);
 	tagVal = getRefTag(boxVal);
 	refVal = unboxRef(boxVal);
@@ -964,22 +910,6 @@ void set_hashtbl_header(box obj, u32 val)
 	offset += 0;
 	ref ptr = unboxRef(obj);
 	*((u32*)(ptr + offset)) = val;
-}
-
-pint get_hashtbl_size(box obj)
-{
-	pint offset = 0;
-	offset += 4;
-	ref ptr = unboxRef(obj);
-	return *((pint*)(ptr + offset));
-}
-
-void set_hashtbl_size(box obj, pint val)
-{
-	pint offset = 0;
-	offset += 4;
-	ref ptr = unboxRef(obj);
-	*((pint*)(ptr + offset)) = val;
 }
 
 box get_hashtbl_tbl_key(box obj, pint idx0)
@@ -1186,22 +1116,6 @@ void set_arrtbl_header(box obj, u32 val)
 	*((u32*)(ptr + offset)) = val;
 }
 
-pint get_arrtbl_size(box obj)
-{
-	pint offset = 0;
-	offset += 4;
-	ref ptr = unboxRef(obj);
-	return *((pint*)(ptr + offset));
-}
-
-void set_arrtbl_size(box obj, pint val)
-{
-	pint offset = 0;
-	offset += 4;
-	ref ptr = unboxRef(obj);
-	*((pint*)(ptr + offset)) = val;
-}
-
 box get_arrtbl_tbl(box obj, pint idx0)
 {
 	pint offset = 0;
@@ -1400,22 +1314,6 @@ void set_str_header(box obj, u32 val)
 	*((u32*)(ptr + offset)) = val;
 }
 
-pint get_str_size(box obj)
-{
-	pint offset = 0;
-	offset += 8;
-	ref ptr = unboxRef(obj);
-	return *((pint*)(ptr + offset));
-}
-
-void set_str_size(box obj, pint val)
-{
-	pint offset = 0;
-	offset += 8;
-	ref ptr = unboxRef(obj);
-	*((pint*)(ptr + offset)) = val;
-}
-
 pint comp_size_str(pint size)
 {
 	pint baseSize = 12;
@@ -1457,22 +1355,6 @@ void set_strtbl_header(box obj, u32 val)
 	offset += 0;
 	ref ptr = unboxRef(obj);
 	*((u32*)(ptr + offset)) = val;
-}
-
-pint get_strtbl_size(box obj)
-{
-	pint offset = 0;
-	offset += 8;
-	ref ptr = unboxRef(obj);
-	return *((pint*)(ptr + offset));
-}
-
-void set_strtbl_size(box obj, pint val)
-{
-	pint offset = 0;
-	offset += 8;
-	ref ptr = unboxRef(obj);
-	*((pint*)(ptr + offset)) = val;
 }
 
 box get_strtbl_tbl(box obj, pint idx0)
@@ -1596,22 +1478,6 @@ void set_clos_funcptr(box obj, rptr val)
 	offset += 16;
 	ref ptr = unboxRef(obj);
 	*((rptr*)(ptr + offset)) = val;
-}
-
-pint get_clos_size(box obj)
-{
-	pint offset = 0;
-	offset += 20;
-	ref ptr = unboxRef(obj);
-	return *((pint*)(ptr + offset));
-}
-
-void set_clos_size(box obj, pint val)
-{
-	pint offset = 0;
-	offset += 20;
-	ref ptr = unboxRef(obj);
-	*((pint*)(ptr + offset)) = val;
 }
 
 box get_clos_cells(box obj, pint idx0)
@@ -1789,7 +1655,7 @@ void set_memblock_header(box obj, u32 val)
 rptr get_memblock_ptr(box obj)
 {
 	pint offset = 0;
-	offset += 4;
+	offset += 8;
 	ref ptr = unboxRef(obj);
 	return *((rptr*)(ptr + offset));
 }
@@ -1797,7 +1663,7 @@ rptr get_memblock_ptr(box obj)
 void set_memblock_ptr(box obj, rptr val)
 {
 	pint offset = 0;
-	offset += 4;
+	offset += 8;
 	ref ptr = unboxRef(obj);
 	*((rptr*)(ptr + offset)) = val;
 }

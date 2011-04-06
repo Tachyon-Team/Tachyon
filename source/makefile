@@ -1,5 +1,7 @@
 # makefile for Tachyon JavaScript compiler
 
+ROOT_DIR = `(cd ..;pwd)`
+
 #JavaScript VM program
 JSVMPROG = d8
 JSVMPROG64 = d8_64
@@ -65,18 +67,19 @@ BASE_SRCS =                             \
     ir/commelim.js                      \
     ir/inlining.js                      \
     ir/lowering.js                      \
-    platform/ffi.js                     \
-    platform/mcb.js                     \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
+    runtime/misc.js                     \
+    platform/ffi.js                     \
+    platform/mcb.js                     \
     backend/asm.js                      \
     backend/regalloc.js                 \
     backend/linearscan.js               \
     backend/backend.js                  \
     backend/x86/asm.js                  \
     backend/x86/config.js               \
-    backend/x86/ir-to-asm.js            
+    backend/x86/ir-to-asm.js
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
@@ -88,14 +91,16 @@ RUNTIME_SRCS =                          \
 
 # Standard library source files
 STDLIB_SRCS =                           \
-    stdlib/arrays.js                    \
-    stdlib/errors.js                    \
-    stdlib/extensions.js                \
-    stdlib/functions.js                 \
+    stdlib/object.js                    \
+    stdlib/function.js                  \
+    stdlib/array.js                     \
+    stdlib/error.js                     \
+    stdlib/number.js                    \
+    stdlib/string.js                    \
     stdlib/math.js                      \
-    stdlib/numbers.js                   \
-    stdlib/objects.js                   \
-    stdlib/strings.js
+    stdlib/date.js                      \
+    stdlib/json.js                      \
+    stdlib/extensions.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \
@@ -131,19 +136,24 @@ ALL_SRCS =                              \
     $(MAIN_SPEC_SRCS)                   \
     $(TEST_SPEC_SRCS)
 
-all: run
+all: tachyon
+
+tachyon: makefile tachyon.in
+	rm -f tachyon
+	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
+	chmod +x tachyon
 
 load:
 	$(JSVM) $(BASE_SRCS) --shell
 
-run: 
+run:
 	$(JSVM) $(MAIN_SRCS)
 
 shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
 shell64:
-	$(RLWJSVM64) $(MAIN_SRCS) -- -x86_64 true
+	$(RLWJSVM64) $(MAIN_SRCS) -- -x86_64
 
 bt-parser:
 	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
@@ -155,27 +165,27 @@ mem-fib:
 	$(JSVM) --no-opt --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
 
 gc:
-	$(JSVM) $(MAIN_SRCS) -- -gc true
+	$(JSVM) $(MAIN_SRCS) -- -gc
 	gcc -c -o d8/gc-generated.o d8/gc-generated.cc
 
 bootstrap:
-	time $(JSVM) $(MAIN_SRCS) -- -bootstrap true
+	time $(JSVM) $(MAIN_SRCS) -- -bootstrap
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap true -x86_64 true
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -x86_64
 
 bootstrap-debug:
-	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap true" > gdb-command
-	echo "bt"                                                   >> gdb-command
+	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap" > gdb-command
+	echo "bt"                                              >> gdb-command
 	time gdb --command=gdb-command $(JSVMPROG)
 
-test: 
+test:
 	$(JSVM) $(TEST_SRCS)
 
-test64: 
-	$(JSVM64) $(TEST_SRCS) -- -x86_64 true
+test64:
+	$(JSVM64) $(TEST_SRCS) -- -x86_64
 
-perf: 
+perf:
 	./bench/d8.sh                                   \
         -cfgFile "bench/configs/time_benchs.json"   \
         -genReport "benchreport.html"

@@ -62,6 +62,8 @@ function makeObjectLayouts(params)
     params.staticEnv.regBinding(
         'TAG_NUM_BITS_INT',
         ConstValue.getConst(
+            // TODO:
+            //(params.target.ptrSizeBits == 64)? 12:2,
             2,
             IRType.pint
         )

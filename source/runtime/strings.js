@@ -154,8 +154,7 @@ function extStrTable(curTbl, curSize, numStrings)
             continue;
 
         // Get the hash code for the value
-        // Boxed value, may be a string or an int
-        var valHash = getHash(slotVal);
+        var valHash = iir.icast(IRType.pint, get_str_hash(slotVal));
 
         // Get the hash table index for this hash value in the new table
         var startHashIndex = iir.icast(
