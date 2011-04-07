@@ -108,7 +108,7 @@ FIXME: for now, all objects are extensible
 Object.isFrozen = function (obj)
 {
     return false;
-}
+};
 
 /**
 15.2.3.13 Object.isExtensible ( O )
@@ -117,7 +117,7 @@ FIXME: for now, all objects are extensible
 Object.isExtensible = function (obj)
 {
     return true;
-}
+};
 
 /**
 15.2.4.2 Default object to string conversion function

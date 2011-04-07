@@ -65,7 +65,7 @@ Anonymous function to initialize this library
 Array.isArray = function (arg)
 {
     return boolToBox(boxIsArray(arg));
-}
+};
 
 // Operations on Array objects.
 
