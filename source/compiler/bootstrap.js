@@ -150,25 +150,20 @@ function getPrimSrcs(params)
     }
 
     log.trace("Building list of the primitives");
-    // Build a list of the primitive source code units
+
+    // Add auto-generated code to the primitive source list
     var primSrcs = [
         // Generated code for the object layouts
         { str: layoutSrc, desc: 'object layout source' },
         // Generated code for the FFI functions
         { str: wrapperSrc, desc: 'FFI wrapper source' },
-        // Utility code for the runtime primitives
-        'runtime/utility.js',
-        // Source code for the primitives
-        'runtime/primitives.js',
-        // Source code for string operations
-        'runtime/strings.js',
-        // Source code for FFI interfacing
-        'runtime/ffi.js',
-        // Source code for the runtime initialization
-        'runtime/rtinit.js'
     ];
 
+    // Add the runtime primitive source files to the list
+    var primSrcs = primSrcs.concat(TACHYON_RUNTIME_SRCS);
+
     log.trace("Returning the primitives");
+
     return primSrcs;
 }
 
@@ -177,20 +172,7 @@ Get a source code listing for the standard library files
 */
 function getLibSrcs(params)
 {
-    var stdlibSrcs = [
-        'stdlib/object.js',
-        'stdlib/function.js',
-        'stdlib/array.js',
-        'stdlib/error.js',
-        'stdlib/number.js',
-        'stdlib/string.js',
-        'stdlib/math.js',
-        'stdlib/date.js',
-        'stdlib/json.js',
-        'stdlib/extensions.js',
-    ];
-
-    return stdlibSrcs;
+    return TACHYON_STDLIB_SRCS;
 }
 
 /**
@@ -198,74 +180,16 @@ Get a source code listing for the Tachyon compiler, excluding the primitives
 */
 function getTachyonSrcs(params)
 {
-    // Source files, in the order they should be compiled and executed
-    // TODO: this should probably be populated using a script which also
-    //       populates source file names in the makefile
-  
+    /*
     var tachyonSrcs = [
-        'utility/log.js',
-        'utility/debug.js',
-        'utility/system.js',
-        'utility/iterators.js',
-        'utility/graph.js',
-        'utility/arrays.js',
-        'utility/heap.js',
-        'utility/hashmap.js',
-        'utility/hashset.js',
-        'utility/linkedlist.js',
-        'utility/strings.js',
-        'utility/modules.js',
-        'utility/misc.js',
-        'utility/num.js',
-        'utility/xml.js',
-        'utility/html.js',
-        'compiler/targets.js',
-        'compiler/params.js',
-        'compiler/config.js',
-        'compiler/compiler.js',
-        'compiler/init.js',
-        'compiler/bootstrap.js',
-        'parser/misc.js',
-        'parser/scanner.js',
-        'parser/parser.js',
-        'parser/pp.js',
-        'parser/ast-passes.js',
-        'ir/types.js',
-        'ir/static.js',
-        'ir/instructions.js',
-        'ir/constants.js',
-        'ir/iir.js',
-        'ir/cfg.js',
-        'ir/functions.js',
-        'ir/ast-to-ir.js',
-        'ir/optpatterns.js',
-        'ir/constprop.js',
-        'ir/commelim.js',
-        'ir/inlining.js',
-        'ir/lowering.js',
-        'runtime/layout.js',
-        'runtime/context.js',
-        'runtime/objects.js',
-        'runtime/misc.js',
-        'platform/ffi.js',
-        'platform/mcb.js',
-        'backend/asm.js',
-        'backend/regalloc.js',
-        'backend/linearscan.js',
-        'backend/backend.js',
-        'backend/x86/asm.js',
-        'backend/x86/config.js',
-        'backend/x86/ir-to-asm.js',
-        //'main.js'
         //'bt-parser.js',
         //((params.target === Target.x86_32) ? 'bt-parser32.js' : 'bt-parser64.js')
         'bt-fib.js',
         ((params.target === Target.x86_32) ? 'bt-fib32.js' : 'bt-fib64.js')
     ];
+    */
 
-    //var tachyonSrcs = ['parser/parser.js'];
-
-    return tachyonSrcs;
+    return TACHYON_BASE_SRCS.concat(TACHYON_MAIN_SPEC_SRCS);
 }
 
 /**

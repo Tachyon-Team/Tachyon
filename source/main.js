@@ -8,7 +8,7 @@ Maxime Chevalier-Boisvert
 Marc Feeley
 
 @copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
+Copyright (c) 2011 Maxime Chevalier-Boisvert, All Rights Reserved
 Copyright (c) 2011 Marc Feeley, All Rights Reserved
 */
 
@@ -56,7 +56,7 @@ function main()
         genGCCode(config.hostParams);
     }
 
-    
+    // If source files or inline source are provided    
     else if (args.files.length > 0 || args.options['e'])
     {
         // Initialize Tachyon in minimal mode
