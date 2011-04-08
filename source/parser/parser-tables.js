@@ -1,3 +1,45 @@
+/* _________________________________________________________________________
+ *
+ *             Tachyon : A Self-Hosted JavaScript Virtual Machine
+ *
+ *
+ *  This file is part of the Tachyon JavaScript project. Tachyon is
+ *  distributed at:
+ *  http://github.com/Tachyon-Team/Tachyon
+ *
+ *
+ *  Copyright (c) 2011, Universite de Montreal
+ *  All rights reserved.
+ *
+ *  This software is licensed under the following license (Modified BSD
+ *  License):
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the name of the Universite de Montreal nor the names of its
+ *      contributors may be used to endorse or promote products derived
+ *      from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ *  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ *  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ *  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL UNIVERSITE DE
+ *  MONTREAL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * _________________________________________________________________________
+ */
+
 var action_table = 
 [
  [-512,10243,9988,9733,9478,9225,8970,8715,8460,8205,7950,7695,7440,7185,6930,6675,6420,6165,5912,5657,5402,5148,4893,4640,4393,4138,3889,3641,3387,3132,2877,2622,2367,2127,1872,1621,1366,1112,857,607,353]
