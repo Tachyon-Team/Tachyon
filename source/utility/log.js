@@ -58,7 +58,7 @@ log.level = function (s)
 {
     if (s === undefined)
     {
-        return log.ALL;
+        return log.ERROR;
     }
 
     var level = s.toLowerCase();
