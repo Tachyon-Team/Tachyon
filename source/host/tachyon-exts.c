@@ -92,6 +92,21 @@ char* getArgVal(int argIdx)
     return cmdArgVals[argIdx];
 }
 
+char* tproxy_fgets(int num, FILE* stream)
+{
+    char* buffer = (char*)malloc(sizeof(char) * num);
+
+    char* result = fgets(buffer, num, stream);
+
+    if (!result)
+    {
+        free(buffer);
+        return NULL;
+    }
+
+    return buffer;
+}
+
 int writeFile(const char* fileName, const char* content)
 {
     FILE *out = fopen(fileName, "w");
@@ -406,6 +421,7 @@ TachVal callTachyonFFI(
         break;
 
         case 1:
+        //printf("Calling Tachyon func with 1 argument\n");
         retVal = funcPtr(
             ctxPtr,
             tachArgs[0]
@@ -549,6 +565,8 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(fclose);
     else if (strcmp(funcName, "fputs") == 0)
         address = (FPTR)(fputs);
+    else if (strcmp(funcName, "fgets") == 0)
+        address = (FPTR)(tproxy_fgets);
     else if (strcmp(funcName, "remove") == 0)
         address = (FPTR)(remove);
     else if (strcmp(funcName, "printInt") == 0)

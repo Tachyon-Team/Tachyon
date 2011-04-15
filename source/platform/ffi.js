@@ -987,6 +987,13 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'fgets',
+        [new CIntAsBox(), new CPtrAsPtr()],
+        new CStringAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'remove',
         [new CStringAsBox()],
         new CIntAsBox(),
