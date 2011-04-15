@@ -42,15 +42,11 @@
 
 #include "tachyon-exts.h"
 
-int argc;
-
-char** argv;
-
 int main(int argc, char** argv)
 {
     // Store the command-line arguments
-    ::argc = argc;
-    ::argv = argv;
+    cmdArgCount = argc;
+    cmdArgVals = argv;
 
 
 

@@ -305,6 +305,17 @@ tests.programs.ffi_sum = genTest(
 );
 
 /**
+Time-related FFI functions
+*/
+tests.programs.ffi_time = genTest(
+    'programs/ffi_time/ffi_time.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 This test is meant to ensure that values are correctly merged after 
 conditionals and that local variable values are properly preserved across
 calls.

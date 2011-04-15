@@ -966,6 +966,34 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'fopen',
+        [new CStringAsBox(), new CStringAsBox()],
+        new CPtrAsPtr(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'fclose',
+        [new CPtrAsPtr()],
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'fputs',
+        [new CStringAsBox(), new CPtrAsPtr()],
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'remove',
+        [new CStringAsBox()],
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'printInt', 
         [new CIntAsInt(IRType.pint)],
         new CVoid(),
@@ -983,6 +1011,20 @@ function initFFI(params)
         'sum2Ints', 
         [new CIntAsBox(), new CIntAsBox()],
         new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'getArgCount',
+        [],
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
+        'getArgVal',
+        [new CIntAsBox()],
+        new CStringAsBox(false),
         params
     ));
 

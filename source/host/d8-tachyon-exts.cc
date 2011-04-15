@@ -176,7 +176,7 @@ v8::Handle<v8::Value> v8Proxy_readFile(const v8::Arguments& args)
 
     v8::Local<v8::String> v8Str = v8::String::New(outStr);
 
-    delete [] outStr;
+    free(outStr);
 
     return v8Str;
 }
@@ -196,7 +196,7 @@ v8::Handle<v8::Value> v8Proxy_shellCommand(const v8::Arguments& args)
 
     v8::Local<v8::String> v8Str = v8::String::New(outStr);
 
-    delete [] outStr;
+    free(outStr);
 
     return v8Str;
 }
@@ -217,7 +217,7 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
     if (buffer != NULL)
     {
         v8::Local<v8::String> v8Str = v8::String::New(buffer);
-        delete [] buffer;
+        free(buffer);
         return v8Str;
     }
     else
@@ -718,6 +718,8 @@ v8::Handle<v8::Value> pauseV8Profile(const v8::Arguments& args)
 
 void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
 {
+    initTachyonExts();
+
     global_template->Set(
         v8::String::New("writeFile"), 
         v8::FunctionTemplate::New(v8Proxy_writeFile)

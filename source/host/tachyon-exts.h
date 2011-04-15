@@ -44,8 +44,20 @@
 #define _TACHYON_EXTS_H
 
 // C/C++ headers
-#include <cstddef>
+#include <stddef.h>
 #include <stdint.h>
+
+extern int cmdArgCount;
+
+extern char** cmdArgVals;
+
+void initTachyonExts();
+
+/*---------------------------------------------------------------------------*/
+
+int getArgCount();
+
+char* getArgVal(int argIdx);
 
 int writeFile(const char* fileName, const char* content);
 
@@ -54,6 +66,8 @@ char* readFile(const char* fileName);
 char* shellCommand(const char* command);
 
 char* readConsole(const char* promptStr);
+
+double currentTimeSecs();
 
 int currentTimeMillis();
 
@@ -69,7 +83,7 @@ typedef union
     uint8_t* data_ptr;
 }   data_to_fn_ptr_caster;
 
-uint8_t* allocMemoryBlock(size_t size, bool exec);
+uint8_t* allocMemoryBlock(size_t size, int exec);
 
 void freeMemoryBlock(uint8_t* code, size_t size);
 
@@ -89,9 +103,9 @@ typedef intptr_t TachVal;
 // Pointer to a Tachyon function
 typedef TachVal (*TACHYON_FPTR)(void*, ...);
 
-intptr_t tachValToInt(const TachVal& v);
+intptr_t tachValToInt(TachVal v);
 
-void* tachValToPtr(const TachVal& v);
+void* tachValToPtr(TachVal v);
 
 TachVal tachValFromInt(intptr_t i);
 
