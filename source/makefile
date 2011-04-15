@@ -254,7 +254,7 @@ mem-fib:
 
 gc:
 	$(JSVM) $(MAIN_SRCS) -- -gc
-	gcc -c -o d8/gc-generated.o d8/gc-generated.cc
+	gcc -std=c99 -c -o host/gc-generated.o host/gc-generated.c
 
 bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap
