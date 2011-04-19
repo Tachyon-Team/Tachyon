@@ -40,7 +40,19 @@
  * _________________________________________________________________________
  */
 
+// Header files
+#include <stdint.h>
+#include <stdio.h>
 #include "tachyon-exts.h"
+
+// Boundaries of code and data sections of the image
+extern uint8_t* code_start;
+extern uint8_t* code_end;
+extern uint8_t* data_start;
+extern uint8_t* data_end;
+
+// Tachyon main function
+extern int tachyon_main();
 
 int main(int argc, char** argv)
 {
@@ -48,16 +60,21 @@ int main(int argc, char** argv)
     cmdArgCount = argc;
     cmdArgVals = argv;
 
+    printf("code_start   = %p\n", &code_start);
+    printf("code_end     = %p\n", &code_end);
+    printf("data_start   = %p\n", &data_start);
+    printf("data_end     = %p\n", &data_end);
+    printf("\n");
+    printf("tachyon_main = %p\n", tachyon_main);
+    printf("\n");
 
+    printf("Calling tachyon_main()\n");
 
-    // TODO: Make magic happen here!
+    // Call the Tachyon main function
+    int res = tachyon_main();
 
+    printf("tachyon_main() returned %d\n", res);
 
-
-
-
-
-
-    return 0;
+    return res;
 }
 

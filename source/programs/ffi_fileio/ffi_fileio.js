@@ -1,8 +1,6 @@
-function test(/*fileName*/)
+function test()
 {
     var fileName = 'programs/ffi_fileio/test.txt';
-
-    //print(fileName);
 
     //
     // Write the file

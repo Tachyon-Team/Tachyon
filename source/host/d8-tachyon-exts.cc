@@ -541,6 +541,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         exit(1);
     }
 
+    //printf("in v8Proxy_callTachyonFFI\n");
+
     // Get the array of argument types
     const v8::Local<v8::Object> argTypeArray = args[0]->ToObject();
 
@@ -583,6 +585,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         v8::String::Utf8Value argTypeStrObj(argTypeArray->Get(i));
         const char* argTypeStr = *argTypeStrObj;
 
+        //printf("Arg type str: \"%s\"\n", argTypeStr);
+
         // Value for the current argument
         TachVal tachArg;
 
@@ -611,7 +615,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             }
             else
             {
-                //printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
+                printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
                 exit(1);
             }
         }
@@ -627,6 +631,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         memcpy(argPtr, &tachArg, sizeof(tachArg));
         argPtr += sizeof(tachArg);
     }
+
+    //printf("calling callTachyonFFI\n");
 
     // Call the function
     TachVal retVal = callTachyonFFI(

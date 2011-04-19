@@ -130,7 +130,7 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
             new CIntAsBox()
         );
 
-        //print('calling with args: ' + inputArgs);
+        //print('compileAndRunSrcs, calling w/ args: ' + inputArgs);
 
         // Call the function with the given arguments
         var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
@@ -334,7 +334,7 @@ File I/O FFI functions
 tests.programs.ffi_fileio = genTest(
     'programs/ffi_fileio/ffi_fileio.js',
     'test',
-    [/*'programs/ffi_fileio/test.txt'*/],
+    [],
     0,
     'hostParams'
 );

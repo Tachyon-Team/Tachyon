@@ -92,6 +92,7 @@ BASE_SRCS =                             \
     compiler/compiler.js                \
     compiler/init.js                    \
     compiler/bootstrap.js               \
+    compiler/imgwriter.js               \
     parser/misc.js                      \
     parser/scanner.js                   \
     parser/parser.js                    \
@@ -266,6 +267,10 @@ bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap" > gdb-command
 	echo "bt"                                              >> gdb-command
 	time gdb --command=gdb-command $(JSVMPROG)
+
+image:
+	$(JSVM) $(MAIN_SRCS) -- -img
+	gcc -m32 -o host/tachyon host/loader.c host/tachyon-exts.c host/tachyon.S
 
 test:
 	$(JSVM) $(TEST_SRCS)

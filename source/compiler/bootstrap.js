@@ -46,16 +46,23 @@ Implementation of the compilation of Tachyon using Tachyon.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
 Compile and initialize the Tachyon compiler using Tachyon
 */
-function bootstrap(allCode, params)
+function bootstrap(params, allCode, writeImg)
 {
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters in bootstrap'
+    );
+
+    assert (
+        !(writeImg === true && allCode !== true),
+        'must compile all code to write image'
+    );
+
     log.trace('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
     log.trace('Creating backend context layout');
@@ -90,8 +97,12 @@ function bootstrap(allCode, params)
         }
     );
 
-    // Initialize the runtime
-    initRuntime(params);
+    // If we are not writing an image
+    if (writeImg !== true)
+    {
+        // Initialize the runtime
+        initRuntime(params);
+    }
 
     log.trace('Re-linking primitives');
 
@@ -120,12 +131,16 @@ function bootstrap(allCode, params)
 
         log.trace('Initializing standard library');
 
-        // Execute the standard library code units
-        for (var i = 0; i < libIRs.length; ++i)
+        // If we are not writing an image
+        if (writeImg !== true)
         {
-            log.trace('Executing unit for: "' + libSrcs[i] + '"');
+            // Execute the standard library code units
+            for (var i = 0; i < libIRs.length; ++i)
+            {
+                log.trace('Executing unit for: "' + libSrcs[i] + '"');
 
-            execUnit(libIRs[i], params);
+                execUnit(libIRs[i], params);
+            }
         }
     }
 
@@ -148,15 +163,36 @@ function bootstrap(allCode, params)
 
         log.trace("Code bytes allocated: " + codeBytesAllocated);
 
-        // Execute the Tachyon code units
-        for (var i = 0; i < tachyonIRs.length; ++i)
+        // If we are not writing an image
+        if (writeImg !== true)
         {
-            log.trace('Executing unit for: "' + tachyonSrcs[i] + '"'); 
-            execUnit(tachyonIRs[i], params);
+            // Execute the Tachyon code units
+            for (var i = 0; i < tachyonIRs.length; ++i)
+            {
+                log.trace('Executing unit for: "' + tachyonSrcs[i] + '"'); 
+                execUnit(tachyonIRs[i], params);
+            }
         }
     }
 
-    log.trace('Tachyon initialization complete');
+    // If we writing an image
+    if (writeImg === true)
+    {
+        log.trace('Writing Tachyon image');
+
+        writeImage(
+            params,
+            primIRs,
+            libIRs,
+            tachyonIRs
+        );
+
+        log.trace('Done writing image');
+    }
+    else
+    {
+        log.trace('Tachyon initialization complete');
+    }
 }
 
 /**

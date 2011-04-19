@@ -776,7 +776,7 @@ function makeBridge(
         for (var i = 1; i < arguments.length; ++i)
             argArray.push(arguments[i]);
 
-        //print('calling callTachyonFFI');
+        //print('bridge, calling "' + irFunction.funcName + '" w/ callTachyonFFI');
         //print('Func ptr in Tachyon: ' + funcPtr.getBytes());
 
         var result = callTachyonFFI.apply(

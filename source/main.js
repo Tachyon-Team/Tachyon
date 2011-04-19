@@ -48,10 +48,6 @@ command-line arguments, etc.
 @author
 Maxime Chevalier-Boisvert
 Marc Feeley
-
-@copyright
-Copyright (c) 2011 Maxime Chevalier-Boisvert, All Rights Reserved
-Copyright (c) 2011 Marc Feeley, All Rights Reserved
 */
 
 /**
@@ -92,10 +88,23 @@ function main()
     else if (args.options['gc'])
     {
         // Initialize the Tachyon configuration
-        initConfig(undefined, verbosity);
+        initConfig(args.options['x86_64'], verbosity);
 
         // Generate the GC code
         genGCCode(config.hostParams);
+    }
+
+    // If we are to write an executable image
+    else if (args.options['img'])
+    {
+        //
+        // TODO: complete this
+        //
+
+        // Initialize the Tachyon configuration
+        initConfig(args.options['x86_64'], verbosity);
+
+        writeImage(config.hostParams, undefined, undefined, undefined)
     }
 
     // If source files or inline source are provided    

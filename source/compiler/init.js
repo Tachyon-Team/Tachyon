@@ -66,7 +66,11 @@ function initialize(boot, is64bitMode, verbosity)
     try
     {
         // Compile and initialize the Tachyon primitives
-        bootstrap(boot, boot? config.bootParams:config.hostParams);
+        bootstrap(
+            boot? config.bootParams:config.hostParams,
+            boot,
+            false
+        );
     } 
     catch (e)
     {
