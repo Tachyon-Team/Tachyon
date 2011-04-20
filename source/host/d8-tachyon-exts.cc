@@ -128,6 +128,9 @@
 
 // Tachyon headers
 #include "tachyon-exts.h"
+extern "C" {
+#include "tachyon-profiler.h"
+}
 
 // Posix headers
 #include <sys/mman.h>
@@ -715,6 +718,142 @@ v8::Handle<v8::Value> pauseV8Profile(const v8::Arguments& args)
 }
 
 /*---------------------------------------------------------------------------*/
+/*                            Profiler extensions                            */
+
+v8::Handle<v8::Value> v8Proxy_profilerInit(const v8::Arguments& args)
+{
+    if (args.Length() != 2)
+    {
+        printf("Error in profilerInit -- 2 arguments expected\n");
+        exit(1);
+    }
+    else
+    {
+        // Get profiler kind ("prof", "real", or "virtual")
+        v8::Local<v8::String> kind = args[0]->ToString();
+        char buffer[8];
+        kind->WriteAscii(buffer, 0, 8);
+        buffer[7] = '\0';
+        int pkind;
+        if (!strcmp("prof", buffer)) {
+            pkind = ITIMER_PROF;
+        } else if (!strcmp("real", buffer)) {
+            pkind = ITIMER_REAL;
+        } else if (!strcmp("virtual", buffer)) {
+            pkind = ITIMER_VIRTUAL;
+        } else {
+            printf("Error in profilerInit -- Invalid profiler kind\n");
+            exit(1);
+        }
+
+        // Get interval (in usec)
+        prof_interval interval;
+        interval.usec = args[1]->Int32Value();
+
+        int rv = prof_init(PROF_TYPE_REGULAR, pkind, &interval);
+
+        return (rv == PROF_OK) ? v8::True() : v8::False();
+    }
+}
+
+v8::Handle<v8::Value> v8Proxy_profilerRegisterBlock(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in profilerRegisterBlock -- 1 argument expected\n");
+        exit(1);
+    }
+    else
+    {
+        // Get code block
+        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*args[0]);
+        i::Handle<v8::internal::ExternalUnsignedByteArray> array(
+            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
+        );
+        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
+        uint32_t len = static_cast<uint32_t>(array->length());
+
+        int rv = prof_register_block(block, len);
+
+        return (rv == PROF_OK) ? v8::True() : v8::False();
+    }
+}
+
+v8::Handle<v8::Value> v8Proxy_profilerTerminate(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in profilerTerminate -- no argument expected\n");
+        exit(1);
+    }
+    else
+    {
+        int rv = prof_terminate();
+        return (rv == PROF_OK) ? v8::True() : v8::False();
+    }
+}
+
+v8::Handle<v8::Value> v8Proxy_profilerEnable(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in profilerEnable -- no argument expected\n");
+        exit(1);
+    }
+    else
+    {
+        int rv = prof_enable();
+        return (rv == PROF_OK) ? v8::True() : v8::False();
+    }
+}
+
+v8::Handle<v8::Value> v8Proxy_profilerDisable(const v8::Arguments& args)
+{
+    if (args.Length() != 0)
+    {
+        printf("Error in profilerDisable -- no argument expected\n");
+        exit(1);
+    }
+    else
+    {
+        int rv = prof_disable();
+        return (rv == PROF_OK) ? v8::True() : v8::False();
+    }
+}
+
+v8::Handle<v8::Value> v8Proxy_profilerGetCounters(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in profilerGetCounters -- 1 argument expected\n");
+        exit(1);
+    }
+    else
+    {
+        // Get code block
+        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*args[0]);
+        i::Handle<v8::internal::ExternalUnsignedByteArray> codeblock(
+            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
+        );
+        uint8_t* block = static_cast<uint8_t*>(codeblock->external_pointer());
+
+        uint32_t len = 0;
+        prof_counter *counters = NULL;
+        int rv = prof_get_counters(block, &counters, &len);
+        
+        if (rv != PROF_OK) return v8::Undefined();
+
+        v8::Local<v8::Array> array = v8::Array::New(len);
+        for (uint32_t i = 0; i < len; i++)
+        {
+            array->Set(v8::Number::New(i), v8::Number::New(counters[i])); 
+        }
+
+        return array;
+    }
+}
+
+/*---------------------------------------------------------------------------*/
 
 void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
 {
@@ -788,6 +927,8 @@ void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
         v8::FunctionTemplate::New(v8Proxy_callTachyonFFI)
     );
 
+    // --- Profiler ---
+
     global_template->Set(
         v8::String::New("resumeV8Profile"),
         v8::FunctionTemplate::New(resumeV8Profile)
@@ -796,6 +937,36 @@ void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("pauseV8Profile"),
         v8::FunctionTemplate::New(pauseV8Profile)
+    );
+
+    global_template->Set(
+        v8::String::New("profilerInit"),
+        v8::FunctionTemplate::New(v8Proxy_profilerInit)
+    );
+
+    global_template->Set(
+        v8::String::New("profilerRegisterBlock"),
+        v8::FunctionTemplate::New(v8Proxy_profilerRegisterBlock)
+    );
+
+    global_template->Set(
+        v8::String::New("profilerTerminate"),
+        v8::FunctionTemplate::New(v8Proxy_profilerTerminate)
+    );
+
+    global_template->Set(
+        v8::String::New("profilerEnable"),
+        v8::FunctionTemplate::New(v8Proxy_profilerEnable)
+    );
+
+    global_template->Set(
+        v8::String::New("profilerDisable"),
+        v8::FunctionTemplate::New(v8Proxy_profilerDisable)
+    );
+
+    global_template->Set(
+        v8::String::New("profilerGetCounters"),
+        v8::FunctionTemplate::New(v8Proxy_profilerGetCounters)
     );
 }
 

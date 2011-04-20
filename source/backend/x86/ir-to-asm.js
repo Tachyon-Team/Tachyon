@@ -423,7 +423,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         }
     };
 
-    this.asm.genListing('<fn:' + fct.funcName + '>');
+    this.asm.genListing('<fn:' + fct.funcName + '>', asm.role.FUNC);
 
     // Start the code generation
     this.prelude();
@@ -459,7 +459,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
             }
         });
 
-        that.asm.genListing("");
+        that.asm.genListing("", asm.role.FMT);
     });
 };
 

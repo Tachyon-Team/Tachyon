@@ -59,15 +59,22 @@ var config = {};
 /**
 Initialize the Tachyon configuration
 */
-function initConfig(is64bit, verbosity)
+function initConfig(options)
 {
-    if (is64bit === undefined)
-        is64bit = false;
+    var is64bit = options['x86_64'] !== undefined;
 
-    if (verbosity === undefined)
-        verbosity = log.ALL;
+    config.verbosity = options['v'];
+    if (config.verbosity === undefined)
+        config.verbosity = log.ERROR;
 
-    config.verbosity = verbosity;
+    config.profile = options['profile']; // Supported values : "auto","manual"
+    if (config.profile !== undefined)
+    {
+        if (config.profile === true)
+            config.profile = "auto";
+        else if (config.profile !== "auto" && config.profile !== "manual")
+            error("Unknown profiling mode: " + config.profile)
+    }
 
     log.trace('Initializing config (' + (is64bit? '64':'32') + 'bit)');
 

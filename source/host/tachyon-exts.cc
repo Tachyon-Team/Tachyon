@@ -559,4 +559,3 @@ FPTR getFuncAddr(const char* funcName)
 
     return address;
 }
-

@@ -389,6 +389,18 @@ asm.CodeBlock.prototype.genLabel = function (label)
     return this;
 };
 
+
+/** @namespace */
+asm.role = {};
+/** ASM formatting listing */
+asm.role.FMT  = "ASM_ROLE_FORMATTING";
+/** ASM label listing */
+asm.role.LBL  = "ASM_ROLE_LABEL";
+/** ASM instruction listing */
+asm.role.INST = "ASM_ROLE_INSTRUCTION";
+/** ASM function header listing */
+asm.role.FUNC = "ASM_ROLE_FUNCTION";
+
 /** 
     Returns a new listing object. Note: the lower case constructor
     means new is not necessary to create an object of this class 
@@ -397,17 +409,38 @@ asm.CodeBlock.prototype.genLabel = function (label)
     @augments asm.CodeBlock.obj
     @param {String} text  string that will be printed in listings
 */
-asm.CodeBlock.prototype.listing = function (text)
+asm.CodeBlock.prototype.listing = function (text, role)
 {
     asm.assert(text !== undefined, "no text supplied for listing");
+    asm.assert(role !== undefined, "no role supplied for listing");
 
     var that = Object.create(asm.CodeBlock.prototype.listing.prototype);
     that.text = text;
+    that.role = role;
+    that._pos = null;
     return that;
 };
 asm.CodeBlock.prototype.listing.prototype = asm.CodeBlock.obj();
 /** asm object type */
 asm.CodeBlock.prototype.listing.prototype.type = asm.type.LST;
+
+// TODO: Refactor to use getter and setter once the compiler supports them
+/** Retrieve the current position of the listing */
+asm.CodeBlock.prototype.listing.prototype.getPos = function ()
+{
+    asm.assert(this._pos !== null, "no position for listing", this);
+    return this._pos;
+}; 
+
+/** 
+    Assign the new position of the listing 
+    @param {Number} p
+*/
+asm.CodeBlock.prototype.listing.prototype.setPos = function (p)
+{
+    asm.assert(typeof p === "number", "Invalid position for listing");
+    this._pos = p;
+};
 
 /** 
    Produces a string representing the listing of the code block.
@@ -519,7 +552,9 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
             // block and print the listing with a space separating
             // the hex code and the listing
             s[index++] = spaces(textCol - col - 1) + 
-                         this.code[i].text + newline();
+                         this.code[i].text +
+                         " [" + this.code[i].role + "]" +
+                         newline();
             col = 0;
         } else 
         {
@@ -537,9 +572,9 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
 };
 
 /** Adds text to the code block as a listing object */
-asm.CodeBlock.prototype.genListing = function (text)
+asm.CodeBlock.prototype.genListing = function (text, role)
 {
-    this.extend(this.listing(text));
+    this.extend(this.listing(text, role));
     return this;
 };
 
@@ -789,6 +824,9 @@ asm.CodeBlock.prototype.assemble = function ()
                 fixupList.push([span, curr]);
                 span = 0;
                 break;
+            case asm.type.LST:
+                curr.setPos(pos);
+                break;
             default:
                 break;
         }
@@ -892,6 +930,9 @@ asm.CodeBlock.prototype.assemble = function ()
                     curr.prods[curr.current](this, pos);
                     pos = pos + curr.size;
                     break; 
+                case asm.type.LST:
+                    curr.setPos(pos);
+                    // fallthrough
                 default:
                     // Leave other objects in place
                     this.extend(curr);
@@ -911,6 +952,10 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
     const len = this.assemble();
     const block = allocMemoryBlock(len, true);
     block.length = len;
+    if (config.profile) {
+        profiler.registerBlock(that, block);
+    }
+
     const baseAddr = asm.address(getBlockAddr(block, 0));
     var pos = 0;
 

@@ -54,14 +54,19 @@ Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 /**
 Initialize the resources required by the Tachyon VM.
 */
-function initialize(boot, is64bitMode, verbosity)
+function initialize(boot, options)
 {
     // Initialize the Tachyon configuration
-    initConfig(is64bitMode, verbosity);
+    initConfig(options);
 
     //config.hostParams.printLIR = true;
     //config.hostParams.printRegAlloc = true;
     //config.hostParams.printASM = true;
+    
+    if (config.profile)
+        profiler.init();
+    if (config.profile === "auto")
+        profiler.enable();
 
     try
     {
@@ -89,5 +94,11 @@ function uninitialize()
     {
         primIt.get().runtime.free();
     }
+
+
+    if (config.profile === "auto")
+        profiler.disable();
+    if (config.profile)
+        profiler.terminate();
 }
 

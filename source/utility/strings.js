@@ -270,6 +270,19 @@ function leftPadStr(str, pad, len)
 }
 
 /**
+Right-pad a string until it has the desired length
+*/
+function rightPadStr(str, pad, len)
+{
+    str = str.toString();
+
+    while (str.length < len)
+        str = str + pad;
+
+    return str;
+}
+
+/**
 Remove a given set of characters from the start and end of a string
 */
 function stripStr(str, chars)

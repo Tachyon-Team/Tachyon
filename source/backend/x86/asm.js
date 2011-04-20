@@ -1054,14 +1054,15 @@ x86.Assembler.prototype.noOpndInstr = function (opcode, mnemonic)
 {
     this.gen8(opcode);
     if (this.useListing)
-        this.genListing(x86.instrFormat(mnemonic, ""));
+        this.genListing(x86.instrFormat(mnemonic, ""),
+                        asm.role.INST);
     return this;
 };
 
 /** Adds text to the listing output. Can be chained. */
-x86.Assembler.prototype.genListing = function (text)
+x86.Assembler.prototype.genListing = function (text, role)
 {
-    this.codeBlock.genListing(text);
+    this.codeBlock.genListing(text, role);
     return this;
 };
 
@@ -1384,7 +1385,8 @@ x86.Assembler.prototype.opImm = function (op, mnemonic, src, dest, width)
             that.genListing(x86.instrFormat(mnemonic,
                                              x86.widthSuffix(width),
                                              dest,
-                                             value));
+                                             value),
+                            asm.role.INST);
         }
     }
 
@@ -1494,7 +1496,8 @@ x86.Assembler.prototype.movImm = function (dest, src, width)
             that.genListing(x86.instrFormat("mov",
                                              x86.widthSuffix(width),
                                              dest,
-                                             value));
+                                             value),
+                            asm.role.INST);
         }
     }
 
@@ -1611,7 +1614,8 @@ x86.Assembler.prototype.op = function (op, mnemonic, dest, src, width)
             that.genListing(x86.instrFormat(mnemonic,
                                              x86.regWidthSuffix(reg),
                                              (isSwapped) ? opnd : reg,
-                                             (isSwapped) ? reg  : opnd));
+                                             (isSwapped) ? reg  : opnd),
+                            asm.role.INST);
         }
     }
 
@@ -1667,7 +1671,8 @@ x86.Assembler.prototype.pushImm = function (dest)
         {
             that.genListing(x86.instrFormat("push",
                                              that._32or64bitSuffix(),
-                                             that.immediateValue(n)));
+                                             that.immediateValue(n)),
+                            asm.role.INST);
         }
     }
 
@@ -1697,7 +1702,8 @@ x86.Assembler.prototype.pushPop = function (opnd, isPop)
         {
             that.genListing(x86.instrFormat(isPop ? "pop" : "push",
                                              that._32or64bitSuffix(),
-                                             opnd));
+                                             opnd),
+                            asm.role.INST);
         }
     }
 
@@ -1762,7 +1768,8 @@ x86.Assembler.prototype.incDec = function (opnd, isInc, width)
         {
             that.genListing(x86.instrFormat((isInc ? "inc" : "dec"),
                                              x86.widthSuffix(width),
-                                             opnd));
+                                             opnd),
+                            asm.role.INST);
         }
     }
 
@@ -1871,7 +1878,7 @@ x86.Assembler.prototype.label = function (lbl)
     assert(lbl.type === asm.type.LBL,
                "invalid label" + lbl);
     this.
-    genListing(x86.labelFormat(lbl)).
+    genListing(x86.labelFormat(lbl), asm.role.LBL).
     codeBlock.genLabel(lbl);
     return this;
 };
@@ -1901,7 +1908,8 @@ x86.Assembler.prototype.jumpLabel = function (opcode, mnemonic, label, offset)
             that.genListing(
                 x86.instrFormat(mnemonic,
                                  that.jumpLabelSuffix(isShort),
-                                 label.name() + x86.offsetToString(offset)));
+                                 label.name() + x86.offsetToString(offset)),
+                asm.role.INST);
         }
     };
 
@@ -1991,7 +1999,8 @@ x86.Assembler.prototype.jumpLink = function (opcode, mnemonic, linkObj)
     this.
     require(linkObj).
     genListing(
-        x86.instrFormat(mnemonic, x86.widthSuffix(linkObj.width()), linkObj));
+        x86.instrFormat(mnemonic, x86.widthSuffix(linkObj.width()), linkObj),
+        asm.role.INST);
 
     return this;
 };
@@ -2013,7 +2022,8 @@ x86.Assembler.prototype.jumpGeneral = function (field, opnd)
         this.genListing(
             x86.instrFormat((field === 4) ? "jmp" : "call",
                              null,
-                             opnd));
+                             opnd),
+            asm.role.INST);
     }
 
     return this;
@@ -2040,7 +2050,8 @@ x86.Assembler.prototype.ret = function (opnd)
         this.
         genListing(x86.instrFormat("ret",
                                    "",
-                                   opnd));
+                                   opnd),
+                   asm.role.INST);
     }
 };
 /** Can be chained. */
@@ -2211,7 +2222,8 @@ x86.Assembler.prototype.movxx = function (src, dst, signExt, width)
                     x86.widthSuffix(srcWidth) + x86.regWidthSuffix(reg),
                     reg,
                     opnd
-                )
+                ),
+                asm.role.INST
            );
         }
     }
@@ -2325,7 +2337,8 @@ x86.Assembler.prototype.lea  = function (src, dest)
         this.genListing(x86.instrFormat("lea",
                                         x86.regWidthSuffix(dest),
                                         dest,
-                                        src));
+                                        src),
+                        asm.role.INST);
     }
     return this;
 };
@@ -2358,7 +2371,8 @@ x86.Assembler.prototype.test = function (src, dest, width)
             that.genListing(x86.instrFormat("test",
                                              x86.widthSuffix(width),
                                              dest,
-                                             that.immediateValue(n)));
+                                             that.immediateValue(n)),
+                            asm.role.INST);
         }
     };
 
@@ -2385,7 +2399,8 @@ x86.Assembler.prototype.test = function (src, dest, width)
         that.genListing(x86.instrFormat("test",
                                         x86.widthSuffix(width),
                                         dest,
-                                        src));
+                                        src),
+                        asm.role.INST);
     };
 
     if (dest.type === x86.type.REG &&
@@ -2425,7 +2440,8 @@ x86.Assembler.prototype.cmoveGeneral  = function (op, mnemonic, src, dest)
         this.genListing(x86.instrFormat(mnemonic,
                                         x86.regWidthSuffix(dest),
                                         dest,
-                                        src));
+                                        src),
+                        asm.role.INST);
     }
     return this;
 };
@@ -2791,7 +2807,8 @@ function (opcodeExt, mnemonic, src, dest, width)
                 x86.widthSuffix(width),
                 dest,
                 (src.type === x86.type.IMM_VAL) ? this.immediateValue(k) : src
-            )
+            ),
+            asm.role.INST
         );
     }
 
@@ -2854,7 +2871,8 @@ function (opcode, opcodeExt, mnemonic, dest, width)
     {
         this.genListing(x86.instrFormat(mnemonic,
                                         x86.widthSuffix(width),
-                                        dest));
+                                        dest),
+                        asm.role.INST);
     }
 
     return this;
@@ -2917,7 +2935,8 @@ x86.Assembler.prototype.imul = function (src, dst, imm, width)
                     dst
                 )
                 +
-                (imm? (',' + x86.opndFormatGNU(imm)):'')
+                (imm? (',' + x86.opndFormatGNU(imm)):''),
+                asm.role.INST
             );
         }
     }
@@ -2984,7 +3003,7 @@ x86.Assembler.prototype.cdq = function ()
 
     if (this.useListing)
     {
-        this.genListing(x86.instrFormat('cdq'));
+        this.genListing(x86.instrFormat('cdq'), asm.role.INST);
     }
 
     return this;
@@ -2998,7 +3017,7 @@ x86.Assembler.prototype.cqo = function ()
 
     if (this.useListing)
     {
-        this.genListing(x86.instrFormat('cqo'));
+        this.genListing(x86.instrFormat('cqo'), asm.role.INST);
     }
 
     return this;
@@ -3044,7 +3063,8 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
                     x86.regWidthSuffix(dst),
                     src,
                     (width === 32)? that.register.eax:that.register.rax
-                )
+                ),
+                asm.role.INST
             );
         }
     }
@@ -3074,7 +3094,8 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
                     x86.regWidthSuffix(dst),
                     src,
                     dst
-                )
+                ),
+                asm.role.INST
             );
         }
     }

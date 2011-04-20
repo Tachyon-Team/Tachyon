@@ -63,7 +63,9 @@ function main()
     if (RUNNING_IN_TACHYON)
     {
         // Initialize Tachyon in minimal mode
-        initialize(false, boolToBox(PTR_NUM_BYTES === pint(8)));
+        var options = {};
+        options['x86_64'] = boolToBox(PTR_NUM_BYTES === pint(8));
+        initialize(false, options);
 
         tachyonRepl();
 
@@ -76,13 +78,11 @@ function main()
     // Parse the command-line arguments
     var args = parseCmdLine();
 
-    var verbosity = log.level(args.options['v']);
-
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
     {
         // Initialize Tachyon in bootstrap mode
-        initialize(true, args.options['x86_64'], verbosity);
+        initialize(true, args.options);
 
         // ???
         // Profit        
@@ -102,7 +102,7 @@ function main()
     else if (args.files.length > 0 || args.options['e'])
     {
         // Initialize Tachyon in minimal mode
-        initialize(false, args.options["x86_64"], verbosity);
+        initialize(false, args.options);
 
         config.hostParams.printAST = args.options["ast"];
         config.hostParams.printHIR = args.options["hir"];
@@ -160,7 +160,7 @@ function main()
     else
     {
         // Initialize Tachyon in minimal mode
-        initialize(false, args.options['x86_64'], verbosity);
+        initialize(false, args.options);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();

@@ -85,6 +85,8 @@ BASE_SRCS =                             \
     utility/num.js                      \
     utility/xml.js                      \
     utility/html.js                     \
+    utility/shell.js                    \
+    profiler/profiler.js                \
     compiler/sources.js                 \
     compiler/targets.js                 \
     compiler/params.js                  \
