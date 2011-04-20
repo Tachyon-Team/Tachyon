@@ -53,6 +53,8 @@ Write an image containing the compiled Tachyon machine code
 */
 function writeImage(params, primIRs, libIRs, tachyonIRs)
 {
+    log.trace('Writing Tachyon image');
+
     const asmFile = 'host/tachyon.S';
 
     var asmStr = '';
@@ -94,13 +96,16 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
     writeln('.globl EXTERN(tachyon_main)');
     writeln();
 
-    //
-    // TODO: list imported C functions
-    //
-    //# C functions imported to image
-    //.globl EXTERN(print)
-    //.globl EXTERN(gcCollect)
-    //
+    // List imported C functions
+    var numCFuncs = 0;
+    for (k in params.ffiFuncs)
+    {
+        var func = params.ffiFuncs[k];
+        ++numCFuncs;
+        writeln('.globl EXTERN(' + func.funcName + ')');
+    }
+    writeln();
+    log.trace('Listed ' + numCFuncs + ' external C functions');
 
     // Start of code section
     writeln('.text');
@@ -108,6 +113,52 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
     writeln('EXTERN(code_start):');
     writeln('CODE:');
     writeln();
+
+
+
+
+
+
+    /*
+    Write all code blocks into big byte array first? Must memorize offsets
+    of function entry points in some kind of table. Can then refer to
+    these as CODE+XXXX.
+
+    Should possibly write all string data into a big table before starting
+    dump as well. Refer as DATA+XXXX.
+
+    
+
+
+
+
+
+    */
+
+
+    var codeArray = [];
+
+
+
+
+
+
+
+
+
+
+    var dataArray = [];
+
+
+
+
+
+
+
+
+
+
+
 
     // TODO: implement and locate tachyon main function
     // Label of the Tachyon main function
@@ -134,6 +185,12 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
      .byte 195
     */
 
+
+
+
+
+
+
     // End of code section
     writeln('PAGE_ALIGN');
     writeln('EXTERN(code_end):');
@@ -143,10 +200,14 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
     writeln('.data');
     writeln('PAGE_ALIGN');
     writeln('EXTERN(data_start):');
+    writeln('DATA:');
     writeln();
 
+    // FIXME: TEST
+    writeln('.long EXTERN(writeFile)');
     /*
     DATA:
+     .long EXTERN(gcCollect)
      .byte 144,144,144,144,144,144,144
      .long DATA+20
      .byte 144,144,144,144,144,144,144
@@ -160,5 +221,7 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
 
     // Write the ASM file
     writeFile(asmFile, asmStr);
+
+    log.trace('Done writing image');
 }
 

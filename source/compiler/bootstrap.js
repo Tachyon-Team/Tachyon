@@ -57,11 +57,13 @@ function bootstrap(params, allCode, writeImg)
         params instanceof CompParams,
         'expected compilation parameters in bootstrap'
     );
-
+    
+    /* FIXME: disabled for testing purposes
     assert (
         !(writeImg === true && allCode !== true),
         'must compile all code to write image'
     );
+    */
 
     log.trace('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
@@ -129,11 +131,11 @@ function bootstrap(params, allCode, writeImg)
             }
         );
 
-        log.trace('Initializing standard library');
-
         // If we are not writing an image
         if (writeImg !== true)
         {
+            log.trace('Initializing standard library');
+
             // Execute the standard library code units
             for (var i = 0; i < libIRs.length; ++i)
             {
@@ -178,16 +180,12 @@ function bootstrap(params, allCode, writeImg)
     // If we writing an image
     if (writeImg === true)
     {
-        log.trace('Writing Tachyon image');
-
         writeImage(
             params,
             primIRs,
             libIRs,
             tachyonIRs
         );
-
-        log.trace('Done writing image');
     }
     else
     {

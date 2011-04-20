@@ -90,7 +90,6 @@ BASE_SRCS =                             \
     compiler/params.js                  \
     compiler/config.js                  \
     compiler/compiler.js                \
-    compiler/init.js                    \
     compiler/bootstrap.js               \
     compiler/imgwriter.js               \
     parser/misc.js                      \
@@ -258,10 +257,10 @@ gc:
 	gcc -std=c99 -c -o host/gc-generated.o host/gc-generated.c
 
 bootstrap:
-	time $(JSVM) $(MAIN_SRCS) -- -bootstrap
+	time $(JSVM) $(MAIN_SRCS) -- -bootstrap -v=all
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -x86_64
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -x86_64 -v=all
 
 bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap" > gdb-command
@@ -269,14 +268,14 @@ bootstrap-debug:
 	time gdb --command=gdb-command $(JSVMPROG)
 
 image:
-	$(JSVM) $(MAIN_SRCS) -- -img
+	$(JSVM) $(MAIN_SRCS) -- -image -v=all
 	gcc -m32 -o host/tachyon host/loader.c host/tachyon-exts.c host/tachyon.S
 
 test:
-	$(JSVM) $(TEST_SRCS)
+	$(JSVM) $(TEST_SRCS) -- -v=all
 
 test64:
-	$(JSVM64) $(TEST_SRCS) -- -x86_64
+	$(JSVM64) $(TEST_SRCS) -- -x86_64 -v=all
 
 perf:
 	./bench/d8.sh                                   \
