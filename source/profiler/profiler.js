@@ -52,7 +52,7 @@ profiler.BlockInfo.prototype.getSamples = function (from, to)
         if (to > counters.length) to = counters.length;
         if (from < 0) from = 0;
 
-        for (var i = from || 0; i < to; i++)
+        for (var i = from; i < to; i++)
         {
             sum = sum + counters[i];
         }
@@ -111,7 +111,7 @@ profiler.Profile = function () {
     for (var i in profiler.codeblocks) {
         var block = this.blocks[i];
         block.counters = profilerGetCounters(block.getMCB());
-        block.sum = block.getSamples();
+        block.sum = block.getSamples(0, block.counters.length);
     }
 };
 

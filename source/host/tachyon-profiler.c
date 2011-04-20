@@ -269,8 +269,6 @@ int prof_register_block(code_address block, size_t size)
 {
     block_info *binfo;
 
-    fprintf(stderr, "Registering: %p\n", block);
-    
     assert (p.state != PROF_STATE_CREATED && p.state != PROF_STATE_TERMINATED);
     
     binfo = NEW(block_info);
