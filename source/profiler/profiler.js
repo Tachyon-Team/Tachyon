@@ -89,7 +89,7 @@ profiler.disable = profilerDisable;
 profiler.terminate = function () {
     profilerDisable();
     var p = profiler.getProfile();
-    var v = new profiler.ShellListing(false);
+    var v = new profiler.ShellListing(true);
     for (var i in p.blocks) {
         var b = p.blocks[i];
         if (b.sum > 0)
@@ -138,6 +138,7 @@ profiler.Profile.prototype.genListing = function (block, v, precision) {
 
     // Prepend a synthetic 'start' function header for convenience
 
+    /*
     var newCode = new Array();
     newCode.push(codeblock.listing("<start>", asm.role.FUNC));
     for (var i = 0; i < code.length; i++) {
@@ -146,6 +147,7 @@ profiler.Profile.prototype.genListing = function (block, v, precision) {
         }
     }
     code = newCode;
+    */
 
     // Compute samples
 
@@ -178,6 +180,7 @@ profiler.Profile.prototype.genListing = function (block, v, precision) {
     v.begin(block);
     for (var i = 0; i < code.length; i++) {
         var c = code[i];
+        if (c.type !== asm.type.LST) continue;
         switch (c.role) {
             case asm.role.FUNC:
                 func_samples = samples[i];

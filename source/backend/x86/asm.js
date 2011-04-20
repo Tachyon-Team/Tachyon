@@ -98,7 +98,7 @@ x86.Assembler = function (target)
         target = x86.target.x86;
 
     /** Flag for listing output */
-    this.useListing = true;
+    this.useListing = true || config.profile;
 
     /** Generic underlying assembler object  */
     this.codeBlock  = new asm.CodeBlock(0, false, this.useListing);
