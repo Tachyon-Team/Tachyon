@@ -81,7 +81,7 @@ function main()
     if (config.profile)
         profiler.init();
     if (config.profile === "auto")
-        profilter.enable();
+        profiler.enable();
 
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
@@ -177,7 +177,7 @@ function main()
     }
 
     if (config.profile === "auto")
-        profilter.disable();
+        profiler.disable();
     if (config.profile)
         profiler.terminate();
 }

@@ -552,9 +552,7 @@ asm.CodeBlock.prototype.listingString = function (fromIndex, toIndex)
             // block and print the listing with a space separating
             // the hex code and the listing
             s[index++] = spaces(textCol - col - 1) + 
-                         this.code[i].text +
-                         " [" + this.code[i].role + "]" +
-                         newline();
+                         this.code[i].text + newline();
             col = 0;
         } else 
         {
