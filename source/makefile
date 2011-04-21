@@ -110,6 +110,7 @@ BASE_SRCS =                             \
     ir/commelim.js                      \
     ir/inlining.js                      \
     ir/lowering.js                      \
+    analysis/usedist.js                 \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
