@@ -47,8 +47,9 @@ Generic assembler.
 The following code was inspired by the Gambit code 
 generator written in Scheme.
 
-@copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+@author
+Erick Lavoie
+Maxime Chevalier-Boisvert
 */
 
 /** @namespace */
@@ -932,7 +933,8 @@ asm.CodeBlock.prototype.assembleToMachineCodeBlock = function ()
 
             return { getOffset: function () { return offset; },
                      linkValue: function () { return this.linkObj.linkValue(dstAddr); },
-                     linkObj: o.linkObj};
+                     linkObj: o.linkObj
+            };
         });
 
     block.getRequiredIt = function ()

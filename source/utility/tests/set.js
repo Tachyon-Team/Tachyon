@@ -115,3 +115,4 @@ tests.utility.set.hashSet = function ()
     assert(s3.copy().clear().length === 0);
 
 };
+
