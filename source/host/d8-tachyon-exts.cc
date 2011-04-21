@@ -179,7 +179,7 @@ v8::Handle<v8::Value> v8Proxy_readFile(const v8::Arguments& args)
 
     v8::Local<v8::String> v8Str = v8::String::New(outStr);
 
-    delete [] outStr;
+    free(outStr);
 
     return v8Str;
 }
@@ -199,7 +199,7 @@ v8::Handle<v8::Value> v8Proxy_shellCommand(const v8::Arguments& args)
 
     v8::Local<v8::String> v8Str = v8::String::New(outStr);
 
-    delete [] outStr;
+    free(outStr);
 
     return v8Str;
 }
@@ -220,7 +220,7 @@ v8::Handle<v8::Value> v8Proxy_readConsole(const v8::Arguments& args)
     if (buffer != NULL)
     {
         v8::Local<v8::String> v8Str = v8::String::New(buffer);
-        delete [] buffer;
+        free(buffer);
         return v8Str;
     }
     else
@@ -544,6 +544,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         exit(1);
     }
 
+    //printf("in v8Proxy_callTachyonFFI\n");
+
     // Get the array of argument types
     const v8::Local<v8::Object> argTypeArray = args[0]->ToObject();
 
@@ -586,6 +588,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         v8::String::Utf8Value argTypeStrObj(argTypeArray->Get(i));
         const char* argTypeStr = *argTypeStrObj;
 
+        //printf("Arg type str: \"%s\"\n", argTypeStr);
+
         // Value for the current argument
         TachVal tachArg;
 
@@ -614,7 +618,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
             }
             else
             {
-                //printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
+                printf("Error in callTachyonFFI -- pointer arguments should be byte arrays\n");
                 exit(1);
             }
         }
@@ -630,6 +634,8 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
         memcpy(argPtr, &tachArg, sizeof(tachArg));
         argPtr += sizeof(tachArg);
     }
+
+    //printf("calling callTachyonFFI\n");
 
     // Call the function
     TachVal retVal = callTachyonFFI(
@@ -857,6 +863,8 @@ v8::Handle<v8::Value> v8Proxy_profilerGetCounters(const v8::Arguments& args)
 
 void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
 {
+    initTachyonExts();
+
     global_template->Set(
         v8::String::New("writeFile"), 
         v8::FunctionTemplate::New(v8Proxy_writeFile)

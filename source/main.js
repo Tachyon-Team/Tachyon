@@ -48,10 +48,6 @@ command-line arguments, etc.
 @author
 Maxime Chevalier-Boisvert
 Marc Feeley
-
-@copyright
-Copyright (c) 2011 Maxime Chevalier-Boisvert, All Rights Reserved
-Copyright (c) 2011 Marc Feeley, All Rights Reserved
 */
 
 /**
@@ -62,15 +58,16 @@ function main()
     // If we are running in bootstrap mode
     if (RUNNING_IN_TACHYON)
     {
-        // Initialize Tachyon in minimal mode
+        // Initialize the Tachyon configuration
         var options = {};
         options['x86_64'] = boolToBox(PTR_NUM_BYTES === pint(8));
-        initialize(false, options);
+        initConfig(options);
 
+        // Perform a minimal Tachyon compilation
+        bootstrap(config.hostParams, false, false);
+
+        // Call the Tachyon read-eval-print loop
         tachyonRepl();
-
-        // Uninitialize Tachyon
-        uninitialize();
 
         return;
     }
@@ -78,22 +75,35 @@ function main()
     // Parse the command-line arguments
     var args = parseCmdLine();
 
+    // Initialize the Tachyon configuration
+    initConfig(args.options);
+
+    if (config.profile)
+        profiler.init();
+    if (config.profile === "auto")
+        profilter.enable();
+
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
     {
-        // Initialize Tachyon in bootstrap mode
-        initialize(true, args.options);
+        // Perform a full bootstrap without writing an image
+        bootstrap(config.bootParams, true, false);
 
         // ???
         // Profit        
     }
 
+    // If we are to write an executable image
+    else if (args.options['image'])
+    {
+        // Perform a full bootstrap and write the image
+        // FIXME: for now, not compiling all code, for testing purposes
+        bootstrap(config.bootParams, false, true);
+    }
+
     // If gc code generation is requested
     else if (args.options['gc'])
     {
-        // Initialize the Tachyon configuration
-        initConfig(undefined, verbosity);
-
         // Generate the GC code
         genGCCode(config.hostParams);
     }
@@ -101,8 +111,8 @@ function main()
     // If source files or inline source are provided    
     else if (args.files.length > 0 || args.options['e'])
     {
-        // Initialize Tachyon in minimal mode
-        initialize(false, args.options);
+        // Perform a minimal Tachyon compilation
+        bootstrap(config.hostParams, false, false);
 
         config.hostParams.printAST = args.options["ast"];
         config.hostParams.printHIR = args.options["hir"];
@@ -159,15 +169,17 @@ function main()
     // If there are no filenames on the command line, start shell mode
     else
     {
-        // Initialize Tachyon in minimal mode
-        initialize(false, args.options);
+        // Perform a minimal Tachyon compilation
+        bootstrap(config.hostParams, false, false);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
     }
 
-    // Uninitialize Tachyon
-    uninitialize();
+    if (config.profile === "auto")
+        profilter.disable();
+    if (config.profile)
+        profiler.terminate();
 }
 
 /**
@@ -254,7 +266,7 @@ function tachyonRepl()
             case 'time_comp':
             var startTimeMs = (new Date()).getTime();
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             var endTimeMs = (new Date()).getTime();
@@ -264,7 +276,7 @@ function tachyonRepl()
 
             case 'time_exec':
             if (isSrcFile(args))
-                var ir = compFile(args)
+                var ir = compFile(args);
             else
                 var ir = compString(args);
             var startTimeMs = (new Date()).getTime();
@@ -277,7 +289,7 @@ function tachyonRepl()
             case 'ast':
             config.hostParams.printAST = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printAST = false;
@@ -286,7 +298,7 @@ function tachyonRepl()
             case 'hir':
             config.hostParams.printHIR = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printHIR = false;
@@ -295,7 +307,7 @@ function tachyonRepl()
             case 'lir':
             config.hostParams.printLIR = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printLIR = false;
@@ -304,7 +316,7 @@ function tachyonRepl()
             case 'asm':
             config.hostParams.printASM = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printASM = false;
@@ -313,7 +325,7 @@ function tachyonRepl()
             case 'reg':
             config.hostParams.printRegAlloc = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printRegAlloc = false;
@@ -439,3 +451,4 @@ catch (e)
     else
         print(e);
 }
+

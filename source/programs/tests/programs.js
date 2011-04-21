@@ -60,11 +60,22 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
     {
         for (var i = 0; i < inputArgs.length; ++i)
         {
-            assert (
-                isInt(inputArgs[i]),
-                'only integer arguments supported for now'
-            );
-            argTypes.push(new CIntAsBox());
+            var arg = inputArgs[i];
+
+            if (isInt(arg))
+            {
+                argTypes.push(new CIntAsBox());
+            }
+            else if (typeof arg === 'string')
+            {
+                print('Adding string arg type');
+
+                argTypes.push(new CStringAsBox());
+            }
+            else
+            {
+                error('unsupported argument type');
+            }
         }
     }
 
@@ -118,6 +129,8 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
             argTypes,
             new CIntAsBox()
         );
+
+        //print('compileAndRunSrcs, calling w/ args: ' + inputArgs);
 
         // Call the function with the given arguments
         var result = funcBridge.apply(undefined, [params.ctxPtr].concat(inputArgs));
@@ -301,6 +314,28 @@ tests.programs.ffi_sum = genTest(
     'f',
     [10,15],
     25,
+    'hostParams'
+);
+
+/**
+Time-related FFI functions
+*/
+tests.programs.ffi_time = genTest(
+    'programs/ffi_time/ffi_time.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
+File I/O FFI functions
+*/
+tests.programs.ffi_fileio = genTest(
+    'programs/ffi_fileio/ffi_fileio.js',
+    'test',
+    [],
+    0,
     'hostParams'
 );
 

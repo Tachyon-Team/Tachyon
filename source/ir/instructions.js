@@ -822,6 +822,18 @@ var HIRInstr = function ()
 };
 HIRInstr.prototype = new IRInstr();
 
+// TODO: PROBLEM: some HIR instructions may throw exceptions. Would need to
+// descend from ExceptInstr?
+//
+// May want to alter design to eliminate ExceptInstr
+// Could have a throws() function defined on all instructions
+// by default, checks for second branch target
+// Also define setThrowTarget for all?
+//
+// Other possibility is to get rid of HIRInstr, just check if lower
+// function is defined on the instruction
+// May be more logical. HIRInstr screws with current hierarchy
+
 /**
 Create an HIR instruction constructor
 */

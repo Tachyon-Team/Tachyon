@@ -44,8 +44,8 @@
 @fileOverview
 Entry point for the backend of the Javascript VM. This code should be platform agnostic.
 
-@copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+@author
+Erick Lavoie
 */
 
 /** @namespace */

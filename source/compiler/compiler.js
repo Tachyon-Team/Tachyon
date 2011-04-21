@@ -44,8 +44,9 @@
 @fileOverview
 High-level compiler interface.
 
-@copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+@author
+Erick Lavoie
+Maxime Chevalier-Boisvert
 */
 
 /** @namespace Glue code to tie the frontend and the backend together. */
@@ -91,17 +92,26 @@ Compiles an IRFunction and assigns linking and runtime
 information to it. The runtime.mcb properties on the 
 IRFunction should be freed once it is no longer used.
 */
-function compileIR(ir, params) 
+function compileIR(ir, params, keepCB) 
 {
     assert (
         params instanceof CompParams,
         'expected compilation parameters'
     );
-
+    
     ir.linking.linked = false;
     ir.linking.link = compiler.link;
 
-    var mcb = backend.compileIRToMCB(ir, params);
+    var cb = backend.compileIRToCB(ir, params);
+
+    if (params.printASM === true)
+        params.print(backend.listing(cb));
+
+    var mcb = cb.assembleToMachineCodeBlock();
+
+    if (keepCB === true)
+        ir.runtime.cb = cb;
+
     ir.runtime.mcb = mcb;
     ir.runtime.execute = compiler.execute;
     ir.runtime.free = compiler.free;

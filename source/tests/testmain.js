@@ -44,21 +44,28 @@
 @fileOverview
 Entry point for the testing mode.
 
-@copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+@author
+Maxime Chevalier-Boisvert
+Erick Lavoie
 */
 
 var args = parseCmdLine();
 
-// Initialize Tachyon
-assert(initialize(false, args.options["x86_64"]), "Initialization failed");
+// Get the verbosity command-line option value
+var verbosity = log.level(args.options['v']);
+
+// Get the 64-bit mode command-line option value
+var x86_64 = args.options['x86_64'];
+
+// Initialize the Tachyon configuration
+initConfig(x86_64, verbosity);
+
+// Perform a minimal Tachyon compilation
+bootstrap(config.hostParams, false, false);
 
 // config.hostParams.print = print;
 
 // Run all unit tests
 tests.run(true, undefined, true);
 //tests.run(false, undefined, true);
-
-// Uninitialize Tachyon
-uninitialize();
 

@@ -174,10 +174,6 @@ function lowerIRCFG(cfg, params)
                 {
                     print('lowering HIR instruction: ' + instr);
 
-                    //
-                    // TODO
-                    //
-
                     // If HIR instruction is found, split current block.
                     // Create IR conversion context?
 
@@ -208,15 +204,11 @@ function lowerIRCFG(cfg, params)
                         params
                     );
 
-                    // TODO: adjust IR conv context to accept null values for
-                    // most unneeded parameters
+                    // Perform lowering for this instruction
+                    instr.lower(context);
 
-
-
-
-
-
-
+                    // Make the flow jump to the exit block
+                    context.getExitBlock().addInstr(new JumpInstr(exitBlock));
 
                     var instr = itr.get();
                 }
@@ -401,7 +393,31 @@ function makeLowerFunc(primName)
 /**
 HIR add instruction
 */
-HIRAddInstr.prototype.lower = function (context)
+/*HIRAddInstr.prototype.lower = function (context)
 {
+}*/
+
+/**
+HIR getProp instruction
+*/
+GetPropInstr.prototype.lower = function (context)
+{
+    /*
+    TODO:
+
+    PROBLEM: global fetches need a property existence check...
+    May need a GetGlobalInstr
+    Can reuse lower func from GetProp? No, need no is object check.
+    */
+
+    // Create the appropriate operator instruction
+    var val = insertPrimCallIR(
+        context, 
+        'getPropVal', 
+        this.uses
+    );
+
+    // Set the operator's output value as the output
+    context.setOutput(context.entryBlock, val);
 }
 

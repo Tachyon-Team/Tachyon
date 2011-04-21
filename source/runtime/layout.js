@@ -900,7 +900,7 @@ MemLayout.prototype.genCMethods = function ()
                 spec.type !== IRType.box &&
                 spec.type !== IRType.ref &&
                 (spec.type !== IRType.u32 || spec.name !== 'header') &&
-                (spec.type !== IRType.pint || spec.name !== 'size'))
+                (spec.name !== 'size'))
                 return;
 
             // String for the accessor name
@@ -1009,8 +1009,8 @@ MemLayout.prototype.genCMethods = function ()
     sourceStr += '\trptr ptrVal;\n';
     sourceStr += '\tpint tagVal;\n';
 
-    if (varSize)
-        sourceStr += '\tpint size = get_' + this.name + '_size(obj);\n';
+    // Loop nesting depth
+    var loopDepth = 0;
 
     // Function to generate code to visit/update each reference field
     function genVisitCode(
@@ -1157,6 +1157,9 @@ MemLayout.prototype.genCMethods = function ()
         ''
     );
 
+    if (varSize)
+        sourceStr += '\tpint size = get_' + this.name + '_size(obj);\n';
+
     sourceStr += indentText(visitCode);
 
     sourceStr += '}\n';
@@ -1184,15 +1187,16 @@ function genGCCode(params)
     var sourceStr = '';
 
     // Header files
-    sourceStr += '#include <cassert>\n';
-    sourceStr += '#include <cstdio>\n';
-    sourceStr += '#include <cstdlib>\n';
+    sourceStr += '#include <assert.h>\n';
+    sourceStr += '#include <stdio.h>\n';
+    sourceStr += '#include <stdlib.h>\n';
     sourceStr += '#include <stdint.h>\n';
     sourceStr += '\n';
 
     // Useful type definitions
     sourceStr += 'typedef uint32_t u32;\n';
     sourceStr += 'typedef intptr_t pint;\n';
+    sourceStr += 'typedef uintptr_t puint;\n';
     sourceStr += 'typedef intptr_t box;\n';
     sourceStr += 'typedef int8_t* ref;\n'
     sourceStr += 'typedef int8_t* rptr;\n'
@@ -1205,7 +1209,7 @@ function genGCCode(params)
 
     // TODO
     sourceStr += '// TODO: implement this GC function to test that a pointer points in the heap\n';
-    sourceStr += 'bool ptrInHeap(rptr ptr);\n';
+    sourceStr += 'int ptrInHeap(rptr ptr);\n';
     sourceStr += '\n';
 
     // Output the tag values used by layouts
@@ -1247,7 +1251,7 @@ function genGCCode(params)
     sourceStr += '\n';
 
     // Test if a boxed value is a reference
-    sourceStr += 'bool boxIsRef(box boxVal)\n';
+    sourceStr += 'int boxIsRef(box boxVal)\n';
     sourceStr += '{\n';
     sourceStr += '\treturn (boxVal & ' + TAG_INT_MASK + ') != ' + TAG_INT + ';\n';
     sourceStr += '}\n';
@@ -1319,6 +1323,6 @@ function genGCCode(params)
     sourceStr += '\n';
 
     // Write the generated code to a file
-    writeFile('d8/gc-generated.cc', sourceStr);
+    writeFile('host/gc-generated.c', sourceStr);
 }
 

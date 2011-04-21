@@ -699,7 +699,7 @@ function IRConvContext(
         'with context value not defined in IR conversion context'
     );
     assert (
-        labels instanceof Array,
+        labels instanceof Array || labels === null,
         'labels not defined or invalid in IR conversion context'
     );
     assert (
@@ -731,7 +731,7 @@ function IRConvContext(
         'invalid function object in IR conversion context'
     );
     assert (
-        thisVal instanceof IRValue,
+        thisVal instanceof IRValue || thisVal === null,
         'invalid this value in IR conversion context'
     );
     assert (
@@ -1417,7 +1417,7 @@ function stmtToIR(context)
         testCtx.bridge();
 
         // Get the current property
-        var curPropName = insertCallIR(
+        var curPropName = insertExceptIR(
         testCtx,
             new CallFuncInstr(
                 [
@@ -2204,7 +2204,7 @@ function exprToIR(context)
             }
 
             // Insert the function call
-            var exprVal = insertCallIR(
+            var exprVal = insertExceptIR(
                 lastContext,
                 new CallFuncInstr(
                     [funcPtr, funcObj, thisVal].concat(argVals)
@@ -3758,7 +3758,7 @@ function insertPrimCallIR(context, primName, argVals)
     var primFunc = context.params.staticEnv.getBinding(primName);
 
     // Insert the function call
-    var retVal = insertCallIR(
+    var retVal = insertExceptIR(
         context,
         new CallFuncInstr(
             [
@@ -3862,7 +3862,7 @@ function insertConstructIR(context, funcVal, argVals)
     );
     
     // Create the constructor call instruction
-    var retVal = insertCallIR(
+    var retVal = insertExceptIR(
         context,
         new ConstructInstr(
             [
@@ -3911,10 +3911,10 @@ function insertConstructIR(context, funcVal, argVals)
 }
 
 /**
-Insert a call instruction in a given context, connect it with its continue 
-and throw targets and splice this into the current context
+Insert an exception-producing instruction in a given context, connect it with
+its continue and throw targets and splice this into the current context
 */
-function insertCallIR(context, instr)
+function insertExceptIR(context, instr)
 {
     // If we are in a try block
     if (context.throwList !== null)
