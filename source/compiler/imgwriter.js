@@ -116,9 +116,6 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
 
 
 
-
-
-
     /*
     Write all code blocks into big byte array first? Must memorize offsets
     of function entry points in some kind of table. Can then refer to
@@ -127,26 +124,50 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
     Should possibly write all string data into a big table before starting
     dump as well. Refer as DATA+XXXX.
 
-    
-
-
-
-
-
+    Should probably store linkage points into code array. Can then write the
+    actual linkage values (eg: CODE+X, DATA+X) when writing out the bytes.
     */
 
-
+    // Array of bytes of code and required linked values to be written
     var codeArray = [];
 
+    // Map of functions to entry point offsets
+    var entryPoints = new HashMap();
+
+    /**
+    Write a function into the code array
+    */
+    function writeFunc(ir)
+    {
+        // Get the code block for this code unit
+        var codeBlock = ir.runtime.cb;
+
+        assert (
+            codeBlock !== undefined,
+            'code block not found'
+        );
 
 
 
 
 
 
+    }
+
+    // Write the IR functions to the code array
+    primIRs.forEach(writeFunc);
+    libIRs.forEach(writeFunc);
+    //FIXME: disabled for now
+    //tachyonIRs.forEach(writeFunc);
+    // FIXME: add tachyonIRs length
+    var numUnits = primIRs.length + libIRs.length;
+    log.trace('Wrote ' + numUnits + ' code units');
 
 
 
+
+
+    // TODO: decide how to encode string data in data section
     var dataArray = [];
 
 

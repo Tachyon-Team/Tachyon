@@ -95,7 +95,7 @@ function bootstrap(params, allCode, writeImg)
         {
             // Compile the primitives
             log.trace('Compile primitives source code');
-            primIRs = compSources(primSrcs, params);
+            primIRs = compSources(primSrcs, params, writeImg);
         }
     );
 
@@ -127,7 +127,7 @@ function bootstrap(params, allCode, writeImg)
             function ()
             {
                 // Compile the standard library
-                libIRs = compSources(libSrcs, params);
+                libIRs = compSources(libSrcs, params, writeImg);
             }
         );
 
@@ -140,7 +140,6 @@ function bootstrap(params, allCode, writeImg)
             for (var i = 0; i < libIRs.length; ++i)
             {
                 log.trace('Executing unit for: "' + libSrcs[i] + '"');
-
                 execUnit(libIRs[i], params);
             }
         }
@@ -158,7 +157,7 @@ function bootstrap(params, allCode, writeImg)
             function ()
             {
                 // Compile the Tachyon sources
-                tachyonIRs = compSources(tachyonSrcs, params);
+                tachyonIRs = compSources(tachyonSrcs, params, writeImg);
             });
 
         reportPerformance();
@@ -177,7 +176,7 @@ function bootstrap(params, allCode, writeImg)
         }
     }
 
-    // If we writing an image
+    // If we are writing an image
     if (writeImg === true)
     {
         writeImage(
@@ -256,15 +255,6 @@ Get a source code listing for the Tachyon compiler, excluding the primitives
 */
 function getTachyonSrcs(params)
 {
-    /*
-    var tachyonSrcs = [
-        //'bt-parser.js',
-        //((params.target === Target.x86_32) ? 'bt-parser32.js' : 'bt-parser64.js')
-        'bt-fib.js',
-        ((params.target === Target.x86_32) ? 'bt-fib32.js' : 'bt-fib64.js')
-    ];
-    */
-
     return TACHYON_BASE_SRCS.concat(TACHYON_MAIN_SPEC_SRCS);
 }
 
@@ -273,7 +263,7 @@ Parse Tachyon source code units, link them together and compile them
 down to machine code, either for bootstrapping or to allow compiling
 client code.
 */
-function compSources(srcList, params)
+function compSources(srcList, params, writeImg)
 {
     assert (
         params instanceof CompParams,
@@ -377,31 +367,35 @@ function compSources(srcList, params)
 
                 log.trace('Generating machine code for: "' + getSrcName(i) + '"');
 
-                compileIR(ir, params);
+                compileIR(ir, params, writeImg);
             }
         }
     );
 
-    measurePerformance(
-        "Machine code linking",
-        function ()
-        {
-            // Link the primitives with each other
-            for (var i = 0; i < irList.length; ++i)
+    // If we are not writing an image
+    if (writeImg !== true)
+    {
+        measurePerformance(
+            "Machine code linking",
+            function ()
             {
-                var ir = irList[i];
+                // Link the primitives with each other
+                for (var i = 0; i < irList.length; ++i)
+                {
+                    var ir = irList[i];
 
-                if (ir.linking.linked)
-                    continue;
+                    if (ir.linking.linked)
+                        continue;
 
-                var addr = getBlockAddr(ir.runtime.mcb, 0);
-                log.trace('Linking machine code for: "' + getSrcName(i) + 
-                      '" at address ' + addr);
+                    var addr = getBlockAddr(ir.runtime.mcb, 0);
+                    log.trace('Linking machine code for: "' + getSrcName(i) + 
+                          '" at address ' + addr);
 
-                linkIR(ir, params);
+                    linkIR(ir, params);
+                }
             }
-        }
-    );
+        );
+    }
 
     // Return the list of IR functions
     return irList;
