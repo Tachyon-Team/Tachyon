@@ -72,7 +72,7 @@ profiler.codeblocks = []
 profiler.init = function (timer, interval)
 {
     timer = timer || "prof";   // Use ITIMER_PROF internally
-    interval = interval || 100; // 1 ms (regular) interval
+    interval = interval || 10; // 10 ms (regular) interval
     // TODO: support a function for stochastic profiling 
 
     profilerInit(timer, interval);
