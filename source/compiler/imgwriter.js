@@ -116,6 +116,10 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
 
 
 
+
+
+
+
     /*
     Write all code blocks into big byte array first? Must memorize offsets
     of function entry points in some kind of table. Can then refer to
@@ -131,13 +135,13 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
     // Array of bytes of code and required linked values to be written
     var codeArray = [];
 
-    // Map of functions to entry point offsets
-    var entryPoints = new HashMap();
+    // Number of functions written
+    var numFuncs = 0;
 
     /**
-    Write a function into the code array
+    Write a code unit into the code array
     */
-    function writeFunc(ir)
+    function writeUnit(ir)
     {
         // Get the code block for this code unit
         var codeBlock = ir.runtime.cb;
@@ -147,6 +151,43 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
             'code block not found'
         );
 
+        // Get all the child functions for this code unit
+        var funcs = [ir].concat(ir.getChildrenList());
+
+        // Update the total number of functions written
+        numFuncs += funcs.length;
+
+        //
+        // TODO: locate tachyon main function.
+        // ir.getChild('tachyon_main');
+        //
+        // Need offset of the "normal" entry point for the function.
+        //
+        // use getEntryPoint()? does not give you label
+
+
+
+
+
+        // TODO: write bytes for current function to code array
+
+
+
+
+
+        // TODO: write/encode linkable (required) values to code array
+        //
+        // For required values, need to know:
+        // - What offset is this at in the code block?
+        //   - Each link object is associated with a label
+        // - What is being linked?
+        //   - If function, which entry point/label?
+        //   - If string, ref to string const, which string is it?
+        // - What value goes in the hole
+        //   - Relative or absolute address
+        //   - Number of bits (type, eg: long or byte or short)
+
+
 
 
 
@@ -154,14 +195,23 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
 
     }
 
-    // Write the IR functions to the code array
-    primIRs.forEach(writeFunc);
-    libIRs.forEach(writeFunc);
+    // Write the IR code units to the code array
+    primIRs.forEach(writeUnit);
+    libIRs.forEach(writeUnit);
     //FIXME: disabled for now
-    //tachyonIRs.forEach(writeFunc);
+    //tachyonIRs.forEach(writeUnit);
     // FIXME: add tachyonIRs length
-    var numUnits = primIRs.length + libIRs.length;
-    log.trace('Wrote ' + numUnits + ' code units');
+    log.trace('Wrote ' + numFuncs + ' functions');
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -174,6 +224,12 @@ function writeImage(params, primIRs, libIRs, tachyonIRs)
 
 
 
+    // TODO: dump code bytes, write linked offset values
+
+
+
+
+    // TODO: dump data bytes
 
 
 
