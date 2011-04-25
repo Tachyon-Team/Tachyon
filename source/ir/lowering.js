@@ -47,9 +47,6 @@ for code generation.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 //=============================================================================
@@ -172,19 +169,22 @@ function lowerIRCFG(cfg, params)
                 // If this is an HIR instruction
                 if (instr instanceof HIRInstr)
                 {
-                    print('lowering HIR instruction: ' + instr);
+                    //print('lowering HIR instruction: ' + instr);
 
                     // If HIR instruction is found, split current block.
                     // Create IR conversion context?
 
                     var instrBlock = instr.parentBlock;
-                    var instrIndex = instrItr.instrIt.getIndex();
+                    var instrIndex = itr.instrIt.getIndex();
 
                     // Split the block containing the instruction
                     var exitBlock = cfg.splitBlock(instrBlock, instrIndex);
 
-                    // Remove the HIR instruction from the block
-                    instrBlock.remInstrAtIndex(instrIndex);
+                    // Get the throw target for the HIR instruction
+                    var throwTarget = instr.getThrowTarget();
+
+                    // List of exception throwing instructions
+                    var throwCtxList = throwTarget? []:null;
 
                     // Create an IR conversion context for the lowering
                     var context = new IRConvContext(
@@ -197,7 +197,7 @@ function lowerIRCFG(cfg, params)
                         null,
                         null,
                         null,
-                        null,
+                        throwCtxList,
                         cfg,
                         cfg.ownerFunc,
                         ConstValue.getConst(undefined),
@@ -209,6 +209,34 @@ function lowerIRCFG(cfg, params)
 
                     // Make the flow jump to the exit block
                     context.getExitBlock().addInstr(new JumpInstr(exitBlock));
+
+                    // Replace the HIR instruction by its new value
+                    exitBlock.replInstrAtIndex(
+                        0,
+                        instr.isBranch()? 
+                        new JumpInstr(instr.getContTarget()):undefined,
+                        context.getOutValue()
+                    )
+
+                    // If the instruction may throw
+                    if (throwTarget)
+                    {
+                        // For each throw context
+                        for (var c in throwCtxList)
+                        {
+                            var throwExit = throwCtxList[c].getExitBlock();
+
+                            // Get the last instruction (the throw instruction) in the block
+                            var throwInstr = throwExit.getLastInstr();
+
+                            // Set the throw target to the catch block
+                            throwInstr.setThrowTarget(throwTarget);
+
+                            // Make the catch block a successor of the throw block
+                            throwExit.addSucc(throwTarget);
+                            throwTarget.addPred(throwExit);
+                        }
+                    }
 
                     var instr = itr.get();
                 }
@@ -404,7 +432,6 @@ GetPropInstr.prototype.lower = function (context)
 {
     /*
     TODO:
-
     PROBLEM: global fetches need a property existence check...
     May need a GetGlobalInstr
     Can reuse lower func from GetProp? No, need no is object check.

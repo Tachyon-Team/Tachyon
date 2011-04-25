@@ -46,9 +46,6 @@ Implementation of control-flow graphs and basic blocks
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -1206,21 +1203,13 @@ ControlFlowGraph.prototype.splitBlock = function (block, fromIdx)
     // Create a new block to move the instructions to
     var newBlock = this.getNewBlock();
 
-    // Move all instructions from the index to the resolution block
-    while (block.instrs.length > fromIdx)
+    // For each successor of the block
+    for (var i = 0; i < block.succs.length; ++i)
     {
-        var instr = block.instrs[fromIdx];
-        block.remInstrAtIndex(fromIdx);
-        newBlock.addInstr(instr, instr.outName);
-    }
+        var succ = block.succs[i];
 
-    // For each successor of the new block
-    for (var i = 0; i < newBlock.succs.length; ++i)
-    {
-        var succ = newBlock.succs[i];
-
-        // For each instruction of the successor's successor
-        for (var k = 0; k < succSucc.instrs.length; ++k)
+        // For each instruction of the successor
+        for (var k = 0; k < succ.instrs.length; ++k)
         {
             var instr = succ.instrs[k];
                 
@@ -1232,6 +1221,14 @@ ControlFlowGraph.prototype.splitBlock = function (block, fromIdx)
             // to the new block instead
             instr.replPred(block, newBlock);
         }
+    }
+
+    // Move all instructions from the index to the new block
+    while (block.instrs.length > fromIdx)
+    {
+        var instr = block.instrs[fromIdx];
+        block.remInstrAtIndex(fromIdx);
+        newBlock.addInstr(instr, instr.outName);
     }
 
     // Return the new block
@@ -1454,6 +1451,11 @@ Remove an instruction from this basic block by index
 BasicBlock.prototype.remInstrAtIndex = function (index)
 {
     //print('Removing instr: ' + this.instrs[index]);
+
+    assert (
+        index < this.instrs.length,
+        'invalid instruction index'
+    );
 
     // Get a reference to the instruction
     var instr = this.instrs[index];

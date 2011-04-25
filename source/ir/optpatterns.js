@@ -47,9 +47,6 @@ for code generation.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -182,7 +179,8 @@ blockPatterns.predSuccMerge = new optPattern(
             block.succs.length === 1 && 
             block.succs[0].preds.length === 1 &&
             block !== block.succs[0] &&
-            !(block.getLastInstr() instanceof ExceptInstr)
+            !(block.getLastInstr() instanceof ExceptInstr && 
+              block.getLastInstr().getThrowTarget())
         );
     },
     function apply(cfg, block, printInfo, params)
@@ -280,7 +278,8 @@ blockPatterns.emptyBypass = new optPattern(
             block.succs.length === 1 && 
             block.succs[0] !== block &&
             block.instrs.length === 1 &&
-            !(block.getLastInstr() instanceof ExceptInstr)
+            !(block.getLastInstr() instanceof ExceptInstr && 
+              block.getLastInstr().getThrowTarget())
         );
     },
     function apply(cfg, block, printInfo, params)

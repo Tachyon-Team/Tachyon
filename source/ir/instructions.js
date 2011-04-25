@@ -46,9 +46,6 @@ Class hierarchy for Intermediate Representation (IR) instructions
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // TODO:
@@ -806,112 +803,6 @@ instrMaker.validType = function (value, expectedType)
         'got ' + value.type + ' value, expected ' + expectedType
     );
 };
-
-//=============================================================================
-//
-// High-level IR (HIR) instructions
-//
-//=============================================================================
-
-/**
-@class Base class for HIR instructions
-@augments IRInstr
-*/
-var HIRInstr = function ()
-{
-};
-HIRInstr.prototype = new IRInstr();
-
-// TODO: PROBLEM: some HIR instructions may throw exceptions. Would need to
-// descend from ExceptInstr?
-//
-// May want to alter design to eliminate ExceptInstr
-// Could have a throws() function defined on all instructions
-// by default, checks for second branch target
-// Also define setThrowTarget for all?
-//
-// Other possibility is to get rid of HIRInstr, just check if lower
-// function is defined on the instruction
-// May be more logical. HIRInstr screws with current hierarchy
-
-/**
-Create an HIR instruction constructor
-*/
-function hirInstrMaker(instrName, numInputs, mayThrow, proto)
-{
-    var InstrCtor = instrMaker(
-        instrName,
-        function (typeParams, inputVals, branchTargets)
-        {
-            instrMaker.validNumInputs(inputVals, numInputs, numInputs);
-            instrMaker.allValsBoxed(inputVals);
-
-            if (mayThrow)
-                instrMaker.validNumBranches(branchTargets, 2, 2);
-            
-            this.type = IRType.box;
-        },
-        mayThrow? ['continue', 'throw']:undefined,
-        proto? proto:new HIRInstr()
-    );
-
-    return InstrCtor;
-};
-
-/**
-@class Property read instruction
-@augments HIRInstr
-*/
-var GetPropInstr = hirInstrMaker(
-    'get_prop',
-    2,
-    true
-);
-
-/**
-@class Property write instruction
-@augments HIRInstr
-*/
-var PutPropInstr = hirInstrMaker(
-    'put_prop',
-    3,
-    true
-);
-
-/**
-@class Base class for HIR arithmetic instructions
-@augments HIRInstr
-*/
-var HIRArithInstr = function ()
-{
-};
-HIRArithInstr.prototype = new HIRInstr();
-
-/**
-@class Property write instruction
-@augments HIRInstr
-*/
-var HIRAddInstr = hirInstrMaker(
-    'hir_add',
-    2,
-    false,
-    new HIRArithInstr()
-);
-
-
-
-
-//
-// TODO: fill in other HIR instructions
-//
-
-//
-// TODO: lowering function for HIR instructions, in lowering.js
-//
-
-// TODO: HIR load/store?
-
-
 
 //=============================================================================
 //
@@ -2162,4 +2053,116 @@ MoveInstr.prototype.toString = function ()
 
     return output;
 };
+
+//=============================================================================
+//
+// High-level IR (HIR) instructions
+//
+//=============================================================================
+
+/**
+@class Base class for HIR instructions
+@augments CallInstr
+*/
+var HIRInstr = function ()
+{
+};
+HIRInstr.prototype = new CallInstr();
+
+// TODO: PROBLEM: some HIR instructions may throw exceptions. Would need to
+// descend from ExceptInstr?
+//
+// May want to alter design to eliminate ExceptInstr
+// Could have a throws() function defined on all instructions
+// by default, checks for second branch target
+// Also define setThrowTarget for all?
+//
+// Other possibility is to get rid of HIRInstr, just check if lower
+// function is defined on the instruction
+// May be more logical. HIRInstr screws with current hierarchy
+
+/**
+Create an HIR instruction constructor
+*/
+function hirInstrMaker(instrName, numInputs, mayThrow, proto)
+{
+    var InstrCtor = instrMaker(
+        instrName,
+        function (typeParams, inputVals, branchTargets)
+        {
+            instrMaker.validNumInputs(inputVals, numInputs, numInputs);
+            instrMaker.allValsBoxed(inputVals);
+
+            if (mayThrow)
+                instrMaker.validNumBranches(branchTargets, 0, 2);
+            
+            this.type = IRType.box;
+        },
+        mayThrow? ['continue', 'throw']:undefined,
+        proto? proto:new HIRInstr()
+    );
+
+    return InstrCtor;
+};
+
+/**
+@class Property read instruction
+@augments HIRInstr
+*/
+var GetPropInstr = hirInstrMaker(
+    'get_prop',
+    2,
+    true
+);
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var PutPropInstr = hirInstrMaker(
+    'put_prop',
+    3,
+    true
+);
+
+/**
+@class Base class for HIR arithmetic instructions
+@augments HIRInstr
+*/
+var HIRArithInstr = function ()
+{
+};
+HIRArithInstr.prototype = new HIRInstr();
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var HIRAddInstr = hirInstrMaker(
+    'hir_add',
+    2,
+    false,
+    new HIRArithInstr()
+);
+
+
+
+
+//
+// TODO: fill in other HIR instructions
+//
+
+//
+// TODO: lowering function for HIR instructions, in lowering.js
+//
+
+// TODO: HIR load/store?
+
+
+
+
+
+
+
+
 
