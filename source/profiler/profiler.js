@@ -139,7 +139,7 @@ profiler.terminate = function () {
         }
     }
     profilerTerminate();
-}
+};
 
 profiler.getProfile = function () {
     return new profiler.Profile();
@@ -393,4 +393,4 @@ profiler.toHTML = function (codeblock, profile, filename) {
     } else {
         return v.htmldoc.toString();
     }
-}
+};
