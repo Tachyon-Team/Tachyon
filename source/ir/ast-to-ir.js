@@ -46,9 +46,6 @@ Intermediate Representation (IR) translation implementation
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 // TODO: Explain result of translation in function description comments 
@@ -2742,11 +2739,18 @@ function opToIR(context)
             var argsContext = context.pursue(exprs);
             var argVals = exprListToIR(argsContext);
 
+            /*
             // Create the appropriate operator instruction
             var opVal = insertPrimCallIR(
                 argsContext, 
                 'getPropVal', 
                 [argVals[0], argVals[1]]
+            );
+            */
+
+            var opVal = insertExceptIR(
+                argsContext,
+                new GetPropInstr(argVals[0], argVals[1])
             );
 
             // Set the operator's output value as the output
@@ -3931,7 +3935,7 @@ function insertExceptIR(context, instr)
 
         // Copy the local map so as to not make available
         // new bindings after the throw
-        newCtx.localMap = newCtx.localMap.copy();
+        newCtx.localMap = newCtx.localMap? newCtx.localMap.copy():newCtx.localMap;
 
         // Add the new context to the list of throw contexts
         context.throwList.push(newCtx);

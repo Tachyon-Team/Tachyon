@@ -46,9 +46,6 @@ Unit tests for AST->IR translation code
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -589,7 +586,7 @@ tests.ir.inlining = function ()
         "                                       \
             function foo()                      \
             {                                   \
-                bar(1);                         \
+                bar(1337);                      \
             }                                   \
                                                 \
             function bar(a0)                    \
@@ -605,25 +602,14 @@ tests.ir.inlining = function ()
         ir,
         function (instr)
         {
-            if (
-                instr instanceof CallFuncInstr &&
-                instr.parentBlock.parentCFG.ownerFunc.funcName == 'foo'
-            )
-            {
+            if (instr instanceof CallFuncInstr &&
+                instr.getArg(0) === ConstValue.getConst(1337))
                 callInstr = instr;
-            }
         }
     );
 
     // Find the bar function
-    var barFunc;
-    ir.getChildrenList().forEach(
-        function (func)
-        {
-            if (func.funcName == 'bar')
-                barFunc = func;
-        }
-    );
+    var barFunc = ir.getChild('bar');
 
     // Inline the bar call
     inlineCall(callInstr, barFunc);
@@ -633,3 +619,110 @@ tests.ir.inlining = function ()
     // Validate the resulting IR
     ir.validate();
 };
+
+/**
+Inlining of function calls with exception handling
+*/
+tests.ir.inliningExcept = function ()
+{
+    var ir = tests.ir.helpers.testSource(
+        "                                       \
+            function foo()                      \
+            {                                   \
+                try                             \
+                {                               \
+                    bar(1337);                  \
+                }                               \
+                                                \
+                catch (e)                       \
+                {                               \
+                    print('nooo!')              \
+                }                               \
+            }                                   \
+                                                \
+            function bar(a0)                    \
+            {                                   \
+                print(a0);                      \
+            }                                   \
+        "
+    );
+
+    // Find the bar call instruction
+    var callInstr;
+    tests.ir.helpers.forEachInstr(
+        ir,
+        function (instr)
+        {
+            if (instr instanceof CallFuncInstr &&
+                instr.getArg(0) === ConstValue.getConst(1337))
+                callInstr = instr;
+        }
+    );
+
+    // Find the bar function
+    var barFunc = ir.getChild('bar');
+
+    //print(ir);
+
+    // Inline the bar call
+    inlineCall(callInstr, barFunc);
+
+    //print(ir);
+
+    // Validate the resulting IR
+    ir.validate();
+};
+
+/**
+Inlining of function calls with exception handling and throw
+*/
+tests.ir.inliningThrow = function ()
+{
+    var ir = tests.ir.helpers.testSource(
+        "                                       \
+            function foo()                      \
+            {                                   \
+                try                             \
+                {                               \
+                    bar(1337);                  \
+                }                               \
+                                                \
+                catch (e)                       \
+                {                               \
+                    print('nooo!')              \
+                }                               \
+            }                                   \
+                                                \
+            function bar(a0)                    \
+            {                                   \
+                throw 'zomg';                   \
+            }                                   \
+        "
+    );
+
+    // Find the bar call instruction
+    var callInstr;
+    tests.ir.helpers.forEachInstr(
+        ir,
+        function (instr)
+        {
+            if (instr instanceof CallFuncInstr &&
+                instr.getArg(0) === ConstValue.getConst(1337))
+                callInstr = instr;
+        }
+    );
+
+    // Find the bar function
+    var barFunc = ir.getChild('bar');
+
+    //print(ir);
+
+    // Inline the bar call
+    inlineCall(callInstr, barFunc);
+
+    //print(ir);
+
+    // Validate the resulting IR
+    ir.validate();
+};
+

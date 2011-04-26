@@ -46,9 +46,6 @@ Implementation of high-level IR instructions through handler functions
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -106,14 +103,10 @@ function inlineCall(callInstr, calleeFunc)
         // Add the block to the caller CFG
         callerCFG.addBlock(itr.get());
 
-        // If this block has no final branch, continue
-        if (!block.hasBranch())
-            continue;
-
         // Get the last instruction of the block
         var branchInstr = block.getLastInstr();
 
-        // If the branch is a return instruction, continue
+        // If the branch is a return instruction
         if (branchInstr instanceof RetInstr)
         {
             // Add a phi predecessor for the return value
@@ -123,17 +116,50 @@ function inlineCall(callInstr, calleeFunc)
             block.replBranch(new JumpInstr(resBlock));
         }
 
-        // If the call instruction has a throw target and the branch is an 
-        // exception producing instruction with no throw target
-        if (throwTarget !== null &&
-            branchInstr instanceof ExceptInstr &&
-            !branchInstr.getThrowTarget()
-        )
+        // If the call has a throw target
+        if (throwTarget)
         {
-            // Set the throw target for the branch instruction
-            branchInstr.setThrowTarget(throwTarget);
-            block.addSucc(throwTarget);
-            throwTarget.addPred(block);
+            var curBlock = block;
+
+            // For each instruction of the block
+            for (var i = 0; i < curBlock.instrs.length; ++i)
+            {
+                var instr = curBlock.instrs[i];
+
+                //print(instr);
+
+                // If this is an exception producing instruction
+                // with no throw target
+                if (instr instanceof ExceptInstr && !instr.getThrowTarget())
+                {
+                    // Set the throw target for the instruction
+                    instr.setThrowTarget(throwTarget);
+                    curBlock.addSucc(throwTarget);
+                    throwTarget.addPred(curBlock);
+
+                    // If this is the last instruction of the block, stop
+                    if (curBlock.getLastInstr() === instr)
+                        break;
+
+                    // Split the block to create a continuation target
+                    var contBlock = callerCFG.splitBlock(curBlock, i + 1);
+
+                    // Set the continuation for the instruction
+                    if (instr.setContTarget)
+                    {
+                        instr.setContTarget(contBlock);
+                        curBlock.addSucc(contBlock);
+                        contBlock.addPred(curBlock);
+                    }
+
+                    // Add the continuation block to the caller CFG
+                    callerCFG.addBlock(contBlock);
+
+                    // Process the continuation block next
+                    curBlock = contBlock;
+                    i = 0;
+                }
+            }
         }
     }
 
