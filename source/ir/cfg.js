@@ -478,6 +478,11 @@ Remove a basic block from this CFG
 */
 ControlFlowGraph.prototype.remBlock = function (block)
 {
+    assert (
+        block.parentCFG === this,
+        'block not in CFG'
+    );
+
     //print('Removing block: ' + block.label);
     //print('num succs: ' + block.succs.length);
 

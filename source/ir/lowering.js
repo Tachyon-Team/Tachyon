@@ -372,45 +372,7 @@ function lowerIRCFG(cfg, params)
 //=============================================================================
 
 /*
-TODO: 
-- Reintroduce HIRInstr class with descendents for arith ops, putprop, getprop.
-- Have lowering function for each HIRInstr class
-- Default lowering can be translation to primitive call
-- Perform const prop on IR before lowering begins, using HIR instructions
-*/
-
-/*
-TODO #1: implement function to split a basic block into two
-
-TODO #2: begin by implementing lowering/specialization for HIR add, getprop only,
-use this to perfect structure. Other HIR instructions still primitive calls for
-now.
-
-
-Ideally, would like to reuse IR generation code. Could produce an IR conversion
-context with a new basic block for lowering, jump to the new basic block. Patch
-jump to next block in the CFG afterwards. Either way, will need to insert new
-code in the middle of a basic block.
-
-This is not really necessary if simply inlining. Already done by inlining
-function. Could modify current inlining function to work in the same way.
-Pre-split caller block? No. Need inlining function as-is for inlining
-optimizations!
-Solution: replace HIR instruction by call, have inlining pass happen after.
-
-HIRInstr.lower(entryBlock)
-- Returns exit block?
-- Add jump to next block
-
-This implies that we have to split the current block. May actually be faster
-than inserting many instructions in the middle of it... Want unified treatment.
-*/
-
-
-
-
-
-/*
+TODO:
 Better code generation idea?
 
 PROBLEM: generating code using the ast-to-ir framework is tedious, error-prone.
@@ -438,11 +400,21 @@ How would we implement this?
   - Can simplify this further with a helper function
 - Need some kind of memoizer/memoization engine.
 
+Memoization:
+genSpecPrim(
+    genFunc,   <==== generation function, returns a source string
+    genParams  <==== generation parameters, array of arguments for genFunc
+)
+Returns a compiled/optimized IRFunction.
+
+- For a given generation function, can store the memoization info on it.
+Need to map from generation parameters
+
+
 
 
 
 */
-
 
 
 
@@ -472,10 +444,6 @@ PROBLEM: global fetches need a property existence check...
 May need a GetGlobalInstr
 Can reuse lower func from GetProp? No, need no is object check.
 */
-
-
-
-
 
 /**
 HIR getProp instruction

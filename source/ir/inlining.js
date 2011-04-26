@@ -152,9 +152,6 @@ function inlineCall(callInstr, calleeFunc)
                         contBlock.addPred(curBlock);
                     }
 
-                    // Add the continuation block to the caller CFG
-                    callerCFG.addBlock(contBlock);
-
                     // Process the continuation block next
                     curBlock = contBlock;
                     i = 0;

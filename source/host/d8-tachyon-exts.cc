@@ -42,13 +42,6 @@
 
 /*===========================================================================*/
 
-/* File: "d8-tachyon-exts.cc", Time-stamp: <2011-03-22 14:23:35 feeley> */
-
-/* Copyright (c) 2010 by Marc Feeley, All Rights Reserved. */
-/* Copyright (c) 2010 by Maxime Chevalier-Boisvert, All Rights Reserved. */
-
-/*===========================================================================*/
-
 /*
  * This file contains the extensions to the D8 executable needed by the
  * Tachyon compiler.  It implements some auxiliary functions, in particular:
