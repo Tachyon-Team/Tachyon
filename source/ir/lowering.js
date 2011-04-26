@@ -380,7 +380,6 @@ TODO:
 */
 
 /*
-
 TODO #1: implement function to split a basic block into two
 
 TODO #2: begin by implementing lowering/specialization for HIR add, getprop only,
@@ -405,10 +404,51 @@ HIRInstr.lower(entryBlock)
 
 This implies that we have to split the current block. May actually be faster
 than inserting many instructions in the middle of it... Want unified treatment.
+*/
+
+
+
+
+
+/*
+Better code generation idea?
+
+PROBLEM: generating code using the ast-to-ir framework is tedious, error-prone.
+Code generation code becomes big, hard to read. The framework itself may
+become limiting in the end.
+
+Could, instead of generating IR, generate source for a function to be
+compiled/called/inlined. Generating source code this way is much easier.
+Generated function can also be pre-optimized.
+
+PROBLEM: generating source code at every call site is slow!
+
+Solution: we could employ some kind of contextual memoization scheme. Given
+some flags/attributes indicating what we know about the use of a primitive
+(likely types, etc.), generate a specialized primitive function only once for
+this given HIR instruction.
+
+Could also use this to have some specialized general-case functions eventually.
+
+How would we implement this?
+- Can scrap code for context-based lowering, implement by replacing the HIR
+  instruction by a primitive call. Lowering function returns the chosen
+  primitive to be inserted.
+- Already have code to generate/compile SRC for primitive, not difficult.
+  - Can simplify this further with a helper function
+- Need some kind of memoizer/memoization engine.
+
 
 
 
 */
+
+
+
+
+
+
+
 
 /**
 TODO: implement default lowering function which simply does inlining
@@ -421,30 +461,139 @@ function makeLowerFunc(primName)
 /**
 HIR add instruction
 */
-/*HIRAddInstr.prototype.lower = function (context)
+/*HIRAddInstr.prototype.lower = function (ctx)
 {
 }*/
+
+
+/*
+TODO:
+PROBLEM: global fetches need a property existence check...
+May need a GetGlobalInstr
+Can reuse lower func from GetProp? No, need no is object check.
+*/
+
+
+
+
 
 /**
 HIR getProp instruction
 */
-GetPropInstr.prototype.lower = function (context)
+GetPropInstr.prototype.lower = function (ctx)
 {
     /*
-    TODO:
-    PROBLEM: global fetches need a property existence check...
-    May need a GetGlobalInstr
-    Can reuse lower func from GetProp? No, need no is object check.
+    Current workings:
+    - Check if array
+    - Check if string
+    - Check if box int
+    - Default object case
+
+    Opt ideas:
+    - Check if prop name is string constant
+      - Check if prop is likely from array, string, number proto
+      - Check if prop name is length
+    - If prop name is not constant, likely array access
+
+    - Can try one or two quick guesses. If wrong, call getPropVal general case.
+    - If no guess, just call getPropVal
+
+    - Can we know anything about the receiver object?
+      - We can know if it's a new array, or is likely to be one
     */
 
-    // Create the appropriate operator instruction
-    var val = insertPrimCallIR(
-        context, 
-        'getPropVal', 
-        this.uses
-    );
+    // Get the receiver and property name values
+    var receiver = this.uses[0];
+    var propName = this.uses[1];
+
+    //print('prop name: ' + propName);
+
+    // If the property name is a constant string    
+    if (propName instanceof ConstValue && typeof propName.value === 'string')
+    {
+        var propName = propName.value;
+
+        //print('prop name is cst str');
+
+        if (propName === 'length')
+        {
+            /*
+            // If this is an array
+            if (boxIsArray(obj))
+                return boxInt(iir.icast(IRType.pint, get_arr_len(obj)));
+            else
+                getPropVal
+            Insert phi node
+            */
+
+            // Check if the receiver is an array
+            var isArray = insertPrimCallIR(ctx, 'boxIsArray', [receiver]);
+
+            // Compile the true expression
+            var trueCtx = ctx.branch(
+                null,
+                ctx.cfg.getNewBlock('is_array'),
+                null
+            );
+            var lenVal = insertPrimCallIR(trueCtx, 'get_arr_len', [receiver]);
+            var lenInt = trueCtx.addInstr(new ICastInstr(IRType.pint, lenVal));
+            var propVal = insertPrimCallIR(trueCtx, 'boxInt', [lenInt]);
+            trueCtx.setOutput(trueCtx.entryBlock, propVal);
+
+            // Compile the false expression
+            var falseCtx = ctx.branch(null,
+                ctx.cfg.getNewBlock('not_array'),
+                null
+            );
+            var propVal = insertPrimCallIR(falseCtx, 'getPropVal', this.uses);
+            falseCtx.setOutput(falseCtx.entryBlock, propVal);
+
+            // Create the if branching instruction
+            ctx.addInstr(
+                new IfInstr(
+                    isArray,
+                    trueCtx.entryBlock,
+                    falseCtx.entryBlock
+                )
+            );
+
+            // Merge the local maps using phi nodes
+            var joinBlock = ctx.cfg.getNewBlock('cond_join');
+            trueCtx.addInstr(new JumpInstr(joinBlock));
+            falseCtx.addInstr(new JumpInstr(joinBlock));
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [trueCtx.getOutValue(), falseCtx.getOutValue()],
+                    [trueCtx.getExitBlock(), falseCtx.getExitBlock()]
+                )
+            );
+
+            // Set the exit block to be the join block
+            ctx.setOutput(joinBlock, phiValue);
+
+            // Done generating code
+            return;
+        }
+
+        /*
+        else if (propName === 'prototype')
+            print('prototype!');
+
+        else if (propName in Array.prototype)
+            print('array func!');
+
+        else if (propName in String.prototype)
+            print('string func!');
+
+        else if (propName in Number.prototype)
+            print('number func!');
+        */
+    }
+
+    // Call the generic property access function
+    var val = insertPrimCallIR(ctx, 'getPropVal', this.uses);
 
     // Set the operator's output value as the output
-    context.setOutput(context.entryBlock, val);
+    ctx.setOutput(ctx.entryBlock, val);
 }
 
