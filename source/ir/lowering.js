@@ -408,19 +408,155 @@ genSpecPrim(
 Returns a compiled/optimized IRFunction.
 
 - For a given generation function, can store the memoization info on it.
-Need to map from generation parameters
-
-
-
-
-
+Need to map from generation parameters to generated IR functions
+  - Can do this with a hash map
+  - Means we need a hash function and a comparison function for gen params
 */
 
+/**
+Generate a specialized primitive function based on specialization parameters.
+*/
+function genSpecPrim(genFunc, specParams, compParams)
+{
+    assert (
+        typeof genFunc === 'function',
+        'expected generation function'
+    );
+
+    assert (
+        specParams instanceof Array,
+        'expected specialization parameters'
+    );
+
+    assert (
+        compParams instanceof CompParams,
+        'expected compilation parameters'
+    );
+
+    // If there is no hash table for this function, create one
+    if (genFunc.specPrims === undefined)
+        genFunc.specPrims = new HashMap(specHashFunc, specEqualFunc);
+
+    // If there is a cache hit for the parameters, return the match
+    if (genFunc.specPrims.hasItem(specParams))
+        return genFunc.specPrims.getItem(specParams);
+
+    // Generate the source code for the specialized primitives
+    var sourceStr = genFunc.apply(specParams);
+
+    // Compile the source string into an IR function
+    var func = compileSrcString(sourceStr, compParams);
+
+    // Get the compiled primitive function
+    var primFunc = func.childFuncs[0];
+
+    // Cache the compiled primitive
+    genFunc.specPrims.addItem(specParams, primFunc);
+
+    // Return the new function
+    return primFunc;
+}
+
+/**
+Hash function for the memoization of specialized primitives
+*/
+function specHashFunc(p)
+{
+    if (p instanceof Array)
+    {
+        var hashCode = 0;
+
+        for (var i = 0; i < p1.length; ++i)
+            hashCode += specHashFunc(p[i]);
+
+        return hashCode;
+    }
+
+    else if (typeof p === 'object')
+    {
+        var hashCode = 0;
+
+        for (k in p)
+            hashCode += specHashFunc(p[k]);
+
+        return hashCode;
+    }
+
+    else if (typeof p === 'function')
+    {
+        return 1;
+    }
+
+    return defHashFunc(p);
+}
+
+/**
+Equality function for the memoization of specialized primitives
+*/
+function specEqualFunc(p1, p2)
+{
+    if (p1 === p2)
+    {
+        return true;
+    }
+
+    else if (p1 instanceof Array && p2 instanceof Array)
+    {
+        if (p1.length !== p2.length)
+            return false;
+
+        for (var i = 0; i < p1.length; ++i)
+            if (specEqualFunc(p1[i], p2[i]) === false)
+                return false;
+    }
+
+    else if (typeof p1 === 'object' && typeof p2 === 'object')
+    {
+        if (Object.getPrototypeOf(p1) !== Object.getPrototypeOf(p2))
+            return false;
+
+        var keys = {};
+        for (k in p1) keys[k] = true;
+        for (k in p2) keys[k] = true;
+
+        for (k in keys)
+            if (specEqualFunc(p1[k], p2[k]) === false)
+                return false;
+
+        return true;
+    }
+
+    return false;
+}
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//----------------------------------------------------------------------------
+// TODO: scrap following code once better specialization system is in place
 
 /**
 TODO: implement default lowering function which simply does inlining
