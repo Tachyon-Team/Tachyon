@@ -40,17 +40,13 @@
  * _________________________________________________________________________
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/time.h>
 #include <assert.h>
 #include "tachyon-profiler.h"
-
 
 #define PROF_DEBUG
 
@@ -68,13 +64,12 @@ extern "C" {
  * to support other systems.
  */
 
+#define GetPC(c) (void*)(c->uc_mcontext->__ss.__rip)
+
 #if defined(__APPLE__)
-#include <sys/ucontext.h>
-#ifdef __cplusplus
+//#include <sys/ucontext.h>
 #define GET_PC(c) (code_address)(c->uc_mcontext->ss.eip)
-#else
-#define GET_PC(c) (code_address)(c->uc_mcontext->__ss.__rip)
-#endif
+// #define GET_PC(c) (code_address)(c->uc_mcontext->__ss.__rip)
 #else
 #error Platform not supported
 #endif
@@ -120,9 +115,10 @@ static block_info *last_block = NULL;
 
 #ifdef PROF_DEBUG
 static unsigned int samples;
+static unsigned int ticks;
 #endif
 
-block_info *lookupBlock(code_address pc)
+inline block_info *lookupBlock(code_address pc)
 {
     block_info *b;
     if (last_block != NULL)
@@ -183,6 +179,7 @@ void prof_onTimer(int sig, siginfo_t *info, ucontext_t *uap)
             p.prev_handler.sa_handler(sig);
         }
     }
+    ticks++;
 }
 
 int prof_get_signum(profiler *p)
@@ -206,6 +203,7 @@ int prof_enable()
 
 #ifdef PROF_DEBUG
     samples = 0;
+    ticks = 0;
 #endif
     
     if (p.state == PROF_STATE_ENABLED) return PROF_OK;
@@ -239,6 +237,9 @@ int prof_enable()
             if (p.interval.usec == 0) {
                 p.interval.usec = PROF_DEFAULT_INTERVAL_USEC;
             }
+#ifdef PROF_DEBUG
+            // fprintf(stderr, "Using interval: %u usec\n", p.interval.usec);
+#endif
             timer.it_value.tv_sec = p.interval.usec / 1000000;
             timer.it_value.tv_usec = (p.interval.usec % 1000000);
             timer.it_interval = timer.it_value;
@@ -285,7 +286,7 @@ int prof_disable()
 
     END(true);
 #ifdef PROF_DEBUG
-    fprintf(stderr, "Tachyon profiler> %d sample(s) taken\n", samples);
+    fprintf(stderr, "Tachyon profiler> %u/%u sample(s) taken\n", samples, ticks);
 #endif
 
     p.state = PROF_STATE_DISABLED;
@@ -326,6 +327,10 @@ int prof_register_block(code_address block, size_t size)
     }
     binfo->next = p.blocks;
     p.blocks = binfo;
+
+#ifdef PROF_DEBUG
+    // fprintf(stderr, "Registered [%p,%p]\n", binfo->start_addr, binfo->end_addr);
+#endif
 
     return PROF_OK;
 }
@@ -383,12 +388,6 @@ int prof_get_counters(code_address block, prof_counter **counters, uint32_t *len
         }
     }
 
-    fprintf(stderr, "Block not found: %p\n", block);
-
     /* Not found */
     return PROF_ERR;
 }
-
-#ifdef __cplusplus
-}
-#endif

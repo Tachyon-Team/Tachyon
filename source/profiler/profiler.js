@@ -76,7 +76,7 @@ profiler.BlockInfo.prototype.getSamples = function (from, to)
 
     if (to === undefined)
     {
-        if (from >= 0 && from < this.counters.length)
+        if (from >= 0 && from < counters.length)
         {
             return counters[from];
         }
@@ -111,7 +111,7 @@ profiler.codeblocks = []
 profiler.init = function (timer, interval)
 {
     timer = timer || "prof";   // Use ITIMER_PROF internally
-    interval = interval || 10; // 10 ms (regular) interval
+    interval = interval || 5; // 5 usec (regular) interval
     // TODO: support a function for stochastic profiling 
 
     profilerInit(timer, interval);
@@ -128,7 +128,7 @@ profiler.disable = profilerDisable;
 profiler.terminate = function () {
     profilerDisable();
     var p = profiler.getProfile();
-    var v = new profiler.ShellListing(true);
+    var v = new profiler.ShellListing(false);
     for (var i in p.blocks) {
         var b = p.blocks[i];
         if (b.sum > 0)
@@ -156,56 +156,38 @@ profiler.Profile = function () {
 
 profiler.Profile.prototype.genListing = function (block, v, precision) {
     precision = precision || 1;
-
-    // if (!codeblock.hasPCs) {
-    //     profiler.computePCs(codeblock);
-    // }
     
     var codeblock = block.getCodeBlock();
     var code = codeblock.code;
 
     function percent(n, d, p) {
-         if (p === undefined) p = precision;
-         var v;
-         if (d !== 0) {
-             v = n * 100.0 / d;
-         } else {
-             v = 0.0;
-         }
-         return v.toFixed(p) + "%";
+        if (p === undefined) p = precision;
+        var v;
+        if (d > 0) {
+            v = n * 100.0 / d;
+        } else {
+            v = 0.0;
+        }
+        return v.toFixed(p) + "%";
     };
 
-    // Prepend a synthetic 'start' function header for convenience
-
-    /*
-    var newCode = new Array();
-    newCode.push(codeblock.listing("<start>", asm.role.FUNC));
-    for (var i = 0; i < code.length; i++) {
-        if (code[i].type === asm.type.LST) {
-            newCode.push(code[i]);
-        }
-    }
-    code = newCode;
-    */
-
     // Compute samples
-
     var samples = new Array(code.length);
     var block_samples = 0;
     var func_samples = 0;
     for (var i = code.length - 1; i >= 0; i--) {
         var c = code[i];
-        switch (c.kind) {
+        switch (c.role) {
             case asm.role.FUNC:
                 samples[i] = func_samples;
                 func_samples = 0;
                 break;
-            case asm.role.BLOCK:
+            case asm.role.LBL:
                 samples[i] = block_samples;
                 block_samples = 0;
                 break;
             case asm.role.INST:
-                samples[i] = this.getSamples(c.pos);
+                samples[i] = block.getSamples(c.getPos());
                 block_samples += samples[i];
                 func_samples += samples[i];
                 break;
@@ -216,6 +198,7 @@ profiler.Profile.prototype.genListing = function (block, v, precision) {
     }
 
     // Generate listing
+    var enabled = false;
     v.begin(block);
     for (var i = 0; i < code.length; i++) {
         var c = code[i];
@@ -223,16 +206,21 @@ profiler.Profile.prototype.genListing = function (block, v, precision) {
         switch (c.role) {
             case asm.role.FUNC:
                 func_samples = samples[i];
-                v.visitFunction(percent(func_samples, block.sum), c.text);
+                enabled = func_samples > 0;
+                if (enabled)
+                    v.visitFunction(percent(func_samples, block.sum), c.text);
                 break;
             case asm.role.LBL:
-                v.visitBlock(percent(samples[i], func_samples), c.text);
+                if (enabled)
+                    v.visitBlock(percent(samples[i], func_samples), c.text);
                 break;
             case asm.role.INST:
-                v.visitInstruction(percent(samples[i], func_samples), c.text);
+                if (enabled)
+                    v.visitInstruction(percent(samples[i], func_samples), c.text);
                 break;
             default:
-                v.visitOther(undefined, c.text);
+                if (enabled)
+                    v.visitOther(undefined, c.text);
                 break;
         }
     }

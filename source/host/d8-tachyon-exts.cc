@@ -128,9 +128,7 @@
 
 // Tachyon headers
 #include "tachyon-exts.h"
-extern "C" {
 #include "tachyon-profiler.h"
-}
 
 // Posix headers
 #include <sys/mman.h>
@@ -771,15 +769,12 @@ v8::Handle<v8::Value> v8Proxy_profilerRegisterBlock(const v8::Arguments& args)
     }
     else
     {
-        // Get code block
-        i::Handle<i::JSObject> jsobj = v8::Utils::OpenHandle(*args[0]);
-        i::Handle<v8::internal::ExternalUnsignedByteArray> array(
-            v8::internal::ExternalUnsignedByteArray::cast(jsobj->elements())
-        );
-        uint8_t* block = static_cast<uint8_t*>(array->external_pointer());
-        uint32_t len = static_cast<uint32_t>(array->length());
+        v8::Local<v8::Object> obj = args[0]->ToObject();
 
-        int rv = prof_register_block(block, len);
+        uint8_t* blockPtr = (uint8_t*)obj->GetIndexedPropertiesExternalArrayData();
+        size_t size = (size_t)obj->GetHiddenValue(v8::String::New("tachyon::size"))->IntegerValue();
+
+        int rv = prof_register_block(blockPtr, size);
 
         return (rv == PROF_OK) ? v8::True() : v8::False();
     }

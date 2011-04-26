@@ -46,7 +46,6 @@
 #include <stdint.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <sys/types.h>
 
 #define PROF_OK  0
 #define PROF_ERR 1

@@ -80,8 +80,6 @@ function main()
 
     if (config.profile)
         profiler.init();
-    if (config.profile === "auto")
-        profiler.enable();
 
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
@@ -129,7 +127,11 @@ function main()
                 new CIntAsBox()
             );
 
+            if (config.profile === "auto")
+                profiler.enable();
             bridge(config.hostParams.ctxPtr);
+            if (config.profile === "auto")
+                profiler.disable();
         }
 
         for (var i = 0; i < args.files.length; i++)
@@ -152,7 +154,11 @@ function main()
                 new CIntAsBox()
             );
 
+            if (config.profile === "auto")
+                profiler.enable();
             bridge(config.hostParams.ctxPtr);
+            if (config.profile === "auto")
+                profiler.disable();
 
             var endTimeMs = (new Date()).getTime();
             var compTimeMs = midTimeMs - startTimeMs;
@@ -173,11 +179,13 @@ function main()
         bootstrap(config.hostParams, false, false);
 
         // Call the Tachyon read-eval-print loop
+        if (config.profile === "auto")
+            profiler.enable();
         tachyonRepl();
+        if (config.profile === "auto")
+            profiler.disable();
     }
 
-    if (config.profile === "auto")
-        profiler.disable();
     if (config.profile)
         profiler.terminate();
 }
