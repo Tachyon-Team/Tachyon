@@ -49,23 +49,42 @@ Maxime Chevalier-Boisvert
 Erick Lavoie
 */
 
-var args = parseCmdLine();
+/**
+Entry point for unit testing
+*/
+function main()
+{
+    var args = parseCmdLine();
 
-// Get the verbosity command-line option value
-var verbosity = log.level(args.options['v']);
+    // Get the verbosity command-line option value
+    var verbosity = log.level(args.options['v']);
 
-// Get the 64-bit mode command-line option value
-var x86_64 = args.options['x86_64'];
+    // Get the 64-bit mode command-line option value
+    var x86_64 = args.options['x86_64'];
 
-// Initialize the Tachyon configuration
-initConfig(x86_64, verbosity);
+    // Initialize the Tachyon configuration
+    initConfig(x86_64, verbosity);
 
-// Perform a minimal Tachyon compilation
-bootstrap(config.hostParams, false, false);
+    // Perform a minimal Tachyon compilation
+    bootstrap(config.hostParams, false, false);
 
-// config.hostParams.print = print;
+    // config.hostParams.print = print;
 
-// Run all unit tests
-tests.run(true, undefined, true);
-//tests.run(false, undefined, true);
+    // Run all unit tests
+    tests.run(true, undefined, true);
+    //tests.run(false, undefined, true);
+}
+
+try
+{
+    main();
+}
+
+catch (e)
+{
+    if (e.stack)
+        print(e.stack);
+    else
+        print(e);
+}
 

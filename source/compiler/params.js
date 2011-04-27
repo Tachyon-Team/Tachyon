@@ -46,9 +46,6 @@ Definition of compilation parameters.
 
 @author
 Maxime Chevalier-Boisvert, Erick Lavoie
-
-@copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
@@ -141,10 +138,16 @@ function CompParams(cfgObj)
     this.memLayouts = {};
 
     /**
-    FFI functions used by compiler
+    FFI functions imported by Tachyon, by name
     @field
     */
     this.ffiFuncs = {};
+
+    /**
+    Map auto-generated specialized primitives
+    @field
+    */
+    this.specPrims = new HashMap();
 
     /**
     Function to allocate string objects

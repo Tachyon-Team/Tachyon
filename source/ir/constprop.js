@@ -46,9 +46,6 @@ Implementation of constant propagation.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 //=============================================================================
@@ -767,7 +764,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
         {
             var castVal = v0.getImmValue(params);
             
-            if (this.type.valInRange(v0.value, params))
+            if (this.type.valInRange(castVal, params))
                 result = castVal;
         }
 

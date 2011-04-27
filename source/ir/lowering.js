@@ -383,25 +383,47 @@ function genSpecPrim(genFunc, specParams, compParams)
         'expected compilation parameters'
     );
 
-    // If there is no hash table for this function, create one
-    if (genFunc.specPrims === undefined)
-        genFunc.specPrims = new HashMap(specHashFunc, specEqualFunc);
+    // If there is no hash table for this function
+    if (compParams.specPrims.hasItem(genFunc) === false)
+    {
+        // Create the table mapping parameters to functions
+        var funcTable = new HashMap(specHashFunc, specEqualFunc);
+
+        // Map this function to the table
+        compParams.specPrims.addItem(genFunc, funcTable);
+    }
+    else
+    {
+        // Get the table for this function
+        var funcTable = compParams.specPrims.getItem(genFunc);
+    }
 
     // If there is a cache hit for the parameters, return the match
-    if (genFunc.specPrims.hasItem(specParams))
-        return genFunc.specPrims.getItem(specParams);
+    if (funcTable.hasItem(specParams))
+        return funcTable.getItem(specParams);
+
+    //log.trace('*** generating specialized primitive ***');
 
     // Generate the source code for the specialized primitives
-    var sourceStr = genFunc.apply(specParams);
+    var sourceStr = genFunc.apply(null, specParams);
 
-    // Compile the source string into an IR function
-    var func = compileSrcString(sourceStr, compParams);
+    // Compile the source string to an IR function
+    var ast = parse_src_str(sourceStr, compParams);
+    var ir = unitToIR(ast, compParams);
+    lowerIRFunc(ir, compParams);
 
     // Get the compiled primitive function
-    var primFunc = func.childFuncs[0];
+    var primFunc = ir.childFuncs[0];
+
+    // Set the inline flag on the IR function
+    primFunc.inline = true;
 
     // Cache the compiled primitive
-    genFunc.specPrims.addItem(specParams, primFunc);
+    funcTable.addItem(specParams, primFunc);
+
+    print(primFunc);
+
+    //log.trace('*** done generating code ***');
 
     // Return the new function
     return primFunc;
@@ -472,31 +494,68 @@ function specEqualFunc(p1, p2)
         for (k in keys)
             if (specEqualFunc(p1[k], p2[k]) === false)
                 return false;
-
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 /**
 Code generator for get_prop
 */
-GetPropInstr.genFunc = function (isStrProp, isLength)
+GetPropInstr.genFunc = function (cstStrProp, isLength)
 {
-    print('*** generating code for getProp ***')
+    log.trace('*** generating code for getProp ***');
+    log.trace(cstStrProp + ' ' + isLength);
 
     var src = '';
 
-    src += 'function get_prop(obj, propName)\n';
-    src += '{\n';
-    src += '\t"tachyon:inline";\n';
+    src += 'function get_prop(obj, propName)';
+    src += '{';
 
+    if (!cstStrProp)
+    {
+        src += '                                                        \
+        if (boxIsArray(obj))                                            \
+        {                                                               \
+            if (boxIsInt(propName))                                     \
+            {                                                           \
+                if (propName >= 0)                                      \
+                {                                                       \
+                    var elem = getElemArr(obj, propName);               \
+                    if (elem !== UNDEFINED)                             \
+                        return elem;                                    \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+        ';
+    }
 
-    src += '\tgetPropVal(obj, propName);\n';
+    if (cstStrProp && !isLength)
+    {
+        src += '                                                            \
+        if (boxIsObj(obj) || boxIsFunc(obj))                                \
+        {                                                                   \
+            var propHash = iir.icast(IRType.pint, get_str_hash(propName));  \
+            var prop = getPropObj(obj, propName, propHash);                 \
+            if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)     \
+                return UNDEFINED;                                           \
+            return prop;                                                    \
+        }                                                                   \
+        ';
+    }
 
+    if (isLength)
+    {
+        src += '                                                        \
+        if (boxIsArray(obj))                                            \
+        {                                                               \
+            return boxInt(iir.icast(IRType.pint, get_arr_len(obj)));    \
+        }                                                               \
+        ';
+    }
 
-    src += '}\n';
+    src += 'return getPropVal(obj, propName);';
+    src += '}';
 
     return src;
 }
@@ -506,15 +565,8 @@ HIR get_prop instruction lowering
 */
 GetPropInstr.prototype.lower = function (compParams)
 {
-    // TODO: fix compilation of generated functions
-    //
-    // Add them to the code unit of the current function??
-    // These functions only need to link to primitives
-    // Could compile them at any time once the primitives are compiled...
-    // Add to primitives IR unit?
-
+    // TODO: disabled for now
     return compParams.staticEnv.getBinding('getPropVal');
-
 
     // Get the receiver and property name values
     var receiver = this.uses[0];
@@ -522,7 +574,7 @@ GetPropInstr.prototype.lower = function (compParams)
 
     //print('prop name: ' + propName);
 
-    var isStrProp = false;
+    var cstStrProp = false;
     var isLength = false;
 
     // If the property name is a constant string    
@@ -530,7 +582,7 @@ GetPropInstr.prototype.lower = function (compParams)
     {
         var propName = propName.value;
 
-        isStrProp = true;
+        cstStrProp = true;
 
         //print('prop name is cst str');
 
@@ -538,7 +590,7 @@ GetPropInstr.prototype.lower = function (compParams)
             isLength = true;
     }
 
-    var specParams = [isStrProp, isLength];
+    var specParams = [cstStrProp, isLength];
 
     return genSpecPrim(GetPropInstr.genFunc, specParams, compParams);
 }
