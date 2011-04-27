@@ -171,78 +171,28 @@ function lowerIRCFG(cfg, params)
                 {
                     //print('lowering HIR instruction: ' + instr);
 
-                    // If HIR instruction is found, split current block.
-                    // Create IR conversion context?
+                    // Call the lowering function to get the
+                    // primitive to be called
+                    var primFunc = instr.lower(params);
 
-                    var instrBlock = instr.parentBlock;
-                    var instrIndex = itr.instrIt.getIndex();
-
-                    // Split the block containing the instruction
-                    var exitBlock = cfg.splitBlock(instrBlock, instrIndex);
-
-                    // Get the throw target for the HIR instruction
-                    var throwTarget = instr.getThrowTarget();
-
-                    // List of exception throwing instructions
-                    var throwCtxList = throwTarget? []:null;
-
-                    // Create an IR conversion context for the lowering
-                    var context = new IRConvContext(
-                        null, 
-                        instrBlock,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        throwCtxList,
-                        cfg,
-                        cfg.ownerFunc,
-                        ConstValue.getConst(undefined),
-                        params
+                    // Create the primitive call
+                    var callInstr = new CallFuncInstr(
+                        [
+                            primFunc,
+                            ConstValue.getConst(undefined),
+                            ConstValue.getConst(undefined),
+                        ].concat(instr.uses).concat(instr.targets)
                     );
 
-                    // Perform lowering for this instruction
-                    instr.lower(context);
-
-                    // Make the flow jump to the exit block
-                    context.getExitBlock().addInstr(new JumpInstr(exitBlock));
-
-                    // Replace the HIR instruction by its new value
-                    exitBlock.replInstrAtIndex(
-                        0,
-                        instr.isBranch()? 
-                        new JumpInstr(instr.getContTarget()):undefined,
-                        context.getOutValue()
-                    )
-
-                    // If the instruction may throw
-                    if (throwTarget)
-                    {
-                        // For each throw context
-                        for (var c in throwCtxList)
-                        {
-                            var throwExit = throwCtxList[c].getExitBlock();
-
-                            // Get the last instruction (the throw instruction) in the block
-                            var throwInstr = throwExit.getLastInstr();
-
-                            // Set the throw target to the catch block
-                            throwInstr.setThrowTarget(throwTarget);
-
-                            // Make the catch block a successor of the throw block
-                            throwExit.addSucc(throwTarget);
-                            throwTarget.addPred(throwExit);
-                        }
-                    }
+                    // Replace the HIR instruction by the primitive call
+                    cfg.replInstr(itr, callInstr);
 
                     var instr = itr.get();
                 }
 
                 // If this is a function call to a known function
-                if (instr instanceof CallFuncInstr && instr.getCallee() instanceof IRFunction)
+                if (instr instanceof CallFuncInstr &&
+                    instr.getCallee() instanceof IRFunction)
                 {
                     var calleeFunc = instr.getCallee();
 
@@ -466,7 +416,7 @@ function specHashFunc(p)
     {
         var hashCode = 0;
 
-        for (var i = 0; i < p1.length; ++i)
+        for (var i = 0; i < p.length; ++i)
             hashCode += specHashFunc(p[i]);
 
         return hashCode;
@@ -529,50 +479,72 @@ function specEqualFunc(p1, p2)
     return false;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//----------------------------------------------------------------------------
-// TODO: scrap following code once better specialization system is in place
-
 /**
-TODO: implement default lowering function which simply does inlining
-- Use for HasPropInstr
+Code generator for get_prop
 */
-function makeLowerFunc(primName)
+GetPropInstr.genFunc = function (isStrProp, isLength)
 {
+    print('*** generating code for getProp ***')
+
+    var src = '';
+
+    src += 'function get_prop(obj, propName)\n';
+    src += '{\n';
+    src += '\t"tachyon:inline";\n';
+
+
+    src += '\tgetPropVal(obj, propName);\n';
+
+
+    src += '}\n';
+
+    return src;
 }
 
 /**
-HIR add instruction
+HIR get_prop instruction lowering
 */
-/*HIRAddInstr.prototype.lower = function (ctx)
+GetPropInstr.prototype.lower = function (compParams)
 {
-}*/
+    // TODO: fix compilation of generated functions
+    //
+    // Add them to the code unit of the current function??
+    // These functions only need to link to primitives
+    // Could compile them at any time once the primitives are compiled...
+    // Add to primitives IR unit?
 
+    return compParams.staticEnv.getBinding('getPropVal');
+
+
+    // Get the receiver and property name values
+    var receiver = this.uses[0];
+    var propName = this.uses[1];
+
+    //print('prop name: ' + propName);
+
+    var isStrProp = false;
+    var isLength = false;
+
+    // If the property name is a constant string    
+    if (propName instanceof ConstValue && typeof propName.value === 'string')
+    {
+        var propName = propName.value;
+
+        isStrProp = true;
+
+        //print('prop name is cst str');
+
+        if (propName === 'length')
+            isLength = true;
+    }
+
+    var specParams = [isStrProp, isLength];
+
+    return genSpecPrim(GetPropInstr.genFunc, specParams, compParams);
+}
+
+//----------------------------------------------------------------------------
+// TODO: scrap following code once better specialization system is in place
 
 /*
 TODO:
@@ -584,7 +556,8 @@ Can reuse lower func from GetProp? No, need no is object check.
 /**
 HIR getProp instruction
 */
-GetPropInstr.prototype.lower = function (ctx)
+//GetPropInstr.prototype.lower = function (ctx)
+function foo(ctx)
 {
     /*
     Current workings:
