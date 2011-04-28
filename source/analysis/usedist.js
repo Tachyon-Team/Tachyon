@@ -145,14 +145,16 @@ analysis.usedist = function (cfg)
                         out.setItem(use, i - phiNb);
                     }
                 });
+
             }
 
             // Remove the temp created by this instruction since 
             // SSA garantees that there is a single point of definition
-            if (out.hasItem(instr)) 
+            if (out.hasItem(instr) && use !== instr)
             {
                 out.remItem(instr);
             }
+
         }
 
         return out;
@@ -208,6 +210,7 @@ analysis.usedist = function (cfg)
     while (worklist.length > 0)
     {
         var b = worklist.shift();
+
         var totaleffect = init();
         b.succs.forEach(function (succ)
         {
@@ -218,8 +221,16 @@ analysis.usedist = function (cfg)
         if (!equal(b.analysis.usedist, totaleffect))
         {
             b.analysis.usedist = totaleffect;
-            worklist.push(b);
+
+            b.preds.forEach(function (pred)
+            {
+                // TODO: [#12804417]  Use a set implementation
+                //       to avoid adding a predecessor multiple times
+                worklist.push(pred);
+            });
         }
+        //print("Visited: " + b.getBlockName() + " liveSet [" +
+        //      totaleffect.getKeys().map(function (x) { return x.getValName(); })+"]");
     }
 };
 
