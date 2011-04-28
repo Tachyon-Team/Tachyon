@@ -2791,6 +2791,8 @@ MoveInstr.prototype.genCode = function (tltor, opnds)
 
 MoveInstr.prototype.genMov = function (tltor, src, dest, width)
 {
+    assert(src !== null && dest !== null, "Invalid src or dest operand");
+
     // Configuration imports
     const target = tltor.params.target; 
     const scratchReg = target.backendCfg.scratchReg;
