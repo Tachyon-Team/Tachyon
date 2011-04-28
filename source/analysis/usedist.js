@@ -129,14 +129,7 @@ analysis.usedist = function (cfg)
         {
             var instr = block.instrs[i];
 
-            if (instr instanceof PhiInstr)
-            {
-                var use = instr.getIncoming(pred);
-                if (use instanceof IRInstr)
-                {
-                    out.setItem(use, 0);
-                }
-            } else
+            if (!(instr instanceof PhiInstr))
             {
                 instr.uses.forEach(function (use)
                 {
@@ -150,11 +143,29 @@ analysis.usedist = function (cfg)
 
             // Remove the temp created by this instruction since 
             // SSA garantees that there is a single point of definition
-            if (out.hasItem(instr) && use !== instr)
+            if (out.hasItem(instr))
             {
                 out.remItem(instr);
             }
 
+        }
+
+        // Add all phi predecessor values
+        for (var i = 0; i < block.instrs.length; ++i)
+        {
+            var instr = block.instrs[i];
+
+            if (instr instanceof PhiInstr)
+            {
+                var use = instr.getIncoming(pred);
+                if (use instanceof IRInstr)
+                {
+                    out.setItem(use, 0);
+                }
+            } else
+            {
+                break;
+            }
         }
 
         return out;
