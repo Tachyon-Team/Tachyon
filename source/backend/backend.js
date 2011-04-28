@@ -99,6 +99,65 @@ backend.compileIRToCB = function (ir, params)
 
         cfg = fcts[k].virginCFG.copy();
 
+        function lnPfxFormatFn(obj)
+        {
+            if (obj instanceof BasicBlock)
+            {
+                if (obj.regAlloc === undefined || 
+                    obj.regAlloc.from === undefined ||
+                    obj.regAlloc.from === -1)
+                {
+                    return "   ";
+                } else
+                {
+                    return obj.regAlloc.from + ": ";
+                }
+            } else if (obj instanceof IRInstr)
+            {
+                if (obj.regAlloc.id === undefined)
+                {
+                    return "    \t";
+                } else
+                {
+                    return obj.regAlloc.id + ": \t";
+                }
+            } else
+            {
+                return "";
+            }   
+        }
+
+        function outFormatFn(instr)
+        {
+            return String(instr.regAlloc.dest);
+        }
+
+        function inFormatFn(instr, pos)
+        {
+            opnd = instr.regAlloc.opnds[pos];
+            if (opnd instanceof IRValue)
+            {
+                return opnd.getValName();
+            } else
+            {
+                return String(opnd);
+            }
+        }
+
+        var spiller = irToAsm.spillAllocator(params);
+        var order = null;
+
+        if (params.printRegAlloc === true)
+        {
+            print("******* Before register allocation ******");
+            print( cfg.toString(
+                function () { return cfg.blocks; }, 
+                undefined,
+                undefined,
+                lnPfxFormatFn
+            ));
+        }
+
         if (params.regAlloc === "linearScan")
         {
             measurePerformance(
@@ -117,45 +176,6 @@ backend.compileIRToCB = function (ir, params)
                     allocator.numberInstrs(cfg, order, params);
                 });
 
-            if (params.printRegAlloc === true)
-                print("******* Before register allocation ******");
-
-            var block;
-            var tab = "\t";
-            var instr;
-
-            function lnPfxFormatFn(obj)
-            {
-                if (obj instanceof BasicBlock)
-                {
-                    if (obj.regAlloc === undefined || 
-                        obj.regAlloc.from === undefined ||
-                        obj.regAlloc.from === -1)
-                    {
-                        return "   ";
-                    } else
-                    {
-                        return obj.regAlloc.from + ": ";
-                    }
-                } else if (obj instanceof IRInstr)
-                {
-                    if (obj.regAlloc.id === undefined)
-                    {
-                        return "    \t";
-                    } else
-                    {
-                        return obj.regAlloc.id + ": \t";
-                    }
-                } else
-                {
-                    return "";
-                }   
-            }
-
-            if (params.printRegAlloc === true)
-                print(cfg.toString(function () { return order; }, undefined, undefined, 
-                               lnPfxFormatFn));
-
             measurePerformance(
                 "Computing live intervals",
                 function ()
@@ -173,12 +193,7 @@ backend.compileIRToCB = function (ir, params)
                     fixedIntervals = allocator.fixedIntervals(order, params);
                 });
 
-            function outFormatFn(instr)
-            {
-                return String(instr.regAlloc.dest);
-            }
 
-            mems = irToAsm.spillAllocator(params);
             measurePerformance(
                 "Linear scan",
                 function ()
@@ -186,7 +201,7 @@ backend.compileIRToCB = function (ir, params)
                     //print("Linear Scan");
                     allocator.linearScan(params, 
                                          liveIntervals, 
-                                         mems, 
+                                         spiller, 
                                          fixedIntervals);
                 });
 
@@ -209,34 +224,33 @@ backend.compileIRToCB = function (ir, params)
                     order = allocator.resolve(cfg, liveIntervals, order, params);
                 });
 
-            if (params.printRegAlloc === true)
-            {
-                print("******* After register allocation *******");
-                print(cfg.toString(function () { return order; }, undefined, undefined, 
-                               lnPfxFormatFn));
-            }
 
-            fcts[k].regAlloc.spillNb = mems.slots.length;
         } else if (params.regAlloc === "onthefly")
         {
-            var order = cfg.blocks;
+            measurePerformance(
+                "Use distance analysis",
+                function () { analysis.usedist(cfg); }
+            );
 
-            var spiller = irToAsm.spillAllocator(params);
-            /*
-            print("******* Before register allocation ******");
-            print( cfg.toString(
-                function () { return order; }, 
-                undefined,
-                undefined,
-                lnPfxFormatFn
-            ));
-            */
-            print("onthefly allocation");
-            var alloc = onthefly.allocator(params);
-            alloc.allocCfg(cfg, spiller);
 
-            fcts[k].regAlloc.spillNb = spiller.slots.length;
-            /*
+            measurePerformance(
+                "On the fly allocation",
+                function ()
+                {
+                    var alloc = onthefly.allocator(params);
+                    alloc.allocCfg(cfg, spiller);
+                    order = alloc.order;
+
+                });
+        } else
+        {
+            error("Unknown register allocation algorithm");
+        }
+
+        fcts[k].regAlloc.spillNb = spiller.slots.length;
+
+        if (params.printRegAlloc === true)
+        {
             print("******* After register allocation *******");
             print(cfg.toString(
                 function () { return order; }, 
@@ -244,12 +258,7 @@ backend.compileIRToCB = function (ir, params)
                 inFormatFn,
                 lnPfxFormatFn
             ));
-            print("SpillNb: " + fcts[k].regAlloc.spillNb);
-            print("");
-            */
-            //assert(allocator.validate(cfg, params));
         }
-
 
         measurePerformance(
             "IR to ASM translation",
@@ -259,17 +268,11 @@ backend.compileIRToCB = function (ir, params)
                 translator.genFunc(fcts[k], order);
             });
 
-        //translator.asm.codeBlock.assemble();
-        //print("******* Listing *************************");
-        //print(translator.asm.codeBlock.listingString(startIndex));
-        //startIndex = translator.asm.codeBlock.code.length;
-    
-        /*
         assert(
             allocator.validate(cfg, params),
             'validation failed'
         );
-        */
+
         /*
         print("******* Mapping validation **************");
 
