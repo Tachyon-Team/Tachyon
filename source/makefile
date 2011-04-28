@@ -119,7 +119,7 @@ BASE_SRCS =                             \
     platform/mcb.js                     \
     backend/asm.js                      \
     backend/regalloc.js                 \
-    backend/regalloc/onthefly.js        \
+    backend/onthefly.js                 \
     backend/linearscan.js               \
     backend/backend.js                  \
     backend/x86/asm.js                  \
