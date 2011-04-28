@@ -52,10 +52,23 @@ onthefly.regMapping = function (args)
     });
 
     /**
-    Mapping from values to physical registers
+    Mapping from values hash to registers
     @field
     */
     that.actives = {};
+
+    /**
+    Mapping from values hash to memory slot 
+    @field
+    */
+    that.stored = {};
+
+    /**
+    Mapping from values hash to values 
+    @field
+    */
+    that.storedVal = {};
+
 
     return that;
 };
@@ -66,6 +79,11 @@ Value of register
 */
 onthefly.regMapping.prototype.val = function (reg)
 {
+    if (reg === null)
+    {
+        return null;
+    }
+
     return this.physReg[reg];
 };
 
@@ -85,22 +103,67 @@ onthefly.regMapping.prototype.vals = function (regs)
 };
 
 /**
-Register for value
+Slot for value
 */
-onthefly.regMapping.prototype.reg = function (val)
+onthefly.regMapping.prototype.slot = function (val)
 {
     if (val === null)
     {
         return null;
     }
 
-    const reg = this.actives[this.hash(val)];
-    if (reg === undefined)
+    var slot = this.actives[this.hash(val)];
+    if (slot !== undefined)
     {
-        return null;
+        return slot;
     } else 
     {
-        return reg;
+        slot = this.stored[this.hash(val)];
+
+        if (slot !== undefined)
+            return slot;
+        else
+            return null;
+    }
+};
+
+/**
+Slots for values
+*/
+onthefly.regMapping.prototype.slots = function (vals)
+{
+    const that = this;
+    var slots = [];
+
+    vals.forEach(function (val)
+    {
+        slots.push(that.slot(val));
+    });
+
+    return slots;
+};
+
+/**
+Test if a given slot is a register
+*/
+onthefly.regMapping.prototype.isReg = function (slot)
+{
+    return (typeof slot) === "number";    
+};
+
+/**
+Register for value
+*/
+onthefly.regMapping.prototype.reg = function (val)
+{
+    var slot = this.slot(val);
+
+    if (this.isReg(slot))
+    {
+        return slot;
+    } else
+    {
+        return null;
     }
 };
 
@@ -142,13 +205,39 @@ onthefly.regMapping.prototype.free = function (reg)
 };
 
 /**
-Set a register to a value
+Clear value from mapping, removing it from registers
+and known memory locations
 */
-onthefly.regMapping.prototype.set = function (val, reg)
+onthefly.regMapping.prototype.clear = function (val)
 {
+    var reg = this.reg(val);    
     this.free(reg);
-    this.physReg[reg] = val;     
-    this.actives[this.hash(val)] = reg;
+    
+    var slot = this.slot(val);
+    if (slot !== null)
+    {
+        delete this.stored[this.hash(val)];
+        delete this.storedVal[this.hash(val)];
+    }
+};
+
+/**
+Set a slot to a value
+*/
+onthefly.regMapping.prototype.set = function (val, slot)
+{
+    if (this.isReg(slot))
+    {
+        this.free(slot);
+        this.physReg[slot] = val;     
+        this.actives[this.hash(val)] = slot;
+    } else
+    {
+        // TODO: Check that a memory slot is not used by
+        //       more than two temps at the same time 
+        this.stored[this.hash(val)] = slot; 
+        this.storedVal[this.hash(val)] = val;
+    }
 };
 
 /**
@@ -157,10 +246,17 @@ Store a register value on stack
 onthefly.regMapping.prototype.store = function (reg)
 {
     assert(this.val(reg) !== null, "Invalid value in register");
+    
+    var val = this.val(reg);
+    var stored = this.stored[this.hash(val)];
 
-    var slot = this.getSlot(this.val(reg));
-
-    this.insertFunc(new MoveInstr(this.regOpnd(reg), slot));
+    if (stored === undefined)
+    {
+        var slot = this.getSlot(this.val(reg));
+        this.insertFunc(new MoveInstr(this.regOpnd(reg), slot));
+        this.stored[this.hash(val)] = slot; 
+        this.storedVal[this.hash(val)] = val;
+    }
 };
 
 /**
@@ -169,33 +265,20 @@ register
 */
 onthefly.regMapping.prototype.load = function (val, reg)
 {
-    const src = this.reg(val);
-    if (src === null)
+    const slot = this.slot(val);
+
+    assert(slot !== null, "Invalid slot for value " + val);
+
+    if (!this.isReg(slot))
     {
-        var slot = this.getSlot(val);
         this.set(val, reg);
         this.insertFunc(new MoveInstr(slot, this.regOpnd(reg)));
-    } else if (src !== reg)
+    } else if (slot !== reg)
     {
-        this.move(src, reg);
+        this.set(val, reg);
+        this.insertFunc(new MoveInstr(this.regOpnd(slot), this.regOpnd(reg)));
     }
 };
-
-/**
-Move a value from the first register to the second 
-*/
-onthefly.regMapping.prototype.move = function (reg1, reg2)
-{
-    const val = this.val(reg1);
-    assert(val !== null, "No value in first register");
-
-    if (reg1 !== reg2)
-    {
-        this.insertFunc(new MoveInstr(this.regOpnd(reg1), this.regOpnd(reg2)));
-        this.set(val, reg2);
-    }
-};
-
 
 /**
 List of unused registers
@@ -234,24 +317,62 @@ onthefly.regMapping.prototype.used = function ()
 };
 
 /**
-List of differences between used registers of this mapping and rmap
+List of live values
+*/
+onthefly.regMapping.prototype.live = function ()
+{
+    var live = [];
+
+    for (var p in this.actives)
+    {
+        live.push(this.val(this.actives[p]));
+    }
+
+    for (var p in this.stored)
+    {
+        if (this.actives[p] === undefined)
+        {
+            live.push(this.storedVal[p]);
+        }
+    }
+
+    return live;
+}
+
+/**
+List of differences between memory and register slots for this mapping and rmap
 */
 onthefly.regMapping.prototype.diff = function (rmap)
 {
     const that = this;
     var diff = [];
 
-    this.used().forEach(function (reg)
+    this.live().forEach(function (val)
     {
-        const val = rmap.val(reg);
+        const slot = rmap.slot(val);
 
-        if (val !== that.val(reg))
+        if (slot !== that.slot(val))
         {
-            diff.push(reg);
+            diff.push(val);
         }
     });
 
     return diff;
+};
+
+/**
+Keep only values in live, clearing everything else
+*/
+onthefly.regMapping.prototype.keep = function (live)
+{
+    const that = this;
+    var dead = this.live();
+    arraySetRemAll(dead, live);
+
+    dead.forEach(function(d)
+    {
+        that.clear(d);
+    });
 };
 
 /**
@@ -272,14 +393,14 @@ onthefly.regMapping.prototype.getSrc = function (val)
         return val;
     }
 
-    const reg = this.reg(val);
+    const slot = this.slot(val);
 
-    if (reg === null)
+    if (this.isReg(slot))
     {
-        return this.getSlot(val); 
+        return this.regOpnd(slot);
     } else
     {
-        return this.params.target.backendCfg.physReg[reg];
+        return slot;
     }
 };
 
@@ -308,6 +429,18 @@ onthefly.regMapping.prototype.copy = function ()
         that.actives[p] = this.actives[p];
     }
 
+    that.stored = {};
+    for (var p in this.stored)
+    {
+        that.stored[p] = this.stored[p];
+    }
+
+    that.storedVal = {};
+    for (var p in this.storedVal)
+    {
+        that.storedVal[p] = this.storedVal[p];
+    }
+
     return that;
 };
 
@@ -328,6 +461,12 @@ onthefly.regMapping.prototype.toString = function ()
     for (var p in this.actives)
     {
         s += p + " reg: " + this.actives[p] + "\n"; 
+    }
+
+    s += "stored:\n";
+    for (var p in this.stored)
+    {
+        s += this.storedVal[p].getValName() + " slot: " + this.stored[p] + "\n"; 
     }
 
     return s;
@@ -418,6 +557,11 @@ onthefly.allocator = function (params)
     */
     that.cfg = null;
 
+    /**
+    Block order computed while visiting
+    */
+    that.order = [];
+
     return that;
 };
 
@@ -462,7 +606,9 @@ onthefly.allocator.prototype.allocCfg = function (cfg, spiller)
         var rmap  = stackItem.rmap;
 
         if (this.params.printRegAlloc === true)
-            print("Visiting: " + block.getBlockName());
+        {
+            //print("Visiting: " + block.getBlockName());
+        }
 
         // Reinitialize insertion function parameters
         this.insertBlock = block;
@@ -470,7 +616,8 @@ onthefly.allocator.prototype.allocCfg = function (cfg, spiller)
 
         if (visited[block.blockId] === true)
         {
-            // SSA Deconstruction
+            // SSA Deconstruction and resolution of 
+            // register allocation differences
             if (block.preds.length > 1)
             {
                 that.resolve(rmap, pred, block);
@@ -483,36 +630,8 @@ onthefly.allocator.prototype.allocCfg = function (cfg, spiller)
         // Initialize regAlloc structure
         onthefly.block(block);
       
-        // Handle merge blocks for the first time
-        if (block.preds.length > 1)
-        {
-            var predRmap = rmap.copy();
-
-            // Handle Phi instructions
-            this.allocPhis(rmap, this.phis(block), pred);
-            block.regAlloc.rmapIn = rmap.copy();
-            that.resolve(predRmap, pred, block);
-        }
-
-       
-        // Handle remaining instructions
-        var instrs = block.instrs.slice(0);
-        for (var i = 0; i < instrs.length; ++i)
-        {
-            if (!(instrs[i] instanceof PhiInstr))
-            {
-                that.allocInstr(rmap, instrs[i]);
-            }
-            this.insertPos++;
-
-            // Preemptively store all instructions
-            // results on stack to ensure result is
-            // available
-            if (rmap.reg(instrs[i]) !== null && i < instrs.length - 1)
-            {
-                rmap.store(rmap.reg(instrs[i]));
-            }
-        };
+        // Handle instructions
+        that.allocInstrs(rmap, block, pred);
 
 
         // Handle successors
@@ -531,6 +650,9 @@ onthefly.allocator.prototype.allocCfg = function (cfg, spiller)
                 rmap:rmap
             });
         });
+
+        // Add to block order
+        this.order.push(block);
     }
 
 };
@@ -542,17 +664,13 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
 {
     if (this.params.printRegAlloc === true)
     {
-        print("On-the-fly resolve between " + pred.getBlockName() + " and " + 
-              block.getBlockName());
-        print(pred);
+        //print("On-the-fly resolve between " + pred.getBlockName() + " and " + 
+        //      block.getBlockName());
     }
 
     const that = this;
     const target = block.regAlloc.rmapIn;
-    const diffVal = target.diff(current).map(function (reg) 
-    { 
-        return target.val(reg); 
-    });
+    const diff = target.diff(current);
     const phis = this.phis(block);
     const moves = allocator.mapping();
 
@@ -569,7 +687,8 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
     };
 
 
-    // Add moves for phi instructions
+    // Add moves for phi instructions and remove 
+    // predecessors from mapping
     phis.forEach(function (instr)
     {
         var predVal = instr.getIncoming(pred);
@@ -592,22 +711,27 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
         if (srcSlot !== tgtSlot)
         {
             // Add move from srcSlot to tgtSlot
-            //print("add move " + srcSlot + " " + tgtSlot);
+            //print("phis add move " + srcSlot + " " + tgtSlot);
             moves.add(srcSlot, tgtSlot);
         }
     });
 
-    arraySetRemAll(diffVal, phis);
+    arraySetRemAll(diff, phis);
 
-    diffVal.forEach(function (val)
+    diff.forEach(function (val)
     {
         const srcSlot = current.getSrc(val);
         const tgtSlot = target.getSrc(val);
 
         // Add move from srcSlot to tgtSlot
-        //print("add move " + srcSlot + " " + tgtSlot);
+        //print("diff add move " + srcSlot + " " + tgtSlot);
         moves.add(srcSlot, tgtSlot);
     });
+
+    if (moves.length === 0)
+    {
+        return;
+    }
 
     var insertBlock = pred;
 
@@ -618,6 +742,7 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
         onthefly.block(newBlock);
         this.cfg.insertBetween(pred, block, newBlock);
         insertBlock = newBlock;
+        this.order.push(newBlock);
     }
 
     // Order and insert moves
@@ -631,7 +756,6 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
     );
     var temp = mem(tempOffset, backendCfg.context);
 
-    //print(moves);
     moves.orderAndInsertMoves(
         getInsertFct(insertBlock, insertBlock.instrs.length - 1),
         temp
@@ -639,15 +763,205 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
 };
 
 /**
+Allocate registers for all regular instructions in the block
+*/
+onthefly.allocator.prototype.allocInstrs = function (rmap, block, pred)
+{
+    const that    = this;
+    const instrs  = block.instrs;
+    const lastIndex = instrs.length - 1;
+
+    // This encoding method for distances avoids updating the usedist data structure
+    // for each temporary value at each instruction.
+    var usedist = {
+        i:instrs.length,
+        instrNb:instrs.length,
+        usepos:new HashMap(),
+        usedist:block.analysis.usedist,
+        toRemove:[],
+        // Returns the furthest used temporary from the given list
+        furthestUsed: function (temps)
+        {
+            function argmax(arr)
+            {
+                if (arr.length === 0)
+                {
+                    return -1;
+                }
+
+                var max_i = 0;
+                var max_v = arr[i];
+
+                arr.forEach(function (v, i)
+                {
+                    if (v > max_v)
+                    {
+                        max_v = v;
+                        max_i = i;
+                    }
+                });
+
+                return max_i;
+            }
+
+            return temps[argmax(temps.map(this.dist, this))];
+        },
+
+        dist:function (temp)
+        {
+            if (this.usepos.hasItem(temp))
+            {
+                return this.usepos.getItem(temp) - this.i;
+            } else if (this.usedist.hasItem(temp))
+            {
+                return this.usedist.getItem(temp) + this.instrNb - this.i;
+            } else
+            {
+                return -1;
+            }
+        },
+        
+        // Returns the usedist for the previous instruction
+        // given the current usedist
+        previous:function (instr, i)
+        {
+            var that = Object.create(this);
+            that.i = i;
+            that.usepos = this.usepos.copy();
+            that.usedist = this.usedist;
+            that.toRemove = [];
+
+            instr.uses.forEach(function (use)
+            {
+                if (use instanceof IRInstr)
+                {
+                    if (that.dist(use) < 0)
+                    {
+                        that.toRemove.push(use);
+                    }
+
+                    that.usepos.setItem(use, i);
+                }
+            });
+        
+            if (instr.hasDests())
+            {
+                // A negative number is used as a flag to indicate
+                // that the temp is not live
+                that.usepos.setItem(instr, -1);
+            }
+            
+            return that;
+        },
+
+        live:function ()
+        {
+            const that = this;
+            var keys =  arraySetUnion(this.usedist.getKeys(), this.usepos.getKeys());
+            var live = [];
+
+            keys.forEach(function (key)
+            {
+                if (that.dist(key) >= 0)
+                {
+                    live.push(key);
+                }
+            });
+
+            return live;
+        },
+
+        toString:function ()
+        {
+            const that = this;
+            var keys = arraySetUnion(this.usedist.getKeys(), this.usepos.getKeys());
+
+            var s = keys.map(function(key)
+            {
+                return key.getValName() + ": " + that.dist(key);
+            });
+
+            return "usedist <" + s.join(", ") + "> toRemove: [" + 
+                   this.toRemove.map(function (x) { 
+                       return x.getValName(); 
+                   }).join(",") + "]";
+
+        }
+    }
+   
+    // Iterate through all instructions of the block,
+    // first backward to create the usedist structures
+    // then forward to allocate registers
+    function iter(instrs, i, usedist)
+    {
+        // Base case: Handle phi instructions,
+        // update the rmap and resolve differences 
+        // between the preceding block and the current one
+        if (i < 0 || instrs[i] instanceof PhiInstr)
+        {
+            /*
+            print("Block " + block.getBlockName() + " in [" + 
+                  usedist.live().map(function (use) { return use.getValName(); }) 
+                  + "]");
+            print("out [" + block.analysis.usedist.getKeys()
+                  .map(function (x) { return x.getValName(); }) + "]");
+            print("pred rmap:");
+            print(rmap);
+            */
+
+            // Handle merge blocks for the first time
+            if (block.preds.length > 1)
+            {
+                var predRmap = rmap.copy();
+
+                // Handle Phi instructions
+                that.allocPhis(rmap, that.phis(block), pred, usedist);
+
+                // Keep only temps live in this block
+                rmap.keep(usedist.live());
+                block.regAlloc.rmapIn = rmap.copy();
+
+                // Resolution is needed to introduce moves for 
+                // constant opnds of phi instructions
+                that.resolve(predRmap, pred, block);
+
+                //print("rmap:");
+                //print(rmap);
+            }
+
+       
+            that.insertPos = i+1;
+            return;
+        }
+
+        var instr = instrs[i];
+        var usedist = usedist.previous(instr, i);
+        iter(instrs, i-1, usedist); 
+
+        that.allocInstr(rmap, instr, usedist);     
+        that.insertPos++;
+    }
+
+    //print("Block: " + block.getBlockName());
+    //print(usedist.toString());
+
+    // Initialize the backward iteration with the usedist from the 
+    // end of the block
+    iter(instrs, lastIndex, usedist);
+
+    //print("Rmap at block end: " + rmap.toString());
+}
+
+/**
 Allocate registers for regular instructions
 */
-onthefly.allocator.prototype.allocInstr = function (rmap, instr)
+onthefly.allocator.prototype.allocInstr = function (rmap, instr, usedist)
 {
     const that = this;
 
     if (this.params.printRegAlloc === true)
     {
-        print("On-the-fly allocInstr for " + instr);
+        //print("On-the-fly allocInstr for " + instr + " " + usedist.toString());
     }
     onthefly.instr(instr);
 
@@ -690,14 +1004,26 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr)
         rmap.free(reg);
     }
 
+    function condSpill(reg)
+    {
+        if (!arraySetHas(dead, reg))
+        {
+            spill(reg);
+        } 
+    }
+    
+    var dead = []; 
+    rmap.regs(usedist.toRemove).forEach(function (r)
+    {
+        if (r !== null)
+        {
+            dead.push(r);
+        }
+    });
     var used = rmap.used();
     var unused = rmap.unused();
     var opnds = rmap.getSrcs(instr.uses);
     
-    //print("Uses: " + instr.uses.join(","));
-    //print("Opnds: " + opnds.join(","));
-
-
     // Alloc operands
     if (instr.regAlloc.opndsRegRequired === true)
     {
@@ -751,6 +1077,8 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr)
     // Alloc destination
     var dest = null;
     instr.regAlloc.dest = null;
+
+    unused = arraySetUnion(unused, dead);
     if (instr.hasDests())
     {
         
@@ -762,7 +1090,8 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr)
         // Give priority to the register hint
         if (dest !== null)
         {
-            spill(dest);
+                 
+            condSpill(dest);
         } else
         {
             // Try picking a free register
@@ -795,7 +1124,7 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr)
         {
             if (rmap.val(reg) !== null)
             {
-                spill(reg);
+                condSpill(reg);
             }
         });
         //print("-----");
@@ -806,6 +1135,13 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr)
     {
         rmap.set(instr, dest);
     }
+
+    // Clear all dead temps from registers
+    usedist.toRemove.forEach(function (use)
+    {
+        //print("Clearing unused temp " + use.getValName());
+        rmap.clear(use);
+    });
 
     /*
     if (blocked !== null)
@@ -820,11 +1156,10 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr)
 /**
 Allocate registers for phi instructions
 */
-onthefly.allocator.prototype.allocPhis = function (rmap, phis, pred)
+onthefly.allocator.prototype.allocPhis = function (rmap, phis, pred, usedist)
 {
     const that = this;
     const unused = rmap.unused();
-    const nonphi = rmap.used();
 
     phis.forEach(function (instr)
     {
@@ -835,33 +1170,36 @@ onthefly.allocator.prototype.allocPhis = function (rmap, phis, pred)
         // Source instruction for phi
         const val = instr.getIncoming(pred);
 
-        /*
-        if (val instanceof IRInstr)
+        // Use the same slot as predecessor if it is 
+        // an instruction and it is not used anymore
+        if (val instanceof IRInstr && usedist.dist(val) < 0)
         {
-            // Current value location
-            var src = rmap.getSrc(val);
-            this.regAlloc.slot = src;
+
+            // Use the incoming register or memory location
+            // as the destination for the phi instruction
+            var slot = rmap.slot(val);
+            rmap.clear(val);
+            rmap.set(instr, slot);
+            var src = rmap.getSrc(instr);
         } else
-        {*/
+        {
+            // Otherwise, use a new slot
+
             // Try picking a free register
             if (unused.length > 0)
             {
                 var reg = unused.pop();
                 rmap.set(instr, reg);
                 var src = rmap.getSrc(instr);
-            } else if (nonphi.length > 0)
-            {
-               // Otherwise, pick the next used register
-               var reg = nonphi.pop();
-               rmap.free(reg);
-               rmap.set(instr, reg);
-               var src = rmap.getSrc(instr);
             } else
             {
                 // No other register available, use a memory location
-               var src = rmap.getSrc(instr);
+               var src = rmap.getSlot(instr);
+               // print("No other register available for " + instr.getValName() +
+               //       " using " + src);
+               rmap.set(instr, src);
             }
-        //}
+        }
 
         // Initialize operands 
         instr.regAlloc.opnds = instr.uses.map(function (use)
