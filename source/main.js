@@ -295,7 +295,7 @@ function tachyonRepl()
             case 'lir':
             config.hostParams.printLIR = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printLIR = false;
@@ -304,7 +304,7 @@ function tachyonRepl()
             case 'asm':
             config.hostParams.printASM = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printASM = false;
@@ -313,14 +313,10 @@ function tachyonRepl()
             case 'reg':
             config.hostParams.printRegAlloc = true;
             if (isSrcFile(args))
-                compFile(args)
+                compFile(args);
             else
                 compString(args);
             config.hostParams.printRegAlloc = false;
-            break;
-
-            case 'onthefly':
-            config.hostParams.regAlloc = "onthefly";
             break;
 
             default:
