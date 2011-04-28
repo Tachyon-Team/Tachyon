@@ -2338,6 +2338,13 @@ function getPropVal(obj, propName)
         obj = get_ctx_numproto(iir.get_ctx());
     }
 
+    // If this is a boxed boolean
+    else if (obj === true || obj === false)
+    {
+        // Lookup the property on the boolean prototype object
+        obj = get_ctx_boolproto(iir.get_ctx());
+    }
+
     // If the value is not an object
     else if (boxIsObjExt(obj) === FALSE_BOOL)
     {

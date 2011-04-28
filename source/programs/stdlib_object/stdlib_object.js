@@ -108,6 +108,18 @@ function test_toString()
     return 0;
 }
 
+function test_valueOf()
+{
+    //Object.prototype.valueOf = function ()
+
+    var o = {};
+
+    if (o.valueOf() !== o)
+        return 1;
+
+    return 0;
+}
+
 function test_hasOwnProperty()
 {
     //Object.prototype.hasOwnProperty = function (prop)
@@ -169,13 +181,17 @@ function test()
     if (r != 0)
         return 500 + r;
 
-    var r = test_hasOwnProperty();
+    var r = test_valueOf();
     if (r != 0)
         return 600 + r;
 
-    var r = test_isPrototypeOf();
+    var r = test_hasOwnProperty();
     if (r != 0)
         return 700 + r;
+
+    var r = test_isPrototypeOf();
+    if (r != 0)
+        return 800 + r;
 
     return 0;
 }

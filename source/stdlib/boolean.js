@@ -49,37 +49,37 @@ Maxime Chevalier-Boisvert
 */
 
 /**
-15.7.1 The Number function/constructor
-new Number([ value ])
-Number([ value ])
+15.6.1 The Boolean function/constructor
+new Boolean([ value ])
+Boolean([ value ])
 */
-function Number(value)
+function Boolean(value)
 {
-    // If this is a constructor call (new Number)
+    // If this is a constructor call (new Boolean)
     if (isGlobalObj(this) === false)
     {
-        // Convert the value to a number
-        var numVal = boxToNumber(value);
+        // Convert the value to a boolean
+        var boolVal = boolToBox(boxToBool(value));
 
-        // If the value is not a number, return it directly
-        if (typeof numVal !== 'number')
-            return numVal;
+        // If the value is not a boolean, return it directly
+        if (typeof boolVal !== 'boolean')
+            return boolVal;
 
         // Store the value in the new object
         // TODO: this should be a hidden/internal property
-        this.value = numVal;
+        this.value = boolVal;
     }
     else
     {
-        // Convert the value to a number
-        return boxToNumber(value);
+        // Convert the value to a boolean
+        return boolToBox(boxToBool(value));
     }
 }
 
 /**
-15.7.3.1 Number prototype object
+15.6.3.1 Boolean prototype object
 */
-Number.prototype = {};
+Boolean.prototype = {};
 
 /**
 Anonymous function to initialize this library
@@ -89,51 +89,43 @@ Anonymous function to initialize this library
     // Get a reference to the context
     var ctx = iir.get_ctx();
 
-    // Set the number prototype object in the context
-    set_ctx_numproto(ctx, Number.prototype);
+    // Set the boolean prototype object in the context
+    set_ctx_boolproto(ctx, Boolean.prototype);
 })();
 
 //-----------------------------------------------------------------------------
 
-// TODO
-// 15.7.3.2 Number.MAX_VALUE
-// 15.7.3.3 Number.MIN_VALUE
-// 15.7.3.4 Number.NaN
-// 15.7.3.5 Number.NEGATIVE_INFINITY
-// 15.7.3.6 Number.POSITIVE_INFINITY
-
 /**
-Internal function to get the number value of a number or number object
+15.6.4.2 Number.prototype.toString ()
 */
-function getNumVal(num)
+Boolean.prototype.toString = function ()
 {
-    if (boxIsInt(num))
-    {
-        return num;
-    }
-    else if (boxIsObj(num))
-    {
-        return num.value;
-    }
-}
+    var b;
 
-/**
-15.7.4.2 Number.prototype.toString ([ radix ])
-*/
-Number.prototype.toString = function (radix)
-{
-    var num = getNumVal(this);
+    if (typeof this === 'boolean')
+        b = this;
+    else if (this instanceof Boolean)
+        b =  this.value;
+    else
+        throw new TypeError('expected boolean');
 
-    //FIXME: for now, ignoring the radix
-
-    return boxToString(num);
+    return b? 'true':'false';
 };
 
 /**
-15.7.4.4 Number.prototype.valueOf ( )
+15.6.4.3 Number.prototype.valueOf ( )
 */
-Number.prototype.valueOf = function ()
+Boolean.prototype.valueOf = function ()
 {
-    return getNumVal(this);
-}
+    var b;
+
+    if (typeof this === 'boolean')
+        b = this;
+    else if (this instanceof Boolean)
+        b =  this.value;
+    else
+        throw new TypeError('expected boolean');
+
+    return b? true:false;
+};
 

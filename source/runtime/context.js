@@ -46,9 +46,6 @@ Implementation of runtime context objects
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -133,9 +130,9 @@ function makeContextLayout(params)
         'null'
     );
 
-    // String prototype object
+    // Boolean prototype object
     ctxLayout.addField(
-        'strproto',
+        'boolproto',
         IRType.box,
         'null'
     );
@@ -143,6 +140,13 @@ function makeContextLayout(params)
     // Number prototype object
     ctxLayout.addField(
         'numproto',
+        IRType.box,
+        'null'
+    );
+
+    // String prototype object
+    ctxLayout.addField(
+        'strproto',
         IRType.box,
         'null'
     );

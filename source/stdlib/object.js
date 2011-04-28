@@ -46,9 +46,6 @@ Implementation of ECMAScript 5 Object methods and prototype.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
@@ -168,6 +165,14 @@ Object.prototype.toString = function ()
 {
     return "object";
 };
+
+/**
+15.2.4.4 Object.prototype.valueOf ()
+*/
+Object.prototype.valueOf = function ()
+{
+    return this;
+}
 
 /**
 15.2.4.5 Test that an object has a given property

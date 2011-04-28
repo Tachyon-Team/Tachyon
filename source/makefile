@@ -138,6 +138,7 @@ STDLIB_SRCS =                           \
     stdlib/function.js                  \
     stdlib/array.js                     \
     stdlib/error.js                     \
+    stdlib/boolean.js                   \
     stdlib/number.js                    \
     stdlib/string.js                    \
     stdlib/math.js                      \

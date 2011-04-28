@@ -763,16 +763,6 @@ tests.programs.stdlib_function = genTest(
 );
 
 /**
-Standard library math code tests.
-*/
-tests.programs.stdlib_math = genTest(
-    'programs/stdlib_math/stdlib_math.js',
-    'test',
-    [],
-    0
-);
-
-/**
 Standard library array code tests.
 */
 tests.programs.stdlib_array = genTest(
@@ -783,10 +773,40 @@ tests.programs.stdlib_array = genTest(
 );
 
 /**
+Standard library boolean code tests.
+*/
+tests.programs.stdlib_boolean = genTest(
+    'programs/stdlib_boolean/stdlib_boolean.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Standard library number code tests.
+*/
+tests.programs.stdlib_number = genTest(
+    'programs/stdlib_number/stdlib_number.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Standard library string code tests.
 */
 tests.programs.stdlib_string = genTest(
     'programs/stdlib_string/stdlib_string.js',
+    'test',
+    [],
+    0
+);
+
+/**
+Standard library math code tests.
+*/
+tests.programs.stdlib_math = genTest(
+    'programs/stdlib_math/stdlib_math.js',
     'test',
     [],
     0
