@@ -61,13 +61,15 @@ tests.ir.helpers = {};
 /**
 Parse a source code string, copy the resulting IR and validate it
 */
-tests.ir.helpers.testSource = function (sourceStr, printOut)
+tests.ir.helpers.testSource = function (sourceStr, printOut, hostParams)
 {
+    var params = hostParams? config.hostParams:config.clientParams
+
     // Parse the source string
-    var ast = parse_src_str(sourceStr, config.clientParams);
+    var ast = parse_src_str(sourceStr, params);
 
     // Translate the AST to IR
-    var ir = unitToIR(ast, config.clientParams);
+    var ir = unitToIR(ast, params);
 
     if (printOut === true)
         print(ir);
@@ -79,7 +81,7 @@ tests.ir.helpers.testSource = function (sourceStr, printOut)
     ir.validate();
 
     // Perform lowering on the IR
-    lowerIRFunc(ir, config.clientParams);
+    lowerIRFunc(ir, params);
 
     if (printOut === true)
         print(ir);

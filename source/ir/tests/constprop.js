@@ -46,9 +46,6 @@ Unit tests for AST->IR translation code
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -93,7 +90,9 @@ tests.constprop.helpers.genTest = function (testCode, constVal)
                 {                                   \
                 " + testCode + "                    \
                 }                                   \
-            "
+            ",
+            false,
+            true
         );
 
         tests.constprop.helpers.returnsCst(ir, constVal);
@@ -210,5 +209,21 @@ Conditional operator test
 tests.constprop.condOp = tests.constprop.helpers.genTest(
     'return 0? 2:3;',
     ConstValue.getConst(3)
+);
+
+/**
+Integer cast test
+*/
+tests.constprop.icast1 = tests.constprop.helpers.genTest(
+    'return iir.icast(IRType.box, iir.icast(IRType.pint, 5));',
+    ConstValue.getConst(5)
+);
+
+/**
+Redundant integer cast test
+*/
+tests.constprop.icast2 = tests.constprop.helpers.genTest(
+    'return iir.icast(IRType.box, 7);',
+    ConstValue.getConst(7)
 );
 

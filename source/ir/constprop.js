@@ -740,6 +740,9 @@ UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
 
 ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
+    if (this.uses[0].type === this.type)
+        return this.uses[0];
+
     var v0 = getValue(this.uses[0]);
 
     if (v0 === TOP)
@@ -749,12 +752,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
     {
         var result;
 
-        if (v0.type === this.type)
-        {
-            result = v0.value;
-        }
-
-        else if (v0.type.isInt() && this.type.isInt())
+        if (v0.type.isInt() && this.type.isInt())
         {
             if (this.type.valInRange(v0.value, params))
                 result = v0.value;

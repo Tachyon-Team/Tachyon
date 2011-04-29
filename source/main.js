@@ -194,6 +194,8 @@ function tachyonRepl()
         print('  /lir  <command>        view LIR produced for a command/file');
         print('  /asm  <command>        view ASM produced for a command/file');
         print('  /reg  <command>        view register allocation for a command/file');
+        print('  /prim_list             view a list of the primitive functions');
+        print('  /prim_ir <func_name>   view LIR produced for a primitive function');
         print('  /help                  print a help listing');
         print('  /exit                  exit the read-eval-print loop');
     }
@@ -259,20 +261,14 @@ function tachyonRepl()
 
             case 'time_comp':
             var startTimeMs = (new Date()).getTime();
-            if (isSrcFile(args))
-                compFile(args);
-            else
-                compString(args);
+            compFileOrString(args);
             var endTimeMs = (new Date()).getTime();
             var time = (endTimeMs - startTimeMs) / 1000;
             print('time: ' + time + 's');
             break;
 
             case 'time_exec':
-            if (isSrcFile(args))
-                var ir = compFile(args);
-            else
-                var ir = compString(args);
+            var ir = compFileOrString(args);
             var startTimeMs = (new Date()).getTime();
             execIR(ir);
             var endTimeMs = (new Date()).getTime();
@@ -282,47 +278,54 @@ function tachyonRepl()
 
             case 'ast':
             config.hostParams.printAST = true;
-            if (isSrcFile(args))
-                compFile(args);
-            else
-                compString(args);
+            compFileOrString(args);
             config.hostParams.printAST = false;
             break;
 
             case 'hir':
             config.hostParams.printHIR = true;
-            if (isSrcFile(args))
-                compFile(args);
-            else
-                compString(args);
+            compFileOrString(args);
             config.hostParams.printHIR = false;
             break;
 
             case 'lir':
             config.hostParams.printLIR = true;
-            if (isSrcFile(args))
-                compFile(args);
-            else
-                compString(args);
+            compFileOrString(args);
             config.hostParams.printLIR = false;
             break;
 
             case 'asm':
             config.hostParams.printASM = true;
-            if (isSrcFile(args))
-                compFile(args);
-            else
-                compString(args);
+            compFileOrString(args);
             config.hostParams.printASM = false;
             break;
 
             case 'reg':
             config.hostParams.printRegAlloc = true;
-            if (isSrcFile(args))
-                compFile(args);
-            else
-                compString(args);
+            compFileOrString(args);
             config.hostParams.printRegAlloc = false;
+            break;
+
+            case 'prim_list':
+            var bindings = config.hostParams.staticEnv.getBindings();
+            bindings.forEach(
+                function (name)
+                {
+                    var binding = config.hostParams.staticEnv.getBinding(name);
+                    if (binding instanceof IRFunction)
+                        print(name);
+                }
+            );
+            break;
+
+            case 'prim_ir':
+            if (config.hostParams.staticEnv.hasBinding(args) === false)
+            {
+                print('primitive not found: "' + args + '"');
+                break;
+            }
+            var func = config.hostParams.staticEnv.getBinding(args);
+            print(func);
             break;
 
             default:
@@ -402,6 +405,15 @@ function tachyonRepl()
         }
 
         return ir;
+    }
+
+    // Compile a source file or string
+    function compFileOrString(str)
+    {
+        if (isSrcFile(str))
+            return compFile(str);
+        else
+            return compString(str);
     }
 
     print('');

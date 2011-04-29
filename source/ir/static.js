@@ -46,9 +46,6 @@ Implementation of static bindings required for compilation
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -101,6 +98,19 @@ function StaticEnv()
         );
 
         return val;
+    };
+
+    /**
+    Get a list of binding names that exist
+    */
+    this.getBindings = function ()
+    {
+        var list = [];
+
+        for (k in bindings)
+            list.push(k);
+
+        return list;
     };
 }
 StaticEnv.prototype = {};

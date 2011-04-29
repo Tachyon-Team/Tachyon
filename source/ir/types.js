@@ -46,9 +46,6 @@ Definition of Intermediate Representation (IR) instructions types.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
