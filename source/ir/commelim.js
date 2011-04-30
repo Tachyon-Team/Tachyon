@@ -46,9 +46,6 @@ Code related to common/redundant code elimination.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -169,9 +166,11 @@ function commElim(cfg, maxItrs)
 
         // Work list for the analysis
         var workList = new LinkedList();
+        var workListSet = [];
 
         // Add the entry block to the work list
         workList.addLast(cfg.entry);
+        workListSet[cfg.entry.blockId] = true;
 
         // Array to store must reach input sets for each block
         var mustReachIn = [];
@@ -212,6 +211,7 @@ function commElim(cfg, maxItrs)
         while (workList.isEmpty() === false)
         {
             var block = workList.remFirst();
+            workListSet[block.blockId] = false;
 
             /*
             print(
@@ -343,7 +343,12 @@ function commElim(cfg, maxItrs)
                         arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
                     {
                         //print('ADDING BLOCK LAST: ' + succ.getBlockName());
-                        workList.addLast(succ);
+
+                        if (workListSet[succ.blockId] !== true)
+                        {
+                            workList.addLast(succ);
+                            workListSet[succ.blockId] = true;
+                        }
                     }
                 }
 
@@ -359,6 +364,7 @@ function commElim(cfg, maxItrs)
 
                     // Make the successor next on the work list
                     workList.addFirst(succ);
+                    workListSet[succ.blockId] = true;
                 }
             }
         }

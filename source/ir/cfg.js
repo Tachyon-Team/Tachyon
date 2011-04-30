@@ -721,9 +721,11 @@ ControlFlowGraph.prototype.validate = function ()
 
     // Work list for the analysis
     var workList = new LinkedList();
+    var workListSet = [];
 
     // Add the entry block to the work list
     workList.addLast(this.entry);
+    workListSet[this.entry.blockId] = true;
 
     // Array to store must reach input sets for each block
     var mustReachIn = [];
@@ -764,6 +766,7 @@ ControlFlowGraph.prototype.validate = function ()
     while (workList.isEmpty() === false)
     {
         var block = workList.remFirst();
+        workListSet[block.blockId] = false;
 
         /*
         print(
@@ -887,8 +890,12 @@ ControlFlowGraph.prototype.validate = function ()
                 if (succReachIn === undefined || 
                     arraySetEqual(mustReachIn[succ.blockId], succReachIn) === false)
                 {
-                    //print('ADDING BLOCK LAST: ' + succ.getBlockName());
-                    workList.addLast(succ);
+                    if (workListSet[succ.blockId] !== true)
+                    {
+                        //print('ADDING BLOCK LAST: ' + succ.getBlockName());
+                        workList.addLast(succ);
+                        workListSet[succ.blockId] = true;
+                    }
                 }
             }
 
@@ -904,6 +911,7 @@ ControlFlowGraph.prototype.validate = function ()
 
                 // Make the successor next on the work list
                 workList.addFirst(succ);
+                workListSet[succ.blockId] = true;
             }
         }
     }
