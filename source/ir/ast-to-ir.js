@@ -2484,6 +2484,90 @@ function opToIR(context)
         return opVal;
     }
 
+    // Function to generate code for a binary comparison operation
+    function cmpGen(primName, cmpOp, neg)
+    {
+        // Compile the argument values
+        var argsContext = context.pursue(exprs);
+        var argVals = exprListToIR(argsContext);
+
+        // Test if all arguments are boxed
+        var allBoxed = true;
+        for (var i = 0; i < argVals.length; ++i)
+            if (argVals[i].type !== IRType.box)
+                allBoxed = false;
+
+        // If all values are boxed
+        if (allBoxed)
+        {
+           // Create the primitive call
+           var opVal = insertPrimCallIR(
+                argsContext,
+                primName, 
+                argVals
+            );
+
+            // Set the operator's output value as the output
+            context.setOutput(argsContext.getExitBlock(), opVal);
+        }
+        else
+        {
+            print('GENERATING LIR COMPARISON *****');
+
+            // Ensure that the comparison is valid for non-boxed values
+            if (cmpOp === undefined)
+                throw 'comparison operation only applies to boxed values (' +
+                    context.astNode.loc.to_string() + ')';
+
+            // Ensure that the arguments have the same type
+            if (argVals[0].type !== argVals[1].type)
+                throw 'only values of the same type can be compared (' +
+                    context.astNode.loc.to_string() + ')';
+    
+            // Create blocks for the true and false cases
+            var trueBlock = context.cfg.getNewBlock('cmp_true');
+            var joinBlock = context.cfg.getNewBlock('cmp_join');
+
+            // Add the test instruction
+            argsContext.addInstr(
+                new IfTestInstr(
+                    argVals[0],
+                    argVals[1],
+                    cmpOp,
+                    trueBlock,
+                    joinBlock
+                )
+            );
+
+            // Get the basic block for the false case
+            var falseBlock = argsContext.getExitBlock();
+
+            // Make the true block jump to the join block
+            trueBlock.addInstr(new JumpInstr(joinBlock));
+
+            // If the comparison is negated, swap the true and false blocks
+            if (neg)
+            {
+                var t = trueBlock;
+                trueBlock = falseBlock;
+                falseBlock = trueBlock;
+            }
+
+            // Add a phi node to select the value
+            var joinVal = joinBlock.addInstr(
+                new PhiInstr(
+                    //TODO: eliminate bool type
+                    //[ConstValue.getConst(true), ConstValue.getConst(false)]
+                    [ConstValue.getConst(1, IRType.bool), ConstValue.getConst(0, IRType.bool)],
+                    [trueBlock, falseBlock]
+                )
+            );
+
+            // Set the phi node's output value as the output
+            context.setOutput(joinBlock, joinVal);
+        }
+    }
+
     // Switch on the operator
     switch (op)
     {
@@ -3036,7 +3120,12 @@ function opToIR(context)
         break;
 
         case 'x < y':
+
         opGen('lt', LtInstr);
+
+        // TODO: test me!
+        //cmpGen('lt', IfTestInstr.test.LT, false);
+
         break;
 
         case 'x <= y':

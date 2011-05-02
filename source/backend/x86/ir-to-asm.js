@@ -42,11 +42,11 @@
 
 /**
 @fileOverview
+Translate the low-level IR to machine-dependent assembly code.
 
-Translate the low-level IR to machine dependent assembly code.
-
-@copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+@author
+Erick Lavoie
+Maxime Chevalier-Boisvert
 */
 
 /** @namespace */
@@ -1897,6 +1897,148 @@ IfInstr.prototype.genCode = function (tltor, opnds)
         cmp($(0), opnds[0], this.uses[0].type.getSizeBits(tltor.params)).
         je(falseLabel).
         jmp(trueLabel);
+    }
+};
+
+IfTestInstr.prototype.genCode = function (tltor, opnds)
+{
+    // Assembler imports
+    const $ = x86.Assembler.prototype.immediateValue;
+
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
+
+    const trueLabel = tltor.label(this.targets[0], this.targets[0].label);
+    const falseLabel = tltor.label(this.targets[1], this.targets[1].label);
+
+    // Get the operand width
+    var width;
+    if (opnds[0].width !== undefined)
+        width = opnds[0].width();
+    else if (opnds[1].width !== undefined)
+        width = opnds[1].width();
+    else
+        width = this.uses[0].type.getSizeBits(tltor.params);
+
+    // Equality comparison
+    if (this.test === IfTestInstr.test.EQ)
+    {
+        if (opnds[0].type === x86.type.REG && 
+            opnds[1].type === x86.type.IMM_VAL &&
+            opnds[1].value === 0) 
+        {
+            tltor.asm.test(opnds[0], opnds[0]);
+        } 
+        else if (opnds[1].type === x86.type.REG && 
+                 opnds[0].type === x86.type.IMM_VAL &&
+                 opnds[0].value === 0)
+        {
+            tltor.asm.test(opnds[1], opnds[1]);
+        } 
+        else if ((opnds[0].type === x86.type.MEM || tltor.asm.isImmediate(opnds[0])) &&
+                 (opnds[1].type === x86.type.MEM || tltor.asm.isImmediate(opnds[1])))
+        {
+            if (tltor.asm.target === x86.target.x86_64 && opnds[1].type === x86.type.LINK)
+            {
+                tltor.asm.mov(opnds[1], scratchReg);
+                var opnd = scratchReg;
+            } else
+            {
+                var opnd = opnds[1];
+            }
+            tltor.asm.
+            mov(opnds[0], dest).
+            cmp(opnd, dest);
+        } 
+        else if (tltor.asm.isImmediate(opnds[1]))
+        {
+            if (opnds[1].type === x86.type.LINK && opnds[1].width() === 64)
+            {
+                // Cmp cannot have a 64 bit immediate value as operand
+                tltor.asm.
+                mov(opnds[1], scratchReg).
+                cmp(scratchReg, opnds[0]);
+            } else
+            {
+                tltor.asm.cmp(opnds[1], opnds[0], width);
+            }
+        }
+        else
+        {
+            if (opnds[0].type === x86.type.LINK && opnds[0].width() === 64)
+            {
+                // Cmp cannot have a 64 bit immediate value as operand
+                var opnd = scratchReg;
+                tltor.asm.mov(opnds[0], scratchReg);
+
+            } else
+            {
+                var opnd = opnds[0];
+            }
+            tltor.asm.cmp(opnd, opnds[1], width);
+        }
+
+        tltor.asm.
+        jne(falseLabel).
+        jmp(trueLabel);
+    }
+    else
+    {
+        assert(
+            opnds[0].type !== x86.type.LINK &&
+            opnds[1].type !== x86.type.LINK,
+            "Invalid link object as operand"
+        );
+
+        print(this)
+        print(opnds[0]);
+        print(opnds[1]);
+
+        if ((opnds[0].type === x86.type.MEM &&
+            opnds[1].type === x86.type.MEM) ||
+            (tltor.asm.isImmediate(opnds[0]) &&
+             tltor.asm.isImmediate(opnds[1])))
+        {
+            tltor.asm.
+            mov(opnds[0], scratchReg).
+            cmp(opnds[1], scratchReg);
+        } 
+        else if (opnds[0].type === x86.type.IMM_VAL)
+        {
+            tltor.asm.cmp(opnds[0], opnds[1]);
+        } 
+        else
+        {
+            // FIXME: values flipped
+
+            tltor.asm.cmp(opnds[1], opnds[0], width);
+        }
+
+        // Less-than comparison
+        if (this.test === IfTestInstr.test.LT)
+        {
+            if (this.uses[0].type.isSigned() || this.uses[0].type === IRType.box)
+                tltor.asm.jl(trueLabel);
+            else
+                tltor.asm.jb(trueLabel);
+
+            tltor.asm.jmp(falseLabel);
+        }
+
+        // Less-than or equal comparison
+        else if (this.test === IfTestInstr.test.LE)
+        {
+            if (this.uses[0].type.isSigned() || this.uses[0].type === IRType.box)
+                tltor.asm.jle(trueLabel);
+            else
+                tltor.asm.jbe(trueLabel);
+
+            tltor.asm.jmp(falseLabel);
+        }
+
+        else
+        {
+            error('unsupported comparison operation in if test');            
+        }
     }
 };
 

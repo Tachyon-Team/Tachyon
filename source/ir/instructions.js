@@ -1383,6 +1383,106 @@ var IfInstr = instrMaker(
     ['then', 'else']
 );
 
+/**
+@class If branching instruction
+@augments IRInstr
+*/
+function IfTestInstr(input1, input2, test, trueTarget, falseTarget)
+{
+    assert (
+        input1.type === input2.type &&
+        input1.type !== IRType.box,
+        'input types must match'
+    );
+
+    assert (
+        test === IfTestInstr.test.EQ ||
+        test === IfTestInstr.test.LT ||
+        test === IfTestInstr.test.LE,
+        'invalid test condition'
+    );
+
+    assert (
+        trueTarget instanceof BasicBlock &&
+        falseTarget instanceof BasicBlock,
+        'invalid branch targets'
+    );
+
+    this.mnemonic = 'if';
+
+    this.uses = [input1, input2];
+
+    this.test = test;
+
+    this.targets = [trueTarget, falseTarget];
+
+    this.type = IRType.none;
+}
+IfTestInstr.prototype = new IRInstr();
+
+/**
+Possible tests for the if instruction
+*/
+IfTestInstr.test = {
+    EQ  : 1,
+    LT  : 2,
+    LE  : 3
+};
+
+/**
+Branch target names
+*/
+IfTestInstr.prototype.targetNames = ['then', 'else'];
+
+/**
+Produce a string representation of the if instruction
+*/
+IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
+{
+    // If no formatting functions were specified, use the default ones
+    if (outFormatFn === undefined)
+        outFormatFn = IRInstr.defOutFormat;
+    if (inFormatFn === undefined)
+        inFormatFn = IRInstr.defInFormat;
+
+    // Create a string for the output
+    var output = this.mnemonic;
+
+    // Print the comparison
+    output += inFormatFn(this, 0) + ' ';
+    switch (this.test)
+    {
+        case IfTestInstr.test.EQ: output += '==='; break;
+        case IfTestInstr.test.LT: output += '<';   break;
+        case IfTestInstr.test.LE: output += '<=';  break;
+    }
+    output += ' ' + inFormatFn(this, 1) + ' ';
+
+    // Print the branch targets
+    output += this.targetNames[0] + ' ';
+    output += this.targets[0].getBlockName();
+    output += this.targetNames[1] + ' ';
+    output += this.targets[1].getBlockName();
+
+    return output;
+}
+
+/**
+Make a shallow copy of the instruction
+*/
+IfTestInstr.prototype.copy = function ()
+{
+    return this.baseCopy(
+        new IfTestInstr(
+            this.uses[0],
+            this.uses[1],
+            this.test,
+            this.targets[0],
+            this.targets[1]
+        )
+    );
+};
+
 //=============================================================================
 //
 // Exception-producing and call instructions
