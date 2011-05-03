@@ -616,6 +616,74 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
 };
 
 /**
+    @private
+    
+    Move all operands in 'wanted' on stack, replacing their occurence
+    in 'used' by their memory location on the stack. Updates
+    all operands that were already on stack to take the displacement
+    of the stack pointer into account.
+    
+    Returns the stack offset introduced by spilling.
+*/
+irToAsm.translator.prototype.spillOnStack = function (wanted, used)
+{
+    const that = this;
+    // Assembler imports
+    const mem = x86.Assembler.prototype.memory;
+    const $ = x86.Assembler.prototype.immediateValue;
+    
+    // Configuration imports
+    const target = this.params.target;
+    const refByteNb  = target.ptrSizeBytes; 
+    const stack = target.backendCfg.stack;
+
+    // Find the used slots which are memory locations
+    var memIndexes = [];
+    used.forEach(function (slot, index) 
+    {
+        if (slot.type === x86.type.MEM)
+        {
+            memIndexes.push(index);    
+        }
+    });
+
+    // Move all used registers in wanted onto the stack
+    var offset = 0;
+    var spilled = [];
+    wanted.forEach(function (reg) {
+        const index = used.indexOf(reg);
+
+        if (index !== -1)
+        {
+            const slot = mem(offset, stack);
+            used[index] = slot;
+            spilled.push({reg:reg, slot:slot});  
+            offset += refByteNb;
+        }
+    });
+
+    if (offset > 0)
+    {
+        that.asm.sub($(offset), stack);
+    }
+
+    spilled.forEach(function (spill)
+    {
+        that.asm.mov(spill.reg, spill.slot);
+    });
+
+    // Update all memory locations in used to take
+    // the displacement of the stack pointer into 
+    // account
+    memIndexes.forEach(function (i)
+    {
+        used[i].disp += offset; 
+    });
+
+    return offset;
+};
+
+/**
     Generate code to move arguments passed in registers on stack,
     generate some code and move arguments back in registers.
 */
@@ -2273,7 +2341,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     }
 
     // Spill an operand on the context if it is in one of the reserved registers
-    tltor.spillOnCtx([altStack, scratchReg], opnds);
+    const spillOffset = tltor.spillOnStack([altStack, scratchReg], opnds);
 
     // Invariant: opnds are constants, registers or memory location
     //            containing C-valid object or primitive values
@@ -2337,9 +2405,10 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     mov(context, mem(-refByteNb, altStack)).
 
     // Align the new stack pointer
-    and($(alignMask), stack).
-    
+    and($(alignMask), stack);
+
     // Save the old stack pointer below the arguments
+    tltor.asm.
     mov(altStack, mem(argStackSpace, stack));
 
     // Write arguments on stack in reverse order
@@ -2430,6 +2499,11 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
     mov(mem(argStackSpace, xSP), altStack).
     mov(mem(-refByteNb, altStack), context).
     mov(altStack, stack);
+
+    if (spillOffset > 0)
+    {
+        tltor.asm.add($(spillOffset), stack);
+    }
 };
 
 ConstructInstr.prototype.genCode = CallFuncInstr.prototype.genCode;
