@@ -135,5 +135,5 @@ Number.prototype.toString = function (radix)
 Number.prototype.valueOf = function ()
 {
     return getNumVal(this);
-}
+};
 

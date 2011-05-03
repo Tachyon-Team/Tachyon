@@ -1449,7 +1449,7 @@ IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
     var output = this.mnemonic;
 
     // Print the comparison
-    output += inFormatFn(this, 0) + ' ';
+    output += ' ' + inFormatFn(this, 0) + ' ';
     switch (this.test)
     {
         case IfTestInstr.test.EQ: output += '==='; break;
@@ -1460,7 +1460,7 @@ IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     // Print the branch targets
     output += this.targetNames[0] + ' ';
-    output += this.targets[0].getBlockName();
+    output += this.targets[0].getBlockName() + ' ';
     output += this.targetNames[1] + ' ';
     output += this.targets[1].getBlockName();
 

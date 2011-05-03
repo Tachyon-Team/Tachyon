@@ -2512,8 +2512,6 @@ function opToIR(context)
         }
         else
         {
-            print('GENERATING LIR COMPARISON *****');
-
             // Ensure that the comparison is valid for non-boxed values
             if (cmpOp === undefined)
                 throw 'comparison operation only applies to boxed values (' +
@@ -2550,7 +2548,7 @@ function opToIR(context)
             {
                 var t = trueBlock;
                 trueBlock = falseBlock;
-                falseBlock = trueBlock;
+                falseBlock = t;
             }
 
             // Add a phi node to select the value
@@ -3120,24 +3118,35 @@ function opToIR(context)
         break;
 
         case 'x < y':
-
-        opGen('lt', LtInstr);
-
-        // TODO: test me!
-        //cmpGen('lt', IfTestInstr.test.LT, false);
-
+        //opGen('lt', LtInstr);
+        cmpGen('lt', IfTestInstr.test.LT, false);
         break;
 
         case 'x <= y':
-        opGen('le', LeInstr);
+        //opGen('le', LeInstr);
+        cmpGen('le', IfTestInstr.test.LE, false);
         break;
 
         case 'x > y':
-        opGen('gt', GtInstr);
+        //opGen('gt', GtInstr);
+        cmpGen('gt', IfTestInstr.test.LE, true);
         break;
 
         case 'x >= y':
-        opGen('ge', GeInstr);
+        //opGen('ge', GeInstr);
+        cmpGen('ge', IfTestInstr.test.LT, true);
+        break;
+
+        case 'x === y':
+
+        // FIXME
+        opGen('seq', EqInstr);
+        //cmpGen('seq', IfTestInstr.test.EQ, false);
+
+        break;
+
+        case 'x !== y':
+        opGen('nseq', NeInstr);
         break;
 
         case 'x == y':
@@ -3146,14 +3155,6 @@ function opToIR(context)
 
         case 'x != y':
         opGen('ne');
-        break;
-
-        case 'x === y':
-        opGen('seq', EqInstr);
-        break;
-
-        case 'x !== y':
-        opGen('nseq', NeInstr);
         break;
 
         case 'typeof x':

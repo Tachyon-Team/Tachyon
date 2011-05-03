@@ -172,7 +172,7 @@ Object.prototype.toString = function ()
 Object.prototype.valueOf = function ()
 {
     return this;
-}
+};
 
 /**
 15.2.4.5 Test that an object has a given property

@@ -47,8 +47,9 @@ in a AT&T inspired syntax to binary code ready for execution.
 
 The following code is based on the assembler of the Gambit x86 back-end.
 
-@copyright
-Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
+@author
+Erick Lavoie
+Maxime Chevalier-Boisvert
 */
 
 /** @namespace x86 code generator */
