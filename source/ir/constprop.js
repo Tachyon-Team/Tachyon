@@ -311,6 +311,22 @@ function constProp(cfg, params)
                 }
             }
 
+            // If this is an if instruction
+            else if (instr instanceof IfTestInstr)
+            {
+                // If only one if branch is reachable, replace the if by a jump
+                if (val === true)
+                {
+                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
+                    ++numBranches;
+                }
+                else if (val === false)
+                {
+                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
+                    ++numBranches;
+                }
+            }
+
             // If this is an arithmetic instruction with overflow 
             // and we have a replacement value
             else if (instr instanceof ArithOvfInstr && val instanceof IRValue)
@@ -408,7 +424,8 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
         if (v0 === TOP || v1 === TOP)
             return TOP;
 
-        if (v0 instanceof ConstValue && v1 instanceof ConstValue)
+        if (v0 instanceof ConstValue && v0.isNumber() &&
+            v1 instanceof ConstValue && v1.isNumber())
         {
             if (v0.isInt() && v1.isInt())
             {
@@ -900,7 +917,8 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
             return TOP;
         }
 
-        if (v0 instanceof ConstValue && v1 instanceof ConstValue)
+        if (v0 instanceof ConstValue && v0.isNumber() &&
+            v1 instanceof ConstValue && v1.isNumber())
         {
             if (v0.isInt() && v1.isInt())
             {
@@ -1111,4 +1129,70 @@ IfInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, para
     // Return the test value
     return test;
 };
+
+// TODO: implement const prop for IfTestInstr
+// TODO: implement replacement for IfTestInstr
+IfTestInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
+{
+    var v0 = getValue(this.uses[0]);
+    var v1 = getValue(this.uses[1]);
+
+    // Comparison test value, by default, it is unknown (bottom)
+    var testVal = BOT;
+
+    if (v0 === TOP || v1 === TOP)
+        testVal = TOP;
+
+    /*
+    print(this);
+    print(v0);
+    print(v1);
+    */
+
+    if (v0 instanceof ConstValue && v1 instanceof ConstValue)
+    {
+        v0 = v0.value;
+        v1 = v1.value;
+
+        // If this is a number comparison
+        if (num_instance(v0) && num_instance(v1))
+        {
+            switch (this.cmpOp)
+            {
+                case IfTestInstr.cmpOp.LT: testVal = num_lt(v0, v1); break;
+                case IfTestInstr.cmpOp.LE: testVal = num_le(v0, v1); break;
+                case IfTestInstr.cmpOp.GT: testVal = num_gt(v0, v1); break;
+                case IfTestInstr.cmpOp.GE: testVal = num_ge(v0, v1); break;
+                case IfTestInstr.cmpOp.EQ: testVal = num_eq(v0, v1); break;
+                case IfTestInstr.cmpOp.NE: testVal = num_ne(v0, v1); break;
+            }
+        }
+    }
+
+    //print(testVal);
+
+    // If the test evaluates to true
+    if (testVal === true)
+    {
+        // Add the true branch to the work list
+        queueEdge(this, this.targets[0]);
+    }
+
+    // If the test evaluates to false
+    else if (testVal === false)
+    {
+        // Add the false branch to the work list
+        queueEdge(this, this.targets[1]);
+    }
+
+    // If test is non-constant, both branches are reachable
+    else if (testVal === BOT)
+    {
+        queueEdge(this, this.targets[0]);
+        queueEdge(this, this.targets[1]);
+    }
+
+    // Return the test value
+    return testVal;
+}
 

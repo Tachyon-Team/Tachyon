@@ -2485,7 +2485,7 @@ function opToIR(context)
     }
 
     // Function to generate code for a binary comparison operation
-    function cmpGen(primName, cmpOp, neg)
+    function cmpGen(primName, cmpOp)
     {
         // Compile the argument values
         var argsContext = context.pursue(exprs);
@@ -2542,14 +2542,6 @@ function opToIR(context)
 
             // Make the true block jump to the join block
             trueBlock.addInstr(new JumpInstr(joinBlock));
-
-            // If the comparison is negated, swap the true and false blocks
-            if (neg)
-            {
-                var t = trueBlock;
-                trueBlock = falseBlock;
-                falseBlock = t;
-            }
 
             // Add a phi node to select the value
             var joinVal = joinBlock.addInstr(
@@ -2629,6 +2621,29 @@ function opToIR(context)
             // Jump to the first expression evaluation
             context.addInstr(new JumpInstr(fstEntry));
 
+            /*
+            print(fstContext.getOutValue());
+
+            // Get the boolean value of the first expression
+            var boolVal = insertPrimCallIR(
+                fstContext, 
+                'boxToBool',
+                [fstContext.getOutValue()]
+            );
+
+            // If the first expression evaluates to false, evaluate the second
+            fstContext.getExitBlock().replBranch(
+                new IfTestInstr(
+                    boolVal,
+                    ConstValue.getConst(false),
+                    IfTestInstr.cmpOp.EQ,
+                    secEntry,
+                    joinBlock
+                )
+            );
+            */
+
+            
             // If the first expression evaluates to false, evaluate the second
             fstContext.getExitBlock().replBranch(
                 new IfInstr(
@@ -2637,6 +2652,7 @@ function opToIR(context)
                     joinBlock
                 )
             );
+
 
             // Set the exit block to be the join block
             context.setOutput(joinBlock, phiValue);
@@ -3118,35 +3134,27 @@ function opToIR(context)
         break;
 
         case 'x < y':
-        //opGen('lt', LtInstr);
-        cmpGen('lt', IfTestInstr.test.LT, false);
+        cmpGen('lt', IfTestInstr.cmpOp.LT);
         break;
 
         case 'x <= y':
-        //opGen('le', LeInstr);
-        cmpGen('le', IfTestInstr.test.LE, false);
+        cmpGen('le', IfTestInstr.cmpOp.LE);
         break;
 
         case 'x > y':
-        //opGen('gt', GtInstr);
-        cmpGen('gt', IfTestInstr.test.LE, true);
+        cmpGen('gt', IfTestInstr.cmpOp.GT);
         break;
 
         case 'x >= y':
-        //opGen('ge', GeInstr);
-        cmpGen('ge', IfTestInstr.test.LT, true);
+        cmpGen('ge', IfTestInstr.cmpOp.GE);
         break;
 
         case 'x === y':
-
-        // FIXME
-        opGen('seq', EqInstr);
-        //cmpGen('seq', IfTestInstr.test.EQ, false);
-
+        cmpGen('seq', IfTestInstr.cmpOp.EQ);
         break;
 
         case 'x !== y':
-        opGen('nseq', NeInstr);
+        cmpGen('nseq', IfTestInstr.cmpOp.NE);
         break;
 
         case 'x == y':

@@ -46,9 +46,6 @@ Implementation of high-level IR instructions through handler functions
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 //=============================================================================

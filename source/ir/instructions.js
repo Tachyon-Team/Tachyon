@@ -1387,7 +1387,7 @@ var IfInstr = instrMaker(
 @class If branching instruction
 @augments IRInstr
 */
-function IfTestInstr(input1, input2, test, trueTarget, falseTarget)
+function IfTestInstr(input1, input2, cmpOp, trueTarget, falseTarget)
 {
     assert (
         input1.type === input2.type &&
@@ -1396,10 +1396,13 @@ function IfTestInstr(input1, input2, test, trueTarget, falseTarget)
     );
 
     assert (
-        test === IfTestInstr.test.EQ ||
-        test === IfTestInstr.test.LT ||
-        test === IfTestInstr.test.LE,
-        'invalid test condition'
+        cmpOp === IfTestInstr.cmpOp.LT ||
+        cmpOp === IfTestInstr.cmpOp.LE ||
+        cmpOp === IfTestInstr.cmpOp.GT ||
+        cmpOp === IfTestInstr.cmpOp.GE ||
+        cmpOp === IfTestInstr.cmpOp.EQ ||
+        cmpOp === IfTestInstr.cmpOp.NE,
+        'invalid comparison operation'
     );
 
     assert (
@@ -1412,7 +1415,7 @@ function IfTestInstr(input1, input2, test, trueTarget, falseTarget)
 
     this.uses = [input1, input2];
 
-    this.test = test;
+    this.cmpOp = cmpOp;
 
     this.targets = [trueTarget, falseTarget];
 
@@ -1423,10 +1426,13 @@ IfTestInstr.prototype = new IRInstr();
 /**
 Possible tests for the if instruction
 */
-IfTestInstr.test = {
-    EQ  : 1,
-    LT  : 2,
-    LE  : 3
+IfTestInstr.cmpOp = {
+    LT  : 1,
+    LE  : 2,
+    GT  : 3,
+    GE  : 4,
+    EQ  : 5,
+    NE  : 6
 };
 
 /**
@@ -1450,11 +1456,11 @@ IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     // Print the comparison
     output += ' ' + inFormatFn(this, 0) + ' ';
-    switch (this.test)
+    switch (this.cmpOp)
     {
-        case IfTestInstr.test.EQ: output += '==='; break;
-        case IfTestInstr.test.LT: output += '<';   break;
-        case IfTestInstr.test.LE: output += '<=';  break;
+        case IfTestInstr.cmpOp.EQ: output += '==='; break;
+        case IfTestInstr.cmpOp.LT: output += '<';   break;
+        case IfTestInstr.cmpOp.LE: output += '<=';  break;
     }
     output += ' ' + inFormatFn(this, 1) + ' ';
 
@@ -1476,7 +1482,7 @@ IfTestInstr.prototype.copy = function ()
         new IfTestInstr(
             this.uses[0],
             this.uses[1],
-            this.test,
+            this.cmpOp,
             this.targets[0],
             this.targets[1]
         )

@@ -1583,13 +1583,17 @@ irToAsm.shiftMaker(UrsftInstr, "shr");
 
 LtInstr.prototype.genCodeCmp = function (tltor, opnds)
 {
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
+
     const dest = this.regAlloc.dest;
 
+    /*
     assert(
         opnds[0].type !== x86.type.LINK &&
         opnds[1].type !== x86.type.LINK,
         "Invalid link object as operand"
     );
+    */
        
     // Get the operand width
     var width;
@@ -1611,9 +1615,22 @@ LtInstr.prototype.genCodeCmp = function (tltor, opnds)
     } 
     else if (opnds[0].type === x86.type.IMM_VAL)
     {
-        tltor.asm.
-        cmp(opnds[0], dest);
-    } 
+        tltor.asm.mov(opnds[0], scratchReg);
+        tltor.asm.cmp(opnds[1], scratchReg);
+    }
+
+    // FIXME: temporary workaround for link value handling...
+    else if (opnds[0].type === x86.type.LINK)
+    {
+        tltor.asm.mov(opnds[0], scratchReg);
+        tltor.asm.cmp(opnds[1], scratchReg);
+    }
+    else if (opnds[1].type === x86.type.LINK)
+    {
+        tltor.asm.mov(opnds[1], scratchReg);
+        tltor.asm.cmp(scratchReg, opnds[0]);
+    }
+    
     else
     {
         tltor.asm.cmp(opnds[1], opnds[0], width);
@@ -1925,8 +1942,45 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
     else
         width = this.uses[0].type.getSizeBits(tltor.params);
 
-    // Equality comparison
-    if (this.test === IfTestInstr.test.EQ)
+    var instr = this;
+    function genCmp(jmpTrueSgn, jmpTrue)
+    {
+        function genBranches(trueLabel, falseLabel)
+        {
+            if (instr.uses[0].type.isSigned() ||
+                instr.uses[0].type === IRType.box)
+                tltor.asm[jmpTrueSgn](trueLabel);
+            else
+                tltor.asm[jmpTrue](trueLabel);
+
+            tltor.asm.jmp(falseLabel);
+        }
+
+        if ((opnds[0].type === x86.type.MEM &&
+            opnds[1].type === x86.type.MEM) ||
+            (tltor.asm.isImmediate(opnds[0]) &&
+             tltor.asm.isImmediate(opnds[1])))
+        {
+            tltor.asm.mov(opnds[0], scratchReg);
+            tltor.asm.cmp(opnds[1], scratchReg);
+
+            genBranches(trueLabel, falseLabel);
+        } 
+        else if (opnds[0].type === x86.type.IMM_VAL)
+        {
+            tltor.asm.cmp(opnds[0], opnds[1]);
+
+            genBranches(falseLabel, trueLabel);
+        } 
+        else
+        {
+            tltor.asm.cmp(opnds[1], opnds[0], width);
+
+            genBranches(trueLabel, falseLabel);
+        }
+    }
+
+    function genEq(neg)
     {
         if (opnds[0].type === x86.type.REG && 
             opnds[1].type === x86.type.IMM_VAL &&
@@ -1979,72 +2033,53 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.cmp(opnd, opnds[1], width);
         }
 
-        tltor.asm.
-        jne(falseLabel).
-        jmp(trueLabel);
+        if (neg)
+            tltor.asm.je(falseLabel);
+        else
+            tltor.asm.jne(falseLabel);
+
+        tltor.asm.jmp(trueLabel);
     }
+
+    // Less-than comparison
+    if (this.cmpOp === IfTestInstr.cmpOp.LT)
+    {
+        genCmp('jl', 'jb');
+    }
+
+    // Less-than or equal comparison
+    else if (this.cmpOp === IfTestInstr.cmpOp.LE)
+    {
+        genCmp('jle', 'jbe');
+    }
+
+    // Greater-than comparison
+    else if (this.cmpOp === IfTestInstr.cmpOp.GT)
+    {
+        genCmp('jg', 'ja');
+    }
+
+    // Greater-than or equal comparison
+    else if (this.cmpOp === IfTestInstr.cmpOp.GE)
+    {
+        genCmp('jge', 'jae');
+    }
+
+    // Equality comparison
+    else if (this.cmpOp === IfTestInstr.cmpOp.EQ)
+    {
+        genEq(false);
+    }
+
+    // Inequality comparison
+    else if (this.cmpOp === IfTestInstr.cmpOp.NE)
+    {
+        genEq(true);
+    }
+
     else
     {
-        assert(
-            opnds[0].type !== x86.type.LINK &&
-            opnds[1].type !== x86.type.LINK,
-            "invalid link object as operand"
-        );
-
-        var instr = this;
-        function genCmp(jmpTrueSgn, jmpTrue)
-        {
-            function genBranches(trueLabel, falseLabel)
-            {
-                if (instr.uses[0].type.isSigned() ||
-                    instr.uses[0].type === IRType.box)
-                    tltor.asm[jmpTrueSgn](trueLabel);
-                else
-                    tltor.asm[jmpTrue](trueLabel);
-
-                tltor.asm.jmp(falseLabel);
-            }
-
-            if ((opnds[0].type === x86.type.MEM &&
-                opnds[1].type === x86.type.MEM) ||
-                (tltor.asm.isImmediate(opnds[0]) &&
-                 tltor.asm.isImmediate(opnds[1])))
-            {
-                tltor.asm.mov(opnds[0], scratchReg);
-                tltor.asm.cmp(opnds[1], scratchReg);
-
-                genBranches(trueLabel, falseLabel);
-            } 
-            else if (opnds[0].type === x86.type.IMM_VAL)
-            {
-                tltor.asm.cmp(opnds[0], opnds[1]);
-
-                genBranches(falseLabel, trueLabel);
-            } 
-            else
-            {
-                tltor.asm.cmp(opnds[1], opnds[0], width);
-
-                genBranches(trueLabel, falseLabel);
-            }
-        }
-
-        // Less-than comparison
-        if (this.test === IfTestInstr.test.LT)
-        {
-            genCmp('jl', 'jb');
-        }
-
-        // Less-than or equal comparison
-        else if (this.test === IfTestInstr.test.LE)
-        {
-            genCmp('jle', 'jbe');
-        }
-
-        else
-        {
-            error('unsupported comparison operation in if test');            
-        }
+        error('unsupported comparison operation in if test');            
     }
 };
 
