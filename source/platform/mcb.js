@@ -46,9 +46,6 @@ Runtime functions needed for FFI interfacing.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -96,7 +93,7 @@ if (RUNNING_IN_TACHYON)
         var mcb = blockObj.mcb;
 
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            getRefTag(mcb) === TAG_OTHER,
             'invalid mcb reference'
         );
 
@@ -120,7 +117,7 @@ if (RUNNING_IN_TACHYON)
         var mcb = blockObj.mcb;
 
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            getRefTag(mcb) === TAG_OTHER,
             'invalid mcb reference'
         );
 
@@ -128,7 +125,7 @@ if (RUNNING_IN_TACHYON)
         var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         assert (
-            boolToBox(unboxInt(index) < size),
+            unboxInt(index) < size,
             'invalid index in mcb'
         );
 
@@ -148,7 +145,7 @@ if (RUNNING_IN_TACHYON)
         var mcb = blockObj.mcb;
 
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            getRefTag(mcb) === TAG_OTHER,
             'invalid mcb reference'
         );
 
@@ -156,12 +153,12 @@ if (RUNNING_IN_TACHYON)
         var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         assert (
-            boolToBox(boxIsInt(index)),
+            boxIsInt(index),
             'index should be integer'
         );
 
         assert (
-            boolToBox(unboxInt(index) < size),
+            unboxInt(index) < size,
             'invalid index in mcb'
         );
 
@@ -184,7 +181,7 @@ if (RUNNING_IN_TACHYON)
         var mcb = blockObj.mcb;
 
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            getRefTag(mcb) === TAG_OTHER,
             'invalid mcb reference'
         );
 
@@ -192,12 +189,12 @@ if (RUNNING_IN_TACHYON)
         var size = iir.icast(IRType.pint, get_memblock_size(mcb));
 
         assert (
-            boolToBox(boxIsInt(index)),
+            boxIsInt(index),
             'index should be integer'
         );
 
         assert (
-            boolToBox(unboxInt(index) < size),
+            unboxInt(index) < size,
             'invalid index in mcb'
         );
 
@@ -218,7 +215,7 @@ if (RUNNING_IN_TACHYON)
         var mcb = blockObj.mcb;
 
         assert (
-            boolToBox(getRefTag(mcb) === TAG_OTHER),
+            getRefTag(mcb) === TAG_OTHER,
             'invalid mcb reference'
         );
 

@@ -46,9 +46,6 @@ Implementation of ECMAScript 5 array library routines.
 
 @author
 Marc Feeley, Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
 */
 
 /**
@@ -106,7 +103,7 @@ Anonymous function to initialize this library
 */
 Array.isArray = function (arg)
 {
-    return boolToBox(boxIsArray(arg));
+    return boxIsArray(arg);
 };
 
 // Operations on Array objects.

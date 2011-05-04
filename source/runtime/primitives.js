@@ -135,7 +135,6 @@ function boxHasTag(boxVal, tagVal)
 {
     "tachyon:inline";
     "tachyon:arg tagVal pint";
-    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) === tagVal;
@@ -147,7 +146,6 @@ Test if a boxed value is integer
 function boxIsInt(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Test if the value has the int tag
     return (boxVal & TAG_INT_MASK) === TAG_INT;
@@ -159,7 +157,6 @@ Test if a boxed value is an object
 function boxIsObj(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_OBJECT;
@@ -171,7 +168,6 @@ Test if a boxed value is a function
 function boxIsFunc(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_FUNCTION;
@@ -183,7 +179,6 @@ Test if a boxed value is an array
 function boxIsArray(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_ARRAY;
@@ -195,7 +190,6 @@ Test if a boxed value is an object or an object extension (array or function)
 function boxIsObjExt(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Test that the tag is either array, function or object
     var tag = getRefTag(boxVal);
@@ -208,7 +202,6 @@ Test if a boxed value is a floating-point value
 function boxIsFloat(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_FLOAT;
@@ -220,7 +213,6 @@ Test if a boxed value is a string
 function boxIsString(boxVal)
 {
     "tachyon:inline";
-    "tachyon:ret bool";
 
     // Compare the reference tag
     return getRefTag(boxVal) === TAG_STRING;
@@ -594,7 +586,7 @@ function newObject(proto)
     "tachyon:noglobal";
 
     assert (
-        proto === null || boolToBox(boxIsObjExt(proto)),
+        proto === null || boxIsObjExt(proto),
         'invalid object prototype'
     );
 
@@ -807,7 +799,7 @@ function ltGeneral(v1, v2)
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return boolToBox(strcmp(px, py) < pint(0));
+        return strcmp(px, py) < pint(0);
     }
 
     // Attempt to convert both values to numbers
@@ -876,7 +868,7 @@ function leGeneral(v1, v2)
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return boolToBox(strcmp(px, py) <= pint(0));
+        return strcmp(px, py) <= pint(0);
     }
 
     // Attempt to convert both values to numbers
@@ -945,7 +937,7 @@ function gtGeneral(v1, v2)
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return boolToBox(strcmp(px, py) > pint(0));
+        return strcmp(px, py) > pint(0);
     }
 
     // Attempt to convert both values to numbers
@@ -1014,7 +1006,7 @@ function geGeneral(v1, v2)
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return boolToBox(strcmp(px, py) >= pint(0));
+        return strcmp(px, py) >= pint(0);
     }
 
     // Attempt to convert both values to numbers
@@ -1229,7 +1221,7 @@ function addGeneral(v1, v2)
     if (boxIsString(v1))
     {
         // If the right value is not a string
-        if (boxIsString(v2) === FALSE_BOOL)
+        if (boxIsString(v2) === false)
         {
             // Convert the right value to a string
             v2 = boxToString(v2);
@@ -1604,12 +1596,12 @@ function putPropObj(obj, propName, propHash, propVal)
     "tachyon:arg propHash pint";
 
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'putPropObj on non-object'
     );
 
     assert (
-        boolToBox(boxIsString(propName)),
+        boxIsString(propName),
         'putPropObj with non-string property'
     );
 
@@ -1695,7 +1687,7 @@ function extObjHashTable(obj, curTbl, curSize)
     "tachyon:arg curSize pint";
 
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'extObjHashTable on non-object'
     );
 
@@ -1754,7 +1746,7 @@ function extObjHashTable(obj, curTbl, curSize)
 
             // Ensure that a free slot was found for this key
             assert (
-                boolToBox(hashIndex !== startHashIndex),
+                hashIndex !== startHashIndex,
                 'no free slots found in extended hash table'
             );
         }
@@ -1774,12 +1766,12 @@ function getOwnPropObj(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'getOwnPropObj on non-object'
     );
 
     assert (
-        boolToBox(boxIsString(propName)),
+        boxIsString(propName),
         'getOwnPropObj with non-string property'
     );
 
@@ -1846,12 +1838,12 @@ function getPropObj(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'getPropObj on non-object'
     );
 
     assert (
-        boolToBox(boxIsString(propName)),
+        boxIsString(propName),
         'getPropObj with non-string property'
     );
 
@@ -1884,12 +1876,12 @@ function delPropObj(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'delPropObj on non-object'
     );
 
     assert (
-        boolToBox(boxIsString(propName)),
+        boxIsString(propName),
         'delPropObj with non-string property'
     );
 
@@ -2001,7 +1993,7 @@ function putElemArr(arr, index, elemVal)
     "tachyon:noglobal";
 
     assert (
-        boolToBox(boxIsArray(arr)),
+        boxIsArray(arr),
         'putElemArr on non-array'
     );
 
@@ -2059,7 +2051,7 @@ function extArrTable(arr, curTbl, curLen, curSize, newSize)
     "tachyon:arg newSize pint";
 
     assert (
-        boolToBox(boxIsArray(arr)),
+        boxIsArray(arr),
         'extArrTable on non-array'
     );
 
@@ -2094,7 +2086,7 @@ function getElemArr(arr, index)
     "tachyon:noglobal";
 
     assert (
-        boolToBox(boxIsArray(arr)),
+        boxIsArray(arr),
         'getElemArr on non-array'
     );
 
@@ -2124,7 +2116,7 @@ function delElemArr(arr, index)
     "tachyon:noglobal";
 
     assert (
-        boolToBox(boxIsArray(arr)),
+        boxIsArray(arr),
         'delElemArr on non-array'
     );
 
@@ -2164,7 +2156,7 @@ function setArrayLength(arr, newLen)
     "tachyon:noglobal";
 
     assert (
-        boolToBox(boxIsArray(arr)),
+        boxIsArray(arr),
         'setArrayLength on non-array'
     );
 
@@ -2244,7 +2236,7 @@ function putPropVal(obj, propName, propVal)
                 }
             }
         
-            if (boxIsString(propName) === FALSE_BOOL)
+            if (boxIsString(propName) === false)
                 propName = boxToString(propName);
                 
             if (propName === 'length')
@@ -2258,14 +2250,14 @@ function putPropVal(obj, propName, propVal)
     }
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === FALSE_BOOL)
+    if (boxIsObjExt(obj) === false)
     {
         // Return the property value
         return propVal;
     }
 
     // If the property is not a string, get its string value
-    if (boxIsString(propName) === FALSE_BOOL)
+    if (boxIsString(propName) === false)
         propName = boxToString(propName);
 
     // Get the hash code for the property
@@ -2316,7 +2308,7 @@ function getPropVal(obj, propName)
                     return elem;
             }
         
-            if (boxIsString(propName) === FALSE_BOOL)
+            if (boxIsString(propName) === false)
                 propName = boxToString(propName);
                 
             if (propName === 'length')
@@ -2354,7 +2346,7 @@ function getPropVal(obj, propName)
                 }
             }
         
-            if (boxIsString(propName) === FALSE_BOOL)
+            if (boxIsString(propName) === false)
                 propName = boxToString(propName);
                 
             if (propName === 'length')
@@ -2382,14 +2374,14 @@ function getPropVal(obj, propName)
     }
 
     // If the value is not an object
-    else if (boxIsObjExt(obj) === FALSE_BOOL)
+    else if (boxIsObjExt(obj) === false)
     {
         // Return the undefined value
         return UNDEFINED;
     }
 
     // If the property is not a string, get its string value
-    if (boxIsString(propName) === FALSE_BOOL)
+    if (boxIsString(propName) === false)
         propName = boxToString(propName);
 
     // Get the hash code for the property
@@ -2448,7 +2440,7 @@ function hasPropVal(obj, propName)
                     return true;
             }
         
-            if (boxIsString(propName) === FALSE_BOOL)
+            if (boxIsString(propName) === false)
                 propName = boxToString(propName);
                 
             if (propName === 'length')
@@ -2471,7 +2463,7 @@ function hasPropVal(obj, propName)
             }
         }
         
-        if (boxIsString(propName) === FALSE_BOOL)
+        if (boxIsString(propName) === false)
             propName = boxToString(propName);
                 
         if (propName === 'length')
@@ -2491,7 +2483,7 @@ function hasPropVal(obj, propName)
     }
 
     // If the property is not a string, get its string value
-    if (boxIsString(propName) === FALSE_BOOL)
+    if (boxIsString(propName) === false)
         propName = boxToString(propName);
 
     // Get the hash code for the property
@@ -2501,7 +2493,7 @@ function hasPropVal(obj, propName)
     var prop = getPropObj(obj, propName, propHash);
 
     // Test if the property was found
-    return boolToBox(iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+    return iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND;
 }
 
 /**
@@ -2542,7 +2534,7 @@ function hasOwnPropVal(obj, propName)
                     return true;
             }
         
-            if (boxIsString(propName) === FALSE_BOOL)
+            if (boxIsString(propName) === false)
                 propName = boxToString(propName);
                 
             if (propName === 'length')
@@ -2565,7 +2557,7 @@ function hasOwnPropVal(obj, propName)
             }
         }
         
-        if (boxIsString(propName) === FALSE_BOOL)
+        if (boxIsString(propName) === false)
             propName = boxToString(propName);
                 
         if (propName === 'length')
@@ -2577,7 +2569,7 @@ function hasOwnPropVal(obj, propName)
     }
 
     // If the property is not a string, get its string value
-    if (boxIsString(propName) === FALSE_BOOL)
+    if (boxIsString(propName) === false)
         propName = boxToString(propName);
 
     // Get the hash code for the property
@@ -2587,7 +2579,7 @@ function hasOwnPropVal(obj, propName)
     var prop = getOwnPropObj(obj, propName, propHash);
 
     // Test if the property was found
-    return boolToBox(iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+    return iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND;
 }
 
 /**
@@ -2627,14 +2619,14 @@ function delPropVal(obj, propName)
     }
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === FALSE_BOOL)
+    if (boxIsObjExt(obj) === false)
     {
         // Operation succeeded
         return true;
     }
 
     // If the property is not a string, get its string value
-    if (boxIsString(propName) === FALSE_BOOL)
+    if (boxIsString(propName) === false)
         propName = boxToString(propName);
 
     // Get the hash code for the property
@@ -2720,7 +2712,7 @@ function getPropNames(obj)
     "tachyon:noglobal";
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === FALSE_BOOL)
+    if (boxIsObjExt(obj) === false)
     {
         // Return the empty enumeration function
         return function ()
@@ -2866,7 +2858,7 @@ function inOp(propName, obj)
     "tachyon:static"; 
     
     // If the value is not an object
-    if (boxIsObjExt(obj) === FALSE_BOOL)
+    if (boxIsObjExt(obj) === false)
     {
         // Throw a TypeError exception
         throw makeError(
@@ -2886,7 +2878,7 @@ function instanceOf(obj, ctor)
     "tachyon:static";
 
     // If the constructor is not a function
-    if (boxIsFunc(ctor) === FALSE_BOOL)
+    if (boxIsFunc(ctor) === false)
     {
         // Throw a TypeError exception
         throw makeError(
@@ -2896,7 +2888,7 @@ function instanceOf(obj, ctor)
     }
 
     // If the value is not an object    
-    if (boxIsObjExt(obj) === FALSE_BOOL)
+    if (boxIsObjExt(obj) === false)
     {
         // Return the false value
         return false;

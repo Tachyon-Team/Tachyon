@@ -46,9 +46,6 @@ Low-level code to initialize the runtime.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -89,12 +86,12 @@ function initHeap(heapPtr, heapSize)
     var ctx = alloc_ctx();
 
     assert (
-        boolToBox(heapLimit > heapPtr),
+        heapLimit > heapPtr,
         1
     );
 
     assert (
-        boolToBox(iir.icast(IRType.rptr, ctx) >= heapPtr),
+        iir.icast(IRType.rptr, ctx) >= heapPtr,
         2
     );
 
@@ -102,12 +99,12 @@ function initHeap(heapPtr, heapSize)
     var globalObj = newObject(null);
 
     assert (
-        boolToBox(boxIsObj(globalObj)),
+        boxIsObj(globalObj),
         3
     );
 
     assert (
-        boolToBox(iir.icast(IRType.rptr, unboxRef(globalObj)) > iir.icast(IRType.rptr, ctx)),
+        iir.icast(IRType.rptr, unboxRef(globalObj)) > iir.icast(IRType.rptr, ctx),
         4
     );
 

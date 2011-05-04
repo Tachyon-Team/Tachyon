@@ -59,7 +59,7 @@ function main()
     if (RUNNING_IN_TACHYON)
     {
         // Initialize the Tachyon configuration
-        initConfig(boolToBox(PTR_NUM_BYTES === pint(8)), log.level(undefined));
+        initConfig(PTR_NUM_BYTES === pint(8), log.level(undefined));
 
         // Perform a minimal Tachyon compilation
         bootstrap(config.hostParams, false, false);

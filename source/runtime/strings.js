@@ -81,7 +81,7 @@ function getTableStr(strObj)
     "tachyon:noglobal";
 
     assert (
-        boolToBox(boxIsString(strObj)),
+        boxIsString(strObj),
         'getTableStr on non-string'
     );
 
@@ -223,7 +223,7 @@ function extStrTable(curTbl, curSize, numStrings)
 
             // Ensure that a free slot was found for this key
             assert (
-                boolToBox(hashIndex !== startHashIndex),
+                hashIndex !== startHashIndex,
                 'no free slots found in extended hash table'
             );
         }
@@ -247,7 +247,7 @@ function getStrObj(rawStr, strLen)
     "tachyon:arg strLen pint";
 
     assert (
-        boolToBox(iir.icast(IRType.rptr, iir.get_ctx()) !== NULL_PTR),
+        iir.icast(IRType.rptr, iir.get_ctx()) !== NULL_PTR,
         10
     );
 
@@ -258,7 +258,7 @@ function getStrObj(rawStr, strLen)
     var str = getTableStr(strObj);
 
     assert (
-        boolToBox(boxIsString(str)),
+        boxIsString(str),
         11
     );
 
@@ -452,7 +452,7 @@ function compStrHash(strObj)
     }
 
     // If this is an integer value within the supported range
-    if (boolToBox(len > pint(0)) && isInt === true && boolToBox(intVal < HASH_CODE_STR_OFFSET))
+    if (len > pint(0) && isInt === true && intVal < HASH_CODE_STR_OFFSET)
     {
         // Set the hash code to the integer value
         hashCode = intVal;
@@ -495,7 +495,7 @@ function intToStr(intVal, radix)
     "tachyon:arg radix pint";
 
     assert (
-        boolToBox(radix > pint(0) && radix <= pint(36)),
+        radix > pint(0) && radix <= pint(36),
         'invalid radix'
     );
 
@@ -567,7 +567,7 @@ function strToInt(strVal)
     "tachyon:noglobal";
 
     assert (
-        boolToBox(boxIsString(strVal)),
+        boxIsString(strVal),
         'expected string value in strToInt'
     );
 

@@ -97,7 +97,7 @@ Anonymous function to initialize this library
 Object.getPrototypeOf = function (obj)
 {
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'non-object value in getPrototypeOf'
     );
 
@@ -112,7 +112,7 @@ FIXME: for now, we ignore the properties
 */
 Object.create = function (obj, props)
 {
-    if (boolToBox(boxIsObjExt(obj)) === false && obj !== null)
+    if (boxIsObjExt(obj) === false && obj !== null)
     {
         throw makeError(
             TypeError, 
@@ -132,7 +132,7 @@ FIXME: for now, we ignore most attributes
 Object.defineProperty = function (obj, prop, attribs)
 {
     assert (
-        boolToBox(boxIsObjExt(obj)),
+        boxIsObjExt(obj),
         'non-object value in defineProperty'
     );
 

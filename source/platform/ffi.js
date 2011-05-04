@@ -47,9 +47,6 @@ the C/C++ code required by Tachyon.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -810,7 +807,7 @@ if (RUNNING_IN_TACHYON)
         "tachyon:noglobal";
 
         assert (
-            boolToBox(boxIsArray(cArgTypes)),
+            boxIsArray(cArgTypes),
             'argument types should be an array'
         );
 
@@ -846,7 +843,7 @@ if (RUNNING_IN_TACHYON)
                 case 'int':
                 {
                     assert (
-                        boolToBox(boxIsInt(argVal)),
+                        boxIsInt(argVal),
                         'expected integer argument'
                     );
 
@@ -858,7 +855,7 @@ if (RUNNING_IN_TACHYON)
                 case 'void*':
                 {
                     assert (
-                        boolToBox(boxIsArray(argVal)),
+                        boxIsArray(argVal),
                         'expected byte array argument'
                     );
 

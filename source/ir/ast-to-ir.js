@@ -2545,9 +2545,7 @@ function opToIR(context)
             // Add a phi node to select the value
             var joinVal = joinBlock.addInstr(
                 new PhiInstr(
-                    //TODO: eliminate bool type
-                    //[ConstValue.getConst(true), ConstValue.getConst(false)]
-                    [ConstValue.getConst(1, IRType.bool), ConstValue.getConst(0, IRType.bool)],
+                    [ConstValue.getConst(true), ConstValue.getConst(false)],
                     [trueBlock, falseBlock]
                 )
             );
