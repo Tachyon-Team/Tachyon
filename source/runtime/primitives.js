@@ -770,15 +770,16 @@ function lt(v1, v2)
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        var tv = iir.lt(v1, v2);
+        if (iir.if_lt(v1, v2))
+            return true;
+        else
+            return false;
     }
     else
     {
         // Call a function for the general case
-        var tv = ltGeneral(v1, v2);
+        return ltGeneral(v1, v2);
     }
-
-    return boolToBox(tv);
 }
 
 /**
@@ -787,7 +788,6 @@ Non-inline case for HIR less-than instruction
 function ltGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:ret bool";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -797,14 +797,17 @@ function ltGeneral(v1, v2)
     if (boxIsInt(px) && boxIsInt(py))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.lt(px, py);
+        if (iir.if_lt(px, py))
+            return true;
+        else
+            return false;
     }
 
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return strcmp(px, py) < pint(0);
+        return boolToBox(strcmp(px, py) < pint(0));
     }
 
     // Attempt to convert both values to numbers
@@ -815,11 +818,14 @@ function ltGeneral(v1, v2)
     if (boxIsInt(nx) && boxIsInt(ny))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.lt(nx, ny);
+        if (iir.if_lt(nx, ny))
+            return true;
+        else
+            return false;
     }
 
     // The values are not comparable
-    return FALSE_BOOL;
+    return false;
 }
 
 /**
@@ -833,15 +839,16 @@ function le(v1, v2)
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        var tv = iir.le(v1, v2);
+        if (iir.if_le(v1, v2))
+            return true;
+        else
+            return false;
     }
     else
     {
         // Call a function for the general case
-        var tv = leGeneral(v1, v2);
+        return leGeneral(v1, v2);
     }
-
-    return boolToBox(tv);
 }
 
 /**
@@ -850,7 +857,6 @@ Non-inline case for HIR less-than-or-equal instruction
 function leGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:ret bool";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -860,14 +866,17 @@ function leGeneral(v1, v2)
     if (boxIsInt(px) && boxIsInt(py))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.le(px, py);
+        if (iir.if_le(px, py))
+            return true;
+        else
+            return false;
     }
 
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return strcmp(px, py) <= pint(0);
+        return boolToBox(strcmp(px, py) <= pint(0));
     }
 
     // Attempt to convert both values to numbers
@@ -878,11 +887,14 @@ function leGeneral(v1, v2)
     if (boxIsInt(nx) && boxIsInt(ny))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.le(nx, ny);
+        if (iir.if_le(nx, ny))
+            return true;
+        else
+            return false;
     }
 
     // The values are not comparable
-    return FALSE_BOOL;
+    return false;
 }
 
 /**
@@ -896,15 +908,16 @@ function gt(v1, v2)
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        var tv = iir.gt(v1, v2);
+        if (iir.if_gt(v1, v2))
+            return true;
+        else
+            return false;
     }
     else
     {
         // Call a function for the general case
-        var tv = gtGeneral(v1, v2);
+        return gtGeneral(v1, v2);
     }
-
-    return boolToBox(tv);
 }
 
 /**
@@ -913,7 +926,6 @@ Non-inline case for HIR greater-than instruction
 function gtGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:ret bool";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -923,14 +935,17 @@ function gtGeneral(v1, v2)
     if (boxIsInt(px) && boxIsInt(py))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.gt(px, py);
+        if (iir.if_gt(px, py))
+            return true;
+        else
+            return false;
     }
 
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return strcmp(px, py) > pint(0);
+        return boolToBox(strcmp(px, py) > pint(0));
     }
 
     // Attempt to convert both values to numbers
@@ -941,11 +956,14 @@ function gtGeneral(v1, v2)
     if (boxIsInt(nx) && boxIsInt(ny))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.gt(nx, ny);
+        if (iir.if_gt(nx, ny))
+            return true;
+        else
+            return false;
     }
 
     // The values are not comparable
-    return FALSE_BOOL;
+    return false;
 }
 
 /**
@@ -959,15 +977,16 @@ function ge(v1, v2)
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        var tv = iir.ge(v1, v2);
+        if (iir.if_ge(v1, v2))
+            return true;
+        else
+            return false;
     }
     else
     {
         // Call a function for the general case
-        var tv = geGeneral(v1, v2);
+        return geGeneral(v1, v2);
     }
-
-    return boolToBox(tv);
 }
 
 /**
@@ -976,7 +995,6 @@ Non-inline case for HIR greater-than-or-equal instruction
 function geGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:ret bool";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -986,14 +1004,17 @@ function geGeneral(v1, v2)
     if (boxIsInt(px) && boxIsInt(py))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.ge(px, py);
+        if (iir.if_ge(px, py))
+            return true;
+        else
+            return false;
     }
 
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return strcmp(px, py) >= pint(0);
+        return boolToBox(strcmp(px, py) >= pint(0));
     }
 
     // Attempt to convert both values to numbers
@@ -1004,11 +1025,14 @@ function geGeneral(v1, v2)
     if (boxIsInt(nx) && boxIsInt(ny))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.ge(nx, ny);
+        if (iir.if_ge(nx, ny))
+            return true;
+        else
+            return false;
     }
 
     // The values are not comparable
-    return FALSE_BOOL;
+    return false;
 }
 
 /**
@@ -1022,23 +1046,27 @@ function eq(v1, v2)
     if (boxIsInt(v1) && boxIsInt(v2))
     {
         // Compare the immediate integers directly without unboxing them
-        var tv = iir.eq(v1, v2);
+        if (iir.if_eq(v1, v2))
+            return true;
+        else
+            return false;
     }
 
     // If both values have the same type
     else if (getRefTag(v1) === getRefTag(v2))
     {
         // Compare the references directly without unboxing them
-        var tv = iir.eq(v1, v2);
+        if (iir.if_eq(v1, v2))
+            return true;
+        else
+            return false;
     }
 
     else
     {
         // Call the general case function
-        var tv = eqGeneral(v1, v2);
+        return eqGeneral(v1, v2);
     }
-
-    return boolToBox(tv);
 }
 
 /**
@@ -1047,7 +1075,6 @@ Non-inline case for HIR equal instruction
 function eqGeneral(v1, v2)
 {
     "tachyon:static";
-    "tachyon:ret bool";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -1057,14 +1084,17 @@ function eqGeneral(v1, v2)
     if (boxIsInt(px) && boxIsInt(py))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.eq(px, py);
+        if (iir.if_eq(px, py))
+            return true;
+        else
+            return false;
     }
 
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return streq(px, py);
+        return boolToBox(streq(px, py));
     }
 
     // Attempt to convert both values to numbers
@@ -1075,11 +1105,14 @@ function eqGeneral(v1, v2)
     if (boxIsInt(nx) && boxIsInt(ny))
     {
         // Compare the immediate integers directly without unboxing them
-        return iir.eq(nx, ny);
+        if (iir.if_eq(nx, ny))
+            return true;
+        else
+            return false;
     }
 
     // The values are not comparable
-    return FALSE_BOOL;
+    return false;
 }
 
 /**
@@ -1111,7 +1144,10 @@ function seq(v1, v2)
         // Compare the boxed value directly without unboxing them
         // This will compare for equality of reference in the case of
         // references and compare immediate integers directly
-        return iir.eq(v1, v2)? true:false;
+        if (iir.if_eq(v1, v2))
+            return true;
+        else
+            return false;
     }
 }
 
@@ -1133,7 +1169,10 @@ function nseq(v1, v2)
         // Compare the boxed value directly without unboxing them
         // This will compare for inequality of reference in the case of
         // references and compare immediate integers directly
-        return iir.ne(v1, v2)? true:false;
+        if (iir.if_ne(v1, v2))
+            return true;
+        else
+            return false;
     }
 }
 
@@ -2378,7 +2417,6 @@ function hasPropVal(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:ret bool";
 
     // If this is an array
     if (boxIsArray(obj))
@@ -2392,7 +2430,7 @@ function hasPropVal(obj, propName)
 
                 // If the element is not undefined, return true
                 if (elem !== UNDEFINED)
-                    return TRUE_BOOL;
+                    return true;
             }
         }
 
@@ -2407,7 +2445,7 @@ function hasPropVal(obj, propName)
 
                 // If the element is not undefined, return it
                 if (elem !== UNDEFINED)
-                    return TRUE_BOOL;
+                    return true;
             }
         
             if (boxIsString(propName) === FALSE_BOOL)
@@ -2415,7 +2453,7 @@ function hasPropVal(obj, propName)
                 
             if (propName === 'length')
             {
-                return TRUE_BOOL;
+                return true;
             }
         }
     }
@@ -2429,7 +2467,7 @@ function hasPropVal(obj, propName)
         {
             if (propName >= 0 && propName < obj.length)
             {
-                return TRUE_BOOL;
+                return true;
             }
         }
         
@@ -2438,7 +2476,7 @@ function hasPropVal(obj, propName)
                 
         if (propName === 'length')
         {
-            return TRUE_BOOL;
+            return true;
         }
 
         // Lookup the property on the string prototype object
@@ -2463,7 +2501,7 @@ function hasPropVal(obj, propName)
     var prop = getPropObj(obj, propName, propHash);
 
     // Test if the property was found
-    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+    return boolToBox(iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
 }
 
 /**
@@ -2473,7 +2511,6 @@ function hasOwnPropVal(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:ret bool";
 
     // If this is an array
     if (boxIsArray(obj))
@@ -2487,7 +2524,7 @@ function hasOwnPropVal(obj, propName)
 
                 // If the element is not undefined, return true
                 if (elem !== UNDEFINED)
-                    return TRUE_BOOL;
+                    return true;
             }
         }
 
@@ -2502,7 +2539,7 @@ function hasOwnPropVal(obj, propName)
 
                 // If the element is not undefined, return it
                 if (elem !== UNDEFINED)
-                    return TRUE_BOOL;
+                    return true;
             }
         
             if (boxIsString(propName) === FALSE_BOOL)
@@ -2510,7 +2547,7 @@ function hasOwnPropVal(obj, propName)
                 
             if (propName === 'length')
             {
-                return TRUE_BOOL;
+                return true;
             }
         }
     }
@@ -2524,7 +2561,7 @@ function hasOwnPropVal(obj, propName)
         {
             if (propName >= 0 && propName < obj.length)
             {
-                return TRUE_BOOL;
+                return true;
             }
         }
         
@@ -2533,10 +2570,10 @@ function hasOwnPropVal(obj, propName)
                 
         if (propName === 'length')
         {
-            return TRUE_BOOL;
+            return true;
         }
 
-        return FALSE_BOOL;
+        return false;
     }
 
     // If the property is not a string, get its string value
@@ -2550,7 +2587,7 @@ function hasOwnPropVal(obj, propName)
     var prop = getOwnPropObj(obj, propName, propHash);
 
     // Test if the property was found
-    return (iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
+    return boolToBox(iir.icast(IRType.pint, prop) !== BIT_PATTERN_NOT_FOUND);
 }
 
 /**
@@ -2838,7 +2875,7 @@ function inOp(propName, obj)
         );
     }
 
-    return boolToBox(hasPropVal(obj, propName));
+    return hasPropVal(obj, propName);
 }
 
 /**

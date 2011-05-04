@@ -179,7 +179,7 @@ Object.prototype.valueOf = function ()
 */
 Object.prototype.hasOwnProperty = function (prop)
 {
-    return boolToBox(hasOwnPropVal(this, prop));
+    return hasOwnPropVal(this, prop);
 };
 
 /**

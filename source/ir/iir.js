@@ -46,10 +46,21 @@ Implementation of inline IR
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
+
+/**
+Function to create an if with comparison instruction
+*/
+function makeIfCmp(args, cmp)
+{
+    return new IfTestInstr(
+        args[0],
+        args[1],
+        cmp,
+        args[2],
+        args[3]
+    );
+}
 
 /**
 Object containing IR instructions usable inline inside functions
@@ -93,13 +104,13 @@ var iir =
     rsft        : RsftInstr,
     ursft       : UrsftInstr,
 
-    // Comparison instructions
-    lt          : LtInstr,
-    le          : LeInstr,
-    gt          : GtInstr,
-    ge          : GeInstr,
-    eq          : EqInstr,
-    ne          : NeInstr,
+    // If instructions with comparison   
+    if_lt       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.LT); },
+    if_le       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.LE); },
+    if_gt       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.GT); },
+    if_ge       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.GE); },
+    if_eq       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.EQ); },
+    if_ne       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.NE); },
 
     // Function call instruction
     call        : CallFuncInstr,
@@ -110,3 +121,4 @@ var iir =
     // FFI call instruction
     call_ffi    : CallFFIInstr
 };
+
