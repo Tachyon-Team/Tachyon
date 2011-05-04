@@ -775,7 +775,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
                 result = v0.value;
         }
 
-        else if (v0.type === IRType.box && this.type.isInt())
+        else if (v0.type === IRType.box && v0.isInt() && this.type.isInt())
         {
             var castVal = v0.getImmValue(params);
             

@@ -1390,8 +1390,7 @@ var IfInstr = instrMaker(
 function IfTestInstr(input1, input2, cmpOp, trueTarget, falseTarget)
 {
     assert (
-        input1.type === input2.type &&
-        input1.type !== IRType.box,
+        input1.type === input2.type,
         'input types must match'
     );
 
@@ -1458,9 +1457,13 @@ IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
     output += ' ' + inFormatFn(this, 0) + ' ';
     switch (this.cmpOp)
     {
-        case IfTestInstr.cmpOp.EQ: output += '==='; break;
         case IfTestInstr.cmpOp.LT: output += '<';   break;
         case IfTestInstr.cmpOp.LE: output += '<=';  break;
+        case IfTestInstr.cmpOp.GT: output += '>';   break;
+        case IfTestInstr.cmpOp.GE: output += '>=';  break;
+        case IfTestInstr.cmpOp.EQ: output += '==='; break;
+        case IfTestInstr.cmpOp.NE: output += '!=='; break;
+
     }
     output += ' ' + inFormatFn(this, 1) + ' ';
 
