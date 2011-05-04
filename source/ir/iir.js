@@ -54,8 +54,7 @@ Function to create an if with comparison instruction
 function makeIfCmp(args, cmp)
 {
     return new IfTestInstr(
-        args[0],
-        args[1],
+        [args[0], args[1]],
         cmp,
         args[2],
         args[3]
@@ -105,12 +104,12 @@ var iir =
     ursft       : UrsftInstr,
 
     // If instructions with comparison   
-    if_lt       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.LT); },
-    if_le       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.LE); },
-    if_gt       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.GT); },
-    if_ge       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.GE); },
-    if_eq       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.EQ); },
-    if_ne       : function (args) { return makeIfCmp(args, IfTestInstr.cmpOp.NE); },
+    if_lt       : function (args) { return makeIfCmp(args, 'LT'); },
+    if_le       : function (args) { return makeIfCmp(args, 'LE'); },
+    if_gt       : function (args) { return makeIfCmp(args, 'GT'); },
+    if_ge       : function (args) { return makeIfCmp(args, 'GE'); },
+    if_eq       : function (args) { return makeIfCmp(args, 'EQ'); },
+    if_ne       : function (args) { return makeIfCmp(args, 'NE'); },
 
     // Function call instruction
     call        : CallFuncInstr,

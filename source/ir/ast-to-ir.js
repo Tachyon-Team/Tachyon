@@ -2529,8 +2529,7 @@ function opToIR(context)
             // Add the test instruction
             argsContext.addInstr(
                 new IfTestInstr(
-                    argVals[0],
-                    argVals[1],
+                    [argVals[0], argVals[1]],
                     cmpOp,
                     trueBlock,
                     joinBlock
@@ -2636,7 +2635,7 @@ function opToIR(context)
                 new IfTestInstr(
                     boolVal,
                     ConstValue.getConst(false),
-                    IfTestInstr.cmpOp.EQ,
+                    'EQ',
                     secEntry,
                     joinBlock
                 )
@@ -3134,27 +3133,27 @@ function opToIR(context)
         break;
 
         case 'x < y':
-        cmpGen('lt', IfTestInstr.cmpOp.LT);
+        cmpGen('lt', 'LT');
         break;
 
         case 'x <= y':
-        cmpGen('le', IfTestInstr.cmpOp.LE);
+        cmpGen('le', 'LE');
         break;
 
         case 'x > y':
-        cmpGen('gt', IfTestInstr.cmpOp.GT);
+        cmpGen('gt', 'GT');
         break;
 
         case 'x >= y':
-        cmpGen('ge', IfTestInstr.cmpOp.GE);
+        cmpGen('ge', 'GE');
         break;
 
         case 'x === y':
-        cmpGen('seq', IfTestInstr.cmpOp.EQ);
+        cmpGen('seq', 'EQ');
         break;
 
         case 'x !== y':
-        cmpGen('nseq', IfTestInstr.cmpOp.NE);
+        cmpGen('nseq', 'NE');
         break;
 
         case 'x == y':

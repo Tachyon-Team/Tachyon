@@ -1157,14 +1157,14 @@ IfTestInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, 
         // If this is a number comparison
         if (num_instance(v0) && num_instance(v1))
         {
-            switch (this.cmpOp)
+            switch (this.testOp)
             {
-                case IfTestInstr.cmpOp.LT: testVal = num_lt(v0, v1); break;
-                case IfTestInstr.cmpOp.LE: testVal = num_le(v0, v1); break;
-                case IfTestInstr.cmpOp.GT: testVal = num_gt(v0, v1); break;
-                case IfTestInstr.cmpOp.GE: testVal = num_ge(v0, v1); break;
-                case IfTestInstr.cmpOp.EQ: testVal = num_eq(v0, v1); break;
-                case IfTestInstr.cmpOp.NE: testVal = num_ne(v0, v1); break;
+                case 'LT': testVal = num_lt(v0, v1); break;
+                case 'LE': testVal = num_le(v0, v1); break;
+                case 'GT': testVal = num_gt(v0, v1); break;
+                case 'GE': testVal = num_ge(v0, v1); break;
+                case 'EQ': testVal = num_eq(v0, v1); break;
+                case 'NE': testVal = num_ne(v0, v1); break;
             }
         }
     }

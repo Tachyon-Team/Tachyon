@@ -46,9 +46,6 @@ Low-level utility functions for the run-time.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**

@@ -46,9 +46,6 @@ Implementation of string operations.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010-2011 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -279,7 +276,6 @@ function streq(str1, str2)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:ret bool";
 
     // Get the length of both strings
     var len1 = iir.icast(IRType.pint, get_str_size(str1));
@@ -287,7 +283,7 @@ function streq(str1, str2)
 
     // If the lengths aren't equal, the strings aren't equal
     if (len1 !== len2)
-        return FALSE_BOOL;
+        return false;
 
     // For each character to be compared
     for (var i = pint(0); i < len1; i++)
@@ -296,11 +292,11 @@ function streq(str1, str2)
         var ch2 = get_str_data(str2, i);
 
         if (ch1 !== ch2)
-            return FALSE_BOOL;
+            return false;
     }
 
     // The strings are equal
-    return TRUE_BOOL;
+    return true;
 }
 
 /**
@@ -430,7 +426,7 @@ function compStrHash(strObj)
     var intVal = u32(0);
 
     // Flag indicating that the string represents an integer
-    var isInt = TRUE_BOOL;
+    var isInt = true;
 
     // For each character, update the hash code
     for (var i = pint(0); i < len; i++)
@@ -448,7 +444,7 @@ function compStrHash(strObj)
         else
         {
             // This string does not represent a number
-            isInt = FALSE_BOOL;
+            isInt = false;
         }
 
         // Update the hash code
@@ -456,7 +452,7 @@ function compStrHash(strObj)
     }
 
     // If this is an integer value within the supported range
-    if (len > pint(0) && isInt && intVal < HASH_CODE_STR_OFFSET)
+    if (boolToBox(len > pint(0)) && isInt === true && boolToBox(intVal < HASH_CODE_STR_OFFSET))
     {
         // Set the hash code to the integer value
         hashCode = intVal;
@@ -511,12 +507,12 @@ function intToStr(intVal, radix)
     {
         strLen = pint(1);
         intVal *= pint(-1);
-        neg = TRUE_BOOL;
+        neg = true;
     }
     else
     {
         strLen = pint(0);
-        neg = FALSE_BOOL;
+        neg = false;
     }
     
     // Compute the number of digits to add to the string length
@@ -588,7 +584,7 @@ function strToInt(strVal)
 
     var intVal = pint(0);
 
-    var neg = FALSE_BOOL;
+    var neg = false;
 
     var state = 'PREWS';
 
@@ -632,7 +628,7 @@ function strToInt(strVal)
                 // Minus sign
                 else if (ch === pint(45))
                 {
-                    neg = TRUE_BOOL;
+                    neg = true;
                     ++i;
                 }
 

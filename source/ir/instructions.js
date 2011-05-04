@@ -1387,21 +1387,24 @@ var IfInstr = instrMaker(
 @class If branching instruction
 @augments IRInstr
 */
-function IfTestInstr(input1, input2, cmpOp, trueTarget, falseTarget)
+function IfTestInstr(inputs, testOp, trueTarget, falseTarget)
 {
+    for (var i = 1; i < inputs.length; ++i)
+    {
+        assert(
+            inputs[i].type === inputs[i-1].type,
+            'input types must match'
+        )
+    }
+
     assert (
-        input1.type === input2.type,
-        'input types must match'
+        testOp in IfTestInstr.testOp,
+        'invalid comparison operation'
     );
 
     assert (
-        cmpOp === IfTestInstr.cmpOp.LT ||
-        cmpOp === IfTestInstr.cmpOp.LE ||
-        cmpOp === IfTestInstr.cmpOp.GT ||
-        cmpOp === IfTestInstr.cmpOp.GE ||
-        cmpOp === IfTestInstr.cmpOp.EQ ||
-        cmpOp === IfTestInstr.cmpOp.NE,
-        'invalid comparison operation'
+        inputs.length === IfTestInstr.testOp[testOp],
+        'invalid operation arity for ' + testOp
     );
 
     assert (
@@ -1412,9 +1415,9 @@ function IfTestInstr(input1, input2, cmpOp, trueTarget, falseTarget)
 
     this.mnemonic = 'if';
 
-    this.uses = [input1, input2];
+    this.uses = inputs.slice(0);
 
-    this.cmpOp = cmpOp;
+    this.testOp = testOp;
 
     this.targets = [trueTarget, falseTarget];
 
@@ -1423,15 +1426,16 @@ function IfTestInstr(input1, input2, cmpOp, trueTarget, falseTarget)
 IfTestInstr.prototype = new IRInstr();
 
 /**
-Possible tests for the if instruction
+Possible tests for the if instruction and corresponding arity
 */
-IfTestInstr.cmpOp = {
-    LT  : 1,
+IfTestInstr.testOp = {
+    LT  : 2,
     LE  : 2,
-    GT  : 3,
-    GE  : 4,
-    EQ  : 5,
-    NE  : 6
+    GT  : 2,
+    GE  : 2,
+    EQ  : 2,
+    NE  : 2
+    // TODO: x & y === z (MASK_EQ?)
 };
 
 /**
@@ -1455,14 +1459,14 @@ IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
 
     // Print the comparison
     output += ' ' + inFormatFn(this, 0) + ' ';
-    switch (this.cmpOp)
+    switch (this.testOp)
     {
-        case IfTestInstr.cmpOp.LT: output += '<';   break;
-        case IfTestInstr.cmpOp.LE: output += '<=';  break;
-        case IfTestInstr.cmpOp.GT: output += '>';   break;
-        case IfTestInstr.cmpOp.GE: output += '>=';  break;
-        case IfTestInstr.cmpOp.EQ: output += '==='; break;
-        case IfTestInstr.cmpOp.NE: output += '!=='; break;
+        case 'LT': output += '<';   break;
+        case 'LE': output += '<=';  break;
+        case 'GT': output += '>';   break;
+        case 'GE': output += '>=';  break;
+        case 'EQ': output += '==='; break;
+        case 'NE': output += '!=='; break;
 
     }
     output += ' ' + inFormatFn(this, 1) + ' ';
@@ -1483,9 +1487,8 @@ IfTestInstr.prototype.copy = function ()
 {
     return this.baseCopy(
         new IfTestInstr(
-            this.uses[0],
-            this.uses[1],
-            this.cmpOp,
+            this.uses,
+            this.testOp,
             this.targets[0],
             this.targets[1]
         )

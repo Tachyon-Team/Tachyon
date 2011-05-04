@@ -1094,7 +1094,7 @@ function eqGeneral(v1, v2)
     if (boxIsString(px) && boxIsString(py))
     {
         // Perform string comparison
-        return boolToBox(streq(px, py));
+        return streq(px, py);
     }
 
     // Attempt to convert both values to numbers

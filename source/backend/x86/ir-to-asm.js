@@ -2041,45 +2041,36 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
         tltor.asm.jmp(trueLabel);
     }
 
-    // Less-than comparison
-    if (this.cmpOp === IfTestInstr.cmpOp.LT)
+    // Switch on the test operation
+    switch (this.testOp)
     {
+        case 'LT':
         genCmp('jl', 'jb');
-    }
+        break;
 
-    // Less-than or equal comparison
-    else if (this.cmpOp === IfTestInstr.cmpOp.LE)
-    {
+        case 'LE':
         genCmp('jle', 'jbe');
-    }
+        break;
 
-    // Greater-than comparison
-    else if (this.cmpOp === IfTestInstr.cmpOp.GT)
-    {
+        case 'GT':
         genCmp('jg', 'ja');
-    }
+        break;
 
-    // Greater-than or equal comparison
-    else if (this.cmpOp === IfTestInstr.cmpOp.GE)
-    {
+        case 'GE':
         genCmp('jge', 'jae');
-    }
+        break;
 
-    // Equality comparison
-    else if (this.cmpOp === IfTestInstr.cmpOp.EQ)
-    {
+        case 'EQ':
         genEq(false);
-    }
+        break;
 
-    // Inequality comparison
-    else if (this.cmpOp === IfTestInstr.cmpOp.NE)
-    {
+        case 'NE':
         genEq(true);
-    }
+        break;
 
-    else
-    {
-        error('unsupported comparison operation in if test');            
+        default:
+        error('unsupported comparison operation in if test');
+        break;
     }
 };
 
