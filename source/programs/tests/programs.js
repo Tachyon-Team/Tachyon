@@ -512,6 +512,16 @@ tests.programs.str_int_conv = genTest(
 );
 
 /**
+Switch statement test
+*/
+tests.programs.switch = genTest(
+    'programs/switch/switch.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Array indexing test.
 */
 tests.programs.array_idx = genTest(

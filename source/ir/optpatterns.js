@@ -496,9 +496,8 @@ blockPatterns.ifPhiElim = new optPattern(
                 // Replace the jump by an if instruction
                 pred.replInstrAtIndex(
                     pred.instrs.length - 1,
-                    new IfInstr(
-                        use,
-                        constVal,
+                    new IfTestInstr(
+                        [use, constVal],
                         'EQ',
                         ifInstr.targets[0],
                         ifInstr.targets[1]

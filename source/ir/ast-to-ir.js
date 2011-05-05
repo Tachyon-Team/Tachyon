@@ -1186,6 +1186,13 @@ function stmtToIR(context)
         );
         exprToIR(testContext);
 
+        // Get the boolean value of the test expression
+        var boolVal = insertPrimCallIR(
+            testContext, 
+            'boxToBool',
+            [testContext.getOutValue()]
+        );
+
         // Add the test exit to the break context list
         brkCtxList.push(testContext);
 
@@ -1201,8 +1208,9 @@ function stmtToIR(context)
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
-            new IfInstr(
-                testContext.getOutValue(),
+            new IfTestInstr(
+                [boolVal, ConstValue.getConst(true)],
+                'EQ',
                 bodyContext.entryBlock,
                 loopExit
             )
@@ -1242,6 +1250,13 @@ function stmtToIR(context)
         // Compile the loop test in the entry context
         exprToIR(testContext);
 
+        // Get the boolean value of the test expression
+        var boolVal = insertPrimCallIR(
+            testContext, 
+            'boxToBool',
+            [testContext.getOutValue()]
+        );
+
         // Compile the body statement
         var bodyContext = testContext.branch(
             astStmt.statement,
@@ -1276,8 +1291,9 @@ function stmtToIR(context)
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
-            new IfInstr(
-                testContext.getOutValue(),
+            new IfTestInstr(
+                [boolVal, ConstValue.getConst(true)],
+                'EQ',
                 bodyContext.entryBlock,
                 loopExit
             )
@@ -1313,6 +1329,13 @@ function stmtToIR(context)
 
         // Compile the loop test in the entry context
         exprToIR(testContext);
+
+        // Get the boolean value of the test expression
+        var boolVal = insertPrimCallIR(
+            testContext, 
+            'boxToBool',
+            [testContext.getOutValue()]
+        );
 
         // Compile the body statement
         var bodyContext = testContext.branch(
@@ -1369,8 +1392,9 @@ function stmtToIR(context)
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
-            new IfInstr(
-                testContext.getOutValue(),
+            new IfTestInstr(
+                [boolVal, ConstValue.getConst(true)],
+                'EQ',
                 bodyContext.entryBlock,
                 loopExit
             )
@@ -1637,6 +1661,13 @@ function stmtToIR(context)
         var switchCtx = context.pursue(astStmt.expr);        
         exprToIR(switchCtx);
 
+        // If there are no clauses in the switch statement, we are done
+        if (astStmt.clauses.length === 0)
+        {
+            context.setOutput(switchCtx.getExitBlock());
+            return;
+        }
+
         // Create a list for the break contexts
         var brkCtxList = [];
 
@@ -1716,8 +1747,9 @@ function stmtToIR(context)
 
                 // Replace the merge branch by an if instruction
                 curTestCtx.getExitBlock().replBranch(
-                    new IfInstr(
-                        testVal,
+                    new IfTestInstr(
+                        [testVal, ConstValue.getConst(true)],
+                        'EQ',
                         stmtCtx.entryBlock,
                         nextTestCtx.entryBlock
                     )
@@ -1767,8 +1799,9 @@ function stmtToIR(context)
 
                 // Add the if test instruction
                 curTestCtx.addInstr(
-                    new IfInstr(
-                        testVal,
+                    new IfTestInstr(
+                        [testVal, ConstValue.getConst(true)],
+                        'EQ',
                         stmtCtx.entryBlock,
                         nextTestCtx.entryBlock
                     )
@@ -2722,6 +2755,13 @@ function opToIR(context)
             var testContext = context.pursue(exprs[0]);
             exprToIR(testContext);
 
+            // Get the boolean value of the test expression
+            var boolVal = insertPrimCallIR(
+                testContext, 
+                'boxToBool',
+                [testContext.getOutValue()]
+            );
+
             // Compile the true expression
             var trueContext = context.branch(
                 exprs[1],
@@ -2740,8 +2780,9 @@ function opToIR(context)
 
             // Create the if branching instruction
             testContext.addInstr(
-                new IfInstr(
-                    testContext.getOutValue(),
+                new IfTestInstr(
+                    [boolVal, ConstValue.getConst(true)],
+                    'EQ',
                     trueContext.entryBlock,
                     falseContext.entryBlock
                 )
@@ -3751,8 +3792,9 @@ function insertCondIR(context, testVal, trueGenFunc, falseGenFunc)
 
     // Branch based on the test value
     context.addInstr(
-        new IfInstr(
-            testVal,
+        new IfTestInstr(
+            [testVal, ConstValue.getConst(true)],
+            'EQ',
             (trueCtx !== undefined)? trueCtx.entryBlock:contBlock,
             (falseCtx !== undefined)? falseCtx.entryBlock:contBlock
         )
