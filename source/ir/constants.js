@@ -68,10 +68,6 @@ function ConstValue(value, type)
         !(typeof value === 'string' && type !== IRType.box),
         'string-valued constants must have box type'
     );
-    assert (
-        !(type === IRType.bool && value !== 0 && value !== 1),
-        'boolean constants must be 0 or 1'
-    );        
 
     /**
     Value of the constant
@@ -248,11 +244,6 @@ ConstValue.prototype.getImmValue = function (params)
         return this.value;
     }
 
-    if (this.type === IRType.bool)
-    {
-        return this.value;
-    }
-
     if (this.value === true)
     {
         return params.staticEnv.getBinding('BIT_PATTERN_TRUE').value;
@@ -273,10 +264,7 @@ ConstValue.prototype.getImmValue = function (params)
         return params.staticEnv.getBinding('BIT_PATTERN_NULL').value;
     }
 
-    assert (
-        false,
-        'cannot get immediate bits for: ' + this
-    );
+    error('cannot get immediate bits for: ' + this);
 };
 
 /**

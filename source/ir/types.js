@@ -168,7 +168,6 @@ IRType.prototype.getSizeBytes = function (params)
         case IRType.rptr:
         case IRType.ref:
         case IRType.box:
-        case IRType.bool:
         case IRType.pint:
         case IRType.puint:
         return params.target.ptrSizeBytes;
@@ -258,9 +257,6 @@ IRType.ref = new IRType('ref');
 
 // Raw pointer to any memory address
 IRType.rptr = new IRType('rptr');
-
-// Boolean type
-IRType.bool = new IRType('bool');
 
 // Integer type of width specific to the platform
 // (same width as the pointer size)

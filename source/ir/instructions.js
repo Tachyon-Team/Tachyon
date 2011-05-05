@@ -1250,8 +1250,7 @@ var IfInstr = instrMaker(
     {
         instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
-            inputVals[0].type === IRType.box ||
-            inputVals[0].type === IRType.bool,
+            inputVals[0].type === IRType.box,
             'input must be boxed or bool'
         );
         instrMaker.validNumBranches(branchTargets, 2, 2);
@@ -1828,13 +1827,11 @@ var ICastInstr = instrMaker(
         instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             (inputVals[0].type.isInt() || 
-             inputVals[0].type === IRType.bool ||
              inputVals[0].type === IRType.box ||
              inputVals[0].type === IRType.ref ||
              inputVals[0].type === IRType.rptr) 
             &&
             (typeParams[0].isInt() ||
-             typeParams[0] === IRType.bool ||
              typeParams[0] === IRType.box ||
              typeParams[0] === IRType.ref ||
              typeParams[0] === IRType.rptr),

@@ -1095,6 +1095,13 @@ function stmtToIR(context)
         var testContext = context.pursue(astStmt.expr);        
         exprToIR(testContext);
 
+        // Get the boolean value of the first expression
+        var boolVal = insertPrimCallIR(
+            testContext, 
+            'boxToBool',
+            [testContext.getOutValue()]
+        );
+
         // Create a context for the true statement
         var trueContext = context.branch(
             astStmt.statements[0],
@@ -1128,8 +1135,9 @@ function stmtToIR(context)
 
         // Create the if branching instruction
         testContext.addInstr(
-            new IfInstr(
-                testContext.getOutValue(),
+            new IfTestInstr(
+                [boolVal, ConstValue.getConst(true)],
+                'EQ',
                 trueContext.entryBlock,
                 falseContext.entryBlock
             )
