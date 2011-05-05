@@ -142,32 +142,32 @@ CStringAsBox.prototype.free = function (inVar)
 };
 
 /**
-C boolean to IR boolean type.
+C boolean to boxed boolean type.
 */
-function CBoolAsBool()
+function CBoolAsBox()
 {
     this.cTypeName = 'bool';
 
-    this.cIRType = IRType.bool;
+    this.cIRType = IRType.pint;
 
-    this.jsIRType = IRType.bool;
+    this.jsIRType = IRType.box;
 }
-CBoolAsBool.prototype = new CTypeMapping();
+CBoolAsBox.prototype = new CTypeMapping();
 
 /**
 Generate code for a conversion to a C value
 */
-CBoolAsBool.prototype.jsToC = function (inVar)
+CBoolAsBox.prototype.jsToC = function (inVar)
 {
-    return inVar;
+    return 'boxToBool(' + inVar + ')? pint(1):pint(0)';
 };
 
 /**
 Generate code for a conversion from a C value
 */
-CBoolAsBool.prototype.cToJS = function (inVar)
+CBoolAsBox.prototype.cToJS = function (inVar)
 {
-    return inVar;
+    return inVar + ' !== pint(0)';
 };
 
 /**
@@ -1069,7 +1069,7 @@ function initFFI(params)
 
     regFFI(new CFunction(
         'rawAllocMemoryBlock', 
-        [new CIntAsInt(IRType.pint), new CBoolAsBool()], 
+        [new CIntAsInt(IRType.pint), new CBoolAsBox()], 
         new CPtrAsPtr(),
         params
     ));

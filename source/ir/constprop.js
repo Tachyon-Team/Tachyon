@@ -1084,12 +1084,7 @@ CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge
         var boolVal = constEvalBool(this.uses[this.uses.length-1]);
 
         if (boolVal instanceof ConstValue)
-        {
-            return ConstValue.getConst(
-                boolVal.value? 1:0,
-                this.type
-            );
-        }
+            return ConstValue.getConst(boolVal.value)
     }
 
     // Add all branch targets to the CFG work list
@@ -1165,6 +1160,17 @@ IfTestInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, 
                 case 'GE': testVal = num_ge(v0, v1); break;
                 case 'EQ': testVal = num_eq(v0, v1); break;
                 case 'NE': testVal = num_ne(v0, v1); break;
+            }
+        }
+
+        // If this is a boolean or string comparison
+        if ((typeof v0 === 'boolean' && typeof v1 === 'boolean') ||
+            (typeof v0 === 'string' && typeof v1 === 'string'))
+        {
+            switch (this.testOp)
+            {
+                case 'EQ': testVal = (v0 === v1); break;
+                case 'NE': testVal = (v0 !== v1); break;
             }
         }
     }

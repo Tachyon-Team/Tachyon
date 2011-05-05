@@ -59,7 +59,7 @@ function Boolean(value)
     if (isGlobalObj(this) === false)
     {
         // Convert the value to a boolean
-        var boolVal = boolToBox(boxToBool(value));
+        var boolVal = boxToBool(value);
 
         // If the value is not a boolean, return it directly
         if (typeof boolVal !== 'boolean')
@@ -72,7 +72,7 @@ function Boolean(value)
     else
     {
         // Convert the value to a boolean
-        return boolToBox(boxToBool(value));
+        return boxToBool(value);
     }
 }
 

@@ -225,29 +225,28 @@ function boxToBool(boxVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:ret bool";
 
     // Get an integer-typed value for input
     var boxInt = iir.icast(IRType.pint, boxVal);
 
     if (boxInt === BIT_PATTERN_TRUE)
-        return TRUE_BOOL;
+        return true;
 
     else if (boxInt === BIT_PATTERN_FALSE)
-        return FALSE_BOOL;
+        return false;
 
     else if (boxInt === BIT_PATTERN_UNDEF)
-        return FALSE_BOOL;
+        return false;
 
     else if (boxInt === BIT_PATTERN_NULL)
-        return FALSE_BOOL;
+        return false;
 
     else if (boxIsInt(boxVal))
     { 
         if (boxInt !== pint(0))
-            return TRUE_BOOL;
+            return true;
         else
-            return FALSE_BOOL;
+            return false;
     }
 
     else if (boxIsString(boxVal))
@@ -255,23 +254,12 @@ function boxToBool(boxVal)
         var len = iir.icast(IRType.pint, get_str_size(boxVal));
 
         if (len !== pint(0))
-            return TRUE_BOOL;
+            return true;
         else
-            return FALSE_BOOL;
+            return false;
     }
 
-    return TRUE_BOOL;
-}
-
-/**
-Convert a boolean value to a boxed boolean value
-*/
-function boolToBox(boolVal)
-{
-    "tachyon:inline";
-    "tachyon:arg boolVal bool";
-
-    return boolVal? true:false;
+    return true;
 }
 
 /**

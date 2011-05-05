@@ -44,8 +44,8 @@
 @fileOverview
 Utility code for running and testing programs as unit tests.
 
-@copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
+@author
+Maxime Chevalier-Boisvert
 */
 
 /**

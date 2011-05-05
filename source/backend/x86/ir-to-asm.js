@@ -1933,6 +1933,21 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
     print(opnds[1]);
     */
 
+    /*
+    if (this.parentBlock.parentCFG.ownerFunc.funcName === 'getPropObj')// ||
+        //this.parentBlock.parentCFG.ownerFunc.funcName === 'getOwnPropObj')
+        print(this);
+    */
+    var instr = this;
+    function dbgPrint(str)
+    {
+        /*
+        if (instr.parentBlock.parentCFG.ownerFunc.funcName === 'getPropObj')// ||
+            //instr.parentBlock.parentCFG.ownerFunc.funcName === 'getOwnPropObj')
+            print(str);
+        */
+    }
+
     // Get the operand width
     var width;
     if (opnds[0].width !== undefined)
@@ -1986,12 +2001,16 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
             opnds[1].type === x86.type.IMM_VAL &&
             opnds[1].value === 0) 
         {
+            dbgPrint('case 1');
+
             tltor.asm.test(opnds[0], opnds[0]);
         } 
         else if (opnds[1].type === x86.type.REG && 
                  opnds[0].type === x86.type.IMM_VAL &&
                  opnds[0].value === 0)
         {
+            dbgPrint('case 2');
+
             tltor.asm.test(opnds[1], opnds[1]);
         } 
         if ((opnds[0].type === x86.type.MEM &&
@@ -1999,6 +2018,8 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
             (tltor.asm.isImmediate(opnds[0]) &&
              tltor.asm.isImmediate(opnds[1])))
         {
+            dbgPrint('case 3');
+
             tltor.asm.
             mov(opnds[0], scratchReg).
             cmp(opnds[1], scratchReg);
@@ -2007,6 +2028,8 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
         {
             if (opnds[1].type === x86.type.LINK && opnds[1].width() === 64)
             {
+                dbgPrint('case 4');
+
                 // Cmp cannot have a 64 bit immediate value as operand
                 tltor.asm.
                 mov(opnds[1], scratchReg).
@@ -2014,6 +2037,8 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
             } 
             else
             {
+                dbgPrint('case 5');
+
                 tltor.asm.cmp(opnds[1], opnds[0], width);
             }
         }
@@ -2021,12 +2046,16 @@ IfTestInstr.prototype.genCode = function (tltor, opnds)
         {
             if (opnds[0].type === x86.type.LINK && opnds[0].width() === 64)
             {
+                dbgPrint('case 6');
+
                 // Cmp cannot have a 64 bit immediate value as operand
                 var opnd = scratchReg;
                 tltor.asm.mov(opnds[0], scratchReg);
             } 
             else
             {
+                dbgPrint('case 7');
+
                 var opnd = opnds[0];
             }
 

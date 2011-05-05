@@ -73,7 +73,7 @@ if (RUNNING_IN_TACHYON)
             this.codeBytesAllocated += size;
         }
 
-        var blockPtr = rawAllocMemoryBlock(unboxInt(size), boxToBool(exec));
+        var blockPtr = rawAllocMemoryBlock(unboxInt(size), exec);
 
         var blockObj = alloc_memblock();
 

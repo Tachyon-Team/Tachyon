@@ -302,24 +302,6 @@ function makeObjectLayouts(params)
         )
     );
 
-    // True boolean constant
-    params.staticEnv.regBinding(
-        'TRUE_BOOL',
-        ConstValue.getConst(
-            1,
-            IRType.bool
-        )
-    );
-
-    // False boolean constant
-    params.staticEnv.regBinding(
-        'FALSE_BOOL',
-        ConstValue.getConst(
-            0,
-            IRType.bool
-        )
-    );
-
     // Undefined constant
     params.staticEnv.regBinding(
         'UNDEFINED',

@@ -157,7 +157,13 @@ function lowerIRCFG(cfg, params)
                     );
 
                     // Replace the if instruction by a typed if
-                    var ifBoolInstr = new IfInstr([boolVal].concat(instr.targets));
+                    //var ifBoolInstr = new IfInstr([boolVal].concat(instr.targets));
+                    var ifBoolInstr = new IfTestInstr(
+                        [boolVal, ConstValue.getConst(true)],
+                        'EQ',
+                        instr.targets[0],
+                        instr.targets[1]
+                    );
                     cfg.replInstr(itr, ifBoolInstr);
 
                     // Add the instruction before the if
