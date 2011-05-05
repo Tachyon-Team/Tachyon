@@ -1196,128 +1196,6 @@ var UrsftInstr = instrMaker(
 
 //=============================================================================
 //
-// Comparison instructions
-//
-//=============================================================================
-
-/**
-@class Base class for comparison instructions
-@augments IRInstr
-*/
-var CompInstr = function ()
-{
-};
-CompInstr.prototype = new IRInstr();
-
-/**
-Default initialization function for comparison instructions
-*/
-CompInstr.initFunc = function (typeParams, inputVals, branchTargets)
-{
-    instrMaker.validNumInputs(inputVals, 2, 2);
-
-    assert (
-        (inputVals[0].type === IRType.box  ||
-         inputVals[0].type === IRType.rptr ||
-         inputVals[0].type.isNumber())
-        &&
-        inputVals[1].type === inputVals[0].type,
-        'invalid input types (' + inputVals[0].type + 
-        ', ' + inputVals[1].type + ')'
-    );
-    
-    this.type = IRType.bool;
-};
-
-/**
-Initialization function for equality and inequality comparison instructions
-*/
-CompInstr.initFuncEq = function (typeParams, inputVals, branchTargets)
-{
-    instrMaker.validNumInputs(inputVals, 2, 2);
-
-    assert (
-        (inputVals[0].type === IRType.box   ||
-         inputVals[0].type === IRType.rptr  ||
-         inputVals[0].type.isNumber()       ||
-         inputVals[0].type === IRType.bool)
-        &&
-        inputVals[1].type === inputVals[0].type,
-        'invalid input types (' + inputVals[0].type + 
-        ', ' + inputVals[1].type + ')'
-    );
-    
-    this.type = IRType.bool;
-};
-
-/**
-@class Less-than comparison instruction
-@augments CompInstr
-*/
-var LtInstr = instrMaker(
-    'lt',
-    CompInstr.initFunc,
-    undefined,
-    new CompInstr()
-);
-
-/**
-@class Less-than-or-equal comparison instruction
-@augments CompInstr
-*/
-var LeInstr = instrMaker(
-    'le',
-    CompInstr.initFunc,
-    undefined,
-    new CompInstr()
-);
-
-/**
-@class Greater-than comparison instruction
-@augments CompInstr
-*/
-var GtInstr = instrMaker(
-    'gt',
-    CompInstr.initFunc,
-    undefined,
-    new CompInstr()
-);
-
-/**
-@class Greater-than-or-equal comparison instruction
-@augments CompInstr
-*/
-var GeInstr = instrMaker(
-    'ge',
-    CompInstr.initFunc,
-    undefined,
-    new CompInstr()
-);
-
-/**
-@class Equality comparison instruction
-@augments CompInstr
-*/
-var EqInstr = instrMaker(
-    'eq',
-    CompInstr.initFuncEq,
-    undefined,
-    new CompInstr()
-);
-
-/**
-@class Inequality comparison instruction
-@augments CompInstr
-*/
-var NeInstr = instrMaker(
-    'ne',
-    CompInstr.initFuncEq,
-    undefined,
-    new CompInstr()
-);
-
-//=============================================================================
-//
 // Branching instructions
 //
 //=============================================================================
@@ -1399,7 +1277,7 @@ function IfTestInstr(inputs, testOp, trueTarget, falseTarget)
 
     assert (
         testOp in IfTestInstr.testOp,
-        'invalid comparison operation'
+        'invalid test operation: "' + testOp + '"'
     );
 
     assert (

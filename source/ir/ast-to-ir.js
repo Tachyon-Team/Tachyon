@@ -1425,11 +1425,6 @@ function stmtToIR(context)
             )
         );
 
-        // Test that the property is not equal to undefined
-        var testVal = testCtx.addInstr(
-            new NeInstr(curPropName, ConstValue.getConst(undefined))
-        );
-
         // Create a context for the loop body
         var loopBody = context.cfg.getNewBlock('loop_body');
         var bodyCtx = testCtx.branch(
@@ -1476,11 +1471,13 @@ function stmtToIR(context)
         );
 
         // Replace the jump added by the context merging at the test exit
-        // by the if branching instruction
+        // by an if branching instruction testing that the property is
+        // not equal to undefined
         var testExit = testCtx.getExitBlock();
         testExit.replBranch(
-            new IfInstr(
-                testVal,
+            new IfTestInstr(
+                [curPropName, ConstValue.getConst(undefined)],
+                'NE',
                 loopBody,
                 loopExit
             )
