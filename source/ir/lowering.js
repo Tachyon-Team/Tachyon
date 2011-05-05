@@ -107,12 +107,6 @@ function lowerIRCFG(cfg, params)
             {
                 var instr = itr.get();
 
-                // Test if some instruction uses are boxed values
-                var usesBoxed = false;
-                for (var i = 0; i < instr.uses.length; ++i)
-                    if (instr.uses[i].type === IRType.box)
-                        usesBoxed = true;
-
                 // If this is a load or a store instruction on a boxed value
                 if ((instr instanceof LoadInstr || instr instanceof StoreInstr) && 
                     instr.uses[0].type === IRType.box)
@@ -139,35 +133,6 @@ function lowerIRCFG(cfg, params)
 
                     // Add the unbox instruction before the load
                     cfg.addInstr(itr, unboxVal);
-
-                    var instr = itr.get();
-                }
-
-                // If this is an untyped if instruction
-                if (usesBoxed && instr instanceof IfInstr)
-                {
-                    // Create a boolean conversion operation
-                    var boolVal = new CallFuncInstr(
-                        [
-                            params.staticEnv.getBinding('boxToBool'),
-                            ConstValue.getConst(undefined),
-                            ConstValue.getConst(undefined),
-                            instr.uses[0]
-                        ]
-                    );
-
-                    // Replace the if instruction by a typed if
-                    //var ifBoolInstr = new IfInstr([boolVal].concat(instr.targets));
-                    var ifBoolInstr = new IfTestInstr(
-                        [boolVal, ConstValue.getConst(true)],
-                        'EQ',
-                        instr.targets[0],
-                        instr.targets[1]
-                    );
-                    cfg.replInstr(itr, ifBoolInstr);
-
-                    // Add the instruction before the if
-                    cfg.addInstr(itr, boolVal);
 
                     var instr = itr.get();
                 }
@@ -685,8 +650,9 @@ function foo(ctx)
 
             // Create the if branching instruction
             ctx.addInstr(
-                new IfInstr(
-                    isArray,
+                new IfTestInstr(
+                    [isArray, ConstValue.getConst(true)],
+                    'EQ',
                     trueCtx.entryBlock,
                     falseCtx.entryBlock
                 )

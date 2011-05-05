@@ -2628,6 +2628,13 @@ function opToIR(context)
             );
             exprToIR(fstContext);
 
+            // Get the boolean value of the first expression
+            var boolVal = insertPrimCallIR(
+                fstContext, 
+                'boxToBool',
+                [fstContext.getOutValue()]
+            );
+
             // Compile the second expression
             var secEntry = context.cfg.getNewBlock('log_and_sec');
             var secContext = context.branch(
@@ -2655,39 +2662,16 @@ function opToIR(context)
 
             // Jump to the first expression evaluation
             context.addInstr(new JumpInstr(fstEntry));
-
-            /*
-            print(fstContext.getOutValue());
-
-            // Get the boolean value of the first expression
-            var boolVal = insertPrimCallIR(
-                fstContext, 
-                'boxToBool',
-                [fstContext.getOutValue()]
-            );
-
-            // If the first expression evaluates to false, evaluate the second
+            
+            // If the first expression evaluates to true, evaluate the second
             fstContext.getExitBlock().replBranch(
                 new IfTestInstr(
-                    boolVal,
-                    ConstValue.getConst(false),
+                    [boolVal, ConstValue.getConst(true)],
                     'EQ',
                     secEntry,
                     joinBlock
                 )
             );
-            */
-
-            
-            // If the first expression evaluates to false, evaluate the second
-            fstContext.getExitBlock().replBranch(
-                new IfInstr(
-                    fstContext.getOutValue(),
-                    secEntry,
-                    joinBlock
-                )
-            );
-
 
             // Set the exit block to be the join block
             context.setOutput(joinBlock, phiValue);
@@ -2705,6 +2689,13 @@ function opToIR(context)
                 context.localMap.copy()
             );
             exprToIR(fstContext);
+
+            // Get the boolean value of the first expression
+            var boolVal = insertPrimCallIR(
+                fstContext, 
+                'boxToBool',
+                [fstContext.getOutValue()]
+            );
 
             // Compile the second expression
             var secEntry = context.cfg.getNewBlock('log_or_sec');
@@ -2736,8 +2727,9 @@ function opToIR(context)
 
             // If the first expression evaluates to false, evaluate the second
             fstContext.getExitBlock().replBranch(
-                new IfInstr(
-                    fstContext.getOutValue(),
+                new IfTestInstr(
+                    [boolVal, ConstValue.getConst(true)],
+                    'EQ',
                     joinBlock,
                     secEntry
                 )
@@ -2973,8 +2965,9 @@ function opToIR(context)
 
                         // Add the if branch expression
                         context.addInstr(
-                            new IfInstr(
-                                hasTestVal,
+                            new IfTestInstr(
+                                [hasTestVal, ConstValue.getConst(true)],
+                                'EQ',
                                 objContext.entryBlock,
                                 globContext.entryBlock
                             )
@@ -3290,8 +3283,9 @@ function assgToIR(context, rhsVal)
 
             // Add the if branch expression
             context.addInstr(
-                new IfInstr(
-                    hasTestVal,
+                new IfTestInstr(
+                    [hasTestVal, ConstValue.getConst(true)],
+                    'EQ',
                     propContext.entryBlock,
                     varContext.entryBlock
                 )
@@ -3567,8 +3561,9 @@ function refToIR(context)
 
         // Add the if branch expression
         context.addInstr(
-            new IfInstr(
-                hasTestVal,
+            new IfTestInstr(
+                [hasTestVal, ConstValue.getConst(true)],
+                'EQ',
                 propContext.entryBlock,
                 varContext.entryBlock
             )
@@ -3947,8 +3942,9 @@ function insertConstructIR(context, funcVal, argVals)
         [funcProto]
     );
     context.addInstr(
-        new IfInstr(
-            testVal,
+        new IfTestInstr(
+            [testVal, ConstValue.getConst(true)],
+            'EQ',
             protoIsObj,
             protoNotObjCtx.entryBlock
         )
@@ -4029,8 +4025,9 @@ function insertConstructIR(context, funcVal, argVals)
         [retVal]
     );
     context.addInstr(
-        new IfInstr(
-            testVal,
+        new IfTestInstr(
+            [testVal, ConstValue.getConst(true)],
+            'EQ',
             retIsObj,
             retNotObj
         )

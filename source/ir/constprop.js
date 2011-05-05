@@ -296,23 +296,7 @@ function constProp(cfg, params)
             //print('\tval: ' + val);
 
             // If this is an if instruction
-            if (instr instanceof IfInstr && val instanceof ConstValue)
-            {
-                // If only one if branch is reachable, replace the if by a jump
-                if (val.value === true)
-                {
-                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[0]));
-                    ++numBranches;
-                }
-                else if (val.value === false)
-                {
-                    block.replInstrAtIndex(j, new JumpInstr(instr.targets[1]));
-                    ++numBranches;
-                }
-            }
-
-            // If this is an if instruction
-            else if (instr instanceof IfTestInstr)
+            if (instr instanceof IfTestInstr)
             {
                 // If only one if branch is reachable, replace the if by a jump
                 if (val === true)
@@ -1002,38 +986,6 @@ CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge
     return BOT;
 };
 
-IfInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
-{
-    // Evaluate the test value
-    var test = constEvalBool(getValue(this.uses[0]));
-
-    // If the test is a constant
-    if (test.value === true)
-    {
-        // Add the true branch to the work list
-        queueEdge(this, this.targets[0]);
-    }
-
-    // If the test evaluates to false
-    else if (test.value === false)
-    {
-        // Add the false branch to the work list
-        queueEdge(this, this.targets[1]);
-    }
-
-    // If test is non-constant, both branches are reachable
-    else if (test === BOT)
-    {
-        queueEdge(this, this.targets[0]);
-        queueEdge(this, this.targets[1]);
-    }
-
-    // Return the test value
-    return test;
-};
-
-// TODO: implement const prop for IfTestInstr
-// TODO: implement replacement for IfTestInstr
 IfTestInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     var v0 = getValue(this.uses[0]);
@@ -1044,12 +996,6 @@ IfTestInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, 
 
     if (v0 === TOP || v1 === TOP)
         testVal = TOP;
-
-    /*
-    print(this);
-    print(v0);
-    print(v1);
-    */
 
     if (v0 instanceof ConstValue && v1 instanceof ConstValue)
     {

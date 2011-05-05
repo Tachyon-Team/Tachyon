@@ -90,8 +90,9 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             entry
         );
         addInstr(
-            new IfInstr(
-                ConstValue.getConst(true), 
+            new IfTestInstr(
+                [ConstValue.getConst(true), ConstValue.getConst(true)],
+                'EQ', 
                 l1, 
                 r1
             ),

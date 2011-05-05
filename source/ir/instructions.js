@@ -1244,26 +1244,6 @@ RetInstr.prototype.isBranch = function () { return true; };
 @class If branching instruction
 @augments IRInstr
 */
-var IfInstr = instrMaker(
-    'if',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 1, 1);
-        assert (
-            inputVals[0].type === IRType.box,
-            'input must be boxed or bool'
-        );
-        instrMaker.validNumBranches(branchTargets, 2, 2);
-        
-        this.type = IRType.none;
-    },
-    ['then', 'else']
-);
-
-/**
-@class If branching instruction
-@augments IRInstr
-*/
 function IfTestInstr(inputs, testOp, trueTarget, falseTarget)
 {
     for (var i = 1; i < inputs.length; ++i)

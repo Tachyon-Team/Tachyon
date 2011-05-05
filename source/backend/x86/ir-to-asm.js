@@ -1684,33 +1684,6 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-IfInstr.prototype.genCode = function (tltor, opnds)
-{
-    // Assembler imports
-    const $ = x86.Assembler.prototype.immediateValue;
-
-    const trueLabel = tltor.label(this.targets[0], this.targets[0].label);
-    const falseLabel = tltor.label(this.targets[1], this.targets[1].label);
-
-    // If the operand is in a register
-    if (opnds[0].type === x86.type.REG)
-    {
-        // Use the test instruction
-        tltor.asm.
-        test(opnds[0], opnds[0]).
-        je(falseLabel).
-        jmp(trueLabel);
-    }
-    else
-    {
-        // Use the compare instruction
-        tltor.asm.
-        cmp($(0), opnds[0], this.uses[0].type.getSizeBits(tltor.params)).
-        je(falseLabel).
-        jmp(trueLabel);
-    }
-};
-
 IfTestInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
