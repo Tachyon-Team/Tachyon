@@ -1081,10 +1081,11 @@ CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge
         this.getCallee() === params.staticEnv.getBinding('boxToBool'))
     {
         // Evaluate the boolean value
-        var boolVal = constEvalBool(this.uses[this.uses.length-1]);
+        var boolVal = constEvalBool(getValue(this.uses[this.uses.length-1]));
 
+        // If we could evaluate the boolean value, return it
         if (boolVal instanceof ConstValue)
-            return ConstValue.getConst(boolVal.value)
+            return boolVal;
     }
 
     // Add all branch targets to the CFG work list
