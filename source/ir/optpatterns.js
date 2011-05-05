@@ -381,7 +381,7 @@ blockPatterns.ifPhiElim = new optPattern(
             block.instrs[0].dests.length === 1 &&
             (
                 (block.instrs.length === 2 &&
-                 block.instrs[1] instanceof IfTestInstr &&
+                 block.instrs[1] instanceof IfInstr &&
                  block.instrs[1].uses[0] === block.instrs[0] &&
                  block.instrs[1].uses[1] instanceof ConstValue &&
                  typeof block.instrs[1].uses[1].value === 'boolean' &&
@@ -392,7 +392,7 @@ blockPatterns.ifPhiElim = new optPattern(
                  block.instrs[1].getCallee() === params.staticEnv.getBinding('boxToBool') &&
                  block.instrs[1].getArg(0) === block.instrs[0] &&
                  block.instrs[1].dests.length === 1 &&
-                 block.instrs[2] instanceof IfTestInstr &&
+                 block.instrs[2] instanceof IfInstr &&
                  block.instrs[2].uses[0] === block.instrs[1] &&
                  block.instrs[2].uses[1] instanceof ConstValue &&
                  typeof block.instrs[2].uses[1].value === 'boolean' &&
@@ -496,7 +496,7 @@ blockPatterns.ifPhiElim = new optPattern(
                 // Replace the jump by an if instruction
                 pred.replInstrAtIndex(
                     pred.instrs.length - 1,
-                    new IfTestInstr(
+                    new IfInstr(
                         [use, constVal],
                         'EQ',
                         ifInstr.targets[0],
@@ -550,8 +550,8 @@ blockPatterns.ifIfElim = new optPattern(
 
         // If both blocks do not terminate in if instructions performing
         // the same type of test operation, no match
-        if (!(thisBranch instanceof IfTestInstr) ||
-            !(predBranch instanceof IfTestInstr) ||
+        if (!(thisBranch instanceof IfInstr) ||
+            !(predBranch instanceof IfInstr) ||
             thisBranch.testOp !== predBranch.testOp)
             return false;
 

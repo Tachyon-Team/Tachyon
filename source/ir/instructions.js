@@ -1244,7 +1244,7 @@ RetInstr.prototype.isBranch = function () { return true; };
 @class If branching instruction
 @augments IRInstr
 */
-function IfTestInstr(inputs, testOp, trueTarget, falseTarget)
+function IfInstr(inputs, testOp, trueTarget, falseTarget)
 {
     for (var i = 1; i < inputs.length; ++i)
     {
@@ -1255,12 +1255,12 @@ function IfTestInstr(inputs, testOp, trueTarget, falseTarget)
     }
 
     assert (
-        testOp in IfTestInstr.testOp,
+        testOp in IfInstr.testOp,
         'invalid test operation: "' + testOp + '"'
     );
 
     assert (
-        inputs.length === IfTestInstr.testOp[testOp],
+        inputs.length === IfInstr.testOp[testOp],
         'invalid operation arity for ' + testOp
     );
 
@@ -1280,12 +1280,12 @@ function IfTestInstr(inputs, testOp, trueTarget, falseTarget)
 
     this.type = IRType.none;
 }
-IfTestInstr.prototype = new IRInstr();
+IfInstr.prototype = new IRInstr();
 
 /**
 Possible tests for the if instruction and corresponding arity
 */
-IfTestInstr.testOp = {
+IfInstr.testOp = {
     LT  : 2,
     LE  : 2,
     GT  : 2,
@@ -1298,12 +1298,12 @@ IfTestInstr.testOp = {
 /**
 Branch target names
 */
-IfTestInstr.prototype.targetNames = ['then', 'else'];
+IfInstr.prototype.targetNames = ['then', 'else'];
 
 /**
 Produce a string representation of the if instruction
 */
-IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
+IfInstr.prototype.toString = function (outFormatFn, inFormatFn)
 {
     // If no formatting functions were specified, use the default ones
     if (outFormatFn === undefined)
@@ -1340,10 +1340,10 @@ IfTestInstr.prototype.toString = function (outFormatFn, inFormatFn)
 /**
 Make a shallow copy of the instruction
 */
-IfTestInstr.prototype.copy = function ()
+IfInstr.prototype.copy = function ()
 {
     return this.baseCopy(
-        new IfTestInstr(
+        new IfInstr(
             this.uses,
             this.testOp,
             this.targets[0],

@@ -1684,7 +1684,7 @@ RetInstr.prototype.genCode = function (tltor, opnds)
     }
 };
 
-IfTestInstr.prototype.genCode = function (tltor, opnds)
+IfInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
     const $ = x86.Assembler.prototype.immediateValue;

@@ -53,7 +53,7 @@ Function to create an if with comparison instruction
 */
 function makeIfCmp(args, cmp)
 {
-    return new IfTestInstr(
+    return new IfInstr(
         [args[0], args[1]],
         cmp,
         args[2],

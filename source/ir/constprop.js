@@ -296,7 +296,7 @@ function constProp(cfg, params)
             //print('\tval: ' + val);
 
             // If this is an if instruction
-            if (instr instanceof IfTestInstr)
+            if (instr instanceof IfInstr)
             {
                 // If only one if branch is reachable, replace the if by a jump
                 if (val === true)
@@ -986,7 +986,7 @@ CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge
     return BOT;
 };
 
-IfTestInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
+IfInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
 {
     var v0 = getValue(this.uses[0]);
     var v1 = getValue(this.uses[1]);

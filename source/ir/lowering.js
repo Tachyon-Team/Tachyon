@@ -650,7 +650,7 @@ function foo(ctx)
 
             // Create the if branching instruction
             ctx.addInstr(
-                new IfTestInstr(
+                new IfInstr(
                     [isArray, ConstValue.getConst(true)],
                     'EQ',
                     trueCtx.entryBlock,

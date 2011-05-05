@@ -1135,7 +1135,7 @@ function stmtToIR(context)
 
         // Create the if branching instruction
         testContext.addInstr(
-            new IfTestInstr(
+            new IfInstr(
                 [boolVal, ConstValue.getConst(true)],
                 'EQ',
                 trueContext.entryBlock,
@@ -1208,7 +1208,7 @@ function stmtToIR(context)
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
-            new IfTestInstr(
+            new IfInstr(
                 [boolVal, ConstValue.getConst(true)],
                 'EQ',
                 bodyContext.entryBlock,
@@ -1291,7 +1291,7 @@ function stmtToIR(context)
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
-            new IfTestInstr(
+            new IfInstr(
                 [boolVal, ConstValue.getConst(true)],
                 'EQ',
                 bodyContext.entryBlock,
@@ -1392,7 +1392,7 @@ function stmtToIR(context)
         // by the if branching instruction
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
-            new IfTestInstr(
+            new IfInstr(
                 [boolVal, ConstValue.getConst(true)],
                 'EQ',
                 bodyContext.entryBlock,
@@ -1507,7 +1507,7 @@ function stmtToIR(context)
         // not equal to undefined
         var testExit = testCtx.getExitBlock();
         testExit.replBranch(
-            new IfTestInstr(
+            new IfInstr(
                 [curPropName, ConstValue.getConst(undefined)],
                 'NE',
                 loopBody,
@@ -1747,7 +1747,7 @@ function stmtToIR(context)
 
                 // Replace the merge branch by an if instruction
                 curTestCtx.getExitBlock().replBranch(
-                    new IfTestInstr(
+                    new IfInstr(
                         [testVal, ConstValue.getConst(true)],
                         'EQ',
                         stmtCtx.entryBlock,
@@ -1799,7 +1799,7 @@ function stmtToIR(context)
 
                 // Add the if test instruction
                 curTestCtx.addInstr(
-                    new IfTestInstr(
+                    new IfInstr(
                         [testVal, ConstValue.getConst(true)],
                         'EQ',
                         stmtCtx.entryBlock,
@@ -2566,7 +2566,7 @@ function opToIR(context)
 
             // Add the test instruction
             argsContext.addInstr(
-                new IfTestInstr(
+                new IfInstr(
                     [argVals[0], argVals[1]],
                     cmpOp,
                     trueBlock,
@@ -2665,7 +2665,7 @@ function opToIR(context)
             
             // If the first expression evaluates to true, evaluate the second
             fstContext.getExitBlock().replBranch(
-                new IfTestInstr(
+                new IfInstr(
                     [boolVal, ConstValue.getConst(true)],
                     'EQ',
                     secEntry,
@@ -2727,7 +2727,7 @@ function opToIR(context)
 
             // If the first expression evaluates to false, evaluate the second
             fstContext.getExitBlock().replBranch(
-                new IfTestInstr(
+                new IfInstr(
                     [boolVal, ConstValue.getConst(true)],
                     'EQ',
                     joinBlock,
@@ -2772,7 +2772,7 @@ function opToIR(context)
 
             // Create the if branching instruction
             testContext.addInstr(
-                new IfTestInstr(
+                new IfInstr(
                     [boolVal, ConstValue.getConst(true)],
                     'EQ',
                     trueContext.entryBlock,
@@ -2965,7 +2965,7 @@ function opToIR(context)
 
                         // Add the if branch expression
                         context.addInstr(
-                            new IfTestInstr(
+                            new IfInstr(
                                 [hasTestVal, ConstValue.getConst(true)],
                                 'EQ',
                                 objContext.entryBlock,
@@ -3283,7 +3283,7 @@ function assgToIR(context, rhsVal)
 
             // Add the if branch expression
             context.addInstr(
-                new IfTestInstr(
+                new IfInstr(
                     [hasTestVal, ConstValue.getConst(true)],
                     'EQ',
                     propContext.entryBlock,
@@ -3561,7 +3561,7 @@ function refToIR(context)
 
         // Add the if branch expression
         context.addInstr(
-            new IfTestInstr(
+            new IfInstr(
                 [hasTestVal, ConstValue.getConst(true)],
                 'EQ',
                 propContext.entryBlock,
@@ -3787,7 +3787,7 @@ function insertCondIR(context, testVal, trueGenFunc, falseGenFunc)
 
     // Branch based on the test value
     context.addInstr(
-        new IfTestInstr(
+        new IfInstr(
             [testVal, ConstValue.getConst(true)],
             'EQ',
             (trueCtx !== undefined)? trueCtx.entryBlock:contBlock,
@@ -3942,7 +3942,7 @@ function insertConstructIR(context, funcVal, argVals)
         [funcProto]
     );
     context.addInstr(
-        new IfTestInstr(
+        new IfInstr(
             [testVal, ConstValue.getConst(true)],
             'EQ',
             protoIsObj,
@@ -4025,7 +4025,7 @@ function insertConstructIR(context, funcVal, argVals)
         [retVal]
     );
     context.addInstr(
-        new IfTestInstr(
+        new IfInstr(
             [testVal, ConstValue.getConst(true)],
             'EQ',
             retIsObj,
