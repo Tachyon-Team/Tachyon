@@ -24,6 +24,7 @@ onthefly.regMapping = function (args)
     */
     that.getSlot = args.getSlot;
 
+    // TODO: Change hash for ID
     /**
     Function to compute value hash code
     @field
@@ -635,11 +636,24 @@ onthefly.allocator.prototype.allocCfg = function (cfg, spiller)
 
 
         // Handle successors
-        block.succs.forEach(function (succ)
+
+        // Optimization to favor the true branch
+        // of conditional tests
+        if (block.succs.length > 1)
+        {
+            var succs = block.succs.slice(0);
+            succs.reverse();
+        } else
+        {
+            var succs = block.succs;
+        }
+        //var succs = block.succs;
+
+        succs.forEach(function (succ)
         {
             // Optimize away rmap copies when there is only a
             // successor
-            if (block.succs.length > 1)
+            if (succs.length > 1)
             {
                 rmap = rmap.copy();
             }
