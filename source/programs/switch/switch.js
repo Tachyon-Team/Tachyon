@@ -40,6 +40,68 @@ function switch_testvar(val)
     }
 }
 
+function switch_fallvar(val)
+{
+    var v = 1;
+
+    switch (val)
+    {
+        case 1:
+        v += 1;
+        case 2:
+        v += 1;
+        case 3:
+        v += 2;
+        break;
+
+        default:
+        v += 101;
+    }
+
+    return v + 3;
+}
+
+function switch_str(val)
+{
+    switch (val)
+    {
+        case 'up':
+        return 'down';
+
+        case 'north':
+        return 'south';
+
+        case 'in':
+        return 'out';
+
+        default:
+        return 'here';
+    }
+}
+
+function switch_mixed(val)
+{
+    function fn() { return 1337 }
+
+    switch (val)
+    {
+        case 1:
+        return 2;
+
+        case 'a':
+        return 'b';
+
+        case switch_mixed:
+        return 'lol';
+
+        case fn():
+        return '13371';
+
+        default:
+        return -1;
+    }
+}
+
 function test()
 {
     if (switch_int(-1) !== 1)
@@ -65,6 +127,31 @@ function test()
 
     if (switch_testvar(777) !== 777)
         return 401;
+
+    if (switch_fallvar(1) != 8)
+        return 501;
+    if (switch_fallvar(2) != 7)
+        return 502;
+
+    if (switch_str('up') != 'down')
+        return 601;
+    if (switch_str('north') != 'south')
+        return 602;
+    if (switch_str('in') != 'out')
+        return 603;
+    if (switch_str('') != 'here')
+        return 604;
+
+    if (switch_mixed(1) != 2)
+        return 701;
+    if (switch_mixed('a') != 'b')
+        return 702;
+    if (switch_mixed(switch_mixed) != 'lol')
+        return 703;
+    if (switch_mixed(1337) != 13371)
+        return 704;
+    if (switch_mixed(null) != -1)
+        return 705;
 
     return 0;
 }

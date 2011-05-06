@@ -522,6 +522,16 @@ tests.programs.switch = genTest(
 );
 
 /**
+With statement test
+*/
+tests.programs.with = genTest(
+    'programs/with/with.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Array indexing test.
 */
 tests.programs.array_idx = genTest(
