@@ -742,6 +742,68 @@ Apply instruction-level optimization patterns to an instruction
 */
 function applyPatternsInstr(cfg, block, instr, index, params)
 {
+    // Test if a value is a specific constant
+    function isConst(val, cst)
+    {
+        return (
+            val instanceof ConstValue &&
+            val.value === cst
+        );
+    }
+
+    // Test if a value is a power of 2 constant
+    function isPow2(val)
+    {
+        return (
+            val instanceof ConstValue &&
+            (val.isBoxInt(params) || val.isInt()) &&
+            isPowerOf2(val.value)
+        );
+    }
+
+    // Replace an arithmetic instruction
+    function replArith(replInstr, replInstrOvf, u0, u1)
+    {
+        if (instr instanceof ArithInstr)
+        {
+            block.replInstrAtIndex(
+                index,
+                new replInstr(
+                    u0,
+                    u1
+                )
+            );
+        }
+        else
+        {
+            assert (
+                instr instanceof ArithOvfInstr,
+                'expected arithmetic instruction w/ overflow'
+            );
+
+            block.replBranch(
+                new replInstrOvf(
+                    u0,
+                    u1,
+                    instr.targets[0],
+                    instr.targets[1]
+                )
+            );
+        }
+    }
+
+    // Replace an instruction by a value
+    function replByVal(value)
+    {    
+        // Replace the instruction by a jump to the normal branch
+        block.replInstrAtIndex(
+            index, 
+            (instr instanceof ArithOvfInstr)?
+            new JumpInstr(instr.targets[0]):undefined,
+            value
+        );
+    }
+
     // If the instruction's value is not used and the instruction
     // has no side effects and is not a branch
     if (
@@ -832,74 +894,28 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     }
 
     //
+    // Redundant boxToBool elimination
+    //
+
+    // If this is a boxToBool applied to an HIR comparison instruction
+    else if (instr instanceof CallFuncInstr &&
+        instr.getCallee() === params.staticEnv.getBinding('boxToBool') &&
+        instr.getArg(0) instanceof HIRCompInstr)
+    {
+        // Replace uses of the boxToBool by uses of the comparison
+        replByVal(instr.getArg(0));
+
+        // A change was made
+        return true;
+    }
+
+    //
     // Strength reduction patterns
     //
 
-    // Test if a value is a specific constant
-    function isConst(val, cst)
-    {
-        return (
-            val instanceof ConstValue &&
-            val.value === cst
-        );
-    }
-
-    // Test if a value is a power of 2 constant
-    function isPow2(val)
-    {
-        return (
-            val instanceof ConstValue &&
-            (val.isBoxInt(params) || val.isInt()) &&
-            isPowerOf2(val.value)
-        );
-    }
-
-    // Replace an arithmetic instruction
-    function replArith(replInstr, replInstrOvf, u0, u1)
-    {
-        if (instr instanceof ArithInstr)
-        {
-            block.replInstrAtIndex(
-                index,
-                new replInstr(
-                    u0,
-                    u1
-                )
-            );
-        }
-        else
-        {
-            assert (
-                instr instanceof ArithOvfInstr,
-                'expected arithmetic instruction w/ overflow'
-            );
-
-            block.replBranch(
-                new replInstrOvf(
-                    u0,
-                    u1,
-                    instr.targets[0],
-                    instr.targets[1]
-                )
-            );
-        }
-    }
-
-    // Replace an instruction by a value
-    function replByVal(value)
-    {    
-        // Replace the instruction by a jump to the normal branch
-        block.replInstrAtIndex(
-            index, 
-            (instr instanceof ArithOvfInstr)?
-            new JumpInstr(instr.targets[0]):undefined,
-            value
-        );
-    }
-
     /*
     // If this is an addition instruction
-    if (instr instanceof AddInstr || instr instanceof AddOvfInstr)
+    else if (instr instanceof AddInstr || instr instanceof AddOvfInstr)
     {
         // If the left operand is 0
         if (isConst(instr.uses[0], 0))
@@ -923,7 +939,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     }
 
     // If this is a subtraction instruction
-    if (instr instanceof SubInstr || instr instanceof SubOvfInstr)
+    else if (instr instanceof SubInstr || instr instanceof SubOvfInstr)
     {
         // If the right operand is 0        
         if (isConst(instr.uses[1], 0))
@@ -938,7 +954,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     */
 
     // If this is a multiplication
-    if (instr instanceof MulInstr || instr instanceof MulOvfInstr)
+    else if (instr instanceof MulInstr || instr instanceof MulOvfInstr)
     {
         /*
         // If the right or left operand is 0
@@ -1010,7 +1026,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     }
 
     // If this is a division instruction
-    if (instr instanceof DivInstr)
+    else if (instr instanceof DivInstr)
     {
         /*
         // If this is a division by 1
@@ -1045,7 +1061,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
     /* TODO: handle negative dividend case
     // If this is a modulo operation
-    if (instr instanceof ModInstr)
+    else if (instr instanceof ModInstr)
     {
         // If the result is not boxed
         if (instr.type !== IRType.box)
@@ -1069,7 +1085,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
     /*
     // If this is a logical OR instruction
-    if (instr instanceof OrInstr)
+    else if (instr instanceof OrInstr)
     {
         // If the left operand is 0
         if (isConst(instr.uses[0], 0))
@@ -1093,7 +1109,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     }
 
     // If this is a logical AND instruction
-    if (instr instanceof AndInstr)
+    else if (instr instanceof AndInstr)
     {
         var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
         var TAG_REF_MASK = params.staticEnv.getBinding('TAG_REF_MASK').value;
@@ -1175,7 +1191,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     }
 
     // If this is an integer cast instruction
-    if (instr instanceof ICastInstr)
+    else if (instr instanceof ICastInstr)
     {
         // If the input and output types are the same
         if (instr.uses[0].type === instr.type)

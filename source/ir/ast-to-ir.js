@@ -1718,11 +1718,10 @@ function stmtToIR(context)
                 // Generate code for the test expression
                 exprToIR(curTestCtx);
 
-                // Compare the testvalue with the switch value
-                var testVal = insertPrimCallIR(
-                    curTestCtx, 
-                    'seq', 
-                    [curTestCtx.getOutValue(), switchCtx.getOutValue()]
+                // Insert the HIR instruction
+                var testVal = insertExceptIR(
+                    curTestCtx,
+                    new HIRSeInstr([curTestCtx.getOutValue(), switchCtx.getOutValue()])
                 );
 
                 // Merge the incoming contexts
@@ -2481,7 +2480,7 @@ function opToIR(context)
 
     // Function to create either a primitive call or a machine instruction
     // depending on the argument types
-    function makeOp(curContext, primName, instrClass, argVals)
+    function makeOp(curContext, prim, instrClass, argVals)
     {
         // Test if all arguments are boxed
         var allBoxed = true;
@@ -2492,12 +2491,24 @@ function opToIR(context)
         // If all values are boxed
         if (allBoxed)
         {
-           // Create the primitive call
-           var opVal = insertPrimCallIR(
-                curContext,
-                primName, 
-                argVals
-            );
+            // If the primitive is an instruction
+            if (prim instanceof Function)
+            {
+                // Insert the instruction
+                var opVal = insertExceptIR(
+                    curContext,
+                    new prim(argVals)
+                );
+            }
+            else
+            {
+                // Create the primitive call
+                var opVal = insertPrimCallIR(
+                    curContext,
+                    prim, 
+                    argVals
+                );
+            }
         }
         else
         {
@@ -2523,7 +2534,7 @@ function opToIR(context)
     }
 
     // Function to generate code for a binary comparison operation
-    function cmpGen(primName, cmpOp)
+    function cmpGen(prim, cmpOp)
     {
         // Compile the argument values
         var argsContext = context.pursue(exprs);
@@ -2538,11 +2549,10 @@ function opToIR(context)
         // If all values are boxed
         if (allBoxed)
         {
-           // Create the primitive call
-           var opVal = insertPrimCallIR(
+            // Insert the HIR instruction
+            var opVal = insertExceptIR(
                 argsContext,
-                primName, 
-                argVals
+                new prim(argVals[0], argVals[1])
             );
 
             // Set the operator's output value as the output
@@ -3170,35 +3180,35 @@ function opToIR(context)
         break;
 
         case 'x < y':
-        cmpGen('lt', 'LT');
+        cmpGen(HIRLtInstr, 'LT');
         break;
 
         case 'x <= y':
-        cmpGen('le', 'LE');
+        cmpGen(HIRLeInstr, 'LE');
         break;
 
         case 'x > y':
-        cmpGen('gt', 'GT');
+        cmpGen(HIRGtInstr, 'GT');
         break;
 
         case 'x >= y':
-        cmpGen('ge', 'GE');
+        cmpGen(HIRGeInstr, 'GE');
         break;
 
         case 'x === y':
-        cmpGen('seq', 'EQ');
+        cmpGen(HIRSeInstr, 'EQ');
         break;
 
         case 'x !== y':
-        cmpGen('nseq', 'NE');
+        cmpGen(HIRNsInstr, 'NE');
         break;
 
         case 'x == y':
-        opGen('eq');
+        opGen(HIREqInstr);
         break;
 
         case 'x != y':
-        opGen('ne');
+        opGen(HIRNeInstr);
         break;
 
         case 'typeof x':

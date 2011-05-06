@@ -1109,7 +1109,7 @@ function ne(v1, v2)
 /**
 Implementation of HIR strict-equality instruction
 */
-function seq(v1, v2)
+function se(v1, v2)
 {
     "tachyon:inline";
     
@@ -1117,7 +1117,7 @@ function seq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
-        error('seq on float values');
+        error('se on float values');
     }
     else
     {
@@ -1134,7 +1134,7 @@ function seq(v1, v2)
 /**
 Implementation of HIR strict-inequality instruction
 */
-function nseq(v1, v2)
+function ns(v1, v2)
 {
     "tachyon:inline";
     
@@ -1142,7 +1142,7 @@ function nseq(v1, v2)
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
-        error('seq on float values');
+        error('se on float values');
     }
     else
     {

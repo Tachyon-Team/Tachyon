@@ -471,6 +471,19 @@ function specEqualFunc(p1, p2)
 }
 
 /**
+Genering lowering function generator for HIR instructions.
+Directly inlines a primitive function.
+*/
+function genLowerFunc(primName)
+{
+    return function (compParams)
+    {
+        // Return the primitive to be inlined
+        return compParams.staticEnv.getBinding(primName);
+    }
+}
+
+/**
 Code generator for get_prop
 */
 GetPropInstr.genFunc = function (cstStrProp, isLength)
@@ -565,6 +578,16 @@ GetPropInstr.prototype.lower = function (compParams)
 
     return genSpecPrim(GetPropInstr.genFunc, specParams, compParams);
 }
+
+// For now, these HIR instructions are directly replaced by a primitive call
+HIRLtInstr.prototype.lower = genLowerFunc('lt');
+HIRLeInstr.prototype.lower = genLowerFunc('le');
+HIRGtInstr.prototype.lower = genLowerFunc('gt');
+HIRGeInstr.prototype.lower = genLowerFunc('ge');
+HIRSeInstr.prototype.lower = genLowerFunc('se');
+HIRNsInstr.prototype.lower = genLowerFunc('ns');
+HIREqInstr.prototype.lower = genLowerFunc('eq');
+HIRNeInstr.prototype.lower = genLowerFunc('ne');
 
 //----------------------------------------------------------------------------
 // TODO: scrap following code once better specialization system is in place

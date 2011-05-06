@@ -49,20 +49,12 @@ Maxime Chevalier-Boisvert
 */
 
 // TODO:
-// May want MIR iflt, ifgt, ifeq, etc.
-// May want specialized test for mask? intel test
-// - Takes mask, compares result to 0
-// - ifmask <mask> <value>, tests if result is value
-
-// TODO:
 // May want low-level load without masking
 // - type, offset, index, multiplier
 // Keep both load/store with and without mask
 // - RawLoad? w/
 //      - No masking,
 //      - base_ptr + offset + index * multiplier
-
-// TODO: cast type in load instruction, load as?
 
 // TODO: separate instruction initFunc from validFunc?
 // instr.validate()
@@ -1292,7 +1284,9 @@ IfInstr.testOp = {
     GE  : 2,
     EQ  : 2,
     NE  : 2
-    // TODO: x & y === z (MASK_EQ?)
+    // TODO: 
+    // x & y === z (MASK_EQ?)
+    // MASK_EQ : 3
 };
 
 /**
@@ -2102,8 +2096,8 @@ var HIRArithInstr = function ()
 HIRArithInstr.prototype = new HIRInstr();
 
 /**
-@class Property write instruction
-@augments HIRInstr
+@class HIR addition instruction
+@augments HIRArithInstr
 */
 var HIRAddInstr = hirInstrMaker(
     'hir_add',
@@ -2112,6 +2106,106 @@ var HIRAddInstr = hirInstrMaker(
     new HIRArithInstr()
 );
 
+/**
+@class Base class for HIR comparison instructions
+@augments HIRInstr
+*/
+var HIRCompInstr = function ()
+{
+};
+HIRCompInstr.prototype = new HIRInstr();
+
+/**
+@class HIR less-than comparison instruction
+@augments HIRInstr
+*/
+var HIRLtInstr = hirInstrMaker(
+    'hir_lt',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR less-than or equal comparison instruction
+@augments HIRInstr
+*/
+var HIRLeInstr = hirInstrMaker(
+    'hir_le',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR greater-than comparison instruction
+@augments HIRInstr
+*/
+var HIRGtInstr = hirInstrMaker(
+    'hir_gt',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR greater-than or equal comparison instruction
+@augments HIRInstr
+*/
+var HIRGeInstr = hirInstrMaker(
+    'hir_ge',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR equality comparison instruction
+@augments HIRInstr
+*/
+var HIREqInstr = hirInstrMaker(
+    'hir_eq',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR inequality comparison instruction
+@augments HIRInstr
+*/
+var HIRNeInstr = hirInstrMaker(
+    'hir_ne',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR strict equality comparison instruction
+@augments HIRInstr
+*/
+var HIRSeInstr = hirInstrMaker(
+    'hir_se',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+/**
+@class HIR strict inequality comparison instruction
+@augments HIRInstr
+*/
+var HIRNsInstr = hirInstrMaker(
+    'hir_ns',
+    2,
+    false,
+    new HIRCompInstr()
+);
+
+
+
+
 
 
 
@@ -2119,15 +2213,7 @@ var HIRAddInstr = hirInstrMaker(
 // TODO: fill in other HIR instructions
 //
 
-//
-// TODO: lowering function for HIR instructions, in lowering.js
-//
-
 // TODO: HIR load/store?
-
-
-
-
 
 
 
