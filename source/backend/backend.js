@@ -249,6 +249,11 @@ backend.compileIRToCB = function (ir, params)
 
         fcts[k].regAlloc.spillNb = spiller.slots.length;
 
+        assert(
+            allocator.validate(cfg, params),
+            'validation failed'
+        );
+
         if (params.printRegAlloc === true)
         {
             print("******* After register allocation *******");
@@ -267,11 +272,6 @@ backend.compileIRToCB = function (ir, params)
                 // Translate from IR to ASM
                 translator.genFunc(fcts[k], order);
             });
-
-        assert(
-            allocator.validate(cfg, params),
-            'validation failed'
-        );
 
         /*
         print("******* Mapping validation **************");
