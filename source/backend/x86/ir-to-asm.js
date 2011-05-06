@@ -655,7 +655,7 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
         if (slot.type !== x86.type.REG)
             return;
 
-        const index = used.indexOf(slot);
+        var index = used.indexOf(slot);
 
         if (index !== -1)
         {
@@ -663,6 +663,14 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
             used[index] = newSlot;
             spilled.push({reg:slot, slot:newSlot});  
             offset += refByteNb;
+            
+            // Check for duplicates
+            index = used.indexOf(slot);
+            while (index !== -1)
+            {
+                used[index] = newSlot;
+                index = used.indexOf(slot);
+            }
         }
     });
 
