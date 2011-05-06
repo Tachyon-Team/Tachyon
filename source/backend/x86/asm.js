@@ -3088,15 +3088,27 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
 /**
 *   Decrementing for loop 
 */
-x86.Assembler.prototype.forLoop = function (index, limit, body)
+x86.Assembler.prototype.forLoop = function (index, test, limit, body)
 {
     const loop = this.labelObj();
     const end  = this.labelObj();
 
+    if (test === ">=")
+    {
+        var cond = "jl";
+    } else if (test === ">")
+    {
+        var cond = "jle";
+    } else
+    {
+        error("Unknown test '" + test + "'");
+    }
+
+
     this.
     label(loop).
-    cmp(limit, index).
-    jl(end);
+    cmp(limit, index)
+    [cond](end);
 
     body.call(this);
      

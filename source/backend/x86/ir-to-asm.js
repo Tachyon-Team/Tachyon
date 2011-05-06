@@ -650,14 +650,18 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
     // Move all used registers in wanted onto the stack
     var offset = 0;
     var spilled = [];
-    wanted.forEach(function (reg) {
-        const index = used.indexOf(reg);
+    wanted.forEach(function (slot) {
+        
+        if (slot.type !== x86.type.REG)
+            return;
+
+        const index = used.indexOf(slot);
 
         if (index !== -1)
         {
-            const slot = mem(offset, stack);
-            used[index] = slot;
-            spilled.push({reg:reg, slot:slot});  
+            const newSlot = mem(offset, stack);
+            used[index] = newSlot;
+            spilled.push({reg:slot, slot:newSlot});  
             offset += refByteNb;
         }
     });
@@ -677,7 +681,7 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
     // account
     memIndexes.forEach(function (i)
     {
-        used[i].disp += offset; 
+        used[i] = mem(used[i].disp + offset, stack);
     });
 
     return offset;
@@ -828,7 +832,7 @@ irToAsm.translator.prototype.populateArgTable = function ()
     // Copy arguments into argument table
     sub($(1 + implArgsRegNb), index).    // i = ctxNumArgs - 1 - implArgsRegNb
 
-    forLoop(index, $(0), function ()    // for (;i >= 0; --i)
+    forLoop(index, ">=", $(0), function ()    // for (;i >= 0; --i)
     {
         this.
         mov(mem(spOffset, stack, index, refByteNb), scratch). // temp = sp[i] + 3
@@ -2007,6 +2011,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     const numArgsOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
     const numArgs = mem(numArgsOffset, context);
 
+
     // Used for loop iterations
     var i;
 
@@ -2021,6 +2026,11 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         'invalid destination register for function call'
     );
 
+    assert(
+        !arraySetHas(opnds, scratch),
+        "Reserved register " + scratch + " is used by an operand"
+    );
+
     const funcPtrWrongReg = (
         (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg) ||
         opnds[0].type === x86.type.LINK
@@ -2032,7 +2042,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         toSpill.push(funcPtrReg);
     }
 
-    tltor.spillOnCtx(toSpill, opnds);
+    const spillOffset = tltor.spillOnStack(toSpill, opnds);
 
     if (funcPtrWrongReg)
     {
@@ -2145,6 +2155,12 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     // Call the function by its address
     tltor.asm.call(funcPtr);
 
+    // Remove extraneous values on stack
+    if (spillOffset > 0)
+    {
+        tltor.asm.add($(spillOffset), stack);
+    }
+
     // If this function has a continuation label
     if (this.targets[0] !== undefined)
     {
@@ -2178,7 +2194,6 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     const numArgsCtxOffset = backendCfg.ctxLayout.getFieldOffset(["numargs"]);
     const numArgsCtx = mem(numArgsCtxOffset, context);
     
-    // Move all operands on context
     const freeRegs = tltor.spillOnCtx(opnds, opnds);
 
     // Implicit number of arguments to call
@@ -2236,16 +2251,12 @@ CallApplyInstr.prototype.genCode = function (tltor, opnds)
     mov(temp, mem(refByteNb, stack)).
 
     // Loop over entries and copy on stack
-    label(cpLoop).
-    cmp($(0), index).
-    jle(cpDone).
-
-    mov(mem(tblOffset - refByteNb, srcPtr, index, refByteNb), temp).
-    mov(temp, mem((impArgNb-1)*refByteNb, stack, index, refByteNb)).
-
-    dec(index).
-    jmp(cpLoop).
-    label(cpDone).
+    forLoop(index, ">", $(0), function ()
+    {
+        this.
+        mov(mem(tblOffset - refByteNb, srcPtr, index, refByteNb), temp). // temp = srcPtr[i - 1] + tblOffset
+        mov(temp, mem((impArgNb-1)*refByteNb, stack, index, refByteNb)); // sp[i + impArgNb - 1] = temp
+    }).
 
     mov(numArgs, index).
     add($(impArgNb), index).
