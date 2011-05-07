@@ -581,6 +581,36 @@ blockPatterns.ifIfElim = new optPattern(
 blockPatterns.push(blockPatterns.ifIfElim);
 
 /**
+Eliminate if statements with two identical targets.
+*/
+blockPatterns.ifElim = new optPattern(
+    'if elimination',
+    function match(cfg, block, params)
+    {
+        // Get the last instruction for this block
+        var branch = block.getLastInstr();        
+
+        // Test if this is an if statement with two identical targets
+        return (
+            branch instanceof IfInstr &&
+            branch.targets[0] === branch.targets[1]
+        );
+    },
+    function apply(cfg, block, printInfo, params)
+    {
+        // Get the last instruction for this block
+        var branch = block.getLastInstr();
+
+        // Replace our conditional by a direct jump to the target
+        block.replBranch(new JumpInstr(branch.targets[0]));
+
+        // A change was made to the CFG
+        return true;
+    }
+);
+blockPatterns.push(blockPatterns.ifElim);
+
+/**
 Aggregate phi nodes used only by other phi nodes
 */
 blockPatterns.phiMerge = new optPattern(
