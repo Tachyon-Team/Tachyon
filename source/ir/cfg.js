@@ -572,7 +572,7 @@ ControlFlowGraph.prototype.validate = function ()
                 error('predecessor is not valid basic block for:\n' + block);
 
             // Verify that our predecessors have us as a successor
-            if (!arraySetHas(block.preds[j].succs, block))
+            if (!arraySetHas(pred.succs, block))
                 error(
                     'predecessor:\n' +  block.preds[j] + 
                     '\nmissing successor link to:\n' + block
@@ -591,7 +591,7 @@ ControlFlowGraph.prototype.validate = function ()
                 );
 
             // Verify that our successors have us as a predecessor
-            if (!arraySetHas(block.succs[j].preds, block))
+            if (!arraySetHas(succ.preds, block))
                 error(
                     'successor missing predecessor link to:\n' + block
                 );
@@ -621,6 +621,24 @@ ControlFlowGraph.prototype.validate = function ()
                     'successors do not match branch targets for:\n' + block
                 );
         }
+
+        // Verify that there are no duplicate predecessors
+        var preds = [];
+        for (var j = 0; j < block.preds.length; ++j)
+            arraySetAdd(preds, block.preds[j]);
+        if (preds.length < block.preds.length)
+            error(
+                'duplicate predecessor in:\n' + block
+            );
+
+        // Verify that there are no duplicate successors
+        var succs = [];
+        for (var j = 0; j < block.succs.length; ++j)
+            arraySetAdd(succs, block.succs[j]);
+        if (succs.length < block.succs.length)
+            error(
+                'duplicate successor in:\n' + block
+            );
 
         // For each instruction in the block
         for (var j = 0; j < block.instrs.length; ++j)

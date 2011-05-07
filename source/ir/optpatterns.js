@@ -69,9 +69,6 @@ function applyPatternsCFG(cfg, params, maxItrs, printInfo)
         params
     );
 
-    // Remove dead blocks from the CFG
-    cfg.remDeadBlocks();
-
     return numItrs;
 }
 
@@ -122,6 +119,9 @@ function applyPatternsListCFG(blockPatterns, cfg, maxItrs, printInfo, validate, 
                 cfg.validate();
             }
         }
+
+        // Remove dead blocks from the CFG
+        cfg.remDeadBlocks();
     }
 
     // Return the iteration count
