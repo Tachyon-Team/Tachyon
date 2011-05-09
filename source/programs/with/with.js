@@ -80,6 +80,24 @@ function with_loc_loc()
     return 0;
 }
 
+function with_new_var()
+{
+    var o = {};
+
+    with (o)
+    {
+        g = 1337;
+    }
+
+    if (g != 1337)
+        return 1;
+
+    if (o.g != undefined)
+        return 2;
+
+    return 0;
+}
+
 function test()
 {
     var r = with_glob_obj();
@@ -97,6 +115,10 @@ function test()
     var r = with_loc_loc();
     if (r != 0)
         return 400 + r;
+
+    var r = with_new_var();
+    if (r != 0)
+        return 500 + r;
 
     return 0;
 }

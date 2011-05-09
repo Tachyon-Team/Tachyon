@@ -927,16 +927,48 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     // Redundant boxToBool elimination
     //
 
-    // If this is a boxToBool applied to an HIR comparison instruction
+    // If this is a call to boxToBool
     else if (instr instanceof CallFuncInstr &&
-        instr.getCallee() === params.staticEnv.getBinding('boxToBool') &&
-        instr.getArg(0) instanceof HIRCompInstr)
+             instr.getCallee() === params.staticEnv.getBinding('boxToBool'))
     {
-        // Replace uses of the boxToBool by uses of the comparison
-        replByVal(instr.getArg(0));
+        // Get the boxToBool argument
+        var arg = instr.getArg(0);
 
-        // A change was made
-        return true;
+        // If the argument is an HIR comparison instruction
+        if (arg instanceof HIRCompInstr)
+        {
+            // Replace uses of the boxToBool by the comparison
+            replByVal(arg);
+
+            // A change was made
+            return true;
+        }
+
+        // If the argument is a phi node
+        if (arg instanceof PhiInstr)
+        {
+            var allBool = true;
+            for (var i = 0; i < arg.uses.length; ++i)
+            {
+                var use = arg.uses[i];
+                if (!(use instanceof ConstValue) ||
+                    typeof use.value !== 'boolean')
+                {
+                    allBool = false;
+                    break;
+                }
+            }
+
+            // If all inputs to the phi node are booleans
+            if (allBool === true)
+            {
+                // Replace uses of the boxToBool by the phi node
+                replByVal(arg);
+
+                // A change was made
+                return true;
+            }
+        }
     }
 
     //
