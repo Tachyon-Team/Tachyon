@@ -641,13 +641,20 @@ onthefly.allocator.prototype.allocCfg = function (cfg, spiller)
         // of conditional tests
         if (block.succs.length > 1)
         {
-            var succs = block.succs.slice(0);
-            succs.reverse();
+            // For branching instructions,
+            // assume the true branch is usually the most frequent
+            var last = block.getLastInstr();
+            if (last.isBranch())
+            {
+                var succs = last.targets.slice(0).reverse();    
+            } else
+            {
+                var succs = last.targets;
+            }
         } else
         {
             var succs = block.succs;
         }
-        //var succs = block.succs;
 
         succs.forEach(function (succ)
         {
@@ -1006,7 +1013,6 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr, usedist)
     {
         if (rmap.val(reg) === null)
         {
-            //stored.push(reg);
             return;
         }
 
@@ -1066,7 +1072,8 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr, usedist)
                 {
                     // Use a non-operand occupied register
                     // and spill it
-                    var reg = nonopnd.pop(); 
+                    var reg = usedist.furthestUsed(nonopnd);
+                    arraySetRem(nonopnd, reg);
                     spill(reg);
                 }
 
@@ -1115,9 +1122,7 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr, usedist)
             } else
             {
                 assert(used.length > 0, "Unavailable registers");
-               // Otherwise, pick the first used register
-               // TODO: Use a better heuristic like LRU
-               dest = used[0];
+               var dest = usedist.furthestUsed(used);
                spill(dest);
             }
         }
@@ -1127,7 +1132,6 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr, usedist)
     // Preserve values that will be overwritten
     var blocked = instr.regAlloc.usedRegisters(instr, this.params);
 
-    // TODO: Refactor such that blocked === [] when none are used 
     if (blocked !== null)
     {
         //print("Blocked by " + instr.getValName());
