@@ -252,7 +252,8 @@ IRInstr.prototype.replUse = function (oldUse, newUse)
 {
     assert (
         oldUse.type === newUse.type,
-        'cannot replace use by one of a different type'
+        'cannot replace use by one of a different type (' +
+        oldUse.type + ' -> ' + newUse.type + ')'
     );
 
     for (var i = 0; i < this.uses.length; ++i)

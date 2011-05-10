@@ -316,7 +316,8 @@ blockPatterns.emptyBypass = new optPattern(
                     continue PRED_LOOP;
             }
 
-            //print('simplifying no instructions, single successor: ' + block.getBlockName() + ', succ: ' + succ.getBlockName());
+            //print('simplifying no instructions, single successor: ' + 
+            //block.getBlockName() + ', succ: ' + succ.getBlockName());
 
             // Remove the predecessor from our predecessor list
             block.remPred(pred);
@@ -368,158 +369,204 @@ blockPatterns.push(blockPatterns.emptyBypass);
 Eliminate blocks of the form:
 t = phi x1,x2,x3
 [t = call <boxToBool> t]
-if t === true/false then b1 else b2
+(if t === true/false then b1 else b2) or (jump b1)
 */
 blockPatterns.ifPhiElim = new optPattern(
     'if-phi elimination',
     function match(cfg, block, params)
     {
-        // If this block contains only an if instruction using the
-        // value of an immediately preceding phi
-        return (
-            block.instrs[0] instanceof PhiInstr &&
-            block.instrs[0].dests.length === 1 &&
-            (
-                (block.instrs.length === 2 &&
-                 block.instrs[1] instanceof IfInstr &&
-                 block.instrs[1].uses[0] === block.instrs[0] &&
-                 block.instrs[1].uses[1] instanceof ConstValue &&
-                 typeof block.instrs[1].uses[1].value === 'boolean' &&
-                 block.instrs[1].testOp === 'EQ')
-                ||
-                (block.instrs.length === 3 &&
-                 block.instrs[1] instanceof CallFuncInstr &&
-                 block.instrs[1].getCallee() === params.staticEnv.getBinding('boxToBool') &&
-                 block.instrs[1].getArg(0) === block.instrs[0] &&
-                 block.instrs[1].dests.length === 1 &&
-                 block.instrs[2] instanceof IfInstr &&
-                 block.instrs[2].uses[0] === block.instrs[1] &&
-                 block.instrs[2].uses[1] instanceof ConstValue &&
-                 typeof block.instrs[2].uses[1].value === 'boolean' &&
-                 block.instrs[2].testOp === 'EQ')
-            )
-        );
+        // Get references to the first and last instructions
+        var firstInstr = block.instrs[0];
+        var midInstr = block.instrs[1];
+        var lastInstr = block.getLastInstr();
+
+        // If the first instruction is not a phi node, no match
+        if (!(firstInstr instanceof PhiInstr))
+            return false;
+
+        // For each dest of the phi node
+        for (var i = 0; i < firstInstr.dests.length; ++i)
+        {
+            var dest = firstInstr.dests[i];
+
+            // If the use is in this block, continue
+            if (dest.parentBlock === block)
+                continue;
+
+            // If the dest is not a phi instruction in a successor, no match
+            if (!(dest instanceof PhiInstr) || 
+                !arraySetHas(dest.parentBlock.preds, block))
+                return false;
+        }
+
+        // If the last instruction is a jump and there are 2 instructions, match
+        if (lastInstr instanceof JumpInstr && 
+            block.instrs.length === 2)
+            return true;
+
+        // If the last instruction is not an if with a boolean test, no match
+        if (!(lastInstr instanceof IfInstr) ||
+            !(lastInstr.uses[1] instanceof ConstValue) ||
+            typeof lastInstr.uses[1].value !== 'boolean' ||
+            (lastInstr.testOp !== 'EQ' && lastInstr.testOp !== 'NE'))
+            return false;
+
+        // If the if instruction uses the phi node directly, match
+        if (block.instrs.length === 2 &&
+            lastInstr.uses[0] === firstInstr)
+            return true;
+
+        // If there is a boxToBool between the if and phi, match
+        if (block.instrs.length === 3 &&
+            midInstr instanceof CallFuncInstr &&
+            midInstr.getCallee() === params.staticEnv.getBinding('boxToBool') &&
+            midInstr.getArg(0) === firstInstr &&
+            midInstr.dests.length === 1 &&
+            lastInstr.uses[0] === midInstr)
+            return true;
+
+        // No match
+        return false;
     },
     function apply(cfg, block, printInfo, params)
     {
         var phiInstr = block.instrs[0];
         var phiPreds = phiInstr.preds.slice(0);
         var phiUses = phiInstr.uses.slice(0);
-        var boxToBool = false;
-        var ifInstr;
 
-        if (block.instrs.length === 2)
+        var branchInstr = block.getLastInstr();
+
+        // Determine the target for a phi predecessor
+        function getTarget(use)
         {
-            ifInstr = block.instrs[1];
+            // If our branch is a jump, return its target
+            if (branchInstr instanceof JumpInstr)
+                return branchInstr.targets[0];
+
+            // If there is a boxToBool call, attempt to evaluate the
+            // truth value of the use
+            if (block.instrs.length === 3)
+                use = constEvalBool(use);
+
+            // If we could not determine the truth value, branch unknown
+            if (!(use instanceof ConstValue))
+                return false;
+
+            // Perform the if comparison
+            if (branchInstr.testOp == 'EQ')
+                var compVal = (use.value === branchInstr.uses[1].value);
+            else
+                var compVal = (use.value !== branchInstr.uses[1].value);
+
+            // Evaluate which target the predecessor should jump to
+            return branchInstr.targets[
+                compVal? 0:1
+            ];
         }
-        else
+
+        // Determine if we can branch from a predecessor to a target
+        function canJump(pred, target)
         {
-            boxToBool = block.instrs[1];
-            ifInstr = block.instrs[2];
+            // If the predecessor doesn't already jump to the target
+            return !arraySetHas(pred.succs, target);
         }
 
-        var constVal = ifInstr.uses[1];
+        // Adjust the incoming phi values in a target block
+        function adjustPhis(pred, use, target)
+        {
+            // Add incoming phi values for the predecessor block
+            // matching that of the current block
+            for (var j = 0; j < target.instrs.length; ++j)
+            {
+                var instr = target.instrs[j];
 
-        var trueTarget = ifInstr.targets[0];
-        var falseTarget = ifInstr.targets[1];
+                if (!(instr instanceof PhiInstr))
+                    break;
+
+                // Get the incoming phi value corresponding to this block
+                var inc = instr.getIncoming(block);
+
+                // If the incoming value is the phi node from this block,
+                // use the value coming from our predecessor instead
+                if (inc === phiInstr)
+                    inc = use;
+
+                instr.addIncoming(inc, pred);
+            }
+        }
 
         // Flag to indicate the CFG was changed
         var changed = false;
 
         // For each phi predecessor
-        for (var j = 0; j < phiPreds.length; ++j)
+        for (var i = 0; i < phiPreds.length; ++i)
         {
-            var pred = phiPreds[j];
-            var use = phiUses[j];
+            var pred = phiPreds[i];
+            var use = phiUses[i];
 
-            //print(block.getBlockName());
-            //print('pred: ' + pred.getBlockName());
-
+            // Get a reference to the predecessor's branch instruction
             var predBranch = pred.getLastInstr();
 
-            // Attempt to evaluate the truth value of the use
-            var truthVal = constEvalBool(use);
+            // Attempt to determine the target for this predecessor
+            var target = getTarget(use);
 
-            // If a truth value could be evaluated
-            if (truthVal !== BOT)
+            // If we could determine a target
+            if (target !== false)
             {
-                // We know which target the predecessor should jump to
-                var ifTarget = ifInstr.targets[
-                    (truthVal.value === constVal.value)? 0:1
-                ];
+                // If we can't directly jump to this target, skip this predecessor
+                if (canJump(pred, target) === false)
+                    continue;
 
-                // If the predecessor doesn't already jump to the target
-                if (!arraySetHas(pred.succs, ifTarget))
+                // The predecessor will no longer jump to this block
+                pred.remSucc(block);
+
+                // Remove the phi and block predecessor
+                block.remPred(pred);
+                phiInstr.remPred(pred);
+
+                // Make the predecessor jump to the right target
+                for (var j = 0; j < predBranch.targets.length; ++j)
                 {
-                    pred.remSucc(block);
+                    if (predBranch.targets[j] === block)
+                        predBranch.targets[j] = target;
 
-                    // Make the predecessor jump to the right target
-                    for (var k = 0; k < predBranch.targets.length; ++k)
-                    {
-                        if (predBranch.targets[k] === block)
-                            predBranch.targets[k] = ifTarget;
-
-                        pred.addSucc(predBranch.targets[k]);
-                    }
-
-                    // Add the predecessor to the if target block
-                    ifTarget.addPred(pred);
-
-                    // Remove the phi and block predecessor
-                    block.remPred(pred);
-                    phiInstr.remPred(pred);
-                    
-                    // Add incoming phi values for the predecessor block
-                    // matching that of the current block
-                    for (var l = 0; l < ifTarget.instrs.length; ++l)
-                    {
-                        var instr = ifTarget.instrs[l];
-
-                        if (!(instr instanceof PhiInstr))
-                            break;
-
-                        var inc = instr.getIncoming(block);
-                        instr.addIncoming(inc, pred);
-                    }
-
-                    // Set the changed flag
-                    changed = true;
+                    pred.addSucc(predBranch.targets[j]);
                 }
+
+                // Add the predecessor to the if target block
+                target.addPred(pred);
+
+                // Adjust incoming phi values in the target
+                adjustPhis(pred, use, target);
+
+                // Set the changed flag
+                changed = true;
             }
 
             // Otherwise, if the predecessor branch is a jump and there is
             // no call to boxToBool
-            else if (predBranch instanceof JumpInstr && !boxToBool)
+            else if (predBranch instanceof JumpInstr && block.instrs.length === 2)
             {
                 //print('eliminating phi node pred for ' + phiInstr + ' in ' + block.getBlockName());
 
                 // Replace the jump by an if instruction
-                pred.replInstrAtIndex(
-                    pred.instrs.length - 1,
+                pred.replBranch(
                     new IfInstr(
-                        [use, constVal],
-                        'EQ',
-                        ifInstr.targets[0],
-                        ifInstr.targets[1]
+                        [use, branchInstr.uses[1]],
+                        branchInstr.testOp,
+                        branchInstr.targets[0],
+                        branchInstr.targets[1]
                     )
                 );
 
                 // For each if target. add an incoming phi value for the
                 // predecessor block matching that of the current block
-                for (var k = 0; k < ifInstr.targets.length; ++k)
+                for (var k = 0; k < branchInstr.targets.length; ++k)
                 {
-                    var target = ifInstr.targets[k];
+                    var target = branchInstr.targets[k];
 
-                    for (var l = 0; l < target.instrs.length; ++l)
-                    {
-                        var instr = target.instrs[l];
-
-                        if (!(instr instanceof PhiInstr))
-                            break;
-
-                        var inc = instr.getIncoming(block);
-                        instr.addIncoming(inc, pred);
-                    }
+                    // Adjust incoming phi values in the target
+                    adjustPhis(pred, use, target);
                 }
 
                 // Set the changed flag
@@ -527,6 +574,7 @@ blockPatterns.ifPhiElim = new optPattern(
             }
         }
 
+        // Return whether a change was made or not
         return changed;
     }
 );
@@ -611,97 +659,6 @@ blockPatterns.ifElim = new optPattern(
 blockPatterns.push(blockPatterns.ifElim);
 
 /**
-Aggregate phi nodes used only by other phi nodes
-*/
-blockPatterns.phiMerge = new optPattern(
-    'phi node aggregation',
-    function match(cfg, block, params)
-    {
-        // If this block contains only a phi node used only by another phi node
-        return (
-            block.instrs.length === 2 &&
-            block.instrs[0] instanceof PhiInstr &&
-            block.instrs[0].dests.length === 1 &&
-            block.instrs[0].dests[0] instanceof PhiInstr &&
-            block.instrs[1] instanceof JumpInstr &&
-            block.succs[0].instrs[0] === block.instrs[0].dests[0]
-        );
-    },
-    function apply(cfg, block, printInfo, params)
-    {
-        var origPhi = block.instrs[0];
-        var destPhi = origPhi.dests[0];
-        var destBlock = block.succs[0];
-
-        if (printInfo)
-        {
-            print('dest phi: ' + destPhi);
-            print('dest block: ' + destBlock.getBlockName());
-        }
-
-        // Flag to indicate the CFG was changed
-        var changed = false;
-
-        // For each incoming value of the origin phi
-        for (var i = 0; i < origPhi.uses.length; ++i)
-        {
-            var use = origPhi.uses[i];
-            var pred = origPhi.preds[i];
-
-            // If the destination block has this predecessor, skip it
-            if (arraySetHas(destBlock.preds, pred))
-                continue;
-
-            // Remove the phi and block predecessor-successor links
-            origPhi.remPred(pred);
-            block.remPred(pred);
-            pred.remSucc(block);
-
-            // Make the pred branch to the dest block
-            var branch = pred.getLastInstr();
-            for (var j = 0; j < branch.targets.length; ++j)
-                if (branch.targets[j] === block)
-                    branch.targets[j] = destBlock;
-
-            // Add the block predecessor-successor links
-            destBlock.addPred(pred);
-            pred.addSucc(destBlock);
-
-            if (printInfo)
-                print('adding pred: ' + pred.getBlockName());
-
-            // Add a new incoming value to the dest phi
-            destPhi.addIncoming(use, pred);
-
-            // For each other phi node in the block, give it an incoming
-            // value for this new predecessor
-            for (var j = 0; j < destBlock.instrs.length; ++j)
-            {
-                var instr = destBlock.instrs[j];
-
-                if (!(instr instanceof PhiInstr))
-                    break;
-
-                if (instr === destPhi)
-                    continue;
-
-                var inc = instr.getIncoming(block);
-                instr.addIncoming(inc, pred);
-            }
-
-            // Move back one phi predecessor index
-            --i;
-
-            // Set the changed flag
-            changed = true;
-        }
-
-        return changed;
-    }
-);
-blockPatterns.push(blockPatterns.phiMerge);
-
-/**
 Instruction-level optimization patterns
 */
 blockPatterns.instrPatterns = new optPattern(
@@ -757,7 +714,7 @@ function applyPatternsBlock(blockPatterns, cfg, block, printInfo, params)
             // Try applying the pattern to the block
             var res = pattern.apply(cfg, block, printInfo, params);
 
-            // If changes were made, the CFG was changed
+           // If changes were made, the CFG was changed
             if (res)
                 return true;
         }
@@ -945,7 +902,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         }
 
         // If the argument is a phi node
-        if (arg instanceof PhiInstr)
+        else if (arg instanceof PhiInstr)
         {
             var allBool = true;
             for (var i = 0; i < arg.uses.length; ++i)

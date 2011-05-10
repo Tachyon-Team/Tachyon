@@ -72,11 +72,11 @@ function initConfig(is64bit, verbosity)
     var heapSize;
     if (is64bit)
     {
-        // Tachyon 64bit => 32GB
-        heapSize = Math.pow(2,30)-100;
+        // Tachyon 64bit => 1GB
+        heapSize = 1 * Math.pow(2,30);
     }
     else
-    {        
+    {
         if (RUNNING_IN_TACHYON)
             heapSize = Math.pow(2, 28);     // Tachyon/Tachyon 32-bit => 256MB
         else
