@@ -249,11 +249,6 @@ backend.compileIRToCB = function (ir, params)
 
         fcts[k].regAlloc.spillNb = spiller.slots.length;
 
-        assert(
-            allocator.validate(cfg, params),
-            'validation failed'
-        );
-
         if (params.printRegAlloc === true)
         {
             print("******* After register allocation *******");
@@ -264,6 +259,13 @@ backend.compileIRToCB = function (ir, params)
                 lnPfxFormatFn
             ));
         }
+
+        /*
+        assert(
+            allocator.validate(cfg, params),
+            'validation failed'
+        );
+        */
 
         measurePerformance(
             "IR to ASM translation",
@@ -324,7 +326,16 @@ backend.compileIRToMCB = function (ir, params)
     if (params.printASM === true)
         params.print(backend.listing(cb));
 
-    return cb.assembleToMachineCodeBlock(); // assemble it
+    var mcb;
+
+    measurePerformance(
+        "Assemble to machine code block",
+        function ()
+        {
+            mcb = cb.assembleToMachineCodeBlock(); 
+        });
+
+    return mcb; 
 };
 
 /**
