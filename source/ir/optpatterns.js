@@ -368,7 +368,6 @@ blockPatterns.push(blockPatterns.emptyBypass);
 /**
 Eliminate blocks of the form:
 t = phi x1,x2,x3
-[t = call <boxToBool> t]
 (if t === true/false then b1 else b2) or (jump b1)
 */
 blockPatterns.ifPhiElim = new optPattern(
@@ -377,11 +376,12 @@ blockPatterns.ifPhiElim = new optPattern(
     {
         // Get references to the first and last instructions
         var firstInstr = block.instrs[0];
-        var midInstr = block.instrs[1];
         var lastInstr = block.getLastInstr();
 
-        // If the first instruction is not a phi node, no match
-        if (!(firstInstr instanceof PhiInstr))
+        // If the first instruction is not a phi node, or the block
+        // doesn't have 2 instructions, no match
+        if (!(firstInstr instanceof PhiInstr) ||
+            block.instrs.length !== 2)
             return false;
 
         // For each dest of the phi node
@@ -399,30 +399,16 @@ blockPatterns.ifPhiElim = new optPattern(
                 return false;
         }
 
-        // If the last instruction is a jump and there are 2 instructions, match
-        if (lastInstr instanceof JumpInstr && 
-            block.instrs.length === 2)
+        // If the last instruction is a jump, match
+        if (lastInstr instanceof JumpInstr)
             return true;
 
-        // If the last instruction is not an if with a boolean test, no match
-        if (!(lastInstr instanceof IfInstr) ||
-            !(lastInstr.uses[1] instanceof ConstValue) ||
-            typeof lastInstr.uses[1].value !== 'boolean' ||
-            (lastInstr.testOp !== 'EQ' && lastInstr.testOp !== 'NE'))
-            return false;
-
-        // If the if instruction uses the phi node directly, match
-        if (block.instrs.length === 2 &&
-            lastInstr.uses[0] === firstInstr)
-            return true;
-
-        // If there is a boxToBool between the if and phi, match
-        if (block.instrs.length === 3 &&
-            midInstr instanceof CallFuncInstr &&
-            midInstr.getCallee() === params.staticEnv.getBinding('boxToBool') &&
-            midInstr.getArg(0) === firstInstr &&
-            midInstr.dests.length === 1 &&
-            lastInstr.uses[0] === midInstr)
+        // If the last instruction is a phi with a boolean test, match
+        if (lastInstr instanceof IfInstr &&
+            lastInstr.uses[0] === firstInstr &&
+            lastInstr.uses[1] instanceof ConstValue &&
+            typeof lastInstr.uses[1].value === 'boolean' &&
+            (lastInstr.testOp !== 'EQ' || lastInstr.testOp !== 'NE'))
             return true;
 
         // No match
@@ -442,11 +428,6 @@ blockPatterns.ifPhiElim = new optPattern(
             // If our branch is a jump, return its target
             if (branchInstr instanceof JumpInstr)
                 return branchInstr.targets[0];
-
-            // If there is a boxToBool call, attempt to evaluate the
-            // truth value of the use
-            if (block.instrs.length === 3)
-                use = constEvalBool(use);
 
             // If we could not determine the truth value, branch unknown
             if (!(use instanceof ConstValue))
@@ -543,9 +524,8 @@ blockPatterns.ifPhiElim = new optPattern(
                 changed = true;
             }
 
-            // Otherwise, if the predecessor branch is a jump and there is
-            // no call to boxToBool
-            else if (predBranch instanceof JumpInstr && block.instrs.length === 2)
+            // Otherwise, if the predecessor branch is a jump
+            else if (predBranch instanceof JumpInstr)
             {
                 //print('eliminating phi node pred for ' + phiInstr + ' in ' + block.getBlockName());
 
@@ -888,43 +868,71 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     else if (instr instanceof CallFuncInstr &&
              instr.getCallee() === params.staticEnv.getBinding('boxToBool'))
     {
+        // Max number of phi nodes to visit
+        const MAX_VISIT = 8;
+
+        // Phi nodes visited
+        var visited = [];
+
+        //var thelog = ''
+
+        // Function to test that an IR value must be boolean
+        function isBoolean(val)
+        {
+            //thelog += val + '\n';
+
+            // If the value is a boolean constant, it is boolean
+            if (val instanceof ConstValue &&
+                typeof val.value === 'boolean')
+                return true;
+            
+            // If this is a comparison instruction, it is boolean
+            if (val instanceof HIRCompInstr)
+                return true;
+
+            // If this is a boxToBool call, it is boolean
+            if (val instanceof CallFuncInstr &&
+                val.getCallee() === params.staticEnv.getBinding('boxToBool'))
+                return true;
+
+            // If this is a phi instruction
+            if (val instanceof PhiInstr)
+            {
+                // If we already visited this node, it is boolean
+                if (arraySetHas(visited, val) === true)
+                    return true;
+
+                // If too many phi nodes were already visited, stop
+                if (visited.length >= MAX_VISIT)
+                    return false;
+
+                // Mark the phi node as visited
+                arraySetAdd(visited, val);
+
+                // If any phi use is not boolean, the result is not boolean
+                for (var i = 0; i < val.uses.length; ++i)
+                    if (isBoolean(val.uses[i]) === false)
+                        return false;
+
+                // The phi node is boolean
+                return true;
+            }
+
+            // Not a boolean value
+            return false;
+        }
+
         // Get the boxToBool argument
         var arg = instr.getArg(0);
 
-        // If the argument is an HIR comparison instruction
-        if (arg instanceof HIRCompInstr)
+        // If the argument to boxToBool can only be boolean
+        if (isBoolean(arg))
         {
-            // Replace uses of the boxToBool by the comparison
+            // Replace uses of the boxToBool by its argument
             replByVal(arg);
 
             // A change was made
             return true;
-        }
-
-        // If the argument is a phi node
-        else if (arg instanceof PhiInstr)
-        {
-            var allBool = true;
-            for (var i = 0; i < arg.uses.length; ++i)
-            {
-                var use = arg.uses[i];
-                if (!(use instanceof ConstValue) ||
-                    typeof use.value !== 'boolean')
-                {
-                    allBool = false;
-                    break;
-                }
-            }
-
-            // If all inputs to the phi node are booleans
-            if (allBool === true)
-            {
-                // Replace uses of the boxToBool by the phi node
-                replByVal(arg);
-
-                // A change was made
-                return true;
-            }
         }
     }
 

@@ -1538,7 +1538,7 @@ Logical negation operator
 */
 function logNot(v) 
 { 
-    "tachyon:static";
+    "tachyon:inline";
     
     var boolVal = boxToBool(v);
 

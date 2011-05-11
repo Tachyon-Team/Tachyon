@@ -125,7 +125,7 @@ function getTableStr(strObj)
         }
 
         // Otherwise, if this is the string we want
-        else if (streq(strVal, strObj))
+        else if (streq(strVal, strObj) === true)
         {
             // Return a reference to the string we found in the table
             return strVal;
