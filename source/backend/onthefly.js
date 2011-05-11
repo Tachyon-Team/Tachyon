@@ -757,7 +757,7 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
     var insertBlock = pred;
 
     // Resolution needs to be done on its own block
-    if (pred.succs.length > 1)
+    if (pred.getLastInstr().targets.length > 1)
     {
         var newBlock = this.cfg.getNewBlock("ssa_dec");
         onthefly.block(newBlock);
