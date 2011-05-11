@@ -2526,7 +2526,7 @@ allocator.validate = function (cfg, params)
         }
     };
 
-    function assertInstrCompatible(given, slots, values, instr)
+    function assertInstrCompatible(given, slots, values, instr, block)
     {
         for (var i = 0; i < slots.length; ++i)
         {
@@ -2541,8 +2541,8 @@ allocator.validate = function (cfg, params)
                         slot + "\n but received: \n" +
                         String(given.getValue(slot)) +
                         "\n for '" +
-                        instr.getValName() + "' at pos " + instr.regAlloc.id +
-                        "\n" +
+                        instr.getValName() + "' in block " + 
+                        block.getBlockName() + "\n" +
                         "in mapping " + given.toString([slot]) + "\n"/* +
                         (it === null) ? "" : printIt(it)*/);
             }
@@ -2564,7 +2564,7 @@ allocator.validate = function (cfg, params)
                 const slot  = instr.regAlloc.dest;
                 const value = instr.getIncoming(pred);
                
-                assertInstrCompatible(slotMap, [slot], [value], instr);
+                assertInstrCompatible(slotMap, [slot], [value], instr, block);
                 slotMap.update(slot, instr);
             } else
             {
@@ -2638,7 +2638,7 @@ allocator.validate = function (cfg, params)
 
             if (instr.uses.length > 0)
             {
-                assertInstrCompatible(given, opnds, instr.uses, instr);
+                assertInstrCompatible(given, opnds, instr.uses, instr, block);
             }
 
             // We record invalidation of registers
