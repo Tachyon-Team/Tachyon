@@ -476,7 +476,7 @@ ControlFlowGraph.prototype.addBlock = function (block)
 /**
 Remove a basic block from this CFG
 */
-ControlFlowGraph.prototype.remBlock = function (block)
+ControlFlowGraph.prototype.remBlock = function (block, remInstrs)
 {
     assert (
         block.parentCFG === this,
@@ -533,7 +533,28 @@ ControlFlowGraph.prototype.remBlock = function (block)
             }
         }
     }
-    
+
+    // If we should also remove the instructions
+    if (remInstrs === true)
+    {
+        // For each instruction in the block
+        for (var i = 0; i < block.instrs.length; ++i)
+        {
+            var instr = block.instrs[i];
+
+            // Remove reverse edges from all uses to this instruction
+            for (var j = 0; j < instr.uses.length; ++j)
+                if (instr.uses[j] instanceof IRInstr)
+                    instr.uses[j].remDest(instr);
+
+            // Free this instruction's id number
+            block.parentCFG.freeInstrId(instr);
+
+            // Free this instruction's output name
+            block.parentCFG.freeInstrName(instr);
+        }
+    }
+
     // Remove the block from the list
     arraySetRem(this.blocks, block);
 
@@ -542,6 +563,9 @@ ControlFlowGraph.prototype.remBlock = function (block)
 
     // Free this block's label name
     this.freeBlockName(block);
+
+    // Mark the block as no longer part of this CFG
+    block.parentCFG = null;
 };
 
 /**
@@ -571,6 +595,12 @@ ControlFlowGraph.prototype.validate = function ()
             if (!(pred instanceof BasicBlock))
                 error('predecessor is not valid basic block for:\n' + block);
 
+            // Verify that the predecessor is in this CFG
+            if (pred.parentCFG !== this)
+                error(
+                    'predecessor is not in the CFG:\n' + pred 
+                );
+
             // Verify that our predecessors have us as a successor
             if (!arraySetHas(pred.succs, block))
                 error(
@@ -588,6 +618,13 @@ ControlFlowGraph.prototype.validate = function ()
             if (!(succ instanceof BasicBlock))
                 error(
                     'successor is not valid basic block for:\n' + block
+                );
+
+            // Verify that the successor is in this CFG
+            if (succ.parentCFG !== this)
+                error(
+                    'successor is not in the CFG: \n' +
+                    succ
                 );
 
             // Verify that our successors have us as a predecessor
@@ -695,7 +732,16 @@ ControlFlowGraph.prototype.validate = function ()
 
                 // Verify that the use is in this CFG
                 if (use instanceof IRInstr && use.parentBlock.parentCFG !== this)
-                    error('use not in CFG');
+                    error(
+                        'use not in CFG:\n' +
+                        use +
+                        '\nfrom:\n' +
+                        use.parentBlock +
+                        '\nused by:\n' +
+                        instr +
+                        '\nin:\n' +
+                        instr.parentBlock
+                    );
 
                 // Verify that our uses have us as a dest
                 if (use instanceof IRInstr)
@@ -968,12 +1014,7 @@ ControlFlowGraph.prototype.remDeadBlocks = function ()
         if (visited[block.blockId] === undefined)
         {
             // Remove the block from the CFG
-            this.remBlock(block);
-
-            // Remove all instructions in the block to
-            // clear use-dest links
-            while (block.instrs.length > 0)
-                block.remInstrAtIndex(0);
+            this.remBlock(block, true);
 
             // Move back to the previous block index
             --i;

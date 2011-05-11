@@ -257,7 +257,7 @@ blockPatterns.predSuccMerge = new optPattern(
         }
 
         // Remove the successor block from the CFG
-        cfg.remBlock(succ);
+        cfg.remBlock(succ, false);
 
         // The CFG was changed
         return true;
@@ -448,8 +448,32 @@ blockPatterns.ifPhiElim = new optPattern(
         // Determine if we can branch from a predecessor to a target
         function canJump(pred, target)
         {
-            // If the predecessor doesn't already jump to the target
-            return !arraySetHas(pred.succs, target);
+            // If the predecessor already jumps to the target, can't jump
+            if (arraySetHas(pred.succs, target) === true)
+                return false
+
+            // For each phi node in the target
+            for (var j = 0; j < target.instrs.length; ++j)
+            {
+                var instr = target.instrs[j];
+
+                if (!(instr instanceof PhiInstr))
+                    break;
+
+                // Get the incoming phi value corresponding to this block
+                var inc = instr.getIncoming(block);
+
+                // If the incoming value is our phi node, skip it
+                if (inc === phiInstr)
+                    continue;
+
+                // If the incoming value is a constant, skip it
+                if (inc instanceof ConstValue)
+                    continue;
+                
+                // If the incoming value is anything else, can't jump
+                return false;
+            }
         }
 
         // Adjust the incoming phi values in a target block
@@ -472,6 +496,7 @@ blockPatterns.ifPhiElim = new optPattern(
                 if (inc === phiInstr)
                     inc = use;
 
+                // Add the incoming value to the target phi
                 instr.addIncoming(inc, pred);
             }
         }
@@ -761,11 +786,12 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
     // Replace an instruction by a value
     function replByVal(value)
-    {    
+    {
         // Replace the instruction by a jump to the normal branch
         block.replInstrAtIndex(
             index, 
-            (instr instanceof ArithOvfInstr)?
+            (instr instanceof ArithOvfInstr || 
+             (instr instanceof CallInstr && instr.getThrowTarget()))?
             new JumpInstr(instr.targets[0]):undefined,
             value
         );
