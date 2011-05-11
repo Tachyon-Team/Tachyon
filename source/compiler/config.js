@@ -105,7 +105,6 @@ function initConfig(is64bit, verbosity)
     config.clientParams = Object.create(config.hostParams);
     config.clientParams.tachyonSrc = false;
     config.clientParams.parserWarnings = false;
-    config.clientParams.regAlloc = "onthefly";
 
     /**
     Compilation parameters for debugging client code.
