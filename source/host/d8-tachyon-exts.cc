@@ -174,6 +174,22 @@ v8::Handle<v8::Value> v8Proxy_readFile(const v8::Arguments& args)
     return v8Str;
 }
 
+v8::Handle<v8::Value> v8Proxy_remove(const v8::Arguments& args)
+{
+    if (args.Length() != 1)
+    {
+        printf("Error in remove -- 1 argument expected\n");
+        exit(1);
+    }
+
+    v8::String::Utf8Value fileStrObj(args[0]);  
+    const char* fileName = *fileStrObj;
+
+    remove(fileName);
+
+    return v8::Undefined();
+}
+
 v8::Handle<v8::Value> v8Proxy_shellCommand(const v8::Arguments& args)
 {
     if (args.Length() != 1)
@@ -727,6 +743,11 @@ void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
     global_template->Set(
         v8::String::New("readFile"), 
         v8::FunctionTemplate::New(v8Proxy_readFile)
+    );
+
+    global_template->Set(
+        v8::String::New("remove"), 
+        v8::FunctionTemplate::New(v8Proxy_remove)
     );
 
     global_template->Set(

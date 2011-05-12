@@ -185,19 +185,20 @@ function tachyonRepl()
     function printHelp()
     {
         print('Available special commands:');
-        print('  /load <filename>       load and execute a script');
-        print('  /time <command>        time the compilation/execution of a command');
-        print('  /time_comp <command>   time the compilation of a command');
-        print('  /time_exec <command>   time the execution of a command');
-        print('  /ast  <command>        view AST produced for a command/file');
-        print('  /hir  <command>        view HIR produced for a command/file');
-        print('  /lir  <command>        view LIR produced for a command/file');
-        print('  /asm  <command>        view ASM produced for a command/file');
-        print('  /reg  <command>        view register allocation for a command/file');
-        print('  /prim_list             view a list of the primitive functions');
-        print('  /prim_ir <func_name>   view LIR produced for a primitive function');
-        print('  /help                  print a help listing');
-        print('  /exit                  exit the read-eval-print loop');
+        print('  /load <filename>               load and execute a script');
+        print('  /time <command>                time the compilation/execution of a command');
+        print('  /time_comp <command>           time the compilation of a command');
+        print('  /time_exec <command>           time the execution of a command');
+        print('  /ast  <command>                view AST produced for a command/file');
+        print('  /hir  <command>                view HIR produced for a command/file');
+        print('  /lir  <command>                view LIR produced for a command/file');
+        print('  /asm  <command>                view ASM produced for a command/file');
+        print('  /reg  <command>                view register allocation for a command/file');
+        print('  /prim_list                     view a list of the primitive functions');
+        print('  /prim_ir <func_name>           view LIR produced for a primitive function');
+        print('  /cfg <command> [func_name]     visualize the CFG for a command/file/function');
+        print('  /help                          print a help listing');
+        print('  /exit                          exit the read-eval-print loop');
     }
 
     // Load and execute a script
@@ -326,6 +327,31 @@ function tachyonRepl()
             }
             var func = config.hostParams.staticEnv.getBinding(args);
             print(func);
+            break;
+
+            case 'cfg':
+            var sepIdx = args.lastIndexOf(' ');
+            if (sepIdx === -1)
+            {
+                var cmd = args;
+            }
+            else
+            {
+                var cmd = args.slice(0, sepIdx);
+                var funcName = args.slice(sepIdx+1);
+            }
+            var ir = compFileOrString(cmd);
+            if (funcName)
+                var func = ir.getChild(funcName);
+            else
+                var func = ir;
+            if (!(func instanceof IRFunction))
+            {
+                print('child function not found: "' + funcName + '"');
+                break;
+            }
+            viewCFG(func.virginCFG);
+            break;
 
             default:
             print('Unknown special command: "' + cmd + '"');

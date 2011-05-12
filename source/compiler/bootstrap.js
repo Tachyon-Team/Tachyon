@@ -145,8 +145,6 @@ function bootstrap(params, allCode, writeImg)
         }
     }
 
-    reportPerformance();
-
     // If all code should be compiled
     if (allCode === true)
     {

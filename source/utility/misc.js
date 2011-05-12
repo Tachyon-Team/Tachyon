@@ -46,9 +46,6 @@ Miscellaneous utility functions.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
