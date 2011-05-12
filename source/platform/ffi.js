@@ -776,14 +776,12 @@ function makeBridge(
         //print('bridge, calling "' + irFunction.funcName + '" w/ callTachyonFFI');
         //print('Func ptr in Tachyon: ' + funcPtr.getBytes());
 
-        var result = callTachyonFFI.apply(
-            null,
-            [
-                cArgTypes,
-                cRetType,
-                funcPtr.getBytes(),
-                ctxPtr
-            ].concat(argArray)
+        var result = callTachyonFFI(
+            cArgTypes,
+            cRetType,
+            funcPtr.getBytes(),
+            ctxPtr,
+            argArray
         );
 
         //print('returned from callTachyonFFI');
@@ -802,7 +800,7 @@ if (RUNNING_IN_TACHYON)
     /**
     Call a Tachyon function through a C FFI wrapper
     */
-    var callTachyonFFI = function (cArgTypes, cRetType, funcPtrBytes, ctxPtrBytes)
+    var callTachyonFFI = function (cArgTypes, cRetType, funcPtrBytes, ctxPtrBytes, argArray)
     {
         "tachyon:noglobal";
 
@@ -811,17 +809,17 @@ if (RUNNING_IN_TACHYON)
             'argument types should be an array'
         );
 
-        // Collect the call arguments into an array
-        var argArray = [];
-        for (var i = 4; i < arguments.length; ++i)
-            argArray.push(arguments[i]);
-
         // Get raw pointer values for the function address and context pointer
         var funcPtr = byteArrayToPtr(funcPtrBytes);
         var ctxPtr = byteArrayToPtr(ctxPtrBytes);
 
         // Get the number of arguments
         var numArgs = unboxInt(cArgTypes.length);
+
+        assert (
+            unboxInt(argArray.length) === numArgs,
+            'argument and type arrays should have the same length'
+        );
 
         // Compute the size of the argument data
         var argDataSize = numArgs * PTR_NUM_BYTES;

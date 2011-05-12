@@ -281,9 +281,13 @@ v8::Handle<v8::Value> v8Proxy_memAllocatedKBs(const v8::Arguments& args)
 /*---------------------------------------------------------------------------*/
 
 // Convert an array of bytes to a value
-template <class T> T arrayToVal(const v8::Value* arrayVal)
+template <class T> T arrayToVal(const v8::Handle<v8::Value> value)
 {
-    const v8::Handle<v8::Object> jsObj = arrayVal->ToObject();
+    const v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(
+        value->ToObject()
+    );
+
+    assert (array->Length() == sizeof(T));
 
     T val;
 
@@ -291,15 +295,7 @@ template <class T> T arrayToVal(const v8::Value* arrayVal)
     {
         uint8_t* bytePtr = (uint8_t*)(&val) + i;
 
-        if (!jsObj->Has(i))
-        {
-            printf("Error in arrayToVal -- array does not match value size\n");
-            printf("Expected size: %i\n", int(sizeof(T)));
-            printf("Failed on index: %i\n", int(i));
-            exit(1);
-        }
-
-        const v8::Handle<v8::Value> jsVal = jsObj->Get(i);        
+        const v8::Handle<v8::Value> jsVal = array->Get(i);        
 
         int intVal = jsVal->Int32Value();
 
@@ -539,36 +535,48 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
 // Second arg: string describing return type
 // Third arg: function pointer
 // Fourth arg: context pointer
-// Other args: args to be passed to the function
+// Fifth arg: vector of args to be passed to the function
 v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
 {
-    const int MIN_ARG_COUNT = 4;
-
-    if (args.Length() < MIN_ARG_COUNT)
+    if (args.Length() != 5)
     {
-        printf("Error in callTachyonFFI -- %d or more argument expected\n", MIN_ARG_COUNT);
+        printf("Error in callTachyonFFI -- 5 or more argument expected\n");
         exit(1);
     }
 
     //printf("in v8Proxy_callTachyonFFI\n");
 
     // Get the array of argument types
-    const v8::Local<v8::Object> argTypeArray = args[0]->ToObject();
+    const v8::Handle<v8::Array> argTypeArray = v8::Handle<v8::Array>::Cast(
+        args[0]->ToObject()
+    );
 
     // Get the return type string
     v8::String::Utf8Value retTypeStrObj(args[1]);
     const char* retTypeStr = *retTypeStrObj;
 
     // Get the function pointer
-    TACHYON_FPTR funcPtr = arrayToVal<TACHYON_FPTR>(*args[2]);
+    TACHYON_FPTR funcPtr = arrayToVal<TACHYON_FPTR>(args[2]);
     
     //printf("fun ptr = %p\n", (void*)(intptr_t)funcPtr);
 
     // Get the context pointer
-    uint8_t* ctxPtr = arrayToVal<uint8_t*>(*args[3]);
+    uint8_t* ctxPtr = arrayToVal<uint8_t*>(args[3]);
+
+    // Get the argument array
+    const v8::Handle<v8::Array> argArray = v8::Handle<v8::Array>::Cast(
+        args[4]->ToObject()
+    );
 
     // Get the number of call arguments
-    size_t numArgs = args.Length() - MIN_ARG_COUNT;
+    size_t numArgs = argArray->Length();
+
+    // Ensure that there is a type for each argument
+    if (numArgs != argTypeArray->Length())
+    {
+        printf("Error in callTachyonFFI -- argument and type arrays must have the same length\n");
+        exit(1);
+    }
 
     // Allocate memory for the argument data
     uint8_t* argData = new uint8_t[numArgs * sizeof(TachVal)];
@@ -581,7 +589,7 @@ v8::Handle<v8::Value> v8Proxy_callTachyonFFI(const v8::Arguments& args)
     for (size_t i = 0; i < numArgs; ++i)
     {
         // Get the argument object
-        const v8::Value* arg = *args[i + MIN_ARG_COUNT];
+        const v8::Handle<v8::Value> arg = argArray->Get(i);
 
         // If there is no argument type string for this argument
         if (!argTypeArray->Has(i))

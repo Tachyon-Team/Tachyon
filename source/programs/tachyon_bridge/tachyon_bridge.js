@@ -55,8 +55,6 @@ function test()
     var funcPtr = getFuncAddr('testCallFFI');
     //print('func ptr: ' + funcPtr);
 
-    //callTachyonFFI = function (cArgTypes, cRetType, funcPtrBytes, ctxPtrBytes)
-
     var heapSize = 512;
     var heapBlock = allocMemoryBlock(256, false);
     var heapAddr = getBlockAddr(heapBlock, 0);
@@ -64,13 +62,12 @@ function test()
     //print('heap size: ' + heapSize);
     //print('heap ptr: ' + heapAddr);
 
-    var ret = callTachyonFFI.apply(
-        null,
-        [
-            ['void*', 'int'],
-            'void*',
-            funcPtr, ctxPtr
-        ].concat([heapAddr, heapSize])
+    var ret = callTachyonFFI(
+        ['void*', 'int'],
+        'void*',
+        funcPtr, 
+        ctxPtr,
+        [heapAddr, heapSize]
     );
 
     //print('ret: ' + ret);
