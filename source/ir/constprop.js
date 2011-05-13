@@ -600,6 +600,58 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
     return constEval;
 };
 
+NotInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, params)
+{
+    var v0 = getValue(this.uses[0]);
+
+    if (v0 === TOP)
+        return TOP;
+
+
+    // TODO: currently disabled because the backend can't support it
+    return BOT;
+
+
+
+    // If the operand is a constant integer
+    if (v0 instanceof ConstValue && v0.isInt() &&
+        !(v0.type === IRType.box && !v0.isBoxInt(params))
+    )
+    {
+        v0 = v0.getImmValue(params);
+
+        // If the operand fits in the int32 range
+        if (IRType.i32.valInRange(v0, params))
+        {
+            var result = num_not(v0);
+
+            /*
+            print('input: ' + v0);
+            print('result: ' + result);
+            */
+
+            if (this.type === IRType.box)
+                result = num_shift(result, -params.staticEnv.getValue('TAG_NUM_BITS_INT'));
+
+            // If the output type is unsigned, make the result positive
+            if (this.type.isUnsigned() && num_lt(result, 0))
+                result = num_add(num_shift(2, this.type.getSizeBits() - 1), result);
+
+            // If the result is within the range of the output type, return it
+            if (this.type.valInRange(result, params))
+            {
+                return ConstValue.getConst(
+                    result,
+                    this.type
+                );
+            }
+        }
+    }
+
+    // By default, return the unknown value
+    return BOT;
+}
+
 AndInstr.prototype.constEval = BitOpInstr.genConstEval(
     function (v0, v1)
     {

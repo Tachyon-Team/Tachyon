@@ -1860,7 +1860,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
 
             tltor.asm.test(opnds[1], opnds[1]);
         } 
-        if ((opnds[0].type === x86.type.MEM &&
+        else if ((opnds[0].type === x86.type.MEM &&
             opnds[1].type === x86.type.MEM) ||
             (tltor.asm.isImmediate(opnds[0]) &&
              tltor.asm.isImmediate(opnds[1])))
