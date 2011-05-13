@@ -464,6 +464,28 @@ function makeObjectLayouts(params)
 
     //=============================================================================
     //
+    // Float memory layout
+    //
+    //=============================================================================
+
+    /**
+    Float layout object
+    */
+    /*
+    var floatLayout = new MemLayout('float', IRType.box, 'TAG_FLOAT', params);
+
+    // Character data (UTF-16)
+    floatLayout.addField(
+        'value',
+        IRType.f64
+    );
+
+    // Finalize the float layout
+    floatLayout.finalize();
+    */
+
+    //=============================================================================
+    //
     // String memory layout
     //
     //=============================================================================
