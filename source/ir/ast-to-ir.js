@@ -93,9 +93,23 @@ function unitToIR(
         'expected compilation parameters'
     );
 
+    // Make a function name from the file name
+    var fileName = astUnit.loc.filename;
+    var funcName = '';
+    for (var i = 0; i < fileName.length; ++i)
+    {
+        var ch = fileName.charAt(i);
+        if ((ch >= '0' && ch <= '9') ||
+            (ch >= 'a' && ch <= 'z') ||
+            (ch >= 'A' && ch <= 'Z'))
+            funcName += ch;
+        else
+            funcName += '_';
+    }
+
     // Treat the top-level unit as a function
     return stmtListToIRFunc(
-        '',
+        funcName,
         null,
         astUnit.vars,
         [],
