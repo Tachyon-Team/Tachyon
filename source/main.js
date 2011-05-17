@@ -28,7 +28,7 @@
  *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
  *  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- *  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ *  TO, THE IMPLIED WARRANTIES OF MERCHApNTABILITY AND FITNESS FOR A
  *  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL UNIVERSITE DE
  *  MONTREAL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -138,6 +138,13 @@ function main()
                 print("Executing " + args.files[i]);
             }
 
+            //Initiation of the event recording profiler
+            if (args.options['eventrec']) 
+                initProfiler(config.hostParams);
+
+            if(args.options["compiletime"])
+                config.hostParams.compiletime = true;
+
             var startTimeMs = (new Date()).getTime();
 
             var ir = compileSrcFile(args.files[i], config.hostParams);
@@ -174,6 +181,9 @@ function main()
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
     }
+
+    if (args.options['eventrec'])
+            profilerReport(config.hostParams);
 }
 
 /**
