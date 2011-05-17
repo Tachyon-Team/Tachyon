@@ -52,10 +52,13 @@
 
 var use_arg_count;
 var use_global_prop_handlers;
+var use_global_obj_cache;
 var use_stack_limit_checks;
 var use_ctx_handlers;
 var use_ctx_constants;
 var use_distinguish_hot_cold;
+var use_call;
+var use_ebp;
 
 //=============================================================================
 
@@ -116,8 +119,8 @@ var result_reg_num = 2;
 var ra_reg = all_regs[ra_reg_num];
 var this_reg = all_regs[this_reg_num];
 var ctx_reg = "%ecx";
-var sp_reg = "%ebp";
 var arg_count_reg = "%ecx";
+var sp_reg;
 
 var reg8 = {};
 reg8["%eax"] = "%al";
@@ -144,15 +147,17 @@ var property_offs = 2 * word_size - prim_tag;
 var ctx_size = 1000*word_size;
 var ctx_stack_limit_offs = 0*word_size;
 var ctx_global_obj_offs = 1*word_size;
-var ctx_putprop_offs = 2*word_size;
-var ctx_stack_limit_handler_offs = 3*word_size;
-var ctx_arg_count_handler_offs = 4*word_size;
-var ctx_deoptimize_global_prop_handler_offs = 5*word_size;
-var ctx_jump_global_prop_handler_offs = 6*word_size;
-var ctx_generic_op_handler_offs = 7*word_size;
-var ctx_undefined_offs = 8*word_size;
-var ctx_false_offs = 9*word_size;
-var ctx_true_offs = 10*word_size;
+var ctx_global_obj_cache_offs = 2*word_size;
+var ctx_putprop_offs = 3*word_size;
+var ctx_stack_limit_handler_offs = 4*word_size;
+var ctx_arg_count_handler_offs = 5*word_size;
+var ctx_deoptimize_global_prop_handler_offs = 6*word_size;
+var ctx_jump_global_prop_handler_offs = 7*word_size;
+var ctx_generic_op_handler_offs = 8*word_size;
+var ctx_saved_sp_offs = 9*word_size;
+var ctx_undefined_offs = 10*word_size;
+var ctx_false_offs = 11*word_size;
+var ctx_true_offs = 12*word_size;
 
 var stack_fudge = 1000*word_size;
 var stack_size = 2000000*word_size;
@@ -349,23 +354,30 @@ function gen_init_runtime(global_obj_lbl, main_lbl, end_lbl)
 EXTERN(main):                                                               \n\
                                                                             \n\
  pushl " + ctx_reg + "                                                      \n\
- pushl " + sp_reg + "                                                       \n\
  pushl " + ra_reg + "                                                       \n\
  pushl $0                                                                   \n\
+ pushl $0                                                                   \n\
                                                                             \n\
-# MPROTECT($0,$" + end_lbl + ",PROT_READ|PROT_WRITE|PROT_EXEC)               \n\
- MPROTECT($EXTERN(main),$" + 8192 + ",PROT_READ|PROT_WRITE|PROT_EXEC)               \n\
+ movl $" + end_lbl + ",%eax                                                 \n\
+ subl $EXTERN(main),%eax                                                    \n\
+ MPROTECT($EXTERN(main),%eax,PROT_READ|PROT_WRITE|PROT_EXEC)                \n\
                                                                             \n\
  movl $context," + ctx_reg + "                                              \n\
+                                                                            \n\
+ movl " + sp_reg + "," + mem(ctx_saved_sp_offs, ctx_reg) + "                \n\
                                                                             \n\
  MALLOC($" + stack_size + ")                                                \n\
  addl $" + stack_fudge + ",%eax                                             \n\
  movl %eax," + mem(ctx_stack_limit_offs, ctx_reg) + "                       \n\
  addl $" + (stack_size-stack_fudge-word_size) + ",%eax                      \n\
+ andl $-C_FRAME_MULT,%eax                                                   \n\
  movl %eax," + sp_reg + "                                                   \n\
                                                                             \n\
  movl $" + global_obj_lbl + ",%eax                                          \n\
  movl %eax," + mem(ctx_global_obj_offs, ctx_reg) + "                        \n\
+                                                                            \n\
+ movl " + mem(obj_property_table_offs, "%eax") + ",%eax                     \n\
+ movl %eax," + mem(ctx_global_obj_cache_offs, ctx_reg) + "                  \n\
                                                                             \n\
  movl $stack_limit_handler,%eax                                             \n\
  movl %eax," + mem(ctx_stack_limit_handler_offs, ctx_reg) + "               \n\
@@ -386,12 +398,32 @@ EXTERN(main):                                                               \n\
  movl $" + false_val + "," + mem(ctx_false_offs, ctx_reg) + "               \n\
  movl $" + true_val + "," + mem(ctx_true_offs, ctx_reg) + "                 \n\
                                                                             \n\
- movl $" + rp_lbl + "," + ra_reg + "                                        \n\
  movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + this_reg + "            \n\
 ");
-    gen_set_arg_count(0);
-    gen("\
+
+    if (use_call)
+    {
+        gen_set_arg_count(0);
+
+        gen("\
+ call " + main_lbl + "                                                      \n\
+ jmp  " + rp_lbl + "                                                        \n\
+");
+    }
+    else
+    {
+        gen("\
+ movl $" + rp_lbl + "," + ra_reg + "                                        \n\
+");
+
+        gen_set_arg_count(0);
+
+        gen("\
  jmp  " + main_lbl + "                                                      \n\
+");
+    }
+
+    gen("\
                                                                             \n\
  ALIGN_RET_POINT                                                            \n\
  FRAME_DESCR                                                                \n\
@@ -399,9 +431,11 @@ EXTERN(main):                                                               \n\
  RET_POINT_HEADER_END                                                       \n\
 " + rp_lbl + ":                                                             \n\
                                                                             \n\
+ movl " + mem(ctx_saved_sp_offs, ctx_reg) + "," + sp_reg + "                \n\
+                                                                            \n\
  popl " + ra_reg + "                                                        \n\
  popl " + ra_reg + "                                                        \n\
- popl " + sp_reg + "                                                        \n\
+ popl " + ra_reg + "                                                        \n\
  popl " + ctx_reg + "                                                       \n\
                                                                             \n\
  movl $0,%eax                                                               \n\
@@ -428,8 +462,23 @@ deoptimize_global_prop_handler:                                             \n\
  pushl %ebx                                                                 \n\
  pushl %ecx                                                                 \n\
                                                                             \n\
+");
+
+    if (use_global_obj_cache)
+    {
+        gen("\
+ movl " + mem(ctx_global_obj_cache_offs, ctx_reg) + ",%ebx                  \n\
+");
+    }
+    else
+    {
+        gen("\
  movl " + mem(ctx_global_obj_offs, ctx_reg) + ",%ebx                        \n\
  movl " + mem(obj_property_table_offs, "%ebx") + ",%ebx                     \n\
+");
+    }
+
+    gen("\
  movl 12(%esp),%eax                                                         \n\
  addl (%eax),%ebx                                                           \n\
                                                                             \n\
@@ -534,8 +583,23 @@ jump_global_prop_handler:                                                   \n\
  pushl " + ctx_reg + "                                                      \n\
  movb $0," + reg8[arg_count_reg] + "                                        \n\
                                                                             \n\
+");
+
+    if (use_global_obj_cache)
+    {
+        gen("\
+ movl " + mem(ctx_global_obj_cache_offs, ctx_reg) + ",%ebx                  \n\
+");
+    }
+    else
+    {
+        gen("\
  movl " + mem(ctx_global_obj_offs, ctx_reg) + ",%ebx                        \n\
  movl " + mem(obj_property_table_offs, "%ebx") + ",%ebx                     \n\
+");
+    }
+
+    gen("\
  movl 12(%esp),%eax                                                         \n\
  addl (%eax),%ebx                                                           \n\
                                                                             \n\
@@ -740,7 +804,7 @@ generic_op_msg2:                                                            \n\
 generic_op_msg3:                                                            \n\
  .ascii \"value2 = %d\\n\\0\"                                               \n\
                                                                             \n\
- ALIGN_EXPT2(PAGE_SIZE_LOG2)                                                \n\
+ ALIGN_EXPT2(8)                                                             \n\
 context:                                                                    \n\
  .long 0                                                                    \n\
  .long 0                                                                    \n\
@@ -848,8 +912,16 @@ function gen_get_global_prop(name, result_reg)
     var index = new_global_prop(name);
     var offs = index * word_size * global_prop_len + property_offs;
 
-    gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + result_reg + "\n");
-    gen(" movl " + mem(obj_property_table_offs, result_reg) + "," + result_reg + "\n");
+    if (use_global_obj_cache)
+    {
+        gen(" movl " + mem(ctx_global_obj_cache_offs, ctx_reg) + "," + result_reg + "\n");
+    }
+    else
+    {
+        gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + result_reg + "\n");
+        gen(" movl " + mem(obj_property_table_offs, result_reg) + "," + result_reg + "\n");
+    }
+
     gen(" movl " + mem(offs,result_reg) + "," + result_reg + " # " + name + "\n");
 }
 
@@ -866,8 +938,15 @@ function gen_put_global_prop(name, val, ctx)
 
     var t = get_var(x.result, ctx);
 
-    gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + t.asm() + "\n");
-    gen(" movl " + mem(obj_property_table_offs, t.asm()) + "," + t.asm() + "\n");
+    if (use_global_obj_cache)
+    {
+        gen(" movl " + mem(ctx_global_obj_cache_offs, ctx_reg) + "," + t.asm() + "\n");
+    }
+    else
+    {
+        gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + t.asm() + "\n");
+        gen(" movl " + mem(obj_property_table_offs, t.asm()) + "," + t.asm() + "\n");
+    }
 
     gen_deoptimize_global_prop(name, t.asm());
 
@@ -931,10 +1010,86 @@ function gen_jump_global_prop(name, n)
     }
     else
     {
-        gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + "%esi" + "\n");
-        gen(" movl " + mem(obj_property_table_offs, "%esi") + "," + "%esi" + "\n");
+        var temp_reg = "%edx"; //FIXME: use register allocator
+
+        if (use_global_obj_cache)
+        {
+            gen(" movl " + mem(ctx_global_obj_cache_offs, ctx_reg) + "," + temp_reg + "\n");
+        }
+        else
+        {
+            gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + temp_reg + "\n");
+            gen(" movl " + mem(obj_property_table_offs, temp_reg) + "," + temp_reg + "\n");
+        }
+
         gen_set_arg_count(n);
-        gen(" jmp *" + mem(offs,"%esi") + " # " + name + "\n");
+        gen(" jmp *" + mem(offs,temp_reg) + " # " + name + "\n");
+    }
+
+    generate_deferred_code(true);
+}
+
+function gen_call_global_prop(name, n, rp_lbl)
+{
+    gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + this_reg + "\n");
+
+    if (use_global_prop_handlers)
+    {
+        if (use_call)
+        {
+            //FIXME...
+            error("calling global properties with the call instruction is not implemented");
+
+/*
+            if (use_ctx_handlers)
+            {
+                gen(" call *" + mem(ctx_call_global_prop_handler_offs, ctx_reg) + "\n");
+                gen(" .long " + offs + " # " + name + "\n");
+                gen(" .byte " + encode_arg_count(n) + ",0,0,0\n");
+            }
+            else
+            {
+                gen(" call call_global_prop_handler\n");
+                gen(" .long " + offs + " # " + name + "\n");
+                gen(" .byte " + encode_arg_count(n) + ",0\n");
+            }
+*/
+        }
+        else
+        {
+            gen(" movl $" + rp_lbl + "," + ra_reg + "\n");
+            gen_jump_global_prop(name, n);
+        }
+    }
+    else
+    {
+        var index = new_global_prop(name);
+        var offs = index * word_size * global_prop_len + property_offs;
+
+        var temp_reg = "%edx"; //FIXME: use register allocator
+
+        if (use_global_obj_cache)
+        {
+            gen(" movl " + mem(ctx_global_obj_cache_offs, ctx_reg) + "," + temp_reg + "\n");
+        }
+        else
+        {
+            gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + temp_reg + "\n");
+            gen(" movl " + mem(obj_property_table_offs, temp_reg) + "," + temp_reg + "\n");
+        }
+
+        gen_set_arg_count(n);
+
+        if (use_call)
+        {
+            gen(" call *" + mem(offs,temp_reg) + " # " + name + "\n");
+            gen(" jmp " + rp_lbl + "\n");
+        }
+        else
+        {
+            gen(" movl $" + rp_lbl + "," + ra_reg + "\n");
+            gen(" jmp  *" + mem(offs,temp_reg) + " # " + name + "\n");
+        }
     }
 
     generate_deferred_code(true);
@@ -1339,7 +1494,17 @@ function gen_move(src, dst, ctx)
          src.offs === dst.offs))
         return ctx;
 
-    gen(" movl " + src.asm(ctx) + "," + dst.asm(ctx) + "\n");
+    if (sp_reg === "%esp" &&
+        dst instanceof real_stk &&
+        dst.slot_num === ctx.frame_size)
+    {
+        gen(" pushl " + src.asm(ctx) + "\n");
+        ctx.frame_size = ctx.frame_size+1;
+    }
+    else
+    {
+        gen(" movl " + src.asm(ctx) + "," + dst.asm(ctx) + "\n");
+    }
 
     return ctx;
 }
@@ -1380,6 +1545,8 @@ function gen_save_live_regs_on_stack(ctx)
 function gen_return_result(result, ctx)
 {
     ctx = gen_move(result, new real_reg(result_reg_num), ctx);
+
+    ctx = clone(ctx);
 
     var ra = get_var(ra_name, ctx);
 
@@ -1439,7 +1606,16 @@ function fn_ctx(top, params, uses_this)
     this.live_vars_after = {};
     this.frame_size = 0;
 
-    this.loc_map.regs[ra_reg_num] = { name: ra_name, use: new_use() };
+    if (use_call)
+    {
+        this.loc_map.stks[0] = { name: ra_name };
+        this.frame_size = this.frame_size+1;
+    }
+    else
+    {
+        this.loc_map.regs[ra_reg_num] = { name: ra_name, use: new_use() };
+    }
+
     this.live_vars_after[ra_name] = true;
 
     this.loc_map.regs[this_reg_num] = { name: this_name, use: new_use() };
@@ -1452,7 +1628,7 @@ function fn_ctx(top, params, uses_this)
         this.live_vars_after[name] = true; ///////////////////
     }
 
-    this.hint = new real_reg(result_reg_num); // needed?
+    this.hint = null;
 }
 
 function gen_statement(ast, ctx)
@@ -1730,6 +1906,16 @@ function gen_statements(asts, ctx)
     return { ctx: ctx, reachable: true };
 }
 
+function push1(ctx)
+{
+    if (sp_reg === "%esp")
+    {
+        ctx = clone(ctx);
+        ctx.frame_size = ctx.frame_size+1;
+    }
+    return ctx;
+}
+
 function gen_expr_op(op, expr1, expr2, ctx)
 {
     // use same hint
@@ -1786,7 +1972,7 @@ function gen_expr_op(op, expr1, expr2, ctx)
                    gen(undo_op + t2.asm(ctx) + "," + t1.asm(ctx) + "\n");
                    gen_label(op_generic_lbl);
                    gen(" pushl " + t1.asm(ctx) + "\n");
-                   gen(" pushl " + t2.asm(ctx) + "\n");
+                   gen(" pushl " + t2.asm(push1(ctx)) + "\n");
                    if (use_ctx_handlers)
                    {
                        gen(" call *" + mem(ctx_generic_op_handler_offs, ctx_reg) + "\n");
@@ -1800,7 +1986,7 @@ function gen_expr_op(op, expr1, expr2, ctx)
 
     gen_label(op_cont_lbl);
 
-    return { ctx: ctx, result: x1.result };
+    return { ctx: clone(ctx), result: x1.result };
 }
 
 function gen_expr_op_cst(op, expr, value, ctx)
@@ -1978,9 +2164,7 @@ function gen_expr(ast, ctx)
 
             gen_stack_limit_check();
 
-            gen(" movl $" + rp_lbl + "," + ra_reg + "\n");
-            gen(" movl " + mem(ctx_global_obj_offs, ctx_reg) + "," + this_reg + "\n");
-            gen_jump_global_prop(ast.fn.id.toString(), ast.args.length);
+            gen_call_global_prop(ast.fn.id.toString(), ast.args.length, rp_lbl);
 
             gen(" ALIGN_RET_POINT\n");
             gen(" FRAME_DESCR\n");
@@ -2140,10 +2324,26 @@ function js86_compile(ast)
 {
     use_arg_count            = true !== options["no-arg-count"];
     use_global_prop_handlers = true !== options["no-global-prop-handlers"];
+    use_global_obj_cache     = true !== options["no-global-obj-cache"];
     use_stack_limit_checks   = true !== options["no-stack-limit-checks"];
     use_ctx_handlers         = true === options["ctx-handlers"];
     use_ctx_constants        = true === options["ctx-constants"];
     use_distinguish_hot_cold = true === options["distinguish-hot-cold"];
+    use_call                 = true === options["call"];
+    use_ebp                  = true === options["ebp"];
+
+    if (use_ebp)
+    {
+        sp_reg = "%ebp";
+        if (use_call)
+        {
+            error("can't use call instruction when using ebp as stack pointer");
+        }
+    }
+    else
+    {
+        sp_reg = "%esp";
+    }
 
     gen_statement(ast, null)
 }
