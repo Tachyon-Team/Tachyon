@@ -82,11 +82,14 @@ function main()
     // Initialize the Tachyon configuration
     initConfig(x86_64, verbosity);
 
+    if (args.options['eventrec'])
+        var profiling = true;    
+
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
     {
         // Perform a full bootstrap without writing an image
-        bootstrap(config.bootParams, true, false);
+        bootstrap(config.bootParams, true, false, profiling);
 
         // ???
         // Profit        
@@ -97,7 +100,7 @@ function main()
     {
         // Perform a full bootstrap and write the image
         // FIXME: for now, not compiling all code, for testing purposes
-        bootstrap(config.bootParams, false, true);
+        bootstrap(config.bootParams, false, true, profiling);
     }
 
     // If gc code generation is requested
@@ -111,7 +114,7 @@ function main()
     else if (args.files.length > 0 || args.options['e'])
     {
         // Perform a minimal Tachyon compilation
-        bootstrap(config.hostParams, false, false);
+        bootstrap(config.hostParams, false, false, profiling);
 
         config.hostParams.printAST = args.options["ast"];
         config.hostParams.printHIR = args.options["hir"];
@@ -137,6 +140,13 @@ function main()
             {
                 print("Executing " + args.files[i]);
             }
+
+            //Initiation of the event recording profiler
+            if(profiling === true) 
+                initProfiler(config.hostParams);
+
+            if(args.options["compiletime"])
+                config.hostParams.compiletime = true;
 
             var startTimeMs = (new Date()).getTime();
 
@@ -169,11 +179,14 @@ function main()
     else
     {
         // Perform a minimal Tachyon compilation
-        bootstrap(config.hostParams, false, false);
+        bootstrap(config.hostParams, false, false, profiling);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
     }
+
+    if(profiling === true) 
+            profilerReport(config.hostParams);
 }
 
 /**

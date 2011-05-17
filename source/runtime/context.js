@@ -186,6 +186,20 @@ function makeContextLayout(params)
         'null'
     );
 
+    // Profiler enabling boolean
+    ctxLayout.addField(
+        'profenable',
+        IRType.box,
+        'false'
+    );
+
+    // Profiler data
+    ctxLayout.addField(
+        'profdata',
+        IRType.box,
+        'null'
+    );
+
     // Finalize the context layout
     ctxLayout.finalize();
 }

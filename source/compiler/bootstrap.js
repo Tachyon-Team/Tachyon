@@ -51,7 +51,7 @@ Maxime Chevalier-Boisvert
 /**
 Compile and initialize the Tachyon compiler using Tachyon
 */
-function bootstrap(params, allCode, writeImg)
+function bootstrap(params, allCode, writeImg, profiling)
 {
     assert (
         params instanceof CompParams,
@@ -144,6 +144,10 @@ function bootstrap(params, allCode, writeImg)
             }
         }
     }
+
+    //Initiation of the event recording profiler
+    //if(profiling === true) 
+        //initProfiler(params);
 
     // If all code should be compiled
     if (allCode === true)
