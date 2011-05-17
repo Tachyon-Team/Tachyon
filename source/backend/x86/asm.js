@@ -3083,6 +3083,231 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
     return this;
 };
 
+/** x87 code generation methods and functions **/
+
+x86.Assembler.prototype.fpuReg = function (i)
+{
+    return ["ST(0)", "ST(1)", "ST(2)", "ST(3)",
+            "ST(4)", "ST(5)", "ST(6)", "ST(7)"][i];
+}
+
+x86.Assembler.prototype.fdumpStack = function (mem, base, width)
+{
+    var step = width / 8;
+    this.fstMem(mem(0, EAX), width, false);
+    /*    
+    this.fincstp();
+    this.fstMem(mem(step, EAX), width, false);
+    this.fincstp();
+    this.fstMem(mem(2*step, EAX), width, false);
+    this.fincstp();
+    this.fstMem(mem(3*step, EAX), width, false);
+    this.fincstp();
+    this.fstMem(mem(4*step, EAX), width, false);
+    this.fincstp();
+    this.fstMem(mem(5*step, EAX), width, false);
+    this.fincstp();
+    this.fstMem(mem(6*step, EAX), width, false);
+    this.fincstp();
+    this.fstMem(mem(7*step, EAX), width, false);
+    this.fincstp();
+    */
+    return this;
+}
+
+/** @private 0 operand fpu instructions  */
+x86.Assembler.prototype.fpuOp0 = function(op, mnemonic)
+{
+    this.gen8(0xd9);
+    this.gen8(op);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat(mnemonic));
+    }
+    return this;
+}
+
+x86.Assembler.prototype.fnop    = function () { return this.fpuOp0(0xd0, "fnop"); }
+x86.Assembler.prototype.fchs    = function () { return this.fpuOp0(0xe0, "fchs"); }
+x86.Assembler.prototype.fabs    = function () { return this.fpuOp0(0xe1, "fabs"); }
+x86.Assembler.prototype.ftst    = function () { return this.fpuOp0(0xe4, "ftst"); }
+x86.Assembler.prototype.fxam    = function () { return this.fpuOp0(0xe5, "fxam"); }
+x86.Assembler.prototype.fld1    = function () { return this.fpuOp0(0xe8, "fld1"); }
+x86.Assembler.prototype.fldl2t  = function () { return this.fpuOp0(0xe9, "fldl2t"); }
+x86.Assembler.prototype.fldl2e  = function () { return this.fpuOp0(0xea, "fldl2e"); }
+x86.Assembler.prototype.fldpi   = function () { return this.fpuOp0(0xeb, "fldpi"); }
+x86.Assembler.prototype.fldlg2  = function () { return this.fpuOp0(0xec, "fldlg2"); }
+x86.Assembler.prototype.fldln2  = function () { return this.fpuOp0(0xed, "fldln2"); }
+x86.Assembler.prototype.fldz    = function () { return this.fpuOp0(0xee, "fldz"); }
+x86.Assembler.prototype.f2xm1   = function () { return this.fpuOp0(0xf0, "f2xm1"); }
+x86.Assembler.prototype.fyl2x   = function () { return this.fpuOp0(0xf1, "fyl2x"); }
+x86.Assembler.prototype.fptan   = function () { return this.fpuOp0(0xf2, "fptan"); }
+x86.Assembler.prototype.fpatan  = function () { return this.fpuOp0(0xf3, "fpatan"); }
+x86.Assembler.prototype.fxtract = function () { return this.fpuOp0(0xf4, "fxtract"); }
+x86.Assembler.prototype.fprem1  = function () { return this.fpuOp0(0xf5, "fprem1"); }
+x86.Assembler.prototype.fdecstp = function () { return this.fpuOp0(0xf6, "fdecstp"); }
+x86.Assembler.prototype.fincstp = function () { return this.fpuOp0(0xf7, "fincstp"); }
+x86.Assembler.prototype.fprem   = function () { return this.fpuOp0(0xf8, "fprem"); }
+x86.Assembler.prototype.fyl2xp1 = function () { return this.fpuOp0(0xf9, "fyl2xp1"); }
+x86.Assembler.prototype.fsqrt   = function () { return this.fpuOp0(0xfa, "fsqrt"); }
+x86.Assembler.prototype.fsincos = function () { return this.fpuOp0(0xfb, "fsincos"); }
+x86.Assembler.prototype.frndint = function () { return this.fpuOp0(0xfc, "frndint"); }
+x86.Assembler.prototype.fscale  = function () { return this.fpuOp0(0xfd, "fscale"); }
+x86.Assembler.prototype.fsin    = function () { return this.fpuOp0(0xfe, "fsin"); }
+x86.Assembler.prototype.fcos    = function () { return this.fpuOp0(0xff, "fcos"); }
+
+/** @private 1 operand fpu instructions  */
+x86.Assembler.prototype.fpuOpi1 = function(i, destST0, op, mnemonic)
+{
+    this.gen8((destST0 ? 0xd8 : 0xdc));
+    this.gen8(i + (((op < 0xe0) || destST0) ? op : (op ^ 8)));
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat(mnemonic,
+                                        "",
+                                        this.fpuReg(destST0 ? 0 : i),
+                                        this.fpuReg(destST0 ? i : 0)));
+    }
+    return this;
+}
+
+x86.Assembler.prototype.fadd     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xc0, "fadd"); }
+x86.Assembler.prototype.fmul     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xc8, "fmul"); }
+x86.Assembler.prototype.fcom     = function (i)          { return this.fpuOpi1(i, TRUE,    0xd0, "fcom"); }
+x86.Assembler.prototype.fcomp    = function (i)          { return this.fpuOpi1(i, TRUE,    0xc8, "fcomp"); }
+x86.Assembler.prototype.fsub     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xe0, "fsub"); }
+x86.Assembler.prototype.fsubr    = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xe8, "fsubr"); }
+x86.Assembler.prototype.fdiv     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xf0, "fdiv"); }
+x86.Assembler.prototype.fdivr    = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xf8, "fdivr"); }
+
+/** @private 2 operands fpu instructions  */
+x86.Assembler.prototype.fpuOpi2 = function(i, op, mnemonic)
+{
+    this.gen8(0xde);
+    this.gen8(i + op);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat(mnemonic,
+                                        "",
+                                        this.fpuReg(i),
+                                        this.fpuReg(0)));
+    }
+    return this;
+}
+
+x86.Assembler.prototype.faddp     = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xc0, "fadd"); }
+x86.Assembler.prototype.fmulp     = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xc8, "fmul"); }
+x86.Assembler.prototype.fsubp     = function (i)          { return this.fpuOpi2(i, TRUE,    0xe0, "fcom"); }
+x86.Assembler.prototype.fsubrp    = function (i)          { return this.fpuOpi2(i, TRUE,    0xe8, "fcomp"); }
+x86.Assembler.prototype.fdivp     = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xf0, "fsub"); }
+x86.Assembler.prototype.fdivrp    = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xf8, "fsubr"); }
+
+/** @private 1 operand fpu instructions  */
+x86.Assembler.prototype.fpuOp1 = function(i, op1, op2, mnemonic)
+{
+    this.gen8(op1);
+    this.gen8(i + op2);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat(mnemonic,
+                                        "",
+                                        this.fpuReg(i)));
+    }
+    return this;
+}
+
+x86.Assembler.prototype.fldstMem = function (opnd, opcode, field, mnemonic)
+{
+    this.opndPrefix(0, 0, opnd, false);
+    this.gen8(opcode);
+    this.opndModRMSIB(field, opnd);
+
+    if (this.useListing)
+        {
+            this.genListing(x86.instrFormat(mnemonic,
+                                            "",
+                                            opnd));
+        }
+    return this;
+}
+
+x86.Assembler.prototype.fld = function (i)
+{
+    return this.fpuOp1(i, 0xd9, 0xc0, "fld");
+}
+
+x86.Assembler.prototype.fldMem = function (opnd, width)
+{
+    assert(([32, 64, 80].indexOf(width) != -1),
+           "width must be 32, 64 or 80");
+    
+    switch (width)
+    {
+        case 32:
+        return this.fldstMem(opnd, 0xd9, 0, "fld");
+
+        case 64:
+        return this.fldstMem(opnd, 0xdd, 0, "fld");
+
+        case 80:
+        return this.fldstMem(opnd, 0xdb, 5, "fld");
+    }
+    return this;
+}
+
+x86.Assembler.prototype.fst = function (i)
+{
+    return this.fpuOp1(i, 0xdd, 0xd0, "fst");
+}
+
+x86.Assembler.prototype.fstp = function (i)
+{
+    return this.fpuOp1(i, 0xdd, 0xd8, "fstp");
+}
+
+x86.Assembler.prototype.fstMem = function (opnd, width, pop)
+{
+    if (pop)
+    {
+        assert(([32, 64, 80].indexOf(width) != -1),
+               "width must be 32, 64 or 80");
+        switch (width)
+        {
+            case 32:
+                return this.fldstMem(opnd, 0xd9, 3, "fstp");
+
+            case 64:
+                return this.fldstMem(opnd, 0xdd, 3, "fstp");
+
+            case 80:
+                return this.fldstMem(opnd, 0xdb, 7, "fstp");
+        }
+    }
+    else
+    {
+        assert(([32, 64].indexOf(width) != -1),
+               "width must be 32 or 64");
+        switch (width)
+        {
+            case 32:
+            return this.fldstMem(opnd, 0xd9, 2, "fst");
+
+            case 64:
+            return this.fldstMem(opnd, 0xdd, 2, "fst");
+        }
+    }
+    return this;
+}
+
+x86.Assembler.prototype.fstpMem = function(opnd, width)
+{
+    return this.fstMem(opnd, width, true);
+}
+
 // ------------------- Syntactic sugar for common constructions ---------------
 
 /**
