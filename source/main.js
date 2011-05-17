@@ -28,7 +28,7 @@
  *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
  *  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- *  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ *  TO, THE IMPLIED WARRANTIES OF MERCHApNTABILITY AND FITNESS FOR A
  *  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL UNIVERSITE DE
  *  MONTREAL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
@@ -82,14 +82,11 @@ function main()
     // Initialize the Tachyon configuration
     initConfig(x86_64, verbosity);
 
-    if (args.options['eventrec'])
-        var profiling = true;    
-
     // If bootstrap compilation is requested
     if (args.options['bootstrap'])
     {
         // Perform a full bootstrap without writing an image
-        bootstrap(config.bootParams, true, false, profiling);
+        bootstrap(config.bootParams, true, false);
 
         // ???
         // Profit        
@@ -100,7 +97,7 @@ function main()
     {
         // Perform a full bootstrap and write the image
         // FIXME: for now, not compiling all code, for testing purposes
-        bootstrap(config.bootParams, false, true, profiling);
+        bootstrap(config.bootParams, false, true);
     }
 
     // If gc code generation is requested
@@ -114,7 +111,7 @@ function main()
     else if (args.files.length > 0 || args.options['e'])
     {
         // Perform a minimal Tachyon compilation
-        bootstrap(config.hostParams, false, false, profiling);
+        bootstrap(config.hostParams, false, false);
 
         config.hostParams.printAST = args.options["ast"];
         config.hostParams.printHIR = args.options["hir"];
@@ -142,7 +139,7 @@ function main()
             }
 
             //Initiation of the event recording profiler
-            if(profiling === true) 
+            if (args.options['eventrec']) 
                 initProfiler(config.hostParams);
 
             if(args.options["compiletime"])
@@ -179,13 +176,13 @@ function main()
     else
     {
         // Perform a minimal Tachyon compilation
-        bootstrap(config.hostParams, false, false, profiling);
+        bootstrap(config.hostParams, false, false);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
     }
 
-    if(profiling === true) 
+    if (args.options['eventrec'])
             profilerReport(config.hostParams);
 }
 
