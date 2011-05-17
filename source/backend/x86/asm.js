@@ -3116,10 +3116,10 @@ x86.Assembler.prototype.fdumpStack = function (mem, base, width)
 }
 
 /** @private 0 operand fpu instructions  */
-x86.Assembler.prototype.fpuOp0 = function(op, mnemonic)
+x86.Assembler.prototype.fpuOp0 = function(opcode, mnemonic)
 {
     this.gen8(0xd9);
-    this.gen8(op);
+    this.gen8(opcode);
 
     if (this.useListing)
     {
@@ -3158,10 +3158,10 @@ x86.Assembler.prototype.fsin    = function () { return this.fpuOp0(0xfe, "fsin")
 x86.Assembler.prototype.fcos    = function () { return this.fpuOp0(0xff, "fcos"); }
 
 /** @private 1 operand fpu instructions  */
-x86.Assembler.prototype.fpuOpi1 = function(i, destST0, op, mnemonic)
+x86.Assembler.prototype.fpuOpi1 = function(i, destST0, opcode, mnemonic)
 {
     this.gen8((destST0 ? 0xd8 : 0xdc));
-    this.gen8(i + (((op < 0xe0) || destST0) ? op : (op ^ 8)));
+    this.gen8(i + (((opcode < 0xe0) || destST0) ? opcode : (opcode ^ 8)));
 
     if (this.useListing)
     {
@@ -3183,10 +3183,10 @@ x86.Assembler.prototype.fdiv     = function (i, destST0) { return this.fpuOpi1(i
 x86.Assembler.prototype.fdivr    = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xf8, "fdivr"); }
 
 /** @private 2 operands fpu instructions  */
-x86.Assembler.prototype.fpuOpi2 = function(i, op, mnemonic)
+x86.Assembler.prototype.fpuOpi2 = function(i, opcode, mnemonic)
 {
     this.gen8(0xde);
-    this.gen8(i + op);
+    this.gen8(i + opcode);
 
     if (this.useListing)
     {
@@ -3294,10 +3294,10 @@ x86.Assembler.prototype.fstMem = function (opnd, width, pop)
         switch (width)
         {
             case 32:
-            return this.fldstMem(opnd, 0xd9, 2, "fst");
+                return this.fldstMem(opnd, 0xd9, 2, "fst");
 
             case 64:
-            return this.fldstMem(opnd, 0xdd, 2, "fst");
+                return this.fldstMem(opnd, 0xdd, 2, "fst");
         }
     }
     return this;
@@ -3308,6 +3308,23 @@ x86.Assembler.prototype.fstpMem = function(opnd, width)
     return this.fstMem(opnd, width, true);
 }
 
+x86.Assembler.prototype.fild = function(opnd, width)
+{
+    assert(([16, 32, 64].indexOf(width) != -1),
+           "width must be 16, 32 or 64");
+    switch (width)
+    {
+        case 16:
+            return this.fldstMem(opnd, 0xdf, 0, "fild");
+
+        case 32:
+            return this.fldstMem(opnd, 0xdb, 0, "fild");
+
+        case 64:
+            return this.fldstMem(opnd, 0xdf, 5, "fild");
+    }
+
+}
 // ------------------- Syntactic sugar for common constructions ---------------
 
 /**
