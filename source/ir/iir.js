@@ -89,6 +89,9 @@ var iir =
     div         : DivInstr,
     mod         : ModInstr,
 
+    // Floating point instructions
+    fadd        : FAddInstr,
+
     // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,
     sub_ovf     : SubOvfInstr,

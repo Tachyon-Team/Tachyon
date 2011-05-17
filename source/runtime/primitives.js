@@ -152,6 +152,17 @@ function boxIsInt(boxVal)
 }
 
 /**
+Test if a boxed value is a floating point value
+*/
+function boxIsFP(boxVal)
+{
+    "tachyon:inline";
+
+    // Test if the value has the int tag
+    return (boxVal & TAG_FLOAT_MASK) === TAG_FLOAT;
+}
+
+/**
 Test if a boxed value is an object
 */
 function boxIsObj(boxVal)
@@ -322,6 +333,11 @@ function boxToString(val)
     if (boxIsString(val))
     {
         return val;
+    }
+
+    if (boxIsFP(val))
+    {
+        return "unimplement FP representation";
     }
 
     if (boxIsObjExt(val))
@@ -1228,6 +1244,16 @@ function addGeneral(v1, v2)
         // Perform string concatenation
         return strcat(v1, v2);
     }
+    // If both values are floats
+    else if (boxIsFP(v1) && boxIsFP(v2))
+    {
+        // Allocate a float object to store the result
+        var r = alloc_float();         
+
+        // Perform floating point addition. 
+        // Modifies r as a side-effect and return it
+        return iir.fadd(v1, v2, r);
+    }   
 
     // Otherwise, both values are not strings
     else

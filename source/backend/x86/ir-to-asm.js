@@ -1580,6 +1580,82 @@ ModInstr.prototype.regAlloc.outRegHint =  function (instr, params)
 // Same code as division instruction, different register hint for output
 ModInstr.prototype.genCode = DivInstr.prototype.genCode;
 
+
+// Floating point arithmetic operations
+
+/**
+Floating point addition
+*/
+FAddInstr.prototype.genCode = function (tltor, opnds)
+{
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
+    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+    const mem = x86.Assembler.prototype.memory;
+
+    var destAddr = opnds[2];
+    if (opnds[2] !== this.regAlloc.dest)
+    {
+        tltor.asm.
+        mov(opnds[2], this.regAlloc.dest);
+        destAddr = this.regAlloc.dest;
+    }
+
+    var opnd0Addr = opnds[0];
+    if (opnd0Addr.type !== x86.type.REG)
+    {
+        tltor.asm.
+        mov(opnd0Addr, scratchReg);
+        opnd0Addr = scratchReg;
+    }
+
+
+    tltor.asm.
+    fldMem(mem(valueOffset - tagValue, opnd0Addr), 64);
+
+    var opnd1Addr = opnds[1]; 
+    if (opnd1Addr.type !== x86.type.REG)
+    {
+        tltor.asm.
+        mov(opnd1Addr, scratchReg);
+        opnd1Addr = scratchReg;
+    }  
+
+    tltor.asm.
+    gen8(0xDC).opndModRMSIB(0, mem(valueOffset-tagValue, opnd1Addr)).
+    fstMem(mem(valueOffset-tagValue, destAddr), 64); 
+};
+
+/**
+Convert a float to an integer
+*/
+FPToIInstr.prototype.genCode = function (tltor, opnds)
+{
+    const width = tltor.params.target.ptrSizeBits;
+    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+    const dest = this.regAlloc.dest;
+    const reg = x86.Assembler.prototype.register;
+    const xSP = reg.rsp.subReg(width);
+
+    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+    
+    var srcAddr = opnds[0];
+    if (opnds[0].type !== x86.type.REG)
+    {
+        tltor.asm.
+        mov(opnds[0], dest); 
+        srcAddr = dest; 
+    }
+
+    tltor.asm.
+    push($(42)).                                                  // Reserve space on stack for value
+    fldMem(mem(valueOffset-tagValue, srcAddr), 64).               // Move fp value to x87 stack
+    gen8(0xDB).opndModRMSIB(3, mem(0,xSP)).genListing("fistp(0)").// Convert to int and store on top of stack
+    pop(this.regAlloc.dest);
+};
+
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {
     // Reuse the implementation of the addition without overflow

@@ -211,6 +211,15 @@ function makeObjectLayouts(params)
         )
     );
 
+    // Mask used to extract immediate integer tags
+    params.staticEnv.regBinding(
+        'TAG_FLOAT_MASK',
+        ConstValue.getConst(
+            3,
+            IRType.pint
+        )
+    );
+
     // Tag for strings
     params.staticEnv.regBinding(
         'TAG_STRING',
@@ -471,18 +480,34 @@ function makeObjectLayouts(params)
     /**
     Float layout object
     */
-    /*
     var floatLayout = new MemLayout('float', IRType.box, 'TAG_FLOAT', params);
 
-    // Character data (UTF-16)
     floatLayout.addField(
-        'value',
-        IRType.f64
+        'f0',
+        IRType.u16,
+        undefined
+    );
+
+    floatLayout.addField(
+        'f1',
+        IRType.u16,
+        undefined
+    );
+
+    floatLayout.addField(
+        'f2',
+        IRType.u16,
+        undefined
+    );
+
+    floatLayout.addField(
+        'f3',
+        IRType.u16,
+        undefined
     );
 
     // Finalize the float layout
     floatLayout.finalize();
-    */
 
     //=============================================================================
     //

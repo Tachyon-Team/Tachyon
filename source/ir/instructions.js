@@ -1044,6 +1044,30 @@ var LsftOvfInstr = instrMaker(
     new ArithOvfInstr()
 );
 
+/**
+@class Floating point addition instruction
+@augments ArithInstr
+*/
+var FAddInstr = instrMaker(
+    'fadd',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3, 3);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === inputVals[0].type 
+                &&
+                inputVals[2].type === inputVals[1].type,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
 //=============================================================================
 //
 // Bitwise operations
@@ -1825,11 +1849,12 @@ var IToFPInstr = instrMaker(
     'itof',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 1, 1);
-        instrMaker.validNumInputs(inputVals, 1, 1);
+        instrMaker.validNumParams(inputVals, 2, 2);
+        instrMaker.validNumInputs(inputVals, 2, 2);
         assert (
             inputVals[0].type === IRType.pint &&
-            typeParams[0] === IRType.f64,
+            inputVals[1].type === IRType.box &&
+            typeParams[0] === IRType.box,
             'invalid type parameters'
         );
         
@@ -1845,12 +1870,12 @@ var FPToIInstr = instrMaker(
     'ftoi',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 1, 1);
+        instrMaker.validNumParams(typeParams, 1, 1);
         instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
-            typeParams[0].type === IRType.f64 &&
+            inputVals[0].type === IRType.box &&
             typeParams[0] === IRType.pint,
-            'invalid type parameters'
+            'invalid input or output type parameter ' + inputVals[0].type + ',' + typeParams[0]
         );
         
         this.type = typeParams[0];
