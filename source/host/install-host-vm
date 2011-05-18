@@ -1,0 +1,155 @@
+#!/bin/sh
+
+# _________________________________________________________________________
+#
+#             Tachyon : A Self-Hosted JavaScript Virtual Machine
+#
+#
+#  This file is part of the Tachyon JavaScript project. Tachyon is
+#  distributed at:
+#  http://github.com/Tachyon-Team/Tachyon
+#
+#
+#  Copyright (c) 2011, Universite de Montreal
+#  All rights reserved.
+#
+#  This software is licensed under the following license (Modified BSD
+#  License):
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are
+#  met:
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#    * Neither the name of the Universite de Montreal nor the names of its
+#      contributors may be used to endorse or promote products derived
+#      from this software without specific prior written permission.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+#  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+#  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+#  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL UNIVERSITE DE
+#  MONTREAL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+#  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+#  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+#  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# _________________________________________________________________________
+
+
+### File: "install-host-vm"
+
+DEFAULT_JSVM="v8"
+
+#------------------------------------------------------------------------------
+
+# Install V8
+
+V8_REVISION="7932"
+
+V8_DIR="v8"
+
+v8_install()
+{
+  echo "*** installing V8"
+  v8_download
+  cd "$V8_DIR"
+  v8_select_revision
+  v8_patch_for_tachyon
+  v8_build
+  v8_install_path
+}
+
+v8_download()
+{
+  if [ ! -d "$V8_DIR" ]; then
+    svn checkout http://v8.googlecode.com/svn/trunk/ v8
+  fi
+}
+
+v8_select_revision()
+{
+  svn update -r "$V8_REVISION"
+}
+
+v8_patch_for_tachyon()
+{
+  cd src
+
+  if [ ! -e "tachyon-exts.h" ]; then
+    ln -s ../../tachyon-exts.h .
+  fi
+
+  if [ ! -e "tachyon-exts.cc" ]; then
+    ln -s ../../tachyon-exts.cc .
+  fi
+
+  if [ ! -e "d8-tachyon-exts.h" ]; then
+    ln -s ../../d8-tachyon-exts.h .
+  fi
+
+  if [ ! -e "d8-tachyon-exts.cc" ]; then
+    ln -s ../../d8-tachyon-exts.cc .
+  fi
+
+  if [ ! -e "SConscript-orig" ]; then
+    mv -n SConscript SConscript-orig
+  fi
+  sed -e '/accessors\.cc/q' SConscript-orig | sed -e '/accessors\.cc/d' > SConscript
+  echo "    tachyon-exts.cc" >> SConscript
+  echo "    d8-tachyon-exts.cc" >> SConscript
+  sed -e '/accessors\.cc/,$!d' SConscript-orig >> SConscript
+
+  if [ ! -e "d8.cc-orig" ]; then
+    mv -n d8.cc d8.cc-orig
+  fi
+  sed -e '/namespace v8 {/q' d8.cc-orig | sed -e '/namespace v8 {/d' > d8.cc
+  echo "#include \"d8-tachyon-exts.h\"" >> d8.cc
+  echo "" >> d8.cc
+  sed -e '/namespace v8 {/,$!d' d8.cc-orig | sed -e '/New(Version)/q' >> d8.cc
+  echo "" >> d8.cc
+  echo "  INIT_D8_EXTENSIONS;" >> d8.cc
+  sed -e '/New(Version)/,$!d' d8.cc-orig | sed -e '/New(Version)/d' >> d8.cc
+
+  cd ..
+}
+
+v8_build()
+{
+  scons d8
+}
+
+v8_install_path()
+{
+  echo "****************************************************************"
+  echo "***"
+  echo "*** Please add the directory"
+  echo "***   " `pwd`
+  echo "*** to your PATH."
+  echo "***"
+  echo "****************************************************************"
+}
+
+#------------------------------------------------------------------------------
+
+JSVM="$1"
+
+if [ "$JSVM" == "" ]; then
+  JSVM="$DEFAULT_JSVM"
+fi
+
+case "$JSVM" in
+
+  v8) v8_install
+      ;;
+
+   *) echo "*** V8 is the only supported host VM at the moment"
+      exit 1
+      ;;
+
+esac

@@ -257,6 +257,12 @@ bt-parser64:
 mem-fib:
 	$(JSVM) --no-opt --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
 
+host-vm:
+	(cd host ; ./install-host-vm)
+
+host-vm-v8:
+	(cd host ; ./install-host-vm v8)
+
 gc:
 	$(JSVM) $(MAIN_SRCS) -- -gc
 	gcc -std=c99 -c -o host/gc-generated.o host/gc-generated.c
