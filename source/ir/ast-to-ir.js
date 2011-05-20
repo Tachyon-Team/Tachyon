@@ -253,6 +253,7 @@ function stmtListToIRFunc(
         params
     );
 
+
     // If the function uses the arguments object
     if (newFunc.usesArguments)
     {

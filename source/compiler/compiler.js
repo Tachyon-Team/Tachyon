@@ -218,7 +218,7 @@ function compileSrcFile(fileName, params)
     var endTimeMs = (new Date()).getTime();
 
     if(params.compiletime){
-        print("\n\n------- PROFILING: COMPILATION TIME REPORT -------\n");
+        print("\n\n------- PROFILING: COMPILATION TIME BREAKDOWN REPORT -------\n");
         print("    Parsing time: " + (endTimeMs - startTimeMs) + " ms");
     }
 

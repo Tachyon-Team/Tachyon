@@ -2936,7 +2936,8 @@ function prof_init(){
         "functions": "",
         "alloc_report": "",
         "prop_access_report": "",
-        "func_call_report": ""
+        "func_call_report": "",
+        "test": 0
     };
     var ctx = iir.get_ctx();
     set_ctx_profdata(ctx, prof);
@@ -3042,6 +3043,21 @@ function prof_recordPropAccess(propName){
     }
 }
 
+function prof_test() {
+    "tachyon:inline";
+    //"tachyon:static";
+    "tachyon:noglobal";
+    /*
+    var ctx = iir.get_ctx();
+    var enabled = get_ctx_profenable(ctx);
+    if (enabled) {
+        prof_disable();
+        var data = get_ctx_profdata(ctx);
+        data.test++;
+        prof_enable();
+    }*/
+}
+
 function prof_getData(){
     "tachyon:static";
     "tachyon:noglobal";
@@ -3049,35 +3065,6 @@ function prof_getData(){
     var ctx = iir.get_ctx();
     return get_ctx_profdata(ctx);
 }
-/*
-function prof_setParsingTime(time){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.parsing_time = time;
-        prof_enable();
-    }        
-}
-
-function prof_setCompileAstTime(time){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.compileAst_time = time;
-        prof_enable();
-    }        
-}
-*/
 
 /*
 Reports
@@ -3138,21 +3125,6 @@ function prof_funcCallReport(){
         "\n";
     print(data.func_call_report);
 }
-/*
-function prof_compilationTimeReport(){
-    "tachyon:static";
-    
-    prof_disable();
-
-    var data = prof_getData();
-    
-    data.compilation_time_report +=
-        "\n------- PROFILING: COMPILATION TIME REPORT -------\n\n" +
-        "      Parsing time: " + data.parsing_time + "ms\n" +
-        "      Compile AST time: " + data.compileAst_time + "ms\n" +
-        "\n";
-    print(data.compilation_time_report);
-}*/
 
 function prof_fileReport() {
     "tachyon:static";
@@ -3160,5 +3132,16 @@ function prof_fileReport() {
     var data = prof_getData();
 
     writeFile("./profiler/profiling_report.txt", data.alloc_report + data.prop_access_report + data.func_call_report);
+}
+
+function prof_testReport() {
+    "tachyon:static";
+    
+    prof_disable();
+
+    var data = prof_getData();
+
+    print("\n------- PROFILING: TEST REPORT -------\n");
+    print("    Test: " + data.test + "\n\n");
 }
 

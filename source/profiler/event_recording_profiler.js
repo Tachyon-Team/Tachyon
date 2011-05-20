@@ -25,12 +25,13 @@ function profilerReport(params){
     var prof_propAccessReport = params.staticEnv.getBinding('prof_propAccessReport');
     var prof_fileReport = params.staticEnv.getBinding('prof_fileReport');
     var prof_funcCallReport = params.staticEnv.getBinding('prof_funcCallReport');
+    var prof_testReport = params.staticEnv.getBinding('prof_testReport');
 
     //Producing profiling report in console
     execUnit(prof_allocReport, params);
     execUnit(prof_propAccessReport, params);
-    execUnit(prof_funcCallReport, params);;
-    //execUnit(prof_compilationTimeReport, params);
+    execUnit(prof_funcCallReport, params);
+    execUnit(prof_testReport, params);
 
     //Producing profiling report in text file "/src/profiler/profiling_report.txt"
     execUnit(prof_fileReport, params);
