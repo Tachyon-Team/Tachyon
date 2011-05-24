@@ -9,3 +9,4 @@ source/compiler/sources.js
 source/myfib.js
 source/tachyon
 source/tests/fp/to_be_done
+source/fp.js

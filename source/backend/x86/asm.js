@@ -3157,7 +3157,7 @@ x86.Assembler.prototype.fscale  = function () { return this.fpuOp0(0xfd, "fscale
 x86.Assembler.prototype.fsin    = function () { return this.fpuOp0(0xfe, "fsin"); }
 x86.Assembler.prototype.fcos    = function () { return this.fpuOp0(0xff, "fcos"); }
 
-/** @private 1 operand fpu instructions  */
+/** @private indexed fpu instructions 1 */
 x86.Assembler.prototype.fpuOpi1 = function(i, destST0, opcode, mnemonic)
 {
     this.gen8((destST0 ? 0xd8 : 0xdc));
@@ -3182,7 +3182,7 @@ x86.Assembler.prototype.fsubr    = function (i, destST0) { return this.fpuOpi1(i
 x86.Assembler.prototype.fdiv     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xf0, "fdiv"); }
 x86.Assembler.prototype.fdivr    = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xf8, "fdivr"); }
 
-/** @private 2 operands fpu instructions  */
+/** @private indexed fpu instructions 2 */
 x86.Assembler.prototype.fpuOpi2 = function(i, opcode, mnemonic)
 {
     this.gen8(0xde);
@@ -3198,14 +3198,14 @@ x86.Assembler.prototype.fpuOpi2 = function(i, opcode, mnemonic)
     return this;
 }
 
-x86.Assembler.prototype.faddp     = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xc0, "fadd"); }
-x86.Assembler.prototype.fmulp     = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xc8, "fmul"); }
-x86.Assembler.prototype.fsubp     = function (i)          { return this.fpuOpi2(i, TRUE,    0xe0, "fcom"); }
-x86.Assembler.prototype.fsubrp    = function (i)          { return this.fpuOpi2(i, TRUE,    0xe8, "fcomp"); }
-x86.Assembler.prototype.fdivp     = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xf0, "fsub"); }
-x86.Assembler.prototype.fdivrp    = function (i, destST0) { return this.fpuOpi2(i, destST0, 0xf8, "fsubr"); }
+x86.Assembler.prototype.faddp     = function (i) { return this.fpuOpi2(i, 0xc0, "faddp"); }
+x86.Assembler.prototype.fmulp     = function (i) { return this.fpuOpi2(i, 0xc8, "fmulp"); }
+x86.Assembler.prototype.fsubp     = function (i) { return this.fpuOpi2(i, 0xe0, "fsubp"); }
+x86.Assembler.prototype.fsubrp    = function (i) { return this.fpuOpi2(i, 0xe8, "fsubrp"); }
+x86.Assembler.prototype.fdivp     = function (i) { return this.fpuOpi2(i, 0xf0, "fdivp"); }
+x86.Assembler.prototype.fdivrp    = function (i) { return this.fpuOpi2(i, 0xf8, "fdivrp"); }
 
-/** @private 1 operand fpu instructions  */
+/** @private fst* fpu instructions  */
 x86.Assembler.prototype.fpuOp1 = function(i, op1, op2, mnemonic)
 {
     this.gen8(op1);
