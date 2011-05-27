@@ -118,6 +118,14 @@ function main()
         config.hostParams.printLIR = args.options["lir"];
         config.hostParams.printASM = args.options["asm"];
 
+        /* Profiling work: inconclusive so far
+        if (args.options['eventrec'])
+            config.hostParams.files = args.files;
+        */
+
+        if (args.options['sayhello'])
+            config.hostParams.eventrec = true;
+
         if (args.options['e'])
         {
             var ir = compileSrcString(args.options['e'] + ";", config.hostParams);

@@ -1598,6 +1598,9 @@ function putPropObj(obj, propName, propHash, propVal)
     // Requires first looking up the entry in the whole prototype chain...
     //
 
+    //Required for profiling instructions below
+    var globalObj = getGlobalObj();
+
     // Get a pointer to the hash table
     var tblPtr = get_obj_tbl(obj);
 
@@ -1628,6 +1631,9 @@ function putPropObj(obj, propName, propHash, propVal)
             // Set the corresponding property value
             set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
 
+            //Profiling: recording the modification of a property
+            if(obj !== globalObj) prof_recordPropPut(propName);
+
             // Break out of the loop
             break;
         }
@@ -1655,6 +1661,10 @@ function putPropObj(obj, propName, propHash, propVal)
                 // Extend the hash table for this object
                 extObjHashTable(obj, tblPtr, tblSize);
             }
+
+
+            //Profiling: recording the modification of a property
+            if(obj !== globalObj) prof_recordPropPut(propName);
 
             // Break out of the loop
             break;
@@ -1845,7 +1855,10 @@ function getPropObj(obj, propName, propHash)
         if (prop !== iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND)) {
             
             //Profiling: record propertie access event
-            if(!boxIsFunc(prop)) prof_recordPropAccess(propName);
+            if(!boxIsFunc(prop)){
+                var globalObj = getGlobalObj();
+                prof_recordPropGet(propName);
+            }
             
             return prop;
         }
@@ -2671,6 +2684,8 @@ function getGlobalFunc(obj, propName, propHash)
     // If the property is a function
     if (boxIsFunc(prop))
     {
+        //Profiling: record function global property access as a function call
+        /*TODO: record the event for all function calls*/
         prof_recordFuncCall(propName);
         
         // Return the function property
@@ -2930,12 +2945,15 @@ function prof_init(){
         "tag_float": 0,
         "tag_string": 0,
         "tag_other": 0,
-        "prop_accesses": 0,
-        "properties": "",
+        "prop_gets": 0,
+        "prop_puts": 0,
+        "accessed_properties": "",
+        "modified_properties": "",
         "func_calls": 0,
         "functions": "",
         "alloc_report": "",
-        "prop_access_report": "",
+        "prop_get_report": "",
+        "prop_put_report": "",
         "func_call_report": "",
         "test": 0
     };
@@ -3028,7 +3046,7 @@ function prof_recordFuncCall(funcName){
 }
 
 
-function prof_recordPropAccess(propName){
+function prof_recordPropGet(propName){
     "tachyon:static";
     "tachyon:noglobal";
     
@@ -3037,18 +3055,33 @@ function prof_recordPropAccess(propName){
     if (enabled) {
         prof_disable();
         var data = get_ctx_profdata(ctx);
-        data.prop_accesses++;
-        data.properties += "         " + propName + "\n";
+        data.prop_gets++;
+        data.accessed_properties += "         " + propName + "\n";
+        prof_enable();
+    }
+}
+
+function prof_recordPropPut(propName){
+    "tachyon:static";
+    "tachyon:noglobal";
+    
+    var ctx = iir.get_ctx();
+    var enabled = get_ctx_profenable(ctx);
+    if (enabled) {
+        prof_disable();
+        var data = get_ctx_profdata(ctx);
+        data.prop_puts++;
+        data.modified_properties += "         " + propName + "\n";
         prof_enable();
     }
 }
 
 function prof_test() {
-    "tachyon:inline";
-    //"tachyon:static";
+    //"tachyon:inline";
+    "tachyon:static";
     "tachyon:noglobal";
-    /*
-    var ctx = iir.get_ctx();
+    
+    /*var ctx = iir.get_ctx();
     var enabled = get_ctx_profenable(ctx);
     if (enabled) {
         prof_disable();
@@ -3094,20 +3127,36 @@ function prof_allocReport(){
 }
 
 
-function prof_propAccessReport(){
+function prof_propGetReport(){
     "tachyon:static";
     
     prof_disable();
 
     var data = prof_getData();
     
-    data.prop_access_report +=
-        "\n------- PROFILING: PROPERTIE ACCESSES REPORT -------\n\n" +
+    data.prop_get_report +=
+        "\n------- PROFILING: PROPERTIE ACCESSES (GET) REPORT -------\n\n" +
         "      List of accessed properties:\n" +
-        data.properties + "\n" +
-        "   ->Total propertie accesses: " + data.prop_accesses + "\n" +
+        data.accessed_properties + "\n" +
+        "   ->Total propertie accesses: " + data.prop_gets + "\n" +
         "\n";
-    print(data.prop_access_report);
+    print(data.prop_get_report);
+}
+
+function prof_propPutReport(){
+    "tachyon:static";
+    
+    prof_disable();
+
+    var data = prof_getData();
+    
+    data.prop_put_report +=
+        "\n------- PROFILING: PROPERTIE MODIFICATIONS (PUT) REPORT -------\n\n" +
+        "      List of modified properties:\n" +
+        data.modified_properties + "\n" +
+        "   ->Total propertie modifications: " + data.prop_puts + "\n" +
+        "\n";
+    print(data.prop_put_report);
 }
 
 function prof_funcCallReport(){
@@ -3131,7 +3180,7 @@ function prof_fileReport() {
     
     var data = prof_getData();
 
-    writeFile("./profiler/profiling_report.txt", data.alloc_report + data.prop_access_report + data.func_call_report);
+    writeFile("./profiler/profiling_report.txt", data.alloc_report + data.prop_get_report + data.func_call_report);
 }
 
 function prof_testReport() {

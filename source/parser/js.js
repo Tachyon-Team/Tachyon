@@ -54,6 +54,7 @@ function main()
     var opt_debug = false;
     var opt_warn = false;
     var opt_ast = false;
+    var opt_profiling = true;
     var i = 0;
     var n;
 
@@ -65,6 +66,8 @@ function main()
             opt_warn = true;
         else if (args[i] === "-ast")
             opt_ast = true;
+        else if (args[i] === "-sayhello")
+            opt_profiling = true;
         else
             break;
         i++;
@@ -86,7 +89,7 @@ function main()
         var prog = p.parse();
         if (prog !== null)
         {
-            var normalized_prog = ast_normalize(prog, opt_debug);
+            var normalized_prog = ast_normalize(prog, opt_debug, opt_profiling);
             if (opt_ast)
                 pp(normalized_prog);
         }

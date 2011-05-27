@@ -107,6 +107,8 @@ function unitToIR(
             funcName += '_';
     }
 
+    //if(params.files && params.files.indexOf(fileName)) print(fileName + "    " + funcName);
+
     // Treat the top-level unit as a function
     return stmtListToIRFunc(
         funcName,
@@ -164,7 +166,9 @@ function stmtListToIRFunc(
     params
 )
 {
-    //print('Generating IR for function: "' + funcName + '"');
+    //Profiling: the condition determines if the AST statement list to convert into an IR function is a user function
+    //if(params.files && params.files.indexOf(astNode.loc.filename) >= 0)
+        //print('Generating IR for function: "' + funcName + '"    ' +  astNode.loc.filename);
 
     // Create a new function object for the function
     var newFunc = getIRFuncObj(
@@ -252,7 +256,6 @@ function stmtListToIRFunc(
         thisVal,
         params
     );
-
 
     // If the function uses the arguments object
     if (newFunc.usesArguments)
@@ -461,6 +464,9 @@ function stmtListToIRFunc(
 
     //print('generating IR for function body');
     //if (astNode.loc instanceof Location) pp_loc(astNode.loc, "");
+
+    //Profiling: [...]
+    //var primFunc = bodyContext.params.staticEnv.getBinding('prof_test');
 
     // Generate code for the function body
     stmtListToIR(bodyContext);
