@@ -118,13 +118,14 @@ function main()
         config.hostParams.printLIR = args.options["lir"];
         config.hostParams.printASM = args.options["asm"];
 
-        /* Profiling work: inconclusive so far
-        if (args.options['eventrec'])
-            config.hostParams.files = args.files;
-        */
+        // Profiling: configuration
+        if (args.options['eventrec']) {
 
-        if (args.options['sayhello'])
+            // The "files" parameter used to identify the user files
+            config.hostParams.files = args.files;
+
             config.hostParams.eventrec = true;
+        }
 
         if (args.options['e'])
         {
