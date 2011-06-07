@@ -338,19 +338,60 @@ function string_slice(start, end)
 
 function string_match(regexp)
 {
-    error("Regular expressions are not supported at the moment");
+    var re;
+
+    if (regexp instanceof RegExp)
+    {
+        re = regexp;
+    }
+    else
+    {
+        re = new RegExp(regexp);
+    }
+
+    if (re.global)
+    {
+        var result = [];
+        var match;
+
+        while ((match = re.exec(this)) != null)
+        {
+            if (typeof match === "string")
+            {
+                result.push(match);
+            }
+            else
+            {
+                result.push(match[0]);
+            }
+        }
+        if (result.length == 0)
+        {
+            return null;
+        }
+        return result;
+    }
+    else
+    {
+        return re.exec(this);
+    }
 }
 
 function string_replace(searchValue, replaceValue)
 {
     // FIXME: support function as replaceValue
-    // FIXME: support regexp
-    var pos = this.indexOf(searchValue);
-    if (pos >= 0)
+    if (typeof searchValue === "string")
     {
-        return this.substring(0, pos).concat(
-                replaceValue.toString(),
-                this.substring(pos + string_internal_getLength(searchValue)));
+        var pos = this.indexOf(searchValue);
+        if (pos >= 0)
+        {
+            return this.substring(0, pos).concat(
+                    replaceValue.toString(),
+                    this.substring(pos + string_internal_getLength(searchValue)));
+        }
+    }
+    else if (searchValue instanceof RegExp)
+    {
     }
 
     return this.toString();
@@ -358,7 +399,41 @@ function string_replace(searchValue, replaceValue)
 
 function string_search(regexp)
 {
-    error("Regular expressions are not supported at the moment");
+    var re;
+    var globalSave;
+    var lastIndexSave;
+
+    if (regexp instanceof RegExp)
+    {
+        re = regexp;
+    }
+    else
+    {
+        re = new RegExp(regexp);
+    }
+
+    globalSave = re.global;
+    lastIndexSave = re.lastIndex;
+    re.global = true;
+    re.lastIndex = 0;
+
+    var matchIndex = -1;
+    var match = re.exec(this);
+    if (match != null)
+    {
+        if (typeof match === "string")
+        {
+            matchIndex = re.lastIndex - match.length;
+        }
+        else
+        {
+            matchIndex = re.lastIndex - match[0].length;
+        }
+    }
+
+    re.global = globalSave;
+    re.lastIndex = lastIndexSave;
+    return matchIndex;
 }
 
 function string_split(separator, limit)

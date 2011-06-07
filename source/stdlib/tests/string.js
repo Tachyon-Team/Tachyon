@@ -62,3 +62,4 @@ tests.stdlib.strings = tests.testSuite();
 // TODO
 // See ir/tests/ir.js or ir/tests/cfg.js for inspiration
 //
+

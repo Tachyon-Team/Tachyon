@@ -85,6 +85,10 @@ REAstToGraph.prototype.compileDisjunction = function (
     for (var i = astNode.alternatives.length; i > 0; --i)
         altEdges.push(this.compileAlternative(astNode.alternatives[i - 1], [edge2]));
 
+    if (altEdges.length == 0)
+        // Empty alternative set.
+        node1.add([edge2]);
+
     for (var i = altEdges.length; i > 0; --i)
         node1.add(altEdges[i - 1]);
     node2.add([edge3]);

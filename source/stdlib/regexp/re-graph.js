@@ -40,9 +40,25 @@
  * _________________________________________________________________________
  */
 
+/**
+    @fileOverview
+    RegExp graph types.
+
+    @author
+    Olivier Matz
+*/
+
 var DEBUG = false;
 
-function REContext (input, rootGroup)
+/**
+    RegExp execution context.
+    @params: {String} input
+    @params: {REGroup} rootGroup
+*/ 
+function REContext (
+    input,
+    rootGroup
+)
 {
     this.input = input;
     this.index = 0;
@@ -52,21 +68,37 @@ function REContext (input, rootGroup)
     this.btactive = 0;
 }
 
+/**
+    Returns current character code.
+*/
 REContext.prototype.current = function ()
 {
     return this.input.charCodeAt(this.index);    
 }
 
-REContext.prototype.lookahead = function (n)
+/**
+    Returns character code at current index + n.
+    @params: {Integer} n
+*/ 
+REContext.prototype.lookahead = function (
+    n
+)
 {
     return this.input.charCodeAt(this.index + n);
 }
 
+/**
+    Returns true if at end of input, false otherwise.
+*/ 
 REContext.prototype.eol = function ()
 {
     return this.index >= this.input.length;
 }
 
+/**
+    Consume current character (add to each active captures) and
+    increment current index.
+*/ 
 REContext.prototype.consume = function ()
 {
     if (DEBUG)
@@ -76,6 +108,9 @@ REContext.prototype.consume = function ()
     this.index++;
 }
 
+/**
+    Returns an object that stores the current state of the context.
+*/ 
 REContext.prototype.dump = function ()
 {
     var activeCapsCopy = [];
@@ -86,14 +121,26 @@ REContext.prototype.dump = function ()
     return [this.index, groupCopy, activeCapsCopy];
 }
 
-REContext.prototype.restore = function (copy)
+/**
+    Restore the context object with data previously given by dump().
+    @params: {Object} copy, data from dump().
+*/ 
+REContext.prototype.restore = function (
+    copy
+)
 {
     this.index = copy[0];
     this.rootGroup.restore(copy[1]);
     this.activeCaps = copy[2];
 }
 
-REContext.prototype.extractCaptures = function (input)
+/**
+    Returns an array of all capture extraction.
+    @params: {String} input
+*/ 
+REContext.prototype.extractCaptures = function (
+    input
+)
 {
     var matches = [];
 
@@ -103,13 +150,21 @@ REContext.prototype.extractCaptures = function (input)
     return matches;
 }
 
-REContext.prototype.getCaptureByIndex = function (index)
+/**
+    Returns the RECapture object at the given index.    
+    @params: {Integer} index
+*/ 
+REContext.prototype.getCaptureByIndex = function (
+    index
+)
 {
     var i = {};
     i.index = index;
     return this.rootGroup.getCaptureByIndex(i);
 }
 
+/**
+*/ 
 function REGroup (capture)
 {
     this.capture = capture;
@@ -175,6 +230,9 @@ REGroup.prototype.getCaptureByIndex = function (i)
     return null;
 }
 
+/**
+    Capture class.
+*/ 
 function RECapture ()
 {
     this.start = null;
@@ -182,20 +240,33 @@ function RECapture ()
     this.activated = false;
 }
 
-RECapture.prototype.add = function (index)
+/**
+    Add index to the capture. 
+*/
+RECapture.prototype.add = function (
+    index
+)
 {
     if (this.start == null)
         this.start = index;
     this.end = index;
 }
 
+/**
+    Clears the capture.
+*/ 
 RECapture.prototype.clear = function ()
 {
     this.activated = false;
     this.start = this.end = null;
 }
 
-RECapture.prototype.extract = function (input)
+/**
+    Extract capture substring from input.
+*/ 
+RECapture.prototype.extract = function (
+    input
+)
 {
     if (this.start != null)
         return input.substring(this.start, this.end + 1);
@@ -206,6 +277,9 @@ RECapture.prototype.extract = function (input)
         
 }
 
+/**
+    Returns an object that stores the current state of the capture.
+*/ 
 RECapture.prototype.dump = function ()
 {
     var copy = new RECapture();
@@ -215,7 +289,13 @@ RECapture.prototype.dump = function ()
     return copy;
 }
 
-RECapture.prototype.restore = function (cap)
+/**
+    Restore the capture object with data previously given by dump().
+    @params: {Object} cap, data from dump().
+*/
+RECapture.prototype.restore = function (
+    cap
+)
 {
     this.start = cap.start;
     this.end = cap.end;
@@ -247,6 +327,8 @@ function RELoopPrefixEdge (dest, loopContext)
 
 RELoopPrefixEdge.prototype.exec = function (context)
 {
+    if (DEBUG)
+        print(context.index + ": exec loop prefix edge");
     this.loopContext.lastIndex = context.index;
     return this.dest;
 }
@@ -259,6 +341,9 @@ function RELoopEdge (dest, loopContext)
 
 RELoopEdge.prototype.exec = function (context)
 {
+    if (DEBUG)
+        print(context.index + ": exec loop edge");
+
     if (context.index == this.loopContext.lastIndex)
         return null;
     return this.dest;
@@ -272,6 +357,8 @@ function RELoopExitEdge (dest, loopContext)
 
 RELoopExitEdge.prototype.exec = function (context)
 {
+    if (DEBUG)
+        print(context.index + ": exec loop exit edge");
     return this.dest;
 }
 

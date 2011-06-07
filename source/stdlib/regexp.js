@@ -112,6 +112,7 @@ RegExp.prototype.exec = function (
                 var btinfo = context.btstack.pop();
 
                 cursor = btinfo[0];
+                next = cursor;
                 i = btinfo[1] + 1;
                 context.restore(btinfo[2]);
                 context.btactive = 0;

@@ -168,12 +168,13 @@ execUnit(43, "a+ \\bb+", "aaaaa bbb", "aaaaa bbb");
 execUnit(44, "a+\\Bb+", "aaaaabbb", "aaaaabbb");
 execUnit(45, "(x*)*", "xxx", ["xxx", "xxx"]);
 execUnit(46, "(((x*)*)*)*", "xxx", ["xxx", "xxx", "xxx", "xxx"]);
-//execUnit(47, "^(a+)\\1*,\\1+$", "aaaaaaaaaa,aaaaaaaaaaaaaaa", ["aaaaaaaaaa,aaaaaaaaaaaaaaa", "aaaaa"]);
+execUnit(47, "^(a+)\\1*,(?:\\1)+$", "aaaaaaaaaa,aaaaaaaaaaaaaaa", ["aaaaaaaaaa,aaaaaaaaaaaaaaa", "aaaaa"]);
 execUnit(48, "(?=(a+))a*b\\1", "baaabac", ["aba", "a"]);
 execUnit(49, "(?=(a+))", "baaabac", ["", "aaa"]);
 execUnit(50, "(?!foo).*", "foofoobar", "oofoobar");
 execUnit(51, "(.*?)a(?!(a+)b\\2c)\\2(.*)", "baaabaac", ["baaabaac", "ba", undefined, "abaac"]);
-//execUnit(52, "()\\1*", "", ["", ""]);
+execUnit(52, "()\\1*", "", ["", ""]);
 execUnit(53, "(a*)*", "b", ["",undefined]);
 execUnit(54, "(a*)b\\1+", "baaaac", ["b", ""]);
+execUnit(55, "()", "", ["", ""]);
 
