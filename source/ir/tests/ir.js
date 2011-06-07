@@ -275,6 +275,24 @@ tests.ir.forInStmt = function ()
 };
 
 /**
+For-in loop with a break statement
+*/
+tests.ir.forInBreak = function ()
+{
+    tests.ir.helpers.testSource(
+        "                                       \
+            function foo(table)                 \
+            {                                   \
+                for (var c in table)            \
+                {                               \
+                    break;                      \
+                }                               \
+            }                                   \
+        "
+    );
+};
+
+/**
 Continue and break labels
 */
 tests.ir.loopLabels = function ()

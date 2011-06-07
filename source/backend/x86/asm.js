@@ -340,7 +340,7 @@ x86.Assembler.prototype.immediateValue = function (value)
 };
 x86.Assembler.prototype.immediateValue.prototype = x86.Assembler.obj();
 /** x86 object type */
-x86.Assembler.prototype.immediateValue.prototype.type  = x86.type.IMM_VAL;
+x86.Assembler.prototype.immediateValue.prototype.type = x86.type.IMM_VAL;
 
 x86.Assembler.prototype.immediateValue.prototype.toString = function (verbose)
 {

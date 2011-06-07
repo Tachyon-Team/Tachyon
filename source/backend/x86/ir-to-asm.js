@@ -2056,7 +2056,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     {
         tltor.asm.mov(opnds[0], funcPtrReg);
         var funcPtr = funcPtrReg;
-    } else
+    } 
+    else
     {
         var funcPtr = opnds[0];
     }
@@ -2092,7 +2093,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             var arg = funcArgs[i];
 
             if (arg.type === x86.type.MEM ||
-                arg.type === x86.type.LINK && arg.width() === 64)
+                arg.type === x86.type.LINK && arg.width() === 64 ||
+                arg.type === x86.type.IMM_VAL && x86.isSigned32(arg.value) === false)
             {
                 if (arg.type === x86.type.MEM && arg.base === stack)
                 {
@@ -2108,8 +2110,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
             } 
             else
             {
-                tltor.asm.
-                mov(arg, mem(spoffset, stack), stack.width());
+                tltor.asm.mov(arg, mem(spoffset, stack), stack.width());
             }
         }
     }
