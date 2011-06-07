@@ -3091,6 +3091,7 @@ x86.Assembler.prototype.fpuReg = function (i)
             "ST(4)", "ST(5)", "ST(6)", "ST(7)"][i];
 }
 
+/* Not operational yet */
 x86.Assembler.prototype.fdumpStack = function (mem, base, width)
 {
     var step = width / 8;
