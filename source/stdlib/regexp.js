@@ -40,7 +40,92 @@
  * _________________________________________________________________________
  */
 
-function RegExp (pattern, flag)
+function RegExp (
+    pattern,
+    flags
+)
 {
+    this.source = pattern == undefined ? "" : pattern;
+    this.global = false;
+    this.ignoreCase = false;
+    this.multiline = false;
+    this.lastIndex = 0;
+
+    // TODO: SyntaxError throwing as defined in ECMA-262 15.10.4.1
+    if (typeof flags === "string")
+    {
+        for (var i = 0; i < flags.length; ++i)
+            if (flags.charCodeAt(i) == 103) // 'g'
+                this.global = true;
+            else if (flags.charCodeAt(i) == 105) // 'i'
+                this.ignoreCase = true;
+            else if (flags.charCodeAt(i) == 109) // 'm'
+                this.multiline = true;
+    }
+
+    var ast = new RegExpParser().parse(pattern); 
+    this.graph = new REAstToGraph().compile(ast, this.global, this.ignoreCase, this.multiline);
+}
+
+RegExp.prototype.exec = function (
+    input
+)
+{
+    var context = new REContext(input, this.graph.rootGroup);
+    var cursor = this.graph.head, next = this.graph.head;
+    var padding = this.lastIndex, i = 0;
+
+    while (next != null || padding < input.length || context.btstack.length > 0)
+    {
+        next = null;
+
+        for (; i < cursor.edges.length; ++i)
+        {
+            var contextSave = context.dump();
+            var btactive = context.btactive;
+
+            next = cursor.edges[i].exec(context);
+
+            if (next instanceof RENode)
+            {
+                if (i < cursor.edges.length - 1 && btactive == 0)
+                    context.btstack.push([cursor, i, contextSave]);
+                cursor = next;
+                i = 0;
+                break;
+            }
+        }
+
+        if (next == null)
+        {
+            if (cursor._final)
+            {
+                if (this.global)
+                    this.lastIndex = context.index;
+                return context.extractCaptures(input);
+            }
+
+            if (context.btstack.length > 0)
+            {
+                if (DEBUG)
+                    print("### backtracking ...");
+                var btinfo = context.btstack.pop();
+
+                cursor = btinfo[0];
+                i = btinfo[1] + 1;
+                context.restore(btinfo[2]);
+                context.btactive = 0;
+            }
+            else
+            {
+                i = 0;
+                cursor = this.graph.head;
+                context.index = ++padding;
+                context.activeCaps = [];
+            }
+        }
+    } 
+    this.lastIndex = 0;
+    return null;
 }
 

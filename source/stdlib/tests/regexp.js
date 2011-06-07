@@ -110,13 +110,12 @@ function execUnit (
     output
 )
 {
-    var ast = new RegExpParser().parse(pattern);
-    var graph = new REAstToGraph().compile(ast);
-    var matches = execre(input, graph);
+    var regexp = new RegExp(pattern);
+    var matches = regexp.exec(input);
 
     if (!assertEqual(matches, output))
     {
-        print(ast.pp());
+        print(new RegExpParser().parse(pattern).pp());
         print("*** test no " + no + " failed");
         printMatches(matches);
         throw 0;
@@ -140,13 +139,12 @@ execUnit(14, "^foo", "foo", "foo");
 execUnit(15, "^foo", " foo", null);
 execUnit(16, "^foo$", "foo", "foo");
 execUnit(17, "^foo$", "foo ", null);
-execUnit(17, "\\d+", "foobar42foo", "42");
-execUnit(18, "\\D+", "foobar42foo", "foobar");
-execUnit(19, "\\s+", "foobar  42foo", "  ");
-execUnit(20, "\\S+", "foobar  42foo", "foobar");
-execUnit(21, "\\w+", "foobar  42foo", "foobar");
-execUnit(22, "\\W+", "foobar  ?+=/42foo", "  ?+=/");
-execUnit(23, "éàöüÀ", "éàöüÀ", "éàöüÀ");
+execUnit(18, "\\d+", "foobar42foo", "42");
+execUnit(19, "\\D+", "foobar42foo", "foobar");
+execUnit(20, "\\s+", "foobar  42foo", "  ");
+execUnit(21, "\\S+", "foobar  42foo", "foobar");
+execUnit(22, "\\w+", "foobar  42foo", "foobar");
+execUnit(23, "\\W+", "foobar  ?+=/42foo", "  ?+=/");
 execUnit(24, "\\u00E9\\u00E0\\xEB", "éàë", "éàë");
 execUnit(25, "\\t\\n\\v\\f\\r", "\t\n\v\f\r", "\t\n\v\f\r");
 execUnit(26, "(z)((a+)?(b+)?(c))*", "zaacbbbcac", ["zaacbbbcac", "z", "ac", "a", undefined, "c"]);
@@ -163,5 +161,19 @@ execUnit(36, "(.)(.)(.)(.)(.)(.)(.)\\7\\6\\5\\4\\3\\2\\1", "abcdefgabcdefg", nul
 execUnit(37, "(x+x+)+y", "xxxxxxxxxxxxy", ["xxxxxxxxxxxxy", "xxxxxxxxxxxx"]);
 execUnit(38, "(x+x+)+y", "xxxxx", null);
 execUnit(39, "^(x?)(x?)(x?).*;(?:\\1|\\2|\\3x),(?:\\1|\\2x|\\3),(?:\\1x|\\2x|\\3),(?:\\1x|\\2x|\\3x),", "xxx;x,x,x,x,", ["xxx;x,x,x,x,", "x", "", "x"]);
-execUnit(40, "^(a+)\\1+,\\1+$", "aaaaaaaaaa,aaaaaaaaaaaaaaa", ["aaaaaaaaaa,aaaaaaaaaaaaaaa", "aaaaa"]);
+execUnit(40, "(a*)(b*)", "aaaabbbb", ["aaaabbbb", "aaaa", "bbbb"]);
+execUnit(41, "(a*?)(b*?)", "aaaabbbb", ["", "", ""]);
+execUnit(42, "(a*?)(b+?)", "aaaabbbb", ["aaaab", "aaaa", "b"]);
+execUnit(43, "a+ \\bb+", "aaaaa bbb", "aaaaa bbb");
+execUnit(44, "a+\\Bb+", "aaaaabbb", "aaaaabbb");
+execUnit(45, "(x*)*", "xxx", ["xxx", "xxx"]);
+execUnit(46, "(((x*)*)*)*", "xxx", ["xxx", "xxx", "xxx", "xxx"]);
+//execUnit(47, "^(a+)\\1*,\\1+$", "aaaaaaaaaa,aaaaaaaaaaaaaaa", ["aaaaaaaaaa,aaaaaaaaaaaaaaa", "aaaaa"]);
+execUnit(48, "(?=(a+))a*b\\1", "baaabac", ["aba", "a"]);
+execUnit(49, "(?=(a+))", "baaabac", ["", "aaa"]);
+execUnit(50, "(?!foo).*", "foofoobar", "oofoobar");
+execUnit(51, "(.*?)a(?!(a+)b\\2c)\\2(.*)", "baaabaac", ["baaabaac", "ba", undefined, "abaac"]);
+execUnit(52, "()\\1*", "", ["", ""]);
+execUnit(53, "(a*)*", "b", ["",undefined]);
+execUnit(54, "(a*)b\\1+", "baaaac", ["b", ""]);
 

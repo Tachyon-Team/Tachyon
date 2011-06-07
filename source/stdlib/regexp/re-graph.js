@@ -40,7 +40,7 @@
  * _________________________________________________________________________
  */
 
-var DEBUG = false;
+var DEBUG = true;
 
 function REContext (input, rootGroup)
 {
@@ -49,11 +49,17 @@ function REContext (input, rootGroup)
     this.rootGroup = rootGroup;
     this.btstack = [];
     this.activeCaps = [];
+    this.btactive = 0;
 }
 
 REContext.prototype.current = function ()
 {
     return this.input.charCodeAt(this.index);    
+}
+
+REContext.prototype.lookahead = function (n)
+{
+    return this.input.charCodeAt(this.index + n);
 }
 
 REContext.prototype.eol = function ()
@@ -228,12 +234,43 @@ RENode.prototype.add = function (edges)
         this.edges.push(edges[i]);
 }
 
-function RELoopEdge (dest)
+function RELoopContext ()
+{
+    this.lastIndex = -1;
+}
+
+function RELoopPrefixEdge (dest, loopContext)
 {
     this.dest = dest;
+    this.loopContext = loopContext;
+}
+
+RELoopPrefixEdge.prototype.exec = function (context)
+{
+    this.loopContext.lastIndex = context.index;
+    return this.dest;
+}
+
+function RELoopEdge (dest, loopContext)
+{
+    this.dest = dest;
+    this.loopContext = loopContext;
 }
 
 RELoopEdge.prototype.exec = function (context)
+{
+    if (context.index == this.loopContext.lastIndex)
+        return null;
+    return this.dest;
+}
+
+function RELoopExitEdge (dest, loopContext)
+{
+    this.dest = dest;
+    this.loopContext = loopContext;
+}
+
+RELoopExitEdge.prototype.exec = function (context)
 {
     return this.dest;
 }
@@ -398,12 +435,7 @@ REBackRefMatchEdge.prototype.exec = function (context)
         return null;
 
     if (capture.start == null)
-    {
-        if (capture.activated)
-            return this.dest;
-        else
-            return null;
-    }
+        return this.dest;
 
     for (var i = capture.start; i <= capture.end; ++i)
     {
@@ -429,6 +461,26 @@ REBOLAssertEdge.prototype.exec = function (context)
     return null;
 }
 
+function REMultilineBOLAssertEdge (dest)
+{
+    this.dest = dest;
+}
+
+REMultilineBOLAssertEdge.prototype.exec = function (context)
+{
+    if (DEBUG)
+        print(context.index + ": exec multiline beginning of line assertion");
+
+    if (context.index == 0)
+        return this.dest;
+
+    if (context.lookahead(-1) == 10 || context.lookahead(-1) == 13 ||
+        context.lookahead(-1) == 8232 || context.lookahead(-1) == 8233)
+        return this.dest;
+
+    return null;
+}
+
 function REEOLAssertEdge (dest)
 {
     this.dest = dest;
@@ -444,76 +496,143 @@ REEOLAssertEdge.prototype.exec = function (context)
     return null;
 }
 
-function REAssertOpenEdge (dest)
+function REMultilineEOLAssertEdge (dest)
 {
     this.dest = dest;
+}
+
+REMultilineEOLAssertEdge.prototype.exec = function (context)
+{
+    if (DEBUG)
+        print(context.index + ": exec multiline beginning of line assertion");
+
+    if (context.index == context.input.length)
+        return this.dest;
+
+    // Is current character a LineTerminator ?
+    if (context.current() == 10 || context.current() == 13 ||
+        context.current() == 8232 || context.current() == 8233)
+        return this.dest;
+
+    return null;
+}
+
+function REWordBoundary (dest, positive)
+{
+    this.dest = dest;
+    this.positive = positive;
+}
+
+REWordBoundary.prototype.exec = function (context)
+{
+    var a = this.isWordChar(context.lookahead(-1));
+    var b = this.isWordChar(context.current());
+    if ((a != b) && this.positive)
+        return this.dest;
+    else if ((a == b) && !this.positive)
+        return this.dest;
+    return null;
+}
+
+REWordBoundary.prototype.isWordChar = function (charCode)
+{
+    return ((charCode >= 97 && charCode <= 122) ||
+            (charCode >= 65 && charCode <= 90) ||
+            (charCode >= 48 && charCode <= 57) ||
+            charCode == 95);
+}
+
+function REAssertContext ()
+{
+    this.indexSave = -1;
+    this.activeCaps = [];
+}
+
+function REAssertOpenEdge (dest, assertContext)
+{
+    this.dest = dest;
+    this.assertContext = assertContext;
 }
 
 REAssertOpenEdge.prototype.exec = function (context)
 {
+    if (DEBUG)
+        print(context.index + ": exec assert open edge");
+
+    context.btactive++;
+    // Desactivate and save captures.
+    while (context.activeCaps.length > 0)
+        this.assertContext.activeCaps.push(context.activeCaps.pop());
+    this.assertContext.indexSave = context.index;
     return this.dest;
 }
 
-function REAssertCloseEdge (dest)
+function REAssertCloseEdge (dest, assertContext)
 {
     this.dest = dest;
+    this.assertContext = assertContext;
 }
 
 REAssertCloseEdge.prototype.exec = function (context)
 {
+    if (DEBUG)
+        print(context.index + ": exec assert close edge");
+
+    // Restore active captures.
+    for (var i = 0; i < this.assertContext.activeCaps.length; ++i)
+        context.activeCaps.push(this.assertContext.activeCaps[i]);
+    context.index = this.assertContext.indexSave;
+    context.btactive--; 
     return this.dest;
 }
 
-function execre (input, graph)
+function RENegAssertContext ()
 {
-    var context = new REContext(input, graph.rootGroup);
-    var cursor = graph.head, next = graph.head;
-    var padding = 0, i = 0;
+    this.matchSuccess = false;
+}
 
-    while (next != null || padding < input.length || context.btstack.length > 0)
-    {
-        next = null;
+function RENegAssertOpenEdge (dest, assertContext)
+{
+    this.dest = dest;
+    this.assertContext = assertContext;
+}
 
-        for (; i < cursor.edges.length; ++i)
-        {
-            var contextSave = context.dump();
+RENegAssertOpenEdge.prototype.exec = function (context)
+{
+    if (DEBUG)
+        print(context.index + ": exec neg assert open edge");
 
-            next = cursor.edges[i].exec(context);
+    this.assertContext.matchSuccess = false;
+    return this.dest;
+}
 
-            if (next instanceof RENode)
-            {
-                if (i < cursor.edges.length - 1)
-                    context.btstack.push([cursor, i, contextSave]);
-                cursor = next;
-                i = 0;
-                break;
-            }
-        }
+function RENegAssertOutEdge (dest, assertContext)
+{
+    this.dest = dest;
+    this.assertContext = assertContext;
+}
 
-        if (next == null)
-        {
-            if (cursor._final)
-                return context.extractCaptures(input);
+RENegAssertOutEdge.prototype.exec = function (context)
+{
+    if (DEBUG)
+        print(context.index + ": exec neg assert out edge");
 
-            if (context.btstack.length > 0)
-            {
-                if (DEBUG)
-                    print("### backtracking ...");
-                var btinfo = context.btstack.pop();
+    if (this.assertContext.matchSuccess)
+        return null;
+    return this.dest;
+}
 
-                cursor = btinfo[0];
-                i = btinfo[1] + 1;
-                context.restore(btinfo[2]);
-            }
-            else
-            {
-                i = 0;
-                cursor = graph.head;
-                context.index = ++padding;
-                context.activeCaps = [];
-            }
-        }
-    } 
+function RENegAssertMatchEdge (assertContext)
+{
+    this.assertContext = assertContext;
+}
+
+RENegAssertMatchEdge.prototype.exec = function (context)
+{
+    if (DEBUG)
+        print(context.index + ": exec neg assert match edge");
+
+    this.assertContext.matchSuccess = true;
     return null;
 }
 

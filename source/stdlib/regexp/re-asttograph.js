@@ -49,7 +49,10 @@ function REGraph (rootGroup, head)
 function REAstToGraph() {}
 
 REAstToGraph.prototype.compile = function (
-    ast
+    ast,
+    global,
+    ignoreCase,
+    multiline
 )
 {
     var head = new RENode();
@@ -57,7 +60,10 @@ REAstToGraph.prototype.compile = function (
     this.rootGroup = new REGroup(rootCap);
     this.groupParents = [this.rootGroup];
     this.groupDisjunction = [];
-
+    this.global = global;
+    this.ignoreCase = ignoreCase;
+    this.multiline = multiline;
+    
     head.add(this.compileDisjunction(ast, [], this.rootGroup));
     return new REGraph(this.rootGroup, head);
 }
@@ -134,16 +140,27 @@ REAstToGraph.prototype.compileTerm = function (
 
         if (max < 0)
         {
-            // Loop.
-            var node = new RENode();
-            var loopEdge = new RELoopEdge(node);
+            // Build atom loop. 
+            var loopContext = new RELoopContext();
+            var loopNode = new RENode();
+            var prefixNode = new RENode();
+            var exitNode = new RENode();
+
+            var enterEdge = new RENullEdge(loopNode);
+            var prefixEdge = new RELoopPrefixEdge(prefixNode, loopContext);
+            var loopEdge = new RELoopEdge(loopNode, loopContext);
+            var exitEdge = new RELoopExitEdge(exitNode, loopContext);
             var atomEdges = this.compileAtom(astNode.prefix, [loopEdge], group);
 
             if (greedy)
-                node.add(atomEdges.concat(edges));
+                atomEdges.push(exitEdge);
             else
-                node.add(edges.concat(atomEdges));
-            edges = [loopEdge];
+                atomEdges.unshift(exitEdge);
+
+            prefixNode.add(atomEdges);
+            loopNode.add([prefixEdge]);
+            exitNode.add(edges);
+            edges = [enterEdge];
 
             for (; min > 0; --min)
                 edges = this.compileAtom(astNode.prefix, edges, group);
@@ -186,7 +203,22 @@ REAstToGraph.prototype.compileAtom = function (
     if (astNode.value instanceof RegExpPatternCharacter)
     {
         var node = new RENode();
-        var edge = new RECharMatchEdge(node, astNode.value.value);
+        var edge, charCode = astNode.value.value;
+        
+        if (this.ignoreCase)
+        {
+            if (charCode >= 97 && charCode <= 122)
+                egde = new RECharMatchEdge(node, [charCode - 32, charCode]);
+            else if (charCode >= 65 && charCode <= 90)
+                egde = new RECharMatchEdge(node, [charCode, charCode + 32]);
+            else 
+                edge = new RECharMatchEdge(node, charCode);
+        }
+        else
+        {
+            edge = new RECharMatchEdge(node, charCode);
+        }
+        
         node.add(outEdges);
         return [edge];
     }
@@ -226,19 +258,77 @@ REAstToGraph.prototype.compileAssertion = function (
     outEdges
 )
 {
-    var node = new RENode();
-    var edge;
+    if (astNode.value instanceof RegExpDisjunction)
+    {
+        var group = new REGroup();
+        var groupParent = this.groupParents[this.groupParents.length - 1];
+        groupParent.subgroups.push(group);
+        this.groupParents.push(group);
+        this.groupDisjunction[astNode.value.captureIndex] = group;
+        var openEdge;
 
-    if (astNode.value == 94) // '^'
-    {
-        edge = new REBOLAssertEdge(node);
+        if (astNode.positive)
+        {
+            var assertContext = new REAssertContext();
+            var openNode = new RENode();
+            var closeNode = new RENode();
+            
+            openEdge = new REAssertOpenEdge(openNode, assertContext);        
+            var closeEdge = new REAssertCloseEdge(closeNode, assertContext);        
+            var assertEdges = this.compileDisjunction(astNode.value, [closeEdge], group);
+
+            openNode.add(assertEdges);
+            closeNode.add(outEdges);
+        }
+        else
+        {
+            var negAssertContext = new RENegAssertContext();
+            var choiceNode = new RENode();
+            var openNode = new RENode();
+            var outNode = new RENode();
+
+            openEdge = new RENegAssertOpenEdge(choiceNode, negAssertContext);
+            var assertOpenEdge = new REAssertOpenEdge(openNode, new REAssertContext());
+            var negMatchEdge = new RENegAssertMatchEdge(negAssertContext);
+            var negOutEdge = new RENegAssertOutEdge(outNode, negAssertContext);
+            var assertEdges = this.compileDisjunction(astNode.value, [negMatchEdge], group);
+
+            assertEdges.push(negOutEdge);
+            choiceNode.add([assertOpenEdge, negOutEdge]);
+            openNode.add(assertEdges);
+            outNode.add(outEdges);
+        }
+
+        this.groupParents.pop();
+        return [openEdge];
     }
-    else if (astNode.value == 36) // '$'
+    else
     {
-        edge = new REEOLAssertEdge(node);
+        var node = new RENode();
+        var edge;
+
+        if (astNode.value == 94) // '^'
+        {
+            if (this.multiline)
+                edge = new REMultilineBOLAssertEdge(node);
+            else
+                edge = new REBOLAssertEdge(node);
+        }
+        else if (astNode.value == 36) // '$'
+        {
+            if (this.multiline)
+                edge = new REMultilineEOLAssertEdge(node);
+            else
+                edge = new REEOLAssertEdge(node);
+        }
+        else if (astNode.value == 98) // 'b' | 'B'
+        {
+            edge = new REWordBoundary(node, astNode.positive);
+        }
+
+        node.add(outEdges);
+        return [edge];
     }
-    node.add(outEdges);
-    return [edge];
 }
 
 function printArray(array)

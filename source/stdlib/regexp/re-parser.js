@@ -315,8 +315,11 @@ RegExpParser.prototype.parseTerm = function ()
         case 92: // '\'
         this.advance();
         // \b and \B are treated as an assertion
-        if (this.current() == 98 || this.current() == 66) { // 'b' | 'B'
-            node.prefix = new RegExpAssertion( this.current(), true );
+        if (this.current() == 98) { // 'b' 
+            node.prefix = new RegExpAssertion( 98, true );
+            this.advance();
+        } else if (this.current() == 66) { // 'B' 
+            node.prefix = new RegExpAssertion( 98, false );
             this.advance();
         } else {
             node.prefix = new RegExpAtom( this.parseAtomEscape() );
