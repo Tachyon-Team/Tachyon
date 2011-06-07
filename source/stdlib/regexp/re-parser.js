@@ -48,19 +48,18 @@
     Olivier Matz
 */
 
-function RegExpParser () {}
+function REParser () {}
 
 /**
     Parse given pattern and returns corresponding AST.
-
     @params: {String} pattern
 */
-RegExpParser.prototype.parse = function (
+REParser.prototype.parse = function (
     pattern
 )
 {
     this.pattern = pattern;
-    // Init current char code.
+    // Init current char cursor.
     this.index = -1;
     this.advance();
     // Register the global capture.
@@ -71,15 +70,15 @@ RegExpParser.prototype.parse = function (
 /**
     Returns current char code.
 */ 
-RegExpParser.prototype.current = function ()
+REParser.prototype.current = function ()
 {
     return this.curCharCode;
 } 
 
 /**
-    Advance one character.
+    Advance cursor one character.
 */
-RegExpParser.prototype.advance = function ()
+REParser.prototype.advance = function ()
 {
     this.index++;
     if (this.index < this.pattern.length)
@@ -89,42 +88,16 @@ RegExpParser.prototype.advance = function ()
 }
 
 /**
-    Returns a string representation of the AST.
-*/
-RegExpParser.prototype.toString = function ()
-{
-    return this.tree.pp();
-}
-
-/**
-    Generate level string for pretty print.
-*/
-function genLevel (
-    level
-)
-{
-    var s = "";
-
-    for (var i = 0; i < level; i++)
-        s += " | ";
-    if (level > 0)
-        s += " ";
-    return s;
-}
-
-/**
     Disjunction ::
         Alternative
         Alternative | Disjunction
 
     @param {Boolean} sub, true if the disjunction is a sub-expression, false if root.
     @param {Integer} type, 0 :: capture
-                           1 :: positive lookahead
-                           2 :: negative lookahead
                            3 :: no capture
     @params captureIndex, ordered index of the capture.
 */
-function RegExpDisjunction (
+function REDisjunction (
     sub,
     type,
     captureIndex
@@ -138,10 +111,9 @@ function RegExpDisjunction (
 
 /**
     Disjunction pretty print.
-
     @params: {Integer} level, disjunction's depth in the tree.
 */
-RegExpDisjunction.prototype.pp = function (
+REDisjunction.prototype.pp = function (
     level
 )
 {
@@ -158,13 +130,13 @@ RegExpDisjunction.prototype.pp = function (
 /**
     Parse a disjunction from the current character. 
 */
-RegExpParser.prototype.parseDisjunction = function (
+REParser.prototype.parseDisjunction = function (
     sub,
     type,
     captureIndex
 )
 {
-    var node = new RegExpDisjunction(sub, type, captureIndex);
+    var node = new REDisjunction(sub, type, captureIndex);
 
     while (true)
     {
@@ -196,17 +168,16 @@ RegExpParser.prototype.parseDisjunction = function (
       [empty]
       Alternative Term
 */
-function RegExpAlternative ()
+function REAlternative ()
 {
     this.terms = [];
 }
 
 /**
     Alternative pretty print.
-
     @params: {Integer} level, alternative's depth in the tree.
 */
-RegExpAlternative.prototype.pp = function (level)
+REAlternative.prototype.pp = function (level)
 {
     var s = genLevel(level) + "Alternative\n";
 
@@ -218,9 +189,9 @@ RegExpAlternative.prototype.pp = function (level)
 /**
     Parse an alternative from the current character. 
 */
-RegExpParser.prototype.parseAlternative = function ()
+REParser.prototype.parseAlternative = function ()
 {
-    var node = new RegExpAlternative();
+    var node = new REAlternative();
 
     while (true)
     {
@@ -232,7 +203,7 @@ RegExpParser.prototype.parseAlternative = function ()
             return node;
 
             default:
-            node.terms.push( this.parseTerm() );
+            node.terms.push(this.parseTerm());
         }
     }
 }
@@ -243,14 +214,13 @@ RegExpParser.prototype.parseAlternative = function ()
       Atom
       Atom Quantifier
 */
-function RegExpTerm () {}
+function RETerm () {}
 
 /**
     Term pretty print.
-
     @params: {Integer} level, term's depth in the tree.
 */
-RegExpTerm.prototype.pp = function (level)
+RETerm.prototype.pp = function (level)
 {
     var s = genLevel(level) + "Term\n";
 
@@ -264,9 +234,9 @@ RegExpTerm.prototype.pp = function (level)
 /**
     Parse a term from the current character. 
 */
-RegExpParser.prototype.parseTerm = function ()
+REParser.prototype.parseTerm = function ()
 {
-    var node = new RegExpTerm();
+    var node = new RETerm();
 
     switch (this.current())
     {
@@ -276,11 +246,11 @@ RegExpParser.prototype.parseTerm = function ()
         // Assertion parsing.
         case 94: // '^'
         case 36: // '$'
-        node.prefix = new RegExpAssertion( this.current(), true );
+        node.prefix = new REAssertion( this.current(), true );
         this.advance();
         return node;
 
-        // Sub-disjunction
+        // Sub-disjunction (either atom or assertion).
         case 40: // '('
         this.advance();
         if (this.current() == 63) // '?'
@@ -289,17 +259,17 @@ RegExpParser.prototype.parseTerm = function ()
             if (this.current() == 61) // '='
             {
                 this.advance();
-                node.prefix = new RegExpAssertion( this.parseDisjunction(true, 3), true );
+                node.prefix = new REAssertion(this.parseDisjunction(true, 3), true);
             }
             else if (this.current() == 33) // '!'
             {
                 this.advance();
-                node.prefix = new RegExpAssertion( this.parseDisjunction(true, 3), false );
+                node.prefix = new REAssertion(this.parseDisjunction(true, 3), false);
             }
             else if (this.current() == 58) // ':'
             {
                 this.advance();
-                node.prefix = new RegExpAtom( this.parseDisjunction(true, 3) );
+                node.prefix = new REAtom(this.parseDisjunction(true, 3));
             }
             else
                 this.error("invalid group");
@@ -307,7 +277,7 @@ RegExpParser.prototype.parseTerm = function ()
         else
         {
             this.ncapture++;
-            node.prefix = new RegExpAtom( this.parseDisjunction(true, 0, this.ncapture - 1) );
+            node.prefix = new REAtom( this.parseDisjunction(true, 0, this.ncapture - 1) );
         }
         break;
 
@@ -316,22 +286,22 @@ RegExpParser.prototype.parseTerm = function ()
         this.advance();
         // \b and \B are treated as an assertion
         if (this.current() == 98) { // 'b' 
-            node.prefix = new RegExpAssertion( 98, true );
+            node.prefix = new REAssertion( 98, true );
             this.advance();
         } else if (this.current() == 66) { // 'B' 
-            node.prefix = new RegExpAssertion( 98, false );
+            node.prefix = new REAssertion( 98, false );
             this.advance();
         } else {
-            node.prefix = new RegExpAtom( this.parseAtomEscape() );
+            node.prefix = new REAtom( this.parseAtomEscape() );
         }
         break;
 
         // Atom
         case 46: // '.'
         // Equivalent to everything except newline.
-        var cc = new RegExpCharacterClass(1);
-        cc.classAtoms.push( new RegExpClassAtom( new RegExpPatternCharacter(10) ) );
-        node.prefix = new RegExpAtom(cc);
+        var cc = new RECharacterClass(1);
+        cc.classAtoms.push( new REClassAtom( new REPatternCharacter(10) ) );
+        node.prefix = new REAtom(cc);
         this.advance();
         break;
 
@@ -340,7 +310,7 @@ RegExpParser.prototype.parseTerm = function ()
 
         // CharacterClass
         case 91: // '['
-        node.prefix = new RegExpAtom( this.parseCharacterClass() );
+        node.prefix = new REAtom( this.parseCharacterClass() );
         break;
 
         // Skip terminator and quantifier since it will be parsed just below.
@@ -355,7 +325,7 @@ RegExpParser.prototype.parseTerm = function ()
 
         // PatternCharacter
         default:
-        node.prefix = new RegExpAtom( new RegExpPatternCharacter( this.current() ) );
+        node.prefix = new REAtom( new REPatternCharacter( this.current() ) );
         this.advance();
         break;
     }
@@ -367,7 +337,7 @@ RegExpParser.prototype.parseTerm = function ()
         case 43: // '+'
         case 63: // '?'
         case 123: // '{'
-        if (node.prefix == undefined || node.prefix instanceof RegExpAssertion)
+        if (node.prefix == undefined || node.prefix instanceof REAssertion)
             this.error("invalid quantifier without atom");
         else
             node.quantifier = this.parseQuantifier();
@@ -375,7 +345,7 @@ RegExpParser.prototype.parseTerm = function ()
 
     if (node.quantifier == undefined)
     {
-        node.quantifier = new RegExpQuantifier();
+        node.quantifier = new REQuantifier();
         node.quantifier.greedy = true;
         node.quantifier.min = 1;
         node.quantifier.max = 1;
@@ -392,9 +362,9 @@ RegExpParser.prototype.parseTerm = function ()
       (?= Disjunction)
       (?! Disjunction)
 
-      @params {Integer | RegExpDisjunction} value
+      @params {Integer | REDisjunction} value
 */
-function RegExpAssertion(
+function REAssertion(
     value,
     positive
 )
@@ -403,11 +373,11 @@ function RegExpAssertion(
     this.positive = positive;
 }
 
-RegExpAssertion.prototype.pp = function (level)
+REAssertion.prototype.pp = function (level)
 {
     var s = genLevel(level) + "Assertion";
 
-    if (this.value instanceof RegExpDisjunction)
+    if (this.value instanceof REDisjunction)
         s += "\n" + this.value.pp(level + 1);
     else
         s += " " + this.value + "\n";
@@ -428,14 +398,14 @@ RegExpAssertion.prototype.pp = function (level)
         { DecimalDigits , DecimalDigits }
 */
 
-function RegExpQuantifier () {}
+function REQuantifier () {}
 
 /**
     Quantifier pretty print.
 
     @params: {Integer} level, term's depth in the tree.
 */
-RegExpQuantifier.prototype.pp = function(level)
+REQuantifier.prototype.pp = function(level)
 {
     return genLevel(level) + "Quantifier (min " + this.min + ", max " + (this.max == -1 ? "inf" : this.max) + ")\n";
 }
@@ -443,9 +413,9 @@ RegExpQuantifier.prototype.pp = function(level)
 /**
     Parse quantifier from current character.
 */
-RegExpParser.prototype.parseQuantifier = function ()
+REParser.prototype.parseQuantifier = function ()
 {
-    var node = new RegExpQuantifier();
+    var node = new REQuantifier();
     node.greedy = true;
 
     switch (this.current())
@@ -510,9 +480,9 @@ RegExpParser.prototype.parseQuantifier = function ()
         ( Disjunction )
         (?: Disjunction )
 
-    @params: {Integer, RegExpDisjunction, RegExpAssertion} value 
+    @params: {Integer, REDisjunction, REAssertion} value 
 */
-function RegExpAtom(
+function REAtom(
     value
 )
 {
@@ -524,7 +494,7 @@ function RegExpAtom(
 
     @params: {Integer} level, atom's depth in the tree.
 */
-RegExpAtom.prototype.pp = function (
+REAtom.prototype.pp = function (
     level
 )
 {
@@ -536,7 +506,7 @@ RegExpAtom.prototype.pp = function (
 
     @params: {Integer} value, character code.
 */
-function RegExpPatternCharacter(
+function REPatternCharacter(
     value
 )
 {
@@ -548,7 +518,7 @@ function RegExpPatternCharacter(
 
    @params: {Integer} level, pattern character's depth in the tree.
 */
-RegExpPatternCharacter.prototype.pp = function(
+REPatternCharacter.prototype.pp = function(
     level
 )
 {
@@ -558,7 +528,7 @@ RegExpPatternCharacter.prototype.pp = function(
 /**
     BackReference
 */
-function RegExpBackReference(index)
+function REBackReference(index)
 {
     this.index = index;
 }
@@ -568,61 +538,61 @@ function RegExpBackReference(index)
 
    @params: {Integer} level, back reference's depth in the tree.
 */
-RegExpBackReference.prototype.pp = function (level)
+REBackReference.prototype.pp = function (level)
 {
     return genLevel(level) + "BackReference : " + this.index + "\n";
 }
 
-function RegExpControlSequence(value)
+function REControlSequence(value)
 {
     this.value = value;
 }
 
-RegExpControlSequence.prototype.pp = function (level)
+REControlSequence.prototype.pp = function (level)
 {
     return genLevel(level) + "ControlSequence : " + this.value + "\n";
 }
 
-RegExpParser.prototype.parseAtomEscape = function ()
+REParser.prototype.parseAtomEscape = function ()
 {
     var cc;
 
     if (this.current() >= 48 && this.current() <= 57) {
-        return new RegExpBackReference( this.parseDecimalDigit() );
+        return new REBackReference( this.parseDecimalDigit() );
     } else {
         switch (this.current())
         {
             case 100: // 'd'
             case 68: // 'D'
-                cc = new RegExpCharacterClass( this.current() == 100 ? 0 : 1);
+                cc = new RECharacterClass( this.current() == 100 ? 0 : 1);
                 this.advance();
-                cc.classAtoms.push( new RegExpClassAtom( new RegExpPatternCharacter(48), new RegExpPatternCharacter(57)) );
+                cc.classAtoms.push( new REClassAtom( new REPatternCharacter(48), new REPatternCharacter(57)) );
                 return cc;
             case 115: // 's'
             case 83: // 'S'
-                cc = new RegExpCharacterClass( this.current() == 115 ? 0 : 1);
+                cc = new RECharacterClass( this.current() == 115 ? 0 : 1);
                 this.advance();
                 // Whitespace characters.
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(9)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(11)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(12)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(32)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(160)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(65279)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(9)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(11)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(12)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(32)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(160)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(65279)) );
                 // Line terminator characters.
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(10)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(13)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(8232)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(8233)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(10)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(13)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(8232)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(8233)) );
                 return cc;
             case 119: // 'w'
             case 87: // 'W'
-                cc = new RegExpCharacterClass( this.current() == 119 ? 0 : 1);
+                cc = new RECharacterClass( this.current() == 119 ? 0 : 1);
                 this.advance();
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(65), new RegExpPatternCharacter(90)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(97), new RegExpPatternCharacter(122)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(48), new RegExpPatternCharacter(57)) );
-                cc.classAtoms.push( new RegExpClassAtom(new RegExpPatternCharacter(95)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(65), new REPatternCharacter(90)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(97), new REPatternCharacter(122)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(48), new REPatternCharacter(57)) );
+                cc.classAtoms.push( new REClassAtom(new REPatternCharacter(95)) );
                 return cc;
 
             case 99: // 'c'
@@ -633,7 +603,7 @@ RegExpParser.prototype.parseAtomEscape = function ()
             {
                 var c = this.current();
                 this.advance();
-                return new RegExpControlSequence( new RegExpPatternCharacter(c) );
+                return new REControlSequence( new REPatternCharacter(c) );
             } 
             else
             {
@@ -644,44 +614,44 @@ RegExpParser.prototype.parseAtomEscape = function ()
             case 120: // 'x'
             // Parse hexadecimal sequence.
             this.advance();
-            return new RegExpPatternCharacter( this.parseHexadecimalSequence(2) );
+            return new REPatternCharacter( this.parseHexadecimalSequence(2) );
 
             case 117: // 'u'
             // Parse unicode hexadecimal sequence.
             this.advance();
-            return new RegExpPatternCharacter( this.parseHexadecimalSequence(4) );
+            return new REPatternCharacter( this.parseHexadecimalSequence(4) );
 
             case 116: // 't'
             this.advance();
-            return new RegExpPatternCharacter(9);
+            return new REPatternCharacter(9);
 
             case 110: // 'n'
             this.advance();
-            return new RegExpPatternCharacter(10);
+            return new REPatternCharacter(10);
 
             case 118: // 'v'
             this.advance();
-            return new RegExpPatternCharacter(11);
+            return new REPatternCharacter(11);
 
             case 102: // 'f'
             this.advance();
-            return new RegExpPatternCharacter(12);
+            return new REPatternCharacter(12);
 
             case 114: // 'r'
             this.advance();
-            return new RegExpPatternCharacter(13);
+            return new REPatternCharacter(13);
 
             default:
             var c = this.current();
             this.advance();
-            return new RegExpPatternCharacter(c);
+            return new REPatternCharacter(c);
         }
     }
 
     return node;
 }
 
-RegExpParser.prototype.parseHexadecimalSequence = function (size)
+REParser.prototype.parseHexadecimalSequence = function (size)
 {
     var value = 0;
 
@@ -707,13 +677,13 @@ RegExpParser.prototype.parseHexadecimalSequence = function (size)
     @param type : 0 if the character class is inclusive.
                   1 if the character class is exclusive.
 */
-function RegExpCharacterClass(type)
+function RECharacterClass(type)
 {
     this.classAtoms = [];
     this.type = type;
 }
 
-RegExpCharacterClass.prototype.pp = function (level)
+RECharacterClass.prototype.pp = function (level)
 {
     var s = genLevel(level) + "CharacterClass " + (this.type == 0 ? "inclusive" : "exclusive") + "\n";
 
@@ -722,9 +692,9 @@ RegExpCharacterClass.prototype.pp = function (level)
     return s;
 }
 
-RegExpParser.prototype.parseCharacterClass = function ()
+REParser.prototype.parseCharacterClass = function ()
 {
-    var node = new RegExpCharacterClass(0);
+    var node = new RECharacterClass(0);
 
     this.advance(); // consume [
     if (this.current() == 94) // '^'
@@ -752,7 +722,7 @@ RegExpParser.prototype.parseCharacterClass = function ()
     }
 }
 
-function RegExpClassAtom(
+function REClassAtom(
     min,
     max
 )
@@ -766,7 +736,7 @@ function RegExpClassAtom(
 
     @params: {Integer} level, class atom's depth in the tree.
 */
-RegExpClassAtom.prototype.pp = function (level)
+REClassAtom.prototype.pp = function (level)
 {
     var s = genLevel(level) + "ClassAtom\n";
 
@@ -779,9 +749,9 @@ RegExpClassAtom.prototype.pp = function (level)
     return s;
 }
 
-RegExpParser.prototype.parseClassAtom = function ()
+REParser.prototype.parseClassAtom = function ()
 {
-    var node = new RegExpClassAtom();
+    var node = new REClassAtom();
 
     switch (this.current())
     {
@@ -794,7 +764,7 @@ RegExpParser.prototype.parseClassAtom = function ()
         break;
 
         default:
-        node.min = new RegExpPatternCharacter( this.current() );
+        node.min = new REPatternCharacter( this.current() );
         this.advance();
     }
 
@@ -812,14 +782,14 @@ RegExpParser.prototype.parseClassAtom = function ()
             break;
 
             default:
-            node.max = new RegExpPatternCharacter( this.current() );
+            node.max = new REPatternCharacter( this.current() );
             this.advance();
         }
     }
     return node;
 }
 
-RegExpParser.prototype.parseDecimalDigit = function ()
+REParser.prototype.parseDecimalDigit = function ()
 {
     var value = 0;
 
@@ -830,4 +800,21 @@ RegExpParser.prototype.parseDecimalDigit = function ()
     }
     return value;
 }
+
+/**
+    Generate level string for pretty print.
+*/
+function genLevel (
+    level
+)
+{
+    var s = "";
+
+    for (var i = 0; i < level; i++)
+        s += " | ";
+    if (level > 0)
+        s += " ";
+    return s;
+}
+
 

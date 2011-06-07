@@ -63,7 +63,7 @@ function RegExp (
                 this.multiline = true;
     }
 
-    var ast = new RegExpParser().parse(pattern); 
+    var ast = new REParser().parse(pattern); 
     this.graph = new REAstToGraph().compile(ast, this.global, this.ignoreCase, this.multiline);
 }
 

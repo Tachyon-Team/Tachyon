@@ -40,7 +40,7 @@
  * _________________________________________________________________________
  */
 
-var DEBUG = true;
+var DEBUG = false;
 
 function REContext (input, rootGroup)
 {

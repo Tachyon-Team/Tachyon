@@ -109,7 +109,7 @@ REAstToGraph.prototype.compileTerm = function (
     outEdges
 )
 {
-    if (astNode.prefix instanceof RegExpAtom)
+    if (astNode.prefix instanceof REAtom)
     {
         var min = astNode.quantifier.min;
         var max = astNode.quantifier.max;
@@ -119,7 +119,7 @@ REAstToGraph.prototype.compileTerm = function (
         var group = undefined;
         var newGroup = false;
 
-        if (astNode.prefix.value instanceof RegExpDisjunction)
+        if (astNode.prefix.value instanceof REDisjunction)
         {
             group = this.groupDisjunction[astNode.prefix.value.captureIndex];
 
@@ -188,7 +188,7 @@ REAstToGraph.prototype.compileTerm = function (
             this.groupParents.pop();
         return edges;
     }
-    else if (astNode.prefix instanceof RegExpAssertion)
+    else if (astNode.prefix instanceof REAssertion)
     {
         return this.compileAssertion(astNode.prefix, outEdges);
     }
@@ -200,7 +200,7 @@ REAstToGraph.prototype.compileAtom = function (
     group
 )
 {
-    if (astNode.value instanceof RegExpPatternCharacter)
+    if (astNode.value instanceof REPatternCharacter)
     {
         var node = new RENode();
         var edge, charCode = astNode.value.value;
@@ -222,7 +222,7 @@ REAstToGraph.prototype.compileAtom = function (
         node.add(outEdges);
         return [edge];
     }
-    else if (astNode.value instanceof RegExpCharacterClass)
+    else if (astNode.value instanceof RECharacterClass)
     {
         var node = new RENode();
         var edge;
@@ -240,11 +240,11 @@ REAstToGraph.prototype.compileAtom = function (
         node.add(outEdges);
         return [edge];
     }
-    else if (astNode.value instanceof RegExpDisjunction)
+    else if (astNode.value instanceof REDisjunction)
     {
         return this.compileDisjunction(astNode.value, outEdges, group);
     }
-    else if (astNode.value instanceof RegExpBackReference)
+    else if (astNode.value instanceof REBackReference)
     {
         var node = new RENode();
         var edge = new REBackRefMatchEdge(node, astNode.value.index);
@@ -258,7 +258,7 @@ REAstToGraph.prototype.compileAssertion = function (
     outEdges
 )
 {
-    if (astNode.value instanceof RegExpDisjunction)
+    if (astNode.value instanceof REDisjunction)
     {
         var group = new REGroup();
         var groupParent = this.groupParents[this.groupParents.length - 1];
