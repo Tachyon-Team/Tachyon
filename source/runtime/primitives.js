@@ -2686,7 +2686,7 @@ function getGlobalFunc(obj, propName, propHash)
     {
         //Profiling: record function global property access as a function call
         /*TODO: record the event for all function calls*/
-        //prof_recordFuncCall(propName);
+        prof_recordFuncCall(propName);
         
         // Return the function property
         return prop;
@@ -2950,13 +2950,12 @@ function prof_init(){
         "accessed_properties": "",
         "modified_properties": "",
         "func_calls": 0,
-        "functions": [],
+        "functions": "",
         "alloc_report": "",
         "prop_get_report": "",
         "prop_put_report": "",
         "func_call_report": "",
-        "test": 0,
-	"func_start_time": 0,
+        "test": 0
     };
     var ctx = iir.get_ctx();
     set_ctx_profdata(ctx, prof);
@@ -3031,35 +3030,7 @@ function prof_recordRefAlloc(){
     }
 }
 
-function prof_recordFuncStart(time){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.func_start_time = time;
-        prof_enable();
-    }
-}
-
-function prof_recordFuncStop(time, funcName){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.functions[funcName] = time - data.func_start_time;
-        prof_enable();
-    }
-}
-
-function prof_recordFuncCall(args, funcName){
+function prof_recordFuncCall(funcName){
     "tachyon:static";
     "tachyon:noglobal";
     
@@ -3069,10 +3040,11 @@ function prof_recordFuncCall(args, funcName){
         prof_disable();
         var data = get_ctx_profdata(ctx);
         data.func_calls++;
-        data.functions += "         " + funcName + "(" + args + ")\n";
+        data.functions += "         " + funcName + "\n";
         prof_enable();
     }
 }
+
 
 function prof_recordPropGet(propName){
     "tachyon:static";
@@ -3105,17 +3077,18 @@ function prof_recordPropPut(propName){
 }
 
 function prof_test() {
+    //"tachyon:inline";
     "tachyon:static";
     "tachyon:noglobal";
     
-    var ctx = iir.get_ctx();
+    /*var ctx = iir.get_ctx();
     var enabled = get_ctx_profenable(ctx);
     if (enabled) {
         prof_disable();
         var data = get_ctx_profdata(ctx);
         data.test++;
         prof_enable();
-    }
+    }*/
 }
 
 function prof_getData(){

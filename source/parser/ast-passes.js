@@ -305,27 +305,24 @@ function ast_walk_exprs(asts, ctx)
 
 // Pass 0.
 //
-// Adds profiling instrumentation to function declarations
+// Adds profiling instrumentation.
 
-function ast_pass0_ctx(userFiles)
+function ast_pass0_ctx()
 {
-    this.userFiles = userFiles;
-    this.funcDeclId = null;
+//    this.fn_decl = null;
 }
 
-
+/*
 ast_pass0_ctx.prototype.walk_statement = function (ast)
 {
     if (ast === null)
     {
         // no transformation
         return ast;
-    }/*
+    }
     else if (ast instanceof Program) {
-        var print = "print(\"\n\nAST.LOC.FILENAME: " + ast.loc.filename + "\n\"	); \
-                     print(\"\nBOOL: " + this.userFiles.indexOf(ast.loc.filename) + "\n\"	); \
-        ";
-
+//        var print = "function test_print() {print(\"hello\");}"
+        var print = "print(\"hello\");";
         var s = new Scanner(new String_input_port(print));
         var p = new Parser(s, false);
         var prog = p.parse();
@@ -334,10 +331,9 @@ ast_pass0_ctx.prototype.walk_statement = function (ast)
 
         ast.block.statements = prog.block.statements.concat(ast.block.statements);
         return ast;
-    }*/
+    }
     else if (ast instanceof FunctionDeclaration)
     {
-        this.funcDeclId = ast.id.toString();
         ast.funct = this.walk_expr(ast.funct);
         return ast;
     }
@@ -356,36 +352,12 @@ ast_pass0_ctx.prototype.walk_expr = function (ast)
     }
     else if (ast instanceof FunctionExpr)
     {
-
         ast_walk_statements(ast.body, this);
 
-        //
-        if (this.filter_prof(ast))
-        {/*
-            ast.body.unshift(
-                new ExprStatement(ast.loc, 
-                    new CallExpr(
-                        ast.loc,
-                        new Ref(ast.loc, new Token(IDENT_CAT, "prof_recordFuncStart()", ast.loc)),
-                        [(new Date()).getTime()])));
+        ast.body.unshift(new ExprStatement(ast.loc,
+                                               this.call_print("test_print",
+                                                               ast.loc)));
 
-            ast.body.push(
-                new ExprStatement(ast.loc, 
-                    new CallExpr(
-                        ast.loc,
-                        new Ref(ast.loc, new Token(IDENT_CAT, "prof_recordFuncStop()", ast.loc)),
-                        [(new Date()).getTime(), new Literal(ast.loc, this.funcDeclId)])));
-            */
-            ast.body.unshift(
-                new ExprStatement(ast.loc, 
-                    new CallExpr(
-                        ast.loc,
-                        new Ref(ast.loc, new Token(IDENT_CAT, "prof_recordFuncCall", ast.loc)),
-                        [new Ref(ast.loc, new Token(IDENT_CAT, ast.params.toString(), ast.loc)), 
-                         new Literal(ast.loc, this.funcDeclId)])));
-        }
-
-        // Return the updated function
         return ast;
     }
     else
@@ -394,18 +366,19 @@ ast_pass0_ctx.prototype.walk_expr = function (ast)
     }
 };
 
-ast_pass0_ctx.prototype.filter_prof = function (ast)
+ast_pass0_ctx.prototype.call_print = function (fn, loc)
 {
-    // Instrumentation of user functions only
-    if (this.userFiles.indexOf(ast.loc.filename) != -1)
-        return true;
-    return false;
-};
-
-function ast_pass0(ast, userFiles)
+    var args = [];
+                    
+    return new CallExpr(loc,
+                        new Ref(loc,
+                                new Token(IDENT_CAT, fn, loc, args)));
+}
+*/
+function ast_pass0(ast)
 {
-    var ctx = new ast_pass0_ctx(userFiles);
-    ctx.walk_statement(ast);
+    var ctx = new ast_pass0_ctx();
+    //ctx.walk_statement(ast);
 }
 //-----------------------------------------------------------------------------
 //
@@ -1170,12 +1143,10 @@ function ast_pass5(ast)
 
 //-----------------------------------------------------------------------------
 
-function ast_normalize(ast, debug, profiling, userFiles)
+function ast_normalize(ast, debug, profiling)
 {
-    // If profiling mode enabled, instrumentalize the code to produce function call report
     if (profiling)
-        ast_pass0(ast, userFiles);
-
+        ast_pass0(ast);
     if (debug)
         ast_pass1(ast);
     ast_pass2(ast);

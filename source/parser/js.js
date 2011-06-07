@@ -66,7 +66,7 @@ function main()
             opt_warn = true;
         else if (args[i] === "-ast")
             opt_ast = true;
-        else if (args[i] === "-eventrec")
+        else if (args[i] === "-sayhello")
             opt_profiling = true;
         else
             break;
