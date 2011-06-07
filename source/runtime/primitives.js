@@ -1598,9 +1598,6 @@ function putPropObj(obj, propName, propHash, propVal)
     // Requires first looking up the entry in the whole prototype chain...
     //
 
-    //Required for profiling instructions below
-    var globalObj = getGlobalObj();
-
     // Get a pointer to the hash table
     var tblPtr = get_obj_tbl(obj);
 
@@ -1631,9 +1628,6 @@ function putPropObj(obj, propName, propHash, propVal)
             // Set the corresponding property value
             set_hashtbl_tbl_val(tblPtr, hashIndex, propVal);
 
-            //Profiling: recording the modification of a property
-            if(obj !== globalObj) prof_recordPropPut(propName);
-
             // Break out of the loop
             break;
         }
@@ -1661,10 +1655,6 @@ function putPropObj(obj, propName, propHash, propVal)
                 // Extend the hash table for this object
                 extObjHashTable(obj, tblPtr, tblSize);
             }
-
-
-            //Profiling: recording the modification of a property
-            if(obj !== globalObj) prof_recordPropPut(propName);
 
             // Break out of the loop
             break;
@@ -1853,12 +1843,6 @@ function getPropObj(obj, propName, propHash)
 
         // If the property was found, return it
         if (prop !== iir.icast(IRType.box, BIT_PATTERN_NOT_FOUND)) {
-            
-            //Profiling: record propertie access event
-            if(!boxIsFunc(prop)){
-                var globalObj = getGlobalObj();
-                prof_recordPropGet(propName);
-            }
             
             return prop;
         }
@@ -2684,10 +2668,6 @@ function getGlobalFunc(obj, propName, propHash)
     // If the property is a function
     if (boxIsFunc(prop))
     {
-        //Profiling: record function global property access as a function call
-        /*TODO: record the event for all function calls*/
-        //prof_recordFuncCall(propName);
-        
         // Return the function property
         return prop;
     }
@@ -2921,303 +2901,3 @@ function instanceOf(obj, ctor)
 
     return false;
 }
-
-
-
-//=============================================================================
-//
-// Profiling functions
-//
-//=============================================================================
-
-function prof_init(){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var prof = {
-        "allocs": 0,
-        "box_allocs": 0,
-        "ref_allocs": 0,
-        "tag_immediate_int": 0,
-        "tag_object": 0,
-        "tag_function": 0,
-        "tag_array": 0,
-        "tag_float": 0,
-        "tag_string": 0,
-        "tag_other": 0,
-        "prop_gets": 0,
-        "prop_puts": 0,
-        "accessed_properties": "",
-        "modified_properties": "",
-        "func_calls": 0,
-        "functions": [],
-        "alloc_report": "",
-        "prop_get_report": "",
-        "prop_put_report": "",
-        "func_call_report": "",
-        "test": 0,
-	"func_start_time": 0,
-    };
-    var ctx = iir.get_ctx();
-    set_ctx_profdata(ctx, prof);
-
-    prof_enable();
-    return 0;
-}
-
-function prof_enable() {
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    set_ctx_profenable(ctx, true);
-}
-
-function prof_disable() {
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    set_ctx_profenable(ctx, false);
-}
-
-function prof_recordAlloc(){
-    "tachyon:static";
-    "tachyon:noglobal";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.allocs += 1;
-        prof_enable();
-    }
-}
-
-function prof_recordBoxAlloc(tagVal){
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg tagVal pint";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.box_allocs += 1;
-        if(tagVal === pint(0)) data.tag_immediate_int++;
-        if(tagVal === pint(7)) data.tag_object++;
-        if(tagVal === pint(6)) data.tag_function++;
-        if(tagVal === pint(5)) data.tag_array++;
-        if(tagVal === pint(3)) data.tag_float++;
-        if(tagVal === pint(2)) data.tag_string++;
-        if(tagVal === pint(1)) data.tag_other++;
-        prof_enable();
-    }
-}
-
-function prof_recordRefAlloc(){
-    "tachyon:static";
-    "tachyon:noglobal";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.ref_allocs += 1;
-        prof_enable();
-    }
-}
-
-function prof_recordFuncStart(time){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.func_start_time = time;
-        prof_enable();
-    }
-}
-
-function prof_recordFuncStop(time, funcName){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.functions[funcName] = time - data.func_start_time;
-        prof_enable();
-    }
-}
-
-function prof_recordFuncCall(args, funcName){
-    "tachyon:static";
-    "tachyon:noglobal";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.func_calls++;
-        data.functions += "         " + funcName + "(" + args + ")\n";
-        prof_enable();
-    }
-}
-
-function prof_recordPropGet(propName){
-    "tachyon:static";
-    "tachyon:noglobal";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.prop_gets++;
-        data.accessed_properties += "         " + propName + "\n";
-        prof_enable();
-    }
-}
-
-function prof_recordPropPut(propName){
-    "tachyon:static";
-    "tachyon:noglobal";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.prop_puts++;
-        data.modified_properties += "         " + propName + "\n";
-        prof_enable();
-    }
-}
-
-function prof_test() {
-    "tachyon:static";
-    "tachyon:noglobal";
-    
-    var ctx = iir.get_ctx();
-    var enabled = get_ctx_profenable(ctx);
-    if (enabled) {
-        prof_disable();
-        var data = get_ctx_profdata(ctx);
-        data.test++;
-        prof_enable();
-    }
-}
-
-function prof_getData(){
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-    return get_ctx_profdata(ctx);
-}
-
-/*
-Reports
-*/
-
-function prof_allocReport(){
-    "tachyon:static";
-    
-    prof_disable();
-
-    var data = prof_getData();
-
-    data.alloc_report += 
-        "\n------- PROFILING: ALLOCATION REPORT -------\n\n" +
-        "      IRType.box allocs: " + data.box_allocs + " (" + 100*data.box_allocs/data.allocs + "%)\n" +
-        "         tag_immediate_int allocs: " + data.tag_immediate_int + " (" + 100*data.tag_immediate_int/data.allocs + "%)\n" +
-        "         tag_object allocs: " + data.tag_object + " (" + 100*data.tag_object/data.allocs + "%)\n" +
-        "         tag_function allocs: " + data.tag_function + " (" + 100*data.tag_function/data.allocs + "%)\n" +
-        "         tag_array allocs: " + data.tag_array + " (" + 100*data.tag_array/data.allocs + "%)\n" +
-        "         tag_float allocs: " + data.tag_float + " (" + 100*data.tag_float/data.allocs + "%)\n" +
-        "         tag_string allocs: " + data.tag_string + " (" + 100*data.tag_string/data.allocs + "%)\n" +
-        "         tag_other allocs: " + data.tag_other + " (" + 100*data.tag_other/data.allocs + "%)\n" +
-        "\n      IRType.ref allocs: " + data.ref_allocs + " (" + 100*data.ref_allocs/data.allocs + "%)\n\n" +
-        "   ->Total allocs: " + data.allocs + "\n" +
-        "\n";
-    print(data.alloc_report);
-}
-
-
-function prof_propGetReport(){
-    "tachyon:static";
-    
-    prof_disable();
-
-    var data = prof_getData();
-    
-    data.prop_get_report +=
-        "\n------- PROFILING: PROPERTIE ACCESSES (GET) REPORT -------\n\n" +
-        "      List of accessed properties:\n" +
-        data.accessed_properties + "\n" +
-        "   ->Total propertie accesses: " + data.prop_gets + "\n" +
-        "\n";
-    print(data.prop_get_report);
-}
-
-function prof_propPutReport(){
-    "tachyon:static";
-    
-    prof_disable();
-
-    var data = prof_getData();
-    
-    data.prop_put_report +=
-        "\n------- PROFILING: PROPERTIE MODIFICATIONS (PUT) REPORT -------\n\n" +
-        "      List of modified properties:\n" +
-        data.modified_properties + "\n" +
-        "   ->Total propertie modifications: " + data.prop_puts + "\n" +
-        "\n";
-    print(data.prop_put_report);
-}
-
-function prof_funcCallReport(){
-    "tachyon:static";
-    
-    prof_disable();
-
-    var data = prof_getData();
-    
-    data.func_call_report +=
-        "\n------- PROFILING: FUNCTION CALLS REPORT -------\n\n" +
-        "      List of function calls:\n" +
-        data.functions + "\n" +
-        "   ->Total function calls: " + data.func_calls + "\n" +
-        "\n";
-    print(data.func_call_report);
-}
-
-function prof_fileReport() {
-    "tachyon:static";
-    
-    var data = prof_getData();
-
-    writeFile("./profiler/profiling_report.txt", data.alloc_report + data.prop_get_report + data.func_call_report);
-}
-
-function prof_testReport() {
-    "tachyon:static";
-    
-    prof_disable();
-
-    var data = prof_getData();
-
-    print("\n------- PROFILING: TEST REPORT -------\n");
-    print("    Test: " + data.test + "\n\n");
-}
-

@@ -164,7 +164,7 @@ function parse_src_port(port, params)
     var p = new Parser(new Scanner(port), params.parserWarnings, params);
     var ast = p.parse();
 
-    var normalized_ast = ast_normalize(ast, params.debugTrace, params.eventrec, params.files);
+    var normalized_ast = ast_normalize(ast, params.debugTrace);
 
     if (params.printAST)
         pp(normalized_ast);
