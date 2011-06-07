@@ -88,7 +88,13 @@ Date.prototype.constructor = Date;
 //15.9.5.6 Date.prototype.toLocaleDateString()
 //15.9.5.7 Date.prototype.toLocaleTimeString()
 //15.9.5.8 Date.prototype.valueOf()
+
 //15.9.5.9 Date.prototype.getTime()
+Date.prototype.getTime = function ()
+{
+    return currentTimeMillis();
+}
+
 //15.9.5.10 Date.prototype.getFullYear()
 //15.9.5.11 Date.prototype.getUTCFullYear()
 //15.9.5.12 Date.prototype.getMonth()
