@@ -1505,14 +1505,6 @@ function stmtToIR(context)
             context.localMap,
             context.cfg,
             'loop_exit'
-        );    
-
-        // Merge the break contexts
-        var loopExit = mergeContexts(
-            brkCtxList,
-            context.localMap,
-            context.cfg,
-            'loop_exit'
         );
 
         // Merge the continue contexts with the loop entry
