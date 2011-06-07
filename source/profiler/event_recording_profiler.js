@@ -22,16 +22,14 @@ Produce profiling report in console and text file
 */
 function profilerReport(params){
     var prof_allocReport = params.staticEnv.getBinding('prof_allocReport');
-    var prof_propGetReport = params.staticEnv.getBinding('prof_propGetReport');
-    var prof_propPutReport = params.staticEnv.getBinding('prof_propPutReport');
+    var prof_propAccessReport = params.staticEnv.getBinding('prof_propAccessReport');
     var prof_fileReport = params.staticEnv.getBinding('prof_fileReport');
     var prof_funcCallReport = params.staticEnv.getBinding('prof_funcCallReport');
     var prof_testReport = params.staticEnv.getBinding('prof_testReport');
 
     //Producing profiling report in console
     execUnit(prof_allocReport, params);
-    execUnit(prof_propGetReport, params);
-    execUnit(prof_propPutReport, params);
+    execUnit(prof_propAccessReport, params);
     execUnit(prof_funcCallReport, params);
     execUnit(prof_testReport, params);
 

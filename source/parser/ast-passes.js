@@ -303,85 +303,6 @@ function ast_walk_exprs(asts, ctx)
 
 //-----------------------------------------------------------------------------
 
-// Pass 0.
-//
-// Adds profiling instrumentation.
-
-function ast_pass0_ctx()
-{
-//    this.fn_decl = null;
-}
-
-/*
-ast_pass0_ctx.prototype.walk_statement = function (ast)
-{
-    if (ast === null)
-    {
-        // no transformation
-        return ast;
-    }
-    else if (ast instanceof Program) {
-//        var print = "function test_print() {print(\"hello\");}"
-        var print = "print(\"hello\");";
-        var s = new Scanner(new String_input_port(print));
-        var p = new Parser(s, false);
-        var prog = p.parse();
-
-        ast_walk_statement(ast, this);
-
-        ast.block.statements = prog.block.statements.concat(ast.block.statements);
-        return ast;
-    }
-    else if (ast instanceof FunctionDeclaration)
-    {
-        ast.funct = this.walk_expr(ast.funct);
-        return ast;
-    }
-    else
-    {
-        return ast_walk_statement(ast, this);
-    }
-};
-
-ast_pass0_ctx.prototype.walk_expr = function (ast)
-{
-    if (ast === null)
-    {
-        // no transformation
-        return ast;
-    }
-    else if (ast instanceof FunctionExpr)
-    {
-        ast_walk_statements(ast.body, this);
-
-        ast.body.unshift(new ExprStatement(ast.loc,
-                                               this.call_print("test_print",
-                                                               ast.loc)));
-
-        return ast;
-    }
-    else
-    {
-        return ast_walk_expr(ast, this);
-    }
-};
-
-ast_pass0_ctx.prototype.call_print = function (fn, loc)
-{
-    var args = [];
-                    
-    return new CallExpr(loc,
-                        new Ref(loc,
-                                new Token(IDENT_CAT, fn, loc, args)));
-}
-*/
-function ast_pass0(ast)
-{
-    var ctx = new ast_pass0_ctx();
-    //ctx.walk_statement(ast);
-}
-//-----------------------------------------------------------------------------
-//
 // Pass 1.
 //
 // Adds debugging traces.
@@ -1143,10 +1064,8 @@ function ast_pass5(ast)
 
 //-----------------------------------------------------------------------------
 
-function ast_normalize(ast, debug, profiling)
+function ast_normalize(ast, debug)
 {
-    if (profiling)
-        ast_pass0(ast);
     if (debug)
         ast_pass1(ast);
     ast_pass2(ast);
