@@ -2262,6 +2262,29 @@ function exprToIR(context)
         context.setOutput(lastContext.getExitBlock(), exprVal);
     }
 
+    // Regular expression literal
+    else if (/*astExpr instanceof RegExpLiteral*/false)
+    {
+        // Find the RegExp constructor in the context
+        var regexpCtor = insertCtxReadIR(
+            context,
+            ['regexp']
+        );
+
+        // Create the call instruction
+        var regexpObj = insertConstructIR(
+            context,
+            regexpCtor,
+            [
+                ConstValue.getConst(astExpr.pattern),
+                ConstValue.getConst(astExpr.flags)
+            ]
+        );
+
+        // Set the output
+        context.setOutput(context.getExitBlock(), regexpObj);
+    }
+
     // Constant values
     else if (astExpr instanceof Literal)
     {

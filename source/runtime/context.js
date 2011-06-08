@@ -151,6 +151,13 @@ function makeContextLayout(params)
         'null'
     );
 
+    // RegExp constructor
+    ctxLayout.addField(
+        'regexp',
+        IRType.box,
+        'null'
+    );
+
     // Range error constructor
     ctxLayout.addField(
         'rangeerror',
