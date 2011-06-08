@@ -45,7 +45,7 @@
 Implementation of ECMAScript 5 string string routines.
 
 @author
-Bruno Dufour, Maxime Chevalier-Boisvert
+Bruno Dufour, Maxime Chevalier-Boisvert, Olivier Matz
 
 @copyright
 Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
@@ -354,7 +354,7 @@ function string_match(regexp)
         var result = [];
         var match;
 
-        while ((match = re.exec(this)) != null)
+        while ((match = re.exec(this)) !== null)
         {
             if (typeof match === "string")
             {

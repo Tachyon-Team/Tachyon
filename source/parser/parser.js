@@ -789,6 +789,13 @@ function ArrayLiteral(loc, exprs)
     this.exprs = exprs;
 }
 
+function RegExpLiteral(loc, pattern, flags)
+{
+    this.loc = loc;
+    this.pattern = pattern;
+    this.flags = flags;
+}
+
 function ObjectLiteral(loc, properties)
 {
     this.loc = loc;
@@ -871,16 +878,48 @@ function Literal_5(p, STRING)
 
 function Literal_6(p, DIV)
 {
-    // TODO: parse regular expression
-    return new Literal(DIV.loc,
-                       "/ regexp");
+    var pattern = new String();
+    var flags = new String();
+
+    while (p.scanner.lookahead_char(0) !== 47)
+    {
+        if (p.scanner.lookahead_char(0) === 92 &&
+            p.scanner.lookahead_char(1) === 47)
+        {
+            pattern += "/";
+            p.scanner.advance(2);
+        }
+        else
+        {
+            pattern += String.fromCharCode(p.scanner.lookahead_char(0));
+            p.scanner.advance(1);
+        }
+    }
+    p.scanner.advance(1);
+    return new RegExpLiteral(DIV.loc, pattern, flags);
 }
 
 function Literal_7(p, DIVEQUAL)
 {
-    // TODO: parse regular expression
-    return new Literal(DIVEQUAL.loc,
-                       "/= regexp");
+    var pattern = "=";
+    var flags = new String();
+
+    while (p.scanner.lookahead_char(0) !== 47)
+    {
+        if (p.scanner.lookahead_char(0) === 92 &&
+            p.scanner.lookahead_char(1) === 47)
+        {
+            pattern += "/";
+            p.scanner.advance(2);
+        }
+        else
+        {
+            pattern += String.fromCharCode(p.scanner.lookahead_char(0));
+            p.scanner.advance(1);
+        }
+    }
+    p.scanner.advance(1);
+    return new RegExpLiteral(DIV.loc, pattern, flags);
 }
 
 function Property_1(p, IDENT, COLON, AssignmentExpr)

@@ -48,7 +48,7 @@
     Olivier Matz
 */
 
-var DEBUG = false;
+var REDEBUG = true;
 
 /**
     RegExp execution context.
@@ -101,10 +101,14 @@ REContext.prototype.eol = function ()
 */ 
 REContext.prototype.consume = function ()
 {
-    if (DEBUG)
+    if (REDEBUG)
         print("### consuming " + this.input[this.index]);
     for (var i = 0; i < this.activeCaps.length; ++i)
+    {
+        if (REDEBUG)
+            print("### " + i + ": adding " + this.input[this.index]);
         this.activeCaps[i].add(this.index);
+    }
     this.index++;
 }
 
@@ -247,7 +251,7 @@ RECapture.prototype.add = function (
     index
 )
 {
-    if (this.start == null)
+    if (this.start === null)
         this.start = index;
     this.end = index;
 }
@@ -268,12 +272,18 @@ RECapture.prototype.extract = function (
     input
 )
 {
-    if (this.start != null)
+    if (this.start !== null)
+    {
         return input.substring(this.start, this.end + 1);
+    }
     else if (this.activated)
+    {
         return "";
+    }
     else
+    {
         return undefined;
+    }
         
 }
 
@@ -327,7 +337,7 @@ function RELoopPrefixEdge (dest, loopContext)
 
 RELoopPrefixEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec loop prefix edge");
     this.loopContext.lastIndex = context.index;
     return this.dest;
@@ -341,7 +351,7 @@ function RELoopEdge (dest, loopContext)
 
 RELoopEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec loop edge");
 
     if (context.index == this.loopContext.lastIndex)
@@ -357,7 +367,7 @@ function RELoopExitEdge (dest, loopContext)
 
 RELoopExitEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec loop exit edge");
     return this.dest;
 }
@@ -369,7 +379,7 @@ function RENullEdge (dest)
 
 RENullEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec null edge");
     return this.dest;
 }
@@ -382,7 +392,7 @@ function REGroupOpenEdge (dest, group)
 
 REGroupOpenEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec group open edge");
     this.group.clearCaps();
 
@@ -402,7 +412,7 @@ function REGroupCloseEdge (dest, group)
 
 REGroupCloseEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec group close edge");
     if (this.group.capture != undefined)
     {
@@ -424,7 +434,7 @@ function RECharMatchEdge (dest, charCode)
 
 RECharMatchEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec char match edge");
     if (context.current() == this.charCode)
     {
@@ -442,7 +452,7 @@ function RECharSetMatchEdge (dest, ranges)
 
 RECharSetMatchEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec char set match edge");
 
     if (context.eol())
@@ -480,7 +490,7 @@ function REExclCharSetMatchEdge (dest, ranges)
 
 REExclCharSetMatchEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec exclusive char set match edge");
 
     if (context.eol())
@@ -513,15 +523,15 @@ function REBackRefMatchEdge (dest, captureIndex)
 
 REBackRefMatchEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec back reference match edge");
 
     var capture = context.getCaptureByIndex(this.captureIndex);
 
-    if (capture == null)
+    if (capture === null)
         return null;
 
-    if (capture.start == null)
+    if (capture.start === null)
         return this.dest;
 
     for (var i = capture.start; i <= capture.end; ++i)
@@ -540,7 +550,7 @@ function REBOLAssertEdge (dest)
 
 REBOLAssertEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec beginning of line assertion");
 
     if (context.index == 0)
@@ -555,7 +565,7 @@ function REMultilineBOLAssertEdge (dest)
 
 REMultilineBOLAssertEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec multiline beginning of line assertion");
 
     if (context.index == 0)
@@ -575,7 +585,7 @@ function REEOLAssertEdge (dest)
 
 REEOLAssertEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec end of line assertion");
     
     if (context.index == context.input.length)
@@ -590,7 +600,7 @@ function REMultilineEOLAssertEdge (dest)
 
 REMultilineEOLAssertEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec multiline beginning of line assertion");
 
     if (context.index == context.input.length)
@@ -643,7 +653,7 @@ function REAssertOpenEdge (dest, assertContext)
 
 REAssertOpenEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec assert open edge");
 
     context.btactive++;
@@ -662,7 +672,7 @@ function REAssertCloseEdge (dest, assertContext)
 
 REAssertCloseEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec assert close edge");
 
     // Restore active captures.
@@ -686,7 +696,7 @@ function RENegAssertOpenEdge (dest, assertContext)
 
 RENegAssertOpenEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec neg assert open edge");
 
     this.assertContext.matchSuccess = false;
@@ -701,7 +711,7 @@ function RENegAssertOutEdge (dest, assertContext)
 
 RENegAssertOutEdge.prototype.exec = function (context)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec neg assert out edge");
 
     if (this.assertContext.matchSuccess)
@@ -709,14 +719,24 @@ RENegAssertOutEdge.prototype.exec = function (context)
     return this.dest;
 }
 
+/**
+    A NegAssertMatchEdge is put at the end of a negative lookahead assertion.
+    Its execution always fails but will make.
+*/ 
 function RENegAssertMatchEdge (assertContext)
 {
     this.assertContext = assertContext;
 }
 
-RENegAssertMatchEdge.prototype.exec = function (context)
+/**
+    Execute a NegAssertMatchEdge with given context.
+    @params: {REContext} context
+*/ 
+RENegAssertMatchEdge.prototype.exec = function (
+    context
+)
 {
-    if (DEBUG)
+    if (REDEBUG)
         print(context.index + ": exec neg assert match edge");
 
     this.assertContext.matchSuccess = true;

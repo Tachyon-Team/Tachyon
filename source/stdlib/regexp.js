@@ -40,6 +40,8 @@
  * _________________________________________________________________________
  */
 
+var REDEBUG = false;
+
 function RegExp (
     pattern,
     flags
@@ -55,16 +57,17 @@ function RegExp (
     if (typeof flags === "string")
     {
         for (var i = 0; i < flags.length; ++i)
-            if (flags.charCodeAt(i) == 103) // 'g'
+            if (flags.charCodeAt(i) === 103) // 'g'
                 this.global = true;
-            else if (flags.charCodeAt(i) == 105) // 'i'
+            else if (flags.charCodeAt(i) === 105) // 'i'
                 this.ignoreCase = true;
-            else if (flags.charCodeAt(i) == 109) // 'm'
+            else if (flags.charCodeAt(i) === 109) // 'm'
                 this.multiline = true;
     }
 
     var ast = new REParser().parse(pattern); 
-    this.graph = new REAstToGraph().compile(ast, this.global, this.ignoreCase, this.multiline);
+    this.graph = new REAstToGraph().compile(ast, this.global, this.ignoreCase,
+                                            this.multiline);
 }
 
 RegExp.prototype.exec = function (
@@ -72,8 +75,10 @@ RegExp.prototype.exec = function (
 )
 {
     var context = new REContext(input, this.graph.rootGroup);
-    var cursor = this.graph.head, next = this.graph.head;
-    var padding = this.lastIndex, i = 0;
+    var cursor = this.graph.head;
+    var padding = this.lastIndex;
+    var i = 0;
+    next = cursor;
 
     while (next != null || padding < input.length || context.btstack.length > 0)
     {
@@ -94,7 +99,7 @@ RegExp.prototype.exec = function (
                 i = 0;
                 break;
             }
-        }
+        } 
 
         if (next == null)
         {
@@ -107,7 +112,7 @@ RegExp.prototype.exec = function (
 
             if (context.btstack.length > 0)
             {
-                if (DEBUG)
+                if (REDEBUG)
                     print("### backtracking ...");
                 var btinfo = context.btstack.pop();
 
@@ -121,12 +126,13 @@ RegExp.prototype.exec = function (
             {
                 i = 0;
                 cursor = this.graph.head;
-                context.index = ++padding;
+                padding++;
+                context.index = padding;
                 context.activeCaps = [];
             }
         }
     } 
     this.lastIndex = 0;
-    return null;
+    return null; 
 }
 

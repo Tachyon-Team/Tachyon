@@ -207,14 +207,15 @@ REAstToGraph.prototype.compileAtom = function (
     if (astNode.value instanceof REPatternCharacter)
     {
         var node = new RENode();
-        var edge, charCode = astNode.value.value;
+        var charCode = astNode.value.value;
+        var edge;
         
         if (this.ignoreCase)
         {
             if (charCode >= 97 && charCode <= 122)
-                egde = new RECharMatchEdge(node, [charCode - 32, charCode]);
+                edge = new RECharSetMatchEdge(node, [charCode - 32, charCode]);
             else if (charCode >= 65 && charCode <= 90)
-                egde = new RECharMatchEdge(node, [charCode, charCode + 32]);
+                edge = new RECharSetMatchEdge(node, [charCode, charCode + 32]);
             else 
                 edge = new RECharMatchEdge(node, charCode);
         }

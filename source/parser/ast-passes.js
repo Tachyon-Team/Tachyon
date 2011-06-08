@@ -267,6 +267,10 @@ function ast_walk_expr(ast, ctx)
         ast.exprs = ast_walk_exprs(ast.exprs, ctx);
         return ast;
     }
+    else if (ast instanceof RegExpLiteral)
+    {
+        return ast;
+    }
     else if (ast instanceof ObjectLiteral)
     {
         ast.properties.forEach(function (prop, i, self)
