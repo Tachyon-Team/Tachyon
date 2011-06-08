@@ -1,14 +1,14 @@
-var neg0 = 1 / -Infinity;
-var pos0 = 0;
-var pos1 = 1;
-var pos2 = 2;
-var posHalf = 1 / 2;
-var eBits = 11;
-var mBits = 52;
-var eBias = 1023;
-var num_2exp52   = num_mul(67108864, 67108864);                     // bignum((2^26)^2)
-var num_2exp64m1 = num_sub(num_mul(num_2exp52, 4096), 1);           // bignum(2^(52+12) - 1)
-var pow_2_26     = 67108864;                                        // Math.pow(2, 26)
+const neg0 = 1 / -Infinity;
+const pos0 = 0;
+const pos1 = 1;
+const pos2 = 2;
+const posHalf = 1 / 2;
+const eBits = 11;
+const mBits = 52;
+const eBias = 1023;
+const num_2exp52   = num_mul(67108864, 67108864);                     // bignum((2^26)^2)
+const num_2exp64m1 = num_sub(num_mul(num_2exp52, 4096), 1);           // bignum(2^(52+12) - 1)
+const pow_2_26     = 67108864;                                        // Math.pow(2, 26)
 
 /* */
 var isNeg0 = function (x)
