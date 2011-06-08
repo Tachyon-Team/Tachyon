@@ -70,6 +70,18 @@ function RegExp (
                                             this.multiline);
 }
 
+/**
+Anonymous function to initialize this library
+*/
+(function ()
+{
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
+    // Set the regexp prototype object in the context
+    set_ctx_regexp(ctx, RegExp);
+})();
+
 RegExp.prototype.exec = function (
     input
 )
