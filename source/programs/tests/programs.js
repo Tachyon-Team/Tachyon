@@ -836,6 +836,31 @@ tests.programs.stdlib_math = genTest(
 Tests for sunspider.
 */
 tests.programs.sunspider = tests.testSuite();
+tests.programs.sunspider['access-binary-trees'] = genTest(
+    'programs/sunspider/access-binary-trees.js'
+);
+tests.programs.sunspider['access-fannkuch'] = genTest(
+    'programs/sunspider/access-fannkuch.js'
+);
+tests.programs.sunspider['access-nsieve'] = genTest(
+    'programs/sunspider/access-nsieve.js'
+);
+tests.programs.sunspider['bitops-3bit-bits-in-byte'] = genTest(
+    'programs/sunspider/bitops-3bit-bits-in-byte.js'
+);
+tests.programs.sunspider['bitops-bits-in-byte'] = genTest(
+    'programs/sunspider/bitops-bits-in-byte.js'
+);
+/* Only works in 64-bit for now
+tests.programs.sunspider['bitops-bitwise-and'] = genTest(
+    'programs/sunspider/bitops-bitwise-and.js'
+);
+*/
+/* Only works in 64-bit for now
+tests.programs.sunspider['bitops-nsieve-bits'] = genTest(
+    'programs/sunspider/bitops-nsieve-bits.js'
+);
+*/
 tests.programs.sunspider['controlflow-recursive'] = genTest(
     'programs/sunspider/controlflow-recursive.js'
 );
