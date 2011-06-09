@@ -878,48 +878,16 @@ function Literal_5(p, STRING)
 
 function Literal_6(p, DIV)
 {
-    var pattern = new String();
-    var flags = new String();
+    var reg = p.scanner.parse_regexp([]);
 
-    while (p.scanner.lookahead_char(0) !== 47)
-    {
-        if (p.scanner.lookahead_char(0) === 92 &&
-            p.scanner.lookahead_char(1) === 47)
-        {
-            pattern += "/";
-            p.scanner.advance(2);
-        }
-        else
-        {
-            pattern += String.fromCharCode(p.scanner.lookahead_char(0));
-            p.scanner.advance(1);
-        }
-    }
-    p.scanner.advance(1);
-    return new RegExpLiteral(DIV.loc, pattern, flags);
+    return new RegExpLiteral(DIV.loc, reg[0], reg[1]);
 }
 
 function Literal_7(p, DIVEQUAL)
 {
-    var pattern = "=";
-    var flags = new String();
+    var reg = p.scanner.parse_regexp([61]);
 
-    while (p.scanner.lookahead_char(0) !== 47)
-    {
-        if (p.scanner.lookahead_char(0) === 92 &&
-            p.scanner.lookahead_char(1) === 47)
-        {
-            pattern += "/";
-            p.scanner.advance(2);
-        }
-        else
-        {
-            pattern += String.fromCharCode(p.scanner.lookahead_char(0));
-            p.scanner.advance(1);
-        }
-    }
-    p.scanner.advance(1);
-    return new RegExpLiteral(DIV.loc, pattern, flags);
+    return new RegExpLiteral(DIV.loc, reg[0], reg[1]);
 }
 
 function Property_1(p, IDENT, COLON, AssignmentExpr)

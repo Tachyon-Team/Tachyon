@@ -705,6 +705,31 @@ Scanner.prototype.parse_string = function ()
     return this.valued_token(STRING_CAT, str, start_pos);
 };
 
+Scanner.prototype.parse_regexp = function (pattern)
+{
+    var flags = [];
+
+    for (var c = this.lookahead_char(0);
+         c !== SLASH_CH;
+         this.advance(1), c = this.lookahead_char(0))
+    {
+        if (this.lookahead_char(0) === BACKSLASH_CH &&
+            this.lookahead_char(1) === SLASH_CH)
+        {
+            this.advance(1);
+        }
+        pattern.push(this.lookahead_char(0));
+    }
+    this.advance(1);
+
+    for (var c = this.lookahead_char(0);
+         this.identifier_class(c) || this.decimal_class(c);
+         this.advance(1), c = this.lookahead_char(0))
+    {
+        flags.push(c);
+    }
+    return [String.fromCharCode.apply(pattern), String.fromCharCode.apply(flags)];
+}
 
 // method simple_token(cat, n)
 
