@@ -81,7 +81,7 @@ function switch_str(val)
 
 function switch_mixed(val)
 {
-    function fn() { return 1337 }
+    function fn() { return 1337; }
 
     switch (val)
     {

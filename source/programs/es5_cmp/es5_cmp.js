@@ -80,6 +80,8 @@ var tests = [
 
     ['1'    , true  , F, T, F, T, T, F, F, T],
     ['0'    , false , F, T, F, T, T, F, F, T],
+    ['0'    , null  , F, T, F, T, F, T, F, T],
+    [null   , undef , F, F, F, F, T, F, F, T],
 
     [1      , 1     , F, T, F, T, T, F, T, F],
     ['2'    , '2'   , F, T, F, T, T, F, T, F],
@@ -92,6 +94,23 @@ var tests = [
 
 function test()
 {
+    function testOp(v1, v2, op, produced, expected)
+    {
+        if (produced !== expected)
+        {
+            print(
+                v1 + ' ' + op + ' ' + v2 + ' ==> ' + 
+                produced + ' (expected ' + expected + ')'
+            );
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     for (var i = 0; i < tests.length; ++i)
     {
         var test = tests[i];
@@ -110,22 +129,14 @@ function test()
         var seq = test[8];
         var sne = test[9];
 
-        if ((v1 < v2) !== lt)
-            return testNo + 1;
-        if ((v1 <= v2) !== le)
-            return testNo + 2;
-        if ((v1 > v2) !== gt)
-            return testNo + 3;
-        if ((v1 >= v2) !== ge)
-            return testNo + 4;
-        if ((v1 == v2) !== eq)
-            return testNo + 5;
-        if ((v1 != v2) !== ne)
-            return testNo + 6;
-        if ((v1 === v2) !== seq)
-            return testNo + 7;
-        if ((v1 !== v2) !== sne)
-            return testNo + 8;
+        if (testOp(v1, v2, '<'  , (v1 < v2)     , lt    )) return testNo + 1;
+        if (testOp(v1, v2, '<=' , (v1 <= v2)    , le    )) return testNo + 2;
+        if (testOp(v1, v2, '>'  , (v1 > v2)     , gt    )) return testNo + 3;
+        if (testOp(v1, v2, '>=' , (v1 >= v2)    , ge    )) return testNo + 4;
+        if (testOp(v1, v2, '==' , (v1 == v2)    , eq    )) return testNo + 5;
+        if (testOp(v1, v2, '!=' , (v1 != v2)    , ne    )) return testNo + 6;
+        if (testOp(v1, v2, '===', (v1 === v2)   , seq   )) return testNo + 7;
+        if (testOp(v1, v2, '!==', (v1 !== v2)   , sne   )) return testNo + 8;
     }
 
     return 0;
