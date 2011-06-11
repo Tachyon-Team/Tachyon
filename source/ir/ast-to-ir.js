@@ -2263,8 +2263,10 @@ function exprToIR(context)
     }
 
     // Regular expression literal
-    else if (/*astExpr instanceof RegExpLiteral*/false)
+    else if (astExpr instanceof RegExpLiteral)
     {
+        context.bridge();
+        
         // Find the RegExp constructor in the context
         var regexpCtor = insertCtxReadIR(
             context,
