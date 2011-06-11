@@ -149,8 +149,6 @@ REContext.prototype.extractCaptures = function (
     var matches = [];
 
     this.rootGroup.extractCaptures(input, matches);
-    if (matches.length == 1)
-        return matches[0];
     return matches;
 }
 
@@ -182,7 +180,7 @@ REGroup.prototype.add = function (group)
 
 REGroup.prototype.clearCaps = function ()
 {
-    if (this.capture != undefined)
+    if (this.capture !== undefined)
         this.capture.clear();
     for (var i = 0; i < this.subgroups.length; ++i)
         this.subgroups[i].clearCaps();
@@ -191,7 +189,7 @@ REGroup.prototype.clearCaps = function ()
 REGroup.prototype.dump = function ()
 {
     var capCopy;
-    if (this.capture != undefined)
+    if (this.capture !== undefined)
         capCopy = this.capture.dump();
     var copy = new REGroup(capCopy);
 
@@ -202,7 +200,7 @@ REGroup.prototype.dump = function ()
 
 REGroup.prototype.restore = function (copy)
 {
-    if (copy.capture != undefined)
+    if (copy.capture !== undefined)
         this.capture.restore(copy.capture);
     for (var i = 0; i < copy.subgroups.length; ++i)
         this.subgroups[i].restore(copy.subgroups[i]);
@@ -210,7 +208,7 @@ REGroup.prototype.restore = function (copy)
 
 REGroup.prototype.extractCaptures = function (input, matches)
 {
-    if (this.capture != undefined)
+    if (this.capture !== undefined)
         matches.push(this.capture.extract(input));
     for (var i = this.subgroups.length; i > 0; --i)
         this.subgroups[i - 1].extractCaptures(input, matches);
@@ -218,9 +216,9 @@ REGroup.prototype.extractCaptures = function (input, matches)
 
 REGroup.prototype.getCaptureByIndex = function (i)
 {
-    if (this.capture != undefined)
+    if (this.capture !== undefined)
     {
-        if (i.index == 0) 
+        if (i.index === 0) 
             return this.capture;
         i.index--;
     }
@@ -314,7 +312,7 @@ RECapture.prototype.restore = function (
 
 function RENode (_final)
 {
-    this._final = _final == undefined ? false : _final;
+    this._final = _final === undefined ? false : _final;
     this.edges = [];
 }
 
@@ -354,7 +352,7 @@ RELoopEdge.prototype.exec = function (context)
     if (REDEBUG)
         print(context.index + ": exec loop edge");
 
-    if (context.index == this.loopContext.lastIndex)
+    if (context.index === this.loopContext.lastIndex)
         return null;
     return this.dest;
 }
@@ -396,7 +394,7 @@ REGroupOpenEdge.prototype.exec = function (context)
         print(context.index + ": exec group open edge");
     this.group.clearCaps();
 
-    if (this.group.capture != undefined)
+    if (this.group.capture !== undefined)
     {
         this.group.capture.activated = true;
         context.activeCaps.push(this.group.capture);
@@ -414,7 +412,7 @@ REGroupCloseEdge.prototype.exec = function (context)
 {
     if (REDEBUG)
         print(context.index + ": exec group close edge");
-    if (this.group.capture != undefined)
+    if (this.group.capture !== undefined)
     {
         for (var i = 0; i < context.activeCaps.length; ++i)
             if (context.activeCaps[i] === this.group.capture)
@@ -436,7 +434,7 @@ RECharMatchEdge.prototype.exec = function (context)
 {
     if (REDEBUG)
         print(context.index + ": exec char match edge");
-    if (context.current() == this.charCode)
+    if (context.current() === this.charCode)
     {
         context.consume();
         return this.dest;
@@ -464,7 +462,7 @@ RECharSetMatchEdge.prototype.exec = function (context)
     {
         if (typeof this.ranges[i] === "number")
         {
-            if (this.ranges[i] == c)
+            if (this.ranges[i] === c)
             {
                 context.consume();
                 return this.dest;
@@ -502,7 +500,7 @@ REExclCharSetMatchEdge.prototype.exec = function (context)
     {
         if (typeof this.ranges[i] === "number")
         {
-            if (this.ranges[i] == c)
+            if (this.ranges[i] === c)
                 return null;
         }
         else
@@ -536,7 +534,7 @@ REBackRefMatchEdge.prototype.exec = function (context)
 
     for (var i = capture.start; i <= capture.end; ++i)
     {
-        if (context.eol() || context.current() != context.input.charCodeAt(i))
+        if (context.eol() || context.current() !== context.input.charCodeAt(i))
             return null;
         context.consume();
     }
@@ -553,7 +551,7 @@ REBOLAssertEdge.prototype.exec = function (context)
     if (REDEBUG)
         print(context.index + ": exec beginning of line assertion");
 
-    if (context.index == 0)
+    if (context.index === 0)
         return this.dest;
     return null;
 }
@@ -568,11 +566,11 @@ REMultilineBOLAssertEdge.prototype.exec = function (context)
     if (REDEBUG)
         print(context.index + ": exec multiline beginning of line assertion");
 
-    if (context.index == 0)
+    if (context.index === 0)
         return this.dest;
 
-    if (context.lookahead(-1) == 10 || context.lookahead(-1) == 13 ||
-        context.lookahead(-1) == 8232 || context.lookahead(-1) == 8233)
+    if (context.lookahead(-1) === 10 || context.lookahead(-1) === 13 ||
+        context.lookahead(-1) === 8232 || context.lookahead(-1) === 8233)
         return this.dest;
 
     return null;
@@ -588,7 +586,7 @@ REEOLAssertEdge.prototype.exec = function (context)
     if (REDEBUG)
         print(context.index + ": exec end of line assertion");
     
-    if (context.index == context.input.length)
+    if (context.index === context.input.length)
         return this.dest;
     return null;
 }
@@ -603,12 +601,12 @@ REMultilineEOLAssertEdge.prototype.exec = function (context)
     if (REDEBUG)
         print(context.index + ": exec multiline beginning of line assertion");
 
-    if (context.index == context.input.length)
+    if (context.index === context.input.length)
         return this.dest;
 
     // Is current character a LineTerminator ?
-    if (context.current() == 10 || context.current() == 13 ||
-        context.current() == 8232 || context.current() == 8233)
+    if (context.current() === 10 || context.current() === 13 ||
+        context.current() === 8232 || context.current() === 8233)
         return this.dest;
 
     return null;
@@ -624,9 +622,9 @@ REWordBoundary.prototype.exec = function (context)
 {
     var a = this.isWordChar(context.lookahead(-1));
     var b = this.isWordChar(context.current());
-    if ((a != b) && this.positive)
+    if ((a !== b) && this.positive)
         return this.dest;
-    else if ((a == b) && !this.positive)
+    else if ((a === b) && !this.positive)
         return this.dest;
     return null;
 }
@@ -636,7 +634,7 @@ REWordBoundary.prototype.isWordChar = function (charCode)
     return ((charCode >= 97 && charCode <= 122) ||
             (charCode >= 65 && charCode <= 90) ||
             (charCode >= 48 && charCode <= 57) ||
-            charCode == 95);
+            charCode === 95);
 }
 
 function REAssertContext ()

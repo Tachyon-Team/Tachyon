@@ -76,7 +76,7 @@ REAstToGraph.prototype.compileDisjunction = function (
 {
     var node1 = new RENode();
     var node2 = new RENode();
-    var node3 = new RENode(outEdges.length == 0);
+    var node3 = new RENode(outEdges.length === 0);
     var edge1 = new REGroupOpenEdge(node1, group);
     var edge2 = new RENullEdge(node2);
     var edge3 = new REGroupCloseEdge(node3, group);
@@ -85,7 +85,7 @@ REAstToGraph.prototype.compileDisjunction = function (
     for (var i = astNode.alternatives.length; i > 0; --i)
         altEdges.push(this.compileAlternative(astNode.alternatives[i - 1], [edge2]));
 
-    if (altEdges.length == 0)
+    if (altEdges.length === 0)
         // Empty alternative set.
         node1.add([edge2]);
 
@@ -127,9 +127,9 @@ REAstToGraph.prototype.compileTerm = function (
         {
             group = this.groupDisjunction[astNode.prefix.value.captureIndex];
 
-            if (group == undefined)
+            if (group === undefined)
             {
-                if (astNode.prefix.value.type == 0)
+                if (astNode.prefix.value.type === 0)
                     group = new REGroup(new RECapture());
                 else
                     group = new REGroup();
@@ -236,9 +236,9 @@ REAstToGraph.prototype.compileAtom = function (
         for (var i = 0; i < astNode.value.classAtoms.length; ++i)
         {
             var ca = astNode.value.classAtoms[i];
-            ranges.push(ca.max == undefined ? ca.min.value : [ca.min.value, ca.max.value]);
+            ranges.push(ca.max === undefined ? ca.min.value : [ca.min.value, ca.max.value]);
         }
-        if (astNode.value.type == 1)
+        if (astNode.value.type === 1)
             edge = new REExclCharSetMatchEdge(node, ranges);
         else
             edge = new RECharSetMatchEdge(node, ranges);
@@ -312,21 +312,21 @@ REAstToGraph.prototype.compileAssertion = function (
         var node = new RENode();
         var edge;
 
-        if (astNode.value == 94) // '^'
+        if (astNode.value === 94) // '^'
         {
             if (this.multiline)
                 edge = new REMultilineBOLAssertEdge(node);
             else
                 edge = new REBOLAssertEdge(node);
         }
-        else if (astNode.value == 36) // '$'
+        else if (astNode.value === 36) // '$'
         {
             if (this.multiline)
                 edge = new REMultilineEOLAssertEdge(node);
             else
                 edge = new REEOLAssertEdge(node);
         }
-        else if (astNode.value == 98) // 'b' | 'B'
+        else if (astNode.value === 98) // 'b' | 'B'
         {
             edge = new REWordBoundary(node, astNode.positive);
         }

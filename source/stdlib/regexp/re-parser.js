@@ -117,7 +117,7 @@ REDisjunction.prototype.pp = function (
     level
 )
 {
-    if (level == undefined)
+    if (level === undefined)
         level = 0;
 
     var s = genLevel(level) + "Disjunction\n";
@@ -224,9 +224,9 @@ RETerm.prototype.pp = function (level)
 {
     var s = genLevel(level) + "Term\n";
 
-    if (this.prefix != undefined)
+    if (this.prefix !== undefined)
         s += this.prefix.pp(level + 1);
-    if (this.quantifier != undefined)
+    if (this.quantifier !== undefined)
         s += this.quantifier.pp(level + 1);
     return s;
 }
@@ -253,20 +253,20 @@ REParser.prototype.parseTerm = function ()
         // Sub-disjunction (either atom or assertion).
         case 40: // '('
         this.advance();
-        if (this.current() == 63) // '?'
+        if (this.current() === 63) // '?'
         {
             this.advance();
-            if (this.current() == 61) // '='
+            if (this.current() === 61) // '='
             {
                 this.advance();
                 node.prefix = new REAssertion(this.parseDisjunction(true, 3), true);
             }
-            else if (this.current() == 33) // '!'
+            else if (this.current() === 33) // '!'
             {
                 this.advance();
                 node.prefix = new REAssertion(this.parseDisjunction(true, 3), false);
             }
-            else if (this.current() == 58) // ':'
+            else if (this.current() === 58) // ':'
             {
                 this.advance();
                 node.prefix = new REAtom(this.parseDisjunction(true, 3));
@@ -285,10 +285,10 @@ REParser.prototype.parseTerm = function ()
         case 92: // '\'
         this.advance();
         // \b and \B are treated as an assertion
-        if (this.current() == 98) { // 'b' 
+        if (this.current() === 98) { // 'b' 
             node.prefix = new REAssertion( 98, true );
             this.advance();
-        } else if (this.current() == 66) { // 'B' 
+        } else if (this.current() === 66) { // 'B' 
             node.prefix = new REAssertion( 98, false );
             this.advance();
         } else {
@@ -337,13 +337,13 @@ REParser.prototype.parseTerm = function ()
         case 43: // '+'
         case 63: // '?'
         case 123: // '{'
-        if (node.prefix == undefined || node.prefix instanceof REAssertion)
+        if (node.prefix === undefined || node.prefix instanceof REAssertion)
             this.error("invalid quantifier without atom");
         else
             node.quantifier = this.parseQuantifier();
     }
 
-    if (node.quantifier == undefined)
+    if (node.quantifier === undefined)
     {
         node.quantifier = new REQuantifier();
         node.quantifier.greedy = true;
@@ -407,7 +407,7 @@ function REQuantifier () {}
 */
 REQuantifier.prototype.pp = function(level)
 {
-    return genLevel(level) + "Quantifier (min " + this.min + ", max " + (this.max == -1 ? "inf" : this.max) + ")\n";
+    return genLevel(level) + "Quantifier (min " + this.min + ", max " + (this.max === -1 ? "inf" : this.max) + ")\n";
 }
 
 /**
@@ -446,7 +446,7 @@ REParser.prototype.parseQuantifier = function ()
         else
             this.error("ill formed quantifier");
 
-        if (this.current() == 44) { // ','
+        if (this.current() === 44) { // ','
             this.advance();
             if (this.current() >= 48 && this.current() <= 57)
                 node.max = this.parseDecimalDigit();
@@ -456,7 +456,7 @@ REParser.prototype.parseQuantifier = function ()
             node.max = node.min;
         } 
         // Should be closing }
-        if (this.current() == 125)
+        if (this.current() === 125)
             this.advance();
         else
             this.error("ill formed quantifier");
@@ -464,7 +464,7 @@ REParser.prototype.parseQuantifier = function ()
     }
 
     // Is the quantifier non greedy ?
-    if (this.current() == 63) { // '?'
+    if (this.current() === 63) { // '?'
         node.greedy = false;
         this.advance();
     }
@@ -564,13 +564,13 @@ REParser.prototype.parseAtomEscape = function ()
         {
             case 100: // 'd'
             case 68: // 'D'
-                cc = new RECharacterClass( this.current() == 100 ? 0 : 1);
+                cc = new RECharacterClass( this.current() === 100 ? 0 : 1);
                 this.advance();
                 cc.classAtoms.push( new REClassAtom( new REPatternCharacter(48), new REPatternCharacter(57)) );
                 return cc;
             case 115: // 's'
             case 83: // 'S'
-                cc = new RECharacterClass( this.current() == 115 ? 0 : 1);
+                cc = new RECharacterClass( this.current() === 115 ? 0 : 1);
                 this.advance();
                 // Whitespace characters.
                 cc.classAtoms.push( new REClassAtom(new REPatternCharacter(9)) );
@@ -587,7 +587,7 @@ REParser.prototype.parseAtomEscape = function ()
                 return cc;
             case 119: // 'w'
             case 87: // 'W'
-                cc = new RECharacterClass( this.current() == 119 ? 0 : 1);
+                cc = new RECharacterClass( this.current() === 119 ? 0 : 1);
                 this.advance();
                 cc.classAtoms.push( new REClassAtom(new REPatternCharacter(65), new REPatternCharacter(90)) );
                 cc.classAtoms.push( new REClassAtom(new REPatternCharacter(97), new REPatternCharacter(122)) );
@@ -685,7 +685,7 @@ function RECharacterClass(type)
 
 RECharacterClass.prototype.pp = function (level)
 {
-    var s = genLevel(level) + "CharacterClass " + (this.type == 0 ? "inclusive" : "exclusive") + "\n";
+    var s = genLevel(level) + "CharacterClass " + (this.type === 0 ? "inclusive" : "exclusive") + "\n";
 
     for (var i = 0; i < this.classAtoms.length; ++i)
         s += this.classAtoms[i].pp(level + 1);
@@ -697,7 +697,7 @@ REParser.prototype.parseCharacterClass = function ()
     var node = new RECharacterClass(0);
 
     this.advance(); // consume [
-    if (this.current() == 94) // '^'
+    if (this.current() === 94) // '^'
     {
         // Set the character class type to exclusive if it starts with [^
         this.advance();
@@ -740,11 +740,11 @@ REClassAtom.prototype.pp = function (level)
 {
     var s = genLevel(level) + "ClassAtom\n";
 
-    if (this.min == undefined)
+    if (this.min === undefined)
         s += "all\n";
     else
         s += this.min.pp(level + 1);
-    if (this.max != undefined)
+    if (this.max !== undefined)
         s += this.max.pp(level + 1);
     return s;
 }
@@ -768,7 +768,7 @@ REParser.prototype.parseClassAtom = function ()
         this.advance();
     }
 
-    if (this.current() == 45) // '-'
+    if (this.current() === 45) // '-'
     {
         this.advance();
         switch (this.current())

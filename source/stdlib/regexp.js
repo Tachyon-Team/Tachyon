@@ -47,7 +47,7 @@ function RegExp (
     flags
 )
 {
-    this.source = pattern == undefined ? "" : pattern;
+    this.source = pattern === undefined ? "" : pattern;
     this.global = false;
     this.ignoreCase = false;
     this.multiline = false;
@@ -71,7 +71,7 @@ function RegExp (
 }
 
 /**
-Anonymous function to initialize this library
+    Anonymous function to initialize this library
 */
 (function ()
 {
@@ -90,9 +90,10 @@ RegExp.prototype.exec = function (
     var cursor = this.graph.head;
     var padding = this.lastIndex;
     var i = 0;
-    next = cursor;
+    var next = cursor;
 
-    while (next != null || padding < input.length || context.btstack.length > 0)
+    while (next !== null ||
+           padding < input.length || context.btstack.length > 0)
     {
         next = null;
 
@@ -105,7 +106,7 @@ RegExp.prototype.exec = function (
 
             if (next instanceof RENode)
             {
-                if (i < cursor.edges.length - 1 && btactive == 0)
+                if (i < cursor.edges.length - 1 && btactive === 0)
                     context.btstack.push([cursor, i, contextSave]);
                 cursor = next;
                 i = 0;
@@ -113,7 +114,7 @@ RegExp.prototype.exec = function (
             }
         } 
 
-        if (next == null)
+        if (next === null)
         {
             if (cursor._final)
             {
