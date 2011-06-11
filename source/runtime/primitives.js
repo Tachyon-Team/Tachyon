@@ -1022,74 +1022,57 @@ function eq(v1, v2)
 {
     "tachyon:inline";
     
-    // If both values are immediate integers
+    // If both values are the same, they are equal
+    if (iir.if_eq(v1, v2))
+        return true;
+
+    // If both values are immediate integers, they are not equal
     if (boxIsInt(v1) && boxIsInt(v2))
-    {
-        // Compare the immediate integers directly without unboxing them
-        if (iir.if_eq(v1, v2))
-            return true;
-        else
-            return false;
-    }
+        return false;
 
-    // If both values have the same type
-    else if (getRefTag(v1) === getRefTag(v2))
-    {
-        // Compare the references directly without unboxing them
-        if (iir.if_eq(v1, v2))
-            return true;
-        else
-            return false;
-    }
+    // If both values are strings, they are not equal
+    if (boxIsString(v1) && boxIsString(v2))
+        return false;
 
-    else
-    {
-        // Call the general case function
-        return eqGeneral(v1, v2);
-    }
+    // Call the general case function
+    return eqGeneral(v1, v2);
 }
 
 /**
 Non-inline case for HIR equal instruction
 */
-function eqGeneral(v1, v2)
+function eqGeneral(x, y)
 {
     "tachyon:static";
 
-    // Convert both values to primitives
-    var px = boxToPrim(v1);
-    var py = boxToPrim(v2);
+    assert (
+        !boxIsFloat(x) && !boxIsFloat(y),
+        'equality comparison on floats not implemented'
+    );
 
-    // If both values are immediate integers
-    if (boxIsInt(px) && boxIsInt(py))
-    {
-        // Compare the immediate integers directly without unboxing them
-        if (iir.if_eq(px, py))
-            return true;
-        else
-            return false;
-    }
+    if (x === null && y === UNDEFINED)
+        return true;
 
-    // If both values are strings
-    if (boxIsString(px) && boxIsString(py))
-    {
-        // Perform string comparison
-        return streq(px, py);
-    }
+    if (x === UNDEFINED && y === null)
+        return true;
 
-    // Attempt to convert both values to numbers
-    var nx = boxToNumber(px);
-    var ny = boxToNumber(py);
-    
-    // If both values are immediate integers
-    if (boxIsInt(nx) && boxIsInt(ny))
-    {
-        // Compare the immediate integers directly without unboxing them
-        if (iir.if_eq(nx, ny))
-            return true;
-        else
-            return false;
-    }
+    if (typeof x === 'number' && typeof y === 'string')
+        return x == boxToNumber(y);
+
+    if (typeof x === 'string' && typeof y === 'number')
+        return boxToNumber(x) == y;
+
+    if (typeof x === 'boolean')
+        return boxToNumber(x) == y;
+
+    if (typeof y === 'boolean')
+        return x == boxToNumber(y);
+
+    if ((typeof x === 'string' || typeof x === 'number') && boxIsObjExt(y))
+        return x == boxToPrim(y);
+
+    if (boxIsObjExt(x) && (typeof y === 'string' || typeof y === 'number'))
+        return boxToPrim(x) == y;
 
     // The values are not comparable
     return false;
