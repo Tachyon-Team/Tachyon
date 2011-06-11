@@ -728,7 +728,7 @@ Scanner.prototype.parse_regexp = function (pattern)
     {
         flags.push(c);
     }
-    return [String.fromCharCode.apply(pattern), String.fromCharCode.apply(flags)];
+    return [String.fromCharCode.apply(null, pattern), String.fromCharCode.apply(null, flags)];
 }
 
 // method simple_token(cat, n)
