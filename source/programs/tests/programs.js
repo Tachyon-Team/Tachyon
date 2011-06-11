@@ -833,6 +833,16 @@ tests.programs.stdlib_math = genTest(
 );
 
 /**
+Standard library regexp code tests.
+*/
+tests.programs.stdlib_regexp = genTest(
+    'programs/stdlib_regexp/stdlib_regexp.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Tests for sunspider.
 */
 tests.programs.sunspider = tests.testSuite();
