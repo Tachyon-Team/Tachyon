@@ -356,16 +356,9 @@ function string_match(regexp)
 
         while ((match = re.exec(this)) !== null)
         {
-            if (typeof match === "string")
-            {
-                result.push(match);
-            }
-            else
-            {
-                result.push(match[0]);
-            }
+            result.push(match[0]);
         }
-        if (result.length == 0)
+        if (result.length === 0)
         {
             return null;
         }
@@ -390,9 +383,88 @@ function string_replace(searchValue, replaceValue)
                     this.substring(pos + string_internal_getLength(searchValue)));
         }
     }
-    else if (searchValue instanceof RegExp)
-    {
-    }
+//    else if (searchValue instanceof RegExp)
+//    {
+//        // Save regexp state
+//        var global = searchValue.global;
+//        var lastIndexSave = searchValue.lastIndex;
+//        var match;
+//
+//        // Set the regexp global to get matches' index
+//        searchValue.global = true;
+//        searchValue.lastIndex = 0;
+//
+//        var newStringParts = [];
+//        var i = 0;
+//
+//        do {
+//            // Execute regexp
+//            match = searchValue.exec(this);
+//
+//            // Stop if no match left
+//           if (match === null)
+//                break;
+//
+//            // Get the last match index
+//            var matchIndex = searchValue.lastIndex - match[0].length;
+//
+//            // Expand replaceValue
+//            var j = 0, k = 0;
+//            var replaceValueParts = [];
+//
+//            for (; j < replaceValue.length; ++j)
+//            {
+//                // Expand special $ form
+//                if (replaceValue.charCodeAt(i) === 36) // '$' 
+//                {
+//                    if (k < j)
+//                        rvparts.push(replaceValue.substring(k, j));
+//
+//                    if (++j < replaceValue.length)
+//                    {
+//                        var c = replaceValue.charCodeAt(j);
+//
+//                        if (c === 36) // '$'
+//                            replaceValueParts.push("$");
+//                        else if (c === 38) // '&'
+//                            replaceValueParts.push(match[0]);
+//                        else if (c === 96) // '`'
+//                            replaceValueParts.push(this.substring(0, matchIndex));
+//                        else if (c === 39) // '''
+//                            replaceValueParts.push(this.substring(searchValue.lastIndex));
+//                        else if (c >= 48 && c <= 57)
+//                        {
+//                            var n = 0;
+//                            var cn = replaceValue.charCodeAt(j + 1);
+//
+//                            if (cn >= 48 && cn <= 57)
+//                            {
+//                                n = (c - 48) * 10;
+//                                ++j;
+//                            }
+//                            n += c - 48;
+//
+//                            // Push submatch if index is valid, or the raw string if not.
+//                            if (n < match.length)
+//                                replaceValueParts.push(match[n]);
+//                            else
+//                                replaceValueParts.push("$" + n);
+//                        }
+//                    }
+//                }
+//            }
+//
+//            if (k < j)
+//                replaceValueParts.push(replaceValue.substring(k, j));
+//
+//            newStringParts.push(replaceValueParts.join(""));
+//
+//        } while (global);
+//
+//        searchValue.global = global;
+//        searchValue.lastIndex = lastIndexSave;
+//        return newStringParts.join("");
+//    }
 
     return this.toString();
 }
@@ -419,16 +491,9 @@ function string_search(regexp)
 
     var matchIndex = -1;
     var match = re.exec(this);
-    if (match != null)
+    if (match !== null)
     {
-        if (typeof match === "string")
-        {
-            matchIndex = re.lastIndex - match.length;
-        }
-        else
-        {
-            matchIndex = re.lastIndex - match[0].length;
-        }
+        matchIndex = re.lastIndex - match[0].length;
     }
 
     re.global = globalSave;
