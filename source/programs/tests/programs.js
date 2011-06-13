@@ -821,6 +821,15 @@ tests.programs.stdlib_string = genTest(
     [],
     0
 );
+/**
+Standard library regexp code tests.
+*/
+tests.programs.stdlib_regexp = genTest(
+    'programs/stdlib_regexp/stdlib_regexp.js',
+    'test',
+    [],
+    0
+);
 
 /**
 Standard library math code tests.

@@ -148,7 +148,9 @@ STDLIB_SRCS =                           \
     stdlib/math.js                      \
     stdlib/date.js                      \
     stdlib/json.js                      \
-    stdlib/extensions.js
+    stdlib/extensions.js                \
+    stdlib/regexp/*.js                  \
+    stdlib/regexp.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \

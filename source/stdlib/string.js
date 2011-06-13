@@ -70,7 +70,7 @@ function String(value)
     }
     else
     {
-        // Convert the value to a string
+       // Convert the value to a string
         return boxToString(value);
     }
 }
@@ -370,105 +370,6 @@ function string_match(regexp)
     }
 }
 
-function string_replace(searchValue, replaceValue)
-{
-    // FIXME: support function as replaceValue
-    if (typeof searchValue === "string")
-    {
-        var pos = this.indexOf(searchValue);
-        if (pos >= 0)
-        {
-            return this.substring(0, pos).concat(
-                    replaceValue.toString(),
-                    this.substring(pos + string_internal_getLength(searchValue)));
-        }
-    }
-//    else if (searchValue instanceof RegExp)
-//    {
-//        // Save regexp state
-//        var global = searchValue.global;
-//        var lastIndexSave = searchValue.lastIndex;
-//        var match;
-//
-//        // Set the regexp global to get matches' index
-//        searchValue.global = true;
-//        searchValue.lastIndex = 0;
-//
-//        var newStringParts = [];
-//        var i = 0;
-//
-//        do {
-//            // Execute regexp
-//            match = searchValue.exec(this);
-//
-//            // Stop if no match left
-//           if (match === null)
-//                break;
-//
-//            // Get the last match index
-//            var matchIndex = searchValue.lastIndex - match[0].length;
-//
-//            // Expand replaceValue
-//            var j = 0, k = 0;
-//            var replaceValueParts = [];
-//
-//            for (; j < replaceValue.length; ++j)
-//            {
-//                // Expand special $ form
-//                if (replaceValue.charCodeAt(i) === 36) // '$' 
-//                {
-//                    if (k < j)
-//                        rvparts.push(replaceValue.substring(k, j));
-//
-//                    if (++j < replaceValue.length)
-//                    {
-//                        var c = replaceValue.charCodeAt(j);
-//
-//                        if (c === 36) // '$'
-//                            replaceValueParts.push("$");
-//                        else if (c === 38) // '&'
-//                            replaceValueParts.push(match[0]);
-//                        else if (c === 96) // '`'
-//                            replaceValueParts.push(this.substring(0, matchIndex));
-//                        else if (c === 39) // '''
-//                            replaceValueParts.push(this.substring(searchValue.lastIndex));
-//                        else if (c >= 48 && c <= 57)
-//                        {
-//                            var n = 0;
-//                            var cn = replaceValue.charCodeAt(j + 1);
-//
-//                            if (cn >= 48 && cn <= 57)
-//                            {
-//                                n = (c - 48) * 10;
-//                                ++j;
-//                            }
-//                            n += c - 48;
-//
-//                            // Push submatch if index is valid, or the raw string if not.
-//                            if (n < match.length)
-//                                replaceValueParts.push(match[n]);
-//                            else
-//                                replaceValueParts.push("$" + n);
-//                        }
-//                    }
-//                }
-//            }
-//
-//            if (k < j)
-//                replaceValueParts.push(replaceValue.substring(k, j));
-//
-//            newStringParts.push(replaceValueParts.join(""));
-//
-//        } while (global);
-//
-//        searchValue.global = global;
-//        searchValue.lastIndex = lastIndexSave;
-//        return newStringParts.join("");
-//    }
-
-    return this.toString();
-}
-
 function string_search(regexp)
 {
     var re;
@@ -499,6 +400,128 @@ function string_search(regexp)
     re.global = globalSave;
     re.lastIndex = lastIndexSave;
     return matchIndex;
+}
+
+function string_replace(searchValue, replaceValue)
+{
+    // FIXME: support function as replaceValue
+    if (typeof searchValue === "string")
+    {
+        var pos = this.indexOf(searchValue);
+        if (pos >= 0)
+        {
+            return this.substring(0, pos).concat(
+                replaceValue.toString(),
+                this.substring(pos + string_internal_getLength(searchValue)));
+        }
+    }
+    else if (searchValue instanceof RegExp)
+    {
+        // Save regexp state
+        var global = searchValue.global;
+        var lastIndexSave = searchValue.lastIndex;
+        var match;
+
+        // Set the regexp global to get matches' index
+        searchValue.global = true;
+        searchValue.lastIndex = 0;
+
+        // Will hold new string parts.
+        var nsparts = [];
+
+        var i = 0;
+        do {
+            // Execute regexp
+            match = searchValue.exec(this);
+
+            // Stop if no match left
+            if (match === null)
+                break;
+
+            // Get the last match index
+            var matchIndex = searchValue.lastIndex - match[0].length;
+
+            // Expand replaceValue
+            var rvparts = [];
+            var j = 0, k = 0;
+            for (; j < replaceValue.length; ++j)
+            {
+                // Expand special $ form
+                if (replaceValue.charCodeAt(j) === 36) // '$'
+                {
+                    if (k < j)
+                        rvparts.push(replaceValue.substring(k, j));
+
+                    var c = replaceValue.charCodeAt(j + 1);
+
+                    if (c === 36) // '$'
+                    {
+                        ++j;
+                        rvparts.push("$");
+                    }
+                    else if (c === 38) // '&'
+                    {
+                        ++j;
+                        rvparts.push(match[0]);
+                    }
+                    else if (c === 96) // '`'
+                    {
+                        ++j;
+                        rvparts.push(this.substring(0, matchIndex));
+                    }
+                    else if (c === 39) // '''
+                    {
+                        ++j;
+                        rvparts.push(this.substring(searchValue.lastIndex));
+                    }
+                    else if (c >= 48 && c <= 57)
+                    {
+                        ++j;
+
+                        var n = 0;
+                        var cn = replaceValue.charCodeAt(j + 1);
+                        if (cn >= 48 && cn <= 57)
+                        {
+                            n = (cn - 48) * 10;
+                            ++j;
+                        }
+                        n += c - 48;
+
+                        // Push submatch if index is valid, or the raw string if not.
+                        if (n < match.length)
+                            rvparts.push(match[n]);
+                        else
+                            rvparts.push("$" + n);
+                    }
+                    else
+                    {
+                        rvparts.push("$");
+                    }
+                    k = j;
+                }
+            }
+
+            // Get the last not expanded part of replaceValue.
+            if (k < replaceValue.length - 1)
+                rvparts.push(replaceValue.substring(k, replaceValue.length - 1));
+
+            if (i < matchIndex)
+                nsparts.push(this.substring(i, matchIndex));
+
+            var expandedrv = rvparts.join("");
+            nsparts.push(expandedrv);
+            i = searchValue.lastIndex;
+            print(searchValue.lastIndex);
+        } while (global);
+
+        if (i < this.length - 1)
+            nsparts.push(this.substring(i, this.length - 1));
+
+        searchValue.global = global;
+        searchValue.lastIndex = lastIndexSave;
+        return nsparts.join("");
+    }
+    return this.toString();
 }
 
 function string_split(separator, limit)

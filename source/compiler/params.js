@@ -202,6 +202,6 @@ function CompParams(cfgObj)
     Register allocation algorithm to use
     @field
     */
-    this.regAlloc = "onthefly";
+    this.regAlloc = "linearScan";
 }
 
