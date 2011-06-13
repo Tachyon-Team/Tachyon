@@ -965,7 +965,7 @@ onthefly.allocator.prototype.allocInstrs = function (rmap, block, pred)
 
     //print("Block: " + block.getBlockName());
     //print(usedist.toString());
-
+    
     // Initialize the backward iteration with the usedist from the 
     // end of the block
     iter(instrs, lastIndex, usedist);
@@ -1189,10 +1189,10 @@ onthefly.allocator.prototype.allocPhis = function (rmap, phis, pred, usedist)
         const val = instr.getIncoming(pred);
 
         // Use the same slot as predecessor if it is 
-        // an instruction and it is not used anymore
-        if (val instanceof IRInstr && usedist.dist(val) < 0)
+        // an instruction, it is not used anymore
+        // and this optimization was not previously done
+        if (val instanceof IRInstr && usedist.dist(val) < 0 && rmap.slot(val) !== null)
         {
-
             // Use the incoming register or memory location
             // as the destination for the phi instruction
             var slot = rmap.slot(val);
