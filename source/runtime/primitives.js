@@ -308,6 +308,45 @@ function boxToNumber(boxVal)
 }
 
 /**
+Attempt to convert a boxed value to an int32. If this fails,
+return undefined.
+*/
+function boxToInt32(boxVal)
+{
+    "tachyon:ret i32";
+
+    var numVal = boxToNumber(boxVal);
+
+    if (boxIsInt(numVal))
+    {
+        var num = iir.icast(IRType.i32, unboxInt(numVal));
+
+        return num;
+    }
+
+    // TODO: handle floats
+
+    return i32(0);
+}
+
+/**
+Test if a boxed value is a 32-bit integer
+*/
+function boxIsInt32(boxVal)
+{
+    "tachyon:inline";
+
+    if (boxIsInt(boxVal))
+    {
+        var intVal = unboxInt(boxVal);
+
+        return (intVal >= MIN_INT32 && intVal <= MAX_INT32);
+    }
+
+    return false;
+}
+
+/**
 Convert a boxed value to a string
 */
 function boxToString(val)
@@ -1397,8 +1436,19 @@ function and(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('bitwise AND of non-integer values');
+        v1 = boxToInt32(v1);
+        v2 = boxToInt32(v2);
+
+        var res = iir.and(v1, v2);
+
+        res = boxInt(iir.icast(IRType.pint, res));
+
+        assert (
+            boxIsInt32(res),
+            'and result is not int32'
+        );
+
+        return res;
     }
 }
 
@@ -1418,8 +1468,19 @@ function or(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('bitwise OR of non-integer values');
+        v1 = boxToInt32(v1);
+        v2 = boxToInt32(v2);
+
+        var res = iir.or(v1, v2);
+
+        res = boxInt(iir.icast(IRType.pint, res));
+
+        assert (
+            boxIsInt32(res),
+            'or result is not int32'
+        );
+
+        return res;
     }
 }
 
@@ -1439,8 +1500,19 @@ function xor(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('bitwise XOR of non-integer values');
+        v1 = boxToInt32(v1);
+        v2 = boxToInt32(v2);
+
+        var res = iir.xor(v1, v2);
+
+        res = boxInt(iir.icast(IRType.pint, res));
+
+        assert (
+            boxIsInt32(res),
+            'xor result is not int32'
+        );
+
+        return res;
     }
 }
 
@@ -1463,8 +1535,21 @@ function lsft(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('left shift of non-integer values');
+        v1 = boxToInt32(v1);
+        v2 = boxToInt32(v2);
+
+        v2 = v2 & i32(0x1F);
+
+        var res = iir.lsft(v1, v2);
+
+        res = boxInt(iir.icast(IRType.pint, res));
+
+        assert (
+            boxIsInt32(res),
+            'lsft result is not int32'
+        );
+
+        return res;
     }
 }
 
@@ -1487,8 +1572,19 @@ function rsft(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('right shift of non-integer values');
+        v1 = boxToInt32(v1);
+        v2 = boxToInt32(v2);
+
+        var res = iir.rsft(v1, v2);
+
+        res = boxInt(iir.icast(IRType.pint, res));
+
+        assert (
+            boxIsInt32(res),
+            'rsft result is not int32'
+        );
+
+        return res;
     }
 }
 
@@ -1511,8 +1607,19 @@ function ursft(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('unsigned right shift of non-integer values');
+        v1 = boxToInt32(v1);
+        v2 = boxToInt32(v2);
+
+        var res = iir.ursft(v1, v2);
+
+        res = boxInt(iir.icast(IRType.pint, res));
+
+        assert (
+            res >= 0,
+            'ursft result is negative'
+        );
+
+        return res;
     }
 }
 
