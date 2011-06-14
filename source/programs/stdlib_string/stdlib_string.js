@@ -253,6 +253,18 @@ function test_replace()
     if ('foobif'.replace('oo', 'oobar') !== 'foobarbif')
         return 1;
 
+    if ('foobar'.replace(/(.)\1/, '$1') !== 'fobar')
+        return 1;
+
+    if ('foobar'.replace(/(.)/g, '$1$1') !== 'ffoooobbaarr')
+        return 1;
+
+    if ('foobar foobar'.replace(/\bf/g, "$`") !== 'oobar foobar oobar')
+        return 1;
+    
+    if ('foobar foobar'.replace(/\bf/g, "$'") !== 'oobar foobaroobar oobaroobar')
+        return 1;
+                            
     return 0;
 }
 
