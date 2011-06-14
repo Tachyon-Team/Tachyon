@@ -92,6 +92,7 @@ RegExp.prototype.exec = function (
     var i = 0;
     var next = cursor;
 
+    context.index = this.lastIndex;
     while (next !== null ||
            padding < input.length || context.btstack.length > 0)
     {
@@ -99,7 +100,9 @@ RegExp.prototype.exec = function (
 
         for (; i < cursor.edges.length; ++i)
         {
-            var contextSave = context.dump();
+            var contextSave;
+            if (cursor.edges.length > 1)
+                contextSave = context.dump();
             var btactive = context.btactive;
 
             next = cursor.edges[i].exec(context);

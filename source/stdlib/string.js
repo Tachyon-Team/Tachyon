@@ -428,6 +428,7 @@ function string_replace(searchValue, replaceValue)
 
         // Will hold new string parts.
         var nsparts = [];
+        var nslen = 0;
 
         var i = 0;
         do {
@@ -497,29 +498,52 @@ function string_replace(searchValue, replaceValue)
                     {
                         rvparts.push("$");
                     }
-                    k = j;
+                    k = j + 1;
                 }
             }
 
             // Get the last not expanded part of replaceValue.
             if (k < replaceValue.length - 1)
-                rvparts.push(replaceValue.substring(k, replaceValue.length - 1));
+                rvparts.push(replaceValue.substring(k, replaceValue.length));
 
             if (i < matchIndex)
-                nsparts.push(this.substring(i, matchIndex));
+            {
+                nsparts.push([i, matchIndex]);
+                nslen += matchIndex - i;
+            }
 
             var expandedrv = rvparts.join("");
-            nsparts.push(expandedrv);
+            if (expandedrv.length > 0)
+            {
+                nsparts.push(expandedrv);
+                nslen += expandedrv.length;
+            }
             i = searchValue.lastIndex;
-            print(searchValue.lastIndex);
         } while (global);
 
         if (i < this.length - 1)
-            nsparts.push(this.substring(i, this.length - 1));
+            nsparts.push([i, this.length]);
 
         searchValue.global = global;
         searchValue.lastIndex = lastIndexSave;
-        return nsparts.join("");
+
+        // Build new string from parts.
+        var chars = new Array(nslen);
+        for (var i = 0, k = 0; i < nsparts.length; ++i)
+        {
+            var part = nsparts[i];
+            if (typeof part === "string")
+            {
+                for (var j = 0; j < part.length; ++j, ++k)
+                    chars[k] = part.charCodeAt(j);
+            }
+            else
+            {
+                for (var j = part[0]; j < part[1]; ++j, ++k)
+                    chars[k] = this.charCodeAt(j);
+            }
+        }
+        return String.fromCharCode.apply(null, chars);
     }
     return this.toString();
 }
