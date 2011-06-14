@@ -44,7 +44,7 @@
 ROOT_DIR = `(cd ..;pwd)`
 
 #JavaScript VM program
-JSVMPROG = d8
+JSVMPROG = /opt/local/bin/d8
 JSVMPROG64 = d8_64
 
 #JavaScript VM command options
