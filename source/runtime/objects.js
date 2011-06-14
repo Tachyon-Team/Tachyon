@@ -139,6 +139,24 @@ function makeObjectLayouts(params)
         )
     );
 
+    // Maximum value that can be stored in 32-bit signed integer
+    params.staticEnv.regBinding(
+        'MAX_INT32',
+        ConstValue.getConst(
+            getIntMax(32),
+            IRType.pint
+        )
+    );
+
+    // Minimum value that can be stored in 32-bit signed integer
+    params.staticEnv.regBinding(
+        'MIN_INT32',
+        ConstValue.getConst(
+            getIntMin(32),
+            IRType.pint
+        )
+    );
+
     // Number of reference tag bits
     params.staticEnv.regBinding(
         'TAG_NUM_BITS_REF',

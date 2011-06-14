@@ -677,26 +677,28 @@ Scanner.prototype.parse_string = function ()
             c = this.lookahead_char(0);
             if (c === EOF)
                 error("unterminated string");
-            this.advance(1);
-            if (c === LOWER_N_CH)
-                c = LF_CH;
-            else if (c === ZERO_CH)
-                c = NUL_CH;
-            else if (c === LOWER_B_CH)
-                c = BS_CH;
-            else if (c === LOWER_T_CH)
-                c = TAB_CH;
-            else if (c === LOWER_V_CH)
-                c = VT_CH;
-            else if (c === LOWER_F_CH)
-                c = FF_CH;
-            else if (c === LOWER_R_CH)
-                c = CR_CH;
-            else if (c === LOWER_X_CH)
-                error("\\xXX string syntax not supported");
-            else if (c === LOWER_U_CH)
-                error("\\uXXXX string syntax not supported");
-            chars.push(c);
+            this.advance(1);            if (c !== LF_CH)
+            {
+                if (c === LOWER_N_CH)
+                    c = LF_CH;
+                else if (c === ZERO_CH)
+                    c = NUL_CH;
+                else if (c === LOWER_B_CH)
+                    c = BS_CH;
+                else if (c === LOWER_T_CH)
+                    c = TAB_CH;
+                else if (c === LOWER_V_CH)
+                    c = VT_CH;
+                else if (c === LOWER_F_CH)
+                    c = FF_CH;
+                else if (c === LOWER_R_CH)
+                    c = CR_CH;
+                else if (c === LOWER_X_CH)
+                    error("\\xXX string syntax not supported");
+                else if (c === LOWER_U_CH)
+                    error("\\uXXXX string syntax not supported");
+                chars.push(c);
+            }
         }
         else
             chars.push(c);

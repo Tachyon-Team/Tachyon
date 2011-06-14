@@ -873,6 +873,16 @@ tests.programs.sunspider['bitops-nsieve-bits'] = genTest(
 tests.programs.sunspider['controlflow-recursive'] = genTest(
     'programs/sunspider/controlflow-recursive.js'
 );
+/* Only works in 64-bit for now
+tests.programs.sunspider['crypto-md5'] = genTest(
+    'programs/sunspider/crypto-md5.js'
+);
+*/
+/* Only works in 64-bit for now
+tests.programs.sunspider['crypto-sha1'] = genTest(
+    'programs/sunspider/crypto-sha1.js'
+);
+*/
 /* Uses Math.random 
 tests.programs.sunspider['string-base64'] = genTest(
     'programs/sunspider/string-base64.js'
