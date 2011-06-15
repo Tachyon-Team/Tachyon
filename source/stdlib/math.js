@@ -193,13 +193,14 @@ x to the power y.
 • If x is −0 and y<0 and y is not an odd integer, the result is +∞.
 • If x<0 and x is finite and y is finite and y is not an integer, the result is NaN.
 */
-Math.pow = function (x, y)
+Math.pow = function (base, power)
 {
-    var p = 1;
+    var acc = 1;
+    var current = base;
 
-    for (var i = 0; i < y; ++i)
-        p *= x;
+    for (; power != 0; power >>= 1, current *= current) {
+        if (power & 1) acc *= current;
+    }
 
-    return p;
+    return acc;
 };
-
