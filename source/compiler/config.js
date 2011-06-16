@@ -72,8 +72,8 @@ function initConfig(is64bit, verbosity)
     var heapSize;
     if (is64bit)
     {
-        // Tachyon 64bit => 1GB
-        heapSize = 1 * Math.pow(2,30);
+        // Tachyon 64bit => 64GB
+        heapSize = 1 * Math.pow(2,36);
     }
     else
     {
@@ -90,12 +90,13 @@ function initConfig(is64bit, verbosity)
     config.hostParams = new CompParams({
         target          : is64bit? Target.x86_64 : Target.x86_32,
         tachyonSrc      : true,
-        debug           : true,
+        debug           : false,
         parserWarnings  : true,
         debugTrace      : false,
         heapSize        : heapSize,
         staticEnv       : new StaticEnv()
     });
+    //config.hostParams.printRegAlloc = true;
 
     /**
     Compilation parameters for the client code tachyon compiles and runs.
@@ -119,12 +120,13 @@ function initConfig(is64bit, verbosity)
     config.bootParams = new CompParams({
         target          : is64bit ? Target.x86_64 : Target.x86_32,
         tachyonSrc      : true,
-        debug           : true,
+        debug           : false,
         parserWarnings  : true,
         debugTrace      : false,
         heapSize        : heapSize,
         staticEnv       : new StaticEnv()
     });
+    //config.bootParams.printRegAlloc = true;
 
     // TODO: object representation choice
     // TODO: GC parameters

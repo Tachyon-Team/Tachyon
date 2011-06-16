@@ -203,5 +203,6 @@ function CompParams(cfgObj)
     @field
     */
     this.regAlloc = "onthefly";
+    //this.regAlloc = "linearScan";
 }
 

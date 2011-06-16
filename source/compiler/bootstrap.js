@@ -176,7 +176,7 @@ function bootstrap(params, allCode, writeImg)
         }
     }
 
-    //reportPerformance();
+    reportPerformance();
 
     // If we are writing an image
     if (writeImg === true)

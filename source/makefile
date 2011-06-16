@@ -83,15 +83,12 @@ BASE_SRCS =                             \
     utility/modules.js                  \
     utility/misc.js                     \
     utility/num.js                      \
-    utility/xml.js                      \
-    utility/html.js                     \
     compiler/sources.js                 \
     compiler/targets.js                 \
     compiler/params.js                  \
     compiler/config.js                  \
     compiler/compiler.js                \
     compiler/bootstrap.js               \
-    compiler/imgwriter.js               \
     parser/misc.js                      \
     parser/scanner.js                   \
     parser/parser.js                    \
@@ -125,8 +122,15 @@ BASE_SRCS =                             \
     backend/backend.js                  \
     backend/x86/asm.js                  \
     backend/x86/config.js               \
-    backend/x86/ir-to-asm.js            \
+    backend/x86/ir-to-asm.js            
+
+# Extra sources not required for minimal bootstrap
+EXTRA_SRCS =                            \
+    utility/xml.js                      \
+    utility/html.js                     \
+    compiler/imgwriter.js               \
     profiler/event_recording_profiler.js
+    
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
@@ -148,7 +152,11 @@ STDLIB_SRCS =                           \
     stdlib/math.js                      \
     stdlib/date.js                      \
     stdlib/json.js                      \
-    stdlib/extensions.js
+    stdlib/extensions.js                
+	#stdlib/regexp/re-parser.js          \
+	#stdlib/regexp/re-graph.js           \
+	#stdlib/regexp/re-asttograph.js      \
+	#stdlib/regexp.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \
