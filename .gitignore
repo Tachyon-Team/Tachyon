@@ -1,11 +1,9 @@
 *swp
 *~
 .gitignore
-source/buildv8.sh
 doc/*
 tests/*
-source/compiler/aa-filelist
 source/compiler/sources.js
-source/myfib.js
 source/tachyon
-source/tests/fp/to_be_done
+source/deps
+
