@@ -84,8 +84,7 @@ BASE_SRCS =                             \
     backend/backend.js                  \
     backend/x86/asm.js                  \
     backend/x86/config.js               \
-    backend/x86/ir-to-asm.js            \
-    profiler/event_recording_profiler.js
+    backend/x86/ir-to-asm.js
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
