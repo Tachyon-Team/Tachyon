@@ -2,8 +2,15 @@
 *~
 .gitignore
 doc/*
-tests/*
 source/compiler/sources.js
 source/tachyon
 source/deps
+bench
+host
+makefile.common
+parser
+programs
+stdlib
+tests
+utility
 

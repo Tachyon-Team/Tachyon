@@ -1,0 +1,7 @@
+# Environment variables
+COMMON_URL=git@github.com:Tachyon-Team/Common.git
+# Installation script
+mkdir deps
+git clone $COMMON_URL deps/common
+for i in deps/common/source/*; do ln -s $i; done
+host/install-host-vm
