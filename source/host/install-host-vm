@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # _________________________________________________________________________
 #
@@ -52,7 +52,9 @@ DEFAULT_JSVM="v8"
 
 V8_REVISION="7932"
 
-V8_DIR="v8"
+V8_DIR="deps/v8"
+
+SRC_DIR=`pwd`
 
 v8_install()
 {
@@ -68,7 +70,7 @@ v8_install()
 v8_download()
 {
   if [ ! -d "$V8_DIR" ]; then
-    svn checkout http://v8.googlecode.com/svn/trunk/ v8
+    svn checkout http://v8.googlecode.com/svn/trunk/ $V8_DIR
   fi
 }
 
@@ -82,19 +84,19 @@ v8_patch_for_tachyon()
   cd src
 
   if [ ! -e "tachyon-exts.h" ]; then
-    ln -s ../../tachyon-exts.h .
+    ln -s $SRC_DIR/host/tachyon-exts.h .
   fi
 
   if [ ! -e "tachyon-exts.cc" ]; then
-    ln -s ../../tachyon-exts.cc .
+    ln -s $SRC_DIR/host/tachyon-exts.cc .
   fi
 
   if [ ! -e "d8-tachyon-exts.h" ]; then
-    ln -s ../../d8-tachyon-exts.h .
+    ln -s $SRC_DIR/host/d8-tachyon-exts.h .
   fi
 
   if [ ! -e "d8-tachyon-exts.cc" ]; then
-    ln -s ../../d8-tachyon-exts.cc .
+    ln -s $SRC_DIR/host/d8-tachyon-exts.cc .
   fi
 
   if [ ! -e "SConscript-orig" ]; then
@@ -121,7 +123,9 @@ v8_patch_for_tachyon()
 
 v8_build()
 {
-  scons d8
+  scons arch=x64 mode=release
+  mv d8 d8_64
+  scons mode=release d8
 }
 
 v8_install_path()
@@ -129,7 +133,7 @@ v8_install_path()
   echo "****************************************************************"
   echo "***"
   echo "*** Please add the directory"
-  echo "***   " `pwd`
+  echo "***   " $V8_DIR
   echo "*** to your PATH."
   echo "***"
   echo "****************************************************************"
