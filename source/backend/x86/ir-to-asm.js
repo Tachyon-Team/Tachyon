@@ -536,7 +536,7 @@ irToAsm.translator.prototype.floatValue = function (f)
 {
     return this.asm.linked(
         String(f),
-        function (dstAddr) { return this.getAddr().getBytes(); },
+        function (dstAddr) { return this.getAddr().addOffset(3).getBytes(); },
         this.params.target.ptrSizeBits
     );
 };
@@ -1140,16 +1140,19 @@ irToAsm.translator.prototype.prelude = function ()
 
 irToAsm.translator.prototype.epilogue = function (floatConst)
 {
-    print("Entering epilogue");
-    print("floatConst: " + floatConst);
-
     var that = this;
     floatConst.forEach(function(linkedFloat)
                        {
                            print(linkedFloat[1]);
                            print(floatToBits(linkedFloat[1]));
+
+                           // TODO: Align on a 16 byte boundary
+                           that.asm.codeBlock.align(8);
                            that.asm.
                                provide(linkedFloat[0]).
+                               // 32-bit Header
+                               gen32(0).
+                               // Floating point bits 
                                gen64(floatToBits(linkedFloat[1]));
                        });
 };
@@ -1731,6 +1734,7 @@ FPToIInstr.prototype.genCode = function (tltor, opnds)
     const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
     const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
     
+    print("opnds[0] = " + opnds[0]);
     var srcAddr = opnds[0];
     if (opnds[0].type !== x86.type.REG)
     {
