@@ -39,52 +39,16 @@
 #  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # _________________________________________________________________________
 
-# makefile for Tachyon JavaScript compiler
+#
+# Makefile for Tachyon JavaScript compiler
+#
 
-ROOT_DIR = `(cd ..;pwd)`
-
-#JavaScript VM program
-JSVMPROG = /opt/local/bin/d8
-JSVMPROG64 = d8_64
-
-#JavaScript VM command options
-JSVMOPTS = --allow_natives_syntax --nocollect_maps
-
-#JavaScript VM command options when debugging
-JSVMOPTSDEBUG = $(JSVMOPTS) --noopt
-
-#JavaScript VM command
-JSVM = $(JSVMPROG) $(JSVMOPTS)
-JSVM64 = $(JSVMPROG64) $(JSVMOPTS)
-
-# JavaScript VM command with rlwrap
-RLWJSVM = rlwrap $(JSVM)
-RLWJSVM64 = rlwrap $(JSVM64)
-
-# For bootstrapping with Tachyon JavaScript to Scheme compiler
-JS2SCM = parser/js2scm
-
-# For debugging Tachyon
-JS2JS = parser/js2js
+# Include the common makefile
+include makefile.common
 
 # Base program source files
 BASE_SRCS =                             \
-    utility/log.js                      \
-    utility/debug.js                    \
-    utility/system.js                   \
-    utility/iterators.js                \
-    utility/graph.js                    \
-    utility/arrays.js                   \
-    utility/heap.js                     \
-    utility/hashmap.js                  \
-    utility/hashset.js                  \
-    utility/linkedlist.js               \
-    utility/strings.js                  \
-    utility/modules.js                  \
-    utility/misc.js                     \
-    utility/num.js                      \
-    utility/xml.js                      \
-    utility/html.js                     \
+    $(COMMON_SRCS)                      \
     compiler/sources.js                 \
     compiler/targets.js                 \
     compiler/params.js                  \
@@ -92,11 +56,6 @@ BASE_SRCS =                             \
     compiler/compiler.js                \
     compiler/bootstrap.js               \
     compiler/imgwriter.js               \
-    parser/misc.js                      \
-    parser/scanner.js                   \
-    parser/parser.js                    \
-    parser/pp.js                        \
-    parser/ast-passes.js                \
     ir/types.js                         \
     ir/static.js                        \
     ir/instructions.js                  \
@@ -136,22 +95,6 @@ RUNTIME_SRCS =                          \
     runtime/ffi.js                      \
     runtime/rtinit.js
 
-# Standard library source files
-STDLIB_SRCS =                           \
-    stdlib/object.js                    \
-    stdlib/function.js                  \
-    stdlib/array.js                     \
-    stdlib/error.js                     \
-    stdlib/boolean.js                   \
-    stdlib/number.js                    \
-    stdlib/string.js                    \
-    stdlib/math.js                      \
-    stdlib/date.js                      \
-    stdlib/json.js                      \
-    stdlib/extensions.js                \
-    stdlib/regexp/*.js                  \
-    stdlib/regexp.js
-
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \
     main.js
@@ -180,9 +123,9 @@ TEST_SRCS =                             \
 
 # All source files
 ALL_SRCS =                              \
+    $(BASE_SRCS)                        \
     $(RUNTIME_SRCS)                     \
     $(STDLIB_SRCS)                      \
-    $(BASE_SRCS)                        \
     $(MAIN_SPEC_SRCS)                   \
     $(TEST_SPEC_SRCS)
 
