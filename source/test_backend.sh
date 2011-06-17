@@ -1,0 +1,22 @@
+d8 \
+utility/log.js                      \
+utility/debug.js                    \
+utility/system.js                   \
+utility/iterators.js                \
+utility/graph.js                    \
+utility/arrays.js                   \
+utility/heap.js                     \
+utility/hashmap.js                  \
+utility/hashset.js                  \
+utility/linkedlist.js               \
+utility/strings.js                  \
+utility/modules.js                  \
+utility/misc.js                     \
+utility/num.js                      \
+runtime/misc.js                     \
+backend2/codeblock.js               \
+backend2/x86/operands.js            \
+backend2/x86/instr-table.js         \
+backend2/x86/instructions.js        \
+backend2/x86/assembler.js           \
+backend2/test.js
