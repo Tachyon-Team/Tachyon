@@ -387,6 +387,8 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
     // to have to information from register allocation 
     this.fct = fct;
 
+    var floatConst = [];
+
     function replace(opnd, index)
     {
         // If this is a static function reference
@@ -411,6 +413,14 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
         {
             return that.stringValue(opnd.value);
         }
+
+        else if (opnd instanceof ConstValue && opnd.isFloat())
+        {
+            linkedObj = that.floatValue(opnd.value);
+            floatConst.push([linkedObj, opnd.value]);
+            return linkedObj;
+        }
+
  
         else if (opnd instanceof ConstValue)
         {
@@ -461,6 +471,9 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 
         that.asm.genListing("");
     });
+
+    if (floatConst.length > 0)
+        this.epilogue(floatConst);
 };
 
 /** 
@@ -512,6 +525,19 @@ irToAsm.translator.prototype.stringValue = function (s)
             }
         },
         that.params.target.ptrSizeBits
+    );
+};
+
+/**
+    @private
+    Returns a float linked object
+*/
+irToAsm.translator.prototype.floatValue = function (f)
+{
+    return this.asm.linked(
+        String(f),
+        function (dstAddr) { return this.getAddr().getBytes(); },
+        this.params.target.ptrSizeBits
     );
 };
 
@@ -1112,6 +1138,22 @@ irToAsm.translator.prototype.prelude = function ()
     }
 };
 
+irToAsm.translator.prototype.epilogue = function (floatConst)
+{
+    print("Entering epilogue");
+    print("floatConst: " + floatConst);
+
+    var that = this;
+    floatConst.forEach(function(linkedFloat)
+                       {
+                           print(linkedFloat[1]);
+                           print(floatToBits(linkedFloat[1]));
+                           that.asm.
+                               provide(linkedFloat[0]).
+                               gen64(floatToBits(linkedFloat[1]));
+                       });
+};
+
 //=============================================================================
 //
 // Translation of IR instructions to x86 machine code
@@ -1593,6 +1635,9 @@ FAddInstr.prototype.genCode = function (tltor, opnds)
     const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
     const mem = x86.Assembler.prototype.memory;
 
+    /*
+      S'assurer de ne pas ecraser de valeur...
+    */
     var destAddr = opnds[2];
     if (opnds[2] !== this.regAlloc.dest)
     {
@@ -1627,6 +1672,51 @@ FAddInstr.prototype.genCode = function (tltor, opnds)
 };
 
 /**
+Floating point substraction
+*/
+/*
+FSubInstr.prototype.genCode = function (tltor, opnds)
+{
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;
+    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+    const mem = x86.Assembler.prototype.memory;
+
+    var destAddr = opnds[2];
+    if (opnds[2] !== this.regAlloc.dest)
+    {
+        tltor.asm.
+        mov(opnds[2], this.regAlloc.dest);
+        destAddr = this.regAlloc.dest;
+    }
+
+    var opnd0Addr = opnds[0];
+    if (opnd0Addr.type !== x86.type.REG)
+    {
+        tltor.asm.
+        mov(opnd0Addr, scratchReg);
+        opnd0Addr = scratchReg;
+    }
+
+
+    tltor.asm.
+    fldMem(mem(valueOffset - tagValue, opnd0Addr), 64);
+
+    var opnd1Addr = opnds[1]; 
+    if (opnd1Addr.type !== x86.type.REG)
+    {
+        tltor.asm.
+        mov(opnd1Addr, scratchReg);
+        opnd1Addr = scratchReg;
+    }  
+
+    tltor.asm.
+    gen8(0xDC).opndModRMSIB(0, mem(valueOffset-tagValue, opnd1Addr)).
+    fstMem(mem(valueOffset-tagValue, destAddr), 64); 
+};
+*/
+
+/**
 Convert a float to an integer
 */
 FPToIInstr.prototype.genCode = function (tltor, opnds)
@@ -1655,6 +1745,14 @@ FPToIInstr.prototype.genCode = function (tltor, opnds)
     gen8(0xDB).opndModRMSIB(3, mem(0,xSP)).genListing("fistp(0)").// Convert to int and store on top of stack
     pop(this.regAlloc.dest);
 };
+
+/**
+Convert an integer to a float
+*/
+//IToFPInstr.prototype.genCode = function (tltor, opnds)
+//{
+//    
+//}
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {

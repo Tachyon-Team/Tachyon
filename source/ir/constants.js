@@ -136,6 +136,14 @@ ConstValue.prototype.isInt = function ()
 };
 
 /**
+Test if a constant is a float
+*/
+ConstValue.prototype.isFloat = function ()
+{
+    return (this.isNumber() && !num_integer(this.value));
+};
+
+/**
 Test if a constant is a boxed integer
 */
 ConstValue.prototype.isBoxInt = function (params)

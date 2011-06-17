@@ -154,7 +154,7 @@ function boxIsInt(boxVal)
 /**
 Test if a boxed value is a floating point value
 */
-function boxIsFP(boxVal)
+function boxIsFloat(boxVal)
 {
     "tachyon:inline";
 
@@ -205,17 +205,6 @@ function boxIsObjExt(boxVal)
     // Test that the tag is either array, function or object
     var tag = getRefTag(boxVal);
     return (tag >= TAG_ARRAY && tag <= TAG_OBJECT);
-}
-
-/**
-Test if a boxed value is a floating-point value
-*/
-function boxIsFloat(boxVal)
-{
-    "tachyon:inline";
-
-    // Compare the reference tag
-    return getRefTag(boxVal) === TAG_FLOAT;
 }
 
 /**
@@ -296,9 +285,10 @@ function boxToNumber(boxVal)
     "tachyon:static";
     "tachyon:noglobal";
 
-    if (boxIsInt(boxVal))
+    if (boxIsInt(boxVal) || boxIsFloat(boxVal))
         return boxVal;
 
+    // TODO: add strToNumber
     if (boxIsString(boxVal))
         return strToInt(boxVal);
 
@@ -335,7 +325,7 @@ function boxToString(val)
         return val;
     }
 
-    if (boxIsFP(val))
+    if (boxIsFloat(val))
     {
         return "unimplement FP representation";
     }
@@ -1245,7 +1235,7 @@ function addGeneral(v1, v2)
         return strcat(v1, v2);
     }
     // If both values are floats
-    else if (boxIsFP(v1) && boxIsFP(v2))
+    else if (boxIsFloat(v1) && boxIsFloat(v2))
     {
         // Allocate a float object to store the result
         var r = alloc_float();         
