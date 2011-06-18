@@ -46,6 +46,14 @@ CodeBlock.prototype.toString = function ()
 }
 
 /**
+Get the address of an offset in the code block
+*/
+CodeBlock.prototype.getAddress = function (idx)
+{
+    return getBlockAddr(this.memBlock, idx);
+}
+
+/**
 Clear the contents of the code block
 */
 CodeBlock.prototype.clear = function ()
@@ -83,7 +91,7 @@ CodeBlock.prototype.writeByte = function (val)
     );
 
     assert (
-        isNonNegInt(val) && val < 255,
+        isNonNegInt(val) && val <= 255,
         'invalid byte value: ' + val
     );
 
@@ -93,21 +101,33 @@ CodeBlock.prototype.writeByte = function (val)
 }
 
 /**
-Write a word (16-bit) at the given position
+Write a signed integer at the current position
 */
-CodeBlock.prototype.writeWord = function (val)
+CodeBlock.prototype.writeInt = function (val, numBits)
 {
     assert (
-        num_ge(val, getIntMin(16)) && num_le(val, getIntMax(16)),
-        'invalid word value: ' + val
+        isPosInt(numBits) && numBits % 8 === 0,
+        'the number of bits must be a positive multiple of 8'
     );
 
-    this.writeByte((val & 0xFF00) >> 8);
-    this.writeByte(val & 0xFF);
+    assert (
+        num_ge(val, getIntMin(numBits)) && num_le(val, getIntMax(numBits)),
+        'integer value does not fit within ' + numBits + ' bits: ' + val
+    );
+
+    // Compute the size in bytes
+    var numBytes = numBits / 8;
+
+    // Write out the bytes
+    for (var i = 0; i < numBytes; ++i)
+    {
+        //print(num_to_string(val));
+
+        var byteVal = num_and(val, 0xFF);
+
+        this.writeByte(byteVal);
+
+        val = num_shift(val, -8);
+    }
 }
-
-
-//
-// TODO: write 8, 32, 64bit values, byte by byte
-//
 

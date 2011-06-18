@@ -49,7 +49,14 @@ x86.Instruction.prototype.toString = function ()
     str += this.mnem;
 
     for (var i = 0; i < this.opnds.length; ++i)
-        str += ' ' + this.opnds[i].toString();
+    {
+        if (i === 0)
+            str += ' ';
+        else
+            str += ', ';
+
+        str += this.opnds[i].toString();
+    }
 
     str += ';';
 
@@ -193,6 +200,8 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                 //print('imm opnd size: ' + opnd.size);
                 if (!(opnd instanceof x86.Immediate))
                     continue ENC_LOOP;
+                if (opnd.type !== 'imm')
+                    continue ENC_LOOP;
                 if (opnd.size > opndSize)
                     continue ENC_LOOP;
                 //print('imm opnd match ***');
@@ -222,6 +231,8 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                 case 'moffs':
                 if (!(opnd instanceof x86.Immediate))
                     continue ENC_LOOP;
+                if (opnd.type !== 'moffs')
+                    continue ENC_LOOP;
                 if (opnd.size > opndSize)
                     continue ENC_LOOP;
                 break;
@@ -244,7 +255,7 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
 
     assert (
         bestEnc !== null,
-        'no valid encoding for "' + this + '"'
+        'no valid ' + (x86_64? 64:32) + '-bit encoding for "' + this + '"'
     );
 
     // Store the best encoding found
@@ -272,6 +283,31 @@ Encode the instruction into a byte array
 */
 x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 {
+    function encodeREX()
+    {
+
+
+    }
+
+
+    function encodeModRM()
+    {
+
+
+    }
+
+
+    function encodeSIB()
+    {
+
+
+    }
+
+
+
+
+
+
     // If no encoding is yet found, find one
     if (this.encDesc === null)
         this.findEncoding();
@@ -285,15 +321,14 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
 
 
-    /*
     // Flags to indicate if the REX and ModRM and SIB bytes needed
     var rexNeeded = false;
     var rmNeeded = false;
     var sibNeeded = false;
 
-    // Displacement size required
+    // Displacement size and value
     var dispSize = 0;
-    */
+    var dispVal = 0;
 
     // Immediate operand size and value
     var immSize = 0;
@@ -319,18 +354,18 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         if (opndType === 'r/m')
             rmNeeded = true;
 
-        /*
         if (opnd instanceof x86.MemLoc)
         {
             if (opnd.sibNeeded)
                 sibNeeded = true;
 
             if (opnd.dispSize > 0)
+            {
                 dispSize = opnd.dispSize;
+                dispVal = opnd.disp;
+            }
         }
-        */
     }
-
 
     // Add the operand-size prefix, if needed
     if (enc.szPref === true)
@@ -349,6 +384,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
     */
 
+
+
     // If an opcode reg field is used
     if (enc.opnds.length === 1 && x86.opndType(enc.opnds[0]) === 'r')
     {
@@ -363,6 +400,10 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             codeBlock.writeByte(enc.opCode[i]);
     }
 
+
+
+
+
     /*
     // Add the ModR/M byte, if needed
     if (rmNeeded)
@@ -371,13 +412,17 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     // Add the SIB byte, if needed
     if (sibNeeded)
         size += 1;
+    */
+
+
+
 
     // Add the displacement size
-    size += dispSize;
-    */
-    
+    if (dispSize !== 0)    
+        codeBlock.writeInt(dispVal, dispSize);
+
     // If there is an immediate operand, write it
-    if (immOpnd)
+    if (immOpnd !== null)
         immOpnd.writeImm(codeBlock, immSize);
 };
 

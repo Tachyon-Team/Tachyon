@@ -121,27 +121,29 @@ x86.MemLoc = function (size, base, disp, index, scale)
         base === x86.regs.r12
     );
 
-    // Required displacement size
-    var dispSize = 0;
+    /**
+    @field Required displacement size
+    */
+    this.dispSize = 0;
 
-    // If ESP or RBP or R13 is used as the base, a displacement must be encoded
+    // If ESP or RBP or R13 is used as the base, displacement must be encoded
     if (base === x86.regs.ebp ||
         base === x86.regs.rbp || 
         base === x86.regs.r13)
-        dispSize = 8;
+        this.dispSize = 8;
 
     // Compute the required displacement size
     if (num_ne(disp, 0))
     {
         if (num_ge(disp, getIntMin(8)) && num_le(disp, getIntMax(8)))
-            dispSize = 8;
+            this.dispSize = 8;
         else if (num_ge(disp, getIntMin(16)) && num_le(disp, getIntMax(16)))
-            dispSize = 16;
+            this.dispSize = 16;
         else if (num_ge(disp, getIntMin(32)) && num_le(disp, getIntMax(32)))
-            dispSize = 32;
+            this.dispSize = 32;
+        else
+            error('displacement does not fit within 32 bits');
     }
-
-    this.dispSize = dispSize;
 }
 x86.MemLoc.prototype = new x86.Operand();
 
@@ -156,6 +158,12 @@ x86.Immediate = function (value)
     */
     this.value = value;
 
+    /**
+    @field Immediate value type. 
+    Can be either 'imm' or 'moffs'
+    */
+    this.type = 'imm';
+
     // Compute the smallest size this immediate fits in
     if (num_ge(value, getIntMin(8)) && num_le(value, getIntMax(8)))
         this.size = 8;
@@ -163,6 +171,10 @@ x86.Immediate = function (value)
         this.size = 16;
     else if (num_ge(value, getIntMin(32)) && num_le(value, getIntMax(32)))
         this.size = 32;
+    else if (num_ge(value, getIntMin(64)) && num_le(value, getIntMax(64)))
+        this.size = 64;
+    else
+        error('immediate does not fit within 64 bits');
 }
 x86.Immediate.prototype = new x86.Operand();
 
@@ -181,17 +193,10 @@ x86.Immediate.prototype.writeImm = function (codeBlock, immSize)
 {
     assert (
         this.size <= immSize,
-        'immediate size too small'
+        'immediate size too small for value'
     );
 
-    if (immSize === 8)
-        codeBlock.writeByte(this.value);
-    if (immSize === 16)
-        codeBlock.writeWord(this.value);
-
-    //
-    // TODO: 32-bit constants
-    //
+    codeBlock.writeInt(this.value, immSize);
 }
 
 /**
@@ -214,6 +219,14 @@ x86.LabelRef = function (label)
     this.size = 32;
 }
 x86.LabelRef.prototype = new x86.Operand();
+
+/**
+Produce a string representation of the label reference
+*/
+x86.LabelRef.prototype.toString = function ()
+{
+    return this.label.name + ' (' + this.size + ')';
+};
 
 /**
 Namespace of supported x86 registers
