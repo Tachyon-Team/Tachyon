@@ -130,13 +130,16 @@ x86.MemLoc = function (size, base, disp, index, scale)
         base === x86.regs.r13)
         dispSize = 8;
 
-    // Compute the required displacement size based on the displacement
-    if (disp > 0)
-        dispSize = 8;
-    if (disp > 0x7F)
-        dispSize = 16;
-    if (disp > 0x7FFF)
-        dispSize = 32;
+    // Compute the required displacement size
+    if (num_ne(disp, 0))
+    {
+        if (num_ge(disp, getIntMin(8)) && num_le(disp, getIntMax(8)))
+            dispSize = 8;
+        else if (num_ge(disp, getIntMin(16)) && num_le(disp, getIntMax(16)))
+            dispSize = 16;
+        else if (num_ge(disp, getIntMin(32)) && num_le(disp, getIntMax(32)))
+            dispSize = 32;
+    }
 
     this.dispSize = dispSize;
 }
@@ -148,21 +151,47 @@ x86.MemLoc.prototype = new x86.Operand();
 */
 x86.Immediate = function (value)
 {
+    /**
+    @field Field value
+    */
     this.value = value;
 
-    // TODO: compute the smallest size this fits in
-
-
-
+    // Compute the smallest size this immediate fits in
+    if (num_ge(value, getIntMin(8)) && num_le(value, getIntMax(8)))
+        this.size = 8;
+    else if (num_ge(value, getIntMin(16)) && num_le(value, getIntMax(16)))
+        this.size = 16;
+    else if (num_ge(value, getIntMin(32)) && num_le(value, getIntMax(32)))
+        this.size = 32;
 }
 x86.Immediate.prototype = new x86.Operand();
 
 /**
 Produce a string representation of the immediate
 */
-x86.Immediate.toString = function ()
+x86.Immediate.prototype.toString = function ()
 {
     return String(this.value);
+}
+
+/**
+Write the immediate value into a code block
+*/
+x86.Immediate.prototype.writeImm = function (codeBlock, immSize)
+{
+    assert (
+        this.size <= immSize,
+        'immediate size too small'
+    );
+
+    if (immSize === 8)
+        codeBlock.writeByte(this.value);
+    if (immSize === 16)
+        codeBlock.writeWord(this.value);
+
+    //
+    // TODO: 32-bit constants
+    //
 }
 
 /**

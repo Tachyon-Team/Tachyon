@@ -72,15 +72,22 @@ x86.Instruction.prototype.compEncLen = function (enc)
     // Displacement size required
     var dispSize = 0;
 
+    // Immediate size required
+    var immSize = 0;
+
     // For each operand
     for (var i = 0; i < this.opnds.length; ++i)
     {
         var opnd = this.opnds[i];
 
         var opndType = x86.opndType(enc.opnds[i]);
+        var opndSize = x86.opndSize(enc.opnds[i]);
 
         if (opnd.rexNeeded)
             rexNeeded = true;
+
+        if (opndType === 'imm')
+            immSize = opndSize;
 
         if (opndType === 'r/m')
             rmNeeded = true;
@@ -109,18 +116,6 @@ x86.Instruction.prototype.compEncLen = function (enc)
     // Add the opcode size
     size += enc.opCode.length;
 
-    // Immediate data size
-    var immSize = 0;
-
-    // For each operand
-    for (var i = 0; i < this.opnds.length; ++i)
-    {
-        var opnd = this.opnds[i];
-
-        if (opnd instanceof x86.Immediate)
-            immSize = opnd.size;
-    }
-
     // Add the ModR/M byte, if needed
     if (rmNeeded)
         size += 1;
@@ -129,11 +124,11 @@ x86.Instruction.prototype.compEncLen = function (enc)
     if (sibNeeded)
         size += 1;
 
-    // Add the displacement size
-    size += dispSize;
+    // Add the displacement size (in bytes)
+    size += dispSize / 8;
 
-    // Add the immediate size
-    size += immSize;
+    // Add the immediate size (in bytes)
+    size += immSize / 8;
 
     // Return the encoding size
     return size;
@@ -153,6 +148,8 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
     ENC_LOOP:
     for (var i = 0; i < this.encodings.length; ++i)
     {
+        //print('encoding #' + (i+1));
+
         var enc = this.encodings[i];
 
         // If we are in x86-64 and this encoding is not valid in that mode
@@ -174,11 +171,31 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
             // Switch on the operand type
             switch (opndType)
             {
+                case 'reg_0':
+                /*
+                print(this);
+                print('opnd: ' + opnd);
+                print('opnd size: ' + opnd.size);
+                print('enc opnd: ' + enc.opnds[j]);
+                print('enc opnd size: ' + opndSize);
+                */
+                if (!(opnd instanceof x86.Register))
+                    continue ENC_LOOP;
+                if (opnd.regNo !== 0)
+                    continue ENC_LOOP;
+                if (opnd.size !== opndSize)
+                    continue ENC_LOOP;
+                //print('opnd match');
+                break;
+
                 case 'imm':
+                //print('imm opnd');
+                //print('imm opnd size: ' + opnd.size);
                 if (!(opnd instanceof x86.Immediate))
                     continue ENC_LOOP;
                 if (opnd.size > opndSize)
                     continue ENC_LOOP;
+                //print('imm opnd match ***');
                 break;
 
                 case 'r':
@@ -215,6 +232,8 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
         }
 
         var len = this.compEncLen(enc);
+
+        //print('encoding length: ' + len);
 
         if (len < bestLen)
         {
@@ -274,6 +293,11 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
     // Displacement size required
     var dispSize = 0;
+    */
+
+    // Immediate operand size and value
+    var immSize = 0;
+    var immOpnd = null;
 
     // For each operand
     for (var i = 0; i < this.opnds.length; ++i)
@@ -281,13 +305,21 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         var opnd = this.opnds[i];
 
         var opndType = x86.opndType(enc.opnds[i]);
+        var opndSize = x86.opndSize(enc.opnds[i]);
 
         if (opnd.rexNeeded)
             rexNeeded = true;
 
+        if (opndType === 'imm')
+        {
+            immSize = opndSize;
+            immOpnd = opnd;
+        }
+
         if (opndType === 'r/m')
             rmNeeded = true;
 
+        /*
         if (opnd instanceof x86.MemLoc)
         {
             if (opnd.sibNeeded)
@@ -296,46 +328,42 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             if (opnd.dispSize > 0)
                 dispSize = opnd.dispSize;
         }
+        */
     }
 
-    // Total encoding size
-    var size = 0;
 
     // Add the operand-size prefix, if needed
     if (enc.szPref === true)
-        size += 1;
+        codeBlock.writeByte(0x66);
 
-    // Add the REX prefix, if needed
-    if (rexNeeded === true)
-        size += 1;
-    */
-
-
-
-    // Write the opcode bytes to the code block
-    for (var i = 0; i < enc.opCode.length; ++i)
-        codeBlock.writeByte(enc.opCode[i]);
-
-
-    //
-    // TODO: opcode register field handling
-    //
 
 
 
     /*
-    // Immediate data size
-    var immSize = 0;
 
-    // For each operand
-    for (var i = 0; i < this.opnds.length; ++i)
+    // Add the REX prefix, if needed
+    if (rexNeeded === true)
+        size += 1;
+
+    // TODO: encodeREX
+
+    */
+
+    // If an opcode reg field is used
+    if (enc.opnds.length === 1 && x86.opndType(enc.opnds[0]) === 'r')
     {
-        var opnd = this.opnds[i];
-
-        if (opnd instanceof x86.Immediate)
-            immSize = opnd.size;
+        // Write the reg field into the opcode byte
+        var opByte = enc.opCode[0] | (this.opnds[0].regNo & 7);
+        codeBlock.writeByte(opByte);
+    }
+    else
+    {
+        // Write the opcode bytes to the code block
+        for (var i = 0; i < enc.opCode.length; ++i)
+            codeBlock.writeByte(enc.opCode[i]);
     }
 
+    /*
     // Add the ModR/M byte, if needed
     if (rmNeeded)
         size += 1;
@@ -346,16 +374,11 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
     // Add the displacement size
     size += dispSize;
-
-    // Add the immediate size
-    size += immSize;
     */
-
-
-
-
-
-
+    
+    // If there is an immediate operand, write it
+    if (immOpnd)
+        immOpnd.writeImm(codeBlock, immSize);
 };
 
 /**
@@ -485,6 +508,8 @@ x86.opndType = function (opnd)
         case 'ax':
         case 'eax':
         case 'rax':
+        return 'reg_0';
+
         case 'r8':
         case 'r16':
         case 'r32':
@@ -626,6 +651,7 @@ Anonymous function to create instruction classes from the instruction table.
 
         var numRM = 0;
         var numImm = 0;
+
         for (var j = 0; j < enc.opnds.length; ++j)
         {
             var opndType = x86.opndType(enc.opnds[j]);
@@ -634,6 +660,20 @@ Anonymous function to create instruction classes from the instruction table.
                 numRM++;
             else if (opndType === 'imm')
                 numImm++;
+
+            assert (
+                !(opndType === 'r' && 
+                  enc.opnds.length === 1 && 
+                  enc.opCode.length > 1),
+                'invalid opcode reg field use for ' + mnem
+            );
+
+            assert (
+                !(opndType === 'r' &&
+                  enc.opnds.length === 1 &&
+                  (enc.opCode[0] & 7) !== 0),
+               'nonzero opcode reg bits with reg field use for ' + mnem
+            );
         }
 
         assert (

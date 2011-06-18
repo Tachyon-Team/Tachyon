@@ -132,7 +132,14 @@ Anonymous function to initialize the assembler class
             var opnds = [];
 
             for (var i = 0; i < arguments.length; ++i)
-                opnds.push(arguments[i]);
+            {
+                var opnd = arguments[i];
+
+                if (opnd instanceof x86.Operand)
+                    opnds.push(opnd);
+                else
+                    opnds.push(new x86.Immediate(opnd));
+            }
 
             var instr = new x86.instrs[mnem](opnds, this.x86_64);
 

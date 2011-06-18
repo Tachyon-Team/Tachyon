@@ -39,12 +39,15 @@ x86.instrTable = [
     INC
     DEC
     NEG
+
+    RDTSC, read time stamp
+    RDPMC, read performance counters
     */
 
     // Add
     {mnem: 'add', opnds: ['al', 'imm8'], opCode: [0x04]},
     {mnem: 'add', opnds: ['ax', 'imm16'], opCode: [0x05], szPref: true},
-    {mnem: 'add', opnds: ['ax', 'imm16'], opCode: [0x05]},
+    {mnem: 'add', opnds: ['eax', 'imm32'], opCode: [0x05]},
     {mnem: 'add', opnds: ['rax', 'imm32'], opCode: [0x05], REX_W: 1},
     {mnem: 'add', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 0},
     {mnem: 'add', opnds: ['r/m16', 'imm16'], opCode: [0x81], opExt: 0, szPref: true},
@@ -73,7 +76,7 @@ x86.instrTable = [
     // Comparison (integer)
     {mnem: 'cmp', opnds: ['al', 'imm8'], opCode: [0x3C]},
     {mnem: 'cmp', opnds: ['ax', 'imm16'], opCode: [0x3D], szPref: true},
-    {mnem: 'cmp', opnds: ['ax', 'imm16'], opCode: [0x3D]},
+    {mnem: 'cmp', opnds: ['eax', 'imm32'], opCode: [0x3D]},
     {mnem: 'cmp', opnds: ['rax', 'imm32'], opCode: [0x3D], REX_W: 1},
     {mnem: 'cmp', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 7},
     {mnem: 'cmp', opnds: ['r/m16', 'imm16'], opCode: [0x81], opExt: 7, szPref: true},
@@ -303,7 +306,7 @@ x86.instrTable = [
     // Subtract
     {mnem: 'sub', opnds: ['al', 'imm8'], opCode: [0x2C]},
     {mnem: 'sub', opnds: ['ax', 'imm16'], opCode: [0x2D], szPref: true},           
-    {mnem: 'sub', opnds: ['ax', 'imm16'], opCode: [0x2D]},           
+    {mnem: 'sub', opnds: ['eax', 'imm32'], opCode: [0x2D]},           
     {mnem: 'sub', opnds: ['rax', 'imm32'], opCode: [0x2D], REX_W: 1},
     {mnem: 'sub', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 5},
     {mnem: 'sub', opnds: ['r/m16', 'imm16'], opCode: [0x81], opExt: 5, szPref: true},
