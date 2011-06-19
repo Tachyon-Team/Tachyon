@@ -98,6 +98,12 @@ x86.MemLoc = function (size, base, disp, index, scale)
         base === undefined || base instanceof x86.Register,
         'invalid SIB index'
     );
+
+    assert (
+        index !== x86.regs.esp &&
+        index !== x86.regs.rsp,
+        'cannot use esp/rsp as the index register'
+    );
     
     this.size = size;
 
@@ -132,8 +138,14 @@ x86.MemLoc = function (size, base, disp, index, scale)
         base === x86.regs.r13)
         this.dispSize = 8;
 
+    // If using displacement only or if using RIP as the base, use disp32
+    if ((!base && !index) || base === x86.reps.RIP)
+    {
+        this.dispSize = 32;
+    }
+
     // Compute the required displacement size
-    if (num_ne(disp, 0))
+    else if (num_ne(disp, 0))
     {
         if (num_ge(disp, getIntMin(8)) && num_le(disp, getIntMax(8)))
             this.dispSize = 8;

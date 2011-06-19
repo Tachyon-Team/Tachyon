@@ -68,15 +68,26 @@ function testx86Enc()
     // TODO: this actually uses a ModR/M byte
     //test(function (a) { a.add(a.eax, 3); }, [ ]);
 
-
-
-
     // mov
     test(function (a) { a.mov(a.eax, 7); }, [0xB8, 0x07, 0x00, 0x00, 0x00]);
     test(function (a) { a.mov(a.eax, -3); }, [0xB8, 0xFD, 0xFF, 0xFF, 0xFF]);
+    test(function (a) { a.mov(a.eax, a.ebx); }, [0x89, 0xD8]);
+
+    // mul
+    test(function (a) { a.mul(a.edx); }, [0xF7, 0xE2]);
+
+    // imul
+    test(function (a) { a.imul(a.edx, a.ecx); }, [0x0F, 0xAF, 0xD1]);
+    test(function (a) { a.imul(a.r14, a.r9); }, false, [0x4D, 0x0F, 0xAF, 0xF1]);
 
     // nop
     test(function (a) { a.nop(); }, [0x90]);
+
+    // not
+    test(function (a) { a.not(a.ax); }, [0x66, 0xF7, 0xD0]);
+    test(function (a) { a.not(a.eax); }, [0xF7, 0xD0]);
+    test(function (a) { a.not(a.rax); }, false, [0x48, 0xF7, 0xD0]);
+    test(function (a) { a.not(a.r11); }, false, [0x49, 0xF7, 0xD3]);
 
     // pop
     test(function (a) { a.pop(a.eax); }, [0x58], false);
@@ -91,6 +102,12 @@ function testx86Enc()
     // ret
     test(function (a) { a.ret(); }, [0xC3]);
     test(function (a) { a.ret(5); }, [0xC2, 0x05, 0x00]);
+
+    // xchg
+    test(function (a) { a.xchg(a.ax, a.dx); }, [0x66, 0x92]);
+    test(function (a) { a.xchg(a.eax, a.edx); }, [0x92]);
+    test(function (a) { a.xchg(a.rax, a.r15); }, false, [0x49, 0x97]);
+    test(function (a) { a.xchg(a.r14, a.r15); }, false, [0x4D, 0x87, 0xFE]);
 }
 
 testx86Enc();
@@ -100,7 +117,7 @@ testx86Enc();
 
 
 
-/*
+
 var assembler = new x86.Assembler(false);
 
 with (assembler)
@@ -110,11 +127,17 @@ with (assembler)
 
     //add(eax, ebx);
 
-    push(eax);
+    //push(eax);
 
-    nop();
+    //mov(eax, ebx);
 
-    ret();
+    //add(eax, 3);
+
+    not(eax);
+
+    //nop();
+
+    //ret();
 
     //pop(ebx);
     //pop(eax);
@@ -131,7 +154,7 @@ print('');
 print('code block: ');
 print(codeBlock.size + ' bytes');
 print(codeBlock);
-*/
+
 
 
 

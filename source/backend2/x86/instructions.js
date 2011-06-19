@@ -283,31 +283,6 @@ Encode the instruction into a byte array
 */
 x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 {
-    function encodeREX()
-    {
-
-
-    }
-
-
-    function encodeModRM()
-    {
-
-
-    }
-
-
-    function encodeSIB()
-    {
-
-
-    }
-
-
-
-
-
-
     // If no encoding is yet found, find one
     if (this.encDesc === null)
         this.findEncoding();
@@ -315,24 +290,22 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     // Get a reference to the encoding descriptor found
     var enc = this.encDesc;
 
-    //
-    // TODO: implement encoding function
-    //
-
-
-
     // Flags to indicate if the REX and ModRM and SIB bytes needed
     var rexNeeded = false;
     var rmNeeded = false;
     var sibNeeded = false;
 
-    // Displacement size and value
-    var dispSize = 0;
-    var dispVal = 0;
+    // r and r/m operands
+    var rOpnd = null;
+    var rmOpnd = null;
 
     // Immediate operand size and value
     var immSize = 0;
     var immOpnd = null;
+
+    // Displacement size and value
+    var dispSize = 0;
+    var dispVal = 0;
 
     // For each operand
     for (var i = 0; i < this.opnds.length; ++i)
@@ -351,46 +324,82 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             immOpnd = opnd;
         }
 
-        if (opndType === 'r/m')
-            rmNeeded = true;
-
-        if (opnd instanceof x86.MemLoc)
+        else if (opndType === 'r')
         {
-            if (opnd.sibNeeded)
-                sibNeeded = true;
+            rOpnd = opnd;
+        }
 
-            if (opnd.dispSize > 0)
+        else if (opndType === 'r/m')
+        {
+            rmNeeded = true;
+            rmOpnd = opnd;
+
+            if (opnd instanceof x86.MemLoc)
             {
-                dispSize = opnd.dispSize;
-                dispVal = opnd.disp;
+                if (opnd.sibNeeded)
+                {
+                    sibNeeded = true;
+                }
+
+                if (opnd.dispSize > 0)
+                {
+                    dispSize = opnd.dispSize;
+                    dispVal = opnd.disp;
+                }
             }
         }
     }
+
+    // Get the index in the code block before the encoding
+    var startIndex = codeBlock.writePos;
 
     // Add the operand-size prefix, if needed
     if (enc.szPref === true)
         codeBlock.writeByte(0x66);
 
-
-
-
-    /*
-
     // Add the REX prefix, if needed
     if (rexNeeded === true)
-        size += 1;
+    {
+        // 0 1 0 0 w r x b
+        // w - 64-bit operand size flag
+        // r - MODRM.reg extension
+        // x - SIB.index extension
+        // b - MODRM.rm or SIB.base extension
 
-    // TODO: encodeREX
+        var w = enc.REX_W;
 
-    */
+        var r;
+        if (rOpnd && rmOpnd)
+            r = (rOpnd.regNo & 8)? 1:0;
+        else
+            r = 0;
 
+        var x;
+        if (sibNeeded && rmOpnd.index instanceof x86.Register)
+            x = (rmOpnd.index.regNo & 8)? 1:0;
+        else
+            x = 0;
 
+        var b;
+        if (rmOpnd instanceof x86.Register)
+            b = (rmOpnd.regNo & 8)? 1:0;
+        else if (rOpnd && !rmOpnd)
+            b = (rOpnd.regNo & 8)? 1:0;
+        else if (sibNeeded && rmOpnd.base instanceof x86.Register)
+            b = (rmOpnd.base.regNo & 8)? 1:0;
+        else
+            b = 0;
 
-    // If an opcode reg field is used
-    if (enc.opnds.length === 1 && x86.opndType(enc.opnds[0]) === 'r')
+        // Encode and write the REX byte
+        var rexByte = 0x40 + (w << 3) + (r << 2) + (x << 1) + (b);
+        codeBlock.writeByte(rexByte);
+    }
+
+    // If an opcode reg field is to be used
+    if (rOpnd && !rmOpnd)
     {
         // Write the reg field into the opcode byte
-        var opByte = enc.opCode[0] | (this.opnds[0].regNo & 7);
+        var opByte = enc.opCode[0] | (rOpnd.regNo & 7);
         codeBlock.writeByte(opByte);
     }
     else
@@ -400,22 +409,105 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             codeBlock.writeByte(enc.opCode[i]);
     }
 
-
-
-
-
-    /*
     // Add the ModR/M byte, if needed
     if (rmNeeded)
-        size += 1;
+    {
+        // MODRM.mod (2 bits)
+        // MODRM.reg (3 bits)
+        // MODRM.rm  (3 bits)
+
+        assert (
+            !(enc.opExt && rOpnd),
+            'opcode extension and register operand present'
+        );
+
+        // Encode the mod field
+        var mod;
+        if (rmOpnd instanceof x86.Register)
+        {
+            mod = 3;
+        }
+        else
+        {
+            if (dispSize === 0 || (!rmOpnd.base && rmOpnd.index))
+                mod = 0;
+            else if (dispSize === 8)
+                mod = 1
+            else if (dispSize === 32)
+                mod = 2;
+        }
+
+        // Encode the reg field
+        var reg;
+        if (enc.opExt)
+            reg = enc.opExt;
+        else if (rOpnd)
+            reg = rOpnd.regNo & 7;
+        else
+            reg = 0;
+
+        // Encode the rm field
+        var rm;
+        if (rmOpnd instanceof x86.Register)
+        {
+            rm = rmOpnd.regNo & 7;
+        }
+        else
+        {
+            if (rmOpnd.base && sibNeeded)
+                rm = 4;
+            else if (rmOpnd.base === x86.regs.rip)
+                rm = 5;
+            else if (!rmOpnd.base && !rmOpnd.index && dispSize === 32)
+                rm = 5
+        }
+
+        // Encode and write the ModR/M byte
+        var rmByte = (mod << 6) + (reg << 3) + (rm);
+        codeBlock.writeByte(rmByte);
+    }
 
     // Add the SIB byte, if needed
     if (sibNeeded)
-        size += 1;
-    */
+    {
+        // SIB.scale (2 bits)
+        // SIB.index (3 bits)
+        // SIB.base  (3 bits)
 
+        assert (
+            rmOpnd instanceof x86.MemLoc,
+            'expected r/m opnd to be mem loc'
+        );
 
+        // Encode the scale value
+        var scale;
+        switch (rmOpnd.scale)
+        {
+            case 1: scale = 0; break;
+            case 2: scale = 1; break
+            case 4: scale = 2; break
+            case 4: scale = 3; break
+            default: error('invalid SIB scale: ' + memOpnd.scale);
+        }
 
+        // Encode the index value
+        var index;
+        if (!rmOpnd.index)
+            index = 4;
+        else
+            index = rmOpnd.index.regNo & 7;
+
+        // Encode the base register
+        var base;
+        if (!rmOpnd.base)
+            base = 5;
+        else
+            base = rmOpnd.base.regNo & 7;
+
+        // Encode and write the SIB byte
+        var sibByte = (scale << 6) + (index << 3) + (base);
+        codeBlock.writeByte(sibByte);
+    }
 
     // Add the displacement size
     if (dispSize !== 0)    
@@ -424,6 +516,22 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     // If there is an immediate operand, write it
     if (immOpnd !== null)
         immOpnd.writeImm(codeBlock, immSize);
+
+    // Get the index in the code block after the encoding
+    var endIndex = codeBlock.writePos;
+
+    // Compute the length of the data written
+    var wrtLength = endIndex - startIndex;
+
+    assert (
+        wrtLength === this.encLength,
+        'encoding length:\n' +
+        wrtLength + '\n' +
+        'does not match expected length:\n' +
+        this.encLength + '\n' +
+        'for:\n' +
+        this
+    );
 };
 
 /**
