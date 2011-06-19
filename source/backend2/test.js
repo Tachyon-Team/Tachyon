@@ -88,6 +88,7 @@ function testx86Enc()
     test(function (a) { a.not(a.eax); }, [0xF7, 0xD0]);
     test(function (a) { a.not(a.rax); }, false, [0x48, 0xF7, 0xD0]);
     test(function (a) { a.not(a.r11); }, false, [0x49, 0xF7, 0xD3]);
+    test(function (a) { a.not(a.mem(32, a.eax)); }, [0xF7, 0x10], [0x67, 0xF7, 0x10]);
 
     // pop
     test(function (a) { a.pop(a.eax); }, [0x58], false);
@@ -117,46 +118,57 @@ testx86Enc();
 
 
 
-
-var assembler = new x86.Assembler(false);
-
-with (assembler)
+try
 {
-    //push(eax);
-    //push(ebx);
+    var assembler = new x86.Assembler(false);
 
-    //add(eax, ebx);
+    with (assembler)
+    {
+        //push(eax);
+        //push(ebx);
 
-    //push(eax);
+        //add(eax, ebx);
 
-    //mov(eax, ebx);
+        //push(eax);
 
-    //add(eax, 3);
+        //mov(eax, ebx);
 
-    not(eax);
+        //add(eax, 3);
 
-    //nop();
+        //not(eax);
 
-    //ret();
 
-    //pop(ebx);
-    //pop(eax);
+        not(mem(32, eax));
+
+
+        //nop();
+
+        //ret();
+
+        //pop(ebx);
+        //pop(eax);
+    }
+
+    print('');
+    print('assembly: ');
+    print(assembler.toString(true));
+
+    // Assemble to code block
+    var codeBlock = assembler.assemble();
+
+
+    print('');
+    print('code block: ');
+    print(codeBlock.size + ' bytes');
+    print(codeBlock);
+
 }
 
-print('');
-print('assembly: ');
-print(assembler.toString(true));
-
-// Assemble to code block
-var codeBlock = assembler.assemble();
-
-print('');
-print('code block: ');
-print(codeBlock.size + ' bytes');
-print(codeBlock);
-
-
-
+catch (e)
+{
+    if (e.stack)
+        print(e.stack);
+}
 
 /*
 TODO: call, with callTachyonFFI?

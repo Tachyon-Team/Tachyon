@@ -156,12 +156,9 @@ Anonymous function to initialize the assembler class
         x86.Assembler.prototype[reg] = x86.regs[reg];
 
     // Create a method to encode memory locations on the assembler
-    x86.Assembler.mem = function ()
+    x86.Assembler.prototype.mem = function (size, base, disp, index, scale)
     {
-        //
-        // TODO: create method to create mem loc opnds on assembler
-        //
-        error('not yet implemented');
+        return new x86.MemLoc(size, base, disp, index, scale);
     }
 
 })();

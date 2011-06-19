@@ -84,8 +84,11 @@ x86.MemLoc = function (size, base, disp, index, scale)
         'invalid SIB base'
     );
 
+    if (disp === undefined)
+        disp = 0;
+
     assert (
-        isInt(disp) && disp >= getIntMin(32) && disp <= getIntMax(32),
+        isInt(disp) && num_ge(disp, getIntMin(32)) && num_le(disp, getIntMax(32)),
         'invalid mem loc disp'
     );
 
@@ -139,7 +142,7 @@ x86.MemLoc = function (size, base, disp, index, scale)
         this.dispSize = 8;
 
     // If using displacement only or if using RIP as the base, use disp32
-    if ((!base && !index) || base === x86.reps.RIP)
+    if ((!base && !index) || base === x86.regs.rip)
     {
         this.dispSize = 32;
     }
@@ -158,6 +161,34 @@ x86.MemLoc = function (size, base, disp, index, scale)
     }
 }
 x86.MemLoc.prototype = new x86.Operand();
+
+/**
+Produce a string representation of the memory location
+*/
+x86.MemLoc.prototype.toString = function ()
+{
+    var str = '';
+
+    str += '[';
+    str += this.base;
+
+    if (this.disp)
+        str += '+' + this.disp;
+
+    if (this.index)
+    {
+        str += '+';
+
+        if (this.scale)
+            str += this.scale + '*';
+
+        str += this.index;
+    }
+
+    str += ']';
+
+    return str;
+}
 
 /**
 @class Immediate operand

@@ -66,7 +66,7 @@ x86.Instruction.prototype.toString = function ()
 /**
 Compute the length of an encoding of this instruction
 */
-x86.Instruction.prototype.compEncLen = function (enc)
+x86.Instruction.prototype.compEncLen = function (enc, x86_64)
 {
     // x86 instruction format:
     // prefix(es)  [REX] opcode  [XRM  [SIB]]  disp  imm
@@ -75,6 +75,9 @@ x86.Instruction.prototype.compEncLen = function (enc)
     var rexNeeded = false;
     var rmNeeded = false;
     var sibNeeded = false;
+
+    // RM operand, if present
+    var rmOpnd = null;
 
     // Displacement size required
     var dispSize = 0;
@@ -94,10 +97,15 @@ x86.Instruction.prototype.compEncLen = function (enc)
             rexNeeded = true;
 
         if (opndType === 'imm')
+        {
             immSize = opndSize;
+        }
 
         if (opndType === 'r/m')
+        {
             rmNeeded = true;
+            rmOpnd = opnd;
+        }
 
         if (opnd instanceof x86.MemLoc)
         {
@@ -111,6 +119,12 @@ x86.Instruction.prototype.compEncLen = function (enc)
 
     // Total encoding size
     var size = 0;
+
+    // Add the address-size prefix, if needed
+    if (rmOpnd && x86_64 &&
+        ((rmOpnd.base && rmOpnd.base.size === 32) ||
+         (rmOpnd.index && rmOpnd.index.size === 32)))
+        size += 1;
 
     // Add the operand-size prefix, if needed
     if (enc.szPref === true)
@@ -242,7 +256,7 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
             }
         }
 
-        var len = this.compEncLen(enc);
+        var len = this.compEncLen(enc, x86_64);
 
         //print('encoding length: ' + len);
 
@@ -353,6 +367,18 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     // Get the index in the code block before the encoding
     var startIndex = codeBlock.writePos;
 
+
+
+    // TODO: deny nonsensical combinations of registers in memloc
+
+
+
+    // Add the address-size prefix, if needed
+    if (rmOpnd && x86_64 &&
+        ((rmOpnd.base && rmOpnd.base.size === 32) ||
+         (rmOpnd.index && rmOpnd.index.size === 32)))
+        codeBlock.writeByte(0x67);
+
     // Add the operand-size prefix, if needed
     if (enc.szPref === true)
         codeBlock.writeByte(0x66);
@@ -460,6 +486,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
                 rm = 5;
             else if (!rmOpnd.base && !rmOpnd.index && dispSize === 32)
                 rm = 5
+            else
+                rm = 0;
         }
 
         // Encode and write the ModR/M byte
@@ -510,7 +538,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     }
 
     // Add the displacement size
-    if (dispSize !== 0)    
+    if (dispSize !== 0)
         codeBlock.writeInt(dispVal, dispSize);
 
     // If there is an immediate operand, write it
