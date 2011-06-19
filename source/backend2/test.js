@@ -153,9 +153,24 @@ function testx86Enc()
         [0x67, 0xF7, 0x10]
     );
     test(
+        function (a) { a.not(a.mem(32, a.esi)); },
+        [0xF7, 0x16], 
+        [0x67, 0xF7, 0x16]
+    );
+    test(
         function (a) { a.not(a.mem(32, a.edi)); }, 
         [0xF7, 0x17], 
         [0x67, 0xF7, 0x17]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.edx, 55)); },
+        [0xF7, 0x52, 0x37], 
+        [0x67, 0xF7, 0x52, 0x37]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.edx, 1337)); },
+        [0xF7, 0x92, 0x39, 0x05, 0x00, 0x00], 
+        [0x67, 0xF7, 0x92, 0x39, 0x05, 0x00, 0x00]
     );
     test(
         function (a) { a.not(a.mem(32, a.eax, 0, a.ebx)); }, 
@@ -193,6 +208,11 @@ function testx86Enc()
         [0x43, 0xF7, 0x54, 0xEF, 0x05]
     );
     test(
+        function (a) { a.not(a.mem(64, a.r12)); }, 
+        false,
+        [0x49, 0xF7, 0x14, 0x24]
+    );
+    test(
         function (a) { a.not(a.mem(32, a.r12, 5, a.r9, 4)); }, 
         false, 
         [0x43, 0xF7, 0x54, 0x8C, 0x05]
@@ -227,16 +247,29 @@ function testx86Enc()
         [0xF7, 0x55, 0x00],
         [0x67, 0xF7, 0x55, 0x00]
     );
-
-
-    //
-    // TODO: try more ebp addressings
-    //
-
+    test(
+        function (a) { a.not(a.mem(32, a.ebp, 13)); },
+        [0xF7, 0x55, 0x0D],
+        [0x67, 0xF7, 0x55, 0x0D]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.ebp, 13, a.edx)); },
+        [0xF7, 0x54, 0x15, 0x0D],
+        [0x67, 0xF7, 0x54, 0x15, 0x0D]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rip)); },
+        false,
+        [0xF7, 0x95, 0x00, 0x00, 0x00, 0x00]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rip, 13)); },
+        false,
+        [0xF7, 0x95, 0x0D, 0x00, 0x00, 0x00]
+    );
 
     // TODO: can we do this without encoding disp32???
     //test(function (a) { a.not(a.mem(32, undefined, 0, a.r12, 8)); }, false, [0x42, 0xF7, 0x14, 0x20]);
-
 
     // pop
     test(

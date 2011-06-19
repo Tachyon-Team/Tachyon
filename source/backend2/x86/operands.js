@@ -376,5 +376,5 @@ x86.regs.r14    = new x86.Register('r14', 14, 64, x86.regs.r14d, undefined, true
 x86.regs.r15    = new x86.Register('r15', 15, 64, x86.regs.r15d, undefined, true);
 
 // Instruction pointer, for RIP addressing
-x86.regs.rip    = new x86.Register('rip', 13, 64, undefined, undefined, true);
+x86.regs.rip    = new x86.Register('rip', 5, 64);
 
