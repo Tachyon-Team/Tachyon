@@ -64,54 +64,248 @@ function testx86Enc()
     }
 
     // add
-    test(function (a) { a.add(a.al, 3); }, [0x04, 0x03]);
-    // TODO: this actually uses a ModR/M byte
-    //test(function (a) { a.add(a.eax, 3); }, [ ]);
+    test(
+        function (a) { a.add(a.al, 3); },
+        [0x04, 0x03]
+    );
+    test(
+        function (a) { a.add(a.edx, a.mem(32, a.eax)); },
+        [0x03, 0x10],
+        [0x67, 0x03, 0x10]
+    );
+    test(
+        function (a) { a.add(a.mem(32, a.eax), a.edx); },
+        [0x01, 0x10],
+        [0x67, 0x01, 0x10]
+    );
+    test(
+        function (a) { a.add(a.mem(64, a.rax), a.rdx); },
+        false, 
+        [0x48, 0x01, 0x10]
+    );
+    test(
+        function (a) { a.add(a.mem(32, a.rax), a.edx); }, 
+        false, 
+        [0x01, 0x10]
+    );
+
+    // TODO: test this encoding, SIB needed?
+    //test(function (a) { a.add(a.edx, a.mem(32, undefined, 5)); }, []);
 
     // mov
-    test(function (a) { a.mov(a.eax, 7); }, [0xB8, 0x07, 0x00, 0x00, 0x00]);
-    test(function (a) { a.mov(a.eax, -3); }, [0xB8, 0xFD, 0xFF, 0xFF, 0xFF]);
-    test(function (a) { a.mov(a.eax, a.ebx); }, [0x89, 0xD8]);
+    test(
+        function (a) { a.mov(a.eax, 7); }, 
+        [0xB8, 0x07, 0x00, 0x00, 0x00]
+    );
+    test(
+        function (a) { a.mov(a.eax, -3); }, 
+        [0xB8, 0xFD, 0xFF, 0xFF, 0xFF]
+    );
+    test(
+        function (a) { a.mov(a.eax, a.ebx); }, 
+        [0x89, 0xD8]
+    );
 
     // mul
-    test(function (a) { a.mul(a.edx); }, [0xF7, 0xE2]);
+    test(
+        function (a) { a.mul(a.edx); }, 
+        [0xF7, 0xE2]
+    );
 
     // imul
-    test(function (a) { a.imul(a.edx, a.ecx); }, [0x0F, 0xAF, 0xD1]);
-    test(function (a) { a.imul(a.r14, a.r9); }, false, [0x4D, 0x0F, 0xAF, 0xF1]);
+    test(
+        function (a) { a.imul(a.edx, a.ecx); },
+        [0x0F, 0xAF, 0xD1]
+    );
+    test(
+        function (a) { a.imul(a.r14, a.r9); }, 
+        false, 
+        [0x4D, 0x0F, 0xAF, 0xF1]
+    );
 
     // nop
-    test(function (a) { a.nop(); }, [0x90]);
+    test(
+        function (a) { a.nop(); }, 
+        [0x90]
+    );
 
     // not
-    test(function (a) { a.not(a.ax); }, [0x66, 0xF7, 0xD0]);
-    test(function (a) { a.not(a.eax); }, [0xF7, 0xD0]);
-    test(function (a) { a.not(a.rax); }, false, [0x48, 0xF7, 0xD0]);
-    test(function (a) { a.not(a.r11); }, false, [0x49, 0xF7, 0xD3]);
-    test(function (a) { a.not(a.mem(32, a.eax)); }, [0xF7, 0x10], [0x67, 0xF7, 0x10]);
+    test(
+        function (a) { a.not(a.ax); }, 
+        [0x66, 0xF7, 0xD0]
+    );
+    test(
+        function (a) { a.not(a.eax); }, 
+        [0xF7, 0xD0]
+    );
+    test(
+        function (a) { a.not(a.rax); }, false, 
+        [0x48, 0xF7, 0xD0]
+    );
+    test(
+        function (a) { a.not(a.r11); }, 
+        false, 
+        [0x49, 0xF7, 0xD3]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.eax)); }, 
+        [0xF7, 0x10], 
+        [0x67, 0xF7, 0x10]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.edi)); }, 
+        [0xF7, 0x17], 
+        [0x67, 0xF7, 0x17]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.eax, 0, a.ebx)); }, 
+        [0xF7, 0x14, 0x18], 
+        [0x67, 0xF7, 0x14, 0x18]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rax, 0, a.rbx)); }, 
+        false, 
+        [0xF7, 0x14, 0x18]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rax, 0, a.r12)); }, 
+        false, 
+        [0x42, 0xF7, 0x14, 0x20]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.r15, 0, a.r12)); }, 
+        false, 
+        [0x43, 0xF7, 0x14, 0x27]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.r15, 5, a.r12)); }, 
+        false, 
+        [0x43, 0xF7, 0x54, 0x27, 0x05]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.r15, 5, a.r12, 8)); }, 
+        false, 
+        [0x43, 0xF7, 0x54, 0xE7, 0x05]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.r15, 5, a.r13, 8)); }, 
+        false, 
+        [0x43, 0xF7, 0x54, 0xEF, 0x05]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.r12, 5, a.r9, 4)); }, 
+        false, 
+        [0x43, 0xF7, 0x54, 0x8C, 0x05]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.r12, 301, a.r9, 4)); }, 
+        false, 
+        [0x43, 0xF7, 0x94, 0x8C, 0x2D, 0x01, 0x00, 0x00]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.eax, 5, a.edx, 4)); }, 
+        [0xF7, 0x54, 0x90, 0x05],
+        [0x67, 0xF7, 0x54, 0x90, 0x05]
+    );
+    test(
+        function (a) { a.not(a.mem(64, a.eax, 0, a.edx, 2)); },
+        false,
+        [0x67, 0x48, 0xF7, 0x14, 0x50]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.esp)); },
+        [0xF7, 0x14, 0x24],
+        [0x67, 0xF7, 0x14, 0x24]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.esp, 301)); }, 
+        [0xF7, 0x94, 0x24, 0x2D, 0x01, 0x00, 0x00],
+        [0x67, 0xF7, 0x94, 0x24, 0x2D, 0x01, 0x00, 0x00]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.ebp)); },
+        [0xF7, 0x55, 0x00],
+        [0x67, 0xF7, 0x55, 0x00]
+    );
+
+
+    //
+    // TODO: try more ebp addressings
+    //
+
+
+    // TODO: can we do this without encoding disp32???
+    //test(function (a) { a.not(a.mem(32, undefined, 0, a.r12, 8)); }, false, [0x42, 0xF7, 0x14, 0x20]);
+
 
     // pop
-    test(function (a) { a.pop(a.eax); }, [0x58], false);
-    test(function (a) { a.pop(a.ebx); }, [0x5B], false);
+    test(
+        function (a) { a.pop(a.eax); }, 
+        [0x58],
+        false
+    );
+    test(
+        function (a) { a.pop(a.ebx); },
+        [0x5B],
+        false
+    );
 
     // push
-    test(function (a) { a.push(a.eax); }, [0x50], false);
-    test(function (a) { a.push(a.bx); }, [0x66, 0x53], false);
-    test(function (a) { a.push(a.ebx); }, [0x53], false);
-    test(function (a) { a.push(1); }, [0x6A, 0x01], false);
+    test(
+        function (a) { a.push(a.eax); },
+        [0x50],
+        false
+    );
+    test(
+        function (a) { a.push(a.bx); }, 
+        [0x66, 0x53], 
+        false
+    );
+    test(
+        function (a) { a.push(a.ebx); },
+        [0x53],
+        false
+    );
+    test(
+        function (a) { a.push(1); },
+        [0x6A, 0x01],
+        false
+    );
 
     // ret
-    test(function (a) { a.ret(); }, [0xC3]);
-    test(function (a) { a.ret(5); }, [0xC2, 0x05, 0x00]);
+    test(
+        function (a) { a.ret(); },
+        [0xC3]
+    );
+    test(
+        function (a) { a.ret(5); },
+        [0xC2, 0x05, 0x00]
+    );
 
     // xchg
-    test(function (a) { a.xchg(a.ax, a.dx); }, [0x66, 0x92]);
-    test(function (a) { a.xchg(a.eax, a.edx); }, [0x92]);
-    test(function (a) { a.xchg(a.rax, a.r15); }, false, [0x49, 0x97]);
-    test(function (a) { a.xchg(a.r14, a.r15); }, false, [0x4D, 0x87, 0xFE]);
+    test(
+        function (a) { a.xchg(a.ax, a.dx); }, 
+        [0x66, 0x92]
+    );
+    test(
+        function (a) { a.xchg(a.eax, a.edx); }, 
+        [0x92]
+    );
+    test(
+        function (a) { a.xchg(a.rax, a.r15); },
+        false,
+        [0x49, 0x97]
+    );
+    test(
+        function (a) { a.xchg(a.r14, a.r15); }, 
+        false, 
+        [0x4D, 0x87, 0xFE]
+    );
 }
 
 testx86Enc();
+
+
 
 
 

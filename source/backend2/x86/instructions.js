@@ -71,8 +71,10 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
     // x86 instruction format:
     // prefix(es)  [REX] opcode  [XRM  [SIB]]  disp  imm
 
-    // Flags to indicate if the REX and ModRM and SIB bytes needed
-    var rexNeeded = false;
+    // Flag to indicate the REX prefix is needed
+    var rexNeeded = (enc.REX_W === 1);
+
+    // Flags to indicate if the ModRM and SIB bytes needed
     var rmNeeded = false;
     var sibNeeded = false;
 
@@ -105,15 +107,15 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
         {
             rmNeeded = true;
             rmOpnd = opnd;
-        }
 
-        if (opnd instanceof x86.MemLoc)
-        {
-            if (opnd.sibNeeded)
-                sibNeeded = true;
+            if (opnd instanceof x86.MemLoc)
+            {
+                if (opnd.sibNeeded)
+                    sibNeeded = true;
 
-            if (opnd.dispSize > 0)
-                dispSize = opnd.dispSize;
+                if (opnd.dispSize > 0)
+                    dispSize = opnd.dispSize;
+            }
         }
     }
 
@@ -304,8 +306,10 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     // Get a reference to the encoding descriptor found
     var enc = this.encDesc;
 
-    // Flags to indicate if the REX and ModRM and SIB bytes needed
-    var rexNeeded = false;
+    // Flag to indicate the REX prefix is needed
+    var rexNeeded = (enc.REX_W === 1);
+
+    // Flags to indicate if the ModRM and SIB bytes needed
     var rmNeeded = false;
     var sibNeeded = false;
 
@@ -366,12 +370,6 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
     // Get the index in the code block before the encoding
     var startIndex = codeBlock.writePos;
-
-
-
-    // TODO: deny nonsensical combinations of registers in memloc
-
-
 
     // Add the address-size prefix, if needed
     if (rmOpnd && x86_64 &&
@@ -486,6 +484,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
                 rm = 5;
             else if (!rmOpnd.base && !rmOpnd.index && dispSize === 32)
                 rm = 5
+            else if (rmOpnd.base)
+                rm = rmOpnd.base.regNo & 7;
             else
                 rm = 0;
         }
@@ -514,8 +514,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             case 1: scale = 0; break;
             case 2: scale = 1; break
             case 4: scale = 2; break
-            case 4: scale = 3; break
-            default: error('invalid SIB scale: ' + memOpnd.scale);
+            case 8: scale = 3; break
+            default: error('invalid SIB scale: ' + rmOpnd.scale);
         }
 
         // Encode the index value

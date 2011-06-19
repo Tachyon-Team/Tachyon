@@ -107,19 +107,44 @@ x86.MemLoc = function (size, base, disp, index, scale)
         index !== x86.regs.rsp,
         'cannot use esp/rsp as the index register'
     );
-    
+   
+    assert (
+        !(base && index && base.size !== index.size),
+        'cannot use base and index registers of different sizes'
+    );
+
+    assert (
+        !(base && base.size < 32) && !(index && index.size < 32),
+        'cannot use 8 or 16 bit registers as base or index'
+    );
+
+    /**
+    @field Memory location size
+    */ 
     this.size = size;
 
+    /**
+    @field Base register
+    */
     this.base = base;
 
+    /**
+    @field Displacement value
+    */
     this.disp = disp;
 
+    /**
+    @field Index register
+    */
     this.index = index;
 
+    /**
+    @field Scale value
+    */
     this.scale = scale;
 
     // Test if the rex prefix is needed
-    this.rexNeeded = (base.rexNeeded || (index && index.rexNeeded));
+    this.rexNeeded = ((base && base.rexNeeded) || (index && index.rexNeeded));
 
     // Test whether or not an SIB byte is needed
     this.sibNeeded = (
@@ -135,7 +160,7 @@ x86.MemLoc = function (size, base, disp, index, scale)
     */
     this.dispSize = 0;
 
-    // If ESP or RBP or R13 is used as the base, displacement must be encoded
+    // If EBP or RBP or R13 is used as the base, displacement must be encoded
     if (base === x86.regs.ebp ||
         base === x86.regs.rbp || 
         base === x86.regs.r13)
@@ -152,8 +177,6 @@ x86.MemLoc = function (size, base, disp, index, scale)
     {
         if (num_ge(disp, getIntMin(8)) && num_le(disp, getIntMax(8)))
             this.dispSize = 8;
-        else if (num_ge(disp, getIntMin(16)) && num_le(disp, getIntMax(16)))
-            this.dispSize = 16;
         else if (num_ge(disp, getIntMin(32)) && num_le(disp, getIntMax(32)))
             this.dispSize = 32;
         else
@@ -169,23 +192,29 @@ x86.MemLoc.prototype.toString = function ()
 {
     var str = '';
 
-    str += '[';
-    str += this.base;
+    if (this.base)
+        str += this.base;
 
     if (this.disp)
-        str += '+' + this.disp;
+    {
+        if (str != '')
+            str += ' + '
+
+        str += this.disp;
+    }
 
     if (this.index)
     {
-        str += '+';
+        if (str != '')
+            str += ' + ';
 
-        if (this.scale)
-            str += this.scale + '*';
+        if (this.scale !== 1)
+            str += this.scale + ' * ';
 
         str += this.index;
     }
 
-    str += ']';
+    str = '[' + str + ']';
 
     return str;
 }
@@ -329,14 +358,14 @@ x86.regs.r12d   = new x86.Register('r12d', 12, 32, x86.regs.r12w, undefined, tru
 x86.regs.r13d   = new x86.Register('r13d', 13, 32, x86.regs.r13w, undefined, true);
 x86.regs.r14d   = new x86.Register('r14d', 14, 32, x86.regs.r14w, undefined, true);
 x86.regs.r15d   = new x86.Register('r15d', 15, 32, x86.regs.r15w, undefined, true);
-x86.regs.rax    = new x86.Register('rax', 0, 64, x86.regs.eax, undefined, true);
-x86.regs.rcx    = new x86.Register('rcx', 1, 64, x86.regs.ecx, undefined, true);
-x86.regs.rdx    = new x86.Register('rdx', 2, 64, x86.regs.edx, undefined, true);
-x86.regs.rbx    = new x86.Register('rbx', 3, 64, x86.regs.ebx, undefined, true);
-x86.regs.rsp    = new x86.Register('rsp', 4, 64, x86.regs.esp, undefined, true);
-x86.regs.rbp    = new x86.Register('rbp', 5, 64, x86.regs.ebp, undefined, true);
-x86.regs.rsi    = new x86.Register('rsi', 6, 64, x86.regs.esi, undefined, true);
-x86.regs.rdi    = new x86.Register('rdi', 7, 64, x86.regs.edi, undefined, true);
+x86.regs.rax    = new x86.Register('rax', 0, 64, x86.regs.eax);
+x86.regs.rcx    = new x86.Register('rcx', 1, 64, x86.regs.ecx);
+x86.regs.rdx    = new x86.Register('rdx', 2, 64, x86.regs.edx);
+x86.regs.rbx    = new x86.Register('rbx', 3, 64, x86.regs.ebx);
+x86.regs.rsp    = new x86.Register('rsp', 4, 64, x86.regs.esp);
+x86.regs.rbp    = new x86.Register('rbp', 5, 64, x86.regs.ebp);
+x86.regs.rsi    = new x86.Register('rsi', 6, 64, x86.regs.esi);
+x86.regs.rdi    = new x86.Register('rdi', 7, 64, x86.regs.edi);
 x86.regs.r8     = new x86.Register('r8', 8, 64, x86.regs.r8d, undefined, true);
 x86.regs.r9     = new x86.Register('r9', 9, 64, x86.regs.r9d, undefined, true);
 x86.regs.r10    = new x86.Register('r10', 10, 64, x86.regs.r10d, undefined, true);
