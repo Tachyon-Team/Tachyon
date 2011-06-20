@@ -41,8 +41,13 @@ x86.Assembler.prototype.toString = function (printEnc)
 {
     var str = '';
 
+    // Assemble the code to get the final jump values
+    this.assemble();
+
+    // Code block to assemble individual instructions into
     var codeBlock = new CodeBlock(256);
 
+    // For each instruction
     for (var instr = this.firstInstr; instr !== null; instr = instr.next)
     {
         if (str != '')
@@ -101,15 +106,91 @@ Assemble a code block from the instruction list
 */
 x86.Assembler.prototype.assemble = function ()
 {
-    // Total code length
-    var codeLen = 0;
+    //print('assembling machine code');
 
-    // Compute the total encoding length
-    for (var instr = this.firstInstr; instr !== null; instr = instr.next)
-        codeLen += instr.getLength();
+    // Total code length
+    var codeLength;
+
+    // Flag to indicate an encoding changed
+    var changed = true;
+
+    // Until no encodings changed
+    while (changed === true)
+    {
+        //print('iterating');
+
+        // Reset the code length
+        codeLength = 0;
+
+        // No changes for this iteration yet
+        changed = false;
+
+        // For each instruction
+        for (var instr = this.firstInstr; instr !== null; instr = instr.next)
+        {
+            // If this instruction is a label
+            if (instr instanceof x86.Label)
+            {
+                // If the position of the label did not change, do nothing
+                if (instr.offset === codeLength)
+                    continue;
+
+                // Note that the offset changed
+                changed = true;
+
+                // Store the offset where the label currently is
+                instr.offset = codeLength;
+            }
+            else
+            {
+                // Add the instruction length to the total
+                codeLength += instr.getLength();
+
+                // For each operand of the instruction
+                for (var i = 0; i < instr.opnds.length; ++i)
+                {
+                    var opnd = instr.opnds[i];
+
+                    // If this is a label reference
+                    if (opnd instanceof x86.LabelRef)
+                    {
+                        var label = opnd.label;
+
+                        // Compute the relative offset to the label
+                        var relOffset = label.offset - codeLength;
+
+                        //print('***rel offset: ' + relOffset);
+
+                        // If the offset did not change, do nothing
+                        if (opnd.relOffset === relOffset)
+                            continue;
+
+                        // Note that the offset changed
+                        changed = true;
+
+                        // Store the computed relative offset on the operand
+                        opnd.relOffset = relOffset;
+
+                        // Update the relative offset size
+                        if (num_ge(relOffset, getIntMin(8)) && num_le(relOffset, getIntMax(8)))
+                            opnd.size = 8;
+                        else if (num_ge(relOffset, getIntMin(16)) && num_le(relOffset, getIntMax(16)))
+                            opnd.size = 16;
+                        else if (num_ge(relOffset, getIntMin(32)) && num_le(relOffset, getIntMax(32)))
+                            opnd.size = 32;
+                        else
+                            error('relative offset does not fit within 32 bits');
+                    }
+                }
+
+                // Try to find a better encoding for the instruction
+                instr.findEncoding(this.x86_64);
+            }
+        }
+    }
 
     // Allocate a new code block for the code
-    var codeBlock = new CodeBlock(codeLen);
+    var codeBlock = new CodeBlock(codeLength);
 
     // Encode the instructions into the code block
     for (var instr = this.firstInstr; instr !== null; instr = instr.next)
@@ -139,8 +220,10 @@ Anonymous function to initialize the assembler class
                 {
                     if (opnd instanceof x86.Label)
                         opnd = new x86.LabelRef(opnd);
-                    else
+                    else if (typeof opnd === 'number')
                         opnd = new x86.Immediate(opnd);
+                    else
+                        error('invalid operand: ' + opnd);
                 }
 
                 assert (

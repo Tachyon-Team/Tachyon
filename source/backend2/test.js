@@ -186,6 +186,15 @@ function testx86Enc()
         function (a) { a.mov(a.eax, a.ebx); }, 
         '89D8'
     );
+    test(
+        function (a) { a.mov(a.eax, a.ecx); }, 
+        '89C8'
+    );
+    test(
+        function (a) { a.mov(a.ecx, a.mem(32, a.esp, -4)); }, 
+        '8B4C24FC',
+        '678B4C24FC'
+    );
 
     // mul
     test(
@@ -462,7 +471,51 @@ function testx86Enc()
         false, 
         '31C0'
     );
+
+    // Simple loop from 0 to 10
+    test(
+        function (a) { with (a) {
+            mov(eax, 0);
+            var LOOP = label('LOOP');
+            add(eax, 1);
+            cmp(eax, 10);
+            jb(LOOP);
+            ret();
+        }},
+        'B80000000083C00183F80A72F8C3'
+    );
 }
+
+
+
+
+//
+// TODO: assembleCode function?
+//
+
+
+//
+// TODO: code execution unit tests?
+//
+
+
+function execCodeBlock(codeBlock)
+{
+    var blockAddr = codeBlock.getAddress();
+
+    var args = [4, 5]
+
+    var ret = callTachyonFFI(
+        ['int', 'int'],
+        'int',
+        blockAddr,
+        [0,0,0,0],  // context pointer... insert into args?
+        args
+    );
+
+    return ret;
+}
+
 
 
 
@@ -480,13 +533,40 @@ try
 
     with (assembler)
     {
+        // EAX, ECX, EDX are available directly
 
+        /*
+        mov(eax, mem(32, esp, 8));
+        add(eax, 7);
+        ret();
+        */
+
+        /*
         mov(eax, 0);
         var LOOP = label('LOOP');
         add(eax, 1);
         cmp(eax, 10);
         jb(LOOP);
+        ret();
+        */
 
+        var CALL = new x86.Label('CALL');
+        var COMP = new x86.Label('COMP');
+        var FIB = new x86.Label('FIB');
+
+        jmp(CALL);
+
+        // FIB
+        addInstr(FIB);
+        ret();
+
+        // CALL
+        addInstr(CALL);
+
+        mov(eax, 5);
+        //call(FIB);
+
+        ret();
     }
 
     print('');
@@ -501,6 +581,10 @@ try
     print('code block: ');
     print(codeBlock.size + ' bytes');
     print(codeBlock);
+
+    var ret = execCodeBlock(codeBlock);
+
+    print('ret = ' + ret);
 }
 
 catch (e)
@@ -509,16 +593,6 @@ catch (e)
         print(e.stack);
 }
 
-/*
-TODO: call, with callTachyonFFI?
-var ret = callTachyonFFI(
-    ['void*', 'int'],
-    'void*',
-    funcPtr, 
-    ctxPtr,
-    [heapAddr, heapSize]
-);
-*/
 
 
 

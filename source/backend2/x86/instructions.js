@@ -350,21 +350,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         if (opndType === 'rel')
         {
             immSize = opndSize;
-
-            //
-            // TODO: get relative value from label position
-            // the label position should have been computed in a previous step
-            // by the assembler
-            //
-
-
-            var label = opnd.label;
-
-
-            immVal = 0;
-
-
-
+            immVal = opnd.relOffset;
         }
 
         else if (opndType === 'r')
@@ -603,6 +589,11 @@ x86.Label = function (name)
     @field Label name
     */
     this.name = name;
+
+    /**
+    @field Offset at which this label is located
+    */
+    this.offset = 0;
 }
 x86.Label.prototype = new x86.Instruction();
 
@@ -612,6 +603,13 @@ Get the string representation of a label
 x86.Label.prototype.toString = function ()
 {
     return this.name + ':';
+}
+
+/**
+Find an encoding for a label, does nothing
+*/
+x86.Label.prototype.findEncoding = function ()
+{
 }
 
 /**

@@ -196,10 +196,22 @@ x86.MemLoc.prototype.toString = function ()
 
     if (this.disp)
     {
-        if (str != '')
-            str += ' + '
+        var disp = this.disp;
 
-        str += this.disp;
+        if (str != '')
+        {
+            if (num_lt(disp, 0))
+            {
+                str += ' - ';
+                disp = num_mul(disp, -1);
+            }
+            else
+            {
+                str += ' + '
+            }
+        }
+
+        str += disp;
     }
 
     if (this.index)
@@ -300,6 +312,11 @@ x86.LabelRef = function (label)
     @field Label object
     */
     this.label = label
+
+    /**
+    @field Relative offset to the label
+    */
+    this.relOffset = 0;
 
     // Initially set the size to 32
     this.size = 32;
