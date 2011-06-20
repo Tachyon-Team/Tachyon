@@ -103,12 +103,6 @@ x86.MemLoc = function (size, base, disp, index, scale)
     );
 
     assert (
-        index !== x86.regs.esp &&
-        index !== x86.regs.rsp,
-        'cannot use esp/rsp as the index register'
-    );
-   
-    assert (
         !(base && index && base.size !== index.size),
         'cannot use base and index registers of different sizes'
     );
@@ -116,6 +110,17 @@ x86.MemLoc = function (size, base, disp, index, scale)
     assert (
         !(base && base.size < 32) && !(index && index.size < 32),
         'cannot use 8 or 16 bit registers as base or index'
+    );
+
+    assert (
+        index !== x86.regs.esp &&
+        index !== x86.regs.rsp,
+        'cannot use esp/rsp as the index register'
+    );
+   
+    assert (
+        !(!base && index === x86.regs.r12),
+        'cannot use as index without a base register'
     );
 
     /**
@@ -146,15 +151,6 @@ x86.MemLoc = function (size, base, disp, index, scale)
     // Test if the rex prefix is needed
     this.rexNeeded = ((base && base.rexNeeded) || (index && index.rexNeeded));
 
-    // Test whether or not an SIB byte is needed
-    this.sibNeeded = (
-        index || 
-        scale != 1 ||
-        base === x86.regs.esp ||
-        base === x86.regs.rsp ||
-        base === x86.regs.r12
-    );
-
     /**
     @field Required displacement size
     */
@@ -166,8 +162,11 @@ x86.MemLoc = function (size, base, disp, index, scale)
         base === x86.regs.r13)
         this.dispSize = 8;
 
-    // If using displacement only or if using RIP as the base, use disp32
-    if ((!base && !index) || base === x86.regs.rip)
+    // If using displacement only or if using an index only or if using
+    // RIP as the base, use disp32
+    if ((!base && !index) || 
+        (!base && index) ||
+        (base === x86.regs.rip))
     {
         this.dispSize = 32;
     }
@@ -217,6 +216,21 @@ x86.MemLoc.prototype.toString = function ()
     str = '[' + str + ']';
 
     return str;
+}
+
+/**
+Test whether or not an SIB byte is needed
+*/
+x86.MemLoc.prototype.sibNeeded = function (x86_64)
+{
+    return (
+        this.index || 
+        this.scale != 1 ||
+        (x86_64 && !this.base && !this.index) ||
+        this.base === x86.regs.esp ||
+        this.base === x86.regs.rsp ||
+        this.base === x86.regs.r12
+    );
 }
 
 /**

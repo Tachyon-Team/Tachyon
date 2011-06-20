@@ -69,6 +69,28 @@ function testx86Enc()
         [0x04, 0x03]
     );
     test(
+        function (a) { a.add(a.cl, a.bl); },
+        [0x00, 0xD9]
+    );
+    test(
+        function (a) { a.add(a.cl, a.dh); },
+        [0x00, 0xF1]
+    );
+    test(
+        function (a) { a.add(a.cl, a.spl); },
+        false,
+        [0x40, 0x00, 0xE1]
+    );
+    test(
+        function (a) { a.add(a.cx, a.bx); },
+        [0x66, 0x01, 0xD9]
+    );
+    test(
+        function (a) { a.add(a.rdx, a.r14); },
+        false,
+        [0x4C, 0x01, 0xF2]
+    );
+    test(
         function (a) { a.add(a.edx, a.mem(32, a.eax)); },
         [0x03, 0x10],
         [0x67, 0x03, 0x10]
@@ -88,9 +110,6 @@ function testx86Enc()
         false, 
         [0x01, 0x10]
     );
-
-    // TODO: test this encoding, SIB needed?
-    //test(function (a) { a.add(a.edx, a.mem(32, undefined, 5)); }, []);
 
     // mov
     test(
@@ -243,6 +262,26 @@ function testx86Enc()
         [0x67, 0xF7, 0x94, 0x24, 0x2D, 0x01, 0x00, 0x00]
     );
     test(
+        function (a) { a.not(a.mem(32, a.rsp)); },
+        false,
+        [0xF7, 0x14, 0x24]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rsp, 0, a.rbx)); },
+        false,
+        [0xF7, 0x14, 0x1C]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rsp, 3, a.rbx)); },
+        false,
+        [0xF7, 0x54, 0x1C, 0x03]
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.rsp, 3)); },
+        false,
+        [0xF7, 0x54, 0x24, 0x03]
+    );
+    test(
         function (a) { a.not(a.mem(32, a.ebp)); },
         [0xF7, 0x55, 0x00],
         [0x67, 0xF7, 0x55, 0x00]
@@ -267,9 +306,14 @@ function testx86Enc()
         false,
         [0xF7, 0x95, 0x0D, 0x00, 0x00, 0x00]
     );
-
-    // TODO: can we do this without encoding disp32???
-    //test(function (a) { a.not(a.mem(32, undefined, 0, a.r12, 8)); }, false, [0x42, 0xF7, 0x14, 0x20]);
+    test(function (a) { a.not(a.mem(32, undefined, 0, a.r8, 8)); }, 
+        false, 
+        [0x42, 0xF7, 0x14, 0xC5, 0x00, 0x00, 0x00, 0x00]
+    );
+    test(function (a) { a.not(a.mem(32, undefined, 5)); }, 
+        [0xF7, 0x15, 0x05, 0x00, 0x00, 0x00], 
+        [0xF7, 0x14, 0x25, 0x05, 0x00, 0x00, 0x00]
+    );
 
     // pop
     test(
@@ -336,7 +380,6 @@ function testx86Enc()
     );
 }
 
-testx86Enc();
 
 
 
@@ -347,6 +390,8 @@ testx86Enc();
 
 try
 {
+    testx86Enc();
+
     var assembler = new x86.Assembler(false);
 
     with (assembler)

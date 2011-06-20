@@ -110,7 +110,7 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
 
             if (opnd instanceof x86.MemLoc)
             {
-                if (opnd.sibNeeded)
+                if (opnd.sibNeeded(x86_64))
                     sibNeeded = true;
 
                 if (opnd.dispSize > 0)
@@ -354,7 +354,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
             if (opnd instanceof x86.MemLoc)
             {
-                if (opnd.sibNeeded)
+                if (opnd.sibNeeded(x86_64))
                 {
                     sibNeeded = true;
                 }
@@ -453,7 +453,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         }
         else
         {
-            if (dispSize === 0 || (!rmOpnd.base && rmOpnd.index))
+            if (dispSize === 0 || !rmOpnd.base)
                 mod = 0;
             else if (dispSize === 8)
                 mod = 1
@@ -478,17 +478,23 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         }
         else
         {
-            if (rmOpnd.base && sibNeeded)
+            if (sibNeeded)
                 rm = 4;
+            else if (!x86_64 && !rmOpnd.base && !rmOpnd.index)
+                rm = 5;
             else if (rmOpnd.base === x86.regs.rip)
                 rm = 5;
-            else if (!rmOpnd.base && !rmOpnd.index && dispSize === 32)
-                rm = 5
             else if (rmOpnd.base)
                 rm = rmOpnd.base.regNo & 7;
             else
                 rm = 0;
         }
+
+        /*
+        print('mod: ' + mod);
+        print('reg: ' + reg);
+        print('rm: ' + rm);
+        */
 
         // Encode and write the ModR/M byte
         var rmByte = (mod << 6) + (reg << 3) + (rm);
