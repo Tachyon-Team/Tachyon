@@ -135,10 +135,20 @@ Anonymous function to initialize the assembler class
             {
                 var opnd = arguments[i];
 
-                if (opnd instanceof x86.Operand)
-                    opnds.push(opnd);
-                else
-                    opnds.push(new x86.Immediate(opnd));
+                if (!(opnd instanceof x86.Operand))
+                {
+                    if (opnd instanceof x86.Label)
+                        opnd = new x86.LabelRef(opnd);
+                    else
+                        opnd = new x86.Immediate(opnd);
+                }
+
+                assert (
+                    opnd instanceof x86.Operand,
+                    'invalid operand argument: ' + opnd
+                );
+
+                opnds.push(opnd);
             }
 
             var instr = new x86.instrs[mnem](opnds, this.x86_64);
@@ -150,6 +160,16 @@ Anonymous function to initialize the assembler class
     // Create an assembler method for each instruction
     for (var instr in x86.instrs)
         makeInstrMethod(instr);
+
+    // Create method to create labels on the assembler
+    x86.Assembler.prototype.label = function (name)
+    {
+        var label = new x86.Label(name);
+
+        this.addInstr(label);
+
+        return label;
+    }
 
     // Create an assembler field for each register
     for (var reg in x86.regs)

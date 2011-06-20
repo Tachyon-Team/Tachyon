@@ -9,10 +9,6 @@ function testx86Enc()
             // Report an encoding error
             function encError()
             {
-                var expectBlock = new CodeBlock(enc.length);
-                for (var i = 0; i < enc.length; ++i)
-                    expectBlock.writeByte(enc[i]);
-
                 error(
                     'invalid ' + (x86_64? 64:32) + '-bit encoding for:\n' +
                     assembler.toString() + '\n' +
@@ -20,8 +16,38 @@ function testx86Enc()
                     'produced:\n' +
                     codeBlock.toString() + ' (' + codeBlock.size + ' bytes)\n' +
                     'expected:\n' +
-                    expectBlock.toString() + ' (' + expectBlock.size + ' bytes)'
+                    encBlock.toString() + ' (' + encBlock.size + ' bytes)'
                 );
+            }
+
+            assert (
+                typeof enc === 'string',
+                'encoding must be provided as a hex string'
+            );
+
+            assert (
+                enc.length % 2 == 0,
+                'encoding string should have multiple of 2 length'
+            );
+
+            // Compute the number of bytes in the encoding
+            var numBytes = enc.length / 2;
+
+            // Create a code block to write the encoding into
+            var encBlock = new CodeBlock(numBytes);
+
+            // For each encoding byte
+            for (var i = 0; i < numBytes; ++i)
+            {
+                var num = parseInt(enc.substr(2*i, 2), 16);
+
+                assert (
+                    typeof num === 'number',
+                    'invalid encoding string: "' + enc + '"'
+                );
+
+                // Write the byte into the code block
+                encBlock.writeByte(num);
             }
 
             // Create an assembler to write code into
@@ -34,18 +60,14 @@ function testx86Enc()
             var codeBlock = assembler.assemble();
 
             // Check that the encoding length matches
-            if (codeBlock.size !== enc.length)
+            if (codeBlock.size !== encBlock.size)
                 encError();
 
             // Compare all bytes in the block
             for (var i = 0; i < codeBlock.size; ++i)
             {
-                if (codeBlock.readByte(i) !== enc[i])
-                {
-                    print(codeBlock.readByte(i));
-                    print(enc[i]);
+                if (codeBlock.readByte(i) !== encBlock.readByte(i))
                     encError();
-                }
             }
         }
 
@@ -66,317 +88,379 @@ function testx86Enc()
     // add
     test(
         function (a) { a.add(a.al, 3); },
-        [0x04, 0x03]
+        '0403'
     );
     test(
         function (a) { a.add(a.cl, a.bl); },
-        [0x00, 0xD9]
+        '00D9'
     );
     test(
         function (a) { a.add(a.cl, a.dh); },
-        [0x00, 0xF1]
+        '00F1'
     );
     test(
         function (a) { a.add(a.cl, a.spl); },
         false,
-        [0x40, 0x00, 0xE1]
+        '4000E1'
     );
     test(
         function (a) { a.add(a.cx, a.bx); },
-        [0x66, 0x01, 0xD9]
+        '6601D9'
     );
     test(
         function (a) { a.add(a.rdx, a.r14); },
         false,
-        [0x4C, 0x01, 0xF2]
+        '4C01F2'
     );
     test(
         function (a) { a.add(a.edx, a.mem(32, a.eax)); },
-        [0x03, 0x10],
-        [0x67, 0x03, 0x10]
+        '0310',
+        '670310'
     );
     test(
         function (a) { a.add(a.mem(32, a.eax), a.edx); },
-        [0x01, 0x10],
-        [0x67, 0x01, 0x10]
+        '0110',
+        '670110'
     );
     test(
         function (a) { a.add(a.mem(64, a.rax), a.rdx); },
         false, 
-        [0x48, 0x01, 0x10]
+        '480110'
     );
     test(
         function (a) { a.add(a.mem(32, a.rax), a.edx); }, 
         false, 
-        [0x01, 0x10]
+        '0110'
+    );
+
+    // and
+    test(
+        function (a) { a.and(a.ebp, a.r12d); }, 
+        false, 
+        '4421E5'
+    );
+
+    // cmp
+    test(
+        function (a) { a.cmp(a.ecx, a.edi); },
+        '39F9'
+    );   
+    test(
+        function (a) { a.cmp(a.rdx, a.mem(64, a.r12)); },
+        false,
+        '493B1424'
+    );   
+
+    // cpuid
+    test(
+        function (a) { a.cpuid(); }, 
+        '0FA2'
+    );    
+
+    // imul
+    test(
+        function (a) { a.imul(a.edx, a.ecx); },
+        '0FAFD1'
+    );
+    test(
+        function (a) { a.imul(a.rsi, a.rdi); },
+        false,
+        '480FAFF7'
+    );
+    test(
+        function (a) { a.imul(a.r14, a.r9); }, 
+        false, 
+        '4D0FAFF1'
     );
 
     // mov
     test(
         function (a) { a.mov(a.eax, 7); }, 
-        [0xB8, 0x07, 0x00, 0x00, 0x00]
+        'B807000000'
     );
     test(
         function (a) { a.mov(a.eax, -3); }, 
-        [0xB8, 0xFD, 0xFF, 0xFF, 0xFF]
+        'B8FDFFFFFF'
     );
     test(
         function (a) { a.mov(a.eax, a.ebx); }, 
-        [0x89, 0xD8]
+        '89D8'
     );
 
     // mul
     test(
         function (a) { a.mul(a.edx); }, 
-        [0xF7, 0xE2]
-    );
-
-    // imul
-    test(
-        function (a) { a.imul(a.edx, a.ecx); },
-        [0x0F, 0xAF, 0xD1]
+        'F7E2'
     );
     test(
-        function (a) { a.imul(a.r14, a.r9); }, 
-        false, 
-        [0x4D, 0x0F, 0xAF, 0xF1]
+        function (a) { a.mul(a.r15); },
+        false,
+        '49F7E7'
+    );
+    test(
+        function (a) { a.mul(a.r10d); },
+        false,
+        '41F7E2'
     );
 
     // nop
     test(
         function (a) { a.nop(); }, 
-        [0x90]
+        '90'
     );
 
     // not
     test(
         function (a) { a.not(a.ax); }, 
-        [0x66, 0xF7, 0xD0]
+        '66F7D0'
     );
     test(
         function (a) { a.not(a.eax); }, 
-        [0xF7, 0xD0]
+        'F7D0'
     );
     test(
         function (a) { a.not(a.rax); }, false, 
-        [0x48, 0xF7, 0xD0]
+        '48F7D0'
     );
     test(
         function (a) { a.not(a.r11); }, 
         false, 
-        [0x49, 0xF7, 0xD3]
+        '49F7D3'
     );
     test(
         function (a) { a.not(a.mem(32, a.eax)); }, 
-        [0xF7, 0x10], 
-        [0x67, 0xF7, 0x10]
+        'F710', 
+        '67F710'
     );
     test(
         function (a) { a.not(a.mem(32, a.esi)); },
-        [0xF7, 0x16], 
-        [0x67, 0xF7, 0x16]
+        'F716', 
+        '67F716'
     );
     test(
         function (a) { a.not(a.mem(32, a.edi)); }, 
-        [0xF7, 0x17], 
-        [0x67, 0xF7, 0x17]
+        'F717', 
+        '67F717'
     );
     test(
         function (a) { a.not(a.mem(32, a.edx, 55)); },
-        [0xF7, 0x52, 0x37], 
-        [0x67, 0xF7, 0x52, 0x37]
+        'F75237', 
+        '67F75237'
     );
     test(
         function (a) { a.not(a.mem(32, a.edx, 1337)); },
-        [0xF7, 0x92, 0x39, 0x05, 0x00, 0x00], 
-        [0x67, 0xF7, 0x92, 0x39, 0x05, 0x00, 0x00]
+        'F79239050000', 
+        '67F79239050000'
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.edx, -55)); },
+        'F752C9', 
+        '67F752C9'
+    );
+    test(
+        function (a) { a.not(a.mem(32, a.edx, -555)); },
+        'F792D5FDFFFF', 
+        '67F792D5FDFFFF'
     );
     test(
         function (a) { a.not(a.mem(32, a.eax, 0, a.ebx)); }, 
-        [0xF7, 0x14, 0x18], 
-        [0x67, 0xF7, 0x14, 0x18]
+        'F71418', 
+        '67F71418'
     );
     test(
         function (a) { a.not(a.mem(32, a.rax, 0, a.rbx)); }, 
         false, 
-        [0xF7, 0x14, 0x18]
+        'F71418'
     );
     test(
         function (a) { a.not(a.mem(32, a.rax, 0, a.r12)); }, 
         false, 
-        [0x42, 0xF7, 0x14, 0x20]
+        '42F71420'
     );
     test(
         function (a) { a.not(a.mem(32, a.r15, 0, a.r12)); }, 
         false, 
-        [0x43, 0xF7, 0x14, 0x27]
+        '43F71427'
     );
     test(
         function (a) { a.not(a.mem(32, a.r15, 5, a.r12)); }, 
         false, 
-        [0x43, 0xF7, 0x54, 0x27, 0x05]
+        '43F7542705'
     );
     test(
         function (a) { a.not(a.mem(32, a.r15, 5, a.r12, 8)); }, 
         false, 
-        [0x43, 0xF7, 0x54, 0xE7, 0x05]
+        '43F754E705'
     );
     test(
         function (a) { a.not(a.mem(32, a.r15, 5, a.r13, 8)); }, 
         false, 
-        [0x43, 0xF7, 0x54, 0xEF, 0x05]
+        '43F754EF05'
     );
     test(
         function (a) { a.not(a.mem(64, a.r12)); }, 
         false,
-        [0x49, 0xF7, 0x14, 0x24]
+        '49F71424'
     );
     test(
         function (a) { a.not(a.mem(32, a.r12, 5, a.r9, 4)); }, 
         false, 
-        [0x43, 0xF7, 0x54, 0x8C, 0x05]
+        '43F7548C05'
     );
     test(
         function (a) { a.not(a.mem(32, a.r12, 301, a.r9, 4)); }, 
         false, 
-        [0x43, 0xF7, 0x94, 0x8C, 0x2D, 0x01, 0x00, 0x00]
+        '43F7948C2D010000'
     );
     test(
         function (a) { a.not(a.mem(32, a.eax, 5, a.edx, 4)); }, 
-        [0xF7, 0x54, 0x90, 0x05],
-        [0x67, 0xF7, 0x54, 0x90, 0x05]
+        'F7549005',
+        '67F7549005'
     );
     test(
         function (a) { a.not(a.mem(64, a.eax, 0, a.edx, 2)); },
         false,
-        [0x67, 0x48, 0xF7, 0x14, 0x50]
+        '6748F71450'
     );
     test(
         function (a) { a.not(a.mem(32, a.esp)); },
-        [0xF7, 0x14, 0x24],
-        [0x67, 0xF7, 0x14, 0x24]
+        'F71424',
+        '67F71424'
     );
     test(
         function (a) { a.not(a.mem(32, a.esp, 301)); }, 
-        [0xF7, 0x94, 0x24, 0x2D, 0x01, 0x00, 0x00],
-        [0x67, 0xF7, 0x94, 0x24, 0x2D, 0x01, 0x00, 0x00]
+        'F794242D010000',
+        '67F794242D010000'
     );
     test(
         function (a) { a.not(a.mem(32, a.rsp)); },
         false,
-        [0xF7, 0x14, 0x24]
+        'F71424'
     );
     test(
         function (a) { a.not(a.mem(32, a.rsp, 0, a.rbx)); },
         false,
-        [0xF7, 0x14, 0x1C]
+        'F7141C'
     );
     test(
         function (a) { a.not(a.mem(32, a.rsp, 3, a.rbx)); },
         false,
-        [0xF7, 0x54, 0x1C, 0x03]
+        'F7541C03'
     );
     test(
         function (a) { a.not(a.mem(32, a.rsp, 3)); },
         false,
-        [0xF7, 0x54, 0x24, 0x03]
+        'F7542403'
     );
     test(
         function (a) { a.not(a.mem(32, a.ebp)); },
-        [0xF7, 0x55, 0x00],
-        [0x67, 0xF7, 0x55, 0x00]
+        'F75500',
+        '67F75500'
     );
     test(
         function (a) { a.not(a.mem(32, a.ebp, 13)); },
-        [0xF7, 0x55, 0x0D],
-        [0x67, 0xF7, 0x55, 0x0D]
+        'F7550D',
+        '67F7550D'
     );
     test(
         function (a) { a.not(a.mem(32, a.ebp, 13, a.edx)); },
-        [0xF7, 0x54, 0x15, 0x0D],
-        [0x67, 0xF7, 0x54, 0x15, 0x0D]
+        'F754150D',
+        '67F754150D'
     );
     test(
         function (a) { a.not(a.mem(32, a.rip)); },
         false,
-        [0xF7, 0x95, 0x00, 0x00, 0x00, 0x00]
+        'F79500000000'
     );
     test(
         function (a) { a.not(a.mem(32, a.rip, 13)); },
         false,
-        [0xF7, 0x95, 0x0D, 0x00, 0x00, 0x00]
+        'F7950D000000'
     );
     test(function (a) { a.not(a.mem(32, undefined, 0, a.r8, 8)); }, 
         false, 
-        [0x42, 0xF7, 0x14, 0xC5, 0x00, 0x00, 0x00, 0x00]
+        '42F714C500000000'
     );
     test(function (a) { a.not(a.mem(32, undefined, 5)); }, 
-        [0xF7, 0x15, 0x05, 0x00, 0x00, 0x00], 
-        [0xF7, 0x14, 0x25, 0x05, 0x00, 0x00, 0x00]
+        'F71505000000', 
+        'F7142505000000'
+    );
+
+    // or
+    test(
+        function (a) { a.or(a.edx, a.esi); },
+        '09F2'
     );
 
     // pop
     test(
         function (a) { a.pop(a.eax); }, 
-        [0x58],
+        '58',
         false
     );
     test(
         function (a) { a.pop(a.ebx); },
-        [0x5B],
+        '5B',
         false
     );
 
     // push
     test(
         function (a) { a.push(a.eax); },
-        [0x50],
+        '50',
         false
     );
     test(
         function (a) { a.push(a.bx); }, 
-        [0x66, 0x53], 
+        '6653', 
         false
     );
     test(
         function (a) { a.push(a.ebx); },
-        [0x53],
+        '53',
         false
     );
     test(
         function (a) { a.push(1); },
-        [0x6A, 0x01],
+        '6A01',
         false
     );
 
     // ret
     test(
         function (a) { a.ret(); },
-        [0xC3]
+        'C3'
     );
     test(
         function (a) { a.ret(5); },
-        [0xC2, 0x05, 0x00]
+        'C20500'
     );
 
     // xchg
     test(
         function (a) { a.xchg(a.ax, a.dx); }, 
-        [0x66, 0x92]
+        '6692'
     );
     test(
         function (a) { a.xchg(a.eax, a.edx); }, 
-        [0x92]
+        '92'
     );
     test(
         function (a) { a.xchg(a.rax, a.r15); },
         false,
-        [0x49, 0x97]
+        '4997'
     );
     test(
         function (a) { a.xchg(a.r14, a.r15); }, 
         false, 
-        [0x4D, 0x87, 0xFE]
+        '4D87FE'
+    );
+
+    // xor
+    test(
+        function (a) { a.xor(a.eax, a.eax); },
+        false, 
+        '31C0'
     );
 }
 
@@ -396,44 +480,27 @@ try
 
     with (assembler)
     {
-        //push(eax);
-        //push(ebx);
 
-        //add(eax, ebx);
+        mov(eax, 0);
+        var LOOP = label('LOOP');
+        add(eax, 1);
+        cmp(eax, 10);
+        jb(LOOP);
 
-        //push(eax);
-
-        //mov(eax, ebx);
-
-        //add(eax, 3);
-
-        //not(eax);
-
-
-        not(mem(32, eax));
-
-
-        //nop();
-
-        //ret();
-
-        //pop(ebx);
-        //pop(eax);
     }
 
     print('');
     print('assembly: ');
+    print('');
     print(assembler.toString(true));
 
-    // Assemble to code block
+    // Assemble to a code block
     var codeBlock = assembler.assemble();
-
 
     print('');
     print('code block: ');
     print(codeBlock.size + ' bytes');
     print(codeBlock);
-
 }
 
 catch (e)

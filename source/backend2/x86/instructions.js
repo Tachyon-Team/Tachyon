@@ -103,6 +103,11 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
             immSize = opndSize;
         }
 
+        if (opndType === 'rel')
+        {
+            immSize = opndSize;
+        }
+
         if (opndType === 'r/m')
         {
             rmNeeded = true;
@@ -319,7 +324,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
     // Immediate operand size and value
     var immSize = 0;
-    var immOpnd = null;
+    var immVal = 0;
 
     // Displacement size and value
     var dispSize = 0;
@@ -339,7 +344,27 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         if (opndType === 'imm')
         {
             immSize = opndSize;
-            immOpnd = opnd;
+            immVal = opnd.value;
+        }
+
+        if (opndType === 'rel')
+        {
+            immSize = opndSize;
+
+            //
+            // TODO: get relative value from label position
+            // the label position should have been computed in a previous step
+            // by the assembler
+            //
+
+
+            var label = opnd.label;
+
+
+            immVal = 0;
+
+
+
         }
 
         else if (opndType === 'r')
@@ -548,8 +573,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         codeBlock.writeInt(dispVal, dispSize);
 
     // If there is an immediate operand, write it
-    if (immOpnd !== null)
-        immOpnd.writeImm(codeBlock, immSize);
+    if (immSize !== 0)
+        codeBlock.writeInt(immVal, immSize);
 
     // Get the index in the code block after the encoding
     var endIndex = codeBlock.writePos;

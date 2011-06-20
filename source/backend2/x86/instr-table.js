@@ -22,11 +22,6 @@ x86.instrTable = [
     /*
     TODO: Needed instructions
     look for other issues with this table
-    don't do all possible encodings, just enough to test things out!
-
-    AND
-    OR
-    XOR
 
     SAL
     SAR
@@ -44,7 +39,7 @@ x86.instrTable = [
     RDPMC, read performance counters
     */
 
-    // Add
+    // Addition
     {mnem: 'add', opnds: ['al', 'imm8'], opCode: [0x04]},
     {mnem: 'add', opnds: ['ax', 'imm16'], opCode: [0x05], szPref: true},
     {mnem: 'add', opnds: ['eax', 'imm32'], opCode: [0x05]},
@@ -64,6 +59,27 @@ x86.instrTable = [
     {mnem: 'add', opnds: ['r16', 'r/m16'], opCode: [0x03], szPref: true},
     {mnem: 'add', opnds: ['r32', 'r/m32'], opCode: [0x03]},
     {mnem: 'add', opnds: ['r64', 'r/m64'], opCode: [0x03], REX_W: 1},
+
+    // Bitwise AND
+    {mnem: 'and', opnds: ['al', 'imm8'], opCode: [0x24]},
+    {mnem: 'and', opnds: ['ax', 'imm16'], opCode: [0x25], szPref: true},
+    {mnem: 'and', opnds: ['eax', 'imm32'], opCode: [0x25]},
+    {mnem: 'and', opnds: ['rax', 'imm32'], opCode: [0x25], REX_W: 1},
+    {mnem: 'and', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 4},
+    {mnem: 'and', opnds: ['r/m16', 'imm16'], opCode: [0x81], opExt: 4, szPref: true},
+    {mnem: 'and', opnds: ['r/m32', 'imm32'], opCode: [0x81], opExt: 4},
+    {mnem: 'and', opnds: ['r/m64', 'imm32'], opCode: [0x81], opExt: 4, REX_W: 1},
+    {mnem: 'and', opnds: ['r/m16', 'imm8'], opCode: [0x83], opExt: 4, szPref: true},
+    {mnem: 'and', opnds: ['r/m32', 'imm8'], opCode: [0x83], opExt: 4},
+    {mnem: 'and', opnds: ['r/m64', 'imm8'], opCode: [0x83], opExt: 4, REX_W: 1},
+    {mnem: 'and', opnds: ['r/m8', 'r8'], opCode: [0x20]},
+    {mnem: 'and', opnds: ['r/m16', 'r16'], opCode: [0x21], szPref: true},
+    {mnem: 'and', opnds: ['r/m32', 'r32'], opCode: [0x21]},
+    {mnem: 'and', opnds: ['r/m64', 'r64'], opCode: [0x21], REX_W: 1},
+    {mnem: 'and', opnds: ['r8', 'r/m8'], opCode: [0x22]},
+    {mnem: 'and', opnds: ['r16', 'r/m16'], opCode: [0x23], szPref: true},
+    {mnem: 'and', opnds: ['r32', 'r/m32'], opCode: [0x23]},
+    {mnem: 'and', opnds: ['r64', 'r/m64'], opCode: [0x23], REX_W: 1},
 
     // Call (relative near)
     {mnem: 'call', opnds: ['rel16'], opCode: [0xE8], szPref: true, x86_64: false},
@@ -280,6 +296,27 @@ x86.instrTable = [
     {mnem: 'not', opnds: ['r/m32'], opCode: [0xF7], opExt: 2},
     {mnem: 'not', opnds: ['r/m64'], opCode: [0xF7], opExt: 2, REX_W: 1},
 
+    // Bitwise OR
+    {mnem: 'or', opnds: ['al', 'imm8'], opCode: [0x0C]},
+    {mnem: 'or', opnds: ['ax', 'imm16'], opCode: [0x0D], szPref: true},           
+    {mnem: 'or', opnds: ['eax', 'imm32'], opCode: [0x0D]},           
+    {mnem: 'or', opnds: ['rax', 'imm32'], opCode: [0x0D], REX_W: 1},
+    {mnem: 'or', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 1},
+    {mnem: 'or', opnds: ['r/m16', 'imm16'], opCode: [0x81], opExt: 1, szPref: true},
+    {mnem: 'or', opnds: ['r/m32', 'imm32'], opCode: [0x81], opExt: 1},
+    {mnem: 'or', opnds: ['r/m64', 'imm32'], opCode: [0x81], opExt: 1, REX_W: 1},
+    {mnem: 'or', opnds: ['r/m16', 'imm8'], opCode: [0x83], opExt: 1, szPref: true},
+    {mnem: 'or', opnds: ['r/m32', 'imm8'], opCode: [0x83], opExt: 1},
+    {mnem: 'or', opnds: ['r/m64', 'imm8'], opCode: [0x83], opExt: 1, REX_W: 1},
+    {mnem: 'or', opnds: ['r/m8', 'r8'], opCode: [0x08]},
+    {mnem: 'or', opnds: ['r/m16', 'r16'], opCode: [0x09], szPref: true},
+    {mnem: 'or', opnds: ['r/m32', 'r32'], opCode: [0x09]},
+    {mnem: 'or', opnds: ['r/m64', 'r64'], opCode: [0x09], REX_W: 1},
+    {mnem: 'or', opnds: ['r8', 'r/m8'], opCode: [0x0A]},
+    {mnem: 'or', opnds: ['r16', 'r/m16'], opCode: [0x0B], szPref: true},
+    {mnem: 'or', opnds: ['r32', 'r/m32'], opCode: [0x0B]},
+    {mnem: 'or', opnds: ['r64', 'r/m64'], opCode: [0x0B], REX_W: 1},
+
     // Pop
     {mnem: 'pop', opnds: ['r/m16'], opCode: [0x8F], opExt: 0, szPref: true},
     {mnem: 'pop', opnds: ['r/m32'], opCode: [0x8F], opExt: 0, x86_64: false},
@@ -340,5 +377,26 @@ x86.instrTable = [
     {mnem: 'xchg', opnds: ['r16', 'r/m16'], opCode: [0x87], szPref: true},
     {mnem: 'xchg', opnds: ['r32', 'r/m32'], opCode: [0x87]},
     {mnem: 'xchg', opnds: ['r64', 'r/m64'], opCode: [0x87], REX_W: 1},
+
+    // Exclusive bitwise OR
+    {mnem: 'xor', opnds: ['al', 'imm8'], opCode: [0x34]},
+    {mnem: 'xor', opnds: ['ax', 'imm16'], opCode: [0x35], szPref: true},           
+    {mnem: 'xor', opnds: ['eax', 'imm32'], opCode: [0x35]},           
+    {mnem: 'xor', opnds: ['rax', 'imm32'], opCode: [0x35], REX_W: 1},
+    {mnem: 'xor', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 6},
+    {mnem: 'xor', opnds: ['r/m16', 'imm16'], opCode: [0x81], opExt: 6, szPref: true},
+    {mnem: 'xor', opnds: ['r/m32', 'imm32'], opCode: [0x81], opExt: 6},
+    {mnem: 'xor', opnds: ['r/m64', 'imm32'], opCode: [0x81], opExt: 6, REX_W: 1},
+    {mnem: 'xor', opnds: ['r/m16', 'imm8'], opCode: [0x83], opExt: 6, szPref: true},
+    {mnem: 'xor', opnds: ['r/m32', 'imm8'], opCode: [0x83], opExt: 6},
+    {mnem: 'xor', opnds: ['r/m64', 'imm8'], opCode: [0x83], opExt: 6, REX_W: 1},
+    {mnem: 'xor', opnds: ['r/m8', 'r8'], opCode: [0x30]},
+    {mnem: 'xor', opnds: ['r/m16', 'r16'], opCode: [0x31], szPref: true},
+    {mnem: 'xor', opnds: ['r/m32', 'r32'], opCode: [0x31]},
+    {mnem: 'xor', opnds: ['r/m64', 'r64'], opCode: [0x31], REX_W: 1},
+    {mnem: 'xor', opnds: ['r8', 'r/m8'], opCode: [0x32]},
+    {mnem: 'xor', opnds: ['r16', 'r/m16'], opCode: [0x33], szPref: true},
+    {mnem: 'xor', opnds: ['r32', 'r/m32'], opCode: [0x33]},
+    {mnem: 'xor', opnds: ['r64', 'r/m64'], opCode: [0x33], REX_W: 1},
 ];
 
