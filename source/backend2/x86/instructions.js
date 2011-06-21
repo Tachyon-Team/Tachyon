@@ -193,27 +193,29 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
         {
             var opnd = this.opnds[j];
 
-            var opndType = x86.opndType(enc.opnds[j]);
-            var opndSize = x86.opndSize(enc.opnds[j]);
+            var encOpnd = enc.opnds[j];
+
+            var opndType = x86.opndType(encOpnd);
+            var opndSize = x86.opndSize(encOpnd);
+
+            /*
+            print('opnd: ' + opnd);
+            print('enc : ' + encOpnd);
+            */
 
             // Switch on the operand type
             switch (opndType)
             {
-                case 'reg_0':
-                /*
-                print(this);
-                print('opnd: ' + opnd);
-                print('opnd size: ' + opnd.size);
-                print('enc opnd: ' + enc.opnds[j]);
-                print('enc opnd size: ' + opndSize);
-                */
-                if (!(opnd instanceof x86.Register))
+                case 'fixed_reg':
+                if (opnd !== encOpnd)
                     continue ENC_LOOP;
-                if (opnd.regNo !== 0)
+                break;
+
+                case 'cst':
+                if (!(opnd instanceof x86.Immediate))
                     continue ENC_LOOP;
-                if (opnd.size !== opndSize)
+                if (opnd.value !== encOpnd)
                     continue ENC_LOOP;
-                //print('opnd match');
                 break;
 
                 case 'imm':
@@ -225,7 +227,6 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                     continue ENC_LOOP;
                 if (opnd.size > opndSize)
                     continue ENC_LOOP;
-                //print('imm opnd match ***');
                 break;
 
                 case 'r':
@@ -632,28 +633,30 @@ Test if an operand is valid
 */
 x86.opndValid = function (opnd)
 {
+    if (typeof opnd === 'number')
+        return true;
+
+    if (opnd instanceof x86.Register)
+        return true;
+
     switch (opnd)
     {
-        case 'al':
         case 'r8':
         case 'r/m8':
         case 'imm8':
         case 'rel8':
 
-        case 'ax':
         case 'r16':
         case 'r/m16':
         case 'imm16':
         case 'rel16':
 
-        case 'eax':
         case 'r32':
         case 'r/m32':
         case 'imm32':
         case 'rel32':
         case 'moffs32':
 
-        case 'rax':
         case 'r64':
         case 'r/m64':
         case 'imm64':
@@ -671,23 +674,26 @@ Get an operand size from an operand description
 */
 x86.opndSize = function (opnd)
 {
+    if (typeof opnd === 'number')
+        return 0;
+
+    if (opnd instanceof x86.Register)
+        return opnd.size;
+
     switch (opnd)
     {
-        case 'al':
         case 'r8':
         case 'r/m8':
         case 'imm8':
         case 'rel8':
         return 8;
 
-        case 'ax':
         case 'r16':
         case 'r/m16':
         case 'imm16':
         case 'rel16':
         return 16;
 
-        case 'eax':
         case 'r32':
         case 'r/m32':
         case 'imm32':
@@ -695,7 +701,6 @@ x86.opndSize = function (opnd)
         case 'moffs32':
         return 32;
 
-        case 'rax':
         case 'r64':
         case 'r/m64':
         case 'imm64':
@@ -712,14 +717,14 @@ Get the type of an operand
 */
 x86.opndType = function (opnd)
 {
+    if (typeof opnd === 'number')
+        return 'cst';
+
+    if (opnd instanceof x86.Register)
+        return 'fixed_reg';
+
     switch (opnd)
     {
-        case 'al':
-        case 'ax':
-        case 'eax':
-        case 'rax':
-        return 'reg_0';
-
         case 'r8':
         case 'r16':
         case 'r32':
@@ -789,6 +794,17 @@ Anonymous function to create instruction classes from the instruction table.
         for (var j = 0; j < enc.opnds.length; ++j)
         {
             var opnd = enc.opnds[j];
+
+            // If this operand is a fixed register, replace it by the
+            // corresponding register object
+            for (var reg in x86.regs)
+            {
+                if (opnd === reg && opnd !== 'r8')
+                {
+                    opnd = x86.regs[reg];
+                    enc.opnds[j] = opnd;
+                }
+            }
 
             assert (
                 x86.opndValid(opnd),

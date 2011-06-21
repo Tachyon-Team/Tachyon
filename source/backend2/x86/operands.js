@@ -337,10 +337,10 @@ Namespace of supported x86 registers
 x86.regs = {};
 
 // General-purpose registers
-x86.regs.al     = new x86.Register('ax', 0, 8);
-x86.regs.cl     = new x86.Register('cx', 1, 8);
-x86.regs.dl     = new x86.Register('dx', 2, 8);
-x86.regs.bl     = new x86.Register('bx', 3, 8);
+x86.regs.al     = new x86.Register('al', 0, 8);
+x86.regs.cl     = new x86.Register('cl', 1, 8);
+x86.regs.dl     = new x86.Register('dl', 2, 8);
+x86.regs.bl     = new x86.Register('bl', 3, 8);
 x86.regs.ah     = new x86.Register('ah', 4, 8, undefined, undefined, false, false);
 x86.regs.ch     = new x86.Register('ch', 5, 8, undefined, undefined, false, false);
 x86.regs.dh     = new x86.Register('dh', 6, 8, undefined, undefined, false, false);

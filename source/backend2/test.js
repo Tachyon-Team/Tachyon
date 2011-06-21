@@ -199,6 +199,59 @@ function testx86Enc()
         '678B4C24FC'
     );
 
+    // movsx
+    test(
+        function (a) { a.movsx(a.ax, a.al); },
+        '660FBEC0'
+    );
+    test(
+        function (a) { a.movsx(a.edx, a.al); },
+        '0FBED0'
+    );
+    test(
+        function (a) { a.movsx(a.rax, a.bl); },
+        false,
+        '480FBEC3'
+    );
+    test(
+        function (a) { a.movsx(a.ecx, a.ax); },
+        '0FBFC8'
+    );
+    test(
+        function (a) { a.movsx(a.r11, a.cl); },
+        false,
+        '4C0FBED9'
+    );
+    test(
+        function (a) { a.movsxd(a.r10, a.mem(32, a.esp, 12)); },
+        false,
+        '674C6354240C'
+    );
+
+    // movzx
+    test(
+        function (a) { a.movzx(a.si, a.bl); },
+        '660FB6F3'
+    );
+    test(
+        function (a) { a.movzx(a.ecx, a.al); },
+        '0FB6C8'
+    );
+    test(
+        function (a) { a.movzx(a.rcx, a.bl); },
+        false,
+        '480FB6CB'
+    );
+    test(
+        function (a) { a.movzx(a.ecx, a.ax); },
+        '0FB7C8'
+    );
+    test(
+        function (a) { a.movzx(a.r11, a.cl); },
+        false,
+        '4C0FB6D9'
+    );
+
     // mul
     test(
         function (a) { a.mul(a.edx); }, 
@@ -446,6 +499,31 @@ function testx86Enc()
     test(
         function (a) { a.ret(5); },
         'C20500'
+    );
+
+    // sal
+    test(
+        function (a) { a.sal(a.cx, 1); },
+        '66D1E1'
+    );
+    test(
+        function (a) { a.sal(a.ecx, 1); },
+        'D1E1'
+    );
+    test(
+        function (a) { a.sal(a.al, a.cl); },
+        'D2E0'
+    );
+    test(
+        function (a) { a.sal(a.ebp, 5); },
+        'C1E505'
+    );
+
+    // shr
+    test(
+        function (a) { a.shr(a.r14, 7); },
+        false,
+        '49C1EE07'
     );
 
     // xchg

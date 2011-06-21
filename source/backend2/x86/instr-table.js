@@ -23,18 +23,13 @@ x86.instrTable = [
     TODO: Needed instructions
     look for other issues with this table
 
-    SAL
-    SAR
-    SHL
-    SHR
-
-    Useful but less important:
     TEST
     CMOVxx
+
+    Useful but less important:
     INC
     DEC
     NEG
-
     RDTSC, read time stamp
     RDPMC, read performance counters
     */
@@ -77,14 +72,16 @@ x86.instrTable = [
     {mnem: 'and', opnds: ['r/m32', 'r32'], opCode: [0x21]},
     {mnem: 'and', opnds: ['r/m64', 'r64'], opCode: [0x21], REX_W: 1},
     {mnem: 'and', opnds: ['r8', 'r/m8'], opCode: [0x22]},
-    {mnem: 'and', opnds: ['r16', 'r/m16'], opCode: [0x23], szPref: true},
-    {mnem: 'and', opnds: ['r32', 'r/m32'], opCode: [0x23]},
-    {mnem: 'and', opnds: ['r64', 'r/m64'], opCode: [0x23], REX_W: 1},
 
     // Call (relative and absolute)
     {mnem: 'call', opnds: ['rel32'], opCode: [0xE8]},
     {mnem: 'call', opnds: ['r/m32'], opCode: [0xFF], opExt: 2, x86_64: false},
     {mnem: 'call', opnds: ['r/m64'], opCode: [0xFF], opExt: 2/*, REX_W: 1*/},
+
+    // Convert word to doubleword (sign extension)
+    {mnem: 'cwd', opnds: [], opCode: [0x99], szPref: true},
+    {mnem: 'cdq', opnds: [], opCode: [0x99]},
+    {mnem: 'cqo', opnds: [], opCode: [0x99], REX_W: 1},    
 
     // Comparison (integer)
     {mnem: 'cmp', opnds: ['al', 'imm8'], opCode: [0x3C]},
@@ -337,9 +334,65 @@ x86.instrTable = [
     {mnem: 'ret', opCode: [0xC3]},
     {mnem: 'ret', opnds: ['imm16'], opCode: [0xC2]},
 
+    // Shift arithmetic left
+    {mnem: 'sal', opnds: ['r/m8', 1], opCode: [0xD0], opExt: 4},
+    {mnem: 'sal', opnds: ['r/m8', 'cl'], opCode: [0xD2], opExt: 4},
+    {mnem: 'sal', opnds: ['r/m8', 'imm8'], opCode: [0xC0], opExt: 4},
+    {mnem: 'sal', opnds: ['r/m16', 1], opCode: [0xD1], opExt: 4, szPref: true},
+    {mnem: 'sal', opnds: ['r/m16', 'cl'], opCode: [0xD3], opExt: 4, szPref: true},
+    {mnem: 'sal', opnds: ['r/m16', 'imm8'], opCode: [0xC1], opExt: 4, szPref: true},
+    {mnem: 'sal', opnds: ['r/m32', 1], opCode: [0xD1], opExt: 4},
+    {mnem: 'sal', opnds: ['r/m32', 'cl'], opCode: [0xD3], opExt: 4},
+    {mnem: 'sal', opnds: ['r/m32', 'imm8'], opCode: [0xC1], opExt: 4},
+    {mnem: 'sal', opnds: ['r/m64', 1], opCode: [0xD1], opExt: 4, REX_W: 1},
+    {mnem: 'sal', opnds: ['r/m64', 'cl'], opCode: [0xD3], opExt: 4, REX_W: 1},
+    {mnem: 'sal', opnds: ['r/m64', 'imm8'], opCode: [0xC1], opExt: 4, REX_W: 1},
+
+    // Shift arithmetic right (signed)
+    {mnem: 'sar', opnds: ['r/m8', 1], opCode: [0xD0], opExt: 7},
+    {mnem: 'sar', opnds: ['r/m8', 'cl'], opCode: [0xD2], opExt: 7},
+    {mnem: 'sar', opnds: ['r/m8', 'imm8'], opCode: [0xC0], opExt: 7},
+    {mnem: 'sar', opnds: ['r/m16', 1], opCode: [0xD1], opExt: 7, szPref: true},
+    {mnem: 'sar', opnds: ['r/m16', 'cl'], opCode: [0xD3], opExt: 7, szPref: true},
+    {mnem: 'sar', opnds: ['r/m16', 'imm8'], opCode: [0xC1], opExt: 7, szPref: true},
+    {mnem: 'sar', opnds: ['r/m32', 1], opCode: [0xD1], opExt: 7},
+    {mnem: 'sar', opnds: ['r/m32', 'cl'], opCode: [0xD3], opExt: 7},
+    {mnem: 'sar', opnds: ['r/m32', 'imm8'], opCode: [0xC1], opExt: 7},
+    {mnem: 'sar', opnds: ['r/m64', 1], opCode: [0xD1], opExt: 7, REX_W: 1},
+    {mnem: 'sar', opnds: ['r/m64', 'cl'], opCode: [0xD3], opExt: 7, REX_W: 1},
+    {mnem: 'sar', opnds: ['r/m64', 'imm8'], opCode: [0xC1], opExt: 7, REX_W: 1},
+
+    // Shift logical left
+    {mnem: 'shl', opnds: ['r/m8', 1], opCode: [0xD0], opExt: 4},
+    {mnem: 'shl', opnds: ['r/m8', 'cl'], opCode: [0xD2], opExt: 4},
+    {mnem: 'shl', opnds: ['r/m8', 'imm8'], opCode: [0xC0], opExt: 4},
+    {mnem: 'shl', opnds: ['r/m16', 1], opCode: [0xD1], opExt: 4, szPref: true},
+    {mnem: 'shl', opnds: ['r/m16', 'cl'], opCode: [0xD3], opExt: 4, szPref: true},
+    {mnem: 'shl', opnds: ['r/m16', 'imm8'], opCode: [0xC1], opExt: 4, szPref: true},
+    {mnem: 'shl', opnds: ['r/m32', 1], opCode: [0xD1], opExt: 4},
+    {mnem: 'shl', opnds: ['r/m32', 'cl'], opCode: [0xD3], opExt: 4},
+    {mnem: 'shl', opnds: ['r/m32', 'imm8'], opCode: [0xC1], opExt: 4},
+    {mnem: 'shl', opnds: ['r/m64', 1], opCode: [0xD1], opExt: 4, REX_W: 1},
+    {mnem: 'shl', opnds: ['r/m64', 'cl'], opCode: [0xD3], opExt: 4, REX_W: 1},
+    {mnem: 'shl', opnds: ['r/m64', 'imm8'], opCode: [0xC1], opExt: 4, REX_W: 1},
+
+    // Shift logical right (unsigned)
+    {mnem: 'shr', opnds: ['r/m8', 1], opCode: [0xD0], opExt: 5},
+    {mnem: 'shr', opnds: ['r/m8', 'cl'], opCode: [0xD2], opExt: 5},
+    {mnem: 'shr', opnds: ['r/m8', 'imm8'], opCode: [0xC0], opExt: 5},
+    {mnem: 'shr', opnds: ['r/m16', 1], opCode: [0xD1], opExt: 5, szPref: true},
+    {mnem: 'shr', opnds: ['r/m16', 'cl'], opCode: [0xD3], opExt: 5, szPref: true},
+    {mnem: 'shr', opnds: ['r/m16', 'imm8'], opCode: [0xC1], opExt: 5, szPref: true},
+    {mnem: 'shr', opnds: ['r/m32', 1], opCode: [0xD1], opExt: 5},
+    {mnem: 'shr', opnds: ['r/m32', 'cl'], opCode: [0xD3], opExt: 5},
+    {mnem: 'shr', opnds: ['r/m32', 'imm8'], opCode: [0xC1], opExt: 5},
+    {mnem: 'shr', opnds: ['r/m64', 1], opCode: [0xD1], opExt: 5, REX_W: 1},
+    {mnem: 'shr', opnds: ['r/m64', 'cl'], opCode: [0xD3], opExt: 5, REX_W: 1},
+    {mnem: 'shr', opnds: ['r/m64', 'imm8'], opCode: [0xC1], opExt: 5, REX_W: 1},
+
     // Subtract
     {mnem: 'sub', opnds: ['al', 'imm8'], opCode: [0x2C]},
-    {mnem: 'sub', opnds: ['ax', 'imm16'], opCode: [0x2D], szPref: true},           
+    {mnem: 'sub', opnds: ['ax', 'imm16'], opCode: [0x2D], szPref: true},
     {mnem: 'sub', opnds: ['eax', 'imm32'], opCode: [0x2D]},           
     {mnem: 'sub', opnds: ['rax', 'imm32'], opCode: [0x2D], REX_W: 1},
     {mnem: 'sub', opnds: ['r/m8', 'imm8'], opCode: [0x80], opExt: 5},
