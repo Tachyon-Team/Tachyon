@@ -14,9 +14,9 @@ utility/modules.js                  \
 utility/misc.js                     \
 utility/num.js                      \
 runtime/misc.js                     \
-backend2/codeblock.js               \
-backend2/x86/operands.js            \
-backend2/x86/instr-table.js         \
-backend2/x86/instructions.js        \
-backend2/x86/assembler.js           \
-backend2/test.js
+backend/codeblock.js                \
+backend/x86/operands.js             \
+backend/x86/instr-table.js          \
+backend/x86/instructions.js         \
+backend/x86/assembler.js            \
+backend/test.js

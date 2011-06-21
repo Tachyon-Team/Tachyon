@@ -77,14 +77,14 @@ BASE_SRCS =                             \
     runtime/misc.js                     \
     platform/ffi.js                     \
     platform/mcb.js                     \
-    backend/asm.js                      \
-    backend/regalloc.js                 \
-    backend/onthefly.js                 \
-    backend/linearscan.js               \
-    backend/backend.js                  \
-    backend/x86/asm.js                  \
-    backend/x86/config.js               \
-    backend/x86/ir-to-asm.js
+    old-backend/asm.js                  \
+    old-backend/regalloc.js             \
+    old-backend/onthefly.js             \
+    old-backend/linearscan.js           \
+    old-backend/backend.js              \
+    old-backend/x86/asm.js              \
+    old-backend/x86/config.js           \
+    old-backend/x86/ir-to-asm.js
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
@@ -106,7 +106,7 @@ TEST_SPEC_SRCS =                        \
     stdlib/tests/*.js                   \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
-    backend/tests/*.js                  \
+    old-backend/tests/*.js              \
     programs/tests/programs.js          \
     tests/testmain.js                   \
 
