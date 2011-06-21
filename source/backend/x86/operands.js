@@ -174,6 +174,17 @@ x86.MemLoc = function (size, base, disp, index, scale)
         'cannot use as index without a base register'
     );
 
+    // Test if the rex prefix is needed
+    this.rexNeeded = (base && base.rexNeeded) || (index && index.rexNeeded);
+
+    // Test if the operand is available with the rex prefix
+    this.rexAvail = (!base || base.rexAvail) && (!index || index.rexAvail);
+
+    assert (
+        !(this.rexNeeded && !this.rexAvail),
+        'invalid index and base combination w.r.t. REX pefix'
+    );
+
     /**
     @field Memory location size
     */ 
@@ -198,9 +209,6 @@ x86.MemLoc = function (size, base, disp, index, scale)
     @field Scale value
     */
     this.scale = scale;
-
-    // Test if the rex prefix is needed
-    this.rexNeeded = ((base && base.rexNeeded) || (index && index.rexNeeded));
 
     /**
     @field Required displacement size

@@ -253,6 +253,11 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
             print('enc : ' + encOpnd);
             */
 
+            // If this encoding requires REX but the operand is not
+            // available under REX, skip this encoding
+            if (enc.REX_W && !opnd.rexAvail)
+                continue ENC_LOOP;
+
             // Switch on the operand type
             switch (opndType)
             {
@@ -1005,18 +1010,39 @@ Anonymous function to create instruction classes from the instruction table.
                 ' (' + opnds.length + ')'
             );
 
+            // Flag to indicate the REX prefix is needed
+            var rexNeeded = false;
+
+            // Flag to indicate all operands are available under a REX prefix
+            var rexAvail = true;
+
+            // For each operand
             for (var i = 0; i < opnds.length; ++i)
             {
-                assert (
-                    opnds[i] instanceof x86.Operand,
-                    'invalid operand for ' + this.mnem
-                );
+                var opnd = opnds[i];
+
+                if (opnd.rexNeeded)
+                    rexNeeded = true;
+
+                if (!opnd.rexAvail)
+                    rexAvail = false;
 
                 assert (
-                    !(x86_64 === false && opnds[i].rexNeeded === true),
-                    'cannot use REX operands in 32-bit mode'
+                    opnd instanceof x86.Operand,
+                    'invalid operand for ' + this.mnem
                 );
             }
+
+            assert (
+                !(x86_64 === false && rexNeeded === true),
+                'cannot use REX operands in 32-bit mode'
+            );
+
+            assert (
+                !(rexNeeded && !rexAvail),
+                'some operands require REX but others are not available ' +
+                'with REX'
+            );
 
             // Copy and store the operand list
             this.opnds = opnds.slice(0);

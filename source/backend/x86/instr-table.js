@@ -73,7 +73,6 @@ x86.instrTable = [
     TODO: Needed instructions
     look for other issues with this table
 
-    TEST
     CMOVxx
 
     Useful but less important:
@@ -460,6 +459,20 @@ x86.instrTable = [
     {mnem: 'sub', opnds: ['r16', 'r/m16'], opCode: [0x2B], szPref: true},
     {mnem: 'sub', opnds: ['r32', 'r/m32'], opCode: [0x2B]},
     {mnem: 'sub', opnds: ['r64', 'r/m64'], opCode: [0x2B], REX_W: 1},
+
+    // Logical AND compare
+    {mnem: 'test', opnds: ['al', 'imm8'], opCode: [0xA8]},
+    {mnem: 'test', opnds: ['ax', 'imm16'], opCode: [0xA9], szPref: true},
+    {mnem: 'test', opnds: ['eax', 'imm32'], opCode: [0xA9]},           
+    {mnem: 'test', opnds: ['rax', 'imm32'], opCode: [0xA9], REX_W: 1},
+    {mnem: 'test', opnds: ['r/m8', 'imm8'], opCode: [0xF6], opExt: 0},
+    {mnem: 'test', opnds: ['r/m16', 'imm16'], opCode: [0xF7], opExt: 0, szPref: true},
+    {mnem: 'test', opnds: ['r/m32', 'imm32'], opCode: [0xF7], opExt: 0},
+    {mnem: 'test', opnds: ['r/m64', 'imm32'], opCode: [0xF7], opExt: 0, REX_W: 1},
+    {mnem: 'test', opnds: ['r/m8', 'r8'], opCode: [0x84]},
+    {mnem: 'test', opnds: ['r/m16', 'r16'], opCode: [0x85], szPref: true},
+    {mnem: 'test', opnds: ['r/m32', 'r32'], opCode: [0x85]},
+    {mnem: 'test', opnds: ['r/m64', 'r64'], opCode: [0x85], REX_W: 1},
 
     // Exchange
     // The ax/eax/rax + rXX variants use the opcode reg field

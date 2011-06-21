@@ -581,6 +581,31 @@ tests.x86.encoding = function ()
         '49C1EE07'
     );
 
+    // test
+    test(
+        function (a) { a.test(a.al, 4); },
+        'A804'
+    );
+    /* TODO: fix encoding for this***
+    test(
+        function (a) { a.test(a.cl, 255); },
+        'F6C1FF'
+    );
+    */
+    test(
+        function (a) { a.test(a.dl, 7); },
+        'F6C207'
+    );
+    test(
+        function (a) { a.test(a.ah, 12); },
+        'F6C40C'
+    );
+    test(
+        function (a) { a.test(a.dil, 9); },
+        false,
+        '40F6C709'
+    );
+
     // xchg
     test(
         function (a) { a.xchg(a.ax, a.dx); }, 
