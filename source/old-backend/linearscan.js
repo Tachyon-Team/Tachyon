@@ -2292,7 +2292,7 @@ allocator.resolve = function (cfg, intervals, order, params)
 {
     const backendCfg = params.target.backendCfg;
 
-    const mem = x86.Assembler.prototype.memory;
+    const mem = oldx86.Assembler.prototype.memory;
 
     var tempOffset = params.memLayouts.ctx.getFieldOffset([backendCfg.tempName]);
     var temp = mem(tempOffset, backendCfg.context);

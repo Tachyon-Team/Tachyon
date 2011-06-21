@@ -62,8 +62,8 @@ function x86BackendCfg(is64bit)
     }
 
     const that = this;
-    const reg = x86.Assembler.prototype.register;
-    const mem = x86.Assembler.prototype.memory;
+    const reg = oldx86.Assembler.prototype.register;
+    const mem = oldx86.Assembler.prototype.memory;
     const width = is64bit ? 64 : 32;
     const refByteNb = width >> 3;
 
@@ -159,13 +159,13 @@ function x86BackendCfg(is64bit)
     Register type for register allocation
     @field
     */
-    this.REG = x86.type.REG;
+    this.REG = oldx86.type.REG;
 
     /**
     Memory slot type for register allocation
     @field
     */
-    this.MEM = x86.type.MEM;
+    this.MEM = oldx86.type.MEM;
 
     /**
     Registers used for passing arguments in x64 calling convention
@@ -293,7 +293,7 @@ Get a context memory field.
 */
 x86BackendCfg.prototype.getCtxField = function (name)
 {
-    const mem = x86.Assembler.prototype.memory;
+    const mem = oldx86.Assembler.prototype.memory;
     const fieldOffset = this.ctxLayout.getFieldOffset([name]);
     return mem(fieldOffset, this.context);
 };

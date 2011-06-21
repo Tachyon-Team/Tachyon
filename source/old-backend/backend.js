@@ -64,8 +64,8 @@ backend.compileIRToCB = function (ir, params)
         print = function () {};
     }
 
-    const mem = x86.Assembler.prototype.memory;
-    const reg = x86.Assembler.prototype.register;
+    const mem = oldx86.Assembler.prototype.memory;
+    const reg = oldx86.Assembler.prototype.register;
     const translator = irToAsm.translator(params);
 
     var cfg, order, liveIntervals, mems;

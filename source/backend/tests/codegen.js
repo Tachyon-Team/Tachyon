@@ -1,7 +1,62 @@
+/* _________________________________________________________________________
+ *
+ *             Tachyon : A Self-Hosted JavaScript Virtual Machine
+ *
+ *
+ *  This file is part of the Tachyon JavaScript project. Tachyon is
+ *  distributed at:
+ *  http://github.com/Tachyon-Team/Tachyon
+ *
+ *
+ *  Copyright (c) 2011, Universite de Montreal
+ *  All rights reserved.
+ *
+ *  This software is licensed under the following license (Modified BSD
+ *  License):
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the name of the Universite de Montreal nor the names of its
+ *      contributors may be used to endorse or promote products derived
+ *      from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ *  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ *  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ *  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL UNIVERSITE DE
+ *  MONTREAL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * _________________________________________________________________________
+ */
+
+/**
+@fileOverview
+Unit tests for the x86 backend.
+
+@author
+Maxime Chevalier-Boisvert
+*/
+
+/**
+Test suite for x86 code generation
+*/
+tests.x86 = tests.testSuite();
+
 /**
 Test x86 instruction encodings
 */
-function testx86Enc()
+tests.x86.encoding = function ()
 {
     // Test encodings for 32-bit and 64-bit
     function test(codeFunc, enc32, enc64)
@@ -570,12 +625,10 @@ function testx86Enc()
 /**
 Test the execution of x86 code snippets
 */
-function testx86Code()
+tests.x86.codegen = function ()
 {
-    //
-    // TODO: need to know if we are running in 32 or 64 bit mode for this
-    //
-    var x86_64 = false;
+    // Check if we are running in 32-bit or 64-bit
+    const x86_64 = PLATFORM_64BIT;
 
     // Test the execution of a piece of code
     function test(genFunc, retVal, argVals)
@@ -623,6 +676,10 @@ function testx86Code()
         }
     }
 
+    // GP register aliases for 32-bit and 64-bit
+    var rega = x86_64? x86.regs.rax:x86.regs.eax;
+    var regb = x86_64? x86.regs.rbx:x86.regs.ebx;
+
     // Loop until 10
     test(
         function (a) { with (a) {
@@ -643,44 +700,33 @@ function testx86Code()
             var COMP = new x86.Label('COMP');
             var FIB = new x86.Label('FIB');
 
-            mov(eax, 20);
+            push(regb);
+            mov(rega, 20);
             call(FIB);
+            pop(regb);
             ret();
 
             // FIB
             addInstr(FIB);
-            cmp(eax, 2);
+            cmp(rega, 2);
             jge(COMP);
             ret();
 
             // COMP
             addInstr(COMP);
-            push(eax);      // store n
-            sub(eax, 1);    // eax = n-1
-            call(FIB);      // fib(n-1)
-            mov(ebx, eax);  // eax = fib(n-1)
-            pop(eax);       // eax = n
-            push(ebx);      // store fib(n-1)
-            sub(eax, 2);    // eax = n-2
-            call(FIB);      // fib(n-2)
-            pop(ebx);       // ebx = fib(n-1)
-            add(eax, ebx);  // eax = fib(n-2) + fib(n-1)
+            push(rega);         // store n
+            sub(eax, 1);        // eax = n-1
+            call(FIB);          // fib(n-1)
+            mov(regb, rega);    // eax = fib(n-1)
+            pop(rega);          // eax = n
+            push(regb);         // store fib(n-1)
+            sub(rega, 2);       // eax = n-2
+            call(FIB);          // fib(n-2)
+            pop(regb);          // ebx = fib(n-1)
+            add(rega, regb);    // eax = fib(n-2) + fib(n-1)
             ret();
         }},
         6765
     );
-}
-
-try
-{
-    testx86Enc();
-
-    testx86Code();
-}
-
-catch (e)
-{
-    if (e.stack)
-        print(e.stack);
 }
 

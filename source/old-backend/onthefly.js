@@ -770,7 +770,7 @@ onthefly.allocator.prototype.resolve = function (current, pred, block)
     const params = this.params;
     const backendCfg = params.target.backendCfg;
     // TODO: Remove dependency to x86 assembly
-    const mem = x86.Assembler.prototype.memory;
+    const mem = oldx86.Assembler.prototype.memory;
 
     var tempOffset = params.memLayouts.ctx.getFieldOffset(
         [backendCfg.tempName]
@@ -1060,7 +1060,7 @@ onthefly.allocator.prototype.allocInstr = function (rmap, instr, usedist)
 
         opnds = opnds.map(function (opnd, index)
         {
-            if (opnd.type === x86.type.MEM)
+            if (opnd.type === oldx86.type.MEM)
             {
                 // Operand is located in memory,
                 // move it in a register

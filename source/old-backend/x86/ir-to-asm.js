@@ -110,7 +110,7 @@ irToAsm.getEntryPoint = function (irfunc, name, params, type)
 
     if (ep === undefined)
     {
-        ep = x86.Assembler.prototype.linked(
+        ep = oldx86.Assembler.prototype.linked(
             irfunc.funcName + "_" + name,
             function (dstAddr) { return this.getAddr().getBytes(); },
             width
@@ -147,7 +147,7 @@ irToAsm.spillAllocator = function (params)
 irToAsm.spillAllocator.prototype.newSlot = function ()
 {
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory; 
+    const mem = oldx86.Assembler.prototype.memory; 
 
     // Memory is byte addressed
     const offset = this.slots.length * this.target.ptrSizeBytes;
@@ -182,8 +182,8 @@ irToAsm.shiftMaker = function (irinstr, name)
     irinstr.prototype.genCode = function (tltor, opnds) 
     {
         // Assembler imports
-        const reg = x86.Assembler.prototype.register;
-        const $ = x86.Assembler.prototype.immediateValue;
+        const reg = oldx86.Assembler.prototype.register;
+        const $ = oldx86.Assembler.prototype.immediateValue;
 
         const width = this.type.getSizeBits(tltor.params);
 
@@ -195,7 +195,7 @@ irToAsm.shiftMaker = function (irinstr, name)
         }
 
         var shiftAmt;
-        if (opnds[1].type === x86.type.IMM_VAL)
+        if (opnds[1].type === oldx86.type.IMM_VAL)
         {
             assert(
                 opnds[1].value > 0, 
@@ -205,8 +205,8 @@ irToAsm.shiftMaker = function (irinstr, name)
             shiftAmt = $(opnds[1].value % 256);
         } else
         {
-            if (tltor.asm.target === x86.target.x86 &&
-                opnds[1].type === x86.type.REG &&
+            if (tltor.asm.target === oldx86.target.x86 &&
+                opnds[1].type === oldx86.type.REG &&
                 opnds[1] !== reg.eax &&
                 opnds[1] !== reg.ebx &&
                 opnds[1] !== reg.ecx &&
@@ -219,7 +219,7 @@ irToAsm.shiftMaker = function (irinstr, name)
                 mov(opnds[1], reg.edx).
                 // 8 bit move
                 mov(reg.dl, reg.cl);
-            } else if (opnds[1].type === x86.type.MEM)
+            } else if (opnds[1].type === oldx86.type.MEM)
             {
                 tltor.asm.mov(opnds[1], reg.cl);
             } else
@@ -241,7 +241,7 @@ irToAsm.shiftMaker = function (irinstr, name)
             tltor.asm[name](shiftAmt, dest.subReg(width));
         }
 
-        if (opnds[1].type !== x86.type.IMM_VAL)
+        if (opnds[1].type !== oldx86.type.IMM_VAL)
         {
             tltor.asm.mov($(0), reg.cl);
         }
@@ -255,7 +255,7 @@ Maker function for creating the genCode method of bitwise instructions
 irToAsm.bitOpMaker = function (irinstr, name)
 {
     /*
-        if (tltor.asm.target === x86.target.x86_64 && opnds[1].type === x86.type.LINK)
+        if (tltor.asm.target === oldx86.target.x86_64 && opnds[1].type === oldx86.type.LINK)
         {
             tltor.asm.mov(opnds[1], scratchReg);
             var opnd = scratchReg;
@@ -266,9 +266,9 @@ irToAsm.bitOpMaker = function (irinstr, name)
     */
 
     /*
-    if ((src.type === x86.type.MEM || 
+    if ((src.type === oldx86.type.MEM || 
          (!tltor.asm.is32bitImm(src))) &&
-        dest.type === x86.type.MEM)
+        dest.type === oldx86.type.MEM)
     {
         tltor.asm.
         mov(src, scratchReg).
@@ -308,11 +308,11 @@ irToAsm.bitOpMaker = function (irinstr, name)
             opndR = scratchReg;
         }
 
-        if (opndL.type === x86.type.REG && opndL === dest)
+        if (opndL.type === oldx86.type.REG && opndL === dest)
         {
             tltor.asm[name](opndR, dest);
         }
-        else if (opndR.type === x86.type.REG && opndR === dest)
+        else if (opndR.type === oldx86.type.REG && opndR === dest)
         {
             tltor.asm[name](opndL, dest);
         } 
@@ -343,15 +343,15 @@ irToAsm.translator = function (params)
     );
 
     var that = Object.create(irToAsm.translator.prototype);
-    const $ = x86.Assembler.prototype.immediateValue;
-    const mem = x86.Assembler.prototype.memory;
+    const $ = oldx86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory;
     const backendCfg = params.target.backendCfg;
 
     // Store the compilation parameters on the translator
     that.params = params;
 
-    that.asm = new x86.Assembler(params.target.ptrSizeBits === 64 ? 
-                                 x86.target.x86_64 : x86.target.x86);
+    that.asm = new oldx86.Assembler(params.target.ptrSizeBits === 64 ? 
+                                 oldx86.target.x86_64 : oldx86.target.x86);
 
     that.asm.useListing = params.printASM;
     that.asm.codeBlock.bigEndian = false;
@@ -381,7 +381,7 @@ irToAsm.translator.prototype.genFunc = function (fct, blockList)
 {
     const that = this;
     const offset = this.params.target.ptrSizeBytes;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     // Maintain the function object throughout the translation
     // to have to information from register allocation 
@@ -540,7 +540,7 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
 {
     const that = this;
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory;
+    const mem = oldx86.Assembler.prototype.memory;
     
     // Configuration imports
     const backendCfg = this.params.target.backendCfg;
@@ -571,7 +571,7 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
 
         const ctxSlotOffset = ctxLayout.getFieldOffset(["reg" + i]);
         const ctxSlot = mem(ctxSlotOffset, context);
-        if (slot.type === x86.type.REG)
+        if (slot.type === oldx86.type.REG)
         {
             that.asm.
             mov(slot, ctxSlot); 
@@ -595,7 +595,7 @@ irToAsm.translator.prototype.spillOnCtx = function (wanted, used)
         // Move a register value on context first
         tempIdx = arrayFind(used, function (u)
         {
-            return u.type === x86.type.REG;
+            return u.type === oldx86.type.REG;
         });
         temp = spill(tempIdx);
     } else 
@@ -629,8 +629,8 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
 {
     const that = this;
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory;
+    const $ = oldx86.Assembler.prototype.immediateValue;
     
     // Configuration imports
     const target = this.params.target;
@@ -641,7 +641,7 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
     var memIndexes = [];
     used.forEach(function (slot, index) 
     {
-        if (slot.type === x86.type.MEM)
+        if (slot.type === oldx86.type.MEM)
         {
             memIndexes.push(index);    
         }
@@ -652,7 +652,7 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
     var spilled = [];
     wanted.forEach(function (slot) {
         
-        if (slot.type !== x86.type.REG)
+        if (slot.type !== oldx86.type.REG)
             return;
 
         var index = used.indexOf(slot);
@@ -701,8 +701,8 @@ irToAsm.translator.prototype.spillOnStack = function (wanted, used)
 */
 irToAsm.translator.prototype.withNormalizedFrame = function (code)
 {
-    const $   = x86.Assembler.prototype.immediateValue;
-    const mem = x86.Assembler.prototype.memory;
+    const $   = oldx86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory;
 
     const that = this;
 
@@ -782,9 +782,9 @@ irToAsm.translator.prototype.withNormalizedFrame = function (code)
 */
 irToAsm.translator.prototype.populateArgTable = function ()
 {
-    const $   = x86.Assembler.prototype.immediateValue;
-    const mem = x86.Assembler.prototype.memory;
-    const reg = x86.Assembler.prototype.register;
+    const $   = oldx86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory;
+    const reg = oldx86.Assembler.prototype.register;
     const target     = this.params.target;
     const backendCfg = target.backendCfg;
     const context = backendCfg.context;
@@ -854,9 +854,9 @@ irToAsm.translator.prototype.populateArgTable = function ()
 
 irToAsm.translator.prototype.prelude = function ()
 {
-    const reg = x86.Assembler.prototype.register;
-    const mem = x86.Assembler.prototype.memory;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const reg = oldx86.Assembler.prototype.register;
+    const mem = oldx86.Assembler.prototype.memory;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     const that = this; 
     const target = this.params.target;
@@ -880,7 +880,7 @@ irToAsm.translator.prototype.prelude = function ()
 
     if (this.fct.cProxy)
     {
-        if (this.asm.target === x86.target.x86)
+        if (this.asm.target === oldx86.target.x86)
         {
             // We follow 32 bits Windows, Linux, BSD and Mac OS X
             // callee-save convention
@@ -1151,7 +1151,7 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     const backendCfg = target.backendCfg;
 
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory;
+    const mem = oldx86.Assembler.prototype.memory;
 
     // Register used for the return value
     const dest = this.regAlloc.dest;
@@ -1178,12 +1178,12 @@ ArgValInstr.prototype.genCode = function (tltor, opnds)
     // Offset due to spilling of callee-save registers
     // from C calling convention 
     const ccallOffset = (tltor.fct.cProxy === true) ?
-                        ((tltor.asm.target === x86.target.x86) ? 4 : 6) : 0;
+                        ((tltor.asm.target === oldx86.target.x86) ? 4 : 6) : 0;
 
     // On 64 bits, we spill arguments passed in registers on stack
     // at the entry of the function
     const retAddrOffset = (tltor.fct.cProxy === true &&
-                           tltor.asm.target === x86.target.x86_64 &&
+                           tltor.asm.target === oldx86.target.x86_64 &&
                            argIndex < 6) ? 0 : 1;
 
     // Offset to the argument on the stack
@@ -1226,7 +1226,7 @@ AddInstr.prototype.genCode = function (tltor, opnds)
         dest = tltor.params.target.backendCfg.scratchReg;
     }
 
-    if (opnds[1].type === x86.type.IMM_VAL)
+    if (opnds[1].type === oldx86.type.IMM_VAL)
     {
         // Case where one of the operands is an immediate
         // value
@@ -1245,7 +1245,7 @@ AddInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.add(opnds[1], dest);
         }
     } 
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    else if (opnds[1].type === oldx86.type.REG && opnds[1] === dest)
     {
         tltor.asm.add(opnds[0], dest);
     } 
@@ -1270,7 +1270,7 @@ SubInstr.prototype.genCode = function (tltor, opnds)
         dest = tltor.params.target.backendCfg.scratchReg;
     }
 
-    if (opnds[1].type === x86.type.IMM_VAL)
+    if (opnds[1].type === oldx86.type.IMM_VAL)
     {
         // Case where one of the operands is an immediate
         // value
@@ -1294,7 +1294,7 @@ SubInstr.prototype.genCode = function (tltor, opnds)
         // Operands are the same, put a zero in the destination register
         tltor.asm.xor(dest, dest); 
     } 
-    else if (opnds[1].type === x86.type.REG && opnds[1] === dest)
+    else if (opnds[1].type === oldx86.type.REG && opnds[1] === dest)
     {
         // Operands are inverted with regard to x86 notation 
 
@@ -1361,7 +1361,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     else
         width = this.uses[0].type.getSizeBits(tltor.params);
 
-    const reg = x86.Assembler.prototype.register;
+    const reg = oldx86.Assembler.prototype.register;
     const xAX = reg.rax.subReg(width);
     const xDX = reg.rdx.subReg(width);
 
@@ -1393,7 +1393,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
         }
         
         // If operand 1 is an immediate value, put it into EDX
-        if (op1.type === x86.type.IMM_VAL)
+        if (op1.type === oldx86.type.IMM_VAL)
         {
             tltor.asm.mov(op1, xDX);
             var op1 = xDX;
@@ -1405,7 +1405,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
     // Otherwise, a signed result is expected
     else
     {
-        if (opnds[0].type === x86.type.IMM_VAL)
+        if (opnds[0].type === oldx86.type.IMM_VAL)
         {
             tltor.asm.imul(
                 opnds[1], 
@@ -1415,7 +1415,7 @@ MulInstr.prototype.genCode = function (tltor, opnds)
             );
         }
 
-        else if (opnds[1].type === x86.type.IMM_VAL)
+        else if (opnds[1].type === oldx86.type.IMM_VAL)
         {
             tltor.asm.imul(
                 opnds[0], 
@@ -1500,8 +1500,8 @@ DivInstr.prototype.genCode = function (tltor, opnds)
         width = this.uses[0].type.getSizeBits(tltor.params);
 
     // Assembler imports
-    const reg = x86.Assembler.prototype.register;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const reg = oldx86.Assembler.prototype.register;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     // In the end, we want to have:
     // - Dividend in xAX
@@ -1521,7 +1521,7 @@ DivInstr.prototype.genCode = function (tltor, opnds)
     var xAX = reg.rax.subReg(width);
     var xDX = reg.rdx.subReg(width);
 
-    if (dsor === xAX && dvnd.type === x86.type.REG && dvnd !== xDX)
+    if (dsor === xAX && dvnd.type === oldx86.type.REG && dvnd !== xDX)
     {
         tltor.asm.
         xchg(xAX, dvnd);
@@ -1682,8 +1682,8 @@ RetInstr.prototype.regAlloc.opndsRegRequired = true;
 RetInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const reg = x86.Assembler.prototype.register;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const reg = oldx86.Assembler.prototype.register;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     // Configuration imports
     const target = tltor.params.target;
@@ -1720,7 +1720,7 @@ RetInstr.prototype.genCode = function (tltor, opnds)
             mov(stack, cstack);
         }
 
-        if (tltor.asm.target === x86.target.x86)
+        if (tltor.asm.target === oldx86.target.x86)
         {
             // We follow 32 bits Windows, Linux, BSD and Mac OS X
             // callee-save convention
@@ -1767,7 +1767,7 @@ RetInstr.prototype.genCode = function (tltor, opnds)
 IfInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const $ = x86.Assembler.prototype.immediateValue;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     const scratchReg = tltor.params.target.backendCfg.scratchReg;
 
@@ -1818,8 +1818,8 @@ IfInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.jmp(falseLabel);
         }
 
-        if ((opnds[0].type === x86.type.MEM &&
-            opnds[1].type === x86.type.MEM) ||
+        if ((opnds[0].type === oldx86.type.MEM &&
+            opnds[1].type === oldx86.type.MEM) ||
             (tltor.asm.isImmediate(opnds[0]) &&
              tltor.asm.isImmediate(opnds[1])))
         {
@@ -1828,7 +1828,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
 
             genBranches(trueLabel, falseLabel);
         } 
-        else if (opnds[0].type === x86.type.IMM_VAL)
+        else if (opnds[0].type === oldx86.type.IMM_VAL)
         {
             tltor.asm.cmp(opnds[0], opnds[1]);
 
@@ -1844,24 +1844,24 @@ IfInstr.prototype.genCode = function (tltor, opnds)
 
     function genEq(neg)
     {
-        if (opnds[0].type === x86.type.REG && 
-            opnds[1].type === x86.type.IMM_VAL &&
+        if (opnds[0].type === oldx86.type.REG && 
+            opnds[1].type === oldx86.type.IMM_VAL &&
             opnds[1].value === 0) 
         {
             dbgPrint('case 1');
 
             tltor.asm.test(opnds[0], opnds[0]);
         } 
-        else if (opnds[1].type === x86.type.REG && 
-                 opnds[0].type === x86.type.IMM_VAL &&
+        else if (opnds[1].type === oldx86.type.REG && 
+                 opnds[0].type === oldx86.type.IMM_VAL &&
                  opnds[0].value === 0)
         {
             dbgPrint('case 2');
 
             tltor.asm.test(opnds[1], opnds[1]);
         } 
-        else if ((opnds[0].type === x86.type.MEM &&
-            opnds[1].type === x86.type.MEM) ||
+        else if ((opnds[0].type === oldx86.type.MEM &&
+            opnds[1].type === oldx86.type.MEM) ||
             (tltor.asm.isImmediate(opnds[0]) &&
              tltor.asm.isImmediate(opnds[1])))
         {
@@ -1873,7 +1873,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
         } 
         else if (tltor.asm.isImmediate(opnds[1]))
         {
-            if (opnds[1].type === x86.type.LINK && opnds[1].width() === 64)
+            if (opnds[1].type === oldx86.type.LINK && opnds[1].width() === 64)
             {
                 dbgPrint('case 4');
 
@@ -1891,7 +1891,7 @@ IfInstr.prototype.genCode = function (tltor, opnds)
         }
         else
         {
-            if (opnds[0].type === x86.type.LINK && opnds[0].width() === 64)
+            if (opnds[0].type === oldx86.type.LINK && opnds[0].width() === 64)
             {
                 dbgPrint('case 6');
 
@@ -1987,8 +1987,8 @@ CallInstr.prototype.regAlloc.usedRegisters = function (instr, params)
 CallInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const $ = x86.Assembler.prototype.immediateValue;
-    const mem = x86.Assembler.prototype.memory;
+    const $ = oldx86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory;
 
     // Configuration imports
     const target = tltor.params.target;
@@ -2040,8 +2040,8 @@ CallInstr.prototype.genCode = function (tltor, opnds)
     );
 
     const funcPtrWrongReg = (
-        (opnds[0].type === x86.type.REG && opnds[0] !== funcPtrReg) ||
-        opnds[0].type === x86.type.LINK
+        (opnds[0].type === oldx86.type.REG && opnds[0] !== funcPtrReg) ||
+        opnds[0].type === oldx86.type.LINK
     );
 
     const toSpill = [scratch]; 
@@ -2092,11 +2092,11 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         {
             var arg = funcArgs[i];
 
-            if (arg.type === x86.type.MEM ||
-                arg.type === x86.type.LINK && arg.width() === 64 ||
-                arg.type === x86.type.IMM_VAL && x86.isSigned32(arg.value) === false)
+            if (arg.type === oldx86.type.MEM ||
+                arg.type === oldx86.type.LINK && arg.width() === 64 ||
+                arg.type === oldx86.type.IMM_VAL && oldx86.isSigned32(arg.value) === false)
             {
-                if (arg.type === x86.type.MEM && arg.base === stack)
+                if (arg.type === oldx86.type.MEM && arg.base === stack)
                 {
                     // Adjust the offset to take the displacement of the 
                     // stack pointer into account
@@ -2127,7 +2127,7 @@ CallInstr.prototype.genCode = function (tltor, opnds)
         if (arg !== reg)
         {
             // Fix the offset since the stack pointer has been moved
-            if (arg.type === x86.type.MEM && 
+            if (arg.type === oldx86.type.MEM && 
                 arg.base === stack)
             {
                 arg = mem(arg.disp + stackOffset, stack);
@@ -2147,9 +2147,9 @@ CallInstr.prototype.genCode = function (tltor, opnds)
 
     // The first operand should be the function address
     assert(
-        opnds[0].type === x86.type.REG || 
-        opnds[0].type === x86.type.MEM ||
-        opnds[0].type === x86.type.LINK,
+        opnds[0].type === oldx86.type.REG || 
+        opnds[0].type === oldx86.type.MEM ||
+        opnds[0].type === oldx86.type.LINK,
         "Invalid CallInstr function operand '" + opnds[0] + "'"
     );
 
@@ -2186,8 +2186,8 @@ CallApplyInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
 CallApplyInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     // Configuration imports
     const target = tltor.params.target;
@@ -2306,9 +2306,9 @@ CallFFIInstr.prototype.regAlloc = Object.create(CallInstr.prototype.regAlloc);
 CallFFIInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const reg = x86.Assembler.prototype.register; 
-    const mem = x86.Assembler.prototype.memory;
-    const $ = x86.Assembler.prototype.immediateValue;
+    const reg = oldx86.Assembler.prototype.register; 
+    const mem = oldx86.Assembler.prototype.memory;
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     // Configuration imports
     const target = tltor.params.target; 
@@ -2340,7 +2340,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
                     
     const numArgs = opnds.length - 1;        
 
-    const is64 = tltor.asm.target === x86.target.x86_64;
+    const is64 = tltor.asm.target === oldx86.target.x86_64;
 
     const firstIndex = is64 ? 6 : 0;
 
@@ -2440,18 +2440,18 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
         var offset = argOffsets[i];
 
-        if (opnd.type === x86.type.REG)
+        if (opnd.type === oldx86.type.REG)
         {
             tltor.asm.
             mov(opnd, mem(offset, stack));
         } 
-        else if (opnd.type === x86.type.MEM)
+        else if (opnd.type === oldx86.type.MEM)
         {
             tltor.asm.
             mov(mem(opnd.disp, altStack), scratchReg).
             mov(scratchReg, mem(offset, stack));
         } 
-        else if (opnd.type === x86.type.IMM_VAL)
+        else if (opnd.type === oldx86.type.IMM_VAL)
         {
             tltor.asm.
             mov(opnd, mem(offset, stack), opndSizeBits);
@@ -2476,7 +2476,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
             if (arg !== x64Arg)
             {
                 // Fix the offset since the stack pointer has been moved
-                if (arg.type === x86.type.MEM && 
+                if (arg.type === oldx86.type.MEM && 
                     arg.base === stack)
                 {
                     arg = mem(arg.disp, altStack);
@@ -2530,7 +2530,7 @@ ConstructInstr.prototype.genCode = CallFuncInstr.prototype.genCode;
 
 ICastInstr.prototype.genCode = function (tltor, opnds)
 {
-    const reg = x86.Assembler.prototype.register; 
+    const reg = oldx86.Assembler.prototype.register; 
     const target = tltor.params.target; 
     const configWidth = target.ptrSizeBits;
     const dstWidth = this.type.getSizeBits(tltor.params);
@@ -2544,7 +2544,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
     var src  = opnds[0];
 
     assert(
-        dest.type === x86.type.REG, 
+        dest.type === oldx86.type.REG, 
         "Destination should be a register"
     );   
 
@@ -2560,7 +2560,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
 
             // The stack pointer has moved, therefore we need to 
             // adjust the displacement for memory locations
-            if (src.type === x86.type.MEM)
+            if (src.type === oldx86.type.MEM)
             {
                 src.disp += configWidth; 
             }
@@ -2568,7 +2568,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
             tltor.asm.
             mov(src, context);
 
-            if (src.type === x86.type.MEM)
+            if (src.type === oldx86.type.MEM)
             {
                 src.disp -= configWidth; 
             }
@@ -2578,7 +2578,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         }
     }
 
-    if (srcWidth === 8 && configWidth === 32 && src.type === x86.type.REG)
+    if (srcWidth === 8 && configWidth === 32 && src.type === oldx86.type.REG)
     {
         if(!(src === reg.rax.subReg(configWidth) ||
              src === reg.rbx.subReg(configWidth) ||
@@ -2613,7 +2613,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
     // the others
     else if (srcWidth > dstWidth)
     {
-        if (src.type === x86.type.REG)
+        if (src.type === oldx86.type.REG)
         {
             if (src !== dest || (srcWidth === 64 && dstWidth === 32))
             {
@@ -2642,7 +2642,7 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
     {
         const isSigned = this.uses[0].type.isSigned() && this.type.isSigned();
 
-        if (src.type === x86.type.REG)
+        if (src.type === oldx86.type.REG)
         {
             tltor.asm.
             movxx(src.subReg(srcWidth), dest.subReg(dstWidth), isSigned);
@@ -2688,17 +2688,17 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     */
 
     assert (
-        opnds[0].type === x86.type.REG,
+        opnds[0].type === oldx86.type.REG,
         'cannot use immediate values as pointers'
     );
 
     assert (
-        opnds[1].type === x86.type.REG || opnds[1].type === x86.type.IMM_VAL,
+        opnds[1].type === oldx86.type.REG || opnds[1].type === oldx86.type.IMM_VAL,
         'cannot use memory locations as offsets'
     );
 
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory; 
+    const mem = oldx86.Assembler.prototype.memory; 
 
     const dst = this.regAlloc.dest;
 
@@ -2709,7 +2709,7 @@ LoadInstr.prototype.genCode = function (tltor, opnds)
     );
 
     // If the offset is a register
-    if (opnds[1].type === x86.type.REG)
+    if (opnds[1].type === oldx86.type.REG)
     {
         // Use the index field
         var memLoc = mem(0, opnds[0], opnds[1], 1);
@@ -2782,17 +2782,17 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     */
 
     assert (
-        opnds[0].type === x86.type.REG,
+        opnds[0].type === oldx86.type.REG,
         'cannot use immediate values as pointers'
     );
 
     assert (
-        opnds[1].type === x86.type.REG || opnds[1].type === x86.type.IMM_VAL,
+        opnds[1].type === oldx86.type.REG || opnds[1].type === oldx86.type.IMM_VAL,
         'cannot use memory locations as offsets'
     );
 
     assert (
-        opnds[2].type === x86.type.REG || tltor.asm.isImmediate(opnds[2]),
+        opnds[2].type === oldx86.type.REG || tltor.asm.isImmediate(opnds[2]),
         'cannot perform store from memory to memory'
     );
 
@@ -2803,8 +2803,8 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     );
 
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory; 
-    const reg = x86.Assembler.prototype.register;  
+    const mem = oldx86.Assembler.prototype.memory; 
+    const reg = oldx86.Assembler.prototype.register;  
 
     // Configuration imports
     const target = tltor.params.target; 
@@ -2813,7 +2813,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
     const context = backendCfg.context;
 
     // If the offset is a register
-    if (opnds[1].type === x86.type.REG)
+    if (opnds[1].type === oldx86.type.REG)
     {
         // Use the index field
         var memLoc = mem(0, opnds[0], opnds[1], 1);
@@ -2842,7 +2842,7 @@ StoreInstr.prototype.genCode = function (tltor, opnds)
 
         // On x86 32 bits, only AL, BL, CL, DL can be accessed directly
         if (typeSize === 8 && 
-            tltor.asm.target === x86.target.x86 && 
+            tltor.asm.target === oldx86.target.x86 && 
             (srcReg !== reg.al || srcReg !== reg.bl || 
              srcReg !== reg.cl || srcReg !== reg.dl))
         {
@@ -2914,9 +2914,9 @@ MoveInstr.prototype.genMov = function (tltor, src, dest, width)
     const target = tltor.params.target; 
     const scratchReg = target.backendCfg.scratchReg;
 
-    if ((src.type === x86.type.MEM || 
+    if ((src.type === oldx86.type.MEM || 
          (!tltor.asm.is32bitImm(src))) &&
-        dest.type === x86.type.MEM)
+        dest.type === oldx86.type.MEM)
     {
         tltor.asm.
         mov(src, scratchReg).
@@ -2931,8 +2931,8 @@ MoveInstr.prototype.genMov = function (tltor, src, dest, width)
 GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory; 
-    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = oldx86.Assembler.prototype.memory; 
+    const $ = oldx86.Assembler.prototype.immediateValue;
 
     // Configuration imports
     const backendCfg = tltor.params.target.backendCfg;
@@ -2950,7 +2950,7 @@ GetNumArgsInstr.prototype.genCode = function (tltor, opnds)
 GetArgTableInstr.prototype.genCode = function (tltor, opnds)
 {
     // Assembler imports
-    const mem = x86.Assembler.prototype.memory; 
+    const mem = oldx86.Assembler.prototype.memory; 
 
     // Configuration imports
     const backendCfg = tltor.params.target.backendCfg;

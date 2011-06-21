@@ -1,3 +1,53 @@
+/* _________________________________________________________________________
+ *
+ *             Tachyon : A Self-Hosted JavaScript Virtual Machine
+ *
+ *
+ *  This file is part of the Tachyon JavaScript project. Tachyon is
+ *  distributed at:
+ *  http://github.com/Tachyon-Team/Tachyon
+ *
+ *
+ *  Copyright (c) 2011, Universite de Montreal
+ *  All rights reserved.
+ *
+ *  This software is licensed under the following license (Modified BSD
+ *  License):
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are
+ *  met:
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the name of the Universite de Montreal nor the names of its
+ *      contributors may be used to endorse or promote products derived
+ *      from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ *  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ *  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ *  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL UNIVERSITE DE
+ *  MONTREAL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ *  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * _________________________________________________________________________
+ */
+
+/**
+@fileOverview
+Encoding of x86 instructions.
+
+@author
+Maxime Chevalier-Boisvert
+*/
+
 /**
 x86 namespace
 */
@@ -762,7 +812,7 @@ Anonymous function to create instruction classes from the instruction table.
 */
 (function ()
 {
-    print('instruction encodings: ' + x86.instrTable.length);
+    //print('instruction encodings: ' + x86.instrTable.length);
 
     // Table of mnemonics to possible instruction encodings
     var instrs = {};
@@ -926,7 +976,7 @@ Anonymous function to create instruction classes from the instruction table.
         instrs[mnem].push(enc);
     }
 
-    print('supported instructions: ' + numInstrs);
+    //print('supported instructions: ' + numInstrs);
 
     // Function to create an instruction class
     function makeInstr(mnem, encodings)
@@ -999,46 +1049,4 @@ Anonymous function to create instruction classes from the instruction table.
     }
 
 })();
-
-
-// TODO: complete x86 instruction encoding function
-// encode all at once, is this good?
-// needs to know something about opcodes
-// TODO: include lots of asserts to validate encoding constraints
-x86.encode = function (opCode, opExt, opnds)
-{
-/*
-A primary opcode can be 1, 2, or 3 bytes in length. An additional 3-bit opcode field is
-sometimes encoded in the ModR/M byte. Smaller fields can be defined within the
-primary opcode. Such fields define the direction of operation, size of displacements,
-register encoding, condition codes, or sign extension. Encoding fields used by an
-opcode vary depending on the class of operation.
-Two-byte opcode formats for general-purpose and SIMD instructions consist of:
-• An escape opcode byte 0FH as the primary opcode and a second opcode byte, or
-• A mandatory prefix (66H, F2H, or F3H), an escape opcode byte, and a second
-opcode byte (same as previous bullet)
-*/
-
-// TODO: operand size override prefix
-
-
-}
-
-
-
-
-// TODO: REX encoding (REX stands for Register EXtension)
-
-
-
-// TODO: ModRM & SIB encoding
-
-// TODO: most ops are 32 bit by default, arith ops are 1 byte shorter if no
-// REX prefix for 64 bit... Top half of register is just set to 0.
-
-
-// TODO: intel manual appendix provides sample encodings that can be used
-// as unit tests***
-
-
 

@@ -68,12 +68,19 @@ does not require global variable access.
 const TACHYON_GEN_NUMBER = 0;
 
 /**
-Constant to indicate that we are running in debug mmode. This will be
+Constant to indicate that we are running in debug mode. This will be
 true under d8, and change depending on the bootstrap configuration.
 Note that when running under Tachyon, this becomes a static binding,
 and does not require global variable access.
 */
 const DEBUG = true;
+
+/**
+Constant to indicate that we are running on a 64-bit platform.
+Note that when running under Tachyon, this becomes a static binding,
+and does not require global variable access.
+*/
+const PLATFORM_64BIT = RUNNING_IN_TACHYON? false:hostIs64bit();
 
 /**
 Create the Tachyon-specific constants
@@ -100,6 +107,15 @@ function makeTachyonConsts(params)
         'DEBUG',
         ConstValue.getConst(
             params.debug,
+            IRType.box
+        )
+    );
+
+    // Bind the 64-bit platform constant
+    params.staticEnv.regBinding(
+        'PLATFORM_64BIT',
+        ConstValue.getConst(
+            params.staticEnv.getValue('PTR_NUM_BYTES') === 8,
             IRType.box
         )
     );

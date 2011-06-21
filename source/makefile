@@ -84,7 +84,12 @@ BASE_SRCS =                             \
     old-backend/backend.js              \
     old-backend/x86/asm.js              \
     old-backend/x86/config.js           \
-    old-backend/x86/ir-to-asm.js
+    old-backend/x86/ir-to-asm.js        \
+    backend/codeblock.js                \
+    backend/x86/operands.js             \
+    backend/x86/instr-table.js          \
+    backend/x86/instructions.js         \
+    backend/x86/assembler.js    
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
@@ -107,6 +112,7 @@ TEST_SPEC_SRCS =                        \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
     old-backend/tests/*.js              \
+    backend/tests/*.js                  \
     programs/tests/programs.js          \
     tests/testmain.js                   \
 
@@ -190,7 +196,7 @@ shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
 shell64:
-	$(RLWJSVM64) $(MAIN_SRCS) -- -x86_64
+	$(RLWJSVM64) $(MAIN_SRCS)
 
 bt-parser:
 	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
@@ -215,7 +221,7 @@ bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap -v=all
 
 bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -x86_64 -v=all
+	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -v=all
 
 bootstrap-debug:
 	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap" > gdb-command
@@ -230,7 +236,7 @@ test:
 	$(JSVM) $(TEST_SRCS) -- -v=all
 
 test64:
-	$(JSVM64) $(TEST_SRCS) -- -x86_64 -v=all
+	$(JSVM64) $(TEST_SRCS) -- -v=all
 
 perf:
 	./bench/d8.sh                                   \
