@@ -1,3 +1,43 @@
+/**
+Generate assembly code using a generator function and
+assemble it into a code block.
+*/
+x86.assembleCode = function (genFunc, x86_64)
+{
+    //
+    // TODO
+    //
+
+
+
+
+
+
+}
+
+/**
+Execute a code block, calling it as a C function.
+*/
+x86.execCodeBlock = function (codeBlock)
+{
+    var blockAddr = codeBlock.getAddress();
+
+    var args = [4, 5]
+
+    var ret = callTachyonFFI(
+        ['int', 'int'],
+        'int',
+        blockAddr,
+        [0,0,0,0],  // context pointer... insert into args?
+        args
+    );
+
+    return ret;
+}
+
+/**
+Test x86 instruction encodings
+*/
 function testx86Enc()
 {
     // Test encodings for 32-bit and 64-bit
@@ -486,48 +526,29 @@ function testx86Enc()
     );
 }
 
-
-
-
-//
-// TODO: assembleCode function?
-//
-
-
-//
-// TODO: code execution unit tests?
-//
-
-
-function execCodeBlock(codeBlock)
+/**
+Test the execution of x86 code snippets
+*/
+function testx86Code()
 {
-    var blockAddr = codeBlock.getAddress();
+    //
+    // TODO: write little snippets of code testing required features
+    //
+    // Need to know if we are running in 32 or 64 bit mode for this
 
-    var args = [4, 5]
 
-    var ret = callTachyonFFI(
-        ['int', 'int'],
-        'int',
-        blockAddr,
-        [0,0,0,0],  // context pointer... insert into args?
-        args
-    );
 
-    return ret;
+
+
 }
-
-
-
-
-
-
-
-
-
 
 try
 {
     testx86Enc();
+
+    testx86Code();
+
+
 
     var assembler = new x86.Assembler(false);
 
@@ -535,37 +556,32 @@ try
     {
         // EAX, ECX, EDX are available directly
 
-        /*
-        mov(eax, mem(32, esp, 8));
-        add(eax, 7);
-        ret();
-        */
-
-        /*
-        mov(eax, 0);
-        var LOOP = label('LOOP');
-        add(eax, 1);
-        cmp(eax, 10);
-        jb(LOOP);
-        ret();
-        */
-
         var CALL = new x86.Label('CALL');
         var COMP = new x86.Label('COMP');
         var FIB = new x86.Label('FIB');
 
-        jmp(CALL);
+        mov(eax, 20);
+        call(FIB);
+        ret();
 
         // FIB
         addInstr(FIB);
+        cmp(eax, 2);
+        jge(COMP);
         ret();
 
-        // CALL
-        addInstr(CALL);
-
-        mov(eax, 5);
-        //call(FIB);
-
+        // COMP
+        addInstr(COMP);
+        push(eax);      // store n
+        sub(eax, 1);    // eax = n-1
+        call(FIB);      // fib(n-1)
+        mov(ebx, eax);  // eax = fib(n-1)
+        pop(eax);       // eax = n
+        push(ebx);      // store fib(n-1)
+        sub(eax, 2);    // eax = n-2
+        call(FIB);      // fib(n-2)
+        pop(ebx);       // ebx = fib(n-1)
+        add(eax, ebx);  // eax = fib(n-2) + fib(n-1)
         ret();
     }
 
@@ -582,7 +598,7 @@ try
     print(codeBlock.size + ' bytes');
     print(codeBlock);
 
-    var ret = execCodeBlock(codeBlock);
+    var ret = x86.execCodeBlock(codeBlock);
 
     print('ret = ' + ret);
 }
@@ -592,7 +608,4 @@ catch (e)
     if (e.stack)
         print(e.stack);
 }
-
-
-
 
