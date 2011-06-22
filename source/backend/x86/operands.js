@@ -310,6 +310,11 @@ x86.MemLoc.prototype.sibNeeded = function (x86_64)
 */
 x86.Immediate = function (value)
 {
+    assert (
+        num_ge(value, getIntMin(64)) && num_le(value, getIntMax(64, true)),
+        'immediate does not fit within 64 bits: ' + num_to_string(value)
+    );
+
     /**
     @field Field value
     */
@@ -330,8 +335,26 @@ x86.Immediate = function (value)
         this.size = 32;
     else if (num_ge(value, getIntMin(64)) && num_le(value, getIntMax(64)))
         this.size = 64;
-    else
-        error('immediate does not fit within 64 bits');
+    else 
+        this.size = undefined;
+
+    /**
+    @field Size of the constant if treated as unsigned
+    */
+    this.unsgSize = undefined;
+
+    // If the constant is positive, compute its unsigned size
+    if (num_ge(value, 0))
+    {
+        if (num_le(value, getIntMax(8, true)))
+            this.unsgSize = 8;
+        else if (num_le(value, getIntMax(16, true)))
+            this.unsgSize = 16;
+        else if (num_le(value, getIntMax(32, true)))
+            this.unsgSize = 32;
+        else if (num_le(value, getIntMax(64, true)))
+            this.unsgSize = 64;
+    }
 }
 x86.Immediate.prototype = new x86.Operand();
 

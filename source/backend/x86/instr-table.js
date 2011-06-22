@@ -78,7 +78,6 @@ x86.instrTable = [
     Useful but less important:
     INC
     DEC
-    NEG
     RDTSC, read time stamp
     RDPMC, read performance counters
     */
@@ -329,6 +328,12 @@ x86.instrTable = [
     {mnem: 'mul', opnds: ['r/m16'], opCode: [0xF7], opExt: 4, szPref: true},
     {mnem: 'mul', opnds: ['r/m32'], opCode: [0xF7], opExt: 4},
     {mnem: 'mul', opnds: ['r/m64'], opCode: [0xF7], opExt: 4, REX_W: 1},
+
+    // Negation (multiplication by -1)
+    {mnem: 'neg', opnds: ['r/m8'], opCode: [0xF6], opExt: 3},
+    {mnem: 'neg', opnds: ['r/m16'], opCode: [0xF7], opExt: 3, szPref: true},
+    {mnem: 'neg', opnds: ['r/m32'], opCode: [0xF7], opExt: 3},
+    {mnem: 'neg', opnds: ['r/m64'], opCode: [0xF7], opExt: 3, REX_W: 1},
 
     // No operation
     {mnem: 'nop', opCode: [0x90]},

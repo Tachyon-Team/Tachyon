@@ -148,7 +148,8 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
         if (opnd.rexNeeded)
             rexNeeded = true;
 
-        if (opndType === 'imm')
+        if (opndType === 'imm' ||
+            opndType === 'moffs')
         {
             immSize = opndSize;
         }
@@ -281,7 +282,14 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                 if (opnd.type !== 'imm')
                     continue ENC_LOOP;
                 if (opnd.size > opndSize)
-                    continue ENC_LOOP;
+                {
+                    if (!opnd.unsgSize)
+                        continue ENC_LOOP;
+
+                    if (opnd.unsgSize !== opndSize || 
+                        opndSize !== enc.opndSize)
+                        continue ENC_LOOP;
+                }
                 break;
 
                 case 'r':
@@ -310,7 +318,7 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                     continue ENC_LOOP;
                 if (opnd.type !== 'moffs')
                     continue ENC_LOOP;
-                if (opnd.size > opndSize)
+                if (opnd.unsgSize > opndSize)
                     continue ENC_LOOP;
                 break;
 
@@ -397,7 +405,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         if (opnd.rexNeeded)
             rexNeeded = true;
 
-        if (opndType === 'imm')
+        if (opndType === 'imm' || 
+            opndType === 'moffs')
         {
             immSize = opndSize;
             immVal = opnd.value;
@@ -846,6 +855,7 @@ Anonymous function to create instruction classes from the instruction table.
             'invalid operand array for ' + mnem
         );
 
+        // For each operand
         for (var j = 0; j < enc.opnds.length; ++j)
         {
             var opnd = enc.opnds[j];
@@ -860,6 +870,11 @@ Anonymous function to create instruction classes from the instruction table.
                     enc.opnds[j] = opnd;
                 }
             }
+
+            // Update the operand size of the encoding
+            var opndSize = x86.opndSize(opnd);
+            if (!enc.opndSize || opndSize > enc.opndSize)
+                enc.opndSize = opndSize;
 
             assert (
                 x86.opndValid(opnd),

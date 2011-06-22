@@ -586,12 +586,10 @@ tests.x86.encoding = function ()
         function (a) { a.test(a.al, 4); },
         'A804'
     );
-    /* TODO: fix encoding for this***
     test(
         function (a) { a.test(a.cl, 255); },
         'F6C1FF'
     );
-    */
     test(
         function (a) { a.test(a.dl, 7); },
         'F6C207'
@@ -704,6 +702,8 @@ tests.x86.codegen = function ()
     // GP register aliases for 32-bit and 64-bit
     var rega = x86_64? x86.regs.rax:x86.regs.eax;
     var regb = x86_64? x86.regs.rbx:x86.regs.ebx;
+    var regc = x86_64? x86.regs.rcx:x86.regs.ecx;
+    var regd = x86_64? x86.regs.rdx:x86.regs.edx;
 
     // Loop until 10
     test(
@@ -716,6 +716,32 @@ tests.x86.codegen = function ()
             ret();
         }},
         10
+    );
+
+    // Arithmetic
+    test(
+        function (a) { with (a) {
+            push(regb);
+            push(regc);
+            push(regd);
+
+            mov(rega, 4);       // a = 4
+            mov(regb, 5);       // b = 5
+            mov(regc, 3);       // c = 3
+            add(rega, regb);    // a = 9
+            sub(regb, regc);    // b = 2
+            mul(regb);          // a = 18, d = 0
+            mov(regd, -2);      // d = -2
+            imul(regd, rega);   // d = -36
+            mov(rega, regd);    // a = -36
+
+            pop(regd);
+            pop(regc);
+            pop(regb);
+
+            ret();
+        }},
+        -36
     );
 
     // fib(20)

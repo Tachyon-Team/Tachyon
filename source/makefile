@@ -86,10 +86,14 @@ BASE_SRCS =                             \
     old-backend/x86/config.js           \
     old-backend/x86/ir-to-asm.js        \
     backend/codeblock.js                \
+    backend/backend.js                  \
     backend/x86/operands.js             \
     backend/x86/instr-table.js          \
     backend/x86/instructions.js         \
-    backend/x86/assembler.js    
+    backend/x86/assembler.js            \
+    backend/x86/regalloc.js             \
+    backend/x86/ir-to-asm.js            \
+    backend/x86/backend.js
 
 # Runtime library source files
 RUNTIME_SRCS =                          \
@@ -112,7 +116,7 @@ TEST_SPEC_SRCS =                        \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
     old-backend/tests/*.js              \
-    backend/tests/*.js                  \
+    backend/x86/tests/*.js              \
     programs/tests/programs.js          \
     tests/testmain.js                   \
 
@@ -186,26 +190,11 @@ compiler/sources.js: makefile compiler/sources.js.in
 	done
 	@echo "];"                                       >> compiler/sources.js
 
-load:
-	$(JSVM) $(BASE_SRCS) --shell
-
-run:
-	$(JSVM) $(MAIN_SRCS)
-
 shell:
 	$(RLWJSVM) $(MAIN_SRCS)
 
 shell64:
 	$(RLWJSVM64) $(MAIN_SRCS)
-
-bt-parser:
-	$(JSVM) $(BASE_SRCS) bt-parser.js bt-parser32.js
-
-bt-parser64:
-	$(JSVM64) $(BASE_SRCS) bt-parser.js bt-parser64.js
-
-mem-fib:
-	$(JSVM) --no-opt --trace_gc --trace_gc_nvp $(BASE_SRCS) test-fib.js > gc_trace.txt && python mem.py
 
 host-vm:
 	(cd host ; ./install-host-vm)
