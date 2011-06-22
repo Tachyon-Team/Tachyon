@@ -49,6 +49,14 @@ Maxime Chevalier-Boisvert
 */
 
 
+// TODO: per-instruction register allocation hints/constraints
+
+AddInstr.prototype.x86 = {};
+AddInstr.prototype.x86.genCode = function ()
+{
+};
+
+
 
 
 

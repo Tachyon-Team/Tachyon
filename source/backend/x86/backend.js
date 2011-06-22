@@ -52,9 +52,53 @@ Maxime Chevalier-Boisvert
 @class x86 backend interface
 @extends Backend
 */
-x86.Backend = function ()
+x86.Backend = function (x86_64)
 {
-    // TODO
+    assert (
+        typeof x86_64 === 'boolean',
+        'invalid x86_64 flag'
+    );
+
+    this.x86_64 = x86_64;
 }
 x86.Backend.prototype = new Backend();
+
+/**
+Generate machine code for an IR function
+*/
+x86.Backend.prototype.genCode = function (irFunction)
+{
+    assert (
+        irFunction instanceof IRFunction,
+        'expected IR function'
+    );
+
+    //
+    // TODO
+    //
+
+
+
+
+}
+
+/**
+Link the values needing to be linked in the code generated
+for an IR function.
+*/
+x86.Backend.prototype.linkCode = function (irFunction)
+{
+    assert (
+        irFunction instanceof IRFunction,
+        'expected IR function'
+    );
+
+    //
+    // TODO
+    //
+
+
+
+
+}
 

@@ -193,6 +193,9 @@ x86.Assembler.prototype.assemble = function ()
             }
             else
             {
+                // Find an encoding for this instruction
+                instr.findEncoding(this.x86_64);
+
                 // Add the instruction length to the total
                 codeLength += instr.getLength();
 
@@ -204,37 +207,37 @@ x86.Assembler.prototype.assemble = function ()
                     // If this is a label reference
                     if (opnd instanceof x86.LabelRef)
                     {
+                        // Get a reference to the label
                         var label = opnd.label;
 
                         // Compute the relative offset to the label
                         var relOffset = label.offset - codeLength;
 
-                        //print('***rel offset: ' + relOffset);
-
-                        // If the offset did not change, do nothing
-                        if (opnd.relOffset === relOffset)
-                            continue;
-
-                        // Note that the offset changed
-                        changed = true;
-
                         // Store the computed relative offset on the operand
                         opnd.relOffset = relOffset;
 
-                        // Update the relative offset size
+                        // Compute the updated relative offset size
+                        var offSize;
                         if (num_ge(relOffset, getIntMin(8)) && num_le(relOffset, getIntMax(8)))
-                            opnd.size = 8;
+                            offSize = 8;
                         else if (num_ge(relOffset, getIntMin(16)) && num_le(relOffset, getIntMax(16)))
-                            opnd.size = 16;
+                            offSize = 16;
                         else if (num_ge(relOffset, getIntMin(32)) && num_le(relOffset, getIntMax(32)))
-                            opnd.size = 32;
+                            offSize = 32;
                         else
                             error('relative offset does not fit within 32 bits');
+
+                        // If the offset size did not change, do nothing
+                        if (offSize === opnd.size)
+                            continue;
+
+                        // Update the offset size
+                        opnd.size = offSize;
+
+                        // Note that the offset changed
+                        changed = true;                        
                     }
                 }
-
-                // Try to find a better encoding for the instruction
-                instr.findEncoding(this.x86_64);
             }
         }
     }

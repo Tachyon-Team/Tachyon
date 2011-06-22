@@ -213,7 +213,18 @@ tests.x86.encoding = function ()
     test(
         function (a) { a.cpuid(); }, 
         '0FA2'
-    );    
+    );
+
+    // div
+    test(
+        function (a) { a.div(a.edx); }, 
+        'F7F2'
+    );
+    test(
+        function (a) { a.div(a.mem(32, a.esp, -12)); }, 
+        'F77424F4',
+        '67F77424F4'
+    );
 
     // imul
     test(
@@ -704,6 +715,7 @@ tests.x86.codegen = function ()
     var regb = x86_64? x86.regs.rbx:x86.regs.ebx;
     var regc = x86_64? x86.regs.rcx:x86.regs.ecx;
     var regd = x86_64? x86.regs.rdx:x86.regs.edx;
+    var regsp = x86_64? x86.regs.rsp:x86.regs.esp;
 
     // Loop until 10
     test(
@@ -716,6 +728,21 @@ tests.x86.codegen = function ()
             ret();
         }},
         10
+    );
+
+    // Jump with a large offset (> 8 bits)
+    test(
+        function (a) { with (a) {
+            mov(eax, 0);
+            var LOOP = label('LOOP');
+            add(eax, 1);
+            cmp(eax, 15);
+            for (var i = 0; i < 400; ++i)
+                nop();
+            jb(LOOP);
+            ret();
+        }},
+        15
     );
 
     // Arithmetic
@@ -744,6 +771,19 @@ tests.x86.codegen = function ()
         -36
     );
 
+    // Stack manipulation, sign extension
+    test(
+        function (a) { with (a) {
+            sub(regsp, 1);
+            var sloc = mem(8, regsp, 0);
+            mov(sloc, -3);
+            movsx(rega, sloc);
+            add(regsp, 1);
+            ret();
+        }},
+        -3
+    );
+    
     // fib(20)
     test(
         function (a) { with (a) {
