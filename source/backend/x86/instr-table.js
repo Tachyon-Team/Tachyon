@@ -70,14 +70,13 @@ x86_64  : set to false if invalid in 64-bit mode
 x86.instrTable = [
 
     /*
-    TODO: Needed instructions
-    look for other issues with this table
+    TODO: add INC, DEC to table, validate encodings
 
-    CMOVxx
+    TODO: look into adding xmm scalar FP instructions to this table.
+    Also want support for MOVQ instruction.
+    May need more research into SSE2 instructions.
 
-    Useful but less important:
-    INC
-    DEC
+    TODO: useful but less important instructions:
     RDTSC, read time stamp
     RDPMC, read performance counters
     */
@@ -130,6 +129,98 @@ x86.instrTable = [
     {mnem: 'cwd', opnds: [], opCode: [0x99], szPref: true},
     {mnem: 'cdq', opnds: [], opCode: [0x99]},
     {mnem: 'cqo', opnds: [], opCode: [0x99], REX_W: 1},    
+
+    // Conditional move
+    {mnem: 'cmova', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x47], szPref: true},
+    {mnem: 'cmova', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x47]},
+    {mnem: 'cmova', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x47], REX_W: 1},
+    {mnem: 'cmovae', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x43], szPref: true},
+    {mnem: 'cmovae', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x43]},
+    {mnem: 'cmovae', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x43], REX_W: 1},
+    {mnem: 'cmovb', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x42], szPref: true},
+    {mnem: 'cmovb', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x42]},
+    {mnem: 'cmovb', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x42], REX_W: 1},
+    {mnem: 'cmovbe', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x46], szPref: true},
+    {mnem: 'cmovbe', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x46]},
+    {mnem: 'cmovbe', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x46], REX_W: 1},
+    {mnem: 'cmovc', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x42], szPref: true},
+    {mnem: 'cmovc', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x42]},
+    {mnem: 'cmovc', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x42], REX_W: 1},
+    {mnem: 'cmove', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x44], szPref: true},
+    {mnem: 'cmove', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x44]},
+    {mnem: 'cmove', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x44], REX_W: 1},
+    {mnem: 'cmovg', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4F], szPref: true},
+    {mnem: 'cmovg', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4F]},
+    {mnem: 'cmovg', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4F], REX_W: 1},
+    {mnem: 'cmovge', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4D], szPref: true},
+    {mnem: 'cmovge', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4D]},
+    {mnem: 'cmovge', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4D], REX_W: 1},
+    {mnem: 'cmovl', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4C], szPref: true},
+    {mnem: 'cmovl', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4C]},
+    {mnem: 'cmovl', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4C], REX_W: 1},
+    {mnem: 'cmovle', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4E], szPref: true},
+    {mnem: 'cmovle', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4E]},
+    {mnem: 'cmovle', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4E], REX_W: 1},
+    {mnem: 'cmovna', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x46], szPref: true},
+    {mnem: 'cmovna', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x46]},
+    {mnem: 'cmovna', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x46], REX_W: 1},
+    {mnem: 'cmovnae', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x42], szPref: true},
+    {mnem: 'cmovnae', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x42]},
+    {mnem: 'cmovnae', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x42], REX_W: 1},
+    {mnem: 'cmovnb', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x43], szPref: true},
+    {mnem: 'cmovnb', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x43]},
+    {mnem: 'cmovnb', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x43], REX_W: 1},
+    {mnem: 'cmovnbe', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x47], szPref: true},
+    {mnem: 'cmovnbe', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x47]},
+    {mnem: 'cmovnbe', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x47], REX_W: 1},
+    {mnem: 'cmovnc', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x43], szPref: true},
+    {mnem: 'cmovnc', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x43]},
+    {mnem: 'cmovnc', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x43], REX_W: 1},
+    {mnem: 'cmovne', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x45], szPref: true},
+    {mnem: 'cmovne', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x45]},
+    {mnem: 'cmovne', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x45], REX_W: 1},
+    {mnem: 'cmovng', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4E], szPref: true},
+    {mnem: 'cmovng', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4E]},
+    {mnem: 'cmovng', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4E], REX_W: 1},
+    {mnem: 'cmovnge', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4C], szPref: true},
+    {mnem: 'cmovnge', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4C]},
+    {mnem: 'cmovnge', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4C], REX_W: 1},
+    {mnem: 'cmovnl', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4D], szPref: true},
+    {mnem: 'cmovnl', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4D]},
+    {mnem: 'cmovnl', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4D], REX_W: 1},
+    {mnem: 'cmovnle', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4F], szPref: true},
+    {mnem: 'cmovnle', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4F]},
+    {mnem: 'cmovnle', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4F], REX_W: 1},
+    {mnem: 'cmovno', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x41], szPref: true},
+    {mnem: 'cmovno', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x41]},
+    {mnem: 'cmovno', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x41], REX_W: 1},
+    {mnem: 'cmovnp', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4B], szPref: true},
+    {mnem: 'cmovnp', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4B]},
+    {mnem: 'cmovnp', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4B], REX_W: 1},
+    {mnem: 'cmovns', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x49], szPref: true},
+    {mnem: 'cmovns', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x49]},
+    {mnem: 'cmovns', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x49], REX_W: 1},
+    {mnem: 'cmovnz', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x45], szPref: true},
+    {mnem: 'cmovnz', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x45]},
+    {mnem: 'cmovnz', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x45], REX_W: 1},
+    {mnem: 'cmovo', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x40], szPref: true},
+    {mnem: 'cmovo', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x40]},
+    {mnem: 'cmovo', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x40], REX_W: 1},
+    {mnem: 'cmovp', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4A], szPref: true},
+    {mnem: 'cmovp', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4A]},
+    {mnem: 'cmovp', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4A], REX_W: 1},
+    {mnem: 'cmovpe', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4A], szPref: true},
+    {mnem: 'cmovpe', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4A]},
+    {mnem: 'cmovpe', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4A], REX_W: 1},
+    {mnem: 'cmovpo', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x4B], szPref: true},
+    {mnem: 'cmovpo', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x4B]},
+    {mnem: 'cmovpo', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x4B], REX_W: 1},
+    {mnem: 'cmovs', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x48], szPref: true},
+    {mnem: 'cmovs', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x48]},
+    {mnem: 'cmovs', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x48], REX_W: 1},
+    {mnem: 'cmovz', opnds: ['r16', 'r/m16'], opCode: [0x0F, 0x44], szPref: true},
+    {mnem: 'cmovz', opnds: ['r32', 'r/m32'], opCode: [0x0F, 0x44]},
+    {mnem: 'cmovz', opnds: ['r64', 'r/m64'], opCode: [0x0F, 0x44], REX_W: 1},
 
     // Comparison (integer)
     {mnem: 'cmp', opnds: ['al', 'imm8'], opCode: [0x3C]},
