@@ -215,6 +215,18 @@ tests.x86.encoding = function ()
         '0FA2'
     );
 
+    // dec
+    test(
+        function (a) { a.dec(a.cx); }, 
+        '6649',
+        '66FFC9'
+    );
+    test(
+        function (a) { a.dec(a.edx); }, 
+        '4A',
+        'FFCA'
+    );
+
     // div
     test(
         function (a) { a.div(a.edx); }, 
@@ -240,6 +252,28 @@ tests.x86.encoding = function ()
         function (a) { a.imul(a.r14, a.r9); }, 
         false, 
         '4D0FAFF1'
+    );
+
+    // inc
+    test(
+        function (a) { a.inc(a.bl); },
+        'FEC3', 
+        'FEC3'
+    );
+    test(
+        function (a) { a.inc(a.esp); },
+        '44',
+        'FFC4'
+    );
+    test(
+        function (a) { a.inc(a.mem(32, a.esp, 0)); },
+        'FF0424',
+        '67FF0424'
+    );
+    test(
+        function (a) { a.inc(a.mem(64, a.rsp, 4)); },
+        false,
+        '48FF442404'
     );
 
     // mov

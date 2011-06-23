@@ -70,15 +70,11 @@ x86_64  : set to false if invalid in 64-bit mode
 x86.instrTable = [
 
     /*
-    TODO: add INC, DEC to table, validate encodings
-
     TODO: look into adding xmm scalar FP instructions to this table.
     Also want support for MOVQ instruction.
     May need more research into SSE2 instructions.
 
-    TODO: useful but less important instructions:
-    RDTSC, read time stamp
-    RDPMC, read performance counters
+    SSE2 supported since pentium 4 (2001). Supported on Intel Atom processors.
     */
 
     // Addition
@@ -246,6 +242,14 @@ x86.instrTable = [
     // CPU id
     {mnem: 'cpuid', opCode: [0x0F, 0xA2]},
 
+    // Decrement by 1
+    {mnem: 'dec', opnds: ['r/m8'], opCode: [0xFE], opExt: 1},
+    {mnem: 'dec', opnds: ['r/m16'], opCode: [0xFF], opExt: 1, szPref: true},
+    {mnem: 'dec', opnds: ['r/m32'], opCode: [0xFF], opExt: 1},
+    {mnem: 'dec', opnds: ['r/m64'], opCode: [0xFF], opExt: 1, REX_W: 1},
+    {mnem: 'dec', opnds: ['r16'], opCode: [0x48], szPref: true, x86_64: false},
+    {mnem: 'dec', opnds: ['r32'], opCode: [0x48], x86_64: false},
+
     // Division (unsigned integer)
     {mnem: 'div', opnds: ['r/m8'], opCode: [0xF6], opExt: 6},
     {mnem: 'div', opnds: ['r/m16'], opCode: [0xF7], opExt: 6, szPref: true},
@@ -272,6 +276,14 @@ x86.instrTable = [
     {mnem: 'imul', opnds: ['r16', 'r/m16', 'imm16'], opCode: [0x69], szPref: true},
     {mnem: 'imul', opnds: ['r32', 'r/m32', 'imm32'], opCode: [0x69]},
     {mnem: 'imul', opnds: ['r64', 'r/m64', 'imm32'], opCode: [0x69], REX_W: 1},
+
+    // Increment by 1
+    {mnem: 'inc', opnds: ['r/m8'], opCode: [0xFE], opExt: 0},
+    {mnem: 'inc', opnds: ['r/m16'], opCode: [0xFF], opExt: 0, szPref: true},
+    {mnem: 'inc', opnds: ['r/m32'], opCode: [0xFF], opExt: 0},
+    {mnem: 'inc', opnds: ['r/m64'], opCode: [0xFF], opExt: 0, REX_W: 1},
+    {mnem: 'inc', opnds: ['r16'], opCode: [0x40], szPref: true, x86_64: false},
+    {mnem: 'inc', opnds: ['r32'], opCode: [0x40], x86_64: false},
 
     // Conditional jumps (relative near)
     {mnem: 'ja', opnds: ['rel8'], opCode: [0x77]},
@@ -441,6 +453,12 @@ x86.instrTable = [
     {mnem: 'push', opnds: ['imm8'], opCode: [0x6A]},
     {mnem: 'push', opnds: ['imm16'], opCode: [0x68], szPref: true},
     {mnem: 'push', opnds: ['imm32'], opCode: [0x68]},
+
+    // Read performance monitoring counters
+    {mnem: 'rdpmc', opCode: [0x0F, 0x33]},
+
+    // Read time stamp counter
+    {mnem: 'rdtsc', opCode: [0x0F, 0x31]},
 
     // Return
     {mnem: 'ret', opCode: [0xC3]},
