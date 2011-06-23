@@ -262,6 +262,10 @@ x86.instrTable = [
     // Divide scalar double
     {mnem: 'divsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x5E]},
 
+    // Store floating-point value (x87)
+    {mnem: 'fst', opnds: ['m64'], opCode: [0xDD], opExt: 2},
+    {mnem: 'fstp', opnds: ['m64'], opCode: [0xDD], opExt: 3},
+
     // Division (signed integer)
     {mnem: 'idiv', opnds: ['r/m8'], opCode: [0xF6], opExt: 7},
     {mnem: 'idiv', opnds: ['r/m16'], opCode: [0xF7], opExt: 7, szPref: true},
@@ -540,6 +544,9 @@ x86.instrTable = [
     {mnem: 'shr', opnds: ['r/m64', 1], opCode: [0xD1], opExt: 5, REX_W: 1},
     {mnem: 'shr', opnds: ['r/m64', 'cl'], opCode: [0xD3], opExt: 5, REX_W: 1},
     {mnem: 'shr', opnds: ['r/m64', 'imm8'], opCode: [0xC1], opExt: 5, REX_W: 1},
+
+    // Square root of scalar doubles (SSE2)
+    {mnem: 'sqrtsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x51]},
 
     // Subtract
     {mnem: 'sub', opnds: ['al', 'imm8'], opCode: [0x2C]},

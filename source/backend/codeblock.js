@@ -54,6 +54,11 @@ Stores generated machine code, external references and exposed labels.
 */
 function CodeBlock(size)
 {
+    assert (
+        isPosInt(size),
+        'invalid code block size: ' + size
+    );
+
     /**
     @field Executable memory block
     */

@@ -159,7 +159,8 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
             immSize = opndSize;
         }
 
-        else if (opndType === 'r/m' ||
+        else if (opndType === 'm' ||
+                 opndType === 'r/m' ||
                  opndType === 'xmm/m')
         {
             rmNeeded = true;
@@ -308,6 +309,13 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                     continue ENC_LOOP;
                 break;
 
+                case 'm':
+                if (!(opnd instanceof x86.MemLoc))
+                    continue ENC_LOOP;
+                if (opnd.size !== opndSize)
+                    continue ENC_LOOP;
+                break;
+
                 case 'r/m':
                 if (!(opnd instanceof x86.Register && opnd.type === 'gp') && 
                     !(opnd instanceof x86.MemLoc))
@@ -440,7 +448,8 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             rOpnd = opnd;
         }
 
-        else if (opndType === 'r/m' ||
+        else if (opndType === 'm' ||
+                 opndType === 'r/m' ||
                  opndType === 'xmm/m')
         {
             rmNeeded = true;
@@ -744,6 +753,7 @@ x86.opndValid = function (opnd)
         case 'moffs32':
 
         case 'r64':
+        case 'm64':
         case 'r/m64':
         case 'xmm/m64':
         case 'xmm/m128':
@@ -792,6 +802,7 @@ x86.opndSize = function (opnd)
         return 32;
 
         case 'r64':
+        case 'm64':
         case 'r/m64':
         case 'xmm/m64':
         case 'imm64':
@@ -825,6 +836,9 @@ x86.opndType = function (opnd)
         case 'r32':
         case 'r64':
         return 'r';
+
+        case 'm64':
+        return 'm';
 
         case 'xmm':
         return 'xmm';

@@ -276,6 +276,18 @@ tests.x86.encoding = function ()
         '67F77424F4'
     );
 
+    // fst
+    test(
+        function (a) { a.fst(a.mem(64, a.esp, -8)); },
+        'DD5424F8',
+        '67DD5424F8'
+    );
+    test(
+        function (a) { a.fstp(a.mem(64, a.rsp, -16)); },
+        false,
+        'DD5C24F0'
+    );
+
     // imul
     test(
         function (a) { a.imul(a.edx, a.ecx); },
@@ -702,6 +714,12 @@ tests.x86.encoding = function ()
         function (a) { a.shr(a.r14, 7); },
         false,
         '49C1EE07'
+    );
+
+    // sqrtsd
+    test(
+        function (a) { a.sqrtsd(a.xmm2, a.xmm6); },
+        'F20F51D6'
     );
 
     // test
