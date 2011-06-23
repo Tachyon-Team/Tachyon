@@ -906,16 +906,15 @@ Anonymous function to create instruction classes from the instruction table.
                 }
             }
 
-            // Update the operand size of the encoding
-            var opndSize = x86.opndSize(opnd);
-            if (!enc.opndSize || opndSize > enc.opndSize)
-                enc.opndSize = opndSize;
-
             assert (
                 x86.opndValid(opnd),
                 'operand ' + j + ' invalid for ' + mnem + ' (' + opnd + ')'
             );
         }
+
+        // Update the operand size of the encoding
+        if (!enc.opndSize && enc.opnds.length > 0)
+            enc.opndSize = x86.opndSize(enc.opnds[0]);
 
         // If no mandatory prefix is defined, set it to the empty array
         if (enc.prefix === undefined)

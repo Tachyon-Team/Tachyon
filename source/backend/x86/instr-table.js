@@ -70,24 +70,9 @@ x86_64  : set to false if invalid in 64-bit mode
 x86.instrTable = [
 
     /*
-    TODO: look into adding xmm scalar FP instructions to this table.
-    Also want support for MOVQ instruction.
-    May need more research into SSE2 instructions.
-
-    SSE2 instructions wanted:
-    [X] movsd
-    [ ] addsd - Adds bottom 64bit doubles.
-    [ ] subsd - Subtracts bottom 64bit doubles.
-    [ ] mulsd - Multiplies bottom 64bit doubles.
-    [ ] divsd - Divides bottom 64bit doubles.
-    [ ] cvtsi2sd - Converts a 32bit integer to the bottom 64bit double.
-    [ ] cvtsd2si - Converts a 64bit double to a 32bit integer using
-        truncation into a GPR.
-    [ ] ucomisd - Compares bottom 64bit doubles.
-
-    // TODO: validate encodings
-
-    // TODO: write little test program using i/fp conversion and add
+    // TODO: 
+    MOVUPD, MOVAPD
+    Use to save XMM registers on stack
     */
 
     // Addition
@@ -258,6 +243,14 @@ x86.instrTable = [
     // CPU id
     {mnem: 'cpuid', opCode: [0x0F, 0xA2]},
 
+    // Convert integer to scalar double
+    {mnem: 'cvtsi2sd', opnds: ['xmm', 'r/m32'], prefix: [0xF2], opCode: [0x0F, 0x2A]},
+    {mnem: 'cvtsi2sd', opnds: ['xmm', 'r/m64'], prefix: [0xF2], opCode: [0x0F, 0x2A], REX_W: 1},
+
+    // Convert scalar double to integer
+    {mnem: 'cvtsd2si', opnds: ['r32', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x2D]},
+    {mnem: 'cvtsd2si', opnds: ['r64', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x2D], REX_W: 1},
+
     // Decrement by 1
     {mnem: 'dec', opnds: ['r/m8'], opCode: [0xFE], opExt: 1},
     {mnem: 'dec', opnds: ['r/m16'], opCode: [0xFF], opExt: 1, szPref: true},
@@ -271,6 +264,9 @@ x86.instrTable = [
     {mnem: 'div', opnds: ['r/m16'], opCode: [0xF7], opExt: 6, szPref: true},
     {mnem: 'div', opnds: ['r/m32'], opCode: [0xF7], opExt: 6},
     {mnem: 'div', opnds: ['r/m64'], opCode: [0xF7], opExt: 6, REX_W: 1},
+
+    // Divide scalar double
+    {mnem: 'divsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x5E]},
 
     // Division (signed integer)
     {mnem: 'idiv', opnds: ['r/m8'], opCode: [0xF6], opExt: 7},
@@ -419,6 +415,9 @@ x86.instrTable = [
     {mnem: 'mul', opnds: ['r/m32'], opCode: [0xF7], opExt: 4},
     {mnem: 'mul', opnds: ['r/m64'], opCode: [0xF7], opExt: 4, REX_W: 1},
 
+    // Multiply scalar double
+    {mnem: 'mulsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x59]},
+
     // Negation (multiplication by -1)
     {mnem: 'neg', opnds: ['r/m8'], opCode: [0xF6], opExt: 3},
     {mnem: 'neg', opnds: ['r/m16'], opCode: [0xF7], opExt: 3, szPref: true},
@@ -561,6 +560,9 @@ x86.instrTable = [
     {mnem: 'sub', opnds: ['r32', 'r/m32'], opCode: [0x2B]},
     {mnem: 'sub', opnds: ['r64', 'r/m64'], opCode: [0x2B], REX_W: 1},
 
+    // Subtract scalar double
+    {mnem: 'subsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x5C]},
+
     // Logical AND compare
     {mnem: 'test', opnds: ['al', 'imm8'], opCode: [0xA8]},
     {mnem: 'test', opnds: ['ax', 'imm16'], opCode: [0xA9], szPref: true},
@@ -574,6 +576,9 @@ x86.instrTable = [
     {mnem: 'test', opnds: ['r/m16', 'r16'], opCode: [0x85], szPref: true},
     {mnem: 'test', opnds: ['r/m32', 'r32'], opCode: [0x85]},
     {mnem: 'test', opnds: ['r/m64', 'r64'], opCode: [0x85], REX_W: 1},
+
+    // Unordered compare scalar double
+    {mnem: 'ucomisd', opnds: ['xmm', 'xmm/m64'], prefix: [0x66], opCode: [0x0F, 0x2E]},
 
     // Exchange
     // The ax/eax/rax + rXX variants use the opcode reg field

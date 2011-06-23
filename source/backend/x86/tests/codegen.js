@@ -231,6 +231,28 @@ tests.x86.encoding = function ()
         '0FA2'
     );
 
+    // cvtsd2si
+    test(
+        function (a) { a.cvtsd2si(a.ecx, a.xmm6); }, 
+        'F20F2DCE'
+    );
+    test(
+        function (a) { a.cvtsd2si(a.rdx, a.xmm4); },
+        false,
+        'F2480F2DD4'
+    );
+
+    // cvtsi2sd
+    test(
+        function (a) { a.cvtsi2sd(a.xmm7, a.edi); }, 
+        'F20F2AFF'
+    );
+    test(
+        function (a) { a.cvtsi2sd(a.xmm7, a.mem(64, a.rcx)); },
+        false,
+        'F2480F2A39'
+    );
+
     // dec
     test(
         function (a) { a.dec(a.cx); }, 
@@ -681,6 +703,17 @@ tests.x86.encoding = function ()
         '40F6C709'
     );
 
+    // ucomisd
+    test(
+        function (a) { a.ucomisd(a.xmm3, a.xmm5); },
+        '660F2EDD'
+    );
+    test(
+        function (a) { a.ucomisd(a.xmm11, a.xmm13); },
+        false,
+        '66450F2EDD'
+    );
+
     // xchg
     test(
         function (a) { a.xchg(a.ax, a.dx); }, 
@@ -850,7 +883,7 @@ tests.x86.codegen = function ()
         -3
     );
     
-    // fib(20)
+    // fib(20), function calls
     test(
         function (a) { with (a) {
             var CALL = new x86.Label('CALL');
@@ -884,6 +917,39 @@ tests.x86.codegen = function ()
             ret();
         }},
         6765
+    );
+
+    // SSE2 floating-point computation
+    test(
+        function (a) { with (a) {
+            mov(rega, 2);
+            cvtsi2sd(xmm0, rega);
+            mov(rega, 7);
+            cvtsi2sd(xmm1, rega);
+            addsd(xmm0, xmm1);
+            cvtsd2si(rega, xmm0);
+            ret();
+        }},
+        9
+    );
+
+    // Floating-point comparison
+    test(
+        function (a) { with (a) {
+            mov(rega, 10);
+            cvtsi2sd(xmm2, rega);       // xmm2 = 10
+            mov(rega, 1);
+            cvtsi2sd(xmm1, rega);       // xmm1 = 1
+            mov(rega, 0);
+            cvtsi2sd(xmm0, rega);       // xmm0 = 0
+            var LOOP = label('LOOP');
+            addsd(xmm0, xmm1);
+            ucomisd(xmm0, xmm2);
+            jbe(LOOP);
+            cvtsd2si(rega, xmm0);
+            ret();
+        }},
+        11
     );
 }
 
