@@ -154,12 +154,13 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
             immSize = opndSize;
         }
 
-        if (opndType === 'rel')
+        else if (opndType === 'rel')
         {
             immSize = opndSize;
         }
 
-        if (opndType === 'r/m')
+        else if (opndType === 'r/m' ||
+                 opndType === 'xmm/m')
         {
             rmNeeded = true;
             rmOpnd = opnd;
@@ -187,6 +188,9 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
     // Add the operand-size prefix, if needed
     if (enc.szPref === true)
         size += 1;
+
+    // Add the prefix size
+    size += enc.prefix.length;
 
     // Add the REX prefix, if needed
     if (rexNeeded === true)
@@ -293,16 +297,28 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                 break;
 
                 case 'r':
-                if (!(opnd instanceof x86.Register))
+                if (!(opnd instanceof x86.Register && opnd.type === 'gp'))
                     continue ENC_LOOP;
                 if (opnd.size !== opndSize)
                     continue ENC_LOOP;
                 break;
 
+                case 'xmm':
+                if (!(opnd instanceof x86.Register && opnd.type === 'xmm'))
+                    continue ENC_LOOP;
+                break;
+
                 case 'r/m':
-                if (!(opnd instanceof x86.Register || opnd instanceof x86.MemLoc))
+                if (!(opnd instanceof x86.Register && opnd.type === 'gp') && 
+                    !(opnd instanceof x86.MemLoc))
                     continue ENC_LOOP;
                 if (opnd.size !== opndSize)
+                    continue ENC_LOOP;
+                break;
+
+                case 'xmm/m':
+                if (!(opnd instanceof x86.Register && opnd.type === 'xmm') && 
+                    !(opnd instanceof x86.MemLoc && opnd.size === opndSize))
                     continue ENC_LOOP;
                 break;
 
@@ -412,18 +428,20 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             immVal = opnd.value;
         }
 
-        if (opndType === 'rel')
+        else if (opndType === 'rel')
         {
             immSize = opndSize;
             immVal = opnd.relOffset;
         }
 
-        else if (opndType === 'r')
+        else if (opndType === 'r' ||
+                 opndType === 'xmm')
         {
             rOpnd = opnd;
         }
 
-        else if (opndType === 'r/m')
+        else if (opndType === 'r/m' ||
+                 opndType === 'xmm/m')
         {
             rmNeeded = true;
             rmOpnd = opnd;
@@ -457,6 +475,10 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     if (enc.szPref === true)
         codeBlock.writeByte(0x66);
 
+    // Write the prefix bytes to the code block
+    for (var i = 0; i < enc.prefix.length; ++i)
+        codeBlock.writeByte(enc.prefix[i]);
+
     // Add the REX prefix, if needed
     if (rexNeeded === true)
     {
@@ -485,7 +507,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             b = (rmOpnd.regNo & 8)? 1:0;
         else if (rOpnd && !rmOpnd)
             b = (rOpnd.regNo & 8)? 1:0;
-        else if (sibNeeded && rmOpnd.base instanceof x86.Register)
+        else if (rmOpnd.base instanceof x86.Register)
             b = (rmOpnd.base.regNo & 8)? 1:0;
         else
             b = 0;
@@ -723,8 +745,11 @@ x86.opndValid = function (opnd)
 
         case 'r64':
         case 'r/m64':
+        case 'xmm/m64':
         case 'imm64':
         case 'moffs64':
+
+        case 'xmm':
 
         return true;
 
@@ -767,9 +792,13 @@ x86.opndSize = function (opnd)
 
         case 'r64':
         case 'r/m64':
+        case 'xmm/m64':
         case 'imm64':
         case 'moffs64':
         return 64;
+
+        case 'xmm':
+        return 128;
 
         default:
         error('invalid operand type in opndSize (' + opnd + ')');
@@ -795,11 +824,17 @@ x86.opndType = function (opnd)
         case 'r64':
         return 'r';
 
+        case 'xmm':
+        return 'xmm';
+
         case 'r/m8':
         case 'r/m16':
         case 'r/m32':
         case 'r/m64':
         return 'r/m';
+
+        case 'xmm/m64':
+        return 'xmm/m';
 
         case 'imm8':
         case 'imm16':
@@ -881,6 +916,10 @@ Anonymous function to create instruction classes from the instruction table.
                 'operand ' + j + ' invalid for ' + mnem + ' (' + opnd + ')'
             );
         }
+
+        // If no mandatory prefix is defined, set it to the empty array
+        if (enc.prefix === undefined)
+            enc.prefix = [];
 
         assert (
             enc.opCode instanceof Array &&

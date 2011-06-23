@@ -49,9 +49,51 @@ Maxime Chevalier-Boisvert
 */
 
 
-// TODO: per-instruction register allocation hints/constraints
+
+
+/*
+TODO: per-instruction register allocation hints/constraints
+
+Can use .x86 local object to store reg alloc configuration.
+
+Options wanted:
+- At most one memory operand (true by default)
+- No memory operands
+- Register operands only
+- Number of scratch registers wanted
+- Operand k must be in set [eax, edx, ...]
+- Operand k cannot be in set [...]
+- Dest must be in set [...]
+- Dest cannot be in set [...]
+
+TODO: create some default configurations
+*/
+x86.RegAllocCfg = function ()
+{
+
+
+
+}
+
+
+
+
+x86.irToASM = function ()
+{
+    // TODO: need block ordering, register allocation for IR instructions
+
+
+
+
+
+}
+
+
+
+
 
 AddInstr.prototype.x86 = {};
+AddInstr.prototype.x86.regAlloc = {}// Reg alloc config;
 AddInstr.prototype.x86.genCode = function ()
 {
 };

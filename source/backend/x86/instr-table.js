@@ -74,7 +74,20 @@ x86.instrTable = [
     Also want support for MOVQ instruction.
     May need more research into SSE2 instructions.
 
-    SSE2 supported since pentium 4 (2001). Supported on Intel Atom processors.
+    SSE2 instructions wanted:
+    [X] movsd
+    [ ] addsd - Adds bottom 64bit doubles.
+    [ ] subsd - Subtracts bottom 64bit doubles.
+    [ ] mulsd - Multiplies bottom 64bit doubles.
+    [ ] divsd - Divides bottom 64bit doubles.
+    [ ] cvtsi2sd - Converts a 32bit integer to the bottom 64bit double.
+    [ ] cvtsd2si - Converts a 64bit double to a 32bit integer using
+        truncation into a GPR.
+    [ ] ucomisd - Compares bottom 64bit doubles.
+
+    // TODO: validate encodings
+
+    // TODO: write little test program using i/fp conversion and add
     */
 
     // Addition
@@ -97,6 +110,9 @@ x86.instrTable = [
     {mnem: 'add', opnds: ['r16', 'r/m16'], opCode: [0x03], szPref: true},
     {mnem: 'add', opnds: ['r32', 'r/m32'], opCode: [0x03]},
     {mnem: 'add', opnds: ['r64', 'r/m64'], opCode: [0x03], REX_W: 1},
+
+    // Add scalar double
+    {mnem: 'addsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x58]},
 
     // Bitwise AND
     {mnem: 'and', opnds: ['al', 'imm8'], opCode: [0x24]},
@@ -377,6 +393,10 @@ x86.instrTable = [
     {mnem: 'mov', opnds: ['r/m16', 'imm16'], opCode: [0xC7], opExt: 0, szPref: true},
     {mnem: 'mov', opnds: ['r/m32', 'imm32'], opCode: [0xC7], opExt: 0},
     {mnem: 'mov', opnds: ['r/m64', 'imm32'], opCode: [0xC7], opExt: 0, REX_W: 1},
+
+    // Move scalar double to/from XMM
+    {mnem: 'movsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x10]},
+    {mnem: 'movsd', opnds: ['xmm/m64', 'xmm'], prefix: [0xF2], opCode: [0x0F, 0x11]},
 
     // Move with sign extension
     {mnem: 'movsx', opnds: ['r16', 'r/m8'], opCode: [0x0F, 0xBE], szPref: true},
