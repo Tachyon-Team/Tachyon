@@ -48,43 +48,23 @@ x86 backend inteface.
 Maxime Chevalier-Boisvert
 */
 
-
-
-
-/*
-TODO: per-instruction register allocation hints/constraints
-
-Can use .x86 local object to store reg alloc configuration.
-
-Options wanted:
-- At most one memory operand (true by default)
-- No memory operands
-- Register operands only
-- Number of scratch registers wanted
-- Operand k must be in set [eax, edx, ...]
-- Operand k cannot be in set [...]
-- Dest must be in set [...]
-- Dest cannot be in set [...]
-
-TODO: create some default configurations
+/**
+Generate the assembly code for one function
 */
-x86.RegAllocCfg = function ()
+x86.irToASM = function (irFunction, params)
 {
+    // TODO: call block ordering
 
-
-
-}
-
-
-
-
-x86.irToASM = function ()
-{
-    // TODO: need block ordering, register allocation for IR instructions
+    // TODO: call register allocation for IR instructions
 
 
 
 
+    // TODO: where to store context into, eg: x86_64?
+    // the genCode method will receive the assembler object
+
+
+    // TODO: return an assembler object
 
 }
 
@@ -93,8 +73,8 @@ x86.irToASM = function ()
 
 
 AddInstr.prototype.x86 = {};
-AddInstr.prototype.x86.regAlloc = {}// Reg alloc config;
-AddInstr.prototype.x86.genCode = function ()
+AddInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+AddInstr.prototype.x86.genCode = function (asm, opnds, dest, params)
 {
 };
 

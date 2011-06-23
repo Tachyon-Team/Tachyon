@@ -48,10 +48,99 @@ Register allocation for x86 code generation.
 Maxime Chevalier-Boisvert
 */
 
+/**
+@class Per-instruction register allocation hints/constraints
+*/
+x86.RegAllocCfg = function ()
+{
+}
+
+/**
+Maximum number of memory operands to use
+*/
+x86.RegAllocCfg.prototype.maxMemOpnds = function (instr)
+{
+    return 1;
+}
+
+/**
+Number of scratch registers wanted
+*/
+x86.RegAllocCfg.prototype.numScratchRegs = function (instr)
+{
+    return 0;
+}
+
+/**
+Registers this instruction will have to write to, excluding
+scratch registers, operands and the destination.
+*/
+x86.RegAllocCfg.prototype.writeRegSet = function (opIdx)
+{
+    return null;
+}
+
+/**
+Indicates that an operand must be placed in a register
+*/
+x86.RegAllocCfg.prototype.opndMustBeReg = function (opIdx)
+{
+    return false;
+}
+
+/**
+Set of registers an operand can be assigned to. This
+may be a single register.
+*/
+x86.RegAllocCfg.prototype.opndRegSet = function (opIdx)
+{
+    return null;
+}
+
+/**
+Dest is operand 0.
+*/
+x86.RegAllocCfg.prototype.destIsOpnd0 = function (instr)
+{
+    return true;
+}
+
+/**
+Indicates that the destination must be placed in a register
+*/
+x86.RegAllocCfg.prototype.destMustBeReg = function (opIdx)
+{
+    return false;
+}
+
+/**
+Set of registers the destination can be assigned to.
+This may be a single register.
+*/
+x86.RegAllocCfg.prototype.destRegSet = function (opIdx)
+{
+    return null;
+}
+
+/**
+Perform register allocation on an IR function
+*/
+x86.allocRegs = function ()
+{
+    // TODO
+
+    // TODO: should we generate the code as the register allocation
+    // is being performed?
+    // Can always store operands in a big array. The instructions are
+    // ordered at this point. Otherwise, simply map them by instr id. ***
 
 
 
 
 
 
+
+
+
+}
 

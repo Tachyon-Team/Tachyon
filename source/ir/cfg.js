@@ -114,10 +114,10 @@ Construct a string representation
 ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn, lnPfxFormatFn)
 {
     // Function to order blocks according to a depth-first traversal
-    function DFSOrder(blocks)
+    function DFSOrder(entry, blocks)
     {
         var unvisited = blocks.slice(0);
-        var stack = [blocks[0]];
+        var stack = [entry];
         var order = [];
 
         while (stack.length > 0)
@@ -147,7 +147,7 @@ ControlFlowGraph.prototype.toString = function (blockOrderFn, outFormatFn, inFor
         lnPfxFormatFn = function () { return ""; };
 
     // Order the blocks according to the supplied ordering function
-    var blockList = blockOrderFn(this.blocks);
+    var blockList = blockOrderFn(this.entry, this.blocks);
 
     var output = "";
 
