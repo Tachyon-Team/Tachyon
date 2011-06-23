@@ -337,6 +337,18 @@ tests.x86.encoding = function ()
         '678B4C24FC'
     );
 
+    // movapd
+    test(
+        function (a) { a.movapd(a.xmm5, a.mem(128, a.esp)); },
+        '660F282C24',
+        '67660F282C24'
+    );
+    test(
+        function (a) { a.movapd(a.mem(128, a.esp, -8), a.xmm6); },
+        '660F297424F8',
+        '67660F297424F8'
+    );
+
     // movsd
     test(
         function (a) { a.movsd(a.xmm3, a.xmm5); },
@@ -380,6 +392,18 @@ tests.x86.encoding = function ()
         function (a) { a.movsxd(a.r10, a.mem(32, a.esp, 12)); },
         false,
         '674C6354240C'
+    );
+
+    // movupd
+    test(
+        function (a) { a.movupd(a.xmm7, a.mem(128, a.rsp)); },
+        false,
+        '660F103C24'
+    );
+    test(
+        function (a) { a.movupd(a.mem(128, a.rcx, -8), a.xmm9); },
+        false,
+        '66440F1149F8'
     );
 
     // movzx

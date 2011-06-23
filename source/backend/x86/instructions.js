@@ -746,6 +746,7 @@ x86.opndValid = function (opnd)
         case 'r64':
         case 'r/m64':
         case 'xmm/m64':
+        case 'xmm/m128':
         case 'imm64':
         case 'moffs64':
 
@@ -798,6 +799,7 @@ x86.opndSize = function (opnd)
         return 64;
 
         case 'xmm':
+        case 'xmm/m128':
         return 128;
 
         default:
@@ -834,6 +836,7 @@ x86.opndType = function (opnd)
         return 'r/m';
 
         case 'xmm/m64':
+        case 'xmm/m128':
         return 'xmm/m';
 
         case 'imm8':

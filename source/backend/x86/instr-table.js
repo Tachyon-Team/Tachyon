@@ -69,12 +69,6 @@ x86_64  : set to false if invalid in 64-bit mode
 */
 x86.instrTable = [
 
-    /*
-    // TODO: 
-    MOVUPD, MOVAPD
-    Use to save XMM registers on stack
-    */
-
     // Addition
     {mnem: 'add', opnds: ['al', 'imm8'], opCode: [0x04]},
     {mnem: 'add', opnds: ['ax', 'imm16'], opCode: [0x05], szPref: true},
@@ -390,6 +384,10 @@ x86.instrTable = [
     {mnem: 'mov', opnds: ['r/m32', 'imm32'], opCode: [0xC7], opExt: 0},
     {mnem: 'mov', opnds: ['r/m64', 'imm32'], opCode: [0xC7], opExt: 0, REX_W: 1},
 
+    // Move memory-aligned packed double
+    {mnem: 'movapd', opnds: ['xmm', 'xmm/m128'], prefix: [0x66], opCode: [0x0F, 0x28]},
+    {mnem: 'movapd', opnds: ['xmm/m128', 'xmm'], prefix: [0x66], opCode: [0x0F, 0x29]},
+
     // Move scalar double to/from XMM
     {mnem: 'movsd', opnds: ['xmm', 'xmm/m64'], prefix: [0xF2], opCode: [0x0F, 0x10]},
     {mnem: 'movsd', opnds: ['xmm/m64', 'xmm'], prefix: [0xF2], opCode: [0x0F, 0x11]},
@@ -401,6 +399,10 @@ x86.instrTable = [
     {mnem: 'movsx', opnds: ['r32', 'r/m16'], opCode: [0x0F, 0xBF]},
     {mnem: 'movsx', opnds: ['r64', 'r/m16'], opCode: [0x0F, 0xBF], REX_W: 1},
     {mnem: 'movsxd', opnds: ['r64', 'r/m32'], opCode: [0x63], REX_W: 1},
+
+    // Move unaligned packed double
+    {mnem: 'movupd', opnds: ['xmm', 'xmm/m128'], prefix: [0x66], opCode: [0x0F, 0x10]},
+    {mnem: 'movupd', opnds: ['xmm/m128', 'xmm'], prefix: [0x66], opCode: [0x0F, 0x11]},
 
     // Move with zero extension
     {mnem: 'movzx', opnds: ['r16', 'r/m8'], opCode: [0x0F, 0xB6], szPref: true},

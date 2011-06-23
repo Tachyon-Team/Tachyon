@@ -143,7 +143,8 @@ x86.MemLoc = function (size, base, disp, index, scale)
         size === 8 ||
         size === 16 ||
         size === 32 ||
-        size === 64,
+        size === 64 ||
+        size === 128,
         'invalid mem loc size'
     );
 
