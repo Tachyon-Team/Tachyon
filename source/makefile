@@ -86,6 +86,7 @@ BASE_SRCS =                             \
     old-backend/x86/config.js           \
     old-backend/x86/ir-to-asm.js        \
     backend/codeblock.js                \
+    backend/blockorder.js               \
     backend/backend.js                  \
     backend/x86/operands.js             \
     backend/x86/instr-table.js          \
@@ -143,7 +144,7 @@ BK_TEST_SRCS =                          \
     $(BASE_SRCS)                        \
     tests/testing.js                    \
     backend/x86/tests/codegen.js        \
-    backend_test.js
+    bktest.js
 
 bktest:
 	$(RLWJSVM) $(BK_TEST_SRCS)

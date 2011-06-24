@@ -66,20 +66,36 @@ x86.Backend.prototype = new Backend();
 /**
 Generate machine code for an IR function
 */
-x86.Backend.prototype.genCode = function (irFunction)
+x86.Backend.prototype.genCode = function (irFunc)
 {
     assert (
-        irFunction instanceof IRFunction,
+        irFunc instanceof IRFunction,
         'expected IR function'
     );
 
-    // TODO: compile sub-functions
+    // Generate code for the child functions
+    for (var i = 0; i < irFunc.childFuncs.length; ++i)
+        this.genCode(irFunc.childFuncs[i]);
 
-    //
-    // TODO
-    //
+    print('');
+    print('compiling "' + irFunc.funcName + '"');
+
+    // Get a reference to the CFG
+    var cfg = irFunc.virginCFG;
+
+    // Compute a block ordering for the function
+    var blockOrder = orderBlocks(cfg.entry, cfg.blocks);
+
+    print('order:');
+    for (var i = 0; i < blockOrder.length; ++i)
+        print(blockOrder[i].getBlockName());
+
+
+
 
     // TODO: call irToASM to produce assembler
+
+
 
 
     // TODO: assemble code block

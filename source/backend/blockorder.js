@@ -53,18 +53,34 @@ Generate a block ordering for a CFG
 */
 function orderBlocks(entry, blocks)
 {
-    // TODO
-
     // TODO: favorise most likely path
 
+    var stack = [entry];
+    var order = [];
 
+    var visited = [];
 
+    while (stack.length > 0)
+    {
+        var b = stack.pop();
 
+        if (visited[b.blockId] === true)
+            continue;
 
+        visited[b.blockId] = true;
 
+        order.push(b);
 
+        // Get the branch targets of the last instruction
+        var targets = b.getLastInstr().targets;
 
+        // TODO: back branches (to already visited blocks) more likely?
 
+        // Visit the first target first
+        for (var i = targets.length - 1; i >= 0; --i)
+            stack.push(targets[i]);
+    }
 
+    return order;
 }
 
