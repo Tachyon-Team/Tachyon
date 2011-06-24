@@ -73,6 +73,8 @@ x86.Backend.prototype.genCode = function (irFunction)
         'expected IR function'
     );
 
+    // TODO: compile sub-functions
+
     //
     // TODO
     //

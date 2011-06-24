@@ -137,29 +137,13 @@ function compileAst(ast, params)
         'compilation parameters expected'
     );
     
-    //Used for compile time profiling (under the "compiletime" option)
-    var startCompileAstTimeMs = (new Date()).getTime();
-
     var ir = unitToIR(ast, params);
-
-    //Used for compile time profiling (under the "compiletime" option)
-    var endUnitToIRTimeMs = (new Date()).getTime();
 
     lowerIRFunc(ir, params);
 
-    //Used for compile time profiling (under the "compiletime" option)
-    var endLowerIRFuncTimeMs = (new Date()).getTime();
-
     compileIR(ir, params);
 
-    //Used for compile time profiling (under the "compiletime" option)
-    var endCompileIRTimeMs  = (new Date()).getTime();
-
     linkIR(ir, params);
-
-    //Used for compile time profiling (under the "compiletime" option)
-    var endLinkIRTimeMs = (new Date()).getTime();
-
 
     if (params.printMCB)
     {
@@ -173,23 +157,6 @@ function compileAst(ast, params)
         //{
         //    print(readFromMemoryBlock(blockObj, i));
         //}
-    }
-
-    var endCompileAstTimeMs = (new Date()).getTime();
-
-    if(params.compiletime){
-        var compilationTimeMs = endCompileAstTimeMs - startCompileAstTimeMs;
-        var unitToIRTimeMs = endUnitToIRTimeMs - startCompileAstTimeMs;
-        var lowerIRFuncTimeMs = endLowerIRFuncTimeMs - endUnitToIRTimeMs;
-        var compileIRTimeMs = endCompileIRTimeMs - endLowerIRFuncTimeMs;
-        var linkIRTimeMs = endLinkIRTimeMs - endCompileIRTimeMs;
-
-        print("    Compilation time: " + compilationTimeMs + " ms (100%)");
-        print("        unitToIR time: " + unitToIRTimeMs + " ms (" + (100*unitToIRTimeMs/compilationTimeMs).toFixed(2) + "%)");
-        print("        lowerIRFunc time: " + lowerIRFuncTimeMs + " ms (" + (100*lowerIRFuncTimeMs/compilationTimeMs).toFixed(2) + "%)");
-        print("        compileIR time: " + compileIRTimeMs + " ms (" + (100*compileIRTimeMs/compilationTimeMs).toFixed(2) + "%)");
-        print("        linkIR time: " + linkIRTimeMs + " ms (" + (100*linkIRTimeMs/compilationTimeMs).toFixed(2) + "%)\n");
-        params.compiletime = false; //Because it seems the "compileAst" function is called twice...
     }
 
     // Return the compiled IR function
@@ -211,16 +178,7 @@ Compile a source file to compiled IR
 */
 function compileSrcFile(fileName, params)
 {
-    var startTimeMs = (new Date()).getTime();
-
     var ast = parse_src_file(fileName, params);
-
-    var endTimeMs = (new Date()).getTime();
-
-    if(params.compiletime){
-        print("\n\n------- PROFILING: COMPILATION TIME REPORT -------\n");
-        print("    Parsing time: " + (endTimeMs - startTimeMs) + " ms");
-    }
 
     return compileAst(ast, params);
 }

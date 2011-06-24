@@ -135,13 +135,6 @@ function main()
                 print("Executing " + args.files[i]);
             }
 
-            //Initiation of the event recording profiler
-            if (args.options['eventrec']) 
-                initProfiler(config.hostParams);
-
-            if(args.options["compiletime"])
-                config.hostParams.compiletime = true;
-
             var startTimeMs = (new Date()).getTime();
 
             var ir = compileSrcFile(args.files[i], config.hostParams);
@@ -178,9 +171,6 @@ function main()
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
     }
-
-    if (args.options['eventrec'])
-            profilerReport(config.hostParams);
 }
 
 /**
