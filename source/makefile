@@ -138,6 +138,16 @@ ALL_SRCS =                              \
     $(MAIN_SPEC_SRCS)                   \
     $(TEST_SPEC_SRCS)
 
+# Backend test sources
+BK_TEST_SRCS =                          \
+    $(BASE_SRCS)                        \
+    tests/testing.js                    \
+    backend/x86/tests/codegen.js        \
+    backend_test.js
+
+bktest:
+	$(RLWJSVM) $(BK_TEST_SRCS)
+
 all: tachyon compiler/sources.js
 
 tachyon: makefile tachyon.in
