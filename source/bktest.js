@@ -1,18 +1,3 @@
-function compileStr(str)
-{
-    const params = config.hostParams;
-
-    var ast = parse_src_str(str, params);
-
-    var ir = unitToIR(ast, params);
-
-    lowerIRFunc(ir, params);
-
-    print(ir);
-
-    backend.genCode(ir);
-}
-
 // Execute the backend unit tests
 tests.x86.encoding();
 tests.x86.codegen();
@@ -26,12 +11,34 @@ bootstrap(config.hostParams, false, false);
 // Create a backend interface instance
 var backend = new x86.Backend(PLATFORM_64BIT);
 
+function compileStr(str)
+{
+    const params = config.hostParams;
 
+    var ast = parse_src_str(str, params);
 
+    var ir = unitToIR(ast, params);
 
-compileStr('function add(v1, v2) { return v1 + v2; }');
+    lowerIRFunc(ir, params);
 
+    print(ir);
 
+    backend.genCode(ir, params);
+}
+
+try 
+{
+    compileStr('function add(v1, v2) { return v1 + v2; }');
+}
+
+catch (e)
+{
+    if (e.stack)
+        print(e.stack);
+    else
+        print(e);
+}
 
 print('');
 print('done');
+

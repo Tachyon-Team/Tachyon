@@ -66,16 +66,21 @@ x86.Backend.prototype = new Backend();
 /**
 Generate machine code for an IR function
 */
-x86.Backend.prototype.genCode = function (irFunc)
+x86.Backend.prototype.genCode = function (irFunc, params)
 {
     assert (
         irFunc instanceof IRFunction,
         'expected IR function'
     );
 
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
     // Generate code for the child functions
     for (var i = 0; i < irFunc.childFuncs.length; ++i)
-        this.genCode(irFunc.childFuncs[i]);
+        this.genCode(irFunc.childFuncs[i], params);
 
     print('');
     print('compiling "' + irFunc.funcName + '"');
@@ -93,16 +98,24 @@ x86.Backend.prototype.genCode = function (irFunc)
 
 
 
-    // TODO: call irToASM to produce assembler
+
+    // Perform register allocation
+    x86.allocRegs(irFunc, blockOrder, this, params);
 
 
 
 
-    // TODO: assemble code block
+    // Produce assembler for the function
+    var asm = x86.irToASM(irFunc, blockOrder, this, params);
 
 
 
-    // TODO: return code block
+    // Assemble the code into an executable code block
+    //var codeBlock = asm.assemble();
+
+
+
+    // TODO: store the code block on the function object
 
 
 
@@ -126,5 +139,29 @@ x86.Backend.prototype.linkCode = function (irFunction)
 
 
 
+}
+
+/**
+Get the calling convention for a given target
+*/
+x86.Backend.prototype.getCallConv = function (target)
+{
+    switch (target)
+    {
+        case 'tachyon':
+        if (this.x86_64)
+            return CallConv.tachyon64;
+        else
+            return CallConv.tachyon32;
+
+        case 'c':
+        if (this.x86_64)
+            return CallConv.amd64;
+        else
+            return CallConv.cdecl;
+
+        default:
+        error();
+    }
 }
 

@@ -92,6 +92,7 @@ BASE_SRCS =                             \
     backend/x86/instr-table.js          \
     backend/x86/instructions.js         \
     backend/x86/assembler.js            \
+    backend/x86/callconvs.js            \
     backend/x86/regalloc.js             \
     backend/x86/ir-to-asm.js            \
     backend/x86/backend.js

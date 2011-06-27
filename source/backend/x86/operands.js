@@ -90,6 +90,7 @@ x86.Register = function (name, type, regNo, size, lowReg, highReg, rexNeeded, re
     assert (
         type === 'gp' ||
         type === 'ip' ||
+        type === 'fp' ||
         type === 'xmm',
         'invalid register type'
     );
@@ -520,6 +521,9 @@ x86.regs.r15    = new x86.Register('r15', 'gp', 15, 64, x86.regs.r15d, undefined
 
 // Instruction pointer, for RIP addressing
 x86.regs.rip    = new x86.Register('rip', 'ip', 5, 64);
+
+// Floating-point registers (x87)
+x86.regs.st0    = new x86.Register('st0', 'fp', 0, 80);
 
 // XMM SIMD registers
 x86.regs.xmm0   = new x86.Register('xmm0', 'xmm', 0, 128);

@@ -51,21 +51,40 @@ Maxime Chevalier-Boisvert
 /**
 Generate the assembly code for one function
 */
-x86.irToASM = function (irFunction, params)
+x86.irToASM = function (irFunc, blockOrder, backend, params)
 {
-    // TODO: call block ordering
-
-    // TODO: call register allocation for IR instructions
-
+    // Assembler object to create instructions into
+    var asm = new x86.Assembler(backend.x86_64);
 
 
 
-    // TODO: where to store context into, eg: x86_64?
-    // the genCode method will receive the assembler object
+    // TODO
+    // Callee pops stack frame & args... Ideally want stack frame
+    // normalization stub.
 
 
-    // TODO: return an assembler object
 
+
+    // For each block in the ordering
+    for (var i = 0; i < blockOrder.length; ++i)
+    {
+        var block = blockOrder[i];
+
+        // For each instruction in the block
+        for (var j = 0; j < block.instrs.length; ++j)
+        {
+            var instr = block.instrs[j];
+
+
+
+
+
+
+        }
+    }
+
+    // Return the assembler object
+    return asm;
 }
 
 
