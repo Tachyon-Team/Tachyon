@@ -132,6 +132,22 @@ x86.Register.prototype.toString = function ()
 }
 
 /**
+Get the low sub-register of a given size
+*/
+x86.Register.prototype.getSubReg = function (size)
+{
+    assert (
+        size === this.size || (size < this.size && this.lowReg),
+        'no sub-reg of size ' + size + ' for ' + this
+    );
+
+    if (size === this.size)
+        return this;
+    else
+        return this.lowReg.getSubReg(size);
+}
+
+/**
 @class Memory location operand
 @extends x86.Operand
 */
