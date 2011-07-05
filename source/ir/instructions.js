@@ -1821,11 +1821,11 @@ var ICastInstr = instrMaker(
 @class Instruction to convert integer values to floating-point
 @augments IRInstr
 */
-var IToFPInstr = instrMaker(
+var IToFInstr = instrMaker(
     'itof',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 1, 1);
+        instrMaker.validNumParams(typeParams, 1, 1);
         instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
             inputVals[0].type === IRType.pint &&
@@ -1841,14 +1841,14 @@ var IToFPInstr = instrMaker(
 @class Instruction to convert floating-point values to integer
 @augments IRInstr
 */
-var FPToIInstr = instrMaker(
+var FToIInstr = instrMaker(
     'ftoi',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 1, 1);
+        instrMaker.validNumParams(typeParams, 1, 1);
         instrMaker.validNumInputs(inputVals, 1, 1);
         assert (
-            typeParams[0].type === IRType.f64 &&
+            inputVals[0].type === IRType.f64 &&
             typeParams[0] === IRType.pint,
             'invalid type parameters'
         );

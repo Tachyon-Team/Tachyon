@@ -79,8 +79,8 @@ var iir =
 
     // Type conversion
     icast       : ICastInstr,
-    itof        : IToFPInstr,
-    ftoi        : FPToIInstr,
+    itof        : IToFInstr,
+    ftoi        : FToIInstr,
 
     // Arithmetic instructions
     add         : AddInstr,
