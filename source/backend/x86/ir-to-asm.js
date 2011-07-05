@@ -89,6 +89,11 @@ x86.irToASM = function (irFunc, blockOrder, backend, params)
 
 
 
+
+
+
+
+
 // TODO: for now, default reg alloc config to test register allocation
 IRInstr.prototype.x86 = {};
 IRInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();

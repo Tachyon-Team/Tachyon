@@ -28,6 +28,11 @@ function compileStr(str)
 
 try 
 {
+    // TODO: 
+    // [ ] test loops
+    // [ ] test args obj
+    // [ ] test calling C funcs    
+
     compileStr('function add(v1, v2) { return v1 + v2; }');
 }
 

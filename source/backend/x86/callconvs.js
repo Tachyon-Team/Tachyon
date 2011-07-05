@@ -184,7 +184,7 @@ CallConv.cdecl = new CallConv({
 /**
 AMD64 ABI calling convention
 */
-CallConv.cdecl = new CallConv({
+CallConv.amd64 = new CallConv({
     name        : 'amd64',
     avail32     : false,
     avail64     : true,
