@@ -91,7 +91,7 @@ x86.RegAllocCfg.prototype.writeRegSet = function (instr)
 /**
 Indicates that an operand can be an immediate
 */
-x86.RegAllocCfg.prototype.opndcanBeImm = function (instr, opIdx)
+x86.RegAllocCfg.prototype.opndCanBeImm = function (instr, opIdx, immSize)
 {
     return false;
 }
@@ -118,6 +118,9 @@ Dest is operand 0.
 */
 x86.RegAllocCfg.prototype.destIsOpnd0 = function (instr)
 {
+    if (instr.uses.length === 0)
+        return false;
+
     return true;
 }
 
@@ -269,11 +272,7 @@ x86.RegAllocMap.prototype.toString = function ()
         var reg = this.valRegMap.getItem(value);
         var regStr = reg.toString();
 
-        var valStr = value.toString();
-        if (valStr.length > 40)
-            valStr = valStr.substr(0, 40) + '...';
-
-        str += '\n' + regStr + ' => ' + valStr;
+        str += '\n' + regStr + ' => ' + value.getValName();
     }
 
     return str;
@@ -294,6 +293,8 @@ x86.RegAllocMap.prototype.allocReg = function (value, reg)
         'invalid register'
     );
 
+    print(reg + ' -> ' + value.getValName());
+
     this.gpRegMap[reg.regNo] = value;
 
     this.valRegMap.setItem(value, reg);
@@ -313,6 +314,8 @@ x86.RegAllocMap.prototype.allocStack = function (value, stackLoc)
         isNonNegInt(stackLoc),
         'invalid stack location'
     );
+
+    print(stackLoc + ' -> ' + value.getValName());
 
     this.valStackMap.setItem(value, stackLoc);
 }
@@ -498,11 +501,13 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     /**
     Function to allocate a register
     @param allocMap allocation map
+    @param moveList list into which to insert spill moves
+    @param liveSet set of live temporaries
     @param value value to be allocated, may be null
     @regSet set of registers to allocate from, null if any
     @excludeSet set of registers to exclude from allocation
     */
-    function allocReg(allocMap, liveSet, value, regSet, excludeSet)
+    function allocReg(allocMap, moveList, liveSet, value, regSet, excludeSet)
     {
         // If no register set is specified, allocate from
         // the set of all available registers
@@ -592,30 +597,24 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // Choose the first live register for spilling
             chosenReg = liveRegs[0];
 
-            print(
-                'spilling: ' + 
-                allocMap.getRegVal(chosenReg).toString().substr(0, 30) + 
-                '...' + ' (' + chosenReg + ')'
-            );
-
             // Get the stack location for the value
             var stackLoc = stackMap.getStackLoc(value);
 
-            // Map the value to the stack location
-            allocMap.allocStack(value, stackLoc);
+            // If the value is not already on the stack
+            if (allocMap.getValStack(value) !== stackLoc)
+            {
+                // Map the value to the stack location
+                allocMap.allocStack(value, stackLoc);
 
-            //
-            // TODO: insert corresponding move for spill, if val isn't already
-            // mapped on stack
-            //
+                // Add a move for the spill
+                addMove(moveList, chosenReg, stackLoc);
+            }
         }
 
         assert (
             chosenReg !== undefined,
             'could not allocate register'
         );
-
-        print(chosenReg + ' ==> ' + value.toString().substr(0, 20) + '...');
 
         // Update the allocation map
         allocMap.allocReg(value, chosenReg);
@@ -629,6 +628,72 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
         // Return the allocated register
         return chosenReg;
+    }
+
+    /**
+    Add a move to a list
+    */
+    function addMove(moveList, src, dst)
+    {
+        assert (
+            moveList instanceof Array,
+            'invalid move list'
+        );
+
+        assert (
+            src instanceof x86.Register ||
+            src instanceof ConstValue ||
+            src instanceof IRFunction ||
+            isNonNegInt(src),
+            'invalid src for move: ' + src
+        );
+
+        assert (
+            dst instanceof x86.Register ||
+            isNonNegInt(dst),
+            'invalid src for move: ' + dst
+        );
+
+        var srcStr = (src instanceof IRValue)? src.getValName():src.toString();
+        print(dst + ' <== ' + srcStr);
+
+        moveList.push({ src:src, dst:dst });
+    }
+
+    /**
+    Compute the size of a constant value if it were to be
+    used as an immediate.
+    */
+    function getImmSize(value)
+    {
+        // If the value is not a constant, stop
+        if ((value instanceof ConstValue) === false)
+            return undefined;
+
+        // If the value is not an immediate integer, stop
+        if (value.isInt() === false &&
+            value.value !== undefined &&
+            value.value !== true &&
+            value.value !== false &&
+            value.value !== null)
+            return undefined;
+
+        // Get the immediate bits for the value
+        var immVal = value.getImmValue(params);
+
+        // Compute the smallest size this immediate fits in
+        var size;
+        if (num_ge(immVal, getIntMin(8)) && num_le(immVal, getIntMax(8)))
+            size = 8;
+        else if (num_ge(immVal, getIntMin(16)) && num_le(immVal, getIntMax(16)))
+            size = 16;
+        else if (num_ge(immVal, getIntMin(32)) && num_le(immVal, getIntMax(32)))
+            size = 32;
+        else
+            size = 64;
+
+        // Return the size
+        return size;
     }
 
     // Create a stack frame map for the function
@@ -683,13 +748,11 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             stackMap.allocArg(i);
     }
 
-    // TODO: store operands, dest in a big array, simply map them by id.
-    // Or perhaps just generate the code right here?
-    //
-    // Need to insert moves into the code before some instructions.
-    // where should we put these moves? Are they obvious from the opnd
-    // assignment? No. spills are not obvious.
+    // Map of instruction ids to instruction operands and pre-instruction moves
     var instrMap = [];
+
+    // Map of block ids to maps from block ids to lists of moves
+    var blockMoves = [];
 
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
@@ -740,7 +803,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 {
                     // Allocate the register to the argument
                     allocReg(
-                        allocMap, 
+                        allocMap,
+                        undefined,
                         liveCur, 
                         instr, 
                         [callConv.argRegs[argIndex]], 
@@ -767,7 +831,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
                 // Allocate the register to the argument count
                 allocReg(
-                    allocMap, 
+                    allocMap,
+                    undefined,
                     liveCur, 
                     instr, 
                     [callConv.argCountReg],
@@ -834,18 +899,23 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     arraySetAdd(excludeSet, reg);
                 }
 
+                // List of moves preceding the instruction
+                var preMoves = [];
+
                 // Get the max number of memory operands for the instruction
                 var maxMemOpnds = allocCfg.maxMemOpnds(instr);
 
-
-                // TODO: maxImmOpnds***
-
+                // Get the max number of immediate operands for the instruction
+                var maxImmOpnds = allocCfg.maxImmOpnds(instr);
 
                 // Number of register allocated operands
                 var numRegOpnds = 0;
 
                 // Number of memory allocated operands
                 var numMemOpnds = 0;
+
+                // Number of immediate operands used
+                var numImmOpnds = 0;
 
                 // List of operands
                 var opnds = [];
@@ -855,13 +925,27 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 {
                     var use = instr.uses[k];
 
-                    // Get the allocation parameters for this operand
+                    // If immediate operands are available
+                    if (numImmOpnds < maxImmOpnds)
+                    {
+                        // Compute the immediate size for this value
+                        var immSize = getImmSize(use);
+
+                        // If this value can be an immediate operand
+                        if (immSize && allocCfg.opndCanBeImm(instr, k, immSize))
+                        {
+                            print('imm: ' + use + ' (' + immSize + ')');
+
+                            // Use the immediate value for this operand
+                            opnds.push(use.getImmValue(params));
+                            ++numImmOpnds;
+                            continue;
+                        }
+                    }
+
+                    // Get the register allocation parameters for this operand
                     var opndMustBeReg = allocCfg.opndMustBeReg(instr, k);
                     var opndRegSet = allocCfg.opndRegSet(instr, k);
-                    
-
-                    // TODO: opndCanBeImm***
-
 
                     // Test if this operand can be in memory
                     var opndMustBeReg = numMemOpnds >= maxMemOpnds || opndMustBeReg;
@@ -893,13 +977,27 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         continue;
                     }
 
-                    // FIXME: for now, try to get a register for all operands
-                    // If this operand must be in a register
-                    //if (opndMustBeReg)
+                    // Get the value to use for this operand
+                    var val;
+                    if (valReg !== undefined)
+                        val = valReg;
+                    else if (valStack !== undefined)
+                        val = valStack;
+                    else
+                        val = use;                         
+
+                    // If registers are still available
                     if (numRegOpnds < MAX_REG_OPNDS)
                     {
                         // Allocate a register for the operand
-                        var reg = allocReg(allocMap, liveCur, use, opndRegSet, excludeSet);
+                        var reg = allocReg(
+                            allocMap,
+                            preMoves,
+                            liveCur,
+                            use,
+                            opndRegSet,
+                            excludeSet
+                        );
                         ++numRegOpnds;
                         opnds.push(reg);
 
@@ -907,13 +1005,20 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
                         // Add the register to the exclude set
                         arraySetAdd(excludeSet, reg);
+
+                        // Move the operand into this register
+                        addMove(preMoves, val, reg);
                     }
                     else
                     {
-                        //
-                        // TODO: allocate the operand on the stack
-                        // insert corresponding move
-                        //
+                        // Get the stack location for the operand
+                        var stackLoc = stackMap.getStackLoc(use);
+
+                        // Map the operand to the stack location
+                        allocMap.allocStack(use, stackLoc);
+
+                        // Move the operand's value to the stack location
+                        addMove(preMoves, val, stackLoc);
                     }
                 }
 
@@ -929,7 +1034,14 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     print('allocating scratch');
 
                     // Allocate the scratch register
-                    var reg = allocReg(allocMap, liveCur, undefined, undefined, excludeSet);
+                    var reg = allocReg(
+                        allocMap,
+                        preMoves,
+                        liveCur,
+                        undefined,
+                        undefined,
+                        excludeSet
+                    );
                     scratchRegs.push(reg);
 
                     // Add the register to the exclude set
@@ -950,7 +1062,14 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         print('freeing write reg');
 
                         // Allocate the register
-                        allocReg(allocMap, liveCur, undefined, [reg], excludeSet);
+                        allocReg(
+                            allocMap,
+                            preMoves,
+                            liveCur,
+                            undefined,
+                            [reg],
+                            excludeSet
+                        );
                     }
                 }
 
@@ -958,28 +1077,40 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 var destIsOpnd0 = allocCfg.destIsOpnd0(instr);
                 var destRegSet = allocCfg.destRegSet(instr);
 
+                assert (
+                    !(destIsOpnd0 && opnds.length === 0),
+                    'dest mapped to opnd0 but instr has no operands:\n' +
+                    instr
+                );
+
                 // Destination operand
                 var dest;
 
-                // If the destination must be operand 0
-                if (destIsOpnd0 === true)
+                // If this instruction has no output
+                if (instr.type === IRType.none)
                 {
-                    // Use operand 0 for the destination
-                    dest = opnds[0];
+                    dest = undefined;
+                }
 
-                    // Get the use corresponding to this operand
-                    var use = instr.uses[0];
-
+                // If the destination must be operand 0
+                else if (destIsOpnd0 === true)
+                {
                     // If the operand is mapped to a register
-                    if (dest instanceof x86.Register)
+                    if (opnds[0] instanceof x86.Register)
                     {
+                        // Use operand 0 for the destination
+                        dest = opnds[0];
+
                         // Map the register to this instruction
-                        allocMap.allocReg(instr, reg);
+                        allocMap.allocReg(instr, dest);
+
+                        // Get the use corresponding to this operand
+                        var use = instr.uses[0];
 
                         // If the temporary is still live after this instruction
                         if (liveCur.hasItem(use) && liveCur.getItem(use) !== instr)
                         {
-                            // Get the stack location for the value
+                            // Get the stack location for the input operand
                             var stackLoc = stackMap.getStackLoc(use);
 
                             // Map the value to the stack location
@@ -987,10 +1118,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
                             print('spilling dest opnd (' + reg + ')');
 
-                            //
-                            // TODO: insert corresponding move for spill, if val isn't already
-                            // mapped on stack
-                            //
+                            // Spill the operand on the stack
+                            addMove(preMoves, dest, stackLoc);
                         }
                     }
                     else
@@ -1001,19 +1130,30 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         // Map the instruction to the stack location
                         allocMap.allocStack(instr, stackLoc);
 
-                        //
-                        // TODO: insert move from stack to stack
-                        //
+                        // Move the operand's value to the stack location
+                        addMove(preMoves, opnds[0], stackLoc);
+
+                        // Map operand 0 and the destination to the stack location
+                        opnds[0] = stackLoc
+                        dest = stackLoc;
                     }
                 }
                 else
                 {
                     // Allocate a register for the destination
-                    dest = allocReg(allocMap, liveCur, instr, destRegSet, excludeSet);
+                    dest = allocReg(
+                        allocMap,
+                        preMoves,
+                        liveCur,
+                        instr,
+                        destRegSet,
+                        excludeSet
+                    );
                 }
 
                 // Store the allocation info in the instruction map
                 instrMap[instr.instrId] = {
+                    preMoves: preMoves,
                     opnds: opnds,
                     scratchRegs: scratchRegs,
                     dest: dest
@@ -1084,38 +1224,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     if (stackLoc !== undefined)
                         allocMap.allocStack(instr, stackLoc);
                 }
-
-                /*
-                // For each input to the phi node
-                for (var k = 0; k < instr.uses.length; ++k)
-                {
-                    var use = instr.uses[k];
-
-                    var reg = allocMap.getValReg(use);
-
-                    // If this operand is register-mapped, allocate the
-                    // phi node to this register
-                    if (reg)
-                    {
-                        allocMap.allocReg(instr, reg);
-                        break;
-                    }
-
-                    var stackLoc = allocMap.getValStack(use);
-
-                    // If this operand is stack-mapped, allocate the
-                    // phi node to the stack location
-                    if (stackLoc !== undefined)
-                    {
-                        allocMap.allocStack(instr, stackLoc);
-                        break;
-                    }
-                }
-
-                error('none of the phi inputs are allocated');
-                */
-
-
             }
 
             // There is already a register allocation for the successor
@@ -1148,6 +1256,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         }
     }
 
+
+
     //
     // TODO: do pass over operands, translate stack references to mem operands
     // once stack frame is finalized
@@ -1159,7 +1269,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
 
 
-
-    // TODO: return reg alloc info
+    // Return the register allocation info
+    return {
+        instrMap: instrMap,
+        blockMoves: blockMoves
+    };
 }
 

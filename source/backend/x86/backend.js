@@ -95,18 +95,11 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     for (var i = 0; i < blockOrder.length; ++i)
         print(blockOrder[i].getBlockName());
 
-
-
-
-
     // Perform register allocation
-    x86.allocRegs(irFunc, blockOrder, this, params);
-
-
-
+    var allocInfo = x86.allocRegs(irFunc, blockOrder, this, params);
 
     // Produce assembler for the function
-    var asm = x86.irToASM(irFunc, blockOrder, this, params);
+    var asm = x86.irToASM(irFunc, blockOrder, allocInfo, this, params);
 
 
 

@@ -51,18 +51,15 @@ Maxime Chevalier-Boisvert
 /**
 Generate the assembly code for one function
 */
-x86.irToASM = function (irFunc, blockOrder, backend, params)
+x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 {
     // Assembler object to create instructions into
     var asm = new x86.Assembler(backend.x86_64);
 
 
-
     // TODO
     // Callee pops stack frame & args... Ideally want stack frame
     // normalization stub.
-
-
 
 
     // For each block in the ordering
@@ -75,41 +72,106 @@ x86.irToASM = function (irFunc, blockOrder, backend, params)
         {
             var instr = block.instrs[j];
 
+            // If this is a pseudo-instruction, generate no code for it
+            if (instr instanceof ArgValInstr ||
+                instr instanceof GetNumArgsInstr ||
+                instr instanceof GetArgTableInstr ||
+                instr instanceof PhiInstr)
+                continue;
+            
+            assert (
+                instr.x86.genCode !== undefined,
+                'no genCode method for:\n' + instr
+            );
 
+            // Get the allocation info for this instruction
+            var instrAlloc = allocInfo.instrMap[instr.instrId];
 
+            //
+            // TODO: handle pre-moves
+            //
 
-
-
+            // Generate code for the instruction
+            instr.x86.genCode(
+                asm,
+                instrAlloc.opnds,
+                instrAlloc.dest,
+                instrAlloc.scratchRegs,
+                allocInfo.blockMoves,
+                backend,
+                params
+            );
         }
     }
+
+    print('');
+    print('assembly:')
+    print(asm);
 
     // Return the assembler object
     return asm;
 }
 
-
-
-
-
-
-
-
 // TODO: for now, default reg alloc config to test register allocation
 IRInstr.prototype.x86 = {};
 IRInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
 
-
-
-
-AddInstr.prototype.x86 = {};
-AddInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
-AddInstr.prototype.x86.genCode = function (asm, opnds, dest, scratchRegs, params)
+GetCtxInstr.prototype.x86 = {};
+GetCtxInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+GetCtxInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
 {
     // TODO
+    asm.nop();
 };
 
+ArithInstr.prototype.x86 = {};
+ArithInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+ArithInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return (size <= 32); }
 
+AddInstr.prototype.x86 = {};
+AddInstr.prototype.x86.regAllocCfg = ArithInstr.prototype.x86.regAllocCfg;
+AddInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+{
+    asm.add(opnds[0], opnds[1]);
+};
 
+MulInstr.prototype.x86 = {};
+MulInstr.prototype.x86.regAllocCfg = ArithInstr.prototype.x86.regAllocCfg;
+MulInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+{
+    // TODO: look at this in more detail, need to force opnd into specific reg
+    // for mul, not necessarily for imul
+    //asm.mul(opnds[0], opnds[1]);
+    asm.nop();
+};
 
+CallFuncInstr.prototype.x86 = {};
+CallFuncInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+CallFuncInstr.prototype.x86.regAllocCfg.maxImmOpnds = function (instr, idx, size) { return instr.uses.length; }
+CallFuncInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return true; }
+CallFuncInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+{
+    // TODO
+    asm.nop();
+};
 
+// TODO: IfInstr
+
+RetInstr.prototype.x86 = {};
+RetInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+RetInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return size <= 32; }
+RetInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+{
+    // TODO
+    asm.nop();
+}
+
+LoadInstr.prototype.x86 = {};
+LoadInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+LoadInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return (idx === 1 && size <= 32); }
+LoadInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+{
+    // TODO
+    asm.nop();
+}
 

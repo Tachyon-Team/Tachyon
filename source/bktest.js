@@ -29,11 +29,29 @@ function compileStr(str)
 try 
 {
     // TODO: 
+    // [ ] test simple iir ops
     // [ ] test loops
     // [ ] test args obj
     // [ ] test calling C funcs    
 
-    compileStr('function add(v1, v2) { return v1 + v2; }');
+
+    compileStr('                        \
+    function add (v1, v2)               \
+    {                                   \
+        "tachyon:arg v1 pint";          \
+        "tachyon:arg v2 pint";          \
+        "tachyon:ret pint";             \
+                                        \
+        var y = iir.add(v1, v2);        \
+        var z = iir.mul(y, pint(3));    \
+                                        \
+        return z;                       \
+    }                                   \
+    ');
+
+
+    //compileStr('function add(v1, v2) { return v1 + v2; }');
+
 }
 
 catch (e)
