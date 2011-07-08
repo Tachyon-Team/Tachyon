@@ -91,6 +91,9 @@ var iir =
 
     // Floating point instructions
     fadd        : FAddInstr,
+    fsub        : FSubInstr,
+    fmul        : FMulInstr,
+    fdiv        : FDivInstr,
 
     // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,

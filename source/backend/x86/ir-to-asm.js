@@ -1143,9 +1143,6 @@ irToAsm.translator.prototype.epilogue = function (floatConst)
     var that = this;
     floatConst.forEach(function(linkedFloat)
                        {
-                           print(linkedFloat[1]);
-                           print(floatToBits(linkedFloat[1]));
-
                            // TODO: Align on a 16 byte boundary
                            that.asm.codeBlock.align(8);
                            that.asm.
@@ -1628,96 +1625,111 @@ ModInstr.prototype.genCode = DivInstr.prototype.genCode;
 
 // Floating point arithmetic operations
 
-/**
-Floating point addition
-*/
-FAddInstr.prototype.genCode = function (tltor, opnds)
-{
-    const scratchReg = tltor.params.target.backendCfg.scratchReg;
-    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
-    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
-    const mem = x86.Assembler.prototype.memory;
-
-    /*
-      S'assurer de ne pas ecraser de valeur...
-    */
-    var destAddr = opnds[2];
-    if (opnds[2] !== this.regAlloc.dest)
-    {
-        tltor.asm.
-        mov(opnds[2], this.regAlloc.dest);
-        destAddr = this.regAlloc.dest;
-    }
-
-    var opnd0Addr = opnds[0];
-    if (opnd0Addr.type !== x86.type.REG)
-    {
-        tltor.asm.
-        mov(opnd0Addr, scratchReg);
-        opnd0Addr = scratchReg;
-    }
-
-
-    tltor.asm.
-    fldMem(mem(valueOffset - tagValue, opnd0Addr), 64);
-
-    var opnd1Addr = opnds[1]; 
-    if (opnd1Addr.type !== x86.type.REG)
-    {
-        tltor.asm.
-        mov(opnd1Addr, scratchReg);
-        opnd1Addr = scratchReg;
-    }  
-
-    tltor.asm.
-    gen8(0xDC).opndModRMSIB(0, mem(valueOffset-tagValue, opnd1Addr)).
-    fstMem(mem(valueOffset-tagValue, destAddr), 64); 
-};
-
-/**
-Floating point substraction
-*/
 /*
-FSubInstr.prototype.genCode = function (tltor, opnds)
+  Floating point operation maker
+*/
+irToAsm.fOpMaker = function(irinstr, fOp)
 {
+    irinstr.prototype.genCode = function(tltor, opnds)
+    {
+        const scratchReg = tltor.params.target.backendCfg.scratchReg;
+        const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+        const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+        const mem = x86.Assembler.prototype.memory;
+        
+        assert(
+            this.uses[0].type === IRType.box && this.uses[0].type === IRType.box,
+            "Only boxed types are supported for floating point instructions"
+        );        
+        
+        // Process opnds[0]
+        var opnd0Addr = opnds[0];
+        if (opnd0Addr.type !== x86.type.REG)
+        {
+            tltor.asm.
+            mov(opnd0Addr, scratchReg);
+            opnd0Addr = scratchReg;
+        }
+        
+        // fld mem64real
+        tltor.asm.
+            fldMem(mem(valueOffset - tagValue, opnd0Addr), 64);        
+        
+        // Process opnds[1]
+        var opnd1Addr = opnds[1];
+        if (opnd1Addr.type !== x86.type.REG)
+        {
+            tltor.asm.
+            mov(opnd1Addr, scratchReg);
+            opnd1Addr = scratchReg;
+        }
+
+        // Do the operation
+        tltor.asm[fOp](mem(valueOffset - tagValue, opnd1Addr));
+
+        // Move to destination
+        var destAddr = opnds[2];
+        if (opnds[2] !== this.regAlloc.dest)
+        {
+            tltor.asm.
+            mov(opnds[2], this.regAlloc.dest);
+            destAddr = this.regAlloc.dest;
+        }
+
+        tltor.asm.    
+        fstMem(mem(valueOffset - tagValue, destAddr), 64, true);
+     }
+};
+
+irToAsm.fOpMaker(FAddInstr, 'faddmem');
+irToAsm.fOpMaker(FSubInstr, 'fsubmem');
+irToAsm.fOpMaker(FMulInstr, 'fmulmem');
+irToAsm.fOpMaker(FDivInstr, 'fdivmem');
+
+/**
+Convert an integer to a float
+*/
+IToFPInstr.prototype.genCode = function (tltor, opnds)
+{
+    const width = tltor.params.target.ptrSizeBits;
+    const ptrSizeBytes = tltor.params.target.ptrSizeBytes;
+    const $ = x86.Assembler.prototype.immediateValue;    
+    const mem = x86.Assembler.prototype.memory;
+    const dest = this.regAlloc.dest;
+    const reg = x86.Assembler.prototype.register;    
+    const xSP = reg.rsp.subReg(width);    
     const scratchReg = tltor.params.target.backendCfg.scratchReg;
     const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
     const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
-    const mem = x86.Assembler.prototype.memory;
 
-    var destAddr = opnds[2];
-    if (opnds[2] !== this.regAlloc.dest)
+    // prepare src int
+    var src = opnds[0];
+    if (src.type == x86.type.REG)
     {
-        tltor.asm.
-        mov(opnds[2], this.regAlloc.dest);
-        destAddr = this.regAlloc.dest;
+        tltor.asm.push(src);
+        src = mem(0, xSP);
+    }
+    
+    else if (src.type == x86.type.IMM_VAL)
+    {
+        tltor.asm.push(src.value);
+        src = mem(0, xSP);
     }
 
-    var opnd0Addr = opnds[0];
-    if (opnd0Addr.type !== x86.type.REG)
-    {
-        tltor.asm.
-        mov(opnd0Addr, scratchReg);
-        opnd0Addr = scratchReg;
-    }
-
-
     tltor.asm.
-    fldMem(mem(valueOffset - tagValue, opnd0Addr), 64);
+    fild(src, 32);
 
-    var opnd1Addr = opnds[1]; 
-    if (opnd1Addr.type !== x86.type.REG)
-    {
-        tltor.asm.
-        mov(opnd1Addr, scratchReg);
-        opnd1Addr = scratchReg;
-    }  
+    if (opnds[0].type == x86.type.REG || opnds[0].type == x86.type.IMM_VAL)
+        tltor.asm.add($(ptrSizeBytes), xSP);
+    
+    // prepare result float
+    if (opnds[1] !== dest)
+        tltor.asm.mov(opnds[1], dest);
 
+    // Just Do It
     tltor.asm.
-    gen8(0xDC).opndModRMSIB(0, mem(valueOffset-tagValue, opnd1Addr)).
-    fstMem(mem(valueOffset-tagValue, destAddr), 64); 
-};
-*/
+    fstMem(mem(valueOffset - tagValue, dest), 64, true);
+}
 
 /**
 Convert a float to an integer
@@ -1730,33 +1742,24 @@ FPToIInstr.prototype.genCode = function (tltor, opnds)
     const dest = this.regAlloc.dest;
     const reg = x86.Assembler.prototype.register;
     const xSP = reg.rsp.subReg(width);
-
     const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
     const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
     
-    print("opnds[0] = " + opnds[0]);
-    var srcAddr = opnds[0];
-    if (opnds[0].type !== x86.type.REG)
+    var src = opnds[0];
+    if (src.type !== x86.type.REG)
     {
         tltor.asm.
-        mov(opnds[0], dest); 
-        srcAddr = dest; 
+        mov(src, dest); 
+        src = dest; 
     }
 
     tltor.asm.
     push($(42)).                                                  // Reserve space on stack for value
-    fldMem(mem(valueOffset-tagValue, srcAddr), 64).               // Move fp value to x87 stack
+    fldMem(mem(valueOffset - tagValue, src), 64).                   // Move fp value to x87 stack
     gen8(0xDB).opndModRMSIB(3, mem(0,xSP)).genListing("fistp(0)").// Convert to int and store on top of stack
+         // TODO: replace by proper fistp instr
     pop(this.regAlloc.dest);
 };
-
-/**
-Convert an integer to a float
-*/
-//IToFPInstr.prototype.genCode = function (tltor, opnds)
-//{
-//    
-//}
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
 {

@@ -654,10 +654,14 @@ function instrMaker(
         var inputVals = [];
         var branchTargets = [];
         if (inputs instanceof Array)
+        {
             parseArgs(inputs, typeParams, inputVals, branchTargets);
+        }
         else
+        {
             parseArgs(arguments, typeParams, inputVals, branchTargets);
-
+        }
+        
         // Call the initialization and validation function
         try
         {
@@ -1050,6 +1054,78 @@ var LsftOvfInstr = instrMaker(
 */
 var FAddInstr = instrMaker(
     'fadd',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3, 3);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === inputVals[0].type 
+                &&
+                inputVals[2].type === inputVals[1].type,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;        
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Floating point sub instruction
+@augments ArithInstr
+*/
+var FSubInstr = instrMaker(
+    'fsub',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3, 3);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === inputVals[0].type 
+                &&
+                inputVals[2].type === inputVals[1].type,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Floating point mul instruction
+@augments ArithInstr
+*/
+var FMulInstr = instrMaker(
+    'fmul',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3, 3);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === inputVals[0].type 
+                &&
+                inputVals[2].type === inputVals[1].type,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Floating point div instruction
+@augments ArithInstr
+*/
+var FDivInstr = instrMaker(
+    'fdiv',
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 3, 3);
@@ -1849,16 +1925,14 @@ var IToFPInstr = instrMaker(
     'itof',
     function (typeParams, inputVals, branchTargets)
     {
-        instrMaker.validNumParams(inputVals, 2, 2);
         instrMaker.validNumInputs(inputVals, 2, 2);
         assert (
             inputVals[0].type === IRType.pint &&
-            inputVals[1].type === IRType.box &&
-            typeParams[0] === IRType.box,
+            inputVals[1].type === IRType.box,
             'invalid type parameters'
         );
         
-        this.type = typeParams[0];
+        this.type = inputVals[1].type;
     }
 );
 

@@ -3083,7 +3083,9 @@ x86.Assembler.prototype.xchg = function (src, dst, width)
     return this;
 };
 
-/** x87 code generation methods and functions **/
+/*
+   x87 code generation methods and functions
+*/
 
 x86.Assembler.prototype.fpuReg = function (i)
 {
@@ -3207,8 +3209,8 @@ x86.Assembler.prototype.fsubrp    = function (i) { return this.fpuOpi2(i, 0xe8, 
 x86.Assembler.prototype.fdivp     = function (i) { return this.fpuOpi2(i, 0xf0, "fdivp"); };
 x86.Assembler.prototype.fdivrp    = function (i) { return this.fpuOpi2(i, 0xf8, "fdivrp"); };
 
-/** FI<op> ; only mem32int
-    ToDo: Check to refactor/combine with fldstMem
+/**
+   FI<op> ; only mem32int
  */
 x86.Assembler.prototype.fpuOp2 = function(opnd, field, mnemonic)
 {
@@ -3235,7 +3237,7 @@ x86.Assembler.prototype.fidiv = function(opnd) { return this.fpuOp2(opnd, 7, "fi
  */
 x86.Assembler.prototype.fpuOpMem = function(opnd, field, mnemonic)
 {
-//    this.opndPrefix(0, 0, opnd, false);
+    //this.opndPrefix(32, field, opnd, false);
     this.gen8(0xdc);
     this.opndModRMSIB(field, opnd);
 
@@ -3248,10 +3250,10 @@ x86.Assembler.prototype.fpuOpMem = function(opnd, field, mnemonic)
     return this;
 };
 
-x86.Assembler.prototype.faddmem = function(opnd) { return this.fpuOpMem(opnd, 0, "fadd") };
-x86.Assembler.prototype.fsubmem = function(opnd) { return this.fpuOpMem(opnd, 4, "fsub") };
-x86.Assembler.prototype.fmulmem = function(opnd) { return this.fpuOpMem(opnd, 1, "fmul") };
-x86.Assembler.prototype.fdivmem = function(opnd) { return this.fpuOpMem(opnd, 6, "fdiv") };
+x86.Assembler.prototype.faddmem = function(opnd) { return this.fpuOpMem(opnd, 0, "faddmem") };
+x86.Assembler.prototype.fsubmem = function(opnd) { return this.fpuOpMem(opnd, 4, "fsubmem") };
+x86.Assembler.prototype.fmulmem = function(opnd) { return this.fpuOpMem(opnd, 1, "fmulmem") };
+x86.Assembler.prototype.fdivmem = function(opnd) { return this.fpuOpMem(opnd, 6, "fdivmem") };
 
 
 /** @private fst* fpu instructions  */
@@ -3327,13 +3329,13 @@ x86.Assembler.prototype.fstMem = function (opnd, width, pop)
         switch (width)
         {
             case 32:
-                return this.fldstMem(opnd, 0xd9, 3, "fstp");
+                return this.fldstMem(opnd, 0xd9, 3, "fstmemp");
 
             case 64:
-                return this.fldstMem(opnd, 0xdd, 3, "fstp");
+                return this.fldstMem(opnd, 0xdd, 3, "fstmemp");
 
             case 80:
-                return this.fldstMem(opnd, 0xdb, 7, "fstp");
+                return this.fldstMem(opnd, 0xdb, 7, "fstmemp");
         }
     }
     else
@@ -3343,10 +3345,10 @@ x86.Assembler.prototype.fstMem = function (opnd, width, pop)
         switch (width)
         {
             case 32:
-                return this.fldstMem(opnd, 0xd9, 2, "fst");
+                return this.fldstMem(opnd, 0xd9, 2, "fstmem");
 
             case 64:
-                return this.fldstMem(opnd, 0xdd, 2, "fst");
+                return this.fldstMem(opnd, 0xdd, 2, "fstmem");
         }
     }
     return this;

@@ -327,6 +327,10 @@ function boxToString(val)
 
     if (boxIsFloat(val))
     {
+        /*
+        var offset = floatLayout.getFieldOffset(["f0"]);
+        return num_to_string(val
+          */
         return "unimplement FP representation";
     }
 
@@ -1175,33 +1179,12 @@ function add(v1, v2)
         // Attempt an add with overflow check
         var intResult;
         if (intResult = iir.add_ovf(v1, v2))
-        {
             // If there is no overflow, return the result
             // No normalization necessary
             return intResult;
-        }
-        else
-        {
-            // Overflow handling: need to create FP objects
-            return addOverflow(v1, v2);
-        }
     }
-    else
-    {
-        // Call general case in separate (non-inlined) function
-        return addGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline overflow case for HIR add instruction
-*/
-function addOverflow(v1, v2)
-{
-    "tachyon:static";
     
-    // TODO
-    error('addition overflow');
+    return addGeneral(v1, v2);
 }
 
 /**
@@ -1210,7 +1193,8 @@ Non-inline general case for HIR add instruction
 function addGeneral(v1, v2)
 {
     "tachyon:static";
-    
+
+    // Handle cases where 1 or 2 args are strings
     // If the left value is a string
     if (boxIsString(v1))
     {
@@ -1221,39 +1205,62 @@ function addGeneral(v1, v2)
             v2 = boxToString(v2);
         }
 
-        // Perform string concatenation
+        // Return string concatenation
         return strcat(v1, v2);
     }
-
     // If the right value is a string
     else if (boxIsString(v2))
     {
-        // Convert the left value to a string
         v1 = boxToString(v1);
-
-        // Perform string concatenation
         return strcat(v1, v2);
     }
-    // If both values are floats
-    else if (boxIsFloat(v1) && boxIsFloat(v2))
-    {
-        // Allocate a float object to store the result
-        var r = alloc_float();         
 
-        // Perform floating point addition. 
-        // Modifies r as a side-effect and return it
-        return iir.fadd(v1, v2, r);
-    }   
-
-    // Otherwise, both values are not strings
     else
     {
-        // Convert both values to strings
-        v1 = boxToString(v1);
-        v2 = boxToString(v2);
+        var vf1 = alloc_float();
+        var vf2 = alloc_float();
+        var r = alloc_float();
 
-        // Perform string concatenation
-        return strcat(v1, v2);
+        // Handle if both args are int (i.e. overflow)
+        if (boxIsInt(v1) && boxIsInt(v2))
+        {
+            v1 = unboxInt(v1);
+            vf1 = iir.itof(v1, vf1);
+            v2 = unboxInt(v2);
+            vf2 = iir.itof(v2, vf2);
+            
+            return iir.fadd(vf1, vf2, r);
+        }
+        // If v1 and v2 are floats
+        else if (boxIsFloat(v1) && boxIsFloat(v2))
+        {
+            return iir.fadd(v1, v2, r);
+        }
+        
+        // Handle if 1 arg is a float
+        else if (boxIsInt(v1) && boxIsFloat(v2))
+        {
+            v1 = unboxInt(v1);
+            vf1 = iir.itof(v1, vf1);
+            return iir.fadd(vf1, v2, r);
+        }
+        else if (boxIsFloat(v1) && boxIsInt(v2))
+        {
+            v2 = unboxInt(v2);
+            vf2 = iir.itof(v2, vf2);
+            return iir.fadd(v1, vf2, r);
+        }
+    
+        // Otherwise, add v1 and v2 as strings
+        else
+        {
+            // Convert both values to strings
+            v1 = boxToString(v1);
+            v2 = boxToString(v2);
+            
+            // Perform string concatenation
+            return strcat(v1, v2);
+        }
     }
 }
 
@@ -1263,7 +1270,7 @@ Implementation of the HIR sub instruction
 function sub(v1, v2)
 {
     "tachyon:inline";
-        
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1278,7 +1285,7 @@ function sub(v1, v2)
         else
         {
             // Overflow handling: need to create FP objects
-            return subOverflow(v1, v2);
+            return subGeneral(v1, v2);
         }
     }
     else
@@ -1289,25 +1296,49 @@ function sub(v1, v2)
 }
 
 /**
-Non-inline overflow case for HIR sub instruction
-*/
-function subOverflow(v1, v2)
-{
-    "tachyon:static";
-    
-    // TODO
-    error('subtraction overflow');
-}
-
-/**
 Non-inline general case for HIR sub instruction
 */
 function subGeneral(v1, v2)
 {
     "tachyon:static";
-    
-    // TODO
-    error('subtraction of non-integer values');
+
+    if (boxIsFloat(v1) && boxIsFloat(v2))
+    {
+        var r = alloc_float();        
+        return iir.fsub(v1, v2, r);
+     }   
+    else
+    {
+        var vf1 = alloc_float();
+        var vf2 = alloc_float();
+        var r = alloc_float();
+
+        if (boxIsInt(v1) && boxIsInt(v2))
+        {
+            v1 = unboxInt(v1);
+            vf1 = iir.itof(v1, vf1);
+            v2 = unboxInt(v2);
+            vf2 = iir.itof(v2, vf2);
+            
+            return iir.fsub(vf1, vf2, r);
+        }
+        
+        else if (boxIsInt(v1) && boxIsFloat(v2))
+        {
+            v1 = unboxInt(v1);
+            vf1 = iir.itof(v1, vf1);
+            return iir.fsub(vf1, v2, r);
+        }
+        
+        else if (boxIsFloat(v1) && boxIsInt(v2))
+        {
+            v2 = unboxInt(v2);
+            vf2 = iir.itof(v2, vf2);
+            return iir.fsub(v1, vf2, r);
+        }
+        else
+            error("subGeneral: Invalid types");
+    }
 }
 
 /**
@@ -1317,12 +1348,9 @@ function mul(v1, v2)
 {
     "tachyon:inline";
     
-    // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Cast the values to the pint type
-        v1 = iir.icast(IRType.pint, v1);
-        v1 = v1 >> TAG_NUM_BITS_INT;
+        v1 = unboxInt(v1);
         v2 = iir.icast(IRType.pint, v2);
 
         // Attempt a multiply with overflow check
@@ -1332,16 +1360,46 @@ function mul(v1, v2)
             intResult = iir.icast(IRType.box, intResult);
             return intResult;
         }
-        else
-        {
-            // TODO: overflow handling: need to create FP objects
-            error('multiplication overflow');
-        }    
     }
     else
+        return mulGeneral(v1, v2);
+}
+
+/**
+Non-inline general case for HIR mul instruction
+*/
+function mulGeneral(v1, v2)
+{
+    "tachyon:static";
+
+    var vf1 = alloc_float();
+    var vf2 = alloc_float();
+    var r = alloc_float();
+
+    if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('multiplication of non-integer values');
+        v1 = unboxInt(v1);
+        vf1 = iir.itof(v1, vf1);
+        v2 = unboxInt(v2);
+        vf2 = iir.itof(v2, vf2);
+        return iir.fmul(vf1, vf2, r);
+    }
+    
+    if (boxIsFloat(v1) && boxIsFloat(v2))
+    {
+        return iir.fmul(v1, v2, r);
+    }
+    else if (boxIsInt(v1) && boxIsFloat(v2))
+    {
+        v1 = unboxInt(v1);
+        vf1 = iir.itof(v1, vf1);
+        return iir.fmul(vf1, v2, r);
+    }
+    else if (boxIsFloat(v1) && boxIsInt(v2))
+    {
+        v2 = unboxInt(v2);
+        vf2 = iir.itof(v2, vf2);
+        return iir.fmul(v1, vf2, r);
     }
 }
 
@@ -1352,24 +1410,52 @@ function div(v1, v2)
 {
     "tachyon:inline";
     
-    // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
-        // Cast the values to the pint type
         v1 = iir.icast(IRType.pint, v1);
         v2 = iir.icast(IRType.pint, v2);
 
-        // Perform a raw machine division
         // The tag bits will cancel out
         var divRes = iir.div(v1, v2);
 
-        // Box the result value
         return boxInt(divRes);
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('division of non-integer values');
+        return divGeneral(v1, v2);
+    }
+}
+
+/**
+Non-inline general case for HIR div instruction
+*/
+function divGeneral(v1, v2)
+{
+    "tachyon:static";
+
+    if (boxIsFloat(v1) && boxIsFloat(v2))
+    {
+        var r = alloc_float();        
+        return iir.fdiv(v1, v2, r);
+    }
+    else
+    {
+        var vf1 = alloc_float();
+        var vf2 = alloc_float();
+        var r = alloc_float();
+
+        if (boxIsInt(v1) && boxIsFloat(v2))
+        {
+            v1 = unboxInt(v1);
+            vf1 = iir.itof(v1, vf1);
+            return iir.fdiv(vf1, v2, r);
+        }
+        else if (boxIsFloat(v1) && boxIsInt(v2))
+        {
+            v2 = unboxInt(v2);
+            vf2 = iir.itof(v2, vf2);
+            return iir.fdiv(v1, vf2, r);
+        }
     }
 }
 

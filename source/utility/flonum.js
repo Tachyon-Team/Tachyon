@@ -145,9 +145,10 @@ var floatToBits = function (x)
 /* */
 var binary = function(x)
 {
-    return (x && num_to_string(x, 2));    
+    return (x && num_to_string(x, 16));    
 }
 
+print(binary(floatToBits(1.7976931348623157e308)));
 /*
 // Tests //
 print(binary(floatToBits(0.0)));
