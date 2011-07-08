@@ -93,12 +93,12 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 
             // Generate code for the instruction
             instr.x86.genCode(
-                asm,
+                instr,
                 instrAlloc.opnds,
                 instrAlloc.dest,
                 instrAlloc.scratchRegs,
                 allocInfo.blockMoves,
-                backend,
+                asm,
                 params
             );
         }
@@ -113,43 +113,96 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 }
 
 // TODO: for now, default reg alloc config to test register allocation
-IRInstr.prototype.x86 = {};
-IRInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
+IRInstr.prototype.x86 = new x86.InstrCfg();
 
-GetCtxInstr.prototype.x86 = {};
-GetCtxInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
-GetCtxInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+GetCtxInstr.prototype.x86 = new x86.InstrCfg();
+GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
     // TODO
     asm.nop();
 };
 
-ArithInstr.prototype.x86 = {};
-ArithInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
-ArithInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return (size <= 32); }
+ArithInstr.prototype.x86 = new x86.InstrCfg();
+ArithInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
+{ 
+    return (size <= 32); 
+}
 
-AddInstr.prototype.x86 = {};
-AddInstr.prototype.x86.regAllocCfg = ArithInstr.prototype.x86.regAllocCfg;
-AddInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+AddInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
+AddInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
     asm.add(opnds[0], opnds[1]);
 };
 
-MulInstr.prototype.x86 = {};
-MulInstr.prototype.x86.regAllocCfg = ArithInstr.prototype.x86.regAllocCfg;
-MulInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+SubInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
+SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
-    // TODO: look at this in more detail, need to force opnd into specific reg
-    // for mul, not necessarily for imul
-    //asm.mul(opnds[0], opnds[1]);
-    asm.nop();
+    asm.sub(opnds[0], opnds[1]);
 };
 
-CallFuncInstr.prototype.x86 = {};
-CallFuncInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
-CallFuncInstr.prototype.x86.regAllocCfg.maxImmOpnds = function (instr, idx, size) { return instr.uses.length; }
-CallFuncInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return true; }
-CallFuncInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+MulInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
+MulInstr.prototype.x86.opndRegSet = function (instr, idx)
+{
+    if (instr.type.isUnsigned() && idx === 0)
+        return [x86.regs.rax, x86.regs.eax];
+
+    return undefined;
+}
+MulInstr.prototype.x86.writeRegSet = function (instr)
+{
+    if (instr.type.isUnsigned())
+        return [x86.regs.rdx, x86.regs.edx];
+
+    return undefined;
+}
+MulInstr.prototype.x86.destIsOpnd0 = function (instr, params)
+{
+    if (instr.type.isUnsigned() === false)
+    {
+        for (var i = 0; i < instr.uses.length; ++i)
+        {
+            if (x86.getImmSize(instr.uses[i], params) <= 32)
+                return false;
+        }
+    }
+
+    return true;
+}
+MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+{
+    // If an unsigned integer result is expected
+    if (instr.type.isUnsigned())
+    {
+        assert (
+            opnds[0] === x86.regs.rax || opnds[0] === x86.regs.eax,
+            'invalid opnd 0'
+        );
+
+        asm.mul(opnds[1]);
+    }
+
+    // Otherwise, a signed result is expected
+    else
+    {
+        if (opnds[0] instanceof x86.Immediate)
+            asm.imul(dest, opnds[1], opnds[0]);
+        else if (opnds[1] instanceof x86.Immediate)
+            asm.imul(dest, opnds[0], opnds[1]);
+        else
+            asm.imul(opnds[0], opnds[0]);
+    }
+};
+
+CallFuncInstr.prototype.x86 = new x86.InstrCfg();
+CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
+{ 
+    return instr.uses.length; 
+}
+CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size) 
+{ 
+    return true; 
+}
+CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
     // TODO
     asm.nop();
@@ -157,19 +210,23 @@ CallFuncInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, block
 
 // TODO: IfInstr
 
-RetInstr.prototype.x86 = {};
-RetInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
-RetInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return size <= 32; }
-RetInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+RetInstr.prototype.x86 = new x86.InstrCfg();
+RetInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
+{ 
+    return size <= 32; 
+}
+RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
     // TODO
     asm.nop();
 }
 
-LoadInstr.prototype.x86 = {};
-LoadInstr.prototype.x86.regAllocCfg = new x86.RegAllocCfg();
-LoadInstr.prototype.x86.regAllocCfg.opndCanBeImm = function (instr, idx, size) { return (idx === 1 && size <= 32); }
-LoadInstr.prototype.x86.genCode = function (asm, opnds, dest, scratch, blockMoves, backend, params)
+LoadInstr.prototype.x86 = new x86.InstrCfg();
+LoadInstr.prototype.x86.opndCanBeImm = function (instr, idx, size) 
+{ 
+    return (idx === 1 && size <= 32); 
+}
+LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
     // TODO
     asm.nop();

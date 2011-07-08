@@ -42,10 +42,11 @@ try
         "tachyon:arg v2 pint";          \
         "tachyon:ret pint";             \
                                         \
-        var y = iir.add(v1, v2);        \
-        var z = iir.mul(y, pint(3));    \
+        var x0 = iir.add(v1, v2);       \
+        var x1 = iir.mul(x0, pint(3));  \
+        var x2 = iir.sub(x1, pint(2));  \
                                         \
-        return z;                       \
+        return x2;                      \
     }                                   \
     ');
 

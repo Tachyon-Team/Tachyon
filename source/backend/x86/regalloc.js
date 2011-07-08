@@ -51,14 +51,14 @@ Maxime Chevalier-Boisvert
 /**
 @class Per-instruction register allocation hints/constraints
 */
-x86.RegAllocCfg = function ()
+x86.InstrCfg = function ()
 {
 }
 
 /**
 Maximum number of memory operands to use
 */
-x86.RegAllocCfg.prototype.maxMemOpnds = function (instr)
+x86.InstrCfg.prototype.maxMemOpnds = function (instr, params)
 {
     return 1;
 }
@@ -66,7 +66,7 @@ x86.RegAllocCfg.prototype.maxMemOpnds = function (instr)
 /**
 Maximum number of immediate operands to use
 */
-x86.RegAllocCfg.prototype.maxImmOpnds = function (instr)
+x86.InstrCfg.prototype.maxImmOpnds = function (instr, params)
 {
     return 1;
 }
@@ -74,7 +74,7 @@ x86.RegAllocCfg.prototype.maxImmOpnds = function (instr)
 /**
 Number of scratch registers wanted
 */
-x86.RegAllocCfg.prototype.numScratchRegs = function (instr)
+x86.InstrCfg.prototype.numScratchRegs = function (instr, params)
 {
     return 0;
 }
@@ -83,7 +83,7 @@ x86.RegAllocCfg.prototype.numScratchRegs = function (instr)
 Registers this instruction will have to write to, excluding
 scratch registers, operands and the destination.
 */
-x86.RegAllocCfg.prototype.writeRegSet = function (instr)
+x86.InstrCfg.prototype.writeRegSet = function (instr, params)
 {
     return undefined;
 }
@@ -91,7 +91,7 @@ x86.RegAllocCfg.prototype.writeRegSet = function (instr)
 /**
 Indicates that an operand can be an immediate
 */
-x86.RegAllocCfg.prototype.opndCanBeImm = function (instr, opIdx, immSize)
+x86.InstrCfg.prototype.opndCanBeImm = function (instr, opIdx, immSize, params)
 {
     return false;
 }
@@ -99,7 +99,7 @@ x86.RegAllocCfg.prototype.opndCanBeImm = function (instr, opIdx, immSize)
 /**
 Indicates that an operand must be placed in a register
 */
-x86.RegAllocCfg.prototype.opndMustBeReg = function (instr, opIdx)
+x86.InstrCfg.prototype.opndMustBeReg = function (instr, opIdx, params)
 {
     return false;
 }
@@ -108,7 +108,7 @@ x86.RegAllocCfg.prototype.opndMustBeReg = function (instr, opIdx)
 Set of registers an operand can be assigned to. This
 may be a single register.
 */
-x86.RegAllocCfg.prototype.opndRegSet = function (instr, opIdx)
+x86.InstrCfg.prototype.opndRegSet = function (instr, opIdx, params)
 {
     return undefined;
 }
@@ -116,7 +116,7 @@ x86.RegAllocCfg.prototype.opndRegSet = function (instr, opIdx)
 /**
 Dest is operand 0.
 */
-x86.RegAllocCfg.prototype.destIsOpnd0 = function (instr)
+x86.InstrCfg.prototype.destIsOpnd0 = function (instr, params)
 {
     if (instr.uses.length === 0)
         return false;
@@ -128,7 +128,7 @@ x86.RegAllocCfg.prototype.destIsOpnd0 = function (instr)
 Set of registers the destination can be assigned to.
 This may be a single register.
 */
-x86.RegAllocCfg.prototype.destRegSet = function (instr)
+x86.InstrCfg.prototype.destRegSet = function (instr, params)
 {
     return undefined;
 }
@@ -149,14 +149,54 @@ x86.StackFrameMap = function ()
     this.argStackMap = [];
 
     /**
+    @field Location of the return address
+    */
+    this.retAddrLoc = undefined;
+
+    /**
     @field Map of temporaries to stack location indices
     */
     this.valStackMap = [];
+
+    /**
+    @field Offsets for stack locations
+    */
+    this.locOffsets = [];
 }
 
-// TODO: toString method?
+/**
+Produce a string representation of the stack frame map
+*/
+x86.StackFrameMap.prototype.toString = function ()
+{
+    var str = '';
 
-// TODO: method to compute offsets of stack locations
+    // TODO
+
+    return str;
+}
+
+/**
+Compute the offsets for stack locations
+*/
+x86.StackFrameMap.prototype.compOffsets = function (x86_64)
+{
+    assert (
+        typeof x86_64 === 'boolean',
+        'invalid x86_64 flag'
+    );
+
+    this.locOffsets.length = this.locList.length;
+
+    var curOffset = 0;
+
+    for (var i = this.locList.length; i >= 0; --i)
+    {
+        curOffset += x86_64? 8:4;
+
+        this.locOffsets[i] = curOffset;
+    }
+}
 
 /**
 Allocate a stack location for an argument
@@ -170,9 +210,26 @@ x86.StackFrameMap.prototype.allocArg = function (argIdx)
 
     var locIdx = this.locList.length;
 
-    this.locList.push([argIdx]);
+    this.locList.push(['arg' + argIdx]);
 
     this.argStackMap[argIdx] = locIdx;
+}
+
+/**
+Allocate a stack location for the return address
+*/
+x86.StackFrameMap.prototype.allocRetAddr = function ()
+{
+    assert (
+        this.retAddrLoc === undefined,
+        'return address mapped on stack'
+    );
+
+    var locIdx = this.locList.length;
+
+    this.locList.push(['ret_addr']);
+
+    this.retAddrLoc = locIdx;
 }
 
 /**
@@ -386,6 +443,42 @@ x86.RegAllocMap.prototype.getValStack = function (value)
 }
 
 /**
+Compute the size of a constant value if it were to be
+used as an immediate.
+*/
+x86.getImmSize = function (value, params)
+{
+    // If the value is not a constant, stop
+    if ((value instanceof ConstValue) === false)
+        return undefined;
+
+    // If the value is not an immediate integer, stop
+    if (value.isInt() === false &&
+        value.value !== undefined &&
+        value.value !== true &&
+        value.value !== false &&
+        value.value !== null)
+        return undefined;
+
+    // Get the immediate bits for the value
+    var immVal = value.getImmValue(params);
+
+    // Compute the smallest size this immediate fits in
+    var size;
+    if (num_ge(immVal, getIntMin(8)) && num_le(immVal, getIntMax(8)))
+        size = 8;
+    else if (num_ge(immVal, getIntMin(16)) && num_le(immVal, getIntMax(16)))
+        size = 16;
+    else if (num_ge(immVal, getIntMin(32)) && num_le(immVal, getIntMax(32)))
+        size = 32;
+    else
+        size = 64;
+
+    // Return the size
+    return size;
+}
+
+/**
 Perform register allocation on an IR function
 */
 x86.allocRegs = function (irFunc, blockOrder, backend, params)
@@ -494,6 +587,9 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         x86.regs.esi,
         x86.regs.edi
     ];
+
+    // Stack pointer register
+    var spReg = backend.x86_64? x86.regs.rsp:x86.regs.esp;
 
     // Maximum number of register operands
     const MAX_REG_OPNDS = gpRegSet.length - 2;
@@ -660,42 +756,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         moveList.push({ src:src, dst:dst });
     }
 
-    /**
-    Compute the size of a constant value if it were to be
-    used as an immediate.
-    */
-    function getImmSize(value)
-    {
-        // If the value is not a constant, stop
-        if ((value instanceof ConstValue) === false)
-            return undefined;
-
-        // If the value is not an immediate integer, stop
-        if (value.isInt() === false &&
-            value.value !== undefined &&
-            value.value !== true &&
-            value.value !== false &&
-            value.value !== null)
-            return undefined;
-
-        // Get the immediate bits for the value
-        var immVal = value.getImmValue(params);
-
-        // Compute the smallest size this immediate fits in
-        var size;
-        if (num_ge(immVal, getIntMin(8)) && num_le(immVal, getIntMax(8)))
-            size = 8;
-        else if (num_ge(immVal, getIntMin(16)) && num_le(immVal, getIntMax(16)))
-            size = 16;
-        else if (num_ge(immVal, getIntMin(32)) && num_le(immVal, getIntMax(32)))
-            size = 32;
-        else
-            size = 64;
-
-        // Return the size
-        return size;
-    }
-
     // Create a stack frame map for the function
     // This maps stack locations, from top to bottom,
     // to temporaries assigned to the locations
@@ -747,6 +807,9 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         for (var i = numArgs - 1; i >= callConv.argRegs.length; --i)
             stackMap.allocArg(i);
     }
+
+    // Map the return address on the stack
+    stackMap.allocRetAddr();
 
     // Map of instruction ids to instruction operands and pre-instruction moves
     var instrMap = [];
@@ -860,12 +923,11 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             {
                 assert (
                     instr.x86 !== undefined &&
-                    instr.x86.regAllocCfg !== undefined,
                     'missing reg alloc cfg for "' + instr.mnemonic + '"'
                 );
 
                 // Get the register allocation config for the instruction
-                var allocCfg = instr.x86.regAllocCfg;
+                var instrCfg = instr.x86;
 
                 // Set of registers not to be spilled
                 var excludeSet = [];
@@ -880,7 +942,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         break;
 
                     // Get the set of registers this operand can be in
-                    var opndRegSet = allocCfg.opndRegSet(instr, k);
+                    var opndRegSet = instrCfg.opndRegSet(instr, k, params);
 
                     // Get the register mapping for the operand
                     var reg = allocMap.getValReg(use);
@@ -903,10 +965,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 var preMoves = [];
 
                 // Get the max number of memory operands for the instruction
-                var maxMemOpnds = allocCfg.maxMemOpnds(instr);
+                var maxMemOpnds = instrCfg.maxMemOpnds(instr, params);
 
                 // Get the max number of immediate operands for the instruction
-                var maxImmOpnds = allocCfg.maxImmOpnds(instr);
+                var maxImmOpnds = instrCfg.maxImmOpnds(instr, params);
 
                 // Number of register allocated operands
                 var numRegOpnds = 0;
@@ -929,10 +991,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     if (numImmOpnds < maxImmOpnds)
                     {
                         // Compute the immediate size for this value
-                        var immSize = getImmSize(use);
+                        var immSize = x86.getImmSize(use, params);
 
                         // If this value can be an immediate operand
-                        if (immSize && allocCfg.opndCanBeImm(instr, k, immSize))
+                        if (immSize && instrCfg.opndCanBeImm(instr, k, immSize, params))
                         {
                             print('imm: ' + use + ' (' + immSize + ')');
 
@@ -944,8 +1006,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     }
 
                     // Get the register allocation parameters for this operand
-                    var opndMustBeReg = allocCfg.opndMustBeReg(instr, k);
-                    var opndRegSet = allocCfg.opndRegSet(instr, k);
+                    var opndMustBeReg = instrCfg.opndMustBeReg(instr, k, params);
+                    var opndRegSet = instrCfg.opndRegSet(instr, k, params);
 
                     // Test if this operand can be in memory
                     var opndMustBeReg = numMemOpnds >= maxMemOpnds || opndMustBeReg;
@@ -1023,7 +1085,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 }
 
                 // Get the number of scratch registers for this instruction
-                var numScratchRegs = allocCfg.numScratchRegs(instr); 
+                var numScratchRegs = instrCfg.numScratchRegs(instr, params); 
 
                 // List of scratch registers
                 var scratchRegs = [];
@@ -1049,7 +1111,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 }
 
                 // Get the set of registers this instruction will write to
-                var writeRegs = allocCfg.writeRegSet(instr);
+                var writeRegs = instrCfg.writeRegSet(instr, params);
 
                 // If this instruction writes to registers
                 if (writeRegs !== undefined)
@@ -1074,8 +1136,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 }
 
                 // Get the allocation parameters for the destination
-                var destIsOpnd0 = allocCfg.destIsOpnd0(instr);
-                var destRegSet = allocCfg.destRegSet(instr);
+                var destIsOpnd0 = instrCfg.destIsOpnd0(instr, params);
+                var destRegSet = instrCfg.destRegSet(instr, params);
 
                 assert (
                     !(destIsOpnd0 && opnds.length === 0),
@@ -1256,18 +1318,71 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         }
     }
 
+    // Compute the stack location offsets
+    stackMap.compOffsets(backend.x86_64);
 
+    // For each entry in the instruction map
+    for (var i = 0; i < instrMap.length; ++i) 
+    {
+        var alloc = instrMap[i];
+
+        if (alloc === undefined)
+            continue;
+
+        // For each operand
+        for (var j = 0; j < alloc.opnds.length; ++j)
+        {
+            // Remap the operand if needed
+            if (typeof alloc.opnds[i] === 'number')
+            {   
+                alloc.opnds[i] = new x86.MemLoc(
+                    instr.uses[i].type.getSizeBits(params),
+                    spReg,
+                    stackMap.getLocOffset(alloc.opnds[i])
+                );
+            }
+        }
+
+        // Remap the dest if needed
+        if (typeof alloc.dest === 'number')
+        {
+            alloc.dest = new x86.MemLoc( 
+                instr.type.getSizeBits(params),
+                spReg, 
+                stackMap.getLocOffset(alloc.dest)
+            );
+        }
+
+        // For each pre-instruction move
+        for (var j = 0; j < alloc.preMoves.length; ++j)
+        {
+            var move = alloc.preMoves[j];
+
+            // Remap the src if needed
+            if (typeof move.src === 'number')
+            {
+                move.src = new x86.MemLoc(
+                    backend.x86_64? 64:32,
+                    spReg, 
+                    stackMap.getLocOffset(move.src)
+                );
+            }
+
+            // Remap the dst if needed
+            if (typeof move.dst === 'number')
+            {
+                move.dst = new x86.MemLoc(
+                    backend.x86_64? 64:32,
+                    spReg, 
+                    stackMap.getLocOffset(move.dst)
+                );
+            }
+        }
+    }
 
     //
-    // TODO: do pass over operands, translate stack references to mem operands
-    // once stack frame is finalized
+    // TODO: pass over block moves
     //
-    // TODO: also need to remap move stack mem locs... Could possibly store
-    // moves in a symbolic manner, not as move instructions
-    //
-
-
-
 
     // Return the register allocation info
     return {

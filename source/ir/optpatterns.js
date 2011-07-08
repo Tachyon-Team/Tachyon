@@ -231,7 +231,7 @@ blockPatterns.predSuccMerge = new optPattern(
             var instr = succ.instrs[iIndex];
 
             // Add the instruction to the predecessor
-            block.addInstr(instr);
+            block.addInstr(instr, instr.outName);
         }
 
         //print('Number of succ succs: ' + succ.succs.length);
