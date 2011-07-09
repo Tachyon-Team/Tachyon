@@ -49,6 +49,16 @@ Maxime Chevalier-Boisvert
 */
 
 /**
+Context register in 32-bit mode
+*/
+x86.ctxReg32 = x86.regs.ecx;
+
+/**
+Context register in 64-bit mode
+*/
+x86.ctxReg64 = x86.regs.rcx;
+
+/**
 @class Per-instruction register allocation hints/constraints
 */
 x86.InstrCfg = function ()
@@ -263,6 +273,19 @@ x86.StackFrameMap.prototype.getStackLoc = function (value)
     this.valStackMap[value.instrId] = locIdx;
 
     return locIdx
+}
+
+/**
+Get the offset for a stack location
+*/
+x86.StackFrameMap.prototype.getLocOffset = function (locIdx)
+{
+    assert (
+        locIdx < this.locOffsets.length,
+        'invalid stack loc idx: ' + locIdx
+    );
+
+    return this.locOffsets[locIdx]
 }
 
 /**
@@ -693,17 +716,26 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // Choose the first live register for spilling
             chosenReg = liveRegs[0];
 
-            // Get the stack location for the value
-            var stackLoc = stackMap.getStackLoc(value);
+            // Get the value the register currently maps to
+            var regVal = allocMap.getRegVal(chosenReg);
 
-            // If the value is not already on the stack
-            if (allocMap.getValStack(value) !== stackLoc)
+            // If the register value is still live
+            if (liveSet.hasItem(regVal) === true)
             {
-                // Map the value to the stack location
-                allocMap.allocStack(value, stackLoc);
+                print('spilling reg: ' + chosenReg);
 
-                // Add a move for the spill
-                addMove(moveList, chosenReg, stackLoc);
+                // Get the stack location for the value
+                var stackLoc = stackMap.getStackLoc(value);
+
+                // If the value is not already on the stack
+                if (allocMap.getValStack(regVal) !== stackLoc)
+                {
+                    // Map the value to the stack location
+                    allocMap.allocStack(regVal, stackLoc);
+
+                    // Add a move for the spill
+                    addMove(moveList, chosenReg, stackLoc);
+                }
             }
         }
 
@@ -1073,6 +1105,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     }
                     else
                     {
+                        print('storing opnd on stack');
+
                         // Get the stack location for the operand
                         var stackLoc = stackMap.getStackLoc(use);
 
@@ -1186,6 +1220,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     }
                     else
                     {
+                        print('mapping mem opnd to dest');
+
                         // Get the stack location for the instruction
                         var stackLoc = stackMap.getStackLoc(instr);
 
@@ -1291,29 +1327,53 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // There is already a register allocation for the successor
             else
             {
-                // TODO: Merge with succ using moves ***
-                //
-                // Live register values must be the same
-                // Also need to ensure coherence of live stack values
-                //
-
-                // TODO: handle phi nodes, store info in initial alloc map?
-
                 // Get the live set at the beginning of the successor
-                var succliveIn = liveIn[succ.blockId];
+                var succLiveIn = liveIn[succ.blockId];
 
-                // For each general-purpose register
-                for (var k = 0; k < gpRegSet.length; ++k)
-                {
-                    var reg = gpRegSet[k];
+                /* 
+                TODO: each phi node has a register/loc
 
-                    // TODO
-                    //succAllocMap.getRegVal
+                Need to move the opnd corresponding to the phi input into the
+                phi node's assigned register/location.
+
+                This should be done before other moves occur, because some
+                operands may no longer be live after this and their
+                registers may be cleared.
+                */
+
+                /*
+                Want to avoid spills and redundant moves. Use xchg to swap
+                between live registers.                
+
+                TODO: Iterate through live values. 
+
+                If value is in reg, goes to reg, either move it there
+                (if dst free), or xchg it with target reg. Then
+                need to update the current alloc map to reflect the change.
+
+                If opnd is reg, goes to mem, just move it.
+
+                If opnd is mem or imm, goes to reg, need reg to be free.
+                Probably want to handle these operand types in a second pass.
+
+                PROBLEM: what about imm opnds on stack? We should have liveness
+                info for these values as well. Can place them on target stack
+                if needed.
+
+                TODO: operands that die at a phi node need no location of
+                their own
+                */
 
 
 
 
-                }
+
+
+
+
+
+
+
             }
         }
     }
@@ -1373,7 +1433,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             {
                 move.dst = new x86.MemLoc(
                     backend.x86_64? 64:32,
-                    spReg, 
+                    spReg,
                     stackMap.getLocOffset(move.dst)
                 );
             }

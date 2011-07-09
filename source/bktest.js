@@ -11,6 +11,13 @@ bootstrap(config.hostParams, false, false);
 // Create a backend interface instance
 var backend = new x86.Backend(PLATFORM_64BIT);
 
+assert (
+    config.hostParams.backend === undefined,
+    'backend object already defined on params'
+);
+
+config.hostParams.backend = backend;
+
 function compileStr(str)
 {
     const params = config.hostParams;

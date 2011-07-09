@@ -116,10 +116,25 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 IRInstr.prototype.x86 = new x86.InstrCfg();
 
 GetCtxInstr.prototype.x86 = new x86.InstrCfg();
+GetCtxInstr.prototype.x86.destMustBeReg = function (instr, params)
+{
+    return true;
+}
+GetCtxInstr.prototype.x86.destRegSet = function (instr, idx, params)
+{
+    return [x86.ctxReg32, x86.ctxReg64];
+}
 GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
-    // TODO
-    asm.nop();
+    // Do nothing
+};
+
+SetCtxInstr.prototype.x86 = new x86.InstrCfg();
+SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+{
+    var x86_64 = params.backend.x86_64;
+
+    asm.move(opnds[0], x86_64? x86.ctxReg64:x86.ctxReg32);
 };
 
 ArithInstr.prototype.x86 = new x86.InstrCfg();
@@ -208,23 +223,70 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blo
     asm.nop();
 };
 
-// TODO: IfInstr
 
-RetInstr.prototype.x86 = new x86.InstrCfg();
-RetInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
-{ 
-    return size <= 32; 
-}
-RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+// Unconditional branching instruction
+JumpInstr.prototype.x86 = new x86.InstrCfg();
+JumpInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
     // TODO
     asm.nop();
+
+
+
+    // FIXME: need block labels to jump to... need to pre-create labels for
+    // all blocks
+
+
+    // TODO: block moves, need function to insert them
+}
+
+// Conditional branching instruction
+IfInstr.prototype.x86 = new x86.InstrCfg();
+IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+{
+    // TODO: comparison & branching code
+    // TODO: block moves
+    asm.nop();
+
+
+
+
+
+
+
+
+
+};
+
+RetInstr.prototype.x86 = new x86.InstrCfg();
+RetInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+{
+    return true;
+}
+RetInstr.prototype.x86.opndRegSet = function (instr, idx, params)
+{ 
+    var cProxy = instr.parentBlock.parentCFG.ownerFunc.cproxy;
+    var callConv = params.backend.getCallConv(cProxy? 'c':'tachyon');
+
+    return [callConv.retReg];
+}
+RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+{
+    asm.ret();
 }
 
 LoadInstr.prototype.x86 = new x86.InstrCfg();
-LoadInstr.prototype.x86.opndCanBeImm = function (instr, idx, size) 
+LoadInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 { 
     return (idx === 1 && size <= 32); 
+}
+LoadInstr.prototype.x86.destIsOpnd0 = function (instr)
+{
+    return false;
+}
+LoadInstr.prototype.x86.destMustBeReg = function (instr)
+{
+    return true;
 }
 LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
 {
