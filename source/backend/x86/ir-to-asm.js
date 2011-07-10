@@ -138,9 +138,11 @@ x86.insertMove = function (asm, move)
     // If the source is an x86 operand
     if (move.src instanceof x86.Operand)
     {
-        asm.move(move.dst, move.src);
+        asm.mov(move.dst, move.src);
         return;
     }
+
+
 
     // TODO
     asm.nop();

@@ -518,7 +518,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         workList.addLast(blockOrder[i]);
 
     // Array to store live sets at the input of each block
-    var liveIn = [];
+    var blockLiveIn = [];
+
+    // Array of sets of live variables before instructions
+    var instrLiveOut = [];
 
     // Until the work list is empty
     while (workList.isEmpty() === false)
@@ -531,21 +534,21 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         {
             var succ = block.succs[i];
 
-            var liveSucc = liveIn[succ.blockId];
+            var liveSucc = blockLiveIn[succ.blockId];
             if (liveSucc === undefined)
                 continue;
 
             for (var itr = liveSucc.getItr(); itr.valid(); itr.next())
-            {
-                var temp = itr.get();
-                liveCur.setItem(temp.key, true);
-            }
+                liveCur.setItem(itr.get().key);
         }
 
         // For each instruction, in reverse order
         for (var i = block.instrs.length - 1; i >= 0; --i)
         {
             var instr = block.instrs[i];
+
+            // Store the live set at the output of this instruction
+            instrLiveOut[instr.instrId] = liveCur.copy();
 
             // Remove the output of this instruction from the live set
             if (instr.dests.length > 0 && liveCur.hasItem(instr) === true)
@@ -556,21 +559,20 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             {
                 var use = instr.uses[j];
 
-                // If this use just became live, map it to
-                // the point it became live in this block
-                if (liveCur.hasItem(use) === false)
-                    liveCur.setItem(use, instr);
+                // Map this use in the live set
+                liveCur.setItem(use);
             }
+
         }
 
         // Find the current live in set for this block
-        var liveInCur = liveIn[block.blockId];
+        var liveInCur = blockLiveIn[block.blockId];
 
         // If the new live set has more temps
         if (liveInCur === undefined || liveInCur.numItems !== liveCur.numItems)
         {
             // Replace the live in set for this block
-            liveIn[block.blockId] = liveCur;
+            blockLiveIn[block.blockId] = liveCur;
 
             // Add all predecessors to the work list
             for (var i = 0; i < block.preds.length; ++i)
@@ -626,7 +628,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     @regSet set of registers to allocate from, null if any
     @excludeSet set of registers to exclude from allocation
     */
-    function allocReg(allocMap, moveList, liveSet, value, regSet, excludeSet)
+    function allocReg(allocMap, moveList, liveOut, value, regSet, excludeSet)
     {
         // If no register set is specified, allocate from
         // the set of all available registers
@@ -666,16 +668,16 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             var regVal = allocMap.getRegVal(reg);
 
             // If this register is already mapped to something
-            if (regVal !== undefined)
+            if (regVal === undefined || liveOut.hasItem(regVal) === false)
+            {
+                freeRegs.push(reg);
+            }
+            else
             {
                 if (regVal instanceof IRInstr)
                     liveRegs.push(reg);
                 else
                     cstRegs.push(reg);
-            }
-            else
-            {
-                freeRegs.push(reg);
             }
         }
 
@@ -720,7 +722,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             var regVal = allocMap.getRegVal(chosenReg);
 
             // If the register value is still live
-            if (liveSet.hasItem(regVal) === true)
+            if (liveOut.hasItem(regVal) === true)
             {
                 print('spilling reg: ' + chosenReg);
 
@@ -866,18 +868,24 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
         //print(allocMap + '\n');
 
-        // Get the live set at the beginning of the block
-        var liveCur = liveIn[block.blockId];
-
-        assert (
-            liveCur instanceof HashMap,
-            'invalid live map for: ' + block.getBlockName()
-        );
-
         // For each instruction in the block
         for (var j = 0; j < block.instrs.length; ++j)
         {
             var instr = block.instrs[j];
+
+            // Get the live set at the output of this instruction
+            var liveOut = instrLiveOut[instr.instrId];
+
+            assert (
+                liveOut instanceof HashMap,
+                'invalid live map for: ' + instr.getValName()
+            );
+
+            /*
+            print('live set:');
+            for (var itr = liveOut.getItr(); itr.valid(); itr.next())
+                print(itr.get().key.getValName());
+            */            
 
             print('processing: ' + instr);
 
@@ -900,7 +908,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     allocReg(
                         allocMap,
                         undefined,
-                        liveCur, 
+                        liveOut, 
                         instr, 
                         [callConv.argRegs[argIndex]], 
                         []
@@ -928,7 +936,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 allocReg(
                     allocMap,
                     undefined,
-                    liveCur, 
+                    liveOut, 
                     instr, 
                     [callConv.argCountReg],
                     []
@@ -1031,7 +1039,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                             print('imm: ' + use + ' (' + immSize + ')');
 
                             // Use the immediate value for this operand
-                            opnds.push(use.getImmValue(params));
+                            opnds.push(new x86.Immediate(use.getImmValue(params)));
                             ++numImmOpnds;
                             continue;
                         }
@@ -1087,7 +1095,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         var reg = allocReg(
                             allocMap,
                             preMoves,
-                            liveCur,
+                            liveOut,
                             use,
                             opndRegSet,
                             excludeSet
@@ -1133,7 +1141,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     var reg = allocReg(
                         allocMap,
                         preMoves,
-                        liveCur,
+                        liveOut,
                         undefined,
                         undefined,
                         excludeSet
@@ -1161,7 +1169,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         allocReg(
                             allocMap,
                             preMoves,
-                            liveCur,
+                            liveOut,
                             undefined,
                             [reg],
                             excludeSet
@@ -1191,9 +1199,14 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 // If the destination must be operand 0
                 else if (destIsOpnd0 === true)
                 {
+                    // FIXME: should avoid spilling opnd0 here, do it if opnd
+                    // is live during opnd reg allocation
+
                     // If the operand is mapped to a register
                     if (opnds[0] instanceof x86.Register)
                     {
+                        print('dest/opnd mapped to reg');
+
                         // Use operand 0 for the destination
                         dest = opnds[0];
 
@@ -1203,16 +1216,20 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         // Get the use corresponding to this operand
                         var use = instr.uses[0];
 
+                        //print('use opnd: ' + use.getValName());
+
                         // If the temporary is still live after this instruction
-                        if (liveCur.hasItem(use) && liveCur.getItem(use) !== instr)
+                        if (liveOut.hasItem(use) === true)
                         {
                             // Get the stack location for the input operand
                             var stackLoc = stackMap.getStackLoc(use);
 
                             // Map the value to the stack location
+                            // FIXME
+                            //allocMap.remAlloc(use);
                             allocMap.allocStack(use, stackLoc);
 
-                            print('spilling dest opnd (' + reg + ')');
+                            print('spilling dest opnd (' + opnds[0] + ')');
 
                             // Spill the operand on the stack
                             addMove(preMoves, dest, stackLoc);
@@ -1221,6 +1238,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     else
                     {
                         print('mapping mem opnd to dest');
+
+                        // TODO
+                        // TODO
+                        // FIXME: memory-memory moves?
 
                         // Get the stack location for the instruction
                         var stackLoc = stackMap.getStackLoc(instr);
@@ -1242,7 +1263,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     dest = allocReg(
                         allocMap,
                         preMoves,
-                        liveCur,
+                        liveOut,
                         instr,
                         destRegSet,
                         excludeSet
@@ -1256,26 +1277,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     scratchRegs: scratchRegs,
                     dest: dest
                 };
-            }
-
-            // For each use of the instruction
-            for (var k = 0; k < instr.uses.length; ++k)
-            {
-                var use = instr.uses[k];
-
-                // If this use is not a temporary, skip it
-                if (!(use instanceof IRInstr))
-                    continue;
-
-                // If this temporary is now dead
-                if (liveCur.hasItem(use) && liveCur.getItem(use) === instr)
-                {
-                    // Remove the use from the live set
-                    liveCur.remItem(use);
-
-                    // Remove the allocation for this value, if any
-                    allocMap.remAlloc(use);
-                }
             }
         }
 
@@ -1381,61 +1382,73 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     // Compute the stack location offsets
     stackMap.compOffsets(backend.x86_64);
 
-    // For each entry in the instruction map
-    for (var i = 0; i < instrMap.length; ++i) 
+    // For each block in the ordering
+    for (var i = 0; i < blockOrder.length; ++i)
     {
-        var alloc = instrMap[i];
+        var block = blockOrder[i];
 
-        if (alloc === undefined)
-            continue;
-
-        // For each operand
-        for (var j = 0; j < alloc.opnds.length; ++j)
+        // For each instruction in the block
+        for (var j = 0; j < block.instrs.length; ++j)
         {
-            // Remap the operand if needed
-            if (typeof alloc.opnds[i] === 'number')
-            {   
-                alloc.opnds[i] = new x86.MemLoc(
-                    instr.uses[i].type.getSizeBits(params),
-                    spReg,
-                    stackMap.getLocOffset(alloc.opnds[i])
-                );
-            }
-        }
+            var instr = block.instrs[j];
 
-        // Remap the dest if needed
-        if (typeof alloc.dest === 'number')
-        {
-            alloc.dest = new x86.MemLoc( 
-                instr.type.getSizeBits(params),
-                spReg, 
-                stackMap.getLocOffset(alloc.dest)
-            );
-        }
+            var alloc = instrMap[instr.instrId];
 
-        // For each pre-instruction move
-        for (var j = 0; j < alloc.preMoves.length; ++j)
-        {
-            var move = alloc.preMoves[j];
+            if (alloc === undefined)
+                continue;
 
-            // Remap the src if needed
-            if (typeof move.src === 'number')
+            //print(instr);
+
+            // For each operand
+            for (var k = 0; k < alloc.opnds.length; ++k)
             {
-                move.src = new x86.MemLoc(
-                    backend.x86_64? 64:32,
+                // Remap the operand if needed
+                if (typeof alloc.opnds[k] === 'number')
+                {   
+                    //print(instr.uses[k]);
+
+                    alloc.opnds[k] = new x86.MemLoc(
+                        instr.uses[k].type.getSizeBits(params),
+                        spReg,
+                        stackMap.getLocOffset(alloc.opnds[k])
+                    );
+                }
+            }
+
+            // Remap the dest if needed
+            if (typeof alloc.dest === 'number')
+            {
+                alloc.dest = new x86.MemLoc(
+                    instr.type.getSizeBits(params),
                     spReg, 
-                    stackMap.getLocOffset(move.src)
+                    stackMap.getLocOffset(alloc.dest)
                 );
             }
 
-            // Remap the dst if needed
-            if (typeof move.dst === 'number')
+            // For each pre-instruction move
+            for (var k = 0; k < alloc.preMoves.length; ++k)
             {
-                move.dst = new x86.MemLoc(
-                    backend.x86_64? 64:32,
-                    spReg,
-                    stackMap.getLocOffset(move.dst)
-                );
+                var move = alloc.preMoves[k];
+
+                // Remap the src if needed
+                if (typeof move.src === 'number')
+                {
+                    move.src = new x86.MemLoc(
+                        backend.x86_64? 64:32,
+                        spReg, 
+                        stackMap.getLocOffset(move.src)
+                    );
+                }
+
+                // Remap the dst if needed
+                if (typeof move.dst === 'number')
+                {
+                    move.dst = new x86.MemLoc(
+                        backend.x86_64? 64:32,
+                        spReg,
+                        stackMap.getLocOffset(move.dst)
+                    );
+                }
             }
         }
     }

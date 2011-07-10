@@ -349,6 +349,13 @@ ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
         'invalid instruction'
     );
 
+    if (outName === undefined && typeof instr.outName === 'string')
+    {
+        if (this.instrNames.hasItem(instr.outName) &&
+            this.instrNames.getItem(instr.outName) === instr)
+            return;
+    }
+
     if (outName === undefined || outName === '')
     {
         instr.outName = '';
@@ -359,7 +366,7 @@ ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
     function nameTaken(name) { return that.instrNames.hasItem(name); }
     instr.outName = findFreeName(nameTaken, outName);
 
-    this.instrNames.addItem(instr.outName);
+    this.instrNames.addItem(instr.outName, instr);
 };
 
 /**
