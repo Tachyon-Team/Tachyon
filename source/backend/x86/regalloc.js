@@ -846,8 +846,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     // Map of instruction ids to instruction operands and pre-instruction moves
     var instrMap = [];
 
-    // Map of block ids to maps from block ids to lists of moves
-    var blockMoves = [];
+    // Map of block ids to maps from block ids to lists of merge moves
+    var mergeMoves = [];
 
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
@@ -1447,7 +1447,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     // Return the register allocation info
     return {
         instrMap: instrMap,
-        blockMoves: blockMoves
+        mergeMoves: mergeMoves
     };
 }
 

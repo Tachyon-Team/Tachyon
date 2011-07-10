@@ -62,6 +62,19 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     // normalization stub.
 
 
+
+
+    // TODO: 
+    // allocInfo.mergeMoves
+    // Want to build merge stubs, place them appropriately in the block
+    // ordering.
+
+
+    // TODO: set of labels for each CFG edge
+
+
+
+
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
     {
@@ -87,9 +100,9 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
             // Get the allocation info for this instruction
             var instrAlloc = allocInfo.instrMap[instr.instrId];
 
-            //
-            // TODO: handle pre-moves
-            //
+            // Insert the pre-instruction moves
+            for (var k = 0; k < instrAlloc.preMoves.length; ++k)
+                x86.insertMove(asm, instrAlloc.preMoves[k]);
 
             // Generate code for the instruction
             instr.x86.genCode(
@@ -97,7 +110,7 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
                 instrAlloc.opnds,
                 instrAlloc.dest,
                 instrAlloc.scratchRegs,
-                allocInfo.blockMoves,
+                null, // FIXME: build label set
                 asm,
                 params
             );
@@ -112,6 +125,46 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     return asm;
 }
 
+/**
+Implement an abstract move operation
+*/
+x86.insertMove = function (asm, move)
+{
+    assert (
+        move.dst instanceof x86.Operand,
+        'invalid move dst: ' + move.dst
+    );
+
+    // If the source is an x86 operand
+    if (move.src instanceof x86.Operand)
+    {
+        asm.move(move.dst, move.src);
+        return;
+    }
+
+    // TODO
+    asm.nop();
+
+    /*
+    PROBLEM: for some moves, may need EAX/RAX to be free
+
+    eg: move rdx, *<addr_64>
+    This is used to load the value at some address...
+
+    solution:
+    xchg rdx, rax
+    move rax, <addr_64>
+    xchg rdx, rax
+
+    This avoids overwriting the value in rax, if any.
+
+    If rax gets written to after this, can always have opt pattern to
+    remove redundant xchgs.
+
+    NOTE: there is a mov, r64, imm64!
+    */
+}
+
 // TODO: for now, default reg alloc config to test register allocation
 IRInstr.prototype.x86 = new x86.InstrCfg();
 
@@ -124,13 +177,13 @@ GetCtxInstr.prototype.x86.destRegSet = function (instr, idx, params)
 {
     return [x86.ctxReg32, x86.ctxReg64];
 }
-GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     // Do nothing
 };
 
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
-SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     var x86_64 = params.backend.x86_64;
 
@@ -144,13 +197,13 @@ ArithInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 }
 
 AddInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
-AddInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+AddInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     asm.add(opnds[0], opnds[1]);
 };
 
 SubInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
-SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     asm.sub(opnds[0], opnds[1]);
 };
@@ -183,7 +236,7 @@ MulInstr.prototype.x86.destIsOpnd0 = function (instr, params)
 
     return true;
 }
-MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     // If an unsigned integer result is expected
     if (instr.type.isUnsigned())
@@ -217,7 +270,7 @@ CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 { 
     return true; 
 }
-CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     // TODO
     asm.nop();
@@ -226,36 +279,33 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blo
 
 // Unconditional branching instruction
 JumpInstr.prototype.x86 = new x86.InstrCfg();
-JumpInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+JumpInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
-    // TODO
-    asm.nop();
-
-
-
-    // FIXME: need block labels to jump to... need to pre-create labels for
-    // all blocks
-
-
-    // TODO: block moves, need function to insert them
+    asm.jump(labels[instr.parentBlock.blockId][instr.targets[0].blockId]);
 }
 
 // Conditional branching instruction
 IfInstr.prototype.x86 = new x86.InstrCfg();
-IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     // TODO: comparison & branching code
-    // TODO: block moves
     asm.nop();
 
+    /*
+    TODO: block moves
 
+    jnz foo1
 
+    ... moves for foo2
 
+    jmp foo2_prelude
 
+    The moves for the "then" block must be in a separate prelude.
+    Probably, this prelude should immediately precede the target block.
 
-
-
-
+    TODO: consult block labels to know where to jump. Don't insert
+    block moves manually!
+    */
 };
 
 RetInstr.prototype.x86 = new x86.InstrCfg();
@@ -270,7 +320,7 @@ RetInstr.prototype.x86.opndRegSet = function (instr, idx, params)
 
     return [callConv.retReg];
 }
-RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     asm.ret();
 }
@@ -288,7 +338,7 @@ LoadInstr.prototype.x86.destMustBeReg = function (instr)
 {
     return true;
 }
-LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, blockMoves, asm, params)
+LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     // TODO
     asm.nop();

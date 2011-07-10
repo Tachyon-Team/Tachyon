@@ -101,10 +101,8 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Produce assembler for the function
     var asm = x86.irToASM(irFunc, blockOrder, allocInfo, this, params);
 
-
-
     // Assemble the code into an executable code block
-    //var codeBlock = asm.assemble();
+    var codeBlock = asm.assemble();
 
 
 
@@ -154,7 +152,7 @@ x86.Backend.prototype.getCallConv = function (target)
             return CallConv.cdecl;
 
         default:
-        error();
+        error('unsupported target: ' + target);
     }
 }
 
