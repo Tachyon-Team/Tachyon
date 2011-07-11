@@ -118,7 +118,8 @@ TEST_SPEC_SRCS =                        \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
     old-backend/tests/*.js              \
-    backend/x86/tests/*.js              \
+    backend/x86/tests/assembler.js      \
+    backend/x86/tests/ir-to-asm.js      \
     programs/tests/programs.js          \
     tests/testmain.js                   \
 
@@ -144,7 +145,8 @@ ALL_SRCS =                              \
 BK_TEST_SRCS =                          \
     $(BASE_SRCS)                        \
     tests/testing.js                    \
-    backend/x86/tests/codegen.js        \
+    backend/x86/tests/assembler.js      \
+    backend/x86/tests/ir-to-asm.js      \
     bktest.js
 
 bktest:

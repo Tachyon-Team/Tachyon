@@ -59,7 +59,20 @@ x86.Backend = function (x86_64)
         'invalid x86_64 flag'
     );
 
+    /**
+    Flag for 64-bit mode
+    */
     this.x86_64 = x86_64;
+
+    /**
+    Stack pointer register
+    */
+    this.spReg = x86_64? x86.spReg64:x86.spReg32;
+
+    /**
+    Context register
+    */
+    this.ctxReg = x86_64? x86.ctxReg64:x86.ctxReg32;
 }
 x86.Backend.prototype = new Backend();
 

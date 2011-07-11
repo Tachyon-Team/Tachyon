@@ -1,7 +1,3 @@
-// Execute the backend unit tests
-tests.x86.encoding();
-tests.x86.codegen();
-
 // Initialize the Tachyon configuration
 initConfig(PLATFORM_64BIT, log.level('all'));
 
@@ -17,6 +13,12 @@ assert (
 );
 
 config.hostParams.backend = backend;
+
+// Execute the backend unit tests
+tests.x86.asmEncoding();
+tests.x86.asmExecution();
+tests.x86.irToAsm();
+
 
 function compileStr(str)
 {

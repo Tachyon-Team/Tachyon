@@ -49,6 +49,16 @@ Maxime Chevalier-Boisvert
 */
 
 /**
+Stack pointer register in 32-bit mode
+*/
+x86.spReg32 = x86.regs.esp;
+
+/**
+Stack pointer register in 64-bit mode
+*/
+x86.spReg64 = x86.regs.rsp;
+
+/**
 Context register in 32-bit mode
 */
 x86.ctxReg32 = x86.regs.ecx;
@@ -172,6 +182,11 @@ x86.StackFrameMap = function ()
     @field Offsets for stack locations
     */
     this.locOffsets = [];
+
+    /**
+    @field Size of the portion of the stack frame used for spills
+    */
+    this.spillSize = undefined;
 }
 
 /**
@@ -200,12 +215,25 @@ x86.StackFrameMap.prototype.compOffsets = function (x86_64)
 
     var curOffset = 0;
 
-    for (var i = this.locList.length; i >= 0; --i)
+    var spillSize;
+
+    // For each stack frame location, in reverse order
+    for (var i = this.locList.length - 1; i >= 0; --i)
     {
+        if (i === this.retAddrLoc)
+            spillSize = curOffset;
+
         curOffset += x86_64? 8:4;
 
         this.locOffsets[i] = curOffset;
     }
+
+    assert (
+        spillSize !== undefined,
+        'invalid spill size'
+    );
+
+    this.spillSize = spillSize;
 }
 
 /**
@@ -396,7 +424,7 @@ x86.RegAllocMap.prototype.allocStack = function (value, stackLoc)
     );
 
     // Remove the previous register allocation for this value, if any
-    this.remAlloc();
+    this.remAlloc(value);
 
     print(stackLoc + ' -> ' + value.getValName());
 
@@ -460,7 +488,7 @@ x86.RegAllocMap.prototype.getAlloc = function (value)
 
     if (this.valStackMap.hasItem(value) === true)
     {
-        this.valStackMap.remItem(value);
+        return this.valStackMap.getItem(value);
     }
 
     return undefined;
@@ -471,6 +499,11 @@ Remove a value from the allocation map
 */
 x86.RegAllocMap.prototype.remAlloc = function (value)
 {
+    assert (
+        value instanceof IRValue,
+        'invalid value in remAlloc'
+    );
+
     if (this.valRegMap.hasItem(value) === true)
     {
         var reg = this.valRegMap.getItem(value);
@@ -634,9 +667,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         x86.regs.edi
     ];
 
-    // Stack pointer register
-    var spReg = backend.x86_64? x86.regs.rsp:x86.regs.esp;
-
     // Maximum number of register operands
     const MAX_REG_OPNDS = gpRegSet.length - 2;
 
@@ -745,7 +775,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // If the register value is still live
             if (liveOut.hasItem(regVal) === true)
             {
-                print('spilling reg: ' + chosenReg);
+                print('spilling reg: ' + chosenReg + ' (' + regVal.getValName() + ')');
 
                 // Get the stack location for the value
                 var stackLoc = stackMap.getStackLoc(value);
@@ -1071,18 +1101,18 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     }
 
                     // Operand assigned to this value
-                    var opnd;
+                    var opnd = undefined;
 
                     // Get the register or stack allocation
                     // allocated to this value, if any
                     var valAlloc = allocMap.getAlloc(use);
 
+                    print('alloc: ' + valAlloc);
+
                     // If this value is already in a register
                     if (valAlloc instanceof x86.Register && 
                         numRegOpnds < MAX_REG_OPNDS)
                     {
-                        print('opnd is reg: ' + valAlloc);
-
                         // If this is a valid register for this operand
                         if (opndRegSet === undefined ||
                             arraySetHas(opndRegSet, valAlloc) === true)
@@ -1406,6 +1436,9 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // For each operand
             for (var k = 0; k < alloc.opnds.length; ++k)
             {
+                //print('opnd: ' + alloc.opnds[k]);
+                //print(alloc.opnds[k] instanceof x86.Immediate);
+
                 // Remap the operand if needed
                 if (typeof alloc.opnds[k] === 'number')
                 {   
@@ -1413,7 +1446,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
                     alloc.opnds[k] = new x86.MemLoc(
                         instr.uses[k].type.getSizeBits(params),
-                        spReg,
+                        backend.spReg,
                         stackMap.getLocOffset(alloc.opnds[k])
                     );
                 }
@@ -1424,7 +1457,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             {
                 alloc.dest = new x86.MemLoc(
                     instr.type.getSizeBits(params),
-                    spReg, 
+                    backend.spReg, 
                     stackMap.getLocOffset(alloc.dest)
                 );
             }
@@ -1439,7 +1472,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 {
                     move.src = new x86.MemLoc(
                         backend.x86_64? 64:32,
-                        spReg, 
+                        backend.spReg, 
                         stackMap.getLocOffset(move.src)
                     );
                 }
@@ -1449,7 +1482,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 {
                     move.dst = new x86.MemLoc(
                         backend.x86_64? 64:32,
-                        spReg,
+                        backend.spReg,
                         stackMap.getLocOffset(move.dst)
                     );
                 }
@@ -1463,6 +1496,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
     // Return the register allocation info
     return {
+        stackMap: stackMap,
         instrMap: instrMap,
         mergeMoves: mergeMoves
     };

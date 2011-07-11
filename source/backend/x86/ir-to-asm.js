@@ -56,6 +56,16 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     // Assembler object to create instructions into
     var asm = new x86.Assembler(backend.x86_64);
 
+    // Get a reference to the stack frame map
+    var stackMap = allocInfo.stackMap;
+
+    // Add space for the spills on the stack
+    if (stackMap.spillSize !== 0)
+        asm.sub(backend.spReg, stackMap.spillSize);
+
+
+
+
 
     // TODO
     // Callee pops stack frame & args... Ideally want stack frame
@@ -74,6 +84,13 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 
 
 
+    // Code generation info object
+    var genInfo = {
+        labels: [],
+        stackMap: stackMap,
+        backend: backend,
+        params: params
+    };
 
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
@@ -110,9 +127,8 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
                 instrAlloc.opnds,
                 instrAlloc.dest,
                 instrAlloc.scratchRegs,
-                null, // FIXME: build label set
                 asm,
-                params
+                genInfo
             );
         }
     }
@@ -188,13 +204,13 @@ GetCtxInstr.prototype.x86.destRegSet = function (instr, idx, params)
 {
     return [x86.ctxReg32, x86.ctxReg64];
 }
-GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // Do nothing
 };
 
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
-SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     var x86_64 = params.backend.x86_64;
 
@@ -208,18 +224,22 @@ ArithInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 }
 
 AddInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
-AddInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+AddInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     asm.add(opnds[0], opnds[1]);
 };
 
 SubInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
-SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     asm.sub(opnds[0], opnds[1]);
 };
 
 MulInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
+MulInstr.prototype.x86.opndMustBeReg = function (instr, idx)
+{
+    return (idx === 0);
+}
 MulInstr.prototype.x86.opndRegSet = function (instr, idx)
 {
     if (instr.type.isUnsigned() && idx === 0)
@@ -247,7 +267,7 @@ MulInstr.prototype.x86.destIsOpnd0 = function (instr, params)
 
     return true;
 }
-MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // If an unsigned integer result is expected
     if (instr.type.isUnsigned() === true)
@@ -281,23 +301,22 @@ CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 { 
     return true; 
 }
-CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // TODO
     asm.nop();
 };
 
-
 // Unconditional branching instruction
 JumpInstr.prototype.x86 = new x86.InstrCfg();
-JumpInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+JumpInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     asm.jump(labels[instr.parentBlock.blockId][instr.targets[0].blockId]);
 }
 
 // Conditional branching instruction
 IfInstr.prototype.x86 = new x86.InstrCfg();
-IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // TODO: comparison & branching code
     asm.nop();
@@ -331,8 +350,14 @@ RetInstr.prototype.x86.opndRegSet = function (instr, idx, params)
 
     return [callConv.retReg];
 }
-RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
+    // Remove space for the spills from the stack
+    if (genInfo.stackMap.spillSize !== 0)
+        asm.add(genInfo.backend.spReg, genInfo.stackMap.spillSize);
+
+    // TODO: adapt this depending on calling convention
+
     asm.ret();
 }
 
@@ -349,7 +374,7 @@ LoadInstr.prototype.x86.destMustBeReg = function (instr)
 {
     return true;
 }
-LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
+LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // TODO
     asm.nop();

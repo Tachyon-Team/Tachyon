@@ -42,7 +42,7 @@
 
 /**
 @fileOverview
-Unit tests for the x86 backend.
+Unit tests for the assembler part of the x86 backend.
 
 @author
 Maxime Chevalier-Boisvert
@@ -51,12 +51,12 @@ Maxime Chevalier-Boisvert
 /**
 Test suite for x86 code generation
 */
-tests.x86 = tests.testSuite();
+tests.x86 = tests.x86 || tests.testSuite();
 
 /**
 Test x86 instruction encodings
 */
-tests.x86.encoding = function ()
+tests.x86.asmEncoding = function ()
 {
     // Test encodings for 32-bit and 64-bit
     function test(codeFunc, enc32, enc64)
@@ -800,7 +800,7 @@ tests.x86.encoding = function ()
 /**
 Test the execution of x86 code snippets
 */
-tests.x86.codegen = function ()
+tests.x86.asmExecution = function ()
 {
     // Check if we are running in 32-bit or 64-bit
     const x86_64 = PLATFORM_64BIT;
