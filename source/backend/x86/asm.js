@@ -3377,6 +3377,35 @@ x86.Assembler.prototype.fild = function(opnd, width)
 
 };
 
+x86.Assembler.prototype.fldcw = function(opnd)
+{
+    this.gen8(0xd9);
+    this.opndModRMSIB(5, opnd);
+
+    if (this.useListing)
+        {
+            this.genListing(x86.instrFormat('fldcw',
+                                            "",
+                                            opnd));
+        }
+    return this;
+}
+
+x86.Assembler.prototype.fstcw = function(opnd)
+{
+    this.gen8(0x9b);    // WAIT for pending exceptions
+    this.gen8(0xd9);    
+    this.opndModRMSIB(7, opnd);
+
+    if (this.useListing)
+        {
+            this.genListing(x86.instrFormat('fstcw',
+                                            "",
+                                            opnd));
+        }
+    return this;
+}
+
 // ------------------- Syntactic sugar for common constructions ---------------
 
 /**

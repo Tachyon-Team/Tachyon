@@ -1582,10 +1582,36 @@ function lsft(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('left shift of non-integer values');
+        //// TODO: implement general case in separate (non-inlined) function
+        //error('left shift of non-integer values');
+
+        return lsftGeneral(v1, v2);
     }
 }
+
+function lsftGeneral(v1, v2)
+{
+    "tachyon:static";
+
+    assert (
+        (boxIsInt(v1) || boxIsFloat(v1)) && (boxIsInt(v2) || boxIsFloat(v2)),
+        'left shift of non-integer and non-float values'
+    );
+         
+    if (boxIsFloat(v1))
+        v1 = boxInt(iir.ftoi(IRType.pint, v1));
+
+    if (boxIsFloat(v2))
+        v2 = boxInt(iir.ftoi(IRType.pint, v2));
+    
+    v1 = iir.icast(IRType.i32, unboxInt(v1));
+    v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+    var res = iir.lsft(v1, v2);
+    
+    return boxInt(iir.icast(IRType.pint, res));
+}
+
 
 /**
 Bitwise right shift primitive
@@ -1606,10 +1632,36 @@ function rsft(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('right shift of non-integer values');
+        //// TODO: implement general case in separate (non-inlined) function
+        //error('right shift of non-integer values');
+
+        return rsftGeneral(v1, v2);
     }
 }
+
+function rsftGeneral(v1, v2)
+{
+    "tachyon:static";
+    
+    assert (
+        (boxIsInt(v1) || boxIsFloat(v1)) && (boxIsInt(v2) || boxIsFloat(v2)),
+        'right shift of non-integer and non-float values'
+    );
+         
+    if (boxIsFloat(v1))
+        v1 = boxInt(iir.ftoi(IRType.pint, v1));
+
+    if (boxIsFloat(v2))
+        v2 = boxInt(iir.ftoi(IRType.pint, v2));
+
+    v1 = iir.icast(IRType.i32, unboxInt(v1));
+    v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+    var res = iir.rsft(v1, v2);
+    
+    return boxInt(iir.icast(IRType.pint, res));
+}
+
 
 /**
 Bitwise unsigned right shift primitive
@@ -1630,10 +1682,36 @@ function ursft(v1, v2)
     }
     else
     {
-        // TODO: implement general case in separate (non-inlined) function
-        error('unsigned right shift of non-integer values');
+        //// TODO: implement general case in separate (non-inlined) function
+        //error('unsigned right shift of non-integer values');
+
+        return ursftGeneral(v1, v2);
     }
 }
+
+function ursftGeneral(v1, v2)
+{
+    "tachyon:static";
+    
+    assert (
+        (boxIsInt(v1) || boxIsFloat(v1)) && (boxIsInt(v2) || boxIsFloat(v2)),
+        'unsigned right shift of non-integer and non-float values'
+    );
+         
+    if (boxIsFloat(v1))
+        v1 = boxInt(iir.ftoi(IRType.pint, v1));
+
+    if (boxIsFloat(v2))
+        v2 = boxInt(iir.ftoi(IRType.pint, v2));
+
+    v1 = iir.icast(IRType.i32, unboxInt(v1));
+    v2 = iir.icast(IRType.i32, unboxInt(v2));
+
+    var res = iir.ursft(v1, v2);
+    
+    return boxInt(iir.icast(IRType.pint, res));
+}
+
 
 /**
 Logical negation operator

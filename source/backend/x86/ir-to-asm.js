@@ -1737,10 +1737,12 @@ Convert a float to an integer
 FPToIInstr.prototype.genCode = function (tltor, opnds)
 {
     const width = tltor.params.target.ptrSizeBits;
+    const ptrSizeBytes = tltor.params.target.ptrSizeBytes;    
     const $ = x86.Assembler.prototype.immediateValue;
     const mem = x86.Assembler.prototype.memory;
     const dest = this.regAlloc.dest;
     const reg = x86.Assembler.prototype.register;
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;    
     const xSP = reg.rsp.subReg(width);
     const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
     const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
@@ -1754,11 +1756,21 @@ FPToIInstr.prototype.genCode = function (tltor, opnds)
     }
 
     tltor.asm.
+    push($(0)).
+    fstcw(mem(0, xSP)).
+    mov(mem(0, xSP), scratchReg).
+    or($(3072), scratchReg).        // mod CW to truncate
+    push($(0)).
+    mov(scratchReg, mem(0, xSP)).  
+    fldcw(mem(0, xSP)).
+    add($(ptrSizeBytes), xSP).
     push($(42)).                                                  // Reserve space on stack for value
     fldMem(mem(valueOffset - tagValue, src), 64).                   // Move fp value to x87 stack
     gen8(0xDB).opndModRMSIB(3, mem(0,xSP)).genListing("fistp(0)").// Convert to int and store on top of stack
          // TODO: replace by proper fistp instr
-    pop(this.regAlloc.dest);
+    pop(this.regAlloc.dest).
+    fldcw(mem(0, xSP)).        
+    add($(ptrSizeBytes), xSP);
 };
 
 AddOvfInstr.prototype.genCode = function (tltor, opnds)
@@ -2840,10 +2852,6 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
         pop(context);
     }
 };
-
-//IToFPInstr
-
-//FPToIInstr
 
 /**
 Allocation information for store instruction
