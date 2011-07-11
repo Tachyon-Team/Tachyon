@@ -35,6 +35,9 @@ function compileStr(str)
 
 try 
 {
+    // TODO: ir-to-asm unit tests, using C call conv?
+    // Start simple, IIR only
+
     // TODO: 
     // [X] test iir arith ops
     // [ ] test iir arith ops w/ spills
@@ -69,16 +72,22 @@ try
         "tachyon:arg v3 pint";          \
         "tachyon:ret pint";             \
                                         \
-        var x0 = iir.add(v1, pint(1));  \
-        var x1 = iir.add(v1, pint(2));  \
-        var x2 = iir.add(v1, pint(3));  \
-        var x3 = iir.add(v1, pint(4));  \
+        var x1 = iir.add(v1, pint(1));  \
+        var x2 = iir.add(v1, pint(2));  \
+        var x3 = iir.add(v1, pint(3));  \
+        var x4 = iir.add(v1, pint(4));  \
+        var x5 = iir.add(v1, pint(5));  \
+        var x6 = iir.add(v1, pint(6));  \
+        var x7 = iir.add(v1, pint(7));  \
                                         \
-        var y = iir.mul(x0, x1);        \
-        var y = iir.mul(y, x2);         \
+        var y = iir.mul(x1, x2);        \
         var y = iir.mul(y, x3);         \
+        var y = iir.mul(y, x4);         \
+        var y = iir.mul(y, x5);         \
+        var y = iir.mul(y, x6);         \
+        var y = iir.mul(y, x7);         \
                                         \
-        var z = iir.sub(y, pint(2));    \
+        var z = iir.sub(y, pint(1));    \
                                         \
         return z;                       \
     }                                   \

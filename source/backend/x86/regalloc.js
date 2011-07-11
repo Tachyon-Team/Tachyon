@@ -1081,6 +1081,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     if (valAlloc instanceof x86.Register && 
                         numRegOpnds < MAX_REG_OPNDS)
                     {
+                        print('opnd is reg: ' + valAlloc);
+
                         // If this is a valid register for this operand
                         if (opndRegSet === undefined ||
                             arraySetHas(opndRegSet, valAlloc) === true)

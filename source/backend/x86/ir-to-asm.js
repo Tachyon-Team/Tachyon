@@ -119,7 +119,7 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 
     print('');
     print('assembly:')
-    print(asm);
+    print(asm.toString(true));
 
     // Return the assembler object
     return asm;
@@ -138,9 +138,18 @@ x86.insertMove = function (asm, move)
     // If the source is an x86 operand
     if (move.src instanceof x86.Operand)
     {
+        assert (
+            !(move.src instanceof x86.MemLoc) ||
+            !(move.dst instanceof x86.MemLoc),
+            'memory to memory move'
+        );
+
         asm.mov(move.dst, move.src);
         return;
     }
+
+
+
 
 
 

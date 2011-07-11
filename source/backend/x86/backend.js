@@ -104,12 +104,12 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Assemble the code into an executable code block
     var codeBlock = asm.assemble();
 
-
-
+    //
     // TODO: store the code block on the function object
+    //
 
-
-
+    // Return the code block
+    return codeBlock;
 }
 
 /**
@@ -124,7 +124,7 @@ x86.Backend.prototype.linkCode = function (irFunction)
     );
 
     //
-    // TODO
+    // TODO: linker.js
     //
 
 
