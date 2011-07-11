@@ -223,9 +223,9 @@ x86.StackFrameMap.prototype.compOffsets = function (x86_64)
         if (i === this.retAddrLoc)
             spillSize = curOffset;
 
-        curOffset += x86_64? 8:4;
-
         this.locOffsets[i] = curOffset;
+
+        curOffset += x86_64? 8:4;
     }
 
     assert (
@@ -733,7 +733,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         }
 
         // Chosen register
-        var chosenReg;
+        var chosenReg = undefined;
 
         // If there are free registers, pick one
         if (freeRegs.length > 0)
@@ -877,7 +877,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
     // Get the number of function arguments
     // TODO: account for hidden arguments
-    var numArgs = irFunc.argVars.length + 2;
+    var numArgs = irFunc.argVars.length + (irFunc.cProxy? 0:2);
 
     // Map the arguments on the stack
     if (callConv.argsOrder === 'LTR')
@@ -1176,7 +1176,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         // Move the value into the operand
                         addMove(
                             preMoves,
-                            valAlloc? valAlloc:use,
+                            (valAlloc !== undefined)? valAlloc:use,
                             opnd
                         );
                     }

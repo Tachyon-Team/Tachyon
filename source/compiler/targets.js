@@ -96,3 +96,4 @@ function Target(cfgObj)
     */
     this.ptrSizeBytes = this.ptrSizeBits >> 3;    
 }
+

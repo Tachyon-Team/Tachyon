@@ -60,6 +60,11 @@ function CompParams(cfgObj)
     );
 
     assert (
+        cfgObj.backend instanceof Backend,
+        'invalid backend object'
+    );
+
+    assert (
         cfgObj.tachyonSrc === true || cfgObj.tachyonSrc === false,
         'invalid tachyon source flag'
     );
@@ -90,10 +95,17 @@ function CompParams(cfgObj)
     );
 
     /**
+    // TODO: eliminate target object, use backend object instead
     Target architecture
     @field
     */
     this.target = cfgObj.target;
+
+    /**
+    Backend object used to generate machine code
+    @field
+    */
+    this.backend = cfgObj.backend;
 
     /**
     Flag indicating that we are compiling Tachyon source

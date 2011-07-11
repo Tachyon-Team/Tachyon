@@ -65,6 +65,16 @@ x86.Backend = function (x86_64)
     this.x86_64 = x86_64;
 
     /**
+    General-purpose register size in bits
+    */
+    this.regSizeBits = x86_64? 64:32;
+
+    /**
+    General-purpose register size in bytes
+    */
+    this.regSizeBytes = this.regSizeBits / 8;
+
+    /**
     Stack pointer register
     */
     this.spReg = x86_64? x86.spReg64:x86.spReg32;
@@ -112,17 +122,20 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     var allocInfo = x86.allocRegs(irFunc, blockOrder, this, params);
 
     // Produce assembler for the function
-    var asm = x86.irToASM(irFunc, blockOrder, allocInfo, this, params);
+    var assembler = x86.irToASM(irFunc, blockOrder, allocInfo, this, params);
 
     // Assemble the code into an executable code block
-    var codeBlock = asm.assemble();
+    var codeBlock = assembler.assemble();
 
     //
     // TODO: store the code block on the function object
     //
 
-    // Return the code block
-    return codeBlock;
+    // Return the assembler and code block
+    return {
+        assembler: assembler,
+        codeBlock: codeBlock
+    };
 }
 
 /**

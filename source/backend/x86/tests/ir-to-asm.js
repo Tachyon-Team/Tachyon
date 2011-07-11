@@ -58,37 +58,38 @@ Test the IR to ASM translation
 */
 tests.x86.irToAsm = function ()
 {
+    // Get the host compilation parameters
+    var params = config.hostParams;
+
     // Get a reference to the backend object
     var backend = config.hostParams.backend;
 
-    // TODO
-    //if (!(backend instanceof x86.Backend))
-
-    // Check if we are running in 32-bit or 64-bit
-    const x86_64 = PLATFORM_64BIT;
+    // If we are not running under the x86 backend, stop
+    if (!(backend instanceof x86.Backend))
+        return;
 
     // Test the execution of a piece of code
-    function test(genFunc, retVal, argVals)
+    function test(str, retVal, argVals)
     {
         if (argVals === undefined)
             argVals = [];
 
-        // Create an assembler to generate code into
-        var assembler = new x86.Assembler(x86_64);
+        var ast = parse_src_str(str, params);
+        var ir = unitToIR(ast, params);
+        lowerIRFunc(ir, params);
 
-        // Generate the code
-        genFunc(assembler);
+        irFunc = ir.getChild('test');
 
-        // Assemble to a code block
-        var codeBlock = assembler.assemble();
+        // Generate the machine code for the function
+        var code = backend.genCode(irFunc, params);
 
-        var blockAddr = codeBlock.getAddress();
+        var blockAddr = code.codeBlock.getAddress();
 
         var argTypes = [];
         for (var i = 0; i < argVals.length; ++i)
             argTypes.push('int');
 
-        var ctxPtr = x86_64? [0,0,0,0,0,0,0,0]:[0,0,0,0];
+        var ctxPtr = backend.x86_64? [0,0,0,0,0,0,0,0]:[0,0,0,0];
 
         var ret = callTachyonFFI(
             argTypes,
@@ -101,9 +102,13 @@ tests.x86.irToAsm = function ()
         if (ret !== retVal)
         {
             error(
-                'invalid return value for:\n'+
+                'invalid return value for:\n' +
                 '\n' +
-                assembler.toString(true) + '\n' +
+                irFunc + '\n' +
+                '\n' +
+                'with assembly:\n' +
+                '\n' +
+                code.assembler.toString(true) + '\n' +
                 '\n' +
                 'got:\n' +
                 ret + '\n' +
@@ -113,142 +118,83 @@ tests.x86.irToAsm = function ()
         }
     }
 
+    // Simple IIR add tests, no spills needed
+    test('                                  \
+        function test(ctx, v1)              \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            return iir.add(v1, pint(7));    \
+        }                                   \
+        ',
+        10,
+        [3]
+    );
+    test('                                  \
+        function test(ctx, v1)              \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            return iir.add(pint(3), v1);    \
+        }                                   \
+        ',
+        6,
+        [3]
+    );
+
+    /* TODO
+    // Multiple simple IIR operations
+    compileStr('                        \
+    function add (v1, v2)               \
+    {                                   \
+        "tachyon:arg v1 pint";          \
+        "tachyon:arg v2 pint";          \
+        "tachyon:ret pint";             \
+                                        \
+        var x0 = iir.add(v1, v2);       \
+        var x1 = iir.mul(x0, pint(3));  \
+        var x2 = iir.sub(x1, pint(2));  \
+                                        \
+        return x2;                      \
+    }                                   \
+    ');
+    */
+
     /*
-    // Loop until 10
-    test(
-        function (a) { with (a) {
-            mov(eax, 0);
-            var LOOP = label('LOOP');
-            add(eax, 1);
-            cmp(eax, 10);
-            jb(LOOP);
-            ret();
-        }},
-        10
-    );
-
-    // Jump with a large offset (> 8 bits)
-    test(
-        function (a) { with (a) {
-            mov(eax, 0);
-            var LOOP = label('LOOP');
-            add(eax, 1);
-            cmp(eax, 15);
-            for (var i = 0; i < 400; ++i)
-                nop();
-            jb(LOOP);
-            ret();
-        }},
-        15
-    );
-
-    // Arithmetic
-    test(
-        function (a) { with (a) {
-            push(regb);
-            push(regc);
-            push(regd);
-
-            mov(rega, 4);       // a = 4
-            mov(regb, 5);       // b = 5
-            mov(regc, 3);       // c = 3
-            add(rega, regb);    // a = 9
-            sub(regb, regc);    // b = 2
-            mul(regb);          // a = 18, d = 0
-            mov(regd, -2);      // d = -2
-            imul(regd, rega);   // d = -36
-            mov(rega, regd);    // a = -36
-
-            pop(regd);
-            pop(regc);
-            pop(regb);
-
-            ret();
-        }},
-        -36
-    );
-
-    // Stack manipulation, sign extension
-    test(
-        function (a) { with (a) {
-            sub(regsp, 1);
-            var sloc = mem(8, regsp, 0);
-            mov(sloc, -3);
-            movsx(rega, sloc);
-            add(regsp, 1);
-            ret();
-        }},
-        -3
-    );
-    
-    // fib(20), function calls
-    test(
-        function (a) { with (a) {
-            var CALL = new x86.Label('CALL');
-            var COMP = new x86.Label('COMP');
-            var FIB = new x86.Label('FIB');
-
-            push(regb);
-            mov(rega, 20);
-            call(FIB);
-            pop(regb);
-            ret();
-
-            // FIB
-            addInstr(FIB);
-            cmp(rega, 2);
-            jge(COMP);
-            ret();
-
-            // COMP
-            addInstr(COMP);
-            push(rega);         // store n
-            sub(eax, 1);        // eax = n-1
-            call(FIB);          // fib(n-1)
-            mov(regb, rega);    // eax = fib(n-1)
-            pop(rega);          // eax = n
-            push(regb);         // store fib(n-1)
-            sub(rega, 2);       // eax = n-2
-            call(FIB);          // fib(n-2)
-            pop(regb);          // ebx = fib(n-1)
-            add(rega, regb);    // eax = fib(n-2) + fib(n-1)
-            ret();
-        }},
-        6765
-    );
-
-    // SSE2 floating-point computation
-    test(
-        function (a) { with (a) {
-            mov(rega, 2);
-            cvtsi2sd(xmm0, rega);
-            mov(rega, 7);
-            cvtsi2sd(xmm1, rega);
-            addsd(xmm0, xmm1);
-            cvtsd2si(rega, xmm0);
-            ret();
-        }},
-        9
-    );
-
-    // Floating-point comparison
-    test(
-        function (a) { with (a) {
-            mov(rega, 10);
-            cvtsi2sd(xmm2, rega);       // xmm2 = 10
-            mov(rega, 1);
-            cvtsi2sd(xmm1, rega);       // xmm1 = 1
-            mov(rega, 0);
-            cvtsi2sd(xmm0, rega);       // xmm0 = 0
-            var LOOP = label('LOOP');
-            addsd(xmm0, xmm1);
-            ucomisd(xmm0, xmm2);
-            jbe(LOOP);
-            cvtsd2si(rega, xmm0);
-            ret();
-        }},
-        11
-    );
+    compileStr('                        \
+    function add (v1, v2, v3)           \
+    {                                   \
+        "tachyon:arg v1 pint";          \
+        "tachyon:arg v2 pint";          \
+        "tachyon:arg v3 pint";          \
+        "tachyon:ret pint";             \
+                                        \
+        var x1 = iir.add(v1, pint(1));  \
+        var x2 = iir.add(v1, pint(2));  \
+        var x3 = iir.add(v1, pint(3));  \
+        var x4 = iir.add(v1, pint(4));  \
+        var x5 = iir.add(v1, pint(5));  \
+        var x6 = iir.add(v1, pint(6));  \
+        var x7 = iir.add(v1, pint(7));  \
+                                        \
+        var y = iir.mul(x1, x2);        \
+        var y = iir.mul(y, x3);         \
+        var y = iir.mul(y, x4);         \
+        var y = iir.mul(y, x5);         \
+        var y = iir.mul(y, x6);         \
+        var y = iir.mul(y, x7);         \
+                                        \
+        var z = iir.sub(y, pint(1));    \
+                                        \
+        return z;                       \
+    }                                   \
+    ');
     */
 }
 

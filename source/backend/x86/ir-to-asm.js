@@ -119,7 +119,7 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 
             // Insert the pre-instruction moves
             for (var k = 0; k < instrAlloc.preMoves.length; ++k)
-                x86.insertMove(asm, instrAlloc.preMoves[k]);
+                x86.insertMove(asm, instrAlloc.preMoves[k], params);
 
             // Generate code for the instruction
             instr.x86.genCode(
@@ -144,7 +144,7 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 /**
 Implement an abstract move operation
 */
-x86.insertMove = function (asm, move)
+x86.insertMove = function (asm, move, params)
 {
     assert (
         move.dst instanceof x86.Operand,
@@ -164,6 +164,18 @@ x86.insertMove = function (asm, move)
         return;
     }
 
+    // If the source is a constant
+    if (move.src instanceof ConstValue)
+    {
+        var immSize = x86.getImmSize(move.src, params);
+
+        // If the constant can be encoded as an immediate
+        if (immSize !== undefined && immSize <= params.backend.regSizeBits)
+        {
+            asm.mov(move.dst, move.src.getImmValue(params));
+            return;
+        }
+    }
 
 
 

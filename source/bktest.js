@@ -4,21 +4,10 @@ initConfig(PLATFORM_64BIT, log.level('all'));
 // Perform a minimal Tachyon compilation
 bootstrap(config.hostParams, false, false);
 
-// Create a backend interface instance
-var backend = new x86.Backend(PLATFORM_64BIT);
-
-assert (
-    config.hostParams.backend === undefined,
-    'backend object already defined on params'
-);
-
-config.hostParams.backend = backend;
-
 // Execute the backend unit tests
 tests.x86.asmEncoding();
 tests.x86.asmExecution();
 tests.x86.irToAsm();
-
 
 function compileStr(str)
 {
@@ -32,7 +21,7 @@ function compileStr(str)
 
     print(ir);
 
-    backend.genCode(ir, params);
+    params.backend.genCode(ir, params);
 }
 
 try 
