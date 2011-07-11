@@ -241,7 +241,7 @@ MulInstr.prototype.x86.destIsOpnd0 = function (instr, params)
 MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, asm, params)
 {
     // If an unsigned integer result is expected
-    if (instr.type.isUnsigned())
+    if (instr.type.isUnsigned() === true)
     {
         assert (
             opnds[0] === x86.regs.rax || opnds[0] === x86.regs.eax,
@@ -259,7 +259,7 @@ MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, labels, 
         else if (opnds[1] instanceof x86.Immediate)
             asm.imul(dest, opnds[0], opnds[1]);
         else
-            asm.imul(opnds[0], opnds[0]);
+            asm.imul(opnds[0], opnds[1]);
     }
 };
 

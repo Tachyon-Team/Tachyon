@@ -937,10 +937,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 }
                 else
                 {
-                    // Get the stack location for the argument
+                    // Map the argument to its stack location
                     var stackLoc = stackMap.getStackLoc(instr);
-
-                    // Map the argument to the stack location
                     allocMap.allocStack(instr, stackLoc);
                 }
             }
@@ -1072,177 +1070,120 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         );
                     }
 
+                    // Operand assigned to this value
+                    var opnd;
 
-
-
-
-                    /*
-                    TODO:
-                    If dest is opnd 0... Alloc a new register for opnd0/dest
-                    Move current opnd value into the reg.
-                    Done...
-
-                    PROBLEM: If the operand is not immediate, is not live after
-                    and already has a loc, don't need to alloc a new reg, use
-                    existing loc.
-                    */
-
-                    /*
-                    if (opndIdx === 0 && destIsOpnd0 === true)
-                    {
-                        var opnd;
-
-                        print(instr);
-
-                        // TODO
-                        // If the value is still live after this instruction
-                        //if (liveOut.hasItem(use) === true)
-                        //{
-                            // Allocate a new register for the destination
-                            var reg = allocReg(
-                                allocMap,
-                                preMoves,
-                                liveOut,
-                                instr,
-                                opndRegSet,
-                                excludeSet
-                            );
-                            ++numRegOpnds;
-                            opnds.push(reg);
-                        //}
-
-                        //print('excluding: ' + reg);
-
-                        // Add the register to the exclude set
-                        arraySetAdd(excludeSet, reg);
-
-                        // TODO: AllocMap.getValLoc method
-                        var valReg = allocMap.getValReg(use);
-                        var valStack = allocMap.getValStack(use);
-                        var val;
-                        if (valReg !== undefined)
-                            val = valReg;
-                        else if (valStack !== undefined)
-                            val = valStack;
-                        else
-                            val = use;
-
-                        // Move the operand into this register
-                        addMove(preMoves, val, reg);
-
-                        continue;
-                    }
-                    */
-
-
-
-
-
-                    // Get the register or stack allocation allocated to
-                    // this value, if any
+                    // Get the register or stack allocation
+                    // allocated to this value, if any
                     var valAlloc = allocMap.getAlloc(use);
 
+                    // If this value is already in a register
+                    if (valAlloc instanceof x86.Register && 
+                        numRegOpnds < MAX_REG_OPNDS)
+                    {
+                        // If this is a valid register for this operand
+                        if (opndRegSet === undefined ||
+                            arraySetHas(opndRegSet, valAlloc) === true)
+                        {
+                            // Use the register operand
+                            opnd = valAlloc;
+                        }
+                    }
 
-
+                    // FIXME: make this more optimal
+                    // If this value can be in memory and is already stack allocated
+                    else if (typeof valAlloc === 'number' && 
+                             opndMustBeReg === false)
+                    {
+                        // Use the stack operand
+                        opnd = valAlloc;
+                    }
 
                     // If this operand can be an immediate and immediate 
                     // operands are still available
-                    if (opndCanBeImm === true && numImmOpnds < maxImmOpnds)
+                    else if (opndCanBeImm === true &&
+                             numImmOpnds < maxImmOpnds &&
+                             (destIsOpnd0 === false || opndIdx !== 0))
                     {
-                        print('imm: ' + use + ' (' + immSize + ')');
-
                         // Use the immediate value for this operand
-                        opnds.push(new x86.Immediate(use.getImmValue(params)));
-                        ++numImmOpnds;
-                        continue;
+                        opnd = new x86.Immediate(use.getImmValue(params));
                     }
 
-                    // Get the register for this, if any
-                    var valReg = allocMap.getValReg(use);
+                    // If the dest is this operand and the use is 
+                    // still live after this instruction
+                    var destNeedsReg = destIsOpnd0 && opndIdx === 0 && liveOut.hasItem(use);
 
-                    // If this operand is already in a valid register
-                    if (valReg !== undefined && 
-                        (numRegOpnds < MAX_REG_OPNDS) &&
-                        (!opndRegSet || arraySetHas(opndRegSet, valReg)))
+                    // Value for which this operand is being allocated
+                    var mapVal = (destIsOpnd0 && opndIdx === 0)? instr:use;
+
+                    //print('dest needs reg: ' + destNeedsReg);
+
+                    // If no operand was assigned or the dest needs
+                    // its own register
+                    if (opnd === undefined || destNeedsReg === true)
                     {
-                        // Use the register operand
-                        opnds.push(valReg);
-                        ++numRegOpnds;
-                        continue;
-                    }
+                        // If registers are still available
+                        if (numRegOpnds < MAX_REG_OPNDS)
+                        {
+                            // Allocate a register for the operand
+                            opnd = allocReg(
+                                allocMap,
+                                preMoves,
+                                liveOut,
+                                mapVal,
+                                opndRegSet,
+                                excludeSet
+                            );
+                        }
+                        else
+                        {
+                            // Map the operand to its stack location
+                            opnd = stackMap.getStackLoc(mapVal);
+                        }
 
-                    // Get the stack location for this value, if any
-                    var valStack = allocMap.getValStack(use);
-
-                    // FIXME: make this more optimal
-                    // If this operand can be in memory and is already stack allocated
-                    if (opndMustBeReg === false && valStack !== undefined)
-                    {
-                        // Use the stack operand
-                        opnds.push(valStack);
-                        ++numMemOpnds;
-                        continue;
-                    }
-
-
-
-
-
-
-                    // Get the value to use for this operand
-                    var val;
-                    if (valReg !== undefined)
-                        val = valReg;
-                    else if (valStack !== undefined)
-                        val = valStack;
-                    else
-                        val = use;                         
-
-                    // If registers are still available
-                    if (numRegOpnds < MAX_REG_OPNDS)
-                    {
-                        // Allocate a register for the operand
-                        var reg = allocReg(
-                            allocMap,
+                        // Move the value into the operand
+                        addMove(
                             preMoves,
-                            liveOut,
-                            use,
-                            opndRegSet,
-                            excludeSet
+                            valAlloc? valAlloc:use,
+                            opnd
                         );
-                        ++numRegOpnds;
-                        opnds.push(reg);
+                    }
 
-                        //print('excluding: ' + reg);
+                    // If the operand is a register
+                    if (opnd instanceof x86.Register)
+                    {
+                        // Map the value to the register
+                        allocMap.allocReg(mapVal, opnd);
 
                         // Add the register to the exclude set
-                        arraySetAdd(excludeSet, reg);
+                        arraySetAdd(excludeSet, opnd);
 
-                        // Move the operand into this register
-                        addMove(preMoves, val, reg);
+                        ++numRegOpnds;
                     }
+
+                    // If the operand is a stack location
+                    else if (typeof opnd === 'number')
+                    {
+                        // Map the value to the stack location
+                        allocMap.allocStack(mapVal, opnd);
+
+                        ++numMemOpnds;
+                    }
+
+                    // If the operand is an immediate
+                    else if (opnd instanceof x86.Immediate)
+                    {
+                        ++numImmOpnds;
+                    }
+
+                    // If the operand is not valid
                     else
                     {
-                        print('storing opnd on stack');
-
-                        // Get the stack location for the operand
-                        var stackLoc = stackMap.getStackLoc(use);
-
-                        // Map the operand to the stack location
-                        allocMap.allocStack(use, stackLoc);
-
-                        // Move the operand's value to the stack location
-                        addMove(preMoves, val, stackLoc);
+                        error('invalid opnd: ' + opnd);
                     }
 
-
-
-
-
-
-
-
-
+                    // Add the operand to the list
+                    opnds.push(opnd);
                 }
 
                 // Get the number of scratch registers for this instruction
@@ -1330,87 +1271,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 {
                     dest = opnds[0];
                 }
-
-                /*
-                // If the destination must be operand 0
-                else if (destIsOpnd0 === true)
-                {
-                    // FIXME: should avoid spilling opnd0 here, do it if opnd
-                    // is live during opnd reg allocation
-
-                    // If the operand is mapped to a register
-                    if (opnds[0] instanceof x86.Register)
-                    {
-                        print('dest/opnd mapped to reg');
-
-                        // Use operand 0 for the destination
-                        dest = opnds[0];
-
-                        // Map the register to this instruction
-                        allocMap.allocReg(instr, dest);
-
-                        // Get the use corresponding to this operand
-                        var use = instr.uses[0];
-
-                        //print('use opnd: ' + use.getValName());
-
-                        // If the temporary is still live after this instruction
-                        if (liveOut.hasItem(use) === true)
-                        {
-                            // Get the stack location for the input operand
-                            var stackLoc = stackMap.getStackLoc(use);
-
-                            // Map the value to the stack location
-                            // FIXME
-                            //allocMap.remAlloc(use);
-                            allocMap.allocStack(use, stackLoc);
-
-                            print('spilling dest opnd (' + opnds[0] + ')');
-
-                            // Spill the operand on the stack
-                            addMove(preMoves, dest, stackLoc);
-                        }
-                    }
-                    else
-                    {
-                        print('mapping mem opnd to dest');
-
-                        // TODO
-                        // TODO
-                        // FIXME: memory-memory moves happen here
-                        //opnd0 is mapped to mem.
-                        //
-                        //What is the solution? If we had mapped opnd0/dest to a
-                        //newly allocated register and moved its existing value
-                        //into this register, there would be no problem.
-
-                        // Get the stack location for the instruction
-                        var stackLoc = stackMap.getStackLoc(instr);
-
-                        // Map the instruction to the stack location
-                        allocMap.allocStack(instr, stackLoc);
-
-                        // Move the operand's value to the stack location
-                        addMove(preMoves, opnds[0], stackLoc);
-
-                        // Map operand 0 and the destination to the stack location
-                        opnds[0] = stackLoc
-                        dest = stackLoc;
-                    }
-                }
-                else
-                {
-                    // Allocate a register for the destination
-                    dest = allocReg(
-                        allocMap,
-                        preMoves,
-                        liveOut,
-                        instr,
-                        destRegSet,
-                        excludeSet
-                    );
-                }
-                */
 
                 // Store the allocation info in the instruction map
                 instrMap[instr.instrId] = {
