@@ -169,12 +169,7 @@ tests.x86.irToAsm = function ()
         [2,3]
     );
 
-
-
-
-
-    /*
-    // Many IIR operations, spills needed in 32-bit
+    // Many IIR operations, several registers needed
     test('                                  \
         function test(ctx, v1, v2, v3)      \
         {                                   \
@@ -208,8 +203,11 @@ tests.x86.irToAsm = function ()
         5039,
         [0,1,2]
     );
-    */
 
+
+
+
+    // TODO: test with spills...
 
 
 
@@ -218,7 +216,7 @@ tests.x86.irToAsm = function ()
 
 
 
-
+    // TODO: loop
 
 
 

@@ -104,6 +104,11 @@ function CallConv(params)
     this.fpRetReg = params.fpRetReg;
 
     /**
+    @field Callee-save registers
+    */
+    this.calleeSave = params.calleeSave;
+
+    /**
     @field Caller or callee cleanup. Must be 'CALLER' or 'CALLEE'.
     */
     this.cleanup = params.cleanup;
@@ -159,6 +164,11 @@ function CallConv(params)
     );
 
     assert (
+        this.calleeSave instanceof Array,
+        'invalid callee-save register list'
+    );
+
+    assert (
         this.cleanup === 'CALLER' || this.cleanup === 'CALLEE',
         'invalid caller/callee cleanup argument'
     );
@@ -178,6 +188,10 @@ CallConv.cdecl = new CallConv({
     argCountReg : null,
     retReg      : x86.regs.eax,
     fpRetReg    : x86.regs.st0,
+    calleeSave  : [x86.regs.ebx,
+                   x86.regs.ebp,
+                   x86.regs.esi, 
+                   x86.regs.edi],
     cleanup     : 'CALLER'
 });
 
@@ -207,6 +221,12 @@ CallConv.amd64 = new CallConv({
     argCountReg : null,
     retReg      : x86.regs.rax,
     fpRetReg    : x86.regs.xmm0,
+    calleeSave  : [x86.regs.rbx, 
+                   x86.regs.rbp, 
+                   x86.regs.r10,
+                   x86.regs.r13,
+                   x86.regs.r14,
+                   x86.regs.r15],
     cleanup     : 'CALLER'
 });
 
@@ -230,6 +250,7 @@ CallConv.tachyon32 = new CallConv({
     argCountReg : x86.regs.ecx,
     retReg      : x86.regs.eax,
     fpRetReg    : x86.regs.xmm0,
+    calleeSave  : [],
     cleanup     : 'CALLEE'
 });
 
@@ -259,6 +280,7 @@ CallConv.tachyon64 = new CallConv({
     argCountReg : x86.regs.rcx,
     retReg      : x86.regs.rax,
     fpRetReg    : x86.regs.xmm0,
+    calleeSave  : [],
     cleanup     : 'CALLEE'
 });
 

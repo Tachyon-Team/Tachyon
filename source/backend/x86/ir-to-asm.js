@@ -59,45 +59,27 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     // Get a reference to the stack frame map
     var stackMap = allocInfo.stackMap;
 
-
-
+    // Get the calling convention
+    var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
 
     // Add space for the spills on the stack
     if (stackMap.spillSize !== 0)
         asm.sub(backend.spReg, stackMap.spillSize);
 
+    // Save the callee-save registers, if any
+    for (var i = 0; i < callConv.calleeSave.length; ++i)
+    {
+        var reg = callConv.calleeSave[i];
+        var stackLoc = stackMap.getStackLoc(reg);
+        var offset = stackMap.getLocOffset(stackLoc);
+        asm.mov(asm.mem(backend.regSizeBits, backend.spReg, offset), reg);
+    }
 
-
-    /*
-    TODO: C callee save regs!
-    do for return as well
-
-    PROBLEM:
-    need to map these in the stack frame... Add invisible reserved slots?
-    Just call them save slots
-
-    ONLY need to save the callee save registers that we may write into...
-    Can alloc slots for them lazily...
-
-    For cdecl, callee save regs are...
-    ebp, ebx, esi, edi
-
-    For amd64...
-    rbx, rbp, r10, r13, r14, r15
-    */
-
-
-
-
-
-
-
-
-
-
+    //
     // TODO
     // Callee pops stack frame & args... Ideally want stack frame
     // normalization stub.
+    //
 
 
 
@@ -112,8 +94,11 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
 
 
 
+
+
     // Code generation info object
     var genInfo = {
+        callConv: callConv,
         labels: [],
         stackMap: stackMap,
         backend: backend,
@@ -392,9 +377,23 @@ RetInstr.prototype.x86.opndRegSet = function (instr, idx, params)
 }
 RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
+    var backend = genInfo.backend;
+    var callConv = genInfo.callConv;
+    var stackMap = genInfo.stackMap;
+    var spReg = genInfo.backend.spReg;
+
+    // Restore the callee-save registers, if any
+    for (var i = 0; i < callConv.calleeSave.length; ++i)
+    {
+        var reg = callConv.calleeSave[i];
+        var stackLoc = stackMap.getStackLoc(reg);
+        var offset = stackMap.getLocOffset(stackLoc);
+        asm.mov(reg, asm.mem(backend.regSizeBits, spReg, offset));
+    }
+
     // Remove space for the spills from the stack
-    if (genInfo.stackMap.spillSize !== 0)
-        asm.add(genInfo.backend.spReg, genInfo.stackMap.spillSize);
+    if (stackMap.spillSize !== 0)
+        asm.add(spReg, stackMap.spillSize);
 
     // TODO: adapt this depending on calling convention
 

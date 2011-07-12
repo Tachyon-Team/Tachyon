@@ -166,7 +166,7 @@ x86.StackFrameMap = function ()
     /**
     @field Map of arguments to stack location indices
     */
-    this.argStackMap = [];
+    this.argMap = [];
 
     /**
     @field Location of the return address
@@ -174,9 +174,14 @@ x86.StackFrameMap = function ()
     this.retAddrLoc = undefined;
 
     /**
+    @field Map of callee-save registers to stack indices
+    */
+    this.saveRegMap = {};
+
+    /**
     @field Map of temporaries to stack location indices
     */
-    this.valStackMap = [];
+    this.valMap = [];
 
     /**
     @field Offsets for stack locations
@@ -242,7 +247,7 @@ Allocate a stack location for an argument
 x86.StackFrameMap.prototype.allocArg = function (argIdx)
 {
     assert (
-        this.argStackMap[argIdx] === undefined,
+        this.argMap[argIdx] === undefined,
         'argument already mapped on stack'
     );
 
@@ -250,7 +255,7 @@ x86.StackFrameMap.prototype.allocArg = function (argIdx)
 
     this.locList.push(['arg' + argIdx]);
 
-    this.argStackMap[argIdx] = locIdx;
+    this.argMap[argIdx] = locIdx;
 }
 
 /**
@@ -271,34 +276,61 @@ x86.StackFrameMap.prototype.allocRetAddr = function ()
 }
 
 /**
+Allocate a stack location for a callee-save register
+*/
+x86.StackFrameMap.prototype.allocSaveReg = function (reg)
+{
+    assert (
+        reg instanceof x86.Register,
+        'invalid register'
+    );
+
+    var locIdx = this.locList.length;
+
+    this.locList.push([reg.name]);
+
+    this.saveRegMap[reg.name] = locIdx;
+}
+
+/**
 Get a stack location for a given value
 */
 x86.StackFrameMap.prototype.getStackLoc = function (value)
 {
     assert (
-        value instanceof IRValue,
+        value instanceof IRValue || value instanceof x86.Register,
         'invalid value'
     );
+
+    if (value instanceof x86.Register)
+    {
+        assert (
+            this.saveRegMap[value.name] !== undefined,
+            'no stack loc for callee-save register: ' + value
+        );
+
+        return this.saveRegMap[value.name];
+    }
 
     if (value instanceof ArgValInstr)
     {
         var argIdx = value.argIndex;
 
         // If a stack location is pre-mapped for this argument
-        if (this.argStackMap[argIdx] !== undefined)
-            return this.argStackMap[argIdx];
+        if (this.argMap[argIdx] !== undefined)
+            return this.argMap[argIdx];
     }
 
-    if (this.valStackMap[value.instrId] !== undefined)
+    if (this.valMap[value.instrId] !== undefined)
     {
-        return this.valStackMap[value.instrId];
+        return this.valMap[value.instrId];
     }
 
     var locIdx = this.locList.length;
 
     this.locList.push([value]);
 
-    this.valStackMap[value.instrId] = locIdx;
+    this.valMap[value.instrId] = locIdx;
 
     return locIdx
 }
@@ -895,6 +927,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
     // Map the return address on the stack
     stackMap.allocRetAddr();
+
+    // Map the callee-save registers on the stack
+    for (var i = 0; i < callConv.calleeSave.length; ++i)
+        stackMap.allocSaveReg(callConv.calleeSave[i]);
 
     // Map of instruction ids to instruction operands and pre-instruction moves
     var instrMap = [];
