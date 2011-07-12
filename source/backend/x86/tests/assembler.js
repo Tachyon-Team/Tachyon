@@ -190,6 +190,16 @@ tests.x86.asmEncoding = function ()
         false, 
         '0110'
     );
+    test(
+        function (a) { a.add(a.eax, a.mem(32, a.esp, 8)); }, 
+        '03442408',
+        '6703442408'
+    );
+    test(
+        function (a) { a.add(a.mem(32, a.esp, 8), 7); }, 
+        '8344240807',
+        '678344240807'
+    );
 
     // addsd
     test(
@@ -302,6 +312,11 @@ tests.x86.asmEncoding = function ()
         function (a) { a.imul(a.r14, a.r9); }, 
         false, 
         '4D0FAFF1'
+    );
+    test(
+        function (a) { a.imul(a.eax, a.mem(32, a.esp, 8)); },
+        '0FAF442408',
+        '670FAF442408'
     );
 
     // inc
@@ -720,6 +735,13 @@ tests.x86.asmEncoding = function ()
     test(
         function (a) { a.sqrtsd(a.xmm2, a.xmm6); },
         'F20F51D6'
+    );
+
+    // sub
+    test(
+        function (a) { a.sub(a.eax, 1); },
+        '83E801',
+        '83E801'
     );
 
     // test

@@ -118,7 +118,7 @@ tests.x86.irToAsm = function ()
         }
     }
 
-    // Simple IIR add tests, no spills needed
+    // Simple IIR add tests, 1 argument, no spills needed
     test('                                  \
         function test(ctx, v1)              \
         {                                   \
@@ -148,53 +148,90 @@ tests.x86.irToAsm = function ()
         [3]
     );
 
-    /* TODO
-    // Multiple simple IIR operations
-    compileStr('                        \
-    function add (v1, v2)               \
-    {                                   \
-        "tachyon:arg v1 pint";          \
-        "tachyon:arg v2 pint";          \
-        "tachyon:ret pint";             \
-                                        \
-        var x0 = iir.add(v1, v2);       \
-        var x1 = iir.mul(x0, pint(3));  \
-        var x2 = iir.sub(x1, pint(2));  \
-                                        \
-        return x2;                      \
-    }                                   \
-    ');
-    */
+    // Multiple simple IIR operations, 2 arguments, no spills needed
+    test('                                  \
+        function test(ctx, v1, v2)          \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:arg v2 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            var x0 = iir.add(v1, v2);       \
+            var x1 = iir.mul(x0, pint(3));  \
+            var x2 = iir.sub(x1, pint(2));  \
+                                            \
+            return x2;                      \
+        }                                   \
+        ',
+        13,
+        [2,3]
+    );
+
+
+
+
 
     /*
-    compileStr('                        \
-    function add (v1, v2, v3)           \
-    {                                   \
-        "tachyon:arg v1 pint";          \
-        "tachyon:arg v2 pint";          \
-        "tachyon:arg v3 pint";          \
-        "tachyon:ret pint";             \
-                                        \
-        var x1 = iir.add(v1, pint(1));  \
-        var x2 = iir.add(v1, pint(2));  \
-        var x3 = iir.add(v1, pint(3));  \
-        var x4 = iir.add(v1, pint(4));  \
-        var x5 = iir.add(v1, pint(5));  \
-        var x6 = iir.add(v1, pint(6));  \
-        var x7 = iir.add(v1, pint(7));  \
-                                        \
-        var y = iir.mul(x1, x2);        \
-        var y = iir.mul(y, x3);         \
-        var y = iir.mul(y, x4);         \
-        var y = iir.mul(y, x5);         \
-        var y = iir.mul(y, x6);         \
-        var y = iir.mul(y, x7);         \
-                                        \
-        var z = iir.sub(y, pint(1));    \
-                                        \
-        return z;                       \
-    }                                   \
-    ');
+    // Many IIR operations, spills needed in 32-bit
+    test('                                  \
+        function test(ctx, v1, v2, v3)      \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:arg v2 pint";          \
+            "tachyon:arg v3 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            var x1 = iir.add(v1, pint(1));  \
+            var x2 = iir.add(v1, pint(2));  \
+            var x3 = iir.add(v1, pint(3));  \
+            var x4 = iir.add(v1, pint(4));  \
+            var x5 = iir.add(v1, pint(5));  \
+            var x6 = iir.add(v1, pint(6));  \
+            var x7 = iir.add(v1, pint(7));  \
+                                            \
+            var y = iir.mul(x1, x2);        \
+            var y = iir.mul(y, x3);         \
+            var y = iir.mul(y, x4);         \
+            var y = iir.mul(y, x5);         \
+            var y = iir.mul(y, x6);         \
+            var y = iir.mul(y, x7);         \
+                                            \
+            var z = iir.sub(y, pint(1));    \
+                                            \
+            return z;                       \
+        }                                   \
+        ',
+        5039,
+        [0,1,2]
+    );
     */
+
+
+
+
+
+    // TODO: if stmt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 

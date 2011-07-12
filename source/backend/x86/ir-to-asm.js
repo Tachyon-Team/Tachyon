@@ -59,9 +59,37 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     // Get a reference to the stack frame map
     var stackMap = allocInfo.stackMap;
 
+
+
+
     // Add space for the spills on the stack
     if (stackMap.spillSize !== 0)
         asm.sub(backend.spReg, stackMap.spillSize);
+
+
+
+    /*
+    TODO: C callee save regs!
+    do for return as well
+
+    PROBLEM:
+    need to map these in the stack frame... Add invisible reserved slots?
+    Just call them save slots
+
+    ONLY need to save the callee save registers that we may write into...
+    Can alloc slots for them lazily...
+
+    For cdecl, callee save regs are...
+    ebp, ebx, esi, edi
+
+    For amd64...
+    rbx, rbp, r10, r13, r14, r15
+    */
+
+
+
+
+
 
 
 
