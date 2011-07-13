@@ -154,7 +154,7 @@ bktest:
 
 all: tachyon compiler/sources.js
 
-tachyon: makefile tachyon.in
+tachyon: makefile tachyon.in compiler/sources.js
 	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
 	chmod +x tachyon
 

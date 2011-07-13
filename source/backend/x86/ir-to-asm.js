@@ -317,6 +317,25 @@ MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     }
 };
 
+// Left shift instruction
+LsftInstr.prototype.x86 = new x86.InstrCfg();
+LsftInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
+{ 
+    return (idx === 1 && size <= 8);
+}
+LsftInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+{
+    if (opnds[1] instanceof x86.Immediate)
+    {
+        asm.sal(dest, opnds[1]);
+    }
+    else
+    {
+        asm.mov(x86.regs.cl, opnds[1]);
+        asm.sal(dest, x86.regs.cl);
+    }
+};
+
 CallFuncInstr.prototype.x86 = new x86.InstrCfg();
 CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
 { 
