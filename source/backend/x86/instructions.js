@@ -679,7 +679,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 @class Label operand
 @extends x86.Operand
 */
-x86.Label = function (name)
+x86.Label = function (name, extern)
 {
     /**
     @field Label name
@@ -690,6 +690,17 @@ x86.Label = function (name)
     @field Offset at which this label is located
     */
     this.offset = 0;
+
+    /**
+    @field Reference count for this label
+    */
+    this.refCount = 0;
+
+    /**
+    @field Flag to indicate this label will be externally visible
+    and usable for linking.
+    */
+    this.extern = false;
 }
 x86.Label.prototype = new x86.Instruction();
 

@@ -452,7 +452,7 @@ x86.RegAllocMap.prototype.allocStack = function (value, stackLoc)
 
     assert (
         isNonNegInt(stackLoc),
-        'invalid stack location'
+        'invalid stack location: ' + stackLoc
     );
 
     // Remove the previous register allocation for this value, if any
@@ -908,7 +908,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     var callConv = backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
 
     // Get the number of function arguments
-    // TODO: account for hidden arguments
     var numArgs = irFunc.argVars.length + (irFunc.cProxy? 0:2);
 
     // Map the arguments on the stack
@@ -935,8 +934,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     // Map of instruction ids to instruction operands and pre-instruction moves
     var instrMap = [];
 
-    // Map of block ids to maps from block ids to lists of merge moves
-    var mergeMoves = [];
+    // Map from CFG edges to lists of merge moves
+    var mergeMoves = new CfgEdgeMap();
 
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
@@ -1143,7 +1142,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     // allocated to this value, if any
                     var valAlloc = allocMap.getAlloc(use);
 
-                    print('alloc: ' + valAlloc);
+                    //print('alloc: ' + valAlloc);
 
                     // If this value is already in a register
                     if (valAlloc instanceof x86.Register && 
@@ -1355,6 +1354,15 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         {
             var succ = block.succs[j];
 
+            // List of moves for this merge
+            var moveList = [];
+
+            // Map this edge to the move list
+            mergeMoves.addItem({pred:block, succ:succ}, moveList);
+
+            // Get the live set at the successor's entry
+            var succLiveIn = blockLiveIn[succ.blockId];
+
             // Get the allocation map for the successor
             var succAllocMap = allocMaps[succ.blockId];
 
@@ -1376,75 +1384,123 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     // Get the incoming value for this block
                     var inc = instr.getIncoming(block);
 
-                    // Get the register and stack mapping of the incoming value
-                    var reg = allocMap.getValReg(inc);
-                    var stackLoc = allocMap.getValStack(inc);
+                    // Get the allocation for the incoming value
+                    var incAlloc = allocMap.getAlloc(inc);
 
                     assert (
-                        reg !== undefined || stackLoc !== undefined,
-                        'no register/stack mapping for phi operand:\n' +
+                        !(incAlloc === undefined && inc instanceof IRInstr),
+                        'no allocation for incoming phi temporary:\n' +
                         inc
                     );
 
-                    // Use the register and stack mapping of the
-                    // incoming value for the phi node
-                    if (reg !== undefined)
-                        allocMap.allocReg(instr, reg);
-                    if (stackLoc !== undefined)
-                        allocMap.allocStack(instr, stackLoc);
+                    // If this is an IR constant with no allocation
+                    if (incAlloc === undefined)
+                    {
+                        // Allocate a register for the phi node
+                        var reg = allocReg(
+                            allocMap,
+                            mergeMoves,
+                            succLiveIn,
+                            instr,
+                            undefined,
+                            []
+                        );
+
+                        // Move the incoming value into the register
+                        addMove(moveList, inc, reg);
+                    }
+                    else
+                    {
+                        // Use the register and stack mapping of the
+                        // incoming value for the phi node
+                        if (incAlloc instanceof x86.Register)
+                            allocMap.allocReg(instr, incAlloc);
+                        else
+                            allocMap.allocStack(instr, incAlloc);
+                    }
                 }
             }
 
             // There is already a register allocation for the successor
             else
             {
-                // Get the live set at the beginning of the successor
-                var succLiveIn = liveIn[succ.blockId];
+                // Last phi node found
+                var lastPhi = undefined;
 
-                /* 
-                TODO: each phi node has a register/loc
+                // For each instruction of the successor
+                for (var insIdx = 0; insIdx < succ.instrs.length; ++insIdx)
+                {
+                    var instr = succ.instrs[insIdx];
+                    lastPhi = instr;
 
-                Need to move the opnd corresponding to the phi input into the
-                phi node's assigned register/location.
+                    // If this is not a phi node, stop
+                    if (!(instr instanceof PhiInstr))
+                        break;
 
-                This should be done before other moves occur, because some
-                operands may no longer be live after this and their
-                registers may be cleared.
-                */
+                    // Get the location allocated to this phi node
+                    var phiAlloc = succAllocMap.getAlloc(instr);
 
-                /*
-                Want to avoid spills and redundant moves. Use xchg to swap
-                between live registers.                
+                    assert (
+                        phiAlloc !== undefined,
+                        'no allocation for phi node'
+                    );
 
-                TODO: Iterate through live values. 
+                    // Get the incoming value for this predecessor
+                    var inc = instr.getIncoming(block);
 
-                If value is in reg, goes to reg, either move it there
-                (if dst free), or xchg it with target reg. Then
-                need to update the current alloc map to reflect the change.
+                    // Get the location allocated to the incoming value
+                    var incAlloc = allocMap.getAlloc(inc);
 
-                If opnd is reg, goes to mem, just move it.
+                    assert (
+                        incAlloc !== undefined,
+                        'no allocation for incoming phi value'
+                    );
 
-                If opnd is mem or imm, goes to reg, need reg to be free.
-                Probably want to handle these operand types in a second pass.
+                    // If the locations do not match, add a move
+                    if (incAlloc !== phiAlloc)
+                        addMove(moveList, incAlloc, phiAlloc);
+                }
 
-                PROBLEM: what about imm opnds on stack? We should have liveness
-                info for these values as well. Can place them on target stack
-                if needed.
+                // Get the live set after the last phi node 
+                var liveSet = (lastPhi !== undefined)? 
+                    instrLiveOut[lastPhi.instrId]:
+                    succLiveIn
 
-                TODO: operands that die at a phi node need no location of
-                their own
-                */
+                // For each live value
+                for (var itr = liveSet.getItr(); itr.valid(); itr.next())
+                {
+                    // Get the value
+                    var value = itr.get().key;
 
+                    // If the value is a phi node from this block, skip it
+                    if (value instanceof PhiInstr && value.parentBlock === succ)
+                        continue;
 
+                    // Get the allocations for this value in both blocks
+                    var predAlloc = allocMap.getAlloc(value);
+                    var succAlloc = succAllocMap.getAlloc(value);
 
+                    assert (
+                        !(predAlloc === undefined && value instanceof IRInstr),
+                        'no allocation for live temporary:\n' +
+                        value + '\n' +
+                        'in pred:\n' +
+                        block.getBlockName()
+                    );
 
+                    assert (
+                        !(succAlloc === undefined && value instanceof IRInstr),
+                        'no allocation for live temporary in succ:\n' +
+                        value
+                    );
 
+                    var srcValue = (predAlloc !== undefined)? predAlloc:value;
 
-
-
-
-
-
+                    // If the locations do not match and the value is stil
+                    // live in the successor, insert a move
+                    if (predAlloc !== succAlloc && liveSet.hasItem(value) === true)
+                        addMove(moveList, srcValue, succAlloc);
+                }
             }
         }
     }
@@ -1507,7 +1563,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 if (typeof move.src === 'number')
                 {
                     move.src = new x86.MemLoc(
-                        backend.x86_64? 64:32,
+                        backend.regSizeBits,
                         backend.spReg, 
                         stackMap.getLocOffset(move.src)
                     );
@@ -1517,7 +1573,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 if (typeof move.dst === 'number')
                 {
                     move.dst = new x86.MemLoc(
-                        backend.x86_64? 64:32,
+                        backend.regSizeBits,
                         backend.spReg,
                         stackMap.getLocOffset(move.dst)
                     );
@@ -1526,9 +1582,47 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         }
     }
 
-    //
-    // TODO: pass over block moves
-    //
+    // For each predecessor block in the merge move map
+    for (var i = 0; i < blockOrder.length; ++i)
+    {
+        var pred = blockOrder[i];
+
+        // For each successor
+        for (var j = 0; j < pred.succs.length; ++j)
+        {
+            var succ = pred.succs[j];
+            var edge = {pred:pred, succ:succ};
+
+            // Get the moves for this predecessor->successor edge
+            var moves = mergeMoves.getItem(edge);
+
+            // For each merge move
+            for (var k = 0; k < moves.length; ++k)
+            {
+                var move = moves[k];
+
+                // Remap the src if needed
+                if (typeof move.src === 'number')
+                {
+                    move.src = new x86.MemLoc(
+                        backend.regSizeBits,
+                        backend.spReg, 
+                        stackMap.getLocOffset(move.src)
+                    );
+                }
+
+                // Remap the dst if needed
+                if (typeof move.dst === 'number')
+                {
+                    move.dst = new x86.MemLoc(
+                        backend.regSizeBits,
+                        backend.spReg,
+                        stackMap.getLocOffset(move.dst)
+                    );
+                }
+            }
+        }
+    }
 
     // Return the register allocation info
     return {

@@ -128,7 +128,7 @@ x86.Assembler.prototype.addInstr = function (instr)
 {
     assert (
         instr instanceof x86.Instruction,
-        ''
+        'invalid instruction'
     );
 
     if (this.lastInstr === null)
@@ -251,6 +251,32 @@ x86.Assembler.prototype.assemble = function ()
 
     // Return the code block we assembled into
     return codeBlock;
+};
+
+/**
+Apply peephole optimizations on assembly code
+*/
+x86.Assembler.prototype.optimize = function (maxPasses)
+{
+    // Until no change occurred
+    for (var pass = 1; (maxPasses === undefined || pass <= maxPasses); ++pass)
+    {
+        // Flag to indicate a change occurred
+        var changed = false;
+
+        // For each instruction
+        for (var instr = this.firstInstr; instr !== null; instr = instr.next)
+        {
+            // TODO
+
+
+
+        }
+
+        // If no changes occurred, stop
+        if (changed === false)
+            break;
+    }
 };
 
 /**

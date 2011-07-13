@@ -54,7 +54,7 @@ try
     ');
     */
 
-
+    /*
     compileStr('                        \
     function add (v1, v2, v3)           \
     {                                   \
@@ -83,7 +83,7 @@ try
         return z;                       \
     }                                   \
     ');
-
+    */
 
     /*
     compileStr('                        \
@@ -107,6 +107,52 @@ try
     */
 
     //compileStr('function add(v1, v2) { return v1 + v2; }');
+
+    /*
+    compileStr('                            \
+        function test(ctx, v1, v2)          \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:arg v2 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            if (v1 !== pint(0))             \
+                var y = v2 + pint(1);       \
+            else                            \
+                var y = v2 - pint(1);       \
+                                            \
+            return y;                       \
+        }                                   \
+    '
+    );*/
+
+
+    compileStr('                                \
+        function test(ctx, v1, v2)              \
+        {                                       \
+            "tachyon:cproxy";                   \
+            "tachyon:arg ctx rptr";             \
+            "tachyon:arg v1 pint";              \
+            "tachyon:arg v2 pint";              \
+            "tachyon:ret pint";                 \
+                                                \
+            var sum = v2;                       \
+                                                \
+            for (var i = pint(0); i < v1; ++i)  \
+                ++sum;                          \
+                                                \
+            return sum;                         \
+        }                                       \
+        '
+    );
+
+
+
+
+
+
 }
 
 catch (e)

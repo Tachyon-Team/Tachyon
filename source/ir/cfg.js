@@ -1790,3 +1790,23 @@ BasicBlock.prototype.getInstrItr = function ()
 {
     return new ArrayIterator(this.instrs);
 };
+
+/**
+@class Hash map from CFG edges to values
+*/
+function CfgEdgeMap()
+{
+    function edgeHashFunc(edge)
+    {
+        return (edge.pred.blockId << 3) + (edge.succ.blockId);
+    }
+
+    function edgeCompFunc(edge1, edge2)
+    {
+        return edge1.pred === edge2.pred && edge1.succ === edge2.succ;
+    }
+
+    // Return a new hash map using the comparison functions
+    return new HashMap(edgeHashFunc, edgeCompFunc);
+}
+

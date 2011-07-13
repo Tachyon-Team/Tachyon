@@ -293,25 +293,100 @@ tests.x86.irToAsm = function ()
         [1,2,3]
     );
 
+    // If statement, return value merge
+    test('                                  \
+        function test(ctx, v1, v2)          \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:arg v2 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            if (v1 !== pint(0))             \
+                var y = v2 + pint(1);       \
+            else                            \
+                var y = v2 - pint(1);       \
+                                            \
+            return y;                       \
+        }                                   \
+        ',
+        8,
+        [1, 7]
+    );
+
+    // Simple loop, counter incrementation
+    test('                                      \
+        function test(ctx, v1, v2)              \
+        {                                       \
+            "tachyon:cproxy";                   \
+            "tachyon:arg ctx rptr";             \
+            "tachyon:arg v1 pint";              \
+            "tachyon:arg v2 pint";              \
+            "tachyon:ret pint";                 \
+                                                \
+            var sum = v2;                       \
+                                                \
+            for (var i = pint(0); i < v1; ++i)  \
+                sum = pint(2) + sum;            \
+                                                \
+            return sum;                         \
+        }                                       \
+        ',
+        27,
+        [10, 7]
+    );
+
+
+    /*
+    // Loop with nested if statement, modulo operator
+    test('                                      \
+        function test(ctx, v1, v2)              \
+        {                                       \
+            "tachyon:cproxy";                   \
+            "tachyon:arg ctx rptr";             \
+            "tachyon:arg v1 pint";              \
+            "tachyon:arg v2 pint";              \
+            "tachyon:ret pint";                 \
+                                                \
+            var sum = v2;                       \
+                                                \
+            for (var i = pint(0); i < v1; ++i)  \
+            {                                   \
+                if (i % pint(2) === pint(0))    \
+                    sum += i;                   \
+            }                                   \
+                                                \
+            return sum;                         \
+        }                                       \
+        ',
+        22,
+        [10, 2]
+    );
+    */
+    
 
 
 
-    // TODO: if stmt
+
+    // TODO: loop with nested if
+
+
+
+
+    // TODO: loop with spills
 
 
 
 
 
-
-
-    // TODO: loop
-
-
-
-
-
-
-
+    // TODO: peephole optimizer
+    // Assembler.addPattern(patternFunc?) ?
+    // Need this to be somewhat more optimized...? pattern should have a
+    // start instruction? Map patterns based on start instructions?
+    //
+    // Can always start simple, build on
+    // Assembler.optimize() function... Hardcoded patterns to start with.
 
 
 
