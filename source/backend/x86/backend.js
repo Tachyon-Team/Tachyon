@@ -105,8 +105,8 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     for (var i = 0; i < irFunc.childFuncs.length; ++i)
         this.genCode(irFunc.childFuncs[i], params);
 
-    print('');
-    print('compiling "' + irFunc.funcName + '"');
+    log.debug('');
+    log.debug('compiling "' + irFunc.funcName + '"');
 
     // Get a reference to the CFG
     var cfg = irFunc.virginCFG;
@@ -114,9 +114,9 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Compute a block ordering for the function
     var blockOrder = orderBlocks(cfg.entry, cfg.blocks);
 
-    print('order:');
+    log.debug('order:');
     for (var i = 0; i < blockOrder.length; ++i)
-        print(blockOrder[i].getBlockName());
+        log.debug(blockOrder[i].getBlockName());
 
     // Perform register allocation
     var allocInfo = x86.allocRegs(irFunc, blockOrder, this, params);

@@ -19,7 +19,8 @@ function compileStr(str)
 
     lowerIRFunc(ir, params);
 
-    print(ir);
+    if (config.verbosity >= log.DEBUG)
+        print(ir);
 
     params.backend.genCode(ir, params);
 }
@@ -128,7 +129,7 @@ try
     '
     );*/
 
-
+    /*
     compileStr('                                \
         function test(ctx, v1, v2)              \
         {                                       \
@@ -146,7 +147,45 @@ try
             return sum;                         \
         }                                       \
         '
-    );
+    );*/
+
+
+    var startTime = (new Date()).getTime();
+
+    for (var i = 0; i < 1; ++i)
+    {
+        // Loop with nested if statement, modulo operator
+        compileStr('                                \
+            function test(ctx, v1, v2)              \
+            {                                       \
+                "tachyon:cproxy";                   \
+                "tachyon:arg ctx rptr";             \
+                "tachyon:arg v1 pint";              \
+                "tachyon:arg v2 pint";              \
+                "tachyon:ret pint";                 \
+                                                    \
+                var sum = v2;                       \
+                                                    \
+                for (var i = pint(0); i < v1; ++i)  \
+                {                                   \
+                    if (i % pint(2) === pint(0))    \
+                        sum += i;                   \
+                }                                   \
+                                                    \
+                return sum;                         \
+            }                                       \
+            '
+        );
+    }
+
+    // speed test, 100x ~ 2s
+    var endTime = (new Date()).getTime();
+    var compTime = endTime - startTime;
+    print('comp time: ' + compTime + ' ms');
+
+
+
+
 
 
 

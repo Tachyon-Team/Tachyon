@@ -337,8 +337,6 @@ tests.x86.irToAsm = function ()
         [10, 7]
     );
 
-
-    /*
     // Loop with nested if statement, modulo operator
     test('                                      \
         function test(ctx, v1, v2)              \
@@ -363,18 +361,15 @@ tests.x86.irToAsm = function ()
         22,
         [10, 2]
     );
-    */
-    
+
+
+
+    // TODO: loop with nested if + spills
 
 
 
 
-    // TODO: loop with nested if
-
-
-
-
-    // TODO: loop with spills
+    // TODO: ICastInstr, 8, 16, 32 bit operands
 
 
 
@@ -387,6 +382,8 @@ tests.x86.irToAsm = function ()
     //
     // Can always start simple, build on
     // Assembler.optimize() function... Hardcoded patterns to start with.
+
+
 
 
 

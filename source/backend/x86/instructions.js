@@ -516,7 +516,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             b = (rmOpnd.regNo & 8)? 1:0;
         else if (rOpnd && !rmOpnd)
             b = (rOpnd.regNo & 8)? 1:0;
-        else if (rmOpnd.base instanceof x86.Register)
+        else if (rmOpnd && rmOpnd.base instanceof x86.Register)
             b = (rmOpnd.base.regNo & 8)? 1:0;
         else
             b = 0;

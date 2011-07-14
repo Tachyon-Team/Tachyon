@@ -48,6 +48,14 @@ x86 backend inteface.
 Maxime Chevalier-Boisvert
 */
 
+
+/*
+TODO:
+Add InstrCfg.fixedReg function?
+Do we need opndMustBeReg? For some instructions, such as load/store, yes.
+*/
+
+
 /**
 Generate the assembly code for one function
 */
@@ -204,9 +212,12 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
         }
     }
 
-    print('');
-    print('assembly:')
-    print(asm.toString(true));
+    if (config.verbosity >= log.DEBUG)
+    {
+        log.debug('');
+        log.debug('assembly:')
+        log.debug(asm.toString(true));
+    }
 
     // Return the assembler object
     return asm;
@@ -319,11 +330,7 @@ IRInstr.prototype.x86 = new x86.InstrCfg();
 GetCtxInstr.prototype.x86 = new x86.InstrCfg();
 GetCtxInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
-    return true;
-}
-GetCtxInstr.prototype.x86.destRegSet = function (instr, idx, params)
-{
-    return [x86.ctxReg32, x86.ctxReg64];
+    return params.backend.x86_64? x86.ctxReg64:x86.ctxReg32;
 }
 GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
@@ -360,19 +367,15 @@ SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 MulInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
 MulInstr.prototype.x86.opndMustBeReg = function (instr, idx)
 {
-    return (idx === 0);
-}
-MulInstr.prototype.x86.opndRegSet = function (instr, idx)
-{
-    if (instr.type.isUnsigned() && idx === 0)
-        return [x86.regs.rax, x86.regs.eax];
+    if (instr.type.isUnsigned() === true && idx === 0)
+        return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 
-    return undefined;
+    return false;
 }
-MulInstr.prototype.x86.writeRegSet = function (instr)
+MulInstr.prototype.x86.writeRegSet = function (instr, params)
 {
-    if (instr.type.isUnsigned())
-        return [x86.regs.rdx, x86.regs.edx];
+    if (instr.type.isUnsigned() === true)
+        return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
 
     return undefined;
 }
@@ -416,28 +419,24 @@ MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 
 // Modulo instruction
 ModInstr.prototype.x86 = new x86.InstrCfg();
-ModInstr.prototype.x86.opndMustBeReg = function (instr, idx)
-{
-    return (idx === 0);
-}
-ModInstr.prototype.x86.opndRegSet = function (instr, idx)
+ModInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
     if (idx === 0)
-        return [x86.regs.rax, x86.regs.eax];
+        return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 
-    return undefined;
+    return false;
 }
 ModInstr.prototype.x86.destIsOpnd0 = function (instr)
 {
     return false;
 }
-ModInstr.prototype.x86.destMustBeReg = function (instr)
+ModInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
-    return true;
+    return params.backend.x86_64? x86.regs.rdx:x86.regs.edx;
 }
-ModInstr.prototype.x86.destRegSet = function (instr)
+ModInstr.prototype.x86.writeRegSet = function (instr, params)
 {
-    return [x86.regs.rdx, x86.regs.edx];
+    return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
 }
 ModInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
@@ -446,7 +445,7 @@ ModInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 
     // If the output should be unsigned, use unsigned divide, otherwise
     // use signed divide 
-    if (this.type.isUnsigned())
+    if (instr.type.isUnsigned())
     {
         // Extend the value into xDX
         asm.mov(xDX, 0);
@@ -598,14 +597,10 @@ IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genI
 RetInstr.prototype.x86 = new x86.InstrCfg();
 RetInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
-    return true;
-}
-RetInstr.prototype.x86.opndRegSet = function (instr, idx, params)
-{ 
     var cProxy = instr.parentBlock.parentCFG.ownerFunc.cproxy;
     var callConv = params.backend.getCallConv(cProxy? 'c':'tachyon');
 
-    return [callConv.retReg];
+    return callConv.retReg;
 }
 RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {

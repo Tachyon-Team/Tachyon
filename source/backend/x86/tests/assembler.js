@@ -241,6 +241,13 @@ tests.x86.asmEncoding = function ()
         '0FA2'
     );
 
+    // cqo
+    test(
+        function (a) { a.cqo(); },
+        false,
+        '4899'
+    );
+
     // cvtsd2si
     test(
         function (a) { a.cvtsd2si(a.ecx, a.xmm6); }, 
