@@ -429,10 +429,28 @@ x86.RegAllocMap.prototype.allocReg = function (value, reg)
 
     log.debug(reg + ' -> ' + (value? value.getValName():undefined));
 
+    var prevRegVal = this.gpRegMap[reg.regNo];
+
+    if (prevRegVal !== undefined)
+    {
+        //print('unmapping prev reg val: ' + prevRegVal + ' (' + reg + ')');
+        this.valRegMap.remItem(prevRegVal);
+    }
+
+    // Update the register's value
     this.gpRegMap[reg.regNo] = value;
 
     if (value !== undefined)
+    {
+        // If the value was in another register, unmap it from there
+        if (this.valRegMap.hasItem(value) === true)
+        {
+            var prevReg = this.valRegMap.getItem(value);
+            this.gpRegMap[prevReg.regNo] = undefined;
+        }
+
         this.valRegMap.setItem(value, reg);
+    }
 }
 
 /**
@@ -456,7 +474,9 @@ x86.RegAllocMap.prototype.allocStack = function (value, stackLoc)
     log.debug(stackLoc + ' -> ' + (value? value.getValName():undefined));
 
     if (value !== undefined)
+    {
         this.valStackMap.setItem(value, stackLoc);
+    }
 }
 
 /**
@@ -837,14 +857,14 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // If the register value is still live
             if (liveOut.hasItem(regVal) === true)
             {
-                log.debug('spilling reg: ' + chosenReg + ' (' + regVal.getValName() + ')');
-
                 // Get the stack location for the value
                 var stackLoc = stackMap.getStackLoc(regVal);
 
                 // If the value is not already on the stack
                 if (allocMap.getValStack(regVal) !== stackLoc)
                 {
+                    log.debug('spilling reg: ' + chosenReg + ' (' + regVal.getValName() + ')');
+
                     // Map the value to the stack location
                     allocMap.allocStack(regVal, stackLoc);
 
@@ -1127,6 +1147,22 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 if (destMustBeReg instanceof x86.Register)
                     excludeSet.push(destMustBeReg);                
 
+                // Get the set of registers this instruction will write to
+                var writeRegs = instrCfg.writeRegSet(instr, params);
+
+                // If this instruction writes to registers
+                if (writeRegs !== undefined)
+                {
+                    assert (
+                        writeRegs instanceof Array,
+                        'write reg set is not an array'
+                    );
+
+                    // Add the write registers to the exclude set
+                    for (var k = 0; k < writeRegs.length; ++k)
+                        excludeSet.push(writeRegs[k]);
+                }
+
                 // List of moves to precede the instruction
                 var preMoves = [];
 
@@ -1180,6 +1216,12 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     // allocated to this value, if any
                     var valAlloc = allocMap.getAlloc(use);
 
+                    assert (
+                        !(use instanceof IRInstr && valAlloc === undefined),
+                        'no allocation for temporary: ' + use
+                    );
+
+                    //log.debug('use  : ' + use);
                     //log.debug('alloc: ' + valAlloc);
 
                     // If this value is already in a register
@@ -1317,12 +1359,14 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     arraySetAdd(excludeSet, reg);
                 }
 
-                // Get the set of registers this instruction will write to
-                var writeRegs = instrCfg.writeRegSet(instr, params);
-
                 // If this instruction writes to registers
                 if (writeRegs !== undefined)
                 {
+                    assert (
+                        writeRegs instanceof Array,
+                        'write reg set is not an array'
+                    );
+
                     // For each register this instruction writes to
                     for (var k = 0; k < writeRegs.length; ++k)
                     {

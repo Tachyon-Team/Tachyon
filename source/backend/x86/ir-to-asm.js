@@ -324,6 +324,18 @@ x86.insertMove = function (asm, move, params)
     */
 }
 
+/**
+Pick a sub-register for a value based on its type
+*/
+x86.regForVal = function (gpReg, value, params)
+{
+    var valSize = value.type.getSizeBits(params);
+
+    var reg = x86.regs[gpReg];
+
+    return reg.getSubReg(valSize);
+}
+
 // TODO: for now, default reg alloc config to test register allocation
 IRInstr.prototype.x86 = new x86.InstrCfg();
 
@@ -368,14 +380,14 @@ MulInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
 MulInstr.prototype.x86.opndMustBeReg = function (instr, idx)
 {
     if (instr.type.isUnsigned() === true && idx === 0)
-        return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
+        return x86.regForVal('rax', instr, params);
 
     return false;
 }
 MulInstr.prototype.x86.writeRegSet = function (instr, params)
 {
     if (instr.type.isUnsigned() === true)
-        return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
+        return [x86.regForVal('rdx', instr, params)];
 
     return undefined;
 }
@@ -417,52 +429,69 @@ MulInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     }
 };
 
-// Modulo instruction
-ModInstr.prototype.x86 = new x86.InstrCfg();
-ModInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+// Division instruction
+DivInstr.prototype.x86 = new x86.InstrCfg();
+DivInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
     if (idx === 0)
-        return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
+        return x86.regForVal('rax', instr, params);
 
     return false;
 }
-ModInstr.prototype.x86.destIsOpnd0 = function (instr)
+DivInstr.prototype.x86.destIsOpnd0 = function (instr)
 {
     return false;
 }
-ModInstr.prototype.x86.destMustBeReg = function (instr, params)
+DivInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
-    return params.backend.x86_64? x86.regs.rdx:x86.regs.edx;
+    return x86.regForVal('rax', instr, params);
 }
-ModInstr.prototype.x86.writeRegSet = function (instr, params)
+DivInstr.prototype.x86.writeRegSet = function (instr, params)
 {
-    return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
+    return [x86.regForVal('rdx', instr, params)];
 }
-ModInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    var x86_64 = genInfo.backend.x86_64;
-    var xDX = x86_64? x86.regs.rdx:x86.regs.edx;
+    assert (
+        opnds[0] === x86.regs.rax || opnds[0] === x86.regs.eax,
+        'invalid first opnd: ' + opnds[0]
+    );
 
-    // If the output should be unsigned, use unsigned divide, otherwise
-    // use signed divide 
+    // If the output should be unsigned
     if (instr.type.isUnsigned())
     {
-        // Extend the value into xDX
+        // Zero-extend the value into xDX
+        var xDX = x86.regForVal('rdx', instr, genInfo.params);
         asm.mov(xDX, 0);
 
+        // Use unsigned divide
         asm.div(opnds[1]);
     }
     else
     {
-        // Sign-extend xAX into xDX:xAX using CDQ or CQO
-        if (x86_64 === true)
-            asm.cqo();
-        else
-            asm.cdq();
+        // Sign-extend xAX into xDX:xAX
+        switch (instr.type.getSizeBits(genInfo.params))
+        {
+            case 16: asm.cwd(); break;
+            case 32: asm.cdq(); break;
+            case 64: asm.cqo(); break;
+        }
 
+        // Use signed divide
         asm.idiv(opnds[1]);
     }
 };
+
+// Modulo instruction
+ModInstr.prototype.x86 = Object.create(DivInstr.prototype.x86);
+ModInstr.prototype.x86.destMustBeReg = function (instr, params)
+{
+    return x86.regForVal('rdx', instr, params);
+}
+ModInstr.prototype.x86.writeRegSet = function (instr, params)
+{
+    return [x86.regForVal('rax', instr, params)];
+}
 
 // Left shift instruction
 LsftInstr.prototype.x86 = new x86.InstrCfg();
@@ -480,6 +509,21 @@ LsftInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, ge
     {
         asm.mov(x86.regs.cl, opnds[1]);
         asm.sal(dest, x86.regs.cl);
+    }
+};
+
+// Right shift instruction
+RsftInstr.prototype.x86 = Object.create(LsftInstr.prototype.x86);
+RsftInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+{
+    if (opnds[1] instanceof x86.Immediate)
+    {
+        asm.sar(dest, opnds[1]);
+    }
+    else
+    {
+        asm.mov(x86.regs.cl, opnds[1]);
+        asm.sar(dest, x86.regs.cl);
     }
 };
 

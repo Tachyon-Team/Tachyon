@@ -293,6 +293,62 @@ tests.x86.irToAsm = function ()
         [1,2,3]
     );
 
+    // Variations of arithmetic instructions, spills needed
+    test('                                      \
+        function test(ctx, v1, v5, v8, v10)     \
+        {                                       \
+            "tachyon:cproxy";                   \
+            "tachyon:arg ctx rptr";             \
+            "tachyon:arg v1 pint";              \
+            "tachyon:arg v8 pint";              \
+            "tachyon:arg v5 pint";              \
+            "tachyon:arg v10 pint";             \
+            "tachyon:ret pint";                 \
+                                                \
+            var x01 = v1 * pint(2);             \
+            var x02 = pint(2) * v1;             \
+            var x03 = v1 + pint(3);             \
+            var x04 = pint(4) + v1;             \
+            var x05 = v1 + v8;                  \
+            var x06 = v8 + v1;                  \
+            var x07 = v10 - pint(7);            \
+            var x08 = pint(5) - v10;            \
+            var x09 = v10 % pint(9);            \
+            var x10 = pint(9) % pint(5);        \
+            var x11 = v1 * pint(3);             \
+            var x12 = pint(3) * v1;             \
+            var x13 = v10 / pint(5);            \
+            var x14 = v8 / pint(2);             \
+            var x15 = v8 * pint(2);             \
+            var x16 = v1 * pint(16);            \
+            var x17 = v1 * pint(17);            \
+            var x18 = v1 * pint(18);            \
+                                                \
+            var y = x01 + x02;                  \
+            var y = y + x03;                    \
+            var y = y + x04;                    \
+            var y = y + x05;                    \
+            var y = y + x06;                    \
+            var y = y + x07;                    \
+            var y = y + x08;                    \
+            var y = y + x09;                    \
+            var y = y + x10;                    \
+            var y = y + x11;                    \
+            var y = y + x12;                    \
+            var y = y + x13;                    \
+            var y = y + x14;                    \
+            var y = y + x15;                    \
+            var y = y + x16;                    \
+            var y = y + x17;                    \
+            var y = y + x18;                    \
+                                                \
+            return y;                           \
+        }                                       \
+        ',
+        113,
+        [1,5,8,10]
+    );
+
     // If statement, return value merge
     test('                                  \
         function test(ctx, v1, v2)          \
@@ -365,6 +421,11 @@ tests.x86.irToAsm = function ()
 
 
     // TODO: loop with nested if + spills
+
+
+
+
+
 
 
 

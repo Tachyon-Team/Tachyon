@@ -730,6 +730,17 @@ tests.x86.asmEncoding = function ()
         function (a) { a.sal(a.ebp, 5); },
         'C1E505'
     );
+    test(
+        function (a) { a.sal(a.mem(32, a.esp, 68), 1); },
+        'D1642444',
+        '67D1642444'  
+    );
+
+    // sar
+    test(
+        function (a) { a.sar(a.edx, 1); },
+        'D1FA'
+    );
 
     // shr
     test(
