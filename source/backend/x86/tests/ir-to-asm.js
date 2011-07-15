@@ -487,7 +487,123 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: nested loops and if + spills
+
+    /*
+    // TODO: PROBLEM
+    Moving values from one stack loc to another, we crush the previous
+    allocation. Need a stack location -> value map, just like the gp reg map
+    to keep track of this.
+    
+    Otherwise, need to ensure that all temporaries that get spilled have
+    their own memory location, and nothing else gets stored there
+    This may be better, because as it is now... Writing to a spilled
+    temporary's location isn't a great idea... where does the temporary go..
+    Don't want to "superspill" it...
+
+    Even if we restrict ourselves to one temp/value per stack loc, will want
+    to add validation assertions to make sure nothing stupid happens! May
+    also want to just have function to alloc a temp to its stack loc without
+    having to get its stack loc first...
+    */
+
+
+
+
+
+
+    /*
+    // FIXME: memory-memory moves cause issues!
+    // Nested loops and if, spills needed
+    test('                                          \
+        function test(ctx, v1, v2, v3)              \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v1 pint";                  \
+            "tachyon:arg v2 pint";                  \
+            "tachyon:arg v3 pint";                  \
+            "tachyon:ret pint";                     \
+                                                    \
+            var sum = v3;                           \
+                                                    \
+            for (var i = pint(0); i < v1; ++i)      \
+            {                                       \
+                for (var j = pint(0); j < v2; ++j)  \
+                {                                   \
+                    if (j % pint(2) === pint(0))    \
+                    {                               \
+                        var x01 = j + pint(1);      \
+                        var x02 = j + pint(2);      \
+                        var x03 = j + pint(3);      \
+                        var x04 = j + pint(4);      \
+                        var x05 = j + pint(5);      \
+                        var x06 = j + pint(6);      \
+                        var x07 = j + pint(7);      \
+                        var x08 = j + pint(8);      \
+                        var x09 = j + pint(9);      \
+                        var x10 = j + pint(10);     \
+                        var x11 = j + pint(11);     \
+                        var x12 = j + pint(12);     \
+                        var x13 = j + pint(13);     \
+                        var x14 = j + pint(14);     \
+                        var x15 = j + pint(15);     \
+                        var x16 = j + pint(16);     \
+                        var x17 = j + pint(17);     \
+                        var x18 = j + pint(18);     \
+                    }                               \
+                    else                            \
+                    {                               \
+                        var x01 = v1 + pint(1);     \
+                        var x02 = v1 + pint(2);     \
+                        var x03 = v1 + pint(3);     \
+                        var x04 = v1 + pint(4);     \
+                        var x05 = v1 + pint(5);     \
+                        var x06 = v1 + pint(6);     \
+                        var x07 = v1 + pint(7);     \
+                        var x08 = v1 + pint(8);     \
+                        var x09 = v1 + pint(9);     \
+                        var x10 = v1 + pint(10);    \
+                        var x11 = v1 + pint(11);    \
+                        var x12 = v1 + pint(12);    \
+                        var x13 = v1 + pint(13);    \
+                        var x14 = v1 + pint(14);    \
+                        var x15 = v1 + pint(15);    \
+                        var x16 = v1 + pint(16);    \
+                        var x17 = v1 + pint(17);    \
+                        var x18 = v1 + pint(18);    \
+                    }                               \
+                                                    \
+                    var y = x01 + x02;              \
+                    var y = y + x03;                \
+                    var y = y + x04;                \
+                    var y = y + x05;                \
+                    var y = y + x06;                \
+                    var y = y + x07;                \
+                    var y = y + x08;                \
+                    var y = y + x09;                \
+                    var y = y + x10;                \
+                    var y = y + x11;                \
+                    var y = y + x12;                \
+                    var y = y + x13;                \
+                    var y = y + x14;                \
+                    var y = y + x15;                \
+                    var y = y + x16;                \
+                    var y = y + x17;                \
+                    var y = y + x18;                \
+                                                    \
+                    sum += y;                       \
+                }                                   \
+            }                                       \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        1007,
+        [5, 10, 2]
+    );
+    */
+
+
 
 
 
@@ -524,7 +640,10 @@ tests.x86.irToAsm = function ()
 
 
 
+
     // TODO: various size operands + spills after + if merge
+
+
 
 
 
@@ -539,8 +658,6 @@ tests.x86.irToAsm = function ()
     //
     // Can always start simple, build on
     // Assembler.optimize() function... Hardcoded patterns to start with.
-
-
 
 
 

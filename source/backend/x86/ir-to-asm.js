@@ -257,23 +257,32 @@ x86.insertMove = function (asm, move, params)
         'invalid move dst: ' + move.dst
     );
 
-
-    //
-    // TODO: memory-memory move, use xchg
-    //
-
-
     // If the source is an x86 operand
     if (move.src instanceof x86.Operand)
     {
-        assert (
-            !(move.src instanceof x86.MemLoc) ||
-            !(move.dst instanceof x86.MemLoc),
-            'memory to memory move'
-        );
+        // If this is a memory to memory move
+        if (move.src instanceof x86.MemLoc && move.dst instanceof x86.MemLoc)
+        {
+            var xax = x86.regs.rax.getSubReg(params.backend.regSizeBits);
 
-        asm.mov(move.dst, move.src);
-        return;
+            // TODO: if we knew a specific register is free at this point...
+            // May want to do merge move optimization during reg alloc?
+            // Find free reg or select one for mem-mem moves and then
+            // turn memory-memory moves into sequence of other moves
+
+            // Perform trickery using xchg
+            asm.xchg(xax, move.src);
+            asm.mov(move.dst, xax);
+            asm.xchg(xax, move.src);
+
+            return;
+        }
+        else
+        {
+            // Do the move directly
+            asm.mov(move.dst, move.src);
+            return;
+        }
     }
 
     // If the source is a constant
@@ -288,13 +297,6 @@ x86.insertMove = function (asm, move, params)
             return;
         }
     }
-
-
-
-
-
-    // TODO
-    asm.nop();
 
     /*
     PROBLEM: for some moves, may need EAX/RAX to be free
@@ -314,6 +316,9 @@ x86.insertMove = function (asm, move, params)
 
     NOTE: there is a mov, r64, imm64!
     */
+
+    // TODO: Unimplemented move!
+    asm.nop();
 }
 
 /**
