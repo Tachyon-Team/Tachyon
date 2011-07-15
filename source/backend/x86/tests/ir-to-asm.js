@@ -485,7 +485,13 @@ tests.x86.irToAsm = function ()
 
 
 
+
+
     // TODO: nested loops and if + spills
+
+
+
+
 
 
 
@@ -518,22 +524,10 @@ tests.x86.irToAsm = function ()
 
 
 
-
-
-    // TODO: various size operands + if merge
-
+    // TODO: various size operands + spills after + if merge
 
 
 
-    // TODO: instruction tostring, opnd size, word, dword, qword if only
-    // one operand and its a mem operand.
-
-
-
-
-    // TODO: exclude set should work with register numbers instead?
-    // right now, excluding eax, can still allocate ax...
-    // perhaps we want a map of excluded registers?
 
 
 

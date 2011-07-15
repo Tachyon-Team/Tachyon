@@ -48,14 +48,6 @@ x86 backend inteface.
 Maxime Chevalier-Boisvert
 */
 
-
-/*
-TODO:
-Add InstrCfg.fixedReg function?
-Do we need opndMustBeReg? For some instructions, such as load/store, yes.
-*/
-
-
 /**
 Generate the assembly code for one function
 */

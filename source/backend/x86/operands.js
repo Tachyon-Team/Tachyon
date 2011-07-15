@@ -296,8 +296,24 @@ x86.MemLoc.prototype.toString = function ()
 {
     var str = '';
 
+    switch (this.size)
+    {
+        case 8:     str += 'byte'; break;
+        case 16:    str += 'word'; break;
+        case 32:    str += 'dword'; break;
+        case 64:    str += 'qword'; break;
+        case 128:   str += 'oword'; break;
+        default:
+        error('unknown operand size');
+    }
+
     if (this.base)
+    {
+        if (str != '')
+            str += ' ';
+
         str += this.base;
+    }
 
     if (this.disp)
     {

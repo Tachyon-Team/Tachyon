@@ -755,11 +755,11 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     @param allocMap allocation map
     @param moveList list into which to insert spill moves
     @param liveSet set of live temporaries
-    @param value value to be allocated, may be null
-    @regSet set of registers to allocate from, null if any
-    @excludeSet set of registers to exclude from allocation
+    @param value value to be allocated, may be undefined
+    @fixedReg fixed register we must allocate to, undefined
+    @excludeMap map of registers to exclude from allocation
     */
-    function allocReg(allocMap, moveList, liveOut, value, fixedReg, excludeSet)
+    function allocReg(allocMap, moveList, liveOut, value, fixedReg, excludeMap)
     {
         // If no fixed register is specified, allocate from
         // the set of all available registers
@@ -794,7 +794,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 continue;
 
             // If this register is in the excluded set, skip it
-            if (arraySetHas(excludeSet, subReg) === true)
+            if (excludeMap[reg.regNo] === true)
                 continue;
 
             // Get the value the register currently maps to
@@ -834,15 +834,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
         // If we could not find a free register
         if (chosenReg === undefined)
         {
-            /*
-            log.debug('free regs: ' + freeRegs.length);
-            log.debug('cst regs : ' + cstRegs.length);
-            log.debug('live regs: ' + liveRegs.length);
-
-            for (var i = 0; i < excludeSet.length; ++i)
-                log.debug(excludeSet[i]);
-            */
-
             assert (
                 liveRegs.length > 0,
                 'no register found for allocation'
@@ -1104,16 +1095,12 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 var instrCfg = instr.x86;
 
                 // Set of registers not to be spilled
-                var excludeSet = [];
+                var excludeMap = new Array(16);
 
                 // For each use of the instruction
                 for (var k = 0; k < instr.uses.length; ++k)
                 {
                     var use = instr.uses[k];
-
-                    // If we can allocate no other operands to registers, stop
-                    if (excludeSet >= MAX_REG_OPNDS)
-                        break;
 
                     // Get the set of registers this operand can be in
                     var opndReg = instrCfg.opndMustBeReg(instr, k, params);
@@ -1121,7 +1108,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     // If this operand must be in a fixed register, reserve it
                     if (opndReg instanceof x86.Register)
                     {
-                        excludeSet.push(opndReg);
+                        excludeMap[opndReg.regNo] = true;
                         continue;
                     }
 
@@ -1135,7 +1122,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     //log.debug('pre-excluding: ' + reg);
 
                     // Add the register to the exclude set
-                    arraySetAdd(excludeSet, reg);
+                    excludeMap[reg.regNo] = true;
                 }
 
                 // Get the allocation parameters for the destination
@@ -1145,7 +1132,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 // If the destination is in a fixed register, exclude it
                 // from allocation
                 if (destMustBeReg instanceof x86.Register)
-                    excludeSet.push(destMustBeReg);                
+                    excludeMap[destMustBeReg.regNo] = true;
 
                 // Get the set of registers this instruction will write to
                 var writeRegs = instrCfg.writeRegSet(instr, params);
@@ -1160,7 +1147,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
                     // Add the write registers to the exclude set
                     for (var k = 0; k < writeRegs.length; ++k)
-                        excludeSet.push(writeRegs[k]);
+                        excludeMap[writeRegs[k].regNo] = true;
                 }
 
                 // List of moves to precede the instruction
@@ -1279,7 +1266,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                                 (opndMustBeReg instanceof x86.Register)?
                                 opndMustBeReg:undefined,
                                 (opndMustBeReg instanceof x86.Register)?
-                                []:excludeSet
+                                []:excludeMap
                             );
                         }
                         else
@@ -1303,7 +1290,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         allocMap.allocReg(mapVal, opnd);
 
                         // Add the register to the exclude set
-                        arraySetAdd(excludeSet, opnd);
+                        excludeMap[opnd.regNo] = true;
 
                         ++numRegOpnds;
                     }
@@ -1351,12 +1338,12 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         liveOut,
                         undefined,
                         undefined,
-                        excludeSet
+                        excludeMap
                     );
                     scratchRegs.push(reg);
 
                     // Add the register to the exclude set
-                    arraySetAdd(excludeSet, reg);
+                    excludeMap[reg.regNo] = true;
                 }
 
                 // If this instruction writes to registers
@@ -1373,9 +1360,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         var reg = writeRegs[k];
 
                         log.debug('freeing write reg');
-
-                        //for (var z = 0; z < excludeSet.length; ++z)
-                        //    log.debug(excludeSet[z]);
 
                         // Allocate the register
                         allocReg(
@@ -1416,7 +1400,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         (destMustBeReg instanceof x86.Register)?
                         destMustBeReg:undefined,
                         (destMustBeReg instanceof x86.Register)?
-                        []:excludeSet
+                        []:excludeMap
                     );
                 }
 
