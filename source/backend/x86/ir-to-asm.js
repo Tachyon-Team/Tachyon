@@ -1940,6 +1940,47 @@ FCeilInstr.prototype.genCode = function (tltor, opnds)
     
 };
 
+/**
+Take the floor of a float
+*/
+FFloorInstr.prototype.genCode = function (tltor, opnds)
+{
+    const width = tltor.params.target.ptrSizeBits;
+    const ptrSizeBytes = tltor.params.target.ptrSizeBytes;    
+    const $ = x86.Assembler.prototype.immediateValue;
+    const mem = x86.Assembler.prototype.memory;
+    const dest = this.regAlloc.dest;
+    const reg = x86.Assembler.prototype.register;
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;    
+    const xSP = reg.rsp.subReg(width);
+    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+    
+    var src = opnds[0];
+    if (src.type !== x86.type.REG)
+    {
+        tltor.asm.
+        mov(src, dest); 
+        src = dest; 
+    }
+
+    tltor.asm.
+        push($(0)).
+        fstcw(mem(0, xSP)).
+        mov(mem(0, xSP), scratchReg).
+        or($(1024), scratchReg).
+        and($(63487), scratchReg).
+        push($(0)).
+        mov(scratchReg, mem(0, xSP)).  
+        fldcw(mem(0, xSP)).
+        add($(ptrSizeBytes), xSP).
+        fldMem(mem(valueOffset - tagValue, src), 64).
+        frndint().
+        fstMem(mem(valueOffset - tagValue, dest), 64, true).
+        fldcw(mem(0, xSP)).        
+        add($(ptrSizeBytes), xSP);
+    
+};
 
 /**
 Convert an integer to a float

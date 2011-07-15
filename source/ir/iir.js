@@ -100,6 +100,7 @@ var iir =
 //    ftan        : FTanInstr,
     frnd        : FRndInstr,
     fceil       : FCeilInstr,
+    ffloor      : FFloorInstr,    
 
     // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,

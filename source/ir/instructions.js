@@ -1281,6 +1281,29 @@ var FCeilInstr = instrMaker(
     new ArithInstr()
 );
 
+
+/**
+@class Floating point floor instruction
+@augments ArithInstr
+*/
+var FFloorInstr = instrMaker(
+    'ffloor',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
 //=============================================================================
 //
 // Bitwise operations

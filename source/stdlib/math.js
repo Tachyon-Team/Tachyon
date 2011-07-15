@@ -133,7 +133,15 @@ NOTE The value of Math.floor(x) is the same as the value of -Math.ceil(-x).
 Math.floor = function (x)
 {
     // For integers, the value is unchanged
-    return x;
+    if (boxIsInt(x))
+        return x;
+
+    else if (boxIsFloat(x))
+    {
+        var r = alloc_float();
+        r = iir.ffloor(x, r);
+        return r;
+    }
 };
 
 /**
