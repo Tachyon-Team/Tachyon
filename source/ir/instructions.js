@@ -1263,7 +1263,6 @@ var FRndInstr = instrMaker(
 @class Floating point ceil instruction
 @augments ArithInstr
 */
-/*
 var FCeilInstr = instrMaker(
     'fceil',
     function (typeParams, inputVals, branchTargets)
@@ -1281,7 +1280,7 @@ var FCeilInstr = instrMaker(
     undefined,
     new ArithInstr()
 );
-*/
+
 //=============================================================================
 //
 // Bitwise operations

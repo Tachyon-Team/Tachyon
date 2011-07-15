@@ -99,7 +99,7 @@ var iir =
     fsqrt       : FSqrtInstr,
 //    ftan        : FTanInstr,
     frnd        : FRndInstr,
-//    fceil       : FCeilInstr,
+    fceil       : FCeilInstr,
 
     // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,

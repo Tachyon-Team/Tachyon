@@ -105,14 +105,13 @@ Math.ceil = function (x)
 {
     if (boxIsInt(x))
         return x;
-    /*
+
     else if (boxIsFloat(x))
     {
         var r = alloc_float();
-        r = iir.ceil(x, r);
+        r = iir.fceil(x, r);
         return r;
     }
-    */
 };
 
 /**

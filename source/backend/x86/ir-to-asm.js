@@ -1898,7 +1898,9 @@ FRndInstr.prototype.genCode = function (tltor, opnds)
         fstMem(mem(valueOffset - tagValue, dest), 64, true);
 };
 
-/*
+/**
+Take the ceil of a float
+*/
 FCeilInstr.prototype.genCode = function (tltor, opnds)
 {
     const width = tltor.params.target.ptrSizeBits;
@@ -1925,7 +1927,7 @@ FCeilInstr.prototype.genCode = function (tltor, opnds)
         fstcw(mem(0, xSP)).
         mov(mem(0, xSP), scratchReg).
         or($(2048), scratchReg).
-        and($(64511), scratchreg).
+        and($(64511), scratchReg).
         push($(0)).
         mov(scratchReg, mem(0, xSP)).  
         fldcw(mem(0, xSP)).
@@ -1937,7 +1939,7 @@ FCeilInstr.prototype.genCode = function (tltor, opnds)
         add($(ptrSizeBytes), xSP);
     
 };
-*/
+
 
 /**
 Convert an integer to a float
