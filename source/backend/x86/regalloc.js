@@ -879,15 +879,15 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             'could not allocate register'
         );
 
-        // Update the allocation map
-        allocMap.allocReg(value, chosenReg);
-        
         // If the register was allocated to a value
         if (value !== undefined)
         {
             // Get the sub-register corresponding to the value size
             chosenReg = chosenReg.getSubReg(value.type.getSizeBits(params));
         }
+
+        // Update the allocation map
+        allocMap.allocReg(value, chosenReg);
 
         // Return the allocated register
         return chosenReg;
@@ -1600,6 +1600,41 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     // Compute the stack location offsets
     stackMap.compOffsets(backend.x86_64);
 
+    /**
+    Function to remap the memory operands of an abstract move
+    */
+    function remapMove(move)
+    {
+        // Compute the operand size
+        var opndSize;
+        if (move.src instanceof x86.Register)
+            opndSize = move.src.size;
+        else if (move.dst instanceof x86.Register)
+            opndSize = move.dst.size;
+        else
+            opndSize = backend.regSizeBits;
+
+        // Remap the src if needed
+        if (typeof move.src === 'number')
+        {
+            move.src = new x86.MemLoc(
+                opndSize,
+                backend.spReg, 
+                stackMap.getLocOffset(move.src)
+            );
+        }
+
+        // Remap the dst if needed
+        if (typeof move.dst === 'number')
+        {
+            move.dst = new x86.MemLoc(
+                opndSize,
+                backend.spReg,
+                stackMap.getLocOffset(move.dst)
+            );
+        }
+    }
+
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
     {
@@ -1648,29 +1683,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
             // For each pre-instruction move
             for (var k = 0; k < alloc.preMoves.length; ++k)
-            {
-                var move = alloc.preMoves[k];
-
-                // Remap the src if needed
-                if (typeof move.src === 'number')
-                {
-                    move.src = new x86.MemLoc(
-                        backend.regSizeBits,
-                        backend.spReg, 
-                        stackMap.getLocOffset(move.src)
-                    );
-                }
-
-                // Remap the dst if needed
-                if (typeof move.dst === 'number')
-                {
-                    move.dst = new x86.MemLoc(
-                        backend.regSizeBits,
-                        backend.spReg,
-                        stackMap.getLocOffset(move.dst)
-                    );
-                }
-            }
+                remapMove(alloc.preMoves[k]);
         }
     }
 
@@ -1690,29 +1703,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
             // For each merge move
             for (var k = 0; k < moves.length; ++k)
-            {
-                var move = moves[k];
-
-                // Remap the src if needed
-                if (typeof move.src === 'number')
-                {
-                    move.src = new x86.MemLoc(
-                        backend.regSizeBits,
-                        backend.spReg, 
-                        stackMap.getLocOffset(move.src)
-                    );
-                }
-
-                // Remap the dst if needed
-                if (typeof move.dst === 'number')
-                {
-                    move.dst = new x86.MemLoc(
-                        backend.regSizeBits,
-                        backend.spReg,
-                        stackMap.getLocOffset(move.dst)
-                    );
-                }
-            }
+                remapMove(moves[k]);
         }
     }
 

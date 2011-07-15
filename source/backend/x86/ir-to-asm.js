@@ -669,112 +669,57 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     asm.ret();
 }
 
-/*
-ICastInstr.prototype.genCode = function (tltor, opnds)
+// Integer cast instruction
+ICastInstr.prototype.x86 = new x86.InstrCfg();
+ICastInstr.prototype.x86.destMustBeReg = function (instr)
 {
-    const reg = oldx86.Assembler.prototype.register; 
-    const target = tltor.params.target; 
-    const configWidth = target.ptrSizeBits;
-    const dstWidth = this.type.getSizeBits(tltor.params);
-    const srcWidth = this.uses[0].type.getSizeBits(tltor.params);
-    const scratchReg = target.backendCfg.scratchReg;
+    return true;
+}
+ICastInstr.prototype.x86.destIsOpnd0 = function (instr, params)
+{
+    const srcWidth = instr.uses[0].type.getSizeBits(params);
+    const dstWidth = instr.type.getSizeBits(params);
 
-    const context = target.backendCfg.context;
+    return (srcWidth === dstWidth);
+}
+ICastInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+{
+    const srcWidth = instr.uses[0].type.getSizeBits(genInfo.params);
+    const dstWidth = instr.type.getSizeBits(genInfo.params);
 
+    var src = opnds[0];
 
-    var dest = this.regAlloc.dest;
-    var src  = opnds[0];
-
-    assert(
-        dest.type === oldx86.type.REG, 
-        "Destination should be a register"
-    );   
-
-    if (dstWidth === 8 && configWidth === 32)
+    // If the source and destination have the same width
+    if (srcWidth === dstWidth)
     {
-        if(!(dest === reg.rax.subReg(configWidth) ||
-             dest === reg.rbx.subReg(configWidth) ||
-             dest === reg.rcx.subReg(configWidth) ||
-             dest === reg.rdx.subReg(configWidth)))
-        {
-            tltor.asm.
-            push(context);
+        assert (
+            src === dest,
+            'source and dest registers should match'
+        );
 
-            // The stack pointer has moved, therefore we need to 
-            // adjust the displacement for memory locations
-            if (src.type === oldx86.type.MEM)
-            {
-                src.disp += configWidth; 
-            }
-
-            tltor.asm.
-            mov(src, context);
-
-            if (src.type === oldx86.type.MEM)
-            {
-                src.disp -= configWidth; 
-            }
-
-            dest = context;
-            src  = context;
-        }
-    }
-
-    if (srcWidth === 8 && configWidth === 32 && src.type === oldx86.type.REG)
-    {
-        if(!(src === reg.rax.subReg(configWidth) ||
-             src === reg.rbx.subReg(configWidth) ||
-             src === reg.rcx.subReg(configWidth) ||
-             src === reg.rdx.subReg(configWidth)))
-        {
-            // Unless we have not already liberated
-            // the context register
-            if (dest !== context)
-            {
-                tltor.asm.
-                push(context).
-                mov(src, context);
-
-                src = context;
-            }
-        }
-    }
-
-    if (src === dest && srcWidth === dstWidth)
-    {
         // Do nothing
-    }
-    else if (srcWidth === dstWidth)
-    {
-        tltor.asm.
-        mov(src, dest);
     }
 
     // If the source width is larger than the destination width,
-    // we retain only the least significative bits and zero out 
-    // the others
+    // we retain only the least significative bits
     else if (srcWidth > dstWidth)
     {
-        if (src.type === oldx86.type.REG)
+        if (src instanceof x86.MemLoc)
         {
-            if (src !== dest || (srcWidth === 64 && dstWidth === 32))
-            {
-                tltor.asm.
-                mov(src.subReg(dstWidth), dest.subReg(dstWidth));
-            }
-        } else // src is in memory or is a constant
-        {
-            tltor.asm.
-            mov(src, dest.subReg(dstWidth), dstWidth);
+            asm.mov(
+                dest,
+                new x86.MemLoc(
+                    dstWidth, 
+                    src.base,
+                    src.disp,
+                    src.index,
+                    src.scale
+                )
+            );
         }
-
-        // Moving a value from 64 to 32 bits, automatically zeroes out 
-        // the most significant bits.  For all other combinations,
-        // we need to explicitly do it.
-        if (dstWidth !== 32)
+        else
         {
-            tltor.asm.
-            movxx(dest.subReg(dstWidth), dest, false);
+            asm.mov(dest, src.getSubReg(dstWidth));
         }
     } 
 
@@ -782,27 +727,24 @@ ICastInstr.prototype.genCode = function (tltor, opnds)
     // we need to extend the sign bit for signed values
     else
     {
-        const isSigned = this.uses[0].type.isSigned() && this.type.isSigned();
+        const isSigned = instr.uses[0].type.isSigned() && instr.type.isSigned();
 
-        if (src.type === oldx86.type.REG)
+        if (isSigned === true)
         {
-            tltor.asm.
-            movxx(src.subReg(srcWidth), dest.subReg(dstWidth), isSigned);
-        } else
+            if (srcWidth === 32 && dstWidth === 64)
+                asm.movsxd(dest, src);
+            else
+                asm.movsx(dest, src);
+        }
+        else
         {
-            tltor.asm.
-            movxx(src, dest.subReg(dstWidth), isSigned, srcWidth);
+            if (srcWidth === 32 && dstWidth === 64)
+                asm.mov(dest.getSubReg(32), src);
+            else
+                asm.movzx(dest, src);
         }
     }
-
-    if (dest === context || src === context)
-    {
-        tltor.asm.
-        mov(dest, this.regAlloc.dest).
-        pop(context);
-    }
 };
-*/
 
 LoadInstr.prototype.x86 = new x86.InstrCfg();
 LoadInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)

@@ -374,7 +374,6 @@ tests.x86.irToAsm = function ()
         [1, 7]
     );
 
-    // TODO: complete this test, add other kinds of comparisons
     // Comparison test
     test('                                  \
         function test(ctx, v1, v2)          \
@@ -393,11 +392,17 @@ tests.x86.irToAsm = function ()
                 sum += pint(555);           \
             if (v1 < pint(1))               \
                 sum += pint(1);             \
+            if (v1 <= v2)                   \
+                sum += pint(1);             \
+            if (v1 > v2)                    \
+                sum += pint(555);           \
+            if (v2 >= v1)                   \
+                sum += pint(1);             \
                                             \
             return sum;                     \
         }                                   \
         ',
-        2,
+        4,
         [-3, 7]
     );
     
@@ -448,20 +453,87 @@ tests.x86.irToAsm = function ()
         [10, 2]
     );
 
+    // Nested loops with if statement, modulo operator
+    test('                                          \
+        function test(ctx, v1, v2, v3)              \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v1 pint";                  \
+            "tachyon:arg v2 pint";                  \
+            "tachyon:arg v3 pint";                  \
+            "tachyon:ret pint";                     \
+                                                    \
+            var sum = v3;                           \
+                                                    \
+            for (var i = pint(0); i < v1; ++i)      \
+            {                                       \
+                for (var j = pint(0); j < v2; ++j)  \
+                {                                   \
+                    if (j % pint(2) === pint(0))    \
+                        sum += j;                   \
+                }                                   \
+            }                                       \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        102,
+        [5, 10, 2]
+    );
 
 
-    // TODO: loop with nested if + spills
+
+
+    // TODO: nested loops and if + spills
+
+
+
+
+    // Integer cast, 16-bit operand add
+    test('                                          \
+        function test(ctx, v1, v5, v8, v10)         \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v1 pint";                  \
+            "tachyon:arg v8 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:arg v10 pint";                 \
+            "tachyon:ret pint";                     \
+                                                    \
+            var x1 = iir.icast(IRType.i16, v5);     \
+            var x2 = iir.icast(IRType.i16, v8);     \
+                                                    \
+            var y = x1 + x2;                        \
+            y = iir.icast(IRType.pint, y);          \
+                                                    \
+            return y;                               \
+        }                                           \
+        ',
+        13,
+        [1,5,8,10]
+    );
 
 
 
 
 
 
+    // TODO: various size operands + if merge
 
 
 
-    // TODO: ICastInstr, 8, 16, 32 bit operands
 
+    // TODO: instruction tostring, opnd size, word, dword, qword if only
+    // one operand and its a mem operand.
+
+
+
+
+    // TODO: exclude set should work with register numbers instead?
+    // right now, excluding eax, can still allocate ax...
+    // perhaps we want a map of excluded registers?
 
 
 
