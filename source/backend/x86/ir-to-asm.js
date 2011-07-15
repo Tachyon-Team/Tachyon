@@ -1870,7 +1870,7 @@ FTanInstr.prototype.genCode = function(tltor, opnds)
         tltor.asm.add($(ptrSizeBytes), xSP);        
 };
 */
-/*
+
 FRndInstr.prototype.genCode = function (tltor, opnds)
 {
     const width = tltor.params.target.ptrSizeBits;
@@ -1897,7 +1897,7 @@ FRndInstr.prototype.genCode = function (tltor, opnds)
         frndint().
         fstMem(mem(valueOffset - tagValue, dest), 64, true);
 };
-*/
+
 /*
 FCeilInstr.prototype.genCode = function (tltor, opnds)
 {

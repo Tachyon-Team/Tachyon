@@ -1241,7 +1241,6 @@ var FTanInstr = instrMaker(
 @class Floating point round instruction
 @augments ArithInstr
 */
-/*
 var FRndInstr = instrMaker(
     'frnd',
     function (typeParams, inputVals, branchTargets)
@@ -1259,7 +1258,7 @@ var FRndInstr = instrMaker(
     undefined,
     new ArithInstr()
 );
-*/
+
 /**
 @class Floating point ceil instruction
 @augments ArithInstr

@@ -98,7 +98,7 @@ var iir =
     fcos        : FCosInstr,
     fsqrt       : FSqrtInstr,
 //    ftan        : FTanInstr,
-//    frnd        : FRndInstr,
+    frnd        : FRndInstr,
 //    fceil       : FCeilInstr,
 
     // Arithmetic instructions with overflow handling

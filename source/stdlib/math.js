@@ -140,7 +140,6 @@ Math.floor = function (x)
 /**
    round (x)
 */
-/*
 Math.round = function (x)
 {
     if (boxIsInt(x))
@@ -153,7 +152,7 @@ Math.round = function (x)
     }
     
 };
-*/
+
 /**
 15.8.2.11 max ([value1 [, value2 [, … ]]])
 Given zero or more arguments, calls ToNumber on each of the arguments and 
