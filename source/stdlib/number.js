@@ -101,6 +101,13 @@ Anonymous function to initialize this library
 // 15.7.3.4 Number.NaN
 // 15.7.3.5 Number.NEGATIVE_INFINITY
 // 15.7.3.6 Number.POSITIVE_INFINITY
+/*
+Object.defineProperty ( Number, "MAX_VALUE",         {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 1.7976931348623157e308} );
+Object.defineProperty ( Number, "MIN_VALUE",         {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 5e-324} );
+Object.defineProperty ( Number, "NaN",               {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': (0.0 / 0.0)} );
+Object.defineProperty ( Number, "NEGATIVE_INFINITY", {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': (-1.0 / 0.0)} );
+Object.defineProperty ( Number, "POSITIVE_INFINITY", {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': (1.0 / 0.0)} );
+*/
 
 /**
 Internal function to get the number value of a number or number object

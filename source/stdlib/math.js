@@ -59,6 +59,17 @@ var Math = {};
 // TODO: set [[Class]] internal property of the Math object to "Math"
 
 /**
+   Constants definitions
+*/
+Object.defineProperty ( Math, "E",      {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 2.7182818284590452354} );
+Object.defineProperty ( Math, "LN10",   {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 2.302585092994046} );
+Object.defineProperty ( Math, "LN2",    {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 0.6931471805599453} );
+Object.defineProperty ( Math, "LOG2E",  {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 1.4426950408889634} );
+Object.defineProperty ( Math, "LOG10E", {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 0.4342944819032518} );
+Object.defineProperty ( Math, "PI",     {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 3.1415926535897932384626433} );
+Object.defineProperty ( Math, "SQRT2",  {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': 1.4142135623730951} );
+
+/**
 15.8.2.1 abs (x)
 Returns the absolute value of x; the result has the same magnitude as x
 but has positive sign.
@@ -92,8 +103,16 @@ The value of Math.ceil(x) is the same as the value of -Math.floor(-x).
 */
 Math.ceil = function (x)
 {
-    // For integers, the value is unchanged
-    return x;
+    if (boxIsInt(x))
+        return x;
+    /*
+    else if (boxIsFloat(x))
+    {
+        var r = alloc_float();
+        r = iir.ceil(x, r);
+        return r;
+    }
+    */
 };
 
 /**
@@ -118,6 +137,23 @@ Math.floor = function (x)
     return x;
 };
 
+/**
+   round (x)
+*/
+/*
+Math.round = function (x)
+{
+    if (boxIsInt(x))
+        return x;
+    else if (boxIsFloat(x))
+    {
+        var r = alloc_float();
+        r = iir.frnd(x, r);
+        return r;
+    }
+    
+};
+*/
 /**
 15.8.2.11 max ([value1 [, value2 [, … ]]])
 Given zero or more arguments, calls ToNumber on each of the arguments and 
@@ -203,3 +239,105 @@ Math.pow = function (x, y)
     return p;
 };
 
+/**
+Returns an implementation-dependent approximation to the exponential function of x
+(e raised to the power of x, where e is the base of the natural logarithms).
+. If x is NaN, the result is NaN.
+. If x is +0, the result is 1.
+. If x is -0, the result is 1.
+. If x is +Inf, the result is +Inf.
+. If x is -Inf, the result is +0.   
+*/
+
+Math.exp = function (y)
+{
+    return Math.pow(Math.E, y);
+};
+
+
+/**
+Returns an implementation-dependent approximation to the sine of x.
+The argument is expressed in radians.
+. If x is NaN, the result is NaN.
+. If x is +0, the result is +0.
+. If x is -0, the result is -0.
+. If x is +Inf or -Inf, the result is NaN.
+*/
+
+Math.sin = function (x)
+{
+    r = alloc_float();
+
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.fsin(x, r);
+
+    return r;
+};
+
+
+/**
+Returns an implementation-dependent approximation to the cosine of x.
+The argument is expressed in radians.
+. If x is NaN, the result is NaN.
+. If x is +0, the result is 1.
+. If x is -0, the result is 1.
+. If x is +Inf, the result is NaN.
+. If x is -Inf, the result is NaN
+*/
+
+Math.cos = function (x)
+{
+    r = alloc_float();
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.fcos(x, r);
+    return r;
+};
+
+/**
+Returns an implementation-dependent approximation to the square root of x.
+. If x is NaN, the result is NaN.
+. If x is less than 0, the result is NaN.
+. If x is +0, the result is +0.
+. If x is -0, the result is -0.
+. If x is +Inf, the result is +Inf
+*/
+
+Math.sqrt = function (x)
+{
+    r = alloc_float();
+    r = iir.fsqrt(x, r);
+    return r;
+};
+
+/**
+Returns an implementation-dependent approximation to the tangent of x.
+The argument is expressed in radians.
+. If x is NaN, the result is NaN.
+. If x is +0, the result is +0.
+. If x is -0, the result is -0.
+. If x is +Inf or -Inf, the result is NaN.
+*/
+/*
+Math.tan = function (x)
+{
+    r = alloc_float();
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.ftan(x, r);
+    return r;
+};
+*/

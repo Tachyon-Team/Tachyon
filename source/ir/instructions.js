@@ -1144,6 +1144,145 @@ var FDivInstr = instrMaker(
     new ArithInstr()
 );
 
+/**
+@class Floating point sin instruction
+@augments ArithInstr
+*/
+
+var FSinInstr = instrMaker(
+    'fsin',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+
+/**
+@class Floating point cos instruction
+@augments ArithInstr
+*/
+
+var FCosInstr = instrMaker(
+    'fcos',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Floating point sin instruction
+@augments ArithInstr
+*/
+
+var FSqrtInstr = instrMaker(
+    'fsqrt',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Floating point tan instruction
+@augments ArithInstr
+*/
+/*
+var FTanInstr = instrMaker(
+    'ftan',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+*/
+/**
+@class Floating point round instruction
+@augments ArithInstr
+*/
+/*
+var FRndInstr = instrMaker(
+    'frnd',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+*/
+/**
+@class Floating point ceil instruction
+@augments ArithInstr
+*/
+/*
+var FCeilInstr = instrMaker(
+    'fceil',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+*/
 //=============================================================================
 //
 // Bitwise operations

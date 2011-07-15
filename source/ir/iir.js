@@ -94,6 +94,12 @@ var iir =
     fsub        : FSubInstr,
     fmul        : FMulInstr,
     fdiv        : FDivInstr,
+    fsin        : FSinInstr,
+    fcos        : FCosInstr,
+    fsqrt       : FSqrtInstr,
+//    ftan        : FTanInstr,
+//    frnd        : FRndInstr,
+//    fceil       : FCeilInstr,
 
     // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,

@@ -327,11 +327,63 @@ function boxToString(val)
 
     if (boxIsFloat(val))
     {
-        /*
-        var offset = floatLayout.getFieldOffset(["f0"]);
-        return num_to_string(val
-          */
-        return "unimplement FP representation";
+        // WARNING: Ugly and brutal code ahead //
+        var s = '';
+        var f;
+        var byteVal;
+        var byteStr;
+        
+        f = get_float_f0(val);
+        f = iir.icast(IRType.puint, f);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        f >>= puint(8);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        
+        f = get_float_f1(val);
+        f = iir.icast(IRType.puint, f);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        f >>= puint(8);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        
+        f = get_float_f2(val);
+        f = iir.icast(IRType.puint, f);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        f >>= puint(8);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        
+        f = get_float_f3(val);
+        f = iir.icast(IRType.puint, f);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+        f >>= puint(8);
+        byteVal = iir.icast(IRType.pint, f & puint(0xFF));
+        byteStr = getIntStr(byteVal, pint(16));
+        if (byteStr.length < 2) byteStr = '0' + byteStr;
+        s = byteStr + s;
+
+        s = '0x' + s;
+
+        return s;
     }
 
     if (boxIsObjExt(val))
