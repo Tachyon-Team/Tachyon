@@ -606,19 +606,17 @@ IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genI
         genCmp('jl', 'jb', true);
         break;
 
-        /*
         case 'LE':
-        genCmp('jle', 'jbe');
+        genCmp('jle', 'jbe', true);
         break;
 
         case 'GT':
-        genCmp('jg', 'ja');
+        genCmp('jg', 'ja', true);
         break;
 
         case 'GE':
-        genCmp('jge', 'jae');
+        genCmp('jge', 'jae', true);
         break;
-        */
 
         case 'EQ':
         genCmp('je', 'je');
@@ -670,6 +668,141 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 
     asm.ret();
 }
+
+/*
+ICastInstr.prototype.genCode = function (tltor, opnds)
+{
+    const reg = oldx86.Assembler.prototype.register; 
+    const target = tltor.params.target; 
+    const configWidth = target.ptrSizeBits;
+    const dstWidth = this.type.getSizeBits(tltor.params);
+    const srcWidth = this.uses[0].type.getSizeBits(tltor.params);
+    const scratchReg = target.backendCfg.scratchReg;
+
+    const context = target.backendCfg.context;
+
+
+    var dest = this.regAlloc.dest;
+    var src  = opnds[0];
+
+    assert(
+        dest.type === oldx86.type.REG, 
+        "Destination should be a register"
+    );   
+
+    if (dstWidth === 8 && configWidth === 32)
+    {
+        if(!(dest === reg.rax.subReg(configWidth) ||
+             dest === reg.rbx.subReg(configWidth) ||
+             dest === reg.rcx.subReg(configWidth) ||
+             dest === reg.rdx.subReg(configWidth)))
+        {
+            tltor.asm.
+            push(context);
+
+            // The stack pointer has moved, therefore we need to 
+            // adjust the displacement for memory locations
+            if (src.type === oldx86.type.MEM)
+            {
+                src.disp += configWidth; 
+            }
+
+            tltor.asm.
+            mov(src, context);
+
+            if (src.type === oldx86.type.MEM)
+            {
+                src.disp -= configWidth; 
+            }
+
+            dest = context;
+            src  = context;
+        }
+    }
+
+    if (srcWidth === 8 && configWidth === 32 && src.type === oldx86.type.REG)
+    {
+        if(!(src === reg.rax.subReg(configWidth) ||
+             src === reg.rbx.subReg(configWidth) ||
+             src === reg.rcx.subReg(configWidth) ||
+             src === reg.rdx.subReg(configWidth)))
+        {
+            // Unless we have not already liberated
+            // the context register
+            if (dest !== context)
+            {
+                tltor.asm.
+                push(context).
+                mov(src, context);
+
+                src = context;
+            }
+        }
+    }
+
+    if (src === dest && srcWidth === dstWidth)
+    {
+        // Do nothing
+    }
+    else if (srcWidth === dstWidth)
+    {
+        tltor.asm.
+        mov(src, dest);
+    }
+
+    // If the source width is larger than the destination width,
+    // we retain only the least significative bits and zero out 
+    // the others
+    else if (srcWidth > dstWidth)
+    {
+        if (src.type === oldx86.type.REG)
+        {
+            if (src !== dest || (srcWidth === 64 && dstWidth === 32))
+            {
+                tltor.asm.
+                mov(src.subReg(dstWidth), dest.subReg(dstWidth));
+            }
+        } else // src is in memory or is a constant
+        {
+            tltor.asm.
+            mov(src, dest.subReg(dstWidth), dstWidth);
+        }
+
+        // Moving a value from 64 to 32 bits, automatically zeroes out 
+        // the most significant bits.  For all other combinations,
+        // we need to explicitly do it.
+        if (dstWidth !== 32)
+        {
+            tltor.asm.
+            movxx(dest.subReg(dstWidth), dest, false);
+        }
+    } 
+
+    // If the source width is smaller than the destination width,
+    // we need to extend the sign bit for signed values
+    else
+    {
+        const isSigned = this.uses[0].type.isSigned() && this.type.isSigned();
+
+        if (src.type === oldx86.type.REG)
+        {
+            tltor.asm.
+            movxx(src.subReg(srcWidth), dest.subReg(dstWidth), isSigned);
+        } else
+        {
+            tltor.asm.
+            movxx(src, dest.subReg(dstWidth), isSigned, srcWidth);
+        }
+    }
+
+    if (dest === context || src === context)
+    {
+        tltor.asm.
+        mov(dest, this.regAlloc.dest).
+        pop(context);
+    }
+};
+*/
 
 LoadInstr.prototype.x86 = new x86.InstrCfg();
 LoadInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)

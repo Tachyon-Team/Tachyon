@@ -1457,7 +1457,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             if (succAllocMap === undefined)
             {
                 // Use the current register allocation for the successor
-                allocMaps[succ.blockId] = allocMap;
+                var succAllocMap = allocMap.copy();
+                allocMaps[succ.blockId] = succAllocMap;
 
                 // For each instruction of the successor
                 for (var k = 0; k < succ.instrs.length; ++k)
@@ -1485,8 +1486,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     {
                         // Allocate a register for the phi node
                         var reg = allocReg(
-                            allocMap,
-                            mergeMoves,
+                            succAllocMap,
+                            moveList,
                             succLiveIn,
                             instr,
                             undefined,
@@ -1501,9 +1502,9 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         // Use the register and stack mapping of the
                         // incoming value for the phi node
                         if (incAlloc instanceof x86.Register)
-                            allocMap.allocReg(instr, incAlloc);
+                            succAllocMap.allocReg(instr, incAlloc);
                         else
-                            allocMap.allocStack(instr, incAlloc);
+                            succAllocMap.allocStack(instr, incAlloc);
                     }
                 }
             }
@@ -1540,13 +1541,16 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     var incAlloc = allocMap.getAlloc(inc);
 
                     assert (
-                        incAlloc !== undefined,
-                        'no allocation for incoming phi value'
+                        !(incAlloc === undefined && inc instanceof IRInstr),
+                        'no allocation for incoming phi temporary:\n' +
+                        inc
                     );
+
+                    var srcValue = (incAlloc !== undefined)? incAlloc:inc;
 
                     // If the locations do not match, add a move
                     if (incAlloc !== phiAlloc)
-                        addMove(moveList, incAlloc, phiAlloc);
+                        addMove(moveList, srcValue, phiAlloc);
                 }
 
                 // For each value live after the phi nodes

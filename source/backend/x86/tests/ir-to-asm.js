@@ -80,6 +80,9 @@ tests.x86.irToAsm = function ()
 
         irFunc = ir.getChild('test');
 
+        print(irFunc);
+        print('');
+
         // Generate the machine code for the function
         var code = backend.genCode(irFunc, params);
 
@@ -371,6 +374,33 @@ tests.x86.irToAsm = function ()
         [1, 7]
     );
 
+    // TODO: complete this test, add other kinds of comparisons
+    // Comparison test
+    test('                                  \
+        function test(ctx, v1, v2)          \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:arg v2 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            var sum = pint(0);              \
+                                            \
+            if (v1 !== pint(0))             \
+                sum += pint(1);             \
+            if (v2 === pint(0))             \
+                sum += pint(555);           \
+            if (v1 < pint(1))               \
+                sum += pint(1);             \
+                                            \
+            return sum;                     \
+        }                                   \
+        ',
+        2,
+        [-3, 7]
+    );
+    
     // Simple loop, counter incrementation
     test('                                      \
         function test(ctx, v1, v2)              \
