@@ -97,6 +97,7 @@ var iir =
     fsin        : FSinInstr,
     fcos        : FCosInstr,
     fsqrt       : FSqrtInstr,
+    flog       : FLogInstr,    
 //    ftan        : FTanInstr,
     frnd        : FRndInstr,
     fceil       : FCeilInstr,

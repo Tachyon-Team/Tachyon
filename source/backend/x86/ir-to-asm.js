@@ -1871,6 +1871,49 @@ FTanInstr.prototype.genCode = function(tltor, opnds)
 };
 */
 
+FLogInstr.prototype.genCode = function(tltor, opnds)
+{
+    const width = tltor.params.target.ptrSizeBits;    
+    const dest = this.regAlloc.dest;
+    const $ = x86.Assembler.prototype.immediateValue;        
+    const mem = x86.Assembler.prototype.memory;
+    const reg = x86.Assembler.prototype.register;        
+    const xSP = reg.rsp.subReg(width);    
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;    
+    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+
+    var src = opnds[0];
+    if (src.type == x86.type.IMM_VAL)
+    {
+        tltor.asm.push(src.value);
+        src = mem(valueOffset - tagValue, xSP);
+    }
+    else if (src.type == x86.type.MEM)
+    {
+        tltor.asm.mov(src, scratchReg);
+        src = mem(valueOffset - tagValue, scratchReg);
+    }
+
+    if (dest.type == x86.type.MEM)
+    {
+        tltor.asm.mov(dest, scratchReg);
+        dest = scratchReg;
+    }
+    
+    tltor.asm.
+        fldl2e().
+        fld1().        
+        fldMem(src, 64).
+        fyl2x().
+        fdiv(1, true).
+        fstMem(mem(valueOffset - tagValue, dest), 64, true).
+        fdecstp();
+
+    if (src.type == x86.type.IMM_VAL)
+        tltor.asm.add($(ptrSizeBytes), xSP);        
+};
+
 FRndInstr.prototype.genCode = function (tltor, opnds)
 {
     const width = tltor.params.target.ptrSizeBits;

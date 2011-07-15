@@ -321,7 +321,28 @@ Returns an implementation-dependent approximation to the square root of x.
 Math.sqrt = function (x)
 {
     r = alloc_float();
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
     r = iir.fsqrt(x, r);
+    return r;
+};
+
+/**
+*/
+Math.log = function (x)
+{
+    r = alloc_float();
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.flog(x, r);
     return r;
 };
 

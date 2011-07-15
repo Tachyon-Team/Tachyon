@@ -1192,12 +1192,34 @@ var FCosInstr = instrMaker(
 );
 
 /**
-@class Floating point sin instruction
+@class Floating point sqrt instruction
 @augments ArithInstr
 */
-
 var FSqrtInstr = instrMaker(
     'fsqrt',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+
+/**
+@class Floating point log instruction
+@augments ArithInstr
+*/
+var FLogInstr = instrMaker(
+    'flog',
     function (typeParams, inputVals, branchTargets)
     {
         instrMaker.validNumInputs(inputVals, 2, 2);
