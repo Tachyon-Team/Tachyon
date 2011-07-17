@@ -48,6 +48,45 @@ Register allocation for x86 code generation.
 Maxime Chevalier-Boisvert
 */
 
+/* TODO:
+
+PROBLEM:
+Moving values from one stack loc to another, we crush the previous
+allocation. Need a stack location -> value map, just like the gp reg map
+to keep track of this.
+
+1. Refactor stack frame map
+- Still need arg, ret val pos
+- Still need offsets for given stack locs
+- No longer need list of values per stack loc, just number of stack locs
+- No longer need value->stack loc association
+- Need number of spill slots
+- StackMap.numSpills
+
+2. Refactor allocMap for "multi-home" allocation
+- Map of vals to all current locations
+- getAlloc returns alloc list
+- getRegAlloc to get reg alloc only, if mustBeReg?
+- Need map of stack locs to values
+  - Scan this map to get spill loc for temp
+  - Need liveness info to do this
+- AllocMap.getAlloc
+- AllocMap.getRegAlloc
+- AllocMap.allocReg(value, reg)
+- AllocMap.allocStack(value, stackLoc)
+- AllocMap.spillValue(value)
+  - Find first avail spill loc, alloc value to it
+
+3. Implement freeReg spill function
+- Use this for writeRegs spilling, no allocation of value to a register
+
+4. Refactor allocReg w/ weights
+
+5. Refactor opnd alloc loop into nested function?
+- Better for clarity
+
+*/
+
 /**
 Stack pointer register in 32-bit mode
 */
@@ -767,6 +806,30 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             var regSet = gpRegSet;
         else
             var regSet = [fixedReg]
+
+
+
+
+
+        /*
+        TODO: freeReg spill function
+
+        TODO: loop to find best register choice, unless fixed reg
+
+        compute weight based on:
+        - liveness
+        - contains constant or temp
+        - number of uses of temp
+
+        var bestReg = null;
+        var leastWeight = LOTS
+
+        No more need to build lists of free regs, live regs, etc.!
+        */
+
+
+
+
 
         // List of free registers
         var freeRegs = [];

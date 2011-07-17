@@ -488,27 +488,6 @@ tests.x86.irToAsm = function ()
 
 
 
-    /*
-    // TODO: PROBLEM
-    Moving values from one stack loc to another, we crush the previous
-    allocation. Need a stack location -> value map, just like the gp reg map
-    to keep track of this.
-    
-    Otherwise, need to ensure that all temporaries that get spilled have
-    their own memory location, and nothing else gets stored there
-    This may be better, because as it is now... Writing to a spilled
-    temporary's location isn't a great idea... where does the temporary go..
-    Don't want to "superspill" it...
-
-    Even if we restrict ourselves to one temp/value per stack loc, will want
-    to add validation assertions to make sure nothing stupid happens! May
-    also want to just have function to alloc a temp to its stack loc without
-    having to get its stack loc first...
-    */
-
-
-
-
 
 
     /*
@@ -645,6 +624,9 @@ tests.x86.irToAsm = function ()
 
 
 
+
+
+    // TODO: test boxInt + JS boxed add + ret unboxInt
 
 
 
