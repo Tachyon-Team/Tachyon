@@ -287,6 +287,27 @@ Math.sin = function (x)
 
 
 /**
+Returns an implementation-dependent approximation to the arcsine of x.
+...
+*/
+
+Math.asin = function (x)
+{
+    r = alloc_float();
+
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.fasin(x, r);
+
+    return r;
+};
+
+
+/**
 Returns an implementation-dependent approximation to the cosine of x.
 The argument is expressed in radians.
 . If x is NaN, the result is NaN.
@@ -307,6 +328,28 @@ Math.cos = function (x)
     }
     r = iir.fcos(x, r);
     return r;
+};
+
+
+/**
+Returns an implementation-dependent approximation to the arccosine of x.
+The argument is expressed in radians.
+...
+*/
+Math.acos = function (x)
+{
+    return ((Math.PI / 2) - Math.asin(x));
+/*
+    r = alloc_float();
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.fcos(x, r);
+    return r;
+*/    
 };
 
 /**
@@ -354,7 +397,6 @@ The argument is expressed in radians.
 . If x is -0, the result is -0.
 . If x is +Inf or -Inf, the result is NaN.
 */
-/*
 Math.tan = function (x)
 {
     r = alloc_float();
@@ -367,4 +409,22 @@ Math.tan = function (x)
     r = iir.ftan(x, r);
     return r;
 };
-*/
+
+Math.atan2 = function (y, x)
+{
+    r = alloc_float();
+    if (boxIsInt(y))
+    {
+        var yf = alloc_float();
+        y = unboxInt(y);        
+        y = iir.itof(y, yf);
+    }
+    if (boxIsInt(x))
+    {
+        var xf = alloc_float();
+        x = unboxInt(x);        
+        x = iir.itof(x, xf);
+    }
+    r = iir.fatan2(y, x, r);
+    return r;
+};

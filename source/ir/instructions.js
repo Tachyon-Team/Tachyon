@@ -1169,11 +1169,58 @@ var FSinInstr = instrMaker(
 
 
 /**
+@class Floating point asin instruction
+@augments ArithInstr
+*/
+
+var FAsinInstr = instrMaker(
+    'fsin',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+
+/**
 @class Floating point cos instruction
 @augments ArithInstr
 */
 
 var FCosInstr = instrMaker(
+    'fcos',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 2, 2);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+
+/**
+@class Floating point acos instruction
+@augments ArithInstr
+*/
+var FAcosInstr = instrMaker(
     'fcos',
     function (typeParams, inputVals, branchTargets)
     {
@@ -1240,7 +1287,6 @@ var FLogInstr = instrMaker(
 @class Floating point tan instruction
 @augments ArithInstr
 */
-/*
 var FTanInstr = instrMaker(
     'ftan',
     function (typeParams, inputVals, branchTargets)
@@ -1258,7 +1304,32 @@ var FTanInstr = instrMaker(
     undefined,
     new ArithInstr()
 );
+
+
+/**
+@class Floating point atan2 instruction
+@augments ArithInstr
 */
+var FAtan2Instr = instrMaker(
+    'fatan2',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3, 3);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box
+                &&
+                inputVals[2].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
 /**
 @class Floating point round instruction
 @augments ArithInstr
