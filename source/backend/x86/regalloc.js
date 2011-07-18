@@ -74,7 +74,7 @@ to keep track of this.
 - AllocMap.getRegAlloc
 - AllocMap.allocReg(value, reg)
 - AllocMap.allocStack(value, stackLoc)
-- AllocMap.spillValue(value)
+- AllocMap.spillValue(value, stackMap)
   - Find first avail spill loc, alloc value to it
 
 3. Implement freeReg spill function
@@ -189,12 +189,17 @@ x86.InstrCfg.prototype.destMustBeReg = function (instr, params)
 /**
 @class Stack frame map. Maps temporaries to stack frame locations.
 */
-x86.StackFrameMap = function ()
+x86.StackFrameMap = function (slotSize)
 {
+    assert (
+        slotSize === 4 || slotSize === 8,
+        'invalid slot size'
+    );
+
     /**
-    @field List of assigned temporaries for each stack locations
+    @field Stack frame slot size, in bytes
     */
-    this.locList = [];
+    this.slotSize = slotSize;
 
     /**
     @field Map of arguments to stack location indices
@@ -204,7 +209,7 @@ x86.StackFrameMap = function ()
     /**
     @field Location of the return address
     */
-    this.retAddrLoc = undefined;
+    this.retAddrSlot = undefined;
 
     /**
     @field Map of callee-save registers to stack indices
@@ -212,19 +217,25 @@ x86.StackFrameMap = function ()
     this.saveRegMap = {};
 
     /**
-    @field Map of temporaries to stack location indices
+    @field Total number of stack frame slots
     */
-    this.valMap = [];
+    this.numSlots = 0;
 
     /**
-    @field Offsets for stack locations
+    @field Number of stack locations used for spills. This excludes
+    callee-save register slots, even though they are technically spills.
     */
-    this.locOffsets = [];
+    this.numSpillSlots = 0;
 
     /**
-    @field Size of the portion of the stack frame used for spills
+    @field Number of callee-save register slots
     */
-    this.spillSize = undefined;
+    this.numSaveSlots = 0;
+
+    /**
+    @field Offsets for stack slots
+    */
+    this.slotOffsets = [];
 }
 
 /**
@@ -242,53 +253,49 @@ x86.StackFrameMap.prototype.toString = function ()
 /**
 Compute the offsets for stack locations
 */
-x86.StackFrameMap.prototype.compOffsets = function (x86_64)
+x86.StackFrameMap.prototype.compOffsets = function ()
 {
     assert (
         typeof x86_64 === 'boolean',
         'invalid x86_64 flag'
     );
 
-    this.locOffsets.length = this.locList.length;
+    this.slotOffsets.length = this.numSlots;
 
     var curOffset = 0;
 
-    var spillSize;
-
     // For each stack frame location, in reverse order
-    for (var i = this.locList.length - 1; i >= 0; --i)
+    for (var i = this.numSlots - 1; i >= 0; --i)
     {
-        if (i === this.retAddrLoc)
-            spillSize = curOffset;
+        this.slotOffsets[i] = curOffset;
 
-        this.locOffsets[i] = curOffset;
-
-        curOffset += x86_64? 8:4;
+        curOffset += this.slotSize;
     }
-
-    assert (
-        spillSize !== undefined,
-        'invalid spill size'
-    );
-
-    this.spillSize = spillSize;
 }
 
 /**
-Allocate a stack location for an argument
+Get the size of portion of the stack frame used for spills
+*/
+x86.StackFrameMap.prototype.getSpillSize = function ()
+{
+    return (this.numSpillSlots + this.numSpillSlots) * this.slotSize;
+}
+
+/**
+Allocate a stack location for the return address
 */
 x86.StackFrameMap.prototype.allocArg = function (argIdx)
 {
     assert (
-        this.argMap[argIdx] === undefined,
-        'argument already mapped on stack'
+        isNonNegInt(argIdx) && argIdx >= this.argMap.length,
+        'invalid argument index'
     );
 
-    var locIdx = this.locList.length;
-
-    this.locList.push(['arg' + argIdx]);
+    var locIdx = this.numSlots;
 
     this.argMap[argIdx] = locIdx;
+
+    this.numSlots += 1;
 }
 
 /**
@@ -301,11 +308,28 @@ x86.StackFrameMap.prototype.allocRetAddr = function ()
         'return address mapped on stack'
     );
 
-    var locIdx = this.locList.length;
-
-    this.locList.push(['ret_addr']);
+    var locIdx = this.numSlots;
 
     this.retAddrLoc = locIdx;
+
+    this.numSlots += 1;
+}
+
+/**
+Allocate a stack location for the return address
+*/
+x86.StackFrameMap.prototype.allocRetAddr = function ()
+{
+    assert (
+        this.retAddrLoc === undefined,
+        'return address mapped on stack'
+    );
+
+    var locIdx = this.numSlots;
+
+    this.retAddrLoc = locIdx;
+
+    this.numSlots += 1;
 }
 
 /**
@@ -318,67 +342,63 @@ x86.StackFrameMap.prototype.allocSaveReg = function (reg)
         'invalid register'
     );
 
-    var locIdx = this.locList.length;
-
-    this.locList.push([reg.name]);
+    var locIdx = this.numSaveSlots;
 
     this.saveRegMap[reg.name] = locIdx;
+
+    this.numSlots += 1;
+    this.numSaveSlots += 1;
 }
 
 /**
-Get a stack location for a given value
+Allocate a new spill slot. This can be used to dynamically grow the
+stack-frame map.
 */
-x86.StackFrameMap.prototype.getStackLoc = function (value)
+x86.StackFrameMap.prototype.allocSpill = function ()
 {
-    assert (
-        value instanceof IRValue || value instanceof x86.Register,
-        'invalid value in getStackLoc: ' + value
-    );
+    var locIdx = this.numSlots;
 
-    if (value instanceof x86.Register)
-    {
-        assert (
-            this.saveRegMap[value.name] !== undefined,
-            'no stack loc for callee-save register: ' + value
-        );
-
-        return this.saveRegMap[value.name];
-    }
-
-    if (value instanceof ArgValInstr)
-    {
-        var argIdx = value.argIndex;
-
-        // If a stack location is pre-mapped for this argument
-        if (this.argMap[argIdx] !== undefined)
-            return this.argMap[argIdx];
-    }
-
-    if (this.valMap[value.instrId] !== undefined)
-    {
-        return this.valMap[value.instrId];
-    }
-
-    var locIdx = this.locList.length;
-
-    this.locList.push([value]);
-
-    this.valMap[value.instrId] = locIdx;
-
-    return locIdx
+    this.numSlots += 1;
+    this.numSpillSlots += 1;
 }
 
 /**
-Get the offset for a stack location
+Get the stack slot for a given argument
 */
-x86.StackFrameMap.prototype.getLocOffset = function (locIdx)
+x86.StackFrameMap.prototype.getArgSlot = function (argIdx)
 {
     assert (
-        locIdx < this.locOffsets.length,
-        'invalid stack loc idx: ' + locIdx
+        argIndex < this.argMap.length,
+        'invalid argument index'
     );
 
-    return this.locOffsets[locIdx]
+    return this.argMap[argIdx];
+}
+
+/**
+Get the stack slot for callee-save register
+*/
+x86.StackFrameMap.prototype.getRegSlot = function (reg)
+{
+    assert (
+        reg.name in this.saveRegMap,
+        'invalid callee-save register: ' + reg
+    );
+
+    return this.numSlots - 1 - this.saveRegMap[reg.name];
+}
+
+/**
+Get the offset for a stack slot
+*/
+x86.StackFrameMap.prototype.getSlotOffset = function (slotIdx)
+{
+    assert (
+        slotIdx < this.numSlots
+        'invalid stack slot idx: ' + slotIdx
+    );
+
+    return this.slotOffsets[slotIdx]
 }
 
 /**
@@ -393,14 +413,14 @@ x86.RegAllocMap = function ()
     this.gpRegMap = [];
 
     /**
-    @field Map of values to registers
+    @field Map of spill slots to values
     */
-    this.valRegMap = new HashMap();
+    this.spillMap = [];
 
     /**
-    @field Map of values to stack locations
+    @field Map of values to list of current allocations
     */
-    this.valStackMap = new HashMap();
+    this.allocMap = new HashMap();
 }
 
 /**
@@ -408,19 +428,32 @@ Copy an allocation map
 */
 x86.RegAllocMap.prototype.copy = function ()
 {
-    // Create a new object from the reg alloc map prototype
-    var newMap = Object.create(x86.RegAllocMap.prototype);
+    // Create a new reg alloc map
+    var newMap = new x86.RegAllocMap();
 
     // Copy the GP register map
-    newMap.gpRegMap = new Array(this.gpRegMap.length);
+    newMap.gpRegMap.length = this.gpRegMap.length;
     for (var i = 0; i < this.gpRegMap.length; ++i)
         newMap.gpRegMap[i] = this.gpRegMap[i];
 
-    // Copy the value->register map
-    newMap.valRegMap = this.valRegMap.copy();
+    // Copy the spill slot map
+    newMap.spillMap.length = this.spillMap.length;
+    for (var i = 0; i < this.spillMap.length; ++i)
+        newMap.spillMap[i] = this.spillMap[i];
 
-    // Copy the value->stack map
-    newMap.valStackMap = this.valStackMap.copy();
+    // Copy the alloc map
+    for (var itr = this.allocMap.getItr(); itr.valid(); itr.next())
+    {
+        var item = itr.get();
+        var val = item.key;
+        var list = item.value;
+
+        var newList = new Array(list.length);
+        for (var i = 0; i < list.length; ++i)
+            newList[i] = list[i];
+
+        newMap.allocMap.setItem(val, newList);
+    }
 
     // Return the copy
     return newMap;
@@ -442,19 +475,16 @@ x86.RegAllocMap.prototype.toString = function ()
         if (value === undefined)
             continue;
 
-        var reg = this.valRegMap.getItem(value);
-        var regStr = reg.toString();
-
-        str += '\n' + regStr + ' => ' + value.getValName();
+        str += '\nreg' + regNo + ' => ' + value.getValName();
     }
 
     return str;
 }
 
 /**
-Allocate a value to a register
+Allocate a value to a register or spill slot
 */
-x86.RegAllocMap.prototype.allocReg = function (value, reg)
+x86.RegAllocMap.prototype.makeAlloc = function (value, alloc)
 {
     assert (
         value === undefined || value instanceof IRValue,
@@ -462,60 +492,122 @@ x86.RegAllocMap.prototype.allocReg = function (value, reg)
     );
 
     assert (
-        reg instanceof x86.Register && reg.type === 'gp',
-        'invalid register'
+        isNonNegInt(alloc) ||
+        (reg instanceof x86.Register && reg.type === 'gp'),
+        'invalid allocation'
     );
 
-    log.debug(reg + ' -> ' + (value? value.getValName():undefined));
+    log.debug(alloc + ' -> ' + (value? value.getValName():undefined));
 
-    var prevRegVal = this.gpRegMap[reg.regNo];
-
-    if (prevRegVal !== undefined)
+    // If the allocation is to a register
+    if (alloc instanceof x86.Register)
     {
-        //print('unmapping prev reg val: ' + prevRegVal + ' (' + reg + ')');
-        this.valRegMap.remItem(prevRegVal);
+        // Get the value the register previously mapped to
+        var prevRegVal = this.gpRegMap[alloc.regNo];
+
+        // Remove the allocation of the previous value to the register
+        if (prevRegVal !== undefined)
+            this.remAlloc(prevRegVal, alloc);
+
+        // Update the register's value
+        this.gpRegMap[alloc.regNo] = value;
+    }
+    else
+    {
+        // Get the value the spill slot previously mapped to
+        var prevSlotVal = this.spillMap[alloc];
+
+        // Remove the allocation of the previous value to the spill slot
+        if (prevSlotVal !== undefined)
+            this.remAlloc(prevSlotVal, alloc);
+
+        // Update the spill slot's value
+        this.spillMap[alloc] = value;
     }
 
-    // Update the register's value
-    this.gpRegMap[reg.regNo] = value;
-
-    if (value !== undefined)
+    // Get the alloc set for this value
+    var allocSet;
+    if (this.allocMap.hasItem(value) === false)
     {
-        // If the value was in another register, unmap it from there
-        if (this.valRegMap.hasItem(value) === true)
-        {
-            var prevReg = this.valRegMap.getItem(value);
-            this.gpRegMap[prevReg.regNo] = undefined;
-        }
-
-        this.valRegMap.setItem(value, reg);
+        var allocSet = [];
+        this.allocMap.addItem(value, allocSet);
     }
+    else
+    {
+        allocSet = this.allocMap.getItem(value);
+    }
+
+    // Add the new allocation to the set
+    arraySetAdd(allocSet, alloc);
 }
 
 /**
-Allocate a value to a stack location
+Remove a value from the allocation map
 */
-x86.RegAllocMap.prototype.allocStack = function (value, stackLoc)
+x86.RegAllocMap.prototype.remAlloc = function (value, alloc)
 {
     assert (
-        value === undefined || value instanceof IRValue,
-        'invalid value'
+        value instanceof IRValue,
+        'invalid value in remAlloc'
     );
 
     assert (
-        isNonNegInt(stackLoc),
-        'invalid stack location: ' + stackLoc
+        this.allocMap.hasItem(value),
+        'no alloc set for value'
     );
 
-    // Remove the previous register allocation for this value, if any
-    this.remAlloc(value);
+    var allocSet = this.allocMap.getItem(value);
 
-    log.debug(stackLoc + ' -> ' + (value? value.getValName():undefined));
+    assert (
+        arraySetHas(allocSet, alloc),
+        'allocation not in set'
+    );
 
-    if (value !== undefined)
+    arraySetRem(allocSet, alloc);
+}
+
+/**
+Find a free spill slot and allocate a value to it
+*/
+x86.RegAllocMap.prototype.spillValue = function (value, stackMap, liveSet)
+{
+    /*
+    TODO
+    - AllocMap.spillValue(value, stackMap)
+      - Find first avail spill loc, alloc value to it
+    */
+
+    // TODO: iterate through spillMap
+
+    /*
+    TODO: return chosen stack slot idx
+    PROBLEM: do these match with spill slot idxs from the stack frame****
+    
+    Want this property!
+
+    Switch spill map to hash map?
+    */
+
+    // For each spill slot
+    for (var i = 0; i < this.spillMap.length; ++i)
     {
-        this.valStackMap.setItem(value, stackLoc);
+        var curVal = this.spillMap[i];
+
+
+
+
+
+
     }
+
+
+    // Get the number of spill slots from the stack map
+    var numSpills = stackMap.numSpillSlots;
+
+
+
+
+
 }
 
 /**
@@ -532,78 +624,19 @@ x86.RegAllocMap.prototype.getRegVal = function (reg)
 }
 
 /**
-Get the register a value is allocated to, if any
+Get the allocation set for a value.
 */
-x86.RegAllocMap.prototype.getValReg = function (value)
+x86.RegAllocMap.prototype.getAllocs = function (value)
 {
     assert (
         value instanceof IRValue,
-        'invalid value'
+        'invalid value in getAlloc'
     );
 
-    if (this.valRegMap.hasItem(value) === true)
-        return this.valRegMap.getItem(value);
-
-    return undefined;
-}
-
-/**
-Get the stack location a value is allocated to, if any
-*/
-x86.RegAllocMap.prototype.getValStack = function (value)
-{
-    assert (
-        value instanceof IRValue,
-        'invalid value'
-    );
-
-    if (this.valStackMap.hasItem(value) === true)
-        return this.valStackMap.getItem(value);
-
-    return undefined;
-}
-
-/**
-Get the location allocated for a value. Registers are preffered.
-*/
-x86.RegAllocMap.prototype.getAlloc = function (value)
-{
-    if (this.valRegMap.hasItem(value) === true)
-    {
-        return this.valRegMap.getItem(value);
-    }
-
-    if (this.valStackMap.hasItem(value) === true)
-    {
-        return this.valStackMap.getItem(value);
-    }
-
-    return undefined;
-}
-
-/**
-Remove a value from the allocation map
-*/
-x86.RegAllocMap.prototype.remAlloc = function (value)
-{
-    assert (
-        value instanceof IRValue,
-        'invalid value in remAlloc'
-    );
-
-    if (this.valRegMap.hasItem(value) === true)
-    {
-        var reg = this.valRegMap.getItem(value);
-
-        this.gpRegMap[reg.regNo] = undefined;
-
-        this.valRegMap.remItem(value);
-    }
-
-    if (this.valStackMap.hasItem(value) === true)
-    {
-        this.valStackMap.remItem(value);
-    }
+    if (this.allocMap.hasItem(value) === true)
+        return this.allocMap.getItem(value);
+    else
+        return [];
 }
 
 /**
@@ -809,6 +842,9 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
 
 
+        // TODO: remove subreg BS from here! handle that elsewhere, when the
+        // operand size actually matters
+
 
 
         /*
@@ -990,7 +1026,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     // Create the stack frame map for this function. Maps
     // temporaries to stack frame locations, if the said
     // values are spilled.
-    var stackMap = new x86.StackFrameMap();
+    var stackMap = new x86.StackFrameMap(backend.regSizeBytes);
 
     // Map of block ids to allocation map at block entries
     // This is used to store allocations at blocks with
@@ -1645,7 +1681,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     }
 
     // Compute the stack location offsets
-    stackMap.compOffsets(backend.x86_64);
+    stackMap.compOffsets();
 
     /**
     Function to remap the memory operands of an abstract move

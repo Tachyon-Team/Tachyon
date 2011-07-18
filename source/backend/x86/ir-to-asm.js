@@ -63,8 +63,9 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
 
     // Add space for the spills on the stack
-    if (stackMap.spillSize !== 0)
-        asm.sub(backend.spReg, stackMap.spillSize);
+    var spillSize = stackMap.getSpillSize();
+    if (spillSize !== 0)
+        asm.sub(backend.spReg, spillSize);
 
     // Save the callee-save registers, if any
     for (var i = 0; i < callConv.calleeSave.length; ++i)
@@ -658,8 +659,9 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     }
 
     // Remove space for the spills from the stack
-    if (stackMap.spillSize !== 0)
-        asm.add(spReg, stackMap.spillSize);
+    var spillSize = stackMap.getSpillSize();
+    if (spillSize !== 0)
+        asm.add(spReg, spillSize);
 
     // TODO: adapt this depending on calling convention
 
