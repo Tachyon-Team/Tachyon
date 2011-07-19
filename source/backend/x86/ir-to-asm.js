@@ -1952,22 +1952,11 @@ FTanInstr.prototype.genCode = function(tltor, opnds)
     }
     
     tltor.asm.
-        push($(2)).
-        fild(mem(0, xSP), 32).
-        add($(ptrSizeBytes), xSP).        
-        fldpi().
-        fmulp(1, false).
         fldMem(src, 64).
-        fprem1().
         fptan().
-//        fdecstp().        
+        fincstp().        
         fstMem(mem(valueOffset - tagValue, dest), 64, true).
-        fdecstp().
-        fdecstp();        
-//        fdecstp().                
-//        fstMem(mem(valueOffset - tagValue, dest), 64, true).
-//        fdecstp().        
-//        fdecstp();    
+        fdecstp();
 
     if (src.type == x86.type.IMM_VAL)
         tltor.asm.add($(ptrSizeBytes), xSP);        
