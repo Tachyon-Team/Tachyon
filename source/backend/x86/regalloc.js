@@ -1626,8 +1626,61 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // There is already a register allocation for the successor
             else
             {
-                // Last phi node found
-                var lastPhi = undefined;
+                // Graph of edge moves
+                var moveGraph = new HashMap();
+
+                /**
+                Get a node from the move graph
+                */
+                function getGraphNode(val)
+                {
+                    var node;
+
+                    if (moveGraph.hasItem(val) === true)
+                    {
+                        node = moveGraph.getItem(val);
+                    }
+                    else
+                    {
+                        node = {
+                            from: undefined,
+                            to: []
+                        };
+
+                        moveGraph.setItem(val, node);
+                    }
+ 
+                    return node;
+                }
+
+                /**
+                Add an edge to the move graph
+                */
+                function addMoveEdge(src, dst)
+                {
+                    var srcNode = getGraphNode(src);
+                    var dstNode = getGraphNode(dst);
+
+                    assert (
+                        dstNode.from === undefined,
+                        'already have incoming for: ' + dst
+                    );
+
+                    dstNode.from = src;
+                    srcNode.to.push(dst);
+                }
+
+                /**
+                Remove an edge from the move graph
+                */
+                function remMoveEdge(src, dst)
+                {
+                    var srcNode = getGraphNode(src);
+                    var dstNode = getGraphNode(dst);
+
+                    dstNode.from = undefined;
+                    arraySetRem(srcNode.to, dst);
+                }
 
                 // For each instruction of the successor
                 for (var insIdx = 0; insIdx < succ.instrs.length; ++insIdx)
@@ -1637,8 +1690,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     // If this is not a phi node, stop
                     if (!(instr instanceof PhiInstr))
                         break;
-
-                    lastPhi = instr;
 
                     // Get the allocations for this phi node
                     var phiAllocs = succAllocMap.getAllocs(instr);
@@ -1667,11 +1718,11 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         if (incAllocs.length > 0)
                         {
                             var bestAlloc = getBestAlloc(allocMap, inc);
-                            addMove(moveList, bestAlloc, phiAlloc);
+                            addMoveEdge(bestAlloc, phiAlloc);
                         }
                         else
                         {
-                            addMove(moveList, inc, phiAlloc);
+                            addMoveEdge(inc, phiAlloc);
                         }
                     }
                 }
@@ -1715,13 +1766,88 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         if (incAllocs.length > 0)
                         {
                             var bestAlloc = getBestAlloc(allocMap, value);
-                            addMove(moveList, bestAlloc, succAlloc);
+                            addMoveEdge(bestAlloc, succAlloc);
                         }
                         else
                         {                        
-                            addMove(moveList, value, succAlloc);
+                            addMoveEdge(value, succAlloc);
                         }
                     }
+                }
+
+
+
+
+                /*
+                TODO: resolve moves into moveList
+                addMove(moveList, inc, phiAlloc);
+
+                If a node has no dests, only an incoming, make that move.
+
+
+                */
+
+                // Until all moves are resolved
+                while (moveGraph.numItems !== 0)
+                {
+                    // Until all simple move situations are resolved
+                    var changed = true;
+                    while (changed === true)
+                    {
+                        changed = false;
+
+                        // List of graph nodes to be removed
+                        var remList = [];
+
+                        // For each node of the move graph
+                        for (var itr = moveGraph.getItr(); itr.valid(); itr.next())
+                        {
+                            var itrVal = itr.get();
+                            var val = itrVal.key;
+                            var node = itrVal.value;
+
+                            // If this node has no destinations
+                            if (node.to.length === 0)
+                            {
+                                // If this node has an incoming value
+                                if (node.from !== undefined)
+                                {
+                                    // Execute the move
+                                    addMove(moveList, node.from, val);
+
+                                    // Update the source node
+                                    var srcNode = moveGraph.getItem(node.from);
+                                    arraySetRem(srcNode.to, val);
+                                }
+
+                                print('adding to rem list: ' + val);
+
+                                remList.push(val);
+                                changed = true;
+                            }
+                        }
+
+                        // Remove the nodes for the executed moves
+                        for (var remIdx = 0; remIdx < remList.length; ++remIdx)
+                            moveGraph.remItem(remList[remIdx]);
+                        remList.length = 0;
+                    }
+
+
+
+
+                    // For each node of the move graph
+                    for (var itr = moveGraph.getItr(); itr.valid(); itr.next())
+                    {
+                        //
+                        // TODO: handle this situation
+                        //
+                        error('graph cycle situation');                      
+
+                    }
+
+
+
                 }
             }
         }
