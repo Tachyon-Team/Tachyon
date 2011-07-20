@@ -1626,6 +1626,21 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // There is already a register allocation for the successor
             else
             {
+                /*
+                Current solution: move graph, rather complex
+
+                Alternate solution:
+                - If moving into non-live slot, just move
+                - If moving into live slot, spill that value first
+                  - Spill it in the pred or succ map?
+
+
+
+
+                */
+
+
+
                 // Graph of edge moves
                 var moveGraph = new HashMap();
 
@@ -1775,17 +1790,39 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     }
                 }
 
+                // Test for memory-memory moves
+                var memMemMove = false;
+                for (var itr = moveGraph.getItr(); itr.valid(); itr.next())
+                {
+                    var itrVal = itr.get();
+                    var val = itrVal.key;
+                    var node = itrVal.value;
+
+                    if (isNonNegInt(val) === true && isNonNegInt(node.from) === true)
+                    {
+                        memMemMove = true;
+                        break;
+                    }
+                }
+
+                // If there are memory-memory moves
+                if (memMemMoves === true)
+                {
+                    log.debug('memory-memory moves');
+
+
+                    var tmpReg = x86.regs.rax.getSubReg(params.backend.regSizeBits);
+
+                    // PROBLEM: if we find a spill spot for our tmp, it may still
+                    // get crushed by a move to that location at some point!
 
 
 
-                /*
-                TODO: resolve moves into moveList
-                addMove(moveList, inc, phiAlloc);
-
-                If a node has no dests, only an incoming, make that move.
+                }
 
 
-                */
+
+
 
                 // Until all moves are resolved
                 while (moveGraph.numItems !== 0)

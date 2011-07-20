@@ -584,16 +584,6 @@ tests.x86.irToAsm = function ()
         [5, 10, 2]
     );
 
-
-
-
-
-
-
-
-    /*
-    // FIXME: wrong result!
-    // TODO: start with a simpler non-working test
     // Nested loops and if, spills needed
     test('                                          \
         function test(ctx, v1, v2, v3)              \
@@ -679,13 +669,13 @@ tests.x86.irToAsm = function ()
             return sum;                             \
         }                                           \
         ',
-        1007,
+        12602,
         [5, 10, 2]
     );
-    */
 
 
 
+    // TODO: loop following loop
 
 
 
@@ -722,6 +712,9 @@ tests.x86.irToAsm = function ()
 
 
 
+
+
+
     // TODO: various size operands + spills after + if merge
 
 
@@ -730,6 +723,11 @@ tests.x86.irToAsm = function ()
 
     // TODO: test boxInt + JS boxed add + ret unboxInt
 
+
+
+
+
+    // TODO: local static env to test function calls?
 
 
 
