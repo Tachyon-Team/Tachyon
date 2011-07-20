@@ -584,6 +584,15 @@ tests.x86.irToAsm = function ()
         [5, 10, 2]
     );
 
+
+
+    // FIXME: temporary
+    return;
+
+
+
+
+
     // Nested loops and if, spills needed
     test('                                          \
         function test(ctx, v1, v2, v3)              \
