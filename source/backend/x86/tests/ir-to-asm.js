@@ -205,6 +205,27 @@ tests.x86.irToAsm = function ()
         [2,3]
     );
 
+    // 3 arguments, IIR add
+    test('                                  \
+        function test(ctx, v1, v2, v3)      \
+        {                                   \
+            "tachyon:cproxy";               \
+            "tachyon:arg ctx rptr";         \
+            "tachyon:arg v1 pint";          \
+            "tachyon:arg v2 pint";          \
+            "tachyon:arg v3 pint";          \
+            "tachyon:ret pint";             \
+                                            \
+            var x = iir.add(v1, v2);        \
+            var x = iir.add(x, v3);         \
+                                            \
+            return x;                       \
+        }                                   \
+        ',
+        6,
+        [1,2,3]
+    );
+
     // Many IIR operations, several registers needed
     test('                                  \
         function test(ctx, v1, v2, v3)      \

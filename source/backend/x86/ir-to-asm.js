@@ -71,8 +71,8 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     for (var i = 0; i < callConv.calleeSave.length; ++i)
     {
         var reg = callConv.calleeSave[i];
-        var stackLoc = stackMap.getStackLoc(reg);
-        var offset = stackMap.getLocOffset(stackLoc);
+        var stackLoc = stackMap.getRegSlot(reg);
+        var offset = stackMap.getSlotOffset(stackLoc);
         asm.mov(asm.mem(backend.regSizeBits, backend.spReg, offset), reg);
     }
 
@@ -322,18 +322,6 @@ x86.insertMove = function (asm, move, params)
     asm.nop();
 }
 
-/**
-Pick a sub-register for a value based on its type
-*/
-x86.regForVal = function (gpReg, value, params)
-{
-    var valSize = value.type.getSizeBits(params);
-
-    var reg = x86.regs[gpReg];
-
-    return reg.getSubReg(valSize);
-}
-
 // TODO: for now, default reg alloc config to test register allocation
 IRInstr.prototype.x86 = new x86.InstrCfg();
 
@@ -375,17 +363,17 @@ SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 };
 
 MulInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
-MulInstr.prototype.x86.opndMustBeReg = function (instr, idx)
+MulInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
     if (instr.type.isUnsigned() === true && idx === 0)
-        return x86.regForVal('rax', instr, params);
+        return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 
     return false;
 }
 MulInstr.prototype.x86.writeRegSet = function (instr, params)
 {
     if (instr.type.isUnsigned() === true)
-        return [x86.regForVal('rdx', instr, params)];
+        return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
 
     return undefined;
 }
@@ -432,7 +420,7 @@ DivInstr.prototype.x86 = new x86.InstrCfg();
 DivInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
     if (idx === 0)
-        return x86.regForVal('rax', instr, params);
+        return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 
     return false;
 }
@@ -442,11 +430,11 @@ DivInstr.prototype.x86.destIsOpnd0 = function (instr)
 }
 DivInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
-    return x86.regForVal('rax', instr, params);
+    return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 }
 DivInstr.prototype.x86.writeRegSet = function (instr, params)
 {
-    return [x86.regForVal('rdx', instr, params)];
+    return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
 }
 DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
@@ -459,7 +447,7 @@ DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     if (instr.type.isUnsigned())
     {
         // Zero-extend the value into xDX
-        var xDX = x86.regForVal('rdx', instr, genInfo.params);
+        var xDX = x86.regs.rdx.getSubReg(instr.type.getSizeBits(genInfo.params));
         asm.mov(xDX, 0);
 
         // Use unsigned divide
@@ -484,11 +472,11 @@ DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 ModInstr.prototype.x86 = Object.create(DivInstr.prototype.x86);
 ModInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
-    return x86.regForVal('rdx', instr, params);
+    return params.backend.x86_64? x86.regs.rdx:x86.regs.edx;
 }
 ModInstr.prototype.x86.writeRegSet = function (instr, params)
 {
-    return [x86.regForVal('rax', instr, params)];
+    return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
 }
 
 // Left shift instruction
@@ -653,8 +641,8 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     for (var i = 0; i < callConv.calleeSave.length; ++i)
     {
         var reg = callConv.calleeSave[i];
-        var stackLoc = stackMap.getStackLoc(reg);
-        var offset = stackMap.getLocOffset(stackLoc);
+        var stackLoc = stackMap.getRegSlot(reg);
+        var offset = stackMap.getSlotOffset(stackLoc);
         asm.mov(reg, asm.mem(backend.regSizeBits, spReg, offset));
     }
 

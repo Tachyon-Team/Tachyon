@@ -107,7 +107,7 @@ x86.Assembler.prototype.toString = function (printEnc)
 
         if (printEnc)
         {
-            line = rightPadStr(line, ' ', 30);            
+            line = rightPadStr(line, ' ', 40);            
 
             codeBlock.clear();
             instr.encode(codeBlock, this.x86_64);
