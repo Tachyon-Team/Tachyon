@@ -266,14 +266,14 @@ x86.insertMove = function (asm, move, params)
         {
             var xax = x86.regs.rax.getSubReg(params.backend.regSizeBits);
 
-            // TODO: if we knew a specific register is free at this point...
-            // May want to do merge move optimization during reg alloc?
-            // Find free reg or select one for mem-mem moves and then
-            // turn memory-memory moves into sequence of other moves
-
             // Perform trickery using xchg
             asm.xchg(xax, move.src);
-            asm.mov(move.dst, xax);
+
+            if (move.isSwap === true)
+                asm.xchg(move.dst, xax);
+            else
+                asm.mov(move.dst, xax);
+
             asm.xchg(xax, move.src);
 
             return;
@@ -281,10 +281,19 @@ x86.insertMove = function (asm, move, params)
         else
         {
             // Do the move directly
-            asm.mov(move.dst, move.src);
+            if (move.isSwap === true)
+                asm.xchg(move.dst, move.src);
+            else
+                asm.mov(move.dst, move.src);
+
             return;
         }
     }
+
+    assert (
+        move.isSwap === false,
+        'cannot swap with constant'
+    );
 
     // If the source is a constant
     if (move.src instanceof ConstValue)

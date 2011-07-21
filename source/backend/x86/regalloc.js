@@ -48,45 +48,6 @@ Register allocation for x86 code generation.
 Maxime Chevalier-Boisvert
 */
 
-/* TODO:
-
-PROBLEM:
-Moving values from one stack loc to another, we crush the previous
-allocation. Need a stack location -> value map, just like the gp reg map
-to keep track of this.
-
-1. Refactor stack frame map
-- Still need arg, ret val pos
-- Still need offsets for given stack locs
-- No longer need list of values per stack loc, just number of stack locs
-- No longer need value->stack loc association
-- Need number of spill slots
-- StackMap.numSpills
-
-2. Refactor allocMap for "multi-home" allocation
-- Map of vals to all current locations
-- getAlloc returns alloc list
-- getRegAlloc to get reg alloc only, if mustBeReg?
-- Need map of stack locs to values
-  - Scan this map to get spill loc for temp
-  - Need liveness info to do this
-- AllocMap.getAlloc
-- AllocMap.getRegAlloc
-- AllocMap.allocReg(value, reg)
-- AllocMap.allocStack(value, stackLoc)
-- AllocMap.spillValue(value, stackMap)
-  - Find first avail spill loc, alloc value to it
-
-3. Implement freeReg spill function
-- Use this for writeRegs spilling, no allocation of value to a register
-
-4. Refactor allocReg w/ weights
-
-5. Refactor opnd alloc loop into nested function?
-- Better for clarity
-
-*/
-
 /**
 Stack pointer register in 32-bit mode
 */
@@ -645,30 +606,6 @@ x86.RegAllocMap.prototype.getRegVal = function (reg)
 }
 
 /**
-Get the value an allocation maps to
-*/
-x86.RegAllocMap.prototype.getAllocVal = function (alloc)
-{
-    assert (
-        isNonNegInt(alloc) ||
-        (alloc instanceof x86.Register && alloc.type === 'gp'),
-        'invalid allocation'
-    );
-
-    if (alloc instanceof x86.Register)
-    {
-        return this.regMap[alloc.regNo];
-    }
-    else
-    {
-        if (this.stackMap.hasItem(alloc) === false)
-            return undefined;
-
-        return this.stackMap.getItem(alloc);
-    }
-}
-
-/**
 Get the allocation set for a value.
 */
 x86.RegAllocMap.prototype.getAllocs = function (value)
@@ -758,17 +695,15 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 continue;
 
             for (var itr = liveSucc.getItr(); itr.valid(); itr.next())
-                liveCur.setItem(itr.get().key);
-
-            // Add the phi inputs from this block to the live set
-            for (var j = 0; j < succ.instrs.length; ++j)
             {
-                var instr = succ.instrs[j];
-                if (!(instr instanceof PhiInstr))
-                    break;
+                var value = itr.get().key;
 
-                var inc = instr.getIncoming(block);
-                liveCur.setItem(inc);
+                // If this value is a phi node from the successor,
+                // add the incoming value from this block instead
+                if (value instanceof PhiInstr && value.parentBlock === succ)
+                    value = value.getIncoming(block);
+
+                liveCur.setItem(value);
             }
         }
 
@@ -802,18 +737,6 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 // Map this use in the live set
                 liveCur.setItem(use);
             }
-        }
-
-        // Remove the phi nodes from the live set
-        for (var i = 0; i < i < block.instrs.length; ++i)
-        {
-            var instr = block.instrs[i];
-
-            if (!(instr instanceof PhiInstr))
-                break;
-
-            if (liveCur.hasItem(instr) === true)
-                liveCur.remItem(instr);
         }
 
         // Find the current live in set for this block
@@ -901,7 +824,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 // Get the sub-register corresponding to the value size
                 var subReg;
                 if (value !== undefined)
-                    subReg = reg.getSubReg(value.type.getSizeBits(params));
+                    subReg = reg.getSubOpnd(value.type.getSizeBits(params));
                 else
                     subReg = reg;
                 
@@ -993,7 +916,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
     /**
     Add a symbolic move to a move list
     */
-    function addMove(moveList, src, dst)
+    function addMove(moveList, src, dst, isSwap)
     {
         assert (
             moveList instanceof Array,
@@ -1014,10 +937,19 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             'invalid src for move: ' + dst
         );
 
-        var srcStr = (src instanceof IRValue)? src.getValName():src.toString();
-        log.debug(dst + ' <== ' + srcStr);
+        if (isSwap === undefined)
+            isSwap = false;
 
-        moveList.push({ src:src, dst:dst });
+        assert (
+            isSwap === false || 
+            (src instanceof x86.Register || isNonNegInt(src)),
+            'invalid src for swap move: ' + src
+        );
+
+        var srcStr = (src instanceof IRValue)? src.getValName():src.toString();
+        log.debug(dst + (isSwap? ' <=> ':' <== ') + srcStr);
+
+        moveList.push({ src:src, dst:dst, isSwap:isSwap });
     }
 
     /**
@@ -1421,7 +1353,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                         excludeMap[opnd.regNo] = true;
 
                         // Get the sub-register appropriate to the value's type
-                        var opnd = opnd.getSubReg(mapVal.type.getSizeBits(params));
+                        var opnd = opnd.getSubOpnd(mapVal.type.getSizeBits(params));
 
                         ++numRegOpnds;
                     }
@@ -1542,7 +1474,7 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                 if (dest instanceof x86.Register)
                 {
                     // Get the sub-register of the appropriate size
-                    dest = dest.getSubReg(instr.type.getSizeBits(params));
+                    dest = dest.getSubOpnd(instr.type.getSizeBits(params));
                 }
 
                 // Store the allocation info in the instruction map
@@ -1650,79 +1582,55 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
             // There is already a register allocation for the successor
             else
             {
-                // Copy the predecessor alloc map
-                var predAllocMap = allocMap.copy();
+                // Move graph nodes
+                var graphNodes = [];
 
-                /*
-                FIXME:
-                Here, nothing gets moved from r11 into anything. How can r11
-                be the single mapping for a live value? This makes little sense.
-                same for r12, rsi...
-
-                if_false_if_join:                       
-                mov [qword rsp + 88], r11;              4C 89 5C 24 58
-                mov r11, r12;                           4D 89 E3
-                mov [qword rsp + 80], r12;              4C 89 64 24 50
-                mov r12, r13;                           4D 89 EC
-                mov [qword rsp + 72], r13;              4C 89 6C 24 48
-                mov r13, r14;                           4D 89 F5
-                mov [qword rsp + 64], r14;              4C 89 74 24 40
-                mov r14, r15;                           4D 89 FE
-                mov [qword rsp + 56], r15;              4C 89 7C 24 38
-                mov r15, [qword rsp + 112];             4C 8B 7C 24 70
-                xchg rax, [qword rsp + 112];            48 87 44 24 70
-                mov [qword rsp + 48], rax;              48 89 44 24 30
-                xchg rax, [qword rsp + 112];            48 87 44 24 70
-                xchg rax, [qword rsp + 104];            48 87 44 24 68
-                mov [qword rsp + 112], rax;             48 89 44 24 70
-                xchg rax, [qword rsp + 104];            48 87 44 24 68
-                xchg rax, [qword rsp + 104];            48 87 44 24 68
-                mov [qword rsp + 40], rax;              48 89 44 24 28
-                xchg rax, [qword rsp + 104];            48 87 44 24 68
-                xchg rax, [qword rsp + 96];             48 87 44 24 60
-                mov [qword rsp + 104], rax;             48 89 44 24 68
-                xchg rax, [qword rsp + 96];             48 87 44 24 60
-                mov [qword rsp + 128], rsi;             48 89 B4 24 80 00 00 00
-                mov [qword rsp + 32], rsi;              48 89 74 24 20
-                mov rsi, rdi;                           48 89 FE
-                mov [qword rsp + 24], rdi;              48 89 7C 24 18
-                mov rdi, r8;                            4C 89 C7
-                mov [qword rsp + 16], r8;               4C 89 44 24 10
-                mov r8, r9;                             4D 89 C8
-                mov [qword rsp + 8], r9;                4C 89 4C 24 08
-                mov r9, r10;                            4D 89 D1
-                mov [qword rsp], r10;                   4C 89 14 24
-                mov r10, [qword rsp + 88];              4C 8B 54 24 58
-                jmp if_join (16);                       E9 56 FE FF FF
-                */
-
-                // Compute the values life before the phi nodes
-                var livePrePhi = succLiveIn.copy();
-                for (var insIdx = 0; insIdx < succ.instrs.length; ++insIdx)
-                {
-                    var instr = succ.instrs[insIdx];
-
-                    if (!(instr instanceof PhiInstr))
-                        break;
-
-                    var inc = instr.getIncoming(block);
-                    livePrePhi.setItem(inc);
-                }                
+                // Map of allocations to nodes
+                var nodeMap = new HashMap();
 
                 /**
-                Make a predecessor-successor move
+                Get a node from the move graph
                 */
-                function predSuccMove(srcVal, dstVal)
+                function getGraphNode(val)
                 {
-                    // Get the predecessor allocations
-                    var predAllocs = predAllocMap.getAllocs(srcVal);
+                    assert (
+                        !(val instanceof IRInstr),
+                        'cannot move from/to IR instr'
+                    );
 
-                    // Get the successor allocations
+                    var node;
+
+                    if (nodeMap.hasItem(val) === true)
+                    {
+                        node = nodeMap.getItem(val);
+                    }
+                    else
+                    {
+                        node = {
+                            val: val,
+                            from: undefined,
+                            toCount: 0
+                        };
+
+                        nodeMap.setItem(val, node);
+                        graphNodes.push(node);
+                    }
+ 
+                    return node;
+                }
+
+                /**
+                Add an edge to the move graph
+                */
+                function addMoveEdge(srcVal, dstVal)
+                {
+                    // Get the allocations for this value in both blocks
+                    var predAllocs = allocMap.getAllocs(srcVal);
                     var succAllocs = succAllocMap.getAllocs(dstVal);
                     var succAlloc = succAllocs[0];
 
                     assert (
-                        !(predAllocs.length === 0 && value instanceof IRInstr),
+                        !(predAllocs.length === 0 && srcVal instanceof IRInstr),
                         'no allocation for live temporary:\n' +
                         srcVal + '\n' +
                         'in pred:\n' +
@@ -1730,66 +1638,47 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     );
 
                     assert (
-                        !(succAllocs.length !== 1 && value instanceof IRInstr),
-                        'incorrect succ allocs for live temporary:\n' +
+                        !(succAllocs.length === 0 && dstVal instanceof IRInstr),
+                        'no successor alloc for value:\n' +
                         dstVal + '\n' +
                         'in succ:\n' +
                         succ.getBlockName()
                     );
 
-                    // If the locations already match, do nothing
-                    if (arraySetHas(predAllocs, succAlloc) === true || 
-                        succAlloc === undefined)
+                    assert (
+                        !(succAllocs.length > 1 && dstVal instanceof IRInstr),
+                        'too many succ allocs for value:\n' +
+                        dstVal + '\n' +
+                        'in succ:\n' +
+                        succ.getBlockName()
+                    );
+
+                    // If the locations already match, or there is no allocation
+                    // for the successor, do nothing
+                    if (succAlloc === undefined || 
+                        arraySetHas(predAllocs, succAlloc) === true)
                         return;
 
-                    // Get the value currently allocated to the destination
-                    var succAllocVal = predAllocMap.getAllocVal(succAlloc);
+                    // Get the source allocation for the move
+                    var predAlloc = (predAllocs.length > 0)?
+                        getBestAlloc(allocMap, srcVal):
+                        srcVal;
 
-                    // If moving into a value that has not yet been moved,
-                    // is live in the successor and has only this allocation
-                    if (succAllocVal !== undefined &&
-                        livePrePhi.hasItem(succAllocVal) === true &&
-                        predAllocMap.getAllocs(succAllocVal).length === 1)
-                    {
-                        print('**** spilling move dst: ' + succAllocVal.getValName());
+                    var srcNode = getGraphNode(predAlloc);
+                    var dstNode = getGraphNode(succAlloc);
 
-                        // Get a spill slot for the value
-                        var spillSlot = predAllocMap.spillValue(
-                            succAllocVal,
-                            stackMap,
-                            succLiveIn
-                        );
+                    assert (
+                        dstNode.from === undefined,
+                        'already have incoming for: ' + dstVal
+                    );
 
-                        // Remove the previous allocation
-                        predAllocMap.remAlloc(succAllocVal, succAlloc);
+                    assert (
+                        srcNode !== dstNode,
+                        'move from node to itself'
+                    );
 
-                        // Move the value to its spill slot
-                        addMove(moveList, succAlloc, spillSlot);
-                    }
-
-                    // If there are allocations for the incoming value
-                    if (predAllocs.length > 0)
-                    {
-                        var bestAlloc = getBestAlloc(predAllocMap, srcVal);
-                        addMove(moveList, bestAlloc, succAlloc);
-
-                        // FIXME: here we can't know, in the case of phi moves,
-                        // whether or not the value is still live after
-                        // Will probably want instrLiveOut for phi nodes.
-                        // pass live map to use to this function
-
-                        // If this is a value-value move, remove its allocations
-                        // from the pred alloc map
-                        if (srcVal === dstVal)
-                        {
-                            print('**** removing allocs');
-                            predAllocMap.remAllocs(srcVal);
-                        }
-                    }
-                    else
-                    {                        
-                        addMove(moveList, srcVal, succAlloc);
-                    }
+                    dstNode.from = srcNode;
+                    srcNode.toCount++;
                 }
 
                 // For each instruction of the successor
@@ -1804,8 +1693,8 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     // Get the incoming value for this predecessor
                     var inc = instr.getIncoming(block);
 
-                    // Move the incoming value into the phi alloc
-                    predSuccMove(inc, instr);
+                    // Add a move edge for this incoming value
+                    addMoveEdge(inc, instr);
                 }
 
                 // For each value live after the phi nodes
@@ -1818,8 +1707,109 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
                     if (value instanceof PhiInstr && value.parentBlock === succ)
                         continue;
 
-                    // Move the value into the succ alloc as appropriate
-                    predSuccMove(value, value);
+                    // Add a move edge for this value
+                    addMoveEdge(value, value);
+                }
+
+                // Until all moves are resolved
+                while (graphNodes.length !== 0)
+                {
+                    // Until all simple move situations are resolved
+                    var changed = true;
+                    while (changed === true)
+                    {
+                        changed = false;
+
+                        /*
+                        print('\ngraph:');
+                        for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                        {
+                            var node = graphNodes[nodeIdx];
+                            print(node.val + ' from: ' + (node.from? node.from.val:undefined) + ', toCount: ' + node.toCount);
+                        }
+                        */
+
+                        // For each node of the move graph
+                        for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                        {
+                            var node = graphNodes[nodeIdx];
+
+                            // If this node has no destinations
+                            if (node.toCount === 0)
+                            {
+                                // If this node has an incoming value
+                                if (node.from !== undefined)
+                                {
+                                    // Execute the move
+                                    addMove(moveList, node.from.val, node.val);
+
+                                    assert (
+                                        node.from.toCount > 0,
+                                        'invalid toCount'
+                                    );
+
+                                    // Update the source node
+                                    node.from.toCount--;
+                                }
+
+                                //print('removing node: ' + node.val);
+
+                                // Remove the node
+                                graphNodes[nodeIdx] = graphNodes[graphNodes.length-1];
+                                graphNodes.length--;
+                                nodeIdx--;
+                                
+                                changed = true;
+                            }
+                        }
+
+                        // For each node of the move graph
+                        for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                        {
+                            var node = graphNodes[nodeIdx];
+
+                            // If this node is part of a cycle
+                            if (node.from !== undefined && node.toCount > 0)
+                            {
+                                var fromNode = node.from;
+
+                                //print('swapping: ' + node.val + ', ' + fromNode.val);
+
+                                // Swap the node with its incoming value
+                                addMove(moveList, fromNode.val, node.val, true);
+
+                                // Remove the edge for this move
+                                node.from = undefined;
+                                fromNode.toCount--;
+
+                                // If the two nodes were in a cycle,
+                                // remove that edge as well
+                                if (fromNode.from === node)
+                                {
+                                    fromNode.from = undefined;
+                                    node.toCount--;
+                                }
+
+                                // Swap the to counts of the nodes
+                                var toTmp = node.toCount;
+                                node.toCount = fromNode.toCount;
+                                fromNode.toCount = toTmp;
+
+                                // Correct the incoming edges for all graph nodes
+                                for (var nIdx = 0; nIdx < graphNodes.length; ++nIdx)
+                                {
+                                    var n = graphNodes[nIdx];
+                                    if (n.from === node)
+                                        n.from = fromNode;
+                                    else if (n.from === fromNode)
+                                        n.from = node;
+                                }
+
+                                changed = true;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
