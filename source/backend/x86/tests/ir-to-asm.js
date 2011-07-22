@@ -927,7 +927,7 @@ tests.x86.irToAsm = function ()
         [1,5,8,10]
     );
 
-    // Bitwise operations
+    // Bitwise operations, unsigned value
     test('                                          \
         function test(ctx, v3, v5)                  \
         {                                           \
@@ -937,6 +937,10 @@ tests.x86.irToAsm = function ()
             "tachyon:arg v5 pint";                  \
             "tachyon:ret pint";                     \
                                                     \
+            var v5_8 = iir.icast(IRType.u8, v5);    \
+            var x1 = ~v5_8;         /* 250 */       \
+            var x2 = iir.icast(IRType.pint, x1);    \
+                                                    \
             var sum = pint(0);                      \
             sum += v3 & v5;         /* 1 */         \
             sum += v5 & v3;         /* 1 */         \
@@ -945,11 +949,12 @@ tests.x86.irToAsm = function ()
             sum += v3 | v5;         /* 7 */         \
             sum += v5 | pint(3);    /* 7 */         \
             sum += v3 ^ v5;         /* 6 */         \
+            sum += x2;                              \
                                                     \
             return sum;                             \
         }                                           \
         ',
-        24,
+        274,
         [3,5]
     );
 
@@ -984,7 +989,30 @@ tests.x86.irToAsm = function ()
         [blockAddr]
     );
 
-
+    // Arithmetic instructions with overflow handling
+    test('                                          \
+        function test(ctx, v3, v5)                  \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v3 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:ret pint";                     \
+                                                    \
+            var sum = pint(0);                      \
+                                                    \
+            var x1;                                 \
+            if (x1 = iir.add_ovf(v3, v5))           \
+                sum += x1;                          \
+            else                                    \
+                sum += pint(555);                   \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        8,
+        [3,5]
+    );
 
 
 
@@ -994,9 +1022,6 @@ tests.x86.irToAsm = function ()
 
 
     // TODO: test boxInt + JS boxed add + ret unboxInt
-    // need:
-    // add_ovf
-    // call
 
 
 

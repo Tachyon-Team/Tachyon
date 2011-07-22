@@ -488,7 +488,49 @@ ModInstr.prototype.x86.writeRegSet = function (instr, params)
 }
 
 /**
-Function to generate a bitwise instruction's code generation
+Produce the code generation for arithmetic with overflow instructions
+*/
+x86.ArithOvfMaker = function (instrClass)
+{
+    var instrConf = Object.create(instrClass.prototype.x86);
+
+    instrConf.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+    {
+        // Reuse the implementation of the instruction without overflow
+        instrClass.prototype.x86.genCode.apply(
+            this, 
+            [instr, opnds, dest, scratch, asm, genInfo]
+        );
+
+        // Get the normal and overflow labels
+        var thisBlock = instr.parentBlock;
+        var normBlock = instr.targets[0];
+        var overBlock = instr.targets[1];
+        var normLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:normBlock});
+        var overLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:overBlock});
+
+        // Jump to the overflow block on overflow
+        asm.jo(overLabel);
+        asm.jmp(normLabel);
+    };
+
+    return instrConf;
+}
+
+// Addition with overflow handling
+AddOvfInstr.prototype.x86 = x86.ArithOvfMaker(AddInstr);
+
+// Subtraction with overflow handling
+SubOvfInstr.prototype.x86 = x86.ArithOvfMaker(SubInstr);
+
+// Multiplication with overflow handling
+MulOvfInstr.prototype.x86 = x86.ArithOvfMaker(MulInstr);
+
+// Left shift with overflow handling
+LsftOvfInstr.prototype.x86 = x86.ArithOvfMaker(LsftInstr);
+
+/**
+Generate a bitwise instruction's code generation
 */
 x86.bitOpMaker = function (instrName)
 {
@@ -516,8 +558,15 @@ OrInstr.prototype.x86 = x86.bitOpMaker('or');
 // Bitwise XOR instruction
 XorInstr.prototype.x86 = x86.bitOpMaker('xor');
 
+// Bitwise NOT instruction
+NotInstr.prototype.x86 = new x86.InstrCfg();
+NotInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, genInfo)
+{
+    asm.not(dst);
+};
+
 /**
-Function to generate a shift instruction's code generation
+Generate a shift instruction's code generation
 */
 x86.shiftMaker = function (instrName)
 {
@@ -606,7 +655,7 @@ IfInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 }
 IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    // Get the true and false label
+    // Get the true and false labels
     var thisBlock = instr.parentBlock;
     var trueBlock = instr.targets[0];
     var falseBlock = instr.targets[1];
@@ -678,6 +727,16 @@ IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genI
     }
 };
 
+
+// TODO: CallInstr
+
+// TODO: ConstructInstr.prototype.x86 = CallInstr.prototype.x86;
+
+// TODO: CallApplyInstr
+
+// TODO: CallFFIInstr
+
+
 // Return instruction
 RetInstr.prototype.x86 = new x86.InstrCfg();
 RetInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
@@ -712,6 +771,14 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 
     asm.ret();
 }
+
+
+// TODO:
+// Not yet implemented
+ThrowInstr.prototype.x86 = RetInstr.prototype.x86;
+
+// TODO: CatchInstr
+
 
 // Integer cast instruction
 ICastInstr.prototype.x86 = new x86.InstrCfg();
