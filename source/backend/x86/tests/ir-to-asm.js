@@ -841,18 +841,7 @@ tests.x86.irToAsm = function ()
         [1,5,8,10]
     );
 
-
-
-
-
-
-
-
-
-
-
-    // TODO: add, sub, mul, div, mod, lsft, rsft, ursft
-    // TODO: Various size operands, spills, if merge
+    // Various size operands, spills, if merge
     test('                                          \
         function test(ctx, v1, v5, v8, v10)         \
         {                                           \
@@ -864,9 +853,6 @@ tests.x86.irToAsm = function ()
             "tachyon:arg v10 pint";                 \
             "tachyon:ret pint";                     \
                                                     \
-            var v1_32 = iir.icast(IRType.i32, v1);  \
-            var v5_32 = iir.icast(IRType.i32, v5);  \
-            var v8_32 = iir.icast(IRType.i32, v8);  \
             var v1_16 = iir.icast(IRType.i16, v1);  \
             var v5_16 = iir.icast(IRType.i16, v5);  \
             var v8_16 = iir.icast(IRType.i16, v8);  \
@@ -874,17 +860,70 @@ tests.x86.irToAsm = function ()
             var v5_8 = iir.icast(IRType.i8, v5);    \
             var v8_8 = iir.icast(IRType.i8, v8);    \
                                                     \
+            var x01 = v1_16 + i16(1);               \
+            var x02 = v1_16 + i16(2);               \
+            var x03 = v1_16 + i16(3);               \
+            var x04 = v1_16 + i16(4);               \
+            var x05 = v1_16 + i16(5);               \
                                                     \
-                                                    \
-                                                    \
+            if (v5 === pint(4))                     \
+            {                                       \
+                /* Spills on this side */           \
+                var x06 = v1_8 + i8(6);             \
+                var x07 = v1_8 + i8(7);             \
+                var x08 = v1_8 + i8(8);             \
+                var x09 = v1_8 + i8(9);             \
+                var x10 = v1_8 + i8(10);            \
+                var x11 = v1_8 + i8(11);            \
+                var x12 = v1_8 + i8(12);            \
+                var x13 = v1_8 + i8(13);            \
+                var x14 = v1_8 + i8(14);            \
+                var x15 = v1_8 + i8(15);            \
+                var x16 = v1_8 + i8(16);            \
+                var x17 = v1_8 + i8(17);            \
+                var x18 = v1_8 + i8(18);            \
+            }                                       \
+            else                                    \
+            {                                       \
+                var x06 = i8(0);                    \
+                var x07 = i8(0);                    \
+                var x08 = i8(0);                    \
+                var x09 = i8(0);                    \
+                var x10 = i8(0);                    \
+                var x11 = i8(0);                    \
+                var x12 = i8(0);                    \
+                var x13 = i8(0);                    \
+                var x14 = i8(0);                    \
+                var x15 = i8(0);                    \
+                var x16 = i8(0);                    \
+                var x17 = i8(0);                    \
+                var x18 = i8(0);                    \
+            }                                       \
                                                     \
             var sum = pint(0);                      \
-                                                    \
+            sum += iir.icast(IRType.pint, x01);     \
+            sum += iir.icast(IRType.pint, x02);     \
+            sum += iir.icast(IRType.pint, x03);     \
+            sum += iir.icast(IRType.pint, x04);     \
+            sum += iir.icast(IRType.pint, x05);     \
+            sum += iir.icast(IRType.pint, x06);     \
+            sum += iir.icast(IRType.pint, x07);     \
+            sum += iir.icast(IRType.pint, x08);     \
+            sum += iir.icast(IRType.pint, x09);     \
+            sum += iir.icast(IRType.pint, x10);     \
+            sum += iir.icast(IRType.pint, x11);     \
+            sum += iir.icast(IRType.pint, x12);     \
+            sum += iir.icast(IRType.pint, x13);     \
+            sum += iir.icast(IRType.pint, x14);     \
+            sum += iir.icast(IRType.pint, x15);     \
+            sum += iir.icast(IRType.pint, x16);     \
+            sum += iir.icast(IRType.pint, x17);     \
+            sum += iir.icast(IRType.pint, x18);     \
                                                     \
             return sum;                             \
         }                                           \
         ',
-        0,
+        20,
         [1,5,8,10]
     );
 
@@ -901,7 +940,9 @@ tests.x86.irToAsm = function ()
 
 
 
+
     // TODO: local static env to test function calls?
+    // could extend and temporarily replace params static env with custom one***
 
 
 
