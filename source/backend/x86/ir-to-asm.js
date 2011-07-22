@@ -337,19 +337,18 @@ IRInstr.prototype.x86 = new x86.InstrCfg();
 GetCtxInstr.prototype.x86 = new x86.InstrCfg();
 GetCtxInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
-    return params.backend.x86_64? x86.ctxReg64:x86.ctxReg32;
+    return params.backend.ctxReg;
 }
 GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    // Do nothing
+    // Clear out the lower bits of the context register
+    asm.mov(params.backend.ctxReg.getSubOpnd(8), 0);
 };
 
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
 SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    var x86_64 = params.backend.x86_64;
-
-    asm.move(opnds[0], x86_64? x86.ctxReg64:x86.ctxReg32);
+    asm.mov(opnds[0], genInfo.params.backend.ctxReg);
 };
 
 // Base instruction configuration for arithmetic instructions
@@ -781,22 +780,78 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, ge
     }
 };
 
+// Load from memory instruction
 LoadInstr.prototype.x86 = new x86.InstrCfg();
 LoadInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 { 
     return (idx === 1 && size <= 32); 
 }
+LoadInstr.prototype.x86.opndMustBeReg = function (instr, idx)
+{
+    return true;
+}
 LoadInstr.prototype.x86.destIsOpnd0 = function (instr)
 {
     return false;
 }
-LoadInstr.prototype.x86.destMustBeReg = function (instr)
+LoadInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
+    if (instr.type.getSizeBits(params) === 8 && 
+        params.backend.x86_64 === false)
+        return x86.regs.eax;
+
     return true;
 }
-LoadInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+LoadInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, genInfo)
 {
-    // TODO
-    asm.nop();
+    var valSize = instr.type.getSizeBits(genInfo.params);
+
+    var src = new x86.MemLoc(
+        valSize,
+        opnds[0],
+        (opnds[1] instanceof x86.Immediate)? opnds[1].value:0, 
+        (opnds[1] instanceof x86.Register)? opnds[1]:undefined,
+        1
+    );
+
+    var dst = dst.getSubOpnd(valSize);
+
+    asm.mov(dst, src);
+}
+
+// Store to memory
+StoreInstr.prototype.x86 = new x86.InstrCfg();
+StoreInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
+{ 
+    return (idx === 1 && size <= 32); 
+}
+StoreInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+{
+    if (idx === 2 && 
+        instr.uses[2].type.getSizeBits(params) === 8 && 
+        params.backend.x86_64 === false)
+        return x86.regs.eax;
+
+    return true;
+}
+StoreInstr.prototype.x86.destIsOpnd0 = function (instr)
+{
+    return false;
+}
+StoreInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, genInfo)
+{
+    var valSize = instr.uses[2].type.getSizeBits(genInfo.params);
+
+    var dst = new x86.MemLoc(
+        valSize,
+        opnds[0],
+        (opnds[1] instanceof x86.Immediate)? opnds[1].value:0, 
+        (opnds[1] instanceof x86.Register)? opnds[1]:undefined,
+        1
+    );
+
+    var src = opnds[2].getSubOpnd(valSize);
+
+    asm.mov(dst, src);
 }
 

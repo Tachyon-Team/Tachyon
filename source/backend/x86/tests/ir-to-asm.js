@@ -90,7 +90,16 @@ tests.x86.irToAsm = function ()
 
         var argTypes = [];
         for (var i = 0; i < argVals.length; ++i)
-            argTypes.push('int');
+        {
+            var argVal = argVals[i];
+
+            if (isInt(argVal) === true)
+                argTypes.push('int');
+            else if (argVal instanceof Array)
+                argTypes.push('void*');
+            else
+                error('unsupported arg: ' + argVal);
+        }
 
         var ctxPtr = backend.x86_64? [0,0,0,0,0,0,0,0]:[0,0,0,0];
 
@@ -944,14 +953,48 @@ tests.x86.irToAsm = function ()
         [3,5]
     );
 
+    // Load and store
+    var memBlock = allocMemoryBlock(256, false);
+    var blockAddr = getBlockAddr(memBlock, 0);
+    test('                                          \
+        function test(ctx, ptr)                     \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg ptr rptr";                 \
+            "tachyon:ret pint";                     \
+                                                    \
+            iir.store(                              \
+                IRType.pint,                        \
+                ptr,                                \
+                pint(0),                            \
+                pint(601)                           \
+            );                                      \
+                                                    \
+            var loadVal = iir.load(                 \
+                IRType.i8,                          \
+                ptr,                                \
+                pint(0)                             \
+            );                                      \
+                                                    \
+            return iir.icast(IRType.pint, loadVal); \
+        }                                           \
+        ',
+        89,
+        [blockAddr]
+    );
+
+
+
+
+
+
 
 
 
 
     // TODO: test boxInt + JS boxed add + ret unboxInt
     // need:
-    // get_ctx
-    // load
     // add_ovf
     // call
 
