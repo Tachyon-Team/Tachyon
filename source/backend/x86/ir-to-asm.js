@@ -264,7 +264,7 @@ x86.insertMove = function (asm, move, params)
         // If this is a memory to memory move
         if (move.src instanceof x86.MemLoc && move.dst instanceof x86.MemLoc)
         {
-            var xax = x86.regs.rax.getSubReg(params.backend.regSizeBits);
+            var xax = x86.regs.rax.getSubOpnd(params.backend.regSizeBits);
 
             // Perform trickery using xchg
             asm.xchg(xax, move.src);
@@ -456,7 +456,7 @@ DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     if (instr.type.isUnsigned())
     {
         // Zero-extend the value into xDX
-        var xDX = x86.regs.rdx.getSubReg(instr.type.getSizeBits(genInfo.params));
+        var xDX = x86.regs.rdx.getSubOpnd(instr.type.getSizeBits(genInfo.params));
         asm.mov(xDX, 0);
 
         // Use unsigned divide
@@ -488,39 +488,59 @@ ModInstr.prototype.x86.writeRegSet = function (instr, params)
     return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
 }
 
-// Left shift instruction
-LsftInstr.prototype.x86 = new x86.InstrCfg();
-LsftInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
-{ 
-    return (idx === 1 && size <= 8);
-}
-LsftInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+/**
+Function to generate a shift instruction's code generation
+*/
+x86.shiftMaker = function (instrName)
 {
-    if (opnds[1] instanceof x86.Immediate)
+    var instrConf = new x86.InstrCfg();
+
+    instrConf.opndCanBeImm = function (instr, idx, size)
+    { 
+        return (idx === 1 && size <= 8);
+    };
+
+    instrConf.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
     {
-        asm.sal(dest, opnds[1]);
-    }
-    else
-    {
-        asm.mov(x86.regs.cl, opnds[1]);
-        asm.sal(dest, x86.regs.cl);
-    }
-};
+        const backend = genInfo.params.backend;
+
+        var opnd = opnds[1];
+
+        if (opnds[1] instanceof x86.Immediate)
+        {
+            asm[instrName](dest, opnd);
+        }
+        else
+        {
+            var subOpnd = opnd.getSubOpnd(8);
+
+            if (subOpnd.rexNeeded === true && backend.x86_64 === false)
+            {
+                var xcx = x86.regs.rdx.getSubReg(backend.regSizeBits);
+
+                asm.xchg(x86.regs.xcx, opnd);
+                asm[instrName](dest, x86.regs.cl);
+                asm.xchg(x86.regs.xcx, opnd);
+            }
+            else
+            {   
+                asm.mov(x86.regs.cl, subOpnd);
+                asm[instrName](dest, x86.regs.cl);
+            }
+        }
+    };
+
+    return instrConf;
+}
+
+// Left shift instruction
+LsftInstr.prototype.x86 = x86.shiftMaker('sal');
 
 // Right shift instruction
-RsftInstr.prototype.x86 = Object.create(LsftInstr.prototype.x86);
-RsftInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
-{
-    if (opnds[1] instanceof x86.Immediate)
-    {
-        asm.sar(dest, opnds[1]);
-    }
-    else
-    {
-        asm.mov(x86.regs.cl, opnds[1]);
-        asm.sar(dest, x86.regs.cl);
-    }
-};
+RsftInstr.prototype.x86 = x86.shiftMaker('sar');
+
+// Unsigned right shift instruction
+UrsftInstr.prototype.x86 = x86.shiftMaker('shr');
 
 CallFuncInstr.prototype.x86 = new x86.InstrCfg();
 CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
@@ -678,7 +698,7 @@ ICastInstr.prototype.x86.destIsOpnd0 = function (instr, params)
 
     return (srcWidth === dstWidth);
 }
-ICastInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+ICastInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, genInfo)
 {
     const srcWidth = instr.uses[0].type.getSizeBits(genInfo.params);
     const dstWidth = instr.type.getSizeBits(genInfo.params);
@@ -689,8 +709,14 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, g
     if (srcWidth === dstWidth)
     {
         assert (
-            src === dest,
-            'source and dest registers should match'
+            (src === dst) || 
+            (src instanceof x86.MemLoc && 
+             dst instanceof x86.MemLoc &&
+             src.base === dst.base && 
+             src.disp === dst.disp &&
+             src.index === dst.index &&
+             src.scale === dst.scale),
+            'source and destination allocations should match'
         );
 
         // Do nothing
@@ -700,24 +726,8 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, g
     // we retain only the least significative bits
     else if (srcWidth > dstWidth)
     {
-        if (src instanceof x86.MemLoc)
-        {
-            asm.mov(
-                dest,
-                new x86.MemLoc(
-                    dstWidth, 
-                    src.base,
-                    src.disp,
-                    src.index,
-                    src.scale
-                )
-            );
-        }
-        else
-        {
-            asm.mov(dest, src.getSubReg(dstWidth));
-        }
-    } 
+        asm.mov(dst, src.getSubOpnd(dstWidth));
+    }
 
     // If the source width is smaller than the destination width,
     // we need to extend the sign bit for signed values
@@ -728,16 +738,16 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, g
         if (isSigned === true)
         {
             if (srcWidth === 32 && dstWidth === 64)
-                asm.movsxd(dest, src);
+                asm.movsxd(dst, src);
             else
-                asm.movsx(dest, src);
+                asm.movsx(dst, src);
         }
         else
         {
             if (srcWidth === 32 && dstWidth === 64)
-                asm.mov(dest.getSubReg(32), src);
+                asm.mov(dst.getSubOpnd(32), src);
             else
-                asm.movzx(dest, src);
+                asm.movzx(dst, src);
         }
     }
 };

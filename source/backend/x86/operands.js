@@ -134,7 +134,7 @@ x86.Register.prototype.toString = function ()
 /**
 Get the low sub-register of a given size
 */
-x86.Register.prototype.getSubReg = function (size)
+x86.Register.prototype.getSubOpnd = function (size)
 {
     assert (
         size === this.size || (size < this.size && this.lowReg),
@@ -144,7 +144,7 @@ x86.Register.prototype.getSubReg = function (size)
     if (size === this.size)
         return this;
     else
-        return this.lowReg.getSubReg(size);
+        return this.lowReg.getSubOpnd(size);
 }
 
 /**
@@ -349,6 +349,32 @@ x86.MemLoc.prototype.toString = function ()
     str = '[' + str + ']';
 
     return str;
+}
+
+/**
+Get the low sub-location of a given size
+*/
+x86.MemLoc.prototype.getSubOpnd = function (size)
+{
+    assert (
+        size <= this.size,
+        'no sub-loc of size ' + size + ' for ' + this
+    );
+
+    if (size === this.size)
+    {
+        return this;
+    }
+    else
+    {
+        return new x86.MemLoc(
+            size,
+            this.base,
+            this.disp,
+            this.index,
+            this.scale
+        );
+    }
 }
 
 /**

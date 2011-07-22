@@ -801,6 +801,45 @@ tests.x86.irToAsm = function ()
         [1,5,8,10]
     );
 
+    // Shift operations test with int32, int8
+    test('                                          \
+        function test(ctx, v1, v5, v8, v10)         \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v1 pint";                  \
+            "tachyon:arg v8 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:arg v10 pint";                 \
+            "tachyon:ret pint";                     \
+                                                    \
+            var v1_32 = iir.icast(IRType.i32, v1);  \
+            var v5_32 = iir.icast(IRType.i32, v5);  \
+            var vm5_32 = -v5_32;                    \
+            var v1_8 = iir.icast(IRType.i8, v1);    \
+            var v5_8 = iir.icast(IRType.i8, v5);    \
+                                                    \
+            var x1 = v5_32 << v1_32;    /* 10 */    \
+            var x2 = v5_32 >> v1_32;    /* 2 */     \
+            var x3 = v5_32 >>> v1_32;   /* 2 */     \
+            var x4 = vm5_32 >> v1_32;   /* -3 */    \
+            var x5 = v5_8 >> v1_8;      /* 2 */     \
+            var x6 = v5_8 << i8(8);     /* 0 */     \
+                                                    \
+            var sum = pint(0);                      \
+            sum += iir.icast(IRType.pint, x1);      \
+            sum += iir.icast(IRType.pint, x2);      \
+            sum += iir.icast(IRType.pint, x3);      \
+            sum += iir.icast(IRType.pint, x4);      \
+            sum += iir.icast(IRType.pint, x5);      \
+            sum += iir.icast(IRType.pint, x6);      \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        13,
+        [1,5,8,10]
+    );
 
 
 
@@ -808,7 +847,49 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: various size operands + spills after + if merge
+
+
+
+
+    // TODO: add, sub, mul, div, mod, lsft, rsft, ursft
+    // TODO: Various size operands, spills, if merge
+    test('                                          \
+        function test(ctx, v1, v5, v8, v10)         \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v1 pint";                  \
+            "tachyon:arg v8 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:arg v10 pint";                 \
+            "tachyon:ret pint";                     \
+                                                    \
+            var v1_32 = iir.icast(IRType.i32, v1);  \
+            var v5_32 = iir.icast(IRType.i32, v5);  \
+            var v8_32 = iir.icast(IRType.i32, v8);  \
+            var v1_16 = iir.icast(IRType.i16, v1);  \
+            var v5_16 = iir.icast(IRType.i16, v5);  \
+            var v8_16 = iir.icast(IRType.i16, v8);  \
+            var v1_8 = iir.icast(IRType.i8, v1);    \
+            var v5_8 = iir.icast(IRType.i8, v5);    \
+            var v8_8 = iir.icast(IRType.i8, v8);    \
+                                                    \
+                                                    \
+                                                    \
+                                                    \
+                                                    \
+            var sum = pint(0);                      \
+                                                    \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        0,
+        [1,5,8,10]
+    );
+
+
+
 
 
 
