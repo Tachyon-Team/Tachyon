@@ -328,7 +328,7 @@ x86.insertMove = function (asm, move, params)
     */
 
     // TODO: Unimplemented move!
-    asm.nop();
+    error('unsupported move');
 }
 
 // TODO: for now, default reg alloc config to test register allocation
@@ -487,6 +487,35 @@ ModInstr.prototype.x86.writeRegSet = function (instr, params)
 {
     return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
 }
+
+/**
+Function to generate a bitwise instruction's code generation
+*/
+x86.bitOpMaker = function (instrName)
+{
+    var instrConf = new x86.InstrCfg();
+
+    instrConf.opndCanBeImm = function (instr, idx, size)
+    { 
+        return (size <= 32);
+    };
+
+    instrConf.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+    {
+        asm[instrName](opnds[0], opnds[1]);
+    };
+
+    return instrConf;
+}
+
+// Bitwise AND instruction
+AndInstr.prototype.x86 = x86.bitOpMaker('and');
+
+// Bitwise OR instruction
+OrInstr.prototype.x86 = x86.bitOpMaker('or');
+
+// Bitwise XOR instruction
+XorInstr.prototype.x86 = x86.bitOpMaker('xor');
 
 /**
 Function to generate a shift instruction's code generation

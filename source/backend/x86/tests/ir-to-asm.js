@@ -918,15 +918,42 @@ tests.x86.irToAsm = function ()
         [1,5,8,10]
     );
 
-
-
+    // Bitwise operations
+    test('                                          \
+        function test(ctx, v3, v5)                  \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v3 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:ret pint";                     \
+                                                    \
+            var sum = pint(0);                      \
+            sum += v3 & v5;         /* 1 */         \
+            sum += v5 & v3;         /* 1 */         \
+            sum += v5 & pint(3);    /* 1 */         \
+            sum += pint(5) & v3;    /* 1 */         \
+            sum += v3 | v5;         /* 7 */         \
+            sum += v5 | pint(3);    /* 7 */         \
+            sum += v3 ^ v5;         /* 6 */         \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        24,
+        [3,5]
+    );
 
 
 
 
 
     // TODO: test boxInt + JS boxed add + ret unboxInt
-
+    // need:
+    // get_ctx
+    // load
+    // add_ovf
+    // call
 
 
 

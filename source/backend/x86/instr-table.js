@@ -110,6 +110,9 @@ x86.instrTable = [
     {mnem: 'and', opnds: ['r/m32', 'r32'], opCode: [0x21]},
     {mnem: 'and', opnds: ['r/m64', 'r64'], opCode: [0x21], REX_W: 1},
     {mnem: 'and', opnds: ['r8', 'r/m8'], opCode: [0x22]},
+    {mnem: 'and', opnds: ['r16', 'r/m16'], opCode: [0x23], szPref: true},
+    {mnem: 'and', opnds: ['r32', 'r/m32'], opCode: [0x23]},
+    {mnem: 'and', opnds: ['r64', 'r/m64'], opCode: [0x23], REX_W: 1},
 
     // Call (relative and absolute)
     {mnem: 'call', opnds: ['rel32'], opCode: [0xE8]},

@@ -48,6 +48,31 @@ Register allocation for x86 code generation.
 Maxime Chevalier-Boisvert
 */
 
+
+/*
+TODO:
+
+In pred->succ move resolution:
+- Try to find temp reg
+  - Need reg thats not the source or dest of any moves from gpRegSet
+- If free reg avail, use the temp to break cycles and for mem-mem moves,
+  more efficient?
+
+1 <- 2
+2 <- 3
+3 <- 1
+free reg: f
+
+move 2 to f
+1 <- f
+2 <- 3
+3 <- 1
+
+do 2 <- 3, do 3 <- 1, do 1 <- f
+
+*/
+
+
 /**
 Stack pointer register in 32-bit mode
 */
