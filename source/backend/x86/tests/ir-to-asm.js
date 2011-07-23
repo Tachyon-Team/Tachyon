@@ -1014,6 +1014,29 @@ tests.x86.irToAsm = function ()
         [3,5]
     );
 
+    // Boxed integer add, multiply
+    test('                                          \
+        function test(ctx, v3, v5, v8)              \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v3 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:arg v8 pint";                  \
+            "tachyon:ret pint";                     \
+                                                    \
+            v3 = boxInt(v3);                        \
+            v5 = boxInt(v5);                        \
+            v8 = boxInt(v8);                        \
+            var r = (v3 + v5) * v8;                 \
+            r = unboxInt(r);                        \
+                                                    \
+            return r;                               \
+        }                                           \
+        ',
+        64,
+        [3,5, 8]
+    );
 
 
 
@@ -1021,7 +1044,9 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: test boxInt + JS boxed add + ret unboxInt
+
+
+
 
 
 
@@ -1029,6 +1054,19 @@ tests.x86.irToAsm = function ()
 
     // TODO: local static env to test function calls?
     // could extend and temporarily replace params static env with custom one***
+
+
+
+
+    // TODO: linking
+    // test fib
+    // test calling C funcs?
+
+
+
+
+
+    // TODO: arguments object handling
 
 
 

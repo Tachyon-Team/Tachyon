@@ -306,28 +306,42 @@ x86.insertMove = function (asm, move, params)
             asm.mov(move.dst, move.src.getImmValue(params));
             return;
         }
+
+        // TODO: strings
+        log.debug('string move');
+        asm.nop();
+        return
     }
 
-    /*
-    PROBLEM: for some moves, may need EAX/RAX to be free
+    // If this is a static function reference
+    if (move.src instanceof IRFunction)
+    {
+        /*
+        PROBLEM: for some moves, may need EAX/RAX to be free
 
-    eg: move rdx, *<addr_64>
-    This is used to load the value at some address...
+        eg: move rdx, *<addr_64>
+        This is used to load the value at some address...
 
-    solution:
-    xchg rdx, rax
-    move rax, <addr_64>
-    xchg rdx, rax
+        solution:
+        xchg rdx, rax
+        move rax, <addr_64>
+        xchg rdx, rax
 
-    This avoids overwriting the value in rax, if any.
+        This avoids overwriting the value in rax, if any.
 
-    If rax gets written to after this, can always have opt pattern to
-    remove redundant xchgs.
+        If rax gets written to after this, can always have opt pattern to
+        remove redundant xchgs.
 
-    NOTE: there is a mov, r64, imm64!
-    */
+        NOTE: there is a mov, r64, imm64!
+        */
 
-    // TODO: Unimplemented move!
+        // TODO
+        log.debug('func addr move');
+        asm.nop();
+        return;
+    }
+
+    // Error, unimplemented move
     error('unsupported move');
 }
 
@@ -342,7 +356,8 @@ GetCtxInstr.prototype.x86.destMustBeReg = function (instr, params)
 GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // Clear out the lower bits of the context register
-    asm.mov(params.backend.ctxReg.getSubOpnd(8), 0);
+    var ctxReg = genInfo.params.backend.ctxReg;
+    asm.mov(ctxReg.getSubOpnd(8), 0);
 };
 
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
