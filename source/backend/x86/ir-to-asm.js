@@ -317,23 +317,50 @@ x86.insertMove = function (asm, move, params)
     if (move.src instanceof IRFunction)
     {
         /*
-        PROBLEM: for some moves, may need EAX/RAX to be free
+        Want to be able to use string addresses/function pointers into code.
 
-        eg: move rdx, *<addr_64>
-        This is used to load the value at some address...
+        Derive class from x86.Immediate
+        - x86.LinkValue?
+        - LinkValue.size = backend.regSizeBits
+        - LinkValue.value = irValue
+        - Implement special LinkValue.writeImm
+          - Writes special link info into code block
+            - Also want to write 0s to reserve space
+            - Store location of link value
+            - Could have function to write bytes and add import info*** 
+              - writeImport?
+            - Need to associate some sort of descriptor object
+          - List of block imports, exported labels?
 
-        solution:
-        xchg rdx, rax
-        move rax, <addr_64>
-        xchg rdx, rax
+        Can have exported labels in blocks.
 
-        This avoids overwriting the value in rax, if any.
+        There is a mov, r64, imm64 we can use to implement this
+        Also MOV r/m32, imm32
+        In 64-bit, for move to mem, will need xchg trick...
+        Can avoid move to mem for function calls, force func addr into reg
 
-        If rax gets written to after this, can always have opt pattern to
-        remove redundant xchgs.
+        asm.mov(reg, new x86.LinkValue(val))
 
-        NOTE: there is a mov, r64, imm64!
+        When linking to a function, want to specify the entry point to link to.
+        new x86.LinkValue(func ref obj)?
+
+        Issue: <fn "foo"> when used in static call refers to "fast" entry point
+
+        Same operand to set address in closure refers to "default" entry point.
+        - May want special FuncRef IRValue?
+        - IRFunction probably shouldn't be IRValue
+
+
+        Can start with just a default fast entry point, do FuncRef refactoring
+        later***
+
+
         */
+
+
+
+
+
 
         // TODO
         log.debug('func addr move');

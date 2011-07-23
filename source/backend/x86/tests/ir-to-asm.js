@@ -1035,12 +1035,43 @@ tests.x86.irToAsm = function ()
         }                                           \
         ',
         64,
-        [3,5, 8]
+        [3,5,8]
     );
 
-
-
-
+    // Switch statement test
+    test('                                          \
+        function test(ctx, v1, v3, v5, v8)          \
+        {                                           \
+            "tachyon:cproxy";                       \
+            "tachyon:arg ctx rptr";                 \
+            "tachyon:arg v1 pint";                  \
+            "tachyon:arg v3 pint";                  \
+            "tachyon:arg v5 pint";                  \
+            "tachyon:arg v8 pint";                  \
+            "tachyon:ret pint";                     \
+                                                    \
+            var sum = pint(0);                      \
+                                                    \
+            v1 = boxInt(v1);                        \
+                                                    \
+            switch (v1)                             \
+            {                                       \
+                case 5:                             \
+                sum += pint(555);                   \
+                case 1:                             \
+                sum += pint(3);                     \
+                case 2:                             \
+                sum += pint(4);                     \
+                default:                            \
+                sum += pint(5);                     \
+            }                                       \
+                                                    \
+            return sum;                             \
+        }                                           \
+        ',
+        12,
+        [1,3,5,8]
+    );
 
 
 
@@ -1073,13 +1104,26 @@ tests.x86.irToAsm = function ()
 
 
     // TODO: peephole optimizer
+    //
     // Assembler.addPattern(patternFunc?) ?
     // Need this to be somewhat more optimized...? pattern should have a
     // start instruction? Map patterns based on start instructions?
     //
     // Can always start simple, build on
     // Assembler.optimize() function... Hardcoded patterns to start with.
-
+    // peephole.js? optimizer.js?
+    //
+    // label, jump elimination
+    // inc/dec
+    // lea opts for mul
+    //   r0 := r1*{0,1} + r2*{0,1,2,4,8}
+    // cmp 0 to test opt
+    // mov r, 0 to xor r,r
+    // movcc, move on condition
+    // move sequence reduction
+    //
+    // xadd, exchange and add
+    // cmpxchg weirdness
 
 
 
