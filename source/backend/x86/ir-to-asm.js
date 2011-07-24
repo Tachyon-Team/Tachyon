@@ -62,6 +62,9 @@ x86.irToASM = function (irFunc, blockOrder, allocInfo, backend, params)
     // Get the calling convention
     var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
 
+    // Export a label for the function's default entry point
+    asm.addInstr(new x86.Label('ENTRY_DEFAULT', true));
+
     // Add space for the spills on the stack
     var spillSize = stackMap.getSpillSize();
     if (spillSize !== 0)

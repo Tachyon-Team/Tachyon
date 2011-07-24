@@ -235,6 +235,30 @@ tests.x86.irToAsm = function ()
         [1,2,3]
     );
 
+    // Many arguments, last passed on the stack even in 64-bit
+    test('                                      \
+        function test(ctx,a1,a2,a3,a4,a5,a6,a7) \
+        {                                       \
+            "tachyon:cproxy";                   \
+            "tachyon:arg ctx rptr";             \
+            "tachyon:arg a1 pint";              \
+            "tachyon:arg a2 pint";              \
+            "tachyon:arg a3 pint";              \
+            "tachyon:arg a4 pint";              \
+            "tachyon:arg a5 pint";              \
+            "tachyon:arg a6 pint";              \
+            "tachyon:arg a7 pint";              \
+            "tachyon:ret pint";                 \
+                                                \
+            var x = iir.sub(a6, a7);            \
+                                                \
+            return x;                           \
+        }                                       \
+        ',
+        6,
+        [0,0,0,0,0,9,3]
+    );
+
     // Many IIR operations, several registers needed
     test('                                  \
         function test(ctx, v1, v2, v3)      \
@@ -1083,8 +1107,12 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: local static env to test function calls?
-    // could extend and temporarily replace params static env with custom one***
+    /*
+    TODO: local static env to test function calls?
+    extend and temporarily replace params static env with custom one***
+    */
+
+
 
 
 
@@ -1092,12 +1120,21 @@ tests.x86.irToAsm = function ()
     // TODO: linking
     // test fib
     // test calling C funcs?
+    // test tachyon call conv 32/64
+
+
+
+
+
+
+    // TODO: call_apply
 
 
 
 
 
     // TODO: arguments object handling
+
 
 
 
@@ -1115,6 +1152,7 @@ tests.x86.irToAsm = function ()
     //
     // label, jump elimination
     // inc/dec
+    // neg
     // lea opts for mul
     //   r0 := r1*{0,1} + r2*{0,1,2,4,8}
     // cmp 0 to test opt
@@ -1124,6 +1162,21 @@ tests.x86.irToAsm = function ()
     //
     // xadd, exchange and add
     // cmpxchg weirdness
+
+
+
+
+
+    /*
+    TODO: FP reg alloc, FP instrs
+
+    Need FP parsing to get FP constants for testing
+    Also need FP printing.
+
+    FAddInstr
+    FSubInstr
+    ...?
+    */
 
 
 
