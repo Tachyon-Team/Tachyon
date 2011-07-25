@@ -1774,6 +1774,7 @@ irToAsm.fSingleOpndInstrMaker = function (irinstr, fOp)
                     fldMem(src, 64).
                     fsqrt().
                     fstMem(mem(valueOffset - tagValue, dest), 64, true);
+                break;
                 
             case 'flog':
                 tltor.asm.
