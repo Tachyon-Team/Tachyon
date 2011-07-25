@@ -180,6 +180,7 @@ function IRFunction(
     /**
     Everything related to linkage information. Will not be copied during
     a deep copy.
+    TODO: eliminate this
     @field
     */
     this.linking = {};
@@ -187,9 +188,16 @@ function IRFunction(
     /**
     Everything related to runtime information. Will not be copied during
     a deep copy.
+    TODO: eliminate this
     @field
     */
     this.runtime = {};
+
+    /**
+    Compiled code block for this function. Will not be copied
+    during a deep copy.
+    */
+    this.codeBlock = undefined;
 
     // If the argument or return types are undefined, make them boxed
     if (this.argTypes === undefined)

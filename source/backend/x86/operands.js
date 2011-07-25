@@ -460,7 +460,7 @@ Write the immediate value into a code block
 x86.Immediate.prototype.writeImm = function (codeBlock, immSize)
 {
     assert (
-        this.size <= immSize,
+        this.size <= immSize || this.unsgSize <= immSize,
         'immediate size too small for value'
     );
 

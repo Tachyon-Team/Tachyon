@@ -55,3 +55,21 @@ function Backend()
 {
 }
 
+/**
+Link the values needing to be linked in the code generated
+for an IR function.
+*/
+Backend.prototype.linkCode = function (irFunc, params)
+{
+    assert (
+        irFunction instanceof IRFunction,
+        'expected IR function'
+    );
+
+    // Get the code block stored on the function object
+    var codeBlock = irFunc.codeBlock;
+
+    // Link the code block for the function
+    linkCode(codeBlock, backend, params);
+}
+

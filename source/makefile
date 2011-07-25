@@ -87,6 +87,7 @@ BASE_SRCS =                             \
     old-backend/x86/ir-to-asm.js        \
     backend/codeblock.js                \
     backend/blockorder.js               \
+    backend/linker.js                   \
     backend/backend.js                  \
     backend/x86/operands.js             \
     backend/x86/instr-table.js          \
@@ -140,17 +141,6 @@ ALL_SRCS =                              \
     $(STDLIB_SRCS)                      \
     $(MAIN_SPEC_SRCS)                   \
     $(TEST_SPEC_SRCS)
-
-# Backend test sources
-BK_TEST_SRCS =                          \
-    $(BASE_SRCS)                        \
-    tests/testing.js                    \
-    backend/x86/tests/assembler.js      \
-    backend/x86/tests/ir-to-asm.js      \
-    bktest.js
-
-bktest:
-	$(RLWJSVM) $(BK_TEST_SRCS)
 
 all: tachyon compiler/sources.js
 

@@ -127,35 +127,14 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Assemble the code into an executable code block
     var codeBlock = assembler.assemble();
 
-    //
-    // TODO: store the code block on the function object
-    //
+    // Store the compiled code block on the function object
+    irFunc.codeBlock = codeBlock;
 
     // Return the assembler and code block
     return {
         assembler: assembler,
         codeBlock: codeBlock
     };
-}
-
-/**
-Link the values needing to be linked in the code generated
-for an IR function.
-*/
-x86.Backend.prototype.linkCode = function (irFunction)
-{
-    assert (
-        irFunction instanceof IRFunction,
-        'expected IR function'
-    );
-
-    //
-    // TODO: linker.js
-    //
-
-
-
-
 }
 
 /**

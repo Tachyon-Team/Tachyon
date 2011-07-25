@@ -42,15 +42,36 @@
 
 /**
 @fileOverview
-x86 code block linker implementation.
+Code block linker implementation.
 
 @author
 Maxime Chevalier-Boisvert
 */
 
+/**
+Link the imported references in a code block
+*/
+function linkCode(codeBlock, backend, params)
+{
+    assert (
+        codeBlock instanceof CodeBlock,
+        'invalid code block'
+    );
+
+    // For each imported value in the code block
+    for (var i = 0; i < codeBlock.imports.length; ++i)
+    {
+        var import = codeBlock.imports[i];
+
+        // TODO
 
 
-// TODO!
 
 
+
+
+
+
+    }
+}
 
