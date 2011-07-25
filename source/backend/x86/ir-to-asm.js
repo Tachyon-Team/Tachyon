@@ -311,14 +311,9 @@ x86.insertMove = function (asm, move, params)
         }
     }
 
-    // If this is a static function or string reference
-    if (move.src instanceof IRFunction ||
-        move.src instanceof ConstValue && typeof move.src.value === 'string')
+    // If this is a link-time value
+    if (x86.isLinkValue(move.src) === true)
     {
-        // TODO: isLinkValue in addition to getImmSize?
-
-        // TODO: make sure link values always end up in registers
-
         assert (
             move.dst instanceof x86.Register,
             'cannot move link value to memory'
@@ -330,12 +325,10 @@ x86.insertMove = function (asm, move, params)
     }
 
     // Error, unimplemented move
-    error('unsupported move');
+    error('unsupported move: ' + move.dst + ', ' + move.src);
 }
 
-// TODO: for now, default reg alloc config to test register allocation
-IRInstr.prototype.x86 = new x86.InstrCfg();
-
+// Get context instruction
 GetCtxInstr.prototype.x86 = new x86.InstrCfg();
 GetCtxInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
@@ -348,6 +341,7 @@ GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, 
     asm.mov(ctxReg.getSubOpnd(8), 0);
 };
 
+// Set context instruction
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
 SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
@@ -491,48 +485,6 @@ ModInstr.prototype.x86.writeRegSet = function (instr, params)
 }
 
 /**
-Produce the code generation for arithmetic with overflow instructions
-*/
-x86.ArithOvfMaker = function (instrClass)
-{
-    var instrConf = Object.create(instrClass.prototype.x86);
-
-    instrConf.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
-    {
-        // Reuse the implementation of the instruction without overflow
-        instrClass.prototype.x86.genCode.apply(
-            this, 
-            [instr, opnds, dest, scratch, asm, genInfo]
-        );
-
-        // Get the normal and overflow labels
-        var thisBlock = instr.parentBlock;
-        var normBlock = instr.targets[0];
-        var overBlock = instr.targets[1];
-        var normLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:normBlock});
-        var overLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:overBlock});
-
-        // Jump to the overflow block on overflow
-        asm.jo(overLabel);
-        asm.jmp(normLabel);
-    };
-
-    return instrConf;
-}
-
-// Addition with overflow handling
-AddOvfInstr.prototype.x86 = x86.ArithOvfMaker(AddInstr);
-
-// Subtraction with overflow handling
-SubOvfInstr.prototype.x86 = x86.ArithOvfMaker(SubInstr);
-
-// Multiplication with overflow handling
-MulOvfInstr.prototype.x86 = x86.ArithOvfMaker(MulInstr);
-
-// Left shift with overflow handling
-LsftOvfInstr.prototype.x86 = x86.ArithOvfMaker(LsftInstr);
-
-/**
 Generate a bitwise instruction's code generation
 */
 x86.bitOpMaker = function (instrName)
@@ -622,6 +574,49 @@ RsftInstr.prototype.x86 = x86.shiftMaker('sar');
 // Unsigned right shift instruction
 UrsftInstr.prototype.x86 = x86.shiftMaker('shr');
 
+/**
+Produce the code generation for arithmetic with overflow instructions
+*/
+x86.ArithOvfMaker = function (instrClass)
+{
+    var instrConf = Object.create(instrClass.prototype.x86);
+
+    instrConf.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+    {
+        // Reuse the implementation of the instruction without overflow
+        instrClass.prototype.x86.genCode.apply(
+            this, 
+            [instr, opnds, dest, scratch, asm, genInfo]
+        );
+
+        // Get the normal and overflow labels
+        var thisBlock = instr.parentBlock;
+        var normBlock = instr.targets[0];
+        var overBlock = instr.targets[1];
+        var normLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:normBlock});
+        var overLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:overBlock});
+
+        // Jump to the overflow block on overflow
+        asm.jo(overLabel);
+        asm.jmp(normLabel);
+    };
+
+    return instrConf;
+}
+
+// Addition with overflow handling
+AddOvfInstr.prototype.x86 = x86.ArithOvfMaker(AddInstr);
+
+// Subtraction with overflow handling
+SubOvfInstr.prototype.x86 = x86.ArithOvfMaker(SubInstr);
+
+// Multiplication with overflow handling
+MulOvfInstr.prototype.x86 = x86.ArithOvfMaker(MulInstr);
+
+// Left shift with overflow handling
+LsftOvfInstr.prototype.x86 = x86.ArithOvfMaker(LsftInstr);
+
+// Function call instruction
 CallFuncInstr.prototype.x86 = new x86.InstrCfg();
 CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
 { 

@@ -49,10 +49,9 @@ Maxime Chevalier-Boisvert
 */
 
 
-/*
-TODO:
 
-In pred->succ move resolution:
+/*
+TODO: In pred->succ move resolution:
 - Try to find temp reg
   - Need reg thats not the source or dest of any moves from gpRegSet
 - If free reg avail, use the temp to break cycles and for mem-mem moves,
@@ -70,7 +69,10 @@ move 2 to f
 
 do 2 <- 3, do 3 <- 1, do 1 <- f
 
+TODO: MUST eliminate xchg from resolution code... Very inefficient because
+of implicit lock prefix!
 */
+
 
 
 /**
@@ -683,6 +685,17 @@ x86.getImmSize = function (value, params)
 }
 
 /**
+Test if an IR value must be handled at link-time
+*/
+x86.isLinkValue = function (value)
+{
+    return (
+        value instanceof IRFunction ||
+        (value instanceof ConstValue && value.isString())
+    );
+}
+
+/**
 Perform register allocation on an IR function
 */
 x86.allocRegs = function (irFunc, blockOrder, backend, params)
@@ -1266,6 +1279,10 @@ x86.allocRegs = function (irFunc, blockOrder, backend, params)
 
                     // Get the register allocation parameters for this operand
                     var opndMustBeReg = instrCfg.opndMustBeReg(instr, opndIdx, params);
+
+                    // If the operand is a link-time value, it must be in a register
+                    if (x86.isLinkValue(use) === true && opndMustBeReg === false)
+                        opndMustBeReg = true;
 
                     // Test if this operand can be in memory
                     if (opndMustBeReg === false && numMemOpnds >= maxMemOpnds)
