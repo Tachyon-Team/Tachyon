@@ -73,6 +73,16 @@ function CodeBlock(size)
     @field Current writing position
     */
     this.writePos = 0;
+
+    /**
+    @field Imported link values in this block
+    */
+    this.imports = [];
+
+    /**
+    @field Exported labels in this block
+    */
+    this.exports = {};
 }
 
 /**
@@ -185,5 +195,45 @@ CodeBlock.prototype.writeInt = function (val, numBits)
 
         val = num_shift(val, -8);
     }
+}
+
+/**
+Write a link value at the current position
+*/
+CodeBlock.prototype.writeLink = function (linkVal, numBits)
+{
+    assert (
+        numBits === 32 || numBits === 64,
+        'invalid link value size'
+    );
+
+    // Store the link value and its position
+    this.imports.push(
+        {
+            value: linkVal,
+            pos: this.writePos
+        }
+    );
+
+    // Compute the size in bytes
+    var numBytes = numBits / 8;
+
+    // Write placeholder bytes for the value
+    for (var i = 0; i < numBytes; ++i)
+        this.writeByte(0);
+}
+
+/**
+Add an exported label at the the current position
+*/
+CodeBlock.prototype.exportLabel = function (name)
+{
+    assert (
+        this.exports.hasOwnProperty(name) === false,
+        'exported label already exists: "' + name + '"'
+    );
+
+    // Store the link value and its position
+    this.exports[name] = this.writePos
 }
 

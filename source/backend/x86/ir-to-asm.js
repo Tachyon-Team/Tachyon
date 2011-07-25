@@ -309,65 +309,23 @@ x86.insertMove = function (asm, move, params)
             asm.mov(move.dst, move.src.getImmValue(params));
             return;
         }
-
-        // TODO: strings
-        log.debug('string move');
-        asm.nop();
-        return
     }
 
-    // If this is a static function reference
-    if (move.src instanceof IRFunction)
+    // If this is a static function or string reference
+    if (move.src instanceof IRFunction ||
+        move.src instanceof ConstValue && typeof move.src.value === 'string')
     {
-        /*
-        Want to be able to use string addresses/function pointers into code.
+        // TODO: isLinkValue in addition to getImmSize?
 
-        Derive class from x86.Immediate
-        - x86.LinkValue?
-        - LinkValue.size = backend.regSizeBits
-        - LinkValue.value = irValue
-        - Implement special LinkValue.writeImm
-          - Writes special link info into code block
-            - Also want to write 0s to reserve space
-            - Store location of link value
-            - Could have function to write bytes and add import info*** 
-              - writeImport?
-            - Need to associate some sort of descriptor object
-          - List of block imports, exported labels?
+        // TODO: make sure link values always end up in registers
 
-        Can have exported labels in blocks.
+        assert (
+            move.dst instanceof x86.Register,
+            'cannot move link value to memory'
+        );
 
-        There is a mov, r64, imm64 we can use to implement this
-        Also MOV r/m32, imm32
-        In 64-bit, for move to mem, will need xchg trick...
-        Can avoid move to mem for function calls, force func addr into reg
-
-        asm.mov(reg, new x86.LinkValue(val))
-
-        When linking to a function, want to specify the entry point to link to.
-        new x86.LinkValue(func ref obj)?
-
-        Issue: <fn "foo"> when used in static call refers to "fast" entry point
-
-        Same operand to set address in closure refers to "default" entry point.
-        - May want special FuncRef IRValue?
-        - IRFunction probably shouldn't be IRValue
-
-
-        Can start with just a default fast entry point, do FuncRef refactoring
-        later***
-
-
-        */
-
-
-
-
-
-
-        // TODO
-        log.debug('func addr move');
-        asm.nop();
+        var linkValue = new x86.LinkValue(move.src, params.backend.regSizeBits);
+        asm.mov(move.dst, linkValue);
         return;
     }
 

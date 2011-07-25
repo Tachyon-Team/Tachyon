@@ -468,6 +468,51 @@ x86.Immediate.prototype.writeImm = function (codeBlock, immSize)
 }
 
 /**
+Link-time value operand
+@extends x86.Immediate
+*/
+x86.LinkValue = function (value, ptrSize)
+{
+    assert (
+        value instanceof ConstValue ||
+        value instanceof IRFunction,
+        'invalid link value'
+    );
+
+    assert (
+        ptrSize === 32 || ptrSize === 64,
+        'invalid pointer size'
+    );
+
+    this.value = value;
+
+    this.size = ptrSize;
+}
+x86.LinkValue.prototype = new x86.Immediate(0);
+
+/**
+Produce a string representation of the link value
+*/
+x86.LinkValue.prototype.toString = function ()
+{
+    return capStrLen(this.value.getValName(), 16, true);
+}
+
+/**
+Write the link value value into a code block
+*/
+x86.LinkValue.prototype.writeImm = function (codeBlock, immSize)
+{
+    assert (
+        this.size === immSize,
+        'incorrect immediate size for link value'
+    );
+
+    // Write the link value into the code block
+    codeBlock.writeLink(this.value, immSize);
+}
+
+/**
 @class Label reference operand
 @extends x86.Operand
 */

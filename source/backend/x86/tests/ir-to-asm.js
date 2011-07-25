@@ -1139,6 +1139,15 @@ tests.x86.irToAsm = function ()
 
 
 
+    // TODO:
+    // get rid of xchg in CFG edge resolution, spill temp if necessary
+    // xchg reg, mem apparently has implicit lock prefix, bad***
+
+    
+
+
+
+
 
     // TODO: peephole optimizer
     //
@@ -1151,15 +1160,20 @@ tests.x86.irToAsm = function ()
     // peephole.js? optimizer.js?
     //
     // label, jump elimination
-    // inc/dec
     // neg
     // lea opts for mul
     //   r0 := r1*{0,1} + r2*{0,1,2,4,8}
+    // lea for 3-register addition
+    //   lea eax, [ebx+ecx]
     // cmp 0 to test opt
+    // - replace test with and?
     // mov r, 0 to xor r,r
-    // movcc, move on condition
     // move sequence reduction
     //
+    // inc/dec
+    // - smaller, but may not be faster!
+    // movcc, move on condition
+    // - may not actually be faster! to be benchmarked
     // xadd, exchange and add
     // cmpxchg weirdness
 

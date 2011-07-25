@@ -149,12 +149,8 @@ x86.Instruction.prototype.compEncLen = function (enc, x86_64)
             rexNeeded = true;
 
         if (opndType === 'imm' ||
-            opndType === 'moffs')
-        {
-            immSize = opndSize;
-        }
-
-        else if (opndType === 'rel')
+            opndType === 'moffs' ||
+            opndType === 'rel')
         {
             immSize = opndSize;
         }
@@ -430,16 +426,11 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
             rexNeeded = true;
 
         if (opndType === 'imm' || 
-            opndType === 'moffs')
+            opndType === 'moffs' ||
+            opndType === 'rel')
         {
             immSize = opndSize;
-            immVal = opnd.value;
-        }
-
-        else if (opndType === 'rel')
-        {
-            immSize = opndSize;
-            immVal = opnd.relOffset;
+            immOpnd = opnd;
         }
 
         else if (opndType === 'r' ||
@@ -654,9 +645,16 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     if (dispSize !== 0)
         codeBlock.writeInt(dispVal, dispSize);
 
-    // If there is an immediate operand, write it
+    // If there is an immediate operand
     if (immSize !== 0)
-        codeBlock.writeInt(immVal, immSize);
+    {
+        if (immOpnd instanceof x86.Immediate)
+            immOpnd.writeImm(codeBlock, immSize);
+        else if (immOpnd instanceof x86.LabelRef)
+            codeBlock.writeInt(immOpnd.relOffset, immSize);
+        else
+            error('invalid immediate operand');
+    }
 
     // Get the index in the code block after the encoding
     var endIndex = codeBlock.writePos;
@@ -730,8 +728,14 @@ x86.Label.prototype.getLength = function ()
 /**
 Encode a label into a code block, does nothing
 */
-x86.Label.prototype.encode = function ()
+x86.Label.prototype.encode = function (codeBlock)
 {
+    // If this label is to be exported
+    if (this.export === true)
+    {
+        // Add the export to the code block
+        codeBlock.exportLabel(this.name);
+    }
 }
 
 /**
