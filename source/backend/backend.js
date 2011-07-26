@@ -62,9 +62,13 @@ for an IR function.
 Backend.prototype.linkCode = function (irFunc, params)
 {
     assert (
-        irFunction instanceof IRFunction,
+        irFunc instanceof IRFunction,
         'expected IR function'
     );
+
+    // Link the code for the child functions
+    for (var i = 0; i < irFunc.childFuncs.length; ++i)
+        this.linkCode(irFunc.childFuncs[i], params);
 
     // Get the code block stored on the function object
     var codeBlock = irFunc.codeBlock;

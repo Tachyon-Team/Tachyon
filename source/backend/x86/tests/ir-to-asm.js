@@ -74,20 +74,40 @@ tests.x86.irToAsm = function ()
         if (argVals === undefined)
             argVals = [];
 
+        // Make a local static environment
+        var paramsEnv = params.staticEnv;
+        var localEnv = paramsEnv.copy();
+        params.staticEnv = localEnv;
+
+        // Parse the source code
         var ast = parse_src_str(str, params);
+
+        // Parse the static definitions
+        localEnv.parseUnit(ast);
+
+        // Compile the AST to IR
         var ir = unitToIR(ast, params);
         lowerIRFunc(ir, params);
 
-        irFunc = ir.getChild('test');
-
-        print(irFunc);
+        print(ir);
         print('');
 
-        // Generate the machine code for the function
-        var code = backend.genCode(irFunc, params);
+        // Generate the machine code for all sub-functions
+        backend.genCode(ir, params);
 
-        var blockAddr = code.codeBlock.getAddress();
+        // Link the code for all sub-functions
+        backend.linkCode(ir, params);
 
+        // Restore the static environment
+        params.staticEnv = paramsEnv;
+
+        // Get the test function
+        irFunc = ir.getChild('test');
+
+        // Get the address of the default entry point
+        var entryAddr = irFunc.codeBlock.getExportAddr('ENTRY_DEFAULT');
+
+        // Parse the argument types
         var argTypes = [];
         for (var i = 0; i < argVals.length; ++i)
         {
@@ -101,12 +121,12 @@ tests.x86.irToAsm = function ()
                 error('unsupported arg: ' + argVal);
         }
 
+        // Call the test function
         var ctxPtr = backend.x86_64? [0,0,0,0,0,0,0,0]:[0,0,0,0];
-
         var ret = callTachyonFFI(
             argTypes,
             'int',
-            blockAddr,
+            entryAddr,
             ctxPtr,
             argVals
         );
@@ -1107,9 +1127,17 @@ tests.x86.irToAsm = function ()
 
 
 
+
+
     /*
     TODO: local static env to test function calls?
     extend and temporarily replace params static env with custom one***
+
+
+    TODO: link code
+
+
+
     */
 
 

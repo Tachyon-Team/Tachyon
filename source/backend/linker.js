@@ -63,15 +63,54 @@ function linkCode(codeBlock, backend, params)
     {
         var import = codeBlock.imports[i];
 
-        // TODO
+        // Get a reference to the value
+        var value = import.value;
 
+        // Set the write position
+        codeBlock.setWritePos(import.pos);
 
+        // If this is a static function reference
+        if (value instanceof IRFunction)
+        {
+            // TODO: remove this once old backend replaced
+            if ((value.codeBlock instanceof CodeBlock) === false)
+            {
+                print('function not linked: ' + value.getValName());
+                continue;
+            }
 
+            log.debug('*** linking func: ' + value.getValName());
 
+            assert (
+                value.codeBlock instanceof CodeBlock,
+                'invalid function code block'
+            );
 
+            // Get the default entry point address
+            var entryAddr = value.codeBlock.getExportAddr('ENTRY_DEFAULT');
 
+            // Write the entry point address
+            codeBlock.writeBytes(entryAddr);
+        }
+        
+        // If this is a string value
+        else if (value instanceof ConstValue && value.isString())
+        {
+            // If strings cannot yet be linked, do nothing
+            if ((params.getStrObj instanceof Function) == false)
+                continue;
 
+            // Get the address for this string
+            var stringAddr = params.getStrObj(value.value);
 
+            // Write the string address
+            codeBlock.writeBytes(stringAddr);
+        }
+
+        else
+        {
+            error('invalid link value');
+        }
     }
 }
 

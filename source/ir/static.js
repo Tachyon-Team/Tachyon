@@ -116,6 +116,27 @@ function StaticEnv()
 StaticEnv.prototype = {};
 
 /**
+Copy a static environment
+*/
+StaticEnv.prototype.copy = function ()
+{
+    var newEnv = new StaticEnv();
+
+    var bindings = this.getBindings();
+
+    for (var i = 0; i < bindings.length; ++i)
+    {
+        var name = bindings[i];
+    
+        var val = this.getBinding(name);
+
+        newEnv.regBinding(name, val);
+    }
+
+    return newEnv;
+}
+
+/**
 Get the value of a constant binding
 */
 StaticEnv.prototype.getValue = function (name)

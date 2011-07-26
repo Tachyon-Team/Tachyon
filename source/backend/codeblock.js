@@ -119,11 +119,37 @@ CodeBlock.prototype.getAddress = function (idx)
 }
 
 /**
+Get the address of an exported label in the code block
+*/
+CodeBlock.prototype.getExportAddr = function (name)
+{
+    assert (
+        this.exports[name] !== undefined,
+        'invalid exported label'
+    );
+
+    return getBlockAddr(this.memBlock, this.exports[name]);
+}
+
+/**
 Clear the contents of the code block
 */
 CodeBlock.prototype.clear = function ()
 {
     this.writePos = 0;
+}
+
+/**
+Set the current write position
+*/
+CodeBlock.prototype.setWritePos = function (pos)
+{
+    assert (
+        pos < this.size,
+        'invalid code block position'
+    );
+
+    this.writePos = pos;
 }
 
 /**
@@ -163,6 +189,15 @@ CodeBlock.prototype.writeByte = function (val)
     writeToMemoryBlock(this.memBlock, this.writePos, val);
 
     this.writePos += 1;
+}
+
+/**
+Write a sequence of bytes at the current position
+*/
+CodeBlock.prototype.writeBytes = function (bytes)
+{
+    for (var i = 0; i < bytes.length; ++i)
+        this.writeByte(bytes[i]);
 }
 
 /**
