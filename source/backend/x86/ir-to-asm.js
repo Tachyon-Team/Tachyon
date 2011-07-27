@@ -48,6 +48,112 @@ x86 backend inteface.
 Maxime Chevalier-Boisvert
 */
 
+
+
+
+
+
+/*
+TODO: idea
+
+Most instructions have simple allocation. Only 2 or 3 operands, at most one
+mem operand. No scratch regs. No complex exclusion scheme.
+
+Some instructions could use register hints (shift?) others have real
+constraints that are fairly simple to satisfy (div/mul).
+
+
+Could have special allocation routines based on instruction types:
+
+eg:
+
+- Instr taking one mem, one r/m
+- Call instructions
+
+This is fairly specific to on-the-fly register allocation
+
+Is there a better way to indicate register allocation constraints?
+
+-----------------------------
+
+x86.StackRef operand to replace later?
+- Reference stack slots or arg slots
+
+-----------------------------
+
+Idea 2: Merge code gen & reg alloc
+- Pass code gen an object with reg alloc/code gen methods
+- Generate code during reg alloc
+- Use stack ref virtual operand during code generation
+
+Add/sub can call get_r_rmi_opnds to get their operands?
+- Auto manages dest is opnd0
+- Auto manages immediate operands
+- Can always define a function for arith ops that calls reg alloc primitives
+- No crazy operand allocation loop
+- No need to worry about max mem, max reg opnds
+- Most instructions don't have write, spill regs
+- For most instructions, this will probably be quite simple and fast.
+
+
+alloc_r_opnd(use)
+alloc_rm_opnd(use)
+
+
+Problem: can spill already allocated operand, or spill values of other
+operands of the instruction.
+
+We know what reg operands we already allocated for the current instruction.
+Need to keep track of this. Can make list of existing (not yet allocated)
+reg allocs for current instruction. We should try to avoid spilling these if
+possible.
+
+Issue:
+- If we get a mem opnd for the first operand of add, can't get a second mem
+opnd. Need method to alloc both at once for this.
+
+
+Need method to specify to the reg allocator where the dest is?
+- Could just tell the register allocator where the dest was written?
+  - No. The register allocator needs to know to spill the value before it is overwritten...
+- Could do alloc_dest() before doing the operation
+  - Allocator will spill the operand if needed, if it is still live after the
+    instruction.
+
+
+alloc_r_opnd(use)
+alloc_rm_opnd(use)
+alloc_dest(opnd)
+
+alloc r and alloc rm can be primitives
+Can implement alloc_r_rm, alloc_r_rmi on top
+
+Fixed registers:
+alloc_fixed_reg(use)
+
+Temp registers:
+alloc_temp_reg()
+
+Spill registers:
+spill_reg(reg)
+
+For division instruction, need to be able to exclude a reg from allocation
+exclude_reg(reg)?
+
+
+
+
+
+
+*/
+
+
+
+
+
+
+
+
 /**
 Generate the assembly code for one function
 */
@@ -637,9 +743,12 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
     // Get the calling convention for the callee
     var callConv = params.backend.getCallConv(this.callConv);
 
-    // FIXME
+
     // FIXME
     // FIXME: this deallocates live temps?
+    // FIXME
+
+
     // If the argument must be in a register, return it
     //if (idx < callConv.argRegs.length)
     //    return callConv.argRegs[i];
@@ -648,10 +757,31 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 }
 CallFuncInstr.prototype.x86.writeRegSet = function (instr, params)
 {
+    /*
+    FIXME
+    PROBLEM: right now, the write regs can't be used to allocate
+    arguments into... That should probably be changed?
+
+    May want to distinguish between spillregs/saveregs and excluderegs
+
+    Look at other instructions that write to regs, can they receive
+    their arguments in those registers?
+
+    Mul instruction => yes
+    Div/mod instruction => no
+
+
+
+    */
+
+
+
     // Get the calling convention for the callee
     var callConv = params.backend.getCallConv(this.callConv);
 
-    return this.callerSave;
+    // FIXME
+    //return this.callerSave;
+    return undefined;
 }
 CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
@@ -664,6 +794,9 @@ CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 
     return true;
 }
+
+// TODO: scratch regs, need at least 1
+
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // Get the calling convention for the callee
