@@ -618,7 +618,13 @@ LsftOvfInstr.prototype.x86 = x86.ArithOvfMaker(LsftInstr);
 
 // Function call instruction
 CallFuncInstr.prototype.x86 = new x86.InstrCfg();
+// TODO: change to 'tachyon' once tachyon call conv support is completed
+CallFuncInstr.prototype.x86.callConv = 'c';
 CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
+{ 
+    return instr.uses.length; 
+}
+CallFuncInstr.prototype.x86.maxMemOpnds = function (instr, idx, size)
 { 
     return instr.uses.length; 
 }
@@ -626,10 +632,64 @@ CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 { 
     return true; 
 }
+CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+{
+    // Get the calling convention for the callee
+    var callConv = params.backend.getCallConv(this.callConv);
+
+    // FIXME
+    // FIXME
+    // FIXME: this deallocates live temps?
+    // If the argument must be in a register, return it
+    //if (idx < callConv.argRegs.length)
+    //    return callConv.argRegs[i];
+
+    return false;
+}
+CallFuncInstr.prototype.x86.writeRegSet = function (instr, params)
+{
+    // Get the calling convention for the callee
+    var callConv = params.backend.getCallConv(this.callConv);
+
+    return this.callerSave;
+}
+CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
+{
+    // Get the calling convention for the callee
+    var callConv = params.backend.getCallConv(this.callConv);
+
+    // Return the return value register if there is one
+    if (callConv.retReg instanceof x86.Register)
+        return callConv.retReg;
+
+    return true;
+}
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    // TODO
+    // Get the calling convention for the callee
+    var callConv = genInfo.params.backend.getCallConv(this.callConv);
+
+    // Get the function pointer
+    var funcPtr = opnds[0];
+
+
+    // TODO: func object, global object? those are the operands, treated as
+    // normal arguments
+
+
+
+
+
+
+
+
     asm.nop();
+    asm.nop();
+    asm.nop();
+
+
+    // TODO
+    //callConv.retReg;
 };
 
 // Unconditional branching instruction

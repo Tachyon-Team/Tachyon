@@ -59,14 +59,9 @@ function CallConv(params)
     this.name = params.name;
 
     /**
-    @field Flag indicatig this is usable on 64-bit platforms.
+    @field Register size for the target platform
     */
-    this.avail32 = params.avail32;
-
-    /**
-    @field Flag indicating this is usable on 64-bit platforms.
-    */
-    this.avail64 = params.avail64;
+    this.regSize = params.regSize;
 
     /**
     @field Stack pointer alignment.
@@ -104,14 +99,32 @@ function CallConv(params)
     this.fpRetReg = params.fpRetReg;
 
     /**
+    @field Caller or callee cleanup. Must be 'CALLER' or 'CALLEE'.
+    */
+    this.cleanup = params.cleanup;
+
+    /**
     @field Callee-save registers
     */
     this.calleeSave = params.calleeSave;
 
     /**
-    @field Caller or callee cleanup. Must be 'CALLER' or 'CALLEE'.
+    @field Caller-save registers
     */
-    this.cleanup = params.cleanup;
+    this.callerSave = [];
+
+    // Build the caller save register set
+    for (regName in x86.regs)
+    {
+        var reg = x86.regs[regName];
+
+        if (reg.type === 'gp' && 
+            reg.size === this.regSizeBits && 
+            arraySetHas(this.calleeSave, reg) === false)
+            continue;
+
+        this.callerSave.push(reg);
+    }
 
     assert (
         typeof this.name === 'string',
@@ -119,15 +132,13 @@ function CallConv(params)
     );
 
     assert (
-        typeof this.avail32 === 'boolean' &&
-        typeof this.avail64 === 'boolean' &&
-        !(this.avail32 === false && this.avail64 === false),
-        'invalid 32/64-bit flags'
+        this.regSize === 32 || this.regSize === 64,
+        'invalid register size'
     );
 
     assert (
         isPosInt(this.spAlign),
-        'invalid sp alignment'
+        'invalid sp alignment: ' + this.spAlign + ' (' + this.name + ')'
     );
 
     assert (
@@ -179,8 +190,7 @@ cdecl calling convention
 */
 CallConv.cdecl = new CallConv({
     name        : 'cdecl',
-    avail32     : true,
-    avail64     : false,
+    regSize     : 32,
     spAlign     : 16,
     argOrder    : 'RTL',
     argRegs     : [],
@@ -200,8 +210,7 @@ AMD64 ABI calling convention
 */
 CallConv.amd64 = new CallConv({
     name        : 'amd64',
-    avail32     : false,
-    avail64     : true,
+    regSize     : 64,
     spAlign     : 16,
     argOrder    : 'RTL',
     argRegs     : [x86.regs.rdi, 
@@ -235,8 +244,7 @@ Tachyon 32-bit calling convention
 */
 CallConv.tachyon32 = new CallConv({
     name        : 'tachyon32',
-    avail32     : true,
-    avail64     : false,
+    regSize     : 32,
     spAlign     : 8,
     argOrder    : 'RTL',
     argRegs     : [x86.regs.eax, 
@@ -259,8 +267,7 @@ Tachyon 64-bit calling convention
 */
 CallConv.tachyon64 = new CallConv({
     name        : 'tachyon64',
-    avail32     : false,
-    avail64     : true,
+    regSize     : 64,
     spAlign     : 8,
     argOrder    : 'RTL',
     argRegs     : [x86.regs.rax, 
