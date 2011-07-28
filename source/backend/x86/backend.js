@@ -49,6 +49,11 @@ Maxime Chevalier-Boisvert
 */
 
 /**
+x86 namespace
+*/
+var x86 = x86 || {};
+
+/**
 @class x86 backend interface
 @extends Backend
 */
@@ -77,12 +82,12 @@ x86.Backend = function (x86_64)
     /**
     Stack pointer register
     */
-    this.spReg = x86_64? x86.spReg64:x86.spReg32;
+    this.spReg = x86.regs.rsp.getSubOpnd(this.regSizeBits);
 
     /**
     Context register
     */
-    this.ctxReg = x86_64? x86.ctxReg64:x86.ctxReg32;
+    this.ctxReg = x86.regs.rcx.getSubOpnd(this.regSizeBits);
 }
 x86.Backend.prototype = new Backend();
 
@@ -118,11 +123,8 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     for (var i = 0; i < blockOrder.length; ++i)
         log.debug(blockOrder[i].getBlockName());
 
-    // Perform register allocation
-    var allocInfo = x86.allocRegs(irFunc, blockOrder, this, params);
-
     // Produce assembler for the function
-    var assembler = x86.irToASM(irFunc, blockOrder, allocInfo, this, params);
+    var assembler = x86.genCode(irFunc, blockOrder, this, params);
 
     // Assemble the code into an executable code block
     var codeBlock = assembler.assemble();
