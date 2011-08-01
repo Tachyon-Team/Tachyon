@@ -123,8 +123,11 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     for (var i = 0; i < blockOrder.length; ++i)
         log.debug(blockOrder[i].getBlockName());
 
+    // Perform liveness analysis on the CFG
+    var liveness = x86.liveAnalysis(blockOrder);
+
     // Produce assembler for the function
-    var assembler = x86.genCode(irFunc, blockOrder, this, params);
+    var assembler = x86.genCode(irFunc, blockOrder, liveness, this, params);
 
     // Assemble the code into an executable code block
     var codeBlock = assembler.assemble();

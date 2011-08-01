@@ -152,13 +152,6 @@ tests.x86.irToAsm = function ()
         }
     }
 
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
     // Simple IIR add tests, 1 argument, no spills needed
     test('                                  \
         function test(ctx, v1)              \
@@ -193,6 +186,8 @@ tests.x86.irToAsm = function ()
 
 
 
+    // TODO: enable tests as supported
+    return;
 
 
 

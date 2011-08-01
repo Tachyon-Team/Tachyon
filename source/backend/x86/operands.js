@@ -399,6 +399,11 @@ x86.MemLoc.prototype.sibNeeded = function (x86_64)
 x86.Immediate = function (value)
 {
     assert (
+        isInt(value),
+        'immediate must be integer'
+    );
+
+    assert (
         num_ge(value, getIntMin(64)) && num_le(value, getIntMax(64, true)),
         'immediate does not fit within 64 bits: ' + num_to_string(value)
     );

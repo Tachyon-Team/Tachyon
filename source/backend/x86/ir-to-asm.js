@@ -96,9 +96,18 @@ CallFuncInstr.prototype.x86_genCode = function (instr, asm, codeGen)
 RetInstr.prototype.x86_genCode = function (instr, asm, codeGen)
 {
     const callConv = codeGen.callConv;
+    const allocMap = codeGen.allocMap;
 
     // TODO: move output into appropriate register
     // do this by forcing operand into output register
+
+
+
+
+
+
+    // Remove the spills from the stack
+    asm.add(allocMap.spReg, allocMap.numSpillSlots * allocMap.slotSize);
 
     asm.ret();
 };
