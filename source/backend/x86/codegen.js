@@ -48,149 +48,6 @@ Register allocation and x86 code generation.
 Maxime Chevalier-Boisvert
 */
 
-
-
-
-
-/*
-TODO:
-Merge code gen & reg alloc
-- Pass code gen an object with reg alloc/code gen methods
-- Generate code during reg alloc
-- Use stack ref virtual operand during code generation
-
-Add/sub can call get_r_rmi_opnds to get their operands?
-- Auto manages dest is opnd0
-- Auto manages immediate operands
-- Can always define a function for arith ops that calls reg alloc primitives
-- No crazy operand allocation loop
-- No need to worry about max mem, max reg opnds
-- Most instructions don't have write, spill regs
-- For most instructions, this will probably be quite simple and fast.
-
-Problem: can spill already allocated operand, or spill values of other
-operands of the instruction.
-
-We know what reg operands we already allocated for the current instruction.
-Need to keep track of this. Can make list of existing (not yet allocated)
-reg allocs for current instruction. We should try to avoid spilling these if
-possible.
-
-Issue:
-- If we get a mem opnd for the first operand of add, can't get a second mem
-opnd. Need method to alloc both at once for this.
-
-Need method to specify to the reg allocator where the dest is?
-- Could just tell the register allocator where the dest was written?
-  - No. The register allocator needs to know to spill the value before it is overwritten...
-- Could do alloc_dest() before doing the operation
-  - Allocator will spill the operand if needed, if it is still live after the
-    instruction.
-
-alloc_r_opnd(use)
-alloc_rm_opnd(use)
-alloc_dest(opnd)
-
-alloc r and alloc rm can be primitives
-Can implement alloc_r_rm, alloc_r_rmi on top
-
-Fixed registers:
-alloc_fixed_reg(use)
-
-Temp registers:
-alloc_temp_reg()
-
-Spill registers:
-spill_reg(reg)
-
-For division instruction, need to be able to exclude a reg from allocation
-exclude_reg(reg)?
-
-Excludes from allocation. spill_reg allows a reg to be used for arguments.
-Only forces it to be saved.
-
---------------------------------------------------------------------------
-
-Code Generator
---------------
-
-Do we want a code generator object with methods?
-===> Probably not
-
-Current plan:
-- Call codeGen, have nested functions to do register allocation
-- Place methods and useful values on codeGen object passed to code
-  generation functions
-- Probably not slower than code gen object... Only creating one object
-
-Alternative:
-- Have code generator object with many fields. Create new instance when
-  generating code for a method
-- Maintain field values up to date as we proceed
-- Pass this reference to code generation functions
-- Disadvantag: always using this reference, everything on the code generator object...
-- Disadvantage: too much info passed to code gen functions
-
---------------------------------------------------------------------------
-
-Alloc Map
----------
-
-x86.StackRef operand to replace later?
-- Reference stack slots or arg slots
-
-Do we need a stack frame map if we increment the stack pointer dynamically?
-
-May not need to. Could map the stack frame data to offsets directly in the
-alloc map.
-
-Simpler code? Already maintain spill location indices in alloc map...
-Could request mem locs for stack allocated objects directly...
-
-argN
-...
-arg1
-arg0
-ret addr <-- initial SP
-spill0
-spill1
-...
-spillN <-- final SP
-
-
-Need to maintain:
-- total number of stack slots
-- arg slot indices
-- return value index
-- save reg indices
-- spill slot indices
-- list of spill slot indices?
-
-Probably want to keep stack alloc map! Don't want to uselessly copy all this
-information for every block!
-
-Map values to list of regs, stack loc indices
-
-Should ideally count stack slots from the bottom to the top. eg: arg0 is
-slot 0. This way, the stack slot indices do not change.
-
-
-In reg alloc map: ***
-- Want number of spill slots and total number of stack slots?
-- Only need stack fame size? Increment it when we can't find a spill slot
-- Modify stack frame map. No longer need to allocate spill slots?
-  - Can compute spill index without maintaining a map?
-- Not quite true! Saved registers are not in "normal" save slots...
-- Would need to integrate them to eliminate spill map
-- If spilled, remain live until end of function
-*/
-
-
-
-
-
-
-
 /**
 x86 namespace
 */
@@ -298,100 +155,10 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     }
 
     // Set of general-purpose registers available for allocation
-    const gpRegSet = backend.x86_64? [
-        x86.regs.rax,
-        // For now, used as context register
-        //x86.regs.rcx,
-        x86.regs.rdx,
-        x86.regs.rbx,
-        x86.regs.rbp,
-        x86.regs.rsi,
-        x86.regs.rdi,
-        x86.regs.r8,
-        x86.regs.r9,
-        x86.regs.r10,
-        x86.regs.r11,
-        x86.regs.r12,
-        x86.regs.r13,
-        x86.regs.r14,
-        x86.regs.r15
-    ]:[
-        x86.regs.eax,
-        // For now, used as context register
-        //x86.regs.ecx,
-        x86.regs.edx,
-        x86.regs.ebx,
-        x86.regs.ebp,
-        x86.regs.esi,
-        x86.regs.edi
-    ];
-
-    // Code generation helper object
-    var codeGen = {
-        callConv: callConv,
-        edgeLabels: edgeLabels,
-        allocMap: entryMap,
-        backend: backend,
-        params: params
-    };
+    const gpRegSet = backend.gpRegSet;
 
 
 
-    /*
-    TODO: 
-
-    Want:
-    alloc_r_opnd(use)
-    alloc_rm_opnd(use)
-    alloc_dest(opnd)
-    alloc_fixed_reg(use)
-    alloc_temp_reg()
-    spill_reg(reg)
-    exclude_reg(reg)        // exclude a register from allocation (e.g: for division)
-    alloc_dst(opnd)
-
-    alloc r and alloc rm can be primitives
-    Can implement alloc_r_rm, alloc_r_rmi on top?
-
-    TODO: PROBLEM:
-    Don't want to spill a previously register allocated operand...
-    Not an issue for one-opnd instructions
-    Need to have an exclusion set? Would be simpler.
-
-    If allocating for add instruction, can have one immediate operand only,
-    but it can be either of src or dst.
-
-    TODO: start simple, alloc all to registers...
-
-    Will need function to allocate multiple operands at once...
-    such as alloc_r_rm, alloc_r_rmi
-
-    This will require using an exclude set.
-
-    Exclude set could be optional parameter to all primitive alloc functions.
-
-    What about instructions like load/store? May require up to 4-5 operands.
-
-    Normally, the alloc map should know what uses are allocated to a given
-    register already... Exclude set could be handled automatically***
-    - Still doesn't do manual exclusion
-
-    Dest as opnd0...
-    May need special optimization care but... Can handle this later.
-
-    TODO PROBLEM:
-
-    Once we have opnds to operate on... Stack slot indices cannot be used
-    directly by assembler instructions, need to translate them to memory
-    operands...
-
-    Options:
-    - Translate memory operands manually
-      - May not be so bad, not that many...
-    - Pre-store allocated operands, translate automatically
-      - codeGen.get_opnd(idx)
-    - Auto-translate from higher-level allocation functions
-    */
 
 
 
@@ -399,12 +166,13 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     /**
     Function to allocate a register
     @param allocMap allocation map
+    @param moveList list into which to insert spill moves
     @param liveSet set of live temporaries
     @param value value to be allocated, may be undefined
     @fixedReg fixed register we must allocate to, undefined
-    @excludeSet set of registers to exclude from allocation
+    @excludeMap map of registers to exclude from allocation
     */
-    function allocReg(allocMap, liveSet, value, fixedReg, excludeSet)
+    function allocReg(allocMap, moveList, liveOut, value, fixedReg, excludeMap)
     {
         // Best register found so far
         var bestReg = undefined;
@@ -438,7 +206,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                     continue;
 
                 // If this register is in the excluded set, skip it
-                if (arraySetHas(excludeSet, reg) === true)
+                if (excludeMap[reg.regNo] === true)
                     continue;
 
                 // Get the value the register currently maps to
@@ -448,7 +216,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 var weight = 0;
 
                 // If the register is mapped to a live value
-                if (regVal !== undefined && liveSet.hasItem(regVal) === true)
+                if (regVal !== undefined && liveOut.hasItem(regVal) === true)
                 {
                     weight += 1;
 
@@ -471,7 +239,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         );
 
         // Free the register, if needed
-        freeOpnd(allocMap, liveSet, bestReg, excludeSet);
+        freeReg(allocMap, moveList, liveOut, bestReg);
 
         // Update the allocation map
         if (value !== undefined)
@@ -482,23 +250,22 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     }
 
     /**
-    Free a register or memory operand if needed. 
-    This may cause moves and spills.
+    Free a register if needed. This may cause a spill
     */
-    function freeOpnd(allocMap, liveSet, opnd, excludeSet)
+    function freeReg(allocMap, moveList, liveOut, reg)
     {
-        // Get the current value for this operand
-        var curVal = allocMap.getAllocVal(opnd);
+        // Get the current value for this register
+        var curVal = allocMap.getRegVal(reg);
 
-        // If the operand isn't mapped to a value, do nothing
+        // If the register isn't mapped to a value, do nothing
         if (curVal === undefined)
             return;
 
-        // Remove the allocation of the operand to the value
-        allocMap.remAlloc(curVal, opnd);
+        // Remove the allocation of the register to the value
+        allocMap.remAlloc(curVal, reg);
 
-        // If the operand is not mapped to a live value, do nothing
-        if (liveSet.hasItem(curVal) === false)
+        // If the register is not mapped to a live value, do nothing
+        if (liveOut.hasItem(curVal) === false)
             return;
 
         // if the value is a constant, do nothing
@@ -512,32 +279,11 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         if (allocs.length > 0)
             return;
 
-        // New operand to move the value into
-        var newOpnd;
-    
-        // If the operand is a register
-        if (opnd instanceof x86.Register)
-        {
-            // Map the value to a stack spill slot
-            var stackSlot = allocMap.spillValue(curVal, liveSet, asm);
-
-            // Get the memory operand for the spill slot
-            newOpnd = allocMap.getSlotOpnd(stackSlot);
-        }
-        else
-        {
-            // Allocate the value to a register
-            newOpnd = allocReg(
-                allocMap,
-                liveSet,
-                curVal,
-                undefined,
-                excludeSet
-            );
-        }
+        // Map the value to a stack spill slot
+        var stackSlot = allocMap.spillValue(curVal, stackMap, liveOut);
 
         // Move the value to the spill slot
-        asm.mov(newOpnd, opnd);
+        addMove(moveList, reg, stackSlot);
     }
 
     /**
@@ -563,204 +309,20 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         return bestAlloc;
     }
 
-    /**
-    Insert code to move a value from one location to another
-    */
-    function moveValue(allocMap, dst, src)
-    {
-        if (typeof src === 'number')
-            src = allocMap.getSlotOpnd(src);
 
-        if (typeof dst === 'number')
-            dst = allocMap.getSlotOpnd(dst);
 
-        assert (
-            src instanceof IRValue ||
-            src instanceof x86.Register ||
-            src instanceof x86.MemLoc,
-            'invalid move src: ' + src
-        );
 
-        assert (
-            dst instanceof x86.Register ||
-            dst instanceof x86.MemLoc,
-            'invalid move dst: ' + dst
-        );
 
-        // If the source is a constant
-        if (src instanceof ConstValue)
-        {
-            var immSize = x86.getImmSize(src, params);
 
-            // If the constant can be encoded as an immediate
-            if (immSize !== undefined && immSize <= backend.regSizeBits)
-            {
-                asm.mov(dst, src.getImmValue(params));
-                return;
-            }
-        }
 
-        // If this is a link-time value
-        if (x86.isLinkValue(src) === true)
-        {
-            assert (
-                dst instanceof x86.Register,
-                'cannot move link value to memory'
-            );
-
-            var linkValue = new x86.LinkValue(src, params.backend.regSizeBits);
-            asm.mov(dst, linkValue);
-            return;
-        }
-
-        // If the source is an x86 operand
-        if (src instanceof x86.Operand)
-        {
-            assert (
-                !(src instanceof x86.MemLoc && dst instanceof x86.MemLoc),
-                'memory to memory move'
-            );
-            
-            // Do the move directly
-            asm.mov(dst, src);
-            return;
-        }
-
-        // Error, unimplemented move
-        error('unsupported move: ' + dst + ', ' + src);
-    }
-
-    // Allocated instruction input and destination operands
-    var instrOpnds = [];
-    var instrDst = undefined;
-
-    /**
-    Allocate an operand to a register
-    */
-    codeGen.alloc_opnd_r = function (use, fixedReg, excludeSet)
-    {
-        assert (
-            use instanceof IRValue,
-            'invalid use'
-        );
-
-        // Get the current value for the operand
-        var curAlloc = getBestAlloc(allocMap, use);
-        var curVal = (curAlloc !== undefined)? curAlloc:use;
-
-        assert (
-            !(use instanceof IRInstr && curAlloc === undefined),
-            'no allocation for live temporary: ' + use
-        );
-
-        if (excludeSet !== undefined)
-            excludeSet = excludeSet.concat(instrOpnds);
-        else
-            excludeSet = instrOpnds;
-
-        // Allocate the value to any register
-        var reg = allocReg(
-            allocMap,
-            instrLiveIn,
-            use,
-            fixedReg,
-            excludeSet
-        );
-
-        // Add the operand to the list
-        instrOpnds.push(reg);
-
-        // Move the use value into the register
-        moveValue(allocMap, reg, curVal);
-    }
-
-    // TODO
-    // codeGen.alloc_opnd_rm = function (use, excludeSet)
-    // If the operand is a link-time value, it must be in a register
-    //if (x86.isLinkValue(use) === true && opndMustBeReg === false)
-
-    /**
-    Allocate the destination to a specific register/memory operand
-    */
-    codeGen.alloc_dst = function (opnd)
-    {
-        // Free the operand, if needed
-        freeOpnd(
-            allocMap, 
-            instrLiveIn, 
-            opnd, 
-            instrOpnds
-        );
-
-        // Map the instruction's output to the operand
-        allocMap.makeAlloc(instr, opnd);
-
-        instrDst = opnd;
-    }
-
-    /**
-    Allocate the destination to an input operand
-    */
-    codeGen.alloc_dst_opnd = function (opndIdx)
-    {
-        assert (
-            opndIdx < instr.uses.length,
-            'invalid operand index'
-        );
-
-        var opnd = instrOpnds[opndIdx]
-
-        codeGen.alloc_dst(opnd);
-    }
-
-    /**
-    Get the allocation for an input operand
-    */
-    codeGen.get_opnd = function (opndIdx)
-    {
-        assert (
-            opndIdx < instr.uses.length,
-            'invalid operand index'
-        );
-
-        assert (
-            instrOpnds.length === instr.uses.length,
-            'do not have operands for all uses'
-        );
-
-        var opnd = instrOpnds[opndIdx];
-
-        if (typeof opnd === 'number')
-            return allocMap.getSlotOpnd(opnd);
-
-        // Get the sub-operand of the appropriate size
-        var size = instr.uses[opndIdx].type.getSizeBits(params);
-        opnd = opnd.getSubOpnd(size);
-
-        return opnd;
-    }
-
-    /**
-    Get the allocation for the destination operand
-    */
-    codeGen.get_dest = function ()
-    {
-        assert (
-            instr.type !== IRType.none,
-            'cannot get dest, instr has none type'
-        );
-
-        var dst = instrDst;
-
-        if (typeof dst === 'number')
-            return allocMap.getSlotOpnd(dst);
-
-        // Get the sub-operand of the appropriate size
-        var size = instr.type.getSizeBits(params);
-        dst = opnd.getSubOpnd(size);
-
-        return dst;
-    }
+    // Code generation info object
+    var genInfo = {
+        callConv: callConv,
+        edgeLabels: edgeLabels,
+        allocMap: entryMap,
+        backend: backend,
+        params: params
+    };
 
     // For each block in the ordering
     for (var i = 0; i < blockOrder.length; ++i)
@@ -791,7 +353,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
             /*
             // Insert the edge transition stub
-            x86.insertEdgeTrans(
+            x86.genEdgeTrans(
                 asm,
                 pred, 
                 block,
@@ -821,21 +383,39 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 'invalid live map for: ' + instr.getValName()
             );
 
+
+
+
+            //
+            // TODO: reintroduce if phiinstr, argvalinstr, ...
+            //
+
+
+            // TODO: do register allocation for instruction
+            //var allocInfo = foo(...)
+
+
             assert (
-                instr.x86_genCode !== undefined,
+                instr.x86.genCode !== undefined,
                 'no genCode method for:\n' + instr
             );
 
-            // Clear the instruction input and destination operands
-            instrOpnds.length = 0;
-            instrDst = undefined;
-
             // Generate code for the instruction
-            instr.x86_genCode(
-                instr,
+            instr.x86.genCode(
+                instr, 
+                opnds, 
+                dest, 
+                scratch,
                 asm,
-                codeGen
+                genInfo
             );
+
+
+
+
+
+
+
         }
 
         // If this is a block with a single successor, insert the 
@@ -843,7 +423,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         if (block.succs.length === 1)
         {
             /*
-            x86.insertEdgeTrans(
+            x86.genEdgeTrans(
                 asm, 
                 block, 
                 block.succs[0],
@@ -869,8 +449,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 }
 
 /*
-TODO: function to implement block edge transitions
-Should these be methods of some class?
+Generate code for CFG block edge transitions
 */
 x86.genEdgeTrans = function ()
 {
@@ -881,6 +460,90 @@ x86.genEdgeTrans = function ()
 
 
 
+
+
+
+
+
+}
+
+/**
+@class Per-instruction register allocation hints/constraints
+*/
+x86.InstrCfg = function ()
+{
+}
+
+/**
+Maximum number of memory operands to use
+*/
+x86.InstrCfg.prototype.maxMemOpnds = function (instr, params)
+{
+    return 1;
+}
+
+/**
+Maximum number of immediate operands to use
+*/
+x86.InstrCfg.prototype.maxImmOpnds = function (instr, params)
+{
+    return 1;
+}
+
+/**
+Number of scratch registers wanted
+*/
+x86.InstrCfg.prototype.numScratchRegs = function (instr, params)
+{
+    return 0;
+}
+
+/**
+Registers this instruction will have to write to, excluding
+scratch registers, operands and the destination.
+*/
+x86.InstrCfg.prototype.writeRegSet = function (instr, params)
+{
+    return undefined;
+}
+
+/**
+Indicates that an operand can be an immediate
+*/
+x86.InstrCfg.prototype.opndCanBeImm = function (instr, opIdx, immSize, params)
+{
+    return false;
+}
+
+/**
+Indicates that an operand must be placed in a register. A specific
+register may be returned, otherwise, the value true specifies any
+register.
+*/
+x86.InstrCfg.prototype.opndMustBeReg = function (instr, opIdx, params)
+{
+    return false;
+}
+
+/**
+Dest is operand 0.
+*/
+x86.InstrCfg.prototype.destIsOpnd0 = function (instr, params)
+{
+    if (instr.uses.length === 0 || instr.type === IRType.none)
+        return false;
+
+    return true;
+}
+
+/**
+Indicates that the destination must be placed in a register. A
+specific register may be returned, otherwise, the value true specifies
+any register.
+*/
+x86.InstrCfg.prototype.destMustBeReg = function (instr, params)
+{
+    return false;
 }
 
 /**

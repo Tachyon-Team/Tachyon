@@ -88,6 +88,35 @@ x86.Backend = function (x86_64)
     Context register
     */
     this.ctxReg = x86.regs.rcx.getSubOpnd(this.regSizeBits);
+
+    /**
+    Set of general-purpose registers available for allocation
+    */
+    this.gpRegSet = x86_64? [
+        x86.regs.rax,
+        //x86.regs.rcx, // For now, used as context register
+        x86.regs.rdx,
+        x86.regs.rbx,
+        x86.regs.rbp,
+        x86.regs.rsi,
+        x86.regs.rdi,
+        x86.regs.r8,
+        x86.regs.r9,
+        x86.regs.r10,
+        x86.regs.r11,
+        x86.regs.r12,
+        x86.regs.r13,
+        x86.regs.r14,
+        x86.regs.r15
+    ]:[
+        x86.regs.eax,
+        //x86.regs.ecx, // For now, used as context register
+        x86.regs.edx,
+        x86.regs.ebx,
+        x86.regs.ebp,
+        x86.regs.esi,
+        x86.regs.edi
+    ];
 }
 x86.Backend.prototype = new Backend();
 
