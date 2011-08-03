@@ -87,6 +87,7 @@ BASE_SRCS =                             \
     old-backend/x86/ir-to-asm.js        \
     backend/codeblock.js                \
     backend/blockorder.js               \
+    backend/liveness.js                 \
     backend/linker.js                   \
     backend/backend.js                  \
     backend/x86/operands.js             \
@@ -94,7 +95,6 @@ BASE_SRCS =                             \
     backend/x86/instructions.js         \
     backend/x86/assembler.js            \
     backend/x86/callconvs.js            \
-    backend/x86/regalloc.js             \
     backend/x86/codegen.js              \
     backend/x86/ir-to-asm.js            \
     backend/x86/backend.js

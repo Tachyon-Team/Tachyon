@@ -124,7 +124,7 @@ x86.Backend.prototype.genCode = function (irFunc, params)
         log.debug(blockOrder[i].getBlockName());
 
     // Perform liveness analysis on the CFG
-    var liveness = x86.liveAnalysis(blockOrder);
+    var liveness = liveAnalysis(blockOrder);
 
     // Produce assembler for the function
     var assembler = x86.genCode(irFunc, blockOrder, liveness, this, params);

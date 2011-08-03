@@ -42,7 +42,7 @@
 
 /**
 @fileOverview
-x86 backend inteface.
+IR to assembly translation.
 
 @author
 Maxime Chevalier-Boisvert
@@ -50,8 +50,29 @@ Maxime Chevalier-Boisvert
 
 ArgValInstr.prototype.x86_genCode = function (instr, asm, codeGen)
 {
-    // TODO: get arg val mem loc in stack frame, set as dest
-    asm.nop();
+    const callConv = codeGen.callConv;
+    const allocMap = codeGen.allocMap;
+
+    // Get the argument index
+    var argIndex = instr.argIndex;
+
+    // Operand for this argument
+    var argOpnd;
+
+    // If the argument is in a register
+    if (argIndex < callConv.argRegs.length)
+    {
+        // Allocate the register to the argument
+        argOpnd = callConv.argRegs[argIndex];
+    }
+    else
+    {
+        // Map the argument to its stack location
+        argOpnd = allocMap.getArgSlot(argIndex);
+    }
+
+    // Allocate the argument to its operand
+    codeGen.alloc_dst(argOpnd);
 }
 
 PhiInstr.prototype.x86_genCode = function ()
@@ -77,10 +98,14 @@ SetCtxInstr.prototype.x86_genCode = function (instr, asm, codeGen)
 
 AddInstr.prototype.x86_genCode = function (instr, asm, codeGen)
 {
-    // TODO:
-    asm.nop();
+    codeGen.alloc_opnd_r(instr.uses[0]);
+    codeGen.alloc_opnd_r(instr.uses[1]);
+    codeGen.alloc_dst_opnd(0);
 
-    //asm.add(opnds[0], opnds[1]);
+    var opnd0 = codeGen.get_opnd(0);
+    var opnd1 = codeGen.get_opnd(1);
+
+    asm.add(opnd0, opnd1);
 };
 
 CallFuncInstr.prototype.x86_genCode = function (instr, asm, codeGen)
@@ -98,13 +123,8 @@ RetInstr.prototype.x86_genCode = function (instr, asm, codeGen)
     const callConv = codeGen.callConv;
     const allocMap = codeGen.allocMap;
 
-    // TODO: move output into appropriate register
-    // do this by forcing operand into output register
-
-
-
-
-
+    // Allocate the input value to the return value register
+    codeGen.alloc_opnd_r(instr.uses[0], callConv.retReg);
 
     // Remove the spills from the stack
     asm.add(allocMap.spReg, allocMap.numSpillSlots * allocMap.slotSize);
