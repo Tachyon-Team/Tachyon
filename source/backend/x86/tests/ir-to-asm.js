@@ -182,17 +182,6 @@ tests.x86.irToAsm = function ()
         [3]
     );
 
-
-
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
-
-
     // Simple IIR multiplication
     test('                                  \
         function test(ctx, a)               \
@@ -438,6 +427,22 @@ tests.x86.irToAsm = function ()
         113,
         [1,5,8,10]
     );
+
+
+
+
+
+
+
+    // TODO: enable tests as supported
+    return;
+
+
+
+
+
+
+
 
     // If statement, return value merge
     test('                                  \

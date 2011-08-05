@@ -551,37 +551,32 @@ RetInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 }
 RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    var backend = genInfo.backend;
-    var callConv = genInfo.callConv;
-    var stackMap = genInfo.stackMap;
-    var spReg = genInfo.backend.spReg;
+    const callConv = genInfo.callConv;
+    const allocMap = genInfo.allocMap;
 
     // Restore the callee-save registers, if any
     for (var i = 0; i < callConv.calleeSave.length; ++i)
     {
         var reg = callConv.calleeSave[i];
-        var stackLoc = stackMap.getRegSlot(reg);
-        var offset = stackMap.getSlotOffset(stackLoc);
-        asm.mov(reg, asm.mem(backend.regSizeBits, spReg, offset));
+        var stackLoc = allocMap.getAllocs(reg)[0];
+        var stackOpnd = allocMap.getSlotOpnd(stackLoc);
+        asm.mov(reg, stackOpnd);
     }
 
-    // Remove space for the spills from the stack
-    var spillSize = stackMap.getSpillSize();
-    if (spillSize !== 0)
-        asm.add(spReg, spillSize);
+    // Remove the spills from the stack
+    asm.add(allocMap.spReg, allocMap.numSpillSlots * allocMap.slotSize);
 
     // TODO: adapt this depending on calling convention
 
+    // Add a return instruction
     asm.ret();
 }
-
 
 // TODO:
 // Not yet implemented
 ThrowInstr.prototype.x86 = RetInstr.prototype.x86;
 
 // TODO: CatchInstr
-
 
 // Integer cast instruction
 ICastInstr.prototype.x86 = new x86.InstrCfg();
