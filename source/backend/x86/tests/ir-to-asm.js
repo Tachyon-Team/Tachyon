@@ -431,13 +431,8 @@ tests.x86.irToAsm = function ()
 
 
 
-
-
-
     // TODO: enable tests as supported
     return;
-
-
 
 
 
@@ -465,6 +460,17 @@ tests.x86.irToAsm = function ()
         8,
         [1, 7]
     );
+
+
+
+
+
+    // TODO: enable tests as supported
+    return;
+
+
+
+
 
     // Comparison test
     test('                                  \

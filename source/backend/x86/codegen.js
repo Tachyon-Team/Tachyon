@@ -197,17 +197,16 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             if (pred.succs.length === 1)
                 continue;
 
-            /*
             // Insert the edge transition stub
             x86.genEdgeTrans(
-                asm,
                 pred, 
                 block,
+                allocMaps,
                 blockLabels,
                 edgeLabels,
+                asm,
                 params
             );
-            */
         }
 
         // Add the label for this block
@@ -331,17 +330,16 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         // transition stub directly after it
         if (block.succs.length === 1)
         {
-            /*
             // Insert the edge transition stub
             x86.genEdgeTrans(
-                asm,
                 pred, 
                 block,
+                allocMaps,
                 blockLabels,
                 edgeLabels,
+                asm,
                 params
             );
-            */
         }
     }
 
@@ -361,14 +359,33 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 Generate code for CFG block edge transitions
 */
 x86.genEdgeTrans = function (
-    // TODO
-
-
+    pred,
+    succ,
+    allocMaps,
+    blockLabel,
+    edgeLabels,
+    asm,
+    params
 )
 {
+    // Add the label for the transition stub
+    var transLabels = edgeLabels.getItem({pred:pred, succ:succ});
+    asm.addInstr(transLabel);
+
+    print(
+        'processing edge: ' + pred.getBlockName() + 
+        '->' + succ.getBlockName()
+    );
+
+
+
+
     // TODO
     // TODO
     // TODO
+    asm.nop();
+    asm.nop();
+    asm.nop();
 
 
 
@@ -379,7 +396,331 @@ x86.genEdgeTrans = function (
 
 
 
+    /*
+    // List of moves for this merge
+    var moveList = [];
 
+    // Map this edge to the move list
+    mergeMoves.addItem({pred:block, succ:succ}, moveList);
+
+    // Get the live set at the successor's entry, after the phi nodes
+    var succLiveIn = blockLiveIn[succ.blockId];
+
+    // Get the allocation map for the successor
+    var succAllocMap = allocMaps[succ.blockId];
+
+    // If there is no alloc map for the successor
+    if (succAllocMap === undefined)
+    {
+        // Use the current register allocation for the successor
+        var succAllocMap = allocMap.copy();
+        allocMaps[succ.blockId] = succAllocMap;
+
+        // For each instruction of the successor
+        for (var k = 0; k < succ.instrs.length; ++k)
+        {
+            var instr = succ.instrs[k];
+
+            // If this is not a phi node, stop
+            if (!(instr instanceof PhiInstr))
+                break;
+
+            // Get the incoming value for this block
+            var inc = instr.getIncoming(block);
+
+            // Get the allocation for the incoming value
+            var incAlloc = getBestAlloc(allocMap, inc);
+
+            assert (
+                !(inc instanceof IRInstr && incAlloc === undefined),
+                'no allocation for incoming phi temporary:\n' +
+                inc
+            );
+
+            // If this is an IR constant with no allocation
+            if (incAlloc === undefined)
+            {
+                // Allocate a register for the phi node
+                var reg = allocReg(
+                    succAllocMap,
+                    moveList,
+                    succLiveIn,
+                    instr,
+                    undefined,
+                    []
+                );
+
+                // Move the incoming value into the register
+                addMove(moveList, inc, reg);
+            }
+            else
+            {
+                // Use the incoming temp allocation for the phi node
+                succAllocMap.makeAlloc(instr, incAlloc);
+            }
+        }
+
+        // For each value live after the phi nodes
+        for (var itr = succLiveIn.getItr(); itr.valid(); itr.next())
+        {
+            // Get the value
+            var value = itr.get().key;
+
+            // If the value is a phi node from this block, skip it
+            if (value instanceof PhiInstr && value.parentBlock === succ)
+                continue;
+
+            // Get the best allocation for this value
+            var bestAlloc = getBestAlloc(succAllocMap, value);
+
+            // Remove all existing allocations for this value
+            succAllocMap.remAllocs(value);
+
+            // Allocate the value to its best allocation only
+            if (bestAlloc !== undefined)
+                succAllocMap.makeAlloc(value, bestAlloc);
+        }
+    }
+
+    // There is already a register allocation for the successor
+    else
+    {
+        // Move graph nodes
+        var graphNodes = [];
+
+        // Map of allocations to nodes
+        var nodeMap = new HashMap();
+
+        //
+        //Get a node from the move graph
+        //
+        function getGraphNode(val)
+        {
+            assert (
+                !(val instanceof IRInstr),
+                'cannot move from/to IR instr'
+            );
+
+            var node;
+
+            if (nodeMap.hasItem(val) === true)
+            {
+                node = nodeMap.getItem(val);
+            }
+            else
+            {
+                node = {
+                    val: val,
+                    from: undefined,
+                    toCount: 0
+                };
+
+                nodeMap.setItem(val, node);
+                graphNodes.push(node);
+            }
+
+            return node;
+        }
+
+        //
+        //Add an edge to the move graph
+        //
+        function addMoveEdge(srcVal, dstVal)
+        {
+            // Get the allocations for this value in both blocks
+            var predAllocs = allocMap.getAllocs(srcVal);
+            var succAllocs = succAllocMap.getAllocs(dstVal);
+            var succAlloc = succAllocs[0];
+
+            assert (
+                !(predAllocs.length === 0 && srcVal instanceof IRInstr),
+                'no allocation for live temporary:\n' +
+                srcVal + '\n' +
+                'in pred:\n' +
+                block.getBlockName()
+            );
+
+            assert (
+                !(succAllocs.length === 0 && dstVal instanceof IRInstr),
+                'no successor alloc for value:\n' +
+                dstVal + '\n' +
+                'in succ:\n' +
+                succ.getBlockName()
+            );
+
+            assert (
+                !(succAllocs.length > 1 && dstVal instanceof IRInstr),
+                'too many succ allocs for value:\n' +
+                dstVal + '\n' +
+                'in succ:\n' +
+                succ.getBlockName()
+            );
+
+            // If the locations already match, or there is no allocation
+            // for the successor, do nothing
+            if (succAlloc === undefined || 
+                arraySetHas(predAllocs, succAlloc) === true)
+                return;
+
+            // Get the source allocation for the move
+            var predAlloc = (predAllocs.length > 0)?
+                getBestAlloc(allocMap, srcVal):
+                srcVal;
+
+            var srcNode = getGraphNode(predAlloc);
+            var dstNode = getGraphNode(succAlloc);
+
+            assert (
+                dstNode.from === undefined,
+                'already have incoming for: ' + dstVal
+            );
+
+            assert (
+                srcNode !== dstNode,
+                'move from node to itself'
+            );
+
+            dstNode.from = srcNode;
+            srcNode.toCount++;
+        }
+
+        // For each instruction of the successor
+        for (var insIdx = 0; insIdx < succ.instrs.length; ++insIdx)
+        {
+            var instr = succ.instrs[insIdx];
+
+            // If this is not a phi node, stop
+            if (!(instr instanceof PhiInstr))
+                break;
+
+            // Get the incoming value for this predecessor
+            var inc = instr.getIncoming(block);
+
+            // Add a move edge for this incoming value
+            addMoveEdge(inc, instr);
+        }
+
+        // For each value live after the phi nodes
+        for (var itr = succLiveIn.getItr(); itr.valid(); itr.next())
+        {
+            // Get the value
+            var value = itr.get().key;
+
+            // If the value is a phi node from this block, skip it
+            if (value instanceof PhiInstr && value.parentBlock === succ)
+                continue;
+
+            // Add a move edge for this value
+            addMoveEdge(value, value);
+        }
+
+        // Until all moves are resolved
+        while (graphNodes.length !== 0)
+        {
+            // Until all simple move situations are resolved
+            var changed = true;
+            while (changed === true)
+            {
+                changed = false;
+
+                //print('\ngraph:');
+                //for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                //{
+                //    var node = graphNodes[nodeIdx];
+                //    print(node.val + ' from: ' + (node.from? node.from.val:undefined) + ', toCount: ' + node.toCount);
+                //}
+
+                // For each node of the move graph
+                for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                {
+                    var node = graphNodes[nodeIdx];
+
+                    // If this node has no destinations
+                    if (node.toCount === 0)
+                    {
+                        // If this node has an incoming value
+                        if (node.from !== undefined)
+                        {
+                            // Execute the move
+                            addMove(moveList, node.from.val, node.val);
+
+                            assert (
+                                node.from.toCount > 0,
+                                'invalid toCount'
+                            );
+
+                            // Update the source node
+                            node.from.toCount--;
+                        }
+
+                        //print('removing node: ' + node.val);
+
+                        // Remove the node
+                        graphNodes[nodeIdx] = graphNodes[graphNodes.length-1];
+                        graphNodes.length--;
+                        nodeIdx--;
+                        
+                        changed = true;
+                    }
+                }
+
+                // For each node of the move graph
+                for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                {
+                    var node = graphNodes[nodeIdx];
+
+                    // If this node is part of a cycle
+                    if (node.from !== undefined && node.toCount > 0)
+                    {
+                        var fromNode = node.from;
+
+                        //print('swapping: ' + node.val + ', ' + fromNode.val);
+
+                        // Swap the node with its incoming value
+                        addMove(moveList, fromNode.val, node.val, true);
+
+                        // Remove the edge for this move
+                        node.from = undefined;
+                        fromNode.toCount--;
+
+                        // If the two nodes were in a cycle,
+                        // remove that edge as well
+                        if (fromNode.from === node)
+                        {
+                            fromNode.from = undefined;
+                            node.toCount--;
+                        }
+
+                        // Swap the to counts of the nodes
+                        var toTmp = node.toCount;
+                        node.toCount = fromNode.toCount;
+                        fromNode.toCount = toTmp;
+
+                        // Correct the incoming edges for all graph nodes
+                        for (var nIdx = 0; nIdx < graphNodes.length; ++nIdx)
+                        {
+                            var n = graphNodes[nIdx];
+                            if (n.from === node)
+                                n.from = fromNode;
+                            else if (n.from === fromNode)
+                                n.from = node;
+                        }
+
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    */
+
+
+
+
+    // Jump to the successor block
+    var succLabel = blockLabels[succ.blockId];
+    asm.jmp(succLabel);
 }
 
 /**
