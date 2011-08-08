@@ -69,6 +69,9 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // multiple predecessors
     var allocMaps = [];
 
+    // Allocation maps at block exits
+    var exitAllocMaps = [];
+
     // Get a reference to the entry block
     var entryBlock = irFunc.virginCFG.entry;
 
@@ -177,6 +180,27 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
         log.debug('processing block: ' + block.getBlockName());
 
+        // If this block only has one predecessor, put the transition stub
+        // right before it. Code has necessarily already been generated for
+        // the only predecessor.
+        if (block.preds.length === 1)
+        {
+            var pred = block.preds[0];
+
+            // Insert the edge transition stub
+            x86.genEdgeTrans(
+                pred, 
+                block,
+                exitAllocMaps[pred.blockId],
+                liveness.blockIn[block.blockId],
+                allocMaps,
+                blockLabels,
+                edgeLabels,
+                asm,
+                params
+            );
+        }
+
         // Get a copy of the allocation map at the start of this block
         var allocMap = allocMaps[block.blockId].copy();
 
@@ -187,27 +211,6 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
         // Store the current alloc map on the code gen info object
         genInfo.allocMap = allocMap;
-
-        // For each predecessor of this block
-        for (var j = 0; j < block.preds.length; ++j)
-        {
-            var pred = block.preds[j];
-
-            // If this predecessor has only one successor, skip it
-            if (pred.succs.length === 1)
-                continue;
-
-            // Insert the edge transition stub
-            x86.genEdgeTrans(
-                pred, 
-                block,
-                allocMaps,
-                blockLabels,
-                edgeLabels,
-                asm,
-                params
-            );
-        }
 
         // Add the label for this block
         asm.addInstr(blockLabels[block.blockId]);
@@ -326,14 +329,27 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             }
         }
 
-        // If this is a block with a single successor, insert the 
-        // transition stub directly after it
-        if (block.succs.length === 1)
+        // For each successor
+        for (var succIdx = 0; succIdx < block.succs.length; ++succIdx)
         {
+            var succ = block.succs[succIdx];
+
+            // If the successor only has one predecessor
+            if (succ.preds.length === 1)
+            {
+                // Store the exit alloc map for this block
+                exitAllocMaps[block.blockId] = allocMap;
+
+                // Skip the successor
+                continue;
+            }
+
             // Insert the edge transition stub
             x86.genEdgeTrans(
-                pred, 
-                block,
+                block, 
+                succ,
+                allocMap,
+                liveness.blockIn[succ.blockId],
                 allocMaps,
                 blockLabels,
                 edgeLabels,
@@ -361,50 +377,23 @@ Generate code for CFG block edge transitions
 x86.genEdgeTrans = function (
     pred,
     succ,
+    predAllocMap,
+    succLiveIn,
     allocMaps,
-    blockLabel,
+    blockLabels,
     edgeLabels,
     asm,
     params
 )
 {
     // Add the label for the transition stub
-    var transLabels = edgeLabels.getItem({pred:pred, succ:succ});
+    var transLabel = edgeLabels.getItem({pred:pred, succ:succ});
     asm.addInstr(transLabel);
 
     print(
         'processing edge: ' + pred.getBlockName() + 
-        '->' + succ.getBlockName()
+        ' -> ' + succ.getBlockName()
     );
-
-
-
-
-    // TODO
-    // TODO
-    // TODO
-    asm.nop();
-    asm.nop();
-    asm.nop();
-
-
-
-
-
-
-
-
-
-
-    /*
-    // List of moves for this merge
-    var moveList = [];
-
-    // Map this edge to the move list
-    mergeMoves.addItem({pred:block, succ:succ}, moveList);
-
-    // Get the live set at the successor's entry, after the phi nodes
-    var succLiveIn = blockLiveIn[succ.blockId];
 
     // Get the allocation map for the successor
     var succAllocMap = allocMaps[succ.blockId];
@@ -412,8 +401,10 @@ x86.genEdgeTrans = function (
     // If there is no alloc map for the successor
     if (succAllocMap === undefined)
     {
+        print('using pred alloc map');
+
         // Use the current register allocation for the successor
-        var succAllocMap = allocMap.copy();
+        var succAllocMap = predAllocMap.copy();
         allocMaps[succ.blockId] = succAllocMap;
 
         // For each instruction of the successor
@@ -425,11 +416,11 @@ x86.genEdgeTrans = function (
             if (!(instr instanceof PhiInstr))
                 break;
 
-            // Get the incoming value for this block
-            var inc = instr.getIncoming(block);
+            // Get the incoming value for the predecessor
+            var inc = instr.getIncoming(pred);
 
             // Get the allocation for the incoming value
-            var incAlloc = getBestAlloc(allocMap, inc);
+            var incAlloc = x86.getBestAlloc(predAllocMap, inc);
 
             assert (
                 !(inc instanceof IRInstr && incAlloc === undefined),
@@ -443,15 +434,22 @@ x86.genEdgeTrans = function (
                 // Allocate a register for the phi node
                 var reg = allocReg(
                     succAllocMap,
-                    moveList,
-                    succLiveIn,
                     instr,
                     undefined,
-                    []
+                    succLiveIn,
+                    [],
+                    asm,
+                    params
                 );
 
                 // Move the incoming value into the register
-                addMove(moveList, inc, reg);
+                x86.moveValue(
+                    succAllocMap,
+                    reg,
+                    inc,
+                    asm,
+                    params
+                );
             }
             else
             {
@@ -471,7 +469,11 @@ x86.genEdgeTrans = function (
                 continue;
 
             // Get the best allocation for this value
-            var bestAlloc = getBestAlloc(succAllocMap, value);
+            var bestAlloc = x86.getBestAlloc(succAllocMap, value);
+
+            log.debug('processing live value: ' + value.getValName());
+            log.debug('best alloc: ' + bestAlloc);
+            log.debug('pred allocs: ' + predAllocMap.getAllocs(value));
 
             // Remove all existing allocations for this value
             succAllocMap.remAllocs(value);
@@ -584,6 +586,18 @@ x86.genEdgeTrans = function (
             srcNode.toCount++;
         }
 
+
+
+
+
+        // TODO
+        asm.nop();
+        asm.nop();
+        asm.nop();
+
+
+
+        /*
         // For each instruction of the successor
         for (var insIdx = 0; insIdx < succ.instrs.length; ++insIdx)
         {
@@ -712,11 +726,8 @@ x86.genEdgeTrans = function (
                 }
             }
         }
+        */
     }
-    */
-
-
-
 
     // Jump to the successor block
     var succLabel = blockLabels[succ.blockId];

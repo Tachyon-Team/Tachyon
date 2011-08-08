@@ -428,17 +428,6 @@ tests.x86.irToAsm = function ()
         [1,5,8,10]
     );
 
-
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
-
-
-
     // If statement, return value merge
     test('                                  \
         function test(ctx, v1, v2)          \
