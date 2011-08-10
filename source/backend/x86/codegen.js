@@ -117,6 +117,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         // Store the register value on the stack
         x86.moveValue(
             entryMap,
+            entryMap,
             slotIdx,
             reg,
             asm,
@@ -390,7 +391,7 @@ x86.genEdgeTrans = function (
     var transLabel = edgeLabels.getItem({pred:pred, succ:succ});
     asm.addInstr(transLabel);
 
-    print(
+    log.debug(
         'processing edge: ' + pred.getBlockName() + 
         ' -> ' + succ.getBlockName()
     );
@@ -401,7 +402,7 @@ x86.genEdgeTrans = function (
     // If there is no alloc map for the successor
     if (succAllocMap === undefined)
     {
-        print('using pred alloc map');
+        log.debug('using pred alloc map');
 
         // Use the current register allocation for the successor
         var succAllocMap = predAllocMap.copy();
@@ -432,7 +433,7 @@ x86.genEdgeTrans = function (
             if (incAlloc === undefined)
             {
                 // Allocate a register for the phi node
-                var reg = allocReg(
+                var reg = x86.allocReg(
                     succAllocMap,
                     instr,
                     undefined,
@@ -444,6 +445,7 @@ x86.genEdgeTrans = function (
 
                 // Move the incoming value into the register
                 x86.moveValue(
+                    succAllocMap,
                     succAllocMap,
                     reg,
                     inc,
@@ -471,9 +473,11 @@ x86.genEdgeTrans = function (
             // Get the best allocation for this value
             var bestAlloc = x86.getBestAlloc(succAllocMap, value);
 
+            /*
             log.debug('processing live value: ' + value.getValName());
             log.debug('best alloc: ' + bestAlloc);
             log.debug('pred allocs: ' + predAllocMap.getAllocs(value));
+            */
 
             // Remove all existing allocations for this value
             succAllocMap.remAllocs(value);
@@ -487,6 +491,8 @@ x86.genEdgeTrans = function (
     // There is already a register allocation for the successor
     else
     {
+        log.debug('merging pred alloc map');
+
         // Move graph nodes
         var graphNodes = [];
 
@@ -530,7 +536,7 @@ x86.genEdgeTrans = function (
         function addMoveEdge(srcVal, dstVal)
         {
             // Get the allocations for this value in both blocks
-            var predAllocs = allocMap.getAllocs(srcVal);
+            var predAllocs = predAllocMap.getAllocs(srcVal);
             var succAllocs = succAllocMap.getAllocs(dstVal);
             var succAlloc = succAllocs[0];
 
@@ -539,7 +545,7 @@ x86.genEdgeTrans = function (
                 'no allocation for live temporary:\n' +
                 srcVal + '\n' +
                 'in pred:\n' +
-                block.getBlockName()
+                pred.getBlockName()
             );
 
             assert (
@@ -566,7 +572,7 @@ x86.genEdgeTrans = function (
 
             // Get the source allocation for the move
             var predAlloc = (predAllocs.length > 0)?
-                getBestAlloc(allocMap, srcVal):
+                x86.getBestAlloc(predAllocMap, srcVal):
                 srcVal;
 
             var srcNode = getGraphNode(predAlloc);
@@ -586,18 +592,6 @@ x86.genEdgeTrans = function (
             srcNode.toCount++;
         }
 
-
-
-
-
-        // TODO
-        asm.nop();
-        asm.nop();
-        asm.nop();
-
-
-
-        /*
         // For each instruction of the successor
         for (var insIdx = 0; insIdx < succ.instrs.length; ++insIdx)
         {
@@ -608,7 +602,7 @@ x86.genEdgeTrans = function (
                 break;
 
             // Get the incoming value for this predecessor
-            var inc = instr.getIncoming(block);
+            var inc = instr.getIncoming(pred);
 
             // Add a move edge for this incoming value
             addMoveEdge(inc, instr);
@@ -626,6 +620,120 @@ x86.genEdgeTrans = function (
 
             // Add a move edge for this value
             addMoveEdge(value, value);
+        }
+
+        // Registers for use as temporaries
+        const mtmReg = x86.regs.rax.getSubOpnd(params.backend.regSizeBits);
+        const cycReg = x86.regs.rbx.getSubOpnd(params.backend.regSizeBits);
+
+        // Memory to memory and cycle breaking temporary
+        var mtmTmp = null;
+        var cycTmp = null;
+
+        // Spill slots for the temporary registers
+        var mtmSpill = null;
+        var cycSpill = null;
+
+        /**
+        Adjust the move graph to free a specific temporary register
+        */
+        function freeTmpReg(tmpReg)
+        {
+            // Allocate a spill slot for the temp
+            var slotIdx = predAllocMap.allocSpill(asm);
+            var slotOpnd = predAllocMap.getSlotOpmd(slotIdx);
+
+            // Move the value into its spill slot
+            asm.mov(slotOpnd, tmpReg);
+
+            // Get the graph node for the temporary register
+            var regNode = getGraphNode(tmpReg);
+
+            // Get the graph node for the spill slot
+            var spillNode = getGraphNode(tmpReg)
+
+            // What went into the register now goes into the spill slot
+            spillNode.from = regNode.from;
+            regNode.from = undefined;
+
+            // What came from the register now comes from the spill node
+            spillNode.toCount = regNode.toCount;
+            regNode.toCount = 0;
+            for (var i = 0; i < graphNodes.length; ++i)
+            {
+                var node = graphNodes[i];
+                if (node.from === regNode)
+                    node.from = spillNode;
+            }
+
+            // Return the spill slot index
+            return slotIdx;
+        }
+
+        /**
+        Get the memory->memory temporary
+        */
+        function getMtmTemp()
+        {
+            if (mtmTmp !== null)
+                return mtmTmp;
+
+            mtmSpill = freeTmpReg(mtmReg);
+            mtmTmp = tmpReg;
+
+            return mtmTmp;
+        }
+
+        /**
+        Get the cycle breaking temporary
+        */
+        function getCycTemp()
+        {
+            if (cycTmp !== null)
+                return cycTmp;
+
+            cycSpill = freeTmpReg(cycReg);
+            cycTmp = cycReg;
+
+            return cycTmp;
+        }
+
+        /**
+        Execute a move, which may be memory to memory
+        */
+        function execMove(dst, src)
+        {
+            // If this is a memory to memory move, execute it using a temporary
+            if (src instanceof x86.MemLoc && dst instanceof x86.MemLoc)
+            {
+                var tmpReg = getMtmTmp();
+                asm.mov(tmpReg, src);
+                asm.mov(dst, tmpReg);
+            }
+
+            // Perform a generic move
+            x86.moveValue(
+                predAllocMap,
+                succAllocMap,
+                dst,
+                src,
+                asm,
+                params
+            );
+        }
+
+        // Save the original number of predecessor spill slots
+        var origPredSpills = predAllocMap.numSpillSlots;
+
+        // If the successor has more spill slots, add more spill slots now
+        if (succAllocMap.numSpillSlots > predAllocMap.numSpillSlots)
+        {
+            var newSlots = succAllocMap.numSpillSlots - predAllocMap.numSpillSlots;
+
+            log.debug('adding ' + newSlots + ' new spill slots');
+
+            predAllocMap.numSpillSlots = succAllocMap.numSpillSlots;
+            asm.sub(predAllocMap.spReg, predAllocMap.slotSize * newSlots);
         }
 
         // Until all moves are resolved
@@ -656,7 +764,7 @@ x86.genEdgeTrans = function (
                         if (node.from !== undefined)
                         {
                             // Execute the move
-                            addMove(moveList, node.from.val, node.val);
+                            execMove(node.val, node.from.val);
 
                             assert (
                                 node.from.toCount > 0,
@@ -677,56 +785,59 @@ x86.genEdgeTrans = function (
                         changed = true;
                     }
                 }
+            }
 
-                // For each node of the move graph
-                for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+            // For each node of the move graph
+            for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+            {
+                var node = graphNodes[nodeIdx];
+
+                // If this node is part of a cycle
+                if (node.from !== undefined && node.toCount > 0)
                 {
-                    var node = graphNodes[nodeIdx];
+                    log.debug('breaking move cycle');
 
-                    // If this node is part of a cycle
-                    if (node.from !== undefined && node.toCount > 0)
+                    // Get the cycle breaking temporary
+                    var tmpReg = getCycTmp();
+
+                    // Get the graph node for the temporary
+                    var tmpNode = getGraphNode(tmpReg);
+
+                    // Move the value into the temporary
+                    execMove(tmpReg, node.val);
+
+                    // All values coming from this node now come from the temporary
+                    for (var nIdx = 0; nIdx < graphNodes.length; ++nIdx)
                     {
-                        var fromNode = node.from;
-
-                        //print('swapping: ' + node.val + ', ' + fromNode.val);
-
-                        // Swap the node with its incoming value
-                        addMove(moveList, fromNode.val, node.val, true);
-
-                        // Remove the edge for this move
-                        node.from = undefined;
-                        fromNode.toCount--;
-
-                        // If the two nodes were in a cycle,
-                        // remove that edge as well
-                        if (fromNode.from === node)
-                        {
-                            fromNode.from = undefined;
-                            node.toCount--;
-                        }
-
-                        // Swap the to counts of the nodes
-                        var toTmp = node.toCount;
-                        node.toCount = fromNode.toCount;
-                        fromNode.toCount = toTmp;
-
-                        // Correct the incoming edges for all graph nodes
-                        for (var nIdx = 0; nIdx < graphNodes.length; ++nIdx)
-                        {
-                            var n = graphNodes[nIdx];
-                            if (n.from === node)
-                                n.from = fromNode;
-                            else if (n.from === fromNode)
-                                n.from = node;
-                        }
-
-                        changed = true;
-                        break;
+                        var n = graphNodes[nIdx];
+                        if (n.from === node)
+                            n.from = tmpNode;
                     }
+
+                    tmpNode.toCount = node.toCount;
+                    node.toCount = 0;
                 }
             }
         }
-        */
+
+        // Restore the temporary register values
+        if (mtmSpill !== null)
+            asm.mov(mtmTmp, predAllocMap.getSlotOpnd(mtmSpill));
+        if (cycSpill !== null)
+            asm.mov(cycTmp, predAllocMap.getSlotOpnd(cycSpill));
+
+        // If the successor has less spill slots, remove spill slots now
+        if (succAllocMap.numSpillSlots < predAllocMap.numSpillSlots)
+        {
+            var remSlots = predAllocMap.numSpillSlots - succAllocMap.numSpillSlots;
+
+            log.debug('removing ' + newSlots + ' spill slots');
+
+            asm.add(succAllocMap.spReg, succAllocMap.slotSize * remSlots);
+        }
+
+        // Restore the original number of predecessor map spill slots
+        predAllocMap.numSpillSlots = origPredSpills;
     }
 
     // Jump to the successor block
@@ -738,7 +849,8 @@ x86.genEdgeTrans = function (
 Insert code to move a value from one location to another
 */
 x86.moveValue = function (
-    allocMap,
+    srcAllocMap,
+    dstAllocMap,
     dst,
     src,
     asm,
@@ -746,10 +858,10 @@ x86.moveValue = function (
 )
 {
     if (typeof src === 'number')
-        src = allocMap.getSlotOpnd(src);
+        src = srcAllocMap.getSlotOpnd(src);
 
     if (typeof dst === 'number')
-        dst = allocMap.getSlotOpnd(dst);
+        dst = dstAllocMap.getSlotOpnd(dst);
 
     var strStr;
     if (src instanceof x86.Operand)

@@ -450,17 +450,6 @@ tests.x86.irToAsm = function ()
         [1, 7]
     );
 
-
-
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
-
-
     // Comparison test
     test('                                  \
         function test(ctx, v1, v2)          \
@@ -539,6 +528,22 @@ tests.x86.irToAsm = function ()
         22,
         [10, 2]
     );
+
+
+
+
+
+
+
+
+    // TODO: enable tests as supported
+    return;
+
+
+
+
+
+
 
     // Nested loops with if statement, modulo operator
     test('                                          \
