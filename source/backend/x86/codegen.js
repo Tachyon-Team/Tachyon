@@ -641,7 +641,7 @@ x86.genEdgeTrans = function (
         {
             // Allocate a spill slot for the temp
             var slotIdx = predAllocMap.allocSpill(asm);
-            var slotOpnd = predAllocMap.getSlotOpmd(slotIdx);
+            var slotOpnd = predAllocMap.getSlotOpnd(slotIdx);
 
             // Move the value into its spill slot
             asm.mov(slotOpnd, tmpReg);
@@ -673,7 +673,7 @@ x86.genEdgeTrans = function (
         /**
         Get the memory->memory temporary
         */
-        function getMtmTemp()
+        function getMtmTmp()
         {
             if (mtmTmp !== null)
                 return mtmTmp;
@@ -687,7 +687,7 @@ x86.genEdgeTrans = function (
         /**
         Get the cycle breaking temporary
         */
-        function getCycTemp()
+        function getCycTmp()
         {
             if (cycTmp !== null)
                 return cycTmp;
@@ -704,11 +704,13 @@ x86.genEdgeTrans = function (
         function execMove(dst, src)
         {
             // If this is a memory to memory move, execute it using a temporary
-            if (src instanceof x86.MemLoc && dst instanceof x86.MemLoc)
+            if (typeof src === 'number' && typeof dst === 'number')
             {
                 var tmpReg = getMtmTmp();
-                asm.mov(tmpReg, src);
-                asm.mov(dst, tmpReg);
+                var srcLoc = predAllocMap.getSlotOpnd(src);
+                var dstLoc = succAllocMap.getSlotOpnd(dst);
+                asm.mov(tmpReg, srcLoc);
+                asm.mov(dstLoc, tmpReg);
             }
 
             // Perform a generic move
