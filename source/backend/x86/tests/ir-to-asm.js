@@ -973,30 +973,6 @@ tests.x86.irToAsm = function ()
         [1,5,8,10]
     );
 
-
-
-
-
-
-
-
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
-
-
-
-
-
-
-
-
-
-
     // Bitwise operations, unsigned value
     test('                                          \
         function test(ctx, v3, v5)                  \
