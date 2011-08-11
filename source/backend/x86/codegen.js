@@ -637,11 +637,11 @@ x86.genEdgeTrans = function (
         */
         function freeTmpReg(tmpReg)
         {
-            log.debug('freeing tmp reg');
-
             // Allocate a spill slot for the temp
             var slotIdx = predAllocMap.allocSpill(asm);
             var slotOpnd = predAllocMap.getSlotOpnd(slotIdx);
+
+            log.debug('freeing tmp reg ' + tmpReg + ' using spill ' + slotIdx);
 
             // Move the value into its spill slot
             asm.mov(slotOpnd, tmpReg);
@@ -650,11 +650,13 @@ x86.genEdgeTrans = function (
             var regNode = getGraphNode(tmpReg);
 
             // Get the graph node for the spill slot
-            var spillNode = getGraphNode(tmpReg)
+            var spillNode = getGraphNode(slotIdx)
 
             // What went into the register now goes into the spill slot
             spillNode.from = regNode.from;
             regNode.from = undefined;
+
+            //log.debug('original reg toCount: ' + regNode.toCount);
 
             // What came from the register now comes from the spill node
             spillNode.toCount = regNode.toCount;
@@ -663,7 +665,10 @@ x86.genEdgeTrans = function (
             {
                 var node = graphNodes[i];
                 if (node.from === regNode)
+                {
+                    //log.debug('adjusted node from tmp: ' + node.val);
                     node.from = spillNode;
+                }
             }
 
             // Return the spill slot index
@@ -762,8 +767,12 @@ x86.genEdgeTrans = function (
                 for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
                 {
                     var node = graphNodes[nodeIdx];
-                    print(node.val + ' from: ' + (node.from? node.from.val:undefined) + ', toCount: ' + node.toCount);
+                    print(
+                        node.val + ' from: ' + (node.from? node.from.val:undefined) + 
+                        ', toCount: ' + node.toCount
+                    );
                 }
+                print('');
 
 
                 // For each node of the move graph
@@ -777,16 +786,20 @@ x86.genEdgeTrans = function (
                         // If this node has an incoming value
                         if (node.from !== undefined)
                         {
+                            log.debug('executing ' + node.val + ' from ' + node.from.val);
+
                             // Execute the move
                             execMove(node.val, node.from.val);
 
                             assert (
                                 node.from.toCount > 0,
-                                'invalid toCount'
+                                'invalid toCount for ' + node.from.val + 
+                                ': ' + node.from.toCount
                             );
 
-                            // Update the source node
+                            // Update the nodes
                             node.from.toCount--;
+                            node.from = undefined;
                         }
 
                         //print('removing node: ' + node.val);

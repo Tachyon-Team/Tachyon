@@ -185,6 +185,8 @@ x86.Assembler.prototype.assemble = function ()
                 if (instr.offset === codeLength)
                     continue;
 
+                //print('label position changed for ' + instr + ' (' + codeLength + ')');
+
                 // Note that the offset changed
                 changed = true;
 
@@ -193,11 +195,11 @@ x86.Assembler.prototype.assemble = function ()
             }
             else
             {
-                // Find an encoding for this instruction
-                instr.findEncoding(this.x86_64);
+                // Get the current instruction length
+                var curInstrLen = instr.getLength();
 
-                // Add the instruction length to the total
-                codeLength += instr.getLength();
+                // Add the current instruction length to the total
+                codeLength += curInstrLen;
 
                 // For each operand of the instruction
                 for (var i = 0; i < instr.opnds.length; ++i)
@@ -233,6 +235,22 @@ x86.Assembler.prototype.assemble = function ()
 
                         // Update the offset size
                         opnd.size = offSize;
+
+                        /*
+                        print('offset size changed for ' + instr);
+                        instr.findEncoding(this.x86_64);
+                        print('instr length: ' + instr.getLength());
+                        */
+
+                        // Find an encoding for this instruction
+                        instr.findEncoding(this.x86_64);
+
+                        // Get the updated instruction length
+                        var newInstrLen = instr.getLength();
+               
+                        // Correct the total code length
+                        codeLength -= curInstrLen;
+                        codeLength += newInstrLen;
 
                         // Note that the offset changed
                         changed = true;                        

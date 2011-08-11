@@ -822,30 +822,6 @@ tests.x86.irToAsm = function ()
         [5, 10, 2]
     );
 
-
-
-
-
-
-
-
-
-
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
-
-
-
-
-
-
-
-
     // Integer cast, 16-bit operand add
     test('                                          \
         function test(ctx, v1, v5, v8, v10)         \
@@ -996,6 +972,30 @@ tests.x86.irToAsm = function ()
         20,
         [1,5,8,10]
     );
+
+
+
+
+
+
+
+
+
+
+    // TODO: enable tests as supported
+    return;
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Bitwise operations, unsigned value
     test('                                          \
