@@ -117,7 +117,6 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         // Store the register value on the stack
         x86.moveValue(
             entryMap,
-            entryMap,
             slotIdx,
             reg,
             asm,
@@ -446,7 +445,6 @@ x86.genEdgeTrans = function (
                 // Move the incoming value into the register
                 x86.moveValue(
                     succAllocMap,
-                    succAllocMap,
                     reg,
                     inc,
                     asm,
@@ -679,7 +677,7 @@ x86.genEdgeTrans = function (
                 return mtmTmp;
 
             mtmSpill = freeTmpReg(mtmReg);
-            mtmTmp = tmpReg;
+            mtmTmp = mtmReg;
 
             return mtmTmp;
         }
@@ -708,20 +706,26 @@ x86.genEdgeTrans = function (
             {
                 var tmpReg = getMtmTmp();
                 var srcLoc = predAllocMap.getSlotOpnd(src);
-                var dstLoc = succAllocMap.getSlotOpnd(dst);
+                var dstLoc = predAllocMap.getSlotOpnd(dst);
+
+                print('tmp reg: ' + tmpReg);
+                print('src loc: ' + srcLoc + ' (' + src + ')');
+                print('dst loc: ' + dstLoc + ' (' + dst + ')');
+
                 asm.mov(tmpReg, srcLoc);
                 asm.mov(dstLoc, tmpReg);
             }
-
-            // Perform a generic move
-            x86.moveValue(
-                predAllocMap,
-                succAllocMap,
-                dst,
-                src,
-                asm,
-                params
-            );
+            else
+            {
+                // Perform a generic move
+                x86.moveValue(
+                    predAllocMap,
+                    dst,
+                    src,
+                    asm,
+                    params
+                );
+            }
         }
 
         // Save the original number of predecessor spill slots
@@ -833,7 +837,7 @@ x86.genEdgeTrans = function (
         {
             var remSlots = predAllocMap.numSpillSlots - succAllocMap.numSpillSlots;
 
-            log.debug('removing ' + newSlots + ' spill slots');
+            log.debug('removing ' + remSlots + ' spill slots');
 
             asm.add(succAllocMap.spReg, succAllocMap.slotSize * remSlots);
         }
@@ -851,8 +855,7 @@ x86.genEdgeTrans = function (
 Insert code to move a value from one location to another
 */
 x86.moveValue = function (
-    srcAllocMap,
-    dstAllocMap,
+    allocMap,
     dst,
     src,
     asm,
@@ -860,10 +863,10 @@ x86.moveValue = function (
 )
 {
     if (typeof src === 'number')
-        src = srcAllocMap.getSlotOpnd(src);
+        src = allocMap.getSlotOpnd(src);
 
     if (typeof dst === 'number')
-        dst = dstAllocMap.getSlotOpnd(dst);
+        dst = allocMap.getSlotOpnd(dst);
 
     var strStr;
     if (src instanceof x86.Operand)

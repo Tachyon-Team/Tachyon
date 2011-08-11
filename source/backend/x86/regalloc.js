@@ -962,7 +962,6 @@ x86.allocOpnds = function (
             // Move the value into the operand
             x86.moveValue(
                 allocMap,
-                allocMap,
                 opnd,
                 (bestAlloc !== undefined)? bestAlloc:use,
                 asm,
