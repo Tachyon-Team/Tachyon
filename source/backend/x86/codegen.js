@@ -637,6 +637,8 @@ x86.genEdgeTrans = function (
         */
         function freeTmpReg(tmpReg)
         {
+            log.debug('freeing tmp reg');
+
             // Allocate a spill slot for the temp
             var slotIdx = predAllocMap.allocSpill(asm);
             var slotOpnd = predAllocMap.getSlotOpnd(slotIdx);
@@ -708,9 +710,13 @@ x86.genEdgeTrans = function (
                 var srcLoc = predAllocMap.getSlotOpnd(src);
                 var dstLoc = predAllocMap.getSlotOpnd(dst);
 
+                /*
                 print('tmp reg: ' + tmpReg);
                 print('src loc: ' + srcLoc + ' (' + src + ')');
                 print('dst loc: ' + dstLoc + ' (' + dst + ')');
+                */
+
+                log.debug(dstLoc + ' <== ' + srcLoc);
 
                 asm.mov(tmpReg, srcLoc);
                 asm.mov(dstLoc, tmpReg);
@@ -751,12 +757,14 @@ x86.genEdgeTrans = function (
             {
                 changed = false;
 
-                //print('\ngraph:');
-                //for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
-                //{
-                //    var node = graphNodes[nodeIdx];
-                //    print(node.val + ' from: ' + (node.from? node.from.val:undefined) + ', toCount: ' + node.toCount);
-                //}
+
+                print('\ngraph:');
+                for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
+                {
+                    var node = graphNodes[nodeIdx];
+                    print(node.val + ' from: ' + (node.from? node.from.val:undefined) + ', toCount: ' + node.toCount);
+                }
+
 
                 // For each node of the move graph
                 for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
@@ -822,6 +830,9 @@ x86.genEdgeTrans = function (
 
                     tmpNode.toCount = node.toCount;
                     node.toCount = 0;
+
+                    // Only do one cycle breaking operation at a time
+                    break;
                 }
             }
         }

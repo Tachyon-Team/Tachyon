@@ -639,27 +639,6 @@ tests.x86.irToAsm = function ()
         [5, 10, 2]
     );
 
-
-
-
-
-
-
-
-
-
-    // TODO: enable tests as supported
-    return;
-
-
-
-
-
-
-
-
-
-
     // Nested loops and if, spills needed
     test('                                          \
         function test(ctx, v1, v2, v3)              \
@@ -842,6 +821,30 @@ tests.x86.irToAsm = function ()
         12607,
         [5, 10, 2]
     );
+
+
+
+
+
+
+
+
+
+
+
+
+    // TODO: enable tests as supported
+    return;
+
+
+
+
+
+
+
+
+
+
 
     // Integer cast, 16-bit operand add
     test('                                          \
