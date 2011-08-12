@@ -65,7 +65,7 @@ GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, 
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
 SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    asm.mov(opnds[0], genInfo.params.backend.ctxReg);
+    asm.mov(genInfo.params.backend.ctxReg, opnds[0]);
 };
 
 // Base instruction configuration for arithmetic instructions
@@ -365,41 +365,6 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 }
 CallFuncInstr.prototype.x86.saveRegs = function (instr, params)
 {
-    /*
-    FIXME
-    PROBLEM: right now, the write regs can't be used to allocate
-    arguments into... That should probably be changed?
-
-    May want to distinguish between spillregs/saveregs and excluderegs
-
-
-    saveRegSet
-    -> spills/saves reg using freeReg/allocReg
-
-    excludeRegSet
-    -> also spills, excludes from allocation
-    -> like current writeRegSet
-
-
-    Problem: if we allocate an argument to a save register... Won't we lose
-    its value if it isn't spilled?
-
-    No, but, we don't want to undo the register mappings for save regs. Want
-    to allow arguments to come through those registers. If an argument is in
-    there already, spill it, but don't undo the mapping.
-
-    Want to spill only if live. May want to convert freeReg function to spillReg
-    function that doesn't undo the current register mapping, or add a special
-    boolean flag for this option.
-
-    Look at other instructions that write to regs, can they receive
-    their arguments in those registers?
-
-    Mul instruction => yes
-    Div/mod instruction => no
-
-    */
-
     // Get the calling convention for the callee
     var callConv = params.backend.getCallConv(this.callConv);
 
@@ -431,38 +396,87 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Get the calling convention for the callee
     var callConv = genInfo.params.backend.getCallConv(this.callConv);
 
+    // Get the allocation map
+    var allocMap = genInfo.allocMap;
+
+    // Get the temporary register
+    var tmpReg = scratch[0];
+
     // Get the function pointer
     var funcPtr = opnds[0];
 
+    // Compute the actual number of arguments
+    var numArgs = opnds.length - 1;
 
-    // TODO: stack pointer manipulation, as appropriate
+    // FIXME: temporary h4xx
+    // TODO: issue, if calling a C function, must skip func obj, global obj args
+    numArgs = Math.max(numArgs - 2, 0);
 
+    // Compute the number of register arguments
+    var numRegArgs = Math.min(numArgs, callConv.argRegs.length);
 
+    // Compute the number of stack arguments
+    var numStackArgs = Math.max(numArgs - numRegArgs, 0);
+
+    // Add room on the stack for the arguments
+    allocMap.pushValues(numStackArgs, asm);
+
+    //
+    // TODO: stack pointer alignment
+    //
 
     // For each argument
-    for (var argIdx = 1; argIdx < opnds.length; ++argIdx)
+    for (var argIdx = 0; argIdx < numArgs; ++argIdx)
     {
-        var argOpnd = opnds[argIdx];
+        var opndIdx = opnds.length - numArgs + argIdx;
+        var argOpnd = opnds[opndIdx];
 
+        // If this argument should be passed in a register
+        if (argIdx < numRegArgs)
+        {
+            var argReg = callConv.argRegs[argIdx];
+            asm.mov(argReg, argOpnd);
+        }
 
+        // Otherwise, this argument should be passed on the stack
+        else
+        {
+            var stackArgIdx = argIdx - numRegArgs;
 
-        // TODO: move args into correct regs/stack locs
+            var stackOpnd = allocMap.getSlotOpnd(allocMap.numSpillSlots - stackArgIdx - 1);
 
-        asm.nop();
-
-
-
-
+            // If this is a memory->memory move
+            if (argOpnd instanceof x86.MemLoc)
+            {
+                asm.mov(tmpReg, argOpnd);
+                asm.mov(stackOpnd, tmpReg);
+            }
+            else
+            {
+                x86.moveValue(
+                    allocMap,
+                    stackOpnd,
+                    argOpnd,
+                    asm,
+                    genInfo.params
+                );
+            }
+        }
     }
 
-
-
+    //
     // TODO: set the argument count register, if any
-
-
+    //
 
     // Call the function with the given address
     asm.call(funcPtr);
+
+    // If the arguments should be removed by the caller
+    if (callConv.cleanup === 'CALLER')
+    {
+        // Remove the stack space for the arguments
+        allocMap.popValues(numStackArgs, asm);
+    }
 };
 
 // TODO: CallApplyInstr

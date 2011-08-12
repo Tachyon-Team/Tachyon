@@ -311,13 +311,50 @@ x86.RegAllocMap.prototype.allocSpill = function (asm)
     // Compute the slot index for the new slot
     var slotIdx = (this.numArgSlots + 1) + this.numSpillSlots;
 
+    // Add stack space for this value
+    this.pushValues(1, asm);
+
+    return slotIdx;
+}
+
+/**
+Push values on the stack
+*/
+x86.RegAllocMap.prototype.pushValues = function (numValues, asm)
+{
+    assert (
+        isNonNegInt(numValues),
+        'invalid number of values'
+    );
+
     // Increment the number of spill slots
-    this.numSpillSlots++;
+    this.numSpillSlots += numValues;
+
+    // Compute the size of the values to add
+    var valSize = numValues * this.slotSize;
 
     // Decrement the stack pointer
-    asm.sub(this.spReg, this.slotSize);
-    
-    return slotIdx;
+    asm.sub(this.spReg, valSize);
+}
+
+/**
+Pop values from the stack
+*/
+x86.RegAllocMap.prototype.popValues = function (numValues, asm)
+{
+    assert (
+        isNonNegInt(numValues),
+        'invalid number of values'
+    );
+
+    // Decrement the number of spill slots
+    this.numSpillSlots -= numValues;
+
+    // Compute the size of the values to remove
+    var valSize = numValues * this.slotSize;
+
+    // Increment the stack pointer
+    asm.add(this.spReg, valSize);
 }
 
 /**

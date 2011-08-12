@@ -754,8 +754,7 @@ x86.genEdgeTrans = function (
 
             log.debug('adding ' + newSlots + ' new spill slots');
 
-            predAllocMap.numSpillSlots = succAllocMap.numSpillSlots;
-            asm.sub(predAllocMap.spReg, predAllocMap.slotSize * newSlots);
+            predAllocMap.pushValues(newSlots, asm);
         }
 
         // Until all moves are resolved
@@ -868,7 +867,7 @@ x86.genEdgeTrans = function (
 
             log.debug('removing ' + remSlots + ' spill slots');
 
-            asm.add(succAllocMap.spReg, succAllocMap.slotSize * remSlots);
+            predAllocMap.popValues(remSlots, asm);
         }
 
         // Restore the original number of predecessor map spill slots
@@ -907,7 +906,8 @@ x86.moveValue = function (
     assert (
         src instanceof IRValue ||
         src instanceof x86.Register ||
-        src instanceof x86.MemLoc,
+        src instanceof x86.MemLoc   ||
+        src instanceof x86.Immediate,
         'invalid move src: ' + src
     );
 

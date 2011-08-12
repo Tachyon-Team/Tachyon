@@ -121,15 +121,21 @@ tests.x86.irToAsm = function ()
                 error('unsupported arg: ' + argVal);
         }
 
+        // Allocate a fake context object
+        var ctxBlock = allocMemoryBlock(8192, false);
+        var ctxAddr = getBlockAddr(ctxBlock, 0);
+
         // Call the test function
-        var ctxPtr = backend.x86_64? [0,0,0,0,0,0,0,0]:[0,0,0,0];
         var ret = callTachyonFFI(
             argTypes,
             'int',
             entryAddr,
-            ctxPtr,
+            ctxAddr,
             argVals
         );
+
+        // Free the fake context object
+        freeMemoryBlock(ctxBlock);
 
         if (ret !== retVal)
         {
@@ -1122,8 +1128,32 @@ tests.x86.irToAsm = function ()
 
 
 
+    // TODO: convert to use call_ffi if possible?
 
-
+    // Simple function call test, no arguments
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            return callee();                            \
+        }                                               \
+        function callee()                               \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:static";                           \
+            "tachyon:ret pint";                         \
+                                                        \
+            return pint(7);                             \
+        }                                               \
+        ',
+        7,
+        [10]
+    );
 
 
 
@@ -1132,15 +1162,37 @@ tests.x86.irToAsm = function ()
 
 
     /*
-    TODO: local static env to test function calls?
-    extend and temporarily replace params static env with custom one***
-
-
-    TODO: link code
-
-
-
+    // Fibonacci test
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx rptr";                     \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            return fib(n);                              \
+        }                                               \
+        function fib(n)                                 \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:static";                           \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            if (n < pint(2))                            \
+                return n;                               \
+                                                        \
+            return fib(n - pint(1)) + fib(n - pint(2)); \
+        }                                               \
+        ',
+        55,
+        [10]
+    );
     */
+
+
+
 
 
 
