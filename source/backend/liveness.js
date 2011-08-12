@@ -70,6 +70,9 @@ function liveAnalysis(blockOrder)
     // Array of sets of live variables before instructions
     var instrLiveIn = [];
 
+    // Array of sets of live variables after instructions
+    var instrLiveOut = [];
+
     // Until the work list is empty
     while (workList.isEmpty() === false)
     {
@@ -117,6 +120,13 @@ function liveAnalysis(blockOrder)
             if (instr.dests.length > 0 && liveCur.hasItem(instr) === true)
                 liveCur.remItem(instr);
 
+            // Store the live set at the output of this instruction
+            if (i === block.instrs.length - 1)
+                var curLiveSet = liveCur.copy();
+            else
+                var curLiveSet = instrLiveIn[block.instrs[i+1].instrId];
+            instrLiveOut[instr.instrId] = curLiveSet;
+
             // For each use of the instruction
             for (var j = 0; j < instr.uses.length; ++j)
             {
@@ -147,7 +157,8 @@ function liveAnalysis(blockOrder)
 
     return {
         blockIn: blockLiveIn,
-        instrIn: instrLiveIn
+        instrIn: instrLiveIn,
+        instrOut: instrLiveOut
     };
 }
 

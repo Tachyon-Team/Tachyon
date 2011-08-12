@@ -95,7 +95,7 @@ MulInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 
     return false;
 }
-MulInstr.prototype.x86.writeRegSet = function (instr, params)
+MulInstr.prototype.x86.saveRegs = function (instr, params)
 {
     if (instr.type.isUnsigned() === true)
         return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
@@ -157,7 +157,7 @@ DivInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
     return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 }
-DivInstr.prototype.x86.writeRegSet = function (instr, params)
+DivInstr.prototype.x86.excludeRegs = function (instr, params)
 {
     return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
 }
@@ -199,7 +199,7 @@ ModInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
     return params.backend.x86_64? x86.regs.rdx:x86.regs.edx;
 }
-ModInstr.prototype.x86.writeRegSet = function (instr, params)
+ModInstr.prototype.x86.excludeRegs = function (instr, params)
 {
     return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
 }
@@ -357,19 +357,13 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
     // Get the calling convention for the callee
     var callConv = params.backend.getCallConv(this.callConv);
 
-
-    // FIXME
-    // FIXME: this deallocates live temps?
-    // FIXME
-
-
     // If the argument must be in a register, return it
-    //if (idx < callConv.argRegs.length)
-    //    return callConv.argRegs[i];
+    if (idx < callConv.argRegs.length)
+        return callConv.argRegs[idx];
 
     return false;
 }
-CallFuncInstr.prototype.x86.writeRegSet = function (instr, params)
+CallFuncInstr.prototype.x86.saveRegs = function (instr, params)
 {
     /*
     FIXME
@@ -377,6 +371,26 @@ CallFuncInstr.prototype.x86.writeRegSet = function (instr, params)
     arguments into... That should probably be changed?
 
     May want to distinguish between spillregs/saveregs and excluderegs
+
+
+    saveRegSet
+    -> spills/saves reg using freeReg/allocReg
+
+    excludeRegSet
+    -> also spills, excludes from allocation
+    -> like current writeRegSet
+
+
+    Problem: if we allocate an argument to a save register... Won't we lose
+    its value if it isn't spilled?
+
+    No, but, we don't want to undo the register mappings for save regs. Want
+    to allow arguments to come through those registers. If an argument is in
+    there already, spill it, but don't undo the mapping.
+
+    Want to spill only if live. May want to convert freeReg function to spillReg
+    function that doesn't undo the current register mapping, or add a special
+    boolean flag for this option.
 
     Look at other instructions that write to regs, can they receive
     their arguments in those registers?
@@ -386,14 +400,15 @@ CallFuncInstr.prototype.x86.writeRegSet = function (instr, params)
 
     */
 
-
-
     // Get the calling convention for the callee
     var callConv = params.backend.getCallConv(this.callConv);
 
-    // FIXME
-    //return this.callerSave;
-    return undefined;
+    // The caller-save registers must be saved before the call
+    return callConv.callerSave;
+}
+CallFuncInstr.prototype.x86.destIsOpnd0 = function ()
+{
+    return false;
 }
 CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
@@ -406,9 +421,11 @@ CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 
     return true;
 }
-
-// TODO: scratch regs, need at least 1
-
+CallFuncInstr.prototype.x86.numScratchRegs = function (instr, params)
+{
+    // Need 1 scratch register
+    return 1;
+}
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // Get the calling convention for the callee
@@ -418,24 +435,39 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     var funcPtr = opnds[0];
 
 
-    // TODO: func object, global object? those are the operands, treated as
-    // normal arguments
+    // TODO: stack pointer manipulation, as appropriate
+
+
+
+    // For each argument
+    for (var argIdx = 1; argIdx < opnds.length; ++argIdx)
+    {
+        var argOpnd = opnds[argIdx];
+
+
+
+        // TODO: move args into correct regs/stack locs
+
+        asm.nop();
 
 
 
 
+    }
 
 
 
-
-    asm.nop();
-    asm.nop();
-    asm.nop();
+    // TODO: set the argument count register, if any
 
 
-    // TODO
-    //callConv.retReg;
+
+    // Call the function with the given address
+    asm.call(funcPtr);
 };
+
+// TODO: CallApplyInstr
+
+// TODO: CallFFIInstr
 
 // Unconditional branching instruction
 JumpInstr.prototype.x86 = new x86.InstrCfg();

@@ -104,27 +104,14 @@ function CallConv(params)
     this.cleanup = params.cleanup;
 
     /**
+    @field Caller-save registers
+    */
+    this.callerSave = params.callerSave;
+
+    /**
     @field Callee-save registers
     */
     this.calleeSave = params.calleeSave;
-
-    /**
-    @field Caller-save registers
-    */
-    this.callerSave = [];
-
-    // Build the caller save register set
-    for (regName in x86.regs)
-    {
-        var reg = x86.regs[regName];
-
-        if (reg.type === 'gp' && 
-            reg.size === this.regSizeBits && 
-            arraySetHas(this.calleeSave, reg) === false)
-            continue;
-
-        this.callerSave.push(reg);
-    }
 
     assert (
         typeof this.name === 'string',
@@ -175,6 +162,11 @@ function CallConv(params)
     );
 
     assert (
+        this.callerSave instanceof Array,
+        'invalid caller-save register list'
+    );
+
+    assert (
         this.calleeSave instanceof Array,
         'invalid callee-save register list'
     );
@@ -198,6 +190,8 @@ CallConv.cdecl = new CallConv({
     argCountReg : null,
     retReg      : x86.regs.eax,
     fpRetReg    : x86.regs.st0,
+    callerSave  : [x86.regs.edx,
+                   x86.regs.ecx],
     calleeSave  : [x86.regs.ebx,
                    x86.regs.ebp,
                    x86.regs.esi, 
@@ -230,6 +224,14 @@ CallConv.amd64 = new CallConv({
     argCountReg : null,
     retReg      : x86.regs.rax,
     fpRetReg    : x86.regs.xmm0,
+    callerSave  : [x86.regs.rdx,
+                   x86.regs.rcx,
+                   x86.regs.rsi,
+                   x86.regs.rdi,
+                   x86.regs.r8,
+                   x86.regs.r9,
+                   x86.regs.r11,
+                   x86.regs.r12],
     calleeSave  : [x86.regs.rbx, 
                    x86.regs.rbp, 
                    x86.regs.r10,
@@ -258,6 +260,12 @@ CallConv.tachyon32 = new CallConv({
     argCountReg : x86.regs.ecx,
     retReg      : x86.regs.eax,
     fpRetReg    : x86.regs.xmm0,
+    callerSave  : [x86.regs.rdx,
+                   x86.regs.rcx,
+                   x86.regs.rbx,
+                   x86.regs.rsi,
+                   x86.regs.rdi,
+                   x86.regs.rbp],    
     calleeSave  : [],
     cleanup     : 'CALLEE'
 });
@@ -287,6 +295,20 @@ CallConv.tachyon64 = new CallConv({
     argCountReg : x86.regs.rcx,
     retReg      : x86.regs.rax,
     fpRetReg    : x86.regs.xmm0,
+    callerSave  : [x86.regs.rdx,
+                   x86.regs.rcx,
+                   x86.regs.rbx,
+                   x86.regs.rsi,
+                   x86.regs.rdi,
+                   x86.regs.rbp,
+                   x86.regs.r8,
+                   x86.regs.r9,
+                   x86.regs.r10,
+                   x86.regs.r11,
+                   x86.regs.r12,
+                   x86.regs.r13,
+                   x86.regs.r14,
+                   x86.regs.r15],
     calleeSave  : [],
     cleanup     : 'CALLEE'
 });

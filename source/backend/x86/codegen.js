@@ -222,12 +222,16 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
             log.debug('processing: ' + instr);
 
-            // Get the live set at the input of this instruction
+            // Get the live set at the input and output of this instruction
             var instrLiveIn = liveness.instrIn[instr.instrId];
-
+            var instrLiveOut = liveness.instrOut[instr.instrId];
             assert (
                 instr instanceof PhiInstr || instrLiveIn instanceof HashMap,
-                'invalid live map for: ' + instr.getValName()
+                'invalid live in map for: ' + instr.getValName()
+            );
+            assert (
+                instr instanceof PhiInstr || instrLiveOut instanceof HashMap,
+                'invalid live out map for: ' + instr.getValName()
             );
 
             // If this is a phi node
@@ -308,6 +312,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                     allocMap,
                     instr,
                     instrLiveIn,
+                    instrLiveOut,
                     asm,
                     params
                 );

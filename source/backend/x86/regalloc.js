@@ -72,20 +72,30 @@ x86.InstrCfg.prototype.maxImmOpnds = function (instr, params)
 }
 
 /**
+Registers this instruction will have to write to. These registers may be used
+for input operands, but their value should be preserved elsewhere.
+*/
+x86.InstrCfg.prototype.saveRegs = function (instr, params)
+{
+    return undefined;
+}
+
+/**
+Registers this instruction will have to write to. The values contained in
+these registers should be saved, and these should not be used for input
+operands.
+*/
+x86.InstrCfg.prototype.excludeRegs = function (instr, params)
+{
+    return undefined;
+}
+
+/**
 Number of scratch registers wanted
 */
 x86.InstrCfg.prototype.numScratchRegs = function (instr, params)
 {
     return 0;
-}
-
-/**
-Registers this instruction will have to write to, excluding
-scratch registers, operands and the destination.
-*/
-x86.InstrCfg.prototype.writeRegSet = function (instr, params)
-{
-    return undefined;
 }
 
 /**
@@ -614,7 +624,7 @@ x86.allocReg = function (
 )
 {
     assert (
-        value instanceof IRValue,
+        value instanceof IRValue || value === undefined,
         'invalid value in allocReg'
     );
 
@@ -696,7 +706,14 @@ x86.allocReg = function (
     );
 
     // Free the register, if needed
-    x86.freeReg(allocMap, bestReg, liveSet, asm, params);
+    x86.saveReg(
+        allocMap, 
+        bestReg, 
+        true, 
+        liveSet, 
+        asm, 
+        params
+    );
 
     // Update the allocation map
     if (value !== undefined)
@@ -707,11 +724,12 @@ x86.allocReg = function (
 }
 
 /**
-Free a register if needed. This may cause a spill
+Save the value stored in a register if needed. This may cause a spill
 */
-x86.freeReg = function (
-    allocMap, 
-    reg, 
+x86.saveReg = function (
+    allocMap,
+    reg,
+    remAlloc,
     liveSet,
     asm,
     params
@@ -724,8 +742,9 @@ x86.freeReg = function (
     if (curVal === undefined)
         return;
 
-    // Remove the allocation of the register to the value
-    allocMap.remAlloc(curVal, reg);
+    // If demanded, remove the allocation of the register to the value
+    if (remAlloc === true)
+        allocMap.remAlloc(curVal, reg);
 
     // If the register is not mapped to a live value, do nothing
     if (liveSet.hasItem(curVal) === false)
@@ -758,7 +777,8 @@ Allocate operands for generic (non-meta) instructions
 x86.allocOpnds = function (
     allocMap,
     instr,
-    liveSet,
+    instrLiveIn,
+    instrLiveOut,
     asm,
     params
 )
@@ -814,20 +834,20 @@ x86.allocOpnds = function (
     if (destMustBeReg instanceof x86.Register)
         excludeMap[destMustBeReg.regNo] = true;
 
-    // Get the set of registers this instruction will write to
-    var writeRegs = instrCfg.writeRegSet(instr, params);
+    // Get the set of registers that should be excluded from allocation
+    var excludeRegs = instrCfg.excludeRegs(instr, params);
 
-    // If this instruction writes to registers
-    if (writeRegs !== undefined)
+    // If this instruction writes/excludes registers
+    if (excludeRegs !== undefined)
     {
         assert (
-            writeRegs instanceof Array,
+            excludeRegs instanceof Array,
             'write reg set is not an array'
         );
 
-        // Add the write registers to the exclude set
-        for (var k = 0; k < writeRegs.length; ++k)
-            excludeMap[writeRegs[k].regNo] = true;
+        // Add the excluded registers to the exclude set
+        for (var k = 0; k < excludeRegs.length; ++k)
+            excludeMap[excludeRegs[k].regNo] = true;
     }
 
     // List of moves to precede the instruction
@@ -925,7 +945,7 @@ x86.allocOpnds = function (
 
         // If the dest is this operand and the use is 
         // still live after this instruction
-        var destNeedsReg = destIsOpnd0 && opndIdx === 0 && liveSet.hasItem(use);
+        var destNeedsReg = destIsOpnd0 && opndIdx === 0 && instrLiveOut.hasItem(use);
 
         // Value for which this operand is being allocated
         var mapVal = (destIsOpnd0 && opndIdx === 0)? instr:use;
@@ -945,7 +965,7 @@ x86.allocOpnds = function (
                     mapVal,
                     (opndMustBeReg instanceof x86.Register)?
                     opndMustBeReg:undefined,
-                    liveSet,
+                    instrLiveIn,
                     excludeMap,
                     asm,
                     params
@@ -954,7 +974,7 @@ x86.allocOpnds = function (
             else
             {
                 // Map the operand to a stack location
-                opnd = allocMap.spillValue(mapVal, liveSet, asm);
+                opnd = allocMap.spillValue(mapVal, instrLiveIn, asm);
             }
 
             //print('use: ' + use);
@@ -1018,18 +1038,18 @@ x86.allocOpnds = function (
     // For each scratch register to allocate
     for (var k = 0; k < numScratchRegs; ++k)
     {
-        log.debug('allocating scratch');
-
         // Allocate the scratch register
-        var reg = allocReg(
+        var reg = x86.allocReg(
             allocMap,
             undefined,
             undefined,
-            liveSet,
+            instrLiveIn,
             excludeMap,
             asm,
             params
         );
+
+        log.debug('allocated scratch: ' + reg);
 
         // Add the register to the scratch register list
         scratchRegs.push(reg);
@@ -1038,26 +1058,57 @@ x86.allocOpnds = function (
         excludeMap[reg.regNo] = true;
     }
 
-    // If this instruction writes to registers
-    if (writeRegs !== undefined)
+    // If this instruction writes/excludes registers
+    if (excludeRegs !== undefined)
     {
         assert (
-            writeRegs instanceof Array,
+            excludeRegs instanceof Array,
             'write reg set is not an array'
         );
 
         // For each register this instruction writes to
-        for (var k = 0; k < writeRegs.length; ++k)
+        for (var k = 0; k < excludeRegs.length; ++k)
         {
-            var reg = writeRegs[k];
+            var reg = excludeRegs[k];
 
-            log.debug('freeing write reg');
+            log.debug('saving/freeing reg: ' + reg);
 
-            // Free the register
-            x86.freeReg(
+            // Save the register
+            x86.saveReg(
                 allocMap,
                 reg,
-                liveSet,
+                true,
+                instrLiveOut,
+                asm,
+                params
+            );
+        }
+    }
+
+    // Get the set of registers that should be saved
+    var saveRegs = instrCfg.saveRegs(instr, params)
+
+    // If some registers should be saved
+    if (saveRegs !== undefined)
+    {
+        assert (
+            saveRegs instanceof Array,
+            'save reg set is not an array'
+        );
+
+        // For each register this instruction writes to
+        for (var k = 0; k < saveRegs.length; ++k)
+        {
+            var reg = saveRegs[k];
+
+            log.debug('saving reg: ' + reg);
+
+            // Save the register
+            x86.saveReg(
+                allocMap,
+                reg,
+                false,
+                instrLiveOut,
                 asm,
                 params
             );
@@ -1082,13 +1133,15 @@ x86.allocOpnds = function (
     // If the dest is not opnd 0
     else if (destIsOpnd0 === false)
     {
+        log.debug('allocating dst operand');
+
         // Allocate a register for the destination
         dest = x86.allocReg(
             allocMap,
             instr,
             (destMustBeReg instanceof x86.Register)?
             destMustBeReg:undefined,
-            liveSet,
+            instrLiveIn,
             excludeMap,
             asm,
             params
