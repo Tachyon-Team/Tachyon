@@ -1125,11 +1125,6 @@ tests.x86.irToAsm = function ()
         [1,3,5,8]
     );
 
-
-
-
-    // TODO: convert to use call_ffi if possible?
-
     // Simple function call test, no arguments
     test('                                              \
         function test(ctx, n)                           \
@@ -1155,13 +1150,40 @@ tests.x86.irToAsm = function ()
         [10]
     );
 
+    // Simple function call test, one argument
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            return callee(n);                           \
+        }                                               \
+        function callee(n)                              \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:static";                           \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            return n + pint(3);                         \
+        }                                               \
+        ',
+        12,
+        [9]
+    );
 
 
 
 
+    // TODO: two argument test
 
 
-    /*
+
+
     // Fibonacci test
     test('                                              \
         function test(ctx, n)                           \
@@ -1189,8 +1211,11 @@ tests.x86.irToAsm = function ()
         55,
         [10]
     );
-    */
 
+
+
+
+    // TODO: convert call tests to use call_ffi if possible, remove set_ctx?
 
 
 

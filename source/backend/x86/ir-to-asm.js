@@ -357,9 +357,13 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
     // Get the calling convention for the callee
     var callConv = params.backend.getCallConv(this.callConv);
 
+    // The first argument is the function pointer
+    if (idx === 0)
+        return false;
+
     // If the argument must be in a register, return it
-    if (idx < callConv.argRegs.length)
-        return callConv.argRegs[idx];
+    if (idx - 1 < callConv.argRegs.length)
+        return callConv.argRegs[idx - 1];
 
     return false;
 }
@@ -390,6 +394,11 @@ CallFuncInstr.prototype.x86.numScratchRegs = function (instr, params)
 {
     // Need 1 scratch register
     return 1;
+}
+CallFuncInstr.prototype.x86.transStackOpnds = function (instr, params)
+{
+    // Delay translation of stack operands
+    return false;
 }
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
@@ -441,13 +450,20 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         // Otherwise, this argument should be passed on the stack
         else
         {
+            // TODO: left to right or right to left!
+
+            // Compute the index of the stack argument
             var stackArgIdx = argIdx - numRegArgs;
 
-            var stackOpnd = allocMap.getSlotOpnd(allocMap.numSpillSlots - stackArgIdx - 1);
+            // Get the stack slot operand
+            var slotIdx = allocMap.getNumSlots() - stackArgIdx - 1;
+            var stackOpnd = allocMap.getSlotOpnd(slotIdx);
 
             // If this is a memory->memory move
-            if (argOpnd instanceof x86.MemLoc)
+            if (typeof argOpnd === 'number')
             {
+                var argOpnd = allocMap.getSlotOpnd(argOpnd);
+
                 asm.mov(tmpReg, argOpnd);
                 asm.mov(stackOpnd, tmpReg);
             }

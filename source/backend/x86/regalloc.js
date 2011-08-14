@@ -138,6 +138,15 @@ x86.InstrCfg.prototype.destMustBeReg = function (instr, params)
 }
 
 /**
+Indicates that stack slot references should be translated to
+memory operands.
+*/
+x86.InstrCfg.prototype.transStackOpnds = function (instr, params)
+{
+    return true;
+}
+
+/**
 @class Register allocation map. Maps temporaries and constants to
 registers and stack locations at a given point within a function.
 */
@@ -309,7 +318,7 @@ Allocate a new spill slot on the stack
 x86.RegAllocMap.prototype.allocSpill = function (asm)
 {
     // Compute the slot index for the new slot
-    var slotIdx = (this.numArgSlots + 1) + this.numSpillSlots;
+    var slotIdx = this.getNumSlots();
 
     // Add stack space for this value
     this.pushValues(1, asm);
@@ -371,6 +380,14 @@ x86.RegAllocMap.prototype.getArgSlot = function (argIdx)
 }
 
 /**
+Get the total number of stack slots
+*/
+x86.RegAllocMap.prototype.getNumSlots = function ()
+{
+    return this.numArgSlots + 1 + this.numSpillSlots;
+}
+
+/**
 Get a memory operand from a stack slot index. The number of spill slots
 is used to compute the offset from the current stack pointer.
 */
@@ -385,7 +402,7 @@ x86.RegAllocMap.prototype.getSlotOpnd = function (slotIdx, slotSize)
     );
 
     // Compute the total number of stack slots
-    var numSlots = this.numArgSlots + 1 + this.numSpillSlots;
+    var numSlots = this.getNumSlots();
 
     assert (
         slotIdx < numSlots,
@@ -1191,6 +1208,9 @@ x86.allocOpnds = function (
         dest = opnds[0];
     }
 
+    // Test whether stack operands should be translated to memory references
+    var transStackOpnds = instrCfg.transStackOpnds(instr, params);
+
     /**
     Map operands so they have the appropriate size and
     map stack locations to memory references.
@@ -1206,8 +1226,9 @@ x86.allocOpnds = function (
             return opnd.getSubOpnd(valSize);
         }
 
-        // If the operand is a stack location
-        else if (typeof opnd === 'number')
+        // If the operand is a stack location and stack operands
+        // should be translated
+        else if (typeof opnd === 'number' && transStackOpnds === true)
         {
             // Get the stack memory operand of the appropriate size
             return allocMap.getSlotOpnd(opnd, valSize);
