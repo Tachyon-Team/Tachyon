@@ -1665,11 +1665,13 @@ var CallFFIInstr = instrMaker(
         this.mnemonic = 'call_ffi';
 
         instrMaker.validNumInputs(inputVals, 1);
-        instrMaker.validType(inputVals[0], IRType.box);
+        instrMaker.validType(inputVals[0], IRType.rptr);
         instrMaker.validNumBranches(branchTargets, 0, 0);
 
         assert (
-            inputVals[0] instanceof CFunction,
+            inputVals[0] instanceof CFunction ||
+            (inputVals[0] instanceof IRFunction &&
+             inputVals[0].cProxy === true),
             'FFI calls can only be made to static functions'
         );
 
@@ -1681,14 +1683,17 @@ var CallFFIInstr = instrMaker(
         for (var i = 1; i < inputVals.length; ++i)
         {
             assert (
-                inputVals[i].type === inputVals[0].argTypes[i-1].cIRType,
-                'argument type does not match (arg' + (i-1) + ' ' +
+                inputVals[i].type === inputVals[0].argTypes[i-1],
+                'argument type does not match for arg' + (i-1) + ' of ' +
+                inputVals[0].funcName + '\n' +
+                'got: ' +
                 inputVals[i].type + ', ' +
-                inputVals[0].funcName + ')'
+                'expected: ' +
+                inputVals[0].argTypes[i-1]
             );
         }
 
-        this.type = inputVals[0].retType.cIRType;
+        this.type = inputVals[0].retType;
     },
     new CallInstr()
 );

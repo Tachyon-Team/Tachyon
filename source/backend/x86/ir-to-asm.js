@@ -338,8 +338,7 @@ LsftOvfInstr.prototype.x86 = x86.ArithOvfMaker(LsftInstr);
 
 // Function call instruction
 CallFuncInstr.prototype.x86 = new x86.InstrCfg();
-// TODO: change to 'tachyon' once tachyon call conv support is completed
-CallFuncInstr.prototype.x86.callConv = 'c';
+CallFuncInstr.prototype.x86.callConv = 'tachyon';
 CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
 { 
     return instr.uses.length; 
@@ -417,10 +416,6 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Compute the actual number of arguments
     var numArgs = opnds.length - 1;
 
-    // FIXME: temporary h4xx
-    // TODO: issue, if calling a C function, must skip func obj, global obj args
-    numArgs = Math.max(numArgs - 2, 0);
-
     // Compute the number of register arguments
     var numRegArgs = Math.min(numArgs, callConv.argRegs.length);
 
@@ -440,43 +435,37 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         var opndIdx = opnds.length - numArgs + argIdx;
         var argOpnd = opnds[opndIdx];
 
-        // If this argument should be passed in a register
+        // If this argument is to be passed in a register,
+        // it should already be mapped there, nothing to be done
         if (argIdx < numRegArgs)
-        {
-            var argReg = callConv.argRegs[argIdx];
-            asm.mov(argReg, argOpnd);
-        }
+            continue;
 
-        // Otherwise, this argument should be passed on the stack
+        // TODO: left to right or right to left!
+
+        // Compute the index of the stack argument
+        var stackArgIdx = argIdx - numRegArgs;
+
+        // Get the stack slot operand
+        var slotIdx = allocMap.getNumSlots() - stackArgIdx - 1;
+        var stackOpnd = allocMap.getSlotOpnd(slotIdx);
+
+        // If this is a memory->memory move
+        if (typeof argOpnd === 'number')
+        {
+            var argOpnd = allocMap.getSlotOpnd(argOpnd);
+
+            asm.mov(tmpReg, argOpnd);
+            asm.mov(stackOpnd, tmpReg);
+        }
         else
         {
-            // TODO: left to right or right to left!
-
-            // Compute the index of the stack argument
-            var stackArgIdx = argIdx - numRegArgs;
-
-            // Get the stack slot operand
-            var slotIdx = allocMap.getNumSlots() - stackArgIdx - 1;
-            var stackOpnd = allocMap.getSlotOpnd(slotIdx);
-
-            // If this is a memory->memory move
-            if (typeof argOpnd === 'number')
-            {
-                var argOpnd = allocMap.getSlotOpnd(argOpnd);
-
-                asm.mov(tmpReg, argOpnd);
-                asm.mov(stackOpnd, tmpReg);
-            }
-            else
-            {
-                x86.moveValue(
-                    allocMap,
-                    stackOpnd,
-                    argOpnd,
-                    asm,
-                    genInfo.params
-                );
-            }
+            x86.moveValue(
+                allocMap,
+                stackOpnd,
+                argOpnd,
+                asm,
+                genInfo.params
+            );
         }
     }
 
@@ -495,9 +484,11 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     }
 };
 
-// TODO: CallApplyInstr
+// FFI call instruction, reuses the regular call logic
+CallFFIInstr.prototype.x86 = Object.create(CallFuncInstr.prototype.x86);
+CallFFIInstr.prototype.x86.callConv = 'c';
 
-// TODO: CallFFIInstr
+// TODO: CallApplyInstr
 
 // Unconditional branching instruction
 JumpInstr.prototype.x86 = new x86.InstrCfg();

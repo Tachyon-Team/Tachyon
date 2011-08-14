@@ -1125,7 +1125,7 @@ tests.x86.irToAsm = function ()
         [1,3,5,8]
     );
 
-    // Simple function call test, no arguments
+    // Simple C function call test, no arguments
     test('                                              \
         function test(ctx, n)                           \
         {                                               \
@@ -1134,8 +1134,7 @@ tests.x86.irToAsm = function ()
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
-            iir.set_ctx(ctx);                           \
-            return callee();                            \
+            return iir.call_ffi(callee);                \
         }                                               \
         function callee()                               \
         {                                               \
@@ -1150,7 +1149,7 @@ tests.x86.irToAsm = function ()
         [10]
     );
 
-    // Simple function call test, one argument
+    // Simple C function call test, one argument
     test('                                              \
         function test(ctx, n)                           \
         {                                               \
@@ -1159,8 +1158,7 @@ tests.x86.irToAsm = function ()
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
-            iir.set_ctx(ctx);                           \
-            return callee(n);                           \
+            return iir.call_ffi(callee, n);             \
         }                                               \
         function callee(n)                              \
         {                                               \
@@ -1176,24 +1174,16 @@ tests.x86.irToAsm = function ()
         [9]
     );
 
-
-
-
-    // TODO: two argument test
-
-
-
-
-    // Fibonacci test
+    // Fibonacci test (C function)
     test('                                              \
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx rptr";                     \
+            "tachyon:arg ctx ref";                      \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
-            return fib(n);                              \
+            return iir.call_ffi(fib, n);                \
         }                                               \
         function fib(n)                                 \
         {                                               \
@@ -1205,7 +1195,9 @@ tests.x86.irToAsm = function ()
             if (n < pint(2))                            \
                 return n;                               \
                                                         \
-            return fib(n - pint(1)) + fib(n - pint(2)); \
+            var fnm1 = iir.call_ffi(fib, n - pint(1));  \
+            var fnm2 = iir.call_ffi(fib, n - pint(2));  \
+            return fnm1 + fnm2;                         \
         }                                               \
         ',
         55,
@@ -1215,7 +1207,15 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: convert call tests to use call_ffi if possible, remove set_ctx?
+
+
+
+
+
+    // TODO: two argument test
+    // Need to handle RTL/LTR argument order
+
+
 
 
 

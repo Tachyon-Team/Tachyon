@@ -363,13 +363,13 @@ Represents a C FFI function
 */
 function CFunction(
     funcName,
-    argTypes,
-    retType,
+    argMappings,
+    retMapping,
     params
 )
 {
     assert (
-        argTypes instanceof Array && retType !== undefined,
+        argMappings instanceof Array && retMapping !== undefined,
         'invalid arguments or return type'
     );
     assert (
@@ -377,18 +377,26 @@ function CFunction(
         'expected compilation parameters'
     );
 
-    for (var i = 0; i < argTypes.length; ++i)
-    {
-        assert (
-            argTypes[i].jsIRType instanceof IRType,
-            'invalid argument type'
-        );
-    }
+    // Extract the argument types
+    var argTypes = argMappings.map(
+        function (mapping)
+        {
+            assert (
+                mapping.cIRType instanceof IRType,
+                'invalid argument type'
+            );
+
+            return mapping.cIRType;
+        }
+    );
 
     assert (
-        retType.jsIRType instanceof IRType,
+        retMapping.cIRType instanceof IRType,
         'invalid return type'
     );
+
+    // Extract the return type
+    var retType = retMapping.cIRType;
 
     /**
     Name of the C function
@@ -400,10 +408,22 @@ function CFunction(
     Argument type mappings
     @field
     */
-    this.argTypes = argTypes;
+    this.argMappings = argMappings;
 
     /**
     Return type mapping
+    @field
+    */
+    this.retMapping = retMapping;
+
+    /**
+    Argument IR types
+    @field
+    */
+    this.argTypes = argTypes;
+
+    /**
+    Return value IR type
     @field
     */
     this.retType = retType;
@@ -415,6 +435,11 @@ function CFunction(
     this.funcPtr = asm.address(getFuncAddr(funcName));
 }
 CFunction.prototype = new IRValue();
+
+/**
+In the IR, function objects represent function pointers
+*/
+CFunction.prototype.type = IRType.rptr;
 
 /**
 Return the IR value name for this function
@@ -434,6 +459,8 @@ Generate code for a wrapper function for a C FFI function
 */
 CFunction.prototype.genWrapper = function ()
 {
+    //log.debug('generating FFI wrapper for: "' + this.funcName + '"');
+
     // Source string to store the generated code
     var sourceStr = '';
 
@@ -450,29 +477,31 @@ CFunction.prototype.genWrapper = function ()
     sourceStr += '{\n';
     sourceStr += '\t"tachyon:static";\n';
     sourceStr += '\t"tachyon:noglobal";\n';
-    sourceStr += '\t"tachyon:ret ' + this.retType.jsIRType + '";\n';
+    sourceStr += '\t"tachyon:ret ' + this.retMapping.jsIRType + '";\n';
 
-    for (var i = 0; i < this.argTypes.length; ++i)
+    for (var i = 0; i < this.argMappings.length; ++i)
     {
-        var argType = this.argTypes[i].jsIRType;
+        var argType = this.argMappings[i].jsIRType;
         sourceStr += '\t"tachyon:arg a' + i + ' ' + argType + '";\n';
+
+        //log.debug(this.argMappings[i].jsIRType);
     }
 
     // Generate type conversions
-    for (var i = 0; i < this.argTypes.length; ++i)
+    for (var i = 0; i < this.argMappings.length; ++i)
     {
-        var argType = this.argTypes[i];
+        var argType = this.argMappings[i];
         var varName = 'a' + i;
 
         sourceStr += '\t' + varName + ' = ';
         sourceStr += argType.jsToC(varName) + ';\n';
     }
     
-    var retVoid = (this.retType instanceof CVoid);
+    var retVoid = (this.retMapping instanceof CVoid);
 
     sourceStr += '\t' + ((retVoid === true)? '':'var r = ') + 'iir.call_ffi(ffi_' + this.funcName;
 
-    for (var i = 0; i < this.argTypes.length; ++i)
+    for (var i = 0; i < this.argMappings.length; ++i)
     {
         sourceStr += ', a' + i;
     }
@@ -480,9 +509,9 @@ CFunction.prototype.genWrapper = function ()
     sourceStr += ');\n';
 
     // Free allocated C strings, if any
-    for (var i = 0; i < this.argTypes.length; ++i)
+    for (var i = 0; i < this.argMappings.length; ++i)
     {
-        var argType = this.argTypes[i];
+        var argType = this.argMappings[i];
 
         if (argType.freeAfterSnd !== true)
             continue;
@@ -496,11 +525,11 @@ CFunction.prototype.genWrapper = function ()
     if (retVoid === false)
     {
         // Convert the return value
-        sourceStr += '\tvar rJS = ' + this.retType.cToJS('r') + ';\n';
+        sourceStr += '\tvar rJS = ' + this.retMapping.cToJS('r') + ';\n';
 
-        if (this.retType.freeAfterRcv === true)
+        if (this.retMapping.freeAfterRcv === true)
         {
-            sourceStr += '\t' + this.retType.free('r') + ';\n';
+            sourceStr += '\t' + this.retMapping.free('r') + ';\n';
         }
 
         sourceStr += '\treturn rJS;\n';        
