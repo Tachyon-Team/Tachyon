@@ -403,8 +403,11 @@ CallFuncInstr.prototype.x86.numScratchRegs = function (instr, params)
     // Get the calling convention for the callee
     var calleeConv = params.backend.getCallConv(this.calleeConv);
 
+    // Determine if the stack pointer needs to be dynamically aligned
+    var alignNeeded = (callerConv !== calleeConv && callerConv.spAlign < calleeConv.spAlign);
+
     // An extra scratch register is needed if we dynamically align the sp
-    if (callerConv !== calleeConv)
+    if (alignNeeded === true)
         return 2;
 
     // Need 1 scratch register
@@ -449,7 +452,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     var numStackArgs = Math.max(numArgs - numRegArgs, 0);
 
     // Determine if the stack pointer needs to be dynamically aligned
-    var alignNeeded = (callerConv !== calleeConv);
+    var alignNeeded = (callerConv !== calleeConv && callerConv.spAlign < calleeConv.spAlign);
 
     // Compute the stack space needed for the arguments
     var argSpace = allocMap.slotSize * numStackArgs;
