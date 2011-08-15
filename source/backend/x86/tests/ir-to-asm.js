@@ -1204,10 +1204,6 @@ tests.x86.irToAsm = function ()
         [10]
     );
 
-
-
-
-
     // Multiple argument test (C function)
     test('                                              \
         function test(ctx, a1, a2, a3)                  \
@@ -1245,8 +1241,6 @@ tests.x86.irToAsm = function ()
 
 
 
-
-
     // TODO:
     // test calling C funcs?
     // Need linking of C functions
@@ -1257,7 +1251,7 @@ tests.x86.irToAsm = function ()
 
     // TODO:
     // test tachyon call conv 32/64
-
+    // Need to figure out caller/callee cleanup...
 
 
 

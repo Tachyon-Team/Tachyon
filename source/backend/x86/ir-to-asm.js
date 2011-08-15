@@ -343,14 +343,14 @@ LsftOvfInstr.prototype.x86 = x86.ArithOvfMaker(LsftInstr);
 
 // Function call instruction
 CallFuncInstr.prototype.x86 = new x86.InstrCfg();
-CallFuncInstr.prototype.x86.callConv = 'tachyon';
+CallFuncInstr.prototype.x86.calleeConv = 'tachyon';
 CallFuncInstr.prototype.x86.maxImmOpnds = function (instr, idx, size)
 { 
     return instr.uses.length; 
 }
 CallFuncInstr.prototype.x86.maxMemOpnds = function (instr, idx, size)
 { 
-    return instr.uses.length; 
+    return instr.uses.length;
 }
 CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size) 
 { 
@@ -359,7 +359,7 @@ CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
 CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
     // Get the calling convention for the callee
-    var callConv = params.backend.getCallConv(this.callConv);
+    var callConv = params.backend.getCallConv(this.calleeConv);
 
     // The first argument is the function pointer
     if (idx === 0)
@@ -374,7 +374,7 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 CallFuncInstr.prototype.x86.saveRegs = function (instr, params)
 {
     // Get the calling convention for the callee
-    var callConv = params.backend.getCallConv(this.callConv);
+    var callConv = params.backend.getCallConv(this.calleeConv);
 
     // The caller-save registers must be saved before the call
     return callConv.callerSave;
@@ -386,7 +386,7 @@ CallFuncInstr.prototype.x86.destIsOpnd0 = function ()
 CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
     // Get the calling convention for the callee
-    var callConv = params.backend.getCallConv(this.callConv);
+    var callConv = params.backend.getCallConv(this.calleeConv);
 
     // Return the return value register if there is one
     if (callConv.retReg instanceof x86.Register)
@@ -396,7 +396,16 @@ CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 }
 CallFuncInstr.prototype.x86.numScratchRegs = function (instr, params)
 {
-    // TODO: if arg count register present, use that as temporary?
+    // Get the calling convention for the caller
+    var irFunc = instr.parentBlock.parentCFG.ownerFunc;
+    var callerConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
+
+    // Get the calling convention for the callee
+    var calleeConv = params.backend.getCallConv(this.calleeConv);
+
+    // An extra scratch register is needed if we dynamically align the sp
+    if (callerConv !== calleeConv)
+        return 2;
 
     // Need 1 scratch register
     return 1;
@@ -408,14 +417,24 @@ CallFuncInstr.prototype.x86.transStackOpnds = function (instr, params)
 }
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
+    // Get the calling convention for the caller
+    var irFunc = instr.parentBlock.parentCFG.ownerFunc;
+    var callerConv = genInfo.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
+
     // Get the calling convention for the callee
-    var callConv = genInfo.params.backend.getCallConv(this.callConv);
+    var calleeConv = genInfo.backend.getCallConv(this.calleeConv);
 
     // Get the allocation map
     var allocMap = genInfo.allocMap;
 
+    // Get the stack pointer register
+    var spReg = genInfo.backend.spReg;
+
     // Get the temporary register
     var tmpReg = scratch[0];
+
+    // Get the temporary stack pointer
+    var tmpSp = scratch[1];
 
     // Get the function pointer
     var funcPtr = opnds[0];
@@ -424,58 +443,98 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     var numArgs = opnds.length - 1;
 
     // Compute the number of register arguments
-    var numRegArgs = Math.min(numArgs, callConv.argRegs.length);
+    var numRegArgs = Math.min(numArgs, calleeConv.argRegs.length);
 
     // Compute the number of stack arguments
     var numStackArgs = Math.max(numArgs - numRegArgs, 0);
 
-    // Add room on the stack for the arguments
-    allocMap.pushValues(numStackArgs, asm);
+    // Determine if the stack pointer needs to be dynamically aligned
+    var alignNeeded = (callerConv !== calleeConv);
 
+    // Compute the stack space needed for the arguments
+    var argSpace = allocMap.slotSize * numStackArgs;
 
+    // Total stack space needing to be reserved
+    var totalSpace = argSpace;
 
+    // If the stack pointer needs to be dynamically aligned
+    if (alignNeeded === true)
+    {
+        // Add space to save the old stack pointer
+        totalSpace += allocMap.slotSize;
 
+        // Move the current stack pointer into alternate register
+        asm.mov(tmpSp, spReg);
+    }
+    else
+    {
+        var frameSize = allocMap.slotSize * allocMap.numSpillSlots;
+        var alignRem = frameSize % calleeConv.spAlign;
 
+        // If the current frame size breaks the alignment
+        if (alignRem !== 0)
+        {
+            // Pad the frame size by the necessary amount to align it
+            var pad = calleeConv.spAlign - alignRem;
+            frameSize += pad;
+        }
+    }
 
+    // Reserve the total stack space needed
+    asm.sub(spReg, totalSpace);
 
-    //
-    // TODO: stack pointer alignment
-    // Look at old backend code for semantics
-    //
+    // If the stack pointer needs to be dynamically aligned
+    if (alignNeeded === true)
+    {
+        // Compute the stack pointer alignment mask
+        const alignMask = ~(calleeConv.spAlign - 1);
 
+        // Align the new stack pointer
+        asm.and(spReg, alignMask);
 
-
-
+        // Save the old stack pointer below the arguments
+        var stackSpLoc = new x86.MemLoc(allocMap.slotSize * 8, spReg, argSpace);
+        asm.mov(stackSpLoc, tmpSp);
+    }
 
     /**
     Copy an argument to its stack location
     */
-    function copyStackArg(argIdx)
+    function copyStackArg(argIdx, stackArgIdx)
     {
         var opndIdx = opnds.length - numArgs + argIdx;
-        var argOpnd = opnds[opndIdx];
+        var srcOpnd = opnds[opndIdx];
 
         // Compute the index of the stack argument
         var stackArgIdx = argIdx - numRegArgs;
 
-        // Get the stack slot operand
-        var slotIdx = allocMap.getNumSlots() - stackArgIdx - 1;
-        var stackOpnd = allocMap.getSlotOpnd(slotIdx);
+        // Get the stack argument operand
+        var dstOpnd = new x86.MemLoc(
+            allocMap.slotSize * 8,
+            spReg,
+            stackArgIdx * allocMap.slotSize
+        );
 
         // If this is a memory->memory move
-        if (typeof argOpnd === 'number')
+        if (typeof srcOpnd === 'number')
         {
-            var argOpnd = allocMap.getSlotOpnd(argOpnd);
+            // Get the source operand
+            var srcOpnd = allocMap.getSlotOpnd(
+                srcOpnd,
+                undefined,
+                (alignNeeded === true)? tmpSp:spReg,
+                (alignNeeded === true)? 0:totalSpace
+            );
 
-            asm.mov(tmpReg, argOpnd);
-            asm.mov(stackOpnd, tmpReg);
+            asm.mov(tmpReg, srcOpnd);
+            asm.mov(dstOpnd, tmpReg);
         }
         else
         {
             x86.moveValue(
                 allocMap,
-                stackOpnd,
-                argOpnd,
+                dstOpnd,
+                srcOpnd,
                 asm,
                 genInfo.params
             );
@@ -483,48 +542,52 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     }
 
     // Copy the stack arguments
-    if (callConv.argsOrder === 'LTR')
+    if (calleeConv.argsOrder === 'LTR')
     {
         // For each function argument, in left-to-right order
-        for (var i = numRegArgs; i < numArgs; ++i)
-            copyStackArg(i);
+        for (var i = 0; i < numStackArgs; ++i)
+            copyStackArg(numRegArgs + i , i);
     }
     else
     {
         // For each function argument, in left-to-right order
-        for (var i = numArgs - 1; i >= numRegArgs; --i)
-            copyStackArg(i);
+        for (var i = 0; i < numStackArgs; ++i)
+            copyStackArg(numArgs - 1 - i, i);
     }
 
-
-
-
-    //
-    // TODO: set the argument count register, if any
-    //
-
-
-
-
-
-
+    // If there is an argument count register, set its value
+    if (calleeConv.argCountReg !== null)
+        asm.mov(calleeConv.argCountReg, numArgs);
 
     // Call the function with the given address
     asm.call(funcPtr);
 
-    // If the arguments should be removed by the caller
-    if (callConv.cleanup === 'CALLER')
+    // If the stack pointer was dynamically aligned
+    if (alignNeeded === true)
     {
-        // Remove the stack space for the arguments
-        allocMap.popValues(numStackArgs, asm);
+        // Restore the stack pointer
+        asm.mov(stackSpLoc, tmpSp);
+    }
+    else
+    {
+        // If the arguments should be removed by the caller
+        if (calleeConv.cleanup === 'CALLER')
+        {
+            // Remove the stack space for the arguments
+            asm.add(spReg, totalSpace);
+        }
     }
 };
 
 // FFI call instruction, reuses the regular call logic
 CallFFIInstr.prototype.x86 = Object.create(CallFuncInstr.prototype.x86);
-CallFFIInstr.prototype.x86.callConv = 'c';
+CallFFIInstr.prototype.x86.calleeConv = 'c';
 
+
+//
 // TODO: CallApplyInstr
+//
+
 
 // Unconditional branching instruction
 JumpInstr.prototype.x86 = new x86.InstrCfg();

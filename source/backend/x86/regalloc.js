@@ -391,14 +391,35 @@ x86.RegAllocMap.prototype.getNumSlots = function ()
 Get a memory operand from a stack slot index. The number of spill slots
 is used to compute the offset from the current stack pointer.
 */
-x86.RegAllocMap.prototype.getSlotOpnd = function (slotIdx, slotSize)
+x86.RegAllocMap.prototype.getSlotOpnd = function (
+    slotIdx, 
+    slotSize,
+    spReg,
+    spDisp
+)
 {
     if (slotSize === undefined)
         slotSize = this.slotSize * 8;
 
+    if (spReg === undefined)
+        spReg = this.spReg;
+
+    if (spDisp === undefined)
+        spDisp = 0;
+
     assert (
         slotSize <= this.slotSize * 8,
         'invalid stack slot operand size'
+    );
+
+    assert (
+        spReg instanceof x86.Register,
+        'invalid sp register'
+    );
+
+    assert (
+        isNonNegInt(spDisp),
+        'invalid sp displacemnt'
     );
 
     // Compute the total number of stack slots
@@ -410,12 +431,12 @@ x86.RegAllocMap.prototype.getSlotOpnd = function (slotIdx, slotSize)
     );
     
     // Compute the offset relative to the stack pointer
-    var offset = -(slotIdx + 1 - numSlots) * this.slotSize;
+    var offset = (numSlots - slotIdx - 1) * this.slotSize + spDisp;
 
     // Return the memory location
     return new x86.MemLoc(
         slotSize,
-        this.spReg,
+        spReg,
         offset
     );
 }
@@ -965,6 +986,9 @@ x86.allocOpnds = function (
 
         // Get the best current allocation for the value
         var bestAlloc = x86.getBestAlloc(allocMap, use);
+
+        print('best alloc: ' + bestAlloc);
+        print('opnd must be reg: ' + opndMustBeReg);
 
         // If this value is already in a register
         if (bestAlloc instanceof x86.Register && 
