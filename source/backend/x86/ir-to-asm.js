@@ -63,9 +63,14 @@ GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, 
 
 // Set context instruction
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
+SetCtxInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+{
+    // Have the argument be moved into the context register
+    return params.backend.ctxReg;
+}
 SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    asm.mov(genInfo.params.backend.ctxReg, opnds[0]);
+    // Do nothing
 };
 
 // Base instruction configuration for arithmetic instructions
@@ -421,8 +426,7 @@ CallFuncInstr.prototype.x86.transStackOpnds = function (instr, params)
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // Get the calling convention for the caller
-    var irFunc = instr.parentBlock.parentCFG.ownerFunc;
-    var callerConv = genInfo.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
+    var callerConv = genInfo.callConv;
 
     // Get the calling convention for the callee
     var calleeConv = genInfo.backend.getCallConv(this.calleeConv);
@@ -582,6 +586,9 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     }
 };
 
+// Constructor call instruction, same implementation as regular calls
+ConstructInstr.prototype.x86 = CallFuncInstr.prototype.x86;
+
 // FFI call instruction, reuses the regular call logic
 CallFFIInstr.prototype.x86 = Object.create(CallFuncInstr.prototype.x86);
 CallFFIInstr.prototype.x86.calleeConv = 'c';
@@ -685,16 +692,6 @@ IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genI
     }
 };
 
-
-// TODO: CallInstr
-
-// TODO: ConstructInstr.prototype.x86 = CallInstr.prototype.x86;
-
-// TODO: CallApplyInstr
-
-// TODO: CallFFIInstr
-
-
 // Return instruction
 RetInstr.prototype.x86 = new x86.InstrCfg();
 RetInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
@@ -706,13 +703,13 @@ RetInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 }
 RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    const callConv = genInfo.callConv;
+    const calleeConv = genInfo.callConv;
     const allocMap = genInfo.allocMap;
 
     // Restore the callee-save registers, if any
-    for (var i = 0; i < callConv.calleeSave.length; ++i)
+    for (var i = 0; i < calleeConv.calleeSave.length; ++i)
     {
-        var reg = callConv.calleeSave[i];
+        var reg = calleeConv.calleeSave[i];
         var stackLoc = allocMap.getAllocs(reg)[0];
         var stackOpnd = allocMap.getSlotOpnd(stackLoc);
         asm.mov(reg, stackOpnd);
@@ -721,10 +718,33 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     // Remove the spills from the stack
     asm.add(allocMap.spReg, allocMap.numSpillSlots * allocMap.slotSize);
 
-    // TODO: adapt this depending on calling convention
+    // If the arguments should be removed by the callee
+    if (calleeConv.cleanup === 'CALLEE')
+    {
+        // Get the number of function arguments
+        var numArgs = genInfo.irFunc.argTypes.length;
 
-    // Add a return instruction
-    asm.ret();
+        // If this is a Tachyon function, add 2 hidden arguments
+        if (genInfo.irFunc.cProxy === false)
+            numArgs += 2;
+
+        // Compute the number of stack arguments
+        var numRegArgs = Math.min(numArgs, calleeConv.argRegs.length);
+
+        // Compute the number of stack arguments
+        var numStackArgs = Math.max(numArgs - numRegArgs, 0);
+
+        // Compute the stack space needed for the arguments
+        var argSpace = genInfo.allocMap.slotSize * numStackArgs;
+
+        // Return, popping the arguments from the stack
+        asm.ret(argSpace);
+    }
+    else
+    {
+        // Add a return instruction
+        asm.ret();
+    }
 }
 
 // TODO:

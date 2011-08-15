@@ -1233,8 +1233,79 @@ tests.x86.irToAsm = function ()
         [9, 4, 3]
     );
 
+    // One argument test (Tachyon function)
+    test('                                              \
+        function test(ctx, a1)                          \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            return callee(a1);                          \
+        }                                               \
+        function callee(a1)                             \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            return a1 + pint(1);                        \
+        }                                               \
+        ',
+        10,
+        [9]
+    );
+
+    // Multiple argument test (Tachyon function)
+    test('                                              \
+        function test(ctx, a1, a2, a3)                  \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:arg a3 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            return callee(a1, a2, a3);                  \
+        }                                               \
+        function callee(a1, a2, a3)                     \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:arg a3 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            return (a1 - a2) * a3;                      \
+        }                                               \
+        ',
+        15,
+        [9, 4, 3]
+    );
 
 
+
+
+    // TODO: undef arg not passed???
+
+
+
+    // TODO: ctx reg same as arg count reg???
+
+
+
+
+
+
+
+    // TODO:
+    // test tachyon call conv 32/64
+    // Need to figure out caller/callee cleanup...
+    // Look at old backend code
 
 
 
@@ -1248,10 +1319,6 @@ tests.x86.irToAsm = function ()
 
 
 
-
-    // TODO:
-    // test tachyon call conv 32/64
-    // Need to figure out caller/callee cleanup...
 
 
 

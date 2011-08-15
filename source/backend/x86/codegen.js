@@ -166,6 +166,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
     // Code generation info object
     var genInfo = {
+        irFunc: irFunc,
         callConv: callConv,
         edgeLabels: edgeLabels,
         allocMap: entryMap,
