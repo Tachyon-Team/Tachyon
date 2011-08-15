@@ -99,8 +99,8 @@ MulInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
     if (instr.type.isUnsigned() === true && idx === 0)
         return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
 
-    // imul cannot take a memory operand as dest
-    if (idx === 0)
+    // If the dest is the first operand, it should be a register
+    if (this.destIsOpnd0(instr, params) === true)
         return true;
 
     return false;
@@ -359,6 +359,10 @@ CallFuncInstr.prototype.x86.maxMemOpnds = function (instr, idx, size)
 }
 CallFuncInstr.prototype.x86.opndCanBeImm = function (instr, idx, size) 
 { 
+    // The function pointer shouldn't be received as an immediate
+    if (idx === 0)
+        return false;
+
     return true; 
 }
 CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)

@@ -1290,22 +1290,15 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: undef arg not passed???
+
+    // TODO: revise allocOpnds, make it more readable, more safe
+
+
+
 
 
 
     // TODO: ctx reg same as arg count reg???
-
-
-
-
-
-
-
-    // TODO:
-    // test tachyon call conv 32/64
-    // Need to figure out caller/callee cleanup...
-    // Look at old backend code
 
 
 
@@ -1322,16 +1315,17 @@ tests.x86.irToAsm = function ()
 
 
 
-
-
     // TODO: call_apply
 
 
 
 
 
-    // TODO: arguments object handling
 
+
+    // TODO: arguments object handling
+    // Will need Tachyon code to test this
+    // Need to start using new backend to compile runtime
 
 
     

@@ -858,6 +858,11 @@ x86.allocOpnds = function (
     params
 )
 {
+    //
+    // TODO: eliminate MAX_REG_OPNDS? Reserve scratch regs first, try to meet
+    // constraints, etc... Can try to alloc a register and fail?
+    //
+
     // Maximum number of register operands
     const MAX_REG_OPNDS = params.backend.gpRegSet.length - 2;
 
@@ -954,25 +959,42 @@ x86.allocOpnds = function (
         // Get the register allocation parameters for this operand
         var opndMustBeReg = instrCfg.opndMustBeReg(instr, opndIdx, params);
 
-        // If the operand is a link-time value, it must be in a register
-        if (x86.isLinkValue(use) === true && opndMustBeReg === false)
-            opndMustBeReg = true;
-
-        // Test if this operand can be in memory
-        if (opndMustBeReg === false && numMemOpnds >= maxMemOpnds)
-            opndMustBeReg = true;
-
-        // Test if this operand can be an immediate
-        var immSize = x86.getImmSize(use, params);
-        var opndCanBeImm = (immSize !== undefined);
-        if (opndCanBeImm === true)
+        // If the instruction doesn't specify that the operand has to be a register
+        if (opndMustBeReg === false)
         {
-            opndCanBeImm = instrCfg.opndCanBeImm(
-                instr, 
-                opndIdx, 
-                immSize, 
-                params
-            );
+            // Compute the immediate size for this operand
+            var immSize = x86.getImmSize(use, params);
+
+            // Test if this operand can be an immediate
+            var opndCanBeImm = (immSize !== undefined);
+            if (numImmOpnds >= maxImmOpnds)
+                opndCanBeImm = false;
+            if (opndCanBeImm === true)
+            {
+                opndCanBeImm = instrCfg.opndCanBeImm(
+                    instr, 
+                    opndIdx, 
+                    immSize, 
+                    params
+                );
+            }
+
+            // If the operand is a link-time value and it cannot be immediate,
+            // it must be in a register
+            if (x86.isLinkValue(use) === true && opndCanBeImm === false)
+                opndMustBeReg = true;
+
+            // If this operand cannot be an immediate and there are too many
+            // memory operands, this operand must be in a register
+            if (opndCanBeImm === false && numMemOpnds >= maxMemOpnds)
+                opndMustBeReg = true;
+        }
+
+        // If the operand must be in a register
+        if (opndMustBeReg !== false)
+        {
+            // The operand cannot be an immediate
+            var opndCanBeImm = false;
         }
 
         // Operand assigned to this value
@@ -987,8 +1009,10 @@ x86.allocOpnds = function (
         // Get the best current allocation for the value
         var bestAlloc = x86.getBestAlloc(allocMap, use);
 
-        print('best alloc: ' + bestAlloc);
-        print('opnd must be reg: ' + opndMustBeReg);
+        print('use: ' + use.getValName());
+        print('best alloc : ' + bestAlloc);
+        print('must be reg: ' + opndMustBeReg);
+        print('can be imm : ' + opndCanBeImm);
 
         // If this value is already in a register
         if (bestAlloc instanceof x86.Register && 
@@ -1017,8 +1041,17 @@ x86.allocOpnds = function (
                  numImmOpnds < maxImmOpnds &&
                  (destIsOpnd0 === false || opndIdx !== 0))
         {
-            // Use the immediate value for this operand
-            opnd = new x86.Immediate(use.getImmValue(params));
+            // If this is a link value
+            if (x86.isLinkValue(use) === true)
+            {
+                // Create a link value immediate
+                opnd = new x86.LinkValue(use, backend.regSizeBits);
+            }
+            else
+            {
+                // Use the immediate value for this operand
+                opnd = new x86.Immediate(use.getImmValue(params));
+            }
         }
 
         // If the dest is this operand and the use is 
@@ -1035,7 +1068,7 @@ x86.allocOpnds = function (
         if (opnd === undefined || destNeedsReg === true)
         {
             // If registers are still available
-            if (numRegOpnds < MAX_REG_OPNDS)
+            if (opndMustBeReg !== false || numRegOpnds < MAX_REG_OPNDS)
             {
                 // Allocate a register for the operand
                 opnd = x86.allocReg(
@@ -1051,6 +1084,8 @@ x86.allocOpnds = function (
             }
             else
             {
+                print('too many reg operands:' + numRegOpnds + ' (max: ' + MAX_REG_OPNDS + ')');
+
                 // Map the operand to a stack location
                 opnd = allocMap.spillValue(mapVal, instrLiveIn, asm);
             }

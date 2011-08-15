@@ -918,6 +918,21 @@ x86.moveValue = function (
         'invalid move dst: ' + dst
     );
 
+    // If this is a link-time value
+    if (x86.isLinkValue(src) === true)
+    {
+        assert (
+            dst instanceof x86.Register ||
+            (dst instanceof x86.MemLoc && 
+             dst.size === params.backend.regSizeBits),
+            'invalid destination for link value'
+        );
+
+        var linkValue = new x86.LinkValue(src, params.backend.regSizeBits);
+        asm.mov(dst, linkValue);
+        return;
+    }
+
     // If the source is a constant
     if (src instanceof ConstValue)
     {
@@ -929,19 +944,6 @@ x86.moveValue = function (
             asm.mov(dst, src.getImmValue(params));
             return;
         }
-    }
-
-    // If this is a link-time value
-    if (x86.isLinkValue(src) === true)
-    {
-        assert (
-            dst instanceof x86.Register,
-            'cannot move link value to memory'
-        );
-
-        var linkValue = new x86.LinkValue(src, params.backend.regSizeBits);
-        asm.mov(dst, linkValue);
-        return;
     }
 
     // If the source is an x86 operand
@@ -967,6 +969,10 @@ used as an immediate.
 */
 x86.getImmSize = function (value, params)
 {
+    // If this is a link-time value, it is register sized
+    if (x86.isLinkValue(value) === true)
+        return params.backend.regSizeBits;
+
     // If the value is not a constant, stop
     if ((value instanceof ConstValue) === false)
         return undefined;
