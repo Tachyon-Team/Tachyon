@@ -775,10 +775,9 @@ x86.allocReg = function (
         }
     }
 
-    assert (
-        bestReg !== undefined,
-        'could not allocate register'
-    );
+    // If the register allocation failed, return undefined
+    if (bestReg === undefined)
+        return undefined;
 
     // Free the register, if needed
     x86.saveReg(
@@ -858,14 +857,6 @@ x86.allocOpnds = function (
     params
 )
 {
-    //
-    // TODO: eliminate MAX_REG_OPNDS? Reserve scratch regs first, try to meet
-    // constraints, etc... Can try to alloc a register and fail?
-    //
-
-    // Maximum number of register operands
-    const MAX_REG_OPNDS = params.backend.gpRegSet.length - 2;
-
     // Get the instruction configuration
     var instrCfg = instr.x86;
 
@@ -887,21 +878,15 @@ x86.allocOpnds = function (
             continue;
         }
 
-        // Get the current allocations for the operand
-        var allocs = allocMap.getAllocs(use);
+        // Get the best current allocation for the value
+        var alloc = x86.getBestAlloc(allocMap, use);
 
-        // For each allocation
-        for (var l = 0; l < allocs.length; ++l)
-        {
-            var alloc = allocs[l];
-
-            // If this is not a register, skip it
-            if ((alloc instanceof x86.Register) === false)
-                continue;
-
+        // If the best allocation is a register, reserve it
+        if (alloc instanceof x86.Register)
+        {        
             // Add the register to the exclude set
             excludeMap[alloc.regNo] = true;
-            break;
+            continue;
         }
     }
 
@@ -930,17 +915,40 @@ x86.allocOpnds = function (
             excludeMap[excludeRegs[k].regNo] = true;
     }
 
-    // List of moves to precede the instruction
-    var preMoves = [];
+    // Get the number of scratch registers for this instruction
+    var numScratchRegs = instrCfg.numScratchRegs(instr, params); 
+
+    // List of scratch registers
+    var scratchRegs = [];
+
+    // For each scratch register to allocate
+    for (var k = 0; k < numScratchRegs; ++k)
+    {
+        // Allocate the scratch register
+        var reg = x86.allocReg(
+            allocMap,
+            undefined,
+            undefined,
+            instrLiveIn,
+            excludeMap,
+            asm,
+            params
+        );
+
+        log.debug('allocated scratch: ' + reg);
+
+        // Add the register to the scratch register list
+        scratchRegs.push(reg);
+
+        // Add the register to the exclude set
+        excludeMap[reg.regNo] = true;
+    }
 
     // Get the max number of memory operands for the instruction
     var maxMemOpnds = instrCfg.maxMemOpnds(instr, params);
 
     // Get the max number of immediate operands for the instruction
     var maxImmOpnds = instrCfg.maxImmOpnds(instr, params);
-
-    // Number of register allocated operands
-    var numRegOpnds = 0;
 
     // Number of memory allocated operands
     var numMemOpnds = 0;
@@ -1015,8 +1023,7 @@ x86.allocOpnds = function (
         print('can be imm : ' + opndCanBeImm);
 
         // If this value is already in a register
-        if (bestAlloc instanceof x86.Register && 
-            numRegOpnds < MAX_REG_OPNDS)
+        if (bestAlloc instanceof x86.Register)
         {
             // If this is a valid register for this operand
             if (!(opndMustBeReg instanceof x86.Register && 
@@ -1027,7 +1034,6 @@ x86.allocOpnds = function (
             }
         }
 
-        // FIXME: make this more optimal
         // If this value can be in memory and is already stack allocated
         else if (typeof bestAlloc === 'number' && opndMustBeReg === false)
         {
@@ -1056,7 +1062,7 @@ x86.allocOpnds = function (
 
         // If the dest is this operand and the use is 
         // still live after this instruction
-        var destNeedsReg = destIsOpnd0 && opndIdx === 0 && instrLiveOut.hasItem(use);
+        var destNeedsOpnd = destIsOpnd0 && opndIdx === 0 && instrLiveOut.hasItem(use);
 
         // Value for which this operand is being allocated
         var mapVal = (destIsOpnd0 && opndIdx === 0)? instr:use;
@@ -1065,32 +1071,26 @@ x86.allocOpnds = function (
 
         // If no operand was assigned or the dest needs
         // its own register
-        if (opnd === undefined || destNeedsReg === true)
+        if (opnd === undefined || destNeedsOpnd === true)
         {
-            // If registers are still available
-            if (opndMustBeReg !== false || numRegOpnds < MAX_REG_OPNDS)
-            {
-                // Allocate a register for the operand
-                opnd = x86.allocReg(
-                    allocMap,
-                    mapVal,
-                    (opndMustBeReg instanceof x86.Register)?
-                    opndMustBeReg:undefined,
-                    instrLiveIn,
-                    excludeMap,
-                    asm,
-                    params
-                );
-            }
-            else
-            {
-                print('too many reg operands:' + numRegOpnds + ' (max: ' + MAX_REG_OPNDS + ')');
+            // Attempt to allocate a register for the operand
+            opnd = x86.allocReg(
+                allocMap,
+                mapVal,
+                (opndMustBeReg instanceof x86.Register)?
+                opndMustBeReg:undefined,
+                instrLiveIn,
+                excludeMap,
+                asm,
+                params
+            );
 
+            // If the register allocation failed
+            if (opnd === undefined)
+            {
                 // Map the operand to a stack location
                 opnd = allocMap.spillValue(mapVal, instrLiveIn, asm);
             }
-
-            //print('use: ' + use);
 
             // Move the value into the operand
             x86.moveValue(
@@ -1113,13 +1113,16 @@ x86.allocOpnds = function (
 
             // Get the sub-register appropriate to the value's type
             var opnd = opnd.getSubOpnd(mapVal.type.getSizeBits(params));
-
-            ++numRegOpnds;
         }
 
         // If the operand is a stack location
         else if (typeof opnd === 'number')
         {
+            assert (
+                opndMustBeReg === false,
+                'allocated mem, but operand must be reg'
+            );
+
             // Map the value to the stack location
             allocMap.makeAlloc(mapVal, opnd);
 
@@ -1129,46 +1132,22 @@ x86.allocOpnds = function (
         // If the operand is an immediate
         else if (opnd instanceof x86.Immediate)
         {
+            assert (
+                opndCanBeImm === true,
+                'operand cannot be imm'
+            );
+
             ++numImmOpnds;
         }
 
         // If the operand is not valid
         else
         {
-            error('invalid opnd: ' + opnd);
+            error('invalid operand: ' + opnd);
         }
 
         // Add the operand to the list
         opnds.push(opnd);
-    }
-
-    // Get the number of scratch registers for this instruction
-    var numScratchRegs = instrCfg.numScratchRegs(instr, params); 
-
-    // List of scratch registers
-    var scratchRegs = [];
-
-    // For each scratch register to allocate
-    for (var k = 0; k < numScratchRegs; ++k)
-    {
-        // Allocate the scratch register
-        var reg = x86.allocReg(
-            allocMap,
-            undefined,
-            undefined,
-            instrLiveIn,
-            excludeMap,
-            asm,
-            params
-        );
-
-        log.debug('allocated scratch: ' + reg);
-
-        // Add the register to the scratch register list
-        scratchRegs.push(reg);
-
-        // Add the register to the exclude set
-        excludeMap[reg.regNo] = true;
     }
 
     // If this instruction writes/excludes registers
@@ -1258,6 +1237,11 @@ x86.allocOpnds = function (
             excludeMap,
             asm,
             params
+        );
+
+        assert (
+            dest !== undefined,
+            'failed to allocate dest register'
         );
     }
 

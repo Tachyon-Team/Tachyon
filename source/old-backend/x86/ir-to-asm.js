@@ -2331,7 +2331,7 @@ CallFFIInstr.prototype.genCode = function (tltor, opnds)
 
     const cfct = this.uses[0];
 
-    const fctAddr = cfct.funcPtr;
+    const fctAddr = asm.address(cfct.funcPtr);
 
     const callDest  = tltor.asm.linked(
                     cfct.funcName, 

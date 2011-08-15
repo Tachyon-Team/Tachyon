@@ -1010,6 +1010,7 @@ x86.isLinkValue = function (value)
 {
     return (
         value instanceof IRFunction ||
+        value instanceof CFunction ||
         (value instanceof ConstValue && value.isString())
     );
 }

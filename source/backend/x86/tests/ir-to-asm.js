@@ -1287,18 +1287,197 @@ tests.x86.irToAsm = function ()
         [9, 4, 3]
     );
 
+    // C FFI function call
+    test('                                              \
+        function test(ctx, a1, a2)                      \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            return iir.call_ffi(ffi_sum2Ints, a1, a2);  \
+        }                                               \
+        ',
+        18,
+        [3, 15]
+    );
+
+    // Tachyon function calling C function
+    test('                                              \
+        function test(ctx, a1, a2, a3)                  \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:arg a3 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            return callee(a1, a2, a3);                  \
+        }                                               \
+        function callee(a1, a2, a3)                     \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:arg a3 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            var s = iir.call_ffi(ffi_sum2Ints, a1, a2); \
+            return s * a3;                              \
+        }                                               \
+        ',
+        12,
+        [1, 2, 4]
+    );
+
+    // Spills in caller, callee (Tachyon function)
+    test('                                              \
+        function test(ctx, v0, v1, v5, v8)              \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg v0 pint";                      \
+            "tachyon:arg v1 pint";                      \
+            "tachyon:arg v5 pint";                      \
+            "tachyon:arg v8 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            var x01 = v1 + pint(1);                     \
+            var x02 = v1 + pint(2);                     \
+            var x03 = v1 + pint(3);                     \
+            var x04 = v1 + pint(4);                     \
+            var x05 = v1 + pint(5);                     \
+            var x06 = v1 + pint(6);                     \
+            var x07 = v1 + pint(7);                     \
+            var x08 = v1 + pint(8);                     \
+            var x09 = v1 + pint(9);                     \
+            var x10 = v1 + pint(10);                    \
+            var x11 = v1 + pint(11);                    \
+            var x12 = v1 + pint(12);                    \
+            var x13 = v1 + pint(13);                    \
+            var x14 = v1 + pint(14);                    \
+            var x15 = v1 + pint(15);                    \
+            var x16 = v1 + pint(16);                    \
+            var x17 = v1 + pint(17);                    \
+                                                        \
+            var s = pint(0);                            \
+            s += x01;                                   \
+            s += x02;                                   \
+            s += x03;                                   \
+            s += x04;                                   \
+            s += x05;                                   \
+            s += x06;                                   \
+            s += x07;                                   \
+            s += x08;                                   \
+            s += x09;                                   \
+            s += x10;                                   \
+            s += x11;                                   \
+            s += x12;                                   \
+            s += x13;                                   \
+            s += x14;                                   \
+            s += x15;                                   \
+            s += x16;                                   \
+            s += x17;                                   \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            var r = callee(v0, v1, v5, v8);             \
+                                                        \
+            /* s = 175, r = 238 */                      \
+            return s + r;                               \
+        }                                               \
+        function callee(v0, v1, v5, v8)                 \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:arg v0 pint";                      \
+            "tachyon:arg v1 pint";                      \
+            "tachyon:arg v5 pint";                      \
+            "tachyon:arg v8 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            var x01 = v5 + pint(1);                     \
+            var x02 = v5 + pint(2);                     \
+            var x03 = v5 + pint(3);                     \
+            var x04 = v5 + pint(4);                     \
+            var x05 = v5 + pint(5);                     \
+            var x06 = v5 + pint(6);                     \
+            var x07 = v5 + pint(7);                     \
+            var x08 = v5 + pint(8);                     \
+            var x09 = v5 + pint(9);                     \
+            var x10 = v5 + pint(10);                    \
+            var x11 = v5 + pint(11);                    \
+            var x12 = v5 + pint(12);                    \
+            var x13 = v5 + pint(13);                    \
+            var x14 = v5 + pint(14);                    \
+            var x15 = v5 + pint(15);                    \
+            var x16 = v5 + pint(16);                    \
+            var x17 = v5 + pint(17);                    \
+                                                        \
+            var s = pint(0);                            \
+            s += x01;                                   \
+            s += x02;                                   \
+            s += x03;                                   \
+            s += x04;                                   \
+            s += x05;                                   \
+            s += x06;                                   \
+            s += x07;                                   \
+            s += x08;                                   \
+            s += x09;                                   \
+            s += x10;                                   \
+            s += x11;                                   \
+            s += x12;                                   \
+            s += x13;                                   \
+            s += x14;                                   \
+            s += x15;                                   \
+            s += x16;                                   \
+            s += x17;                                   \
+                                                        \
+            return s;                                   \
+        }                                               \
+        ',
+        408,
+        [0, 1, 5, 8]
+    );
+
+    // JavaScript Fibonacci test (Tachyon function)
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            var n = boxInt(n);                          \
+                                                        \
+            iir.set_ctx(ctx);                           \
+            var r = fib(n);                             \
+                                                        \
+            return unboxInt(r);                         \
+        }                                               \
+        function fib(n)                                 \
+        {                                               \
+            "tachyon:static";                           \
+                                                        \
+            if (n < 2)                                  \
+                return n;                               \
+                                                        \
+            return fib(n-1) + fib(n-2);                 \
+        }                                               \
+        ',
+        55,
+        [10]
+    );
 
 
 
 
-    // TODO: revise allocOpnds, make it more readable, more safe
 
 
 
-
-
-
-    // TODO: ctx reg same as arg count reg???
 
 
 
@@ -1306,31 +1485,10 @@ tests.x86.irToAsm = function ()
 
 
     // TODO:
-    // test calling C funcs?
-    // Need linking of C functions
-
-
-
-
-
-
-
-    // TODO: call_apply
-
-
-
-
-
-
-
-    // TODO: arguments object handling
-    // Will need Tachyon code to test this
-    // Need to start using new backend to compile runtime
-
-
-    
-
-
+    // arguments object
+    // CallApplyInstr    
+    // Need to compile real Tachyon code to test these.
+    //
 
 
 

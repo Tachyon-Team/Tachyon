@@ -453,6 +453,14 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Compute the actual number of arguments
     var numArgs = opnds.length - 1;
 
+    // Compute the number of non-hidden arguments
+    var numActualArgs = (this.calleeConv === 'tachyon')? (numArgs - 2):numArgs;
+
+    assert (
+        numActualArgs < 256,
+        'too many arguments in function call: ' + numActualArgs
+    );
+
     // Compute the number of register arguments
     var numRegArgs = Math.min(numArgs, calleeConv.argRegs.length);
 
@@ -568,7 +576,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
 
     // If there is an argument count register, set its value
     if (calleeConv.argCountReg !== null)
-        asm.mov(calleeConv.argCountReg, numArgs);
+        asm.mov(calleeConv.argCountReg, numActualArgs);
 
     // Call the function with the given address
     asm.call(funcPtr);
@@ -577,7 +585,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     if (alignNeeded === true)
     {
         // Restore the stack pointer
-        asm.mov(stackSpLoc, tmpSp);
+        asm.mov(spReg, stackSpLoc);
     }
     else
     {

@@ -93,6 +93,20 @@ function linkCode(codeBlock, backend, params)
             codeBlock.writeBytes(entryAddr);
         }
         
+        // If this is a C function reference
+        else if (value instanceof CFunction)
+        {
+            log.debug('*** linking C func: ' + value.getValName());
+
+            assert (
+                value.funcPtr instanceof Array,
+                'invalid function pointer'
+            );
+
+            // Write the function address
+            codeBlock.writeBytes(value.funcPtr);
+        }
+
         // If this is a string value
         else if (value instanceof ConstValue && value.isString())
         {

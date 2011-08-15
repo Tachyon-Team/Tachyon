@@ -432,7 +432,7 @@ function CFunction(
     Address of the C function
     @field
     */
-    this.funcPtr = asm.address(getFuncAddr(funcName));
+    this.funcPtr = getFuncAddr(funcName);
 }
 CFunction.prototype = new IRValue();
 

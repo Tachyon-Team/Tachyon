@@ -479,8 +479,7 @@ Link-time value operand
 x86.LinkValue = function (value, ptrSize)
 {
     assert (
-        value instanceof ConstValue ||
-        value instanceof IRFunction,
+        x86.isLinkValue(value) === true,
         'invalid link value'
     );
 
