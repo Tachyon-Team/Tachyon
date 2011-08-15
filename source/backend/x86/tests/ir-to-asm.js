@@ -1208,12 +1208,38 @@ tests.x86.irToAsm = function ()
 
 
 
+    // Multiple argument test (C function)
+    test('                                              \
+        function test(ctx, a1, a2, a3)                  \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:arg a3 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            return iir.call_ffi(callee, a1, a2, a3);    \
+        }                                               \
+        function callee(a1, a2, a3)                     \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:static";                           \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:arg a2 pint";                      \
+            "tachyon:arg a3 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            return (a1 - a2) * a3;                      \
+        }                                               \
+        ',
+        15,
+        [9, 4, 3]
+    );
 
 
 
 
-    // TODO: two argument test
-    // Need to handle RTL/LTR argument order
 
 
 
@@ -1221,12 +1247,15 @@ tests.x86.irToAsm = function ()
 
 
 
-
-
-
-    // TODO: linking
-    // test fib
+    // TODO:
     // test calling C funcs?
+    // Need linking of C functions
+
+
+
+
+
+    // TODO:
     // test tachyon call conv 32/64
 
 
@@ -1243,12 +1272,6 @@ tests.x86.irToAsm = function ()
     // TODO: arguments object handling
 
 
-
-
-
-    // TODO:
-    // get rid of xchg in CFG edge resolution, spill temp if necessary
-    // xchg reg, mem apparently has implicit lock prefix, bad***
 
     
 

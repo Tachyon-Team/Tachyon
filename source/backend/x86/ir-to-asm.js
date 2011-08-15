@@ -90,8 +90,13 @@ SubInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 MulInstr.prototype.x86 = Object.create(ArithInstr.prototype.x86);
 MulInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
+    // mul uses rax as dest
     if (instr.type.isUnsigned() === true && idx === 0)
         return params.backend.x86_64? x86.regs.rax:x86.regs.eax;
+
+    // imul cannot take a memory operand as dest
+    if (idx === 0)
+        return true;
 
     return false;
 }
@@ -391,6 +396,8 @@ CallFuncInstr.prototype.x86.destMustBeReg = function (instr, params)
 }
 CallFuncInstr.prototype.x86.numScratchRegs = function (instr, params)
 {
+    // TODO: if arg count register present, use that as temporary?
+
     // Need 1 scratch register
     return 1;
 }
@@ -425,22 +432,28 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Add room on the stack for the arguments
     allocMap.pushValues(numStackArgs, asm);
 
+
+
+
+
+
+
     //
     // TODO: stack pointer alignment
+    // Look at old backend code for semantics
     //
 
-    // For each argument
-    for (var argIdx = 0; argIdx < numArgs; ++argIdx)
+
+
+
+
+    /**
+    Copy an argument to its stack location
+    */
+    function copyStackArg(argIdx)
     {
         var opndIdx = opnds.length - numArgs + argIdx;
         var argOpnd = opnds[opndIdx];
-
-        // If this argument is to be passed in a register,
-        // it should already be mapped there, nothing to be done
-        if (argIdx < numRegArgs)
-            continue;
-
-        // TODO: left to right or right to left!
 
         // Compute the index of the stack argument
         var stackArgIdx = argIdx - numRegArgs;
@@ -469,9 +482,32 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         }
     }
 
+    // Copy the stack arguments
+    if (callConv.argsOrder === 'LTR')
+    {
+        // For each function argument, in left-to-right order
+        for (var i = numRegArgs; i < numArgs; ++i)
+            copyStackArg(i);
+    }
+    else
+    {
+        // For each function argument, in left-to-right order
+        for (var i = numArgs - 1; i >= numRegArgs; --i)
+            copyStackArg(i);
+    }
+
+
+
+
     //
     // TODO: set the argument count register, if any
     //
+
+
+
+
+
+
 
     // Call the function with the given address
     asm.call(funcPtr);
