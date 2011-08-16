@@ -161,24 +161,30 @@ x86.Assembler.prototype.addInstr = function (instr)
 /**
 Add an instruction after another instruction
 */
-x86.Assembler.prototype.addInstrAfter = function (instr, after)
+x86.Assembler.prototype.addInstrAfter = function (instr, prev)
 {
-    // TODO: addInstrAfter
+    assert (
+        instr instanceof x86.Instruction,
+        'invalid instruction'
+    );
 
+    assert (
+        prev instanceof x86.Instruction,
+        'invalid previous instruction'
+    );
 
+    var next = prev.next;
 
+    instr.prev = prev;
+    instr.next = next;
 
+    prev.next = instr;
 
+    if (next !== null)
+        next.prev = instr;
+    else
+        this.lastInstr = instr;
 }
-
-
-
-
-// TODO: replInstr
-
-
-
-
 
 /**
 Remove an instruction from the list
@@ -194,22 +200,23 @@ x86.Assembler.prototype.remInstr = function (instr)
     var next = instr.next;
 
     if (prev !== null)
-    {
         prev.next = next;
-    }
     else
-    {
         this.firstInstr = next;
-    }
 
     if (next !== null)
-    {
         next.prev = prev;
-    }
     else
-    {
         this.lastInstr = prev;
-    }
+}
+
+/**
+Add an instruction after another instruction
+*/
+x86.Assembler.prototype.replInstr = function (oldInstr, newInstr)
+{
+    this.addInstrAfter(newInstr, oldInstr);
+    this.remInstr(oldInstr);
 }
 
 /**
@@ -240,6 +247,11 @@ x86.Assembler.prototype.assemble = function ()
         // For each instruction
         for (var instr = this.firstInstr; instr !== null; instr = instr.next)
         {
+            assert (
+                instr instanceof x86.Instruction,
+                'invalid instruction: ' + instr
+            );
+
             // If this instruction is a label
             if (instr instanceof x86.Label)
             {

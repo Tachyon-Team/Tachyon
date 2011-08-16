@@ -1478,6 +1478,10 @@ tests.x86.irToAsm = function ()
 
 
 
+    // TODO: stub to handle argument normalization
+    // Implement into separate code block/function?
+    // Can have special linkage for asm handlers
+
 
 
 

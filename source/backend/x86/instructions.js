@@ -1095,6 +1095,11 @@ Anonymous function to create instruction classes from the instruction table.
                 ' (' + opnds.length + ')'
             );
 
+            assert (
+                typeof x86_64 === 'boolean',
+                'invalid x86-64 flag'
+            );
+
             // Flag to indicate the REX prefix is needed
             var rexNeeded = false;
 

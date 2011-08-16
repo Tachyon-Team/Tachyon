@@ -56,14 +56,6 @@ var x86 = x86 || {};
 /*
 TODO: peephole optimizer
 
-Assembler.addPattern(patternFunc?) ?
-Need this to be somewhat more optimized...? pattern should have a
-start instruction? Map patterns based on start instructions?
-
-Can always start simple, build on
-Assembler.optimize() function... Hardcoded patterns to start with.
-peephole.js? optimizer.js?
-
 label, jump elimination
 
 neg
@@ -100,13 +92,15 @@ x86.optimize = function (asm, maxPasses)
     // Get a reference to the instructions namespace
     const instrs = x86.instrs;
 
+    // Get the x86_64 flag
+    const x86_64 = asm.x86_64;
+
     /**
     Remove an instruction
     */
     function remInstr(instr)
     {
         asm.remInstr(instr);
-
         changed = true;
     }
 
@@ -115,9 +109,7 @@ x86.optimize = function (asm, maxPasses)
     */
     function replInstr(oldInstr, newInstr)
     {
-        // TODO
-
-
+        asm.replInstr(oldInstr, newInstr);
         changed = true;
     }
 
@@ -142,8 +134,11 @@ x86.optimize = function (asm, maxPasses)
         // For each instruction
         for (var instr = asm.getFirstInstr(); instr !== null; instr = instr.next)
         {
-            // TODO
-
+            //
+            // TODO: ****
+            // convert instr constructors to use arguments?
+            // simplify assembler helper functions?
+            //
 
             /*
             TODO:
@@ -152,25 +147,6 @@ x86.optimize = function (asm, maxPasses)
             je entry_cmp_true (8);                  74 05
             jmp entry_if_false_1 (16);              E9 12 02 00 00
             entry_cmp_true:                         
-            */
-
-
-
-            // TODO: remove instrs after jump...
-
-
-
-            /*
-            TODO: fix code gen
-
-            cmp ebx, 8;                             83 FB 08
-            jl cmp_true_if_true (8);                7C 02
-            jmp cmp_true_if_false (8);              EB 02
-            cmp_true_if_true:                       
-            jmp if_true (8);                        EB 02
-            cmp_true_if_false:                      
-            jmp if_false (8);                       EB 08
-            if_true:                                
             */
 
             // If this is a jump
@@ -187,9 +163,9 @@ x86.optimize = function (asm, maxPasses)
                     var j2Label = j2.opnds[0].label;
 
                     // Jump directly to the second label
-                    instr.opnds[0] = new x86.LabelRef(j2Label);
-
-                    changed = true;
+                    var ctor = instrs[instr.mnem];
+                    var newJmp = new ctor([new x86.LabelRef(j2Label)], x86_64);
+                    replInstr(instr, newJmp);
                 }
 
                 // If this is a jump to the next instruction
@@ -198,13 +174,17 @@ x86.optimize = function (asm, maxPasses)
                     // Remove the jump
                     remInstr(instr);
                 }
+
+                // If this is an unconditional jump and the next
+                // instruction is not a label
+                else if (instr instanceof instrs.jmp &&
+                         instr.next !== null &&
+                         (instr.next instanceof x86.Label) === false)
+                {
+                    // Remove the instruction after the jump
+                    remInstr(instr.next);
+                }
             }
-
-
-
-
-
-
 
             // If this is a label
             else if (instr instanceof x86.Label)
