@@ -458,10 +458,11 @@ tests.x86.irToAsm = function ()
 
     // Comparison test
     test('                                  \
-        function test(ctx, v1, v2)          \
+        function test(ctx, v0, v1, v2)      \
         {                                   \
             "tachyon:cproxy";               \
             "tachyon:arg ctx rptr";         \
+            "tachyon:arg v0 pint";          \
             "tachyon:arg v1 pint";          \
             "tachyon:arg v2 pint";          \
             "tachyon:ret pint";             \
@@ -472,6 +473,20 @@ tests.x86.irToAsm = function ()
                 sum += pint(1);             \
             if (v2 === pint(0))             \
                 sum += pint(555);           \
+            if (v0 <= pint(0))              \
+                sum += pint(1);             \
+            if (v0 >= pint(0))              \
+                sum += pint(1);             \
+            if (v1 < pint(0))               \
+                sum += pint(1);             \
+            if (v1 <= pint(0))              \
+                sum += pint(1);             \
+            if (v1 > pint(0))               \
+                sum += pint(555);           \
+            if (v2 < pint(0))               \
+                sum += pint(555);           \
+            if (v2 > pint(0))               \
+                sum += pint(1);             \
             if (v1 < pint(1))               \
                 sum += pint(1);             \
             if (v1 <= v2)                   \
@@ -484,10 +499,10 @@ tests.x86.irToAsm = function ()
             return sum;                     \
         }                                   \
         ',
-        4,
-        [-3, 7]
+        9,
+        [0, -3, 7]
     );
-    
+
     // Simple loop, counter incrementation
     test('                                      \
         function test(ctx, v1, v2)              \
@@ -1442,6 +1457,8 @@ tests.x86.irToAsm = function ()
         [0, 1, 5, 8]
     );
 
+    //var startTime = (new Date()).getTime();
+
     // JavaScript Fibonacci test (Tachyon function)
     test('                                              \
         function test(ctx, n)                           \
@@ -1468,10 +1485,14 @@ tests.x86.irToAsm = function ()
             return fib(n-1) + fib(n-2);                 \
         }                                               \
         ',
+        //267914296,
+        //[42]
         55,
         [10]
     );
 
+    //var endTime = (new Date()).getTime();
+    //print('fib time: ' + ((endTime - startTime)/1000));
 
 
 
@@ -1480,7 +1501,7 @@ tests.x86.irToAsm = function ()
 
     // TODO: stub to handle argument normalization
     // Implement into separate code block/function?
-    // Can have special linkage for asm handlers
+    // Can have special linkage for asm backend handlers
 
 
 

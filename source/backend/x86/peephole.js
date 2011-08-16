@@ -56,8 +56,6 @@ var x86 = x86 || {};
 /*
 TODO: peephole optimizer
 
-label, jump elimination
-
 neg
 
 lea opts for mul
@@ -66,12 +64,10 @@ lea opts for mul
 lea for 3-register addition
   lea eax, [ebx+ecx]
 
-cmp 0 to test opt
-- replace test with and?
-
 mov r, 0 to xor r,r
 
 move sequence reduction
+- see phi block merges
 
 inc/dec
 - smaller, but may not be faster!
@@ -125,9 +121,11 @@ x86.optimize = function (asm, maxPasses)
     // TODO: complete this table
     // Table of conditional jump instructions and their logical inverses
     const jumpInvs = {
-        'jge': 'jl',
         'je': 'jne',
+        'jg': 'jle',
+        'jge': 'jl',
         'jl': 'jge',
+        'jle': 'jg',
         'jne': 'je'
     }
 
@@ -190,15 +188,6 @@ x86.optimize = function (asm, maxPasses)
             // convert instr constructors to use arguments?
             // simplify assembler helper functions?
             //
-
-            /*
-            TODO:
-            Jump condition inversion:
-
-            je entry_cmp_true (8);                  74 05
-            jmp entry_if_false_1 (16);              E9 12 02 00 00
-            entry_cmp_true:                         
-            */
 
             // If this is a jump
             if (isDirectJump(instr) === true ||
@@ -285,6 +274,17 @@ x86.optimize = function (asm, maxPasses)
                     // Remove the instruction
                     remInstr(instr);
                 }
+            }
+
+            // If this is a comparison between a register and 0
+            else if (instr instanceof instrs.cmp &&
+                     instr.opnds[0] instanceof x86.Register &&
+                     instr.opnds[1] instanceof x86.Immediate &&
+                     instr.opnds[1].value === 0)
+            {
+                var reg = instr.opnds[0];
+                var testInstr = new instrs.test([reg, reg], x86_64);
+                replInstr(instr, testInstr);
             }
 
             // If this is a return with zero bytes popped

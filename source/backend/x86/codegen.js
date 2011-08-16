@@ -61,6 +61,20 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Assembler object to create instructions into
     var asm = new x86.Assembler(backend.x86_64);
 
+    // Get the calling convention for this function
+    var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
+
+    // Export a label for the function's fast entry point
+    asm.addInstr(new x86.Label('ENTRY_FAST', true));
+
+    // TODO
+    // If callee cleanup, want stack frame normalization stub.
+    if (callConv.cleanup === 'CALLEE')
+    {
+        // TODO
+
+    }
+
     // Export a label for the function's default entry point
     asm.addInstr(new x86.Label('ENTRY_DEFAULT', true));
 
@@ -82,9 +96,6 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
     // Map the entry block to its allocation map
     allocMaps[entryBlock.blockId] = entryMap;
-
-    // Get the calling convention for this function
-    var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
 
     // Get the number of function arguments
     var numArgs = irFunc.argVars.length + (irFunc.cProxy? 0:2);
@@ -123,12 +134,6 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             params
         );
     }
-
-    //
-    // TODO
-    // Callee pops stack frame & args... Ideally want stack frame
-    // normalization stub.
-    //
 
     // List of block labels
     var blockLabels = [];
