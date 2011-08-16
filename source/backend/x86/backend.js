@@ -158,6 +158,17 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Produce assembler for the function
     var assembler = x86.genCode(irFunc, blockOrder, liveness, this, params);
 
+    // Run the peephole optimizer
+    x86.optimize(assembler);
+
+    if (config.verbosity >= log.DEBUG)
+    {
+        log.debug('');
+        log.debug('assembly:')
+        log.debug(assembler.toString(true));
+        log.debug('');
+    }
+
     // Assemble the code into an executable code block
     var codeBlock = assembler.assemble();
 

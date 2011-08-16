@@ -365,14 +365,6 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         }
     }
 
-    if (config.verbosity >= log.DEBUG)
-    {
-        log.debug('');
-        log.debug('assembly:')
-        log.debug(asm.toString(true));
-        log.debug('');
-    }
-
     // Return the assembler object
     return asm;
 }

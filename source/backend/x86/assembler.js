@@ -122,6 +122,14 @@ x86.Assembler.prototype.toString = function (printEnc)
 }
 
 /**
+Get the first instruction in the list
+*/
+x86.Assembler.prototype.getFirstInstr = function ()
+{
+    return this.firstInstr;
+}
+
+/**
 Add an instruction at the end of the block
 */
 x86.Assembler.prototype.addInstr = function (instr)
@@ -147,6 +155,60 @@ x86.Assembler.prototype.addInstr = function (instr)
         instr.next = null;
 
         this.lastInstr = instr;
+    }
+}
+
+/**
+Add an instruction after another instruction
+*/
+x86.Assembler.prototype.addInstrAfter = function (instr, after)
+{
+    // TODO: addInstrAfter
+
+
+
+
+
+}
+
+
+
+
+// TODO: replInstr
+
+
+
+
+
+/**
+Remove an instruction from the list
+*/
+x86.Assembler.prototype.remInstr = function (instr)
+{
+    assert (
+        instr instanceof x86.Instruction,
+        'invalid instruction'
+    );
+
+    var prev = instr.prev;
+    var next = instr.next;
+
+    if (prev !== null)
+    {
+        prev.next = next;
+    }
+    else
+    {
+        this.firstInstr = next;
+    }
+
+    if (next !== null)
+    {
+        next.prev = prev;
+    }
+    else
+    {
+        this.lastInstr = prev;
     }
 }
 
@@ -269,32 +331,6 @@ x86.Assembler.prototype.assemble = function ()
 
     // Return the code block we assembled into
     return codeBlock;
-};
-
-/**
-Apply peephole optimizations on assembly code
-*/
-x86.Assembler.prototype.optimize = function (maxPasses)
-{
-    // Until no change occurred
-    for (var pass = 1; (maxPasses === undefined || pass <= maxPasses); ++pass)
-    {
-        // Flag to indicate a change occurred
-        var changed = false;
-
-        // For each instruction
-        for (var instr = this.firstInstr; instr !== null; instr = instr.next)
-        {
-            // TODO
-
-
-
-        }
-
-        // If no changes occurred, stop
-        if (changed === false)
-            break;
-    }
 };
 
 /**

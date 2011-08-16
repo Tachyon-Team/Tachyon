@@ -596,6 +596,16 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
             asm.add(spReg, totalSpace);
         }
     }
+
+    // If the call has a continuation label
+    if (instr.targets[0] !== undefined)
+    {
+        // Jump to the continuation label
+        var thisBlock = instr.parentBlock;
+        var contBlock = instr.targets[0];
+        var contLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:contBlock});
+        asm.jmp(contLabel);
+    }
 };
 
 // Constructor call instruction, same implementation as regular calls
