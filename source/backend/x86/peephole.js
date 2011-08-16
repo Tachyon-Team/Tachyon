@@ -105,12 +105,63 @@ x86.optimize = function (asm, maxPasses)
     }
 
     /**
+    Add an instruction after another one
+    */
+    function addAfter(newInstr, prev)
+    {
+        asm.addInstrAfter(newInstr, prev);
+        changed = true;
+    }
+
+    /**
     Replace an instruction
     */
     function replInstr(oldInstr, newInstr)
     {
         asm.replInstr(oldInstr, newInstr);
         changed = true;
+    }
+
+    // TODO: complete this table
+    // Table of conditional jump instructions and their logical inverses
+    const jumpInvs = {
+        'jge': 'jl',
+        'je': 'jne',
+        'jl': 'jge',
+        'jne': 'je'
+    }
+
+    /**
+    Test if an instruction is an unconditional jump
+    */
+    function isDirectJump(instr)
+    {
+        return instr instanceof instrs.jmp;
+    }
+
+    /**
+    Test if an instruction is a conditional jump
+    */
+    function isCondJump(instr)
+    {
+        return instr.mnem in jumpInvs;
+    }
+
+    /**
+    Get the name for the logical inverse of a conditional jump instruction
+    */
+    function invCondJump(instr)
+    {
+        var invMnem = jumpInvs[instr.mnem];
+        return instrs[invMnem];
+    }
+
+    /**
+    Get the label for a jump
+    */
+    function getJumpLabel(instr)
+    {
+        return instr.opnds[0].label;
     }
 
     // Until no change occurred
@@ -150,17 +201,41 @@ x86.optimize = function (asm, maxPasses)
             */
 
             // If this is a jump
-            if (instr instanceof instrs.jmp ||
-                instr instanceof instrs.je ||
-                instr instanceof instrs.jl)
+            if (isDirectJump(instr) === true ||
+                isCondJump(instr) === true)
             {
-                var label = instr.opnds[0].label;
+                var label = getJumpLabel(instr);
+
+                // If this is a sequence of instructions of the form:
+                // jcc labelT
+                // jmp labelF
+                // labelT:
+                // ...
+                //
+                // Replace it by:
+                // jnc labelF:
+                // labelT:
+                // ..
+                if (isCondJump(instr) === true &&
+                    isDirectJump(instr.next) === true &&
+                    label === instr.next.next)
+                {
+                    // Create the inverse logical jump
+                    var invJmpCtor = invCondJump(instr);
+                    var labelF = getJumpLabel(instr.next);
+                    var newJmp = new invJmpCtor([new x86.LabelRef(labelF)], x86_64);               
+
+                    // Remove the unconditional jump
+                    remInstr(instr.next);
+
+                    // Replace the conditional jump by its inverse
+                    replInstr(instr, newJmp);
+                }
 
                 // If this is a jump to a jump
-                if (label.next instanceof instrs.jmp)
+                else if (isDirectJump(label.next) === true)
                 {
-                    var j2 = label.next;
-                    var j2Label = j2.opnds[0].label;
+                    var j2Label = getJumpLabel(label.next);
 
                     // Jump directly to the second label
                     var ctor = instrs[instr.mnem];
@@ -177,7 +252,7 @@ x86.optimize = function (asm, maxPasses)
 
                 // If this is an unconditional jump and the next
                 // instruction is not a label
-                else if (instr instanceof instrs.jmp &&
+                else if (isDirectJump(instr) === true &&
                          instr.next !== null &&
                          (instr.next instanceof x86.Label) === false)
                 {
@@ -210,6 +285,16 @@ x86.optimize = function (asm, maxPasses)
                     // Remove the instruction
                     remInstr(instr);
                 }
+            }
+
+            // If this is a return with zero bytes popped
+            else if (instr instanceof instrs.ret &&
+                     instr.opnds[0] instanceof x86.Immediate &&
+                     instr.opnds[0].value === 0)
+            {
+                // Replace it by a ret with no immediate
+                var newRet = new instrs.ret([], x86_64);
+                replInstr(instr, newRet);
             }
         }
 

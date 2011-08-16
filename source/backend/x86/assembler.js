@@ -211,12 +211,35 @@ x86.Assembler.prototype.remInstr = function (instr)
 }
 
 /**
-Add an instruction after another instruction
+Replace an instruction
 */
 x86.Assembler.prototype.replInstr = function (oldInstr, newInstr)
 {
-    this.addInstrAfter(newInstr, oldInstr);
-    this.remInstr(oldInstr);
+    assert (
+        oldInstr instanceof x86.Instruction,
+        'invalid old instruction'
+    );
+
+    assert (
+        newInstr instanceof x86.Instruction,
+        'invalid new instruction'
+    );
+
+    var prev = oldInstr.prev;
+    var next = oldInstr.next;
+
+    if (prev !== null)
+        prev.next = newInstr;
+    else
+        this.firstInstr = newInstr;
+
+    if (next !== null)
+        next.prev = newInstr;
+    else
+        this.lastInstr = newInstr;
+
+    newInstr.prev = prev;
+    newInstr.next = next;
 }
 
 /**
