@@ -117,6 +117,11 @@ x86.Backend = function (x86_64)
         x86.regs.esi,
         x86.regs.edi
     ];
+
+    /**
+    Generated code blocks for handler code stubs
+    */
+    this.handlers = {};
 }
 x86.Backend.prototype = new Backend();
 

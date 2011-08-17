@@ -64,19 +64,63 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Get the calling convention for this function
     var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
 
-    // Export a label for the function's fast entry point
-    asm.addInstr(new x86.Label('ENTRY_FAST', true));
+    // Create labels for the default and fast entry points
+    var ENTRY_DEFAULT = new x86.Label('ENTRY_DEFAULT', true);
+    var ENTRY_FAST    = new x86.Label('ENTRY_FAST', true);
 
-    // TODO
-    // If callee cleanup, want stack frame normalization stub.
+    // Export the function's default entry point
+    asm.addInstr(ENTRY_DEFAULT);
+
+    // If we are using a calle cleanup calling convention, add the
+    // stack frame normalization stub
     if (callConv.cleanup === 'CALLEE')
     {
-        // TODO
+        /* TODO
+        Check if arg count is valid. If not, call into normalization handler
 
+        Sketch the arg count check here...
+        Received arg count is in cl, up to 254. 255 means count is pushed on the stack.
+
+        cmp cl, numArgs
+        je ENTRY_FAST
+        mov r, arg_normalization_handler 
+        call r
+        ENTRY_FAST:
+
+        If we limit the arg count to 254, this should work.
+
+        Then all the work can be done in the handler.
+
+        For the arguments object case, we can just call the handler directly.
+        */
+
+        // If the function uses arguments
+        if (irFunc.usesArguments === true)
+        {
+            // TODO: call arguments object handler
+
+            // TODO:
+            //var handlerCode = x86.getHandler('ARG_OBJ_HANDLER', backend);
+        }
+        else
+        {
+            // Get the number of arguments expected
+            const numArgsExpect = irFunc.argVars.length;
+
+            // Compare the argument count with the expected count
+            asm.cmp(callConv.argCountReg, numArgsExpect);
+
+            // Create a label for the argument normalization code
+            var ARG_NORM = new x86.Label('ARG_NORM');
+
+            // If the count is not as expected, jump to the normalization
+            // code, which is kept out of line
+            asm.jne(ARG_NORM);
+        }
     }
 
-    // Export a label for the function's default entry point
-    asm.addInstr(new x86.Label('ENTRY_DEFAULT', true));
+    // Export the function's fast entry point
+    asm.addInstr(ENTRY_FAST);
 
     // Map of block ids to allocation map at block entries
     // This is used to store allocations at blocks with
@@ -97,7 +141,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Map the entry block to its allocation map
     allocMaps[entryBlock.blockId] = entryMap;
 
-    // Get the number of function arguments
+    // Get the number of function arguments (including hidden arguments)
     var numArgs = irFunc.argVars.length + (irFunc.cProxy? 0:2);
 
     // Map the arguments on the stack
@@ -368,6 +412,29 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 params
             );
         }
+    }
+
+    // If we are using a calle cleanup calling convention, and the
+    // function doesn't use arguments, then we need to insert the stub
+    // to call the argument normalization handler
+    if (callConv.cleanup === 'CALLEE' && irFunc.usesArguments === false)
+    {
+        // Add the label for the argument normalization code
+        asm.addInstr(ARG_NORM);
+
+        // TODO
+        // Get handler's entry point
+        // var handlerCode = x86.getHandler('ARG_NORM_HANDLER', backend);
+        // Returns the code block for the handler
+        
+        // TODO: pass arguments to handler
+        // Need to pass it the expected arg count
+
+        // TODO:
+        asm.nop();
+       
+        // Jump to the fast entry point
+        asm.jmp(ENTRY_FAST);
     }
 
     // Return the assembler object
