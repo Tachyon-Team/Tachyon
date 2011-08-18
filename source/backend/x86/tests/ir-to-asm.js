@@ -1499,16 +1499,6 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: 
-    // Stub to handle argument normalization
-
-
-
-
-    // TODO: static call should call fast entry point***
-
-
-
 
     // TODO:
     // arguments object

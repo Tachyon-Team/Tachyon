@@ -71,6 +71,8 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Export the function's default entry point
     asm.addInstr(ENTRY_DEFAULT);
 
+    //irFunc.staticLink = false;
+
     // If we are using a calle cleanup calling convention and this is
     // not a static function, add the stack frame normalization stub
     if (callConv.cleanup === 'CALLEE' &&
@@ -1012,17 +1014,19 @@ Generate the argument normalization stub
 x86.genArgNormStub = function (
     asm,
     callConv,
-    numArgsExpect,
+    numArgs,
     params
 )
 {
+    // Number of hidden arguments
+    const NUM_HIDDEN_ARGS = 2;
+
     // Get a reference to the backend object
     const backend = params.backend;
 
     // Get the argument count register
     const argCountReg = callConv.argCountReg;
 
-    // TODO: precompute for a given calling convention?
     // Compute the set of free registers
     var freeRegs = backend.gpRegSet.slice(0);
     for (var i = 0; i < callConv.argRegs.length; ++i)
@@ -1038,105 +1042,132 @@ x86.genArgNormStub = function (
     var tr0 = freeRegs[0];
     var tr1 = freeRegs[1];
 
-    // Get the stack slot size
-    const slotSize = params.backend.regSizeBytes;
-
-    // Get the number of argument registers
-    var numArgRegs = callConv.argRegs.length;
+    // Compute the number of registers available for visible arguments
+    var numArgRegs = Math.max(callConv.argRegs.length - NUM_HIDDEN_ARGS, 0);
 
     // Compute the number of stack arguments expected
-    var stackArgsExpect = Math.max(numArgsExpect - callConv.argRegs.length, 0);
+    var stackArgs = Math.max(numArgs - numArgRegs, 0);
 
     // Get the immediate for the undefined value
     const undefImm = new x86.Immediate(
         ConstValue.getConst(undefined).getImmValue(params)
     );
 
-    // Label for when the normalization is complete
-    var DONE = new x86.Label('DONE');
-
     // Label for the too many arguments case
     var TOO_MANY_ARGS = new x86.Label('TOO_MANY_ARGS');
 
-    // If there are too many arguments, jump out of line
-    asm.cmp(argCountReg, numArgsExpect);
-    asm.jge(TOO_MANY_ARGS);
+    // Label for the argument count popping
+    var POP_ARG_COUNT = new x86.Label('POP_ARG_COUNT');
 
+    // Label for the extra argument removal
+    var REM_STACK_ARGS = new x86.Label('REM_STACK_ARGS');
 
+    // Label for when we are done adding missing arguments
+    var MISSING_ARGS_DONE = new x86.Label('MISSING_ARGS_DONE');
 
-    asm.nop();
+    // Label for when we are done removing extra arguments
+    var EXTRA_ARGS_DONE = new x86.Label('EXTRA_ARGS_DONE');
 
+    // Label for when the normalization is complete
+    var ARG_NORM_DONE = new x86.Label('ARG_NORM_DONE');
 
-
-    /*
-    // If there aren't enough arguments
-    if (cl < numArgsExpect)
+    // If the number of expected arguments is nonzero, there could be too few
+    // arguments. Otherwise, there must be too many.
+    if (numArgs > 0)
     {
-        // We don't need to pop extended arg count
-        // Need to push extra args on stack
-        // This is probably the most frequent case...
-        // May not need any extra tmps for this...
+        // If there are too many arguments, jump out of line
+        asm.cmp(argCountReg, numArgs);
+        asm.jg(TOO_MANY_ARGS);
 
-        // If there are not enough register arguments
-        if (cl < numArgRegs)
+        // If there are stack arguments, pop the return address into tr0
+        if (stackArgs !== 0)
+            asm.pop(tr0);
+
+        // For each expected argument
+        for (var i = numArgs - 1; i >= 0; --i)
         {
-            // TODO: use conditional move here? :)
+            // If this is a stack argument
+            if (i >= numArgRegs)
+            {
+                // Push the undefined value on the stack
+                asm.push(undefImm);
+            }
+            else
+            {
+                // Move the undefined value into the argument register
+                var argReg = callConv.argRegs[i+NUM_HIDDEN_ARGS];
+                asm.mov(argReg, undefImm);
+            }
 
-            mov tr0, undefImm
-
-            cmp cl, 1
-            cmovl ar0, tr0
-            ..            
-
-
-            After this, number of arguments is numArgRegs...
+            // If this was not the last argument
+            if (i > 0)
+            {
+                // If we've added enough arguments, we are done
+                asm.cmp(argCountReg, i);
+                asm.jge(MISSING_ARGS_DONE);
+            }
         }
+
+        // Done adding missing args
+        asm.addInstr(MISSING_ARGS_DONE);
+
+        // Set the argument count to the expected number
+        asm.mov(argCountReg, numArgs);
+
+        // If there are stack arguments, push the return address back on the stack
+        if (stackArgs !== 0)
+            asm.push(tr0);
+
+        // We are done
+        asm.jmp(ARG_NORM_DONE);
     }
-    */
-
-
-
-
-
-
 
     // Too many arguments handling
     asm.addInstr(TOO_MANY_ARGS);
 
-    /*
-    // There are too many arguments
-    else
-    {
-        // This case is likely to be infrequent, can be less optimal. Free the
-        // regs you want!
+    // Pop the return address into tr0
+    asm.pop(tr0);
 
-        // If there's too many register args, it doesn't matter, those reg
-        // values will just be ignored        
+    // If the argument count is on the stack, pop it off
+    asm.test(argCountReg, 255);
+    asm.je(POP_ARG_COUNT);
 
-        if (cl === 255)
-        {
-            // Get full arg count into r
-            mov r, [sp + k]
-        }
-        else
-        {
-            // Get cl arg count into r
-            movzx r, cl
-        }
+    // Move the argument count into tr1
+    asm.movzx(tr1, argCountReg);
 
+    // Add the extra stack argument removal label
+    asm.addInstr(REM_STACK_ARGS);
 
-        // TODO
+    // If there are no stack arguments, we are done
+    asm.test(tr1, numArgRegs);
+    asm.jle(EXTRA_ARGS_DONE);
 
+    // Pop a stack argument
+    asm.add(backend.spReg, backend.regSizeBytes);
 
-    }
-    */
+    // Repeat the stack argument removal loop
+    asm.jmp(REM_STACK_ARGS);
 
-    // TODO
-    // Nop so this code doesn't get eliminated
-    asm.nop();
+    // Add the argument count popping label
+    asm.addInstr(POP_ARG_COUNT);
+
+    // Pop the argument count into tr1
+    asm.pop(tr1);
+
+    // Continue extra argument removal
+    asm.jmp(REM_STACK_ARGS);
+
+    // Done removing extra args
+    asm.addInstr(EXTRA_ARGS_DONE);
+
+    // Set the argument count to the expected number
+    asm.mov(argCountReg, numArgs);
+
+    // Push the return adress back on the stack
+    asm.push(tr0);
 
     // Add the done label at the end of the stub
-    asm.addInstr(DONE);
+    asm.addInstr(ARG_NORM_DONE);
 }
 
 /**
