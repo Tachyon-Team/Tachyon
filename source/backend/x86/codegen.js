@@ -75,32 +75,11 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // stack frame normalization stub
     if (callConv.cleanup === 'CALLEE')
     {
-        /* TODO
-        Check if arg count is valid. If not, call into normalization handler
-
-        Sketch the arg count check here...
-        Received arg count is in cl, up to 254. 255 means count is pushed on the stack.
-
-        cmp cl, numArgs
-        je ENTRY_FAST
-        mov r, arg_normalization_handler 
-        call r
-        ENTRY_FAST:
-
-        If we limit the arg count to 254, this should work.
-
-        Then all the work can be done in the handler.
-
-        For the arguments object case, we can just call the handler directly.
-        */
-
         // If the function uses arguments
         if (irFunc.usesArguments === true)
         {
-            // TODO: call arguments object handler
-
-            // TODO:
-            //var handlerCode = x86.getHandler('ARG_OBJ_HANDLER', backend);
+            // Generate the argument object creation stub
+            x86.genArgObjStub(/*TODO*/);
         }
         else
         {
@@ -422,16 +401,13 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         // Add the label for the argument normalization code
         asm.addInstr(ARG_NORM);
 
-        // TODO
-        // Get handler's entry point
-        // var handlerCode = x86.getHandler('ARG_NORM_HANDLER', backend);
-        // Returns the code block for the handler
-        
-        // TODO: pass arguments to handler
-        // Need to pass it the expected arg count
-
-        // TODO:
-        asm.nop();
+        // Generate the argument normalization stub
+        x86.genArgNormStub(
+            asm,
+            callConv,
+            numArgsExpect,
+            params
+        );
        
         // Jump to the fast entry point
         asm.jmp(ENTRY_FAST);
@@ -1028,54 +1004,76 @@ x86.moveValue = function (
 }
 
 /**
-Compute the size of a constant value if it were to be
-used as an immediate.
+Generate the argument normalization stub
 */
-x86.getImmSize = function (value, params)
+x86.genArgNormStub = function (
+    asm,
+    callConv,
+    numArgsExpect,
+    params
+)
 {
-    // If this is a link-time value, it is register sized
-    if (x86.isLinkValue(value) === true)
-        return params.backend.regSizeBits;
+    const backend = params.backend;
 
-    // If the value is not a constant, stop
-    if ((value instanceof ConstValue) === false)
-        return undefined;
+    /*
+    Perhaps using a left-to-right stack argument order for the Tachyon calling
+    convention would make more sense. That way, extra arguments can easily be
+    removed.
 
-    // If the value is not an immediate integer, stop
-    if (value.isInt() === false &&
-        value.value !== undefined &&
-        value.value !== true &&
-        value.value !== false &&
-        value.value !== null)
-        return undefined;
+    If there are more than 254 arguments, can set cl to 255 and push the
+    argument count on top of the stack. It can then easily be popped from
+    there into a register.
 
-    // Get the immediate bits for the value
-    var immVal = value.getImmValue(params);
+    Input arguments:
+    - Number of arguments expected
+    - Should return addr be an argument
+      - If not, need to have it pushed on stack
 
-    // Compute the smallest size this immediate fits in
-    var size;
-    if (num_ge(immVal, getIntMin(8)) && num_le(immVal, getIntMax(8)))
-        size = 8;
-    else if (num_ge(immVal, getIntMin(16)) && num_le(immVal, getIntMax(16)))
-        size = 16;
-    else if (num_ge(immVal, getIntMin(32)) && num_le(immVal, getIntMax(32)))
-        size = 32;
-    else
-        size = 64;
+    Pass args in first 1 or 2 unused call conv regs
+    - GP regs not used by args, ctx or sp
+    - Also need to use up a register for the handler address during the call!
+    - Need to load real arg count into some register as well!
+    - On 32 bit, will need to spill some values...
+    - On 64 bit, can do all the work using only regs
 
-    // Return the size
-    return size;
+    Not much choice, in 32 bit, will need to push values on the stack.
+
+    In 64-bit, however, makes sense to want to know which regs are avail.
+
+    Use allocmap to keep track of what's spilled if possible
+    */
+
+
+
+
+    // TODO: switch Tachyon call convs to be LTR instead of RTL
+    // See if errors occur in unit tests!
+
+
+
+
+    // TODO:
+    asm.nop();
+
+
+    // TODO: save regs if needed
+
+
+
+
+
+    // TODO: remove the extended arg count from the stack if present
+
+
+
+
 }
 
 /**
-Test if an IR value must be handled at link-time
+Generate the argument object creation stub
 */
-x86.isLinkValue = function (value)
+x86.genArgObjStub = function (/*TODO*/)
 {
-    return (
-        value instanceof IRFunction ||
-        value instanceof CFunction ||
-        (value instanceof ConstValue && value.isString())
-    );
+    // TODO
 }
 

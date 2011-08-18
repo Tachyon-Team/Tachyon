@@ -681,6 +681,58 @@ x86.getBestAlloc = function (allocMap, value)
 }
 
 /**
+Compute the size of a constant value if it were to be
+used as an immediate.
+*/
+x86.getImmSize = function (value, params)
+{
+    // If this is a link-time value, it is register sized
+    if (x86.isLinkValue(value) === true)
+        return params.backend.regSizeBits;
+
+    // If the value is not a constant, stop
+    if ((value instanceof ConstValue) === false)
+        return undefined;
+
+    // If the value is not an immediate integer, stop
+    if (value.isInt() === false &&
+        value.value !== undefined &&
+        value.value !== true &&
+        value.value !== false &&
+        value.value !== null)
+        return undefined;
+
+    // Get the immediate bits for the value
+    var immVal = value.getImmValue(params);
+
+    // Compute the smallest size this immediate fits in
+    var size;
+    if (num_ge(immVal, getIntMin(8)) && num_le(immVal, getIntMax(8)))
+        size = 8;
+    else if (num_ge(immVal, getIntMin(16)) && num_le(immVal, getIntMax(16)))
+        size = 16;
+    else if (num_ge(immVal, getIntMin(32)) && num_le(immVal, getIntMax(32)))
+        size = 32;
+    else
+        size = 64;
+
+    // Return the size
+    return size;
+}
+
+/**
+Test if an IR value must be handled at link-time
+*/
+x86.isLinkValue = function (value)
+{
+    return (
+        value instanceof IRFunction ||
+        value instanceof CFunction ||
+        (value instanceof ConstValue && value.isString())
+    );
+}
+
+/**
 Allocate a register to a value
 @param allocMap allocation map
 @param value value to be allocated, may be undefined

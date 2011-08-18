@@ -1457,7 +1457,7 @@ tests.x86.irToAsm = function ()
         [0, 1, 5, 8]
     );
 
-    var startTime = (new Date()).getTime();
+    //var startTime = (new Date()).getTime();
 
     // JavaScript Fibonacci test (Tachyon function)
     test('                                              \
@@ -1485,14 +1485,14 @@ tests.x86.irToAsm = function ()
             return fib(n-1) + fib(n-2);                 \
         }                                               \
         ',
-        267914296,
-        [42]
-        //55,
-        //[10]
+        //267914296,
+        //[42]
+        55,
+        [10]
     );
 
-    var endTime = (new Date()).getTime();
-    print('fib time: ' + ((endTime - startTime)/1000));
+    //var endTime = (new Date()).getTime();
+    //print('fib time: ' + ((endTime - startTime)/1000));
 
 
 
@@ -1501,11 +1501,11 @@ tests.x86.irToAsm = function ()
 
     // TODO: 
     // Stub to handle argument normalization
-    //
 
 
 
 
+    // TODO: static call should call fast entry point***
 
 
 
@@ -1514,7 +1514,6 @@ tests.x86.irToAsm = function ()
     // arguments object
     // CallApplyInstr    
     // Need to compile real Tachyon code to test these.
-    //
 
 
 
