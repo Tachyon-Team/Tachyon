@@ -71,9 +71,10 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Export the function's default entry point
     asm.addInstr(ENTRY_DEFAULT);
 
-    // If we are using a calle cleanup calling convention, add the
-    // stack frame normalization stub
-    if (callConv.cleanup === 'CALLEE')
+    // If we are using a calle cleanup calling convention and this is
+    // not a static function, add the stack frame normalization stub
+    if (callConv.cleanup === 'CALLEE' &&
+        irFunc.staticLink === false)
     {
         // If the function uses arguments
         if (irFunc.usesArguments === true)
@@ -393,10 +394,12 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         }
     }
 
-    // If we are using a calle cleanup calling convention, and the
-    // function doesn't use arguments, then we need to insert the stub
-    // to call the argument normalization handler
-    if (callConv.cleanup === 'CALLEE' && irFunc.usesArguments === false)
+    // If we are using a callee cleanup calling convention, and the
+    // function isn't static, and the function doesn't use arguments,
+    // then we need to insert a stub to normalize the arguments
+    if (callConv.cleanup === 'CALLEE' &&
+        irFunc.staticLink === false &&
+        irFunc.usesArguments === false)
     {
         // Add the label for the argument normalization code
         asm.addInstr(ARG_NORM);
@@ -1013,60 +1016,127 @@ x86.genArgNormStub = function (
     params
 )
 {
+    // Get a reference to the backend object
     const backend = params.backend;
 
+    // Get the argument count register
+    const argCountReg = callConv.argCountReg;
+
+    // TODO: precompute for a given calling convention?
+    // Compute the set of free registers
+    var freeRegs = backend.gpRegSet.slice(0);
+    for (var i = 0; i < callConv.argRegs.length; ++i)
+        arraySetRem(freeRegs, callConv.argRegs[i]);
+    arraySetRem(freeRegs, callConv.argCountReg);
+
+    assert (
+        freeRegs.length >= 2,
+        'insufficient free register count'
+    );
+
+    // Get the temporary registers
+    var tr0 = freeRegs[0];
+    var tr1 = freeRegs[1];
+
+    // Get the stack slot size
+    const slotSize = params.backend.regSizeBytes;
+
+    // Get the number of argument registers
+    var numArgRegs = callConv.argRegs.length;
+
+    // Compute the number of stack arguments expected
+    var stackArgsExpect = Math.max(numArgsExpect - callConv.argRegs.length, 0);
+
+    // Get the immediate for the undefined value
+    const undefImm = new x86.Immediate(
+        ConstValue.getConst(undefined).getImmValue(params)
+    );
+
+    // Label for when the normalization is complete
+    var DONE = new x86.Label('DONE');
+
+    // Label for the too many arguments case
+    var TOO_MANY_ARGS = new x86.Label('TOO_MANY_ARGS');
+
+    // If there are too many arguments, jump out of line
+    asm.cmp(argCountReg, numArgsExpect);
+    asm.jge(TOO_MANY_ARGS);
+
+
+
+    asm.nop();
+
+
+
     /*
-    Perhaps using a left-to-right stack argument order for the Tachyon calling
-    convention would make more sense. That way, extra arguments can easily be
-    removed.
+    // If there aren't enough arguments
+    if (cl < numArgsExpect)
+    {
+        // We don't need to pop extended arg count
+        // Need to push extra args on stack
+        // This is probably the most frequent case...
+        // May not need any extra tmps for this...
 
-    If there are more than 254 arguments, can set cl to 255 and push the
-    argument count on top of the stack. It can then easily be popped from
-    there into a register.
+        // If there are not enough register arguments
+        if (cl < numArgRegs)
+        {
+            // TODO: use conditional move here? :)
 
-    Input arguments:
-    - Number of arguments expected
-    - Should return addr be an argument
-      - If not, need to have it pushed on stack
+            mov tr0, undefImm
 
-    Pass args in first 1 or 2 unused call conv regs
-    - GP regs not used by args, ctx or sp
-    - Also need to use up a register for the handler address during the call!
-    - Need to load real arg count into some register as well!
-    - On 32 bit, will need to spill some values...
-    - On 64 bit, can do all the work using only regs
+            cmp cl, 1
+            cmovl ar0, tr0
+            ..            
 
-    Not much choice, in 32 bit, will need to push values on the stack.
 
-    In 64-bit, however, makes sense to want to know which regs are avail.
-
-    Use allocmap to keep track of what's spilled if possible
+            After this, number of arguments is numArgRegs...
+        }
+    }
     */
 
 
 
 
-    // TODO: switch Tachyon call convs to be LTR instead of RTL
-    // See if errors occur in unit tests!
 
 
 
+    // Too many arguments handling
+    asm.addInstr(TOO_MANY_ARGS);
 
-    // TODO:
+    /*
+    // There are too many arguments
+    else
+    {
+        // This case is likely to be infrequent, can be less optimal. Free the
+        // regs you want!
+
+        // If there's too many register args, it doesn't matter, those reg
+        // values will just be ignored        
+
+        if (cl === 255)
+        {
+            // Get full arg count into r
+            mov r, [sp + k]
+        }
+        else
+        {
+            // Get cl arg count into r
+            movzx r, cl
+        }
+
+
+        // TODO
+
+
+    }
+    */
+
+    // TODO
+    // Nop so this code doesn't get eliminated
     asm.nop();
 
-
-    // TODO: save regs if needed
-
-
-
-
-
-    // TODO: remove the extended arg count from the stack if present
-
-
-
-
+    // Add the done label at the end of the stub
+    asm.addInstr(DONE);
 }
 
 /**

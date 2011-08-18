@@ -224,6 +224,23 @@ tests.x86.asmEncoding = function ()
         '4421E5'
     );
 
+    // cmovcc
+    test(
+        function (a) { a.cmovl(a.eax, a.ecx); }, 
+        '0F4CC1', 
+        '0F4CC1'
+    );
+    test(
+        function (a) { a.cmovl(a.rbx, a.rbp); }, 
+        false,
+        '480F4CDD'
+    );
+    test(
+        function (a) { a.cmovle(a.esi, a.mem(32, a.esp, 4)); }, 
+        '0F4E742404', 
+        '670F4E742404'
+    );
+
     // cmp
     test(
         function (a) { a.cmp(a.ecx, a.edi); },
