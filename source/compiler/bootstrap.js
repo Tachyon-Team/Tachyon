@@ -51,19 +51,12 @@ Maxime Chevalier-Boisvert
 /**
 Compile and initialize the Tachyon compiler using Tachyon
 */
-function bootstrap(params, allCode, writeImg)
+function bootstrap(params, allCode)
 {
     assert (
         params instanceof CompParams,
         'expected compilation parameters in bootstrap'
     );
-    
-    /* FIXME: disabled for testing purposes
-    assert (
-        !(writeImg === true && allCode !== true),
-        'must compile all code to write image'
-    );
-    */
 
     log.trace('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
@@ -95,16 +88,12 @@ function bootstrap(params, allCode, writeImg)
         {
             // Compile the primitives
             log.trace('Compile primitives source code');
-            primIRs = compSources(primSrcs, params, writeImg);
+            primIRs = compSources(primSrcs, params);
         }
     );
 
-    // If we are not writing an image
-    if (writeImg !== true)
-    {
-        // Initialize the runtime
-        initRuntime(params);
-    }
+    // Initialize the runtime
+    initRuntime(params);
 
     log.trace('Re-linking primitives');
 
@@ -127,21 +116,17 @@ function bootstrap(params, allCode, writeImg)
             function ()
             {
                 // Compile the standard library
-                libIRs = compSources(libSrcs, params, writeImg);
+                libIRs = compSources(libSrcs, params);
             }
         );
 
-        // If we are not writing an image
-        if (writeImg !== true)
-        {
-            log.trace('Initializing standard library');
+        log.trace('Initializing standard library');
 
-            // Execute the standard library code units
-            for (var i = 0; i < libIRs.length; ++i)
-            {
-                log.trace('Executing unit for: "' + libSrcs[i] + '"');
-                execUnit(libIRs[i], params);
-            }
+        // Execute the standard library code units
+        for (var i = 0; i < libIRs.length; ++i)
+        {
+            log.trace('Executing unit for: "' + libSrcs[i] + '"');
+            execUnit(libIRs[i], params);
         }
     }
 
@@ -157,41 +142,24 @@ function bootstrap(params, allCode, writeImg)
             function ()
             {
                 // Compile the Tachyon sources
-                tachyonIRs = compSources(tachyonSrcs, params, writeImg);
+                tachyonIRs = compSources(tachyonSrcs, params);
             });
 
         reportPerformance();
 
         log.trace("Code bytes allocated: " + codeBytesAllocated);
 
-        // If we are not writing an image
-        if (writeImg !== true)
+        // Execute the Tachyon code units
+        for (var i = 0; i < tachyonIRs.length; ++i)
         {
-            // Execute the Tachyon code units
-            for (var i = 0; i < tachyonIRs.length; ++i)
-            {
-                log.trace('Executing unit for: "' + tachyonSrcs[i] + '"'); 
-                execUnit(tachyonIRs[i], params);
-            }
+            log.trace('Executing unit for: "' + tachyonSrcs[i] + '"'); 
+            execUnit(tachyonIRs[i], params);
         }
     }
 
     //reportPerformance();
 
-    // If we are writing an image
-    if (writeImg === true)
-    {
-        writeImage(
-            params,
-            primIRs,
-            libIRs,
-            tachyonIRs
-        );
-    }
-    else
-    {
-        log.trace('Tachyon initialization complete');
-    }
+    log.trace('Tachyon initialization complete');
 }
 
 /**
@@ -265,7 +233,7 @@ Parse Tachyon source code units, link them together and compile them
 down to machine code, either for bootstrapping or to allow compiling
 client code.
 */
-function compSources(srcList, params, writeImg)
+function compSources(srcList, params)
 {
     assert (
         params instanceof CompParams,
@@ -369,35 +337,31 @@ function compSources(srcList, params, writeImg)
 
                 log.trace('Generating machine code for: "' + getSrcName(i) + '"');
 
-                compileIR(ir, params, writeImg);
+                compileIR(ir, params);
             }
         }
     );
 
-    // If we are not writing an image
-    if (writeImg !== true)
-    {
-        measurePerformance(
-            "Machine code linking",
-            function ()
+    measurePerformance(
+        "Machine code linking",
+        function ()
+        {
+            // Link the primitives with each other
+            for (var i = 0; i < irList.length; ++i)
             {
-                // Link the primitives with each other
-                for (var i = 0; i < irList.length; ++i)
-                {
-                    var ir = irList[i];
+                var ir = irList[i];
 
-                    if (ir.linking.linked)
-                        continue;
+                if (ir.linking.linked)
+                    continue;
 
-                    var addr = getBlockAddr(ir.runtime.mcb, 0);
-                    log.trace('Linking machine code for: "' + getSrcName(i) + 
-                          '" at address ' + addr);
+                var addr = getBlockAddr(ir.runtime.mcb, 0);
+                log.trace('Linking machine code for: "' + getSrcName(i) + 
+                      '" at address ' + addr);
 
-                    linkIR(ir, params);
-                }
+                linkIR(ir, params);
             }
-        );
-    }
+        }
+    );
 
     // Return the list of IR functions
     return irList;

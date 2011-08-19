@@ -49,50 +49,11 @@ Erick Lavoie
 Maxime Chevalier-Boisvert
 */
 
-/** @namespace Glue code to tie the frontend and the backend together. */
-var compiler = {};
-
-/** 
-Function meant to be assigned to the 'execute' field 
-of a runtime property of an IRFunction. It executes
-the machine code block associated to the IRFunction
-with the arguments and the runtime context supplied.
-*/
-compiler.execute = function (args, runtime) 
-{
-    return execMachineCodeBlock(this.mcb);    
-};
-
-/** 
-Function meant to be assigned to the 'free' field 
-of a runtime property of an IRFunction. 
-It frees the machine code block associated to the IRFunction
-and clear the runtime.mcb field
-*/
-compiler.free = function () 
-{
-    freeMachineCodeBlock(this.mcb);    
-    this.mcb = null;
-};
-
-/** 
-Function meant to be assigned to the 'link' field 
-of a linking property of an IRFunction. 
-It links the current machine code block in the runtime
-property to its dependencies.
-*/
-compiler.link = function (params) 
-{
-    this.rt.mcb.link(params);
-    this.linked = true;
-};
-
 /**
 Compiles an IRFunction and assigns linking and runtime
-information to it. The runtime.mcb properties on the 
-IRFunction should be freed once it is no longer used.
+information to it.
 */
-function compileIR(ir, params, keepCB) 
+function compileIR(ir, params) 
 {
     assert (
         params instanceof CompParams,
@@ -100,7 +61,11 @@ function compileIR(ir, params, keepCB)
     );
     
     ir.linking.linked = false;
-    ir.linking.link = compiler.link;
+    ir.linking.link = function (params) 
+    {
+        this.rt.mcb.link(params);
+        this.linked = true;
+    };
 
     var cb = backend.compileIRToCB(ir, params);
 
@@ -109,18 +74,14 @@ function compileIR(ir, params, keepCB)
 
     var mcb = cb.assembleToMachineCodeBlock();
 
-    if (keepCB === true)
-        ir.runtime.cb = cb;
-
     ir.runtime.mcb = mcb;
-    ir.runtime.execute = compiler.execute;
-    ir.runtime.free = compiler.free;
-
+    //ir.runtime.execute = compiler.execute;
+    //ir.runtime.free = compiler.free;
     ir.linking.rt = ir.runtime;
 };
 
 /** 
-    Link the IRFunction.
+Link the IRFunction.
 */
 function linkIR(ir, params) 
 {
@@ -130,7 +91,7 @@ function linkIR(ir, params)
 /**
 Compile an ast to compiled IR
 */
-function compileAst(ast, params)
+function compileAST(ast, params)
 {
     assert (
         params instanceof CompParams,
@@ -170,7 +131,7 @@ function compileSrcString(str, params)
 {
     var ast = parse_src_str(str, params);
 
-    return compileAst(ast, params);
+    return compileAST(ast, params);
 }
 
 /**
@@ -180,6 +141,6 @@ function compileSrcFile(fileName, params)
 {
     var ast = parse_src_file(fileName, params);
 
-    return compileAst(ast, params);
+    return compileAST(ast, params);
 }
 

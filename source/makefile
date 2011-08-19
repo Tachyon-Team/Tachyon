@@ -203,16 +203,6 @@ shell:
 shell64:
 	$(RLWJSVM64) $(MAIN_SRCS)
 
-host-vm:
-	(cd host ; ./install-host-vm)
-
-host-vm-v8:
-	(cd host ; ./install-host-vm v8)
-
-gc:
-	$(JSVM) $(MAIN_SRCS) -- -gc
-	gcc -std=c99 -c -o host/gc-generated.o host/gc-generated.c
-
 bootstrap:
 	time $(JSVM) $(MAIN_SRCS) -- -bootstrap -v=all
 
