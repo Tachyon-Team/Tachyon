@@ -353,8 +353,8 @@ MemLayout.prototype.addField = function(name, type, initVal, subSize, numElems)
         // Compute the offset to be after the last field
         var offset = this.getSize();
 
-        // Compute the amount of padding bytes to align to the pointer size
-        var align = this.params.target.ptrSizeBytes;
+        // Compute the amount of padding bytes to align to the register size
+        var align = this.params.backend.regSizeBytes;
         var rem = offset % align;
         var pad = (rem === 0)? 0:(align - rem);
 

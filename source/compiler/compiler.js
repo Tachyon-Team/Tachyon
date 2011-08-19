@@ -75,8 +75,6 @@ function compileIR(ir, params)
     var mcb = cb.assembleToMachineCodeBlock();
 
     ir.runtime.mcb = mcb;
-    //ir.runtime.execute = compiler.execute;
-    //ir.runtime.free = compiler.free;
     ir.linking.rt = ir.runtime;
 };
 
@@ -108,6 +106,7 @@ function compileAST(ast, params)
 
     if (params.printMCB)
     {
+        /*
         print("printing MCB information");
         var blockObj = ir.runtime.mcb;
         var size = getMemoryBlockSize(blockObj);
@@ -118,6 +117,7 @@ function compileAST(ast, params)
         //{
         //    print(readFromMemoryBlock(blockObj, i));
         //}
+        */
     }
 
     // Return the compiled IR function

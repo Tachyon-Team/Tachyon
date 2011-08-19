@@ -80,6 +80,11 @@ x86.Backend = function (x86_64)
     this.regSizeBytes = this.regSizeBits / 8;
 
     /**
+    Endianness of the target architecture
+    */
+    this.endian = 'little';
+
+    /**
     Stack pointer register
     */
     this.spReg = x86.regs.rsp.getSubOpnd(this.regSizeBits);

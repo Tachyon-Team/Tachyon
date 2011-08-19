@@ -50,7 +50,6 @@ include makefile.common
 BASE_SRCS =                             \
     $(COMMON_SRCS)                      \
     compiler/sources.js                 \
-    compiler/targets.js                 \
     compiler/params.js                  \
     compiler/config.js                  \
     compiler/compiler.js                \
@@ -70,21 +69,12 @@ BASE_SRCS =                             \
     ir/inlining.js                      \
     ir/lowering.js                      \
     ir/cfgvis.js                        \
-    analysis/usedist.js                 \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
     runtime/misc.js                     \
     platform/ffi.js                     \
     platform/mcb.js                     \
-    old-backend/asm.js                  \
-    old-backend/regalloc.js             \
-    old-backend/onthefly.js             \
-    old-backend/linearscan.js           \
-    old-backend/backend.js              \
-    old-backend/x86/asm.js              \
-    old-backend/x86/config.js           \
-    old-backend/x86/ir-to-asm.js        \
     backend/codeblock.js                \
     backend/blockorder.js               \
     backend/liveness.js                 \
@@ -121,7 +111,6 @@ TEST_SPEC_SRCS =                        \
     stdlib/tests/*.js                   \
     ir/tests/*.js                       \
     runtime/tests/*.js                  \
-    old-backend/tests/*.js              \
     backend/x86/tests/assembler.js      \
     backend/x86/tests/ir-to-asm.js      \
     programs/tests/programs.js          \

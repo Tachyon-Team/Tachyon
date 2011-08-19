@@ -60,19 +60,14 @@ function bootstrap(params, allCode)
 
     log.trace('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
-    log.trace('Creating backend context layout');
     // Create the context and object layouts
-    params.target.backendCfg.makeContextLayout(params);
-    log.trace('Creating fronted context layout');
+    log.trace('Creating context layout');
     makeContextLayout(params);
     log.trace('Creating object layouts');
     makeObjectLayouts(params);
     log.trace('Creating Tachyon constants');
     makeTachyonConsts(params);
 
-    // Validate the backend configuration
-    params.target.backendCfg.validate(params);
-    
     // Initialize the FFI functions
     log.trace('Initialize FFI functions');
     initFFI(params);

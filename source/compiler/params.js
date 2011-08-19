@@ -55,11 +55,6 @@ Maxime Chevalier-Boisvert, Erick Lavoie
 function CompParams(cfgObj)
 {
     assert (
-        cfgObj.target instanceof Target,
-        'invalid target object'
-    );
-
-    assert (
         cfgObj.backend instanceof Backend,
         'invalid backend object'
     );
@@ -93,13 +88,6 @@ function CompParams(cfgObj)
         cfgObj.staticEnv instanceof StaticEnv,
         'invalid static environment'
     );
-
-    /**
-    // TODO: eliminate target object, use backend object instead
-    Target architecture
-    @field
-    */
-    this.target = cfgObj.target;
 
     /**
     Backend object used to generate machine code

@@ -88,8 +88,6 @@ function initConfig(is64bit, verbosity)
     The tachyon code has special privileges.
     */
     config.hostParams = new CompParams({
-        // TODO: eliminate target object
-        target          : is64bit? Target.x86_64 : Target.x86_32,
         backend         : new x86.Backend(is64bit),
         tachyonSrc      : true,
         debug           : true,
@@ -119,7 +117,6 @@ function initConfig(is64bit, verbosity)
     Compilation parameters used to bootstrap Tachyon
     */
     config.bootParams = new CompParams({
-        target          : is64bit ? Target.x86_64 : Target.x86_32,
         backend         : new x86.Backend(is64bit),
         tachyonSrc      : true,
         debug           : true,

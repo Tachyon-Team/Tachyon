@@ -67,9 +67,9 @@ function makeContextLayout(params)
     );
 
     /**
-    Run-time context layout object. This layout extends the backend context.
+    Run-time context layout object.
     */
-    var ctxLayout = MemLayout.extend(params.target.backendCfg.ctxLayout, 'ctx');
+    var ctxLayout = new MemLayout("ctx", IRType.ref, undefined, params);
 
     // Ensure that the context pointer type is valid
     assert (

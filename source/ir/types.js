@@ -170,7 +170,7 @@ IRType.prototype.getSizeBytes = function (params)
         case IRType.box:
         case IRType.pint:
         case IRType.puint:
-        return params.target.ptrSizeBytes;
+        return params.backend.regSizeBytes;
     }
 };
 
