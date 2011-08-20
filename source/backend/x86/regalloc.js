@@ -1069,10 +1069,12 @@ x86.allocOpnds = function (
         // Get the best current allocation for the value
         var bestAlloc = x86.getBestAlloc(allocMap, use);
 
-        print('use: ' + use.getValName());
-        print('best alloc : ' + bestAlloc);
-        print('must be reg: ' + opndMustBeReg);
-        print('can be imm : ' + opndCanBeImm);
+        /*
+        log.debug('use: ' + use.getValName());
+        log.debug('best alloc : ' + bestAlloc);
+        log.debug('must be reg: ' + opndMustBeReg);
+        log.debug('can be imm : ' + opndCanBeImm);
+        */
 
         // If this value is already in a register
         if (bestAlloc instanceof x86.Register)
@@ -1103,7 +1105,7 @@ x86.allocOpnds = function (
             if (x86.isLinkValue(use) === true)
             {
                 // Create a link value immediate
-                opnd = new x86.LinkValue(use, backend.regSizeBits);
+                opnd = new x86.LinkValue(use, params.backend.regSizeBits);
             }
             else
             {

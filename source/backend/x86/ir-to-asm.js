@@ -278,11 +278,14 @@ x86.shiftMaker = function (instrName)
 
             if (subOpnd.rexNeeded === true && backend.x86_64 === false)
             {
-                var xcx = x86.regs.rdx.getSubReg(backend.regSizeBits);
+                var xcx = x86.regs.rcx.getSubOpnd(backend.regSizeBits);
 
-                asm.xchg(x86.regs.xcx, opnd);
+                print('xcx: ' + xcx);
+                print('opnd: ' + opnd);
+
+                asm.xchg(xcx, opnd);
                 asm[instrName](dest, x86.regs.cl);
-                asm.xchg(x86.regs.xcx, opnd);
+                asm.xchg(xcx, opnd);
             }
             else
             {   

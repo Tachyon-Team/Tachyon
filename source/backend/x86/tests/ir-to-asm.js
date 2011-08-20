@@ -1500,10 +1500,29 @@ tests.x86.irToAsm = function ()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+    // TODO: add unit tests for problematic compilation cases
+    // e.g.: phi error in putPropObj
+    // Simplify problematic function to minimum
+
+
+
+
+
     // TODO:
     // arguments object
     // CallApplyInstr    
-    // Need to compile real Tachyon code to test these.
 
 
 

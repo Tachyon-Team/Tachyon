@@ -65,11 +65,6 @@ x86.Backend = function (x86_64)
     );
 
     /**
-    Flag for 64-bit mode
-    */
-    this.x86_64 = x86_64;
-
-    /**
     General-purpose register size in bits
     */
     this.regSizeBits = x86_64? 64:32;
@@ -83,6 +78,11 @@ x86.Backend = function (x86_64)
     Endianness of the target architecture
     */
     this.endian = 'little';
+
+    /**
+    Flag for 64-bit mode
+    */
+    this.x86_64 = x86_64;
 
     /**
     Stack pointer register
@@ -145,7 +145,7 @@ x86.Backend.prototype.genCode = function (irFunc, params)
         this.genCode(irFunc.childFuncs[i], params);
 
     log.debug('');
-    log.debug('compiling "' + irFunc.funcName + '"');
+    log.debug('generating code for "' + irFunc.funcName + '"');
 
     // Get a reference to the CFG
     var cfg = irFunc.virginCFG;
@@ -153,9 +153,11 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Compute a block ordering for the function
     var blockOrder = orderBlocks(cfg.entry, cfg.blocks);
 
+    /*
     log.debug('order:');
     for (var i = 0; i < blockOrder.length; ++i)
         log.debug(blockOrder[i].getBlockName());
+    */
 
     // Perform liveness analysis on the CFG
     var liveness = liveAnalysis(blockOrder);

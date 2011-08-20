@@ -60,22 +60,9 @@ function compileIR(ir, params)
         'expected compilation parameters'
     );
     
-    ir.linking.linked = false;
-    ir.linking.link = function (params) 
-    {
-        this.rt.mcb.link(params);
-        this.linked = true;
-    };
+    const backend = params.backend;
 
-    var cb = backend.compileIRToCB(ir, params);
-
-    if (params.printASM === true)
-        params.print(backend.listing(cb));
-
-    var mcb = cb.assembleToMachineCodeBlock();
-
-    ir.runtime.mcb = mcb;
-    ir.linking.rt = ir.runtime;
+    backend.genCode(ir, params);
 };
 
 /** 
@@ -83,7 +70,14 @@ Link the IRFunction.
 */
 function linkIR(ir, params) 
 {
-    ir.linking.link(params);
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+    
+    const backend = params.backend;
+
+    backend.linkCode(ir, params);
 };
 
 /**
@@ -142,5 +136,170 @@ function compileSrcFile(fileName, params)
     var ast = parse_src_file(fileName, params);
 
     return compileAST(ast, params);
+}
+
+/**
+Compile a list of source code units, link them together and compile
+them down to machine code.
+*/
+function compileSrcs(srcList, params, genCode)
+{
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
+    if (genCode === undefined)
+        genCode = true;
+
+    // Function to get the name string for a code unit
+    function getSrcName(srcIdx)
+    {
+        var src = srcList[srcIdx];
+        if (typeof src === 'object')
+            return src.desc;
+        else
+            return src;
+    }
+
+    // List of parsed ASTs
+    var astList = [];
+
+    measurePerformance(
+        "Parsing",
+        function ()
+        {
+            // For each source unit
+            for (var i = 0; i < srcList.length; ++i)
+            {
+                var src = srcList[i];
+
+                log.trace('Parsing source: "' + getSrcName(i) + '"');
+
+                // Parse the source unit
+                if (typeof src === 'object')
+                    var ast = parse_src_str(src.str, params);
+                else
+                    var ast = parse_src_file(src, params);
+
+                // If we are compiling Tachyon source code,
+                // parse static bindings in the unit
+                if (params.tachyonSrc === true)
+                    params.staticEnv.parseUnit(ast);
+
+                // Add the parsed AST to the list
+                astList.push(ast);
+            }
+        }
+    );
+
+    // List for parsed IR function objects
+    var irList = [];
+
+    measurePerformance(
+        "IR generation",
+        function ()
+        {
+            // For each AST
+            for (var i = 0; i < astList.length; ++i)
+            {
+                var ast = astList[i];
+
+                log.trace('Generating IR for: "' + getSrcName(i) + '"');
+
+                // Generate IR from the AST
+                var ir = unitToIR(ast, params);
+
+                // Add the IR function to the list
+                irList.push(ir);
+            }
+        }
+    );
+
+    measurePerformance(
+        "IR lowering",
+        function ()
+        {
+            // For each IR
+            for (var i = 0; i < irList.length; ++i)
+            {
+                var ir = irList[i];
+
+                log.trace('Lowering IR for: "' + getSrcName(i) + '"');
+
+                // Perform IR lowering on the primitives
+                lowerIRFunc(ir, params);
+
+                // Validate the resulting IR
+                ir.validate();
+            }
+        }
+    );
+
+    // If machine code should not be generated, stop here
+    if (genCode === false)
+        return irList;
+
+    measurePerformance(
+        "Machine code generation",
+        function ()
+        {
+            // Compile the IR functions to machine code
+            for (var i = 0; i < irList.length; ++i)
+            {
+                var ir = irList[i];
+
+                log.trace('Generating machine code for: "' + getSrcName(i) + '"');
+
+                compileIR(ir, params);
+            }
+        }
+    );
+
+    measurePerformance(
+        "Machine code linking",
+        function ()
+        {
+            // Link the primitives with each other
+            for (var i = 0; i < irList.length; ++i)
+            {
+                var ir = irList[i];
+
+                log.trace('Linking code for: "' + getSrcName(i) + '"');
+
+                linkIR(ir, params);
+            }
+        }
+    );
+
+    // Return the list of IR functions
+    return irList;
+}
+
+/**
+Execute a compiled code unit
+*/
+function execUnit(unitFunc, params)
+{
+    assert (
+        unitFunc instanceof IRFunction,
+        'invalid IR function'
+    );
+
+    assert (
+        params.ctxPtr !== null,
+        'cannot execute unit without context pointer'
+    );
+
+    // Create a bridge to call the compiled unit
+    var unitBridge = makeBridge(
+        unitFunc,
+        params,
+        [],
+        new CIntAsBox()
+    );
+
+    // Call the compiled unit with the context pointer
+    unitBridge(params.ctxPtr);
 }
 

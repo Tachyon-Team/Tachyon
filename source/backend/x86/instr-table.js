@@ -492,6 +492,10 @@ x86.instrTable = [
     {mnem: 'ret', opCode: [0xC3]},
     {mnem: 'ret', opnds: ['imm16'], opCode: [0xC2]},
 
+    // Round scalar double
+    // The rounding mode is determined by the immediate
+    {mnem: 'roundsd', opnds: ['xmm', 'xmm/m64', 'imm8'], prefix: [0x66], opCode: [0x0F, 0x3A, 0x0B]},
+
     // Shift arithmetic left
     {mnem: 'sal', opnds: ['r/m8', 1], opCode: [0xD0], opExt: 4},
     {mnem: 'sal', opnds: ['r/m8', 'cl'], opCode: [0xD2], opExt: 4},

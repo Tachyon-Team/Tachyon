@@ -53,6 +53,20 @@ Maxime Chevalier-Boisvert
 */
 function Backend()
 {
+    /**
+    General-purpose register size in bits
+    */
+    this.regSizeBits = undefined;
+
+    /**
+    General-purpose register size in bytes
+    */
+    this.regSizeBytes = undefined;
+
+    /**
+    Endianness of the target architecture. Must be 'big' or 'little'.
+    */
+    this.endian = undefined;
 }
 
 /**
@@ -74,6 +88,6 @@ Backend.prototype.linkCode = function (irFunc, params)
     var codeBlock = irFunc.codeBlock;
 
     // Link the code block for the function
-    linkCode(codeBlock, backend, params);
+    linkCode(codeBlock, this, params);
 }
 

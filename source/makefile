@@ -12,8 +12,7 @@
 #  All rights reserved.
 #
 #  This software is licensed under the following license (Modified BSD
-#  License):
-#
+#  License):#
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are
 #  met:
@@ -53,6 +52,7 @@ BASE_SRCS =                             \
     compiler/params.js                  \
     compiler/config.js                  \
     compiler/compiler.js                \
+    compiler/init.js                    \
     compiler/bootstrap.js               \
     compiler/imgwriter.js               \
     ir/types.js                         \
@@ -101,38 +101,35 @@ RUNTIME_SRCS =                          \
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \
+    repl.js                             \
     main.js
 
 # Test-specific source files
-# Insert unit test files between testing.js and testmain.js
 TEST_SPEC_SRCS =                        \
     tests/testing.js                    \
     utility/tests/*.js                  \
     stdlib/tests/*.js                   \
-    ir/tests/*.js                       \
+    ir/tests/cfg.js                     \
+    ir/tests/ir.js                      \
+    ir/tests/constprop.js               \
     runtime/tests/*.js                  \
     backend/x86/tests/assembler.js      \
     backend/x86/tests/ir-to-asm.js      \
-    programs/tests/programs.js          \
-    tests/testmain.js                   \
+    programs/tests/programs.js
 
-# Main target source files
-MAIN_SRCS =                             \
+# Source files used to run the Tachyon VM
+RUN_SRCS =                              \
     $(BASE_SRCS)                        \
-    $(MAIN_SPEC_SRCS)
-
-# Test target source files
-TEST_SRCS =                             \
-    $(BASE_SRCS)                        \
-    $(TEST_SPEC_SRCS)
+    $(TEST_SPEC_SRCS)                   \
+    $(MAIN_SPEC_SRCS)                   \
 
 # All source files
 ALL_SRCS =                              \
     $(BASE_SRCS)                        \
     $(RUNTIME_SRCS)                     \
     $(STDLIB_SRCS)                      \
+    $(TEST_SPEC_SRCS)                   \
     $(MAIN_SPEC_SRCS)                   \
-    $(TEST_SPEC_SRCS)
 
 all: tachyon compiler/sources.js
 
@@ -186,46 +183,23 @@ compiler/sources.js: makefile compiler/sources.js.in
 	done
 	@echo "];"                                       >> compiler/sources.js
 
-shell:
-	$(RLWJSVM) $(MAIN_SRCS)
-
-shell64:
-	$(RLWJSVM64) $(MAIN_SRCS)
-
-bootstrap:
-	time $(JSVM) $(MAIN_SRCS) -- -bootstrap -v=all
-
-bootstrap64:
-	time $(JSVM64) $(MAIN_SRCS) -- -bootstrap -v=all
-
-bootstrap-debug:
-	echo "run $(JSVMOPTSDEBUG) $(MAIN_SRCS) -- -bootstrap" > gdb-command
-	echo "bt"                                              >> gdb-command
-	time gdb --command=gdb-command $(JSVMPROG)
-
-image:
-	$(JSVM) $(MAIN_SRCS) -- -image -v=all
-	gcc -m32 -o host/tachyon host/loader.c host/tachyon-exts.c host/tachyon.S
-
 test:
-	$(JSVM) $(TEST_SRCS) -- -v=all
+	$(JSVM) $(RUN_SRCS) -- -test -v=all
 
 test64:
-	$(JSVM64) $(TEST_SRCS) -- -v=all
+	$(JSVM64) $(RUN_SRCS) -- -test -v=all
 
-perf:
-	./bench/d8.sh                                   \
-        -cfgFile "bench/configs/time_benchs.json"   \
-        -genReport "benchreport.html"
+shell:
+	$(RLWJSVM) $(RUN_SRCS)
 
-bootstrap-js2scm:
-	$(JS2SCM) -scm $(MAIN_SRCS)
+shell64:
+	$(RLWJSVM64) $(RUN_SRCS)
 
-bootstrap-js2scm-debug:
-	$(JS2SCM) -scm -debug $(MAIN_SRCS)
+bootstrap:
+	time $(JSVM) $(RUN_SRCS) -- -bootstrap -v=all
 
-tachyon-debug.js: $(MAIN_SRCS)
-	$(JS2JS) -debug $(MAIN_SRCS) > tachyon-debug.js
+bootstrap64:
+	time $(JSVM64) $(RUN_SRCS) -- -bootstrap -v=all
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)
@@ -239,3 +213,4 @@ snapshot: makefile d8/d8-tachyon-exts.cc $(ALL_SRCS)
 
 clean:
 	rm -f compiler/sources.js tachyon
+

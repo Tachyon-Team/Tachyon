@@ -59,6 +59,16 @@ Helper functions for this test suite
 tests.ir.helpers = {};
 
 /**
+Setup function for the IR test suite
+*/
+tests.ir.init = function ()
+{
+    // Run a base-initialization of the Tachyon runtime
+    // without compiling machine code
+    initBase(config.hostParams, true);
+}
+
+/**
 Parse a source code string, copy the resulting IR and validate it
 */
 tests.ir.helpers.testSource = function (sourceStr, printOut, hostParams)

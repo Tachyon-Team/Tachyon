@@ -399,8 +399,8 @@ x86.MemLoc.prototype.sibNeeded = function (x86_64)
 x86.Immediate = function (value)
 {
     assert (
-        isInt(value),
-        'immediate must be integer'
+        num_instance(value),
+        'immediate must be number'
     );
 
     assert (

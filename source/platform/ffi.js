@@ -953,7 +953,7 @@ Initialize FFI functions for the current configuration
 */
 function initFFI(params)
 {
-    log.trace('initFFI');
+    //log.trace('initFFI');
 
     function regFFI(ffiFunc)
     {
