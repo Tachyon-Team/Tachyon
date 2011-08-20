@@ -1531,8 +1531,39 @@ tests.x86.irToAsm = function ()
         '
     );
 
-
-
+    // Regression test: phi node steals live value's allocation
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx rptr";                     \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            return foo(n);                              \
+        }                                               \
+        function foo(n)                                 \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            var i = n;                                  \
+                                                        \
+            while (true)                                \
+            {                                           \
+                i++;                                    \
+                                                        \
+                if (i > n + pint(10))                   \
+                    break;                              \
+            }                                           \
+                                                        \
+            return i;                                   \
+        }                                               \
+        ',
+        11,
+        [0]
+    );
 
 
 

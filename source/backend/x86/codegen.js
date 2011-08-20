@@ -458,10 +458,19 @@ x86.genEdgeTrans = function (
         var succAllocMap = predAllocMap.copy();
         allocMaps[succ.blockId] = succAllocMap;
 
+
+        // TODO: can't steal the allocation of the incoming if the incoming
+        // value is live after the phi nodes or if it is an incoming to
+        // another phi after this node!
+
+        // Can we do graph resolution for this?
+        // We have no predestined destinations...
+
+
         // For each instruction of the successor
-        for (var k = 0; k < succ.instrs.length; ++k)
+        for (var i = 0; i < succ.instrs.length; ++i)
         {
-            var instr = succ.instrs[k];
+            var instr = succ.instrs[i];
 
             // If this is not a phi node, stop
             if (!(instr instanceof PhiInstr))
@@ -479,8 +488,22 @@ x86.genEdgeTrans = function (
                 inc
             );
 
-            // If this is an IR constant with no allocation
-            if (incAlloc === undefined)
+            // Test if the incoming value is live after this point
+            var incLive = succLiveIn.hasItem(inc);
+            for (var j = i + 1; incLive === false && j < succ.instrs.length; ++j)
+            {
+                var phi2 = succ.instrs[j];
+
+                if (!(phi2 instanceof PhiInstr))
+                    break;
+
+                if (phi2.getIncoming(pred) === inc)
+                    incLive = true;
+            }
+
+            // If this is an IR constant with no allocation or the 
+            // incoming value is live after this phi node
+            if (incAlloc === undefined || incLive === true)
             {
                 // Allocate a register for the phi node
                 var reg = x86.allocReg(
@@ -497,7 +520,7 @@ x86.genEdgeTrans = function (
                 x86.moveValue(
                     succAllocMap,
                     reg,
-                    inc,
+                    (incAlloc !== undefined)? incAlloc:inc,
                     asm,
                     params
                 );

@@ -79,7 +79,7 @@ function liveAnalysis(blockOrder)
     {
         var block = workList.remFirst();
 
-        print('processing block: ' + block.getBlockName());
+        //print('processing block: ' + block.getBlockName());
 
         // Compute the union of the successor live in sets
         var liveCur = new HashMap();
@@ -155,12 +155,14 @@ function liveAnalysis(blockOrder)
         // If the new live set has more temps
         if (liveInCur === undefined || liveInCur.numItems !== liveCur.numItems)
         {
+            /*
             print('updating');
             print('');
             print('live in for ' + block.getBlockName());
             for (var itr = liveCur.getItr(); itr.valid(); itr.next())
                 print(itr.get().key.getValName());
             print('');
+            */
 
             // Replace the live in set for this block
             blockLiveIn[block.blockId] = liveCur;

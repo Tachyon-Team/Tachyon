@@ -165,7 +165,7 @@ x86.optimize = function (asm, maxPasses)
     // Until no change occurred
     for (var pass = 1; (maxPasses === undefined || pass <= maxPasses); ++pass)
     {
-        print(asm);
+        //print(asm);
 
         // Flag to indicate a change occurred
         var changed = false;
