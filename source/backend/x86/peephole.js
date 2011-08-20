@@ -64,11 +64,11 @@ lea opts for mul
 lea for 3-register addition
   lea eax, [ebx+ecx]
 
-mov r, 0 to xor r,r
-
 move sequence reduction
 - see phi block merges
+- much performance to gain here
 
+Maybe:
 inc/dec
 - smaller, but may not be faster!
 
@@ -260,6 +260,19 @@ x86.optimize = function (asm, maxPasses)
 
                 // Reset the reference count for the label
                 instr.refCount = 0;
+            }
+
+            // If this is a move of 0 into a 32 or 64 bit register
+            else if (instr instanceof instrs.mov &&
+                     instr.opnds[0] instanceof x86.Register &&
+                     instr.opnds[0].size >= 32 &&
+                     instr.opnds[1] instanceof x86.Immediate &&
+                     instr.opnds[1].value === 0)
+            {
+                // Replace the move by xor r, r
+                var reg = instr.opnds[0];
+                var newInstr = new instrs.xor([reg, reg], x86_64);
+                replInstr(instr, newInstr);
             }
 
             // If this is an addition or subtraction

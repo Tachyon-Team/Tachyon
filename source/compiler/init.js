@@ -61,7 +61,10 @@ function initBase(params, partialInit)
     if (partialInit === undefined)
         partialInit = false;
 
-    log.trace('Performing ' + (partialInit? 'partial ':'') + 'base initialization');
+    log.trace(
+        'Performing ' + (partialInit? 'partial ':'') + 
+        'Tachyon base initialization'
+    );
 
     // Create the context and object layouts
     log.trace('Creating context layout');
@@ -143,8 +146,8 @@ function getPrimSrcs(params)
     // Declare a variable for the layout source
     var layoutSrc = '';
 
-    log.trace("Generate methods for the instantiable layouts");
     // Generate methods for the instantiable layouts
+    log.trace("Generating layout methods");
     for (var l in params.memLayouts)
     {
         var layout = params.memLayouts[l];
@@ -158,16 +161,14 @@ function getPrimSrcs(params)
     // Declare a variable for the FFI wrapper source
     var wrapperSrc = '';
 
-    log.trace("Generate wrapper code for the FFI functions");
     // Generate wrapper code for the FFI functions
+    log.trace("Generating FFI wrapper code");
     for (var f in params.ffiFuncs)
     {
         var func = params.ffiFuncs[f];
 
         wrapperSrc += func.genWrapper();
     }
-
-    log.trace("Building list of the primitives");
 
     // Add auto-generated code to the primitive source list
     var primSrcs = [
@@ -179,8 +180,6 @@ function getPrimSrcs(params)
 
     // Add the runtime primitive source files to the list
     var primSrcs = primSrcs.concat(TACHYON_RUNTIME_SRCS);
-
-    log.trace("Returning the primitives");
 
     return primSrcs;
 }

@@ -365,6 +365,16 @@ tests.x86.asmEncoding = function ()
         '48FF442404'
     );
 
+    // jcc
+    test(
+        function (a) { var l = a.label('foo'); a.jge(l); },
+        '7DFE'
+    );
+    test(
+        function (a) { var l = a.label('foo'); a.jno(l); },
+        '71FE'
+    );
+
     // mov
     test(
         function (a) { a.mov(a.eax, 7); }, 
@@ -728,6 +738,12 @@ tests.x86.asmEncoding = function ()
     test(
         function (a) { a.ret(5); },
         'C20500'
+    );
+
+    // roundsd
+    test(
+        function (a) { a.roundsd(a.xmm2, a.xmm5, 0); },
+        '660F3A0BD500'
     );
 
     // sal
