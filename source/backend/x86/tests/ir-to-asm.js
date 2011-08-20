@@ -104,6 +104,10 @@ tests.x86.irToAsm = function ()
         // Get the test function
         irFunc = ir.getChild('test');
 
+        // If there is no test function, stop here
+        if ((irFunc instanceof IRFunction) === false)
+            return;
+
         // Get the address of the default entry point
         var entryAddr = irFunc.codeBlock.getExportAddr('ENTRY_DEFAULT');
 
@@ -1494,6 +1498,38 @@ tests.x86.irToAsm = function ()
     //var endTime = (new Date()).getTime();
     //print('fib time: ' + ((endTime - startTime)/1000));
 
+    // Regression test: infinite loop code
+    test('                                              \
+        function foo()                                  \
+        {                                               \
+            while (true)                                \
+            {                                           \
+            }                                           \
+        }                                               \
+        '
+    );
+
+    // Regression test: complex control flow and phi nodes
+    test('                                                  \
+        function foo(ptr)                                   \
+        {                                                   \
+            "tachyon:arg ptr rptr";                         \
+                                                            \
+            var x = pint(0);                                \
+            var y = pint(0);                                \
+                                                            \
+            while (true)                                    \
+            {                                               \
+                var x = iir.load(IRType.pint, ptr, pint(0));\
+                                                            \
+                if (x !== pint(1))                          \
+                    continue;                               \
+                                                            \
+                var y = x;                                  \
+            }                                               \
+        }                                                   \
+        '
+    );
 
 
 
@@ -1505,16 +1541,21 @@ tests.x86.irToAsm = function ()
 
 
 
+    /*
+    // TODO: 
+    // Add unit tests for problematic compilation cases
+    // Simplify problematic functions to minimum
+    var ast = parse_src_file('test_backend.js', params);
+    var ir = unitToIR(ast, params);
+    lowerIRFunc(ir, params);
+    print(ir);
+    backend.genCode(ir, params);
+    */
 
 
 
 
 
-
-
-    // TODO: add unit tests for problematic compilation cases
-    // e.g.: phi error in putPropObj
-    // Simplify problematic function to minimum
 
 
 

@@ -65,18 +65,21 @@ function liveAnalysis(blockOrder)
         workList.addLast(blockOrder[i]);
 
     // Array to store live sets at the input of each block, after the phi nodes
+    // This may include phi nodes from the block, if they are used
     var blockLiveIn = [];
 
-    // Array of sets of live variables before instructions
+    // Array of sets of live variables before individual instructions
     var instrLiveIn = [];
 
-    // Array of sets of live variables after instructions
+    // Array of sets of live variables after individual instructions
     var instrLiveOut = [];
 
     // Until the work list is empty
     while (workList.isEmpty() === false)
     {
         var block = workList.remFirst();
+
+        print('processing block: ' + block.getBlockName());
 
         // Compute the union of the successor live in sets
         var liveCur = new HashMap();
@@ -93,11 +96,22 @@ function liveAnalysis(blockOrder)
                 var value = itr.get().key;
 
                 // If this value is a phi node from the successor,
-                // add the incoming value from this block instead
+                // don't add it to the live set
                 if (value instanceof PhiInstr && value.parentBlock === succ)
-                    value = value.getIncoming(block);
+                    continue;
 
                 liveCur.setItem(value);
+            }
+
+            for (var j = 0; j < succ.instrs.length; ++j)
+            {
+                var instr = succ.instrs[j];
+
+                if ((instr instanceof PhiInstr) === false)
+                    break;
+
+                var inc = instr.getIncoming(block);
+                liveCur.setItem(inc);
             }
         }
 
@@ -106,19 +120,19 @@ function liveAnalysis(blockOrder)
         {
             var instr = block.instrs[i];
 
-            // If this instruction is a phi node, stop
+            // If this instruction is a phi node, continue
             if (instr instanceof PhiInstr)
-                break;
+                continue;
+
+            // Remove the output of this instruction from the live set
+            if (instr.dests.length > 0 && liveCur.hasItem(instr) === true)
+                liveCur.remItem(instr);
 
             /*
             log.debug('instr live out: ' + instr);
             for (var itr = liveCur.getItr(); itr.valid(); itr.next())
                 log.debug(itr.get().key.getValName());
             */
-
-            // Remove the output of this instruction from the live set
-            if (instr.dests.length > 0 && liveCur.hasItem(instr) === true)
-                liveCur.remItem(instr);
 
             // Store the live set at the output of this instruction
             if (i === block.instrs.length - 1)
@@ -127,14 +141,9 @@ function liveAnalysis(blockOrder)
                 var curLiveSet = instrLiveIn[block.instrs[i+1].instrId];
             instrLiveOut[instr.instrId] = curLiveSet;
 
-            // For each use of the instruction
+            // Map all uses in the live set
             for (var j = 0; j < instr.uses.length; ++j)
-            {
-                var use = instr.uses[j];
-
-                // Map this use in the live set
-                liveCur.setItem(use);
-            }
+                liveCur.setItem(instr.uses[j]);
 
             // Store the live set at the input of this instruction
             instrLiveIn[instr.instrId] = liveCur.copy();
@@ -146,6 +155,13 @@ function liveAnalysis(blockOrder)
         // If the new live set has more temps
         if (liveInCur === undefined || liveInCur.numItems !== liveCur.numItems)
         {
+            print('updating');
+            print('');
+            print('live in for ' + block.getBlockName());
+            for (var itr = liveCur.getItr(); itr.valid(); itr.next())
+                print(itr.get().key.getValName());
+            print('');
+
             // Replace the live in set for this block
             blockLiveIn[block.blockId] = liveCur;
 

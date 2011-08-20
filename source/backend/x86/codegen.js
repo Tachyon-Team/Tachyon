@@ -515,6 +515,8 @@ x86.genEdgeTrans = function (
             // Get the value
             var value = itr.get().key;
 
+            //log.debug('live value: ' + value.getValName());
+
             // If the value is a phi node from this block, skip it
             if (value instanceof PhiInstr && value.parentBlock === succ)
                 continue;
@@ -522,11 +524,9 @@ x86.genEdgeTrans = function (
             // Get the best allocation for this value
             var bestAlloc = x86.getBestAlloc(succAllocMap, value);
 
-            /*
-            log.debug('processing live value: ' + value.getValName());
-            log.debug('best alloc: ' + bestAlloc);
-            log.debug('pred allocs: ' + predAllocMap.getAllocs(value));
-            */
+            //log.debug('processing live value: ' + value.getValName());
+            //log.debug('best alloc: ' + bestAlloc);
+            //log.debug('pred allocs: ' + predAllocMap.getAllocs(value));
 
             // Remove all existing allocations for this value
             succAllocMap.remAllocs(value);
@@ -812,7 +812,7 @@ x86.genEdgeTrans = function (
             {
                 changed = false;
 
-
+                /*
                 print('\ngraph:');
                 for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)
                 {
@@ -823,7 +823,7 @@ x86.genEdgeTrans = function (
                     );
                 }
                 print('');
-
+                */
 
                 // For each node of the move graph
                 for (var nodeIdx = 0; nodeIdx < graphNodes.length; ++nodeIdx)

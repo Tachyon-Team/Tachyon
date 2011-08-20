@@ -165,6 +165,8 @@ x86.optimize = function (asm, maxPasses)
     // Until no change occurred
     for (var pass = 1; (maxPasses === undefined || pass <= maxPasses); ++pass)
     {
+        print(asm);
+
         // Flag to indicate a change occurred
         var changed = false;
 
@@ -226,10 +228,14 @@ x86.optimize = function (asm, maxPasses)
                 {
                     var j2Label = getJumpLabel(label.next);
 
-                    // Jump directly to the second label
-                    var ctor = instrs[instr.mnem];
-                    var newJmp = new ctor([new x86.LabelRef(j2Label)], x86_64);
-                    replInstr(instr, newJmp);
+                    // If the second jump label is not the same as ours
+                    if (j2Label !== label)
+                    {
+                        // Jump directly to the second label
+                        var ctor = instrs[instr.mnem];
+                        var newJmp = new ctor([new x86.LabelRef(j2Label)], x86_64);
+                        replInstr(instr, newJmp);
+                    }
                 }
 
                 // If this is a jump to the next instruction
