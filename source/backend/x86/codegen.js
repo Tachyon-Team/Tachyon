@@ -254,17 +254,31 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
             log.debug('processing: ' + instr);
 
-            // Get the live set at the input and output of this instruction
-            var instrLiveIn = liveness.instrIn[instr.instrId];
+            // Get the live set at output of this instruction
             var instrLiveOut = liveness.instrOut[instr.instrId];
-            assert (
-                instr instanceof PhiInstr || instrLiveIn instanceof HashMap,
-                'invalid live in map for: ' + instr.getValName()
-            );
             assert (
                 instr instanceof PhiInstr || instrLiveOut instanceof HashMap,
                 'invalid live out map for: ' + instr.getValName()
             );
+
+            /**
+            Test liveness of values before the instruction
+            */
+            function liveInFunc(val)
+            {
+                if (arraySetHas(instr.uses, val) === true)
+                    return true;
+
+                return instrLiveOut.hasItem(val);
+            }
+
+            /**
+            Test liveness of values after the instruction
+            */
+            function liveOutFunc(val)
+            {
+                return instrLiveOut.hasItem(val);
+            }
 
             // If this is a phi node
             if (instr instanceof PhiInstr)
@@ -286,7 +300,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                         allocMap,
                         instr,
                         callConv.argRegs[argIndex],
-                        instrLiveIn, 
+                        liveOutFunc, 
                         undefined,
                         asm,
                         params
@@ -312,7 +326,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 x86.allocReg(
                     allocMap,
                     undefined,
-                    instrLiveIn,
+                    liveOutFunc,
                     instr, 
                     callConv.argCountReg,
                     undefined
@@ -343,8 +357,8 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 var allocInfo = x86.allocOpnds(
                     allocMap,
                     instr,
-                    instrLiveIn,
-                    instrLiveOut,
+                    liveInFunc,
+                    liveOutFunc,
                     asm,
                     params
                 );
@@ -458,15 +472,6 @@ x86.genEdgeTrans = function (
         var succAllocMap = predAllocMap.copy();
         allocMaps[succ.blockId] = succAllocMap;
 
-
-        // TODO: can't steal the allocation of the incoming if the incoming
-        // value is live after the phi nodes or if it is an incoming to
-        // another phi after this node!
-
-        // Can we do graph resolution for this?
-        // We have no predestined destinations...
-
-
         // For each instruction of the successor
         for (var i = 0; i < succ.instrs.length; ++i)
         {
@@ -480,7 +485,7 @@ x86.genEdgeTrans = function (
             var inc = instr.getIncoming(pred);
 
             // Get the allocation for the incoming value
-            var incAlloc = x86.getBestAlloc(predAllocMap, inc);
+            var incAlloc = x86.getBestAlloc(succAllocMap, inc);
 
             assert (
                 !(inc instanceof IRInstr && incAlloc === undefined),
@@ -488,33 +493,49 @@ x86.genEdgeTrans = function (
                 inc
             );
 
-            // Test if the incoming value is live after this point
-            var incLive = succLiveIn.hasItem(inc);
-            for (var j = i + 1; incLive === false && j < succ.instrs.length; ++j)
+            /**
+            Test the liveness of a value before the phi node
+            */
+            function liveInFunc(val)
             {
-                var phi2 = succ.instrs[j];
+                // If the value is live after the phi nodes, it is live
+                if (succLiveIn.hasItem(val) === true)
+                    return true;
 
-                if (!(phi2 instanceof PhiInstr))
-                    break;
+                // If any phi node after this one has this value as incoming
+                // temp, it is live
+                for (var j = i; j < succ.instrs.length; ++j)
+                {
+                    var phi = succ.instrs[j];
 
-                if (phi2.getIncoming(pred) === inc)
-                    incLive = true;
+                    if (!(phi instanceof PhiInstr))
+                        break;
+
+                    if (phi.getIncoming(pred) === val)
+                        return true;
+                }
             }
 
             // If this is an IR constant with no allocation or the 
-            // incoming value is live after this phi node
-            if (incAlloc === undefined || incLive === true)
+            // incoming value is live before this phi node
+            if (incAlloc === undefined || liveInFunc(inc) === true)
             {
+                log.debug('allocating reg for phi');
+
                 // Allocate a register for the phi node
                 var reg = x86.allocReg(
                     succAllocMap,
                     instr,
                     undefined,
-                    succLiveIn,
+                    liveInFunc,
                     [],
                     asm,
                     params
                 );
+
+                // Get the allocation for the incoming value, as it may
+                // have been changed by the register allocation
+                var incAlloc = x86.getBestAlloc(succAllocMap, inc);
 
                 // Move the incoming value into the register
                 x86.moveValue(
@@ -527,6 +548,8 @@ x86.genEdgeTrans = function (
             }
             else
             {
+                log.debug('*** using inc alloc for phi: ' + incAlloc);
+
                 // Use the incoming temp allocation for the phi node
                 succAllocMap.makeAlloc(instr, incAlloc);
             }

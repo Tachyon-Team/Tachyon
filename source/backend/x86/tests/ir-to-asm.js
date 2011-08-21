@@ -1565,6 +1565,30 @@ tests.x86.irToAsm = function ()
         [0]
     );
 
+    // Regression test: phi node crushes incoming temp allocation
+    test('                                              \
+        function foo(intVal)                            \
+        {                                               \
+            "tachyon:arg intVal pint";                  \
+                                                        \
+            var strLen = pint(0);                       \
+            var neg = false;                            \
+                                                        \
+            if (intVal < pint(0))                       \
+            {                                           \
+                strLen = pint(1);                       \
+                neg = true;                             \
+            }                                           \
+                                                        \
+            var intVal2 = intVal;                       \
+            while (intVal2 !== pint(0))                 \
+            {                                           \
+                strLen++;                               \
+                intVal /= pint(2);                      \
+            }                                           \
+        }                                               \
+        '
+    );
 
 
 
@@ -1572,7 +1596,8 @@ tests.x86.irToAsm = function ()
 
 
 
-    /*
+
+    /*    
     // TODO: 
     // Add unit tests for problematic compilation cases
     // Simplify problematic functions to minimum

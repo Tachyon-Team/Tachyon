@@ -571,7 +571,7 @@ x86.RegAllocMap.prototype.remAllocs = function (value)
 /**
 Spill a value on the stack.
 */
-x86.RegAllocMap.prototype.spillValue = function (value, liveSet, asm)
+x86.RegAllocMap.prototype.spillValue = function (value, liveFunc, asm)
 {
     var stackSlot = undefined;
 
@@ -584,7 +584,7 @@ x86.RegAllocMap.prototype.spillValue = function (value, liveSet, asm)
 
         // If this spill slot is free, or assigned to a dead value
         if (curVal === undefined || 
-            (liveSet.hasItem(curVal) === false && 
+            (liveFunc(curVal) === false && 
              (curVal instanceof x86.Register) === false))
         {
             stackSlot = alloc;
@@ -737,14 +737,14 @@ Allocate a register to a value
 @param allocMap allocation map
 @param value value to be allocated, may be undefined
 @fixedReg fixed register we must allocate to, undefined
-@param liveSet set of live temporaries
+@param liveFunc liveness test function
 @excludeMap map of registers to exclude from allocation
 */
 x86.allocReg = function (
     allocMap, 
     value, 
     fixedReg, 
-    liveSet,
+    liveFunc,
     excludeMap,
     asm,
     params
@@ -810,7 +810,7 @@ x86.allocReg = function (
             var weight = 0;
 
             // If the register is mapped to a live value
-            if (regVal !== undefined && liveSet.hasItem(regVal) === true)
+            if (regVal !== undefined && liveFunc(regVal) === true)
             {
                 weight += 1;
 
@@ -836,7 +836,7 @@ x86.allocReg = function (
         allocMap, 
         bestReg, 
         true, 
-        liveSet, 
+        liveFunc, 
         asm, 
         params
     );
@@ -856,7 +856,7 @@ x86.saveReg = function (
     allocMap,
     reg,
     remAlloc,
-    liveSet,
+    liveFunc,
     asm,
     params
 )
@@ -873,7 +873,7 @@ x86.saveReg = function (
         allocMap.remAlloc(curVal, reg);
 
     // If the register is not mapped to a live value, do nothing
-    if (liveSet.hasItem(curVal) === false)
+    if (liveFunc(curVal) === false)
         return;
 
     // if the value is a constant, do nothing
@@ -888,7 +888,7 @@ x86.saveReg = function (
         return;
 
     // Map the value to a stack spill slot
-    var stackSlot = allocMap.spillValue(curVal, liveSet, asm);
+    var stackSlot = allocMap.spillValue(curVal, liveFunc, asm);
 
     // Get the operand for the spill slot
     var stackOpnd = allocMap.getSlotOpnd(stackSlot);
@@ -903,8 +903,8 @@ Allocate operands for generic (non-meta) instructions
 x86.allocOpnds = function (
     allocMap,
     instr,
-    instrLiveIn,
-    instrLiveOut,
+    liveInFunc,
+    liveOutFunc,
     asm,
     params
 )
@@ -981,7 +981,7 @@ x86.allocOpnds = function (
             allocMap,
             undefined,
             undefined,
-            instrLiveIn,
+            liveInFunc,
             excludeMap,
             asm,
             params
@@ -1116,7 +1116,7 @@ x86.allocOpnds = function (
 
         // If the dest is this operand and the use is 
         // still live after this instruction
-        var destNeedsOpnd = destIsOpnd0 && opndIdx === 0 && instrLiveOut.hasItem(use);
+        var destNeedsOpnd = destIsOpnd0 && opndIdx === 0 && liveOutFunc(use);
 
         // Value for which this operand is being allocated
         var mapVal = (destIsOpnd0 && opndIdx === 0)? instr:use;
@@ -1133,7 +1133,7 @@ x86.allocOpnds = function (
                 mapVal,
                 (opndMustBeReg instanceof x86.Register)?
                 opndMustBeReg:undefined,
-                instrLiveIn,
+                liveInFunc,
                 excludeMap,
                 asm,
                 params
@@ -1143,7 +1143,7 @@ x86.allocOpnds = function (
             if (opnd === undefined)
             {
                 // Map the operand to a stack location
-                opnd = allocMap.spillValue(mapVal, instrLiveIn, asm);
+                opnd = allocMap.spillValue(mapVal, liveInFunc, asm);
             }
 
             // Move the value into the operand
@@ -1224,7 +1224,7 @@ x86.allocOpnds = function (
                 allocMap,
                 reg,
                 true,
-                instrLiveOut,
+                liveOutFunc,
                 asm,
                 params
             );
@@ -1254,7 +1254,7 @@ x86.allocOpnds = function (
                 allocMap,
                 reg,
                 false,
-                instrLiveOut,
+                liveOutFunc,
                 asm,
                 params
             );
@@ -1287,7 +1287,7 @@ x86.allocOpnds = function (
             instr,
             (destMustBeReg instanceof x86.Register)?
             destMustBeReg:undefined,
-            instrLiveIn,
+            liveInFunc,
             excludeMap,
             asm,
             params

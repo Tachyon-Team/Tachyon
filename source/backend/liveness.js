@@ -68,9 +68,6 @@ function liveAnalysis(blockOrder)
     // This may include phi nodes from the block, if they are used
     var blockLiveIn = [];
 
-    // Array of sets of live variables before individual instructions
-    var instrLiveIn = [];
-
     // Array of sets of live variables after individual instructions
     var instrLiveOut = [];
 
@@ -135,18 +132,11 @@ function liveAnalysis(blockOrder)
             */
 
             // Store the live set at the output of this instruction
-            if (i === block.instrs.length - 1)
-                var curLiveSet = liveCur.copy();
-            else
-                var curLiveSet = instrLiveIn[block.instrs[i+1].instrId];
-            instrLiveOut[instr.instrId] = curLiveSet;
+            instrLiveOut[instr.instrId] = liveCur.copy();
 
             // Map all uses in the live set
             for (var j = 0; j < instr.uses.length; ++j)
                 liveCur.setItem(instr.uses[j]);
-
-            // Store the live set at the input of this instruction
-            instrLiveIn[instr.instrId] = liveCur.copy();
         }
 
         // Find the current live in set for this block
@@ -175,7 +165,6 @@ function liveAnalysis(blockOrder)
 
     return {
         blockIn: blockLiveIn,
-        instrIn: instrLiveIn,
         instrOut: instrLiveOut
     };
 }
