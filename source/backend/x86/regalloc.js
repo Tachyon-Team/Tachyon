@@ -794,7 +794,7 @@ x86.allocReg = function (
                 subReg = reg.getSubOpnd(value.type.getSizeBits(params));
             else
                 subReg = reg;
-            
+
             // If a REX prefix is needed and we aren't in 64-bit, skip it
             if (subReg.rexNeeded === true && backend.x86_64 !== true)
                 continue;

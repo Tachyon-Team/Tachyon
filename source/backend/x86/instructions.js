@@ -1125,7 +1125,7 @@ Anonymous function to create instruction classes from the instruction table.
 
             assert (
                 !(x86_64 === false && rexNeeded === true),
-                'cannot use REX operands in 32-bit mode'
+                'cannot use REX operands in 32-bit mode (' + opnds + ')'
             );
 
             assert (

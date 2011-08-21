@@ -1536,10 +1536,11 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx rptr";                     \
+            "tachyon:arg ctx ref";                      \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
+            iir.set_ctx(ctx);                           \
             return foo(n);                              \
         }                                               \
         function foo(n)                                 \
@@ -1590,6 +1591,25 @@ tests.x86.irToAsm = function ()
         '
     );
 
+    // Regression test: allocation of REX requiring operand in 32 bit
+    test('                                              \
+        function foo(strVal)                            \
+        {                                               \
+            var strLen = iir.icast(                     \
+                IRType.pint,                            \
+                get_str_size(strVal)                    \
+            );                                          \
+            var strPtr = malloc(strLen);                \
+                                                        \
+            for (var i = pint(0); i < strLen; i++)      \
+            {                                           \
+                var ch = get_str_data(strVal, i);       \
+                var cCh = iir.icast(IRType.i8, ch);     \
+                iir.store(IRType.i8, strPtr, i, cCh);   \
+            }                                           \
+        }                                               \
+        '
+    );
 
 
 
@@ -1597,7 +1617,7 @@ tests.x86.irToAsm = function ()
 
 
 
-    /*    
+    /* 
     // TODO: 
     // Add unit tests for problematic compilation cases
     // Simplify problematic functions to minimum
@@ -1607,7 +1627,6 @@ tests.x86.irToAsm = function ()
     print(ir);
     backend.genCode(ir, params);
     */
-
 
 
 

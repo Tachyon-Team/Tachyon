@@ -780,6 +780,19 @@ ThrowInstr.prototype.x86 = RetInstr.prototype.x86;
 
 // Integer cast instruction
 ICastInstr.prototype.x86 = new x86.InstrCfg();
+ICastInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+{
+    const srcWidth = instr.uses[0].type.getSizeBits(params);
+    const dstWidth = instr.type.getSizeBits(params);
+
+    // If the output is 8 bits, the input is not the same width as the input
+    // and we are compiling for 32 bits, force the operand to be in al
+    if (dstWidth === 8 && srcWidth !== dstWidth &&
+        params.backend.x86_64 === false)
+        return x86.regs.eax;
+
+    return false;
+}
 ICastInstr.prototype.x86.destMustBeReg = function (instr)
 {
     return true;
@@ -816,9 +829,12 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, ge
     }
 
     // If the source width is larger than the destination width,
-    // we retain only the least significative bits
+    // we retain only the least significant bits
     else if (srcWidth > dstWidth)
     {
+        print('src: ' + src);
+        print('dst: ' + dst);
+
         asm.mov(dst, src.getSubOpnd(dstWidth));
     }
 
