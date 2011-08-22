@@ -237,7 +237,7 @@ function initRuntime(params)
     // Initialize the heap
     log.trace('Calling ' + initHeap.funcName);
     var ctxPtr = initHeapBridge(
-        asm.address.nullAddr(params.target.ptrSizeBits).getBytes(),
+        (params.backend.regSizeBytes === 8)? [0,0,0,0,0,0,0,0]:[0,0,0,0],
         heapAddr,
         heapSize
     );

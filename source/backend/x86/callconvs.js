@@ -260,12 +260,12 @@ CallConv.tachyon32 = new CallConv({
     argCountReg : x86.regs.cl,
     retReg      : x86.regs.eax,
     fpRetReg    : x86.regs.xmm0,
-    callerSave  : [x86.regs.rdx,
-                   x86.regs.rcx,
-                   x86.regs.rbx,
-                   x86.regs.rsi,
-                   x86.regs.rdi,
-                   x86.regs.rbp],    
+    callerSave  : [x86.regs.edx,
+                   x86.regs.ecx,
+                   x86.regs.ebx,
+                   x86.regs.esi,
+                   x86.regs.edi,
+                   x86.regs.ebp],    
     calleeSave  : [],
     cleanup     : 'CALLEE'
 });

@@ -175,7 +175,7 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     if (config.verbosity >= log.DEBUG)
     {
         log.debug('');
-        log.debug('assembly:')
+        log.debug('assembly for "' + irFunc.funcName + '":')
         log.debug(assembler.toString(true));
         log.debug('');
     }

@@ -834,8 +834,7 @@ x86.allocReg = function (
     // Free the register, if needed
     x86.saveReg(
         allocMap, 
-        bestReg, 
-        true, 
+        bestReg,
         liveFunc, 
         asm, 
         params
@@ -855,7 +854,6 @@ Save the value stored in a register if needed. This may cause a spill
 x86.saveReg = function (
     allocMap,
     reg,
-    remAlloc,
     liveFunc,
     asm,
     params
@@ -864,13 +862,14 @@ x86.saveReg = function (
     // Get the current value for this register
     var curVal = allocMap.getRegVal(reg);
 
+    print('current val: ' + ((curVal === undefined)? undefined:curVal.getValName()));
+
     // If the register isn't mapped to a value, do nothing
     if (curVal === undefined)
         return;
 
-    // If demanded, remove the allocation of the register to the value
-    if (remAlloc === true)
-        allocMap.remAlloc(curVal, reg);
+    // Remove the allocation of the register to the value
+    allocMap.remAlloc(curVal, reg);
 
     // If the register is not mapped to a live value, do nothing
     if (liveFunc(curVal) === false)
@@ -1204,62 +1203,10 @@ x86.allocOpnds = function (
         opnds.push(opnd);
     }
 
-    // If this instruction writes/excludes registers
-    if (excludeRegs !== undefined)
-    {
-        assert (
-            excludeRegs instanceof Array,
-            'write reg set is not an array'
-        );
 
-        // For each register this instruction writes to
-        for (var k = 0; k < excludeRegs.length; ++k)
-        {
-            var reg = excludeRegs[k];
 
-            log.debug('saving/freeing reg: ' + reg);
 
-            // Save the register
-            x86.saveReg(
-                allocMap,
-                reg,
-                true,
-                liveOutFunc,
-                asm,
-                params
-            );
-        }
-    }
 
-    // Get the set of registers that should be saved
-    var saveRegs = instrCfg.saveRegs(instr, params)
-
-    // If some registers should be saved
-    if (saveRegs !== undefined)
-    {
-        assert (
-            saveRegs instanceof Array,
-            'save reg set is not an array'
-        );
-
-        // For each register this instruction writes to
-        for (var k = 0; k < saveRegs.length; ++k)
-        {
-            var reg = saveRegs[k];
-
-            log.debug('saving reg: ' + reg);
-
-            // Save the register
-            x86.saveReg(
-                allocMap,
-                reg,
-                false,
-                liveOutFunc,
-                asm,
-                params
-            );
-        }
-    }
 
     assert (
         !(destIsOpnd0 && opnds.length === 0),
@@ -1303,6 +1250,61 @@ x86.allocOpnds = function (
     else
     {
         dest = opnds[0];
+    }
+
+    // If this instruction writes/excludes registers
+    if (excludeRegs !== undefined)
+    {
+        assert (
+            excludeRegs instanceof Array,
+            'write reg set is not an array'
+        );
+
+        // For each register this instruction writes to
+        for (var k = 0; k < excludeRegs.length; ++k)
+        {
+            var reg = excludeRegs[k];
+
+            log.debug('saving/freeing reg: ' + reg);
+
+            // Save the register
+            x86.saveReg(
+                allocMap,
+                reg,
+                liveOutFunc,
+                asm,
+                params
+            );
+        }
+    }
+
+    // Get the set of registers that should be saved
+    var saveRegs = instrCfg.saveRegs(instr, params)
+
+    // If some registers should be saved
+    if (saveRegs !== undefined)
+    {
+        assert (
+            saveRegs instanceof Array,
+            'save reg set is not an array'
+        );
+
+        // For each register this instruction writes to
+        for (var k = 0; k < saveRegs.length; ++k)
+        {
+            var reg = saveRegs[k];
+
+            log.debug('saving reg: ' + reg);
+
+            // Save the register
+            x86.saveReg(
+                allocMap,
+                reg,
+                liveOutFunc,
+                asm,
+                params
+            );
+        }
     }
 
     // Test whether stack operands should be translated to memory references

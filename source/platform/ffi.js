@@ -790,7 +790,7 @@ function makeBridge(
     //print('getting entry point for proxy');
 
     // Get pointer to entry point of compiled wrapper function
-    var funcPtr = wrapper.linking.getEntryPoint('default').getAddr();
+    var funcPtr = wrapper.codeBlock.getExportAddr('ENTRY_DEFAULT');
 
     // Callable bridge function
     function bridge(ctxPtr)
@@ -808,7 +808,7 @@ function makeBridge(
         var result = callTachyonFFI(
             cArgTypes,
             cRetType,
-            funcPtr.getBytes(),
+            funcPtr,
             ctxPtr,
             argArray
         );

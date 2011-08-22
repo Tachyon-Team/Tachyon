@@ -1611,6 +1611,61 @@ tests.x86.irToAsm = function ()
         '
     );
 
+    // Regression test: function call corrupts locals
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:noglobal";                         \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            return iir.call(                            \
+                foo,                                    \
+                UNDEFINED,                              \
+                UNDEFINED,                              \
+                ctx,                                    \
+                n                                       \
+            );                                          \
+        }                                               \
+        function foo(ctx, n)                            \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:noglobal";                         \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            iir.set_ctx(ctx);                           \
+                                                        \
+            bar1(n);                                    \
+                                                        \
+            return n + pint(1);                         \
+        }                                               \
+        function bar1(a1)                               \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:arg a1 pint";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            var x01 = a1 + pint(1);                     \
+            var x02 = a1 + pint(2);                     \
+            var x03 = a1 + pint(3);                     \
+                                                        \
+            return x01 * x02 * x03;                     \
+        }                                               \
+        ',
+        6,
+        [5]
+    );
+
+
+
+
+
+
+
 
 
 
@@ -1627,8 +1682,6 @@ tests.x86.irToAsm = function ()
     print(ir);
     backend.genCode(ir, params);
     */
-
-
 
 
 
