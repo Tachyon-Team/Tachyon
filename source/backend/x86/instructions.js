@@ -308,7 +308,7 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
                 case 'm':
                 if (!(opnd instanceof x86.MemLoc))
                     continue ENC_LOOP;
-                if (opnd.size !== opndSize)
+                if (opnd.size !== opndSize && opndSize !== undefined)
                     continue ENC_LOOP;
                 break;
 
@@ -751,6 +751,8 @@ x86.opndValid = function (opnd)
 
     switch (opnd)
     {
+        case 'm':
+
         case 'r8':
         case 'r/m8':
         case 'imm8':
@@ -762,6 +764,7 @@ x86.opndValid = function (opnd)
         case 'rel16':
 
         case 'r32':
+        case 'm32':
         case 'r/m32':
         case 'imm32':
         case 'rel32':
@@ -797,6 +800,9 @@ x86.opndSize = function (opnd)
 
     switch (opnd)
     {
+        case 'm':
+        return undefined;
+
         case 'r8':
         case 'r/m8':
         case 'imm8':
@@ -810,6 +816,7 @@ x86.opndSize = function (opnd)
         return 16;
 
         case 'r32':
+        case 'm32':
         case 'r/m32':
         case 'imm32':
         case 'rel32':
@@ -852,6 +859,8 @@ x86.opndType = function (opnd)
         case 'r64':
         return 'r';
 
+        case 'm':
+        case 'm32':
         case 'm64':
         return 'm';
 

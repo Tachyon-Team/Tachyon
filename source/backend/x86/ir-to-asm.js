@@ -432,17 +432,20 @@ CallFuncInstr.prototype.x86.transStackOpnds = function (instr, params)
 }
 CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
+    // Get a reference to the backend
+    const backend = genInfo.backend;
+
     // Get the calling convention for the caller
     var callerConv = genInfo.callConv;
 
     // Get the calling convention for the callee
-    var calleeConv = genInfo.backend.getCallConv(this.calleeConv);
+    var calleeConv = backend.getCallConv(this.calleeConv);
 
     // Get the allocation map
     var allocMap = genInfo.allocMap;
 
     // Get the stack pointer register
-    var spReg = genInfo.backend.spReg;
+    var spReg = backend.spReg;
 
     // Get the temporary register
     var tmpReg = scratch[0];
@@ -581,8 +584,18 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     if (calleeConv.argCountReg !== null)
         asm.mov(calleeConv.argCountReg, numActualArgs);
 
+    // Try to get the callee function name
+    var callee = instr.getCallee();
+    var calleeName = (callee !== undefined)? callee.funcName:'<unknown>';
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'calling "' + calleeName + '"');
+
     // Call the function with the given address
     asm.call(funcPtr);
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'returning from "' + calleeName + '"');
 
     // If the stack pointer was dynamically aligned
     if (alignNeeded === true)
@@ -742,6 +755,9 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
 
     // Remove the spills from the stack
     asm.add(allocMap.spReg, allocMap.numSpillSlots * allocMap.slotSize);
+
+    if (genInfo.backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'leaving "' + genInfo.irFunc.funcName + '"');
 
     // If the arguments should be removed by the callee
     if (calleeConv.cleanup === 'CALLEE')

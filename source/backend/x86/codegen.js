@@ -104,6 +104,9 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Export the function's fast entry point
     asm.addInstr(ENTRY_FAST);
 
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'entering "' + irFunc.funcName + '"');
+
     // Map of block ids to allocation map at block entries
     // This is used to store allocations at blocks with
     // multiple predecessors
@@ -1222,5 +1225,122 @@ Generate the argument object creation stub
 x86.genArgObjStub = function (/*TODO*/)
 {
     // TODO
+}
+
+/**
+Generate code to print trace information. This is for debugging purposes.
+*/
+x86.genTracePrint = function (asm, params, str)
+{
+    const backend = params.backend;
+    const gpRegs = backend.gpRegSet;
+    const spReg = backend.spReg;
+
+    // Get the C calling convention
+    var callConv = backend.getCallConv('c');
+
+    // Get the puts function object
+    var putsFunc = params.ffiFuncs['puts'];
+
+    assert (
+        putsFunc !== undefined,
+        'puts function not defined'
+    );
+
+    // Push all GP registers
+    for (var i = 0; i < gpRegs.length; ++i)
+        asm.push(gpRegs[i]);
+    asm.push(backend.ctxReg);
+
+    // Move the current sp to another register
+    asm.mov(gpRegs[0], spReg);
+
+    // Allocate data for the string, the sp, the function address and
+    // the string pointer
+    var stackSpace = (str.length + 1) + 3 * backend.regSizeBytes;
+    asm.sub(spReg, stackSpace);
+
+    // Create memory locations for the sp, function address and string pointer
+    var strDisp     = backend.regSizeBytes * 3;
+    var spDisp      = backend.regSizeBytes * 2;
+    var fnPtrDisp   = backend.regSizeBytes;
+    var strPtrDisp  = 0
+    var spLoc = new x86.MemLoc(
+        backend.regSizeBits,
+        spReg,
+        spDisp
+    );
+    var fnPtrLoc = new x86.MemLoc(
+        backend.regSizeBits,
+        spReg,
+        fnPtrDisp
+    );
+    var strPtrLoc = new x86.MemLoc(
+        backend.regSizeBits,
+        spReg,
+        strPtrDisp
+    );
+
+    // Align the stack pointer
+    const alignMask = ~(callConv.spAlign - 1);
+    asm.and(spReg, alignMask);
+
+    // Write the string on the stack using mov
+    for (var i = 0; i <= str.length; ++i)
+    {
+        var ch = 0;
+        if (i < str.length)
+        {
+            ch = str.charCodeAt(i);
+            if (ch < 0 || ch > 255)
+                ch = '_'.charCodeAt(0);
+        }
+
+        var chLoc = new x86.MemLoc(
+            8,
+            spReg,
+            strDisp + i
+        );
+
+        asm.mov(chLoc, ch);
+    }
+
+    // Save the old sp on the stack
+    asm.mov(spLoc, gpRegs[0]);
+
+    // Write the function pointer on the stack
+    var funcPtr = putsFunc.funcPtr;
+    for (var i = 0; i < funcPtr.length; ++i)
+    {
+        var b = funcPtr[i];
+
+        var bLoc = new x86.MemLoc(
+            8,
+            spReg,
+            fnPtrDisp + i
+        );
+
+        asm.mov(bLoc, b);
+    }
+
+    // Get the string pointer
+    asm.lea(gpRegs[1], new x86.MemLoc(8, spReg, strDisp));
+
+    // Store the string pointer argument
+    if (callConv.argRegs.length > 0)
+        asm.mov(callConv.argRegs[0], gpRegs[1]);
+    else
+        asm.mov(strPtrLoc, gpRegs[1]);
+
+    // Call the function
+    asm.call(fnPtrLoc);
+
+    // Restore the sp
+    asm.mov(spReg, spLoc);
+
+    // Pop all GP registers
+    asm.pop(backend.ctxReg);
+    for (var i = gpRegs.length - 1; i >= 0; --i)
+        asm.pop(gpRegs[i]);
 }
 

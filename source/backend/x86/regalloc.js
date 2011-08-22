@@ -862,8 +862,6 @@ x86.saveReg = function (
     // Get the current value for this register
     var curVal = allocMap.getRegVal(reg);
 
-    print('current val: ' + ((curVal === undefined)? undefined:curVal.getValName()));
-
     // If the register isn't mapped to a value, do nothing
     if (curVal === undefined)
         return;
@@ -1202,11 +1200,6 @@ x86.allocOpnds = function (
         // Add the operand to the list
         opnds.push(opnd);
     }
-
-
-
-
-
 
     assert (
         !(destIsOpnd0 && opnds.length === 0),

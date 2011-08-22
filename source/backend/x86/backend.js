@@ -122,6 +122,11 @@ x86.Backend = function (x86_64)
         x86.regs.esi,
         x86.regs.edi
     ];
+
+    /**
+    Flag to enable the debug trace
+    */
+    this.debugTrace = true;
 }
 x86.Backend.prototype = new Backend();
 

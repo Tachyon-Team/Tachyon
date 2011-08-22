@@ -68,7 +68,14 @@ move sequence reduction
 - see phi block merges
 - much performance to gain here
 
-Maybe:
+mov l1, l0
+mov l2, l1
+... <- instructions not reading l1
+mov l1, l4
+
+Maybe
+-----
+
 inc/dec
 - smaller, but may not be faster!
 

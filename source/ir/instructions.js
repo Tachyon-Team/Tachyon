@@ -1704,6 +1704,17 @@ By default, conservatively assume all calls read and write to/from memory
 CallFFIInstr.prototype.writesMem = function () { return true; };
 CallFFIInstr.prototype.readsMem = function () { return true; };
 
+/**
+Get the function callee, if known
+*/
+CallFFIInstr.prototype.getCallee = function ()
+{
+    if (this.uses[0] instanceof CFunction)
+        return this.uses[0];
+    else
+        return undefined;
+}
+
 //=============================================================================
 //
 // Argument access instructions

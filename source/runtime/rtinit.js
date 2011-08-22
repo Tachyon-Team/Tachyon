@@ -85,6 +85,8 @@ function initHeap(heapPtr, heapSize)
     // Allocate the context object, incrementing the allocation pointer
     var ctx = alloc_ctx();
 
+    printInt(pint(777));
+
     assert (
         heapLimit > heapPtr,
         1

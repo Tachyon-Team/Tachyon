@@ -369,6 +369,10 @@ x86.instrTable = [
     {mnem: 'jmp', opnds: ['r/m32'], opCode: [0xFF], opExt: 4, x86_64: false},
     {mnem: 'jmp', opnds: ['r/m64'], opCode: [0xFF], opExt: 4, REX_W: 1},
 
+    // Load effective address
+    {mnem: 'lea', opnds: ['r32', 'm'], opCode: [0x8D]},
+    {mnem: 'lea', opnds: ['r64', 'm'], opCode: [0x8D], REX_W: 1},
+
     // Move
     {mnem: 'mov', opnds: ['r/m8', 'r8'], opCode: [0x88]},
     {mnem: 'mov', opnds: ['r/m16', 'r16'], opCode: [0x89], szPref: true},
