@@ -1664,13 +1664,6 @@ tests.x86.irToAsm = function ()
 
 
 
-    // TODO: ctx reg not saved before C calls...
-
-
-
-
-
-
 
 
     /*
@@ -1678,12 +1671,12 @@ tests.x86.irToAsm = function ()
     // Add unit tests for problematic compilation cases
     // Simplify problematic functions to minimum
     var ast = parse_src_file('test_backend.js', params);
+    params.staticEnv.parseUnit(ast);
     var ir = unitToIR(ast, params);
     lowerIRFunc(ir, params);
     print(ir);
     backend.genCode(ir, params);
     */
-
 
 
 

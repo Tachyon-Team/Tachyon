@@ -832,7 +832,7 @@ x86.allocReg = function (
         return undefined;
 
     // Free the register, if needed
-    x86.saveReg(
+    x86.freeReg(
         allocMap, 
         bestReg,
         liveFunc, 
@@ -849,9 +849,10 @@ x86.allocReg = function (
 }
 
 /**
-Save the value stored in a register if needed. This may cause a spill
+Free a register, saving the value stored in it if needed.
+This may cause a spill
 */
-x86.saveReg = function (
+x86.freeReg = function (
     allocMap,
     reg,
     liveFunc,
@@ -920,10 +921,25 @@ x86.allocOpnds = function (
         // Get the set of registers this operand can be in
         var opndReg = instrCfg.opndMustBeReg(instr, k, params);
 
-        // If this operand must be in a fixed register, reserve it
+        // If this operand must be in a fixed register
         if (opndReg instanceof x86.Register)
         {
+            // Reserve this register for the operand
             excludeMap[opndReg.regNo] = true;
+
+            // If the register is not mapped to the operand, free it
+            var regVal = allocMap.getRegVal(opndReg);
+            if (regVal !== use)
+            {
+                x86.freeReg(
+                    allocMap, 
+                    opndReg,
+                    liveInFunc, 
+                    asm, 
+                    params
+                );
+            }
+
             continue;
         }
 
@@ -943,10 +959,21 @@ x86.allocOpnds = function (
     var destIsOpnd0 = instrCfg.destIsOpnd0(instr, params);
     var destMustBeReg = instrCfg.destMustBeReg(instr, params);
 
-    // If the destination is in a fixed register, exclude it
-    // from allocation
+    // If the destination is in a fixed register
     if (destMustBeReg instanceof x86.Register)
+    {
+        // Reserve this register for the dest
         excludeMap[destMustBeReg.regNo] = true;
+
+        // Free the register, if it is in use
+        x86.freeReg(
+            allocMap, 
+            destMustBeReg,
+            liveInFunc, 
+            asm, 
+            params
+        );
+    }
 
     // Get the set of registers that should be excluded from allocation
     var excludeRegs = instrCfg.excludeRegs(instr, params);
@@ -1261,7 +1288,7 @@ x86.allocOpnds = function (
             log.debug('saving/freeing reg: ' + reg);
 
             // Save the register
-            x86.saveReg(
+            x86.freeReg(
                 allocMap,
                 reg,
                 liveOutFunc,
@@ -1290,7 +1317,7 @@ x86.allocOpnds = function (
             log.debug('saving reg: ' + reg);
 
             // Save the register
-            x86.saveReg(
+            x86.freeReg(
                 allocMap,
                 reg,
                 liveOutFunc,

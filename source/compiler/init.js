@@ -282,8 +282,9 @@ function initRuntime(params)
         }
         else
         {
-            var blockAddr = asm.address.
-                            nullAddr(params.target.ptrSizeBits).getBytes();
+            var blockAddr = 
+                (params.backend.regSizeBytes === 8)?
+                [0,0,0,0,0,0,0,0]:[0,0,0,0];
         }
 
         for (var i = 0; i < jsStr.length; ++i)

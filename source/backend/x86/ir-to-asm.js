@@ -184,6 +184,9 @@ DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
         'invalid first opnd: ' + opnds[0]
     );
 
+    if (genInfo.backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'division/modulo');
+
     // If the output should be unsigned
     if (instr.type.isUnsigned())
     {
@@ -627,6 +630,9 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
 
     if (backend.debugTrace === true)
         x86.genTracePrint(asm, genInfo.params, 'calling ' + calleeName);
+
+    // Translate the function pointer operand if it is a stack reference
+    funcPtr = (typeof funcPtr === 'number')? allocMap.getSlotOpnd(funcPtr):funcPtr;
 
     // Call the function with the given address
     asm.call(funcPtr);
