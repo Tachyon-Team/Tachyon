@@ -1664,6 +1664,7 @@ tests.x86.irToAsm = function ()
 
 
 
+    // TODO: ctx reg not saved before C calls...
 
 
 
@@ -1672,7 +1673,7 @@ tests.x86.irToAsm = function ()
 
 
 
-    /* 
+    /*
     // TODO: 
     // Add unit tests for problematic compilation cases
     // Simplify problematic functions to minimum
@@ -1682,7 +1683,6 @@ tests.x86.irToAsm = function ()
     print(ir);
     backend.genCode(ir, params);
     */
-
 
 
 

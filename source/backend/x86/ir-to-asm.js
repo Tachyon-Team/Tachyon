@@ -50,27 +50,33 @@ Maxime Chevalier-Boisvert
 
 // Get context instruction
 GetCtxInstr.prototype.x86 = new x86.InstrCfg();
-GetCtxInstr.prototype.x86.destMustBeReg = function (instr, params)
-{
-    return params.backend.ctxReg;
-}
 GetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    // Clear out the lower bits of the context register
+    // Get the context register
     var ctxReg = genInfo.params.backend.ctxReg;
+
+    // Clear out the lower bits of the context register
     asm.mov(ctxReg.getSubOpnd(8), 0);
+
+    // Move the context pointer into the destination
+    asm.mov(dest, ctxReg);
 };
 
 // Set context instruction
 SetCtxInstr.prototype.x86 = new x86.InstrCfg();
-SetCtxInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+SetCtxInstr.prototype.x86.excludeRegs = function (instr, params)
 {
-    // Have the argument be moved into the context register
-    return params.backend.ctxReg;
+    // If anything is mapped to the context register, it should be moved out
+    // Note: the AMD64 calling convention uses rcx for arguments
+    return [params.backend.ctxReg];
 }
 SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
-    // Do nothing
+    // Get the context register
+    var ctxReg = genInfo.params.backend.ctxReg;
+
+    // Move the operand into the context register
+    asm.mov(ctxReg, opnds[0]);
 };
 
 // Base instruction configuration for arithmetic instructions
@@ -280,9 +286,6 @@ x86.shiftMaker = function (instrName)
             {
                 var xcx = x86.regs.rcx.getSubOpnd(backend.regSizeBits);
 
-                print('xcx: ' + xcx);
-                print('opnd: ' + opnd);
-
                 asm.xchg(xcx, opnd);
                 asm[instrName](dest, x86.regs.cl);
                 asm.xchg(xcx, opnd);
@@ -447,6 +450,9 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Get the stack pointer register
     var spReg = backend.spReg;
 
+    // Get the context register
+    var ctxReg = backend.ctxReg;
+
     // Get the temporary register
     var tmpReg = scratch[0];
 
@@ -482,9 +488,30 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Total stack space needing to be reserved
     var totalSpace = argSpace;
 
+    // If we are calling a C function
+    if (this.calleeConv === 'c')
+    {
+        // Create a memory location for the saved context
+        var ctxLoc = new x86.MemLoc(
+            backend.regSizeBits,
+            spReg,
+            totalSpace
+        );
+
+        // Add space to save the context register
+        totalSpace += allocMap.slotSize;
+    }
+
     // If the stack pointer needs to be dynamically aligned
     if (alignNeeded === true)
     {
+        // Create a memory location for the saved stack pointer
+        var spLoc = new x86.MemLoc(
+            backend.regSizeBits,
+            spReg,
+            totalSpace
+        );
+
         // Add space to save the old stack pointer
         totalSpace += allocMap.slotSize;
 
@@ -518,8 +545,14 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         asm.and(spReg, alignMask);
 
         // Save the old stack pointer below the arguments
-        var stackSpLoc = new x86.MemLoc(allocMap.slotSize * 8, spReg, argSpace);
-        asm.mov(stackSpLoc, tmpSp);
+        asm.mov(spLoc, tmpSp);
+    }
+
+    // If we are calling a C function
+    if (this.calleeConv === 'c')
+    {
+        // Save the context register
+        asm.mov(ctxLoc, ctxReg);
     }
 
     /**
@@ -586,22 +619,33 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
 
     // Try to get the callee function name
     var callee = instr.getCallee();
-    var calleeName = (callee !== undefined)? callee.funcName:'<unknown>';
+    var calleeName;
+    if (callee !== undefined)
+        calleeName = '"' + callee.funcName + '"' + ((callee instanceof CFunction)? ' (C)':'');
+    else 
+        calleeName = '<unknown>';
 
     if (backend.debugTrace === true)
-        x86.genTracePrint(asm, genInfo.params, 'calling "' + calleeName + '"');
+        x86.genTracePrint(asm, genInfo.params, 'calling ' + calleeName);
 
     // Call the function with the given address
     asm.call(funcPtr);
 
     if (backend.debugTrace === true)
-        x86.genTracePrint(asm, genInfo.params, 'returning from "' + calleeName + '"');
+        x86.genTracePrint(asm, genInfo.params, 'returned from ' + calleeName);
+
+    // If we are calling a C function
+    if (this.calleeConv === 'c')
+    {
+        // Restore the context register
+        asm.mov(ctxReg, ctxLoc);
+    }
 
     // If the stack pointer was dynamically aligned
     if (alignNeeded === true)
     {
         // Restore the stack pointer
-        asm.mov(spReg, stackSpLoc);
+        asm.mov(spReg, spLoc);
     }
     else
     {

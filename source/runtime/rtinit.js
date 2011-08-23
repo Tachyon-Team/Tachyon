@@ -66,15 +66,16 @@ function initHeap(heapPtr, heapSize)
     // Cast the context pointer to an unboxed reference type
     var ctx = iir.icast(IRType.ref, ctxPtr);
 
-    // Treat first address as the address of context object and initialize
-    // the allocation pointer
+    // Treat first address as the address of context object
     iir.set_ctx(ctx);
+
+    // Initialize the allocation pointer
     set_ctx_allocptr(ctx, ctxPtr);
 
     // Compute the heap limit pointer
     var heapLimit = heapPtr + heapSize;
 
-    printInt(iir.icast(IRType.pint, heapSize));
+    //printInt(iir.icast(IRType.pint, heapSize));
     printPtr(heapPtr);
     printPtr(heapLimit);
 
@@ -82,10 +83,10 @@ function initHeap(heapPtr, heapSize)
     set_ctx_heapstart(ctx, heapPtr);
     set_ctx_heaplimit(ctx, heapLimit);
 
+    //printPtr(iir.icast(IRType.rptr, iir.get_ctx()));
+
     // Allocate the context object, incrementing the allocation pointer
     var ctx = alloc_ctx();
-
-    printInt(pint(777));
 
     assert (
         heapLimit > heapPtr,

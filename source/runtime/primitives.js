@@ -533,6 +533,8 @@ function heapAlloc(size)
     // Get a pointer to the context
     var ctx = iir.get_ctx();
 
+    //printPtr(iir.icast(IRType.rptr, ctx));
+
     // Get the current allocation pointer
     var allocPtr = get_ctx_allocptr(ctx);
 
@@ -542,14 +544,13 @@ function heapAlloc(size)
     // Get the heap limit pointer
     var heapLimit = get_ctx_heaplimit(ctx);
 
+    //printInt(iir.icast(IRType.pint, size));
     //printPtr(nextPtr);
     //printPtr(heapLimit);
 
     // If this allocation exceeds the heap limit
     if (nextPtr >= heapLimit)
     {
-        //printInt(pint(1111111));
-
         // Log that we are going to perform GC
         puts('Performing garbage collection');
 
