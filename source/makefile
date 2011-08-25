@@ -115,7 +115,7 @@ TEST_SPEC_SRCS =                        \
     runtime/tests/*.js                  \
     backend/x86/tests/assembler.js      \
     backend/x86/tests/ir-to-asm.js      \
-    programs/tests/programs.js
+#    programs/tests/programs.js
 
 # Source files used to run the Tachyon VM
 RUN_SRCS =                              \

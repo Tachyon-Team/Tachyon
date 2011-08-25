@@ -1541,7 +1541,7 @@ var CallFuncInstr = instrMaker(
 );
 
 /**
-Get the function callee, if known
+Get the callee function, if known
 */
 CallFuncInstr.prototype.getCallee = function ()
 {
@@ -1624,34 +1624,7 @@ var ConstructInstr = instrMaker(
         }
     },
     ['continue', 'throw'],
-    new CallInstr()
-);
-
-/**
-@class Constructor call with function object reference
-@augments CallApplyInstr
-*/
-var CallApplyInstr = instrMaker(
-    'call_apply',
-    function (typeParams, inputVals, branchTargets)
-    {
-        this.mnemonic = 'call_apply';
-
-        // 5 arguments are required
-        instrMaker.validNumInputs(inputVals, 5, 5);
-
-        instrMaker.validType(inputVals[0], IRType.rptr);
-        instrMaker.validType(inputVals[1], IRType.box);
-        instrMaker.validType(inputVals[2], IRType.box);
-        instrMaker.validType(inputVals[3], IRType.ref);
-        instrMaker.validType(inputVals[4], IRType.pint);
-
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.box;
-    },
-    ['continue', 'throw'],
-    new CallInstr()
+    Object.create(CallFuncInstr.prototype)
 );
 
 /**
@@ -1705,7 +1678,7 @@ CallFFIInstr.prototype.writesMem = function () { return true; };
 CallFFIInstr.prototype.readsMem = function () { return true; };
 
 /**
-Get the function callee, if known
+Get the callee function, if known
 */
 CallFFIInstr.prototype.getCallee = function ()
 {
@@ -1714,6 +1687,33 @@ CallFFIInstr.prototype.getCallee = function ()
     else
         return undefined;
 }
+
+/**
+@class Constructor call with function object reference
+@augments CallApplyInstr
+*/
+var CallApplyInstr = instrMaker(
+    'call_apply',
+    function (typeParams, inputVals, branchTargets)
+    {
+        this.mnemonic = 'call_apply';
+
+        // 5 arguments are required
+        instrMaker.validNumInputs(inputVals, 5, 5);
+
+        instrMaker.validType(inputVals[0], IRType.rptr);
+        instrMaker.validType(inputVals[1], IRType.box);
+        instrMaker.validType(inputVals[2], IRType.box);
+        instrMaker.validType(inputVals[3], IRType.ref);
+        instrMaker.validType(inputVals[4], IRType.pint);
+
+        instrMaker.validNumBranches(branchTargets, 0, 2);
+        
+        this.type = IRType.box;
+    },
+    ['continue', 'throw'],
+    new CallInstr()
+);
 
 //=============================================================================
 //

@@ -472,7 +472,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     var numActualArgs = (this.calleeConv === 'tachyon')? (numArgs - 2):numArgs;
 
     assert (
-        numActualArgs < 256,
+        numActualArgs < 255,
         'too many arguments in function call: ' + numActualArgs
     );
 
@@ -518,20 +518,20 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         // Add space to save the old stack pointer
         totalSpace += allocMap.slotSize;
 
-        // Move the current stack pointer into alternate register
+        // Move the stack pointer into an alternate register
         asm.mov(tmpSp, spReg);
     }
     else
     {
         var frameSize = allocMap.slotSize * allocMap.numSpillSlots;
-        var alignRem = frameSize % calleeConv.spAlign;
+        var alignRem = (frameSize + totalSpace) % calleeConv.spAlign;
 
         // If the current frame size breaks the alignment
         if (alignRem !== 0)
         {
-            // Pad the frame size by the necessary amount to align it
-            var pad = calleeConv.spAlign - alignRem;
-            frameSize += pad;
+            // Pad the total space by the necessary amount to align it
+            var padSpace = calleeConv.spAlign - alignRem;
+            totalSpace += padSpace;
         }
     }
 
@@ -661,6 +661,13 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
             // Remove the stack space for the arguments
             asm.add(spReg, totalSpace);
         }
+        
+        // If the stack was statically padded
+        else if (padSpace !== undefined)
+        {
+            // Remove statically added padding space
+            asm.add(spReg, padSpace);
+        }
     }
 
     // If the call has a continuation label
@@ -681,11 +688,205 @@ ConstructInstr.prototype.x86 = CallFuncInstr.prototype.x86;
 CallFFIInstr.prototype.x86 = Object.create(CallFuncInstr.prototype.x86);
 CallFFIInstr.prototype.x86.calleeConv = 'c';
 
+// Call using apply instruction
+CallApplyInstr.prototype.x86 = new x86.InstrCfg();
+CallApplyInstr.prototype.x86.calleeConv = 'tachyon';
+CallApplyInstr.prototype.x86.maxMemOpnds = function (instr, idx, size)
+{ 
+    return instr.uses.length;
+}
+CallApplyInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
+{
+    // Only the argument vector (arg 3) needs to be in a register
+    if (idx === 3)
+        return true;
 
-//
-// TODO: CallApplyInstr
-//
+    return false;
+}
+CallApplyInstr.prototype.x86.saveRegs = function (instr, params)
+{
+    // Get the calling convention for the callee
+    var callConv = params.backend.getCallConv(this.calleeConv);
 
+    // The caller-save registers must be saved before the call
+    return callConv.callerSave;
+}
+CallApplyInstr.prototype.x86.destIsOpnd0 = function ()
+{
+    return false;
+}
+CallApplyInstr.prototype.x86.destMustBeReg = function (instr, params)
+{
+    // Get the calling convention for the callee
+    var callConv = params.backend.getCallConv(this.calleeConv);
+
+    // Return the return value register if there is one
+    if (callConv.retReg instanceof x86.Register)
+        return callConv.retReg;
+
+    return true;
+}
+CallApplyInstr.prototype.x86.numScratchRegs = function (instr, params)
+{
+    // Need 2 scratch registers
+    return 2;
+}
+CallApplyInstr.prototype.x86.transStackOpnds = function (instr, params)
+{
+    // Delay translation of stack operands
+    return false;
+}
+CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+{
+    // Get a reference to the backend
+    const backend = genInfo.backend;
+
+    // Get the calling convention for the caller
+    var callerConv = genInfo.callConv;
+
+    // Get the calling convention for the callee
+    var calleeConv = backend.getCallConv(this.calleeConv);
+
+    assert (
+        calleeConv.cleaner === 'CALLEE',
+        'callee calling convention must be callee cleanup for call_apply'
+    );
+
+    // Get the stack pointer register
+    var spReg = backend.spReg;
+
+    // Get the temporary register
+    var tmpReg = scratch[0];
+
+    // Get the temporary stack pointer
+    var tmpSp = scratch[1];
+
+    // TODO: get the arguments
+    // Get the function pointer
+    var funcPtr = opnds[0];
+
+
+
+
+    /*
+    We have 6 GP registers available
+
+    Args:
+    func ptr,
+    fn obj,
+    this obj,
+    arg vector <= needs register
+
+    Need tmp for tmpSp
+
+    Need tmp for mem-mem moves
+
+    Need reg for arg count
+    - Load arg count into
+
+    Need reg for stack space computation
+    - Do we really? Might be able to reuse arg count reg? No
+    - Need to pass arg count
+
+    Reserving enough scratch regs should force args into stack locs if needed
+
+
+    */
+
+
+
+
+
+
+
+
+
+
+    // Compute the stack space needed for the arguments
+    var argSpace = allocMap.slotSize * numStackArgs;
+
+    // Total stack space needing to be reserved
+    var totalSpace = argSpace;
+
+    // Create a memory location for the saved stack pointer
+    var spLoc = new x86.MemLoc(
+        backend.regSizeBits,
+        spReg,
+        totalSpace
+    );
+
+    // Add space to save the old stack pointer
+    totalSpace += allocMap.slotSize;
+
+    // Move the current stack pointer into alternate register
+    asm.mov(tmpSp, spReg);
+
+    // Reserve the total stack space needed
+    asm.sub(spReg, totalSpace);
+
+    // Compute the stack pointer alignment mask
+    const alignMask = ~(calleeConv.spAlign - 1);
+
+    // Align the new stack pointer
+    asm.and(spReg, alignMask);
+
+    // Save the old stack pointer below the arguments
+    asm.mov(spLoc, tmpSp);
+
+
+
+
+
+    // TODO: copy from arg vector to stack
+
+    // TODO: issue: not obvious how many args go in regs, stack
+    // Will need cascade of conditionals
+
+    // TODO: LTR vs RTL stack order handling
+
+
+
+
+    // If there is an argument count register, set its value
+    //if (calleeConv.argCountReg !== null)
+    //    asm.mov(calleeConv.argCountReg, numActualArgs);
+    //
+    // TODO: push arg count on stack if needed, may need tmpSp
+    // Will need to be aligned before this is pushed
+
+
+
+
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'calling w/ apply');
+
+    // Translate the function pointer operand if it is a stack reference
+    funcPtr = (typeof funcPtr === 'number')? allocMap.getSlotOpnd(funcPtr):funcPtr;
+
+    // Call the function with the given address
+    asm.call(funcPtr);
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'returned from call w/ apply');
+
+
+    //
+    // TODO: restore stack pointer
+    // At this point, args should be popped off, old sp should be at the top
+    //
+
+
+    // If the call has a continuation label
+    if (instr.targets[0] !== undefined)
+    {
+        // Jump to the continuation label
+        var thisBlock = instr.parentBlock;
+        var contBlock = instr.targets[0];
+        var contLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:contBlock});
+        asm.jmp(contLabel);
+    }
+};
 
 // Unconditional branching instruction
 JumpInstr.prototype.x86 = new x86.InstrCfg();

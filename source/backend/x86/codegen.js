@@ -352,7 +352,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             else
             {
                 assert (
-                    instr.x86 !== undefined &&
+                    instr.x86 !== undefined,
                     'missing instr cfg for "' + instr.mnemonic + '"'
                 );
 
