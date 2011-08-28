@@ -1829,7 +1829,7 @@ irToAsm.fSingleOpndInstrMaker = function (irinstr, fOp)
                     fldcw(mem(0, xSP)).        
                     add($(ptrSizeBytes), xSP);
                 break;
-*/                
+*/     
             }
         }
 
@@ -1863,6 +1863,59 @@ irToAsm.fSingleOpndInstrMaker(FLogInstr, 'flog');
 //irToAsm.fSingleOpndInstrMaker(FRndInstr, 'frnd');
 //irToAsm.fSingleOpndInstrMaker(FCeilInstr, 'fceil');
 //irToAsm.fSingleOpndInstrMaker(FFloorInstr, 'ffloor');
+
+FComInstr.prototype.genCode = function (tltor, opnds)
+{
+    const width = tltor.params.target.ptrSizeBits;    
+    const dest = this.regAlloc.dest;
+    const ptrSizeBytes = tltor.params.target.ptrSizeBytes;
+    const $ = x86.Assembler.prototype.immediateValue;        
+    const mem = x86.Assembler.prototype.memory;
+    const reg = x86.Assembler.prototype.register;        
+    const xSP = reg.rsp.subReg(width);    
+    const scratchReg = tltor.params.target.backendCfg.scratchReg;    
+    const valueOffset = tltor.params.memLayouts["float"].getFieldOffset(["f0"]);
+    const tagValue = tltor.params.staticEnv.getBinding("TAG_FLOAT").value;
+
+    var opnd0 = opnds[0];
+    var opnd1 = opnds[1];
+    var opnd2 = opnds[2];    
+    // prepare opnd1
+    if (opnd1.type === x86.type.MEM)
+    {
+        tltor.asm.mov(opnd1, scratchReg);
+        opnd1 = mem(valueOffset - tagValue, scratchReg);
+    }
+    else if (opnd1.type === x86.type.REG)
+    {
+        opnd1 = mem(valueOffset - tagValue, opnd1);
+    }
+    tltor.asm.fldMem(opnd1, 64);
+
+    // prepare opnd0
+    if (opnd0.type === x86.type.MEM)
+    {
+        tltor.asm.mov(opnd0, scratchReg);
+        opnd0 = mem(valueOffset - tagValue, scratchReg);
+    }
+    else if (opnd0.type === x86.type.REG)
+    {
+        opnd0 = mem(valueOffset - tagValue, opnd0);
+    }
+    tltor.asm.fldMem(opnd0, 64);
+
+    // fcom(i, mem, opnd, width, pop, pop2)
+    tltor.asm.
+        fcom(1, false, 0, 0, false, true).
+        push($(0)).        
+        fstsw(mem(0, xSP)).
+        pop(dest);
+
+    if (opnd0.type === x86.type.IMM_VAL)
+        tltor.asm.add($(ptrSizeBytes), xSP);
+    if (opnd1.type === x86.type.IMM_VAL)
+        tltor.asm.add($(ptrSizeBytes), xSP);
+}
 
 FAtan2Instr.prototype.genCode = function (tltor, opnds)
 {
@@ -1992,7 +2045,6 @@ FCeilInstr.prototype.genCode = function (tltor, opnds)
 /**
 Take the floor of a float
 */
-
 FFloorInstr.prototype.genCode = function (tltor, opnds)
 {
     const width = tltor.params.target.ptrSizeBits;

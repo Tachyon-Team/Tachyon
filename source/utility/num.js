@@ -95,7 +95,6 @@ For example, if bignum_radix_log2 = 2, here is how the numbers from
 8   -> [0,2,0]
 9   -> [1,2,0]
 10  -> [2,2,0]
-
 */
 
 const bignum_radix_log2 = 14; // must be between 5 and 14 (could be as low as 1 if it wasn't for the division by 10 required by bignum_to_string)
@@ -158,9 +157,10 @@ function bignum_to_js(bignum)
     return n;
 }
 
-/**
-Test that a value is a bignum instance
-*/
+//
+// Test that a value is a bignum instance
+//
+
 function bignum_instance(val)
 {
     return (val instanceof Array);
@@ -244,6 +244,14 @@ function bignum_lt(bignum_a, bignum_b)
     // is less than second.
 
     return bignum_cmp(bignum_a, bignum_b) < 0;
+}
+
+function bignum_le(bignum_a, bignum_b)
+{
+    // Compares two normalized bignums and returns true iff first
+    // is less than second.
+
+    return bignum_cmp(bignum_a, bignum_b) <= 0;
 }
 
 function bignum_eq(bignum_a, bignum_b)
@@ -428,7 +436,7 @@ function bignum_mod(bignum_a, bignum_b)
         return bignum_neg(qr.rem);
 }
 
-function bignum_nonneg_quorem(bignum_a, bignum_b)
+function bignum_nonneg_quorem_old(bignum_a, bignum_b)
 {
     // Computes quotient and remainder of two nonnegative normalized
     // bignums.
@@ -460,6 +468,53 @@ function bignum_nonneg_quorem(bignum_a, bignum_b)
                  rem: bignum_from_js(n)
                };
     }
+}
+
+function bignum_nonneg_quorem(bignum_a, bignum_b)
+{
+    // Computes quotient and remainder of two nonnegative normalized
+    // bignums.
+
+    const bignum1 = [1];
+    const bignum0 = [0];
+
+    if (bignum_eq(bignum_a, bignum_b))
+        return { quo: bignum1,
+                 rem: bignum0
+               };
+    else if (bignum_lt(bignum_a, bignum_b))
+        return { quo: bignum0,
+                 rem: bignum_a
+               };
+
+    var len_a = bignum_a.length;
+    var len_b = bignum_b.length;
+    var bignum_quo = bignum0;
+    var bignum_rem = bignum0;
+    var temp_a = bignum_shift(bignum_a, (len_b - len_a)*bignum_radix_log2);
+    var temp_quo = bignum0
+
+    while (bignum_le(bignum_b, temp_a))
+    {
+        temp_quo = bignum_add(temp_quo, bignum1);
+        temp_a = bignum_sub(temp_a, bignum_b);
+    }
+    
+    for (var i = (len_a - len_b - 1); i >= 0; i--)
+    {
+        temp_quo = bignum_shift(temp_quo, bignum_radix_log2);
+        temp_a = bignum_shift(temp_a, bignum_radix_log2);
+        temp_a = bignum_add(temp_a, bignum_from_js(bignum_a[i]));
+        while (bignum_le(bignum_b, temp_a))
+        {
+            temp_quo = bignum_add(temp_quo, bignum1);
+            temp_a = bignum_sub(temp_a, bignum_b);
+        }        
+    }
+
+    return { quo: bignum_normalize(temp_quo),
+             rem: bignum_normalize(temp_a)
+           };
 }
 
 function bignum_not(bignum_a)
@@ -616,12 +671,9 @@ function bignum_shift(bignum_a, shift)
         bit_shift = (bignum_radix_log2-1) + (shift+1) % bignum_radix_log2;
     else
         bit_shift = shift % bignum_radix_log2;
-        
     var dig_shift = (shift - bit_shift) / bignum_radix_log2;
-
     var len_a = bignum_a.length;
     var len = len_a + dig_shift + (bit_shift===0 ? 0 : 1);
-
     if (len <= 0)
     {
         return bignum_from_js((bignum_a[len_a-1] < bignum_radix_div2) ? 0 : -1);
@@ -632,7 +684,7 @@ function bignum_shift(bignum_a, shift)
 
         if (bit_shift === 0)
         {
-            /* optimize when only shifting big digits */
+            // optimize when only shifting big digits
 
             var i = 0;
             var j = -dig_shift;
@@ -710,7 +762,7 @@ function bignum_to_string(bignum_a, radix)
 
     while (!bignum_zero(bignum_a))
     {
-        var qr = bignum_nonneg_quorem(bignum_a, bignum_radix);
+        var qr = bignum_nonneg_quorem(bignum_a, [bignum_radix]);
         var d = bignum_to_js(qr.rem);
         str = bignum_digits.slice(d, d+1) + str;
         bignum_a = qr.quo;
@@ -770,17 +822,17 @@ function num_to_js(bignum)
     return result;
 }
 
-/**
-Test that a value is a num instance
-*/
+//
+// Test that a value is a num instance
+//
 function num_instance(val)
 {
     return (bignum_instance(val) || typeof val === "number");
 }
 
-/**
-Test that a num value is integer
-*/
+//
+// Test that a num value is integer
+//
 function num_integer(val)
 {
     return (bignum_instance(val) || Math.floor(val) === val);
@@ -907,9 +959,9 @@ function num_shift(a, shift) // a is a JS integer or bignum, shift is a JS integ
     return num_to_js(bignum_shift(num_from_js(a), shift));
 }
 
-/**
-Unsigned right shift.
-*/
+//
+// Unsigned right shift.
+//
 function num_urshift(n, shift, width)
 {
     assert (
@@ -927,6 +979,8 @@ function num_urshift(n, shift, width)
 
 function num_to_string(a, radix) // a is a JS integer or bignum, radix is a JS integer
 {
+    if (radix === undefined)
+        radix = 10; // default?
     if (bignum_instance(a)) // bignum?
         return bignum_to_string(a, radix);
     else if (radix === 10)

@@ -109,6 +109,24 @@ Object.defineProperty ( Number, "NEGATIVE_INFINITY", {'Writable': false, 'Enumer
 Object.defineProperty ( Number, "POSITIVE_INFINITY", {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': (1.0 / 0.0)} );
 */
 
+function makeNaN()
+{
+    var nan = alloc_float();
+
+    set_float_f0(nan, u16(0xffff));
+    set_float_f1(nan, u16(0xffff));
+    set_float_f2(nan, u16(0xffff));
+    set_float_f3(nan, u16(0xffff));
+    return nan;
+}
+
+function isNaN(f)
+{
+    return !eq(f, f);
+}
+
+Number.NaN = makeNaN();
+
 /**
 Internal function to get the number value of a number or number object
 */

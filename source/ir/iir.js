@@ -104,7 +104,8 @@ var iir =
     fatan2      : FAtan2Instr,    
     frnd        : FRndInstr,
     fceil       : FCeilInstr,
-    ffloor      : FFloorInstr,    
+    ffloor      : FFloorInstr,
+    fcom        : FComInstr,
 
     // Arithmetic instructions with overflow handling
     add_ovf     : AddOvfInstr,

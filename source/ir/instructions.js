@@ -1148,7 +1148,6 @@ var FDivInstr = instrMaker(
 @class Floating point sin instruction
 @augments ArithInstr
 */
-
 var FSinInstr = instrMaker(
     'fsin',
     function (typeParams, inputVals, branchTargets)
@@ -1172,7 +1171,6 @@ var FSinInstr = instrMaker(
 @class Floating point asin instruction
 @augments ArithInstr
 */
-
 var FAsinInstr = instrMaker(
     'fsin',
     function (typeParams, inputVals, branchTargets)
@@ -1196,7 +1194,6 @@ var FAsinInstr = instrMaker(
 @class Floating point cos instruction
 @augments ArithInstr
 */
-
 var FCosInstr = instrMaker(
     'fcos',
     function (typeParams, inputVals, branchTargets)
@@ -1374,7 +1371,6 @@ var FCeilInstr = instrMaker(
     new ArithInstr()
 );
 
-
 /**
 @class Floating point floor instruction
 @augments ArithInstr
@@ -1392,6 +1388,28 @@ var FFloorInstr = instrMaker(
         );
         
         this.type = inputVals[0].type;
+    },
+    undefined,
+    new ArithInstr()
+);
+
+/**
+@class Floating point compare instruction
+@augments ArithInstr
+*/
+var FComInstr = instrMaker(
+    'fcom',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 3, 3);
+
+        assert (inputVals[0].type === IRType.box
+                &&
+                inputVals[1].type === IRType.box,
+            'invalid input types'
+        );
+        
+        this.type = IRType.pint;
     },
     undefined,
     new ArithInstr()

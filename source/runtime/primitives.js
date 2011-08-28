@@ -801,6 +801,25 @@ function makeArgObj(funcObj, numArgs, argTable)
     return arr;
 }
 
+/*
+// x87 Status Word Registers
+CLEAR = 0;
+SET = 1;
+IE_FLAG = 1;
+DE_FLAG = 2;
+ZE_FLAG = 4;
+OE_FLAG = 8;
+UE_FLAG = 16;
+PE_FLAG = 32;
+C0_COND = 256;
+C1_COND = 512;
+C2_COND = 1024;
+C3_COND = 16384;
+GT_COND = C0_COND + C1_COND + C2_COND + C3_COND;    // All cleared
+EQ_COND = C3_COND;
+LT_COND = C0_COND;
+UNNUMBERED_COND = C0_COND + C2_COND + C3_COND;
+*/
 /**
 Implementation of HIR less-than instruction
 */
@@ -844,7 +863,15 @@ function ltGeneral(v1, v2)
         else
             return false;
     }
-
+    
+    // If both values are floats
+    if (boxIsFloat(px) && boxIsFloat(py))
+    {
+        var cmp;
+        cmp =  iir.icast(IRType.box, iir.fcom(px, py, cmp) << TAG_NUM_BITS_INT);        
+        return (((cmp & 1) === 0) && ((cmp & 256) !== 0));
+    }
+    
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
@@ -914,6 +941,14 @@ function leGeneral(v1, v2)
             return false;
     }
 
+    // If both values are floats
+    if (boxIsFloat(px) && boxIsFloat(py))
+    {
+        var cmp;
+        cmp =  iir.icast(IRType.box, iir.fcom(px, py, cmp) << TAG_NUM_BITS_INT);        
+        return (((cmp & 1) === 0) && (((cmp & 256) !== 0) || ((cmp & 16384) === 16384)));
+    }
+    
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
@@ -981,6 +1016,14 @@ function gtGeneral(v1, v2)
             return true;
         else
             return false;
+    }
+
+    // If both values are floats
+    if (boxIsFloat(px) && boxIsFloat(py))
+    {
+        var cmp;
+        cmp =  iir.icast(IRType.box, iir.fcom(px, py, cmp) << TAG_NUM_BITS_INT);
+        return (((cmp & 1) === 0) && ((cmp & (256+512+1024+16384)) === 0));
     }
 
     // If both values are strings
@@ -1052,6 +1095,14 @@ function geGeneral(v1, v2)
             return false;
     }
 
+    // If both values are floats
+    if (boxIsFloat(px) && boxIsFloat(py))
+    {
+        var cmp;
+        cmp =  iir.icast(IRType.box, iir.fcom(px, py, cmp) << TAG_NUM_BITS_INT);        
+        return (((cmp & 1) === 0) && (((cmp & (256+512+1024+16384)) === 0) || ((cmp & 16384) === 16384)));
+    }
+    
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {
@@ -1083,7 +1134,7 @@ Implementation of HIR eq instruction
 function eq(v1, v2)
 {
     "tachyon:inline";
-    
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1093,7 +1144,15 @@ function eq(v1, v2)
         else
             return false;
     }
-
+    
+    // If both values are floats
+    if (boxIsFloat(v1) && boxIsFloat(v2))
+    {
+        var cmp;
+        cmp =  iir.icast(IRType.box, iir.fcom(v1, v2, cmp) << TAG_NUM_BITS_INT);
+        return (((cmp & 1) === 0) && ((cmp & 16384) === 16384));
+    }
+    
     // If both values have the same type
     else if (getRefTag(v1) === getRefTag(v2))
     {
@@ -1132,6 +1191,14 @@ function eqGeneral(v1, v2)
             return false;
     }
 
+    // If both values are floats
+    if (boxIsFloat(px) && boxIsFloat(py))
+    {
+        var cmp;
+        cmp =  iir.icast(IRType.box, iir.fcom(px, py, cmp) << TAG_NUM_BITS_INT);
+        return (((cmp & 1) === 0) && ((cmp & 16384) === 16384));
+    }
+    
     // If both values are strings
     if (boxIsString(px) && boxIsString(py))
     {

@@ -528,6 +528,124 @@ Scanner.prototype.parse_number = function ()
     // to access the "this" object
     var that;
 
+    /*
+    var makeFloat = function(mantissa, expNeg, exp)
+    {
+        print("mantissa: " + mantissa);
+        if (expNeg)
+            print("exp neg");
+        else
+            print("exp pos");
+        print("exp: " + exp);
+    }
+    
+    var parseIt = function (base, char_value)
+    {
+        const INT_ST = 0;
+        const DEC_ST = 1;
+        const EXP_ST = 2;
+        const EXPS_ST = 3;
+        const END_ST = 4;
+        var state = INT_ST;
+        var mantissa = 0;
+        var exp = 0;
+        var expNeg = false;
+        var scale = 0;
+        var c;
+        var res = 0;
+        
+        for (;;)
+        {
+            if (state === END_ST)
+                break;
+            else
+            {
+                switch(state)
+                {
+                case INT_ST:
+                    c = that.lookahead_char(0);
+                    if (decimal(c))
+                    {
+                        mantissa = num_add(num_mul(mantissa, base), char_value(c));
+                        that.advance(1);                
+                    }
+                    else if (c === PERIOD_CH)
+                    {
+                        state = DEC_ST;
+                        that.advance(1);                
+                    }
+                    else if (c === LOWER_E_CH || c === UPPER_E_CH)
+                    {
+                        state = EXPS_ST;
+                        that.advance(1)
+                    }
+                    else
+                    {
+                        state = END_ST;
+                        res = mantissa;
+                    }
+                    break;
+                    
+                case DEC_ST
+                    c = that.lookahead_char(0);
+                    if (decimal(c))
+                    {
+                        mantissa = num_add(num_mul(mantissa, base), char_value(c));
+                        scale += 1;
+                        that.advance(1);                
+                    }
+                    else if (c === LOWER_E_CH || c === UPPER_E_CH)
+                    {
+                        state = EXPS_ST;
+                        that.advance(1)
+                    }
+                    else
+                    {
+                        state = END_ST;
+                        res = makeFloat(mantissa, expNeg, exp);
+                    }
+                    break;
+                    
+                case EXPS_ST:
+                    c = that.lookahead_char(0);
+                    if (c === MINUS_CH)
+                    {
+                        expNeg = true;
+                        state = EXP_ST;
+                        that.advance(1)                    
+                    }
+                    else if (c === PLUS_CH)
+                    {
+                        state = EXP_ST;
+                        that.advance(1)                                        
+                    }
+                    else
+                    {
+                        state = EXP_ST;
+                    }
+                    break;
+                    
+                case EXP_ST:
+                    c = that.lookahead_char(0);
+                    if (decimal(c))
+                    {
+                        exp = (exp * base) + char_value(c);
+                        that.advance(1);
+                    }
+                    else
+                    {
+                        state = END_ST;                    
+                        res = makeFloat(mantissa, expNeg, exp);
+                    }
+                    break;
+                }
+            }
+        }
+
+        return res;
+    };
+*/
+
     // Computes the value of a serie of digit characters
     // as if they are on the "left-hand side" of the decimal point
     var lhs_value = function (accepted_char, base, char_value) 
@@ -561,6 +679,7 @@ Scanner.prototype.parse_number = function ()
         }
         return n/pos; // FIXME: remove reliance on floating point division
     };
+
 
     // Decimal helper functions
     function decimal (c)
@@ -611,6 +730,13 @@ Scanner.prototype.parse_number = function ()
             that.advance(2);
             n = lhs_value(hexadecimal, 16, hexadecimal_value);
         }
+/*
+	    else
+	    {
+//	        n = lhs_value2(0);
+            n = parseIt(10, decimal_value);
+	    }
+*/
         else 
         {
             // TODO: Use Clinger's algorithm:
@@ -649,7 +775,6 @@ Scanner.prototype.parse_number = function ()
                                      lhs_value(decimal, 10, decimal_value));
             }
         }
-
 
         return that.valued_token(NUMBER_CAT, n, start_pos);
     };

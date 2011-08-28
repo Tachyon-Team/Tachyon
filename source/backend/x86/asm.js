@@ -3178,8 +3178,6 @@ x86.Assembler.prototype.fpuOpi1 = function(i, destST0, opcode, mnemonic)
 
 x86.Assembler.prototype.fadd     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xc0, "fadd"); };
 x86.Assembler.prototype.fmul     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xc8, "fmul"); };
-x86.Assembler.prototype.fcom     = function (i)          { return this.fpuOpi1(i, TRUE,    0xd0, "fcom"); };
-x86.Assembler.prototype.fcomp    = function (i)          { return this.fpuOpi1(i, TRUE,    0xc8, "fcomp"); };
 x86.Assembler.prototype.fsub     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xe0, "fsub"); };
 x86.Assembler.prototype.fsubr    = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xe8, "fsubr"); };
 x86.Assembler.prototype.fdiv     = function (i, destST0) { return this.fpuOpi1(i, destST0, 0xf0, "fdiv"); };
@@ -3295,6 +3293,8 @@ x86.Assembler.prototype.fldMem = function (opnd, width)
 {
     assert(([32, 64, 80].indexOf(width) != -1),
            "width must be 32, 64 or 80");
+    assert((opnd.type === x86.type.MEM),
+           "Operand must be of type MEM");
     
     switch (width)
     {
@@ -3359,6 +3359,76 @@ x86.Assembler.prototype.fstpMem = function(opnd, width)
     return this.fstMem(opnd, width, true);
 };
 
+x86.Assembler.prototype.fcomMem = function (opnd, width, pop)
+{
+    assert(([32, 64].indexOf(width) != -1),
+           "width must be 32 or 64");
+    
+    if (pop)
+    {
+        switch (width)
+        {
+            case 32:
+                return this.fldstMem(opnd, 0xd8, 3, "fcomp");
+
+            case 64:
+                return this.fldstMem(opnd, 0xdc, 3, "fcomp");
+        }
+    }
+    else
+    {
+        switch (width)
+        {
+            case 32:
+                return this.fldstMem(opnd, 0xd8, 2, "fcom");
+
+            case 64:
+                return this.fldstMem(opnd, 0xdc, 2, "fcom");
+        }
+    }
+    return this;
+};
+
+
+x86.Assembler.prototype.fcomST = function (i, pop)
+{
+    this.gen8(0xd8);
+    this.gen8((pop ? 0xd8 : 0xd0) + i);
+
+    if (this.useListing)
+    {
+        this.genListing(x86.instrFormat((pop ? 'fcomp' : 'fcom'),
+                                          "",
+                                        this.fpuReg(0),
+                                        this.fpuReg(i)));
+    }
+    
+    return this;
+};
+
+x86.Assembler.prototype.fcom = function (i, mem, opnd, width, pop, pop2)
+{
+    if (pop2)
+    {
+        this.gen8(0xde);
+        this.gen8(0xd9);
+        if (this.useListing)
+        {
+            this.genListing(x86.instrFormat('fcompp'));            
+        }
+        
+        return this;
+    }
+    else if (mem)
+    {
+        return this.fcomMem(opnd, width, pop);
+    }
+    else
+    {
+        return this.fcomST(i, pop);
+    }
+};
+
 x86.Assembler.prototype.fild = function(opnd, width)
 {
     assert(([16, 32, 64].indexOf(width) != -1),
@@ -3400,6 +3470,20 @@ x86.Assembler.prototype.fstcw = function(opnd)
     if (this.useListing)
         {
             this.genListing(x86.instrFormat('fstcw',
+                                            "",
+                                            opnd));
+        }
+    return this;
+}
+
+x86.Assembler.prototype.fstsw = function(opnd)
+{
+    this.gen8(0xdd);
+    this.opndModRMSIB(7, opnd);
+
+    if (this.useListing)
+        {
+            this.genListing(x86.instrFormat('fstsw',
                                             "",
                                             opnd));
         }
