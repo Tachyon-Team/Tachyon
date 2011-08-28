@@ -109,6 +109,28 @@ Object.defineProperty ( Number, "NEGATIVE_INFINITY", {'Writable': false, 'Enumer
 Object.defineProperty ( Number, "POSITIVE_INFINITY", {'Writable': false, 'Enumerable': false, 'Configurable': false, 'value': (1.0 / 0.0)} );
 */
 
+function makePInf()
+{
+    var inf = alloc_float();
+
+    set_float_f0(inf, u16(0));
+    set_float_f1(inf, u16(0));
+    set_float_f2(inf, u16(0));
+    set_float_f3(inf, u16(0x7ff0));
+    return inf;
+}
+
+function makeNInf()
+{
+    var inf = alloc_float();
+
+    set_float_f0(inf, u16(0));
+    set_float_f1(inf, u16(0));
+    set_float_f2(inf, u16(0));
+    set_float_f3(inf, u16(0xfff0));
+    return inf;
+}
+
 function makeNaN()
 {
     var nan = alloc_float();
@@ -125,7 +147,19 @@ function isNaN(f)
     return !eq(f, f);
 }
 
+function isPositiveInf(f)
+{
+    return eq(f, Number.POSITIVE_INFINITY);
+}
+
+function isNegativeInf(f)
+{
+    return eq(f, Number.NEGAITIVE_INFINITY);    
+}
+
 Number.NaN = makeNaN();
+Number.NEGATIVE_INFINITY = makeNInf();
+Number.POSITIVE_INFINITY = makePInf();
 
 /**
 Internal function to get the number value of a number or number object
