@@ -56,6 +56,9 @@ var x86 = x86 || {};
 /*
 TODO: peephole optimizer
 
+mov reg, reg
+- eliminate
+
 neg
 
 lea opts for mul

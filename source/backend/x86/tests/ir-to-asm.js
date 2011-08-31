@@ -1666,6 +1666,39 @@ tests.x86.irToAsm = function ()
 
 
 
+
+
+    // Test of the code generation for call_apply
+    test('                                              \
+        function bar(a1, a2)                            \
+        {                                               \
+            "tachyon:static";                           \
+                                                        \
+            return a1;                                  \
+        }                                               \
+        function foo(fn, ths, vec, cnt)                 \
+        {                                               \
+            "tachyon:arg vec ref";                      \
+            "tachyon:arg cnt pint";                     \
+                                                        \
+            return iir.call_apply(                      \
+                bar,                                    \
+                fn,                                     \
+                ths,                                    \
+                vec,                                    \
+                cnt                                     \
+            );                                          \
+        }                                               \
+        '
+    );
+
+
+
+
+
+
+
+
     /*
     // TODO: 
     // Add unit tests for problematic compilation cases

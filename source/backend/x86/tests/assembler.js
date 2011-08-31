@@ -226,8 +226,11 @@ tests.x86.asmEncoding = function ()
 
     // cmovcc
     test(
+        function (a) { a.cmovg(a.esi, a.edi); }, 
+        '0F4FF7'
+    );
+    test(
         function (a) { a.cmovl(a.eax, a.ecx); }, 
-        '0F4CC1', 
         '0F4CC1'
     );
     test(
@@ -373,6 +376,13 @@ tests.x86.asmEncoding = function ()
     test(
         function (a) { var l = a.label('foo'); a.jno(l); },
         '71FE'
+    );
+
+    // lea
+    test(
+        function (a) {a.lea(a.ebx, a.mem(32, a.esp, 4)); },
+        '8D5C2404',
+        '678D5C2404'
     );
 
     // mov

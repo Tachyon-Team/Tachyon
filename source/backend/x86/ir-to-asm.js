@@ -175,6 +175,10 @@ DivInstr.prototype.x86.destMustBeReg = function (instr, params)
 }
 DivInstr.prototype.x86.excludeRegs = function (instr, params)
 {
+    return undefined;
+}
+DivInstr.prototype.x86.excludeRegs = function (instr, params)
+{
     return [params.backend.x86_64? x86.regs.rdx:x86.regs.edx];
 }
 DivInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
@@ -218,9 +222,13 @@ ModInstr.prototype.x86.destMustBeReg = function (instr, params)
 {
     return params.backend.x86_64? x86.regs.rdx:x86.regs.edx;
 }
-ModInstr.prototype.x86.excludeRegs = function (instr, params)
+ModInstr.prototype.x86.saveRegs = function (instr, params)
 {
     return [params.backend.x86_64? x86.regs.rax:x86.regs.eax];
+}
+ModInstr.prototype.x86.excludeRegs = function (instr, params)
+{
+    return undefined;
 }
 
 /**
@@ -697,7 +705,7 @@ CallApplyInstr.prototype.x86.maxMemOpnds = function (instr, idx, size)
 }
 CallApplyInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
-    // Only the argument vector (arg 3) needs to be in a register
+    // The argument table pointer must be in a register
     if (idx === 3)
         return true;
 
@@ -710,6 +718,16 @@ CallApplyInstr.prototype.x86.saveRegs = function (instr, params)
 
     // The caller-save registers must be saved before the call
     return callConv.callerSave;
+}
+CallApplyInstr.prototype.x86.excludeRegs = function (instr, params)
+{
+    // Get the calling convention for the callee
+    var callConv = params.backend.getCallConv(this.calleeConv);
+
+    // Do not want instruction arguments inside argument registers
+    var argRegSet = callConv.argRegs.slice(0);
+    arraySetRem(argRegSet, callConv.retReg);
+    return argRegSet;
 }
 CallApplyInstr.prototype.x86.destIsOpnd0 = function ()
 {
@@ -728,8 +746,8 @@ CallApplyInstr.prototype.x86.destMustBeReg = function (instr, params)
 }
 CallApplyInstr.prototype.x86.numScratchRegs = function (instr, params)
 {
-    // Need 2 scratch registers
-    return 2;
+    // Reserve 0 scratch registers
+    return 0;
 }
 CallApplyInstr.prototype.x86.transStackOpnds = function (instr, params)
 {
@@ -747,122 +765,243 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     // Get the calling convention for the callee
     var calleeConv = backend.getCallConv(this.calleeConv);
 
+    // Get the argument registers
+    var argRegs = calleeConv.argRegs;
+
     assert (
-        calleeConv.cleaner === 'CALLEE',
+        calleeConv.cleanup === 'CALLEE',
         'callee calling convention must be callee cleanup for call_apply'
     );
+
+    assert (
+        calleeConv.argOrder === 'LTR',
+        'callee convention must use left-to-right arguments order'
+    );
+
+    assert (
+        argRegs.length >= 4,
+        'not enough argument registers to implement call_apply'
+    );
+
+    assert (
+        backend.ctxReg.getSubOpnd(8) === calleeConv.argCountReg,
+        'argument count register does not match context register'
+    );
+
+    // Get the allocation map
+    var allocMap = genInfo.allocMap;
 
     // Get the stack pointer register
     var spReg = backend.spReg;
 
-    // Get the temporary register
-    var tmpReg = scratch[0];
-
-    // Get the temporary stack pointer
-    var tmpSp = scratch[1];
-
-    // TODO: get the arguments
-    // Get the function pointer
+    // Get the instruction arguments
     var funcPtr = opnds[0];
+    var funcObj = opnds[1];
+    var thisObj = opnds[2];
+    var argTbl  = opnds[3];
+    var numArgs = opnds[4];
 
+    // Get the displacement for the arguments table
+    const tblDisp = genInfo.params.memLayouts.arrtbl.getFieldOffset(["tbl", 0]);
 
+    // Number of hidden arguments
+    const NUM_HIDDEN_ARGS = 2;
 
+    // Number of non-hidden arguments that can be passed in registers
+    const NON_STACK_ARGS = argRegs.length - NUM_HIDDEN_ARGS;
 
-    /*
-    We have 6 GP registers available
+    // Label for the case where we have stack arguments
+    var HAVE_STACK_ARGS = new x86.Label('HAVE_STACK_ARGS');
+    
+    // Label for adding stack space
+    var ADD_STACK_SPACE = new x86.Label('ADD_STACK_SPACE');
 
-    Args:
-    func ptr,
-    fn obj,
-    this obj,
-    arg vector <= needs register
+    // Stack argument copying loop
+    var STACK_ARG_LOOP = new x86.Label('STACK_ARG_LOOP');
 
-    Need tmp for tmpSp
+    // Stack argument loop exit
+    var STACK_ARG_DONE = new x86.Label('STACK_ARG_DONE');
 
-    Need tmp for mem-mem moves
+    // Label to push the argument count on the stack
+    var PUSH_ARG_COUNT = new x86.Label('PUSH_ARG_COUNT');
 
-    Need reg for arg count
-    - Load arg count into
+    // Label for the register argument copying
+    var COPY_REG_ARGS = new x86.Label('COPY_REG_ARGS');
 
-    Need reg for stack space computation
-    - Do we really? Might be able to reuse arg count reg? No
-    - Need to pass arg count
+    // Temporary stack pointer register
+    var tmpSp = argRegs[0];
 
-    Reserving enough scratch regs should force args into stack locs if needed
+    // Register for the stack argument count
+    var numStackArgs = argRegs[1];
 
+    // Register for the argument stack space
+    var argSpace = argRegs[2];
 
-    */
-
-
-
-
-
-
-
-
-
-
-    // Compute the stack space needed for the arguments
-    var argSpace = allocMap.slotSize * numStackArgs;
-
-    // Total stack space needing to be reserved
-    var totalSpace = argSpace;
-
-    // Create a memory location for the saved stack pointer
-    var spLoc = new x86.MemLoc(
-        backend.regSizeBits,
-        spReg,
-        totalSpace
-    );
-
-    // Add space to save the old stack pointer
-    totalSpace += allocMap.slotSize;
-
-    // Move the current stack pointer into alternate register
+    // Save the old sp into a temp register
     asm.mov(tmpSp, spReg);
 
-    // Reserve the total stack space needed
-    asm.sub(spReg, totalSpace);
+    // Function to translate stack reference operands relative
+    // to the old stack pointer
+    function translOpnd(opnd)
+    {
+        if (typeof opnd === 'number')
+            return allocMap.getSlotOpnd(opnd, backend.regSizeBits, tmpSp);
 
-    // Compute the stack pointer alignment mask
+        return opnd;
+    }
+
+    // Translate the stack reference operands
+    var funcPtr = translOpnd(funcPtr);
+    var funcObj = translOpnd(funcObj);
+    var thisObj = translOpnd(thisObj);
+    var numArgs = translOpnd(numArgs);
+
+    // If there are stack arguments
+    asm.cmp(numArgs, NON_STACK_ARGS);
+    asm.jg(HAVE_STACK_ARGS);
+
+    // No space needed for stack arguments
+    asm.mov(numStackArgs, 0);
+    asm.jmp(ADD_STACK_SPACE);
+
+    // There are stack arguments, compute how many of them there are
+    asm.addInstr(HAVE_STACK_ARGS);
+    asm.mov(numStackArgs, numArgs);
+    asm.sub(numStackArgs, NON_STACK_ARGS);
+
+    // Update the stack pointer
+    asm.addInstr(ADD_STACK_SPACE);
+
+    // Compute the space needed for stack arguments
+    asm.imul(argSpace, numStackArgs, backend.regSizeBytes);
+
+    // Add stack space for the arguments and old sp
+    asm.sub(spReg, argSpace);
+    asm.sub(spReg, backend.regSizeBytes);
+
+    // Compute the stack pointer alignment mask and align the stack pointer
     const alignMask = ~(calleeConv.spAlign - 1);
-
-    // Align the new stack pointer
     asm.and(spReg, alignMask);
 
-    // Save the old stack pointer below the arguments
-    asm.mov(spLoc, tmpSp);
+    // Save the old sp below the arguments
+    asm.mov(
+        asm.mem(
+            spReg.size,
+            spReg,
+            0,
+            argSpace
+        ),
+        tmpSp
+    );
 
+    // Register for the stack argument index
+    var stackIdx = argRegs[1];
 
+    // Register for the table index
+    var tableIdx = argRegs[2];
 
+    // Memory-memory move temporary register
+    var mtmTmp = argRegs[3];
 
+    // Initialize the loop indices
+    asm.mov(stackIdx, numStackArgs);
+    asm.sub(stackIdx, 1);
+    asm.mov(tableIdx, NON_STACK_ARGS);
 
-    // TODO: copy from arg vector to stack
+    // Stop looping when the stack index is 0
+    asm.addInstr(STACK_ARG_LOOP);
+    asm.cmp(stackIdx, 0);
+    asm.jl(STACK_ARG_DONE);
 
-    // TODO: issue: not obvious how many args go in regs, stack
-    // Will need cascade of conditionals
+    // Move the value from the argument table to the tmp reg
+    asm.mov(
+        mtmTmp,
+        asm.mem(
+            backend.regSizeBits,
+            argTbl,
+            tblDisp,
+            tableIdx,
+            backend.regSizeBytes
+        )
+    );
 
-    // TODO: LTR vs RTL stack order handling
+    // Move the value from the tmp reg to the argument slot
+    asm.mov(
+        asm.mem(
+            backend.regSizeBits,
+            spReg,
+            0,
+            stackIdx,
+            backend.regSizeBytes
+        ),
+        mtmTmp
+    );
 
+    // Increment the loop indices and repeat the loop
+    asm.sub(stackIdx, 1);
+    asm.add(tableIdx, 1);
+    asm.jmp(STACK_ARG_LOOP);
 
+    // Done copying the stack arguments
+    asm.addInstr(STACK_ARG_DONE);
 
+    // If there are too many arguments
+    asm.cmp(numArgs, 255);
+    asm.jge(PUSH_ARG_COUNT);
 
-    // If there is an argument count register, set its value
-    //if (calleeConv.argCountReg !== null)
-    //    asm.mov(calleeConv.argCountReg, numActualArgs);
-    //
-    // TODO: push arg count on stack if needed, may need tmpSp
-    // Will need to be aligned before this is pushed
+    // Set the argument count into the argument count register
+    asm.mov(argRegs[0], numArgs);
+    asm.mov(backend.ctxReg.getSubOpnd(8), 0);
+    asm.or(backend.ctxReg, argRegs[0]);
+    asm.jmp(COPY_REG_ARGS);
 
+    // Push the argument count on the stack
+    asm.addInstr(PUSH_ARG_COUNT);
+    asm.mov(backend.ctxReg, 255)
+    asm.push(numArgs);
 
+    // Copy the register arguments
+    asm.addInstr(COPY_REG_ARGS);
 
+    // For each argument register
+    for (var i = argRegs.length - 1; i >= 0; --i)
+    {
+        var argReg = argRegs[i];
 
+        var src;
+
+        if (i === 0)
+        {
+            asm.mov(argReg, funcObj);
+        }
+
+        else if (i === 1)
+        {
+            asm.mov(argReg, thisObj);
+        }
+
+        // This is a table argument
+        else
+        {
+            var tableIdx = i - NUM_HIDDEN_ARGS;
+
+            // Compare the table argument count to the table
+            // index of the argument
+            asm.test(numArgs, tableIdx);
+
+            asm.cmovg(
+                argReg,
+                asm.mem(
+                    backend.regSizeBits,
+                    argTbl,
+                    tblDisp + (tableIdx * backend.regSizeBytes)
+                )
+            );
+        }
+    }
 
     if (backend.debugTrace === true)
         x86.genTracePrint(asm, genInfo.params, 'calling w/ apply');
-
-    // Translate the function pointer operand if it is a stack reference
-    funcPtr = (typeof funcPtr === 'number')? allocMap.getSlotOpnd(funcPtr):funcPtr;
 
     // Call the function with the given address
     asm.call(funcPtr);
@@ -870,12 +1009,10 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     if (backend.debugTrace === true)
         x86.genTracePrint(asm, genInfo.params, 'returned from call w/ apply');
 
-
-    //
-    // TODO: restore stack pointer
-    // At this point, args should be popped off, old sp should be at the top
-    //
-
+    // Restore the old stack pointer
+    // Note: at this point, the arguments should be popped off by the
+    // callee, old sp should be at the top
+    asm.mov(spReg, asm.mem(spReg.size, spReg, 0));
 
     // If the call has a continuation label
     if (instr.targets[0] !== undefined)

@@ -986,9 +986,25 @@ x86.allocOpnds = function (
             'write reg set is not an array'
         );
 
-        // Add the excluded registers to the exclude set
+        // For each register this instruction writes to
         for (var k = 0; k < excludeRegs.length; ++k)
-            excludeMap[excludeRegs[k].regNo] = true;
+        {
+            var reg = excludeRegs[k];
+
+            log.debug('saving/freeing reg: ' + reg);
+
+            // Save the register
+            x86.freeReg(
+                allocMap,
+                reg,
+                liveInFunc,
+                asm,
+                params
+            );
+
+            // Add the register to the exclude map
+            excludeMap[reg.regNo] = true;
+        }
     }
 
     // Get the number of scratch registers for this instruction
@@ -1063,9 +1079,11 @@ x86.allocOpnds = function (
                 );
             }
 
-            // If the operand is a link-time value and it cannot be immediate,
-            // it must be in a register
-            if (x86.isLinkValue(use) === true && opndCanBeImm === false)
+            // If the operand is a link-time value, it cannot be immediate,
+            // and it is 64 bits, it must be in a register
+            if (x86.isLinkValue(use) === true &&
+                opndCanBeImm === false &&
+                params.backend.regSizeBits === 64)
                 opndMustBeReg = true;
 
             // If this operand cannot be an immediate and there are too many
@@ -1166,6 +1184,11 @@ x86.allocOpnds = function (
             // If the register allocation failed
             if (opnd === undefined)
             {
+                print('reg alloc failed');
+
+                for (var i = 0; i < excludeMap.length; ++i)
+                    print(excludeMap[i]);
+
                 // Map the operand to a stack location
                 opnd = allocMap.spillValue(mapVal, liveInFunc, asm);
             }
@@ -1198,7 +1221,8 @@ x86.allocOpnds = function (
         {
             assert (
                 opndMustBeReg === false,
-                'allocated mem, but operand must be reg'
+                'allocated mem, but operand must be reg for:\n' +
+                use.getValName()
             );
 
             // Map the value to the stack location
@@ -1270,32 +1294,6 @@ x86.allocOpnds = function (
     else
     {
         dest = opnds[0];
-    }
-
-    // If this instruction writes/excludes registers
-    if (excludeRegs !== undefined)
-    {
-        assert (
-            excludeRegs instanceof Array,
-            'write reg set is not an array'
-        );
-
-        // For each register this instruction writes to
-        for (var k = 0; k < excludeRegs.length; ++k)
-        {
-            var reg = excludeRegs[k];
-
-            log.debug('saving/freeing reg: ' + reg);
-
-            // Save the register
-            x86.freeReg(
-                allocMap,
-                reg,
-                liveOutFunc,
-                asm,
-                params
-            );
-        }
     }
 
     // Get the set of registers that should be saved
