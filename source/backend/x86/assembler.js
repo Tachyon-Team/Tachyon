@@ -388,7 +388,7 @@ Anonymous function to initialize the assembler class
                 {
                     if (opnd instanceof x86.Label)
                         opnd = new x86.LabelRef(opnd);
-                    else if (typeof opnd === 'number')
+                    else if (num_instance(opnd) === true)
                         opnd = new x86.Immediate(opnd);
                     else
                         error('invalid operand: ' + opnd);

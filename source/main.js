@@ -62,7 +62,8 @@ function main()
         initConfig(PLATFORM_64BIT, log.level(undefined));
 
         // Perform a minimal Tachyon compilation
-        initBase(config.hostParams);
+        initPrimitives(config.hostParams);
+        initStdlib(config.hostParams);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();
@@ -106,7 +107,8 @@ function main()
     else if (args.files.length > 0 || args.options['e'])
     {
         // Perform a minimal Tachyon compilation
-        initBase(config.hostParams);
+        initPrimitives(config.hostParams);
+        initStdlib(config.hostParams);
 
         config.hostParams.printAST = args.options["ast"];
         config.hostParams.printHIR = args.options["hir"];
@@ -164,7 +166,8 @@ function main()
     else
     {
         // Perform a minimal Tachyon compilation
-        initBase(config.hostParams);
+        initPrimitives(config.hostParams);
+        initStdlib(config.hostParams);
 
         // Call the Tachyon read-eval-print loop
         tachyonRepl();

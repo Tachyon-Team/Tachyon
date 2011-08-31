@@ -115,7 +115,7 @@ TEST_SPEC_SRCS =                        \
     runtime/tests/*.js                  \
     backend/x86/tests/assembler.js      \
     backend/x86/tests/ir-to-asm.js      \
-#    programs/tests/programs.js
+    programs/tests/programs.js
 
 # Source files used to run the Tachyon VM
 RUN_SRCS =                              \
@@ -134,7 +134,7 @@ ALL_SRCS =                              \
 all: tachyon compiler/sources.js
 
 tachyon: makefile tachyon.in compiler/sources.js
-	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@BASE_SRCS@:$(BASE_SRCS):g" -e "s:@RUNTIME_SRCS@:$(RUNTIME_SRCS):g" -e "s:@STDLIB_SRCS@:$(STDLIB_SRCS):g" -e "s:@MAIN_SPEC_SRCS@:$(MAIN_SPEC_SRCS):g" -e "s:@TEST_SPEC_SRCS@:$(TEST_SPEC_SRCS):g" tachyon.in > tachyon
+	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon
 	chmod +x tachyon
 
 compiler/sources.js: makefile compiler/sources.js.in
@@ -184,10 +184,10 @@ compiler/sources.js: makefile compiler/sources.js.in
 	@echo "];"                                       >> compiler/sources.js
 
 test:
-	$(JSVM) $(RUN_SRCS) -- -test -v=all
+	$(JSVM) $(RUN_SRCS) -- -test -v=trace
 
 test64:
-	$(JSVM64) $(RUN_SRCS) -- -test -v=all
+	$(JSVM64) $(RUN_SRCS) -- -test -v=trace
 
 shell:
 	$(RLWJSVM) $(RUN_SRCS)

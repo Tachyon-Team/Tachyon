@@ -1184,10 +1184,9 @@ x86.allocOpnds = function (
             // If the register allocation failed
             if (opnd === undefined)
             {
-                print('reg alloc failed');
-
+                log.debug('reg alloc failed, exclude map:');
                 for (var i = 0; i < excludeMap.length; ++i)
-                    print(excludeMap[i]);
+                    log.debug(excludeMap[i]);
 
                 // Map the operand to a stack location
                 opnd = allocMap.spillValue(mapVal, liveInFunc, asm);

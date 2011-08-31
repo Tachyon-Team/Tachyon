@@ -60,8 +60,9 @@ function bootstrap(params)
 
     log.trace('Beginning bootstrap (gen #' + TACHYON_GEN_NUMBER + ')');
 
-    // Perform a base initialization
-    initBase(params);
+    // Compile the runtime and standard library
+    initPrimitives(params);
+    initStdlib(params);
 
     // Get the Tachyon compiler source code
     var tachyonSrcs = getTachyonSrcs(params);

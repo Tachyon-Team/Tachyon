@@ -89,8 +89,8 @@ tests.x86.irToAsm = function ()
         var ir = unitToIR(ast, params);
         lowerIRFunc(ir, params);
 
-        print(ir);
-        print('');
+        //print(ir);
+        //print('');
 
         // Generate the machine code for all sub-functions
         backend.genCode(ir, params);

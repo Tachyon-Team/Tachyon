@@ -176,8 +176,8 @@ function extStrTable(curTbl, curSize, numStrings)
     // Compute the new table size
     var newSize = curSize * pint(2) + pint(1);
 
-    printInt(curSize);
-    printInt(newSize);
+    //printInt(curSize);
+    //printInt(newSize);
 
     // Allocate a new, larger hash table
     var newTbl = alloc_strtbl(newSize);

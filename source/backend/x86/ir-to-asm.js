@@ -640,7 +640,15 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         x86.genTracePrint(asm, genInfo.params, 'calling ' + calleeName);
 
     // Translate the function pointer operand if it is a stack reference
-    funcPtr = (typeof funcPtr === 'number')? allocMap.getSlotOpnd(funcPtr):funcPtr;
+    if (typeof funcPtr === 'number')
+    {
+        funcPtr = allocMap.getSlotOpnd(
+            funcPtr,
+            undefined,
+            (alignNeeded === true)? tmpSp:spReg,
+            (alignNeeded === true)? 0:totalSpace
+        );
+    }
 
     // Call the function with the given address
     asm.call(funcPtr);
@@ -1236,9 +1244,6 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, ge
     // we retain only the least significant bits
     else if (srcWidth > dstWidth)
     {
-        print('src: ' + src);
-        print('dst: ' + dst);
-
         asm.mov(dst, src.getSubOpnd(dstWidth));
     }
 

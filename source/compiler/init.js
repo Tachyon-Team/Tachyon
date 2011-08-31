@@ -49,13 +49,13 @@ Maxime Chevalier-Boisvert
 */
 
 /**
-Compile and initialize the Tachyon runtime an standard library
+Compile and initialize the Tachyon primitives
 */
-function initBase(params, partialInit)
+function initPrimitives(params, partialInit)
 {
     assert (
         params instanceof CompParams,
-        'expected compilation parameters in base initialization'
+        'expected compilation parameters in primitive initialization'
     );
 
     if (partialInit === undefined)
@@ -63,7 +63,7 @@ function initBase(params, partialInit)
 
     log.trace(
         'Performing ' + (partialInit? 'partial ':'') + 
-        'Tachyon base initialization'
+        'primitive initialization'
     );
 
     // Create the context and object layouts
@@ -83,9 +83,9 @@ function initBase(params, partialInit)
     var primIRs;
 
     // Compile the runtime code
-    log.trace('Compile runtime source code');
+    log.trace('Compile primitive source code');
     measurePerformance(
-        "Compiling runtime",
+        "Compiling primitives",
         function ()
         {
             primIRs = compileSrcs(primSrcs, params, (partialInit === false));
@@ -106,7 +106,23 @@ function initBase(params, partialInit)
     {
         linkIR(primIRs[i], params);
     }
-    log.trace("After linking");
+
+    log.trace('Primitive initialization complete');
+
+    //reportPerformance();
+}
+
+/**
+Compile and initialize the Tachyon standard library
+*/
+function initStdlib(params)
+{
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters in stdlib initialization'
+    );
+
+    log.trace('Performing standard library initialization');
 
     // Get the source code for the standard library
     var libSrcs = getLibSrcs(params);
@@ -133,7 +149,7 @@ function initBase(params, partialInit)
         execUnit(libIRs[i], params);
     }
 
-    log.trace('Base initialization complete');
+    log.trace('Standard library initialization complete');
 
     //reportPerformance();
 }
@@ -201,7 +217,7 @@ function getTachyonSrcs(params)
 }
 
 /**
-Initialize the run-time components, including the context 
+Initialize the runtime components, including the context 
 and the global object.
 */
 function initRuntime(params)

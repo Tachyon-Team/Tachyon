@@ -1120,6 +1120,9 @@ x86.genArgNormStub = function (
     // Label for when the normalization is complete
     var ARG_NORM_DONE = new x86.Label('ARG_NORM_DONE');
 
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'normalizing stack frame');
+
     // If the number of expected arguments is nonzero, there could be too few
     // arguments. Otherwise, there must be too many.
     if (numArgs > 0)

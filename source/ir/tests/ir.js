@@ -63,9 +63,9 @@ Setup function for the IR test suite
 */
 tests.ir.init = function ()
 {
-    // Run a base-initialization of the Tachyon runtime
+    // Perform a partial initialization of the Tachyon runtime
     // without compiling machine code
-    initBase(config.hostParams, true);
+    initPrimitives(config.hostParams, true);
 }
 
 /**

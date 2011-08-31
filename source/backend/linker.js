@@ -72,10 +72,10 @@ function linkCode(codeBlock, backend, params)
         // If this is a static function reference
         if (value instanceof IRFunction)
         {
-            // TODO: remove this once old backend replaced
+            // If the function has no compiled code block
             if ((value.codeBlock instanceof CodeBlock) === false)
             {
-                print('function not linked: ' + value.getValName());
+                log.debug('function not linked: ' + value.getValName());
                 continue;
             }
 
