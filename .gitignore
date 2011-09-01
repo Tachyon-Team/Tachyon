@@ -8,7 +8,6 @@ source/deps
 bench
 makefile.common
 parser
-programs
 stdlib
 tests
 utility
