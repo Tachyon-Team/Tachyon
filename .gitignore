@@ -3,7 +3,6 @@
 .gitignore
 doc/*
 source/compiler/sources.js
-source/tachyon
 source/deps
 bench
 makefile.common
