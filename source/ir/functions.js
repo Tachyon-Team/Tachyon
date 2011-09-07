@@ -178,22 +178,6 @@ function IRFunction(
     this.writesMem = true;
 
     /**
-    Everything related to linkage information. Will not be copied during
-    a deep copy.
-    TODO: eliminate this
-    @field
-    */
-    this.linking = {};
-
-    /**
-    Everything related to runtime information. Will not be copied during
-    a deep copy.
-    TODO: eliminate this
-    @field
-    */
-    this.runtime = {};
-
-    /**
     Compiled code block for this function. Will not be copied
     during a deep copy.
     */

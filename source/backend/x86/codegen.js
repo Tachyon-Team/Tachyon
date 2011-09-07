@@ -58,54 +58,8 @@ Generate the assembly code for one function
 */
 x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 {
-    // Assembler object to create instructions into
-    var asm = new x86.Assembler(backend.x86_64);
-
     // Get the calling convention for this function
     var callConv = params.backend.getCallConv(irFunc.cProxy? 'c':'tachyon');
-
-    // Create labels for the default and fast entry points
-    var ENTRY_DEFAULT = new x86.Label('ENTRY_DEFAULT', true);
-    var ENTRY_FAST    = new x86.Label('ENTRY_FAST', true);
-
-    // Export the function's default entry point
-    asm.addInstr(ENTRY_DEFAULT);
-
-    //irFunc.staticLink = false;
-
-    // If we are using a calle cleanup calling convention and this is
-    // not a static function, add the stack frame normalization stub
-    if (callConv.cleanup === 'CALLEE' &&
-        irFunc.staticLink === false)
-    {
-        // If the function uses arguments
-        if (irFunc.usesArguments === true)
-        {
-            // Generate the argument object creation stub
-            x86.genArgObjStub(/*TODO*/);
-        }
-        else
-        {
-            // Get the number of arguments expected
-            const numArgsExpect = irFunc.argVars.length;
-
-            // Compare the argument count with the expected count
-            asm.cmp(callConv.argCountReg, numArgsExpect);
-
-            // Create a label for the argument normalization code
-            var ARG_NORM = new x86.Label('ARG_NORM');
-
-            // If the count is not as expected, jump to the normalization
-            // code, which is kept out of line
-            asm.jne(ARG_NORM);
-        }
-    }
-
-    // Export the function's fast entry point
-    asm.addInstr(ENTRY_FAST);
-
-    if (backend.debugTrace === true)
-        x86.genTracePrint(asm, params, 'entering "' + irFunc.funcName + '"');
 
     // Map of block ids to allocation map at block entries
     // This is used to store allocations at blocks with
@@ -143,8 +97,72 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             entryMap.allocArg(i);
     }
 
+    // If the function uses the arguments object
+    if (irFunc.usesArguments === true)
+    {
+        // Allocate an argument alot for the number of arguments
+        var numArgsArgIdx = numArgs + 1;
+        entryMap.allocArg(numArgsArgIdx);
+
+        // Allocate an argument slot for the arguments table
+        var argTblArgIdx = numArgs;
+        entryMap.allocArg(argTblArgIdx);
+    }
+
     // Map the return address on the stack
     entryMap.allocRetAddr();
+
+    // Assembler object to create instructions into
+    var asm = new x86.Assembler(backend.x86_64);
+
+    // Create labels for the default and fast entry points
+    var ENTRY_DEFAULT = new x86.Label('ENTRY_DEFAULT', true);
+    var ENTRY_FAST    = new x86.Label('ENTRY_FAST', true);
+
+    // Export the function's default entry point
+    asm.addInstr(ENTRY_DEFAULT);
+
+    // If we are using a calle cleanup calling convention and this is
+    // not a static function, add the stack frame normalization stub
+    if (callConv.cleanup === 'CALLEE' &&
+        irFunc.staticLink === false)
+    {
+        // If the function uses the arguments object
+        if (irFunc.usesArguments === true)
+        {
+            // Generate the argument object creation stub
+            x86.genArgObjStub(
+                asm,
+                entryMap,
+                callConv,
+                numArgs,
+                numArgsArgIdx,
+                argTblArgIdx,
+                params
+            );
+        }
+        else
+        {
+            // Get the number of arguments expected
+            const numArgsExpect = irFunc.argVars.length;
+
+            // Compare the argument count with the expected count
+            asm.cmp(callConv.argCountReg, numArgsExpect);
+
+            // Create a label for the argument normalization code
+            var ARG_NORM = new x86.Label('ARG_NORM');
+
+            // If the count is not as expected, jump to the normalization
+            // code, which is kept out of line
+            asm.jne(ARG_NORM);
+        }
+    }
+
+    // Export the function's fast entry point
+    asm.addInstr(ENTRY_FAST);
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'entering "' + irFunc.funcName + '"');
 
     // Save the callee-save registers (if any) on the stack
     for (var i = 0; i < callConv.calleeSave.length; ++i)
@@ -321,19 +339,13 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             else if (instr instanceof GetNumArgsInstr)
             {
                 assert (
-                    callConv.argCountReg instanceof x86.Register,
-                    'num args instr but call conv does not have arg count reg'
+                    irFunc.usesArguments === true,
+                    'num args instr but function does not use arguments'
                 );
 
-                // Allocate the register to the argument count
-                x86.allocReg(
-                    allocMap,
-                    undefined,
-                    liveOutFunc,
-                    instr, 
-                    callConv.argCountReg,
-                    undefined
-                );
+                // Map the argument count to its stack location
+                var stackSlot = allocMap.getArgSlot(numArgsArgIdx);
+                allocMap.makeAlloc(instr, stackSlot);
             }
 
             // If this is the argument table instruction
@@ -344,8 +356,9 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                     'arg table instr but function does not use arguments'
                 );
 
-                // TODO: get spill slot, note its stack loc?
-                error('arg table instr not yet supported');
+                // Map the argument count to its stack location
+                var stackSlot = allocMap.getArgSlot(argTblArgIdx);
+                allocMap.makeAlloc(instr, stackSlot);
             }
 
             // For all other kinds of instructions
@@ -1225,9 +1238,95 @@ x86.genArgNormStub = function (
 /**
 Generate the argument object creation stub
 */
-x86.genArgObjStub = function (/*TODO*/)
+x86.genArgObjStub = function (
+    asm,
+    allocMap,
+    callConv,
+    numArgs,
+    numArgsArgIdx,
+    argTblArgIdx,
+    params
+)
 {
-    // TODO
+    /*
+
+    TODO:
+
+    - Can push current register values if more registers are needed
+
+        Problem: need separate stack pointer to manipulate stack then
+
+    - Create the arg table
+
+        function allocArgTable(numArgs)
+        takes pint, returns ref
+
+    - Copy arguments into the arg table
+
+        handle extra arg count
+
+    - Normalize stack frame argument count
+
+    - Map stack locations for arg table, arg count
+
+        Store those values on the stack
+        Can only be done after stack frame is normalized?
+
+
+
+    Stack:
+
+    arg0
+    arg1
+    ...
+    argN
+    ---
+    retAddr
+    ---     
+    argCount*    
+    ---
+    tmp0
+    tmp1
+    ...
+    tmpN
+
+
+
+    Step 1: map stack locs for arg table, arg count?
+    - Map as if extra function arguments? 
+    - Once mapped, can try to go further with compilation
+      - May discover more bugs!
+      - Not necessarily a problem right now
+
+
+    */
+
+    log.trace('generating arguments object creation stub');
+
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'arguments object creation stub');
+
+    // Number of hidden arguments
+    const NUM_HIDDEN_ARGS = 2;
+
+    // Get a reference to the backend object
+    const backend = params.backend;
+
+    // Get the displacement for the arguments table
+    const tblDisp = params.memLayouts.arrtbl.getFieldOffset(["tbl", 0]);
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 /**

@@ -688,6 +688,16 @@ tests.programs.ctor_instof = genTest(
 );
 
 /**
+For-in loop, property enumeration.
+*/
+tests.programs.for_in = genTest(
+    'programs/for_in/for_in.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Standard library initialization
 */
 tests.programs.initStdlib = function ()
@@ -731,16 +741,6 @@ Bubble-sort implementation. Uses closures and string conversion of arrays.
 */
 tests.programs.bubble_sort = genTest(
     'programs/bubble_sort/bubble_sort.js',
-    'test',
-    [],
-    0
-);
-
-/**
-For-in loop, property enumeration.
-*/
-tests.programs.for_in = genTest(
-    'programs/for_in/for_in.js',
     'test',
     [],
     0
