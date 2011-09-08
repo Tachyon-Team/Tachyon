@@ -104,6 +104,22 @@ function foo7(x1,x2,x3,x4,x5,x6,x7,x8,x9)
     return true;
 }
 
+function argCnt8(a1, a2, a3, a4, a5, a6, a7, a8)
+{
+    var cnt = 0;
+
+    if (a1) cnt += 1;
+    if (a2) cnt += 1;
+    if (a3) cnt += 1;
+    if (a4) cnt += 1;
+    if (a5) cnt += 1;
+    if (a6) cnt += 1;
+    if (a7) cnt += 1;
+    if (a8) cnt += 1;
+
+    return cnt;
+}
+
 function foo_proxy()
 {
     // Pass more arguments than expected
@@ -141,6 +157,28 @@ function foo_proxy()
 
     if (!foo7())
         return 1200;
+
+    // Argument counting
+    if (argCnt8() !== 0)
+        return 1300;
+    if (argCnt8(7) !== 1)
+        return 1400;
+    if (argCnt8(7,7) !== 2)
+        return 1500;
+    if (argCnt8(7,7,7) !== 3)
+        return 1600;
+    if (argCnt8(7,7,7,7) !== 4)
+        return 1700;
+    if (argCnt8(7,7,7,7,7) !== 5)
+        return 1800;
+    if (argCnt8(7,7,7,7,7,7) !== 6)
+        return 1900;
+    if (argCnt8(7,7,7,7,7,7,7) !== 7)
+        return 2000;
+    if (argCnt8(7,7,7,7,7,7,7,7) !== 8)
+        return 2100;
+    if (argCnt8(7,7,7,7,7,7,7,7,7) !== 8)
+        return 2200;
 
     return 0;
 }
