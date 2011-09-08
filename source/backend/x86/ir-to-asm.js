@@ -574,9 +574,6 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         var opndIdx = opnds.length - numArgs + argIdx;
         var srcOpnd = opnds[opndIdx];
 
-        // Compute the index of the stack argument
-        var stackArgIdx = argIdx - numRegArgs;
-
         // Get the stack argument operand
         var dstOpnd = new x86.MemLoc(
             allocMap.slotSize * 8,
@@ -611,17 +608,21 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     }
 
     // Copy the stack arguments
-    if (calleeConv.argsOrder === 'LTR')
+    if (calleeConv.argOrder === 'LTR')
     {
         // For each function argument, in left-to-right order
+        for (var i = numStackArgs - 1; i >= 0; --i)
+            copyStackArg(numRegArgs + i , numStackArgs - i - 1);
+    }
+    else if (calleeConv.argOrder === 'RTL')
+    {
+        // For each function argument, right-to-left order
         for (var i = 0; i < numStackArgs; ++i)
-            copyStackArg(numRegArgs + i , i);
+            copyStackArg(numRegArgs + i, i);
     }
     else
     {
-        // For each function argument, in left-to-right order
-        for (var i = 0; i < numStackArgs; ++i)
-            copyStackArg(numArgs - 1 - i, i);
+        error('invalid argument order');
     }
 
     // If there is an argument count register, set its value

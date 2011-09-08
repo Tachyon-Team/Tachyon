@@ -62,10 +62,11 @@ function foo3(x,y,z)
 
 function foo4(x)
 {
-    if (x !== undefined)
+    if (x)
     {
         return false;
-    } else
+    }
+    else
     {
         return true;
     }
@@ -73,11 +74,11 @@ function foo4(x)
 
 function foo5(x,y)
 {
-    if (x !== 1 ||
-        y !== undefined)
+    if (x !== 1 || y)
     {
         return false;
-    } else
+    } 
+    else
     {
         return true;
     }
@@ -85,9 +86,7 @@ function foo5(x,y)
 
 function foo6(x,y,z)
 {
-    if (x !== 1 || 
-        y !== 2 || 
-        z !== undefined)
+    if (x !== 1 || y !== 2 || z)
     {
         return false;
     }
@@ -97,15 +96,7 @@ function foo6(x,y,z)
 
 function foo7(x1,x2,x3,x4,x5,x6,x7,x8,x9)
 {
-    if (x1 !== undefined ||
-        x2 !== undefined ||
-        x3 !== undefined ||
-        x4 !== undefined ||
-        x5 !== undefined ||
-        x6 !== undefined ||
-        x7 !== undefined ||
-        x8 !== undefined ||
-        x9 !== undefined)
+    if (x1 || x2 || x3 || x4 || x5 || x6 || x7 || x8 || x9)
     {
         return false;
     }
@@ -117,61 +108,39 @@ function foo_proxy()
 {
     // Pass more arguments than expected
     if (foo(1) !== 1)
-    {
-        return 1;
-    }
-
+        return 100;
     if (foo(1,2) !== 1)
-    {
-        return 2;
-    }
-
+        return 200;
     if (foo(1,2,3) !== 1)
-    {
-        return 3;
-    }
-
+        return 300;
     if (foo(0,1,2,3,4,5,6) !== 1)
-    {
-        return 4;
-    }
-
+        return 400;
 
     if (foo1(0,1,2,3,4,5,6) !== 0)
-    {
-        return 5;
-    }
+        return 500;
 
     if (foo2(0,1,2,3,4,5,6) !== 1)
-    {
-        return 6;
-    }
+        return 600;
 
-    if (foo3(0,1,2,3,4,5,6) !== 3)
-    {
-        return 7;
-    }
+    if (foo3(0,1,2) !== 3)
+        return 700;
+
+    var r = foo3(0,1,2,3,4,5,6);
+    if (r !== 3)
+        return 800 + r;
 
     // Pass less arguments than expected
     if (!foo4())
-    {
-        return 8;
-    }
+        return 900;
 
     if (!foo5(1))
-    {
-        return 9;
-    }
+        return 1000;
 
     if (!foo6(1,2))
-    {
-        return 10;
-    }
+        return 1100;
 
     if (!foo7())
-    {
-        return 11;
-    }
+        return 1200;
 
     return 0;
 }

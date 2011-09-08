@@ -84,17 +84,21 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     var numArgs = irFunc.argVars.length + (irFunc.cProxy? 0:2);
 
     // Map the arguments on the stack
-    if (callConv.argsOrder === 'LTR')
+    if (callConv.argOrder === 'LTR')
     {
         // For each function argument, in left-to-right order
         for (var i = callConv.argRegs.length; i < numArgs; ++i)
             entryMap.allocArg(i);
     }
-    else
+    else if (callConv.argOrder === 'RTL')
     {
         // For each function argument, in left-to-right order
         for (var i = numArgs - 1; i >= callConv.argRegs.length; --i)
             entryMap.allocArg(i);
+    }
+    else
+    {
+        error('invalid argument order');
     }
 
     // If the function uses the arguments object
@@ -1080,6 +1084,11 @@ x86.genArgNormStub = function (
     params
 )
 {
+    assert (
+        callConv.argOrder === 'LTR',
+        'expected left-to-right arg order in arg norm stub'
+    );
+
     // Number of hidden arguments
     const NUM_HIDDEN_ARGS = 2;
 
@@ -1134,7 +1143,7 @@ x86.genArgNormStub = function (
     var ARG_NORM_DONE = new x86.Label('ARG_NORM_DONE');
 
     if (params.backend.debugTrace === true)
-        x86.genTracePrint(asm, params, 'normalizing stack frame');
+        x86.genTracePrint(asm, params, 'normalizing argument count');
 
     // If the number of expected arguments is nonzero, there could be too few
     // arguments. Otherwise, there must be too many.
@@ -1190,11 +1199,14 @@ x86.genArgNormStub = function (
     // Too many arguments handling
     asm.addInstr(TOO_MANY_ARGS);
 
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'removing extra arguments');
+
     // Pop the return address into tr0
     asm.pop(tr0);
 
     // If the argument count is on the stack, pop it off
-    asm.test(argCountReg, 255);
+    asm.cmp(argCountReg, 255);
     asm.je(POP_ARG_COUNT);
 
     // Move the argument count into tr1
@@ -1203,18 +1215,30 @@ x86.genArgNormStub = function (
     // Add the extra stack argument removal label
     asm.addInstr(REM_STACK_ARGS);
 
-    // If there are no stack arguments, we are done
-    asm.test(tr1, numArgRegs);
+    // Number of arguments to be kept during stack argument removal
+    var numArgsKeep = Math.max(numArgs, numArgRegs);
+
+    // If there are no extra stack arguments, we are done
+    asm.cmp(tr1, numArgsKeep);
     asm.jle(EXTRA_ARGS_DONE);
+
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'removing stack arg');
 
     // Pop a stack argument
     asm.add(backend.spReg, backend.regSizeBytes);
+
+    // Update the argument count
+    asm.sub(tr1, 1);
 
     // Repeat the stack argument removal loop
     asm.jmp(REM_STACK_ARGS);
 
     // Add the argument count popping label
     asm.addInstr(POP_ARG_COUNT);
+
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'popping argument count');
 
     // Pop the argument count into tr1
     asm.pop(tr1);

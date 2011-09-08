@@ -698,6 +698,17 @@ tests.programs.for_in = genTest(
 );
 
 /**
+Variable number of arguments test.
+*/
+tests.programs.var_args = genTest(
+    'programs/var_args/var_args.js',
+    'foo_proxy',
+    [],
+    0,
+    'hostParams' // FIXME
+);
+
+/**
 Standard library initialization
 */
 tests.programs.initStdlib = function ()
@@ -742,16 +753,6 @@ Bubble-sort implementation. Uses closures and string conversion of arrays.
 tests.programs.bubble_sort = genTest(
     'programs/bubble_sort/bubble_sort.js',
     'test',
-    [],
-    0
-);
-
-/**
-Variable number of arguments test.
-*/
-tests.programs.var_args = genTest(
-    'programs/var_args/var_args.js',
-    'foo_proxy',
     [],
     0
 );

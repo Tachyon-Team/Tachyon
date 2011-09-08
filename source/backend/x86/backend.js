@@ -126,7 +126,7 @@ x86.Backend = function (x86_64)
     /**
     Flag to enable the debug trace
     */
-    this.debugTrace = false;
+    this.debugTrace = true;
 }
 x86.Backend.prototype = new Backend();
 
