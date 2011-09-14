@@ -80,37 +80,43 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     // Map the entry block to its allocation map
     allocMaps[entryBlock.blockId] = entryMap;
 
-    // Get the number of function arguments (including hidden arguments)
-    var numArgs = irFunc.argVars.length + (irFunc.cProxy? 0:2);
+    // Get the number of hidden arguments
+    var numHidden = irFunc.cProxy? 0:2;
 
-    // Map the arguments on the stack
-    if (callConv.argOrder === 'LTR')
-    {
-        // For each function argument, in left-to-right order
-        for (var i = callConv.argRegs.length; i < numArgs; ++i)
-            entryMap.allocArg(i);
-    }
-    else if (callConv.argOrder === 'RTL')
-    {
-        // For each function argument, in left-to-right order
-        for (var i = numArgs - 1; i >= callConv.argRegs.length; --i)
-            entryMap.allocArg(i);
-    }
-    else
-    {
-        error('invalid argument order');
-    }
+    // Get the number of function arguments (including hidden arguments)
+    var numArgs = irFunc.argVars.length + numHidden;
 
     // If the function uses the arguments object
     if (irFunc.usesArguments === true)
     {
-        // Allocate an argument alot for the number of arguments
-        var numArgsArgIdx = numArgs + 1;
-        entryMap.allocArg(numArgsArgIdx);
+        assert (
+            callConv.argRegs.length >= numHidden + 2,
+            'not enough arg regs for arguments object handling'
+        );
 
-        // Allocate an argument slot for the arguments table
-        var argTblArgIdx = numArgs;
-        entryMap.allocArg(argTblArgIdx);
+        // Set the argument count and argument table operands
+        var argCntOpnd = callConv.argRegs[0];
+        var argTblOpnd = callConv.argRegs[1];
+    }
+    else
+    {
+        // Map the stack arguments
+        if (callConv.argOrder === 'LTR')
+        {
+            // For each function argument, in left-to-right order
+            for (var i = callConv.argRegs.length; i < numArgs; ++i)
+                entryMap.allocArg(i);
+        }
+        else if (callConv.argOrder === 'RTL')
+        {
+            // For each function argument, in left-to-right order
+            for (var i = numArgs - 1; i >= callConv.argRegs.length; --i)
+                entryMap.allocArg(i);
+        }
+        else
+        {
+            error('invalid argument order');
+        }
     }
 
     // Map the return address on the stack
@@ -139,9 +145,8 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 asm,
                 entryMap,
                 callConv,
-                numArgs,
-                numArgsArgIdx,
-                argTblArgIdx,
+                argCntOpnd,
+                argTblOpnd,
                 params
             );
         }
@@ -317,6 +322,12 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 // Get the argument index
                 var argIndex = instr.argIndex;
 
+                assert (
+                    irFunc.usesArguments === false || argIndex < numHidden,
+                    'arg val instr for non-hidden argument but ' +
+                    'function uses arguments'
+                );
+
                 // If the argument is in a register
                 if (argIndex < callConv.argRegs.length)
                 {
@@ -325,7 +336,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                         allocMap,
                         instr,
                         callConv.argRegs[argIndex],
-                        liveOutFunc, 
+                        liveOutFunc,
                         undefined,
                         asm,
                         params
@@ -339,7 +350,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 }
             }
 
-            // If this is the argument number instruction
+            // If this is the argument count instruction
             else if (instr instanceof GetNumArgsInstr)
             {
                 assert (
@@ -347,9 +358,16 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                     'num args instr but function does not use arguments'
                 );
 
-                // Map the argument count to its stack location
-                var stackSlot = allocMap.getArgSlot(numArgsArgIdx);
-                allocMap.makeAlloc(instr, stackSlot);
+                // Map the argument count to its operand
+                x86.allocReg(
+                    allocMap,
+                    instr,
+                    argCntOpnd,
+                    liveOutFunc,
+                    undefined,
+                    asm,
+                    params
+                );
             }
 
             // If this is the argument table instruction
@@ -360,9 +378,16 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                     'arg table instr but function does not use arguments'
                 );
 
-                // Map the argument count to its stack location
-                var stackSlot = allocMap.getArgSlot(argTblArgIdx);
-                allocMap.makeAlloc(instr, stackSlot);
+                // Map the argument table to its operand
+                x86.allocReg(
+                    allocMap,
+                    instr,
+                    argTblOpnd,
+                    liveOutFunc,
+                    undefined,
+                    asm,
+                    params
+                );
             }
 
             // For all other kinds of instructions
@@ -1266,69 +1291,17 @@ x86.genArgObjStub = function (
     asm,
     allocMap,
     callConv,
-    numArgs,
-    numArgsArgIdx,
-    argTblArgIdx,
+    argCntOpnd,
+    argTblOpnd,
     params
 )
 {
-    /*
-
-    TODO:
-
-    - Can push current register values if more registers are needed
-
-        Problem: need separate stack pointer to manipulate stack then
-
-    - Create the arg table
-
-        function allocArgTable(numArgs)
-        takes pint, returns ref
-
-    - Copy arguments into the arg table
-
-        handle extra arg count
-
-    - Normalize stack frame argument count
-
-    - Map stack locations for arg table, arg count
-
-        Store those values on the stack
-        Can only be done after stack frame is normalized?
-
-
-
-    Stack:
-
-    arg0
-    arg1
-    ...
-    argN
-    ---
-    retAddr
-    ---     
-    argCount*    
-    ---
-    tmp0
-    tmp1
-    ...
-    tmpN
-
-
-
-    Step 1: map stack locs for arg table, arg count?
-    - Map as if extra function arguments? 
-    - Once mapped, can try to go further with compilation
-      - May discover more bugs!
-      - Not necessarily a problem right now
-
-
-    */
+    assert (
+        callConv.argOrder === 'LTR',
+        'expected left-to-right arg order in arg norm stub'
+    );
 
     log.trace('generating arguments object creation stub');
-
-    if (params.backend.debugTrace === true)
-        x86.genTracePrint(asm, params, 'arguments object creation stub');
 
     // Number of hidden arguments
     const NUM_HIDDEN_ARGS = 2;
@@ -1336,21 +1309,208 @@ x86.genArgObjStub = function (
     // Get a reference to the backend object
     const backend = params.backend;
 
+    // Get the argument count register
+    const argCountReg = callConv.argCountReg;
+
+    // Get the argument registers
+    const argRegs = callConv.argRegs;
+
+    // Compute the set of free registers
+    var freeRegs = backend.gpRegSet.slice(0);
+    for (var i = 0; i < callConv.argRegs.length; ++i)
+        arraySetRem(freeRegs, callConv.argRegs[i]);
+    arraySetRem(freeRegs, callConv.argCountReg);
+
+    assert (
+        freeRegs.length >= 2,
+        'insufficient free register count'
+    );
+
+    // Get the temporary registers
+    var tr0 = freeRegs[0];
+    var tr1 = freeRegs[1];
+
+    // Get the immediate for the undefined value
+    const undefImm = new x86.Immediate(
+        ConstValue.getConst(undefined).getImmValue(params)
+    );
+
     // Get the displacement for the arguments table
     const tblDisp = params.memLayouts.arrtbl.getFieldOffset(["tbl", 0]);
 
+    // Create a link value for the allocArgTable function
+    const allocTblFn = new x86.LinkValue(
+        params.staticEnv.getBinding('allocArgTable'),
+        backend.regSizeBits
+    );
 
+    // Label: argument count popping
+    var POP_ARG_COUNT = new x86.Label('POP_ARG_COUNT');
 
+    // Label: argument table creation
+    var CREATE_ARG_TBL = new x86.Label('CREATE_ARG_TBL');
 
+    // Label: argument copying loop
+    var ARG_COPY_LOOP = new x86.Label('ARG_COPY_LOOP');
 
+    // Label: argument copying loop exit
+    var ARG_COPY_DONE = new x86.Label('ARG_COPY_DONE');
 
+    // Label: argument normalization complete
+    var ARG_NORM_DONE = new x86.Label('ARG_NORM_DONE');
 
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'arguments object creation stub');
 
+    // If the argument count is on the stack, pop it off
+    asm.cmp(argCountReg, 255);
+    asm.je(POP_ARG_COUNT);
 
+    // Move the argument count into tr0
+    asm.movzx(tr0, argCountReg);
 
+    // Create the argument table
+    asm.jmp(CREATE_ARG_TBL);
 
+    // Add the argument count popping label
+    asm.addInstr(POP_ARG_COUNT);
 
+    // Pop the argument count into tr0
+    asm.pop(tr1);
+    asm.pop(tr0);
+    asm.push(tr1);
 
+    // Argument table creation
+    asm.addInstr(CREATE_ARG_TBL);
+
+    // Save the argument registers and tr0
+    for (var i = 0; i < argRegs.length; ++i)
+        asm.push(argRegs[i]);
+
+    // Save tr0 (argument count)
+    asm.push(tr0);
+
+    // Set the argument count argument
+    asm.mov(argRegs[2], tr0);
+
+    // Set the function object and this arguments to undefined
+    asm.mov(argRegs[0], undefImm);
+    asm.mov(argRegs[1], undefImm);
+
+    // Set the argument count
+    asm.mov(argCountReg, 1);
+
+    // Move the function address into tr0
+    asm.mov(tr0, allocTblFn);
+
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'calling allocArgTable');
+
+    // Call the allocArgTable function
+    asm.call(tr0);
+
+    // Save the argument table pointer in tr1
+    asm.mov(tr1, callConv.retReg);
+
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'returned from allocArgTable');
+
+    // Restore tr0 (argument count)
+    asm.pop(tr0);
+
+    // Temporary register allocation
+    var stackIdx = argRegs[0];
+    var tableIdx = argRegs[1];
+    var mtmTmp = argRegs[2];
+
+    // Get the number of non-hidden register arguments
+    const numRegArgs = argRegs.length - NUM_HIDDEN_ARGS;
+
+    // Initialize the iteration indices
+    asm.mov(stackIdx, tr0);
+    asm.mov(tableIdx, numRegArgs);
+
+    // Argument copying loop
+    asm.addInstr(ARG_COPY_LOOP);
+
+    // If we are at the last stack index, stop
+    asm.cmp(stackIdx, 0);
+    asm.jle(ARG_COPY_DONE);
+
+    // Move a stack value into the table
+    asm.mov(
+        mtmTmp,
+        asm.mem(
+            backend.regSizeBits,
+            backend.spReg,
+            (argRegs.length - numRegArgs) * backend.regSizeBytes,
+            stackIdx,
+            backend.regSizeBytes
+        )
+    );
+    asm.mov(
+        asm.mem(
+            backend.regSizeBits,
+            tr1,
+            tblDisp,
+            tableIdx,
+            backend.regSizeBytes
+        ),
+        mtmTmp
+    );
+
+    // Increment the indices
+    asm.sub(stackIdx, 1);
+    asm.add(tableIdx, 1);
+
+    // Repeat the argument copying loop
+    asm.jmp(ARG_COPY_LOOP);
+
+    // Argument copying loop done
+    asm.addInstr(ARG_COPY_DONE);
+
+    // Restore the argument registers
+    for (var i = argRegs.length - 1; i >= 0; --i)
+        asm.pop(argRegs[i]);
+
+    // Copy the register arguments to the argument table
+    for (var i = NUM_HIDDEN_ARGS; i < argRegs.length; ++i)
+    {
+        var argReg = argRegs[i];
+
+        asm.mov(
+            asm.mem(
+                backend.regSizeBits,
+                tr1,
+                tblDisp + (i - NUM_HIDDEN_ARGS) * backend.regSizeBytes
+            ),
+            argReg
+        );
+    }
+
+    // Move the argument table pointer and argument count to their final positions
+    asm.mov(argCntOpnd, tr0);
+    asm.mov(argTblOpnd, tr1);
+
+    // Compute the space taken by the stack arguments
+    asm.mov(tr0, argCntOpnd);
+    asm.sub(tr0, numRegArgs);
+
+    // If there are no extra stack arguments, skip this step
+    asm.cmp(tr0, 0);
+    asm.jle(ARG_NORM_DONE);
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'removing stack arguments');
+
+    // Remove the stack arguments
+    asm.imul(tr0, tr0, backend.regSizeBytes);
+    asm.pop(tr1);
+    asm.add(backend.spReg, tr0);
+    asm.push(tr1);
+
+    // Argument normalization done
+    asm.addInstr(ARG_NORM_DONE);
 }
 
 /**

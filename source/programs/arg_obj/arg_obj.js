@@ -40,42 +40,99 @@
  * _________________________________________________________________________
  */
 
-function foo()
+function foo1(a0, a1, a2)
 {
-    return arguments.length + 
-           arguments[0] + 
-           arguments[1] +
-           arguments[2] + 
-           arguments[3] + 
-           arguments[4] + 
-           arguments[5] + 
-           arguments[6] + 
-           arguments[7] +
-           arguments[8] + 
-           arguments[9];
+    return (
+        arguments[0] +
+        arguments[1] +
+        arguments[2]
+    );
+
+    return 0;
 }
 
-function foo2(x)
+function foo2(a0, a1, a2, a4, a5, a6)
+{
+    return (
+        arguments[0] +
+        arguments[1] +
+        arguments[2]
+    );
+}
+
+function foo3(x)
 {
     return arguments.length;
 }
 
+function foo4()
+{
+    return (
+        arguments.length + 
+        arguments[0] + 
+        arguments[1] +
+        arguments[2] + 
+        arguments[3] + 
+        arguments[4] + 
+        arguments[5] + 
+        arguments[6] + 
+        arguments[7] +
+        arguments[8] + 
+        arguments[9]
+    );
+}
+
+function foo5(x, y, z, w, q, s)
+{
+    return (
+        arguments.length + 
+        arguments[0] + 
+        arguments[1] +
+        arguments[2] + 
+        arguments[3] + 
+        arguments[4] + 
+        arguments[5] + 
+        arguments[6] + 
+        arguments[7] +
+        arguments[8] + 
+        arguments[9]
+    );
+}
+
 function foo_proxy()
 {
-    if (foo(0,1,2,3,4,5,6,7,8,9) !== 55)
-    {
-        return 1;
-    }
+    if (foo1(1,2,3) !== 6)
+        return 100;
+    if (foo1(1,2,3,7) !== 6)
+        return 101;
+    if (foo1(1,2,3,7,7) !== 6)
+        return 102;
 
-    if (foo2(1) !== 1)
-    {
-        return 2;
-    }
+    if (foo2(1,2,3) !== 6)
+        return 200;
+    if (foo2(1,2,3,7) !== 6)
+        return 201;
+    if (foo2(1,2,3,7,7) !== 6)
+        return 202;
 
-    if (foo2() !== 0)
-    {
-        return 3;
-    }
+    if (foo3() !== 0)
+        return 300;
+    if (foo3(1) !== 1)
+        return 301;
+    if (foo3(7,7) !== 2)
+        return 302;
+    if (foo3(7,7,7) !== 3)
+        return 303;
+    if (foo3(7,7,7,7) !== 4)
+        return 304;
+    if (foo3(7,7,7,7,7) !== 5)
+        return 305;
+   
+    if (foo4(0,1,2,3,4,5,6,7,8,9) !== 55)
+        return 400;
+
+    if (foo5(0,1,2,3,4,5,6,7,8,9) !== 55)
+        return 500;
 
     return 0;
 }

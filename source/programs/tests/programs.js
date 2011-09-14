@@ -704,9 +704,24 @@ tests.programs.var_args = genTest(
     'programs/var_args/var_args.js',
     'foo_proxy',
     [],
-    0,
-    'hostParams' // FIXME
+    0
 );
+
+/**
+Arguments object test.
+*/
+tests.programs.arg_obj = genTest(
+    'programs/arg_obj/arg_obj.js',
+    'foo_proxy',
+    [],
+    0
+);
+
+
+//
+// TODO: test apply before stdlib init, use IIR
+// make new apply_iir test?
+
 
 /**
 Standard library initialization
@@ -753,16 +768,6 @@ Bubble-sort implementation. Uses closures and string conversion of arrays.
 tests.programs.bubble_sort = genTest(
     'programs/bubble_sort/bubble_sort.js',
     'test',
-    [],
-    0
-);
-
-/**
-Arguments object test.
-*/
-tests.programs.arg_obj = genTest(
-    'programs/arg_obj/arg_obj.js',
-    'foo_proxy',
     [],
     0
 );

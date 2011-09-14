@@ -1159,23 +1159,8 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     // If the arguments should be removed by the callee
     if (calleeConv.cleanup === 'CALLEE')
     {
-        // Get the number of function arguments
-        var numArgs = genInfo.irFunc.argTypes.length;
-
-        // If this is a Tachyon function, add 2 hidden arguments
-        if (genInfo.irFunc.cProxy === false)
-            numArgs += 2;
-
-        // Compute the number of stack arguments
-        var numRegArgs = Math.min(numArgs, calleeConv.argRegs.length);
-
-        // Compute the number of stack arguments
-        var numStackArgs = Math.max(numArgs - numRegArgs, 0);
-
-        // Compute the stack space needed for the arguments
-        var argSpace = genInfo.allocMap.slotSize * numStackArgs;
-
         // Return, popping the arguments from the stack
+        var argSpace = allocMap.slotSize * allocMap.numArgSlots;
         asm.ret(argSpace);
     }
     else

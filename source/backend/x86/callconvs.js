@@ -247,7 +247,7 @@ Tachyon 32-bit calling convention
 CallConv.tachyon32 = new CallConv({
     name        : 'tachyon32',
     regSize     : 32,
-    spAlign     : 8,
+    spAlign     : 4,
     argOrder    : 'LTR',
     argRegs     : [x86.regs.eax, 
                    x86.regs.edx,
