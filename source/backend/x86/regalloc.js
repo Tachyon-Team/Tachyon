@@ -750,6 +750,9 @@ x86.allocReg = function (
     params
 )
 {
+    // TODO: higher cost for spilling use for the current instruction?
+    // May want use distance heuristic 
+
     assert (
         value instanceof IRValue || value === undefined,
         'invalid value in allocReg'
@@ -907,11 +910,22 @@ x86.allocOpnds = function (
     params
 )
 {
+    const backend = params.backend;
+
     // Get the instruction configuration
     var instrCfg = instr.x86;
 
-    // Set of registers not to be spilled
-    var excludeMap = new Array(16);
+
+
+    //
+    // TODO: put code here to validate that the allocation constraints
+    // do not contradict each other
+    //
+
+
+
+    // Set of registers to be excluded from normal allocation
+    var excludeMap = new Array(backend.numGpRegs);
 
     // For each use of the instruction
     for (var k = 0; k < instr.uses.length; ++k)
@@ -942,17 +956,6 @@ x86.allocOpnds = function (
 
             continue;
         }
-
-        // Get the best current allocation for the value
-        var alloc = x86.getBestAlloc(allocMap, use);
-
-        // If the best allocation is a register, reserve it
-        if (alloc instanceof x86.Register)
-        {        
-            // Add the register to the exclude set
-            excludeMap[alloc.regNo] = true;
-            continue;
-        }
     }
 
     // Get the allocation parameters for the destination
@@ -962,6 +965,8 @@ x86.allocOpnds = function (
     // If the destination is in a fixed register
     if (destMustBeReg instanceof x86.Register)
     {
+        log.debug('reserving dest register: ' + destMustBeReg);
+
         // Reserve this register for the dest
         excludeMap[destMustBeReg.regNo] = true;
 
@@ -1184,7 +1189,13 @@ x86.allocOpnds = function (
             // If the register allocation failed
             if (opnd === undefined)
             {
-                log.debug('reg alloc failed, exclude map:');
+                assert (
+                    opndMustBeReg === false,
+                    'operand needs register but allocation failed for: ' +
+                    use.getValName()
+                );
+
+                log.debug('reg alloc failed for ' + use.getValName() + ', exclude map:');
                 for (var i = 0; i < excludeMap.length; ++i)
                     log.debug(excludeMap[i]);
 

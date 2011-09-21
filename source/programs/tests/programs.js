@@ -717,11 +717,16 @@ tests.programs.arg_obj = genTest(
     0
 );
 
-
-//
-// TODO: test apply before stdlib init, use IIR
-// make new apply_iir test?
-
+/**
+Low-level apply function call test
+*/
+tests.programs.apply_iir = genTest(
+    'programs/apply_iir/apply_iir.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
 
 /**
 Standard library initialization

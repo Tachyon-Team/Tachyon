@@ -75,6 +75,11 @@ x86.Backend = function (x86_64)
     this.regSizeBytes = this.regSizeBits / 8;
 
     /**
+    Number of general-purpose registers
+    */
+    this.numGpRegs = x86_64? 16:8;
+
+    /**
     Endianness of the target architecture
     */
     this.endian = 'little';

@@ -230,6 +230,11 @@ tests.x86.asmEncoding = function ()
         '0F4FF7'
     );
     test(
+        function (a) { a.cmovg(a.esi, a.mem(32, a.ebp, 12)); }, 
+        '0F4F750C', 
+        '670F4F750C'
+    );
+    test(
         function (a) { a.cmovl(a.eax, a.ecx); }, 
         '0F4CC1'
     );

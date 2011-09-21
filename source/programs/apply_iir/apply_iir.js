@@ -40,59 +40,104 @@
  * _________________________________________________________________________
  */
 
-/**
-@fileOverview
-Backend interface definition.
-
-@author
-Maxime Chevalier-Boisvert
-*/
-
-/**
-@class Interface class for backends. All backends should extend this class.
-*/
-function Backend()
+function foo1()
 {
-    /**
-    General-purpose register size in bits
-    */
-    this.regSizeBits = undefined;
-
-    /**
-    General-purpose register size in bytes
-    */
-    this.regSizeBytes = undefined;
-
-    /**
-    Number of general-purpose registers
-    */
-    this.numGpRegs = undefined;
-
-    /**
-    Endianness of the target architecture. Must be 'big' or 'little'.
-    */
-    this.endian = undefined;
+    return 0;
 }
 
-/**
-Link the values needing to be linked in the code generated
-for an IR function.
-*/
-Backend.prototype.linkCode = function (irFunc, params)
+function foo2(x)
 {
-    assert (
-        irFunc instanceof IRFunction,
-        'expected IR function'
-    );
+    return x;
+}
 
-    // Link the code for the child functions
-    for (var i = 0; i < irFunc.childFuncs.length; ++i)
-        this.linkCode(irFunc.childFuncs[i], params);
+function foo3(x,y)
+{
+    return x - y;
+}
 
-    // Get the code block stored on the function object
-    var codeBlock = irFunc.codeBlock;
+function foo4(a1, a2, a3, a4, a5)
+{
+    return a1 + a2 + a3 + a4 + a5;
+}
 
-    // Link the code block for the function
-    linkCode(codeBlock, this, params);
+function foo5()
+{
+    return this;
+}
+
+function llapply(func, thisArg, argArray)
+{
+    // Get the function pointer for the function
+    var funcPtr = get_clos_funcptr(func);
+
+    // Get the arguments table from the array
+    var argTable = unboxRef(get_arr_arr(argArray));
+
+    // Get the number of arguments
+    var numArgs = iir.icast(IRType.pint, get_arr_len(argArray));
+
+    // Perform the call using the apply instruction
+    var retVal = iir.call_apply(funcPtr, func, thisArg, argTable, numArgs);
+
+    return retVal;
+}
+
+function test()
+{
+    if (llapply(foo1, null, []) !== 0)
+        return 100;
+    if (llapply(foo1, null, [7]) !== 0)
+        return 101;
+    if (llapply(foo1, null, [7,7]) !== 0)
+        return 102;
+    if (llapply(foo1, null, [7,7,7]) !== 0)
+        return 103;
+    if (llapply(foo1, null, [7,7,7,7]) !== 0)
+        return 104;
+    if (llapply(foo1, null, [7,7,7,7,7]) !== 0)
+        return 105;
+
+    if (llapply(foo2, null, []) !== UNDEFINED)
+        return 200;
+    if (llapply(foo2, null, [3]) !== 3)
+        return 201;
+    if (llapply(foo2, null, [3,7]) !== 3)
+        return 202;
+    if (llapply(foo2, null, [3,7,7]) !== 3)
+        return 203;
+    if (llapply(foo2, null, [3,7,7,7]) !== 3)
+        return 204;
+    if (llapply(foo2, null, [3,7,7,7,7]) !== 3)
+        return 205;
+
+    if (llapply(foo3, null, [9,4]) !== 5)
+        return 300;
+
+    if (llapply(foo4, null, [1,1,1,1,1,7]) !== 5)
+        return 400;
+
+    var obj = {};
+    if (llapply(foo5, obj, [1,1,1,1,1,7]) !== obj)
+        return 500;
+
+    // Many arguments test
+    var numArgs = 777;
+    var argArray = [7,3];
+    argArray.length = numArgs
+    for (var i = 2; i < numArgs; ++i)
+        argArray[i] = 9;
+    if (llapply(foo3, null, argArray) !== 4)
+        return 600;
+
+
+
+
+
+
+
+
+
+
+    return 0;
 }
 

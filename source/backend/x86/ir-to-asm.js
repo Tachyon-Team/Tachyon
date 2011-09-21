@@ -810,6 +810,11 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     var argTbl  = opnds[3];
     var numArgs = opnds[4];
 
+    assert (
+        arraySetHas(argRegs, argTbl) === false,
+        'argument table register in argument registers'
+    );
+
     // Get the displacement for the arguments table
     const tblDisp = genInfo.params.memLayouts.arrtbl.getFieldOffset(["tbl", 0]);
 
@@ -845,6 +850,9 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
 
     // Register for the argument stack space
     var argSpace = argRegs[2];
+
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'call w/ apply code');
 
     // Save the old sp into a temp register
     asm.mov(tmpSp, spReg);
@@ -917,6 +925,9 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     asm.sub(stackIdx, 1);
     asm.mov(tableIdx, NON_STACK_ARGS);
 
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'copying stack args');
+
     // Stop looping when the stack index is 0
     asm.addInstr(STACK_ARG_LOOP);
     asm.cmp(stackIdx, 0);
@@ -954,14 +965,17 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     // Done copying the stack arguments
     asm.addInstr(STACK_ARG_DONE);
 
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'done copying stack args');
+
     // If there are too many arguments
     asm.cmp(numArgs, 255);
     asm.jge(PUSH_ARG_COUNT);
 
     // Set the argument count into the argument count register
-    asm.mov(argRegs[0], numArgs);
+    asm.mov(argRegs[1], numArgs);
     asm.mov(backend.ctxReg.getSubOpnd(8), 0);
-    asm.or(backend.ctxReg, argRegs[0]);
+    asm.or(backend.ctxReg, argRegs[1]);
     asm.jmp(COPY_REG_ARGS);
 
     // Push the argument count on the stack
@@ -972,6 +986,9 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     // Copy the register arguments
     asm.addInstr(COPY_REG_ARGS);
 
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'copying register args');
+
     // For each argument register
     for (var i = argRegs.length - 1; i >= 0; --i)
     {
@@ -981,11 +998,15 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
 
         if (i === 0)
         {
+            if (backend.debugTrace === true)
+                x86.genTracePrint(asm, genInfo.params, 'copying func arg');
             asm.mov(argReg, funcObj);
         }
 
         else if (i === 1)
         {
+            if (backend.debugTrace === true)
+                x86.genTracePrint(asm, genInfo.params, 'copying this arg');
             asm.mov(argReg, thisObj);
         }
 
@@ -994,10 +1015,19 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
         {
             var tableIdx = i - NUM_HIDDEN_ARGS;
 
+            assert (
+                tableIdx >= 0,
+                'negative arg table index'
+            );
+
+            if (backend.debugTrace === true)
+                x86.genTracePrint(asm, genInfo.params, 'arg count cmp');
+
             // Compare the table argument count to the table
             // index of the argument
-            asm.test(numArgs, tableIdx);
+            asm.cmp(numArgs, tableIdx);
 
+            // if (numArgs > tableIdx)
             asm.cmovg(
                 argReg,
                 asm.mem(
@@ -1032,6 +1062,8 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
         var contLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:contBlock});
         asm.jmp(contLabel);
     }
+
+    print(asm);
 };
 
 // Unconditional branching instruction

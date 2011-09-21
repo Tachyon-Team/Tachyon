@@ -56,7 +56,7 @@ var x86 = x86 || {};
 /*
 TODO: peephole optimizer
 
-mov reg, reg
+mov reg, reg ***
 - eliminate
 
 neg

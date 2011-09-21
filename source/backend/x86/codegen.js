@@ -1518,6 +1518,8 @@ Generate code to print trace information. This is for debugging purposes.
 */
 x86.genTracePrint = function (asm, params, str)
 {
+    // TODO: save the flags register too?
+
     const backend = params.backend;
     const gpRegs = backend.gpRegSet;
     const spReg = backend.spReg;
