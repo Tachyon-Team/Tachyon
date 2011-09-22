@@ -714,6 +714,10 @@ CallApplyInstr.prototype.x86.maxMemOpnds = function (instr, idx, size)
 }
 CallApplyInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
 {
+    // The function pointer must be in a register
+    if (idx === 0)
+        return true;
+
     // The argument table pointer must be in a register
     if (idx === 3)
         return true;

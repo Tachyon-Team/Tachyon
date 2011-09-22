@@ -95,8 +95,8 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         );
 
         // Set the argument count and argument table operands
-        var argCntOpnd = callConv.argRegs[0];
-        var argTblOpnd = callConv.argRegs[1];
+        var argCntOpnd = callConv.argRegs[numHidden + 0];
+        var argTblOpnd = callConv.argRegs[numHidden + 1];
     }
     else
     {
@@ -1304,7 +1304,7 @@ x86.genArgObjStub = function (
         'expected left-to-right arg order in arg norm stub'
     );
 
-    log.trace('generating arguments object creation stub');
+    log.debug('generating arguments object creation stub');
 
     // Number of hidden arguments
     const NUM_HIDDEN_ARGS = 2;
@@ -1386,7 +1386,7 @@ x86.genArgObjStub = function (
     // Argument table creation
     asm.addInstr(CREATE_ARG_TBL);
 
-    // Save the argument registers and tr0
+    // Save the argument registers
     for (var i = 0; i < argRegs.length; ++i)
         asm.push(argRegs[i]);
 

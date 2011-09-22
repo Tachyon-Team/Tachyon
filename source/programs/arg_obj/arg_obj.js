@@ -99,6 +99,14 @@ function foo5(x, y, z, w, q, s)
     );
 }
 
+function foo6()
+{
+    if (typeof this !== 'object')
+        return 1;
+
+    return arguments[0];
+}
+
 function foo_proxy()
 {
     if (foo1(1,2,3) !== 6)
@@ -133,6 +141,10 @@ function foo_proxy()
 
     if (foo5(0,1,2,3,4,5,6,7,8,9) !== 55)
         return 500;
+
+    var o = { foo6: foo6 };
+    if (o.foo6(1337) !== 1337)
+        return 600;
 
     return 0;
 }

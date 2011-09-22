@@ -714,7 +714,8 @@ tests.programs.arg_obj = genTest(
     'programs/arg_obj/arg_obj.js',
     'foo_proxy',
     [],
-    0
+    0,
+    'hostParams'
 );
 
 /**
@@ -784,7 +785,8 @@ tests.programs.apply = genTest(
     'programs/apply/apply.js',
     'foo_proxy',
     [],
-    0
+    0,
+    'hostParams'
 );
 
 /**

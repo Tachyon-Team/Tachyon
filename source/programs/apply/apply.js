@@ -73,6 +73,7 @@ function foo5(a,b,c,d,e)
 function foo6(x)
 {
     this.push(x);
+
     return this.length;
 }
 
@@ -83,37 +84,37 @@ function foo7(i,x)
 
 function foo_proxy()
 {
-    if(foo.apply(undefined, []) !== undefined)
+    if (foo.apply(undefined, []) !== undefined)
     {
         return 1;
     }
 
-    if(foo1.apply(undefined, [1]) !== 1)
+    if (foo1.apply(undefined, [1]) !== 1)
     {
         return 2;
     }
 
-    if(foo2.apply(undefined, [1,2]) !== 3)
+    if (foo2.apply(undefined, [1,2]) !== 3)
     {
         return 3;
     }
 
-    if(foo3.apply(undefined, [1,2,3]) !== 6)
+    if (foo3.apply(undefined, [1,2,3]) !== 6)
     {
         return 4;
     }
 
-    if(foo4.apply(undefined, [1,2,3,4]) !== 10)
+    if (foo4.apply(undefined, [1,2,3,4]) !== 10)
     {
         return 5;
     }
 
-    if(foo5.apply(undefined, [1,2,3,4,5]) !== 15)
+    if (foo5.apply(undefined, [1,2,3,4,5]) !== 15)
     {
         return 6;
     }
 
-    if(foo6.apply([], [1]) !== 1)
+    if (foo6.apply([], [1]) !== 1)
     {
         return 7;
     }
@@ -127,3 +128,4 @@ function foo_proxy()
 
     return 0;
 }
+
