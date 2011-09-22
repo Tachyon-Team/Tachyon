@@ -475,6 +475,11 @@ x86.instrTable = [
     {mnem: 'pop', opnds: ['r32'], opCode: [0x58], x86_64: false},
     {mnem: 'pop', opnds: ['r64'], opCode: [0x58], REX_W: 1},
 
+    // Pop into the flags register
+    {mnem: 'popf', opCode: [0x9D], szPref: true},
+    {mnem: 'popfd', opCode: [0x9D], x86_64: false},
+    {mnem: 'popfq', opCode: [0x9D], REX_W: 1},
+
     // Push
     {mnem: 'push', opnds: ['r/m16'], opCode: [0xFF], opExt: 6, szPref: true},
     {mnem: 'push', opnds: ['r/m32'], opCode: [0xFF], opExt: 6, x86_64: false},
@@ -485,6 +490,11 @@ x86.instrTable = [
     {mnem: 'push', opnds: ['imm8'], opCode: [0x6A]},
     {mnem: 'push', opnds: ['imm16'], opCode: [0x68], szPref: true},
     {mnem: 'push', opnds: ['imm32'], opCode: [0x68]},
+
+    // Push the flags register
+    {mnem: 'pushf', opCode: [0x9C], szPref: true},
+    {mnem: 'pushfd', opCode: [0x9C], x86_64: false},
+    {mnem: 'pushfq', opCode: [0x9C]},
 
     // Read performance monitoring counters
     {mnem: 'rdpmc', opCode: [0x0F, 0x33]},

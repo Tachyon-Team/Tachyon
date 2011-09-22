@@ -1176,7 +1176,7 @@ x86.genArgNormStub = function (
     {
         // If there are too many arguments, jump out of line
         asm.cmp(argCountReg, numArgs);
-        asm.jg(TOO_MANY_ARGS);
+        asm.ja(TOO_MANY_ARGS);
 
         // If there are stack arguments, pop the return address into tr0
         if (stackArgs !== 0)
@@ -1282,6 +1282,9 @@ x86.genArgNormStub = function (
 
     // Add the done label at the end of the stub
     asm.addInstr(ARG_NORM_DONE);
+
+    if (params.backend.debugTrace === true)
+        x86.genTracePrint(asm, params, 'argument normalization done');
 }
 
 /**
@@ -1518,8 +1521,6 @@ Generate code to print trace information. This is for debugging purposes.
 */
 x86.genTracePrint = function (asm, params, str)
 {
-    // TODO: save the flags register too?
-
     const backend = params.backend;
     const gpRegs = backend.gpRegSet;
     const spReg = backend.spReg;
@@ -1539,6 +1540,10 @@ x86.genTracePrint = function (asm, params, str)
     for (var i = 0; i < gpRegs.length; ++i)
         asm.push(gpRegs[i]);
     asm.push(backend.ctxReg);
+    if (backend.x86_64 === true)
+        asm.pushfq();
+    else
+        asm.pushfd();
 
     // Move the current sp to another register
     asm.mov(gpRegs[0], spReg);
@@ -1627,6 +1632,10 @@ x86.genTracePrint = function (asm, params, str)
     asm.mov(spReg, spLoc);
 
     // Pop all GP registers
+    if (backend.x86_64 === true)
+        asm.popfq();
+    else
+        asm.popfd();
     asm.pop(backend.ctxReg);
     for (var i = gpRegs.length - 1; i >= 0; --i)
         asm.pop(gpRegs[i]);

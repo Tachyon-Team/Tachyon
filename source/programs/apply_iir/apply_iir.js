@@ -65,6 +65,16 @@ function foo5()
     return this;
 }
 
+function foo6()
+{
+    var sum = 0;
+
+    for (var i = 0; i < arguments.length; ++i)
+        sum += arguments[i];
+
+    return sum;
+}
+
 function llapply(func, thisArg, argArray)
 {
     // Get the function pointer for the function
@@ -120,23 +130,21 @@ function test()
     if (llapply(foo5, obj, [1,1,1,1,1,7]) !== obj)
         return 500;
 
-    // Many arguments test
+    // Create a vector with many arguments
     var numArgs = 777;
     var argArray = [7,3];
     argArray.length = numArgs
     for (var i = 2; i < numArgs; ++i)
-        argArray[i] = 9;
+        argArray[i] = 1;
+    var argSum = 0;
+    for (var i = 0; i < argArray.length; ++i)
+        argSum += argArray[i];
+
     if (llapply(foo3, null, argArray) !== 4)
         return 600;
 
-
-
-
-
-
-
-
-
+    if (llapply(foo6, null, argArray) !== argSum)
+        return 700;
 
     return 0;
 }

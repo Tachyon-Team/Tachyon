@@ -980,7 +980,9 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
 
     // Push the argument count on the stack
     asm.addInstr(PUSH_ARG_COUNT);
-    asm.mov(backend.ctxReg, 255)
+    if (backend.debugTrace === true)
+        x86.genTracePrint(asm, genInfo.params, 'pushing arg count');
+    asm.mov(calleeConv.argCountReg, 255)
     asm.push(numArgs);
 
     // Copy the register arguments
@@ -1062,8 +1064,6 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
         var contLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:contBlock});
         asm.jmp(contLabel);
     }
-
-    print(asm);
 };
 
 // Unconditional branching instruction

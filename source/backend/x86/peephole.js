@@ -56,9 +56,6 @@ var x86 = x86 || {};
 /*
 TODO: peephole optimizer
 
-mov reg, reg ***
-- eliminate
-
 neg
 
 lea opts for mul
@@ -278,17 +275,27 @@ x86.optimize = function (asm, maxPasses)
                 instr.refCount = 0;
             }
 
-            // If this is a move of 0 into a 32 or 64 bit register
-            else if (instr instanceof instrs.mov &&
-                     instr.opnds[0] instanceof x86.Register &&
-                     instr.opnds[0].size >= 32 &&
-                     instr.opnds[1] instanceof x86.Immediate &&
-                     instr.opnds[1].value === 0)
+            // If this is a move instruction
+            else if (instr instanceof instrs.mov)
             {
-                // Replace the move by xor r, r
-                var reg = instr.opnds[0];
-                var newInstr = new instrs.xor([reg, reg], x86_64);
-                replInstr(instr, newInstr);
+                // If the source and destination are the same
+                if (instr.opnds[0] === instr.opnds[1])
+                {
+                    // Remove the instruction
+                    remInstr(instr);
+                }
+
+                // If this is a move of 0 into a 32 or 64 bit register
+                else if (instr.opnds[0] instanceof x86.Register &&
+                         instr.opnds[0].size >= 32 &&
+                         instr.opnds[1] instanceof x86.Immediate &&
+                         instr.opnds[1].value === 0)
+                {
+                    // Replace the move by xor r, r
+                    var reg = instr.opnds[0];
+                    var newInstr = new instrs.xor([reg, reg], x86_64);
+                    replInstr(instr, newInstr);
+                }
             }
 
             // If this is an addition or subtraction
