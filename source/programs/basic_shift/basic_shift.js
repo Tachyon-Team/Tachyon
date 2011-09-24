@@ -75,6 +75,11 @@ function urshift_test2(x)
     return x >>> 30;
 }
 
+function shift_out_bits(n, k)
+{
+    return (n >> k) << k;
+}
+
 function foo()
 {
     if (lshift_test(2,3) !== 16)
@@ -115,6 +120,11 @@ function foo()
     if (urshift_test2(-2) !== 3)
     {
         return 8;
+    }
+
+    if (shift_out_bits(15, 2) !== 12)
+    {
+        return 9;
     }
 
     return 0;

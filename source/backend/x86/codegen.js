@@ -331,16 +331,22 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 // If the argument is in a register
                 if (argIndex < callConv.argRegs.length)
                 {
+                    // Get the argument register
+                    var argReg = callConv.argRegs[argIndex];
+
                     // Allocate the register to the argument
-                    x86.allocReg(
+                    var dstReg = x86.allocReg(
                         allocMap,
                         instr,
-                        callConv.argRegs[argIndex],
+                        (argReg !== backend.ctxReg)? argReg:undefined,
                         liveOutFunc,
-                        undefined,
+                        [],
                         asm,
                         params
                     );
+
+                    if (dstReg !== argReg)
+                        asm.mov(dstReg, argReg);
                 }
                 else
                 {

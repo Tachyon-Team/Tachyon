@@ -270,10 +270,8 @@ x86.Assembler.prototype.assemble = function ()
         // For each instruction
         for (var instr = this.firstInstr; instr !== null; instr = instr.next)
         {
-            assert (
-                instr instanceof x86.Instruction,
-                'invalid instruction: ' + instr
-            );
+            if (DEBUG === true && (instr instanceof x86.Instruction) === false)
+                error('invalid instruction: ' + instr);
 
             // If this instruction is a label
             if (instr instanceof x86.Label)

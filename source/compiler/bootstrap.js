@@ -74,7 +74,8 @@ function bootstrap(params)
         {
             // Compile the Tachyon sources
             tachyonIRs = compileSrcs(tachyonSrcs, params);
-        });
+        }
+    );
 
     reportPerformance();
 

@@ -182,6 +182,8 @@ tests.programs.initPrimitives = function ()
 
     // Initialize the Tachyon runtime
     initPrimitives(config.hostParams);
+
+    reportPerformance();
 };
 
 /**
@@ -598,6 +600,17 @@ tests.programs.nqueens = genTest(
 );
 
 /**
+Iterative mergesort test.
+*/
+tests.programs.merge_sort = genTest(
+    'programs/merge_sort/merge_sort.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
+/**
 Closure variable initialization.
 */
 tests.programs.clos_init = genTest(
@@ -736,6 +749,8 @@ tests.programs.initStdlib = function ()
 {
     // Initialize the Tachyon standard library
     initStdlib(config.hostParams);
+
+    reportPerformance();
 };
 
 /**

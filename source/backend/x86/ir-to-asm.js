@@ -1245,6 +1245,13 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, ge
 
     var src = opnds[0];
 
+    /*
+    print('');
+    print('icast instr: ' + instr);
+    print('src: ' + src);
+    print('dst: ' + dst);
+    */
+
     // If the source and destination have the same width
     if (srcWidth === dstWidth)
     {
@@ -1266,6 +1273,8 @@ ICastInstr.prototype.x86.genCode = function (instr, opnds, dst, scratch, asm, ge
     // we retain only the least significant bits
     else if (srcWidth > dstWidth)
     {
+        //print('move from: ' + src.getSubOpnd(dstWidth));
+
         asm.mov(dst, src.getSubOpnd(dstWidth));
     }
 

@@ -150,9 +150,11 @@ x86.Backend.prototype.genCode = function (irFunc, params)
         'expected compilation parameters'
     );
 
+    var backend = this;
+
     // Generate code for the child functions
     for (var i = 0; i < irFunc.childFuncs.length; ++i)
-        this.genCode(irFunc.childFuncs[i], params);
+        backend.genCode(irFunc.childFuncs[i], params);
 
     log.debug('');
     log.debug('generating code for "' + irFunc.funcName + '"');
@@ -160,25 +162,52 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     // Get a reference to the CFG
     var cfg = irFunc.virginCFG;
 
-    // Compute a block ordering for the function
-    var blockOrder = orderBlocks(cfg.entry, cfg.blocks);
+    var blockOrder;
+    measurePerformance(
+        "Block ordering",
+        function ()
+        {
+            // Compute a block ordering for the function
+            blockOrder = orderBlocks(cfg.entry, cfg.blocks);
 
-    /*
-    log.debug('order:');
-    for (var i = 0; i < blockOrder.length; ++i)
-        log.debug(blockOrder[i].getBlockName());
-    */
+            /*
+            log.debug('order:');
+            for (var i = 0; i < blockOrder.length; ++i)
+                log.debug(blockOrder[i].getBlockName());
+            */
+        }
+    );
 
-    // Perform liveness analysis on the CFG
-    var liveness = liveAnalysis(blockOrder);
+    var liveness;
+    measurePerformance(
+        "Liveness analysis",
+        function ()
+        {
+            // Perform liveness analysis on the CFG
+            liveness = liveAnalysis(blockOrder);
+        }
+    );
 
-    // Produce assembler for the function
-    var assembler = x86.genCode(irFunc, blockOrder, liveness, this, params);
+    var assembler;
+    measurePerformance(
+        "Code generation",
+        function ()
+        {
+            // Produce assembler for the function
+            assembler = x86.genCode(irFunc, blockOrder, liveness, backend, params);
+        }
+    );
 
-    log.debug('OPTIMIZING');
+    measurePerformance(
+        "Optimization",
+        function ()
+        {
+            log.debug('OPTIMIZING');
 
-    // Run the peephole optimizer
-    x86.optimize(assembler);
+            // Run the peephole optimizer
+            x86.optimize(assembler);
+        }
+    );
 
     log.debug('DONE OPTIMIZING');
 
@@ -190,12 +219,19 @@ x86.Backend.prototype.genCode = function (irFunc, params)
         log.debug('');
     }
 
-    log.debug('ASSEMBLING');
+    var codeBlock;
+    measurePerformance(
+        "Assembling",
+        function ()
+        {
+            log.debug('ASSEMBLING');
 
-    // Assemble the code into an executable code block
-    var codeBlock = assembler.assemble();
+            // Assemble the code into an executable code block
+            codeBlock = assembler.assemble();
 
-    log.debug('DONE ASSEMBLING');
+            log.debug('DONE ASSEMBLING');
+        }
+    );
 
     // Store the compiled code block on the function object
     irFunc.codeBlock = codeBlock;

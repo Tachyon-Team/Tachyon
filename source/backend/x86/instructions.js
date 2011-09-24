@@ -358,10 +358,8 @@ x86.Instruction.prototype.findEncoding = function (x86_64)
         }
     }
 
-    assert (
-        bestEnc !== null,
-        'no valid ' + (x86_64? 64:32) + '-bit encoding for "' + this + '"'
-    );
+    if (DEBUG === true && bestEnc === null)
+        error('no valid ' + (x86_64? 64:32) + '-bit encoding for "' + this + '"');
 
     // Store the best encoding found
     this.encDesc = bestEnc;
@@ -662,15 +660,17 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
     // Compute the length of the data written
     var wrtLength = endIndex - startIndex;
 
-    assert (
-        wrtLength === this.encLength,
-        'encoding length:\n' +
-        wrtLength + '\n' +
-        'does not match expected length:\n' +
-        this.encLength + '\n' +
-        'for:\n' +
-        this
-    );
+    if (DEBUG === true && wrtLength !== this.encLength)
+    {
+        error(
+            'encoding length:\n' +
+            wrtLength + '\n' +
+            'does not match expected length:\n' +
+            this.encLength + '\n' +
+            'for:\n' +
+            this
+        );
+    }
 };
 
 /**
@@ -1148,7 +1148,7 @@ Anonymous function to create instruction classes from the instruction table.
 
             // If in debug mode, ensure that an initial encoding for the
             // instruction can be found
-            if (DEBUG) this.findEncoding(x86_64);
+            if (DEBUG === true) this.findEncoding(x86_64);
         };
 
         // Set the prototype
