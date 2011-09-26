@@ -1107,11 +1107,10 @@ x86.allocOpnds = function (
         // Operand assigned to this value
         var opnd = undefined;
 
-        assert (
-            !(use instanceof IRInstr && 
-              allocMap.getAllocs(use).length === 0),
-            'no allocation for live temporary: ' + use
-        );
+        if (DEBUG === true && 
+            use instanceof IRInstr && 
+            allocMap.getAllocs(use).length === 0)
+            error('no allocation for live temporary: ' + use);
 
         // Get the best current allocation for the value
         var bestAlloc = x86.getBestAlloc(allocMap, use);

@@ -133,7 +133,7 @@ function test()
     // Create a vector with many arguments
     var numArgs = 777;
     var argArray = [7,3];
-    argArray.length = numArgs
+    argArray.length = numArgs;
     for (var i = 2; i < numArgs; ++i)
         argArray[i] = 1;
     var argSum = 0;

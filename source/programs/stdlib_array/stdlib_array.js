@@ -299,17 +299,9 @@ function test_sort()
 
     var a = [0,-5,3,15,12,-33,7];
 
-    print('input:\n' + a);
-
     a.sort(numeric_comparefn);
 
     var b = [-33,-5,0,3,7,12,15];
-
-    print('sorted:\n' + a);
-
-    print('7 < 12 = ' + numeric_comparefn(7, 12));
-    print('12 < 7 = ' + numeric_comparefn(12, 7));
-
 
     if (!array_eq(a, b))
         return 1;

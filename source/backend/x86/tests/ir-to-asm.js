@@ -1716,39 +1716,7 @@ tests.x86.irToAsm = function ()
 
 
 
-    /*
-    // Regression test: issues with shifting in 64 bits
-    test('                                              \
-        function test(ctx, n, k, c)                     \
-        {                                               \
-            "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
-            "tachyon:arg n pint";                       \
-            "tachyon:arg k pint";                       \
-            "tachyon:arg c pint";                       \
-            "tachyon:ret pint";                         \
-                                                        \
-            n = iir.icast(IRType.i32, n);               \
-            k = iir.icast(IRType.i32, k);               \
-                                                        \
-            var r = n >> k;                             \
-                                                        \
-            if (c !== pint(0))                          \
-                return c;                               \
-                                                        \
-            r = iir.icast(IRType.pint, r);              \
-            return r;                                   \
-        }                                               \
-        ',
-        3,
-        [15, 2, 0]
-    );
-    */
-
-
-
-
-
+  
 
 
 

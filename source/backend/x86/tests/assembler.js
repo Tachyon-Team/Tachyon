@@ -412,6 +412,11 @@ tests.x86.asmEncoding = function ()
         '8B4C24FC',
         '678B4C24FC'
     );
+    test(
+        function (a) { a.mov(a.cl, a.r9l); }, 
+        false,
+        '4488C9'
+    );
 
     // movapd
     test(

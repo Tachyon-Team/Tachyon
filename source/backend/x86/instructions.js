@@ -420,7 +420,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
         var opndType = x86.opndType(enc.opnds[i]);
         var opndSize = x86.opndSize(enc.opnds[i]);
 
-        if (opnd.rexNeeded)
+        if (opnd.rexNeeded === true)
             rexNeeded = true;
 
         if (opndType === 'imm' || 

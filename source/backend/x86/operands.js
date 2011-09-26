@@ -105,6 +105,11 @@ x86.Register = function (name, type, regNo, size, lowReg, highReg, rexNeeded, re
         'invalid low register'
     );
 
+    assert (
+        !(rexNeeded === false && regNo > 7),
+        'cannot have rex needed and reg no above 7 (' + name + ')'
+    );
+
     this.name = name;
 
     this.type = type;
@@ -585,14 +590,14 @@ x86.regs.esp    = new x86.Register('esp', 'gp', 4, 32, x86.regs.sp);
 x86.regs.ebp    = new x86.Register('ebp', 'gp', 5, 32, x86.regs.bp);
 x86.regs.esi    = new x86.Register('esi', 'gp', 6, 32, x86.regs.si);
 x86.regs.edi    = new x86.Register('edi', 'gp', 7, 32, x86.regs.di);
-x86.regs.r8l    = new x86.Register('r8l', 'gp', 8, 8, undefined, true);
-x86.regs.r9l    = new x86.Register('r9l', 'gp', 9, 8, undefined, true);
-x86.regs.r10l   = new x86.Register('r10l', 'gp', 10, 8, undefined, true);
-x86.regs.r11l   = new x86.Register('r11l', 'gp', 11, 8, undefined, true);
-x86.regs.r12l   = new x86.Register('r12l', 'gp', 12, 8, undefined, true);
-x86.regs.r13l   = new x86.Register('r13l', 'gp', 13, 8, undefined, true);
-x86.regs.r14l   = new x86.Register('r14l', 'gp', 14, 8, undefined, true);
-x86.regs.r15l   = new x86.Register('r15l', 'gp', 15, 8, undefined, true);
+x86.regs.r8l    = new x86.Register('r8l', 'gp', 8, 8, undefined, undefined, true);
+x86.regs.r9l    = new x86.Register('r9l', 'gp', 9, 8, undefined, undefined, true);
+x86.regs.r10l   = new x86.Register('r10l', 'gp', 10, 8, undefined, undefined, true);
+x86.regs.r11l   = new x86.Register('r11l', 'gp', 11, 8, undefined, undefined, true);
+x86.regs.r12l   = new x86.Register('r12l', 'gp', 12, 8, undefined, undefined, true);
+x86.regs.r13l   = new x86.Register('r13l', 'gp', 13, 8, undefined, undefined, true);
+x86.regs.r14l   = new x86.Register('r14l', 'gp', 14, 8, undefined, undefined, true);
+x86.regs.r15l   = new x86.Register('r15l', 'gp', 15, 8, undefined, undefined, true);
 x86.regs.r8w    = new x86.Register('r8w', 'gp', 8, 16, x86.regs.r8l, undefined, true);
 x86.regs.r9w    = new x86.Register('r9w', 'gp', 9, 16, x86.regs.r9l, undefined, true);
 x86.regs.r10w   = new x86.Register('r10w', 'gp', 10, 16, x86.regs.r10l, undefined, true);

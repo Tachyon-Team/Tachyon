@@ -186,6 +186,17 @@ tests.programs.initPrimitives = function ()
     reportPerformance();
 };
 
+/*
+// Temporary test, for debugging
+tests.programs.test = genTest(
+    'test_backend.js', 
+    'test', 
+    [], 
+    0,
+    'hostParams'
+);
+*/
+
 /**
 Value return test.
 */

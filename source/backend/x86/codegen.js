@@ -345,6 +345,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                         params
                     );
 
+                    // If a new register was allocated, move the value
                     if (dstReg !== argReg)
                         asm.mov(dstReg, argReg);
                 }
