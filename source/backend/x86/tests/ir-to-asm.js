@@ -1711,6 +1711,56 @@ tests.x86.irToAsm = function ()
         [15, 2, 0]
     );
 
+    // Regression test: context must be saved before C calls
+    test('                                              \
+        function test(ctx)                              \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:ret pint";                         \
+                                                        \
+            var c1 = ctx;                               \
+            iir.set_ctx(c1);                            \
+                                                        \
+            iir.call_ffi(                               \
+                callee,                                 \
+                pint(1),                                \
+                pint(1),                                \
+                pint(1),                                \
+                pint(1)                                 \
+            );                                          \
+                                                        \
+            var c2 = iir.get_ctx();                     \
+            if (c1 !== c2)                              \
+                return pint(1);                         \
+                                                        \
+            var c3 = iir.call_ffi(callee2);             \
+            if (c1 !== c3)                              \
+                return pint(2);                         \
+                                                        \
+            return pint(0);                             \
+        }                                               \
+        function callee(a, b, c, d)                     \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:static";                           \
+            "tachyon:arg a pint";                       \
+            "tachyon:arg b pint";                       \
+            "tachyon:arg c pint";                       \
+            "tachyon:arg d pint";                       \
+        }                                               \
+        function callee2()                              \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:static";                           \
+            "tachyon:ret ref";                          \
+                                                        \
+            return iir.get_ctx();                       \
+        }                                               \
+        ',
+        0,
+        []
+    );
 
 
 

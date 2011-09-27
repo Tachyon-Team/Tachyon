@@ -391,9 +391,19 @@ CallFuncInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)
     if (idx === 0)
         return false;
 
-    // If the argument must be in a register, return it
+    // If the argument must be in a register
     if (idx - 1 < callConv.argRegs.length)
-        return callConv.argRegs[idx - 1];
+    {
+        var argReg = callConv.argRegs[idx - 1];
+
+        // If the argument should go in the context register,
+        // don't put it there immediately
+        if (argReg === params.backend.ctxReg)
+            return true;
+
+        // Return the argument register
+        return argReg;
+    }
 
     return false;
 }
@@ -564,6 +574,16 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     {
         // Save the context register
         asm.mov(ctxLoc, ctxReg);
+
+        // Find which argument index in the context register, if any
+        var ctxArgIdx = calleeConv.argRegs.indexOf(ctxReg);
+
+        // If an argument goes in the context register, move it there
+        if (ctxArgIdx !== -1 && ctxArgIdx < numRegArgs)
+        {
+            var ctxArgOpnd = opnds[ctxArgIdx + 1];
+            asm.mov(ctxReg, ctxArgOpnd);
+        }
     }
 
     /**

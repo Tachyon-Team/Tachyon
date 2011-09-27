@@ -503,6 +503,9 @@ x86.genEdgeTrans = function (
     params
 )
 {
+    // Get a reference to the backend
+    const backend = params.backend;
+
     // Add the label for the transition stub
     var transLabel = edgeLabels.getItem({pred:pred, succ:succ});
     asm.addInstr(transLabel);
@@ -687,29 +690,38 @@ x86.genEdgeTrans = function (
             var succAllocs = succAllocMap.getAllocs(dstVal);
             var succAlloc = succAllocs[0];
 
-            assert (
-                !(predAllocs.length === 0 && srcVal instanceof IRInstr),
-                'no allocation for live temporary:\n' +
-                srcVal + '\n' +
-                'in pred:\n' +
-                pred.getBlockName()
-            );
+            if (DEBUG === true &&
+                (predAllocs.length === 0 && srcVal instanceof IRInstr) === true)
+            {
+                error(
+                    'no allocation for live temporary:\n' +
+                    srcVal + '\n' +
+                    'in pred:\n' +
+                    pred.getBlockName()
+                );
+            }
 
-            assert (
-                !(succAllocs.length === 0 && dstVal instanceof IRInstr),
-                'no successor alloc for value:\n' +
-                dstVal + '\n' +
-                'in succ:\n' +
-                succ.getBlockName()
-            );
+            if (DEBUG === true &&
+                (succAllocs.length === 0 && dstVal instanceof IRInstr) === true)
+            {
+                error(
+                    'no successor alloc for value:\n' +
+                    dstVal + '\n' +
+                    'in succ:\n' +
+                    succ.getBlockName()
+                );
+            }
 
-            assert (
-                !(succAllocs.length > 1 && dstVal instanceof IRInstr),
-                'too many succ allocs for value:\n' +
-                dstVal + '\n' +
-                'in succ:\n' +
-                succ.getBlockName()
-            );
+            if (DEBUG === true &&
+                (succAllocs.length > 1 && dstVal instanceof IRInstr) === true)
+            {
+                error(
+                    'too many succ allocs for value:\n' +
+                    dstVal + '\n' +
+                    'in succ:\n' +
+                    succ.getBlockName()
+                );
+            }
 
             // If the locations already match, or there is no allocation
             // for the successor, do nothing
@@ -770,8 +782,8 @@ x86.genEdgeTrans = function (
         }
 
         // Registers for use as temporaries
-        const mtmReg = x86.regs.rax.getSubOpnd(params.backend.regSizeBits);
-        const cycReg = x86.regs.rbx.getSubOpnd(params.backend.regSizeBits);
+        const mtmReg = x86.regs.rax.getSubOpnd(backend.regSizeBits);
+        const cycReg = x86.regs.rbx.getSubOpnd(backend.regSizeBits);
 
         // Memory to memory and cycle breaking temporary
         var mtmTmp = null;
@@ -864,20 +876,28 @@ x86.genEdgeTrans = function (
                 var srcLoc = predAllocMap.getSlotOpnd(src);
                 var dstLoc = predAllocMap.getSlotOpnd(dst);
 
-                /*
-                print('tmp reg: ' + tmpReg);
-                print('src loc: ' + srcLoc + ' (' + src + ')');
-                print('dst loc: ' + dstLoc + ' (' + dst + ')');
-                */
-
                 log.debug(dstLoc + ' <== ' + srcLoc);
 
                 asm.mov(tmpReg, srcLoc);
                 asm.mov(dstLoc, tmpReg);
             }
+
+            // If this is a move of a link value to a memory location,
+            // execute it using a temporary
+            else if (typeof dst === 'number' && backend.x86_64 === true &&
+                     x86.isLinkValue(src) === true)
+            {
+                var tmpReg = getMtmTmp();
+                var dstLoc = predAllocMap.getSlotOpnd(dst);
+
+                var linkValue = new x86.LinkValue(src, backend.regSizeBits);
+                asm.mov(tmpReg, linkValue);
+                asm.mov(dstLoc, tmpReg);
+            }
+
+            // Perform a generic move
             else
             {
-                // Perform a generic move
                 x86.moveValue(
                     predAllocMap,
                     dst,
@@ -1047,19 +1067,17 @@ x86.moveValue = function (
         srcStr = String(src.getValName());
     log.debug(dst + ' <== ' + srcStr);
 
-    assert (
-        src instanceof IRValue ||
-        src instanceof x86.Register ||
-        src instanceof x86.MemLoc   ||
-        src instanceof x86.Immediate,
-        'invalid move src: ' + src
-    );
+    if (DEBUG === true &&
+        (src instanceof IRValue ||
+         src instanceof x86.Register ||
+         src instanceof x86.MemLoc   ||
+         src instanceof x86.Immediate) === false)
+        error('invalid move src: ' + src);
 
-    assert (
-        dst instanceof x86.Register ||
-        dst instanceof x86.MemLoc,
-        'invalid move dst: ' + dst
-    );
+    if (DEBUG === true &&
+        (dst instanceof x86.Register ||
+         dst instanceof x86.MemLoc) === false)
+        error('invalid move dst: ' + dst);
 
     // If this is a link-time value
     if (x86.isLinkValue(src) === true)

@@ -50,9 +50,11 @@ function test()
     var ctxPtr = [];
     for (var i = 0; i < boxInt(PTR_NUM_BYTES); ++i)
         ctxPtr.push(0);
+
     //print('ctx ptr: ' + ctxPtr);
 
     var funcPtr = getFuncAddr('testCallFFI');
+    
     //print('func ptr: ' + funcPtr);
 
     var heapSize = 512;
@@ -61,6 +63,8 @@ function test()
 
     //print('heap size: ' + heapSize);
     //print('heap ptr: ' + heapAddr);
+
+    //print('calling fn using callTachyonFFI');
 
     var ret = callTachyonFFI(
         ['void*', 'int'],

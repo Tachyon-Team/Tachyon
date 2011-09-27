@@ -446,18 +446,16 @@ Allocate a value to a register or spill slot
 */
 x86.RegAllocMap.prototype.makeAlloc = function (value, alloc)
 {
-    assert (
-        value === undefined ||
-        value instanceof IRValue ||
-        value instanceof x86.Register,
-        'invalid value in allocReg: ' + value
-    );
+    if (DEBUG === true &&
+        value !== undefined &&
+        (value instanceof IRValue) === false &&
+        (value instanceof x86.Register) === false)
+        error('invalid value in allocReg: ' + value);
 
-    assert (
-        isNonNegInt(alloc) ||
-        (alloc instanceof x86.Register && alloc.type === 'gp'),
-        'invalid allocation: ' + alloc
-    );
+    if (DEBUG === true &&
+        isNonNegInt(alloc) === false &&
+        (alloc instanceof x86.Register && alloc.type === 'gp') === false)
+        error('invalid allocation: ' + alloc);
 
     var name;
     if (value === undefined)
@@ -515,11 +513,10 @@ Remove a value from the allocation map
 */
 x86.RegAllocMap.prototype.remAlloc = function (value, alloc)
 {
-    assert (
-        value instanceof IRValue ||
-        value instanceof x86.Register,
-        'invalid value in remAlloc: ' + value
-    );
+    if (DEBUG === true && 
+        (value instanceof IRValue) === false &&
+        (value instanceof x86.Register) === false)
+        error('invalid value in remAlloc: ' + value);
 
     if (this.allocMap.hasItem(value) === false)
         return;
@@ -544,11 +541,10 @@ Remove all allocations for a value from the allocation map
 */
 x86.RegAllocMap.prototype.remAllocs = function (value)
 {
-    assert (
-        value instanceof IRValue ||
-        value instanceof x86.Register,
-        'invalid value in remAllocs: ' + value
-    );
+    if (DEBUG === true &&
+        (value instanceof IRValue) === false &&
+        (value instanceof x86.Register) === false)
+        error('invalid value in remAllocs: ' + value);
 
     if (this.allocMap.hasItem(value) === false)
         return;
@@ -645,11 +641,10 @@ Get the allocation set for a value.
 */
 x86.RegAllocMap.prototype.getAllocs = function (value)
 {
-    assert (
-        value instanceof IRValue ||
-        value instanceof x86.Register,
-        'invalid value in getAlloc: ' + value
-    );
+    if (DEBUG === true &&
+        (value instanceof IRValue) === false &&
+        (value instanceof x86.Register) === false)
+        error('invalid value in getAlloc: ' + value);
 
     if (this.allocMap.hasItem(value) === true)
         return this.allocMap.getItem(value);
@@ -915,14 +910,10 @@ x86.allocOpnds = function (
     // Get the instruction configuration
     var instrCfg = instr.x86;
 
-
-
     //
     // TODO: put code here to validate that the allocation constraints
     // do not contradict each other
     //
-
-
 
     // Set of registers to be excluded from normal allocation
     var excludeMap = new Array(backend.numGpRegs);
