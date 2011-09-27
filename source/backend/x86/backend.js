@@ -211,12 +211,13 @@ x86.Backend.prototype.genCode = function (irFunc, params)
 
     log.debug('DONE OPTIMIZING');
 
-    if (config.verbosity >= log.DEBUG)
+    // If the asm code should be printed
+    if (params.printASM === true || config.verbosity >= log.DEBUG)
     {
-        log.debug('');
-        log.debug('assembly for "' + irFunc.funcName + '":')
-        log.debug(assembler.toString(true));
-        log.debug('');
+        print('');
+        print('assembly for "' + irFunc.funcName + '":')
+        print(assembler.toString(true));
+        print('');
     }
 
     var codeBlock;

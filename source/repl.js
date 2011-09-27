@@ -66,35 +66,11 @@ function tachyonRepl()
         print('  /hir  <command>                view HIR produced for a command/file');
         print('  /lir  <command>                view LIR produced for a command/file');
         print('  /asm  <command>                view ASM produced for a command/file');
-        print('  /reg  <command>                view register allocation for a command/file');
         print('  /prim_list                     view a list of the primitive functions');
         print('  /prim_ir <func_name>           view LIR produced for a primitive function');
         print('  /cfg <command> [func_name]     visualize the CFG for a command/file/function');
         print('  /help                          print a help listing');
         print('  /exit                          exit the read-eval-print loop');
-    }
-
-    // Load and execute a script
-    function loadScript(fileName)
-    {
-        print('Loading script: "' + fileName + '"');
-
-        var ir = compileSrcFile(fileName, config.hostParams);
-
-        var bridge = makeBridge(
-            ir,
-            config.hostParams,
-            [],
-            new CIntAsBox()
-        );
-
-        bridge(config.hostParams.ctxPtr);
-    }
-
-    // Test if a string could be a source file name
-    function isSrcFile(str)
-    {
-        return str.indexOf('.js') === (str.length - 3);
     }
 
     // Execute a special command
@@ -174,12 +150,6 @@ function tachyonRepl()
             config.hostParams.printASM = false;
             break;
 
-            case 'reg':
-            config.hostParams.printRegAlloc = true;
-            compFileOrString(args);
-            config.hostParams.printRegAlloc = false;
-            break;
-
             case 'prim_list':
             var bindings = config.hostParams.staticEnv.getBindings();
             bindings.forEach(
@@ -232,28 +202,13 @@ function tachyonRepl()
         }
     }
 
-    // Execute a code string
-    function execCode(str)
+    // Load and execute a script
+    function loadScript(fileName)
     {
-        try
-        {
-            var ir = compString(str);
+        print('Loading script: "' + fileName + '"');
 
-            execIR(ir);
-        }
+        var ir = compileSrcFile(fileName, config.hostParams);
 
-        catch (e)
-        {
-            if (e.stack)
-                print(e.stack);
-            else
-                print(e);
-        }
-    }
-
-    // Execute a compiled IR function
-    function execIR(ir)
-    {
         var bridge = makeBridge(
             ir,
             config.hostParams,
@@ -262,6 +217,12 @@ function tachyonRepl()
         );
 
         bridge(config.hostParams.ctxPtr);
+    }
+
+    // Test if a string could be a source file name
+    function isSrcFile(str)
+    {
+        return str.indexOf('.js') === (str.length - 3);
     }
 
     // Compile a code string
@@ -312,6 +273,38 @@ function tachyonRepl()
             return compFile(str);
         else
             return compString(str);
+    }
+
+    // Execute a code string
+    function execCode(str)
+    {
+        try
+        {
+            var ir = compString(str);
+
+            execIR(ir);
+        }
+
+        catch (e)
+        {
+            if (e.stack)
+                print(e.stack);
+            else
+                print(e);
+        }
+    }
+
+    // Execute a compiled IR function
+    function execIR(ir)
+    {
+        var bridge = makeBridge(
+            ir,
+            config.hostParams,
+            [],
+            new CIntAsBox()
+        );
+
+        bridge(config.hostParams.ctxPtr);
     }
 
     print('');

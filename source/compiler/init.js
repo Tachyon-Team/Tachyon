@@ -239,9 +239,6 @@ function initRuntime(params)
 
     // Create a bridge to call the heap init function
     log.trace('Creating bridge to call the heap init function');
-    //params.printRegAlloc = true;
-    //params.printASM = true;
-    //params.printMCB = true;
 
     var initHeapBridge = makeBridge(
         initHeap,
@@ -257,9 +254,6 @@ function initRuntime(params)
         heapAddr,
         heapSize
     );
-    //params.printRegAlloc = false;
-    //params.printASM = false;
-    //params.printMCB = false;
 
     log.trace('Context pointer: ' + ctxPtr);
     

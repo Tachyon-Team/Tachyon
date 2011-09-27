@@ -181,22 +181,10 @@ function CompParams(cfgObj)
     this.printLIR = false;
 
     /**
-    Flag to print the register allocation information during the compilation
-    @field
-    */
-    this.printRegAlloc = false;
-
-    /**
     Flag to print the assembler code generated during the compilation
     @field
     */
     this.printASM = false;
-
-    /**
-     Flag to print the mcb block bytes after linking
-     @field
-     */ 
-    this.printMCB = false;
 
     /**
     Register allocation algorithm to use

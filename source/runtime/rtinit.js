@@ -76,8 +76,8 @@ function initHeap(heapPtr, heapSize)
     var heapLimit = heapPtr + heapSize;
 
     //printInt(iir.icast(IRType.pint, heapSize));
-    printPtr(heapPtr);
-    printPtr(heapLimit);
+    //printPtr(heapPtr);
+    //printPtr(heapLimit);
 
     // Set the heap pointer and heap limit
     set_ctx_heapstart(ctx, heapPtr);
