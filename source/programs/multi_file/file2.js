@@ -52,7 +52,7 @@ function test()
     if (global2 !== 3476)
         return 2;
 
-    if (global3 !== UNDEFINED)
+    if (global3 !== undefined)
         return 3;
 
     if (bar() !== 31337)

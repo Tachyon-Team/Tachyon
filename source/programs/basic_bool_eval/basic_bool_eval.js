@@ -92,7 +92,7 @@ function test()
 
     if (evals_false(null) !== true)
         return 6;
-    if (evals_false(UNDEFINED) !== true)
+    if (evals_false(undefined) !== true)
         return 7;
 
     if (evals_false('') !== true)

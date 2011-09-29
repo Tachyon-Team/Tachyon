@@ -201,6 +201,11 @@ bootstrap:
 bootstrap64:
 	time $(JSVM64) $(RUN_SRCS) -- -bootstrap -v=all
 
+prof:
+	$(JSVM) --prof $(RUN_SRCS) -- -test -v=trace
+	deps/v8/tools/linux-tick-processor v8.log > prof_log.txt
+	rm v8.log
+
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)
 

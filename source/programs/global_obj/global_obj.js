@@ -57,7 +57,7 @@ function test()
     if (glob_v1 !== 3)
         return 1;
 
-    if (glob_f1 === UNDEFINED)
+    if (glob_f1 === undefined)
         return 2;
 
     if (boxIsFunc(glob_f1) === false)

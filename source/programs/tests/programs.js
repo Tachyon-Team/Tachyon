@@ -318,8 +318,7 @@ tests.programs.basic_bool_eval = genTest(
     'programs/basic_bool_eval/basic_bool_eval.js',
     'test',
     [],
-    0,
-    'hostParams'
+    0
 );
 
 /**
@@ -329,8 +328,7 @@ tests.programs.multi_file = genTest(
     ['programs/multi_file/file1.js', 'programs/multi_file/file2.js'],
     'test',
     [],
-    0,
-    'hostParams'
+    0
 );
 
 /**
@@ -586,8 +584,7 @@ tests.programs.array_ext = genTest(
     'programs/array_ext/array_ext.js',
     'test',
     [],
-    0,
-    'hostParams'
+    0
 );
 
 /**

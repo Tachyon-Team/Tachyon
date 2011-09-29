@@ -53,7 +53,7 @@ function test()
 
     for (var i = 0; i < newSize; ++i)
     {
-        if (a[i] !== UNDEFINED)
+        if (a[i] !== undefined)
             return 2;
     }
 

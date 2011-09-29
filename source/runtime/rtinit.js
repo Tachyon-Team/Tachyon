@@ -121,6 +121,22 @@ function initHeap(heapPtr, heapSize)
     // printPtr(iir.icast(IRType.rptr, unboxRef(globalObj)));
     // printPtr(iir.icast(IRType.rptr, unboxRef(get_ctx_strtbl(ctx))));
 
+    // Set the undefined global property manually,
+    // string constants are not available at this point
+    var undefStr = alloc_str(pint(9));
+    set_str_data(undefStr, pint(0), u16(117));  // u
+    set_str_data(undefStr, pint(1), u16(110));  // n
+    set_str_data(undefStr, pint(2), u16(100));  // d
+    set_str_data(undefStr, pint(3), u16(101));  // e
+    set_str_data(undefStr, pint(4), u16(102));  // f
+    set_str_data(undefStr, pint(5), u16(105));  // i
+    set_str_data(undefStr, pint(6), u16(110));  // n
+    set_str_data(undefStr, pint(7), u16(101));  // e
+    set_str_data(undefStr, pint(8), u16(100));  // d
+    compStrHash(undefStr);
+    undefStr = getTableStr(undefStr);
+    globalObj[undefStr] = UNDEFINED;
+
     // Return a pointer to the context object
     return ctx;
 }
