@@ -538,6 +538,16 @@ tests.programs.str_int_conv = genTest(
 );
 
 /**
+Comma operator test
+*/
+tests.programs.comma_op = genTest(
+    'programs/comma_op/comma_op.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Switch statement test
 */
 tests.programs.switch = genTest(
