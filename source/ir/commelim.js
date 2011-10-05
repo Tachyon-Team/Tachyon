@@ -61,11 +61,27 @@ function commElim(cfg, maxItrs)
             'expected instruction value'
         );
 
-        var valStr = val.mnemonic;
-        for (var i = 0; i < val.uses.length; ++i)
-            valStr += val.uses[i].getValName();
+        var hashVal;
 
-        return defHashFunc(valStr);
+        hashVal = val.mnemonic.length;
+        hashVal = (hashVal << 1) + val.mnemonic.charCodeAt(0);
+    
+        for (var i = 0; i < val.uses.length; ++i)
+        {
+            var use = val.uses[i];
+
+            var no;
+            if (use instanceof IRInstr)
+                no = use.instrId;
+            else if (typeof use.value === 'number')
+                no = use.value;
+            else
+                no = 0;
+
+            hashVal = (((hashVal << 1) + no) & 536870911) % 426870919;
+        }
+
+        return hashVal;
     }
 
     // Equality function for IR values
@@ -108,7 +124,7 @@ function commElim(cfg, maxItrs)
 
         // If this value matches an existing value number, get that number
         // otherwise, assign it a new value number
-        if (valNoHash.hasItem(val))
+        if (valNoHash.hasItem(val) === true)
         {
             //print('*******GOT VAL**********');
             var valNo = valNoHash.getItem(val);
@@ -122,8 +138,36 @@ function commElim(cfg, maxItrs)
         // Store the value number in the value number cache
         valNoCache[val.instrId] = valNo;
 
+
         return valNo;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /*
     print('********************\n');
