@@ -1010,6 +1010,62 @@ tests.programs.sunspider['string-base64'] = genTest(
 );*/
 
 /**
+V8 benchmark suite
+*/
+tests.programs.v8bench = tests.testSuite();
+/*
+TODO: make drv for crypto
+tests.programs.v8bench['deltablue'] = genTest(
+    'programs/v8bench/base.js',
+    'programs/v8bench/deltaBlue.js',
+    'deltablue'
+);
+*/
+/*
+FIXME: error, "Adding string arg type"
+tests.programs.v8bench['deltablue'] = genTest(
+    'programs/v8bench/base.js',
+    'programs/v8bench/deltaBlue.js',
+    'deltablue'
+);
+*/
+/*
+FIXME: error, "Adding string arg type"
+TODO: make drv for earley-boyer, as one benchmark
+tests.programs.v8bench['earley'] = genTest(
+    'programs/v8bench/base.js',
+    'programs/v8bench/earley-boyer.js',
+    'BgL_earleyzd2benchmarkzd2'
+);
+*/
+/*
+FIXME: error, "Adding string arg type"
+tests.programs.v8bench['boyer'] = genTest(
+    'programs/v8bench/base.js',
+    'programs/v8bench/earley-boyer.js',
+    'BgL_nboyerzd2benchmarkzd2'
+);
+*/
+/*
+Raytrace benchmark, requires FP support
+*/
+/*
+Regexp, requires call to BenchmarkSuite, driver
+*/
+/*
+Richards, has odd bug
+*/
+/*
+FIXME: error, "Adding string arg type"
+tests.programs.v8bench['splay'] = genTest(
+    'programs/v8bench/base.js',
+    'programs/v8bench/splay.js',
+    'programs/v8bench/drv-splay.js',
+    'runSplayBenchmark'
+);
+*/
+
+/**
 Tachyon hash map utility code test
 */
 tests.programs.tachyon_hashmap = genTest(
