@@ -1014,54 +1014,74 @@ V8 benchmark suite
 */
 tests.programs.v8bench = tests.testSuite();
 /*
-TODO: make drv for crypto
+//FIXME: requires int32/FP support
+//FIXME: requires Math.random (FP support)
+tests.programs.v8bench['crypto'] = genTest(
+    ['programs/v8bench/base.js',
+     'programs/v8bench/crypto.js',
+     'drv-crypto'],
+    'runCryptoBenchmark',
+    [],
+    0
+);
+*/
 tests.programs.v8bench['deltablue'] = genTest(
-    'programs/v8bench/base.js',
-    'programs/v8bench/deltaBlue.js',
-    'deltablue'
+    ['programs/v8bench/base.js',
+     'programs/v8bench/deltablue.js',
+     'programs/v8bench/drv-deltablue.js'],
+    'runDeltaBlueBenchmark',
+    [],
+    0
+);
+/*
+//FIXME: requires Math.random (FP support)
+tests.programs.v8bench['earley-boyer'] = genTest(
+    ['programs/v8bench/base.js',
+     'programs/v8bench/earley-boyer.js',
+     'programs/v8bench/drv-earley-boyer.js'],
+    'runEarleyBoyerBenchmark',
+    [],
+    0
 );
 */
 /*
-FIXME: error, "Adding string arg type"
-tests.programs.v8bench['deltablue'] = genTest(
-    'programs/v8bench/base.js',
-    'programs/v8bench/deltaBlue.js',
-    'deltablue'
+// FIXME: requires FP support
+tests.programs.v8bench['raytrace'] = genTest(
+    ['programs/v8bench/base.js',
+     'programs/v8bench/raytrace.js',
+     'renderScene'],
+    [],
+    0
 );
 */
 /*
-FIXME: error, "Adding string arg type"
-TODO: make drv for earley-boyer, as one benchmark
-tests.programs.v8bench['earley'] = genTest(
-    'programs/v8bench/base.js',
-    'programs/v8bench/earley-boyer.js',
-    'BgL_earleyzd2benchmarkzd2'
+//FIXME: requires Math.random (FP support)
+tests.programs.v8bench['regexp'] = genTest(
+    ['programs/v8bench/base.js',
+     'programs/v8bench/regexp.js',
+     'programs/v8bench/drv-regexp.js'],
+    'runRegExpBenchmark',
+    [],
+    0
 );
 */
-/*
-FIXME: error, "Adding string arg type"
-tests.programs.v8bench['boyer'] = genTest(
-    'programs/v8bench/base.js',
-    'programs/v8bench/earley-boyer.js',
-    'BgL_nboyerzd2benchmarkzd2'
+tests.programs.v8bench['richards'] = genTest(
+    ['programs/v8bench/base.js',
+     'programs/v8bench/richards.js',
+     'programs/v8bench/drv-richards.js'],
+    'runRichardsBenchmark',
+    [],
+    0
 );
-*/
 /*
-Raytrace benchmark, requires FP support
-*/
-/*
-Regexp, requires call to BenchmarkSuite, driver
-*/
-/*
-Richards, has odd bug
-*/
-/*
-FIXME: error, "Adding string arg type"
+//FIXME: requires Math.random (FP support)
 tests.programs.v8bench['splay'] = genTest(
-    'programs/v8bench/base.js',
-    'programs/v8bench/splay.js',
-    'programs/v8bench/drv-splay.js',
-    'runSplayBenchmark'
+    ['programs/v8bench/base.js',
+     'programs/v8bench/splay.js',
+     'programs/v8bench/drv-splay.js',
+     'runSplayBenchmark'],
+    [],
+    0
 );
 */
 

@@ -1094,7 +1094,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         */
 
         // If this is a division by a power of 2
-        if (isPow2(instr.uses[1]))
+        if (isPow2(instr.uses[1]) === true)
         {
             // Replace the division by a right shift
             replArith(
