@@ -845,12 +845,15 @@ tests.programs.es5_cmp = genTest(
 /**
 Standard library global code tests.
 */
+/*
+FIXME: currently disabled
 tests.programs.stdlib_global = genTest(
     'programs/stdlib_global/stdlib_global.js',
     'test',
     [],
     0
 );
+*/
 
 /**
 Standard library objects code tests.
