@@ -40,8 +40,53 @@
  * _________________________________________________________________________
  */
 
-// TODO: implementation of an incremental intraprocedural type propagatgion
-// analysis at the SSA IR level.
-//
-// When? This will be implemented after the IR and analysis frameworks are in
-// place, and probably after we have a working, basic bootstrapping compiler.
+/*
+TODO: basic interprocedural type analysis
+
+Need type descriptor:
+- Describe types of globals
+- Describe field types
+- Describe array types
+- Describe SSA temp types
+- Fn input and return types
+
+Need way to init initial type desc
+- Call fn to initialize?
+- Initialize to what? Could create some basic initial type descs for
+  common types.
+
+Need way to compute intersection of type descs
+- Produces a new type desc
+*/
+
+
+/**
+@class Describes variable or temporary types in the type propagation analysis.
+*/
+function TypeDesc(
+    // TODO: basic flags
+)
+{
+    // See notes
+
+    // string flag
+    // number flag
+    // integer flag
+    // 
+
+    // flags bit field?
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
