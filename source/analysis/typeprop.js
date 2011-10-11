@@ -41,6 +41,24 @@
  */
 
 /*
+TODO: IR refactorings
+
+- Remove instrid, blockid?
+- Try using field on instr, blocks for analysis data, time result
+  - Need to nullify field after analysis...
+
+- Eliminate unique instruction naming scheme
+  - Name on printout only
+  - Eliminates complex and slow naming logic
+
+- Hash based on serial number if ever needed
+
+- Store instructions and blocks into linked lists
+  - Time before & after... Especially peephole part of frontend
+
+*/
+
+/*
 TODO: basic interprocedural type analysis
 
 Need type descriptor:
@@ -59,31 +77,59 @@ Need way to compute intersection of type descs
 - Produces a new type desc
 */
 
+/**
+@namespace Type descriptor flags namespace
+*/
+TypeDesc.Flags = {};
+
+// Possible type descriptor flags
+TypeDesc.Flags.UNDEF    = 1 << 0; // May be undefined
+TypeDesc.Flags.NULL     = 1 << 1; // May be null
+TypeDesc.Flags.TRUE     = 1 << 2; // May be true
+TypeDesc.Flags.FALSE    = 1 << 3; // May be false
+TypeDesc.Flags.FLOAT    = 1 << 4; // May be floating-point
+TypeDesc.Flags.INT      = 1 << 5; // May be integer
+TypeDesc.Flags.STRING   = 1 << 6; // May be string
+TypeDesc.Flags.OBJECT   = 1 << 7; // May be string
+TypeDesc.Flags.ARRAY    = 1 << 8; // May be string
+TypeDesc.Flags.FUNCTION = 1 << 9; // May be string
 
 /**
 @class Describes variable or temporary types in the type propagation analysis.
 */
 function TypeDesc(
-    // TODO: basic flags
+    flags,
+    classIdx
 )
 {
-    // See notes
+    /**
+    Descriptor flags bit field
+    */
+    this.flags = flags;
 
-    // string flag
-    // number flag
-    // integer flag
-    // 
+    /**
+    Numerical range minimum. Undefined if unknown.
+    */
+    this.minVal = minVal;
 
-    // flags bit field?
+    /**
+    Numerical range maximum. Undefined if unknown.
+    */
+    this.maxVal = maxVal;
 
-
-
+    /**
+    Pseudo-class index. Undefined if unknown.
+    */
+    this.classIdx = classIdx;
 }
 
+// TODO: unknown/any type
 
+// TODO: uninferred type (NoInf)
 
+// TODO: basic int, str, obj types
 
-
+// TODO: union function (bitwise OR?)
 
 
 
