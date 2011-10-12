@@ -144,8 +144,8 @@ StaticEnv.prototype.getValue = function (name)
     var val = this.getBinding(name);
 
     assert (
-        val instanceof ConstValue, 
-        "val must be an instanceof ConstValue"
+        val instanceof IRConst, 
+        "val must be an instanceof IRConst"
     );
 
     return val.value;

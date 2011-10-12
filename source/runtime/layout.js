@@ -488,7 +488,7 @@ MemLayout.prototype.genfieldAccessIR = function (context, query)
     );
 
     // Declare a variable for the current offset value
-    var curOffset = ConstValue.getConst(0, IRType.pint);
+    var curOffset = IRConst.getConst(0, IRType.pint);
 
     // Initialize the current type
     var curType = this;
@@ -508,7 +508,7 @@ MemLayout.prototype.genfieldAccessIR = function (context, query)
         var curType = spec.type;
 
         // Add the field offset to the total offset
-        var fieldOffset = ConstValue.getConst(spec.offset, IRType.pint);
+        var fieldOffset = IRConst.getConst(spec.offset, IRType.pint);
         curOffset = context.addInstr(new AddInstr(curOffset, fieldOffset));
 
         // If an index is supplied
@@ -518,7 +518,7 @@ MemLayout.prototype.genfieldAccessIR = function (context, query)
             ++i;
 
             // Add the index offset to the total offset
-            var fieldSize = ConstValue.getConst(spec.elemSize, IRType.pint);
+            var fieldSize = IRConst.getConst(spec.elemSize, IRType.pint);
             var idxOffset = context.addInstr(new MulInstr(fieldSize, fieldIndex));
             context.addInstr(new AddInstr(curOffset, idxOffset));
         }

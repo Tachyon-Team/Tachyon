@@ -1095,7 +1095,7 @@ x86.moveValue = function (
     }
 
     // If the source is a constant
-    if (src instanceof ConstValue)
+    if (src instanceof IRConst)
     {
         var immSize = x86.getImmSize(src, params);
 
@@ -1171,7 +1171,7 @@ x86.genArgNormStub = function (
 
     // Get the immediate for the undefined value
     const undefImm = new x86.Immediate(
-        ConstValue.getConst(undefined).getImmValue(params)
+        IRConst.getConst(undefined).getImmValue(params)
     );
 
     // Label for the too many arguments case
@@ -1360,7 +1360,7 @@ x86.genArgObjStub = function (
 
     // Get the immediate for the undefined value
     const undefImm = new x86.Immediate(
-        ConstValue.getConst(undefined).getImmValue(params)
+        IRConst.getConst(undefined).getImmValue(params)
     );
 
     // Get the displacement for the arguments table

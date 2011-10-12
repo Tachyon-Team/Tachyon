@@ -104,7 +104,7 @@ Addition test
 */
 tests.constprop.add = tests.constprop.helpers.genTest(
     'return 6 + 4;',
-    ConstValue.getConst(10)
+    IRConst.getConst(10)
 );
 
 /**
@@ -112,7 +112,7 @@ Addition test
 */
 tests.constprop.sub = tests.constprop.helpers.genTest(
     'return 6 - 3;',
-    ConstValue.getConst(3)
+    IRConst.getConst(3)
 );
 
 /**
@@ -120,7 +120,7 @@ Multiplication test
 */
 tests.constprop.mul = tests.constprop.helpers.genTest(
     'return 6 * 3;',
-    ConstValue.getConst(18)
+    IRConst.getConst(18)
 );
 
 /**
@@ -128,7 +128,7 @@ Division test
 */
 tests.constprop.div = tests.constprop.helpers.genTest(
     'return 6 / 3;',
-    ConstValue.getConst(2)
+    IRConst.getConst(2)
 );
 
 /**
@@ -136,7 +136,7 @@ Reciprocal test
 */
 tests.constprop.divmul = tests.constprop.helpers.genTest(
     'return (6 / 3) * 3;',
-    ConstValue.getConst(6)
+    IRConst.getConst(6)
 );
 
 /**
@@ -144,7 +144,7 @@ Complex arithmetic expression test
 */
 tests.constprop.arithexpr = tests.constprop.helpers.genTest(
     'return ((6 / 3) + 2) * 3;',
-    ConstValue.getConst(12)
+    IRConst.getConst(12)
 );
 
 /**
@@ -152,7 +152,7 @@ Bitwise AND operator
 */
 tests.constprop.and = tests.constprop.helpers.genTest(
     'return 3 & 1;',
-    ConstValue.getConst(1)
+    IRConst.getConst(1)
 );
 
 /**
@@ -160,7 +160,7 @@ Bitwise OR operator
 */
 tests.constprop.or = tests.constprop.helpers.genTest(
     'return 5 | 2;',
-    ConstValue.getConst(7)
+    IRConst.getConst(7)
 );
 
 /**
@@ -168,7 +168,7 @@ Bitwise XOR operator
 */
 tests.constprop.xor = tests.constprop.helpers.genTest(
     'return 5 ^ 3;',
-    ConstValue.getConst(6)
+    IRConst.getConst(6)
 );
 
 /**
@@ -176,7 +176,7 @@ Left shift test
 */
 tests.constprop.lsft = tests.constprop.helpers.genTest(
     'return 3 << 1;',
-    ConstValue.getConst(6)
+    IRConst.getConst(6)
 );
 
 /**
@@ -184,7 +184,7 @@ Right shift test
 */
 tests.constprop.rsft = tests.constprop.helpers.genTest(
     'return 8 >> 1;',
-    ConstValue.getConst(4)
+    IRConst.getConst(4)
 );
 
 /**
@@ -192,7 +192,7 @@ Unsigned right shift test
 */
 tests.constprop.ursft = tests.constprop.helpers.genTest(
     'return 8 >> 1;',
-    ConstValue.getConst(4)
+    IRConst.getConst(4)
 );
 
 /**
@@ -200,7 +200,7 @@ If conditional test
 */
 tests.constprop.condIf = tests.constprop.helpers.genTest(
     'if (1) return 2; else return 3;',
-    ConstValue.getConst(2)
+    IRConst.getConst(2)
 );
 
 /**
@@ -208,7 +208,7 @@ Conditional operator test
 */
 tests.constprop.condOp = tests.constprop.helpers.genTest(
     'return 0? 2:3;',
-    ConstValue.getConst(3)
+    IRConst.getConst(3)
 );
 
 /**
@@ -216,7 +216,7 @@ Integer cast test
 */
 tests.constprop.icast1 = tests.constprop.helpers.genTest(
     'return iir.icast(IRType.box, iir.icast(IRType.pint, 5));',
-    ConstValue.getConst(5)
+    IRConst.getConst(5)
 );
 
 /**
@@ -224,6 +224,6 @@ Redundant integer cast test
 */
 tests.constprop.icast2 = tests.constprop.helpers.genTest(
     'return iir.icast(IRType.box, 7);',
-    ConstValue.getConst(7)
+    IRConst.getConst(7)
 );
 

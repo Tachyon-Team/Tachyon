@@ -115,8 +115,8 @@ function lowerIRCFG(cfg, params)
                     var unboxVal = new CallFuncInstr(
                         [
                             params.staticEnv.getBinding('unboxRef'),
-                            ConstValue.getConst(undefined),
-                            ConstValue.getConst(undefined),
+                            IRConst.getConst(undefined),
+                            IRConst.getConst(undefined),
                             instr.uses[0]
                         ]
                     );
@@ -150,8 +150,8 @@ function lowerIRCFG(cfg, params)
                     var callInstr = new CallFuncInstr(
                         [
                             primFunc,
-                            ConstValue.getConst(undefined),
-                            ConstValue.getConst(undefined),
+                            IRConst.getConst(undefined),
+                            IRConst.getConst(undefined),
                         ].concat(instr.uses).concat(instr.targets)
                     );
 
@@ -562,7 +562,7 @@ GetPropInstr.prototype.lower = function (compParams)
     var isLength = false;
 
     // If the property name is a constant string    
-    if (propName instanceof ConstValue && typeof propName.value === 'string')
+    if (propName instanceof IRConst && typeof propName.value === 'string')
     {
         var propName = propName.value;
 
@@ -632,7 +632,7 @@ function foo(ctx)
     //print('prop name: ' + propName);
 
     // If the property name is a constant string    
-    if (propName instanceof ConstValue && typeof propName.value === 'string')
+    if (propName instanceof IRConst && typeof propName.value === 'string')
     {
         var propName = propName.value;
 
@@ -674,7 +674,7 @@ function foo(ctx)
             // Create the if branching instruction
             ctx.addInstr(
                 new IfInstr(
-                    [isArray, ConstValue.getConst(true)],
+                    [isArray, IRConst.getConst(true)],
                     'EQ',
                     trueCtx.entryBlock,
                     falseCtx.entryBlock

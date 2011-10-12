@@ -40,43 +40,6 @@
  * _________________________________________________________________________
  */
 
-/*
-TODO: IR refactorings
-
-- Remove instrid, blockid?
-- Try using field on instr, blocks for analysis data, time result
-  - Need to nullify field after analysis...
-
-- Eliminate unique instruction naming scheme
-  - Name on printout only
-  - Eliminates complex and slow naming logic
-
-- Hash based on serial number if ever needed
-
-- Store instructions and blocks into linked lists
-  - Time before & after... Especially peephole part of frontend
-
-*/
-
-/*
-TODO: basic interprocedural type analysis
-
-Need type descriptor:
-- Describe types of globals
-- Describe field types
-- Describe array types
-- Describe SSA temp types
-- Fn input and return types
-
-Need way to init initial type desc
-- Call fn to initialize?
-- Initialize to what? Could create some basic initial type descs for
-  common types.
-
-Need way to compute intersection of type descs
-- Produces a new type desc
-*/
-
 /**
 @namespace Type descriptor flags namespace
 */
@@ -94,11 +57,29 @@ TypeDesc.Flags.OBJECT   = 1 << 7; // May be string
 TypeDesc.Flags.ARRAY    = 1 << 8; // May be string
 TypeDesc.Flags.FUNCTION = 1 << 9; // May be string
 
+// Unknown/any type flag
+TypeDesc.Flags.ANY =
+    TypeDesc.Flags.UNDEF    |
+    TypeDesc.Flags.NULL     |
+    TypeDesc.Flags.TRUE     |
+    TypeDesc.Flags.FALSE    |
+    TypeDesc.Flags.INT      |
+    TypeDesc.Flags.FLOAT    |
+    TypeDesc.Flags.STRING   |
+    TypeDesc.Flags.OBJECT   |
+    TypeDesc.Flags.ARRAY    |
+    TypeDesc.Flags.FUNCTION;
+
+// Uninferred type flag (before analysis)
+TypeDesc.Flags.NOINF = 0;
+
 /**
 @class Describes variable or temporary types in the type propagation analysis.
 */
 function TypeDesc(
     flags,
+    minVal,
+    maxVal,
     classIdx
 )
 {
@@ -123,13 +104,166 @@ function TypeDesc(
     this.classIdx = classIdx;
 }
 
-// TODO: unknown/any type
+/**
+Generate a type descriptor for a constant value
+*/
+TypeDesc.constant = function (value)
+{
+    if (value instanceof IRConst)
+        value = IRConst.value;
 
-// TODO: uninferred type (NoInf)
+    if (isInt(value) === true)
+    {
+        return new TypeDesc(TypeDesc.Flags.INT, value, value);
+    }
 
-// TODO: basic int, str, obj types
+    else if (typeof value === 'number')
+    {
+        return new TypeDesc(TypeDesc.Flags.FLOAT, value, value);
+    }
 
-// TODO: union function (bitwise OR?)
+    else if (typeof value === 'string')
+    {
+        return TypeDesc.String;
+    }
+
+    // TODO: handle other types
+    return TypeDesc.Any;
+}
+
+/**
+Produce a string representation of a type descriptor
+*/
+TypeDesc.prototype.toString = function ()
+{
+    if (this.flags === TypeDesc.Flags.NOINF)
+        return "noinf";
+
+    if (this.flags === TypeDesc.Flags.ANY)
+        return "any";
+
+    var str = "";
+
+    // Add the flags
+    for (flagName in TypeDesc.Flags)
+    {
+        var flagVal = TypeDesc.Flags[flagName];
+
+        if (this.flags & flagVal)
+        {
+            if (str != "")
+                str += ",";
+
+            str += flagName.toLowerCase();
+        }
+    }
+
+    // If range information is present
+    if (this.minVal !== undefined || this.maxVal !== undefined)
+    {
+        if (this.minVal !== undefined && this.minVal === this.maxVal)
+            str += " " + this.minVal;
+        else if (this.minVal !== undefined && this.maxVal !== undefined)
+            str += " [" + this.minVal + ", " + this.maxVal + "]";
+        else if (this.minVal === undefined)
+            str += " ]-inf, " + this.maxVal + "]";
+        else
+            str += " [" + this.minVal + ", +inf[";
+    }
+
+    // If class information is present
+    if (this.classIdx !== undefined)
+    {
+        str += " class:" + this.classIdx;
+    }
+
+    return str;
+}
+
+//
+// TODO: isFixnum? with params/target
+//
+
+/**
+Type descriptor union (OR) function
+*/
+TypeDesc.prototype.union = function (that)
+{
+    var flags = this.flags | that.flags;
+
+    var minVal =
+        (this.minVal !== undefined && that.minVal !== undefined)?
+        Math.min(this.minVal, that.minVal):undefined;
+
+    var maxVal =
+        (this.maxVal !== undefined && that.maxVal !== undefined)?
+        Math.max(this.maxVal, that.maxVal):undefined;
+
+    var classIdx =
+        (this.classIdx === that.classIdx)?
+        this.classIdx:undefined;
+
+    return new TypeDesc(
+        flags,
+        minVal,
+        maxVal,
+        classIdx
+    );
+}
+
+// Any type descriptor
+TypeDesc.Any = new TypeDesc(TypeDesc.Flags.ANY);
+
+// Uninferred type descriptor
+TypeDesc.Noinf = new TypeDesc(TypeDesc.Flags.NOINF);
+
+// Generic number type descriptor
+TypeDesc.Number = new TypeDesc(TypeDesc.Flags.INT | TypeDesc.Flags.FLOAT);
+
+// Generic string type descriptor
+TypeDesc.String = new TypeDesc(TypeDesc.Flags.STRING);
+
+// Generic object type descriptor
+TypeDesc.Object = new TypeDesc(TypeDesc.Flags.OBJECT);
+
+
+
+
+/*
+TODO: basic interprocedural type analysis
+
+Need type descriptor:
+- Describe types of globals
+- Describe field types
+- Describe array types
+- Describe SSA temp types
+- Fn input and return types
+
+Need way to init initial type desc
+- Call fn to initialize?
+- Initialize to what? Could create some basic initial type descs for
+  common types.
+
+Need way to compute intersection of type descs
+- Produces a new type desc
+*/
+
+
+/*
+TODO: Analysis code, SCCP-based
+- Ignore object classes for now?
+
+Need info about globals... The global obj is an object...
+- Special handling or just store its current map/class descriptor??
+- Need some way of describing its fields
+
+
+
+*/
+
+
+
+
 
 
 

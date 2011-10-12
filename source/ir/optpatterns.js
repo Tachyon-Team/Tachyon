@@ -406,7 +406,7 @@ blockPatterns.ifPhiElim = new optPattern(
         // If the last instruction is a phi with a boolean test, match
         if (lastInstr instanceof IfInstr &&
             lastInstr.uses[0] === firstInstr &&
-            lastInstr.uses[1] instanceof ConstValue &&
+            lastInstr.uses[1] instanceof IRConst &&
             typeof lastInstr.uses[1].value === 'boolean' &&
             (lastInstr.testOp !== 'EQ' || lastInstr.testOp !== 'NE'))
             return true;
@@ -430,7 +430,7 @@ blockPatterns.ifPhiElim = new optPattern(
                 return branchInstr.targets[0];
 
             // If we could not determine the truth value, branch unknown
-            if (!(use instanceof ConstValue))
+            if (!(use instanceof IRConst))
                 return false;
 
             // Perform the if comparison
@@ -468,7 +468,7 @@ blockPatterns.ifPhiElim = new optPattern(
                     continue;
 
                 // If the incoming value is a constant, skip it
-                if (inc instanceof ConstValue)
+                if (inc instanceof IRConst)
                     continue;
                 
                 // If the incoming value is anything else, can't jump
@@ -738,7 +738,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     function isConst(val, cst)
     {
         return (
-            val instanceof ConstValue &&
+            val instanceof IRConst &&
             val.value === cst
         );
     }
@@ -747,7 +747,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
     function isPow2(val)
     {
         return (
-            val instanceof ConstValue &&
+            val instanceof IRConst &&
             (val.isBoxInt(params) || val.isInt()) &&
             isPowerOf2(val.value)
         );
@@ -908,7 +908,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
             //thelog += val + '\n';
 
             // If the value is a boolean constant, it is boolean
-            if (val instanceof ConstValue &&
+            if (val instanceof IRConst &&
                 typeof val.value === 'boolean')
                 return true;
             
@@ -1014,7 +1014,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         if (isConst(instr.uses[0], 0) || isConst(instr.uses[1], 0))
         {
             // Replace the instruction by 0
-            replByVal(ConstValue.getConst(0, instr.type));
+            replByVal(IRConst.getConst(0, instr.type));
 
             // A change was made
             return true;
@@ -1049,7 +1049,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 LsftInstr,
                 LsftOvfInstr,
                 instr.uses[1],
-                ConstValue.getConst(
+                IRConst.getConst(
                     highestBit(instr.uses[0].getImmValue(params)),
                     (instr.uses[1].type === IRType.box)? IRType.pint:instr.uses[1].type
                 )
@@ -1067,7 +1067,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 LsftInstr,
                 LsftOvfInstr,
                 instr.uses[0],
-                ConstValue.getConst(
+                IRConst.getConst(
                     highestBit(instr.uses[1].getImmValue(params)),
                     (instr.uses[0].type === IRType.box)? IRType.pint:instr.uses[0].type
                 )
@@ -1101,7 +1101,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 instr.type.isUnsigned()? UrsftInstr:RsftInstr,
                 undefined,
                 instr.uses[0],
-                ConstValue.getConst(
+                IRConst.getConst(
                     highestBit(instr.uses[1].getImmValue(params)),
                     (instr.uses[0].type === IRType.box)? IRType.pint:instr.uses[0].type
                 )
@@ -1124,7 +1124,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 AndInstr,
                 undefined,
                 instr.uses[0],
-                ConstValue.getConst(
+                IRConst.getConst(
                     num_sub(instr.uses[1].value, 1),
                     instr.uses[0].type
                 )
@@ -1171,22 +1171,22 @@ function applyPatternsInstr(cfg, block, instr, index, params)
         if (isConst(instr.uses[0], 0) || isConst(instr.uses[1], 0))
         {
             // Replace the instruction by 0
-            replByVal(ConstValue.getConst(0, instr.type));
+            replByVal(IRConst.getConst(0, instr.type));
 
             // A change was made
             return true;
         }
 
         // If this is a reference tag bit extraction
-        if (instr.uses[0] instanceof ConstValue &&
-            instr.uses[1] instanceof ConstValue &&
+        if (instr.uses[0] instanceof IRConst &&
+            instr.uses[1] instanceof IRConst &&
             instr.uses[0].type === IRType.box &&
             !instr.uses[0].isBoxInt(params) &&
             instr.uses[1].type === IRType.pint && 
             instr.uses[1].value === TAG_REF_MASK)
         {
             replByVal(
-                ConstValue.getConst(
+                IRConst.getConst(
                     instr.uses[0].getTagBits(params),
                     IRType.pint
                 )
@@ -1195,15 +1195,15 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
         // If this is a reference tag bit extraction
         if (
-            instr.uses[0] instanceof ConstValue &&
-            instr.uses[1] instanceof ConstValue &&
+            instr.uses[0] instanceof IRConst &&
+            instr.uses[1] instanceof IRConst &&
             instr.uses[1].type === IRType.box &&
             !instr.uses[1].isBoxInt(params) &&
             instr.uses[0].type === IRType.pint && 
             instr.uses[0].value === TAG_REF_MASK)
         {
             replByVal(
-                ConstValue.getConst(
+                IRConst.getConst(
                     instr.uses[1].getTagBits(params),
                     IRType.pint
                 )
@@ -1212,14 +1212,14 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
         // If this is an integer tag bit extraction
         if (
-            instr.uses[0] instanceof ConstValue &&
-            instr.uses[1] instanceof ConstValue &&
+            instr.uses[0] instanceof IRConst &&
+            instr.uses[1] instanceof IRConst &&
             instr.uses[0].type === IRType.box &&
             instr.uses[1].type === IRType.pint && 
             instr.uses[1].value === TAG_INT_MASK)
         {
             replByVal(
-                ConstValue.getConst(
+                IRConst.getConst(
                     instr.uses[0].getTagBits(params) & TAG_INT_MASK,
                     IRType.pint
                 )
@@ -1228,14 +1228,14 @@ function applyPatternsInstr(cfg, block, instr, index, params)
 
         // If this is an integer tag bit extraction
         if (
-            instr.uses[0] instanceof ConstValue &&
-            instr.uses[1] instanceof ConstValue &&
+            instr.uses[0] instanceof IRConst &&
+            instr.uses[1] instanceof IRConst &&
             instr.uses[1].type === IRType.box &&
             instr.uses[0].type === IRType.pint && 
             instr.uses[0].value === TAG_INT_MASK)
         {
             replByVal(
-                ConstValue.getConst(
+                IRConst.getConst(
                     instr.uses[1].getTagBits(params) & TAG_INT_MASK,
                     IRType.pint
                 )

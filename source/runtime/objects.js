@@ -94,7 +94,7 @@ function makeObjectLayouts(params)
     // Size of a pointer in bytes
     params.staticEnv.regBinding(
         'PTR_NUM_BYTES',
-        ConstValue.getConst(
+        IRConst.getConst(
             params.backend.regSizeBytes,
             IRType.pint
         )
@@ -103,7 +103,7 @@ function makeObjectLayouts(params)
     // Number of integer tag bits
     params.staticEnv.regBinding(
         'TAG_NUM_BITS_INT',
-        ConstValue.getConst(
+        IRConst.getConst(
             // TODO:
             //(params.backend.regSizeBits == 64)? 12:2,
             2,
@@ -114,7 +114,7 @@ function makeObjectLayouts(params)
     // Number of usable integer bits in a boxed integer
     params.staticEnv.regBinding(
         'BOX_NUM_BITS_INT',
-        ConstValue.getConst(
+        IRConst.getConst(
             IRType.pint.getSizeBits(params) - 
             params.staticEnv.getValue('TAG_NUM_BITS_INT'),
             IRType.pint
@@ -124,7 +124,7 @@ function makeObjectLayouts(params)
     // Maximum value that can be stored in a boxed integer
     params.staticEnv.regBinding(
         'MAX_FIXNUM',
-        ConstValue.getConst(
+        IRConst.getConst(
             ~(-1 << (params.staticEnv.getValue('BOX_NUM_BITS_INT') - 1)),
             IRType.box
         )
@@ -133,7 +133,7 @@ function makeObjectLayouts(params)
     // Minimum value that can be stored in a boxed integer
     params.staticEnv.regBinding(
         'MIN_FIXNUM',
-        ConstValue.getConst(
+        IRConst.getConst(
             -1 << (params.staticEnv.getValue('BOX_NUM_BITS_INT') - 1),
             IRType.box
         )
@@ -142,7 +142,7 @@ function makeObjectLayouts(params)
     // Maximum value that can be stored in 32-bit signed integer
     params.staticEnv.regBinding(
         'MAX_INT32',
-        ConstValue.getConst(
+        IRConst.getConst(
             getIntMax(32),
             IRType.pint
         )
@@ -151,7 +151,7 @@ function makeObjectLayouts(params)
     // Minimum value that can be stored in 32-bit signed integer
     params.staticEnv.regBinding(
         'MIN_INT32',
-        ConstValue.getConst(
+        IRConst.getConst(
             getIntMin(32),
             IRType.pint
         )
@@ -160,7 +160,7 @@ function makeObjectLayouts(params)
     // Number of reference tag bits
     params.staticEnv.regBinding(
         'TAG_NUM_BITS_REF',
-        ConstValue.getConst(
+        IRConst.getConst(
             3,
             IRType.pint
         )
@@ -169,7 +169,7 @@ function makeObjectLayouts(params)
     // Mask used to extract immediate integer tags
     params.staticEnv.regBinding(
         'TAG_INT_MASK',
-        ConstValue.getConst(
+        IRConst.getConst(
             3,
             IRType.pint
         )
@@ -178,7 +178,7 @@ function makeObjectLayouts(params)
     // Mask used to extract reference tags
     params.staticEnv.regBinding(
         'TAG_REF_MASK',
-        ConstValue.getConst(
+        IRConst.getConst(
             7,
             IRType.pint
         )
@@ -187,7 +187,7 @@ function makeObjectLayouts(params)
     // Tag for immediate integers
     params.staticEnv.regBinding(
         'TAG_INT',
-        ConstValue.getConst(
+        IRConst.getConst(
             0,
             IRType.pint
         )
@@ -196,7 +196,7 @@ function makeObjectLayouts(params)
     // Tag for plain objects
     params.staticEnv.regBinding(
         'TAG_OBJECT',
-        ConstValue.getConst(
+        IRConst.getConst(
             7,
             IRType.pint
         )
@@ -205,7 +205,7 @@ function makeObjectLayouts(params)
     // Tag for function objects
     params.staticEnv.regBinding(
         'TAG_FUNCTION',
-        ConstValue.getConst(
+        IRConst.getConst(
             6,
             IRType.pint
         )
@@ -214,7 +214,7 @@ function makeObjectLayouts(params)
     // Tag for array objects
     params.staticEnv.regBinding(
         'TAG_ARRAY',
-        ConstValue.getConst(
+        IRConst.getConst(
             5,
             IRType.pint
         )
@@ -223,7 +223,7 @@ function makeObjectLayouts(params)
     // Tag for floating-point values
     params.staticEnv.regBinding(
         'TAG_FLOAT',
-        ConstValue.getConst(
+        IRConst.getConst(
             3,
             IRType.pint
         )
@@ -232,7 +232,7 @@ function makeObjectLayouts(params)
     // Tag for strings
     params.staticEnv.regBinding(
         'TAG_STRING',
-        ConstValue.getConst(
+        IRConst.getConst(
             2,
             IRType.pint
         )
@@ -241,7 +241,7 @@ function makeObjectLayouts(params)
     // Tag for other values
     params.staticEnv.regBinding(
         'TAG_OTHER',
-        ConstValue.getConst(
+        IRConst.getConst(
             1,
             IRType.pint
         )
@@ -256,7 +256,7 @@ function makeObjectLayouts(params)
     // Alignment for heap allocation
     params.staticEnv.regBinding(
         'HEAP_ALIGN',
-        ConstValue.getConst(
+        IRConst.getConst(
             8,
             IRType.puint
         )
@@ -278,7 +278,7 @@ function makeObjectLayouts(params)
     // Bit pattern for the true constant
     params.staticEnv.regBinding(
         'BIT_PATTERN_TRUE',
-        ConstValue.getConst(
+        IRConst.getConst(
             1,
             IRType.pint
         )
@@ -287,7 +287,7 @@ function makeObjectLayouts(params)
     // Bit pattern for the false constant
     params.staticEnv.regBinding(
         'BIT_PATTERN_FALSE',
-        ConstValue.getConst(
+        IRConst.getConst(
             9,
             IRType.pint
         )
@@ -296,7 +296,7 @@ function makeObjectLayouts(params)
     // Bit pattern for the null constant
     params.staticEnv.regBinding(
         'BIT_PATTERN_NULL',
-        ConstValue.getConst(
+        IRConst.getConst(
             17,
             IRType.pint
         )
@@ -305,7 +305,7 @@ function makeObjectLayouts(params)
     // Bit pattern for the undefined constant
     params.staticEnv.regBinding(
         'BIT_PATTERN_UNDEF',
-        ConstValue.getConst(
+        IRConst.getConst(
             25,
             IRType.pint
         )
@@ -314,7 +314,7 @@ function makeObjectLayouts(params)
     // Bit pattern for the not found constant
     params.staticEnv.regBinding(
         'BIT_PATTERN_NOT_FOUND',
-        ConstValue.getConst(
+        IRConst.getConst(
             33,
             IRType.pint
         )
@@ -323,7 +323,7 @@ function makeObjectLayouts(params)
     // Undefined constant
     params.staticEnv.regBinding(
         'UNDEFINED',
-        ConstValue.getConst(
+        IRConst.getConst(
             undefined,
             IRType.box
         )
@@ -332,7 +332,7 @@ function makeObjectLayouts(params)
     // Null pointer constant
     params.staticEnv.regBinding(
         'NULL_PTR',
-        ConstValue.getConst(
+        IRConst.getConst(
             0,
             IRType.rptr
         )
@@ -414,7 +414,7 @@ function makeObjectLayouts(params)
     // Initial hash map size
     params.staticEnv.regBinding(
         'HASH_MAP_INIT_SIZE',
-        ConstValue.getConst(
+        IRConst.getConst(
             7,
             IRType.pint
         )
@@ -423,14 +423,14 @@ function makeObjectLayouts(params)
     // Hash map max load factor (num/denom)
     params.staticEnv.regBinding(
         'HASH_MAP_MAX_LOAD_NUM',
-        ConstValue.getConst(
+        IRConst.getConst(
             3,
             IRType.pint
         )
     );
     params.staticEnv.regBinding(
         'HASH_MAP_MAX_LOAD_DENOM',
-        ConstValue.getConst(
+        IRConst.getConst(
             5,
             IRType.pint
         )
@@ -535,7 +535,7 @@ function makeObjectLayouts(params)
     // for integer values
     params.staticEnv.regBinding(
         'HASH_CODE_STR_OFFSET',
-        ConstValue.getConst(
+        IRConst.getConst(
             65535,
             IRType.u32
         )
@@ -573,7 +573,7 @@ function makeObjectLayouts(params)
     // Initial string table size
     params.staticEnv.regBinding(
         'STR_TBL_INIT_SIZE',
-        ConstValue.getConst(
+        IRConst.getConst(
             101,
             IRType.pint
         )
@@ -582,14 +582,14 @@ function makeObjectLayouts(params)
     // String table max load factor (num/denum)
     params.staticEnv.regBinding(
         'STR_TBL_MAX_LOAD_NUM',
-        ConstValue.getConst(
+        IRConst.getConst(
             3,
             IRType.pint
         )
     );
     params.staticEnv.regBinding(
         'STR_TBL_MAX_LOAD_DENOM',
-        ConstValue.getConst(
+        IRConst.getConst(
             5,
             IRType.pint
         )

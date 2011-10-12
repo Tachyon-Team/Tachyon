@@ -90,13 +90,13 @@ function makeTachyonConsts(params)
     // Set the running in Tachyon constant to true
     params.staticEnv.regBinding(
         'RUNNING_IN_TACHYON', 
-        ConstValue.getConst(true)
+        IRConst.getConst(true)
     );
 
     // Compute the bootstrap generation number
     params.staticEnv.regBinding(
         'TACHYON_GEN_NUMBER',
-        ConstValue.getConst(
+        IRConst.getConst(
             TACHYON_GEN_NUMBER + 1,
             IRType.box
         )
@@ -105,7 +105,7 @@ function makeTachyonConsts(params)
     // Bind the debug flag constant
     params.staticEnv.regBinding(
         'DEBUG',
-        ConstValue.getConst(
+        IRConst.getConst(
             params.debug,
             IRType.box
         )
@@ -114,7 +114,7 @@ function makeTachyonConsts(params)
     // Bind the 64-bit platform constant
     params.staticEnv.regBinding(
         'PLATFORM_64BIT',
-        ConstValue.getConst(
+        IRConst.getConst(
             params.staticEnv.getValue('PTR_NUM_BYTES') === 8,
             IRType.box
         )

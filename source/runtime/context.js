@@ -60,7 +60,7 @@ function makeContextLayout(params)
     // Alignment for heap allocation 
     params.staticEnv.regBinding(
         'CTX_ALIGN',
-        ConstValue.getConst(
+        IRConst.getConst(
             256,
             IRType.puint
         )

@@ -633,7 +633,7 @@ tests.ir.inlining = function ()
         function (instr)
         {
             if (instr instanceof CallFuncInstr &&
-                instr.getArg(0) === ConstValue.getConst(1337))
+                instr.getArg(0) === IRConst.getConst(1337))
                 callInstr = instr;
         }
     );
@@ -684,7 +684,7 @@ tests.ir.inliningExcept = function ()
         function (instr)
         {
             if (instr instanceof CallFuncInstr &&
-                instr.getArg(0) === ConstValue.getConst(1337))
+                instr.getArg(0) === IRConst.getConst(1337))
                 callInstr = instr;
         }
     );
@@ -737,7 +737,7 @@ tests.ir.inliningThrow = function ()
         function (instr)
         {
             if (instr instanceof CallFuncInstr &&
-                instr.getArg(0) === ConstValue.getConst(1337))
+                instr.getArg(0) === IRConst.getConst(1337))
                 callInstr = instr;
         }
     );

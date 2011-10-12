@@ -179,7 +179,7 @@ function inlineCall(callInstr, calleeFunc)
                 var argVal = 
                     instr.argIndex < callInstr.uses.length?
                     callInstr.uses[instr.argIndex + 1]:
-                    ConstValue.getConst(undefined);
+                    IRConst.getConst(undefined);
 
                 dest.replUse(
                     instr,

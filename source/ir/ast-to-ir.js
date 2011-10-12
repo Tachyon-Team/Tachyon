@@ -189,8 +189,8 @@ function stmtListToIRFunc(
     if (newFunc.cProxy === true)
     {
         // The function object and this value are undefined
-        var funcObj = ConstValue.getConst(undefined);
-        var thisVal = ConstValue.getConst(undefined);
+        var funcObj = IRConst.getConst(undefined);
+        var thisVal = IRConst.getConst(undefined);
     }
     else
     {
@@ -228,7 +228,7 @@ function stmtListToIRFunc(
         if (!localMap.hasItem(symName))
         {
             // Add an undefined value to the local map
-            localMap.addItem(symName, ConstValue.getConst(undefined));
+            localMap.addItem(symName, IRConst.getConst(undefined));
         }
     }
 
@@ -284,7 +284,7 @@ function stmtListToIRFunc(
             'get_clos_cells', 
             [
                 funcObj,
-                ConstValue.getConst(i, IRType.pint)
+                IRConst.getConst(i, IRType.pint)
             ]
         );
 
@@ -363,7 +363,7 @@ function stmtListToIRFunc(
                 'makeClos', 
                 [
                     nestFunc,
-                    ConstValue.getConst(closVals.length, IRType.pint)
+                    IRConst.getConst(closVals.length, IRType.pint)
                 ]
             );
 
@@ -375,7 +375,7 @@ function stmtListToIRFunc(
                     'set_clos_cells',
                     [
                         closVal, 
-                        ConstValue.getConst(i, IRType.pint), 
+                        IRConst.getConst(i, IRType.pint), 
                         closVals[i]
                     ]
                 );
@@ -422,13 +422,13 @@ function stmtListToIRFunc(
             var varVal = itr.get().value;
 
             // If the variable's initial value is undefined
-            if (varVal === ConstValue.getConst(undefined))
+            if (varVal === IRConst.getConst(undefined))
             {
                 // Check if the property exists on the global object
                 var hasProp = insertPrimCallIR(
                     bodyContext, 
                     'hasPropVal', 
-                    [globalObj, ConstValue.getConst(varName)]
+                    [globalObj, IRConst.getConst(varName)]
                 );
 
                 // If the property doesn't exist, initialize it to undefined
@@ -441,7 +441,7 @@ function stmtListToIRFunc(
                         insertPrimCallIR(
                             condCtx,
                             'putPropVal', 
-                            [globalObj, ConstValue.getConst(varName), varVal]
+                            [globalObj, IRConst.getConst(varName), varVal]
                         );
                     }
                 );
@@ -452,7 +452,7 @@ function stmtListToIRFunc(
                 insertPrimCallIR(
                     bodyContext,
                     'putPropVal', 
-                    [globalObj, ConstValue.getConst(varName), varVal]
+                    [globalObj, IRConst.getConst(varName), varVal]
                 );
             }
         }
@@ -469,7 +469,7 @@ function stmtListToIRFunc(
     {
         // Add a return undefined instruction to the exit block
         bodyContext.addInstr(
-            new RetInstr(ConstValue.getConst(undefined))
+            new RetInstr(IRConst.getConst(undefined))
         );
     }
 
@@ -1150,7 +1150,7 @@ function stmtToIR(context)
         // Create the if branching instruction
         testContext.addInstr(
             new IfInstr(
-                [boolVal, ConstValue.getConst(true)],
+                [boolVal, IRConst.getConst(true)],
                 'EQ',
                 trueContext.entryBlock,
                 falseContext.entryBlock
@@ -1223,7 +1223,7 @@ function stmtToIR(context)
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
             new IfInstr(
-                [boolVal, ConstValue.getConst(true)],
+                [boolVal, IRConst.getConst(true)],
                 'EQ',
                 bodyContext.entryBlock,
                 loopExit
@@ -1306,7 +1306,7 @@ function stmtToIR(context)
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
             new IfInstr(
-                [boolVal, ConstValue.getConst(true)],
+                [boolVal, IRConst.getConst(true)],
                 'EQ',
                 bodyContext.entryBlock,
                 loopExit
@@ -1407,7 +1407,7 @@ function stmtToIR(context)
         var testExit = testContext.getExitBlock();
         testExit.replBranch(
             new IfInstr(
-                [boolVal, ConstValue.getConst(true)],
+                [boolVal, IRConst.getConst(true)],
                 'EQ',
                 bodyContext.entryBlock,
                 loopExit
@@ -1466,7 +1466,7 @@ function stmtToIR(context)
                 [
                     propNameFuncPtr, 
                     propNameFunc,
-                    ConstValue.getConst(undefined)
+                    IRConst.getConst(undefined)
                 ]
             )
         );
@@ -1514,7 +1514,7 @@ function stmtToIR(context)
         var testExit = testCtx.getExitBlock();
         testExit.replBranch(
             new IfInstr(
-                [curPropName, ConstValue.getConst(undefined)],
+                [curPropName, IRConst.getConst(undefined)],
                 'NE',
                 loopBody,
                 loopExit
@@ -1617,7 +1617,7 @@ function stmtToIR(context)
             if (retType === IRType.box)
             {
                 // Return the undefined constant
-                context.addInstr(new RetInstr(ConstValue.getConst(undefined)));
+                context.addInstr(new RetInstr(IRConst.getConst(undefined)));
             }
 
             // If the return type is none
@@ -1753,7 +1753,7 @@ function stmtToIR(context)
                 // Replace the merge branch by an if instruction
                 curTestCtx.getExitBlock().replBranch(
                     new IfInstr(
-                        [testVal, ConstValue.getConst(true)],
+                        [testVal, IRConst.getConst(true)],
                         'EQ',
                         stmtCtx.entryBlock,
                         nextTestCtx.entryBlock
@@ -1768,7 +1768,7 @@ function stmtToIR(context)
                 curTestCtx.bridge();
 
                 // The test evaluates to false
-                var testVal = ConstValue.getConst(false);
+                var testVal = IRConst.getConst(false);
 
                 // Create a new context for the clause statements
                 var stmtCtx = createLoopEntry(
@@ -1805,7 +1805,7 @@ function stmtToIR(context)
                 // Add the if test instruction
                 curTestCtx.addInstr(
                     new IfInstr(
-                        [testVal, ConstValue.getConst(true)],
+                        [testVal, IRConst.getConst(true)],
                         'EQ',
                         stmtCtx.entryBlock,
                         nextTestCtx.entryBlock
@@ -2044,7 +2044,7 @@ function exprToIR(context)
         // Set the output to the true constant
         // This works for empty expression statements and the case where
         // the test expression of a for loop is not specified
-        context.setOutput(context.entryBlock, ConstValue.getConst(true));
+        context.setOutput(context.entryBlock, IRConst.getConst(true));
     }
 
     else if (astExpr instanceof FunctionExpr)
@@ -2078,7 +2078,7 @@ function exprToIR(context)
         var closVal = insertPrimCallIR(
             context, 
             'makeClos', 
-            [nestFunc, ConstValue.getConst(closVals.length, IRType.pint)]
+            [nestFunc, IRConst.getConst(closVals.length, IRType.pint)]
         );
 
         // Write the closure variables into the closure
@@ -2089,7 +2089,7 @@ function exprToIR(context)
                 'set_clos_cells', 
                 [
                     closVal, 
-                    ConstValue.getConst(i, IRType.pint),
+                    IRConst.getConst(i, IRType.pint),
                     closVals[i]
                 ]
             );
@@ -2134,7 +2134,7 @@ function exprToIR(context)
             context.params.debug === false)
         {
             // Set the undefined value as the context output
-            context.setOutput(context.entryBlock, ConstValue.getConst(undefined));
+            context.setOutput(context.entryBlock, IRConst.getConst(undefined));
 
             // Exit early
             return;
@@ -2213,7 +2213,7 @@ function exprToIR(context)
             if (funcVal instanceof IRFunction)
             {
                 var funcPtr = funcVal;
-                var funcObj = ConstValue.getConst(undefined);
+                var funcObj = IRConst.getConst(undefined);
             }
             else
             {
@@ -2278,8 +2278,8 @@ function exprToIR(context)
             context,
             regexpCtor,
             [
-                ConstValue.getConst(astExpr.pattern),
-                ConstValue.getConst(astExpr.flags)
+                IRConst.getConst(astExpr.pattern),
+                IRConst.getConst(astExpr.flags)
             ]
         );
 
@@ -2298,7 +2298,7 @@ function exprToIR(context)
             constType === 'boolean' || constValue === null || 
             constValue === undefined)
         {
-           constValue = ConstValue.getConst(astExpr.value);
+            constValue = IRConst.getConst(astExpr.value);
         }
         else
         {
@@ -2321,7 +2321,7 @@ function exprToIR(context)
         var newArray = insertPrimCallIR(
             elemCtx, 
             'newArray', 
-            [ConstValue.getConst(elemVals.length, IRType.pint)]
+            [IRConst.getConst(elemVals.length, IRType.pint)]
         );
 
         // Set the value of each element in the new array
@@ -2330,7 +2330,7 @@ function exprToIR(context)
             insertPrimCallIR(
                 elemCtx, 
                 'putPropVal', 
-                [newArray, ConstValue.getConst(i), elemVals[i]]
+                [newArray, IRConst.getConst(i), elemVals[i]]
             );
         }
 
@@ -2445,7 +2445,7 @@ function opToIR(context)
 
         // Get an incrementation value (1) with the same type
         // as the input value
-        var incrVal = ConstValue.getConst(1, preVal.type);
+        var incrVal = IRConst.getConst(1, preVal.type);
 
         // Compute the incremented value
         var postVal = makeOp(
@@ -2624,7 +2624,7 @@ function opToIR(context)
             // Add a phi node to select the value
             var joinVal = joinBlock.addInstr(
                 new PhiInstr(
-                    [ConstValue.getConst(true), ConstValue.getConst(false)],
+                    [IRConst.getConst(true), IRConst.getConst(false)],
                     [trueBlock, falseBlock]
                 )
             );
@@ -2707,7 +2707,7 @@ function opToIR(context)
             // If the first expression evaluates to true, evaluate the second
             fstContext.getExitBlock().replBranch(
                 new IfInstr(
-                    [boolVal, ConstValue.getConst(true)],
+                    [boolVal, IRConst.getConst(true)],
                     'EQ',
                     secEntry,
                     joinBlock
@@ -2769,7 +2769,7 @@ function opToIR(context)
             // If the first expression evaluates to false, evaluate the second
             fstContext.getExitBlock().replBranch(
                 new IfInstr(
-                    [boolVal, ConstValue.getConst(true)],
+                    [boolVal, IRConst.getConst(true)],
                     'EQ',
                     joinBlock,
                     secEntry
@@ -2814,7 +2814,7 @@ function opToIR(context)
             // Create the if branching instruction
             testContext.addInstr(
                 new IfInstr(
-                    [boolVal, ConstValue.getConst(true)],
+                    [boolVal, IRConst.getConst(true)],
                     'EQ',
                     trueContext.entryBlock,
                     falseContext.entryBlock
@@ -2863,9 +2863,9 @@ function opToIR(context)
 
             // FIXME: want to add HIR instructions for HIR ops, be able to
             // perform constant propagation on HIR
-            if (argVals[0] instanceof ConstValue && argVals[0].isNumber())
+            if (argVals[0] instanceof IRConst && argVals[0].isNumber())
             {
-                var opVal = ConstValue.getConst(
+                var opVal = IRConst.getConst(
                     num_mul(argVals[0].value, -1),
                     argVals[0].type
                 );
@@ -2877,7 +2877,7 @@ function opToIR(context)
                     argsContext,
                     'sub',
                     SubInstr,
-                    [ConstValue.getConst(0, argVals[0].type), argVals[0]]
+                    [IRConst.getConst(0, argVals[0].type), argVals[0]]
                 );
             }
 
@@ -2898,7 +2898,7 @@ function opToIR(context)
                 argsContext,
                 'add',
                 AddInstr,
-                [ConstValue.getConst(0, argVals[0].type), argVals[0]]
+                [IRConst.getConst(0, argVals[0].type), argVals[0]]
             );
 
             // Set the subtraction's output value as the output
@@ -2969,7 +2969,7 @@ function opToIR(context)
                     // Do nothing
                     context.setOutput(
                         context.entryBlock, 
-                        ConstValue.getConst(true)
+                        IRConst.getConst(true)
                     );
                 }
 
@@ -2987,7 +2987,7 @@ function opToIR(context)
                         var hasTestVal = insertPrimCallIR(
                             context,
                             'hasPropVal',
-                            [context.withVal, ConstValue.getConst(varName)]
+                            [context.withVal, IRConst.getConst(varName)]
                         );
 
                         // Context for the case where the with object has the property
@@ -3007,7 +3007,7 @@ function opToIR(context)
                         // Add the if branch expression
                         context.addInstr(
                             new IfInstr(
-                                [hasTestVal, ConstValue.getConst(true)],
+                                [hasTestVal, IRConst.getConst(true)],
                                 'EQ',
                                 objContext.entryBlock,
                                 globContext.entryBlock
@@ -3026,7 +3026,7 @@ function opToIR(context)
                     opValueGlob = insertPrimCallIR(
                         globContext, 
                         'delPropVal', 
-                        [globalObj, ConstValue.getConst(varName)]
+                        [globalObj, IRConst.getConst(varName)]
                     );
 
                     // If we are within a with block
@@ -3036,7 +3036,7 @@ function opToIR(context)
                         var opValueObj = insertPrimCallIR(
                             objContext, 
                             'delPropVal', 
-                            [context.withVal, ConstValue.getConst(varName)]
+                            [context.withVal, IRConst.getConst(varName)]
                         );
 
                         // Bridge the prop and var contexts
@@ -3088,7 +3088,7 @@ function opToIR(context)
                 // Set the output to the true constant
                 context.setOutput(
                     fieldCtx.getExitBlock(), 
-                    ConstValue.getConst(true)
+                    IRConst.getConst(true)
                 );
             }
         }
@@ -3305,7 +3305,7 @@ function assgToIR(context, rhsVal)
             var hasTestVal = insertPrimCallIR(
                 context, 
                 'hasPropVal', 
-                [context.withVal, ConstValue.getConst(symName)]
+                [context.withVal, IRConst.getConst(symName)]
             );
 
             // Context for the case where the with object has the property
@@ -3325,7 +3325,7 @@ function assgToIR(context, rhsVal)
             // Add the if branch expression
             context.addInstr(
                 new IfInstr(
-                    [hasTestVal, ConstValue.getConst(true)],
+                    [hasTestVal, IRConst.getConst(true)],
                     'EQ',
                     propContext.entryBlock,
                     varContext.entryBlock
@@ -3350,7 +3350,7 @@ function assgToIR(context, rhsVal)
                 lhsVal = insertPrimCallIR(
                     varContext, 
                     'getPropVal', 
-                    [globalObj, ConstValue.getConst(symName)]
+                    [globalObj, IRConst.getConst(symName)]
                 );
             }
 
@@ -3395,7 +3395,7 @@ function assgToIR(context, rhsVal)
             insertPrimCallIR(
                 varContext, 
                 'putPropVal', 
-                [globalObj, ConstValue.getConst(symName), rhsValAssg]
+                [globalObj, IRConst.getConst(symName), rhsValAssg]
             );
         }
 
@@ -3433,7 +3433,7 @@ function assgToIR(context, rhsVal)
                 lhsVal = insertPrimCallIR(
                     propContext, 
                     'getPropVal', 
-                    [context.withVal, ConstValue.getConst(symName)]
+                    [context.withVal, IRConst.getConst(symName)]
                 );
 
                 // Update the RHS value according to the specified function
@@ -3453,7 +3453,7 @@ function assgToIR(context, rhsVal)
             insertPrimCallIR(
                 propContext, 
                 'putPropVal', 
-                [context.withVal, ConstValue.getConst(symName), rhsValAssg]
+                [context.withVal, IRConst.getConst(symName), rhsValAssg]
             );
 
             // Bridge the prop and var contexts
@@ -3583,7 +3583,7 @@ function refToIR(context)
         var hasTestVal = insertPrimCallIR(
             context,
             'hasPropVal',
-            [context.withVal, ConstValue.getConst(symName)]
+            [context.withVal, IRConst.getConst(symName)]
         );
 
         // Context for the case where the with object has the property
@@ -3603,7 +3603,7 @@ function refToIR(context)
         // Add the if branch expression
         context.addInstr(
             new IfInstr(
-                [hasTestVal, ConstValue.getConst(true)],
+                [hasTestVal, IRConst.getConst(true)],
                 'EQ',
                 propContext.entryBlock,
                 varContext.entryBlock
@@ -3638,7 +3638,7 @@ function refToIR(context)
             }
 
             // Precompute the hash code of the symbol
-            var symHashVal = ConstValue.getConst(
+            var symHashVal = IRConst.getConst(
                 precompHash(symName, context.params),
                 IRType.pint
             );
@@ -3655,7 +3655,7 @@ function refToIR(context)
                     'getGlobalFunc', 
                     [
                         globalObj, 
-                        ConstValue.getConst(symName),
+                        IRConst.getConst(symName),
                         symHashVal
                     ]
                 );
@@ -3668,7 +3668,7 @@ function refToIR(context)
                     'getGlobal', 
                     [
                         globalObj, 
-                        ConstValue.getConst(symName),
+                        IRConst.getConst(symName),
                         symHashVal
                     ]
                 );
@@ -3720,7 +3720,7 @@ function refToIR(context)
         var varValueProp = insertPrimCallIR(
             propContext, 
             'getPropVal', 
-            [context.withVal, ConstValue.getConst(symName)]
+            [context.withVal, IRConst.getConst(symName)]
         );
 
         // Bridge the prop and var contexts
@@ -3829,7 +3829,7 @@ function insertCondIR(context, testVal, trueGenFunc, falseGenFunc)
     // Branch based on the test value
     context.addInstr(
         new IfInstr(
-            [testVal, ConstValue.getConst(true)],
+            [testVal, IRConst.getConst(true)],
             'EQ',
             (trueCtx !== undefined)? trueCtx.entryBlock:contBlock,
             (falseCtx !== undefined)? falseCtx.entryBlock:contBlock
@@ -3923,7 +3923,7 @@ function insertErrorIR(context, errorName, errorMsg)
         'makeError', 
         [
             errorCtor,
-            ConstValue.getConst(errorMsg)
+            IRConst.getConst(errorMsg)
         ]
     );
 
@@ -3945,8 +3945,8 @@ function insertPrimCallIR(context, primName, argVals)
         new CallFuncInstr(
             [
                 primFunc, 
-                ConstValue.getConst(undefined),
-                ConstValue.getConst(undefined)
+                IRConst.getConst(undefined),
+                IRConst.getConst(undefined)
             ].concat(argVals)
         )
     );
@@ -3965,7 +3965,7 @@ function insertConstructIR(context, funcVal, argVals)
     var funcProto = insertPrimCallIR(
         context,
         'getPropVal', 
-        [funcVal, ConstValue.getConst('prototype')]
+        [funcVal, IRConst.getConst('prototype')]
     );
 
     // If the prototype field is an object use it, otherwise, use the
@@ -3984,7 +3984,7 @@ function insertConstructIR(context, funcVal, argVals)
     );
     context.addInstr(
         new IfInstr(
-            [testVal, ConstValue.getConst(true)],
+            [testVal, IRConst.getConst(true)],
             'EQ',
             protoIsObj,
             protoNotObjCtx.entryBlock
@@ -4067,7 +4067,7 @@ function insertConstructIR(context, funcVal, argVals)
     );
     context.addInstr(
         new IfInstr(
-            [testVal, ConstValue.getConst(true)],
+            [testVal, IRConst.getConst(true)],
             'EQ',
             retIsObj,
             retNotObj
@@ -4227,7 +4227,7 @@ function mergeContexts(
         if (allSameType === false)
         {
             // Set the merge value to undefined
-            mergeMap.addItem(varName, ConstValue.getConst(undefined));
+            mergeMap.addItem(varName, IRConst.getConst(undefined));
         }
 
         // If not all incoming values are the same
@@ -4377,8 +4377,8 @@ function mergeLoopEntry(
 
                 // Replace the phi node by the undefined value in the loop
                 // entry and the continuation locals
-                entryLocals.setItem(varName, ConstValue.getConst(undefined));
-                contLocals.setItem(varName, ConstValue.getConst(undefined));
+                entryLocals.setItem(varName, IRConst.getConst(undefined));
+                contLocals.setItem(varName, IRConst.getConst(undefined));
 
                 // Remove the phi node
                 entryBlock.remInstr(phiNode);

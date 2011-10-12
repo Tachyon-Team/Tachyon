@@ -108,7 +108,7 @@ function linkCode(codeBlock, backend, params)
         }
 
         // If this is a string value
-        else if (value instanceof ConstValue && value.isString())
+        else if (value instanceof IRConst && value.isString())
         {
             // If strings cannot yet be linked, do nothing
             if ((params.getStrObj instanceof Function) == false)

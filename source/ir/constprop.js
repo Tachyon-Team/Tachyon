@@ -74,7 +74,7 @@ function constProp(cfg, params)
     function getValue(val)
     {
         // If the value is a constant, return it directly
-        if (val instanceof ConstValue)
+        if (val instanceof IRConst)
         {
             return val;
         }
@@ -324,7 +324,7 @@ function constProp(cfg, params)
             }
 
             // If there is a constant value for this instruction
-            else if (val instanceof ConstValue)
+            else if (val instanceof IRConst)
             {
                 //print(instr + ' ==> ' + val);
 
@@ -408,8 +408,8 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
         if (v0 === TOP || v1 === TOP)
             return TOP;
 
-        if (v0 instanceof ConstValue && v0.isNumber() &&
-            v1 instanceof ConstValue && v1.isNumber())
+        if (v0 instanceof IRConst && v0.isNumber() &&
+            v1 instanceof IRConst && v1.isNumber())
         {
             if (v0.isInt() && v1.isInt())
             {
@@ -430,7 +430,7 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
             // If there was no overflow, return the result
             if (this.type.valInRange(result, params))
             {
-                return ConstValue.getConst(
+                return IRConst.getConst(
                     result,
                     this.type
                 );
@@ -439,8 +439,8 @@ ArithInstr.genConstEval = function (opFunc, genFunc)
 
         if (genFunc !== undefined)
         {           
-            var u0 = (v0 instanceof ConstValue)? v0:this.uses[0];
-            var u1 = (v1 instanceof ConstValue)? v1:this.uses[1];
+            var u0 = (v0 instanceof IRConst)? v0:this.uses[0];
+            var u1 = (v1 instanceof IRConst)? v1:this.uses[1];
 
             return genFunc(u0, u1, this.type);
         }
@@ -459,10 +459,10 @@ AddInstr.prototype.constEval = ArithInstr.genConstEval(
     },
     function (u0, u1)
     {
-        if (u0 instanceof ConstValue && num_eq(u0.value, 0))
+        if (u0 instanceof IRConst && num_eq(u0.value, 0))
             return u1;
 
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -476,7 +476,7 @@ SubInstr.prototype.constEval = ArithInstr.genConstEval(
     },
     function (u0, u1)
     {
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -490,17 +490,17 @@ MulInstr.prototype.constEval = ArithInstr.genConstEval(
     },
     function (u0, u1, outType)
     {
-        if (u0 instanceof ConstValue && num_eq(u0.value, 1))
+        if (u0 instanceof IRConst && num_eq(u0.value, 1))
             return u1;
 
-        if (u1 instanceof ConstValue && num_eq(u1.value, 1))
+        if (u1 instanceof IRConst && num_eq(u1.value, 1))
             return u0;
 
-        if (((u0 instanceof ConstValue && num_eq(u0.value, 0)) || 
-             (u1 instanceof ConstValue && num_eq(u1.value, 0))) &&
+        if (((u0 instanceof IRConst && num_eq(u0.value, 0)) || 
+             (u1 instanceof IRConst && num_eq(u1.value, 0))) &&
             u0.type === u1.type)
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 0,
                 outType
             );
@@ -527,7 +527,7 @@ DivInstr.prototype.constEval = ArithInstr.genConstEval(
     },
     function (u0, u1)
     {
-        if (u1 instanceof ConstValue && num_eq(u1.value, 1))
+        if (u1 instanceof IRConst && num_eq(u1.value, 1))
             return u0;
 
         return BOT;
@@ -555,8 +555,8 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
             return TOP;
 
         // If both values are constant integers
-        if (v0 instanceof ConstValue && 
-            v1 instanceof ConstValue &&
+        if (v0 instanceof IRConst && 
+            v1 instanceof IRConst &&
             v0.isInt() && v1.isInt() &&
             !(v0.type === IRType.box && !v0.isBoxInt(params)) &&
             !(v1.type === IRType.box && !v1.isBoxInt(params))
@@ -577,7 +577,7 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
                 // If the result is within the range of the output type, return it
                 if (this.type.valInRange(result, params))
                 {
-                    return ConstValue.getConst(
+                    return IRConst.getConst(
                         result,
                         this.type
                     );
@@ -587,8 +587,8 @@ BitOpInstr.genConstEval = function (opFunc, genFunc)
 
         if (genFunc !== undefined)
         {
-            var u0 = (v0 instanceof ConstValue)? v0:this.uses[0];
-            var u1 = (v1 instanceof ConstValue)? v1:this.uses[1];
+            var u0 = (v0 instanceof IRConst)? v0:this.uses[0];
+            var u1 = (v1 instanceof IRConst)? v1:this.uses[1];
 
             return genFunc(u0, u1, this.type, params);
         }
@@ -614,7 +614,7 @@ NotInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, par
 
 
     // If the operand is a constant integer
-    if (v0 instanceof ConstValue && v0.isInt() &&
+    if (v0 instanceof IRConst && v0.isInt() &&
         !(v0.type === IRType.box && !v0.isBoxInt(params))
     )
     {
@@ -640,7 +640,7 @@ NotInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, par
             // If the result is within the range of the output type, return it
             if (this.type.valInRange(result, params))
             {
-                return ConstValue.getConst(
+                return IRConst.getConst(
                     result,
                     this.type
                 );
@@ -662,60 +662,60 @@ AndInstr.prototype.constEval = BitOpInstr.genConstEval(
         var TAG_INT_MASK = params.staticEnv.getBinding('TAG_INT_MASK').value;
         var TAG_REF_MASK = params.staticEnv.getBinding('TAG_REF_MASK').value;
 
-        if ((u0 instanceof ConstValue && num_eq(u0.value, 0)) ||
-            (u1 instanceof ConstValue && num_eq(u1.value, 0)))
+        if ((u0 instanceof IRConst && num_eq(u0.value, 0)) ||
+            (u1 instanceof IRConst && num_eq(u1.value, 0)))
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 0,
                 outType
             );
         }
 
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
+        if (u0 instanceof IRConst &&
+            u1 instanceof IRConst &&
             u0.type === IRType.box &&
             !u0.isBoxInt(params) &&
             u1.type === IRType.pint && 
             num_eq(u1.value, TAG_REF_MASK))
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 u0.getTagBits(params),
                 IRType.pint
             );
         }
 
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
+        if (u0 instanceof IRConst &&
+            u1 instanceof IRConst &&
             u1.type === IRType.box &&
             !u1.isBoxInt(params) &&
             u0.type === IRType.pint && 
             num_eq(u0.value, TAG_REF_MASK))
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 u1.getTagBits(params),
                 IRType.pint
             );
         }
 
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
+        if (u0 instanceof IRConst &&
+            u1 instanceof IRConst &&
             u0.type === IRType.box &&
             u1.type === IRType.pint && 
             num_eq(u1.value, TAG_INT_MASK))
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 num_and(u0.getTagBits(params), TAG_INT_MASK),
                 IRType.pint
             );
         }
 
-        if (u0 instanceof ConstValue &&
-            u1 instanceof ConstValue &&
+        if (u0 instanceof IRConst &&
+            u1 instanceof IRConst &&
             u1.type === IRType.box &&
             u0.type === IRType.pint && 
             num_eq(u0.value, TAG_INT_MASK))
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 num_and(u1.getTagBits(params), TAG_INT_MASK),
                 IRType.pint
             );
@@ -732,10 +732,10 @@ OrInstr.prototype.constEval = BitOpInstr.genConstEval(
     },
     function (u0, u1, type)
     {
-        if (u0 instanceof ConstValue && num_eq(u0.value, 0))
+        if (u0 instanceof IRConst && num_eq(u0.value, 0))
             return u1;
 
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -756,7 +756,7 @@ LsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     },
     function (u0, u1, type)
     {
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -770,7 +770,7 @@ RsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     },
     function (u0, u1, type)
     {
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -784,7 +784,7 @@ UrsftInstr.prototype.constEval = BitOpInstr.genConstEval(
     },
     function (u0, u1, type)
     {
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -801,7 +801,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
     if (v0 === TOP)
         return TOP;
 
-    if (v0 instanceof ConstValue)
+    if (v0 instanceof IRConst)
     {
         var result;
 
@@ -837,7 +837,7 @@ ICastInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, p
 
         if (result !== undefined)
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 result,
                 this.type
             );
@@ -859,8 +859,8 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
             return TOP;
         }
 
-        if (v0 instanceof ConstValue && v0.isNumber() &&
-            v1 instanceof ConstValue && v1.isNumber())
+        if (v0 instanceof IRConst && v0.isNumber() &&
+            v1 instanceof IRConst && v1.isNumber())
         {
             if (v0.isInt() && v1.isInt())
             {
@@ -885,7 +885,7 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
                 queueEdge(this, this.targets[0]);
 
                 // Return the result
-                return ConstValue.getConst(
+                return IRConst.getConst(
                     result,
                     this.type
                 );
@@ -894,8 +894,8 @@ ArithOvfInstr.genConstEval = function (opFunc, genFunc)
 
         if (genFunc !== undefined)
         {
-            var u0 = (v0 instanceof ConstValue)? v0:this.uses[0];
-            var u1 = (v1 instanceof ConstValue)? v1:this.uses[1];
+            var u0 = (v0 instanceof IRConst)? v0:this.uses[0];
+            var u1 = (v1 instanceof IRConst)? v1:this.uses[1];
 
             var result = genFunc(u0, u1, this.type);
 
@@ -926,10 +926,10 @@ AddOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     },
     function (u0, u1)
     {
-        if (u0 instanceof ConstValue && num_eq(u0.value, 0))
+        if (u0 instanceof IRConst && num_eq(u0.value, 0))
             return u1;
 
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -943,7 +943,7 @@ SubOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     },
     function (u0, u1)
     {
-        if (u1 instanceof ConstValue && num_eq(u1.value, 0))
+        if (u1 instanceof IRConst && num_eq(u1.value, 0))
             return u0;
 
         return BOT;
@@ -957,17 +957,17 @@ MulOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
     },
     function (u0, u1, outType)
     {
-        if (u0 instanceof ConstValue && num_eq(u0.value, 1))
+        if (u0 instanceof IRConst && num_eq(u0.value, 1))
             return u1;
 
-        if (u1 instanceof ConstValue && num_eq(u1.value, 1))
+        if (u1 instanceof IRConst && num_eq(u1.value, 1))
             return u0;
 
-        if (((u0 instanceof ConstValue && num_eq(u0.value, 0)) ||
-             (u1 instanceof ConstValue && num_eq(u1.value, 0))) &&
+        if (((u0 instanceof IRConst && num_eq(u0.value, 0)) ||
+             (u1 instanceof IRConst && num_eq(u1.value, 0))) &&
             u0.type === u1.type)
         {
-            return ConstValue.getConst(
+            return IRConst.getConst(
                 0,
                 outType
             );
@@ -987,7 +987,7 @@ LsftOvfInstr.prototype.constEval = ArithOvfInstr.genConstEval(
 function constEvalBool(val)
 {
     // If the test is a constant
-    if (val instanceof ConstValue)
+    if (val instanceof IRConst)
     {
         // If the test evaluates to true
         if (
@@ -996,7 +996,7 @@ function constEvalBool(val)
             (val.isString() && val.value !== '')
         )
         {
-            return ConstValue.getConst(true);
+            return IRConst.getConst(true);
         }
 
         // If the test evaluates to false
@@ -1008,7 +1008,7 @@ function constEvalBool(val)
             num_eq(val.value, 0)
         )
         {
-            return ConstValue.getConst(false);
+            return IRConst.getConst(false);
         }
     }
 
@@ -1026,7 +1026,7 @@ CallFuncInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge
         var boolVal = constEvalBool(getValue(this.uses[this.uses.length-1]));
 
         // If we could evaluate the boolean value, return it
-        if (boolVal instanceof ConstValue)
+        if (boolVal instanceof IRConst)
             return boolVal;
     }
 
@@ -1049,7 +1049,7 @@ IfInstr.prototype.constEval = function (getValue, edgeReachable, queueEdge, para
     if (v0 === TOP || v1 === TOP)
         testVal = TOP;
 
-    if (v0 instanceof ConstValue && v1 instanceof ConstValue)
+    if (v0 instanceof IRConst && v1 instanceof IRConst)
     {
         v0 = v0.value;
         v1 = v1.value;

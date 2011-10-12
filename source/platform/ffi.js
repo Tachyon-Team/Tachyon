@@ -580,7 +580,7 @@ function CProxy(
     );
 
     assert (
-        ctxVal instanceof ConstValue ||
+        ctxVal instanceof IRConst ||
         ctxVal === undefined,
         'invalid context value'
     );

@@ -52,7 +52,7 @@ Maxime Chevalier-Boisvert
 @class Represents constant values in the IR
 @augments IRValue
 */
-function ConstValue(value, type)
+function IRConst(value, type)
 {
     // Ensure that the specified value is valid
     assert (
@@ -81,12 +81,12 @@ function ConstValue(value, type)
     */
     this.type = type;
 }
-ConstValue.prototype = new IRValue();
+IRConst.prototype = new IRValue();
 
 /**
 Get a string representation of a constant instruction
 */
-ConstValue.prototype.toString = function ()
+IRConst.prototype.toString = function ()
 {
     if (typeof this.value === 'string')
     {
@@ -117,12 +117,12 @@ ConstValue.prototype.toString = function ()
 Get a string representation of an instruction's value/name.
 Returns the constant's string representation directly.
 */
-ConstValue.prototype.getValName = ConstValue.prototype.toString;
+IRConst.prototype.getValName = IRConst.prototype.toString;
 
 /**
 Test if a constant is a number
 */
-ConstValue.prototype.isNumber = function ()
+IRConst.prototype.isNumber = function ()
 {
     return (num_instance(this.value) === true);
 };
@@ -130,7 +130,7 @@ ConstValue.prototype.isNumber = function ()
 /**
 Test if a constant is an integer
 */
-ConstValue.prototype.isInt = function ()
+IRConst.prototype.isInt = function ()
 {
     return (this.isNumber() && num_integer(this.value));
 };
@@ -138,7 +138,7 @@ ConstValue.prototype.isInt = function ()
 /**
 Test if a constant is a boxed integer
 */
-ConstValue.prototype.isBoxInt = function (params)
+IRConst.prototype.isBoxInt = function (params)
 {
     assert (
         params instanceof CompParams,
@@ -157,7 +157,7 @@ ConstValue.prototype.isBoxInt = function (params)
 /**
 Test if a constant is a string
 */
-ConstValue.prototype.isString = function ()
+IRConst.prototype.isString = function ()
 {
     return (typeof this.value === 'string');
 };
@@ -165,7 +165,7 @@ ConstValue.prototype.isString = function ()
 /**
 Test if a constant is the undefined constant
 */
-ConstValue.prototype.isUndef = function ()
+IRConst.prototype.isUndef = function ()
 {
     return this.value === undefined;
 };
@@ -173,7 +173,7 @@ ConstValue.prototype.isUndef = function ()
 /**
 Get the tag bits associated with a constant
 */
-ConstValue.prototype.getTagBits = function (params)
+IRConst.prototype.getTagBits = function (params)
 {
     assert (
         params instanceof CompParams,
@@ -222,7 +222,7 @@ ConstValue.prototype.getTagBits = function (params)
 /**
 Get the immediate value (bit pattern) of a constant
 */
-ConstValue.prototype.getImmValue = function (params)
+IRConst.prototype.getImmValue = function (params)
 {
     assert (
         params instanceof CompParams,
@@ -270,7 +270,7 @@ ConstValue.prototype.getImmValue = function (params)
 /**
 Hash function to be used for the constant map.
 */
-ConstValue.hashFunc = function (val)
+IRConst.hashFunc = function (val)
 {
     if (bignum_instance(val))
         return defHashFunc(bignum_to_string(val));
@@ -281,7 +281,7 @@ ConstValue.hashFunc = function (val)
 /**
 Equality function to be used for the constant map.
 */
-ConstValue.equalFunc = function (key1, key2)
+IRConst.equalFunc = function (key1, key2)
 {
     if (num_instance(key1) && num_instance(key2))
         return num_eq(key1, key2);
@@ -292,34 +292,34 @@ ConstValue.equalFunc = function (key1, key2)
 /**
 Map of values to maps of types to IR constants
 */
-ConstValue.constMap = new HashMap(ConstValue.hashFunc, ConstValue.equalFunc);
+IRConst.constMap = new HashMap(IRConst.hashFunc, IRConst.equalFunc);
 
 /**
 Get the unique constant instance for a given value
 */
-ConstValue.getConst = function (value, type)
+IRConst.getConst = function (value, type)
 {
     // The default type is boxed
     if (type === undefined)
         type = IRType.box;
 
     // If there is no type map for this value
-    if (!ConstValue.constMap.hasItem(value))
+    if (!IRConst.constMap.hasItem(value))
     {
         // Create a new hash map to map types to constants
         var typeMap = new HashMap();
-        ConstValue.constMap.addItem(value, typeMap);
+        IRConst.constMap.addItem(value, typeMap);
     }
     else
     {
-        var typeMap = ConstValue.constMap.getItem(value);
+        var typeMap = IRConst.constMap.getItem(value);
     }
 
     // If there is no constant for this type
     if (!typeMap.hasItem(type))
     {
         // Create a new constant with the specified type
-        var constant = new ConstValue(value, type);
+        var constant = new IRConst(value, type);
         typeMap.addItem(type, constant);
     }
     else

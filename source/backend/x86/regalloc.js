@@ -686,7 +686,7 @@ x86.getImmSize = function (value, params)
         return params.backend.regSizeBits;
 
     // If the value is not a constant, stop
-    if ((value instanceof ConstValue) === false)
+    if ((value instanceof IRConst) === false)
         return undefined;
 
     // If the value is not an immediate integer, stop
@@ -723,7 +723,7 @@ x86.isLinkValue = function (value)
     return (
         value instanceof IRFunction ||
         value instanceof CFunction ||
-        (value instanceof ConstValue && value.isString())
+        (value instanceof IRConst && value.isString())
     );
 }
 

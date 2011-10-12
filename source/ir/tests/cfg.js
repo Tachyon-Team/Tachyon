@@ -84,14 +84,14 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         // Entry block
         addInstr(
             new AddInstr(
-                ConstValue.getConst(1),
-                ConstValue.getConst(2)
+                IRConst.getConst(1),
+                IRConst.getConst(2)
             ),
             entry
         );
         addInstr(
             new IfInstr(
-                [ConstValue.getConst(true), ConstValue.getConst(true)],
+                [IRConst.getConst(true), IRConst.getConst(true)],
                 'EQ', 
                 l1, 
                 r1
@@ -102,15 +102,15 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         // L1 block
         addInstr(
             new AddInstr(
-                ConstValue.getConst(1), 
-                ConstValue.getConst(2)
+                IRConst.getConst(1), 
+                IRConst.getConst(2)
             ),
             l1
         );
         addInstr(
             new SubInstr(
-                ConstValue.getConst(-1), 
-                ConstValue.getConst(2)
+                IRConst.getConst(-1), 
+                IRConst.getConst(2)
             ),
             l1
         );
@@ -130,21 +130,21 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         addInstr(
             new ModInstr(
                 l1.instrs[1],
-                ConstValue.getConst(7)
+                IRConst.getConst(7)
             ),
             l2
         );
         addInstr(
             new AddInstr(
-                ConstValue.getConst(3),
-                ConstValue.getConst(4)
+                IRConst.getConst(3),
+                IRConst.getConst(4)
             ),
             l2
         );
         addInstr(
             new SubInstr(
-                ConstValue.getConst(3),
-                ConstValue.getConst(4)
+                IRConst.getConst(3),
+                IRConst.getConst(4)
             ),
             l2
         );
@@ -156,8 +156,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
         // R1 block
         addInstr(
             new MulInstr(
-                ConstValue.getConst(7, IRType.pint),
-                ConstValue.getConst(8, IRType.pint)
+                IRConst.getConst(7, IRType.pint),
+                IRConst.getConst(8, IRType.pint)
             ),
             r1
         );
@@ -190,13 +190,13 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
             merge
         );
         addInstr(
-            new RetInstr(ConstValue.getConst(undefined)),
+            new RetInstr(IRConst.getConst(undefined)),
             merge
         );
         addInstr(
             new LsftInstr(
-                ConstValue.getConst(1, IRType.pint), 
-                ConstValue.getConst(2, IRType.pint)
+                IRConst.getConst(1, IRType.pint), 
+                IRConst.getConst(2, IRType.pint)
             ),
             merge,
             'foo',
@@ -287,8 +287,8 @@ Copyright (c) 2010 Tachyon Javascript Engine, All Rights Reserved
 
         block.addInstr(
             new ModInstr(
-                ConstValue.getConst(1),
-                ConstValue.getConst(2)
+                IRConst.getConst(1),
+                IRConst.getConst(2)
             )
         );
         
