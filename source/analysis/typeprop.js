@@ -83,6 +83,10 @@ function TypeDesc(
     classDesc
 )
 {
+    // Empty type descriptors have the uninferred type
+    if (flags === undefined)
+        flags = TypeDesc.flags.NOINF;
+
     /**
     Descriptor flags bit field
     */
@@ -144,11 +148,11 @@ TypeDesc.constant = function (value)
 
     else if (typeof value === 'string')
     {
-        return TypeDesc.string;
+        return new TypeDesc(TypeDesc.flags.STRING);
     }
 
     // TODO: handle other types
-    return TypeDesc.any;
+    return new TypeDesc(TypeDesc.flags.ANY);
 }
 
 /**
@@ -205,14 +209,14 @@ TypeDesc.prototype.toString = function ()
 //
 
 /**
-Type descriptor union (OR) function
+Type descriptor union (OR) function. Updates this type descriptor.
 */
 TypeDesc.prototype.union = function (that)
 {
     // If the other object is the uninferred type
     if (that.flags === TypeDesc.flags.NOINF)
     {
-        return this;
+        // This type remains unchanged
     }
 
     // If this object is the uninferred type
@@ -248,24 +252,6 @@ TypeDesc.prototype.union = function (that)
     }
 }
 
-// Any type descriptor
-TypeDesc.any = new TypeDesc(TypeDesc.flags.ANY);
-
-// Uninferred type descriptor
-TypeDesc.noinf = new TypeDesc(TypeDesc.flags.NOINF);
-
-// Generic undefined type descriptor
-TypeDesc.undef = new TypeDesc(TypeDesc.flags.UNDEF);
-
-// Generic number type descriptor
-TypeDesc.number = new TypeDesc(TypeDesc.flags.INT | TypeDesc.flags.FLOAT);
-
-// Generic string type descriptor
-TypeDesc.string = new TypeDesc(TypeDesc.flags.STRING);
-
-// Generic object type descriptor
-TypeDesc.object = new TypeDesc(TypeDesc.flags.OBJECT);
-
 /**
 @class Object pseudo-class descriptor
 */
@@ -280,6 +266,11 @@ function ClassDesc()
     Field descriptors, the order of field addition is not represented
     */
     this.fieldTypes = {};
+
+    /**
+    Array field type descriptor
+    */
+    this.arrayType = new TypeDesc();
 
     /**
     References to other classes produced by adding fields
@@ -330,7 +321,7 @@ ClassDesc.prototype.addField = function (fieldName)
         newClass.fieldTypes[field] = this.fieldTypes[field];
 
     // Add the new field
-    this.fieldTypes[fieldName] = TypeDesc.Noinf;
+    this.fieldTypes[fieldName] = new TypeDesc();
 
     // Store the new class for future reference
     this.trans[fieldName] = newClass;
@@ -340,7 +331,7 @@ ClassDesc.prototype.addField = function (fieldName)
 }
 
 /**
-Update the type descriptor for a field by unioning it with another
+Update the type descriptor for a field by unioning it with another type
 */
 ClassDesc.prototype.fieldUnion = function (fieldName, type)
 {
@@ -350,12 +341,30 @@ ClassDesc.prototype.fieldUnion = function (fieldName, type)
     );
 
     // Perform the type union
-    this.fieldTypes[fieldName] = this.fieldTypes[fieldName].union(type);
+    this.fieldTypes[fieldName].union(type);
 }
 
-//
-// TODO: field deletion handling
-//
+/**
+Update the array type descriptor by unioning it with another type
+*/
+ClassDesc.prototype.arrayUnion = function (type)
+{
+    this.arrayType.union(type);
+}
+
+/**
+Delete a field from the class
+*/
+ClassDesc.prototype.delField = function (fieldName)
+{
+    assert (
+        this.fieldTypes[fieldName] !== undefined,
+        'field not found: "' + fieldName + '"'
+    );
+
+    // Set the undefined flag on the field type (the field may be undefined)
+    this.fieldTypes[fieldName].union(new TypeDesc.constant(undefined));
+}
 
 /**
 Get the type descriptor for a given field
@@ -415,8 +424,26 @@ undefined value type descriptor.
 */
 
 
-
+//
 // TODO: type analysis function for CFG/function
+//
+function typePropFunc(irFunc, params)
+{
+    assert (
+        irFunc instanceof IRFunction,
+        'expected IR function'
+    );
+
+    // TODO: type prop for sub functions?
+
+
+
+
+
+
+
+
+}
 
 
 
