@@ -355,13 +355,13 @@ function genSpecPrim(genFunc, specParams, compParams)
     );
 
     // If there is no hash table for this function
-    if (compParams.specPrims.hasItem(genFunc) === false)
+    if (compParams.specPrims.has(genFunc) === false)
     {
         // Create the table mapping parameters to functions
         var funcTable = new HashMap(specHashFunc, specEqualFunc);
 
         // Map this function to the table
-        compParams.specPrims.addItem(genFunc, funcTable);
+        compParams.specPrims.set(genFunc, funcTable);
     }
     else
     {
@@ -370,8 +370,8 @@ function genSpecPrim(genFunc, specParams, compParams)
     }
 
     // If there is a cache hit for the parameters, return the match
-    if (funcTable.hasItem(specParams))
-        return funcTable.getItem(specParams);
+    if (funcTable.has(specParams))
+        return funcTable.get(specParams);
 
     //log.trace('*** generating specialized primitive ***');
 

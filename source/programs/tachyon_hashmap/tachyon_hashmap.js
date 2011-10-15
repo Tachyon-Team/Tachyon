@@ -73,7 +73,7 @@ function test()
         print('hash: ' + defHashFunc(keyList[i]));
         */
 
-        map.addItem(keyList[i], valList[i]);
+        map.set(keyList[i], valList[i]);
     }
 
     /*
@@ -82,10 +82,10 @@ function test()
 
     for (var i = 0; i < keyList.length; ++i)
     {
-        if (!map.hasItem(keyList[i]))
+        if (!map.has(keyList[i]))
             return 1;
 
-        var val = map.getItem(keyList[i]);
+        var val = map.get(keyList[i]);
 
         /*
         print('key: ' + keyList[i]);
@@ -120,7 +120,7 @@ function test()
     {
         if (c % 3 === 0)
         {
-            map.remItem(keyList[i]);
+            map.rem(keyList[i]);
 
             keyList.splice(i, 1);
             valList.splice(i, 1);
@@ -131,10 +131,10 @@ function test()
 
     for (var i = 0; i < keyList.length; ++i)
     {
-        if (!map.hasItem(keyList[i]))
+        if (!map.has(keyList[i]))
             return 5;
 
-        var val = map.getItem(keyList[i]);
+        var val = map.get(keyList[i]);
 
         if (val !== valList[i])
             return 6;

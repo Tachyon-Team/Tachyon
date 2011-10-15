@@ -251,7 +251,7 @@ x86.RegAllocMap.prototype.copy = function ()
         for (var i = 0; i < list.length; ++i)
             newList[i] = list[i];
 
-        newMap.allocMap.setItem(val, newList);
+        newMap.allocMap.set(val, newList);
     }
 
     // Return the copy
@@ -492,19 +492,15 @@ x86.RegAllocMap.prototype.makeAlloc = function (value, alloc)
             this.remAlloc(prevSlotVal, alloc);
 
         // Update the stack slot's value
-        this.stackMap.setItem(alloc, value);
+        this.stackMap.set(alloc, value);
     }
 
     // Get the alloc set for this value
-    var allocSet;
-    if (this.allocMap.hasItem(value) === false)
+    var allocSet = this.allocMap.get(value)
+    if (allocSet === HashMap.NOT_FOUND)
     {
-        var allocSet = [];
-        this.allocMap.addItem(value, allocSet);
-    }
-    else
-    {
-        allocSet = this.allocMap.getItem(value);
+        allocSet = [];
+        this.allocMap.set(value, allocSet);
     }
 
     // Add the new allocation to the set
@@ -521,10 +517,10 @@ x86.RegAllocMap.prototype.remAlloc = function (value, alloc)
         (value instanceof x86.Register) === false)
         error('invalid value in remAlloc: ' + value);
 
-    if (this.allocMap.hasItem(value) === false)
-        return;
+    var allocSet = this.allocMap.get(value);
 
-    var allocSet = this.allocMap.getItem(value);
+    if (allocSet === HashMap.NOT_FOUND)
+        return;
 
     assert (
         arraySetHas(allocSet, alloc),
@@ -549,10 +545,9 @@ x86.RegAllocMap.prototype.remAllocs = function (value)
         (value instanceof x86.Register) === false)
         error('invalid value in remAllocs: ' + value);
 
-    if (this.allocMap.hasItem(value) === false)
+    var allocSet = this.allocMap.get(value);
+    if (allocSet === HashMap.NOT_FOUND)
         return;
-
-    var allocSet = this.allocMap.getItem(value);
 
     for (var i = 0; i < allocSet.length; ++i)
     {
@@ -561,7 +556,7 @@ x86.RegAllocMap.prototype.remAllocs = function (value)
         if (alloc instanceof x86.Register)
             this.regMap[alloc.regNo] = undefined;
         else
-            this.stackMap.setItem(alloc, undefined);
+            this.stackMap.set(alloc, undefined);
     }
 
     allocSet.length = 0;
@@ -649,10 +644,11 @@ x86.RegAllocMap.prototype.getAllocs = function (value)
         (value instanceof x86.Register) === false)
         error('invalid value in getAlloc: ' + value);
 
-    if (this.allocMap.hasItem(value) === true)
-        return this.allocMap.getItem(value);
-    else
-        return [];
+    var allocs = this.allocMap.get(value);
+    if (allocs !== HashMap.NOT_FOUND)
+        return allocs;
+
+    return [];
 }
 
 /**

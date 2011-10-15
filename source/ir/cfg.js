@@ -345,24 +345,23 @@ ControlFlowGraph.prototype.getUniqueName = function (obj, name)
         'invalid block or instruction'
     );
 
-    if (this.uniqueName.hasItem(obj) === true)
-        return this.uniqueName.getItem(obj);
+    var uniqueName = this.uniqueName.get(obj);
 
-    var nameCount;
+    if (uniqueName !== HashMap.NOT_FOUND)
+        return uniqueName;
 
-    if (this.nameCount.hasItem(name) === true)
-        nameCount = this.nameCount.getItem(name);
-    else
+    var nameCount = this.nameCount.get(name);
+    if (nameCount === HashMap.NOT_FOUND)
         nameCount = 0;
 
     // Generate the unique name
     var uniqueName = name + '_' + (nameCount++);
 
     // Update the count for this name
-    this.nameCount.setItem(name, nameCount);
+    this.nameCount.set(name, nameCount);
 
     // Save the unique name
-    this.uniqueName.setItem(obj, uniqueName);
+    this.uniqueName.set(obj, uniqueName);
 
     // Return the unique name
     return uniqueName;

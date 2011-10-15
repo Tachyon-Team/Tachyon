@@ -122,22 +122,19 @@ function commElim(cfg, maxItrs)
         if (valNoCache[val.instrId] !== undefined)
             return valNoCache[val.instrId];
 
+        // Try to find the value number in the hash map
+        var valNo = valNoHash.get(val);
+
         // If this value matches an existing value number, get that number
         // otherwise, assign it a new value number
-        if (valNoHash.hasItem(val) === true)
+        if (valNo === HashMap.NOT_FOUND)
         {
-            //print('*******GOT VAL**********');
-            var valNo = valNoHash.getItem(val);
-        }
-        else
-        {
-            var valNo = valNoHash.numItems;
-            valNoHash.addItem(val, valNo);
+            valNo = valNoHash.numItems;
+            valNoHash.set(val, valNo);
         }
 
         // Store the value number in the value number cache
         valNoCache[val.instrId] = valNo;
-
 
         return valNo;
     }

@@ -216,7 +216,7 @@ function stmtListToIRFunc(
         entryBlock.addInstr(argVal, symName);
 
         // Add the argument value to the local map
-        localMap.addItem(symName, argVal);
+        localMap.set(symName, argVal);
     }
 
     // For each local variable declaration
@@ -225,10 +225,10 @@ function stmtListToIRFunc(
         var symName = localVars[i].toString();
 
         // If there is no local map entry for this variable
-        if (!localMap.hasItem(symName))
+        if (localMap.has(symName) === false)
         {
             // Add an undefined value to the local map
-            localMap.addItem(symName, IRConst.getConst(undefined));
+            localMap.set(symName, IRConst.getConst(undefined));
         }
     }
 
@@ -270,7 +270,7 @@ function stmtListToIRFunc(
             'makeArgObj', 
             [funcObj, numArgs, argTable]
         );
-        localMap.setItem('arguments', argObj);
+        localMap.set('arguments', argObj);
     }
 
     // For each closure variable
@@ -289,7 +289,7 @@ function stmtListToIRFunc(
         );
 
         // Add the mutable cell to the shared variable map
-        sharedMap.addItem(symName, closCell);
+        sharedMap.set(symName, closCell);
     }
 
     // For each escaping variable
@@ -298,7 +298,7 @@ function stmtListToIRFunc(
         var symName = escapeVars[i].toString();
 
         // If this variable is not already provided by the local function object
-        if (!sharedMap.hasItem(symName))
+        if (sharedMap.has(symName) === false)
         {
             // Create a new mutable cell for this variable
             var newCell = insertPrimCallIR(
@@ -308,7 +308,7 @@ function stmtListToIRFunc(
             );
 
             // Map the variable to the mutable cell
-            sharedMap.addItem(symName, newCell);
+            sharedMap.set(symName, newCell);
         }
     }
 
@@ -354,7 +354,7 @@ function stmtListToIRFunc(
                 var symName = nestFunc.closVars[i];
 
                 // Add the variable to the closure variable values
-                closVals.push(sharedMap.getItem(symName));
+                closVals.push(sharedMap.get(symName));
             }
 
             // Create a closure for the function
@@ -382,7 +382,7 @@ function stmtListToIRFunc(
             }
 
             // Map the function name to the closure in the local variable map
-            localMap.setItem(nestFuncName, closVal);
+            localMap.set(nestFuncName, closVal);
         }
     }
 
@@ -392,20 +392,20 @@ function stmtListToIRFunc(
         var symName = escapeVars[i].toString();
 
         // If there is a local map entry for this symbol
-        if (localMap.hasItem(symName))
+        if (localMap.has(symName) === true)
         {
             // Get the mutable cell for this symbol
-            var cell = sharedMap.getItem(symName);
+            var cell = sharedMap.get(symName);
 
             // Put the current value of the symbol into the cell
             insertPrimCallIR(
                 bodyContext,
                 'set_cell_val',
-                [cell, localMap.getItem(symName)]
+                [cell, localMap.get(symName)]
             );
 
             // Remove the symbol from the local map
-            localMap.remItem(symName);
+            localMap.rem(symName);
         }
     }
 
@@ -1534,14 +1534,14 @@ function stmtToIR(context)
         var label = (astStmt.label !== null) ? astStmt.label.toString() : '';
 
         // If there is a continue list for this label
-        if (context.contMap.hasItem(label))
+        if (context.contMap.has(label) === true)
         {
             // Create a new context and bridge it
             var newContext = context.pursue(context.astNode);
             newContext.bridge();
 
             // Add the new context to the list corresponding to this label
-            context.contMap.getItem(label).push(newContext);
+            context.contMap.get(label).push(newContext);
 
             // Terminate the current context, no instructions go after this
             context.terminate();
@@ -1563,14 +1563,14 @@ function stmtToIR(context)
         var label = (astStmt.label !== null) ? astStmt.label.toString() : '';
 
         // If there is a break list for this label
-        if (context.breakMap.hasItem(label))
+        if (context.breakMap.has(label) === true)
         {
             // Create a new context and bridge it
             var newContext = context.pursue(context.astNode);
             newContext.bridge();
 
             // Add the new context to the list corresponding to this label
-            context.breakMap.getItem(label).push(newContext);
+            context.breakMap.get(label).push(newContext);
 
             // Terminate the current context, no instructions go after this
             context.terminate();
@@ -1679,9 +1679,9 @@ function stmtToIR(context)
 
         // Create a break context map
         var breakMap = context.breakMap.copy();
-        breakMap.setItem('', brkCtxList);
+        breakMap.set('', brkCtxList);
         for (var i = 0; i < context.labels.length; ++i)
-            breakMap.setItem(context.labels[i], brkCtxList);
+            breakMap.set(context.labels[i], brkCtxList);
 
         // Create a context for the first case test
         var nextTestCtx = context.branch(
@@ -1930,7 +1930,7 @@ function stmtToIR(context)
         var catchVal = catchBlock.addInstr(new CatchInstr());
         var catchCell = catchBlock.addInstr(new MakeCellInstr());
         catchBlock.addInstr(new PutCellInstr(catchCell, catchVal));
-        catchCtx.sharedMap.setItem(astStmt.id.toString(), catchCell);
+        catchCtx.sharedMap.set(astStmt.id.toString(), catchCell);
         */
 
         // Compile the catch statement
@@ -2071,7 +2071,7 @@ function exprToIR(context)
             var symName = nestFunc.closVars[i];
 
             // Add the variable to the closure variable values
-            closVals.push(context.sharedMap.getItem(symName));
+            closVals.push(context.sharedMap.get(symName));
         }
 
         // Create a closure for the function
@@ -2963,8 +2963,8 @@ function opToIR(context)
                 var varName = fieldExpr.id.toString();
 
                 // If there is a local variable with this name
-                if (context.localMap.hasItem(varName) ||
-                    context.sharedMap.hasItem(varName))
+                if (context.localMap.has(varName) === true ||
+                    context.sharedMap.has(varName) === true)
                 {
                     // Do nothing
                     context.setOutput(
@@ -3355,10 +3355,10 @@ function assgToIR(context, rhsVal)
             }
 
             // Otherwise, if this variable is a shared closure variable
-            else if (varContext.sharedMap.hasItem(symName))
+            else if (varContext.sharedMap.has(symName) === true)
             {
                 // Get the mutable cell for the variable
-                var cellValue = context.sharedMap.getItem(symName);
+                var cellValue = context.sharedMap.get(symName);
 
                 // Get the value in the mutable cell
                 lhsVal = insertPrimCallIR(
@@ -3372,7 +3372,7 @@ function assgToIR(context, rhsVal)
             else
             {
                 // Get the value in the local map
-                lhsVal = varContext.localMap.getItem(symName, rhsVal);
+                lhsVal = varContext.localMap.get(symName, rhsVal);
             }
 
             // Update the RHS value according to the specified function
@@ -3400,10 +3400,10 @@ function assgToIR(context, rhsVal)
         }
 
         // Otherwise, if this variable is a shared closure variable
-        else if (context.sharedMap.hasItem(symName))
+        else if (context.sharedMap.has(symName) === true)
         {
             // Get the mutable cell for the variable
-            var cellValue = context.sharedMap.getItem(symName);
+            var cellValue = context.sharedMap.get(symName);
 
             // Set the value in the mutable cell
             insertPrimCallIR(
@@ -3417,7 +3417,7 @@ function assgToIR(context, rhsVal)
         else
         {
             // Update the variable value in the locals map
-            varContext.localMap.setItem(symName, rhsValAssg);
+            varContext.localMap.set(symName, rhsValAssg);
         }
 
         // If we are within a with block
@@ -3680,10 +3680,10 @@ function refToIR(context)
     }
 
     // Otherwise, if this variable is a shared closure variable
-    else if (context.sharedMap.hasItem(symName))
+    else if (context.sharedMap.has(symName) === true)
     {
         // Get the mutable cell for the variable
-        var cellValue = context.sharedMap.getItem(symName);
+        var cellValue = context.sharedMap.get(symName);
 
         // Get the value from the mutable cell
         varValueVar = insertPrimCallIR(
@@ -3697,12 +3697,12 @@ function refToIR(context)
     else
     {
         assert (
-            context.localMap.hasItem(symName), 
+            context.localMap.has(symName) === true,
             'local variable not in locals map: ' + symName
         );
 
         // Lookup the variable in the locals map
-        varValueVar = varContext.localMap.getItem(symName);
+        varValueVar = varContext.localMap.get(symName);
     }
 
     // If we are within a with block
@@ -4198,7 +4198,7 @@ function mergeContexts(
             var context = ntContexts[j];
 
             // Add the value of the current variable to the list
-            values.push(context.localMap.getItem(varName));
+            values.push(context.localMap.get(varName));
             preds.push(context.exitBlock);
         }
 
@@ -4219,7 +4219,7 @@ function mergeContexts(
         if (allSameType === false)
         {
             // Set the merge value to undefined
-            mergeMap.addItem(varName, IRConst.getConst(undefined));
+            mergeMap.set(varName, IRConst.getConst(undefined));
         }
 
         // If not all incoming values are the same
@@ -4232,14 +4232,14 @@ function mergeContexts(
             mergeBlock.addInstr(phiNode, varName);
 
             // Add the phi node to the merge map
-            mergeMap.addItem(varName, phiNode);
+            mergeMap.set(varName, phiNode);
         }
 
         // Otherwise, all values are the same
         else
         {
             // Add the value directly to the merge map
-            mergeMap.addItem(varName, firstVal);
+            mergeMap.set(varName, firstVal);
         }
     }
 
@@ -4275,15 +4275,15 @@ function createLoopEntry(
     var contMap = context.contMap.copy();
     if (brkCtxList)
     {
-        breakMap.setItem('', brkCtxList);
+        breakMap.set('', brkCtxList);
         for (var i = 0; i < context.labels.length; ++i)
-            breakMap.setItem(context.labels[i], brkCtxList);
+            breakMap.set(context.labels[i], brkCtxList);
     }
     if (cntCtxList)
     {
-        contMap.setItem('', cntCtxList);
+        contMap.set('', cntCtxList);
         for (var i = 0; i < context.labels.length; ++i)
-            contMap.setItem(context.labels[i], cntCtxList);
+            contMap.set(context.labels[i], cntCtxList);
     }
 
     // Create a basic block for the loop entry
@@ -4295,13 +4295,13 @@ function createLoopEntry(
     {
         var varName = localVars[i];
         var phiNode = new PhiInstr(
-            [context.localMap.getItem(varName)],
+            [context.localMap.get(varName)],
             [(context.exitBlock !== undefined)
              ? context.exitBlock
              : context.entryBlock]
         );
         loopEntry.addInstr(phiNode, varName);
-        entryLocals.setItem(varName, phiNode);
+        entryLocals.set(varName, phiNode);
     }
 
     // Return the loop entry context
@@ -4340,7 +4340,7 @@ function mergeLoopEntry(
     for (var i = 0; i < localVars.length; ++i)
     {
         var varName = localVars[i];
-        var phiNode = entryLocals.getItem(varName);
+        var phiNode = entryLocals.get(varName);
 
         // For each incoming context
         for (var j = 0; j < contexts.length; ++j)
@@ -4351,7 +4351,7 @@ function mergeLoopEntry(
             if (context.isTerminated())
                 continue;
 
-            var varValue = context.localMap.getItem(varName);
+            var varValue = context.localMap.get(varName);
 
             // If there would be a mix of values of different types
             if (varValue.type !== phiNode.type)
@@ -4369,8 +4369,8 @@ function mergeLoopEntry(
 
                 // Replace the phi node by the undefined value in the loop
                 // entry and the continuation locals
-                entryLocals.setItem(varName, IRConst.getConst(undefined));
-                contLocals.setItem(varName, IRConst.getConst(undefined));
+                entryLocals.set(varName, IRConst.getConst(undefined));
+                contLocals.set(varName, IRConst.getConst(undefined));
 
                 // Remove the phi node
                 entryBlock.remInstr(phiNode);

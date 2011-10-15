@@ -340,8 +340,8 @@ x86.ArithOvfMaker = function (instrClass)
         var thisBlock = instr.parentBlock;
         var normBlock = instr.targets[0];
         var overBlock = instr.targets[1];
-        var normLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:normBlock});
-        var overLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:overBlock});
+        var normLabel = genInfo.edgeLabels.get({pred:thisBlock, succ:normBlock});
+        var overLabel = genInfo.edgeLabels.get({pred:thisBlock, succ:overBlock});
 
         // Jump to the overflow block on overflow
         asm.jo(overLabel);
@@ -713,7 +713,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         // Jump to the continuation label
         var thisBlock = instr.parentBlock;
         var contBlock = instr.targets[0];
-        var contLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:contBlock});
+        var contLabel = genInfo.edgeLabels.get({pred:thisBlock, succ:contBlock});
         asm.jmp(contLabel);
     }
 };
@@ -1095,7 +1095,7 @@ JumpInstr.prototype.x86 = new x86.InstrCfg();
 JumpInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
 {
     // Get the label for the jump
-    var label = genInfo.edgeLabels.getItem(
+    var label = genInfo.edgeLabels.get(
         {pred: instr.parentBlock, succ:instr.targets[0]}
     );
 
@@ -1115,8 +1115,8 @@ IfInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genI
     var thisBlock = instr.parentBlock;
     var trueBlock = instr.targets[0];
     var falseBlock = instr.targets[1];
-    var trueLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:trueBlock});
-    var falseLabel = genInfo.edgeLabels.getItem({pred:thisBlock, succ:falseBlock});
+    var trueLabel = genInfo.edgeLabels.get({pred:thisBlock, succ:trueBlock});
+    var falseLabel = genInfo.edgeLabels.get({pred:thisBlock, succ:falseBlock});
 
     // Function to generate the comparison code
     function genCmp(jmpTrueSgn, jmpTrue, invSens)

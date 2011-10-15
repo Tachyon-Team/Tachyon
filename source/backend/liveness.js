@@ -97,7 +97,7 @@ function liveAnalysis(blockOrder)
                 if (value instanceof PhiInstr && value.parentBlock === succ)
                     continue;
 
-                liveCur.setItem(value);
+                liveCur.set(value);
             }
 
             for (var j = 0; j < succ.instrs.length; ++j)
@@ -108,7 +108,7 @@ function liveAnalysis(blockOrder)
                     break;
 
                 var inc = instr.getIncoming(block);
-                liveCur.setItem(inc);
+                liveCur.set(inc);
             }
         }
 
@@ -122,8 +122,8 @@ function liveAnalysis(blockOrder)
                 continue;
 
             // Remove the output of this instruction from the live set
-            if (instr.dests.length > 0 && liveCur.hasItem(instr) === true)
-                liveCur.remItem(instr);
+            if (instr.dests.length > 0)
+                liveCur.rem(instr);
 
             /*
             log.debug('instr live out: ' + instr);
@@ -136,7 +136,7 @@ function liveAnalysis(blockOrder)
 
             // Map all uses in the live set
             for (var j = 0; j < instr.uses.length; ++j)
-                liveCur.setItem(instr.uses[j]);
+                liveCur.set(instr.uses[j]);
         }
 
         // Find the current live in set for this block

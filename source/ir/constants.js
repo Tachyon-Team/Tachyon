@@ -303,28 +303,26 @@ IRConst.getConst = function (value, type)
     if (type === undefined)
         type = IRType.box;
 
+    // Try to find the map for this type
+    var typeMap = IRConst.constMap.get(value);
+
     // If there is no type map for this value
-    if (!IRConst.constMap.hasItem(value))
+    if (typeMap === HashMap.NOT_FOUND)
     {
         // Create a new hash map to map types to constants
         var typeMap = new HashMap();
-        IRConst.constMap.addItem(value, typeMap);
-    }
-    else
-    {
-        var typeMap = IRConst.constMap.getItem(value);
+        IRConst.constMap.set(value, typeMap);
     }
 
+    // Try to find the constant in the type map
+    var constant = typeMap.get(type);
+
     // If there is no constant for this type
-    if (!typeMap.hasItem(type))
+    if (constant === HashMap.NOT_FOUND)
     {
         // Create a new constant with the specified type
-        var constant = new IRConst(value, type);
-        typeMap.addItem(type, constant);
-    }
-    else
-    {
-        var constant = typeMap.getItem(type);
+        constant = new IRConst(value, type);
+        typeMap.set(type, constant);
     }
 
     // Return the constant

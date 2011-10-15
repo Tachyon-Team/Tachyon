@@ -218,7 +218,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             );
 
             // Create a label for this CFG edge transition
-            edgeLabels.addItem(
+            edgeLabels.set(
                 edge,
                 edgeLabel
             );
@@ -301,7 +301,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 if (arraySetHas(instr.uses, val) === true)
                     return true;
 
-                return instrLiveOut.hasItem(val);
+                return instrLiveOut.has(val);
             }
 
             /**
@@ -309,7 +309,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             */
             function liveOutFunc(val)
             {
-                return instrLiveOut.hasItem(val);
+                return instrLiveOut.has(val);
             }
 
             // If this is a phi node
@@ -509,7 +509,7 @@ x86.genEdgeTrans = function (
     const backend = params.backend;
 
     // Add the label for the transition stub
-    var transLabel = edgeLabels.getItem({pred:pred, succ:succ});
+    var transLabel = edgeLabels.get({pred:pred, succ:succ});
     asm.addInstr(transLabel);
 
     if (config.verbosity >= log.DEBUG)
@@ -561,7 +561,7 @@ x86.genEdgeTrans = function (
             function liveInFunc(val)
             {
                 // If the value is live after the phi nodes, it is live
-                if (succLiveIn.hasItem(val) === true)
+                if (succLiveIn.has(val) === true)
                     return true;
 
                 // If any phi node after this one has this value as incoming
@@ -666,13 +666,9 @@ x86.genEdgeTrans = function (
                 'cannot move from/to IR instr'
             );
 
-            var node;
+            var node = nodeMap.get(val)
 
-            if (nodeMap.hasItem(val) === true)
-            {
-                node = nodeMap.getItem(val);
-            }
-            else
+            if (node === HashMap.NOT_FOUND)
             {
                 node = {
                     val: val,
@@ -680,7 +676,7 @@ x86.genEdgeTrans = function (
                     toCount: 0
                 };
 
-                nodeMap.setItem(val, node);
+                nodeMap.set(val, node);
                 graphNodes.push(node);
             }
 
