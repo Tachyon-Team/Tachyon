@@ -240,7 +240,8 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     {
         var block = blockOrder[i];
 
-        log.debug('processing block: ' + block.getBlockName());
+        if (config.verbosity >= log.DEBUG)
+            log.debug('processing block: ' + block.getBlockName());
 
         // If this block only has one predecessor, put the transition stub
         // right before it. Code has necessarily already been generated for
@@ -266,10 +267,10 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         // Get a copy of the allocation map at the start of this block
         var allocMap = allocMaps[block.blockId].copy();
 
-        assert (
-            allocMap instanceof x86.RegAllocMap,
-            'invalid reg alloc map for: ' + block.getBlockName()
-        );
+        if (DEBUG === true && !(allocMap instanceof x86.RegAllocMap))
+        {
+            error('invalid reg alloc map for: ' + block.getBlockName());
+        }
 
         // Store the current alloc map on the code gen info object
         genInfo.allocMap = allocMap;
@@ -282,14 +283,15 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         {
             var instr = block.instrs[j];
 
-            log.debug('processing: ' + instr);
+            //log.debug('processing: ' + instr);
 
             // Get the live set at output of this instruction
             var instrLiveOut = liveness.instrOut[instr.instrId];
-            assert (
-                instr instanceof PhiInstr || instrLiveOut instanceof HashMap,
-                'invalid live out map for: ' + instr.getValName()
-            );
+            
+            if (DEBUG === true && !(instr instanceof PhiInstr || instrLiveOut instanceof HashMap))
+            {
+                error('invalid live out map for: ' + instr.getValName());
+            }
 
             /**
             Test liveness of values before the instruction
@@ -510,10 +512,13 @@ x86.genEdgeTrans = function (
     var transLabel = edgeLabels.getItem({pred:pred, succ:succ});
     asm.addInstr(transLabel);
 
-    log.debug(
-        'processing edge: ' + pred.getBlockName() + 
-        ' -> ' + succ.getBlockName()
-    );
+    if (config.verbosity >= log.DEBUG)
+    {
+        log.debug(
+            'processing edge: ' + pred.getBlockName() + 
+            ' -> ' + succ.getBlockName()
+        );
+    }
 
     // Get the allocation map for the successor
     var succAllocMap = allocMaps[succ.blockId];
@@ -542,11 +547,13 @@ x86.genEdgeTrans = function (
             // Get the allocation for the incoming value
             var incAlloc = x86.getBestAlloc(succAllocMap, inc);
 
-            assert (
-                !(inc instanceof IRInstr && incAlloc === undefined),
-                'no allocation for incoming phi temporary:\n' +
-                inc
-            );
+            if (DEBUG === true && !!(inc instanceof IRInstr && incAlloc === undefined))
+            {
+                error(
+                    'no allocation for incoming phi temporary:\n' +
+                    inc
+                );
+            }
 
             /**
             Test the liveness of a value before the phi node
@@ -737,10 +744,12 @@ x86.genEdgeTrans = function (
             var srcNode = getGraphNode(predAlloc);
             var dstNode = getGraphNode(succAlloc);
 
-            assert (
-                dstNode.from === undefined,
-                'already have incoming for: ' + dstVal
-            );
+            if (DEBUG === true && !(dstNode.from === undefined))
+            {
+                error(
+                   'already have incoming for: ' + dstVal
+                );
+            }
 
             assert (
                 srcNode !== dstNode,

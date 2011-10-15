@@ -3484,12 +3484,8 @@ function assgToIR(context, rhsVal)
         // If the assignment value is an instruction, but not a function argument
         if (rhsValAssg instanceof IRInstr && !(rhsValAssg instanceof ArgValInstr))
         {
-            // If the value already has a name, release it
-            if (rhsValAssg.outName !== "")
-                context.cfg.freeInstrName(rhsValAssg);
-
             // Assign the lhs variable name to the instruction
-            context.cfg.assignInstrName(rhsValAssg, symName);
+            rhsValAssg.outName = symName;
         }
 
         // The value of the right expression is the assignment expression's value
@@ -3678,12 +3674,8 @@ function refToIR(context)
         // If the assignment value is an instruction
         if (varValueVar instanceof IRInstr)
         {
-            // If the value already has a name, release it
-            if (varValueVar.outName !== "")
-                context.cfg.freeInstrName(varValueVar);
-
             // Assign the symbol name to the instruction
-            context.cfg.assignInstrName(varValueVar, symName);
+            varValueVar.outName = symName;
         }
     }
 

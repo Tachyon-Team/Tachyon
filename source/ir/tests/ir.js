@@ -598,8 +598,8 @@ tests.ir.argsObj = function ()
             for (var j = 0; j < instr.uses.length; ++j)
             {
                 assert (
-                    instr.uses[j].getValName() != 'a0' && 
-                    instr.uses[j].getValName() != 'a1',
+                    instr.uses[j].outName != 'a0' && 
+                    instr.uses[j].outName != 'a1',
                     'argument values should not be used directly'
                 );
             }

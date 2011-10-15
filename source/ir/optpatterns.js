@@ -200,11 +200,13 @@ blockPatterns.predSuccMerge = new optPattern(
                 break;
  
             // Ensure that this phi node has only one predecessor
-            assert (
-                instr.preds.length === 1, 
-                'phi node in merged block should have one pred:\n' +
-                instr
-            );
+            if (DEBUG === true && !(instr.preds.length === 1))
+            {
+                error(
+                    'phi node in merged block should have one pred:\n' +
+                    instr
+                );
+            }
 
             var phiIn = instr.uses[0];
 

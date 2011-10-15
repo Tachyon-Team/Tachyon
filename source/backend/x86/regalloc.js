@@ -457,14 +457,17 @@ x86.RegAllocMap.prototype.makeAlloc = function (value, alloc)
         (alloc instanceof x86.Register && alloc.type === 'gp') === false)
         error('invalid allocation: ' + alloc);
 
-    var name;
-    if (value === undefined)
-        valName = undefined;
-    else if (value.getValName !== undefined)
-        valName = value.getValName();
-    else
-        valName = value.toString();
-    log.debug(alloc + ' -> ' + valName);
+    if (config.verbosity >= log.DEBUG)
+    {
+        var name;
+        if (value === undefined)
+            valName = undefined;
+        else if (value.getValName !== undefined)
+            valName = value.getValName();
+        else
+            valName = value.toString();
+        log.debug(alloc + ' -> ' + valName);
+    }
 
     // If the allocation is to a register
     if (alloc instanceof x86.Register)
@@ -1219,11 +1222,13 @@ x86.allocOpnds = function (
         // If the operand is a stack location
         else if (typeof opnd === 'number')
         {
-            assert (
-                opndMustBeReg === false,
-                'allocated mem, but operand must be reg for:\n' +
-                use.getValName()
-            );
+            if (DEBUG === true && !(opndMustBeReg === false))
+            {
+                error(
+                    'allocated mem, but operand must be reg for:\n' +
+                    use.getValName()
+                );
+            }
 
             // Map the value to the stack location
             allocMap.makeAlloc(mapVal, opnd);
@@ -1252,11 +1257,13 @@ x86.allocOpnds = function (
         opnds.push(opnd);
     }
 
-    assert (
-        !(destIsOpnd0 && opnds.length === 0),
-        'dest mapped to opnd0 but instr has no operands:\n' +
-        instr
-    );
+    if (DEBUG === true && !!(destIsOpnd0 && opnds.length === 0))
+    {
+        error(
+            'dest mapped to opnd0 but instr has no operands:\n' +
+            instr
+        );
+    }
 
     // Destination operand
     var dest;

@@ -108,7 +108,7 @@ function IRInstr()
     Name of this instruction's output
     @field
     */
-    this.outName = '';
+    this.outName = '$t';
 
     /**
     Id number for this instruction
@@ -212,17 +212,7 @@ Get a string representation of an instruction's value/name
 */
 IRInstr.prototype.getValName = function ()
 {
-    // If the output name for this instruction is set
-    if (this.outName !== "") // FIXME
-    {
-        // Return the output/temporary name
-        return this.outName;
-    }
-    else
-    {
-        // Return a name based on the instruction id number
-        return '$t_' + this.instrId;
-    }
+    return this.parentBlock.parentCFG.getUniqueName(this, this.outName);
 };
 
 /**

@@ -83,16 +83,14 @@ function ControlFlowGraph(ownerFunc)
     this.nextBlockId = 1;
 
     /**
-    Instruction output names used in the CFG
-    @field
+    Count of instructions/blocks mapping to a given name
     */
-    this.instrNames = new HashMap();
+    this.nameCount = new HashMap();
 
     /**
-    Block names used in the CFG
-    @field
+    Map of unique generated names for instructions/blocks
     */
-    this.blockNames = new HashMap();
+    this.uniqueName = new HashMap();
 
     /**
     IR function to which this CFG belongs
@@ -172,13 +170,11 @@ ControlFlowGraph.prototype.copy = function ()
     // Create a new control flow graph
     var newCFG = new ControlFlowGraph(this.ownerFunc);
 
-    // Copy information about free block/instruction names and ids
+    // Copy information about free block/instruction ids
     newCFG.freeInstrIds = this.freeInstrIds.slice(0);
     newCFG.nextInstrId  = this.nextInstrId;
     newCFG.freeBlockIds = this.freeBlockIds.slice(0);
     newCFG.nextBlockId  = this.nextBlockId;
-    newCFG.instrNames   = this.instrNames.copy();
-    newCFG.blockNames   = this.blockNames.copy();
 
     // Create a map from old blocks to new blocks
     var blockMap = [];
@@ -340,88 +336,36 @@ ControlFlowGraph.prototype.freeBlockId = function (block)
 };
 
 /**
-Assign a free output name to an instruction
+Get a unique name to block or instruction
 */
-ControlFlowGraph.prototype.assignInstrName = function (instr, outName)
+ControlFlowGraph.prototype.getUniqueName = function (obj, name)
 {
     assert (
-        instr instanceof IRInstr,
-        'invalid instruction'
+        obj instanceof IRInstr || obj instanceof BasicBlock,
+        'invalid block or instruction'
     );
 
-    if (outName === undefined && typeof instr.outName === 'string')
-    {
-        if (this.instrNames.hasItem(instr.outName) &&
-            this.instrNames.getItem(instr.outName) === instr)
-            return;
-    }
+    if (this.uniqueName.hasItem(obj) === true)
+        return this.uniqueName.getItem(obj);
 
-    if (outName === undefined || outName === '')
-    {
-        instr.outName = '';
-        return;
-    }
+    var nameCount;
 
-    var that = this;
-    function nameTaken(name) { return that.instrNames.hasItem(name); }
-    instr.outName = findFreeName(nameTaken, outName);
+    if (this.nameCount.hasItem(name) === true)
+        nameCount = this.nameCount.getItem(name);
+    else
+        nameCount = 0;
 
-    this.instrNames.addItem(instr.outName, instr);
-};
+    // Generate the unique name
+    var uniqueName = name + '_' + (nameCount++);
 
-/**
-Free an instruction output name
-*/
-ControlFlowGraph.prototype.freeInstrName = function (instr)
-{
-    assert (
-        instr instanceof IRInstr,
-        'invalid instruction'
-    );
+    // Update the count for this name
+    this.nameCount.setItem(name, nameCount);
 
-    if (instr.outName === '')
-        return;
+    // Save the unique name
+    this.uniqueName.setItem(obj, uniqueName);
 
-    this.instrNames.remItem(instr.outName);
-};
-
-/**
-Assign a free label name to a block
-*/
-ControlFlowGraph.prototype.assignBlockName = function (block, labelName)
-{
-    assert (
-        block instanceof BasicBlock,
-        'invalid basic block'
-    );
-
-    if (labelName === undefined || labelName === '')
-    {
-        block.label = '';
-        return;
-    }
-
-    var that = this;
-    function nameTaken(name) { return that.blockNames.hasItem(name); }
-    block.label = findFreeName(nameTaken, labelName);
-
-    this.blockNames.addItem(block.label);
-};
-
-/**
-Free a block label name
-*/
-ControlFlowGraph.prototype.freeBlockName = function (block)
-{
-    assert (
-        block instanceof BasicBlock,
-        'invalid basic block'
-    );
-
-    if (block.label === '')
-        return;
-
-    this.blockNames.remItem(block.label);
+    // Return the unique name
+    return uniqueName;
 };
 
 /**
@@ -436,8 +380,8 @@ ControlFlowGraph.prototype.getNewBlock = function (label)
     // Assign an id number to this block
     this.assignBlockId(block);
 
-    // Assign a name to the block
-    this.assignBlockName(block, label);
+    if (label !== undefined)
+        block.label = label;
 
     return block;
 };
@@ -464,7 +408,6 @@ ControlFlowGraph.prototype.addBlock = function (block)
     {
         var instr = block.instrs[i];
         this.assignInstrId(instr);
-        this.assignInstrName(instr, instr.outName);
     }
 
     // Set the block's parent CFG
@@ -475,9 +418,6 @@ ControlFlowGraph.prototype.addBlock = function (block)
 
     // Assign an id number to this block
     this.assignBlockId(block);
-
-    // Assign a name to the block
-    this.assignBlockName(block, block.getBlockName());
 };
 
 /**
@@ -556,9 +496,6 @@ ControlFlowGraph.prototype.remBlock = function (block, remInstrs)
 
             // Free this instruction's id number
             block.parentCFG.freeInstrId(instr);
-
-            // Free this instruction's output name
-            block.parentCFG.freeInstrName(instr);
         }
     }
 
@@ -567,9 +504,6 @@ ControlFlowGraph.prototype.remBlock = function (block, remInstrs)
 
     // Free this block's id number
     this.freeBlockId(block);
-
-    // Free this block's label name
-    this.freeBlockName(block);
 
     // Mark the block as no longer part of this CFG
     block.parentCFG = null;
@@ -1323,7 +1257,7 @@ function BasicBlock(cfg)
     Label name string for this basic block
     @field
     */
-    this.label = '';
+    this.label = 'block';
 
     /**
     Id number for this basic block
@@ -1397,17 +1331,7 @@ Get the name for this basic block
 */
 BasicBlock.prototype.getBlockName = function ()
 {
-    // If the label for this block is set
-    if (this.label)
-    {
-        // Return the label
-        return this.label;
-    }
-    else
-    {
-        // Return a name based on the block id number
-        return 'block_' + this.blockId;
-    }
+    return this.parentCFG.getUniqueName(this, this.label);
 };
 
 /**
@@ -1506,8 +1430,9 @@ BasicBlock.prototype.addInstr = function (instr, outName, index)
     // Assign an id number to the instruction
     this.parentCFG.assignInstrId(instr);
 
-    // Assign a free name to the instruction
-    this.parentCFG.assignInstrName(instr, outName);
+    // Assign the instruction name, if set
+    if (outName !== undefined)
+        instr.outName = outName;
 
     return instr;
 };
@@ -1578,9 +1503,6 @@ BasicBlock.prototype.remInstrAtIndex = function (index)
 
     // Free this instruction's id number
     this.parentCFG.freeInstrId(instr);
-
-    // Free this instruction's output name
-    this.parentCFG.freeInstrName(instr);
 };
 
 /**
@@ -1670,7 +1592,6 @@ BasicBlock.prototype.replInstrAtIndex = function (index, replInstr, replValue)
 
         // Free the old instruction's id number and output name
         this.parentCFG.freeInstrId(oldInstr);
-        this.parentCFG.freeInstrName(oldInstr);
     }
 
     // If the old instruction is a branch instruction
