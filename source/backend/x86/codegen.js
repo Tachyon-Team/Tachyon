@@ -1065,12 +1065,15 @@ x86.moveValue = function (
     if (typeof dst === 'number')
         dst = allocMap.getSlotOpnd(dst);
 
-    var strStr;
-    if (src instanceof x86.Operand)
-        srcStr = String(src);
-    else
-        srcStr = String(src.getValName());
-    log.debug(dst + ' <== ' + srcStr);
+    if (config.verbosity >= log.DEBUG)
+    {
+        var strStr;
+        if (src instanceof x86.Operand)
+            srcStr = String(src);
+        else
+            srcStr = String(src.getValName());
+        log.debug(dst + ' <== ' + srcStr);
+    }
 
     if (DEBUG === true &&
         (src instanceof IRValue ||

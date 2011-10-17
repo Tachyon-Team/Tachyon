@@ -66,7 +66,7 @@ function lowerIRFunc(irFunc, params)
     );
 
     if (params.printHIR === true)
-        print(irFunc);
+        print(irFunc.toString());
 
     // For each function in the IR
     var funcList = irFunc.getChildrenList();
@@ -85,7 +85,7 @@ function lowerIRFunc(irFunc, params)
     //print('lowerIRFunc done for "' + irFunc.funcName + '"');
 
     if (params.printLIR === true)
-        print(irFunc);
+        print(irFunc.toString());
 }
 
 /**

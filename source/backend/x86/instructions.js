@@ -1036,19 +1036,21 @@ Anonymous function to create instruction classes from the instruction table.
             else if (opndType === 'imm')
                 numImm++;
 
-            assert (
+            if (DEBUG === true && !
                 !(opndType === 'r' && 
                   enc.opnds.length === 1 && 
-                  enc.opCode.length > 1),
-                'invalid opcode reg field use for ' + mnem
-            );
+                  enc.opCode.length > 1))
+            {
+                error('invalid opcode reg field use for ' + mnem);
+            }
 
-            assert (
+            if (DEBUG === true && !
                 !(opndType === 'r' &&
                   enc.opnds.length === 1 &&
-                  (enc.opCode[0] & 7) !== 0),
-               'nonzero opcode reg bits with reg field use for ' + mnem
-            );
+                  (enc.opCode[0] & 7) !== 0))
+            {
+               error('nonzero opcode reg bits with reg field use for ' + mnem);
+            }
         }
 
         assert (
@@ -1126,22 +1128,23 @@ Anonymous function to create instruction classes from the instruction table.
                 if (!opnd.rexAvail)
                     rexAvail = false;
 
-                assert (
-                    opnd instanceof x86.Operand,
-                    'invalid operand for ' + this.mnem
-                );
+                if (DEBUG === true && !(opnd instanceof x86.Operand))
+                {
+                    error('invalid operand for ' + this.mnem);
+                }
             }
 
-            assert (
-                !(x86_64 === false && rexNeeded === true),
-                'cannot use REX operands in 32-bit mode (' + opnds + ')'
-            );
+            if (DEBUG === true && !
+                !(x86_64 === false && rexNeeded === true))
+            {
+                error('cannot use REX operands in 32-bit mode (' + opnds + ')');
+            }
 
-            assert (
-                !(rexNeeded && !rexAvail),
-                'some operands require REX but others are not available ' +
-                'with REX'
-            );
+            if (DEBUG === true && !
+                !(rexNeeded && !rexAvail))
+            {
+                error('some operands require REX but others are not available with REX');
+            }
 
             // Copy and store the operand list
             this.opnds = opnds.slice(0);

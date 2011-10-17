@@ -54,6 +54,9 @@ Tachyon read-eval-print loop
 */
 function tachyonRepl()
 {
+    // Compilation parameters to be used in the REPL
+    const params = config.hostParams;
+
     // Print a help listing
     function printHelp()
     {
@@ -127,35 +130,35 @@ function tachyonRepl()
             break;
 
             case 'ast':
-            config.hostParams.printAST = true;
+            params.printAST = true;
             compFileOrString(args);
-            config.hostParams.printAST = false;
+            params.printAST = false;
             break;
 
             case 'hir':
-            config.hostParams.printHIR = true;
+            params.printHIR = true;
             compFileOrString(args);
-            config.hostParams.printHIR = false;
+            params.printHIR = false;
             break;
 
             case 'lir':
-            config.hostParams.printLIR = true;
+            params.printLIR = true;
             compFileOrString(args);
-            config.hostParams.printLIR = false;
+            params.printLIR = false;
             break;
 
             case 'asm':
-            config.hostParams.printASM = true;
+            params.printASM = true;
             compFileOrString(args);
-            config.hostParams.printASM = false;
+            params.printASM = false;
             break;
 
             case 'prim_list':
-            var bindings = config.hostParams.staticEnv.getBindings();
+            var bindings = params.staticEnv.getBindings();
             bindings.forEach(
                 function (name)
                 {
-                    var binding = config.hostParams.staticEnv.getBinding(name);
+                    var binding = params.staticEnv.getBinding(name);
                     if (binding instanceof IRFunction)
                         print(name);
                 }
@@ -163,12 +166,12 @@ function tachyonRepl()
             break;
 
             case 'prim_ir':
-            if (config.hostParams.staticEnv.hasBinding(args) === false)
+            if (params.staticEnv.hasBinding(args) === false)
             {
                 print('primitive not found: "' + args + '"');
                 break;
             }
-            var func = config.hostParams.staticEnv.getBinding(args);
+            var func = params.staticEnv.getBinding(args);
             print(func);
             break;
 
@@ -216,7 +219,7 @@ function tachyonRepl()
             new CIntAsBox()
         );
 
-        bridge(config.hostParams.ctxPtr);
+        bridge(params.ctxPtr);
     }
 
     // Test if a string could be a source file name
@@ -250,6 +253,8 @@ function tachyonRepl()
     // Compile a source file
     function compFile(str)
     {
+        print('Compiling src file: "' + str + '"');
+
         try
         {
             var ir = compileSrcFile(str, config.hostParams);
@@ -304,7 +309,7 @@ function tachyonRepl()
             new CIntAsBox()
         );
 
-        bridge(config.hostParams.ctxPtr);
+        bridge(params.ctxPtr);
     }
 
     print('');

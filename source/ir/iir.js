@@ -103,6 +103,12 @@ var iir =
     rsft        : RsftInstr,
     ursft       : UrsftInstr,
 
+    // Floating-point arithmetic instructions
+    fadd        : FAddInstr,
+    fsub        : FSubInstr,
+    fmul        : FMulInstr,
+    fdiv        : FDivInstr,
+
     // If instructions with comparison   
     if_lt       : function (args) { return makeIfCmp(args, 'LT'); },
     if_le       : function (args) { return makeIfCmp(args, 'LE'); },

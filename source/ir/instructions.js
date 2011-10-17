@@ -1179,6 +1179,81 @@ var UrsftInstr = instrMaker(
 
 //=============================================================================
 //
+// Floating-point arithmetic operations
+//
+//=============================================================================
+
+/**
+@class Base class for floating-point arithmetic instructions
+@augments IRInstr
+*/
+var FArithInstr = function ()
+{
+};
+FArithInstr.prototype = new IRInstr();
+
+/**
+Default initialization function for floating-point arithmetic instructions
+*/
+FArithInstr.initFunc = function (typeParams, inputVals, branchTargets)
+{
+    instrMaker.validNumInputs(inputVals, 2, 2);
+
+    assert (
+        inputVals[0].type === IRType.f64 &&
+        inputVals[1].type === inputVals[0].type,
+        'invalid input types'
+    );
+    
+    this.type = inputVals[0].type;
+};
+
+/**
+@class Floating-point addition instruction
+@augments ArithInstr
+*/
+var FAddInstr = instrMaker(
+    'add',
+    FArithInstr.initFunc,
+    undefined,
+    new FArithInstr()
+);
+
+/**
+@class Floating-point addition instruction
+@augments ArithInstr
+*/
+var FSubInstr = instrMaker(
+    'add',
+    FArithInstr.initFunc,
+    undefined,
+    new FArithInstr()
+);
+
+/**
+@class Floating-point multiplication instruction
+@augments ArithInstr
+*/
+var FMulInstr = instrMaker(
+    'add',
+    FArithInstr.initFunc,
+    undefined,
+    new FArithInstr()
+);
+
+/**
+@class Floating-point division instruction
+@augments ArithInstr
+*/
+var FDivInstr = instrMaker(
+    'add',
+    FArithInstr.initFunc,
+    undefined,
+    new FArithInstr()
+);
+
+//=============================================================================
+//
 // Branching instructions
 //
 //=============================================================================

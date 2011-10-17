@@ -392,10 +392,8 @@ Anonymous function to initialize the assembler class
                         error('invalid operand: ' + opnd);
                 }
 
-                assert (
-                    opnd instanceof x86.Operand,
-                    'invalid operand argument: ' + opnd
-                );
+                if (DEBUG === true && !(opnd instanceof x86.Operand))
+                    error('invalid operand argument: ' + opnd);
 
                 opnds.push(opnd);
             }
