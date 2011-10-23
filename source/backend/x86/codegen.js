@@ -250,17 +250,23 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         {
             var pred = block.preds[0];
 
-            // Insert the edge transition stub
-            x86.genEdgeTrans(
-                pred, 
-                block,
-                exitAllocMaps[pred.blockId],
-                liveness.blockIn[block.blockId],
-                allocMaps,
-                blockLabels,
-                edgeLabels,
-                asm,
-                params
+            measurePerformance(
+                'Edge transition (1-pred)',
+                function ()
+                {
+                    // Insert the edge transition stub
+                    x86.genEdgeTrans(
+                        pred, 
+                        block,
+                        exitAllocMaps[pred.blockId],
+                        liveness.blockIn[block.blockId],
+                        allocMaps,
+                        blockLabels,
+                        edgeLabels,
+                        asm,
+                        params
+                    );
+                }
             );
         }
 
@@ -408,13 +414,20 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 );
 
                 // Perform register allocation for instruction
-                var allocInfo = x86.allocOpnds(
-                    allocMap,
-                    instr,
-                    liveInFunc,
-                    liveOutFunc,
-                    asm,
-                    params
+                var allocInfo;
+                measurePerformance(
+                    'Register allocation',
+                    function () 
+                    {
+                        allocInfo = x86.allocOpnds(
+                            allocMap,
+                            instr,
+                            liveInFunc,
+                            liveOutFunc,
+                            asm,
+                            params
+                        );
+                    }
                 );
 
                 assert (
@@ -423,13 +436,19 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 );
 
                 // Generate code for the instruction
-                instr.x86.genCode(
-                    instr, 
-                    allocInfo.opnds, 
-                    allocInfo.dest, 
-                    allocInfo.scratch,
-                    asm,
-                    genInfo
+                measurePerformance(
+                    'Instruction selection',
+                    function ()
+                    {
+                        instr.x86.genCode(
+                            instr, 
+                            allocInfo.opnds, 
+                            allocInfo.dest, 
+                            allocInfo.scratch,
+                            asm,
+                            genInfo
+                        );
+                    }
                 );
             }
         }
@@ -449,17 +468,23 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 continue;
             }
 
-            // Insert the edge transition stub
-            x86.genEdgeTrans(
-                block, 
-                succ,
-                allocMap,
-                liveness.blockIn[succ.blockId],
-                allocMaps,
-                blockLabels,
-                edgeLabels,
-                asm,
-                params
+            measurePerformance(
+                'Edge transition (n-pred)',
+                function ()      
+                {
+                    // Insert the edge transition stub
+                    x86.genEdgeTrans(
+                        block, 
+                        succ,
+                        allocMap,
+                        liveness.blockIn[succ.blockId],
+                        allocMaps,
+                        blockLabels,
+                        edgeLabels,
+                        asm,
+                        params
+                    );
+                }
             );
         }
     }
