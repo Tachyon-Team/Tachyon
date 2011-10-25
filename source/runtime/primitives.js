@@ -2992,3 +2992,47 @@ function instanceOf(obj, ctor)
 
     return false;
 }
+
+/**
+Implenents a new constructor call with 0 arguments
+*/
+function newCtor0(ctor)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    var ctx = iir.get_ctx();
+
+    var funcProto = ctor.prototype;
+
+    var protoVal = 
+        (boxIsObjExt(funcProto) === true)?
+        funcProto:
+        get_ctx_objproto(ctx);
+
+    var newObj = newObject(protoVal);
+
+    if (boxIsFunc(ctor) === false)
+    {
+        throw makeError(
+            get_ctx_typeerror(ctx),
+            'constructor is not a function'
+        );
+    }
+
+    // Do the constructor call
+    var retVal = iir.call(
+        get_clos_funcptr(ctor),
+        ctor,
+        newObj
+    );
+
+    var objVal =
+        (boxIsObjExt(retVal) === true)?
+        retVal:
+        newObj;
+
+    // Return the newly created object
+    return objVal;
+}
+

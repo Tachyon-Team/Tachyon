@@ -3953,6 +3953,15 @@ splice this into the current context
 */
 function insertConstructIR(context, funcVal, argVals)
 {
+    if (argVals.length === 0)
+    {
+        return insertPrimCallIR(
+            context,
+            'newCtor0', 
+            [funcVal]
+        );
+    }
+
     // Get the function's prototype field
     var funcProto = insertPrimCallIR(
         context,
