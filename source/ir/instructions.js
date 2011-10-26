@@ -1660,39 +1660,6 @@ CallFuncInstr.prototype.readsMem = function ()
 };
 
 /**
-@class Constructor call with function object reference
-@augments CallInstr
-*/
-var ConstructInstr = instrMaker(
-    'construct',
-    function (typeParams, inputVals, branchTargets)
-    {
-        this.mnemonic = 'construct';
-
-        // 3 base arguments required
-        const NUM_BASE_ARGS = 3;
-
-        instrMaker.validNumInputs(inputVals, NUM_BASE_ARGS);
-        instrMaker.validType(inputVals[0], IRType.rptr);
-        instrMaker.validType(inputVals[1], IRType.box);
-        instrMaker.validType(inputVals[2], IRType.box);
-        instrMaker.validNumBranches(branchTargets, 0, 2);
-        
-        this.type = IRType.box;
-
-        for (var i = NUM_BASE_ARGS; i < inputVals.length; ++i)
-        {
-            assert (
-                inputVals[i].type === IRType.box,
-                'constructor calls can only take boxed values as input'
-            );
-        }
-    },
-    ['continue', 'throw'],
-    Object.create(CallFuncInstr.prototype)
-);
-
-/**
 @class FFI function call instruction
 @augments CallInstr
 */

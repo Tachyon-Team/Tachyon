@@ -68,8 +68,7 @@ function inlineCall(callInstr, calleeFunc)
 {
     // Ensure that the call site is valid
     assert (
-        callInstr instanceof CallFuncInstr ||
-        callInstr instanceof ConstructInstr,
+        callInstr instanceof CallFuncInstr,
         'call site must be call instruction'
     );
 

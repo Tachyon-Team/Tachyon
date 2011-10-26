@@ -718,9 +718,6 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     }
 };
 
-// Constructor call instruction, same implementation as regular calls
-ConstructInstr.prototype.x86 = CallFuncInstr.prototype.x86;
-
 // FFI call instruction, reuses the regular call logic
 CallFFIInstr.prototype.x86 = Object.create(CallFuncInstr.prototype.x86);
 CallFFIInstr.prototype.x86.calleeConv = 'c';

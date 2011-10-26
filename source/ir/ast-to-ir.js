@@ -4048,7 +4048,7 @@ function insertConstructIR(context, funcVal, argVals)
     // Create the constructor call instruction
     var retVal = insertExceptIR(
         context,
-        new ConstructInstr(
+        new CallFuncInstr(
             [
                 funcPtr,
                 funcVal,
