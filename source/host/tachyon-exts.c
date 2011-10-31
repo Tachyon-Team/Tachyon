@@ -323,27 +323,6 @@ uint8_t readFromMemoryBlock(uint8_t* block, size_t index)
 
 /*---------------------------------------------------------------------------*/
 
-// Dummy GC code, to be included from another file
-
-void gcCollect(void* ctxPtr)
-{
-    printf("Entering gcCollect\n");
-    printf("Context pointer = %p\n", ctxPtr);
-
-
-
-    //
-    // TODO
-    //
-
-
-
-
-    printf("Leaving gcCollect\n");
-}
-
-/*---------------------------------------------------------------------------*/
-
 // Simple FFI.
 
 union TachValCaster
@@ -624,8 +603,6 @@ FPTR getFuncAddr(const char* funcName)
         address = (FPTR)(allocMemoryBlock);
     else if (strcmp(funcName, "rawFreeMemoryBlock") == 0)
         address = (FPTR)(freeMemoryBlock);
-    else if (strcmp(funcName, "gcCollect") == 0)
-        address = (FPTR)(gcCollect);
     else if (strcmp(funcName, "rawCallTachyonFFI") == 0)
         address = (FPTR)(callTachyonFFI);
     else if (strcmp(funcName, "getFuncAddr") == 0)

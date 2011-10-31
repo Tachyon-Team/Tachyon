@@ -123,9 +123,9 @@ v8_patch_for_tachyon()
 
 v8_build()
 {
-  scons arch=x64 mode=release d8
+  scons arch=x64 mode=release disassembler=on d8
   mv d8 d8_64
-  scons mode=release d8
+  scons mode=release disassembler=on d8
 }
 
 v8_install_path()

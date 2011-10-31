@@ -554,10 +554,9 @@ function heapAlloc(size)
         // Log that we are going to perform GC
         puts('Performing garbage collection');
 
-        // TODO: call backend gc_prepare instruction here?
-
+        // TODO: implement GC!
         // Call the garbage collector
-        gcCollect(ctx);
+        //gcCollect(ctx);
 
         // Get the new allocation pointer
         allocPtr = get_ctx_allocptr(ctx);

@@ -2003,69 +2003,6 @@ SetCtxInstr.prototype.writesMem = function () { return true; };
 
 //=============================================================================
 //
-// Low-Level IR instructions (LIR)
-//
-//=============================================================================
-
-/**
-@class Move a value between two registers or between a register and a memory 
-       location. This kind of LIR instruction should only appear after 
-       register allocation.
-@augments IRInstr
-*/
-function MoveInstr(from, to, interval)
-{
-    // Set the mnemonic name for this instruction
-    this.mnemonic = "move";
-
-    /**
-    Inputs to the move instruction
-    @field
-    */
-    this.uses = [from, to];
-
-    /**
-    Field used for register allocation
-    */
-    this.regAlloc = Object.create(this.regAlloc);
-
-    /**
-    Store the interval that has introduced this move
-    */
-    this.regAlloc.interval = (interval === undefined) ? null : interval;
-}
-MoveInstr.prototype = new IRInstr();
-
-/**
-Produce a string representation of the move instruction
-*/
-MoveInstr.prototype.toString = function ()
-{
-    var output = "";
-
-    output += this.mnemonic + ' ';
-
-    for (i = 0; i < this.uses.length; ++i)
-    {
-        output += this.uses[i];
-
-        if (i !== this.uses.length - 1)
-        {
-            output += ", ";
-        }
-    }
-
-    if (this.regAlloc.interval !== null && 
-        this.regAlloc.interval.instr !== null)
-    {
-        output += " -- SSA Temp: " + this.regAlloc.interval.instr.getValName();
-    }
-
-    return output;
-};
-
-//=============================================================================
-//
 // High-level IR (HIR) instructions
 //
 //=============================================================================
@@ -2078,18 +2015,6 @@ var HIRInstr = function ()
 {
 };
 HIRInstr.prototype = new CallInstr();
-
-// TODO: PROBLEM: some HIR instructions may throw exceptions. Would need to
-// descend from ExceptInstr?
-//
-// May want to alter design to eliminate ExceptInstr
-// Could have a throws() function defined on all instructions
-// by default, checks for second branch target
-// Also define setThrowTarget for all?
-//
-// Other possibility is to get rid of HIRInstr, just check if lower
-// function is defined on the instruction
-// May be more logical. HIRInstr screws with current hierarchy
 
 /**
 Create an HIR instruction constructor
@@ -2114,26 +2039,6 @@ function hirInstrMaker(instrName, numInputs, mayThrow, proto)
 
     return InstrCtor;
 };
-
-/**
-@class Property read instruction
-@augments HIRInstr
-*/
-var GetPropInstr = hirInstrMaker(
-    'get_prop',
-    2,
-    true
-);
-
-/**
-@class Property write instruction
-@augments HIRInstr
-*/
-var PutPropInstr = hirInstrMaker(
-    'put_prop',
-    3,
-    true
-);
 
 /**
 @class Base class for HIR arithmetic instructions
@@ -2252,19 +2157,120 @@ var HIRNsInstr = hirInstrMaker(
     new HIRCompInstr()
 );
 
+/**
+@class Get the global object reference
+@augments HIRInstr
+*/
+var GetGlobalInstr = hirInstrMaker(
+    'get_global',
+    0,
+    false
+);
+
+/**
+@class Property read instruction
+@augments HIRInstr
+*/
+var GetPropInstr = hirInstrMaker(
+    'get_prop',
+    2,
+    true
+);
+
+/**
+@class Property write instruction
+@augments HIRInstr
+*/
+var PutPropInstr = hirInstrMaker(
+    'put_prop',
+    3,
+    true
+);
+
+
+// TODO: DelPropInstr
+
+
+// FIXME: call and new can take an arbitrary parameter count...
+/**
+@class Property read instruction
+@augments HIRInstr
+*/
+var JSCallInstr = hirInstrMaker(
+    'js_call',
+    2,
+    true
+);
+
+
+// TODO: js_new
+//var JSNewInstr = hirInstrMaker(
 
 
 
 
+/*
+TODO
+Issues: 
+
+current instruction class hierarchy limiting, would need multiple inheritance
+
+some inference related things may not have HIR instructions? Object.setAttributes...(...)
+- Functions can touch objects
+- Everything that touches objects in the JS sense needs to be visible to our analysis
+  - Can have HIR instructions to do those things
+- Some things will probably always remain function calls?
+- Want to be able to specialize function calls too
+
+- HIRInstr still seems more flexible..?
 
 
-//
-// TODO: fill in other HIR instructions
-//
+HIRInstr or JSInstr:
+- Each JS-level op has an HIRInstr
+- Attach .lower, .typeProp, etc to instr
+- Analyses, transforms function at high level
+- Lowering replaces by specialized calls and/or inlining
+- Primitives can be fixes functions or code generator functions or templates
 
-// TODO: HIR load/store?
+Primitive calls:
+- ast-to-ir produces primitive calls for JS-level ops
+- flow functions are attached/associated to primitive fns
+- automatic specializers try to optimize primitives based on type info available
+- issue: in some cases, can't express some primitives as one single primitive call!
 
 
+Issue with HIRInstr: once in LIR, no more inference possible.
+Functions need to have inference done at HIR level.
+Advantage: can have many specialized primitives. Specialization mechanism can be
+separate from primitive code.
 
+
+In the end, very much equivalent. Main annoyance with HIRInstr is the need to
+fit these into our abstraction mechanism for instructions.
+
+Probably need a more effective instruction implementation.
+
+HIRInstr can throw, and so descends from call.
+
+Probably best if any instruction could branch if desired. Have branch flag
+instead.
+
+Could potentially mutate an HIRInstr directly into a function call instr...
+No instruction reallocation/replacement needed.
+
+Can we still have constructor functions? Yes, but no prototype chain? No?
+We currently use arguments alot for instruction constructors, but we cannot
+use apply.
+
+Features:
+- Flags
+- No sub-arrays for operands, branches? Still need one for dests... But only when there's more than one.
+- Separate creation and validation functions
+- Validate during CFG validation
+- No mnemonic concatenation on creation
+- Still want to derive from IRValue, IRInstr
+
+
+*/
 
 

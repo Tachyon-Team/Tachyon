@@ -93,10 +93,6 @@ uint8_t readFromMemoryBlock(uint8_t* block, size_t index);
 
 /*---------------------------------------------------------------------------*/
 
-void gcCollect(void* ctxPtr);
-
-/*---------------------------------------------------------------------------*/
-
 // Tachyon argument/return value type definition
 typedef intptr_t TachVal;
 
