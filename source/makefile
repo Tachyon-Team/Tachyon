@@ -122,7 +122,7 @@ TEST_SPEC_SRCS =                        \
 RUN_SRCS =                              \
     $(BASE_SRCS)                        \
     $(TEST_SPEC_SRCS)                   \
-    $(MAIN_SPEC_SRCS)                   \
+    $(MAIN_SPEC_SRCS)
 
 # All source files
 ALL_SRCS =                              \
@@ -130,7 +130,7 @@ ALL_SRCS =                              \
     $(RUNTIME_SRCS)                     \
     $(STDLIB_SRCS)                      \
     $(TEST_SPEC_SRCS)                   \
-    $(MAIN_SPEC_SRCS)                   \
+    $(MAIN_SPEC_SRCS)
 
 all: tachyon compiler/sources.js
 
