@@ -306,14 +306,41 @@ function genLowerFunc(primName)
 }
 
 // For now, these HIR instructions are directly replaced by a primitive call
-HIRLtInstr.prototype.lower = genLowerFunc('lt');
-HIRLeInstr.prototype.lower = genLowerFunc('le');
-HIRGtInstr.prototype.lower = genLowerFunc('gt');
-HIRGeInstr.prototype.lower = genLowerFunc('ge');
-HIRSeInstr.prototype.lower = genLowerFunc('se');
-HIRNsInstr.prototype.lower = genLowerFunc('ns');
-HIREqInstr.prototype.lower = genLowerFunc('eq');
-HIRNeInstr.prototype.lower = genLowerFunc('ne');
+JSAddInstr.prototype.lower = genLowerFunc('add');
+JSSubInstr.prototype.lower = genLowerFunc('sub');
+JSMulInstr.prototype.lower = genLowerFunc('mul');
+JSDivInstr.prototype.lower = genLowerFunc('div');
+JSModInstr.prototype.lower = genLowerFunc('mod');
+JSNotInstr.prototype.lower = genLowerFunc('not');
+JSAndInstr.prototype.lower = genLowerFunc('and');
+JSOrInstr.prototype.lower = genLowerFunc('or');
+JSXorInstr.prototype.lower = genLowerFunc('xor');
+JSLsftInstr.prototype.lower = genLowerFunc('lsft');
+JSRsftInstr.prototype.lower = genLowerFunc('rsft');
+JSUrsftInstr.prototype.lower = genLowerFunc('ursft');
+JSLtInstr.prototype.lower = genLowerFunc('lt');
+JSLeInstr.prototype.lower = genLowerFunc('le');
+JSGtInstr.prototype.lower = genLowerFunc('gt');
+JSGeInstr.prototype.lower = genLowerFunc('ge');
+JSSeInstr.prototype.lower = genLowerFunc('se');
+JSNsInstr.prototype.lower = genLowerFunc('ns');
+JSEqInstr.prototype.lower = genLowerFunc('eq');
+JSNeInstr.prototype.lower = genLowerFunc('ne');
 GetPropInstr.prototype.lower = genLowerFunc('getPropVal');
 PutPropInstr.prototype.lower = genLowerFunc('putPropVal');
+DelPropInstr.prototype.lower = genLowerFunc('delPropVal');
+TypeOfInstr.prototype.lower = genLowerFunc('typeOf');
+InstOfInstr.prototype.lower = genLowerFunc('instanceOf');
+InInstr.prototype.lower = genLowerFunc('inOp');
+
+// TODO
+// TODO: lowering for call, constructor?
+// TODO
+// Need to dynamically generate code
+
+
+
+
+
+
 

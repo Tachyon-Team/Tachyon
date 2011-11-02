@@ -250,23 +250,17 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         {
             var pred = block.preds[0];
 
-            measurePerformance(
-                'Edge transition (1-pred)',
-                function ()
-                {
-                    // Insert the edge transition stub
-                    x86.genEdgeTrans(
-                        pred, 
-                        block,
-                        exitAllocMaps[pred.blockId],
-                        liveness.blockIn[block.blockId],
-                        allocMaps,
-                        blockLabels,
-                        edgeLabels,
-                        asm,
-                        params
-                    );
-                }
+            // Insert the edge transition stub
+            x86.genEdgeTrans(
+                pred, 
+                block,
+                exitAllocMaps[pred.blockId],
+                liveness.blockIn[block.blockId],
+                allocMaps,
+                blockLabels,
+                edgeLabels,
+                asm,
+                params
             );
         }
 
@@ -414,20 +408,13 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 );
 
                 // Perform register allocation for instruction
-                var allocInfo;
-                measurePerformance(
-                    'Register allocation',
-                    function () 
-                    {
-                        allocInfo = x86.allocOpnds(
-                            allocMap,
-                            instr,
-                            liveInFunc,
-                            liveOutFunc,
-                            asm,
-                            params
-                        );
-                    }
+                var allocInfo = x86.allocOpnds(
+                    allocMap,
+                    instr,
+                    liveInFunc,
+                    liveOutFunc,
+                    asm,
+                    params
                 );
 
                 assert (
@@ -436,19 +423,13 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 );
 
                 // Generate code for the instruction
-                measurePerformance(
-                    'Instruction selection',
-                    function ()
-                    {
-                        instr.x86.genCode(
-                            instr, 
-                            allocInfo.opnds, 
-                            allocInfo.dest, 
-                            allocInfo.scratch,
-                            asm,
-                            genInfo
-                        );
-                    }
+                instr.x86.genCode(
+                    instr, 
+                    allocInfo.opnds, 
+                    allocInfo.dest, 
+                    allocInfo.scratch,
+                    asm,
+                    genInfo
                 );
             }
         }
@@ -468,23 +449,17 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 continue;
             }
 
-            measurePerformance(
-                'Edge transition (n-pred)',
-                function ()      
-                {
-                    // Insert the edge transition stub
-                    x86.genEdgeTrans(
-                        block, 
-                        succ,
-                        allocMap,
-                        liveness.blockIn[succ.blockId],
-                        allocMaps,
-                        blockLabels,
-                        edgeLabels,
-                        asm,
-                        params
-                    );
-                }
+            // Insert the edge transition stub
+            x86.genEdgeTrans(
+                block, 
+                succ,
+                allocMap,
+                liveness.blockIn[succ.blockId],
+                allocMaps,
+                blockLabels,
+                edgeLabels,
+                asm,
+                params
             );
         }
     }

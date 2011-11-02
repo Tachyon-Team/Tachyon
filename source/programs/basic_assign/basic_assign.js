@@ -248,6 +248,23 @@ function test(v0, v3, v4, v5)
     if (a15 !== v5)
         return 27;
 
+    //
+    // Assignment in a logical negation
+    //
+
+    var a16 = 0;  
+
+    if (!(a16 = 5))
+    {
+        return 28;
+    }
+    else
+    {
+    }
+
+    if (a16 !== v5)
+        return 29;
+
     return 0;
 }
 

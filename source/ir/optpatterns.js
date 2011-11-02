@@ -915,7 +915,7 @@ function applyPatternsInstr(cfg, block, instr, index, params)
                 return true;
             
             // If this is a comparison instruction, it is boolean
-            if (val instanceof HIRCompInstr)
+            if (val instanceof JSCompInstr)
                 return true;
 
             // If this is a boxToBool call, it is boolean

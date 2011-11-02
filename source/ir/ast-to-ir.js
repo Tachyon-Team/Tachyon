@@ -438,10 +438,9 @@ function stmtListToIRFunc(
                     undefined,
                     function (condCtx)
                     {
-                        insertPrimCallIR(
+                        insertExceptIR(
                             condCtx,
-                            'putPropVal', 
-                            [globalObj, IRConst.getConst(varName), varVal]
+                            new PutPropInstr(globalObj, IRConst.getConst(varName), varVal)
                         );
                     }
                 );
@@ -449,10 +448,9 @@ function stmtListToIRFunc(
             else
             {
                 // Bind the variable's initial value in the global environment
-                insertPrimCallIR(
+                insertExceptIR(
                     bodyContext,
-                    'putPropVal', 
-                    [globalObj, IRConst.getConst(varName), varVal]
+                    new PutPropInstr(globalObj, IRConst.getConst(varName), varVal)
                 );
             }
         }
@@ -1727,7 +1725,7 @@ function stmtToIR(context)
                 // Insert the HIR instruction
                 var testVal = insertExceptIR(
                     curTestCtx,
-                    new HIRSeInstr([curTestCtx.getOutValue(), switchCtx.getOutValue()])
+                    new JSSeInstr([curTestCtx.getOutValue(), switchCtx.getOutValue()])
                 );
 
                 // Merge the incoming contexts
@@ -2178,10 +2176,9 @@ function exprToIR(context)
             exprToIR(idxContext);
 
             // Get the function property from the object
-            funcVal = insertPrimCallIR(
-                idxContext, 
-                'getPropVal', 
-                [thisContext.getOutValue(), idxContext.getOutValue()]
+            funcVal = insertExceptIR(
+                idxContext,
+                new GetPropInstr(thisContext.getOutValue(), idxContext.getOutValue())
             );
 
             // The this value is the result of the this expression evaluation
@@ -2327,10 +2324,9 @@ function exprToIR(context)
         // Set the value of each element in the new array
         for (var i = 0; i < elemVals.length; ++i)
         {
-            insertPrimCallIR(
-                elemCtx, 
-                'putPropVal', 
-                [newArray, IRConst.getConst(i), elemVals[i]]
+            insertExceptIR(
+                elemCtx,
+                new PutPropInstr(newArray, IRConst.getConst(i), elemVals[i])
             );
         }
 
@@ -2371,10 +2367,9 @@ function exprToIR(context)
             var propName = nameVals[i];
             var propValue = valVals[i];
 
-            insertPrimCallIR(
-                valCtx, 
-                'putPropVal', 
-                [newObject, propName, propValue]
+            insertExceptIR(
+                valCtx,
+                new PutPropInstr(newObject, propName, propValue)
             );
         }
         
@@ -2467,7 +2462,7 @@ function opToIR(context)
     }
 
     // Function to generate code for composite assignment expressions
-    function compAssgGen(primName, instrClass)
+    function compAssgGen(hirInstr, lirInstr)
     {
         // Function to implement the operator code gen
         function opFunc(context, lhsVal)
@@ -2479,8 +2474,8 @@ function opToIR(context)
             // Compute the added value
             var addVal = makeOp(
                 rhsContext, 
-                primName, 
-                instrClass,
+                hirInstr, 
+                lirInstr,
                 [lhsVal, rhsContext.getOutValue()]
             );
 
@@ -2496,14 +2491,14 @@ function opToIR(context)
     }
 
     // Function to generate code for generic unary/binary operators
-    function opGen(primName, instrClass)
+    function opGen(hirInstr, lirInstr)
     {
         // Compile the argument values
         var argsContext = context.pursue(exprs);
         var argVals = exprListToIR(argsContext);
 
         // Create the appropriate operator instruction
-        var opVal = makeOp(argsContext, primName, instrClass, argVals);
+        var opVal = makeOp(argsContext, hirInstr, lirInstr, argVals);
 
         // Set the operator's output value as the output
         context.setOutput(argsContext.getExitBlock(), opVal);
@@ -2511,7 +2506,7 @@ function opToIR(context)
 
     // Function to create either a primitive call or a machine instruction
     // depending on the argument types
-    function makeOp(curContext, prim, instrClass, argVals)
+    function makeOp(curContext, hirInstr, lirInstr, argVals)
     {
         // Test if all arguments are boxed
         var allBoxed = true;
@@ -2520,38 +2515,30 @@ function opToIR(context)
                 allBoxed = false;
 
         // If all values are boxed
-        if (allBoxed)
+        if (allBoxed === true)
         {
-            // If the primitive is an instruction
-            if (prim instanceof Function)
-            {
-                // Insert the instruction
-                var opVal = insertExceptIR(
-                    curContext,
-                    new prim(argVals)
-                );
-            }
-            else
-            {
-                // Create the primitive call
-                var opVal = insertPrimCallIR(
-                    curContext,
-                    prim, 
-                    argVals
-                );
-            }
+            // Insert the instruction
+            var opVal = insertExceptIR(
+                curContext,
+                new hirInstr(argVals)
+            );
         }
         else
         {
             // Setup a try block to catch potential type errors
             try
             {
-                if (!instrClass)
-                    throw 'operator cannot operate on typed values: ' + primName;
+                if (!lirInstr)
+                {
+                    error(
+                        'operator cannot operate on typed values: ' +
+                        hirInstr.prototype.mnemonic
+                    );
+                }
 
                 // Create the machine instruction
                 var opVal = curContext.addInstr(
-                    new instrClass(argVals)
+                    new lirInstr(argVals)
                 );
             }
             catch (exc)
@@ -2565,7 +2552,7 @@ function opToIR(context)
     }
 
     // Function to generate code for a binary comparison operation
-    function cmpGen(prim, cmpOp)
+    function cmpGen(hirInstr, cmpOp)
     {
         // Compile the argument values
         var argsContext = context.pursue(exprs);
@@ -2578,12 +2565,12 @@ function opToIR(context)
                 allBoxed = false;
 
         // If all values are boxed
-        if (allBoxed)
+        if (allBoxed === true)
         {
             // Insert the HIR instruction
             var opVal = insertExceptIR(
                 argsContext,
-                new prim(argVals[0], argVals[1])
+                new hirInstr(argVals[0], argVals[1])
             );
 
             // Set the operator's output value as the output
@@ -2781,6 +2768,60 @@ function opToIR(context)
         }
         break;
         
+        // If this is a logical NOT expression
+        case '! x':
+        {
+            // Compile the first expression
+            var notEntry = context.cfg.getNewBlock('log_not');
+            var notContext = context.branch(
+                exprs[0],
+                notEntry,
+                context.localMap
+            );
+            exprToIR(notContext);
+
+            // Get the boolean value of the expression
+            var boolVal = insertPrimCallIR(
+                notContext, 
+                'boxToBool',
+                [notContext.getOutValue()]
+            );
+
+            // Compile the second expression
+            var falseBlock = context.cfg.getNewBlock('log_not_false');
+
+            // Merge the local maps using phi nodes
+            var joinBlock = context.cfg.getNewBlock('log_not_join');
+
+            // Jump from the false block to the join block
+            falseBlock.addInstr(new JumpInstr(joinBlock));
+
+            // Branch based on the expression value
+            notContext.getExitBlock().addInstr(
+                new IfInstr(
+                    [boolVal, IRConst.getConst(true)],
+                    'EQ',
+                    joinBlock,
+                    falseBlock
+                )
+            );
+
+            // Create a phi node to merge the values
+            var phiValue = joinBlock.addInstr(
+                new PhiInstr(
+                    [IRConst.getConst(false), IRConst.getConst(true)],
+                    [notContext.getExitBlock(), falseBlock]
+                )
+            );
+
+            // Jump to the expression evaluation
+            context.addInstr(new JumpInstr(notEntry));
+
+            // Set the exit block to be the join block
+            context.setOutput(joinBlock, phiValue);
+        }
+        break;
+
         // If this is a conditional operator expression
         case 'x ? y : z':
         {
@@ -2875,7 +2916,7 @@ function opToIR(context)
                 // Subtract the argument value from the constant 0
                 var opVal = makeOp(
                     argsContext,
-                    'sub',
+                    JSSubInstr,
                     SubInstr,
                     [IRConst.getConst(0, argVals[0].type), argVals[0]]
                 );
@@ -2896,7 +2937,7 @@ function opToIR(context)
             // Add the argument value to the constant 0
             var opVal = makeOp(
                 argsContext,
-                'add',
+                JSAddInstr,
                 AddInstr,
                 [IRConst.getConst(0, argVals[0].type), argVals[0]]
             );
@@ -2913,15 +2954,7 @@ function opToIR(context)
             var argsContext = context.pursue(exprs);
             var argVals = exprListToIR(argsContext);
 
-            /*
             // Create the appropriate operator instruction
-            var opVal = insertPrimCallIR(
-                argsContext, 
-                'getPropVal', 
-                [argVals[0], argVals[1]]
-            );
-            */
-
             var opVal = insertExceptIR(
                 argsContext,
                 new GetPropInstr(argVals[0], argVals[1])
@@ -2945,11 +2978,10 @@ function opToIR(context)
                 var argsContext = context.pursue(fieldExpr.exprs);
                 var argVals = exprListToIR(argsContext);
 
-                // Create the appropriate operator instruction
-                var opVal = insertPrimCallIR(
-                    argsContext, 
-                    'delPropVal', 
-                    [argVals[0], argVals[1]]
+                // Insert the instruction
+                var opVal = insertExceptIR(
+                    argsContext,
+                    new DelPropInstr(argVals)
                 );
 
                 // Set the operator's output value as the output
@@ -3022,21 +3054,19 @@ function opToIR(context)
                     // Get the global object
                     var globalObj = insertGetGlobal(globContext);
 
-                    // Delete the property from the global object
-                    opValueGlob = insertPrimCallIR(
-                        globContext, 
-                        'delPropVal', 
-                        [globalObj, IRConst.getConst(varName)]
+                    // Insert the instruction
+                    var opValueGlob = insertExceptIR(
+                        globContext,
+                        new DelPropInstr(globalObj, IRConst.getConst(varName))
                     );
 
                     // If we are within a with block
                     if (context.withVal !== null)
                     {
-                        // Delete the property from the with object
-                        var opValueObj = insertPrimCallIR(
-                            objContext, 
-                            'delPropVal', 
-                            [context.withVal, IRConst.getConst(varName)]
+                        // Insert the instruction
+                        var opValueObj = insertExceptIR(
+                            objContext,
+                            new DelPropInstr(context.withVal, IRConst.getConst(varName))
                         );
 
                         // Bridge the prop and var contexts
@@ -3095,163 +3125,159 @@ function opToIR(context)
         break;
 
         case '++ x':
-        prePostGen('add', AddInstr, false);
+        prePostGen(JSAddInstr, AddInstr, false);
         break;
 
         case '-- x':
-        prePostGen('sub', SubInstr, false);
+        prePostGen(JSSubInstr, SubInstr, false);
         break;
 
         case 'x ++':
-        prePostGen('add', AddInstr, true);     
+        prePostGen(JSAddInstr, AddInstr, true);     
         break;
 
         case 'x --':
-        prePostGen('sub', SubInstr, true);           
+        prePostGen(JSSubInstr, SubInstr, true);           
         break;
 
         case 'x += y':
-        compAssgGen('add', AddInstr);
+        compAssgGen(JSAddInstr, AddInstr);
         break;
 
         case 'x -= y':
-        compAssgGen('sub', SubInstr);
+        compAssgGen(JSSubInstr, SubInstr);
         break;
 
         case 'x *= y':
-        compAssgGen('mul', MulInstr);
+        compAssgGen(JSMulInstr, MulInstr);
         break;
 
         case 'x /= y':
-        compAssgGen('div', DivInstr);
+        compAssgGen(JSDivInstr, DivInstr);
         break;
 
         case 'x %= y':
-        compAssgGen('mod', ModInstr);
+        compAssgGen(JSModInstr, ModInstr);
         break;
 
         case '~= x':
-        compAssgGen('not', NotInstr);
+        compAssgGen(JSNotInstr, NotInstr);
         break;
 
         case 'x &= y':
-        compAssgGen('and', AndInstr);
+        compAssgGen(JSAndInstr, AndInstr);
         break;
 
         case 'x |= y':
-        compAssgGen('or', OrInstr);
+        compAssgGen(JSOrInstr, OrInstr);
         break;
 
         case 'x ^= y':
-        compAssgGen('xor', XorInstr);
+        compAssgGen(JSXorInstr, XorInstr);
         break;
 
         case 'x <<= y':
-        compAssgGen('lsft', LsftInstr);
+        compAssgGen(JSLsftInstr, LsftInstr);
         break;
 
         case 'x >>= y':
-        compAssgGen('rsft', RsftInstr);
+        compAssgGen(JSRsftInstr, RsftInstr);
         break;
 
         case 'x >>>= y':
-        compAssgGen('ursft', UrsftInstr);
+        compAssgGen(JSUrsftInstr, UrsftInstr);
         break;
 
         case 'x + y':
-        opGen('add', AddInstr);
+        opGen(JSAddInstr, AddInstr);
         break;
 
         case 'x - y':
-        opGen('sub', SubInstr);
+        opGen(JSSubInstr, SubInstr);
         break;
 
         case 'x * y':
-        opGen('mul', MulInstr);
+        opGen(JSMulInstr, MulInstr);
         break;
 
         case 'x / y':
-        opGen('div', DivInstr);
+        opGen(JSDivInstr, DivInstr);
         break;
 
         case 'x % y':
-        opGen('mod', ModInstr);
-        break;
-
-        case '! x':
-        opGen('logNot');
+        opGen(JSModInstr, ModInstr);
         break;
 
         case '~ x':
-        opGen('not', NotInstr);
+        opGen(JSNotInstr, NotInstr);
         break;
 
         case 'x & y':
-        opGen('and', AndInstr);
+        opGen(JSAndInstr, AndInstr);
         break;
 
         case 'x | y':
-        opGen('or', OrInstr);
+        opGen(JSOrInstr, OrInstr);
         break;
 
         case 'x ^ y':
-        opGen('xor', XorInstr);
+        opGen(JSXorInstr, XorInstr);
         break;
 
         case 'x << y':
-        opGen('lsft', LsftInstr);
+        opGen(JSLsftInstr, LsftInstr);
         break;
 
         case 'x >> y':
-        opGen('rsft', RsftInstr);
+        opGen(JSRsftInstr, RsftInstr);
         break;
 
         case 'x >>> y':
-        opGen('ursft', UrsftInstr);
+        opGen(JSUrsftInstr, UrsftInstr);
         break;
 
         case 'x < y':
-        cmpGen(HIRLtInstr, 'LT');
+        cmpGen(JSLtInstr, 'LT');
         break;
 
         case 'x <= y':
-        cmpGen(HIRLeInstr, 'LE');
+        cmpGen(JSLeInstr, 'LE');
         break;
 
         case 'x > y':
-        cmpGen(HIRGtInstr, 'GT');
+        cmpGen(JSGtInstr, 'GT');
         break;
 
         case 'x >= y':
-        cmpGen(HIRGeInstr, 'GE');
+        cmpGen(JSGeInstr, 'GE');
         break;
 
         case 'x === y':
-        cmpGen(HIRSeInstr, 'EQ');
+        cmpGen(JSSeInstr, 'EQ');
         break;
 
         case 'x !== y':
-        cmpGen(HIRNsInstr, 'NE');
+        cmpGen(JSNsInstr, 'NE');
         break;
 
         case 'x == y':
-        opGen(HIREqInstr);
+        opGen(JSEqInstr);
         break;
 
         case 'x != y':
-        opGen(HIRNeInstr);
+        opGen(JSNeInstr);
         break;
 
         case 'typeof x':
-        opGen('typeOf');
+        opGen(TypeOfInstr);
         break;
 
         case 'x instanceof y':
-        opGen('instanceOf');
+        opGen(InstOfInstr);
         break;
 
         case 'x in y':
-        opGen('inOp');
+        opGen(InInstr);
         break;
 
         default:
@@ -3347,10 +3373,9 @@ function assgToIR(context, rhsVal)
             if (leftExpr.id.scope instanceof Program)
             {
                 // Get the value from the global object
-                lhsVal = insertPrimCallIR(
-                    varContext, 
-                    'getPropVal', 
-                    [globalObj, IRConst.getConst(symName)]
+                lhsVal = insertExceptIR(
+                    varContext,
+                    new GetPropInstr(globalObj, IRConst.getConst(symName))
                 );
             }
 
@@ -3392,10 +3417,9 @@ function assgToIR(context, rhsVal)
         if (leftExpr.id.scope instanceof Program)
         {
             // Set the value in the global object
-            insertPrimCallIR(
-                varContext, 
-                'putPropVal', 
-                [globalObj, IRConst.getConst(symName), rhsValAssg]
+            insertExceptIR(
+                varContext,
+                new PutPropInstr(globalObj, IRConst.getConst(symName), rhsValAssg)
             );
         }
 
@@ -3430,10 +3454,9 @@ function assgToIR(context, rhsVal)
                 var lhsVal;
 
                 // Get the value in the with object
-                lhsVal = insertPrimCallIR(
-                    propContext, 
-                    'getPropVal', 
-                    [context.withVal, IRConst.getConst(symName)]
+                lhsVal = insertExceptIR(
+                    propContext,
+                    new PutPropInstr(context.withVal, IRConst.getConst(symName))
                 );
 
                 // Update the RHS value according to the specified function
@@ -3450,10 +3473,9 @@ function assgToIR(context, rhsVal)
             }
 
             // Set the value in the with object
-            insertPrimCallIR(
-                propContext, 
-                'putPropVal', 
-                [context.withVal, IRConst.getConst(symName), rhsValAssg]
+            insertExceptIR(
+                propContext,
+                new PutPropInstr(context.withVal, IRConst.getConst(symName), rhsValAssg)
             );
 
             // Bridge the prop and var contexts
@@ -3516,10 +3538,9 @@ function assgToIR(context, rhsVal)
             var lhsVal;
 
             // Get the property's current value
-            lhsVal = insertPrimCallIR(
-                curContext, 
-                'getPropVal', 
-                [objContext.getOutValue(), idxContext.getOutValue()]
+            lhsVal = insertExceptIR(
+                curContext,
+                new GetPropInstr(objContext.getOutValue(), idxContext.getOutValue())
             );
 
             // Update the RHS value according to the specified function
@@ -3532,10 +3553,9 @@ function assgToIR(context, rhsVal)
         }
 
         // Set the property to the right expression's value
-        insertPrimCallIR(
-            curContext, 
-            'putPropVal', 
-            [objContext.getOutValue(), idxContext.getOutValue(), rhsVal]
+        insertExceptIR(
+            curContext,
+            new PutPropInstr(objContext.getOutValue(), idxContext.getOutValue(), rhsVal)
         );
 
         // The value of the right expression is the assignment expression's value
@@ -3709,10 +3729,9 @@ function refToIR(context)
     if (context.withVal !== null)
     {
         // Get the value in the with object
-        var varValueProp = insertPrimCallIR(
-            propContext, 
-            'getPropVal', 
-            [context.withVal, IRConst.getConst(symName)]
+        var varValueProp = insertExceptIR(
+            propContext,
+            new GetPropInstr(context.withVal, IRConst.getConst(symName))
         );
 
         // Bridge the prop and var contexts

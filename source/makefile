@@ -57,7 +57,8 @@ BASE_SRCS =                             \
     compiler/imgwriter.js               \
     ir/types.js                         \
     ir/static.js                        \
-    ir/instructions.js                  \
+    ir/lir.js                           \
+    ir/hir.js                           \
     ir/constants.js                     \
     ir/iir.js                           \
     ir/cfg.js                           \

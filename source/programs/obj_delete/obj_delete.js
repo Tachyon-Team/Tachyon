@@ -40,8 +40,19 @@
  * _________________________________________________________________________
  */
 
+var testGlobal = 777;
+
+function getGlobalObj()
+{
+    return this;
+}
+
 function test()
 {
+    //
+    // Object property deletion
+    //
+
     var a = { x:1, y:2, z:3 };
 
     if (a.x !== 1)
@@ -55,6 +66,10 @@ function test()
         return 3;
     if (a.z != 3)
         return 4;
+
+    //
+    // Array element deletion
+    //
 
     var b = [0,1,2,3];
 
@@ -95,5 +110,40 @@ function test()
     if (b[3])
         return 19;
 
+    //
+    // With statement and property deletion
+    //
+
+    var c = { x:1, y:2 };
+
+    if (c.y !== 2)
+        return 20;
+
+    with (c)
+        delete y;
+
+    if (c.y)
+        return 21;
+    if (c.x != 1)
+        return 22;
+
+    //
+    // Global property deletion
+    //
+
+    var globalObj = getGlobalObj();
+
+    if ('testGlobal' in globalObj !== true)
+        return 23;
+
+    if (testGlobal !== 777)
+        return 24;
+
+    delete testGlobal;
+
+    if ('testGlobal' in globalObj !== false)
+        return 25; 
+
     return 0;
 }
+

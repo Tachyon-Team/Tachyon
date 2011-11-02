@@ -72,6 +72,6 @@ TACHYON_RUN_SRCS_ABS=`echo " ${TACHYON_RUN_SRCS}" | sed "s: : ${TACHYON_SOURCE_D
 
 #==============================================================================
 
-"${TACHYON_JSVMPROG}" ${TACHYON_RUN_SRCS_ABS} -- "$@"
+rlwrap "${TACHYON_JSVMPROG}" ${TACHYON_RUN_SRCS_ABS} -- "$@"
 
 #==============================================================================

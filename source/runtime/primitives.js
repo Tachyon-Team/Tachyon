@@ -592,7 +592,7 @@ function makeError(errorCtor, message)
 {
     "tachyon:static";
 
-    // FIXME: for now, constructors and exceptions unsupported
+    // FIXME: for now, exceptions unsupported
     error(message);
 
     //return new errorCtor(message);
@@ -1621,18 +1621,6 @@ function ursft(v1, v2)
 
         return res;
     }
-}
-
-/**
-Logical negation operator
-*/
-function logNot(v) 
-{ 
-    "tachyon:inline";
-    
-    var boolVal = boxToBool(v);
-
-    return boolVal? false:true;
 }
 
 /**
