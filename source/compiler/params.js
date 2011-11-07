@@ -37,16 +37,26 @@
  *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * _________________________________________________________________________
- */
+ * _________________________________________________________________________ */
 
 /**
 @fileOverview
 Definition of compilation parameters.
 
 @author
-Maxime Chevalier-Boisvert, Erick Lavoie
+Maxime Chevalier-Boisvert
+Erick Lavoie
 */
+
+/**
+@namespace Compiler initialization states
+*/
+const initState = {
+    NO_RUNTIME: 0,
+    PARTIAL_RUNTIME: 1,
+    FULL_RUNTIME: 2,
+    FULL_STDLIB: 3
+}
 
 /**
 @class Description/grouping of compilation parameters required to compile a
@@ -132,6 +142,12 @@ function CompParams(cfgObj)
     this.staticEnv = cfgObj.staticEnv;
 
     /**
+    Compiler initialization state
+    @field
+    */
+    this.initState = initState.NO_RUNTIME;
+
+    /**
     Map of object memory layouts, by name
     @field
     */
@@ -147,20 +163,13 @@ function CompParams(cfgObj)
     Map auto-generated specialized primitives
     @field
     */
-    this.specPrims = new HashMap();
+    this.specPrims = new HashMap(specHashFunc, specEqualFunc);
 
     /**
     Function to allocate string objects
     @field
     */
     this.getStrObj = null;
-
-    /**
-    Function used to print output during the compilation.
-    By default this is the global print function.
-    @field
-    */
-    this.print = print;
 
     /**
     Flag to print the ASTs generated during the compilation
@@ -185,11 +194,5 @@ function CompParams(cfgObj)
     @field
     */
     this.printASM = false;
-
-    /**
-    Register allocation algorithm to use
-    @field
-    */
-    this.regAlloc = "linearScan";
 }
 

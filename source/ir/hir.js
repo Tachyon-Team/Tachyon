@@ -448,7 +448,7 @@ var InInstr = hirInstrMaker(
 */
 var JSCallInstr = hirInstrMaker(
     'js_call',
-    [1,undefined],
+    [2,undefined],
     true
 );
 
@@ -462,10 +462,27 @@ var JSNewInstr = hirInstrMaker(
     true
 );
 
-// TODO: GetGlobal?
+// TODO: JSGlobalObj?
+// Eventually, want this to be linked constant
+// For now, can simplify analysis with pseudo-instruction
 
-// TODO: CallGlobal?
+// TODO: JSGetGlobal?
+
+// TODO: JSCallGlobal?
 // Put the lookup and assertions in there
+// Probably a good idea, more compact code
+
+/**
+@class JavaScript global function call instruction
+@augments HIRInstr
+*/
+var JSCallGlobalInstr = hirInstrMaker(
+    'js_call_global',
+    [2,undefined],
+    true
+);
+
+
 
 
 

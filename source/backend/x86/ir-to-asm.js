@@ -615,6 +615,14 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
             asm.mov(tmpReg, srcOpnd);
             asm.mov(dstOpnd, tmpReg);
         }
+
+        // If this is a move of a link value to the stack, and we are in 64-bit mode
+        else if (srcOpnd instanceof x86.LinkValue && backend.regSizeBits === 64)
+        {
+            asm.mov(tmpReg, srcOpnd);
+            asm.mov(dstOpnd, tmpReg);
+        }
+
         else
         {
             x86.moveValue(

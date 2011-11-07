@@ -140,8 +140,6 @@ function lowerIRCFG(cfg, params)
                 // If this is an HIR instruction
                 if (instr instanceof HIRInstr)
                 {
-                    //print('lowering HIR instruction: ' + instr);
-
                     // Call the lowering function to get the
                     // primitive to be called
                     var primFunc = instr.lower(params);
@@ -293,6 +291,130 @@ function lowerIRCFG(cfg, params)
 //=============================================================================
 
 /**
+Generate a specialized primitive function based on specialization parameters.
+*/
+function genSpecPrim(instrClass, genFunc, specParams, compParams)
+{
+    assert (
+        typeof genFunc === 'function',
+        'expected generation function'
+    );
+
+    assert (
+        specParams instanceof Array,
+        'expected specialization parameters'
+    );
+
+    assert (
+        compParams instanceof CompParams,
+        'expected compilation parameters'
+    );
+
+    // Set the instruction class in the specialization parameters
+    specParams.instrClass = instrClass;
+
+    // If the runtime is not yet initialized
+    if (compParams.initState < initState.FULL_RUNTIME)
+    {
+        // Mark the primitive as being an inline version
+        specParams.inline = true;
+    }
+
+    //print('looking for func');
+
+    // Try to find a specialized function with the said parameters
+    var specFunc = compParams.specPrims.get(specParams);
+
+    // If there is a cache hit for the parameters, return the match
+    if (specFunc instanceof IRFunction)
+        return specFunc;
+
+    // Generate the source code for the specialized primitives
+    var sourceStr = genFunc.apply(null, specParams);
+
+    // Compile the source string to an IR function
+    var ast = parse_src_str(sourceStr, compParams);
+    var ir = unitToIR(ast, compParams);
+    lowerIRFunc(ir, compParams);
+
+    // Get the compiled primitive function
+    var specFunc = ir.childFuncs[0];
+
+    // If the runtime is not yet initialized
+    if (compParams.initState < initState.FULL_RUNTIME)
+    {
+        // Set the inline flag on the IR function
+        specFunc.inline = true;
+    }
+    else
+    {    
+        // Compile and link the IR function
+        compileIR(specFunc, compParams);
+        linkIR(specFunc, compParams);
+    }
+
+    // Cache the compiled primitive
+    compParams.specPrims.set(specParams, specFunc);
+
+    // Return the new function
+    return specFunc;
+}
+
+/**
+Hash function for the memoization of specialized primitives
+*/
+function specHashFunc(p)
+{
+    if (typeof p === 'object')
+    {
+        var hashCode = 0;
+
+        for (k in p)
+            hashCode += specHashFunc(p[k]);
+
+        return hashCode;
+    }
+
+    else if (typeof p === 'function')
+    {
+        return 1;
+    }
+
+    return defHashFunc(p);
+}
+
+/**
+Equality function for the memoization of specialized primitives
+*/
+function specEqualFunc(p1, p2)
+{
+    if (p1 === p2)
+    {
+        return true;
+    }
+
+    else if (typeof p1 === 'object' && typeof p2 === 'object')
+    {
+        if (Object.getPrototypeOf(p1) !== Object.getPrototypeOf(p2))
+            return false;
+
+        var keys = {};
+        for (k in p1) keys[k] = true;
+        for (k in p2) keys[k] = true;
+
+        for (k in keys)
+        {
+            if (specEqualFunc(p1[k], p2[k]) === false)
+                return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+/**
 Genering lowering function generator for HIR instructions.
 Directly inlines a primitive function.
 */
@@ -333,97 +455,134 @@ TypeOfInstr.prototype.lower = genLowerFunc('typeOf');
 InstOfInstr.prototype.lower = genLowerFunc('instanceOf');
 InInstr.prototype.lower = genLowerFunc('inOp');
 
-// TODO
-// TODO: lowering for call, constructor?
-// TODO
-// Need to dynamically generate code
-
-JSNewInstr.ctorTable = [];
-
-JSNewInstr.prototype.lower = function (compParams)
+// JavaScript function call
+JSCallInstr.prototype.lower = function (params)
 {
-    print(this);
+    // Get the number of function arguments
+    var numArgs = this.uses.length - 2;
+
+    // Generator function for the constructor call
+    function genFunc(numArgs)
+    {
+        //print('GENERATOR FUNCTION CALLED, numArgs = ' + numArgs);
+
+        // Concatenate the argument names
+        var args = '';
+        for (var i = 0; i < numArgs; ++i)
+            args += ',a' + i;
+
+        var callStr = '                                 \
+        function jsCall<numArgs>(func, thisVal <args>)  \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:noglobal";                         \
+                                                        \
+            var ctx = iir.get_ctx();                    \
+                                                        \
+            if (boxIsFunc(func) === false)              \
+            {                                           \
+                throw makeError(                        \
+                    get_ctx_typeerror(ctx),             \
+                    "callee is not a function"          \
+                );                                      \
+            }                                           \
+                                                        \
+            /* Do the function call */                  \
+            var retVal = iir.call(                      \
+                get_clos_funcptr(func),                 \
+                func,                                   \
+                thisVal                                 \
+                <args>                                  \
+            );                                          \
+                                                        \
+            return retVal;                              \
+        }';
+
+        sourceStr = callStr;
+        sourceStr = sourceStr.replace('<numArgs>', numArgs);
+        sourceStr = sourceStr.replace('<args>', args);
+        sourceStr = sourceStr.replace('<args>', args);
+
+        //print(sourceStr);
+
+        return sourceStr;
+    }
+
+    // Generate the primitive function
+    return genSpecPrim(JSCallInstr, genFunc, [numArgs], config.hostParams);
+}
+
+// JavaScript new operator
+JSNewInstr.prototype.lower = function (params)
+{
+    //print('JS NEW LOWERING');
 
     // Get the number of constructor arguments
     var numArgs = this.uses.length - 1;
 
-    // If a cached function already exists, return it
-    if (JSNewInstr.ctorTable[numArgs] !== undefined)
-        return JSNewInstr.ctorTable[numArgs];
+    // Generator function for the constructor call
+    function genFunc(numArgs)
+    {
+        //print('GENERATOR FUNCTION CALLED, numArgs = ' + numArgs);
 
-    // Concatenate the argument names
-    var args = this.uses.slice(1).map(function (a,i) { return 'a' + (i-1); });
+        // Concatenate the argument names
+        var args = '';
+        for (var i = 0; i < numArgs; ++i)
+            args += ',a' + i;
 
-    var ctorStr = '                                 \
-    function newCtor<numArgs>(ctor,<args>)          \
-    {                                               \
-        "tachyon:static";                           \
-        "tachyon:noglobal";                         \
-                                                    \
-        var ctx = iir.get_ctx();                    \
-                                                    \
-        var funcProto = ctor.prototype;             \
-                                                    \
-        var protoVal =                              \
-            (boxIsObjExt(funcProto) === true)?      \
-            funcProto:                              \
-            get_ctx_objproto(ctx);                  \
-                                                    \
-        var newObj = newObject(protoVal);           \
-                                                    \
-        if (boxIsFunc(ctor) === false)              \
-        {                                           \
-            throw makeError(                        \
-                get_ctx_typeerror(ctx),             \
-                "constructor is not a function"     \
-            );                                      \
-        }                                           \
-                                                    \
-        /* Do the constructor call */               \
-        var retVal = iir.call(                      \
-            get_clos_funcptr(ctor),                 \
-            ctor,                                   \
-            newObj,                                 \
-            <args>                                  \
-        );                                          \
-                                                    \
-        var objVal =                                \
-            (boxIsObjExt(retVal) === true)?         \
-            retVal:                                 \
-            newObj;                                 \
-                                                    \
-        /* Return the newly created object */       \
-        return objVal;                              \
-    }';
+        var ctorStr = '                                 \
+        function jsNew<numArgs>(ctor <args>)            \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:noglobal";                         \
+                                                        \
+            var ctx = iir.get_ctx();                    \
+                                                        \
+            var funcProto = ctor.prototype;             \
+                                                        \
+            var protoVal =                              \
+                (boxIsObjExt(funcProto) === true)?      \
+                funcProto:                              \
+                get_ctx_objproto(ctx);                  \
+                                                        \
+            var newObj = newObject(protoVal);           \
+                                                        \
+            if (boxIsFunc(ctor) === false)              \
+            {                                           \
+                throw makeError(                        \
+                    get_ctx_typeerror(ctx),             \
+                    "constructor is not a function"     \
+                );                                      \
+            }                                           \
+                                                        \
+            /* Do the constructor call */               \
+            var retVal = iir.call(                      \
+                get_clos_funcptr(ctor),                 \
+                ctor,                                   \
+                newObj                                  \
+                <args>                                  \
+            );                                          \
+                                                        \
+            var objVal =                                \
+                (boxIsObjExt(retVal) === true)?         \
+                retVal:                                 \
+                newObj;                                 \
+                                                        \
+            /* Return the newly created object */       \
+            return objVal;                              \
+        }';
 
-    sourceStr = ctorStr;
-    sourceStr = sourceStr.replace('<numArgs>', numArgs);
-    sourceStr = sourceStr.replace('<args>', args);
-    sourceStr = sourceStr.replace('<args>', args);
+        sourceStr = ctorStr;
+        sourceStr = sourceStr.replace('<numArgs>', numArgs);
+        sourceStr = sourceStr.replace('<args>', args);
+        sourceStr = sourceStr.replace('<args>', args);
 
-    print(sourceStr);
+        //print(sourceStr);
 
+        return sourceStr;
+    }
 
-
-    // TODO
-    // PROBLEM: need to compile generated IR
-    // This may not be possible if the primitives are not yet available...
-    // In theory, should at least have access to primitive symbols
-
-    const params = config.hostParams;
-
-    // Compile the source string to an IR function
-    var ast = parse_src_str(sourceStr, params);
-    var ir = unitToIR(ast, params);
-    lowerIRFunc(ir, params);
-
-    // Get the compiled primitive function
-    var primFunc = ir.childFuncs[0];
-
-    // Cache the compiled primitive
-    JSNewInstr.ctorTable[numArgs] = primFunc;
-
-    // Return the new function
-    return primFunc;
+    // Generate the primitive function
+    return genSpecPrim(JSNewInstr, genFunc, [numArgs], config.hostParams);
 }
 

@@ -92,9 +92,15 @@ function initPrimitives(params, partialInit)
         }
     );
 
-    // If this is a partial initialization, stop here
+    // If this is a partial initialization
     if (partialInit === true)
+    {
+        // Update the compiler initialization state
+        params.initState = initState.PARTIAL_RUNTIME;
+
+        // Stop here
         return;
+    }
 
     // Initialize the runtime
     initRuntime(params);
@@ -110,6 +116,9 @@ function initPrimitives(params, partialInit)
     log.trace('Primitive initialization complete');
 
     //reportPerformance();
+
+    // Update the compiler initialization state
+    params.initState = initState.FULL_RUNTIME;
 }
 
 /**
@@ -120,6 +129,11 @@ function initStdlib(params)
     assert (
         params instanceof CompParams,
         'expected compilation parameters in stdlib initialization'
+    );
+
+    assert (
+        params.initState >= initState.FULL_RUNTIME,
+        'runtime must be initialized before stdlib initialization'
     );
 
     log.trace('Performing standard library initialization');
@@ -152,6 +166,9 @@ function initStdlib(params)
     log.trace('Standard library initialization complete');
 
     //reportPerformance();
+
+    // Update the compiler initialization state
+    params.initState = initState.FULL_STDLIB;
 }
 
 /**

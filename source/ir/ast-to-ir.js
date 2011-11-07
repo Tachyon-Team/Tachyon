@@ -2113,11 +2113,10 @@ function exprToIR(context)
         var funcContext = argsContext.pursue(astExpr.expr);
         exprToIR(funcContext);
 
-        // Create the call instruction
-        var exprVal = insertConstructIR(
+        // Perform the constructor call
+        var exprVal = insertExceptIR(
             funcContext,
-            funcContext.getOutValue(),
-            argVals
+            new JSNewInstr([funcContext.getOutValue()].concat(argVals))
         );
 
         // Set the output
@@ -2209,44 +2208,28 @@ function exprToIR(context)
             // If this is a static call
             if (funcVal instanceof IRFunction)
             {
-                var funcPtr = funcVal;
-                var funcObj = IRConst.getConst(undefined);
+                // Insert the function call
+                var exprVal = insertExceptIR(
+                    lastContext,
+                    new CallFuncInstr(
+                        [
+                            funcVal, 
+                            IRConst.getConst(undefined),
+                            thisVal
+                        ].concat(argVals)
+                    )
+                );
             }
             else
             {
-                // Test if the callee value is a function
-                var testVal = insertPrimCallIR(
+                // Insert the function call
+                var exprVal = insertExceptIR(
                     lastContext,
-                    'boxIsFunc',
-                    [funcVal]
+                    new JSCallInstr(
+                        [funcVal, thisVal].concat(argVals)
+                    )
                 );
-
-                // Throw an error if the callee is not a function
-                insertCondErrorIR(
-                    lastContext, 
-                    testVal, 
-                    'TypeError',
-                    'callee is not a function (' + 
-                    context.astNode.loc.to_string() + ')'
-                );
-
-                // Get the function pointer from the closure object
-                var funcPtr = insertPrimCallIR(
-                    lastContext, 
-                    'get_clos_funcptr', 
-                    [funcVal]
-                );
-
-                var funcObj = funcVal;
             }
-
-            // Insert the function call
-            var exprVal = insertExceptIR(
-                lastContext,
-                new CallFuncInstr(
-                    [funcPtr, funcObj, thisVal].concat(argVals)
-                )
-            );
         }
 
         // If an error occurred, rethrow it with source code location information
@@ -2270,14 +2253,14 @@ function exprToIR(context)
             ['regexp']
         );
 
-        // Create the call instruction
-        var regexpObj = insertConstructIR(
+        // Create the regexp object
+        var regexpObj = insertExceptIR(
             context,
-            regexpCtor,
-            [
+            new JSNewInstr(
+                regexpCtor,
                 IRConst.getConst(astExpr.pattern),
                 IRConst.getConst(astExpr.flags)
-            ]
+            )
         );
 
         // Set the output
@@ -3874,28 +3857,6 @@ function insertCondIR(context, testVal, trueGenFunc, falseGenFunc)
 }
 
 /**
-Throw an error object containing an error message if a test fails
-*/
-function insertCondErrorIR(context, testVal, errorName, errorMsg)
-{
-    // If the test fails, execute the error code
-    insertCondIR(
-        context,
-        testVal,
-        undefined,
-        function (errorCtx)
-        {
-            // Generate code to throw an error
-            insertErrorIR(
-                errorCtx, 
-                errorName, 
-                errorMsg
-            );
-        }
-    );
-}
-
-/**
 Throw an error object containing an error message
 */
 function insertErrorIR(context, errorName, errorMsg)
@@ -3963,167 +3924,6 @@ function insertPrimCallIR(context, primName, argVals)
     );
 
     return retVal;
-}
-
-/**
-Insert a construct instruction in a given context, connect it with its
-continue and throw targets, produce the related object creation code, and
-splice this into the current context
-*/
-function insertConstructIR(context, funcVal, argVals)
-{
-
-    // TODO: replace/remove insertConstructIR
-
-    /*
-    return insertExceptIR(
-        context,
-        new JSNewInstr([funcVal].concat(argVals))
-    );
-    */
-
-
-
-    if (argVals.length === 0)
-    {
-        return insertPrimCallIR(
-            context,
-            'newCtor0', 
-            [funcVal]
-        );
-    }
-
-    // Get the function's prototype field
-    var funcProto = insertPrimCallIR(
-        context,
-        'getPropVal', 
-        [funcVal, IRConst.getConst('prototype')]
-    );
-
-    // If the prototype field is an object use it, otherwise, use the
-    // object prototype object
-    var protoIsObj = context.cfg.getNewBlock('proto_is_obj');
-    var protoNotObjCtx = context.branch(
-        context.astNode,
-        context.cfg.getNewBlock('proto_not_obj'),
-        context.localMap.copy()
-    );
-    var protoMerge = context.cfg.getNewBlock('proto_merge');
-    var testVal = insertPrimCallIR(
-        context,
-        'boxIsObjExt',
-        [funcProto]
-    );
-    context.addInstr(
-        new IfInstr(
-            [testVal, IRConst.getConst(true)],
-            'EQ',
-            protoIsObj,
-            protoNotObjCtx.entryBlock
-        )
-    );
-    var objProto = insertCtxReadIR(
-        protoNotObjCtx,
-        ['objproto']
-    );
-    protoIsObj.addInstr(new JumpInstr(protoMerge));
-    protoNotObjCtx.addInstr(new JumpInstr(protoMerge));
-    var protoVal = protoMerge.addInstr(
-        new PhiInstr(
-            [
-                funcProto,
-                objProto
-            ],
-            [
-                protoIsObj, 
-                protoNotObjCtx.entryBlock
-            ]
-        ),
-        'proto_val'
-    );
-    context.splice(protoMerge);
-    
-    // Create a new object
-    var newObj = insertPrimCallIR(
-        context, 
-        'newObject', 
-        [protoVal]
-    );
-
-    // If this is not a direct function call
-    if ((funcVal instanceof IRFunction) === false)
-    {
-        // Test if the callee value is a function
-        var testVal = insertPrimCallIR(
-            context,
-            'boxIsFunc',
-            [funcVal]
-        );
-
-        // Throw an error if the callee is not a function
-        insertCondErrorIR(
-            context, 
-            testVal, 
-            'TypeError',
-            'constructor is not a function (' +
-            context.astNode.loc.to_string() + ')'
-        );
-    }
-
-    var funcPtr = insertPrimCallIR(
-        context,
-        'get_clos_funcptr',
-        [funcVal]
-    );
-    
-    // Create the constructor call instruction
-    var retVal = insertExceptIR(
-        context,
-        new CallFuncInstr(
-            [
-                funcPtr,
-                funcVal,
-                newObj
-            ].concat(argVals)
-        )
-    );
-
-    // If the return value is an object, use it, otherwise use the new object
-    var retIsObj = context.cfg.getNewBlock('ret_is_obj');
-    var retNotObj = context.cfg.getNewBlock('ret_not_obj');
-    var retMerge = context.cfg.getNewBlock('ret_merge');
-    var testVal = insertPrimCallIR(
-        context,
-        'boxIsObjExt',
-        [retVal]
-    );
-    context.addInstr(
-        new IfInstr(
-            [testVal, IRConst.getConst(true)],
-            'EQ',
-            retIsObj,
-            retNotObj
-        )
-    );
-    retIsObj.addInstr(new JumpInstr(retMerge));
-    retNotObj.addInstr(new JumpInstr(retMerge));
-    var objVal = retMerge.addInstr(
-        new PhiInstr(
-            [
-                retVal,
-                newObj
-            ],
-            [
-                retIsObj, 
-                retNotObj
-            ]
-        ),
-        'obj_val'
-    );
-    context.splice(retMerge);
-
-    // Return the newly created object
-    return objVal;
 }
 
 /**
