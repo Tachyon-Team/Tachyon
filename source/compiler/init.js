@@ -88,7 +88,7 @@ function initPrimitives(params, partialInit)
         "Compiling primitives",
         function ()
         {
-            primIRs = compileSrcs(primSrcs, params, (partialInit === false));
+            primIRs = compileSrcs(primSrcs, params, !partialInit);
         }
     );
 

@@ -1166,6 +1166,29 @@ tests.programs.tachyon_bridge = genTest(
     'hostParams'
 );
 
+/*
+Type analysis test programs
+*/
+tests.programs.type_analysis = tests.testSuite();
+tests.programs.type_analysis.test1 = genTest(
+    'programs/type_analysis/test1.js',
+    'test',
+    [],
+    0
+);
+tests.programs.type_analysis.test2 = genTest(
+    'programs/type_analysis/test2.js',
+    'test',
+    [],
+    0
+);
+tests.programs.type_analysis.test3 = genTest(
+    'programs/type_analysis/test3.js',
+    'test',
+    [],
+    0
+);
+
 /**
 Print the state of the Tachyon VM.
 */

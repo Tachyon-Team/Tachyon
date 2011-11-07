@@ -448,7 +448,7 @@ var InInstr = hirInstrMaker(
 */
 var JSCallInstr = hirInstrMaker(
     'js_call',
-    [0,undefined],
+    [1,undefined],
     true
 );
 
@@ -458,7 +458,7 @@ var JSCallInstr = hirInstrMaker(
 */
 var JSNewInstr = hirInstrMaker(
     'js_new',
-    [0,undefined],
+    [1,undefined],
     true
 );
 

@@ -338,9 +338,92 @@ InInstr.prototype.lower = genLowerFunc('inOp');
 // TODO
 // Need to dynamically generate code
 
+JSNewInstr.ctorTable = [];
+
+JSNewInstr.prototype.lower = function (compParams)
+{
+    print(this);
+
+    // Get the number of constructor arguments
+    var numArgs = this.uses.length - 1;
+
+    // If a cached function already exists, return it
+    if (JSNewInstr.ctorTable[numArgs] !== undefined)
+        return JSNewInstr.ctorTable[numArgs];
+
+    // Concatenate the argument names
+    var args = this.uses.slice(1).map(function (a,i) { return 'a' + (i-1); });
+
+    var ctorStr = '                                 \
+    function newCtor<numArgs>(ctor,<args>)          \
+    {                                               \
+        "tachyon:static";                           \
+        "tachyon:noglobal";                         \
+                                                    \
+        var ctx = iir.get_ctx();                    \
+                                                    \
+        var funcProto = ctor.prototype;             \
+                                                    \
+        var protoVal =                              \
+            (boxIsObjExt(funcProto) === true)?      \
+            funcProto:                              \
+            get_ctx_objproto(ctx);                  \
+                                                    \
+        var newObj = newObject(protoVal);           \
+                                                    \
+        if (boxIsFunc(ctor) === false)              \
+        {                                           \
+            throw makeError(                        \
+                get_ctx_typeerror(ctx),             \
+                "constructor is not a function"     \
+            );                                      \
+        }                                           \
+                                                    \
+        /* Do the constructor call */               \
+        var retVal = iir.call(                      \
+            get_clos_funcptr(ctor),                 \
+            ctor,                                   \
+            newObj,                                 \
+            <args>                                  \
+        );                                          \
+                                                    \
+        var objVal =                                \
+            (boxIsObjExt(retVal) === true)?         \
+            retVal:                                 \
+            newObj;                                 \
+                                                    \
+        /* Return the newly created object */       \
+        return objVal;                              \
+    }';
+
+    sourceStr = ctorStr;
+    sourceStr = sourceStr.replace('<numArgs>', numArgs);
+    sourceStr = sourceStr.replace('<args>', args);
+    sourceStr = sourceStr.replace('<args>', args);
+
+    print(sourceStr);
 
 
 
+    // TODO
+    // PROBLEM: need to compile generated IR
+    // This may not be possible if the primitives are not yet available...
+    // In theory, should at least have access to primitive symbols
 
+    const params = config.hostParams;
 
+    // Compile the source string to an IR function
+    var ast = parse_src_str(sourceStr, params);
+    var ir = unitToIR(ast, params);
+    lowerIRFunc(ir, params);
+
+    // Get the compiled primitive function
+    var primFunc = ir.childFuncs[0];
+
+    // Cache the compiled primitive
+    JSNewInstr.ctorTable[numArgs] = primFunc;
+
+    // Return the new function
+    return primFunc;
+}
 

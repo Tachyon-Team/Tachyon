@@ -3972,6 +3972,18 @@ splice this into the current context
 */
 function insertConstructIR(context, funcVal, argVals)
 {
+
+    // TODO: replace/remove insertConstructIR
+
+    /*
+    return insertExceptIR(
+        context,
+        new JSNewInstr([funcVal].concat(argVals))
+    );
+    */
+
+
+
     if (argVals.length === 0)
     {
         return insertPrimCallIR(
