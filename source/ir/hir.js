@@ -73,8 +73,10 @@ function hirInstrMaker(
     proto
 )
 {
-    minInputs = (typeof numInputs === 'number')? numInputs:numInputs[0];
-    maxInputs = (typeof numInputs === 'number')? numInputs:numInputs[1];
+    print('new ctor: ' + instrName);
+
+    var minInputs = (typeof numInputs === 'number')? numInputs:numInputs[0];
+    var maxInputs = (typeof numInputs === 'number')? numInputs:numInputs[1];
 
     var InstrCtor = instrMaker(
         instrName,
@@ -462,16 +464,6 @@ var JSNewInstr = hirInstrMaker(
     true
 );
 
-// TODO: JSGlobalObj?
-// Eventually, want this to be linked constant
-// For now, can simplify analysis with pseudo-instruction
-
-// TODO: JSGetGlobal?
-
-// TODO: JSCallGlobal?
-// Put the lookup and assertions in there
-// Probably a good idea, more compact code
-
 /**
 @class JavaScript global function call instruction
 @augments HIRInstr
@@ -482,8 +474,13 @@ var JSCallGlobalInstr = hirInstrMaker(
     true
 );
 
+// TODO: JSGlobalObj?
+// Eventually, want this to be linked constant
+// For now, can simplify analysis with pseudo-instruction
 
+// TODO: JSGetGlobal?
 
-
-
+// TODO: JSCallGlobal?
+// Put the lookup and assertions in there
+// Probably a good idea, more compact code
 
