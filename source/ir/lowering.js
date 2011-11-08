@@ -168,7 +168,7 @@ function lowerIRCFG(cfg, params)
                     // If the callee is marked inline and is inlinable
                     if (calleeFunc.inline && isInlinable(calleeFunc))
                     {
-                        /*
+                        /*   
                         print(
                             'inlining: ' + calleeFunc.funcName + ' in ' + 
                             cfg.ownerFunc.funcName
@@ -448,6 +448,9 @@ JSSeInstr.prototype.lower = genLowerFunc('se');
 JSNsInstr.prototype.lower = genLowerFunc('ns');
 JSEqInstr.prototype.lower = genLowerFunc('eq');
 JSNeInstr.prototype.lower = genLowerFunc('ne');
+GlobalObjInstr.prototype.lower = genLowerFunc('getGlobalObj');
+GetGlobalInstr.prototype.lower = genLowerFunc('getGlobal');
+BlankObjInstr.prototype.lower = genLowerFunc('blankObject');
 GetPropInstr.prototype.lower = genLowerFunc('getPropVal');
 PutPropInstr.prototype.lower = genLowerFunc('putPropVal');
 DelPropInstr.prototype.lower = genLowerFunc('delPropVal');

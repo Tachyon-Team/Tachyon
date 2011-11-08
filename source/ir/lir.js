@@ -203,7 +203,6 @@ IRInstr.prototype.toString = function (outFormatFn, inFormatFn)
         output += 
             (this.targetNames[i]? (' ' + this.targetNames[i]):'') + 
             ' ' + this.targets[i].getBlockName();
-        ;
     }
 
     return output;

@@ -240,7 +240,6 @@ function stmtListToIRFunc(
         bodyStmts, 
         entryBlock,
         null,
-        null,
         [],
         localMap,
         sharedMap,
@@ -676,7 +675,6 @@ function getIRFuncObj(
 function IRConvContext(
     astNode, 
     entryBlock,
-    ctxNode,
     withVal,
     labels,
     localMap,
@@ -698,10 +696,6 @@ function IRConvContext(
     assert (
         entryBlock !== undefined && entryBlock instanceof BasicBlock,
         'entry block not defined or invalid in IR conversion context'
-    );
-    assert (
-        ctxNode !== undefined,
-        'context ast node not defined in IR conversion context'
     );
     assert (
         withVal !== undefined,
@@ -759,12 +753,6 @@ function IRConvContext(
     @field
     */
     this.entryBlock = entryBlock;
-
-    /**
-    Context AST node
-    @field
-    */
-    this.ctxNode = ctxNode;
 
     /**
     With context value
@@ -951,7 +939,6 @@ IRConvContext.prototype.pursue = function (astNode)
     return new IRConvContext(
         astNode,
         (this.exitBlock !== undefined) ? this.exitBlock : this.entryBlock,
-        this.ctxNode,
         this.withVal,
         [],
         this.localMap,
@@ -978,7 +965,6 @@ IRConvContext.prototype.branch = function (
     return new IRConvContext(
         astNode,
         entryBlock,
-        this.ctxNode,
         this.withVal,
         [],
         localMap,
@@ -2189,15 +2175,18 @@ function exprToIR(context)
         {
             // Generate code for the statement
             var funcContext = argsContext.pursue(astExpr.fn);
-            funcContext.ctxNode = astExpr;
             exprToIR(funcContext);
             funcVal = funcContext.getOutValue();
 
-            // Get the global object
-            var globalObj = insertGetGlobal(funcContext);            
+            // If this is not a static call
+            if ((funcVal instanceof IRFunction) === false)
+            {
+                // Get the global object
+                var globalObj = insertGetGlobal(funcContext);            
 
-            // The this value is the global object
-            thisVal = globalObj;
+                // The this value is the global object
+                thisVal = globalObj;
+            }
 
             lastContext = funcContext;
         }
@@ -2215,7 +2204,7 @@ function exprToIR(context)
                         [
                             funcVal, 
                             IRConst.getConst(undefined),
-                            thisVal
+                            IRConst.getConst(undefined)
                         ].concat(argVals)
                     )
                 );
@@ -2226,7 +2215,10 @@ function exprToIR(context)
                 var exprVal = insertExceptIR(
                     lastContext,
                     new JSCallInstr(
-                        [funcVal, thisVal].concat(argVals)
+                        [
+                            funcVal,
+                            thisVal
+                        ].concat(argVals)
                     )
                 );
             }
@@ -2331,18 +2323,8 @@ function exprToIR(context)
         var valCtx = nameCtx.pursue(propValues);
         var valVals = exprListToIR(valCtx);
 
-        // Find the object prototype object in the context
-        var objProto = insertCtxReadIR(
-            valCtx,
-            ['objproto']
-        );
-
-        // Create a new object
-        var newObject = insertPrimCallIR(
-            valCtx, 
-            'newObject', 
-            [objProto]
-        );
+        // Create a blank object
+        var newObject = valCtx.addInstr(new BlankObjInstr());
 
         // Set the value of each property in the new object
         for (var i = 0; i < propNames.length; ++i)
@@ -3636,42 +3618,14 @@ function refToIR(context)
                 );
             }
 
-            // Precompute the hash code of the symbol
-            var symHashVal = IRConst.getConst(
-                precompHash(symName, context.params),
-                IRType.pint
-            );
-
             // Get the global object
             var globalObj = insertGetGlobal(varContext);
 
-            // If this is a global function lookup
-            if (context.ctxNode instanceof CallExpr)
-            {
-                // Get a function value from the global object
-                varValueVar = insertPrimCallIR(
-                    varContext, 
-                    'getGlobalFunc', 
-                    [
-                        globalObj, 
-                        IRConst.getConst(symName),
-                        symHashVal
-                    ]
-                );
-            }
-            else
-            {
-                // Get the value from the global object
-                varValueVar = insertPrimCallIR(
-                    varContext, 
-                    'getGlobal', 
-                    [
-                        globalObj, 
-                        IRConst.getConst(symName),
-                        symHashVal
-                    ]
-                );
-            }
+            // Get the value in the with object
+            varValueVar = insertExceptIR(
+                varContext,
+                new GetGlobalInstr(globalObj, IRConst.getConst(symName))
+            );
         }
 
         // If the assignment value is an instruction
@@ -3787,7 +3741,7 @@ Insert a context read to get the global object
 */
 function insertGetGlobal(context)
 {
-    return insertCtxReadIR(context, ['globalobj'], 'global');
+    return context.addInstr(new GlobalObjInstr());
 }
 
 /**
@@ -3960,7 +3914,7 @@ function insertExceptIR(context, instr)
     }
     else
     {
-        // Add the call instruction to the current context
+        // Add the instruction to the current context
         context.addInstr(instr);
     }
 
@@ -4148,7 +4102,6 @@ function createLoopEntry(
     return new IRConvContext(
         entryNode,
         loopEntry,
-        context.ctxNode,
         context.withVal,
         [],
         entryLocals.copy(),
@@ -4437,72 +4390,5 @@ function genCondInlineIR(context)
 
     // Set the exit block to be the join block
     context.setOutput(joinBlock);
-}
-
-/**
-Precompute the hash code of a value to be used in a hash lookup.
-*/
-function precompHash(val, params)
-{
-    if (typeof val === 'number')
-    {
-        return val;
-    }
-    else if (typeof val === 'string')
-    {
-        // Initialize the hash code to 0
-        var hashCode = 0;
-
-        // Initialize the integer value to 0
-        var intVal = 0;
-
-        // Flag indicating that the string represents an integer
-        var isInt = true;
-
-        // For each character, update the hash code
-        for (var i = 0; i < val.length; i += 1)
-        {
-            // Get the current character
-            var ch = val.charCodeAt(i);
-
-            // If this character is a digit
-            if (ch >= 48 && ch <= 57)
-            {
-                // Update the number value
-                var digitVal = ch - 48;
-                intVal = 10 * intVal + digitVal;
-            }
-            else
-            {
-                // This string does not represent a number
-                isInt = false;
-            }
-
-            // Update the hash code
-            hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
-        }
-
-        var HASH_CODE_STR_OFFSET = params.staticEnv.getBinding('HASH_CODE_STR_OFFSET').value;
-
-        // If this is an integer value within the supported range
-        if (val.length > 0 && isInt && intVal < HASH_CODE_STR_OFFSET)
-        {
-            // Set the hash code to the integer value
-            hashCode = intVal;
-        }
-        else
-        {
-            // Offset the string hash code to indicate this is not an integer value
-            hashCode += HASH_CODE_STR_OFFSET;
-        }
-
-        return hashCode;
-    }
-    
-    // For other value types
-    else
-    {
-        return precompHash(val.toString(), params);
-    }
 }
 

@@ -72,6 +72,7 @@ Unbox an integer value
 function unboxInt(boxVal)
 {
     "tachyon:inline";
+    "tachyon:noglobal";
     "tachyon:ret pint";
 
     // Unbox the integer
@@ -398,6 +399,7 @@ Cast a boxed integer value to the pint type
 function pint(boxVal)
 {
     "tachyon:inline";
+    "tachyon:noglobal";
     "tachyon:ret pint";
 
     // Unbox the integer directly
@@ -632,6 +634,20 @@ function newObject(proto)
 
     // Return the object reference
     return obj;
+}
+
+/**
+Create a blank object with no properties which inherits from the
+default object prototype object.
+*/
+function blankObject()
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    var objproto = get_ctx_objproto(iir.get_ctx());
+
+    return newObject(objproto);
 }
 
 /**
@@ -2710,10 +2726,12 @@ function delPropVal(obj, propName)
 /**
 Get a property value from the global object
 */
-function getGlobal(obj, propName, propHash)
+function getGlobal(obj, propName)
 {
     "tachyon:static";
-    "tachyon:arg propHash pint";
+
+    // Get the hash code for the property
+    var propHash = iir.icast(IRType.pint, get_str_hash(propName));
 
     // Attempt to find the property on the object
     var prop = getPropObj(obj, propName, propHash);
@@ -2730,45 +2748,6 @@ function getGlobal(obj, propName, propHash)
 
     // Return the property
     return prop;
-}
-
-/**
-Get a function property from the global object
-*/
-function getGlobalFunc(obj, propName, propHash)
-{
-    "tachyon:static";
-    "tachyon:arg propHash pint";
-
-    // Attempt to find the property on the object
-    var prop = getPropObj(obj, propName, propHash);
-
-    // If the property is a function
-    if (boxIsFunc(prop))
-    {
-        // Return the function property
-        return prop;
-    }
-    else
-    {
-        // If the property isn't defined
-        if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
-        {
-            // Throw a ReferenceError exception
-            throw makeError(
-                get_ctx_referror(iir.get_ctx()),
-                "global property not defined " + propName
-            );
-        }
-        else
-        {
-            // Throw a TypeError exception
-            throw makeError(
-                get_ctx_typeerror(iir.get_ctx()),
-                "global property is not a function " + propName
-            );
-        }
-    }
 }
 
 /**

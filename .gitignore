@@ -5,9 +5,6 @@ doc/*
 source/compiler/sources.js
 source/deps
 bench
-makefile.common
-parser
 stdlib
-tests
 utility
 

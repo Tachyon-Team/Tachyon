@@ -133,6 +133,7 @@ Get a reference to the global object
 */
 function getGlobalObj()
 {
+    "tachyon:static";
     "tachyon:inline";
     "tachyon:noglobal";
 

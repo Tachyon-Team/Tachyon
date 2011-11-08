@@ -73,8 +73,6 @@ function hirInstrMaker(
     proto
 )
 {
-    print('new ctor: ' + instrName);
-
     var minInputs = (typeof numInputs === 'number')? numInputs:numInputs[0];
     var maxInputs = (typeof numInputs === 'number')? numInputs:numInputs[1];
 
@@ -369,13 +367,33 @@ var JSNsInstr = hirInstrMaker(
 //=============================================================================
 
 /**
-@class Get the global object reference
+@class JavaScript global object reference
+@augments HIRInstr
+*/
+var GlobalObjInstr = hirInstrMaker(
+    'js_global_obj',
+    0,
+    false
+);
+
+/**
+@class JavaScript global function call instruction
 @augments HIRInstr
 */
 var GetGlobalInstr = hirInstrMaker(
     'js_get_global',
-    0,
+    [2,undefined],
     true
+);
+
+/**
+@class JavaScript global function call instruction
+@augments HIRInstr
+*/
+var BlankObjInstr = hirInstrMaker(
+    'js_blank_obj',
+    0,
+    false
 );
 
 /**
@@ -463,24 +481,4 @@ var JSNewInstr = hirInstrMaker(
     [1,undefined],
     true
 );
-
-/**
-@class JavaScript global function call instruction
-@augments HIRInstr
-*/
-var JSCallGlobalInstr = hirInstrMaker(
-    'js_call_global',
-    [2,undefined],
-    true
-);
-
-// TODO: JSGlobalObj?
-// Eventually, want this to be linked constant
-// For now, can simplify analysis with pseudo-instruction
-
-// TODO: JSGetGlobal?
-
-// TODO: JSCallGlobal?
-// Put the lookup and assertions in there
-// Probably a good idea, more compact code
 
