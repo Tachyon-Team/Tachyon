@@ -42,8 +42,65 @@
 # Makefile for Tachyon JavaScript compiler
 #
 
-# Include the common makefile
-include makefile.common
+ROOT_DIR = `(cd ..;pwd)`
+
+#JavaScript VM program
+JSVMPROG = d8
+JSVMPROG64 = d8_64
+
+#JavaScript VM command options
+JSVMOPTS = --allow_natives_syntax --nocollect_maps
+
+#JavaScript VM command options when debugging
+JSVMOPTSDEBUG = $(JSVMOPTS) --noopt
+
+#JavaScript VM command
+JSVM = $(JSVMPROG) $(JSVMOPTS)
+JSVM64 = $(JSVMPROG64) $(JSVMOPTS)
+
+# JavaScript VM command with rlwrap
+RLWJSVM = rlwrap $(JSVM)
+RLWJSVM64 = rlwrap $(JSVM64)
+
+# Common program source files
+COMMON_SRCS =                           \
+    utility/log.js                      \
+    utility/debug.js                    \
+    utility/system.js                   \
+    utility/iterators.js                \
+    utility/graph.js                    \
+    utility/arrays.js                   \
+    utility/heap.js                     \
+    utility/hashmap.js                  \
+    utility/hashset.js                  \
+    utility/linkedlist.js               \
+    utility/strings.js                  \
+    utility/modules.js                  \
+    utility/misc.js                     \
+    utility/num.js                      \
+    utility/xml.js                      \
+    utility/html.js                     \
+    parser/misc.js                      \
+    parser/scanner.js                   \
+    parser/parser.js                    \
+    parser/pp.js                        \
+    parser/ast-passes.js
+
+# Standard library source files
+STDLIB_SRCS =                           \
+    stdlib/global.js                    \
+    stdlib/object.js                    \
+    stdlib/function.js                  \
+    stdlib/array.js                     \
+    stdlib/error.js                     \
+    stdlib/boolean.js                   \
+    stdlib/number.js                    \
+    stdlib/string.js                    \
+    stdlib/regexp.js                    \
+    stdlib/math.js                      \
+    stdlib/date.js                      \
+    stdlib/json.js                      \
+    stdlib/extensions.js
 
 # Base program source files
 BASE_SRCS =                             \
