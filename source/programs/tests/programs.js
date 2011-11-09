@@ -1194,6 +1194,12 @@ tests.programs.type_analysis.test4 = genTest(
     [],
     0
 );
+tests.programs.type_analysis.test5 = genTest(
+    'programs/type_analysis/test5.js',
+    'test',
+    [],
+    0
+);
 
 /**
 Print the state of the Tachyon VM.

@@ -662,6 +662,10 @@ function getIRFuncObj(
         }
     }
 
+    // If the function uses arguments, ensure that it is not static
+    if (newFunc.usesArguments && newFunc.staticLink)
+        error('static functions cannot use the arguments object');
+
     // Store a reference to the new object in the AST node
     astNode.irFunc = newFunc;
 
@@ -2351,8 +2355,13 @@ function exprToIR(context)
         context.setOutput(exprContext.getExitBlock(), exprContext.getOutValue());
     }
 
+    // This reference expression
     else if (astExpr instanceof This)
     {
+        // Ensure that the function is not static
+        if (context.cfg.ownerFunc.staticLink === true)
+            error('static functions cannot use the this value');
+
         // Set the value of the this argument as output
         context.setOutput(
             context.entryBlock,
@@ -2363,7 +2372,7 @@ function exprToIR(context)
     else
     {
         pp(astExpr);
-        assert (false, 'unsupported expression in AST->IR translation');
+        error('unsupported expression in AST->IR transslation');
     }
 }
 
