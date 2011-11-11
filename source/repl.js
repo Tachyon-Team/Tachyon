@@ -65,10 +65,11 @@ function tachyonRepl()
         print('  /time <command>                time the compilation/execution of a command');
         print('  /time_comp <command>           time the compilation of a command');
         print('  /time_exec <command>           time the execution of a command');
-        print('  /ast  <command>                view AST produced for a command/file');
-        print('  /hir  <command>                view HIR produced for a command/file');
-        print('  /lir  <command>                view LIR produced for a command/file');
-        print('  /asm  <command>                view ASM produced for a command/file');
+        print('  /ast <command>                 view AST produced for a command/file');
+        print('  /hir <command>                 view HIR produced for a command/file');
+        print('  /lir <command>                 view LIR produced for a command/file');
+        print('  /asm <command>                 view ASM produced for a command/file');
+        print('  /ta <filename>                 run type analysis on a source file');
         print('  /prim_list                     view a list of the primitive functions');
         print('  /prim_ir <func_name>           view LIR produced for a primitive function');
         print('  /cfg <command> [func_name]     visualize the CFG for a command/file/function');
@@ -151,6 +152,13 @@ function tachyonRepl()
             params.printASM = true;
             compFileOrString(args);
             params.printASM = false;
+            break;
+
+            case 'ta':
+            print('Running type analysis on: "' + args + '"');
+            var ast = parse_src_file(args, params);
+            var ir = unitToIR(ast, params);
+            typePropFunc(ir);
             break;
 
             case 'prim_list':

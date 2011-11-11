@@ -355,9 +355,12 @@ ControlFlowGraph.prototype.getUniqueName = function (obj, name)
         nameCount = 0;
 
     // Generate the unique name
-    var uniqueName = name + '_' + (nameCount++);
+    var uniqueName = name
+    if (nameCount > 0)
+        uniqueName += '_' + nameCount;
 
     // Update the count for this name
+    nameCount++;
     this.nameCount.set(name, nameCount);
 
     // Save the unique name

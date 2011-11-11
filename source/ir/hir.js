@@ -426,6 +426,17 @@ var DelPropInstr = hirInstrMaker(
     true
 );
 
+
+/**
+@class JavaScript property existence test instruction
+@augments HIRInstr
+*/
+var HasPropInstr = hirInstrMaker(
+    'js_has_prop',
+    2,
+    true
+);
+
 /**
 @class JavaScript typeof instruction
 @augments HIRInstr
@@ -447,7 +458,7 @@ var InstOfInstr = hirInstrMaker(
 );
 
 /**
-@class JavaScript instanceof instruction
+@class JavaScript in operator instruction
 @augments HIRInstr
 */
 var InInstr = hirInstrMaker(

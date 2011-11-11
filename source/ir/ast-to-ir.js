@@ -424,10 +424,9 @@ function stmtListToIRFunc(
             if (varVal === IRConst.getConst(undefined))
             {
                 // Check if the property exists on the global object
-                var hasProp = insertPrimCallIR(
-                    bodyContext, 
-                    'hasPropVal', 
-                    [globalObj, IRConst.getConst(varName)]
+                var hasProp = insertExceptIR(
+                    bodyContext,
+                    new HasPropInstr(globalObj, IRConst.getConst(varName))
                 );
 
                 // If the property doesn't exist, initialize it to undefined
@@ -2990,10 +2989,9 @@ function opToIR(context)
                     if (context.withVal !== null)
                     {
                         // Add a has-property test on the object for the symbol name
-                        var hasTestVal = insertPrimCallIR(
+                        var hasTestVal = insertExceptIR(
                             context,
-                            'hasPropVal',
-                            [context.withVal, IRConst.getConst(varName)]
+                            new HasPropInstr(context.withVal, IRConst.getConst(varName))
                         );
 
                         // Context for the case where the with object has the property
@@ -3302,10 +3300,9 @@ function assgToIR(context, rhsVal)
         if (context.withVal !== null)
         {
             // Add a has-property test on the object for the symbol name
-            var hasTestVal = insertPrimCallIR(
-                context, 
-                'hasPropVal', 
-                [context.withVal, IRConst.getConst(symName)]
+            var hasTestVal = insertExceptIR(
+                context,
+                new HasPropInstr(context.withVal, IRConst.getConst(symName))
             );
 
             // Context for the case where the with object has the property
@@ -3570,10 +3567,9 @@ function refToIR(context)
     if (context.withVal !== null)
     {
         // Add a has-property test on the object for the symbol name
-        var hasTestVal = insertPrimCallIR(
+        var hasTestVal = insertExceptIR(
             context,
-            'hasPropVal',
-            [context.withVal, IRConst.getConst(symName)]
+            new HasPropInstr(context.withVal, IRConst.getConst(symName))
         );
 
         // Context for the case where the with object has the property

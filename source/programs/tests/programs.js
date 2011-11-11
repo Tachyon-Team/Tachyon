@@ -1170,6 +1170,9 @@ tests.programs.tachyon_bridge = genTest(
 Type analysis test programs
 */
 tests.programs.type_analysis = tests.testSuite();
+tests.programs.type_analysis.test0 = genTest(
+    'programs/type_analysis/test0.js'
+);
 tests.programs.type_analysis.test1 = genTest(
     'programs/type_analysis/test1.js',
     'test',

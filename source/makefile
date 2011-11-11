@@ -127,6 +127,7 @@ BASE_SRCS =                             \
     ir/inlining.js                      \
     ir/lowering.js                      \
     ir/cfgvis.js                        \
+    analysis/typedesc.js                \
     analysis/typeprop.js                \
     runtime/layout.js                   \
     runtime/context.js                  \

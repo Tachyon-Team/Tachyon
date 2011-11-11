@@ -454,6 +454,7 @@ BlankObjInstr.prototype.lower = genLowerFunc('blankObject');
 GetPropInstr.prototype.lower = genLowerFunc('getPropVal');
 PutPropInstr.prototype.lower = genLowerFunc('putPropVal');
 DelPropInstr.prototype.lower = genLowerFunc('delPropVal');
+HasPropInstr.prototype.lower = genLowerFunc('hasProp');
 TypeOfInstr.prototype.lower = genLowerFunc('typeOf');
 InstOfInstr.prototype.lower = genLowerFunc('instanceOf');
 InInstr.prototype.lower = genLowerFunc('inOp');

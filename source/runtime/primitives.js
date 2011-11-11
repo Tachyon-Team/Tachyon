@@ -2489,7 +2489,7 @@ function getPropVal(obj, propName)
 Test if a property exists on a value or in its prototype chain
 using a value as a key
 */
-function hasPropVal(obj, propName)
+function hasProp(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
@@ -2914,7 +2914,7 @@ function inOp(propName, obj)
         );
     }
 
-    return hasPropVal(obj, propName);
+    return hasProp(obj, propName);
 }
 
 /**

@@ -41,400 +41,91 @@
  */
 
 /**
-@namespace Type descriptor flags namespace
+@fileOverview
+Interprocedural type analysis implementation.
+
+@author
+Maxime Chevalier-Boisvert
 */
-TypeDesc.flags = {};
-
-// Possible type descriptor flags
-TypeDesc.flags.UNDEF    = 1 << 0; // May be undefined
-TypeDesc.flags.NULL     = 1 << 1; // May be null
-TypeDesc.flags.TRUE     = 1 << 2; // May be true
-TypeDesc.flags.FALSE    = 1 << 3; // May be false
-TypeDesc.flags.FLOAT    = 1 << 4; // May be floating-point
-TypeDesc.flags.INT      = 1 << 5; // May be integer
-TypeDesc.flags.STRING   = 1 << 6; // May be string
-TypeDesc.flags.OBJECT   = 1 << 7; // May be string
-TypeDesc.flags.ARRAY    = 1 << 8; // May be string
-TypeDesc.flags.FUNCTION = 1 << 9; // May be string
-
-// Unknown/any type flag
-TypeDesc.flags.ANY =
-    TypeDesc.flags.UNDEF    |
-    TypeDesc.flags.NULL     |
-    TypeDesc.flags.TRUE     |
-    TypeDesc.flags.FALSE    |
-    TypeDesc.flags.INT      |
-    TypeDesc.flags.FLOAT    |
-    TypeDesc.flags.STRING   |
-    TypeDesc.flags.OBJECT   |
-    TypeDesc.flags.ARRAY    |
-    TypeDesc.flags.FUNCTION;
-
-// Uninferred type flag (before analysis)
-TypeDesc.flags.NOINF = 0;
 
 /**
-@class Describes variable or temporary types in the type propagation analysis.
+@namespace Type propagation information
 */
-function TypeDesc(
-    flags,
-    minVal,
-    maxVal,
-    classDesc
-)
-{
-    // Empty type descriptors have the uninferred type
-    if (flags === undefined)
-        flags = TypeDesc.flags.NOINF;
+var typeProp = {};
 
-    /**
-    Descriptor flags bit field
-    */
-    this.flags = flags;
 
-    /**
-    Numerical range minimum. Undefined if unknown.
-    */
-    this.minVal = minVal;
 
-    /**
-    Numerical range maximum. Undefined if unknown.
-    */
-    this.maxVal = maxVal;
+// TODO: Need to describe global object's type
+typeProp.globalType = undefined;
 
-    /**
-    Pseudo-class descriptor. Undefined if unknown.
-    */
-    this.classDesc = classDesc;
-}
+
+
+
+// TODO: Need to map functions to type analysis information
+typeProp.funcTypes = undefined;
+
+
+
+// TODO: generally, don't want to restart from scratch for type prop of
+// function, want to have stored info in data structure, start from there
+
+
+
 
 /**
-Generate a type descriptor for a constant value
+Perform type analysis on a function/CFG.
 */
-TypeDesc.constant = function (value)
-{
-    if (value instanceof IRConst)
-        value = IRConst.value;
-
-    if (value === undefined)
-    {
-        return new TypeDesc(TypeDesc.flags.UNDEF);
-    }
-
-    else if (value === null)
-    {
-        return new TypeDesc(TypeDesc.flags.NULL);
-    }
-
-    else if (value === true)
-    {
-        return new TypeDesc(TypeDesc.flags.TRUE);
-    }
-
-    else if (value === false)
-    {
-        return new TypeDesc(TypeDesc.flags.FALSE);
-    }
-
-    else if (isInt(value) === true)
-    {
-        return new TypeDesc(TypeDesc.flags.INT, value, value);
-    }
-
-    else if (typeof value === 'number')
-    {
-        return new TypeDesc(TypeDesc.flags.FLOAT, value, value);
-    }
-
-    else if (typeof value === 'string')
-    {
-        return new TypeDesc(TypeDesc.flags.STRING);
-    }
-
-    // TODO: handle other types
-    return new TypeDesc(TypeDesc.flags.ANY);
-}
-
-/**
-Produce a string representation of a type descriptor
-*/
-TypeDesc.prototype.toString = function ()
-{
-    if (this.flags === TypeDesc.flags.NOINF)
-        return "noinf";
-
-    if (this.flags === TypeDesc.flags.ANY)
-        return "any";
-
-    var str = "";
-
-    // Add the flags
-    for (flagName in TypeDesc.flags)
-    {
-        var flagVal = TypeDesc.flags[flagName];
-
-        if (this.flags & flagVal)
-        {
-            if (str != "")
-                str += ",";
-
-            str += flagName.toLowerCase();
-        }
-    }
-
-    // If range information is present
-    if (this.minVal !== undefined || this.maxVal !== undefined)
-    {
-        if (this.minVal !== undefined && this.minVal === this.maxVal)
-            str += " " + this.minVal;
-        else if (this.minVal !== undefined && this.maxVal !== undefined)
-            str += " [" + this.minVal + ", " + this.maxVal + "]";
-        else if (this.minVal === undefined)
-            str += " ]-inf, " + this.maxVal + "]";
-        else
-            str += " [" + this.minVal + ", +inf[";
-    }
-
-    // If class information is present
-    if (this.classDesc !== undefined)
-    {
-        str += " class:" + this.classDesc.classIdx;
-    }
-
-    return str;
-}
-
-//
-// TODO: isFixnum? with params/target
-//
-
-/**
-Type descriptor union (OR) function. Updates this type descriptor.
-*/
-TypeDesc.prototype.union = function (that)
-{
-    // If the other object is the uninferred type
-    if (that.flags === TypeDesc.flags.NOINF)
-    {
-        // This type remains unchanged
-    }
-
-    // If this object is the uninferred type
-    else if (this.flags === TypeDesc.flags.NOINF)
-    {
-        return that;
-    }
-
-    // If both objects have meaningful type values
-    else
-    {
-        var flags = this.flags | that.flags;
-
-        var minVal =
-            (this.minVal !== undefined && that.minVal !== undefined)?
-            Math.min(this.minVal, that.minVal):undefined;
-
-        var maxVal =
-            (this.maxVal !== undefined && that.maxVal !== undefined)?
-            Math.max(this.maxVal, that.maxVal):undefined;
-
-        var classDesc =
-            (this.classDesc === that.classDesc)?
-            this.classDesc:undefined;
-
-        // Create and return a new type descriptor and return it
-        return new TypeDesc(
-            flags,
-            minVal,
-            maxVal,
-            classDesc
-        );
-    }
-}
-
-/**
-@class Object pseudo-class descriptor
-*/
-function ClassDesc()
-{
-    /**
-    Unique class identifier
-    */
-    this.classIdx = ClassDesc.nextClassIdx++;
-
-    /**
-    Field descriptors, the order of field addition is not represented
-    */
-    this.fieldTypes = {};
-
-    /**
-    Array field type descriptor
-    */
-    this.arrayType = new TypeDesc();
-
-    /**
-    References to other classes produced by adding fields
-    */
-    this.trans = {};
-}
-
-/**
-Next class idx to assign
-*/
-ClassDesc.nextClassIdx = 0;
-
-/**
-Produce a string representation of this class descriptor
-*/
-ClassDesc.prototype.toString = function ()
-{
-    var str = "class " + this.classIdx + "{\n";
-
-    // Output the field names and types
-    for (fieldName in this.fieldTypes)
-        str += '\t"' + fieldName + '" : ' + this.fieldTypes[fieldname] + '\n';
-
-    str += "}";
-
-    return str;
-}
-
-/**
-Get the class descriptor resulting from a field addition
-*/
-ClassDesc.prototype.addField = function (fieldName)
-{
-    assert (
-        this.fieldTypes[fieldName] === undefined,
-        'field already present: "' + fieldName + '"'
-    );
-
-    // If a transition already exists, return the corresponding class
-    if (this.trans[fieldName] !== undefined)
-        return this.trans[fieldName];
-
-    // Create a descriptor for the new class
-    var newClass = new ClassDesc();
-
-    // Copy the existing field types
-    for (field in this.fieldTypes)
-        newClass.fieldTypes[field] = this.fieldTypes[field];
-
-    // Add the new field
-    this.fieldTypes[fieldName] = new TypeDesc();
-
-    // Store the new class for future reference
-    this.trans[fieldName] = newClass;
-
-    // Return the new class
-    return newClass;
-}
-
-/**
-Update the type descriptor for a field by unioning it with another type
-*/
-ClassDesc.prototype.fieldUnion = function (fieldName, type)
-{
-    assert (
-        this.fieldTypes[fieldName] !== undefined,
-        'field not found: "' + fieldName + '"'
-    );
-
-    // Perform the type union
-    this.fieldTypes[fieldName].union(type);
-}
-
-/**
-Update the array type descriptor by unioning it with another type
-*/
-ClassDesc.prototype.arrayUnion = function (type)
-{
-    this.arrayType.union(type);
-}
-
-/**
-Delete a field from the class
-*/
-ClassDesc.prototype.delField = function (fieldName)
-{
-    assert (
-        this.fieldTypes[fieldName] !== undefined,
-        'field not found: "' + fieldName + '"'
-    );
-
-    // Set the undefined flag on the field type (the field may be undefined)
-    this.fieldTypes[fieldName].union(new TypeDesc.constant(undefined));
-}
-
-/**
-Get the type descriptor for a given field
-*/
-ClassDesc.prototype.getFieldType = function (fieldName)
-{
-    assert (
-        this.fieldTypes[fieldName] !== undefined,
-        'field not found: "' + fieldName + '"'
-    );
-
-    return this.fieldTypes[fieldname];
-}
-
-// Empty object class descriptor
-ClassDesc.emptyClass = new ClassDesc();
-
-
-
-
-/*
-TODO: basic interprocedural type analysis
-
-Need type descriptor:
-- Describe types of globals
-- Describe field types
-- Describe array types
-- Describe SSA temp types
-- Fn input and return types
-
-Need way to init initial type desc
-- Call fn to initialize?
-- Initialize to what? Could create some basic initial type descs for
-  common types.
-
-Need way to compute intersection of type descs
-- Produces a new type desc
-*/
-
-/*
-TODO: Analysis code, SCCP-based
-- Ignore object classes for now?
-
-Need info about globals... The global obj is an object...
-- Special handling or just store its current map/class descriptor??
-- Need some way of describing its fields
-- For now, could store this structure globally?
-
-Can't actually know the global object map at all times. Fields may be deleted.
-May want something more flexible than just a global object map. Special handling.
-
-Otherwise, may want a map that can account for potentially deleted fields.
-Set them to the any type? How do regular maps handle deletion****
-
-If a field is deleted, and we know that for certain, we can set it to the
-undefined value type descriptor.
-*/
-
-
-//
-// TODO: type analysis function for CFG/function
-//
-function typePropFunc(irFunc, params)
+function typePropFunc(irFunc, params, inTypes)
 {
     assert (
         irFunc instanceof IRFunction,
         'expected IR function'
     );
 
-    // TODO: type prop for sub functions?
+    //
+    // TODO: lookup function in hash map, restart analysis if possible
+    //
+
+    /*
+    Want to do flow analysis. Propagate forward a hash map of reaching temps to
+    type descriptors.
+
+    Can store copy at each merge point.
+
+    Should factor analysis to have merge function as local closure.
+
+
+    */
+
+    // Create an empty type set for initialization
+    function setInit()
+    {
+    }
+
+    // Merge type sets at a block entry
+    function setMerge()
+    {
+    }
+
+
+    function phiFunc()
+    {
+    }
+
+
+    function instrFunc()
+    {
+    }
+
+
+    // Add the CFG entry to the work list
+    var workList = [cfg.entry];
+
+
+
+
+
+
 
 
 
@@ -444,11 +135,6 @@ function typePropFunc(irFunc, params)
 
 
 }
-
-
-
-
-
 
 
 
