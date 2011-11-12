@@ -449,10 +449,10 @@ tests.ir.withStmt = function ()
         function (instr)
         {
             if (instr instanceof CallFuncInstr && 
-                instr.uses[0].funcName == 'getPropVal')
+                instr.uses[0].funcName == 'getProp')
                 hasGet = true;
             if (instr instanceof CallFuncInstr && 
-                instr.uses[0].funcName == 'putPropVal')
+                instr.uses[0].funcName == 'putProp')
                 hasPut = true;
         }
     );

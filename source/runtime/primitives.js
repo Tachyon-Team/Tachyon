@@ -2284,7 +2284,7 @@ function setArrayLength(arr, newLen)
 /**
 Set a property on a value using a value as a key
 */
-function putPropVal(obj, propName, propVal)
+function putProp(obj, propName, propVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
@@ -2357,7 +2357,7 @@ function putPropVal(obj, propName, propVal)
 /**
 Get a property from a value using a value as a key
 */
-function getPropVal(obj, propName)
+function getProp(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
@@ -2583,7 +2583,7 @@ function hasProp(obj, propName)
 /**
 Test if a property exists on a value without looking at its prototype chain
 */
-function hasOwnPropVal(obj, propName)
+function hasOwnProp(obj, propName)
 {
     "tachyon:static";
     "tachyon:noglobal";
@@ -2669,7 +2669,7 @@ function hasOwnPropVal(obj, propName)
 /**
 Delete a property from a value
 */
-function delPropVal(obj, propName)
+function delProp(obj, propName)
 { 
     "tachyon:static"; 
 
