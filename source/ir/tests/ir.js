@@ -119,7 +119,7 @@ tests.ir.helpers.forEachInstr = function (ir, instrFunc, testModule)
         if (func === ir && testModule !== true)
             continue;
 
-        for (var it = func.virginCFG.getInstrItr(); it.valid(); it.next())
+        for (var it = func.lirCFG.getInstrItr(); it.valid(); it.next())
         {
             instrFunc(it.get());
         }

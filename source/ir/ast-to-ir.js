@@ -177,7 +177,7 @@ function stmtListToIRFunc(
     var cfg = new ControlFlowGraph(newFunc);
 
     // Set the CFG for the function
-    newFunc.virginCFG = cfg;
+    newFunc.hirCFG = cfg;
 
     // Get the entry block for the CFG
     var entryBlock = cfg.getEntryBlock();

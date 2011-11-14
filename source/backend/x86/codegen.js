@@ -70,7 +70,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
     var exitAllocMaps = [];
 
     // Get a reference to the entry block
-    var entryBlock = irFunc.virginCFG.entry;
+    var entryBlock = irFunc.lirCFG.entry;
 
     // Create the register allocation map for the entry block
     // Maps temporaries and constants to register and stack locations

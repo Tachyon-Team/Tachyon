@@ -48,87 +48,191 @@ Interprocedural type analysis implementation.
 Maxime Chevalier-Boisvert
 */
 
+
+
+// TODO:
+// Keep map of SSA temp->type
+// - For temps that have uses only
+// - At uses, if it's the only use, remove the temp from the set
+
+
+// TODO:
+// If calling function, look it up in hash map, update types at its entry,
+// continue analysis. Need global work list for functions?
+//
+// If output (ret) types of function change, need to restart analysis
+// for the callees!
+//
+// Ideally, need to have just ONE worklist. If input types at a function
+// entry change, put the entry block for that function in the global work list******
+//
+// Need a function to queue a function for analysis (queue its entry block) *****
+//
+// Other function to run some analysis iterations? ****
+
+
+
 /**
-@namespace Type propagation information
+@class Type propagation interprocedural analysis
 */
-var typeProp = {};
+function TypeProp(params)
+{
+    /**
+    Compilation parameters this analysis is associated with
+    */
+    this.params = params;
+
+    /**
+    Worklist of basic blocks queued to be analyzed
+    */
+    this.workList = new LinkedList();
+
+    /**
+    Set of blocks in the work list
+    This is to avoid adding blocks to the work list twice
+    */
+    this.workSet = new HashSet();
+
+    /**
+    Map of type maps at block entries
+    */
+    this.blockTypes = new HashMap();
 
 
 
-// TODO: Need to describe global object's type
-typeProp.globalType = undefined;
+
+    // TODO: Need to describe global object's type
+    this.globalType = undefined;
+
+
+    // TODO: Need to map functions to type analysis information
+    this.funcTypes = undefined;
 
 
 
 
-// TODO: Need to map functions to type analysis information
-typeProp.funcTypes = undefined;
-
-
-
-// TODO: generally, don't want to restart from scratch for type prop of
-// function, want to have stored info in data structure, start from there
-
-
-
+    /**
+    Total analysis iteration count
+    */
+    this.itrCount = 0;
+}
 
 /**
-Perform type analysis on a function/CFG.
+Queue a block to be (re)analyzed
 */
-function typePropFunc(irFunc, params, inTypes)
+TypeProp.prototype.queueBlock = function (block)
+{
+    // If the block is already queued, do nothing
+    if (this.workSet.has(block) === true)
+        return;
+
+    this.workList.addLast(block);
+
+    this.workSet.add(block);
+}
+
+/**
+Queue a function to be analyzed
+*/
+TypeProp.prototype.queue = function (irFunc)
 {
     assert (
         irFunc instanceof IRFunction,
         'expected IR function'
     );
 
-    //
-    // TODO: lookup function in hash map, restart analysis if possible
-    //
+    var entry = irFunc.hirCFG.entry;
 
+
+
+    // TODO: handle the function's argument types
+
+
+
+    // TODO: create a type set for the entry block
+    //if (this.blockTypes.has(entry) === false)
+    //Create empty type set
+
+
+    
+
+    // Queue the function's entry block
+    this.queueBlock(entry);
+}
+
+/**
+Run the analysis for some number of iterations
+*/
+TypeProp.prototype.run = function (maxItrs)
+{
+    // Until the max iteration count is reached
+    for (var numItrs = 0; maxItrs === undefined || numItrs < maxItrs; ++numItrs)
+    {
+        // If the work list is empty, stop
+        if (this.workList.isEmpty() === true)
+            break;
+
+        // Run one analysis iteration
+        this.iterate();
+    }
+
+    // Update the total iteration count
+    this.itrCount += numItrs;
+
+    // Return the number of iterations performed
+    return numItrs;
+}
+
+/**
+Run one type analysis iteration
+*/
+TypeProp.prototype.iterate = function ()
+{
+    assert (
+        this.workList.isEmpty() === false,
+            'empty work list'
+    );
+
+    // Remove a block from the work list
+    var block = this.workList.remFirst();
+    this.workSet.rem(block);
+
+    // Get the type set at the block entry
+    var typeSet = this.blockTypes.get(block);
+
+
+    // TODO    
+    // When doing succ handling, will want to merge in out-flowing types
+    // This requires creating the flow set at that point if none is available***
     /*
-    Want to do flow analysis. Propagate forward a hash map of reaching temps to
-    type descriptors.
-
-    Can store copy at each merge point.
-
-    Should factor analysis to have merge function as local closure.
-
-
+    assert (
+        typeSet !== HashMap.NOT_FOUND,
+        'type set not found'
+    );
     */
 
-    // Create an empty type set for initialization
-    function setInit()
+
+    // For each instruction
+    for (var i = 0; i < block.instrs.length; ++i)
     {
+        var instr = block.instrs[i];
+
+
+        // TODO: don't add types to type set if an instruction has no uses
+
+
+        // Process the instruction
+        if (instr instanceof PhiInstr)
+            this.phiFunc(instr, typeSet);
+        else
+            this.instrFunc(instr, typeSet);
+
+
     }
 
-    // Merge type sets at a block entry
-    function setMerge()
-    {
-    }
 
 
-    function phiFunc()
-    {
-    }
-
-
-    function instrFunc()
-    {
-    }
-
-
-    // Add the CFG entry to the work list
-    var workList = [cfg.entry];
-
-
-
-
-
-
-
-
-
+    // TODO: successor handling
 
 
 
@@ -136,6 +240,56 @@ function typePropFunc(irFunc, params, inTypes)
 
 }
 
+/**
+Flow function applied to instruction
+*/
+TypeProp.prototype.instrFunc = function (instr, inSet)
+{
+    // TODO
 
 
+    print(instr);
+
+
+
+
+
+
+    // TODO: call site handling
+    // TODO: return handling
+
+
+}
+
+/**
+Flow function applied to phi nodes
+*/
+TypeProp.prototype.phiFunc = function (phi, inSet)
+{
+    // TODO
+}
+
+/**
+Create an empty type set for initialization
+*/
+TypeProp.prototype.typeSetInit = function ()
+{
+    // TODO
+}
+
+/**
+Copy a type set
+*/
+TypeProp.prototype.typeSetCopy = function ()
+{
+    // TODO
+}
+
+/**
+Merge type sets at a block entry
+*/
+TypeProp.prototype.typeSetMerge = function ()
+{
+    // TODO
+}
 

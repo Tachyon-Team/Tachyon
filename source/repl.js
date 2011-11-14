@@ -158,7 +158,9 @@ function tachyonRepl()
             print('Running type analysis on: "' + args + '"');
             var ast = parse_src_file(args, params);
             var ir = unitToIR(ast, params);
-            typePropFunc(ir);
+            params.typeProp.queue(ir);
+            var itrCount = params.typeProp.run();
+            print('Iteration count: ' + itrCount);
             break;
 
             case 'prim_list':
@@ -204,7 +206,7 @@ function tachyonRepl()
                 print('child function not found: "' + funcName + '"');
                 break;
             }
-            viewCFG(func.virginCFG);
+            viewCFG(func.hirCFG);
             break;
 
             default:

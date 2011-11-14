@@ -160,7 +160,7 @@ x86.Backend.prototype.genCode = function (irFunc, params)
     log.debug('generating code for "' + irFunc.funcName + '"');
 
     // Get a reference to the CFG
-    var cfg = irFunc.virginCFG;
+    var cfg = irFunc.lirCFG;
 
     var blockOrder;
     measurePerformance(

@@ -568,6 +568,16 @@ tests.programs.with = genTest(
 );
 
 /**
+Exceptions test
+*/
+tests.programs.exceptions = genTest(
+    'programs/exceptions/exceptions.js',
+    'test',
+    [],
+    0
+);
+
+/**
 Array indexing test.
 */
 tests.programs.array_idx = genTest(

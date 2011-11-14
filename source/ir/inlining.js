@@ -85,8 +85,15 @@ function inlineCall(callInstr, calleeFunc)
     // Get a reference to the caller's CFG
     var callerCFG = callInstr.parentBlock.parentCFG;
 
-    // Copy the callee function's CFG
-    var calleeCFG = calleeFunc.virginCFG.copy();
+    // TODO: should reduce default inlining during lowering
+    // For now, inline LIR CFG if available, for speed
+    //
+    // Copy the callee function's High-level CFG
+    //var calleeCFG = calleeFunc.hirCFG.copy();
+    if (calleeFunc.lirCFG)
+        var calleeCFG = calleeFunc.lirCFG.copy();
+    else
+        var calleeCFG = calleeFunc.hirCFG.copy();
 
     // Create a block for the call resolution
     var resBlock = callerCFG.getNewBlock('call_res');

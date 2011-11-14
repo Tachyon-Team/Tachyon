@@ -100,15 +100,16 @@ function IRFunction(
     this.astNode = astNode;
 
     /**
-    Virgin, unoptimized CFG
+    High-level IR (HIR) CFG
     @field
     */
-    this.virginCFG = null;
+    this.hirCFG = null;
 
     /**
-    Final, optimized CFG
+    Optimized Low-level IR (LIR) CFG
+    @field
     */
-    this.finalCFG = null;
+    this.lirCFG = null;
 
     /**
     List of child (nested) functions
@@ -241,7 +242,7 @@ IRFunction.prototype.toString = function (blockOrderFn, outFormatFn, inFormatFn)
         ) + '\n\n';
     }
 
-    var cfg = (this.finalCFG !== null) ? this.finalCFG : this.virginCFG;
+    var cfg = (this.lirCFG !== null) ? this.lirCFG : this.hirCFG;
 
     output += indentText(
         cfg.toString(
@@ -280,7 +281,7 @@ IRFunction.prototype.copy = function ()
         this.astNode
     );
 
-    newFunc.virginCFG = this.virginCFG.copy();
+    newFunc.hirCFG = this.hirCFG.copy();
 
     this.childFuncs.forEach(
         function (child)
@@ -306,12 +307,12 @@ Validate the function and its children
 */
 IRFunction.prototype.validate = function ()
 {
-    // Validate the original control-flow graph
-    this.virginCFG.validate();
+    // Validate the HIR control-flow graph
+    this.hirCFG.validate();
 
-    // Validate the final control-flow graph
-    if (this.finalCFG !== null)
-        this.finalCFG.validate();
+    // Validate the LIR control-flow graph
+    if (this.lirCFG !== null)
+        this.lirCFG.validate();
 
     // Validate the child functions
     this.childFuncs.forEach(

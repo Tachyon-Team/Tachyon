@@ -77,7 +77,7 @@ function lowerIRFunc(irFunc, params)
         //print('calling lowerIRCFG for "' + func.funcName + '"');
 
         // Perform lowering on the function's CFG
-        lowerIRCFG(func.virginCFG, params);
+        func.lirCFG = lowerIRCFG(func.hirCFG, params);
 
         //print('back from lowerIRCFG for "' + func.funcName + '"');
     }
@@ -97,6 +97,9 @@ function lowerIRCFG(cfg, params)
         params instanceof CompParams,
         'expected compilation parameters'
     );
+
+    // Perform a copy of the CFG before transforming it
+    cfg = cfg.copy();
 
     measurePerformance(
         "inlining/transform",
@@ -282,6 +285,9 @@ function lowerIRCFG(cfg, params)
     );
 
     //print('*** lowering done ***');
+
+    // Return the transformed CFG
+    return cfg;
 }
 
 //=============================================================================
