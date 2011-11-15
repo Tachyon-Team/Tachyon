@@ -126,7 +126,7 @@ Generate a type descriptor for a constant value
 TypeDesc.constant = function (value)
 {
     if (value instanceof IRConst)
-        value = IRConst.value;
+        value = value.value;
 
     if (value === undefined)
     {
@@ -163,8 +163,8 @@ TypeDesc.constant = function (value)
         return new TypeDesc(TypeDesc.flags.STRING);
     }
 
-    // TODO: handle other types
-    return new TypeDesc(TypeDesc.flags.ANY);
+    // By default, return the unknown type
+    return TypeDesc.any;
 }
 
 /**
@@ -184,6 +184,9 @@ TypeDesc.prototype.toString = function ()
     for (flagName in TypeDesc.flags)
     {
         var flagVal = TypeDesc.flags[flagName];
+
+        if (flagVal === TypeDesc.flags.ANY)
+            continue;
 
         if (this.flags & flagVal)
         {
@@ -259,6 +262,11 @@ TypeDesc.prototype.union = function (that)
         );
     }
 }
+
+/**
+Unknown/any type descriptor
+*/
+TypeDesc.any = new TypeDesc(TypeDesc.flags.ANY);
 
 /**
 @class Object property map descriptor

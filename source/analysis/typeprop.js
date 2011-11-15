@@ -72,6 +72,12 @@ Maxime Chevalier-Boisvert
 
 
 
+//=============================================================================
+//
+// Type propagation analysis core
+//
+//=============================================================================
+
 /**
 @class Type propagation interprocedural analysis
 */
@@ -146,15 +152,18 @@ TypeProp.prototype.queue = function (irFunc)
 
 
     // TODO: handle the function's argument types
+    // Merge them into existing type set if existing
+
+
+    // FIXME: for now, create an empty type set for the entry
+    if (this.blockTypes.has(entry) === false)
+    {
+        var typeSet = this.typeSetInit();
+        this.blockTypes.set(entry, typeSet);
+    }
 
 
 
-    // TODO: create a type set for the entry block
-    //if (this.blockTypes.has(entry) === false)
-    //Create empty type set
-
-
-    
 
     // Queue the function's entry block
     this.queueBlock(entry);
@@ -200,39 +209,68 @@ TypeProp.prototype.iterate = function ()
     // Get the type set at the block entry
     var typeSet = this.blockTypes.get(block);
 
-
-    // TODO    
-    // When doing succ handling, will want to merge in out-flowing types
-    // This requires creating the flow set at that point if none is available***
-    /*
     assert (
         typeSet !== HashMap.NOT_FOUND,
         'type set not found'
     );
-    */
-
 
     // For each instruction
     for (var i = 0; i < block.instrs.length; ++i)
     {
         var instr = block.instrs[i];
 
+        print(instr);
 
-        // TODO: don't add types to type set if an instruction has no uses
+        // Array of use (input value) types
+        var useTypes = [];
 
+        // For each use of the instruction
+        for (var j = 0; j < instr.uses.length; ++j)
+        {
+            var use = instr.uses[j];
 
-        // Process the instruction
-        if (instr instanceof PhiInstr)
-            this.phiFunc(instr, typeSet);
-        else
-            this.instrFunc(instr, typeSet);
+            // If this is an IR instruction
+            if (use instanceof IRInstr)
+            {
+                // Get the use type from the type set
+                var useType = typeSet.get(use);
 
+                // If this is the only use of this value,
+                // remove it from the type set
+                if (use.uses.length === 1)
+                    typeSet.rem(use);
+            }
+            else
+            {
+                // Get a type descriptor for the constant
+                var useType = TypeDesc.constant(use);
 
+                print('cst type: ' + useType);
+            }
+
+            // Add the use type to the array
+            useTypes.push(useType);
+        }
+
+        // Process the phi node or instruction
+        var outType =
+            (instr instanceof PhiInstr)?
+            this.phiFunc(instr, useTypes):
+            this.instrFunc(instr, useTypes);
+
+        print('out type: ' + outType);
+
+        // If the instruction has uses, add its type to the type set
+        if (instr.uses.length > 0)
+            typeSet.set(instr, outType);
     }
 
 
 
-    // TODO: successor handling
+
+    // TODO: successor merge handling
+
+
 
 
 
@@ -243,30 +281,35 @@ TypeProp.prototype.iterate = function ()
 /**
 Flow function applied to instruction
 */
-TypeProp.prototype.instrFunc = function (instr, inSet)
+TypeProp.prototype.instrFunc = function (instr, useTypes)
 {
-    // TODO
-
-
-    print(instr);
-
-
-
-
+    // If no type flow function is defined, return the any type
+    if (instr.typeProp === undefined)
+        return TypeDesc.any;
 
 
     // TODO: call site handling
+
     // TODO: return handling
 
 
+    // Call the instruction's type flow function
+    return instr.typeProp(this, useTypes);
 }
 
 /**
 Flow function applied to phi nodes
 */
-TypeProp.prototype.phiFunc = function (phi, inSet)
+TypeProp.prototype.phiFunc = function (phi, useTypes)
 {
     // TODO
+
+
+
+
+
+
+
 }
 
 /**
@@ -274,15 +317,15 @@ Create an empty type set for initialization
 */
 TypeProp.prototype.typeSetInit = function ()
 {
-    // TODO
+    return new HashMap();
 }
 
 /**
 Copy a type set
 */
-TypeProp.prototype.typeSetCopy = function ()
+TypeProp.prototype.typeSetCopy = function (typeSet)
 {
-    // TODO
+    return typeSet.copy();
 }
 
 /**
@@ -292,4 +335,28 @@ TypeProp.prototype.typeSetMerge = function ()
 {
     // TODO
 }
+
+//=============================================================================
+//
+// Flow functions for HIR instructions
+//
+//=============================================================================
+
+GlobalObjInstr.prototype.typeProp = function (ta, useTypes)
+{
+    // TODO: return the global object type
+}
+
+// TODO: short vs long form printing for types (e.g.: object types)
+
+// TODO
+
+
+
+
+
+
+
+
+
 
