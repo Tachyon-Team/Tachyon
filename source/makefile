@@ -128,6 +128,7 @@ BASE_SRCS =                             \
     ir/lowering.js                      \
     ir/cfgvis.js                        \
     analysis/typedesc.js                \
+    analysis/typemap.js                 \
     analysis/typeprop.js                \
     runtime/layout.js                   \
     runtime/context.js                  \

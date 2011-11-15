@@ -50,25 +50,38 @@ Maxime Chevalier-Boisvert
 
 
 
-// TODO:
-// Keep map of SSA temp->type
-// - For temps that have uses only
-// - At uses, if it's the only use, remove the temp from the set
 
 
-// TODO:
-// If calling function, look it up in hash map, update types at its entry,
-// continue analysis. Need global work list for functions?
-//
-// If output (ret) types of function change, need to restart analysis
-// for the callees!
-//
-// Ideally, need to have just ONE worklist. If input types at a function
-// entry change, put the entry block for that function in the global work list******
-//
-// Need a function to queue a function for analysis (queue its entry block) *****
-//
-// Other function to run some analysis iterations? ****
+
+
+
+
+/*
+TODO: treat global object type as a type that's passed to functions???
+
+Associate global object type with function entry?
+
+Should ideally have it flow through in the type map?
+
+
+When we analyze unit-level functions, pass empty global type to first unit...
+We need the global type merge at the end of the unit to pass it to the
+next unit to analyze.
+
+The order of the unit analysis matters.
+
+
+For a function, set of call sites, or set of next blocks to merge into?
+- Function calls can occur in the middle of blocks!
+  - Re-queue that block, it will be analyzed with the new return site info
+
+
+
+*/
+
+
+
+
 
 
 
@@ -107,12 +120,41 @@ function TypeProp(params)
 
 
 
-    // TODO: Need to describe global object's type
-    this.globalType = undefined;
+
+    /**
+    Global object class
+    This is distinct from specific global object type instances
+    */
+    this.globalClass = new ClassDesc();
+    this.globalClass.globalClass = true;
 
 
+
+
+
+
+    // TODO
     // TODO: Need to map functions to type analysis information
+    // TODO
     this.funcTypes = undefined;
+
+
+
+
+
+    /**
+    Ordered list of unit-level functions to be analyzed
+    */
+    this.unitList = [];
+
+    /**
+    Map of functions to lists of call sites
+    In the case of unit-level functions, this contains the next unit
+    To be processed.
+    */
+    this.callerLists = new HashMap();
+
+
 
 
 
@@ -140,7 +182,7 @@ TypeProp.prototype.queueBlock = function (block)
 /**
 Queue a function to be analyzed
 */
-TypeProp.prototype.queue = function (irFunc)
+TypeProp.prototype.queueFunc = function (irFunc)
 {
     assert (
         irFunc instanceof IRFunction,
@@ -158,8 +200,17 @@ TypeProp.prototype.queue = function (irFunc)
     // FIXME: for now, create an empty type set for the entry
     if (this.blockTypes.has(entry) === false)
     {
-        var typeSet = this.typeSetInit();
-        this.blockTypes.set(entry, typeSet);
+        var globalType = new TypeDesc(
+            TypeDesc.flags.OBJECT,
+            undefined,
+            undefined,
+            undefined,
+            [new MapDesc(this.globalClass)]
+        );
+
+        var typeMap = new TypeMap;
+        typeMap.setGlobalType(globalType);
+        this.blockTypes.set(entry, typeMap);
     }
 
 
@@ -167,6 +218,28 @@ TypeProp.prototype.queue = function (irFunc)
 
     // Queue the function's entry block
     this.queueBlock(entry);
+}
+
+/**
+Queue a unit-level function to be analyzed
+*/
+TypeProp.prototype.queueUnit = function (ir)
+{
+    assert (
+        ir.astNode instanceof Program,
+        'IR object is not unit-level function'
+    );
+
+    // Queue the unit function to be analyzed
+    this.queueFunc(ir);
+
+    // Add the unit to the list of units to be analyzed
+    this.unitList.push(ir);
+
+
+    // TODO: handle caller list
+
+
 }
 
 /**
@@ -206,11 +279,16 @@ TypeProp.prototype.iterate = function ()
     var block = this.workList.remFirst();
     this.workSet.rem(block);
 
-    // Get the type set at the block entry
-    var typeSet = this.blockTypes.get(block);
+    print('------')
+    print('Block: ' + block.getBlockName());
+    print('------')
+    print('');
+
+    // Get a copy of the type set at the block entry
+    var typeMap = this.blockTypes.get(block).copy();
 
     assert (
-        typeSet !== HashMap.NOT_FOUND,
+        typeMap !== HashMap.NOT_FOUND,
         'type set not found'
     );
 
@@ -221,67 +299,77 @@ TypeProp.prototype.iterate = function ()
 
         print(instr);
 
-        // Array of use (input value) types
-        var useTypes = [];
-
         // For each use of the instruction
         for (var j = 0; j < instr.uses.length; ++j)
         {
             var use = instr.uses[j];
 
-            // If this is an IR instruction
-            if (use instanceof IRInstr)
-            {
-                // Get the use type from the type set
-                var useType = typeSet.get(use);
+            // If this is an IR instruction and this is its only use,
+            // remove it from the type map
+            if (use instanceof IRInstr && use.uses.length === 1)
+                typeMap.rem(use);
 
-                // If this is the only use of this value,
-                // remove it from the type set
-                if (use.uses.length === 1)
-                    typeSet.rem(use);
-            }
-            else
-            {
-                // Get a type descriptor for the constant
-                var useType = TypeDesc.constant(use);
-
-                print('cst type: ' + useType);
-            }
-
-            // Add the use type to the array
-            useTypes.push(useType);
+            var useType = typeMap.getValType(use);
+            print(use.getValName() + ' : ' + useType);
         }
 
         // Process the phi node or instruction
         var outType =
             (instr instanceof PhiInstr)?
-            this.phiFunc(instr, useTypes):
-            this.instrFunc(instr, useTypes);
+            this.phiFunc(instr, typeMap):
+            this.instrFunc(instr, typeMap);
 
-        print('out type: ' + outType);
+        if (instr.dests.length > 0)
+            print(instr.getValName() + ' => ' + outType);
+        print('');
 
-        // If the instruction has uses, add its type to the type set
-        if (instr.uses.length > 0)
-            typeSet.set(instr, outType);
+        // If the instruction has dests, add its type to the type set
+        if (instr.dests.length > 0)
+            typeMap.setValType(instr, outType);
     }
 
+    // For each successor
+    for (var i = 0; i < block.succs.length; ++i)
+    {
+        var succ = block.succs[i];
 
+        // Get the type map for the successor
+        var succMap = this.blockTypes.get(succ);
 
+        // If the successor has no type map yet
+        if (succMap === HashMap.NOT_FOUND)
+        {
+            // Pass a copy of the predecessor map to the successor
+            this.blockTypes.set(succ, typeMap.copy());
 
-    // TODO: successor merge handling
+            // Queue the successor for analysis
+            this.queueBlock(succ);
+        }
+        else
+        {
+            // Merge the local type map into the successor's
+            var changed = succMap.merge(typeMap);
 
+            // If the successor's type map was changed,
+            // queue the successor for analysis
+            if (changed == true)
+                this.queueBlock(succ);
+        }
+    }
+}
 
-
-
-
-
-
+/**
+Flow function applied to phi nodes
+*/
+TypeProp.prototype.phiFunc = function (phi, typeMap)
+{
+    // TODO
 }
 
 /**
 Flow function applied to instruction
 */
-TypeProp.prototype.instrFunc = function (instr, useTypes)
+TypeProp.prototype.instrFunc = function (instr, typeMap)
 {
     // If no type flow function is defined, return the any type
     if (instr.typeProp === undefined)
@@ -294,46 +382,7 @@ TypeProp.prototype.instrFunc = function (instr, useTypes)
 
 
     // Call the instruction's type flow function
-    return instr.typeProp(this, useTypes);
-}
-
-/**
-Flow function applied to phi nodes
-*/
-TypeProp.prototype.phiFunc = function (phi, useTypes)
-{
-    // TODO
-
-
-
-
-
-
-
-}
-
-/**
-Create an empty type set for initialization
-*/
-TypeProp.prototype.typeSetInit = function ()
-{
-    return new HashMap();
-}
-
-/**
-Copy a type set
-*/
-TypeProp.prototype.typeSetCopy = function (typeSet)
-{
-    return typeSet.copy();
-}
-
-/**
-Merge type sets at a block entry
-*/
-TypeProp.prototype.typeSetMerge = function ()
-{
-    // TODO
+    return instr.typeProp(this, typeMap);
 }
 
 //=============================================================================
@@ -342,14 +391,54 @@ TypeProp.prototype.typeSetMerge = function ()
 //
 //=============================================================================
 
-GlobalObjInstr.prototype.typeProp = function (ta, useTypes)
+GlobalObjInstr.prototype.typeProp = function (ta, typeMap)
 {
-    // TODO: return the global object type
+    // Return the global object type
+    return typeMap.globalType;    
 }
 
-// TODO: short vs long form printing for types (e.g.: object types)
+HasPropInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // TODO: examine type map
+    return TypeDesc.bool;
+}
 
-// TODO
+PutPropInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var globalType = typeMap.getGlobalType();
+    var propName = typeMap.getValType(this.uses[1]).stringVal();
+    var valType = typeMap.getValType(this.uses[2]);
+
+    // TODO: issue, here, the property name could be unknown
+    // A run-time check is needed
+    if (propName === undefined)
+    {
+        print('*WARNING: putProp with unknown property name');
+    }
+    else
+    {
+        // Update the global type with the new property
+        var globalType = globalType.putProp(propName, valType);
+        typeMap.setGlobalType(globalType);
+    }
+
+    return valType;
+}
+
+GetGlobalInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var globalType = typeMap.getGlobalType();
+    var propName = typeMap.getValType(this.uses[1]).stringVal();
+
+
+
+    // TODO
+    return TypeDesc.any;
+}
+
+
+
+// TODO: handle more instructions!
 
 
 
