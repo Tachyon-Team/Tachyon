@@ -201,7 +201,7 @@ TypeProp.prototype.queueFunc = function (irFunc)
     if (this.blockTypes.has(entry) === false)
     {
         var globalType = new TypeDesc(
-            TypeDesc.flags.OBJECT,
+            TypeFlags.OBJECT,
             undefined,
             undefined,
             undefined,
@@ -291,6 +291,14 @@ TypeProp.prototype.iterate = function ()
         typeMap !== HashMap.NOT_FOUND,
         'type set not found'
     );
+
+
+
+    //
+    // TODO: update list of blocks touching classes
+    //
+
+
 
     // For each instruction
     for (var i = 0; i < block.instrs.length; ++i)
@@ -399,6 +407,12 @@ GlobalObjInstr.prototype.typeProp = function (ta, typeMap)
 
 HasPropInstr.prototype.typeProp = function (ta, typeMap)
 {
+    // TODO:
+    // If type in map, return true
+    // If type not in map but in class, return bool
+    // If type not in class, return false
+
+
     // TODO: examine type map
     return TypeDesc.bool;
 }
@@ -430,12 +444,34 @@ GetGlobalInstr.prototype.typeProp = function (ta, typeMap)
     var globalType = typeMap.getGlobalType();
     var propName = typeMap.getValType(this.uses[1]).stringVal();
 
+    var propType = TypeDesc.noinf;
 
+    // Union the map types
+    for (var i = 0; i < globalType.mapSet.length; ++i)
+    {
+        var map = globalType.mapSet[i];
 
-    // TODO
-    return TypeDesc.any;
+        propType = propType.union(map.getPropType(propName));
+    }
+
+    return propType;
 }
 
+JSAddInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var t0 = typeMap.getValType(this.uses[0]);
+    var t1 = typeMap.getValType(this.uses[1]);
+
+    if (t0.flags === TypeFlags.STRING || t1.flags === TypeFlags.STRING)
+    {
+        print('string output');
+        print(t0);
+        print(t1);
+        return TypeDesc.string;
+    }
+
+    return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
+}
 
 
 // TODO: handle more instructions!

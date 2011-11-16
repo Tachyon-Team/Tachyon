@@ -1180,35 +1180,41 @@ tests.programs.tachyon_bridge = genTest(
 Type analysis test programs
 */
 tests.programs.type_analysis = tests.testSuite();
-tests.programs.type_analysis.test0 = genTest(
-    'programs/type_analysis/test0.js'
+tests.programs.type_analysis.global_add = genTest(
+    'programs/type_analysis/global_add.js'
 );
-tests.programs.type_analysis.test1 = genTest(
-    'programs/type_analysis/test1.js',
+tests.programs.type_analysis.func_calls = genTest(
+    'programs/type_analysis/func_calls.js',
     'test',
     [],
     0
 );
-tests.programs.type_analysis.test2 = genTest(
-    'programs/type_analysis/test2.js',
+tests.programs.type_analysis.fib = genTest(
+    'programs/type_analysis/fib.js',
     'test',
     [],
     0
 );
-tests.programs.type_analysis.test3 = genTest(
-    'programs/type_analysis/test3.js',
+tests.programs.type_analysis.cond_return = genTest(
+    'programs/type_analysis/cond_return.js',
     'test',
     [],
     0
 );
-tests.programs.type_analysis.test4 = genTest(
-    'programs/type_analysis/test4.js',
+tests.programs.type_analysis.loop_sum = genTest(
+    'programs/type_analysis/loop_sum.js',
     'test',
     [],
     0
 );
-tests.programs.type_analysis.test5 = genTest(
-    'programs/type_analysis/test5.js',
+tests.programs.type_analysis.obj_simple = genTest(
+    'programs/type_analysis/obj_simple.js',
+    'test',
+    [],
+    0
+);
+tests.programs.type_analysis.cond_prop = genTest(
+    'programs/type_analysis/cond_prop.js',
     'test',
     [],
     0

@@ -51,35 +51,35 @@ Maxime Chevalier-Boisvert
 /**
 @namespace Type descriptor flags namespace
 */
-TypeDesc.flags = {};
+TypeFlags = {};
 
 // Possible type descriptor flags
-TypeDesc.flags.UNDEF    = 1 << 0; // May be undefined
-TypeDesc.flags.NULL     = 1 << 1; // May be null
-TypeDesc.flags.TRUE     = 1 << 2; // May be true
-TypeDesc.flags.FALSE    = 1 << 3; // May be false
-TypeDesc.flags.FLOAT    = 1 << 4; // May be floating-point
-TypeDesc.flags.INT      = 1 << 5; // May be integer
-TypeDesc.flags.STRING   = 1 << 6; // May be string
-TypeDesc.flags.OBJECT   = 1 << 7; // May be string
-TypeDesc.flags.ARRAY    = 1 << 8; // May be string
-TypeDesc.flags.FUNCTION = 1 << 9; // May be string
+TypeFlags.UNDEF    = 1 << 0; // May be undefined
+TypeFlags.NULL     = 1 << 1; // May be null
+TypeFlags.TRUE     = 1 << 2; // May be true
+TypeFlags.FALSE    = 1 << 3; // May be false
+TypeFlags.FLOAT    = 1 << 4; // May be floating-point
+TypeFlags.INT      = 1 << 5; // May be integer
+TypeFlags.STRING   = 1 << 6; // May be string
+TypeFlags.OBJECT   = 1 << 7; // May be string
+TypeFlags.ARRAY    = 1 << 8; // May be string
+TypeFlags.FUNCTION = 1 << 9; // May be string
 
 // Unknown/any type flag
-TypeDesc.flags.ANY =
-    TypeDesc.flags.UNDEF    |
-    TypeDesc.flags.NULL     |
-    TypeDesc.flags.TRUE     |
-    TypeDesc.flags.FALSE    |
-    TypeDesc.flags.INT      |
-    TypeDesc.flags.FLOAT    |
-    TypeDesc.flags.STRING   |
-    TypeDesc.flags.OBJECT   |
-    TypeDesc.flags.ARRAY    |
-    TypeDesc.flags.FUNCTION;
+TypeFlags.ANY =
+    TypeFlags.UNDEF    |
+    TypeFlags.NULL     |
+    TypeFlags.TRUE     |
+    TypeFlags.FALSE    |
+    TypeFlags.INT      |
+    TypeFlags.FLOAT    |
+    TypeFlags.STRING   |
+    TypeFlags.OBJECT   |
+    TypeFlags.ARRAY    |
+    TypeFlags.FUNCTION;
 
 // Uninferred type flag (before analysis)
-TypeDesc.flags.NOINF = 0;
+TypeFlags.NOINF = 0;
 
 /**
 @class Describes variable or temporary types in the type propagation analysis.
@@ -94,7 +94,7 @@ function TypeDesc(
 {
     // Empty type descriptors have the uninferred type
     if (flags === undefined)
-        flags = TypeDesc.flags.NOINF;
+        flags = TypeFlags.NOINF;
 
     // By default, the map set is empty
     if (mapSet === undefined)
@@ -138,37 +138,37 @@ TypeDesc.constant = function (value)
 
     if (value === undefined)
     {
-        return new TypeDesc(TypeDesc.flags.UNDEF);
+        return new TypeDesc(TypeFlags.UNDEF);
     }
 
     else if (value === null)
     {
-        return new TypeDesc(TypeDesc.flags.NULL);
+        return new TypeDesc(TypeFlags.NULL);
     }
 
     else if (value === true)
     {
-        return new TypeDesc(TypeDesc.flags.TRUE);
+        return new TypeDesc(TypeFlags.TRUE);
     }
 
     else if (value === false)
     {
-        return new TypeDesc(TypeDesc.flags.FALSE);
+        return new TypeDesc(TypeFlags.FALSE);
     }
 
     else if (isInt(value) === true)
     {
-        return new TypeDesc(TypeDesc.flags.INT, value, value);
+        return new TypeDesc(TypeFlags.INT, value, value);
     }
 
     else if (typeof value === 'number')
     {
-        return new TypeDesc(TypeDesc.flags.FLOAT, value, value);
+        return new TypeDesc(TypeFlags.FLOAT, value, value);
     }
 
     else if (typeof value === 'string')
     {
-        return new TypeDesc(TypeDesc.flags.STRING, undefined, undefined, value);
+        return new TypeDesc(TypeFlags.STRING, undefined, undefined, value);
     }
 
     // By default, return the unknown type
@@ -180,20 +180,20 @@ Produce a string representation of a type descriptor
 */
 TypeDesc.prototype.toString = function (longForm)
 {
-    if (this.flags === TypeDesc.flags.NOINF)
+    if (this.flags === TypeFlags.NOINF)
         return "noinf";
 
-    if (this.flags === TypeDesc.flags.ANY)
+    if (this.flags === TypeFlags.ANY)
         return "any";
 
     var str = "";
 
     // Add the flags
-    for (flagName in TypeDesc.flags)
+    for (flagName in TypeFlags)
     {
-        var flagVal = TypeDesc.flags[flagName];
+        var flagVal = TypeFlags[flagName];
 
-        if (flagVal === TypeDesc.flags.ANY)
+        if (flagVal === TypeFlags.ANY)
             continue;
 
         if (this.flags & flagVal)
@@ -250,13 +250,13 @@ Type descriptor union (OR) function.
 TypeDesc.prototype.union = function (that)
 {
     // If the other object is the uninferred type
-    if (that.flags === TypeDesc.flags.NOINF)
+    if (that.flags === TypeFlags.NOINF)
     {
         // This type remains unchanged
     }
 
     // If this object is the uninferred type
-    else if (this.flags === TypeDesc.flags.NOINF)
+    else if (this.flags === TypeFlags.NOINF)
     {
         return that;
     }
@@ -278,7 +278,37 @@ TypeDesc.prototype.union = function (that)
             (this.strVal === that.strVal)?
             this.strVal:undefined;
 
-        var mapSet = arraySetUnion(this.mapSet, that.mapSet);
+        // Copy the first map set
+        var mapSet = this.mapSet.slice(0);
+
+        // For each map in the second set
+        for (var i = 0; i < that.mapSet.length; ++i)
+        {
+            var m2 = that.mapSet[i];
+
+            var found = false;
+
+            // For each map in the first set
+            for (var j = 0; j < mapSet.length; ++j)
+            {
+                var m1 = mapSet[j];
+
+                // If both classes have the same descriptor
+                if (m1.classDesc === m2.classDesc)
+                {
+                    // Compute the map intersection
+                    mapSet[j] = m1.intersect(m2);
+
+                    // Break out of the inner loop
+                    found = true;
+                    break;
+                }
+            }
+
+            // No matching class was found, add it to the set
+            if (found === false)
+                mapSet.push(m2);
+        }
 
         // Create and return a new type descriptor and return it
         return new TypeDesc(
@@ -322,10 +352,10 @@ Try to evaluate this type descriptor as a string value
 */
 TypeDesc.prototype.stringVal = function ()
 {
-    if (this.flags === TypeDesc.flags.STRING)
+    if (this.flags === TypeFlags.STRING)
         return String(this.strVal);
 
-    if (this.flags === TypeDesc.flags.INT && this.minVal === this.maxVal)
+    if (this.flags === TypeFlags.INT && this.minVal === this.maxVal)
         return String(this.minVal);
 
     return undefined;
@@ -336,6 +366,11 @@ Create an updated type descriptor to simulate a property set
 */
 TypeDesc.prototype.putProp = function (propName, valType)
 {
+    assert (
+        valType instanceof TypeDesc,
+        'invalid type descriptor'
+    );
+
     var mapSet = [];
 
     // Update the map descriptors
@@ -354,17 +389,27 @@ TypeDesc.prototype.putProp = function (propName, valType)
 /**
 Uninferred type descriptor
 */
-TypeDesc.noinf = new TypeDesc(TypeDesc.flags.NOINF);
+TypeDesc.noinf = new TypeDesc(TypeFlags.NOINF);
 
 /**
 Unknown/any type descriptor
 */
-TypeDesc.any = new TypeDesc(TypeDesc.flags.ANY);
+TypeDesc.any = new TypeDesc(TypeFlags.ANY);
+
+/**
+Undefined type descriptor
+*/
+TypeDesc.undef = new TypeDesc(TypeFlags.UNDEF);
 
 /**
 Boolean type descriptor
 */
-TypeDesc.bool = new TypeDesc(TypeDesc.flags.TRUE | TypeDesc.flags.FALSE);
+TypeDesc.bool = new TypeDesc(TypeFlags.TRUE | TypeFlags.FALSE);
+
+/**
+String type descriptor
+*/
+TypeDesc.string = new TypeDesc(TypeFlags.STRING);
 
 /**
 @class Object property map descriptor
@@ -452,9 +497,8 @@ Simulate a property addition
 */
 MapDesc.prototype.putProp = function (propName, valType)
 {
-    // TODO
-    // TODO: update the class descriptor
-    //this.classDesc.putProp(propName, valType);
+    // Update the class descriptor
+    this.classDesc.putProp(propName, valType);
 
     // If the property is already present, do nothing
     if (propName in this.propNames)
@@ -487,6 +531,45 @@ MapDesc.prototype.putProp = function (propName, valType)
 }
 
 /**
+Get the type of a property
+*/
+MapDesc.prototype.getPropType = function (propName)
+{
+    // Get the class-level type for the property
+    var type = this.classDesc.getPropType(propName);
+
+    // If this map does not have the type, union it with undefined
+    if ((propName in this.propNames) === false)
+        type = type.union(TypeDesc.undef);
+
+    return type;
+}
+
+/**
+Compute the intersection of two maps
+*/
+MapDesc.prototype.intersect = function (that)
+{
+    // Create a new descriptor
+    var desc = new MapDesc(this.classDesc);
+
+    // Compute the property intersection
+    for (n in this.propNames)
+        if (n in that.propNames)
+            desc.propNames[n] = true;
+
+    // If this descriptor already exists, use the existing one
+    var cacheDesc = MapDesc.mapSet.get(desc);
+    if (cacheDesc !== HashMap.NOT_FOUND)
+        desc = cacheDesc;
+    else
+        MapDesc.mapSet.set(desc, desc);
+
+    // Return the new descriptor
+    return desc;
+}
+
+/**
 @class Object pseudo-class descriptor
 */
 function ClassDesc()
@@ -496,10 +579,8 @@ function ClassDesc()
     */
     this.classIdx = ClassDesc.nextClassIdx++;
 
-
     // TODO: class origin descriptor, source code location, IR instruction***?
     this.origin = undefined;
-
 
     // TODO: prototype type descriptor
     /**
@@ -507,11 +588,10 @@ function ClassDesc()
     */
     this.protoType = undefined;
 
-
     /**
     Field descriptors, the order of field addition is not represented
     */
-    this.fieldTypes = {};
+    this.propTypes = {};
 
     /**
     Array field type descriptor
@@ -537,8 +617,8 @@ ClassDesc.prototype.toString = function ()
     var str = "class " + this.classIdx + "{\n";
 
     // Output the field names and types
-    for (fieldName in this.fieldTypes)
-        str += '\t"' + fieldName + '" : ' + this.fieldTypes[fieldname] + '\n';
+    for (propName in this.propTypes)
+        str += '\t"' + propName + '" : ' + this.propTypes[propName] + '\n';
 
     str += "}";
 
@@ -546,39 +626,29 @@ ClassDesc.prototype.toString = function ()
 }
 
 /**
-Get the class descriptor resulting from a field addition
+Update the class according to a property set
 */
-ClassDesc.prototype.addField = function (fieldName)
+ClassDesc.prototype.putProp = function (propName, valType)
 {
     assert (
-        this.fieldTypes[fieldName] === undefined,
-        'field already present: "' + fieldName + '"'
+        valType instanceof TypeDesc,
+        'invalid type descriptor'
     );
 
+    var curType = this.propTypes[propName];
+
+    // Compute the updated type
+    if (curType === undefined)
+        var newType = valType;
+    else
+        var newType = curType.union(valType);
+
+    // Update the property type
+    this.propTypes[propName] = newType;
 
     //
-    // TODO: rewrite this
+    // TODO: if change, notify blocks touching this class
     //
-
-
-
-
-
-
-}
-
-/**
-Update the type descriptor for a field by unioning it with another type
-*/
-ClassDesc.prototype.fieldUnion = function (fieldName, type)
-{
-    assert (
-        this.fieldTypes[fieldName] !== undefined,
-        'field not found: "' + fieldName + '"'
-    );
-
-    // Perform the type union
-    this.fieldTypes[fieldName].union(type);
 }
 
 /**
@@ -592,27 +662,25 @@ ClassDesc.prototype.arrayUnion = function (type)
 /**
 Delete a field from the class
 */
-ClassDesc.prototype.delField = function (fieldName)
+ClassDesc.prototype.delProp = function (propName)
 {
     assert (
-        this.fieldTypes[fieldName] !== undefined,
-        'field not found: "' + fieldName + '"'
+        this.propTypes[propName] !== undefined,
+        'field not found: "' + propName + '"'
     );
 
     // Set the undefined flag on the field type (the field may be undefined)
-    this.fieldTypes[fieldName].union(new TypeDesc.constant(undefined));
+    this.propTypes[propName].union(TypeDesc.undef);
 }
 
 /**
 Get the type descriptor for a given field
 */
-ClassDesc.prototype.getFieldType = function (fieldName)
+ClassDesc.prototype.getPropType = function (propName)
 {
-    assert (
-        this.fieldTypes[fieldName] !== undefined,
-        'field not found: "' + fieldName + '"'
-    );
+    if ((propName in this.propTypes) === false)
+        return TypeDesc.undef;
 
-    return this.fieldTypes[fieldname];
+    return this.propTypes[propName];
 }
 
