@@ -423,25 +423,8 @@ function stmtListToIRFunc(
             // If the variable's initial value is undefined
             if (varVal === IRConst.getConst(undefined))
             {
-                // Check if the property exists on the global object
-                var hasProp = insertExceptIR(
-                    bodyContext,
-                    new HasPropInstr(globalObj, IRConst.getConst(varName))
-                );
-
                 // If the property doesn't exist, initialize it to undefined
-                insertCondIR(
-                    bodyContext,
-                    hasProp,
-                    undefined,
-                    function (condCtx)
-                    {
-                        insertExceptIR(
-                            condCtx,
-                            new PutPropInstr(globalObj, IRConst.getConst(varName), varVal)
-                        );
-                    }
-                );
+                bodyContext.addInstr(new InitGlobalInstr(globalObj, IRConst.getConst(varName)));
             }
             else
             {
@@ -3747,72 +3730,6 @@ Insert a context read to get the global object
 function insertGetGlobal(context)
 {
     return context.addInstr(new GlobalObjInstr());
-}
-
-/**
-Insert IR to be conditionally executed.
-*/
-function insertCondIR(context, testVal, trueGenFunc, falseGenFunc)
-{
-    // Create a basic block for the non-error case
-    var contBlock = context.cfg.getNewBlock('test_cont');
-
-    // If a true case is defined
-    if (trueGenFunc !== undefined)
-    {
-        // Create a context for the true case
-        var trueCtx = context.branch(
-            null,
-            context.cfg.getNewBlock('test_true'),
-            context.localMap.copy()
-        );
-    }
-
-    // If a false case is defined
-    if (falseGenFunc !== undefined)
-    {
-        // Create a context for the false case
-        var falseCtx = context.branch(
-            null,
-            context.cfg.getNewBlock('test_false'),
-            context.localMap.copy()
-        );
-    }
-
-    // Branch based on the test value
-    context.addInstr(
-        new IfInstr(
-            [testVal, IRConst.getConst(true)],
-            'EQ',
-            (trueCtx !== undefined)? trueCtx.entryBlock:contBlock,
-            (falseCtx !== undefined)? falseCtx.entryBlock:contBlock
-        )
-    );
-
-    // If a true case is defined
-    if (trueGenFunc !== undefined)
-    {
-        // Generate the code for the conditional branch
-        trueGenFunc(trueCtx);
-
-        // If the block is not terminated, add a jump to the continuation
-        if (trueCtx.isTerminated() === false)
-            trueCtx.addInstr(new JumpInstr(contBlock));
-    }
-
-    // If a false case is defined
-    if (falseGenFunc !== undefined)
-    {
-        // Generate the code for the conditional branch
-        falseGenFunc(falseCtx);
-
-        // If the block is not terminated, add a jump to the continuation
-        if (falseCtx.isTerminated() === false)
-            falseCtx.addInstr(new JumpInstr(contBlock));
-    }
-
-    // Splice the non-error block into the context
-    context.splice(contBlock);
 }
 
 /**

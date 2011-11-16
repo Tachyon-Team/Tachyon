@@ -2724,6 +2724,18 @@ function delProp(obj, propName)
 }
 
 /**
+Initialize a property on the global object if it doesn't already exist.
+*/
+function initGlobal(obj, propName)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    if ((propName in obj) === false)
+        obj[propName] = UNDEFINED;
+}
+
+/**
 Get a property value from the global object
 */
 function getGlobal(obj, propName)

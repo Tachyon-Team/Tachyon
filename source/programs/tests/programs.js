@@ -1183,6 +1183,9 @@ tests.programs.type_analysis = tests.testSuite();
 tests.programs.type_analysis.global_add = genTest(
     'programs/type_analysis/global_add.js'
 );
+tests.programs.type_analysis.call_simple = genTest(
+    'programs/type_analysis/call_simple.js'
+);
 tests.programs.type_analysis.func_calls = genTest(
     'programs/type_analysis/func_calls.js',
     'test',

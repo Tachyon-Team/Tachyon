@@ -73,7 +73,7 @@ function TypeMap(map, globalType)
 /**
 Get the type for an SSA temp
 */
-TypeMap.prototype.getValType = function (val)
+TypeMap.prototype.getType = function (val)
 {
     // If this is an IR instruction
     if (val instanceof IRInstr)
@@ -91,7 +91,7 @@ TypeMap.prototype.getValType = function (val)
 /**
 Set the type for an SSA temp
 */
-TypeMap.prototype.setValType = function (val, type)
+TypeMap.prototype.setType = function (val, type)
 {
     this.map.set(val, type);
 }

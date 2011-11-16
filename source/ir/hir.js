@@ -376,6 +376,17 @@ var GlobalObjInstr = hirInstrMaker(
     false
 );
 
+
+/**
+@class JavaScript global variable initialization instruction
+@augments HIRInstr
+*/
+var InitGlobalInstr = hirInstrMaker(
+    'js_init_global',
+    [2,undefined],
+    true
+);
+
 /**
 @class JavaScript global function call instruction
 @augments HIRInstr

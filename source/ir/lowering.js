@@ -455,6 +455,7 @@ JSNsInstr.prototype.lower = genLowerFunc('ns');
 JSEqInstr.prototype.lower = genLowerFunc('eq');
 JSNeInstr.prototype.lower = genLowerFunc('ne');
 GlobalObjInstr.prototype.lower = genLowerFunc('getGlobalObj');
+InitGlobalInstr.prototype.lower = genLowerFunc('initGlobal');
 GetGlobalInstr.prototype.lower = genLowerFunc('getGlobal');
 BlankObjInstr.prototype.lower = genLowerFunc('blankObject');
 GetPropInstr.prototype.lower = genLowerFunc('getProp');

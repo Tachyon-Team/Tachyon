@@ -427,9 +427,9 @@ function MapDesc(classDesc)
     this.classDesc = classDesc;
 
     /**
-    Set of property names stored
+    Map of properties stored
     */
-    this.propNames = {};
+    this.propMap = {};
 
     /**
     Transitions to other maps when adding properties
@@ -444,7 +444,7 @@ MapDesc.mapHash = function (map)
 {
     var hash = map.classDesc.classIdx;
 
-    for (propName in map.propNames)
+    for (propName in map.propMap)
         hash += defHashFunc(propName);
 
     return hash;
@@ -458,12 +458,12 @@ MapDesc.mapEq = function (map1, map2)
     if (map1.classDesc !== map2.classDesc)
         return false;
 
-    for (propName in map1.propNames)
-        if (map2.propNames[propName] === undefined)
+    for (propName in map1.propMap)
+        if (map2.propMap[propName] === undefined)
             return false;
 
-    for (propName in map2.propNames)
-        if (map1.propNames[propName] === undefined)
+    for (propName in map2.propMap)
+        if (map1.propMap[propName] === undefined)
             return false;
 
     return true;
@@ -501,7 +501,7 @@ MapDesc.prototype.putProp = function (propName, valType)
     this.classDesc.putProp(propName, valType);
 
     // If the property is already present, do nothing
-    if (propName in this.propNames)
+    if (propName in this.propMap)
         return this;
 
     // If a property descriptor is cached for this addition, return it
@@ -510,11 +510,11 @@ MapDesc.prototype.putProp = function (propName, valType)
 
     // Create a new descriptor with the new property
     var desc = new MapDesc(this.classDesc);
-    for (n in this.propNames)
-        desc.propNames[n] = true;
+    for (n in this.propMap)
+        desc.propMap[n] = true;
     for (t in this.propTrans)
         desc.propTrans[t] = this.propTrans[t];
-    desc.propNames[propName] = true;
+    desc.propMap[propName] = true;
 
     // If this descriptor already exists, use the existing one
     var cacheDesc = MapDesc.mapSet.get(desc);
@@ -539,7 +539,7 @@ MapDesc.prototype.getPropType = function (propName)
     var type = this.classDesc.getPropType(propName);
 
     // If this map does not have the type, union it with undefined
-    if ((propName in this.propNames) === false)
+    if ((propName in this.propMap) === false)
         type = type.union(TypeDesc.undef);
 
     return type;
@@ -554,9 +554,9 @@ MapDesc.prototype.intersect = function (that)
     var desc = new MapDesc(this.classDesc);
 
     // Compute the property intersection
-    for (n in this.propNames)
-        if (n in that.propNames)
-            desc.propNames[n] = true;
+    for (n in this.propMap)
+        if (n in that.propMap)
+            desc.propMap[n] = true;
 
     // If this descriptor already exists, use the existing one
     var cacheDesc = MapDesc.mapSet.get(desc);
