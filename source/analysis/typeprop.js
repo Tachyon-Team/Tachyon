@@ -205,30 +205,16 @@ function TypeProp(params)
     */
     this.blockTypes = new HashMap();
 
-
-
-
-
     /**
     Global object class
     This is distinct from specific global object type instances
     */
-    this.globalClass = new ClassDesc();
-    this.globalClass.globalClass = true;
+    this.globalClass = new ClassDesc('global');
 
-
-
-
-
-
-    // TODO
-    // TODO: Need to map functions to type analysis information
-    // TODO
-    this.funcTypes = undefined;
-
-
-
-
+    /**
+    Map of IR functions to function-specific information
+    */
+    this.funcInfo = new HashMap();
 
     /**
     Ordered list of unit-level functions to be analyzed
@@ -236,21 +222,52 @@ function TypeProp(params)
     this.unitList = [];
 
     /**
-    Map of functions to lists of call sites
-    In the case of unit-level functions, this contains the next unit
-    To be processed.
-    */
-    this.callerLists = new HashMap();
-
-
-
-
-
-
-    /**
     Total analysis iteration count
     */
     this.itrCount = 0;
+}
+
+/**
+Get the function info object for an IR function
+*/
+TypeProp.prototype.getFuncInfo = function (irFunc)
+{
+    // If an info object already exists, return it
+    var info = this.funcInfo.get(irFunc);
+    if (info !== HashMap.NOT_FOUND)
+        return info;
+
+    // Initialize the argument types
+    var argTypes = new Array(irFunc.argVars.length + 2);
+    for (var i = 0; i < argTypes.length; ++i)
+        argTypes[i] = TypeDesc.noinf;
+
+    // Create a new info object
+    var info = {
+
+        // Function entry block
+        entry: irFunc.hirCFG.entry,
+
+        // Global object type
+        globalType: TypeDesc.noinf,
+
+        // Types of formal arguments
+        argTypes : argTypes,
+
+        // Return type
+        retType : TypeDesc.noinf,
+
+        // Set of callers
+        callers: new HashSet(),
+
+        // Next unit in the chain, for unit-level functions
+        nextUnit: undefined
+    };
+
+    // Store the new function info object
+    this.funcInfo.set(irFunc, info);
+
+    return info;
 }
 
 /**
@@ -277,32 +294,20 @@ TypeProp.prototype.queueFunc = function (irFunc)
         'expected IR function'
     );
 
+    // Get the function's entry block
     var entry = irFunc.hirCFG.entry;
 
-
-
-    // TODO: handle the function's argument types
-    // Merge them into existing type set if existing
-
-
-    // FIXME: for now, create an empty type set for the entry
+    // If the function has no entry type info
     if (this.blockTypes.has(entry) === false)
     {
-        var globalType = new TypeDesc(
-            TypeFlags.OBJECT,
-            undefined,
-            undefined,
-            undefined,
-            [new MapDesc(this.globalClass)]
-        );
+        // Get the info object for this function
+        var funcInfo = this.getFuncInfo(irFunc);
 
-        var typeMap = new TypeMap;
-        typeMap.setGlobalType(globalType);
+        // Initialize the entry type info
+        var typeMap = new TypeMap();
+        typeMap.setGlobalType(funcInfo.globalType);
         this.blockTypes.set(entry, typeMap);
     }
-
-
-
 
     // Queue the function's entry block
     this.queueBlock(entry);
@@ -318,16 +323,25 @@ TypeProp.prototype.queueUnit = function (ir)
         'IR object is not unit-level function'
     );
 
+    // Get the info object for this function
+    var funcInfo = this.getFuncInfo(ir);
+
+    // FIXME: for not, initialize a new global object for the unit
+    funcInfo.globalType = new TypeDesc(
+        TypeFlags.OBJECT,
+        undefined,
+        undefined,
+        undefined,
+        [new MapDesc(this.globalClass)]
+    );
+
     // Queue the unit function to be analyzed
     this.queueFunc(ir);
 
     // Add the unit to the list of units to be analyzed
     this.unitList.push(ir);
 
-
-    // TODO: handle caller list
-
-
+    // TODO: handle next unit
 }
 
 /**
@@ -480,7 +494,14 @@ TypeProp.prototype.instrFunc = function (instr, typeMap)
 
 
     // Call the instruction's type flow function
-    return instr.typeProp(this, typeMap);
+    var outType = instr.typeProp(this, typeMap);
+
+    assert (
+        outType instanceof TypeDesc,
+        'instruction flow function returned invalid type descriptor'
+    );
+
+    return outType;
 }
 
 //=============================================================================
@@ -539,6 +560,7 @@ InitGlobalInstr.prototype.typeProp = function (ta, typeMap)
 {
     // Do nothing, the global property is treated as not being
     // guaranteed to exist
+    return TypeDesc.any;
 }
 
 GetGlobalInstr.prototype.typeProp = function (ta, typeMap)
@@ -566,6 +588,8 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
 
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
+        // TODO: double range each time
+
         return new TypeDesc(TypeFlags.INT);
     }
 
@@ -573,6 +597,8 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
     {
         var t0Str = t0.stringVal();
         var t1Str = t1.stringVal();
+
+        // TODO: max length
 
         return new TypeDesc(
             TypeFlags.STRING,
@@ -590,13 +616,72 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
     var callee = typeMap.getType(this.uses[0]);
     var thisArg = typeMap.getType(this.uses[1]);
 
-    // TODO: look at func_calls IR
+    // Function return type
+    var retType = TypeDesc.noinf;
 
+    // For each potential callee
+    for (var i = 0; i < callee.mapSet.length; ++i)
+    {
+        // Get this class descriptor
+        var classDesc = callee.mapSet[i].classDesc;
 
-    // TODO: args
+        // Get the function for this class
+        var func = classDesc.origin;
 
-    // TODO
+        // If this is not a function, ignore it
+        if ((func instanceof IRFunction) === false)
+            continue;
 
+        //print('potential callee: ' + func.funcName);
+
+        // Get the info object for this function
+        var funcInfo = ta.getFuncInfo(func);
+
+        // Argument types changed flag
+        var argChanged = false;
+
+        // For each argument
+        for (var j = 0; j < funcInfo.argTypes.length; ++j)
+        {
+            // Get the incoming type for this argument
+            var argType = 
+                (j < this.uses.length)?
+                typeMap.getType(this.uses[j]):
+                TypeDesc.undef;
+
+            // Merge the argument type
+            var newType = argType.union(funcInfo.argTypes[j]);
+            if (newType.equal(funcInfo.argTypes[j]) === false)
+            {
+                funcInfo.argTypes[j] = newType;
+                argChanged = true;
+            }
+        }
+
+        // Get the global type from the type map
+        var globalType = typeMap.getGlobalType();
+
+        // Merge the function's global type
+        var newGlobal = funcInfo.globalType.union(globalType);
+        if (newGlobal.equal(funcInfo.globalType) === false)
+        {
+            funcInfo.globalType = newGlobal;
+            argChanged = true;
+        }
+
+        // If any argument types changed, queue the function for analysis
+        if (argChanged === true)
+            ta.queueFunc(func);
+
+        // Add this instruction to the set of callers
+        funcInfo.callers.add(this);
+       
+        // Merge the return type
+        retType = retType.union(funcInfo.retType);
+    }
+
+    // Return the function return type
+    return retType;
 }
 
 // LIR call instruction
@@ -611,31 +696,52 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
     // If this is a call to makeClos (closure creation)
     if (callee.funcName === 'makeClos')
     {
-        // TODO: must handle make_clos here
-        // - Create class using this instruction as origin?
-        // - Have type desc with function flag using this class
-        //
-        // Must cache the class for the origin?
+        var func = this.uses[3];
 
+        assert (
+            func instanceof IRFunction,
+            'closure of unknown function'
+        );
 
+        // Create a class descriptor for this function
+        var classDesc = new ClassDesc(func);
 
+        // Create a type using the function's class
+        var closType = new TypeDesc(
+            TypeFlags.FUNCTION,
+            undefined,
+            undefined,
+            undefined,
+            [new MapDesc(classDesc)]
+        );
 
-
-
-
-
+        return closType;
     }
 
     return TypeDesc.any;
 }
 
+ArgValInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var func = this.parentBlock.parentCFG.ownerFunc;
+
+    // Get the info object for this function
+    var funcInfo = ta.getFuncInfo(func);
+    
+    // Return the type for this argument
+    return funcInfo.argTypes[this.argIndex];
+}
+
+RetInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // TODO
+    return TypeDesc.any;
+}
+
+
+
 
 // TODO: handle more instructions!
-
-
-
-
-
 
 
 

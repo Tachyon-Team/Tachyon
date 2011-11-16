@@ -252,13 +252,19 @@ TypeDesc.prototype.union = function (that)
     // If the other object is the uninferred type
     if (that.flags === TypeFlags.NOINF)
     {
-        // This type remains unchanged
+        return this;
     }
 
     // If this object is the uninferred type
     else if (this.flags === TypeFlags.NOINF)
     {
         return that;
+    }
+
+    // If both type descriptors are the same, return this one
+    else if (this === that)
+    {
+        return this;
     }
 
     // If both objects have meaningful type values
@@ -485,7 +491,7 @@ MapDesc.prototype.toString = function (longForm)
     }
     else
     {
-        if (this.classDesc.globalClass === true)
+        if (this.classDesc.origin === 'global')
             return 'global';
         else
             return String(this.classDesc.classIdx);
@@ -572,15 +578,29 @@ MapDesc.prototype.intersect = function (that)
 /**
 @class Object pseudo-class descriptor
 */
-function ClassDesc()
+function ClassDesc(origin)
 {
+    assert (
+        origin instanceof IRFunction ||
+        origin instanceof IRInstr ||
+        origin === 'global',
+        'invalid class origin'
+    );
+
+    // If there is already a class descriptor for this origin, return it
+    var cacheDesc = ClassDesc.classMap.get(origin);
+    if (cacheDesc !== HashMap.NOT_FOUND)
+        return cacheDesc;
+
     /**
     Unique class identifier
     */
     this.classIdx = ClassDesc.nextClassIdx++;
 
-    // TODO: class origin descriptor, source code location, IR instruction***?
-    this.origin = undefined;
+    /**
+    Class origin. May be an IR value or 'global' for the global object.
+    */
+    this.origin = origin;
 
     // TODO: prototype type descriptor
     /**
@@ -598,11 +618,14 @@ function ClassDesc()
     */
     this.arrayType = new TypeDesc();
 
-    /**
-    Global object class flag
-    */
-    this.globalClass = false;
+    // Cache the new class descriptor
+    ClassDesc.classMap.set(origin, this);
 }
+
+/**
+Map of origin values to class descriptors
+*/
+ClassDesc.classMap = new HashMap();
 
 /**
 Next class idx to assign
