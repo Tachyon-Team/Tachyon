@@ -155,16 +155,7 @@ function tachyonRepl()
             break;
 
             case 'ta':
-            print('Running type analysis on: "' + args + '"');
-            var ast = parse_src_file(args, params);
-            var ir = unitToIR(ast, params);
-            var startTimeMs = (new Date()).getTime();
-            params.typeProp.queueUnit(ir);
-            var itrCount = params.typeProp.run();
-            var endTimeMs = (new Date()).getTime();
-            var time = (endTimeMs - startTimeMs) / 1000;
-            print('itr count: ' + itrCount);
-            print('time: ' + time + 's');
+            params.typeProp.testOnFile(args);
             break;
 
             case 'prim_list':

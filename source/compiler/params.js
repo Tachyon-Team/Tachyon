@@ -175,7 +175,7 @@ function CompParams(cfgObj)
     Type propagation analysis instance
     @field
     */
-    this.typeProp = new TypeProp();
+    this.typeProp = new TypeProp(this);
 
     /**
     Flag to print the ASTs generated during the compilation

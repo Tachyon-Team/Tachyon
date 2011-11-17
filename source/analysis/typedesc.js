@@ -96,6 +96,21 @@ function TypeDesc(
     if (flags === undefined)
         flags = TypeFlags.NOINF;
 
+    // By default, the numerical ranges are unbounded.
+    // Otherwise, restrict them to a fixed integer range
+    if (minVal === undefined)
+        minVal = -Infinity;
+    else if (minVal < TypeDesc.MIN_NUM_RANGE)
+        minVal = -Infinity;
+    if (maxVal === undefined)
+        maxVal = Infinity;
+    else if (maxVal > TypeDesc.MAX_NUM_RANGE)
+        maxVal = Infinity;
+
+    // Limit the string length to force convergence
+    if (strVal !== undefined && strVal.length > TypeDesc.MAX_STR_LEN)
+        strVal = undefined;
+
     // By default, the map set is empty
     if (mapSet === undefined)
         mapSet = [];
@@ -131,8 +146,6 @@ Generate a type descriptor for a constant value
 */
 TypeDesc.constant = function (value)
 {
-    // TODO: handle IRFunction constants
-
     if (value instanceof IRConst)
         value = value.value;
 
@@ -206,13 +219,13 @@ TypeDesc.prototype.toString = function (longForm)
     }
 
     // If range information is present
-    if (this.minVal !== undefined || this.maxVal !== undefined)
+    if (this.minVal !== -Infinity || this.maxVal !== Infinity)
     {
-        if (this.minVal !== undefined && this.minVal === this.maxVal)
+        if (this.minVal === this.maxVal)
             str += " " + this.minVal;
-        else if (this.minVal !== undefined && this.maxVal !== undefined)
+        else if (this.minVal !== -Infinity && this.maxVal !== Infinity)
             str += " [" + this.minVal + ", " + this.maxVal + "]";
-        else if (this.minVal === undefined)
+        else if (this.minVal === -Infinity)
             str += " ]-inf, " + this.maxVal + "]";
         else
             str += " [" + this.minVal + ", +inf[";
@@ -272,13 +285,47 @@ TypeDesc.prototype.union = function (that)
     {
         var flags = this.flags | that.flags;
 
-        var minVal =
-            (this.minVal !== undefined && that.minVal !== undefined)?
-            Math.min(this.minVal, that.minVal):undefined;
+        // Merge the min range value
+        var minVal;
+        if (this.minVal === that.minVal)
+        {
+            minVal = this.minVal;
+        }
+        else if (this.minVal === -Infinity || that.minVal === -Infinity)
+        {
+            minVal = -Infinity;   
+        }
+        else
+        {
+            minVal = Math.min(this.minVal, that.minVal);
+            minVal = -2 << (highestBit(Math.abs(minVal)) + 1);
 
-        var maxVal =
-            (this.maxVal !== undefined && that.maxVal !== undefined)?
-            Math.max(this.maxVal, that.maxVal):undefined;
+            assert (
+                minVal <= this.minVal && minVal < that.minVal,
+                'invalid min value'
+            );
+        }
+
+        // Merge the max range value
+        var maxVal;
+        if (this.maxVal === that.maxVal)
+        {
+            maxVal = this.maxVal;
+        }
+        else if (this.maxVal === Infinity || that.maxVal === Infinity)
+        {
+            maxVal = Infinity;   
+        }
+        else
+        {
+            maxVal = Math.max(this.maxVal, that.maxVal);
+            maxVal = 2 << (highestBit(Math.abs(maxVal)) + 1);
+
+            assert (
+                maxVal >= this.maxVal && maxVal >= that.maxVal,
+                'invalid max value'
+            );
+        }
 
         var strVal =
             (this.strVal === that.strVal)?
@@ -393,6 +440,21 @@ TypeDesc.prototype.putProp = function (propName, valType)
 }
 
 /**
+Minimum numerical range value inferred
+*/
+TypeDesc.MIN_NUM_RANGE = getIntMin(16);
+
+/**
+Maximum numerical range value inferred
+*/
+TypeDesc.MAX_NUM_RANGE = getIntMax(16);
+
+/**
+Max string length usable string values
+*/
+TypeDesc.MAX_STR_LEN = 256;
+
+/**
 Uninferred type descriptor
 */
 TypeDesc.noinf = new TypeDesc(TypeFlags.NOINF);
@@ -438,6 +500,11 @@ function MapDesc(classDesc)
     this.propMap = {};
 
     /**
+    Number of properties
+    */
+    this.numProps = 0;
+
+    /**
     Transitions to other maps when adding properties
     */
     this.propTrans = {};
@@ -472,6 +539,9 @@ MapDesc.mapEq = function (map1, map2)
     if (map1.classDesc !== map2.classDesc)
         return false;
 
+    if (map1.numProps !== map2.numProps)
+        return false;
+
     for (propName in map1.propMap)
         if (map2.propMap[propName] === undefined)
             return false;
@@ -493,17 +563,23 @@ Produce a string representation of this map
 */
 MapDesc.prototype.toString = function (longForm)
 {
+    var str = '';
+
+    // Add the class name
+    str += this.classDesc.getName();
+
     if (longForm === true)
     {
         // TODO!
     }
     else
     {
-        if (this.classDesc.origin === 'global')
-            return 'global';
-        else
-            return String(this.classDesc.classIdx);
+        // Add the number of guaranteed fields over the total number of fields
+        if (this.classDesc.numProps !== 0)
+            str += '(' + this.numProps + '/' + this.classDesc.numProps + ')';
     }
+
+    return str;
 }
 
 /**
@@ -529,6 +605,7 @@ MapDesc.prototype.putProp = function (propName, valType)
     for (t in this.propTrans)
         desc.propTrans[t] = this.propTrans[t];
     desc.propMap[propName] = true;
+    desc.numProps = this.numProps + 1;
 
     // If this descriptor already exists, use the existing one
     var cacheDesc = MapDesc.mapSet.get(desc);
@@ -626,6 +703,11 @@ function ClassDesc(origin)
     this.propTypes = {};
 
     /**
+    Number of properties
+    */
+    this.numProps = 0;
+
+    /**
     Array field type descriptor
     */
     this.arrayType = new TypeDesc();
@@ -645,15 +727,31 @@ Next class idx to assign
 ClassDesc.nextClassIdx = 0;
 
 /**
+Get the name of this class descriptor
+*/
+ClassDesc.prototype.getName = function ()
+{
+    if (this.origin === 'global')
+        return this.origin;
+    else
+        return 'c' + this.classIdx;
+}
+
+/**
 Produce a string representation of this class descriptor
 */
 ClassDesc.prototype.toString = function ()
 {
-    var str = "class " + this.classIdx + "{\n";
+    var str = "class " + this.getName();
+
+    if (this.origin instanceof IRFunction)
+        str += ' (function "' + this.origin.funcName + '")';
+
+    str += " {\n";
 
     // Output the field names and types
     for (propName in this.propTypes)
-        str += '\t"' + propName + '" : ' + this.propTypes[propName] + '\n';
+        str += '  "' + propName + '" : ' + this.propTypes[propName] + '\n';
 
     str += "}";
 
@@ -672,11 +770,20 @@ ClassDesc.prototype.putProp = function (propName, valType)
 
     var curType = this.propTypes[propName];
 
-    // Compute the updated type
+    // If this is a new property
     if (curType === undefined)
+    {
+        // Increment the number of properties
+        ++this.numProps;
+
+        // Use the incoming type directly
         var newType = valType;
+    }
     else
+    {
+        // Compute the updated type
         var newType = curType.union(valType);
+    }
 
     // Update the property type
     this.propTypes[propName] = newType;

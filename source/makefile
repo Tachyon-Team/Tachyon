@@ -130,6 +130,7 @@ BASE_SRCS =                             \
     analysis/typedesc.js                \
     analysis/typemap.js                 \
     analysis/typeprop.js                \
+    analysis/testing.js                 \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \

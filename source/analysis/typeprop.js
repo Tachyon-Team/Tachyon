@@ -80,95 +80,6 @@ Range expansion issue: count range expansions and string concats in union functi
 */
 
 
-/*
-How do we manage the global undef initialization case?
-- Init to undefined because variables may be used before they are defined
-
-- Differentiate field creation from assignment of undefined?
-  - There is only one assignment to undefined, before the code of the unit is run
-  - You know that no function call can cause the global field init to occur
-
-js_global_init?
-- Marks field as existing in class, gives it the noinf type?
-  - Can't just do that? Any assignment to the variable will change the class type
-- But we maintain a map of must-be-defined fields on the global object
-  - Could this map store some initialized to undefined flag?
-
-Key idea: we know the flow will never come back to the global init statement again!***
-- js_global_init adds noinf type to class
-- If we have the undefined value in the map, know the field could have class type or
-  undefined
-- If no undefined in map, we are fine :D
-- No need for special instruction? Knowing it happens at global scope is enough
-  - Could store type descriptor in type map? Or just undefined flag.
-
-PROBLEM: if we store a whole type descriptor at the map level, the types are not
-accounted for in the class?
-- This is fine for the "init with undefined", because the global descriptor gets
-  modified before any functions can use it. Everybody after that must see this
-  change.
-- Isn't this true for all global prop sets? Flow must pass through, everybody will
-  see the changes made at the map level!
-
-- Not quite! Previous units and previous code must be aware that these types can
-exist on the global object?
-  - Normally, previous code will get a global object descriptor at the time it
-    is called, giving it access to the updated map descriptor.
-  - What about a closure capturing the global object?
-
-- If I store a reference to the global object, I store the old type descriptor/map
-  - This indirect reference is unaware of types that have been added to the class
-
-- Cannot store general type descriptor or account for all possible modifications
-
-
-Special js_global_init instruction:
-- Don't add field in the class
-- To old unit code, the field isn't guaranteed to exist, it is not in their maps
-  - Could provoke an exception if accessed
-  - The field could technically exist, however.
-- Once field is initialized to undefined, marked in type descriptor, still no mention
-  at the class level
-  - New type descriptors know the field would register as undefined
-- Once a proper value is set through a put_prop, the class is actually changed
-
-- Merge???
-  - Merging type descriptor with proper class field with type descriptor with
-    undefined value? Could retract back to "field not guaranteed to exist"
-    - It's an intersection we're computing
-
-- Couldn't we simply handle this global undefined init case by saying the field
-isn't guaranteed to exist???
-  - The analysis will output undefined as a possible type
-  - Problem? If we merge with something that has the field? Still not guaranteed to exist
-
-- If we flow through a global block that assigns undefined? Field goes back to not guaranteed to exist.
-  - What if we end up calling some old code that thought this field was guaranteed to exist???****
-
-
-
-
-- Could have js_global_init instruction that does the whole conditional shebang at once?
-  - We know the field doesn't initially exist, gets set to undefined???
-- Field set to not guaranteed to exist at output of js_global_init
-
-- What if some old code assigned the global object somewhere, thinks that some
-  field is guaranteed to exist?
-  - That code is right, because it just created the field
-
-The js_global_init code will not go store undefined if the field exists.
-
-On the other hand, it could be that that field contains undefined?
-- Passing through js_global_init will make that be taken into account?
-- Only way to undo that is to pass by an assignment to the global object
-
-
-
-
-
-*/
-
-
 
 
 
@@ -184,6 +95,11 @@ On the other hand, it could be that that field contains undefined?
 */
 function TypeProp(params)
 {
+    assert (
+        params instanceof CompParams,
+        'expected compilation parameters'
+    );
+
     /**
     Compilation parameters this analysis is associated with
     */
@@ -224,6 +140,31 @@ function TypeProp(params)
     /**
     Total analysis iteration count
     */
+    this.itrCount = 0;
+}
+
+/**
+Reinitialize/reset the analysis
+*/
+TypeProp.prototype.reset = function ()
+{
+    MapDesc.mapSet.clear();
+
+    ClassDesc.classMap.clear();
+    ClassDesc.nextClassIdx = 0;
+
+    this.workList.clear();
+
+    this.workSet.clear();
+
+    this.blockTypes.clear();
+
+    this.globalClass = new ClassDesc('global');
+
+    this.funcInfo = new HashMap();
+
+    this.unitList = [];
+
     this.itrCount = 0;
 }
 
@@ -435,6 +376,15 @@ TypeProp.prototype.iterate = function ()
             print(instr.getValName() + ' => ' + outType);
         print('');
 
+        // If the output is uninferred, stop analyzing this block for not,
+        // wait until better information is available
+        if (outType === TypeDesc.noinf)
+        {
+            print('noinf output, stopping block analysis');
+            print('');
+            return;
+        }
+
         // If the instruction has dests, add its type to the type set
         if (instr.dests.length > 0)
             typeMap.setType(instr, outType);
@@ -476,6 +426,8 @@ Flow function applied to phi nodes
 TypeProp.prototype.phiFunc = function (phi, typeMap)
 {
     // TODO
+
+
 }
 
 /**
@@ -486,12 +438,6 @@ TypeProp.prototype.instrFunc = function (instr, typeMap)
     // If no type flow function is defined, return the any type
     if (instr.typeProp === undefined)
         return TypeDesc.any;
-
-
-    // TODO: call site handling
-
-    // TODO: return handling
-
 
     // Call the instruction's type flow function
     var outType = instr.typeProp(this, typeMap);
@@ -509,12 +455,6 @@ TypeProp.prototype.instrFunc = function (instr, typeMap)
 // Flow functions for HIR instructions
 //
 //=============================================================================
-
-JSNsInstr.prototype.typeProp = function (ta, typeMap)
-{
-    // TODO
-    return TypeDesc.bool;
-}
 
 GlobalObjInstr.prototype.typeProp = function (ta, typeMap)
 {
@@ -588,9 +528,15 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
 
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
-        // TODO: double range each time
+        var minVal = t0.minVal + t1.minVal;
 
-        return new TypeDesc(TypeFlags.INT);
+        var maxVal = t0.maxVal + t1.maxVal;
+
+        return new TypeDesc(
+            TypeFlags.INT,
+            minVal,
+            maxVal
+        );
     }
 
     if (t0.flags === TypeFlags.STRING || t1.flags === TypeFlags.STRING)
@@ -598,17 +544,50 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
         var t0Str = t0.stringVal();
         var t1Str = t1.stringVal();
 
-        // TODO: max length
+        var newStr = (t0Str && t1Str)? (t0Str + t1Str):undefined;
 
         return new TypeDesc(
             TypeFlags.STRING,
             undefined,
             undefined,
-            (t0Str && t1Str)? (t0Str + t1Str):undefined
+            newStr
         );
     }
 
     return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
+}
+
+JSSubInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var t0 = typeMap.getType(this.uses[0]);
+    var t1 = typeMap.getType(this.uses[1]);
+
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal = t0.minVal - t1.maxVal;
+
+        var maxVal = t0.maxVal - t1.minVal;
+
+        return new TypeDesc(
+            TypeFlags.INT,
+            minVal,
+            maxVal
+        );
+    }
+
+    return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT);
+}
+
+JSLtInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // TODO:
+    return TypeDesc.any;
+}
+
+JSNsInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // TODO:
+    return TypeDesc.any;
 }
 
 JSCallInstr.prototype.typeProp = function (ta, typeMap)
