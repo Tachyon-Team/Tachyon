@@ -653,6 +653,10 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
             var newType = argType.union(funcInfo.argTypes[j]);
             if (newType.equal(funcInfo.argTypes[j]) === false)
             {
+                //print('arg type changed');
+                //print('old type: ' + funcInfo.argTypes[j]);
+                //print('new type: ' + newType);
+
                 funcInfo.argTypes[j] = newType;
                 argChanged = true;
             }
@@ -665,6 +669,8 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
         var newGlobal = funcInfo.globalType.union(globalType);
         if (newGlobal.equal(funcInfo.globalType) === false)
         {
+            //print('global type changed');
+
             funcInfo.globalType = newGlobal;
             argChanged = true;
         }
@@ -723,9 +729,8 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
 
 ArgValInstr.prototype.typeProp = function (ta, typeMap)
 {
-    var func = this.parentBlock.parentCFG.ownerFunc;
-
     // Get the info object for this function
+    var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
     
     // Return the type for this argument
@@ -734,7 +739,30 @@ ArgValInstr.prototype.typeProp = function (ta, typeMap)
 
 RetInstr.prototype.typeProp = function (ta, typeMap)
 {
-    // TODO
+    // Get the info object for this function
+    var func = this.parentBlock.parentCFG.ownerFunc;
+    var funcInfo = ta.getFuncInfo(func);
+ 
+    var retType = typeMap.getType(this.uses[0]);
+
+    // Merge the return type
+    var newType = retType.union(funcInfo.retType);
+
+    // If the return type changed
+    if (newType.equal(funcInfo.retType) === false)
+    {
+        // Update the function return type
+        funcInfo.retType = newType;
+
+        // Queue the call site blocks for analysis
+        for (var itr = funcInfo.callers.getItr(); itr.valid(); itr.next())
+        {
+            var callInstr = itr.get();
+            ta.queueBlock(callInstr.parentBlock);
+        }
+    }
+
+    // This instruction has no output
     return TypeDesc.any;
 }
 

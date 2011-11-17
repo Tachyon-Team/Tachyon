@@ -441,6 +441,14 @@ function MapDesc(classDesc)
     Transitions to other maps when adding properties
     */
     this.propTrans = {};
+
+    // If there is already a map descriptor for this class, return it
+    var cacheDesc = MapDesc.mapSet.get(this);
+    if (cacheDesc !== HashMap.NOT_FOUND)
+        return cacheDesc;
+
+    // Cache this map descriptor
+    MapDesc.mapSet.set(this, this);
 }
 
 /**
@@ -556,6 +564,10 @@ Compute the intersection of two maps
 */
 MapDesc.prototype.intersect = function (that)
 {
+    // If the two descriptors are equal, return this
+    if (this === that)
+        return this;
+
     // Create a new descriptor
     var desc = new MapDesc(this.classDesc);
 
