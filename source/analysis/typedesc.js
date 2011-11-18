@@ -295,16 +295,20 @@ TypeDesc.prototype.union = function (that)
         {
             minVal = -Infinity;   
         }
+        else if (this.minVal < 0 || that.minVal < 0)
+        {
+            minVal = Math.min(this.minVal, that.minVal);
+            minVal = -2 * highestBit(Math.abs(minVal));
+        }
         else
         {
             minVal = Math.min(this.minVal, that.minVal);
-            minVal = -2 << (highestBit(Math.abs(minVal)) + 1);
-
-            assert (
-                minVal <= this.minVal && minVal < that.minVal,
-                'invalid min value'
-            );
+            minVal = lowestBit(minVal);
         }
+        assert (
+            minVal <= this.minVal && minVal <= that.minVal,
+            'invalid min value'
+        );
 
         // Merge the max range value
         var maxVal;
@@ -316,16 +320,20 @@ TypeDesc.prototype.union = function (that)
         {
             maxVal = Infinity;   
         }
+        else if (this.maxVal > 0 || that.maxVal > 0)
+        {
+            maxVal = Math.max(this.maxVal, that.maxVal);
+            maxVal = 2 * highestBit(maxVal);
+        }
         else
         {
             maxVal = Math.max(this.maxVal, that.maxVal);
-            maxVal = 2 << (highestBit(Math.abs(maxVal)) + 1);
-
-            assert (
-                maxVal >= this.maxVal && maxVal >= that.maxVal,
-                'invalid max value'
-            );
+            maxVal = -lowestBit(Math.abs(maxVal));
         }
+        assert (
+            maxVal >= this.maxVal && maxVal >= that.maxVal,
+            'invalid max value'
+        );
 
         var strVal =
             (this.strVal === that.strVal)?
