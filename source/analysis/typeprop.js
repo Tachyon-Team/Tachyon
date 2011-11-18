@@ -392,34 +392,34 @@ TypeProp.prototype.iterate = function ()
         if (instr.dests.length > 0)
             typeMap.setType(instr, outType);
     }
+}
 
-    // For each successor
-    for (var i = 0; i < block.succs.length; ++i)
+/**
+Merge incoming types for a successor block
+*/
+TypeProp.prototype.succMerge = function (succ, predMap)
+{
+    // Get the type map for the successor
+    var succMap = this.blockTypes.get(succ);
+
+    // If the successor has no type map yet
+    if (succMap === HashMap.NOT_FOUND)
     {
-        var succ = block.succs[i];
+        // Pass a copy of the predecessor map to the successor
+        this.blockTypes.set(succ, predMap.copy());
 
-        // Get the type map for the successor
-        var succMap = this.blockTypes.get(succ);
+        // Queue the successor for analysis
+        this.queueBlock(succ);
+    }
+    else
+    {
+        // Merge the predecessor type map into the successor's
+        var changed = succMap.merge(predMap);
 
-        // If the successor has no type map yet
-        if (succMap === HashMap.NOT_FOUND)
-        {
-            // Pass a copy of the predecessor map to the successor
-            this.blockTypes.set(succ, typeMap.copy());
-
-            // Queue the successor for analysis
+        // If the successor's type map was changed,
+        // queue the successor for analysis
+        if (changed == true)
             this.queueBlock(succ);
-        }
-        else
-        {
-            // Merge the local type map into the successor's
-            var changed = succMap.merge(typeMap);
-
-            // If the successor's type map was changed,
-            // queue the successor for analysis
-            if (changed == true)
-                this.queueBlock(succ);
-        }
     }
 }
 
@@ -458,9 +458,24 @@ Flow function applied to instruction
 */
 TypeProp.prototype.instrFunc = function (instr, typeMap)
 {
-    // If no type flow function is defined, return the any type
+    // If no type flow function is defined
     if (instr.typeProp === undefined)
+    {
+        // If this is a branch instruction
+        if (instr.targets.length > 0)
+        {
+            // Set the output type in the type map
+            if (instr.dests.length > 0)
+                typeMap.setType(instr, TypeDesc.any);
+
+            // Merge with all possible branch targets
+            for (var i = 0; i < instr.targets.length; ++i)
+                this.succMerge(instr.targets[i], typeMap);
+        }
+
+        // Return the any type
         return TypeDesc.any;
+    }
 
     // Call the instruction's type flow function
     var outType = instr.typeProp(this, typeMap);
@@ -515,7 +530,6 @@ HasPropInstr.prototype.typeProp = function (ta, typeMap)
     // If type in map, return true
     // If type not in map but in class, return bool
     // If type not in class, return false
-
 
     // TODO: examine type map
     return TypeDesc.bool;
@@ -642,6 +656,37 @@ JSLtInstr.prototype.typeProp = function (ta, typeMap)
     return TypeDesc.bool;
 }
 
+JSEqInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var v0 = typeMap.getType(this.uses[0]);
+    var v1 = typeMap.getType(this.uses[1]);
+
+    // If both values are known integer constants
+    if (v0.flags === TypeFlags.INT &&
+        v1.flags === TypeFlags.INT &&
+        v0.minVal === v0.maxVal &&
+        v1.minVal === v1.maxVal)
+    {
+        return new TypeDesc(
+            (v0.minVal === v1.minVal)?
+            TypeFlags.TRUE:TypeFlags.FALSE
+        );
+    }
+
+    // If both values are known booleans
+    if (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE)
+        return TypeDesc.true;
+    if (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE)
+        return TypeDesc.false;
+    if (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE)
+        return TypeDesc.false;
+    if (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE)
+        return TypeDesc.true;
+
+    // Otherwise, we know the output is boolean
+    return TypeDesc.bool;
+}
+
 JSNsInstr.prototype.typeProp = function (ta, typeMap)
 {
     // TODO:
@@ -727,6 +772,14 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
         retType = retType.union(funcInfo.retType);
     }
 
+    // Set our own output type in the type map
+    if (this.dests.length > 0)
+        typeMap.setType(this, retType);
+
+    // Merge with all possible branch targets
+    for (var i = 0; i < this.targets.length; ++i)
+        ta.succMerge(this.targets[i], typeMap);
+
     // Return the function return type
     return retType;
 }
@@ -736,12 +789,18 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
 {
     var callee = this.uses[0];
 
-    // If we cannot determine the callee, do nothing
+    // Return type
+    var retType;
+
+    // If we cannot determine the callee
     if ((callee instanceof IRFunction) === false)
-        return TypeDesc.any;
+    {
+        // Do nothing
+        retType = TypeDesc.any;
+    }
 
     // If this is a call to makeClos (closure creation)
-    if (callee.funcName === 'makeClos')
+    else if (callee.funcName === 'makeClos')
     {
         var func = this.uses[3];
 
@@ -762,10 +821,26 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
             [new MapDesc(classDesc)]
         );
 
-        return closType;
+        retType = closType;
     }
 
-    return TypeDesc.any;
+    // For other primitive functions
+    else
+    {
+        // Do nothing
+        retType = TypeDesc.any;
+    }
+
+    // Set our own output type in the type map
+    if (this.dests.length > 0)
+        typeMap.setType(this, retType);
+
+    // Merge with all possible branch targets
+    for (var i = 0; i < this.targets.length; ++i)
+        ta.succMerge(this.targets[i], typeMap);
+
+    // Return the return type
+    return retType;
 }
 
 ArgValInstr.prototype.typeProp = function (ta, typeMap)
@@ -807,12 +882,31 @@ RetInstr.prototype.typeProp = function (ta, typeMap)
     return TypeDesc.any;
 }
 
+// If branching instruction
+IfInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var v0 = typeMap.getType(this.uses[0]);
+    var v1 = typeMap.getType(this.uses[1]);
+    var v2 = (this.uses.length > 2)? typeMap.getType(this.uses[1]):undefined;
 
 
-
-// TODO: handle more instructions!
-
+    // TODO: known branch function?
 
 
+    if (this.testOp === 'EQ')
+    {
+        if (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE)
+        {
+            ta.succMerge(this.targets[0], typeMap);
+            return TypeDesc.any;
+        }
+    }
 
+    // Merge with all possible branch targets
+    for (var i = 0; i < this.targets.length; ++i)
+        ta.succMerge(this.targets[i], typeMap);
+
+    // This instruction returns no value
+    return TypeDesc.any;
+}
 

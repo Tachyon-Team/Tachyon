@@ -491,6 +491,16 @@ Boolean type descriptor
 TypeDesc.bool = new TypeDesc(TypeFlags.TRUE | TypeFlags.FALSE);
 
 /**
+True type descriptor
+*/
+TypeDesc.true = new TypeDesc(TypeFlags.TRUE);
+
+/**
+False type descriptor
+*/
+TypeDesc.false = new TypeDesc(TypeFlags.FALSE);
+
+/**
 String type descriptor
 */
 TypeDesc.string = new TypeDesc(TypeFlags.STRING);
