@@ -437,7 +437,6 @@ var DelPropInstr = hirInstrMaker(
     true
 );
 
-
 /**
 @class JavaScript property existence test instruction
 @augments HIRInstr

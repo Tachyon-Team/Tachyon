@@ -199,7 +199,10 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
         retType : TypeDesc.noinf,
 
         // Set of callers
-        callers: new HashSet(),
+        callerSet: new HashSet(),
+
+        // List of callers
+        callerList: [],
 
         // Next unit in the chain, for unit-level functions
         nextUnit: undefined
@@ -425,9 +428,29 @@ Flow function applied to phi nodes
 */
 TypeProp.prototype.phiFunc = function (phi, typeMap)
 {
-    // TODO
+    var outType = TypeDesc.noinf;
 
+    // For each phi predecessor
+    for (var i = 0; i < phi.preds.length; ++i)
+    {
+        var pred = phi.preds[i];
 
+        // If this predecessor hasn't been visited, skip it
+        if (this.blockTypes.has(pred) === false)
+            continue;
+
+        // Merge the type of this incoming value
+        var incType = typeMap.getType(phi.uses[i]);
+        outType = outType.union(incType);
+    }
+
+    assert (
+        outType !== TypeDesc.noinf,
+        'phi output type is noinf'
+    );
+
+    // Return the phi node output type
+    return outType;
 }
 
 /**
@@ -462,6 +485,30 @@ GlobalObjInstr.prototype.typeProp = function (ta, typeMap)
     return typeMap.globalType;    
 }
 
+InitGlobalInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // Do nothing, the global property is treated as not being
+    // guaranteed to exist
+    return TypeDesc.any;
+}
+
+BlankObjInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // Create a class descriptor for this instruction
+    var classDesc = new ClassDesc(this);
+
+    // Create a type using the class
+    var objType = new TypeDesc(
+        TypeFlags.OBJECT,
+        undefined,
+        undefined,
+        undefined,
+        [new MapDesc(classDesc)]
+    );
+
+    return objType;
+}
+
 HasPropInstr.prototype.typeProp = function (ta, typeMap)
 {
     // TODO:
@@ -476,7 +523,7 @@ HasPropInstr.prototype.typeProp = function (ta, typeMap)
 
 PutPropInstr.prototype.typeProp = function (ta, typeMap)
 {
-    var globalType = typeMap.getGlobalType();
+    var objType = typeMap.getType(this.uses[0]);
     var propName = typeMap.getType(this.uses[1]).stringVal();
     var valType = typeMap.getType(this.uses[2]);
 
@@ -488,38 +535,37 @@ PutPropInstr.prototype.typeProp = function (ta, typeMap)
     }
     else
     {
-        // Update the global type with the new property
-        var globalType = globalType.putProp(propName, valType);
-        typeMap.setGlobalType(globalType);
+        // Update the object property type
+        var newObjType = objType.putProp(propName, valType);
+        typeMap.setType(this.uses[0], newObjType);
+
+        // If this is the global object, update the global object type as well
+        var globalType = typeMap.getGlobalType();
+        if (objType.equal(globalType) === true)
+            typeMap.setGlobalType(newObjType);            
     }
 
     return valType;
 }
 
-InitGlobalInstr.prototype.typeProp = function (ta, typeMap)
+GetPropInstr.prototype.typeProp = function (ta, typeMap)
 {
-    // Do nothing, the global property is treated as not being
-    // guaranteed to exist
-    return TypeDesc.any;
-}
-
-GetGlobalInstr.prototype.typeProp = function (ta, typeMap)
-{
-    var globalType = typeMap.getGlobalType();
+    var objType = typeMap.getType(this.uses[0]);
     var propName = typeMap.getType(this.uses[1]).stringVal();
 
     var propType = TypeDesc.noinf;
 
-    // Union the map types
-    for (var i = 0; i < globalType.mapSet.length; ++i)
+    // Union the possible property types
+    for (var i = 0; i < objType.mapSet.length; ++i)
     {
-        var map = globalType.mapSet[i];
-
+        var map = objType.mapSet[i];
         propType = propType.union(map.getPropType(propName));
     }
 
     return propType;
 }
+
+GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
 JSAddInstr.prototype.typeProp = function (ta, typeMap)
 {
@@ -554,6 +600,12 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
         );
     }
 
+    if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
+        (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
+    {
+        return new TypeDesc(TypeFlags.INT | TypeFlags.STRING)
+    }
+
     return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
 }
 
@@ -575,19 +627,25 @@ JSSubInstr.prototype.typeProp = function (ta, typeMap)
         );
     }
 
+    if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
+        (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
+    {
+        return new TypeDesc(TypeFlags.INT | TypeFlags.STRING)
+    }
+
     return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT);
 }
 
 JSLtInstr.prototype.typeProp = function (ta, typeMap)
 {
     // TODO:
-    return TypeDesc.any;
+    return TypeDesc.bool;
 }
 
 JSNsInstr.prototype.typeProp = function (ta, typeMap)
 {
     // TODO:
-    return TypeDesc.any;
+    return TypeDesc.bool;
 }
 
 JSCallInstr.prototype.typeProp = function (ta, typeMap)
@@ -659,7 +717,11 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
             ta.queueFunc(func);
 
         // Add this instruction to the set of callers
-        funcInfo.callers.add(this);
+        if (funcInfo.callerSet.has(this) === false)
+        {
+            funcInfo.callerSet.add(this);
+            funcInfo.callerList.push(this);
+        }
        
         // Merge the return type
         retType = retType.union(funcInfo.retType);
@@ -734,9 +796,9 @@ RetInstr.prototype.typeProp = function (ta, typeMap)
         funcInfo.retType = newType;
 
         // Queue the call site blocks for analysis
-        for (var itr = funcInfo.callers.getItr(); itr.valid(); itr.next())
+        for (var i = 0; i < funcInfo.callerList.length; ++i)
         {
-            var callInstr = itr.get();
+            var callInstr = funcInfo.callerList[i];
             ta.queueBlock(callInstr.parentBlock);
         }
     }

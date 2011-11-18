@@ -297,8 +297,12 @@ TypeDesc.prototype.union = function (that)
         }
         else if (this.minVal < 0 || that.minVal < 0)
         {
-            minVal = Math.min(this.minVal, that.minVal);
-            minVal = -2 * highestBit(Math.abs(minVal));
+            var minMin = Math.abs(Math.min(this.minVal, that.minVal));
+            
+            if (isPowerOf2(minMin) === true)
+                minVal = -minMin;
+            else
+                minVal = -nextPowerOf2(minMin);
         }
         else
         {
@@ -322,8 +326,12 @@ TypeDesc.prototype.union = function (that)
         }
         else if (this.maxVal > 0 || that.maxVal > 0)
         {
-            maxVal = Math.max(this.maxVal, that.maxVal);
-            maxVal = 2 * highestBit(maxVal);
+            var maxMax = Math.max(this.maxVal, that.maxVal);
+            
+            if (isPowerOf2(maxMax) === true)
+                maxVal = maxMax;
+            else
+                maxVal = nextPowerOf2(maxMax);
         }
         else
         {

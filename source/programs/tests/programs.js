@@ -1186,6 +1186,9 @@ tests.programs.type_analysis.global_add = genTest(
 tests.programs.type_analysis.call_simple = genTest(
     'programs/type_analysis/call_simple.js'
 );
+tests.programs.type_analysis.func_2ret = genTest(
+    'programs/type_analysis/func_2ret.js'
+);
 tests.programs.type_analysis.func_calls = genTest(
     'programs/type_analysis/func_calls.js',
     'test',
