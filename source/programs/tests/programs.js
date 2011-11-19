@@ -1201,12 +1201,6 @@ tests.programs.type_analysis.fib = genTest(
     [],
     0
 );
-tests.programs.type_analysis.cond_return = genTest(
-    'programs/type_analysis/cond_return.js',
-    'test',
-    [],
-    0
-);
 tests.programs.type_analysis.loop_sum = genTest(
     'programs/type_analysis/loop_sum.js',
     'test',
@@ -1215,6 +1209,18 @@ tests.programs.type_analysis.loop_sum = genTest(
 );
 tests.programs.type_analysis.obj_simple = genTest(
     'programs/type_analysis/obj_simple.js',
+    'test',
+    [],
+    0
+);
+tests.programs.type_analysis.linked_list = genTest(
+    'programs/type_analysis/linked_list.js',
+    'test',
+    [],
+    0
+);
+tests.programs.type_analysis.cond_return = genTest(
+    'programs/type_analysis/cond_return.js',
     'test',
     [],
     0

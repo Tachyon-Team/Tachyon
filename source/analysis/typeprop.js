@@ -652,6 +652,13 @@ JSSubInstr.prototype.typeProp = function (ta, typeMap)
 
 JSLtInstr.prototype.typeProp = function (ta, typeMap)
 {
+    var v0 = typeMap.getType(this.uses[0]);
+    var v1 = typeMap.getType(this.uses[1]);
+
+
+    // TODO: int range handling
+
+
     // TODO:
     return TypeDesc.bool;
 }
@@ -882,6 +889,21 @@ RetInstr.prototype.typeProp = function (ta, typeMap)
     return TypeDesc.any;
 }
 
+JSNewInstr.prototype.typeProp = function (ta, typeMap)
+{
+    /*
+    - Want to get the 'this' type at the function output
+    - Could have special provision to keep it live
+    - Merge this type the same way we merge ret type?
+
+    - Could try to generalize this concept for all arguments, for initializers
+
+    */
+
+    // TODO
+    return TypeDesc.any;
+}
+
 // If branching instruction
 IfInstr.prototype.typeProp = function (ta, typeMap)
 {
@@ -889,17 +911,24 @@ IfInstr.prototype.typeProp = function (ta, typeMap)
     var v1 = typeMap.getType(this.uses[1]);
     var v2 = (this.uses.length > 2)? typeMap.getType(this.uses[1]):undefined;
 
-
-    // TODO: known branch function?
-
+    // Function to handle the known branching side case
+    var instr = this;
+    function knownBranch(boolVal)
+    {
+        var target = instr.targets[(boolVal === true)? 0:1];
+        ta.succMerge(target, typeMap);
+        return TypeDesc.any;
+    }
 
     if (this.testOp === 'EQ')
     {
-        if (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE)
-        {
-            ta.succMerge(this.targets[0], typeMap);
-            return TypeDesc.any;
-        }
+        if ((v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE) ||
+            (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE))
+            return knownBranch(true);
+
+        if ((v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE) ||
+            (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE))
+            return knownBranch(false);
     }
 
     // Merge with all possible branch targets

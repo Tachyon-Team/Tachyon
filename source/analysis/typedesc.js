@@ -693,7 +693,7 @@ MapDesc.prototype.intersect = function (that)
 /**
 @class Object pseudo-class descriptor
 */
-function ClassDesc(origin)
+function ClassDesc(origin, protoType)
 {
     assert (
         origin instanceof IRFunction ||
@@ -717,11 +717,10 @@ function ClassDesc(origin)
     */
     this.origin = origin;
 
-    // TODO: prototype type descriptor
     /**
     Prototype type descriptor
     */
-    this.protoType = undefined;
+    this.protoType = protoType;
 
     /**
     Field descriptors, the order of field addition is not represented
