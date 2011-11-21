@@ -48,42 +48,6 @@ Interprocedural type analysis implementation.
 Maxime Chevalier-Boisvert
 */
 
-
-
-
-
-
-
-
-
-/*
-TODO: treat global object type as a type that's passed to functions???
-
-Associate global object type with function entry?
-
-Should ideally have it flow through in the type map?
-
-
-When we analyze unit-level functions, pass empty global type to first unit...
-We need the global type merge at the end of the unit to pass it to the
-next unit to analyze.
-
-The order of the unit analysis matters.
-
-
-For a function, set of call sites, or set of next blocks to merge into?
-- Function calls can occur in the middle of blocks!
-  - Re-queue that block, it will be analyzed with the new return site info
-
-
-Range expansion issue: count range expansions and string concats in union function? ***
-*/
-
-
-
-
-
-
 //=============================================================================
 //
 // Type propagation analysis core
@@ -270,7 +234,7 @@ TypeProp.prototype.queueUnit = function (ir)
     // Get the info object for this function
     var funcInfo = this.getFuncInfo(ir);
 
-    // FIXME: for not, initialize a new global object for the unit
+    // FIXME: for now, initialize a new global object for the unit
     funcInfo.globalType = new TypeDesc(
         TypeFlags.OBJECT,
         undefined,
@@ -369,15 +333,18 @@ TypeProp.prototype.iterate = function ()
             print(use.getValName() + ' : ' + useType);
         }
 
-        // Process the phi node or instruction
-        var outType =
-            (instr instanceof PhiInstr)?
-            this.phiFunc(instr, typeMap):
-            this.instrFunc(instr, typeMap);
+        // Process the instruction
+        var outType = instr.typeProp(this, typeMap);
 
         if (instr.dests.length > 0)
             print(instr.getValName() + ' => ' + outType);
         print('');
+
+        assert (
+            instr.dests.length === 0 ||
+            outType instanceof TypeDesc,
+            'instruction flow function returned invalid type descriptor'
+        );
 
         // If the output is uninferred, stop analyzing this block for not,
         // wait until better information is available
@@ -387,10 +354,6 @@ TypeProp.prototype.iterate = function ()
             print('');
             return;
         }
-
-        // If the instruction has dests, add its type to the type set
-        if (instr.dests.length > 0)
-            typeMap.setType(instr, outType);
     }
 }
 
@@ -424,67 +387,67 @@ TypeProp.prototype.succMerge = function (succ, predMap)
 }
 
 /**
-Flow function applied to phi nodes
+Set an intruction's output and queue its branch targets
 */
-TypeProp.prototype.phiFunc = function (phi, typeMap)
+TypeProp.prototype.setOutput = function (
+    typeMap,
+    instr,
+    outType,
+    inVal,
+    inType,
+    resFlags,
+    globType,
+    globTypeExc
+)
 {
-    var outType = TypeDesc.noinf;
-
-    // For each phi predecessor
-    for (var i = 0; i < phi.preds.length; ++i)
-    {
-        var pred = phi.preds[i];
-
-        // If this predecessor hasn't been visited, skip it
-        if (this.blockTypes.has(pred) === false)
-            continue;
-
-        // Merge the type of this incoming value
-        var incType = typeMap.getType(phi.uses[i]);
-        outType = outType.union(incType);
-    }
-
     assert (
-        outType !== TypeDesc.noinf,
-        'phi output type is noinf'
+        instr.targets.length === 0 ||
+        instr.targets.length === 2,
+        'invalid branch target count'
     );
 
-    // Return the phi node output type
-    return outType;
-}
+    // If the instruction has dests,
+    // add its output type to the type set
+    if (instr.dests.length > 0)
+        typeMap.setType(instr, outType);
 
-/**
-Flow function applied to instruction
-*/
-TypeProp.prototype.instrFunc = function (instr, typeMap)
-{
-    // If no type flow function is defined
-    if (instr.typeProp === undefined)
+    // If there is an input value to be restricted with more than 1 use
+    if (inVal !== undefined && inVal.dests.length > 1)
     {
-        // If this is a branch instruction
-        if (instr.targets.length > 0)
-        {
-            // Set the output type in the type map
-            if (instr.dests.length > 0)
-                typeMap.setType(instr, TypeDesc.any);
-
-            // Merge with all possible branch targets
-            for (var i = 0; i < instr.targets.length; ++i)
-                this.succMerge(instr.targets[i], typeMap);
-        }
-
-        // Return the any type
-        return TypeDesc.any;
+        // Add the restricted output type to the type set
+        var resType = inType.restrict(resFlags);
+        typeMap.setType(inVal, resType);
     }
 
-    // Call the instruction's type flow function
-    var outType = instr.typeProp(this, typeMap);
+    // If a new global type is defined 
+    if (globType !== undefined)
+        typeMap.setGlobalType(globType);
 
-    assert (
-        outType instanceof TypeDesc,
-        'instruction flow function returned invalid type descriptor'
-    );
+    // If this is a branch instruction
+    if (instr.targets.length > 0)
+    {
+        // Merge with the normal target
+        this.succMerge(instr.targets[i], typeMap);
 
+        // If the instruction has dests, set its output type
+        // to any along the exception edge
+        if (instr.dests.length > 0)
+            typeMap.setType(instr, TypeDesc.any);
+
+        // If there is an input value to be restricted with more than 1 use
+        // add the unrestricted output type to the type set
+        if (inVal !== undefined && inVal.dests.length > 1)
+            typeMap.setType(inVal, inType);
+
+        // If a global type is defined for the exception branch, set it
+        if (globTypeExc !== undefined)
+            typeMap.setGlobalType(globalTypeExc);
+
+        // Merge with the exception target
+        this.succMerge(instr.targets[i], typeMap);
+    }
+
+    // Return the output type
     return outType;
 }
 
@@ -494,17 +457,50 @@ TypeProp.prototype.instrFunc = function (instr, typeMap)
 //
 //=============================================================================
 
+IRInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // By default, return the any type
+    return ta.setOutput(typeMap, this, TypeDesc.any);
+}
+
+PhiInstr.prototype.typeProp = function (ta, typeMap)
+{
+    var outType = TypeDesc.noinf;
+
+    // For each phi predecessor
+    for (var i = 0; i < this.preds.length; ++i)
+    {
+        var pred = this.preds[i];
+
+        // If this predecessor hasn't been visited, skip it
+        if (ta.blockTypes.has(pred) === false)
+            continue;
+
+        // Merge the type of this incoming value
+        var incType = typeMap.getType(this.uses[i]);
+        outType = outType.union(incType);
+    }
+
+    assert (
+        outType !== TypeDesc.noinf,
+        'phi output type is noinf'
+    );
+
+    typeMap.setType(this, outType);
+
+    return outType;
+}
+
 GlobalObjInstr.prototype.typeProp = function (ta, typeMap)
 {
     // Return the global object type
-    return typeMap.globalType;    
+    return ta.setOutput(typeMap, this, typeMap.globalType);
 }
 
 InitGlobalInstr.prototype.typeProp = function (ta, typeMap)
 {
     // Do nothing, the global property is treated as not being
     // guaranteed to exist
-    return TypeDesc.any;
 }
 
 BlankObjInstr.prototype.typeProp = function (ta, typeMap)
@@ -521,7 +517,7 @@ BlankObjInstr.prototype.typeProp = function (ta, typeMap)
         [new MapDesc(classDesc)]
     );
 
-    return objType;
+    return ta.setOutput(typeMap, this, objType);
 }
 
 HasPropInstr.prototype.typeProp = function (ta, typeMap)
@@ -532,7 +528,7 @@ HasPropInstr.prototype.typeProp = function (ta, typeMap)
     // If type not in class, return false
 
     // TODO: examine type map
-    return TypeDesc.bool;
+    return ta.setOutput(typeMap, this, TypeDesc.bool);
 }
 
 PutPropInstr.prototype.typeProp = function (ta, typeMap)
@@ -546,20 +542,29 @@ PutPropInstr.prototype.typeProp = function (ta, typeMap)
     if (propName === undefined)
     {
         print('*WARNING: putProp with unknown property name');
-    }
-    else
-    {
-        // Update the object property type
-        var newObjType = objType.putProp(propName, valType);
-        typeMap.setType(this.uses[0], newObjType);
 
-        // If this is the global object, update the global object type as well
-        var globalType = typeMap.getGlobalType();
-        if (objType.equal(globalType) === true)
-            typeMap.setGlobalType(newObjType);            
+        return ta.setOutput(typeMap, this, TypeDesc.any);
     }
 
-    return valType;
+    // Compute the new object type
+    var newObjType = objType.putProp(propName, valType);
+
+    // Get the global object type
+    var globalType = typeMap.getGlobalType();
+
+    // Test if the input type is the global type
+    var objIsGlobal = objType.equal(globalType) === true;
+
+    return ta.setOutput(
+        typeMap,
+        this,
+        valType,
+        this.uses[0],
+        newObjType,
+        TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL),
+        objIsGlobal? newObjType:undefined,
+        objIsGlobal? globalType:undefined
+    );
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeMap)
@@ -576,7 +581,14 @@ GetPropInstr.prototype.typeProp = function (ta, typeMap)
         propType = propType.union(map.getPropType(propName));
     }
 
-    return propType;
+    return ta.setOutput(
+        typeMap, 
+        this,
+        propType,
+        this.uses[0],
+        objType,
+        TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL)
+    );
 }
 
 GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
@@ -586,27 +598,30 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
     var t0 = typeMap.getType(this.uses[0]);
     var t1 = typeMap.getType(this.uses[1]);
 
+    // Output type
+    var outType;
+
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
         var minVal = t0.minVal + t1.minVal;
 
         var maxVal = t0.maxVal + t1.maxVal;
 
-        return new TypeDesc(
+        outType = new TypeDesc(
             TypeFlags.INT,
             minVal,
             maxVal
         );
     }
 
-    if (t0.flags === TypeFlags.STRING || t1.flags === TypeFlags.STRING)
+    else if (t0.flags === TypeFlags.STRING || t1.flags === TypeFlags.STRING)
     {
         var t0Str = t0.stringVal();
         var t1Str = t1.stringVal();
 
         var newStr = (t0Str && t1Str)? (t0Str + t1Str):undefined;
 
-        return new TypeDesc(
+        outType = new TypeDesc(
             TypeFlags.STRING,
             undefined,
             undefined,
@@ -614,13 +629,19 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
         );
     }
 
-    if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
+    else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
         (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
     {
-        return new TypeDesc(TypeFlags.INT | TypeFlags.STRING)
+        outType = new TypeDesc(TypeFlags.INT | TypeFlags.STRING)
     }
 
-    return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
+    // By default
+    else
+    {
+        outType = new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
+    }
+
+    return ta.setOutput(typeMap, this, outType);
 }
 
 JSSubInstr.prototype.typeProp = function (ta, typeMap)
@@ -628,26 +649,35 @@ JSSubInstr.prototype.typeProp = function (ta, typeMap)
     var t0 = typeMap.getType(this.uses[0]);
     var t1 = typeMap.getType(this.uses[1]);
 
+    // Output type
+    var outType;
+
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
         var minVal = t0.minVal - t1.maxVal;
 
         var maxVal = t0.maxVal - t1.minVal;
 
-        return new TypeDesc(
+        outType = new TypeDesc(
             TypeFlags.INT,
             minVal,
             maxVal
         );
     }
 
-    if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
-        (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
+    else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
+             (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
     {
-        return new TypeDesc(TypeFlags.INT | TypeFlags.STRING)
+        outType = new TypeDesc(TypeFlags.INT)
     }
 
-    return new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT);
+    // By default
+    else
+    {
+        outType = new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    return ta.setOutput(typeMap, this, outType);
 }
 
 JSLtInstr.prototype.typeProp = function (ta, typeMap)
@@ -655,12 +685,10 @@ JSLtInstr.prototype.typeProp = function (ta, typeMap)
     var v0 = typeMap.getType(this.uses[0]);
     var v1 = typeMap.getType(this.uses[1]);
 
-
     // TODO: int range handling
 
-
     // TODO:
-    return TypeDesc.bool;
+    return ta.setOutput(typeMap, this, TypeDesc.bool);
 }
 
 JSEqInstr.prototype.typeProp = function (ta, typeMap)
@@ -668,36 +696,38 @@ JSEqInstr.prototype.typeProp = function (ta, typeMap)
     var v0 = typeMap.getType(this.uses[0]);
     var v1 = typeMap.getType(this.uses[1]);
 
+    // Output type
+    var outType;
+
     // If both values are known integer constants
     if (v0.flags === TypeFlags.INT &&
         v1.flags === TypeFlags.INT &&
         v0.minVal === v0.maxVal &&
         v1.minVal === v1.maxVal)
     {
-        return new TypeDesc(
-            (v0.minVal === v1.minVal)?
-            TypeFlags.TRUE:TypeFlags.FALSE
-        );
+        outType = (v0.minVal === v1.minVal)? TypeDesc.true:TypeDesc.false;
     }
 
     // If both values are known booleans
-    if (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE)
-        return TypeDesc.true;
-    if (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE)
-        return TypeDesc.false;
-    if (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE)
-        return TypeDesc.false;
-    if (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE)
-        return TypeDesc.true;
+    else if ((v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
+             (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
+    {
+        outType = (v0.flags === v1.flags)? TypeDesc.true:TypeDesc.false;
+    }
 
     // Otherwise, we know the output is boolean
-    return TypeDesc.bool;
+    else
+    {
+        outType = TypeDesc.bool;
+    }
+
+    return ta.setOutput(typeMap, this, outType);
 }
 
 JSNsInstr.prototype.typeProp = function (ta, typeMap)
 {
     // TODO:
-    return TypeDesc.bool;
+    return ta.setOutput(typeMap, this, TypeDesc.bool);
 }
 
 JSCallInstr.prototype.typeProp = function (ta, typeMap)
@@ -787,8 +817,16 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeMap);
 
-    // Return the function return type
-    return retType;
+    // Return the function return type and
+    // restrict the callee type to function
+    return ta.setOutput(
+        typeMap,
+        this,
+        retType,
+        this.uses[0],
+        callee,
+        TypeFlags.FUNCTION        
+    );
 }
 
 // LIR call instruction
@@ -847,7 +885,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
         ta.succMerge(this.targets[i], typeMap);
 
     // Return the return type
-    return retType;
+    return ta.setOutput(typeMap, this, retType);
 }
 
 ArgValInstr.prototype.typeProp = function (ta, typeMap)
@@ -857,7 +895,8 @@ ArgValInstr.prototype.typeProp = function (ta, typeMap)
     var funcInfo = ta.getFuncInfo(func);
     
     // Return the type for this argument
-    return funcInfo.argTypes[this.argIndex];
+    var argType = funcInfo.argTypes[this.argIndex];
+    return ta.setOutput(typeMap, this, argType);
 }
 
 RetInstr.prototype.typeProp = function (ta, typeMap)
@@ -884,9 +923,6 @@ RetInstr.prototype.typeProp = function (ta, typeMap)
             ta.queueBlock(callInstr.parentBlock);
         }
     }
-
-    // This instruction has no output
-    return TypeDesc.any;
 }
 
 JSNewInstr.prototype.typeProp = function (ta, typeMap)
@@ -897,11 +933,10 @@ JSNewInstr.prototype.typeProp = function (ta, typeMap)
     - Merge this type the same way we merge ret type?
 
     - Could try to generalize this concept for all arguments, for initializers
-
     */
 
     // TODO
-    return TypeDesc.any;
+    return ta.setOutput(typeMap, this, TypeDesc.any);
 }
 
 // If branching instruction
@@ -934,8 +969,10 @@ IfInstr.prototype.typeProp = function (ta, typeMap)
     // Merge with all possible branch targets
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeMap);
+}
 
-    // This instruction returns no value
-    return TypeDesc.any;
+JumpInstr.prototype.typeProp = function (ta, typeMap)
+{
+    ta.succMerge(this.targets[0], typeMap);
 }
 

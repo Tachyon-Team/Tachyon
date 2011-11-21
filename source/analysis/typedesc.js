@@ -391,6 +391,75 @@ TypeDesc.prototype.union = function (that)
 }
 
 /**
+Restrict a type descriptor based on possible type flags
+*/
+TypeDesc.prototype.restrict = function (flags)
+{
+    var flags = this.flags & flags;
+
+    // If the flags are unchanged, return this descriptor
+    if (flags === this.flags)
+        return this;
+
+    // Test whether the new type can be a number, string, function or object
+    var canBeNum  = (flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
+    var canBeStr  = (flags & TypeFlags.STRING) !== 0;
+    var canBeFunc = (flags & TypeFlags.FUNCTION) !== 0;
+    var canBeObj  = (flags & (TypeFlags.OBJECT | TypeFlags.ARRAY)) !== 0;
+
+    // If the new value can't be a number, remove the range info
+    if (canBeNum === true)
+    {
+        var minVal = this.minVal;
+        var maxVal = this.maxVal;
+    }
+    else
+    {
+        var minVal = -Infinity;
+        var maxVal = Infinity;
+    }
+
+    var strVal = (canBeStr === true)? this.strVal:undefined;
+
+    // If the type can be either a function or an object
+    if (canBeFunc === true && canBeObj === true)
+    {
+        // Leave the map set unchanged
+        var mapSet = this.mapSet.slice(0);
+    }
+    else
+    {
+        var mapSet = [];
+
+        // For each item in the map set
+        for (var i = 0; i < this.mapSet.length; ++i)
+        {
+            var map = this.mapSet[i];
+            var classDesc = map.classDesc;
+
+            var isFunc = (classDesc.origin instanceof IRFunction);
+
+            if (isFunc == true && canBeFunc === false)
+                continue;
+
+            if (isFunc === false && canBeObj === false)
+                continue;
+
+            mapSet.push(map);
+        }
+    }
+
+    // Create and return a new type descriptor and return it
+    return new TypeDesc(
+        flags,
+        minVal,
+        maxVal,
+        strVal,
+        mapSet
+    );
+}
+
+/**
 Type descriptor equality test
 */
 TypeDesc.prototype.equal = function (that)
