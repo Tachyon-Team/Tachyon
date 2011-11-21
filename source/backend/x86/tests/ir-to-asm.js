@@ -1085,7 +1085,7 @@ tests.x86.irToAsm = function ()
         [3,5]
     );
 
-    // Boxed integer add, multiply
+    // Boxed integer add
     test('                                          \
         function test(ctx, v3, v5, v8)              \
         {                                           \
@@ -1093,20 +1093,18 @@ tests.x86.irToAsm = function ()
             "tachyon:arg ctx rptr";                 \
             "tachyon:arg v3 pint";                  \
             "tachyon:arg v5 pint";                  \
-            "tachyon:arg v8 pint";                  \
             "tachyon:ret pint";                     \
                                                     \
             v3 = boxInt(v3);                        \
             v5 = boxInt(v5);                        \
-            v8 = boxInt(v8);                        \
-            var r = (v3 + v5) * v8;                 \
+            var r = iir.add(v3, v5);                \
             r = unboxInt(r);                        \
                                                     \
             return r;                               \
         }                                           \
         ',
-        64,
-        [3,5,8]
+        8,
+        [3,5]
     );
 
     // Simple C function call test, no arguments
@@ -1427,7 +1425,6 @@ tests.x86.irToAsm = function ()
     );
 
     // JavaScript Fibonacci test (Tachyon function)
-    /*
     test('                                              \
         function test(ctx, n)                           \
         {                                               \
@@ -1447,18 +1444,39 @@ tests.x86.irToAsm = function ()
         {                                               \
             "tachyon:static";                           \
                                                         \
-            if (n < 2)                                  \
+            if (blt(n, 2) === pint(1))                  \
                 return n;                               \
                                                         \
-            return fib(n-1) + fib(n-2);                 \
+            var fnm1 = fib(bsub(n, 1));                 \
+            var fnm2 = fib(bsub(n, 2));                 \
+            return badd(fnm1, fnm2);                    \
+        }                                               \
+        function blt(x, y)                              \
+        {                                               \
+            "tachyon:static";                           \
+            "tachyon:ret pint";                         \
+                                                        \
+            if (iir.if_lt(x, y))                        \
+                return pint(1);                         \
+            else                                        \
+                return pint(0);                         \
+        }                                               \
+        function badd(x, y)                             \
+        {                                               \
+            "tachyon:static";                           \
+                                                        \
+            return iir.add(x, y);                       \
+        }                                               \
+        function bsub(x, y)                             \
+        {                                               \
+            "tachyon:static";                           \
+                                                        \
+            return iir.sub(x, y);                       \
         }                                               \
         ',
-        //267914296,
-        //[42]
         55,
         [10]
     );
-    */
 
     // Regression test: infinite loop code
     test('                                              \

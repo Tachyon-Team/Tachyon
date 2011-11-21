@@ -795,7 +795,7 @@ function makeArgObj(funcObj, numArgs, argTable)
 }
 
 /**
-HIR less-than instruction
+Implementation of the HIR less-than instruction
 */
 function lt(v1, v2)
 {
@@ -851,7 +851,7 @@ function lt(v1, v2)
 }
 
 /**
-HIR less-than-or-equal instruction
+Implementation of the HIR less-than-or-equal instruction
 */
 function le(v1, v2)
 {
@@ -907,7 +907,7 @@ function le(v1, v2)
 }
 
 /**
-HIR greater-than instruction
+Implementation of the HIR greater-than instruction
 */
 function gt(v1, v2)
 {
@@ -963,7 +963,7 @@ function gt(v1, v2)
 }
 
 /**
-HIR greater-than-or-equal instruction
+Implementation of the HIR greater-than-or-equal instruction
 */
 function ge(v1, v2)
 {
@@ -1019,7 +1019,7 @@ function ge(v1, v2)
 }
 
 /**
-HIR equal instruction
+Implementation of the HIR equal instruction
 */
 function eq(x, y)
 {
@@ -1136,8 +1136,8 @@ Implementation of the HIR add instruction
 */
 function add(v1, v2)
 {
-    "tachyon:inline";
-    
+    "tachyon:static";
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1151,34 +1151,11 @@ function add(v1, v2)
         }
         else
         {
+            // TODO: 
             // Overflow handling: need to create FP objects
-            return addOverflow(v1, v2);
+            error('addition overflow');
         }
     }
-    else
-    {
-        // Call general case in separate (non-inlined) function
-        return addGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline overflow case for HIR add instruction
-*/
-function addOverflow(v1, v2)
-{
-    "tachyon:static";
-    
-    // TODO
-    error('addition overflow');
-}
-
-/**
-Non-inline general case for HIR add instruction
-*/
-function addGeneral(v1, v2)
-{
-    "tachyon:static";
     
     // If the left value is a string
     if (boxIsString(v1))
@@ -1221,8 +1198,8 @@ Implementation of the HIR sub instruction
 */
 function sub(v1, v2)
 {
-    "tachyon:inline";
-        
+    "tachyon:static";
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1236,34 +1213,11 @@ function sub(v1, v2)
         }
         else
         {
+            // TODO
             // Overflow handling: need to create FP objects
-            return subOverflow(v1, v2);
+            error('subtraction overflow');
         }
     }
-    else
-    {
-        // Call general case in separate (non-inlined) function
-        return subGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline overflow case for HIR sub instruction
-*/
-function subOverflow(v1, v2)
-{
-    "tachyon:static";
-    
-    // TODO
-    error('subtraction overflow');
-}
-
-/**
-Non-inline general case for HIR sub instruction
-*/
-function subGeneral(v1, v2)
-{
-    "tachyon:static";
     
     // TODO
     error('subtraction of non-integer values');
@@ -1274,7 +1228,7 @@ Implementation of the HIR mul instruction
 */
 function mul(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1309,7 +1263,7 @@ Implementation of the HIR div instruction
 */
 function div(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1333,11 +1287,11 @@ function div(v1, v2)
 }
 
 /**
-Implementation of the HIR div instruction
+Implementation of the HIR mod instruction
 */
 function mod(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1358,7 +1312,7 @@ Unary bitwise negation operator
 */
 function not(v) 
 { 
-    "tachyon:inline";
+    "tachyon:static";
         
     // If the value is an immediate integer
     if (boxIsInt(v))
@@ -1378,7 +1332,7 @@ Bitwise AND primitive
 */
 function and(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1410,7 +1364,7 @@ Bitwise OR primitive
 */
 function or(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1442,7 +1396,7 @@ Bitwise XOR primitive
 */
 function xor(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1474,7 +1428,7 @@ Bitwise left shift primitive
 */
 function lsft(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1511,7 +1465,7 @@ Bitwise right shift primitive
 */
 function rsft(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1546,7 +1500,7 @@ Bitwise unsigned right shift primitive
 */
 function ursft(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -1599,10 +1553,7 @@ function typeOf(val)
     else if (boxIsFunc(val))
         return "function";
 
-    assert (
-        false,
-        'unsupported type in typeOf'
-    );
+    error('unsupported type in typeOf');
 }
 
 /**

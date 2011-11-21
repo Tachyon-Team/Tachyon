@@ -88,6 +88,7 @@ tests.constprop.helpers.genTest = function (testCode, constVal)
             "                                       \
                 function foo(a)                     \
                 {                                   \
+                    'tachyon:ret pint';             \
                 " + testCode + "                    \
                 }                                   \
             ",
@@ -103,127 +104,127 @@ tests.constprop.helpers.genTest = function (testCode, constVal)
 Addition test
 */
 tests.constprop.add = tests.constprop.helpers.genTest(
-    'return 6 + 4;',
-    IRConst.getConst(10)
+    'return pint(6) + pint(4);',
+    IRConst.getConst(10, IRType.pint)
 );
 
 /**
 Addition test
 */
 tests.constprop.sub = tests.constprop.helpers.genTest(
-    'return 6 - 3;',
-    IRConst.getConst(3)
+    'return pint(6) - pint(3);',
+    IRConst.getConst(3, IRType.pint)
 );
 
 /**
 Multiplication test
 */
 tests.constprop.mul = tests.constprop.helpers.genTest(
-    'return 6 * 3;',
-    IRConst.getConst(18)
+    'return pint(6) * pint(3);',
+    IRConst.getConst(18, IRType.pint)
 );
 
 /**
 Division test
 */
 tests.constprop.div = tests.constprop.helpers.genTest(
-    'return 6 / 3;',
-    IRConst.getConst(2)
+    'return pint(6) / pint(3);',
+    IRConst.getConst(2, IRType.pint)
 );
 
 /**
 Reciprocal test
 */
 tests.constprop.divmul = tests.constprop.helpers.genTest(
-    'return (6 / 3) * 3;',
-    IRConst.getConst(6)
+    'return (pint(6) / pint(3)) * pint(3);',
+    IRConst.getConst(6, IRType.pint)
 );
 
 /**
 Complex arithmetic expression test
 */
 tests.constprop.arithexpr = tests.constprop.helpers.genTest(
-    'return ((6 / 3) + 2) * 3;',
-    IRConst.getConst(12)
+    'return ((pint(6) / pint(3)) + pint(2)) * pint(3);',
+    IRConst.getConst(12, IRType.pint)
 );
 
 /**
 Bitwise AND operator
 */
 tests.constprop.and = tests.constprop.helpers.genTest(
-    'return 3 & 1;',
-    IRConst.getConst(1)
+    'return pint(3) & pint(1);',
+    IRConst.getConst(1, IRType.pint)
 );
 
 /**
 Bitwise OR operator
 */
 tests.constprop.or = tests.constprop.helpers.genTest(
-    'return 5 | 2;',
-    IRConst.getConst(7)
+    'return pint(5) | pint(2);',
+    IRConst.getConst(7, IRType.pint)
 );
 
 /**
 Bitwise XOR operator
 */
 tests.constprop.xor = tests.constprop.helpers.genTest(
-    'return 5 ^ 3;',
-    IRConst.getConst(6)
+    'return pint(5) ^ pint(3);',
+    IRConst.getConst(6, IRType.pint)
 );
 
 /**
 Left shift test
 */
 tests.constprop.lsft = tests.constprop.helpers.genTest(
-    'return 3 << 1;',
-    IRConst.getConst(6)
+    'return pint(3) << pint(1);',
+    IRConst.getConst(6, IRType.pint)
 );
 
 /**
 Right shift test
 */
 tests.constprop.rsft = tests.constprop.helpers.genTest(
-    'return 8 >> 1;',
-    IRConst.getConst(4)
+    'return pint(8) >> pint(1);',
+    IRConst.getConst(4, IRType.pint)
 );
 
 /**
 Unsigned right shift test
 */
 tests.constprop.ursft = tests.constprop.helpers.genTest(
-    'return 8 >> 1;',
-    IRConst.getConst(4)
+    'return pint(8) >> pint(1);',
+    IRConst.getConst(4, IRType.pint)
 );
 
 /**
 If conditional test
 */
 tests.constprop.condIf = tests.constprop.helpers.genTest(
-    'if (1) return 2; else return 3;',
-    IRConst.getConst(2)
+    'if (true) return pint(2); else return pint(3);',
+    IRConst.getConst(2, IRType.pint)
 );
 
 /**
 Conditional operator test
 */
 tests.constprop.condOp = tests.constprop.helpers.genTest(
-    'return 0? 2:3;',
-    IRConst.getConst(3)
+    'return false? pint(2):pint(3);',
+    IRConst.getConst(3, IRType.pint)
 );
 
 /**
 Integer cast test
 */
 tests.constprop.icast1 = tests.constprop.helpers.genTest(
-    'return iir.icast(IRType.box, iir.icast(IRType.pint, 5));',
-    IRConst.getConst(5)
+    'return iir.icast(IRType.pint, iir.icast(IRType.u16, pint(5)));',
+    IRConst.getConst(5, IRType.pint)
 );
 
 /**
 Redundant integer cast test
 */
 tests.constprop.icast2 = tests.constprop.helpers.genTest(
-    'return iir.icast(IRType.box, 7);',
-    IRConst.getConst(7)
+    'return iir.icast(IRType.pint, pint(7));',
+    IRConst.getConst(7, IRType.pint)
 );
 
