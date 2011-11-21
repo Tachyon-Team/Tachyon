@@ -795,11 +795,11 @@ function makeArgObj(funcObj, numArgs, argTable)
 }
 
 /**
-Implementation of HIR less-than instruction
+HIR less-than instruction
 */
 function lt(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
 
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
@@ -810,19 +810,6 @@ function lt(v1, v2)
         else
             return false;
     }
-    else
-    {
-        // Call a function for the general case
-        return ltGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline case for HIR less-than instruction
-*/
-function ltGeneral(v1, v2)
-{
-    "tachyon:static";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -864,12 +851,12 @@ function ltGeneral(v1, v2)
 }
 
 /**
-Implementation of HIR less-than-or-equal instruction
+HIR less-than-or-equal instruction
 */
 function le(v1, v2)
 {
-    "tachyon:inline";
-    
+    "tachyon:static";
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -879,19 +866,6 @@ function le(v1, v2)
         else
             return false;
     }
-    else
-    {
-        // Call a function for the general case
-        return leGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline case for HIR less-than-or-equal instruction
-*/
-function leGeneral(v1, v2)
-{
-    "tachyon:static";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -933,12 +907,12 @@ function leGeneral(v1, v2)
 }
 
 /**
-Implementation of HIR greater-than instruction
+HIR greater-than instruction
 */
 function gt(v1, v2)
 {
-    "tachyon:inline";
-    
+    "tachyon:static";
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -948,19 +922,6 @@ function gt(v1, v2)
         else
             return false;
     }
-    else
-    {
-        // Call a function for the general case
-        return gtGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline case for HIR greater-than instruction
-*/
-function gtGeneral(v1, v2)
-{
-    "tachyon:static";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -1002,12 +963,12 @@ function gtGeneral(v1, v2)
 }
 
 /**
-Implementation of HIR greater-than-or-equal instruction
+HIR greater-than-or-equal instruction
 */
 function ge(v1, v2)
 {
-    "tachyon:inline";
-    
+    "tachyon:static";
+
     // If both values are immediate integers
     if (boxIsInt(v1) && boxIsInt(v2))
     {
@@ -1017,19 +978,6 @@ function ge(v1, v2)
         else
             return false;
     }
-    else
-    {
-        // Call a function for the general case
-        return geGeneral(v1, v2);
-    }
-}
-
-/**
-Non-inline case for HIR greater-than-or-equal instruction
-*/
-function geGeneral(v1, v2)
-{
-    "tachyon:static";
 
     // Convert both values to primitives
     var px = boxToPrim(v1);
@@ -1071,34 +1019,23 @@ function geGeneral(v1, v2)
 }
 
 /**
-Implementation of HIR eq instruction
+HIR equal instruction
 */
-function eq(v1, v2)
+function eq(x, y)
 {
-    "tachyon:inline";
-    
+    "tachyon:static";
+
     // If both values are the same, they are equal
-    if (iir.if_eq(v1, v2))
+    if (iir.if_eq(x, y))
         return true;
 
     // If both values are immediate integers, they are not equal
-    if (boxIsInt(v1) && boxIsInt(v2))
+    if (boxIsInt(x) && boxIsInt(y))
         return false;
 
     // If both values are strings, they are not equal
-    if (boxIsString(v1) && boxIsString(v2))
+    if (boxIsString(x) && boxIsString(y))
         return false;
-
-    // Call the general case function
-    return eqGeneral(v1, v2);
-}
-
-/**
-Non-inline case for HIR equal instruction
-*/
-function eqGeneral(x, y)
-{
-    "tachyon:static";
 
     assert (
         !boxIsFloat(x) && !boxIsFloat(y),
@@ -1138,7 +1075,7 @@ Implementation of HIR ne instruction
 */
 function ne(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // Perform the negation of the equality comparison
     return !eq(v1, v2);
@@ -1149,7 +1086,7 @@ Implementation of HIR strict-equality instruction
 */
 function se(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are floating-point
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
@@ -1174,13 +1111,13 @@ Implementation of HIR strict-inequality instruction
 */
 function ns(v1, v2)
 {
-    "tachyon:inline";
+    "tachyon:static";
     
     // If both values are floating-point
     if (boxHasTag(v1, TAG_FLOAT) && boxHasTag(v2, TAG_FLOAT))
     {
         // TODO: implement FP case in separate(non-inlined) function
-        error('se on float values');
+        error('ns on float values');
     }
     else
     {

@@ -1109,41 +1109,6 @@ tests.x86.irToAsm = function ()
         [3,5,8]
     );
 
-    // Switch statement test
-    test('                                          \
-        function test(ctx, v1, v3, v5, v8)          \
-        {                                           \
-            "tachyon:cproxy";                       \
-            "tachyon:arg ctx rptr";                 \
-            "tachyon:arg v1 pint";                  \
-            "tachyon:arg v3 pint";                  \
-            "tachyon:arg v5 pint";                  \
-            "tachyon:arg v8 pint";                  \
-            "tachyon:ret pint";                     \
-                                                    \
-            var sum = pint(0);                      \
-                                                    \
-            v1 = boxInt(v1);                        \
-                                                    \
-            switch (v1)                             \
-            {                                       \
-                case 5:                             \
-                sum += pint(555);                   \
-                case 1:                             \
-                sum += pint(3);                     \
-                case 2:                             \
-                sum += pint(4);                     \
-                default:                            \
-                sum += pint(5);                     \
-            }                                       \
-                                                    \
-            return sum;                             \
-        }                                           \
-        ',
-        12,
-        [1,3,5,8]
-    );
-
     // Simple C function call test, no arguments
     test('                                              \
         function test(ctx, n)                           \
@@ -1461,9 +1426,8 @@ tests.x86.irToAsm = function ()
         [0, 1, 5, 8]
     );
 
-    //var startTime = (new Date()).getTime();
-
     // JavaScript Fibonacci test (Tachyon function)
+    /*
     test('                                              \
         function test(ctx, n)                           \
         {                                               \
@@ -1494,15 +1458,13 @@ tests.x86.irToAsm = function ()
         55,
         [10]
     );
-
-    //var endTime = (new Date()).getTime();
-    //print('fib time: ' + ((endTime - startTime)/1000));
+    */
 
     // Regression test: infinite loop code
     test('                                              \
         function foo()                                  \
         {                                               \
-            while (true)                                \
+            for (;;)                                    \
             {                                           \
             }                                           \
         }                                               \
