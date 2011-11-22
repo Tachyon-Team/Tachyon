@@ -637,20 +637,6 @@ function newObject(proto)
 }
 
 /**
-Create a blank object with no properties which inherits from the
-default object prototype object.
-*/
-function blankObject()
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var objproto = get_ctx_objproto(iir.get_ctx());
-
-    return newObject(objproto);
-}
-
-/**
 Create a new empty array
 */
 function newArray(capacity)
@@ -682,6 +668,31 @@ function newArray(capacity)
 
     // Return the array reference
     return arr;
+}
+
+/**
+Create a blank object with no properties which inherits from the
+default object prototype object.
+*/
+function blankObject()
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    var objproto = get_ctx_objproto(iir.get_ctx());
+
+    return newObject(objproto);
+}
+
+/**
+Create a blank array with a given capacity.
+*/
+function blankArray(capacity)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    return newArray(unboxInt(capacity));
 }
 
 /**

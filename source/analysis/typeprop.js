@@ -69,6 +69,22 @@ function TypeProp(params)
     */
     this.params = params;
 
+    // Initialize the type analysis
+    this.init();
+}
+
+/**
+Initialize/reset the analysis
+*/
+TypeProp.prototype.init = function ()
+{
+    // Clear the set of map descriptors
+    MapDesc.mapSet.clear();
+
+    // Clear the set of class descriptors
+    ClassDesc.classMap.clear();
+    ClassDesc.nextClassIdx = 0;
+
     /**
     Worklist of basic blocks queued to be analyzed
     */
@@ -86,10 +102,24 @@ function TypeProp(params)
     this.blockTypes = new HashMap();
 
     /**
+    Object prototype class
+    */
+    this.objProtoClass = new ClassDesc('obj_proto', TypeDesc.null);
+
+    // Object prototype type
+    var objProtoType = new TypeDesc(
+        TypeFlags.OBJECT,
+        undefined,
+        undefined,
+        undefined,
+        [new MapDesc(this.objProtoClass)]
+    );
+
+    /**
     Global object class
     This is distinct from specific global object type instances
     */
-    this.globalClass = new ClassDesc('global');
+    this.globalClass = new ClassDesc('global', objProtoType);
 
     /**
     Map of IR functions to function-specific information
@@ -104,31 +134,6 @@ function TypeProp(params)
     /**
     Total analysis iteration count
     */
-    this.itrCount = 0;
-}
-
-/**
-Reinitialize/reset the analysis
-*/
-TypeProp.prototype.reset = function ()
-{
-    MapDesc.mapSet.clear();
-
-    ClassDesc.classMap.clear();
-    ClassDesc.nextClassIdx = 0;
-
-    this.workList.clear();
-
-    this.workSet.clear();
-
-    this.blockTypes.clear();
-
-    this.globalClass = new ClassDesc('global');
-
-    this.funcInfo = new HashMap();
-
-    this.unitList = [];
-
     this.itrCount = 0;
 }
 
@@ -327,13 +332,19 @@ TypeProp.prototype.iterate = function ()
         {
             var use = instr.uses[j];
 
+            var useType = typeMap.getType(use);
+
+            assert (
+                useType instanceof TypeDesc || useType === HashMap.NOT_FOUND,
+                'invalid use type'
+            );
+
+            print(use.getValName() + ' : ' + useType);
+
             // If this is an IR instruction and this is its only use,
             // remove it from the type map
             if (use instanceof IRInstr && use.dests.length === 1)
                 typeMap.rem(use);
-
-            var useType = typeMap.getType(use);
-            print(use.getValName() + ' : ' + useType);
         }
 
         if (instr.dests.length > 0)
@@ -568,7 +579,7 @@ InitGlobalInstr.prototype.typeProp = function (ta, typeMap)
 BlankObjInstr.prototype.typeProp = function (ta, typeMap)
 {
     // Create a class descriptor for this instruction
-    var classDesc = new ClassDesc(this);
+    var classDesc = new ClassDesc(this, TypeDesc.null);
 
     // Create a type using the class
     var objType = new TypeDesc(
@@ -580,6 +591,23 @@ BlankObjInstr.prototype.typeProp = function (ta, typeMap)
     );
 
     return ta.setOutput(typeMap, this, objType);
+}
+
+BlankArrayInstr.prototype.typeProp = function (ta, typeMap)
+{
+    // Create a class descriptor for this instruction
+    var classDesc = new ClassDesc(this, TypeDesc.null);
+
+    // Create a type using the class
+    var arrType = new TypeDesc(
+        TypeFlags.ARRAY,
+        undefined,
+        undefined,
+        undefined,
+        [new MapDesc(classDesc)]
+    );
+
+    return ta.setOutput(typeMap, this, arrType);
 }
 
 HasPropInstr.prototype.typeProp = function (ta, typeMap)
@@ -596,20 +624,40 @@ HasPropInstr.prototype.typeProp = function (ta, typeMap)
 PutPropInstr.prototype.typeProp = function (ta, typeMap)
 {
     var objType = typeMap.getType(this.uses[0]);
-    var propName = typeMap.getType(this.uses[1]).stringVal();
+    var nameType = typeMap.getType(this.uses[1]);
     var valType = typeMap.getType(this.uses[2]);
 
-    // TODO: issue, here, the property name could be unknown
+    // Try to get a string for the property name
+    var propName = nameType.stringVal();
+
+    // Test if the property name is an index
+    var nameIsIndex = nameType.isIndex();
+
+    // TODO: issue: here, the property name could be unknown
     // A run-time check is needed
-    if (propName === undefined)
+    if (propName === undefined && nameIsIndex === false)
     {
         print('*WARNING: putProp with unknown property name');
 
         return ta.setOutput(typeMap, this, TypeDesc.any);
     }
 
-    // Compute the new object type
-    var newObjType = objType.putProp(propName, valType);
+    // Updated object type
+    var newObjType = objType;
+
+    // If we have a string for the property name
+    if (propName !== undefined)
+    {
+        // Update the object type with the property set
+        newObjType = newObjType.putProp(propName, valType);
+    }
+
+    // If the name could be integer
+    if (nameIsIndex === true)
+    {
+        // Update the array properties
+        newObjType = newObjType.putArray(valType);
+    }
 
     // The object cannot be undefined or null along the normal branch
     newObjType = newObjType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
@@ -634,7 +682,22 @@ PutPropInstr.prototype.typeProp = function (ta, typeMap)
 GetPropInstr.prototype.typeProp = function (ta, typeMap)
 {
     var objType = typeMap.getType(this.uses[0]);
-    var propName = typeMap.getType(this.uses[1]).stringVal();
+    var nameType = typeMap.getType(this.uses[1]);
+
+    // Try to get a string for the property name
+    var propName = nameType.stringVal();
+
+    // Test if the property name is an index
+    var nameIsIndex = nameType.isIndex();
+
+    // TODO: issue: here, the property name could be unknown
+    // A run-time check is needed
+    if (propName === undefined && nameIsIndex === false)
+    {
+        print('*WARNING: putProp with unknown property name');
+
+        return ta.setOutput(typeMap, this, TypeDesc.any);
+    }
 
     var propType = TypeDesc.noinf;
 
@@ -642,8 +705,16 @@ GetPropInstr.prototype.typeProp = function (ta, typeMap)
     for (var i = 0; i < objType.mapSet.length; ++i)
     {
         var map = objType.mapSet[i];
+
         propType = propType.union(map.getPropType(propName));
+
+        if (nameIsIndex === true)
+            propType = propType.union(map.getArrayType());
     }
+
+    // If the property wasn't found anywhere, make its type undefined
+    if (propType.flags === TypeFlags.NOINF)
+        propType = TypeDesc.undef;
 
     // Restrict the object type along the normal path
     var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
@@ -913,7 +984,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
         );
 
         // Create a class descriptor for this function
-        var classDesc = new ClassDesc(func);
+        var classDesc = new ClassDesc(func, TypeDesc.null);
 
         // Create a type using the function's class
         var closType = new TypeDesc(

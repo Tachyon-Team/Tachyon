@@ -383,27 +383,37 @@ var GlobalObjInstr = hirInstrMaker(
 */
 var InitGlobalInstr = hirInstrMaker(
     'js_init_global',
-    [2,undefined],
-    true
+    2,
+    false
 );
 
 /**
-@class JavaScript global function call instruction
+@class JavaScript global property get instruction
 @augments HIRInstr
 */
 var GetGlobalInstr = hirInstrMaker(
     'js_get_global',
-    [2,undefined],
+    2,
     true
 );
 
 /**
-@class JavaScript global function call instruction
+@class JavaScript create new blank object instruction
 @augments HIRInstr
 */
 var BlankObjInstr = hirInstrMaker(
     'js_blank_obj',
     0,
+    false
+);
+
+/**
+@class JavaScript create new blank array instruction
+@augments HIRInstr
+*/
+var BlankArrayInstr = hirInstrMaker(
+    'js_blank_array',
+    1,
     false
 );
 

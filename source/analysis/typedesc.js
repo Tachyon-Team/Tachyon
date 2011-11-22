@@ -500,6 +500,23 @@ TypeDesc.prototype.stringVal = function ()
 }
 
 /**
+Test if this type is a valid index (non-negative integer)
+*/
+TypeDesc.prototype.isIndex = function ()
+{
+    if (this.flags === TypeFlags.STRING && isNonNegInt(Number(this.strVal)) === true)
+        return true;
+
+    if (this.flags !== TypeFlags.INT)
+        return false;
+
+    if (this.minVal < 0)
+        return false;
+
+    return true;
+}
+
+/**
 Create an updated type descriptor to simulate a property set
 */
 TypeDesc.prototype.putProp = function (propName, valType)
@@ -522,6 +539,23 @@ TypeDesc.prototype.putProp = function (propName, valType)
         this.strVal,
         mapSet
     );
+}
+
+/**
+Array property set
+*/
+TypeDesc.prototype.putArray = function (valType)
+{
+    assert (
+        valType instanceof TypeDesc,
+        'invalid type descriptor'
+    );
+
+    // Update the map descriptors
+    for (var i = 0; i < this.mapSet.length; ++i)
+        this.mapSet[i].putArray(valType);
+
+    return this;
 }
 
 /**
@@ -555,9 +589,9 @@ Undefined type descriptor
 TypeDesc.undef = new TypeDesc(TypeFlags.UNDEF);
 
 /**
-Boolean type descriptor
+Null type descriptor
 */
-TypeDesc.bool = new TypeDesc(TypeFlags.TRUE | TypeFlags.FALSE);
+TypeDesc.null = new TypeDesc(TypeFlags.NULL);
 
 /**
 True type descriptor
@@ -568,6 +602,11 @@ TypeDesc.true = new TypeDesc(TypeFlags.TRUE);
 False type descriptor
 */
 TypeDesc.false = new TypeDesc(TypeFlags.FALSE);
+
+/**
+Boolean type descriptor
+*/
+TypeDesc.bool = new TypeDesc(TypeFlags.TRUE | TypeFlags.FALSE);
 
 /**
 String type descriptor
@@ -732,6 +771,25 @@ MapDesc.prototype.getPropType = function (propName)
 }
 
 /**
+Do an array property store
+*/
+MapDesc.prototype.putArray = function (valType)
+{
+    this.classDesc.putArray(valType);
+
+    // The map descriptor remains unchanged
+    return this;
+}
+
+/**
+Get the type of the array properties
+*/
+MapDesc.prototype.getArrayType = function ()
+{
+    return this.classDesc.getArrayType();
+}
+
+/**
 Compute the intersection of two maps
 */
 MapDesc.prototype.intersect = function (that)
@@ -767,8 +825,13 @@ function ClassDesc(origin, protoType)
     assert (
         origin instanceof IRFunction ||
         origin instanceof IRInstr ||
-        origin === 'global',
+        typeof origin === 'string',
         'invalid class origin'
+    );
+
+    assert (
+        protoType instanceof TypeDesc,
+        'invalid prototype type descriptor'
     );
 
     // If there is already a class descriptor for this origin, return it
@@ -804,7 +867,7 @@ function ClassDesc(origin, protoType)
     /**
     Array field type descriptor
     */
-    this.arrayType = new TypeDesc();
+    this.arrayType = TypeDesc.noinf;
 
     // Cache the new class descriptor
     ClassDesc.classMap.set(origin, this);
@@ -825,7 +888,7 @@ Get the name of this class descriptor
 */
 ClassDesc.prototype.getName = function ()
 {
-    if (this.origin === 'global')
+    if (typeof this.origin === 'string')
         return this.origin;
     else
         return 'c' + this.classIdx;
@@ -843,9 +906,14 @@ ClassDesc.prototype.toString = function ()
 
     str += " {\n";
 
+    str += '  proto : ' + this.protoType + '\n';
+
     // Output the field names and types
     for (propName in this.propTypes)
         str += '  "' + propName + '" : ' + this.propTypes[propName] + '\n';
+
+    if (this.arrayType.flags !== TypeFlags.NOINF)
+        str += '  [] : ' + this.arrayType + '\n';
 
     str += "}";
 
@@ -857,6 +925,11 @@ Update the class according to a property set
 */
 ClassDesc.prototype.putProp = function (propName, valType)
 {
+    assert (
+        propName !== undefined,
+        'invalid property name'
+    );
+
     assert (
         valType instanceof TypeDesc,
         'invalid type descriptor'
@@ -888,20 +961,12 @@ ClassDesc.prototype.putProp = function (propName, valType)
 }
 
 /**
-Update the array type descriptor by unioning it with another type
-*/
-ClassDesc.prototype.arrayUnion = function (type)
-{
-    this.arrayType.union(type);
-}
-
-/**
 Delete a field from the class
 */
 ClassDesc.prototype.delProp = function (propName)
 {
     assert (
-        this.propTypes[propName] !== undefined,
+        propName in this.propTypes,
         'field not found: "' + propName + '"'
     );
 
@@ -914,9 +979,40 @@ Get the type descriptor for a given field
 */
 ClassDesc.prototype.getPropType = function (propName)
 {
-    if ((propName in this.propTypes) === false)
+    if ((propName in this.propTypes) === true)
+    {
+        return this.propTypes[propName];
+    }
+    else
+    {
         return TypeDesc.undef;
+    }
+}
 
-    return this.propTypes[propName];
+/**
+Do an array property store
+*/
+ClassDesc.prototype.putArray = function (valType)
+{
+    var curType = this.arrayType;
+
+    var newType = curType.union(valType);
+
+    this.arrayType = newType;
+
+    //
+    // TODO: if change, notify blocks touching this class
+    //
+}
+
+/**
+Get the type of the array properties
+*/
+ClassDesc.prototype.getArrayType = function ()
+{
+    if (this.arrayType.flags !== TypeFlags.NOINF)
+        return this.arrayType;
+    else
+        return TypeDesc.undef;
 }
 

@@ -63,7 +63,7 @@ TypeProp.prototype.testOnFile = function (fileName)
     var startTimeMs = (new Date()).getTime();
 
     // Clear existing analysis results
-    this.reset();
+    this.init();
 
     // Analyze the code unit
     this.queueUnit(ir);

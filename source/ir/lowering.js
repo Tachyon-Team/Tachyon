@@ -458,6 +458,7 @@ GlobalObjInstr.prototype.lower = genLowerFunc('getGlobalObj');
 InitGlobalInstr.prototype.lower = genLowerFunc('initGlobal');
 GetGlobalInstr.prototype.lower = genLowerFunc('getGlobal');
 BlankObjInstr.prototype.lower = genLowerFunc('blankObject');
+BlankArrayInstr.prototype.lower = genLowerFunc('blankArray');
 GetPropInstr.prototype.lower = genLowerFunc('getProp');
 PutPropInstr.prototype.lower = genLowerFunc('putProp');
 DelPropInstr.prototype.lower = genLowerFunc('delProp');

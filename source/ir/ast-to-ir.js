@@ -2276,11 +2276,7 @@ function exprToIR(context)
         var elemVals = exprListToIR(elemCtx);
 
         // Create a new array
-        var newArray = insertPrimCallIR(
-            elemCtx, 
-            'newArray', 
-            [IRConst.getConst(elemVals.length, IRType.pint)]
-        );
+        var newArray = elemCtx.addInstr(new BlankArrayInstr(IRConst.getConst(elemVals.length)));
 
         // Set the value of each element in the new array
         for (var i = 0; i < elemVals.length; ++i)
