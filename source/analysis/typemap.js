@@ -71,6 +71,14 @@ function TypeMap(map, globalType)
 }
 
 /**
+Remove a value from the type map
+*/
+TypeMap.prototype.rem = function (val)
+{
+    this.map.rem(val);
+}
+
+/**
 Get the type for an SSA temp
 */
 TypeMap.prototype.getType = function (val)
@@ -154,17 +162,55 @@ TypeMap.prototype.merge = function (predMap)
         }
     }
 
-    // Merge the global type
-    var newGlobal = this.globalType.union(predMap.globalType);
-
-    // If the global type changed
-    if (this.globalType.equal(newGlobal) === false)
+    // If the global type is defined in the predecessor
+    if (predMap.globalType !== undefined)
     {
-        this.globalType = newGlobal;
-        changed = true;
+        // Merge the global type
+        var newGlobal = this.globalType.union(predMap.globalType);
+
+        // If the global type changed
+        if (this.globalType.equal(newGlobal) === false)
+        {
+            this.globalType = newGlobal;
+            changed = true;
+        }
     }
 
     // Return the changed flag
+    return changed;
+}
+
+/**
+Merge an input type for a single value
+*/
+TypeMap.prototype.mergeVal = function (val, type)
+{
+    var curType = this.getType(val);
+
+    var newType = curType.union(type);    
+
+    var changed = (newType.equal(curType) === false);
+
+    if (changed === true)
+        this.setType(val, newType);
+
+    return changed;
+}
+
+/**
+Merge the global type
+*/
+TypeMap.prototype.mergeGlobal = function (type)
+{
+    var curType = this.globalType;
+
+    var newType = curType.union(type);    
+
+    var changed = (newType.equal(curType) === false);
+
+    if (changed === true)
+        this.globalType = newType;
+
     return changed;
 }
 

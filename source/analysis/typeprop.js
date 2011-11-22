@@ -317,6 +317,9 @@ TypeProp.prototype.iterate = function ()
     {
         var instr = block.instrs[i];
 
+        // Process the instruction
+        var outType = instr.typeProp(this, typeMap);
+
         print(instr);
 
         // For each use of the instruction
@@ -326,15 +329,12 @@ TypeProp.prototype.iterate = function ()
 
             // If this is an IR instruction and this is its only use,
             // remove it from the type map
-            if (use instanceof IRInstr && use.uses.length === 1)
+            if (use instanceof IRInstr && use.dests.length === 1)
                 typeMap.rem(use);
 
             var useType = typeMap.getType(use);
             print(use.getValName() + ' : ' + useType);
         }
-
-        // Process the instruction
-        var outType = instr.typeProp(this, typeMap);
 
         if (instr.dests.length > 0)
             print(instr.getValName() + ' => ' + outType);
@@ -392,63 +392,125 @@ Set an intruction's output and queue its branch targets
 TypeProp.prototype.setOutput = function (
     typeMap,
     instr,
-    outType,
-    inVal,
-    inType,
-    resFlags,
-    globType,
-    globTypeExc
+    normalType,
+    exceptType
 )
 {
-    assert (
-        instr.targets.length === 0 ||
-        instr.targets.length === 2,
-        'invalid branch target count'
-    );
-
-    // If the instruction has dests,
-    // add its output type to the type set
+    // If the instruction has dests, add its type to the type set
     if (instr.dests.length > 0)
-        typeMap.setType(instr, outType);
-
-    // If there is an input value to be restricted with more than 1 use
-    if (inVal !== undefined && inVal.dests.length > 1)
-    {
-        // Add the restricted output type to the type set
-        var resType = inType.restrict(resFlags);
-        typeMap.setType(inVal, resType);
-    }
-
-    // If a new global type is defined 
-    if (globType !== undefined)
-        typeMap.setGlobalType(globType);
+        typeMap.setType(instr, normalType);
 
     // If this is a branch instruction
     if (instr.targets.length > 0)
     {
+        assert (
+            instr.targets.length === 2,
+            'invalid branch target count'
+        );
+
+        // By default, the exception type is the any type
+        if (exceptType === undefined)
+            exceptType = TypeDesc.any;
+
         // Merge with the normal target
         this.succMerge(instr.targets[i], typeMap);
 
-        // If the instruction has dests, set its output type
-        // to any along the exception edge
+        // If the instruction has dests, set its type along the exception edge
         if (instr.dests.length > 0)
-            typeMap.setType(instr, TypeDesc.any);
-
-        // If there is an input value to be restricted with more than 1 use
-        // add the unrestricted output type to the type set
-        if (inVal !== undefined && inVal.dests.length > 1)
-            typeMap.setType(inVal, inType);
-
-        // If a global type is defined for the exception branch, set it
-        if (globTypeExc !== undefined)
-            typeMap.setGlobalType(globalTypeExc);
+            typeMap.setType(instr, exceptType);
 
         // Merge with the exception target
-        this.succMerge(instr.targets[i], typeMap);
+        this.succMerge(instr.targets[1], typeMap);
     }
 
     // Return the output type
-    return outType;
+    return normalType;
+}
+
+/**
+Set the type of an instruction's input value
+*/
+TypeProp.prototype.setInput = function (
+    typeMap,
+    instr,
+    val,
+    normalType,
+    exceptType
+)
+{
+    // If this value is not an instruction or has only one dest,
+    // do not update its type
+    if ((val instanceof IRInstr) === false || val.dests.length <= 1)
+        return;
+
+    // If this is not a branch instruction
+    if (instr.targets.length === 0)
+    {
+        // Set the value's normal branch type
+        typeMap.setType(val, normalType);
+    }
+    else
+    {
+        assert (
+            instr.targets.length === 2,
+            'invalid branch target count'
+        );
+
+        // Exclude this value from the successor merge
+        typeMap.rem(val);
+
+        // Merge the normal branch type
+        normalMap = ta.blockTypes.get(this.targets[0]);
+        var changed = normalMap.mergeVal(val, normalType);
+        if (changed === true)
+            ta.queueBlock(instr.targets[0]);
+
+        // Merge the exception branch type
+        exceptMap = ta.blockTypes.get(this.targets[1]);
+        var changed = exceptMap.mergeVal(val, exceptType);
+        if (changed === true)
+            ta.queueBlock(instr.targets[1]);
+    }
+}
+
+/**
+Update the global type
+*/
+TypeProp.prototype.setGlobal = function (
+    typeMap,
+    instr,
+    normalType,
+    exceptType
+)
+{
+    // If this is not a branch instruction
+    if (instr.targets.length === 0)
+    {
+        // Set the global type
+        typeMap.setGlobalType(normalType);
+    }
+    else
+    {
+        assert (
+            instr.targets.length === 2,
+            'invalid branch target count'
+        );
+
+        // Exclude the global type from the successor merge
+        typeMap.setGlobalType(undefined);
+
+        // Merge the normal branch type
+        normalMap = ta.blockTypes.get(this.targets[0]);
+        var changed = normalMap.mergeGlobal(normalType);
+        if (changed === true)
+            ta.queueBlock(instr.targets[0]);
+
+        // Merge the exception branch type
+        exceptMap = ta.blockTypes.get(this.targets[1]);
+        var changed = exceptMap.mergeGlobal(exceptType);
+        if (changed === true)
+            ta.queueBlock(instr.targets[1]);
+    }
 }
 
 //=============================================================================
@@ -549,22 +611,24 @@ PutPropInstr.prototype.typeProp = function (ta, typeMap)
     // Compute the new object type
     var newObjType = objType.putProp(propName, valType);
 
+    // The object cannot be undefined or null along the normal branch
+    newObjType = newObjType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
+
     // Get the global object type
     var globalType = typeMap.getGlobalType();
 
     // Test if the input type is the global type
     var objIsGlobal = objType.equal(globalType) === true;
 
-    return ta.setOutput(
-        typeMap,
-        this,
-        valType,
-        this.uses[0],
-        newObjType,
-        TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL),
-        objIsGlobal? newObjType:undefined,
-        objIsGlobal? globalType:undefined
-    );
+    // Update the object type
+    ta.setInput(typeMap, this, this.uses[0], newObjType, objType);
+
+    // If the object is the global object, update the global type
+    if (objIsGlobal === true)
+        ta.setGlobal(typeMap, this, newObjType, globalType);
+
+    // Set the output type
+    return ta.setOutput(typeMap, this, valType);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeMap)
@@ -581,14 +645,12 @@ GetPropInstr.prototype.typeProp = function (ta, typeMap)
         propType = propType.union(map.getPropType(propName));
     }
 
-    return ta.setOutput(
-        typeMap, 
-        this,
-        propType,
-        this.uses[0],
-        objType,
-        TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL)
-    );
+    // Restrict the object type along the normal path
+    var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
+    ta.setInput(typeMap, this, this.uses[0], newObjType, objType);
+
+    // Set the output type
+    return ta.setOutput(typeMap, this, propType);
 }
 
 GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
@@ -817,16 +879,12 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeMap);
 
-    // Return the function return type and
-    // restrict the callee type to function
-    return ta.setOutput(
-        typeMap,
-        this,
-        retType,
-        this.uses[0],
-        callee,
-        TypeFlags.FUNCTION        
-    );
+    // Restrict the function type along the normal path
+    var newFuncType = callee.restrict(TypeFlags.FUNCTION);
+    ta.setInput(typeMap, this, this.uses[0], newFuncType, callee);
+
+    // Return the function return type
+    return ta.setOutput(typeMap, this, retType);
 }
 
 // LIR call instruction
