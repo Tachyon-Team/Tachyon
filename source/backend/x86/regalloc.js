@@ -567,6 +567,8 @@ Spill a value on the stack.
 */
 x86.RegAllocMap.prototype.spillValue = function (value, liveFunc, asm)
 {
+    // TODO: compute value size, divide by stack slot size to get num slots
+
     var stackSlot = undefined;
 
     // For each stack slot

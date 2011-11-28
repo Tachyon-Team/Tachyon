@@ -106,6 +106,9 @@ function test()
     if (evals_true({}) !== true)
         return 11;
 
+    if (!evals_true(false) !== true)
+        return 12;
+
     return 0;
 }
 
