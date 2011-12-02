@@ -48,6 +48,9 @@ function equal (
     b
 )
 {
+    if (a === b)
+        return true;
+
     if (typeof a !== "object")
         return a === b;
 

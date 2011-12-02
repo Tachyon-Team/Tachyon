@@ -1519,11 +1519,14 @@ function stmtToIR(context)
         else
         {
             // Generate code to throw a syntax error
-            insertErrorIR(
+            insertPrimCallIR(
                 context, 
-                'SyntaxError', 
-                'continue with invalid label'
+                'syntaxError', 
+                [IRConst.getConst('continue with invalid label')]
             );
+
+            // Bridge the current context
+            context.bridge();
         }
     }
 
@@ -1548,11 +1551,14 @@ function stmtToIR(context)
         else
         {
             // Generate code to throw a syntax error
-            insertErrorIR(
+            insertPrimCallIR(
                 context, 
-                'SyntaxError', 
-                'break with invalid label'
+                'syntaxError', 
+                [IRConst.getConst('break with invalid label')]
             );
+
+            // Bridge the current context
+            context.bridge();
         }
     }
 
@@ -3726,53 +3732,6 @@ Insert a context read to get the global object
 function insertGetGlobal(context)
 {
     return context.addInstr(new GlobalObjInstr());
-}
-
-/**
-Throw an error object containing an error message
-*/
-function insertErrorIR(context, errorName, errorMsg)
-{
-    // Find the error contructor
-    var errorCtor;
-    switch (errorName)
-    {
-        case 'RangeError':
-        errorCtor = insertCtxReadIR(context, ['rangeerror']);
-        break;
-        case 'ReferenceError':
-        errorCtor = insertCtxReadIR(context, ['referror']);
-        break;
-        case 'SyntaxError':
-        errorCtor = insertCtxReadIR(context, ['syntaxerror']);
-        break;
-        case 'TypeError':
-        errorCtor = insertCtxReadIR(context, ['typeerror']);
-        break;
-        case 'URIError':
-        errorCtor = insertCtxReadIR(context, ['urierror']);
-        break;
-    }
-    assert (
-        errorCtor,
-        'error constructor not found for: "' + errorName + '"'
-    );
-
-    // Create a new context from which to throw the exception
-    var throwCtx = context.pursue(null);
-
-    // Insert a call to the error constructor
-    var excVal = insertPrimCallIR(
-        throwCtx, 
-        'makeError', 
-        [
-            errorCtor,
-            IRConst.getConst(errorMsg)
-        ]
-    );
-
-    // Throw the error created
-    throwToIR(context, throwCtx, excVal);
 }
 
 /**

@@ -493,8 +493,7 @@ JSCallInstr.prototype.lower = function (params)
                                                         \
             if (boxIsFunc(func) === false)              \
             {                                           \
-                throw makeError(                        \
-                    get_ctx_typeerror(ctx),             \
+                throw typeError(                        \
                     "callee is not a function"          \
                 );                                      \
             }                                           \
@@ -561,8 +560,7 @@ JSNewInstr.prototype.lower = function (params)
                                                         \
             if (boxIsFunc(ctor) === false)              \
             {                                           \
-                throw makeError(                        \
-                    get_ctx_typeerror(ctx),             \
+                throw typeError(                        \
                     "constructor is not a function"     \
                 );                                      \
             }                                           \

@@ -1176,6 +1176,18 @@ tests.programs.tachyon_bridge = genTest(
     'hostParams'
 );
 
+/**
+Garbage collector tests
+*/
+tests.programs.gc = tests.testSuite();
+tests.programs.gc.collect = genTest(
+    'programs/gc/collect.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+
 /*
 Type analysis test programs
 */
@@ -1233,6 +1245,15 @@ tests.programs.type_analysis.cond_prop = genTest(
     'test',
     [],
     0
+);
+tests.programs.type_analysis.arr_simple = genTest(
+    'programs/type_analysis/arr_simple.js'
+);
+tests.programs.type_analysis.obj_methods = genTest(
+    'programs/type_analysis/obj_methods.js'
+);
+tests.programs.type_analysis.obj_init = genTest(
+    'programs/type_analysis/obj_init.js'
 );
 
 /**

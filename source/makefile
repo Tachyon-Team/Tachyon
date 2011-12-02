@@ -159,7 +159,8 @@ RUNTIME_SRCS =                          \
     runtime/primitives.js               \
     runtime/strings.js                  \
     runtime/ffi.js                      \
-    runtime/rtinit.js
+    runtime/rtinit.js                   \
+    runtime/gc.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \

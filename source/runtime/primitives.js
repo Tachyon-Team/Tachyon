@@ -369,7 +369,7 @@ function boxToString(val)
         var res = val.toString();
 
         if (boxIsObjExt(res))
-            throw makeError(TypeError, 'Cannot convert object to string');
+            typeError('cannot convert object to string');
         else
             return boxToString(res);
     }
@@ -492,112 +492,53 @@ function u8(boxVal)
 
 //=============================================================================
 //
-// Utility functions
+// Exception/error creating functions
 //
 //=============================================================================
 
 /**
-Align a pointer to a given number of bytes.
+Create a TypeError object without a global reference.
 */
-function alignPtr(ptr, alignBytes)
-{
-    "tachyon:inline";
-    "tachyon:noglobal";
-    "tachyon:arg ptr rptr";
-    "tachyon:arg alignBytes puint";
-    "tachyon:ret rptr";
-
-    // Compute the pointer modulo the given alignment boundary
-    var rem = iir.icast(IRType.puint, ptr) % alignBytes;
-
-    // If the pointer is already aligned, return it
-    if (rem === puint(0))
-        return ptr;
-
-    // Pad the pointer by the necessary amount to align it
-    var pad = alignBytes - rem;
-    ptr += pad;
-
-    // Return the aligned pointer
-    return ptr;
-}
-
-/**
-Allocate a memory block of a given size on the heap
-*/
-function heapAlloc(size)
+function typeError(message)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:arg size pint";
-    "tachyon:ret rptr";
 
-    // Get a pointer to the context
-    var ctx = iir.get_ctx();
-
-    //printPtr(iir.icast(IRType.rptr, ctx));
-
-    // Get the current allocation pointer
-    var allocPtr = get_ctx_allocptr(ctx);
-
-    // Compute the next allocation pointer
-    var nextPtr = allocPtr + size;
-
-    // Get the heap limit pointer
-    var heapLimit = get_ctx_heaplimit(ctx);
-
-    //printInt(iir.icast(IRType.pint, size));
-    //printPtr(nextPtr);
-    //printPtr(heapLimit);
-
-    // If this allocation exceeds the heap limit
-    if (nextPtr >= heapLimit)
-    {
-        // Log that we are going to perform GC
-        puts('Performing garbage collection');
-
-        // TODO: implement GC!
-        // Call the garbage collector
-        //gcCollect(ctx);
-
-        // Get the new allocation pointer
-        allocPtr = get_ctx_allocptr(ctx);
-
-        // Compute the next allocation pointer
-        nextPtr = allocPtr + size;
-
-        // Get the new limit pointer
-        heapLimit = get_ctx_heaplimit(ctx);
-
-        // If this allocation still exceeds the heap limit
-        if (nextPtr >= heapLimit)
-        {
-            // Report an error and abort
-            error('allocation exceeds heap limit');
-        }
-    }
-
-    // Align the next allocation pointer
-    nextPtr = alignPtr(nextPtr, HEAP_ALIGN);
-        
-    // Update the allocation pointer in the context object
-    set_ctx_allocptr(ctx, nextPtr);
-
-    // Allocate the object at the current position
-    return allocPtr;
-}
-
-/**
-Create an exception with a given constructor
-*/
-function makeError(errorCtor, message)
-{
-    "tachyon:static";
-
-    // FIXME: for now, exceptions unsupported
+    // FIXME: for now, no exception support, call the error function
     error(message);
 
-    //return new errorCtor(message);
+    var ctor = get_ctx_typeerror(iir.get_ctx());
+    throw new ctor(message);
+}
+
+/**
+Create a ReferenceError object without a global reference.
+*/
+function refError(message)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // FIXME: for now, no exception support, call the error function
+    error(message);
+
+    var ctor = get_ctx_referror(iir.get_ctx());
+    throw new ctor(message);
+}
+
+/**
+Create a SyntaxError object without a global reference.
+*/
+function syntaxError(message)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // FIXME: for now, no exception support, call the error function
+    error(message);
+
+    var ctor = get_ctx_syntaxerror(iir.get_ctx());
+    throw new ctor(message);
 }
 
 //=============================================================================
@@ -2651,10 +2592,7 @@ function getGlobal(obj, propName)
     if (iir.icast(IRType.pint, prop) === BIT_PATTERN_NOT_FOUND)
     {
         // Throw a ReferenceError exception
-        throw makeError(
-            get_ctx_referror(iir.get_ctx()), 
-            'global property not defined "' + propName + '"'
-        );
+        throw refError('global property not defined "' + propName + '"');
     }
 
     // Return the property
@@ -2819,10 +2757,7 @@ function inOp(propName, obj)
     if (boxIsObjExt(obj) === false)
     {
         // Throw a TypeError exception
-        throw makeError(
-            get_ctx_typeerror(iir.get_ctx()),
-            'in operator expects object'
-        );
+        typeError('in operator expects object');
     }
 
     return hasProp(obj, propName);
@@ -2839,10 +2774,7 @@ function instanceOf(obj, ctor)
     if (boxIsFunc(ctor) === false)
     {
         // Throw a TypeError exception
-        throw makeError(
-            get_ctx_typeerror(iir.get_ctx()),
-            'instanceOf expects function as constructor'
-        );
+        typeError('instanceOf expects function as constructor');
     }
 
     // If the value is not an object    
