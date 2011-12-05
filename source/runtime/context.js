@@ -98,7 +98,13 @@ function makeContextLayout(params)
 
     // Heap allocation pointer
     ctxLayout.addField(
-        'allocptr',
+        'freeptr',
+        IRType.rptr
+    );
+
+    // Heap scan pointer (for the GC)
+    ctxLayout.addField(
+        'scanptr',
         IRType.rptr
     );
 

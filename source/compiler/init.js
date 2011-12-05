@@ -191,6 +191,11 @@ function getPrimSrcs(params)
         layoutSrc += layout.genMethods();
     }
 
+    // Generate the gc dispatch code
+    var gcSrc = genGCCode(params);
+
+    print(gcSrc);
+
     // Declare a variable for the FFI wrapper source
     var wrapperSrc = '';
 
@@ -207,6 +212,10 @@ function getPrimSrcs(params)
     var primSrcs = [
         // Generated code for the object layouts
         { str: layoutSrc, desc: 'object layout source' },
+
+        // Generated code for the object layouts
+        { str: gcSrc, desc: 'gc dispatch code' },
+
         // Generated code for the FFI functions
         { str: wrapperSrc, desc: 'FFI wrapper source' },
     ];

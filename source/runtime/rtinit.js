@@ -70,7 +70,7 @@ function initHeap(heapPtr, heapSize)
     iir.set_ctx(ctx);
 
     // Initialize the allocation pointer
-    set_ctx_allocptr(ctx, ctxPtr);
+    set_ctx_freeptr(ctx, ctxPtr);
 
     // Compute the heap limit pointer
     var heapLimit = heapPtr + heapSize;

@@ -168,9 +168,9 @@ function memAllocatedKBs()
 
     var ctx = iir.get_ctx();
 
-    var allocPtr = get_ctx_allocptr(ctx);
+    var freePtr = get_ctx_freeptr(ctx);
     var heapStart = get_ctx_heapstart(ctx);
-    var heapSizeKBs = (allocPtr - heapStart) / pint(1024);
+    var heapSizeKBs = (freePtr - heapStart) / pint(1024);
 
     return boxInt(heapSizeKBs);
 }

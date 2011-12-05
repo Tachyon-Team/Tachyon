@@ -2538,14 +2538,22 @@ function opToIR(context)
         {
             // Ensure that the comparison is valid for non-boxed values
             if (cmpOp === undefined)
-                throw 'comparison operation only applies to boxed values (' +
-                    context.astNode.loc.to_string() + ')';
+            {
+                error(
+                    'comparison operation only applies to boxed values (' +
+                    context.astNode.loc.to_string() + ')'
+                );
+            }
 
             // Ensure that the arguments have the same type
             if (argVals[0].type !== argVals[1].type)
-                throw 'only values of the same type can be compared (' +
-                    context.astNode.loc.to_string() + ')';
-    
+            {
+                error(
+                    'only values of the same type can be compared (' +
+                    context.astNode.loc.to_string() + ')'
+                );
+            }    
+
             // Create blocks for the true and false cases
             var trueBlock = context.cfg.getNewBlock('cmp_true');
             var joinBlock = context.cfg.getNewBlock('cmp_join');
