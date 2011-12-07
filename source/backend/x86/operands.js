@@ -542,9 +542,17 @@ x86.LabelRef = function (label)
     */
     this.relOffset = 0;
 
-    // Initially set the size of the offset to 8,
-    // this size may be changed by the assembler
+    /**
+    Initially set the size of the offset to 8,
+    this size may be changed by the assembler
+    */
     this.size = 8;
+
+    /**
+    Fixed size flag. Forces the assembler to
+    encode this with the given size.
+    */
+    this.fixedSize = false;
 }
 x86.LabelRef.prototype = new x86.Operand();
 

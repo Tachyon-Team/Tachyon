@@ -720,24 +720,44 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
 
 
 
+    
 
-    // TODO
-    // TODO: encode gc and stack unwinding info
-    // TODO
-
+    // Label to skip the stack info
     var POST_INFO = new x86.Label('POST_INFO');
 
-    asm.jmp(POST_INFO);
+    // Encode a jump instruction so it has a fixed 5-byte length
+    var postInfoRef = new x86.LabelRef(POST_INFO);
+    postInfoRef.size = 32;
+    postInfoRef.fixedSize = true;
 
-    // TODO: try to fix offset length to 4 bytes?
-    // LabelRef.size field
+    // Jump past the data block
+    var jmp = new x86.instrs.jmp([postInfoRef], backend.x86_64);
+    asm.addInstr(jmp);
 
+    // Create a data block for the stack info
+    var data = new x86.DataBlock(); 
+
+    // Add 3 padding bytes, for a total of 8 bytes before the data
+    data.writeInt(0, 24);
+
+
+    // TODO: add magic code here, 2 bytes
 
     // TODO: write info here
 
+    data.writeInt(1, 8);   
+    data.writeInt(2, 8);
+    data.writeInt(3, 8);
+
+
+
+    // Add the stack info to the instruction stream
+    asm.addInstr(data);
+
+    // Add a label after the stack info
     asm.addInstr(POST_INFO);
 
-
+    
 
 
 

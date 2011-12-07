@@ -675,7 +675,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 
 /**
 @class Label operand
-@extends x86.Operand
+@extends x86.Instruction
 */
 x86.Label = function (name, export)
 {
@@ -726,7 +726,7 @@ x86.Label.prototype.getLength = function ()
 }
 
 /**
-Encode a label into a code block, does nothing
+Encode a label into a code block
 */
 x86.Label.prototype.encode = function (codeBlock)
 {
@@ -735,6 +735,61 @@ x86.Label.prototype.encode = function (codeBlock)
     {
         // Add the export to the code block
         codeBlock.exportLabel(this.name);
+    }
+}
+
+/**
+@class Data block to be inserted in an instruction stream
+@extends x86.Instruction
+*/
+x86.DataBlock = function ()
+{
+    /**
+    List of values to write
+    */
+    this.values = [];
+
+    /**
+    Total block length
+    */
+    this.length = 0;
+}
+x86.DataBlock.prototype = new x86.Instruction();
+
+/**
+Write an integer value in the data block
+*/
+x86.DataBlock.prototype.writeInt = function (value, numBits)
+{
+    assert (
+        isPosInt(numBits) && numBits % 8 === 0,
+        'invalid num bits'
+    );
+
+    this.values.push({ value: value, numBits: numBits});
+
+    this.length += (numBits / 8);
+}
+
+/**
+Get the length of the data block
+*/
+x86.DataBlock.prototype.getLength = function (x86_64)
+{
+    // Return the length
+    return this.length;
+}
+
+/**
+Encode a label into a code block, does nothing
+*/
+x86.DataBlock.prototype.encode = function (codeBlock)
+{
+    for (var i = 0; i < this.values.length; ++i)
+    {
+        var value = this.values[i];
+
+        codeBlock.writeInt(value.value, value.numBits);
     }
 }
 

@@ -328,6 +328,17 @@ x86.Assembler.prototype.assemble = function ()
                         if (offSize === opnd.size)
                             continue;
 
+                        // If the offset size is fixed, do not change it
+                        if (opnd.fixedSize === true)
+                        {
+                            assert (
+                                offSize < opnd.size,
+                                'fixed size specified is insufficient'
+                            );
+
+                            continue;
+                        }
+
                         // Update the offset size
                         opnd.size = offSize;
 
