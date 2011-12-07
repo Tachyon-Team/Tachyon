@@ -1180,6 +1180,13 @@ tests.programs.tachyon_bridge = genTest(
 Garbage collector tests
 */
 tests.programs.gc = tests.testSuite();
+tests.programs.gc.walk_stack = genTest(
+    'programs/gc/walk_stack.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
 tests.programs.gc.collect = genTest(
     'programs/gc/collect.js',
     'test',

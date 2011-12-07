@@ -179,7 +179,7 @@ function gcCollect()
     "tachyon:static";
     "tachyon:noglobal";
 
-    printBox('entering gcCollect');
+    iir.trace_print('entering gcCollect');
 
     // Get a reference to the context object (from-space)
     var fromCtx = iir.get_ctx();
@@ -197,6 +197,8 @@ function gcCollect()
     // Compute the to-space heap limit
     var toLimit = toStart + fromSize;
 
+    iir.trace_print('copying context');
+
     // FIXME: gcCopy will modify the current context object
     // Copy the context to the to-space
     //var toCtx = gcCopy(fromCtx, comp_size_ctx());
@@ -208,6 +210,7 @@ function gcCollect()
     // TODO: Update the context pointer
     // iir.set_ctx(toCtx);
 
+    iir.trace_print('done copying context');
 
 
 
@@ -240,7 +243,7 @@ function gcCollect()
     // TODO: free from-space block
 
 
-    printBox('leaving gcCollect');
+    iir.trace_print('leaving gcCollect');
 }
 
 /**
@@ -254,35 +257,36 @@ function gcCopy(ref, size)
     "tachyon:arg size pint";
     "tachyon:ret ref";
 
-    /*
-        addr = free
-        move(P,free)
-        free = free + size(P)
-        forwarding_address(P) = addr
-        return addr
-    */
+    // Get the context pointer
+    var ctx = iir.get_ctx();
 
-    //var freePtr = 
+    // Get the allocation pointer
+    var freePtr = get_ctx_freeptr(ctx);
+
+    // Align the free pointer
+    freePtr = alignPtr(freePtr, HEAP_ALIGN);
 
     // Use the free pointer as the new object address
-    // TODO: alignment considerations
-    //var newAddr = iir.icast(IRType.ref, freePtr);
+    var newAddr = iir.icast(IRType.ref, freePtr);
 
     // Increment the free pointer
-    //freePtr += size;
+    freePtr += size;
 
-    // TODO: copy num bytes
+    // Copy the object to the to-space
+    for (var i = pint(0); i < size; ++i)
+    {
+        var b = iir.load(IRType.u8, ref, i);
+        iir.store(IRType.u8, newAddr, i, b);
+    }
 
+    // Update the free pointer in the context
+    set_ctx_freeptr(ctx, freePtr);
 
-    // TODO: update free pointer in ctx
+    // Write the forwarding pointer in the object
+    iir.store(IRType.ref, ref, pint(0), newAddr);
 
-
-    // TODO: write forwarding pointer in the object
-
-
-
-    // TODO: return the to-space pointer
-    return ref;
+    // Return the to-space pointer
+    return newAddr;
 }
 
 /**
@@ -295,7 +299,6 @@ function gcForward(ref)
     "tachyon:arg ref ref";
     "tachyon:ret ref";
 
-
     /*
     if forwarded(P)
         return forwarding_address(P)
@@ -307,7 +310,10 @@ function gcForward(ref)
         return addr
     */
 
-    // TODO
+    var ctx = iir.get_ctx();
+
+
+    // TODO: update scan, free pointers in context
 
 
 

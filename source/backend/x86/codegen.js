@@ -399,6 +399,20 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                 );
             }
 
+            // If this is a trace print instruction
+            else if (instr instanceof TracePrintInstr)
+            {
+                assert (
+                    instr.uses.length === 1 &&
+                    typeof instr.uses[0].value === 'string'
+                );
+
+                var str = instr.uses[0].value;
+
+                if (DEBUG === true)
+                    x86.genTracePrint(asm, params, str);
+            }
+
             // For all other kinds of instructions
             else
             {

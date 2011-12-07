@@ -1908,7 +1908,7 @@ var FToIInstr = instrMaker(
 
 //=============================================================================
 //
-// Memory access instructions
+// Low-level instructions for memory access, stack access, etc.
 //
 //=============================================================================
 
@@ -2001,4 +2001,61 @@ var SetCtxInstr = instrMaker(
 Set context instructions always write to memory
 */
 SetCtxInstr.prototype.writesMem = function () { return true; };
+
+/**
+@class Instruction to get the return address for the current stack frame
+@augments IRInstr
+*/
+var GetRetAddrInstr = instrMaker(
+    'get_ret_addr',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0, 0);
+        
+        this.type = IRType.rptr;
+    }
+);
+
+/**
+The return address instruction reads memory
+*/
+GetRetAddrInstr.prototype.readsMem = function () { return true; };
+
+/**
+@class Instruction to get the base pointer for the current stack frame
+@augments IRInstr
+*/
+var GetBasePtrInstr = instrMaker(
+    'get_base_ptr',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 0, 0);
+        
+        this.type = IRType.rptr;
+    }
+);
+
+/**
+The stack pointer instruction reads memory
+*/
+GetBasePtrInstr.prototype.readsMem = function () { return true; };
+
+/**
+@class Instruction to generate a low-level trace print
+@augments IRInstr
+*/
+var TracePrintInstr = instrMaker(
+    'trace_print',
+    function (typeParams, inputVals, branchTargets)
+    {
+        instrMaker.validNumInputs(inputVals, 1, 1);
+        
+        this.type = IRType.none;
+    }
+);
+
+/**
+This instruction has side-effects
+*/
+TracePrintInstr.prototype.writesMem = function () { return true; };
 

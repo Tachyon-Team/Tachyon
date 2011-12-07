@@ -79,6 +79,40 @@ SetCtxInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, 
     asm.mov(ctxReg, opnds[0]);
 };
 
+// Get return address instruction
+GetRetAddrInstr.prototype.x86 = new x86.InstrCfg();
+GetRetAddrInstr.prototype.x86.destMustBeReg = function (instr, params)
+{
+    return true;
+}
+GetRetAddrInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+{
+    var allocMap = genInfo.allocMap;
+
+    var raSlot = allocMap.getSlotOpnd(allocMap.retAddrSlot);
+
+    asm.mov(dest, raSlot);
+}
+
+// Get base pointer instruction
+// Note: this returns a pointer to the first stack argument
+GetBasePtrInstr.prototype.x86 = new x86.InstrCfg();
+GetBasePtrInstr.prototype.x86.destMustBeReg = function (instr, params)
+{
+    return true;
+}
+GetBasePtrInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, genInfo)
+{
+    var allocMap = genInfo.allocMap;
+
+    // Compute the total size of the current stack frame
+    var frameSize = allocMap.slotSize * (allocMap.numArgSlots + allocMap.numSpillSlots + 1);
+
+    // Subtract the frame size from the current sp
+    asm.mov(dest, genInfo.backend.spReg);
+    asm.add(dest, frameSize);
+}
+
 // Base instruction configuration for arithmetic instructions
 ArithInstr.prototype.x86 = new x86.InstrCfg();
 ArithInstr.prototype.x86.opndCanBeImm = function (instr, idx, size)
@@ -681,6 +715,34 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
 
     // Call the function with the given address
     asm.call(funcPtr);
+
+
+
+
+
+
+    // TODO
+    // TODO: encode gc and stack unwinding info
+    // TODO
+
+    var POST_INFO = new x86.Label('POST_INFO');
+
+    asm.jmp(POST_INFO);
+
+    // TODO: try to fix offset length to 4 bytes?
+    // LabelRef.size field
+
+
+    // TODO: write info here
+
+    asm.addInstr(POST_INFO);
+
+
+
+
+
+
+
 
     if (backend.debugTrace === true)
         x86.genTracePrint(asm, genInfo.params, 'returned from ' + calleeName);

@@ -74,6 +74,13 @@ var iir =
     get_ctx     : GetCtxInstr,
     set_ctx     : SetCtxInstr,
 
+    // Low-level stack access
+    get_ra      : GetRetAddrInstr,
+    get_bp      : GetBasePtrInstr,
+
+    // Low-level trace print
+    trace_print : TracePrintInstr,
+
     // Run-time Function Call protocol
     get_num_args: GetNumArgsInstr,
 
