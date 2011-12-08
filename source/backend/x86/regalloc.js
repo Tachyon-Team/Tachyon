@@ -627,8 +627,10 @@ x86.RegAllocMap.prototype.getAllocVal = function (alloc)
     }
     else if (typeof alloc === 'number')
     {
-        if (this.stackMap.hasItem(alloc) === true)
-            return this.stackMap.getItem(alloc);
+        var val = this.stackMap.get(alloc);
+
+        if (val !== HashMap.NOT_FOUND);
+            return val;
 
         return undefined;
     }

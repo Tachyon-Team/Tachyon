@@ -716,54 +716,104 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     // Call the function with the given address
     asm.call(funcPtr);
 
+    // If we are calling a tachyon function, encode stack frame info
+    if (this.calleeConv === 'tachyon')
+    {
+        // Label to skip the stack info
+        var POST_INFO = new x86.Label('POST_INFO');
 
+        // Encode a jump instruction so it has a fixed 5-byte length
+        var postInfoRef = new x86.LabelRef(POST_INFO);
+        postInfoRef.size = 32;
+        postInfoRef.fixedSize = true;
 
+        // Jump past the data block
+        var jmp = new x86.instrs.jmp([postInfoRef], backend.x86_64);
+        asm.addInstr(jmp);
 
+        // Create a data block for the stack info
+        var data = new x86.DataBlock(); 
 
+        // Add 3 padding bytes, for a total of 8 bytes before the data
+        data.writeInt(0, 24);
+
+        // Write magic code
+        data.writeInt(1337, 16);
+
+        /*
+        TODO: write info here    
+        - Call align space (16-bit)
+        - Num stack slots (16-bit)
+        - Ra slot index (16-bit)
+        - * [kind: other rptr ref box (2 bits)]
+        */
+
+        /*
+        FIXME: call_apply uses dynamic alignment... old sp is written just
+        under the arguments. How do we deal with that?
+
+        Store special value in call align space, say, -1, to indicate sp is
+        under the arguments!
+        */
+        // Write the alignment space
+        data.writeInt(padSpace? padSpace:0, 16);
+
+        // Write the total number of stack slots in this frame
+        var numSlots = allocMap.numSpillSlots + allocMap.numArgSlots + 1;
+        data.writeInt(numSlots, 16);
+
+        // Write the return address displacement from the sp
+        var raDisp = allocMap.getSlotOpnd(allocMap.retAddrSlot).disp;
+        data.writeInt(raDisp, 16);
+
+        // Slot info, encoded as a bit vector
+        var slotInfo = 0;
+        var numBits = 0;
+
+        // Loop through the slots, from bottom to top
+        for (var i = 0; i < numSlots; ++i)
+        {
+            var kind;
+
+            var val = allocMap.getAllocVal(i);
+
+            if (val === undefined)
+            {
+                kind = 0;
+            }
+            else
+            {
+                var type = val.type;
+
+                switch (type)
+                {
+                    case IRType.box:  kind = 3; break;
+                    case IRType.ref:  kind = 2; break;
+                    case IRType.rptr: kind = 1; break;
+                    default:          kind = 0; break;
+                }
+            }
+
+            // Encode the slot kind into our bit vector
+            slotInfo = num_shift(slotInfo, 2);
+            slotInfo = num_add(slotInfo, kind);
+            numBits += 2;
+        }
+
+        var remBits = numBits % 8;
+        if (remBits !== 0);
+            numBits += 8 - remBits;
+
+        // Write the slot kind information
+        data.writeInt(slotInfo, numBits);
+
+        // Add the stack info to the instruction stream
+        asm.addInstr(data);
+
+        // Add a label after the stack info
+        asm.addInstr(POST_INFO);
+    }
     
-
-    // Label to skip the stack info
-    var POST_INFO = new x86.Label('POST_INFO');
-
-    // Encode a jump instruction so it has a fixed 5-byte length
-    var postInfoRef = new x86.LabelRef(POST_INFO);
-    postInfoRef.size = 32;
-    postInfoRef.fixedSize = true;
-
-    // Jump past the data block
-    var jmp = new x86.instrs.jmp([postInfoRef], backend.x86_64);
-    asm.addInstr(jmp);
-
-    // Create a data block for the stack info
-    var data = new x86.DataBlock(); 
-
-    // Add 3 padding bytes, for a total of 8 bytes before the data
-    data.writeInt(0, 24);
-
-
-    // TODO: add magic code here, 2 bytes
-
-    // TODO: write info here
-
-    data.writeInt(1, 8);   
-    data.writeInt(2, 8);
-    data.writeInt(3, 8);
-
-
-
-    // Add the stack info to the instruction stream
-    asm.addInstr(data);
-
-    // Add a label after the stack info
-    asm.addInstr(POST_INFO);
-
-    
-
-
-
-
-
-
     if (backend.debugTrace === true)
         x86.genTracePrint(asm, genInfo.params, 'returned from ' + calleeName);
 
