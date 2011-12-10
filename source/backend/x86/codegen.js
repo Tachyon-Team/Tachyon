@@ -1147,6 +1147,116 @@ x86.moveValue = function (
 }
 
 /**
+Encode information about the stack frame in the instruction stream.
+Note: this is used for the GC and exceptions.
+
+Stack info format (packed):
+- Call align/pad space (16-bit)
+- Num stack slots (16-bit)
+- Return address slot index (16-bit)
+- * [kind: other:0 rptr:1 ref:2 box:3 (2 bits)]
+
+*/
+x86.writeStackInfo = function (
+    asm,
+    allocMap,
+    dynAlign,
+    padSpace,
+    backend
+)
+{
+    // Label to skip the stack info
+    var POST_INFO = new x86.Label('POST_INFO');
+
+    // Encode a jump instruction so it has a fixed 5-byte length
+    var postInfoRef = new x86.LabelRef(POST_INFO);
+    postInfoRef.size = 32;
+    postInfoRef.fixedSize = true;
+
+    // Jump past the data block
+    var jmp = new x86.instrs.jmp([postInfoRef], backend.x86_64);
+    asm.addInstr(jmp);
+
+    // Create a data block for the stack info
+    var data = new x86.DataBlock(); 
+
+    // Add 3 padding bytes, for a total of 8 bytes before the data
+    data.writeInt(0, 24);
+
+    // Write magic code
+    data.writeInt(1337, 16);
+
+    // If using dynamic alignment, encode a special value in the pad space
+    if (dynAlign === true)
+        padSpace = 0xFFFF;
+
+    // Write the alignment space
+    data.writeInt(padSpace? padSpace:0, 16);
+
+    // Write the total number of stack slots in this frame
+    var numSlots = allocMap.numSpillSlots + allocMap.numArgSlots + 1;
+    data.writeInt(numSlots, 16);
+
+    // Write the return address slot index (top to bottom indexing)
+    var raSlot = numSlots - allocMap.retAddrSlot - 1;
+    data.writeInt(raSlot, 16);
+
+    // Slot info, encoded as a bit vector
+    var slotInfo = 0;
+    var numBits = 0;
+
+    //print('\nencoding info for: ' + instr.parentBlock.parentCFG.ownerFunc.funcName);
+
+    // Loop through the slots, from bottom to top
+    for (var i = 0; i < numSlots; ++i)
+    {
+        var kind = 0;
+
+        var val = allocMap.getAllocVal(i);
+
+        if (val !== undefined)
+        {
+            switch (val.type)
+            {
+                case IRType.box:  kind = 3; break;
+                case IRType.ref:  kind = 2; break;
+                case IRType.rptr: kind = 1; break;
+            }
+        }
+
+        assert (
+            !(i === allocMap.retAddrSlot && kind !== 0),
+            'invalid kind for return address slot'
+        );
+
+        // Encode the slot kind into our bit vector
+        slotInfo = num_shift(slotInfo, 2);
+        slotInfo = num_add(slotInfo, kind);
+        numBits += 2;
+
+        //var disp = allocMap.getSlotOpnd(i).disp;
+        //print('slot disp: ' + disp);
+        //print('slot kind: '  + kind);
+    }
+
+    // Pad the slot info to the nearest byte
+    var remBits = numBits % 8;
+    if (remBits !== 0)
+        numBits += 8 - remBits;
+
+    //print('writing slot info: ' + slotInfo + ' in ' + numBits + ' bits');
+
+    // Write the slot kind information
+    data.writeInt(slotInfo, numBits);
+
+    // Add the stack info to the instruction stream
+    asm.addInstr(data);
+
+    // Add a label after the stack info
+    asm.addInstr(POST_INFO);
+}
+
+/**
 Generate the argument normalization stub
 */
 x86.genArgNormStub = function (

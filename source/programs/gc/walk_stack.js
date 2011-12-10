@@ -1,5 +1,7 @@
-function walk_the_walk(verb)
+function walk_it(verb)
 {
+    const slotSize = PTR_NUM_BYTES;
+
     if (verb === true)
         print('\n** starting walk');
 
@@ -37,25 +39,37 @@ function walk_the_walk(verb)
             break;
         }
 
-        var align = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(10)));
-
-        if (verb === true)
-            print('align     : ' + boxInt(align));
+        var padSpace = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(10)));
 
         var numSlots = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(12)));
 
+        var raSlot = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(14)));
+
+        // Compute the size of this frame
+        var frameSize = numSlots * slotSize;
+
         if (verb === true)
+        {
+            print('pad space : ' + boxInt(padSpace));
             print('num slots : ' + boxInt(numSlots));
+            print('ra slot   : ' + boxInt(raSlot));
+            print('frame size: ' + boxInt(frameSize));
+        }
 
-        var raDisp = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(14)));
+        // If this frame uses dynamic alignment
+        if (padSpace === pint(0xFFFF))
+        {
+            iir.trace_print('dynamic alignment');
 
-        if (verb === true)
-            print('ra disp   : ' + boxInt(raDisp));
+            // Load the sp at the base pointer
+            var sp = iir.load(IRType.rptr, bp, pint(0));
+        }
+        else
+        {
+            // Compute the sp at the moment of the call
+            var sp = bp + padSpace;
+        }
 
-        // TODO: handle dynamic alignment
-        // Compute the sp at the moment of the call
-        var sp = bp + align;
-        
         //print('num kind bytes: ' + boxInt(numBytes));
 
         var kindByte = pint(0);
@@ -80,7 +94,7 @@ function walk_the_walk(verb)
             if (verb === true)
                 print('slot kind: ' + boxInt(kind));
 
-            var disp = i * PTR_NUM_BYTES;
+            var disp = i * slotSize;
 
             //print('disp: ' + boxInt(disp));
 
@@ -105,13 +119,7 @@ function walk_the_walk(verb)
         }
 
         // Load the return address for the next frame down
-        ra = iir.load(IRType.rptr, sp, raDisp);
-
-        // Compute the size of this frame
-        var frameSize = numSlots * PTR_NUM_BYTES;
-
-        if (verb === true)
-            print('frame size: ' + boxInt(frameSize));
+        ra = iir.load(IRType.rptr, sp, raSlot * slotSize);
 
         // Compute the base pointer for this frame
         bp = sp + frameSize;
@@ -122,17 +130,33 @@ function walk_the_walk(verb)
 
 function f_caller(verb)
 {
-    return walk_the_walk(verb);
+    return walk_it(verb);
 }
 
 function f_many_args(verb, a1, a2, a3, a4, a5)
 {
-    return walk_the_walk(verb);
+    return walk_it(verb);
+}
+
+function f_arguments(verb)
+{
+    var s = 0;
+    for (var i = 0; i < arguments.length; ++i)
+        s += arguments[i];
+
+    walk_it(verb);
+
+    return s;
+}
+
+function f_apply(verb)
+{
+    return walk_it.apply(null, [verb]);
 }
 
 function test()
 {    
-    var na = walk_the_walk(true);
+    var na = walk_it(true);
     if (na < 1)
         return 1;
 
@@ -142,9 +166,11 @@ function test()
 
     f_many_args(true, 2, 3, 4, 5, 'foo');
 
-    // TODO: test with arguments
+    // Test with arguments object
+    f_arguments(true, 1, 2, 3, 4, 5);
 
-    // TODO: test with apply
+    // Test with apply, dynamic stack alignment
+    f_apply(true);
 
     return 0;
 }
