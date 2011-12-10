@@ -194,8 +194,6 @@ function getPrimSrcs(params)
     // Generate the gc dispatch code
     var gcSrc = genGCCode(params);
 
-    print(gcSrc);
-
     // Declare a variable for the FFI wrapper source
     var wrapperSrc = '';
 

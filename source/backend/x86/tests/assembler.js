@@ -497,6 +497,14 @@ tests.x86.asmEncoding = function ()
         '0FB6C8'
     );
     test(
+        function (a) { a.movzx(a.edi, a.al); },
+        '0FB6F8'
+    );
+    test(
+        function (a) { a.movzx(a.ebp, a.al); },
+        '0FB6E8'
+    );
+    test(
         function (a) { a.movzx(a.rcx, a.bl); },
         false,
         '480FB6CB'

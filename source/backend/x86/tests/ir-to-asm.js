@@ -1742,11 +1742,49 @@ tests.x86.irToAsm = function ()
         []
     );
 
+    // Regression test: store/load of u8 datatype potentially broken
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            n = iir.icast(IRType.u16, n);               \
+            iir.store(IRType.u16, ctx, pint(16), n);    \
+                                                        \
+            var ptr = iir.icast(IRType.rptr, ctx);      \
+                                                        \
+            var r = iir.load(IRType.u8, ptr, pint(16)); \
+            r = iir.icast(IRType.pint, r);              \
+                                                        \
+            return r;                                   \
+        }                                               \
+        ',
+        47,
+        [47]
+    );
+
+    // Regression test: bitwise and error
+    test('                                              \
+        function test(ctx, n)                           \
+        {                                               \
+            "tachyon:cproxy";                           \
+            "tachyon:arg ctx ref";                      \
+            "tachyon:arg n pint";                       \
+            "tachyon:ret pint";                         \
+                                                        \
+            var r = n & pint(255);                      \
+                                                        \
+            return r;                                   \
+        }                                               \
+        ',
+        24,
+        [24]
+    );
 
 
-
-
-  
 
 
 

@@ -770,39 +770,46 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         var slotInfo = 0;
         var numBits = 0;
 
+        //print('\nencoding info for: ' + instr.parentBlock.parentCFG.ownerFunc.funcName);
+
         // Loop through the slots, from bottom to top
         for (var i = 0; i < numSlots; ++i)
         {
-            var kind;
+            var kind = 0;
 
             var val = allocMap.getAllocVal(i);
 
-            if (val === undefined)
+            if (val !== undefined)
             {
-                kind = 0;
-            }
-            else
-            {
-                var type = val.type;
-
-                switch (type)
+                switch (val.type)
                 {
                     case IRType.box:  kind = 3; break;
                     case IRType.ref:  kind = 2; break;
                     case IRType.rptr: kind = 1; break;
-                    default:          kind = 0; break;
                 }
             }
+
+            assert (
+                !(i === allocMap.retAddrSlot && kind !== 0),
+                'invalid kind for return address slot'
+            );
 
             // Encode the slot kind into our bit vector
             slotInfo = num_shift(slotInfo, 2);
             slotInfo = num_add(slotInfo, kind);
             numBits += 2;
+
+
+            //var disp = allocMap.getSlotOpnd(i).disp;
+            //print('slot disp: ' + disp);
+            //print('slot kind: '  + kind);
         }
 
         var remBits = numBits % 8;
-        if (remBits !== 0);
+        if (remBits !== 0)
             numBits += 8 - remBits;
+
+        //print('writing slot info: ' + slotInfo + ' in ' + numBits + ' bits');
 
         // Write the slot kind information
         data.writeInt(slotInfo, numBits);
@@ -813,7 +820,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
         // Add a label after the stack info
         asm.addInstr(POST_INFO);
     }
-    
+
     if (backend.debugTrace === true)
         x86.genTracePrint(asm, genInfo.params, 'returned from ' + calleeName);
 
