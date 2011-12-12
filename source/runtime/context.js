@@ -102,9 +102,27 @@ function makeContextLayout(params)
         IRType.rptr
     );
 
-    // Heap scan pointer (for the GC)
+    // To-space start pointer
     ctxLayout.addField(
-        'scanptr',
+        'tostart',
+        IRType.rptr
+    );
+
+    // To-space limit pointer
+    ctxLayout.addField(
+        'tolimit',
+        IRType.rptr
+    );
+
+    // To-space free pointer
+    ctxLayout.addField(
+        'tofree',
+        IRType.rptr
+    );
+
+    // To-space scan pointer
+    ctxLayout.addField(
+        'toscan',
         IRType.rptr
     );
 

@@ -720,7 +720,15 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     if (this.calleeConv === 'tachyon')
     {
         // Encode stack frame info here
-        x86.writeStackInfo(asm, allocMap, dynAlign, padSpace, backend);
+        x86.writeStackInfo(
+            instr,
+            asm,
+            allocMap,
+            genInfo.liveOutFunc,
+            dynAlign,
+            padSpace,
+            backend
+        );
     }
 
     if (backend.debugTrace === true)
@@ -1121,7 +1129,15 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     if (this.calleeConv === 'tachyon')
     {
         // Encode stack frame info here
-        x86.writeStackInfo(asm, allocMap, true, 0, backend);
+        x86.writeStackInfo(
+            instr,
+            asm,
+            allocMap,
+            genInfo.liveOutFunc,            
+            true,
+            0,
+            backend
+        );
     }
 
     if (backend.debugTrace === true)

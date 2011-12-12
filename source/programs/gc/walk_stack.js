@@ -59,7 +59,8 @@ function walk_it(verb)
         // If this frame uses dynamic alignment
         if (padSpace === pint(0xFFFF))
         {
-            iir.trace_print('dynamic alignment');
+            if (verb === true)
+                iir.trace_print('dynamic alignment');
 
             // Load the sp at the base pointer
             var sp = iir.load(IRType.rptr, bp, pint(0));
@@ -98,6 +99,17 @@ function walk_it(verb)
 
             //print('disp: ' + boxInt(disp));
 
+            // Ref
+            if (kind === pint(2))
+            {
+                var refVal = iir.load(IRType.ref, sp, disp);
+
+                assert (
+                    ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
+                    'ref val points out of heap'
+                );
+            }
+
             // Box
             if (kind === pint(3))
             {
@@ -114,6 +126,16 @@ function walk_it(verb)
                     //    print('val is func');
 
                     print('box val: ' + val);
+                }
+
+                if (boxIsRef(val) === true)
+                {
+                    var refVal = unboxRef(val);
+
+                    assert (
+                        ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
+                        'ref val points out of heap'
+                    );
                 }
             }
         }
@@ -155,22 +177,24 @@ function f_apply(verb)
 }
 
 function test()
-{    
-    var na = walk_it(true);
+{
+    var verb = false;
+
+    var na = walk_it(verb);
     if (na < 1)
         return 1;
 
-    var nb = f_caller(true);
+    var nb = f_caller(verb);
     if (nb <= na)
         return 2;
 
-    f_many_args(true, 2, 3, 4, 5, 'foo');
+    f_many_args(verb, 2, 3, 4, 5, 'foo');
 
     // Test with arguments object
-    f_arguments(true, 1, 2, 3, 4, 5);
+    f_arguments(verb, 1, 2, 3, 4, 5);
 
     // Test with apply, dynamic stack alignment
-    f_apply(true);
+    f_apply(verb);
 
     return 0;
 }

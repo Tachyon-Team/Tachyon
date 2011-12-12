@@ -73,7 +73,7 @@ function initHeap(heapPtr, heapSize)
     set_ctx_freeptr(ctx, ctxPtr);
 
     // Compute the heap limit pointer
-    var heapLimit = heapPtr + heapSize;
+    var heapLimit = heapPtr + heapSize - CTX_ALIGN;
 
     //printInt(iir.icast(IRType.pint, heapSize));
     //printPtr(heapPtr);

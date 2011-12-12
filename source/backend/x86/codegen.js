@@ -231,6 +231,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         callConv: callConv,
         edgeLabels: edgeLabels,
         allocMap: entryMap,
+        liveOutFunc: liveOutFunc,
         backend: backend,
         params: params
     };
@@ -311,6 +312,9 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
             {
                 return instrLiveOut.has(val);
             }
+
+            // Store the live out function in the code generation into
+            genInfo.liveOutFunc = liveOutFunc;
 
             // If this is a phi node
             if (instr instanceof PhiInstr)
@@ -421,7 +425,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
                     'missing instr cfg for "' + instr.mnemonic + '"'
                 );
 
-                // Perform register allocation for instruction
+                // Perform register allocation for the instruction
                 var allocInfo = x86.allocOpnds(
                     allocMap,
                     instr,
@@ -438,7 +442,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
 
                 // Generate code for the instruction
                 instr.x86.genCode(
-                    instr, 
+                    instr,
                     allocInfo.opnds, 
                     allocInfo.dest, 
                     allocInfo.scratch,
@@ -569,9 +573,7 @@ x86.genEdgeTrans = function (
                 );
             }
 
-            /**
-            Test the liveness of a value before the phi node
-            */
+            // Test the liveness of a value before the phi node
             function liveInFunc(val)
             {
                 // If the value is live after the phi nodes, it is live
@@ -637,7 +639,7 @@ x86.genEdgeTrans = function (
             // Get the value
             var value = itr.get().key;
 
-            //log.debug('live value: ' + value.getValName());
+            //print('live value: ' + value.getValName());
 
             // If the value is a phi node from this block, skip it
             if (value instanceof PhiInstr && value.parentBlock === succ)
@@ -645,6 +647,8 @@ x86.genEdgeTrans = function (
 
             // Get the best allocation for this value
             var bestAlloc = x86.getBestAlloc(succAllocMap, value);
+
+            //print('best alloc: ' + bestAlloc);
 
             //log.debug('processing live value: ' + value.getValName());
             //log.debug('best alloc: ' + bestAlloc);
@@ -1158,8 +1162,10 @@ Stack info format (packed):
 
 */
 x86.writeStackInfo = function (
+    instr,
     asm,
     allocMap,
+    liveOutFunc,
     dynAlign,
     padSpace,
     backend
@@ -1205,7 +1211,15 @@ x86.writeStackInfo = function (
     var slotInfo = 0;
     var numBits = 0;
 
-    //print('\nencoding info for: ' + instr.parentBlock.parentCFG.ownerFunc.funcName);
+    /*
+    var funcName = instr.parentBlock.parentCFG.ownerFunc.funcName;
+    print('\nencoding info for: ' + funcName);
+    print('num slots: ' + numSlots);
+    print('ra slot: ' + raSlot);
+
+    if (funcName === 'cproxy_test')
+        print(instr.parentBlock.parentCFG.ownerFunc);
+    */
 
     // Loop through the slots, from bottom to top
     for (var i = 0; i < numSlots; ++i)
@@ -1214,7 +1228,8 @@ x86.writeStackInfo = function (
 
         var val = allocMap.getAllocVal(i);
 
-        if (val !== undefined)
+        // If this is a valid, live value
+        if (val !== undefined && liveOutFunc(val) === true)
         {
             switch (val.type)
             {
@@ -1234,6 +1249,8 @@ x86.writeStackInfo = function (
         slotInfo = num_add(slotInfo, kind);
         numBits += 2;
 
+        //if (val instanceof IRValue)
+        //    print(val.getValName());
         //var disp = allocMap.getSlotOpnd(i).disp;
         //print('slot disp: ' + disp);
         //print('slot kind: '  + kind);

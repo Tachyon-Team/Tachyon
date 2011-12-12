@@ -153,6 +153,23 @@ function boxIsInt(boxVal)
 }
 
 /**
+Test if a boxed value is a reference
+*/
+function boxIsRef(boxVal)
+{
+    "tachyon:inline";
+    "tachyon:noglobal";
+
+    if (boxIsInt(boxVal) === true)
+        return false;
+
+    if (iir.icast(IRType.pint, boxVal) <= BIT_PATTERN_NOT_FOUND)
+        return false;
+
+    return true;
+}
+
+/**
 Test if a boxed value is an object
 */
 function boxIsObj(boxVal)

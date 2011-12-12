@@ -190,7 +190,7 @@ function MemLayout(name, ptrType, tagName, params)
         // Add a header as the first layout field
         this.addField(
             'header',
-            IRType.u32
+            IRType.pint
         );
 
         // Assign a unique type identifier to this layout
@@ -783,7 +783,7 @@ MemLayout.prototype.genMethods = function ()
 
         // If this is a heap-allocated layout, set its type id
         if (layout.ptrType === IRType.box || layout.ptrType === IRType.ref)
-            sourceStr += '\tset_' + layout.name + '_header(ptr, u32(' + layout.typeId + '));\n';
+            sourceStr += '\tset_' + layout.name + '_header(ptr, pint(' + layout.typeId + '));\n';
 
         // If initialization code was specified, include it
         if (initCode)
@@ -928,20 +928,27 @@ MemLayout.prototype.genMethods = function ()
             {
                 subSrc += 'var boxVal = get_' + rootLayout.name + curFieldName + '(' + curArgs + ');\n';
 
-                subSrc += 'var tagVal = getRefTag(boxVal);\n';
-                subSrc += 'var refVal = unboxRef(boxVal);\n';
+                // Only update the value if it's a reference
+                subSrc += 'if (boxIsRef(boxVal) === true)\n';
+                subSrc += '{\n';
+
+                subSrc += '\tvar tagVal = getRefTag(boxVal);\n';
+
+                subSrc += '\tvar refVal = unboxRef(boxVal);\n';
 
                 // Validate that the reference points inside the heap
-                subSrc += 'assert (\n';
-                subSrc += '\tptrInHeap(iir.icast(IRType.rptr, refVal)) === true,\n';
-                subSrc += '\t0\n';
-                subSrc += ')\n';
+                subSrc += '\tassert (\n';
+                subSrc += '\t\tptrInHeap(iir.icast(IRType.rptr, refVal)) === true,\n';
+                subSrc += '\t\t0\n';
+                subSrc += '\t)\n';
 
                 // Have the GC visit/update the reference
-                subSrc += 'var refVal = gcForward(refVal);\n';
+                subSrc += '\tvar refVal = gcForward(refVal);\n';
 
-                subSrc += 'var boxVal = boxRef(refVal, tagVal);\n';
-                subSrc += 'set_' + rootLayout.name + curFieldName + '(' + curArgs + ', boxVal);\n';
+                subSrc += '\tvar boxVal = boxRef(refVal, tagVal);\n';
+                subSrc += '\tset_' + rootLayout.name + curFieldName + '(' + curArgs + ', boxVal);\n';
+
+                subSrc += '}\n';
             }
 
             else if (spec.type === IRType.ref)
@@ -1043,9 +1050,32 @@ function genGCCode(params)
     sourceStr += '\t"tachyon:static";\n';
     sourceStr += '\t"tachyon:noglobal";\n';
     sourceStr += '\t"tachyon:arg obj ref";\n';
-    sourceStr += '\t"tachyon:ret u32";\n';
-    sourceStr += '\tvar header = iir.load(IRType.u32, obj, pint(0));\n';
+    sourceStr += '\t"tachyon:ret pint";\n';
+    sourceStr += '\tvar header = iir.load(IRType.pint, obj, pint(0));\n';
     sourceStr += '\treturn header;\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+    // Function to set an object's forwarding pointer
+    sourceStr += 'function set_layout_next(obj, next)\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:static";\n';
+    sourceStr += '\t"tachyon:noglobal";\n';
+    sourceStr += '\t"tachyon:arg obj ref";\n';
+    sourceStr += '\t"tachyon:arg next rptr";\n';
+    sourceStr += '\tiir.store(IRType.rptr, obj, pint(0), next);\n';
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
+    // Function to get an object's forwarding pointer
+    sourceStr += 'function get_layout_next(obj)\n';
+    sourceStr += '{\n';
+    sourceStr += '\t"tachyon:static";\n';
+    sourceStr += '\t"tachyon:noglobal";\n';
+    sourceStr += '\t"tachyon:arg obj ref";\n';
+    sourceStr += '\t"tachyon:ret rptr";\n';
+    sourceStr += '\tvar next = iir.load(IRType.rptr, obj, pint(0));\n';
+    sourceStr += '\treturn next;\n';
     sourceStr += '}\n';
     sourceStr += '\n';
 
@@ -1071,7 +1101,7 @@ function genGCCode(params)
         if (layout.ptrType === IRType.rptr)
             continue;
 
-        sourceStr += '\tif (typeId === u32(' + layout.typeId + '))\n';
+        sourceStr += '\tif (typeId === pint(' + layout.typeId + '))\n';
         sourceStr += '\t{\n';
 
         if (layout.ptrType === IRType.ref)
@@ -1110,7 +1140,7 @@ function genGCCode(params)
         if (layout.ptrType === IRType.rptr)
             continue;
 
-        sourceStr += '\tif (typeId === u32(' + layout.typeId + '))\n';
+        sourceStr += '\tif (typeId === pint(' + layout.typeId + '))\n';
         sourceStr += '\t{\n';
 
         if (layout.ptrType === IRType.ref)
