@@ -232,7 +232,7 @@ function gcCollect()
     // Update the context pointer
     iir.set_ctx(toCtx);
 
-    iir.trace_print('done copying context');
+    iir.trace_print('copying stack roots');
 
     // Get the current return address and stack base pointer
     var ra = iir.get_ra();
@@ -241,20 +241,55 @@ function gcCollect()
     // Copy the stack roots to the to-space
     copyStackRoots(ra, bp);
 
+    iir.trace_print('scanning to-space');
 
-
-    // TODO: scan to-space, update references
     // Scan Pointer: All objects behind it (i.e. to its left) have been fully
     // processed; objects in front of it have been copied but not processed.
     // Free Pointer: All copied objects are behind it; Space to its right is free
 
-    //set_ctx_toscan(fromCtx, toStart);
+    // Initialize the scan pointer at the to-space context address
+    var scanPtr = iir.icast(IRType.rptr, toCtx);
+
+    // Until the to-space scan is complete
+    for (;;)
+    {
+        iir.trace_print('scanning object');
+
+        // Get the current free pointer
+        var freePtr = get_ctx_tofree(toCtx);
+
+        //printPtr(scanPtr);
+        //printPtr(freePtr);
+
+        // If we are past the free pointer, scanning done
+        if (scanPtr >= freePtr)
+            break;
+
+        // Get the current object reference
+        var objPtr = alignPtr(scanPtr, HEAP_ALIGN);
+        var objRef = iir.icast(IRType.ref, objPtr);        
+
+        // FIXME: odd bug when visiting context?
+        // Visit the object layout, forward its references
+        //gc_visit_layout(objRef);
 
 
 
+        // TODO: special handling for closure objects, visit executable code
+        // PROBLEM: executable code is not copied...
+        // primitive executable code not referenced through closure, not
+        // queued to be visited!
 
 
 
+        // Get the object size
+        var objSize = sizeof_layout(objRef);
+
+        // Move to the next object
+        scanPtr = objPtr + objSize;
+    }
+
+    iir.trace_print('flipping from-space and to-space');
 
     // TODO: flip from-space, to-space
     // Set the heap start, limit and free pointers in the context
@@ -263,6 +298,13 @@ function gcCollect()
     //set_ctx_freeptr(toCtx, ...);
 
     // TODO: free from-space block
+
+
+
+
+
+
+
 
     iir.trace_print('leaving gcCollect');
 }
@@ -278,6 +320,8 @@ function gcCopy(ref, size, align)
     "tachyon:arg size pint";
     "tachyon:arg align puint";    
     "tachyon:ret ref";
+
+    iir.trace_print('copying object');
 
     // Get the context pointer
     var ctx = iir.get_ctx();
@@ -305,6 +349,8 @@ function gcCopy(ref, size, align)
 
     // Update the free pointer in the context
     set_ctx_tofree(ctx, freePtr);
+
+    printPtr(freePtr);
 
     // Write the forwarding pointer in the object
     set_layout_next(ref, newAddr);
@@ -495,14 +541,14 @@ function copyStackRoots(ra, bp)
                     'ref val points out of heap'
                 );
 
-                // TODO
-                //gcCopy(ref, sizeof_layout(ref), HEAP_ALIGN);
+                // Copy the object to the to-space
+                gcCopy(refVal, sizeof_layout(refVal), HEAP_ALIGN);
             }
 
             // Box
             else if (kind === pint(3))
             {
-                iir.trace_print('box');
+                //iir.trace_print('box');
 
                 var boxVal = iir.load(IRType.box, sp, disp);
                 //print('box val: ' + val);
@@ -519,7 +565,8 @@ function copyStackRoots(ra, bp)
                         'ref val points out of heap'
                     );
 
-                    // TODO: gcCopy
+                    // Copy the object to the to-space
+                    gcCopy(refVal, sizeof_layout(refVal), HEAP_ALIGN);
                 }
             }
         }

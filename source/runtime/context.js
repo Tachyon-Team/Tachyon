@@ -120,12 +120,6 @@ function makeContextLayout(params)
         IRType.rptr
     );
 
-    // To-space scan pointer
-    ctxLayout.addField(
-        'toscan',
-        IRType.rptr
-    );
-
     // String table
     ctxLayout.addField(
         'strtbl',
