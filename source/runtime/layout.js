@@ -911,6 +911,8 @@ MemLayout.prototype.genMethods = function ()
             // String for the code generated at higher nesting levels
             var subSrc = '';
 
+            //subSrc += 'iir.trace_print("' + spec.name + '");\n';
+
             // If this is a sub-layout, not a leaf field
             if (spec.type instanceof MemLayout)
             {
@@ -1027,6 +1029,8 @@ MemLayout.prototype.genMethods = function ()
         sourceStr += '\tvar size = iir.icast(IRType.pint, get_' + this.name + '_size(obj));\n';
 
     sourceStr += indentText(visitCode);
+
+    //sourceStr += '\tiir.trace_print("visit complete");\n';
 
     sourceStr += '\treturn;';
     sourceStr += '}\n';
@@ -1149,6 +1153,7 @@ function genGCCode(params)
             sourceStr += '\t\tgc_visit_' + layout.name + 
                 '(boxRef(obj, ' + layout.tagName + '));\n';
 
+        sourceStr += '\treturn;\n';
         sourceStr += '\t}\n';
     }
 

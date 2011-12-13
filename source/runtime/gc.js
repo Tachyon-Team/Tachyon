@@ -269,9 +269,15 @@ function gcCollect()
         var objPtr = alignPtr(scanPtr, HEAP_ALIGN);
         var objRef = iir.icast(IRType.ref, objPtr);        
 
-        // FIXME: odd bug when visiting context?
+        iir.trace_print('begin visit');
+
         // Visit the object layout, forward its references
-        //gc_visit_layout(objRef);
+        gc_visit_layout(objRef);
+
+        iir.trace_print('end visit');
+
+        // Get the header for this object
+        var header = get_layout_header(objRef);
 
 
 
@@ -279,6 +285,20 @@ function gcCollect()
         // PROBLEM: executable code is not copied...
         // primitive executable code not referenced through closure, not
         // queued to be visited!
+        // May need to keep vector of MCBs to visit... 
+
+
+        // TODO: define static constants for header tags
+        /*        
+        // If the object is a function
+        if ( === )
+        {
+        }
+        */
+
+
+
+
 
 
 
@@ -321,7 +341,8 @@ function gcCopy(ref, size, align)
     "tachyon:arg align puint";    
     "tachyon:ret ref";
 
-    iir.trace_print('copying object');
+    iir.trace_print('copying object:');
+    printPtr(iir.icast(IRType.rptr, ref));
 
     // Get the context pointer
     var ctx = iir.get_ctx();
@@ -350,10 +371,13 @@ function gcCopy(ref, size, align)
     // Update the free pointer in the context
     set_ctx_tofree(ctx, freePtr);
 
-    printPtr(freePtr);
+    //iir.trace_print('object copied, free ptr:');
+    //printPtr(freePtr);
 
     // Write the forwarding pointer in the object
     set_layout_next(ref, newAddr);
+
+    //iir.trace_print('copying done');
 
     // Return the to-space pointer
     return iir.icast(IRType.ref, newAddr);
