@@ -251,7 +251,7 @@ function gcCollect()
     var scanPtr = iir.icast(IRType.rptr, toCtx);
 
     // Until the to-space scan is complete
-    for (;;)
+    for (var numObjs = pint(0);; ++numObjs)
     {
         iir.trace_print('scanning object');
 
@@ -276,8 +276,6 @@ function gcCollect()
 
         iir.trace_print('end visit');
 
-        // Get the header for this object
-        var header = get_layout_header(objRef);
 
 
 
@@ -286,15 +284,29 @@ function gcCollect()
         // primitive executable code not referenced through closure, not
         // queued to be visited!
         // May need to keep vector of MCBs to visit... 
-
-
-        // TODO: define static constants for header tags
-        /*        
-        // If the object is a function
-        if ( === )
+      
+        // If the object is a function/closure
+        if (get_layout_header(objRef) === TYPEID_CLOS)
         {
+            iir.trace_print('closure object');
+
+            // Get the function pointer
+            var funcPtr = get_clos_funcptr(boxRef(objRef, TAG_FUNCTION));
+
+
+            // TODO: get address of machine code block start
+
+
+
+            // TODO: Implement function to visit machine code blocks
+            //gcVisitMCB(mcbPtr);
+
+
+
+
+
         }
-        */
+
 
 
 
@@ -308,6 +320,9 @@ function gcCollect()
         // Move to the next object
         scanPtr = objPtr + objSize;
     }
+
+    iir.trace_print('objects copied/scanned:');
+    printInt(numObjs);
 
     iir.trace_print('flipping from-space and to-space');
 
@@ -565,6 +580,8 @@ function copyStackRoots(ra, bp)
                     'ref val points out of heap'
                 );
 
+                // TODO: update stack ref with new value
+
                 // Copy the object to the to-space
                 gcCopy(refVal, sizeof_layout(refVal), HEAP_ALIGN);
             }
@@ -588,6 +605,8 @@ function copyStackRoots(ra, bp)
                         ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
                         'ref val points out of heap'
                     );
+
+                    // TODO: update stack ref with new value
 
                     // Copy the object to the to-space
                     gcCopy(refVal, sizeof_layout(refVal), HEAP_ALIGN);

@@ -46,9 +46,6 @@ Code to describe and implement the memory layout of allocatable objects.
 
 @author
 Maxime Chevalier-Boisvert
-
-@copyright
-Copyright (c) 2010 Maxime Chevalier-Boisvert, All Rights Reserved
 */
 
 /**
@@ -197,6 +194,15 @@ function MemLayout(name, ptrType, tagName, params)
         var typeId = 0;
         for (var f in params.memLayouts)
             ++typeId;
+
+        // Name of the type id constant
+        var typeIdName = 'TYPEID_' + name.toUpperCase();
+
+        // Define a static constant for this type id
+        params.staticEnv.regBinding(
+            typeIdName,
+            IRConst.getConst(typeId, IRType.pint)
+        );
     }
 
     /**
@@ -205,6 +211,12 @@ function MemLayout(name, ptrType, tagName, params)
     @field
     */
     this.typeId = typeId;
+
+    /**
+    Name of the type identifier constant for this layout
+    @field
+    */
+    this.typeIdName = typeIdName;
 }
 MemLayout.prototype = {};
 
@@ -783,7 +795,7 @@ MemLayout.prototype.genMethods = function ()
 
         // If this is a heap-allocated layout, set its type id
         if (layout.ptrType === IRType.box || layout.ptrType === IRType.ref)
-            sourceStr += '\tset_' + layout.name + '_header(ptr, pint(' + layout.typeId + '));\n';
+            sourceStr += '\tset_' + layout.name + '_header(ptr, ' + layout.typeIdName + ');\n';
 
         // If initialization code was specified, include it
         if (initCode)
@@ -1105,7 +1117,7 @@ function genGCCode(params)
         if (layout.ptrType === IRType.rptr)
             continue;
 
-        sourceStr += '\tif (typeId === pint(' + layout.typeId + '))\n';
+        sourceStr += '\tif (typeId === ' + layout.typeIdName + ')\n';
         sourceStr += '\t{\n';
 
         if (layout.ptrType === IRType.ref)
@@ -1144,7 +1156,7 @@ function genGCCode(params)
         if (layout.ptrType === IRType.rptr)
             continue;
 
-        sourceStr += '\tif (typeId === pint(' + layout.typeId + '))\n';
+        sourceStr += '\tif (typeId === ' + layout.typeIdName + ')\n';
         sourceStr += '\t{\n';
 
         if (layout.ptrType === IRType.ref)
