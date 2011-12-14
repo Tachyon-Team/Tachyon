@@ -120,6 +120,13 @@ function makeContextLayout(params)
         IRType.rptr
     );
 
+    // GC collection count
+    ctxLayout.addField(
+        'gccount',
+        IRType.u32,
+        'u32(0)'
+    );
+
     // String table
     ctxLayout.addField(
         'strtbl',

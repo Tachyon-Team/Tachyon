@@ -246,7 +246,7 @@ x86.Assembler.prototype.replInstr = function (oldInstr, newInstr)
 Assemble a code block from the instruction list
 @returns a code block object
 */
-x86.Assembler.prototype.assemble = function ()
+x86.Assembler.prototype.assemble = function (codeOnly)
 {
     //print('assembling machine code');
 
@@ -366,8 +366,41 @@ x86.Assembler.prototype.assemble = function ()
         }
     }
 
-    // Allocate a new code block for the code
-    var codeBlock = new CodeBlock(codeLength);
+    // If we are doing a raw assembly (code only)
+    if (codeOnly === true)
+    {
+        // Allocate a new code block for the code onlu
+        var codeBlock = new CodeBlock(codeLength);
+    }
+    else
+    {
+        // Count the number of imported references
+        var numLinks = 0;
+        for (var instr = this.firstInstr; instr !== null; instr = instr.next)
+        {
+            for (var i = 0; i < instr.opnds.length; ++i)
+            {
+                var opnd = instr.opnds[i];
+
+                if (opnd instanceof x86.LinkValue)
+                    numLinks++;
+            }
+        }
+
+        // Compute the total code block size
+        var totalSize = CodeBlock.HEADER_SIZE + codeLength + numLinks * CodeBlock.REF_ENTRY_SIZE;
+
+        // Allocate a new code block for the code and metadata
+        var codeBlock = new CodeBlock(totalSize);
+
+        // Write the code block header:
+        // - Last collection number (32-bit)
+        // - Ref encoding offset (32-bit)
+        // - Num ref entries (32-bit)
+        codeBlock.writeInt(0, 32);
+        codeBlock.writeInt(CodeBlock.HEADER_SIZE + codeLength, 32);
+        codeBlock.writeInt(numLinks, 32);
+    }
 
     // Encode the instructions into the code block
     for (var instr = this.firstInstr; instr !== null; instr = instr.next)

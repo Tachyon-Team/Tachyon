@@ -86,6 +86,16 @@ function CodeBlock(size)
 }
 
 /**
+Code block header size
+*/
+CodeBlock.HEADER_SIZE = 12;
+
+/**
+Reference (imported link) entry size in bytes
+*/
+CodeBlock.REF_ENTRY_SIZE = 8;
+
+/**
 Print the code block as a string
 */
 CodeBlock.prototype.toString = function ()

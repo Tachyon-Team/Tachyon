@@ -114,8 +114,8 @@ tests.x86.asmEncoding = function ()
             // Produce the assembly
             codeFunc(assembler);
 
-            // Assemble the code to a machine code block
-            var codeBlock = assembler.assemble();
+            // Assemble the code to a machine code block (code only, no header)
+            var codeBlock = assembler.assemble(true);
 
             // Check that the encoding length matches
             if (codeBlock.size !== encBlock.size)
@@ -918,8 +918,8 @@ tests.x86.asmExecution = function ()
         // Generate the code
         genFunc(assembler);
 
-        // Assemble to a code block
-        var codeBlock = assembler.assemble();
+        // Assemble to a code block (code only, no header)
+        var codeBlock = assembler.assemble(true);
 
         var blockAddr = codeBlock.getAddress();
 

@@ -203,6 +203,9 @@ function gcCollect()
     // Get a reference to the context object (from-space)
     var fromCtx = iir.get_ctx();
 
+    // Get the garbage collection count
+    var gcCount = get_ctx_gccount(fromCtx);
+
     // Get the current heap parameters (from-space)
     var fromStart = get_ctx_heapstart(fromCtx);
     var fromLimit = get_ctx_heaplimit(fromCtx);
@@ -291,7 +294,9 @@ function gcCollect()
             var funcPtr = get_clos_funcptr(boxRef(objRef, TAG_FUNCTION));
 
 
-            // TODO: get address of machine code block start
+            // TODO: Get the address of the machine code block start
+
+
 
 
 
@@ -332,6 +337,9 @@ function gcCollect()
     // TODO: Free the from-space heap block
     //free(fromStart);
 
+    // Update the garbage collection count
+    set_ctx_gccount(toCtx, gcCount + u32(1));
+
     iir.trace_print('leaving gcCollect');
 }
 
@@ -368,7 +376,7 @@ function gcCopy(ref, size, align)
     freePtr = alignPtr(freePtr, align);
 
     // Use the free pointer as the new object address
-    var newAddr = freePtr
+    var newAddr = freePtr;
 
     // Increment the free pointer
     freePtr += size;

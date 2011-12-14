@@ -193,8 +193,11 @@ function printTachyonState()
     var globalobj = get_ctx_globalobj(ctx);
     var numGlobals = iir.icast(IRType.pint, get_obj_numprops(globalobj));
 
+    var gcCount = iir.icast(IRType.pint, get_ctx_gccount(ctx));
+
     printBox('Heap size  : ' + heapSizeKB + ' KB');
     printBox('Num strings: ' + boxInt(numStrings));
     printBox('Num globals: ' + boxInt(numGlobals));
+    printBox('gc count   : ' + boxInt(gcCount));
 }
 
