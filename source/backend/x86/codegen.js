@@ -1233,12 +1233,12 @@ x86.writeStackInfo = function (
         // If this is a valid, live value
         if (val !== undefined && liveOutFunc(val) === true)
         {
-            switch (val.type)
-            {
-                case IRType.box:  kind = 3; break;
-                case IRType.ref:  kind = 2; break;
-                case IRType.rptr: kind = 1; break;
-            }
+            if (val instanceof IRFunction)
+                kind = 1;
+            else if (val.type === IRType.ref)
+                kind = 2;
+            else if (val.type === IRType.box)
+                kind = 3;
         }
 
         assert (

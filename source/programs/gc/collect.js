@@ -1,25 +1,35 @@
+function theLenFunc(str)
+{
+    return str.length;
+}
+
 function test()
 {
-    var liveObj1 = { v:3 };
+    var liveObj = { v:3 };
 
-
-    //print('before gcCollect');
-
+    theLenFunc('foo');
 
     // Trigger a collection
     gcCollect();
 
+    theLenFunc('foobar');
 
-    //print('after gcCollect');
-
-
-    if (boxIsObj(liveObj1) === false)
+    if (boxIsObj(liveObj) === false)
         return 1;
 
-    // FIXME: object property lookups won't work until string
-    // references in code blocks are updated
-    if (liveObj1.v !== 3)
+    // Test that our live object hasn't been corrupted
+    if (liveObj.v !== 3)
         return 2;
+
+    // Test that the string table still works properly
+    if ('foo' + 'bar' !== 'foobar')
+        return 3;
+
+    var theNewObj = { x:1 };
+
+    // Test that new objects can still be created and manipulated
+    if (theNewObj.x !== 1)
+        return 4;
 
     return 0;
 }

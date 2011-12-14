@@ -203,8 +203,8 @@ function gcCollect()
     // Get a reference to the context object (from-space)
     var fromCtx = iir.get_ctx();
 
-    // Get the garbage collection count
-    var gcCount = get_ctx_gccount(fromCtx);
+    // Update the garbage collection count
+    set_ctx_gccount(fromCtx, get_ctx_gccount(fromCtx) + u32(1));
 
     // Get the current heap parameters (from-space)
     var fromStart = get_ctx_heapstart(fromCtx);
@@ -278,12 +278,6 @@ function gcCollect()
         gc_visit_layout(objRef);
 
         iir.trace_print('end visit');
-
-        // TODO: special handling for closure objects, visit executable code
-        // PROBLEM: executable code is not copied...
-        // primitive executable code not referenced through closure, not
-        // queued to be visited!
-        // TODO: recursively visit blocks, mark as visited
       
         // If the object is a function/closure
         if (get_layout_header(objRef) === TYPEID_CLOS)
@@ -293,20 +287,8 @@ function gcCollect()
             // Get the function pointer
             var funcPtr = get_clos_funcptr(boxRef(objRef, TAG_FUNCTION));
 
-
-            // TODO: Get the address of the machine code block start
-
-
-
-
-
-            // TODO: Implement function to visit machine code blocks
-            //gcVisitMCB(mcbPtr);
-
-
-
-
-
+            // Visit the machine code block
+            gcVisitMCB(funcPtr);
         }
 
         // Get the object size
@@ -321,24 +303,22 @@ function gcCollect()
 
     iir.trace_print('flipping from-space and to-space');
 
-    // TODO: Flip the from-space and to-space
+    // Flip the from-space and to-space
     // Set the heap start, limit and free pointers in the context
-    //set_ctx_heapstart(toCtx, toStart);
-    //set_ctx_heaplimit(toCtx, toLimit);
-    //set_ctx_freeptr(toCtx, get_ctx_tofree(toCtx));
+    set_ctx_heapstart(toCtx, toStart);
+    set_ctx_heaplimit(toCtx, toLimit);
+    set_ctx_freeptr(toCtx, get_ctx_tofree(toCtx));
 
-    // TODO: Clear the to-space information
+    // Clear the to-space information
     set_ctx_tostart(toCtx, NULL_PTR);
     set_ctx_tolimit(toCtx, NULL_PTR);
     set_ctx_tofree(toCtx, NULL_PTR);
 
     iir.trace_print('freeing original to-space block');
 
+    // FIXME: must fix the context issue for this to work
     // TODO: Free the from-space heap block
     //free(fromStart);
-
-    // Update the garbage collection count
-    set_ctx_gccount(toCtx, gcCount + u32(1));
 
     iir.trace_print('leaving gcCollect');
 }
@@ -574,6 +554,18 @@ function copyStackRoots(ra, bp)
             // Compute the displacement for this slot
             var disp = i * slotSize;
 
+            // Function pointer
+            if (kind === pint(1))
+            {
+                iir.trace_print('fptr');
+
+                // Read the function pointer
+                var funcPtr = iir.load(IRType.rptr, sp, disp);
+
+                // Visit the function's machine code block
+                gcVisitMCB(funcPtr);
+            }
+
             // Ref
             if (kind === pint(2))
             {
@@ -624,11 +616,8 @@ function copyStackRoots(ra, bp)
                     // Rebox the reference value
                     var newBox = boxRef(newRef, refTag);
 
-                    // FIXME: object property lookups won't work until string
-                    // references in code blocks are updated. 
-
                     // Update the boxed value on the stack
-                    //iir.store(IRType.box, sp, disp, newBox);
+                    iir.store(IRType.box, sp, disp, newBox);
                 }
             }
         }
@@ -644,22 +633,113 @@ function copyStackRoots(ra, bp)
 /**
 Visit a machine code block and its references
 */
-function gcVisitMCB(mcbPtr /*, TODO? colNo*/)
+function gcVisitMCB(funcPtr)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:arg mcbPtr rptr";
+    "tachyon:arg funcPtr rptr";
 
-    // TODO
-    // TODO
-    // TODO
+    iir.trace_print('visiting mcb');
+    printPtr(funcPtr);
 
-    // TODO: check if already visited, if so, return
+    // Get the address of the machine code block start
+    var mcbPtr = funcPtr - MCB_HEADER_SIZE;
 
+    // Get the garbage collection count
+    var ctx = iir.get_ctx();
+    var gcCount = get_ctx_gccount(ctx);
 
+    var lastCol = iir.load(IRType.u32, mcbPtr, pint(0));
 
+    // If this block has been visited in this collection, stop
+    if (lastCol === gcCount)
+    {
+        iir.trace_print('already visited');
+        return; 
+    }
 
+    // Mark the block as visited
+    iir.store(IRType.u32, mcbPtr, pint(0), gcCount);
 
+    // Load the offset to the ref entries
+    var dataOffset = iir.icast(IRType.pint, iir.load(IRType.u32, mcbPtr, pint(4)));
 
+    // Load the number of ref entries
+    var numEntries = iir.icast(IRType.pint, iir.load(IRType.u32, mcbPtr, pint(8)));
+
+    // For each reference entry
+    for (var i = pint(0); i < numEntries; ++i)
+    {
+        // Load the reference offset and kind
+        var offset = iir.icast(IRType.pint, iir.load(IRType.u32, mcbPtr, dataOffset + i * MCB_REF_ENTRY_SIZE));
+        var kind = iir.load(IRType.u32, mcbPtr, dataOffset + i * MCB_REF_ENTRY_SIZE + pint(4));
+
+        // Function pointer
+        if (kind === u32(1))
+        {
+            iir.trace_print('fptr');
+
+            // Read the function pointer
+            var funcPtr = iir.load(IRType.rptr, mcbPtr, offset);
+
+            // Visit the function's machine code block
+            gcVisitMCB(funcPtr);
+        }
+
+        // Ref
+        if (kind === u32(2))
+        {
+            iir.trace_print('ref');
+
+            // Read the reference from the stack
+            var refVal = iir.load(IRType.ref, mcbPtr, offset);
+
+            assert (
+                ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
+                'ref val points out of heap'
+            );
+
+            // Get a forwarded reference in the to-space
+            var newRef = gcForward(refVal);
+
+            // Update the reference on the stack
+            iir.store(IRType.ref, mcbPtr, offset, newRef);
+        }
+
+        // Box
+        else if (kind === u32(3))
+        {
+            //iir.trace_print('box');
+
+            // Read the value from the stack
+            var boxVal = iir.load(IRType.box, mcbPtr, offset);
+
+            //print('box val: ' + val);
+
+            // If the boxed value is a reference
+            if (boxIsRef(boxVal) === true)
+            {
+                iir.trace_print('boxed ref');
+
+                // Unbox the reference
+                var refVal = unboxRef(boxVal);
+                var refTag = getRefTag(boxVal);
+
+                assert (
+                    ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
+                    'ref val points out of heap'
+                );
+
+                // Get a forwarded reference in the to-space
+                var newRef = gcForward(refVal);
+
+                // Rebox the reference value
+                var newBox = boxRef(newRef, refTag);
+
+                // Update the boxed value on the stack
+                iir.store(IRType.box, mcbPtr, offset, newBox);
+            }
+        }
+    }
 }
 

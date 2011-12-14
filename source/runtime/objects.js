@@ -262,6 +262,24 @@ function makeObjectLayouts(params)
         )
     );
 
+    // Machine code block header size
+    params.staticEnv.regBinding(
+        'MCB_HEADER_SIZE',
+        IRConst.getConst(
+            CodeBlock.HEADER_SIZE,
+            IRType.pint
+        )
+    );
+
+    // Machine code block reference entry size
+    params.staticEnv.regBinding(
+        'MCB_REF_ENTRY_SIZE',
+        IRConst.getConst(
+            CodeBlock.REF_ENTRY_SIZE,
+            IRType.pint
+        )
+    );
+
     //=============================================================================
     //
     // JavaScript constant values and misc. constants

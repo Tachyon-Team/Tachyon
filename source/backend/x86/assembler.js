@@ -371,6 +371,10 @@ x86.Assembler.prototype.assemble = function (codeOnly)
     {
         // Allocate a new code block for the code onlu
         var codeBlock = new CodeBlock(codeLength);
+
+        // Encode the instructions into the code block
+        for (var instr = this.firstInstr; instr !== null; instr = instr.next)
+            instr.encode(codeBlock, this.x86_64);
     }
     else
     {
@@ -400,11 +404,34 @@ x86.Assembler.prototype.assemble = function (codeOnly)
         codeBlock.writeInt(0, 32);
         codeBlock.writeInt(CodeBlock.HEADER_SIZE + codeLength, 32);
         codeBlock.writeInt(numLinks, 32);
-    }
 
-    // Encode the instructions into the code block
-    for (var instr = this.firstInstr; instr !== null; instr = instr.next)
-        instr.encode(codeBlock, this.x86_64);
+        // Encode the instructions into the code block
+        for (var instr = this.firstInstr; instr !== null; instr = instr.next)
+            instr.encode(codeBlock, this.x86_64);
+
+        // For each value linked in the code block
+        for (var i = 0; i < codeBlock.imports.length; ++i)
+        {
+            var ref = codeBlock.imports[i];
+
+            // Write the linked value position
+            codeBlock.writeInt(ref.pos, 32);
+
+            var val = ref.value;
+
+            // Encode the value kind
+            var kind = 0;
+            if (val instanceof IRFunction)
+                kind = 1;
+            else if (val.type === IRType.ref)
+                kind = 2;
+            else if (val.type === IRType.box)
+                kind = 3;
+
+            // Write the linked value info
+            codeBlock.writeInt(kind, 32);
+        }
+    }
 
     // Return the code block we assembled into
     return codeBlock;
