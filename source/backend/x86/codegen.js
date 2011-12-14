@@ -1212,13 +1212,15 @@ x86.writeStackInfo = function (
     var numBits = 0;
 
     /*
-    var funcName = instr.parentBlock.parentCFG.ownerFunc.funcName;
-    print('\nencoding info for: ' + funcName);
-    print('num slots: ' + numSlots);
-    print('ra slot: ' + raSlot);
+    if (funcName === 'test')
+    {
+        var funcName = instr.parentBlock.parentCFG.ownerFunc.funcName;
+        print('\nencoding info for: ' + funcName);
+        print('num slots: ' + numSlots);
+        print('ra slot: ' + raSlot);
 
-    if (funcName === 'cproxy_test')
         print(instr.parentBlock.parentCFG.ownerFunc);
+    }
     */
 
     // Loop through the slots, from bottom to top
@@ -1251,6 +1253,7 @@ x86.writeStackInfo = function (
 
         //if (val instanceof IRValue)
         //    print(val.getValName());
+
         //var disp = allocMap.getSlotOpnd(i).disp;
         //print('slot disp: ' + disp);
         //print('slot kind: '  + kind);

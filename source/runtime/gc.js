@@ -276,14 +276,11 @@ function gcCollect()
 
         iir.trace_print('end visit');
 
-
-
-
         // TODO: special handling for closure objects, visit executable code
         // PROBLEM: executable code is not copied...
         // primitive executable code not referenced through closure, not
         // queued to be visited!
-        // May need to keep vector of MCBs to visit... 
+        // TODO: recursively visit blocks, mark as visited
       
         // If the object is a function/closure
         if (get_layout_header(objRef) === TYPEID_CLOS)
@@ -307,13 +304,6 @@ function gcCollect()
 
         }
 
-
-
-
-
-
-
-
         // Get the object size
         var objSize = sizeof_layout(objRef);
 
@@ -326,20 +316,21 @@ function gcCollect()
 
     iir.trace_print('flipping from-space and to-space');
 
-    // TODO: flip from-space, to-space
+    // TODO: Flip the from-space and to-space
     // Set the heap start, limit and free pointers in the context
     //set_ctx_heapstart(toCtx, toStart);
     //set_ctx_heaplimit(toCtx, toLimit);
-    //set_ctx_freeptr(toCtx, ...);
+    //set_ctx_freeptr(toCtx, get_ctx_tofree(toCtx));
 
-    // TODO: free from-space block
+    // TODO: Clear the to-space information
+    set_ctx_tostart(toCtx, NULL_PTR);
+    set_ctx_tolimit(toCtx, NULL_PTR);
+    set_ctx_tofree(toCtx, NULL_PTR);
 
+    iir.trace_print('freeing original to-space block');
 
-
-
-
-
-
+    // TODO: Free the from-space heap block
+    //free(fromStart);
 
     iir.trace_print('leaving gcCollect');
 }
@@ -356,8 +347,15 @@ function gcCopy(ref, size, align)
     "tachyon:arg align puint";    
     "tachyon:ret ref";
 
+    var objPtr = iir.icast(IRType.rptr, ref);
+
     iir.trace_print('copying object:');
-    printPtr(iir.icast(IRType.rptr, ref));
+    printPtr(objPtr);
+
+    assert (
+        ptrInHeap(objPtr) === true,
+        'gcCopy: object not in heap'
+    );
 
     // Get the context pointer
     var ctx = iir.get_ctx();
@@ -573,6 +571,7 @@ function copyStackRoots(ra, bp)
             {
                 iir.trace_print('ref');
 
+                // Read the reference from the stack
                 var refVal = iir.load(IRType.ref, sp, disp);
 
                 assert (
@@ -580,10 +579,11 @@ function copyStackRoots(ra, bp)
                     'ref val points out of heap'
                 );
 
-                // TODO: update stack ref with new value
+                // Get a forwarded reference in the to-space
+                var newRef = gcForward(refVal);
 
-                // Copy the object to the to-space
-                gcCopy(refVal, sizeof_layout(refVal), HEAP_ALIGN);
+                // Update the reference on the stack
+                iir.store(IRType.ref, sp, disp, newRef);
             }
 
             // Box
@@ -591,7 +591,9 @@ function copyStackRoots(ra, bp)
             {
                 //iir.trace_print('box');
 
+                // Read the value from the stack
                 var boxVal = iir.load(IRType.box, sp, disp);
+
                 //print('box val: ' + val);
 
                 // If the boxed value is a reference
@@ -599,17 +601,26 @@ function copyStackRoots(ra, bp)
                 {
                     iir.trace_print('boxed ref');
 
+                    // Unbox the reference
                     var refVal = unboxRef(boxVal);
+                    var refTag = getRefTag(boxVal);
 
                     assert (
                         ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
                         'ref val points out of heap'
                     );
 
-                    // TODO: update stack ref with new value
+                    // Get a forwarded reference in the to-space
+                    var newRef = gcForward(refVal);
 
-                    // Copy the object to the to-space
-                    gcCopy(refVal, sizeof_layout(refVal), HEAP_ALIGN);
+                    // Rebox the reference value
+                    var newBox = boxRef(newRef, refTag);
+
+                    // FIXME: object property lookups won't work until string
+                    // references in code blocks are updated. 
+
+                    // Update the boxed value on the stack
+                    //iir.store(IRType.box, sp, disp, newBox);
                 }
             }
         }
@@ -620,5 +631,27 @@ function copyStackRoots(ra, bp)
         // Compute the base pointer for this frame
         bp = sp + frameSize;
     }
+}
+
+/**
+Visit a machine code block and its references
+*/
+function gcVisitMCB(mcbPtr /*, TODO? colNo*/)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg mcbPtr rptr";
+
+    // TODO
+    // TODO
+    // TODO
+
+    // TODO: check if already visited, if so, return
+
+
+
+
+
+
 }
 
