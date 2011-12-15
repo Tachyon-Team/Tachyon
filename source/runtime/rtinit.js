@@ -50,17 +50,19 @@ Maxime Chevalier-Boisvert
 
 /**
 Allocate and initialize a context object and a global object on the heap
-@param heapPtr pointer to the start of the heap
+@param heapSize size of the heap block to be allocated
 */
-function initHeap(heapPtr, heapSize)
+function initHeap(heapSize)
 {
     "tachyon:static";
     "tachyon:noglobal";
-    "tachyon:arg heapPtr rptr";
     "tachyon:arg heapSize puint";
     "tachyon:ret rptr";
 
-    iir.trace_print('entering initHeap');
+    iir.trace_print('allocating heap block');
+
+    // Allocate a memory block for the heap
+    var heapPtr = malloc(iir.icast(IRType.pint, heapSize));
 
     // Allocate a context object in the C heap
     var ctxPtr = malloc(comp_size_ctx() + CTX_ALIGN);

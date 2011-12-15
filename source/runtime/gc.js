@@ -218,6 +218,11 @@ function gcCollect()
     // Allocate a memory block for the to-space
     var toStart = malloc(fromSize);
 
+    assert (
+        toStart !== NULL_PTR,
+        'failed to allocate to-space heap'
+    );
+
     // Compute the to-space heap limit
     var toLimit = toStart + fromSize;
 
@@ -228,7 +233,7 @@ function gcCollect()
 
     iir.trace_print('visiting context roots');
 
-    // Visit the stack roots
+    // Visit the context roots
     gc_visit_ctx(ctx);
 
     iir.trace_print('visiting stack roots');
@@ -252,7 +257,7 @@ function gcCollect()
     // Until the to-space scan is complete
     for (var numObjs = pint(0);; ++numObjs)
     {
-        iir.trace_print('scanning object');
+        //iir.trace_print('scanning object');
 
         // Get the current free pointer
         var freePtr = get_ctx_tofree(ctx);
@@ -268,17 +273,17 @@ function gcCollect()
         var objPtr = alignPtr(scanPtr, HEAP_ALIGN);
         var objRef = iir.icast(IRType.ref, objPtr);        
 
-        iir.trace_print('begin visit');
+        //iir.trace_print('begin visit');
 
         // Visit the object layout, forward its references
         gc_visit_layout(objRef);
 
-        iir.trace_print('end visit');
+        //iir.trace_print('end visit');
       
         // If the object is a function/closure
         if (get_layout_header(objRef) === TYPEID_CLOS)
         {
-            iir.trace_print('closure object');
+            //iir.trace_print('closure object');
 
             // Get the function pointer
             var funcPtr = get_clos_funcptr(boxRef(objRef, TAG_FUNCTION));
@@ -312,8 +317,8 @@ function gcCollect()
 
     iir.trace_print('freeing original to-space block');
 
-    // FIXME: must fix the context issue for this to work
-    // TODO: Free the from-space heap block
+    // FIXME: issue with unvisited primitive functions
+    // Free the from-space heap block
     //free(fromStart);
 
     iir.trace_print('leaving gcCollect');
@@ -413,11 +418,15 @@ function gcForward(ref)
     // If the object is already forwarded
     if (nextPtr >= toStart && nextPtr < toLimit)
     {
+        iir.trace_print('already forwarded');
+
         // Return the forwarding pointer
         return iir.icast(IRType.ref, nextPtr);
     }
     else
     {
+        iir.trace_print('copying');
+
         // Copy the object into the to-space
         return gcCopy(ref, sizeof_layout(ref), HEAP_ALIGN);
     }

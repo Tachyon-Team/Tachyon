@@ -163,7 +163,7 @@ function boxIsRef(boxVal)
     if (boxIsInt(boxVal) === true)
         return false;
 
-    if (iir.icast(IRType.pint, boxVal) <= BIT_PATTERN_NOT_FOUND)
+    if (iir.icast(IRType.puint, boxVal) <= iir.icast(IRType.puint, BIT_PATTERN_NOT_FOUND))
         return false;
 
     return true;

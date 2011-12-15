@@ -1194,6 +1194,13 @@ tests.programs.gc.collect = genTest(
     0,
     'hostParams'
 );
+tests.programs.gc.arrays = genTest(
+    'programs/gc/arrays.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
 
 /*
 Type analysis test programs

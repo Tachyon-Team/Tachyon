@@ -250,12 +250,6 @@ function initRuntime(params)
 
     // Allocate the heap
     var heapSize = params.heapSize;
-    log.trace('Allocating heap (' + heapSize + ' bytes)');
-    var heapBlock = allocMemoryBlock(heapSize, false);
-    log.trace('Retrieving block address');
-    var heapAddr = getBlockAddr(heapBlock, 0);
-
-    log.trace('Heap address: ' + heapAddr);
 
     // Get the heap initialization function
     log.trace('Get heap initialization function');
@@ -267,7 +261,7 @@ function initRuntime(params)
     var initHeapBridge = makeBridge(
         initHeap,
         params,
-        [new CPtrAsPtr(), new CIntAsInt()],
+        [new CIntAsInt()],
         new CPtrAsRef()
     );
 
@@ -275,7 +269,6 @@ function initRuntime(params)
     log.trace('Calling ' + initHeap.funcName);
     var ctxPtr = initHeapBridge(
         (params.backend.regSizeBytes === 8)? [0,0,0,0,0,0,0,0]:[0,0,0,0],
-        heapAddr,
         heapSize
     );
 

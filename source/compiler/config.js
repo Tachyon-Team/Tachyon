@@ -69,6 +69,7 @@ function initConfig(is64bit, verbosity)
     log.trace('Initializing config (' + (is64bit? '64':'32') + 'bit)');
 
     // Determine the heap size
+    /*
     var heapSize;
     if (is64bit)
     {
@@ -82,6 +83,8 @@ function initConfig(is64bit, verbosity)
         else
             heapSize = 1 * Math.pow(2,30);  // Tachyon/V8 32bit => 1GB
     }
+    */
+    var heapSize = Math.pow(2, 28); // 256MB
 
     /**
     Compilation parameters for the currently running Tachyon VM.

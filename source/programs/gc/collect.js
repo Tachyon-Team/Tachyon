@@ -31,6 +31,11 @@ function test()
     if (theNewObj.x !== 1)
         return 4;
 
+    // Test that linked strings are preserved
+    var len = theLenFunc('foobarbif');
+    if (len !== 9)
+        return 5;
+
     return 0;
 }
 
