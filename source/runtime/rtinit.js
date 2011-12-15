@@ -58,58 +58,65 @@ function initHeap(heapPtr, heapSize)
     "tachyon:noglobal";
     "tachyon:arg heapPtr rptr";
     "tachyon:arg heapSize puint";
-    "tachyon:ret ref";
+    "tachyon:ret rptr";
+
+    iir.trace_print('entering initHeap');
+
+    // Allocate a context object in the C heap
+    var ctxPtr = malloc(comp_size_ctx() + CTX_ALIGN);
 
     // Align the context object in memory
-    var ctxPtr = alignPtr(heapPtr, CTX_ALIGN);
+    var ctx = alignPtr(ctxPtr, CTX_ALIGN);
 
-    // Cast the context pointer to an unboxed reference type
-    var ctx = iir.icast(IRType.ref, ctxPtr);
+    iir.trace_print('setting context');
 
     // Treat first address as the address of context object
     iir.set_ctx(ctx);
 
-    // Initialize the allocation pointer
-    set_ctx_freeptr(ctx, ctxPtr);
+    iir.trace_print('initializing context');
+
+    // Initialize the context
+    init_ctx(ctx);
+
+    iir.trace_print('context initialized');
 
     // Compute the heap limit pointer
-    var heapLimit = heapPtr + heapSize - CTX_ALIGN;
+    var heapLimit = heapPtr + heapSize;
 
     //printInt(iir.icast(IRType.pint, heapSize));
     //printPtr(heapPtr);
     //printPtr(heapLimit);
 
-    // Set the heap pointer and heap limit
+    // Set the heap parameters
     set_ctx_heapstart(ctx, heapPtr);
     set_ctx_heaplimit(ctx, heapLimit);
+    set_ctx_freeptr(ctx, heapPtr);
 
     //printPtr(iir.icast(IRType.rptr, iir.get_ctx()));
-
-    // Allocate the context object, incrementing the allocation pointer
-    var ctx = alloc_ctx();
 
     assert (
         heapLimit > heapPtr,
         1
     );
 
-    assert (
-        iir.icast(IRType.rptr, ctx) >= heapPtr,
-        2
-    );
+    iir.trace_print('allocating global object');
 
     // Allocate the global object
     var globalObj = newObject(null);
 
+    iir.trace_print('global object allocated');
+
     assert (
         boxIsObj(globalObj),
-        3
+        2
     );
 
     assert (
-        iir.icast(IRType.rptr, unboxRef(globalObj)) > iir.icast(IRType.rptr, ctx),
-        4
+        iir.icast(IRType.rptr, unboxRef(globalObj)) >= heapPtr,
+        3
     );
+
+    iir.trace_print('setting global object');
 
     // Set the global object reference in the context object
     set_ctx_globalobj(ctx, globalObj);
@@ -136,6 +143,8 @@ function initHeap(heapPtr, heapSize)
     compStrHash(undefStr);
     undefStr = getTableStr(undefStr);
     globalObj[undefStr] = UNDEFINED;
+
+    iir.trace_print('leaving initHeap');
 
     // Return a pointer to the context object
     return ctx;

@@ -258,7 +258,7 @@ function makeObjectLayouts(params)
         'HEAP_ALIGN',
         IRConst.getConst(
             8,
-            IRType.puint
+            IRType.pint
         )
     );
 

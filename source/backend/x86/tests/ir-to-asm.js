@@ -1112,7 +1112,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1136,7 +1136,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1161,7 +1161,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1191,7 +1191,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, a1, a2, a3)                  \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg a1 pint";                      \
             "tachyon:arg a2 pint";                      \
             "tachyon:arg a3 pint";                      \
@@ -1220,7 +1220,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, a1)                          \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg a1 pint";                      \
             "tachyon:ret pint";                         \
                                                         \
@@ -1245,7 +1245,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, a1, a2, a3)                  \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg a1 pint";                      \
             "tachyon:arg a2 pint";                      \
             "tachyon:arg a3 pint";                      \
@@ -1274,7 +1274,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, a1, a2)                      \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg a1 pint";                      \
             "tachyon:arg a2 pint";                      \
             "tachyon:ret pint";                         \
@@ -1291,7 +1291,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, a1, a2, a3)                  \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg a1 pint";                      \
             "tachyon:arg a2 pint";                      \
             "tachyon:arg a3 pint";                      \
@@ -1321,7 +1321,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, v0, v1, v5, v8)              \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg v0 pint";                      \
             "tachyon:arg v1 pint";                      \
             "tachyon:arg v5 pint";                      \
@@ -1429,7 +1429,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1516,7 +1516,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1597,7 +1597,7 @@ tests.x86.irToAsm = function ()
         {                                               \
             "tachyon:cproxy";                           \
             "tachyon:noglobal";                         \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1613,7 +1613,7 @@ tests.x86.irToAsm = function ()
         {                                               \
             "tachyon:static";                           \
             "tachyon:noglobal";                         \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1669,7 +1669,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n, k, c)                     \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:arg k pint";                       \
             "tachyon:arg c pint";                       \
@@ -1696,7 +1696,7 @@ tests.x86.irToAsm = function ()
         function test(ctx)                              \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:ret pint";                         \
                                                         \
             var c1 = ctx;                               \
@@ -1733,7 +1733,7 @@ tests.x86.irToAsm = function ()
         {                                               \
             "tachyon:cproxy";                           \
             "tachyon:static";                           \
-            "tachyon:ret ref";                          \
+            "tachyon:ret rptr";                         \
                                                         \
             return iir.get_ctx();                       \
         }                                               \
@@ -1747,7 +1747,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                     \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \
@@ -1771,7 +1771,7 @@ tests.x86.irToAsm = function ()
         function test(ctx, n)                           \
         {                                               \
             "tachyon:cproxy";                           \
-            "tachyon:arg ctx ref";                      \
+            "tachyon:arg ctx rptr";                      \
             "tachyon:arg n pint";                       \
             "tachyon:ret pint";                         \
                                                         \

@@ -653,7 +653,7 @@ CProxy.prototype.genProxy = function ()
 
     if (this.ctxVal === undefined)
     {
-        sourceStr += 'ctxPtr';
+        sourceStr += 'ctx';
 
         if (this.irFunction.argTypes.length > 0)
             sourceStr += ', ';
@@ -673,7 +673,7 @@ CProxy.prototype.genProxy = function ()
 
     if (this.ctxVal === undefined)
     {
-        sourceStr += '\t"tachyon:arg ctxPtr rptr";\n';
+        sourceStr += '\t"tachyon:arg ctx rptr";\n';
     }
 
     for (var i = 0; i < this.irFunction.argTypes.length; ++i)
@@ -687,14 +687,13 @@ CProxy.prototype.genProxy = function ()
     
     if (this.ctxVal === undefined)
     {
-        sourceStr += '\tvar ctx = iir.icast(IRType.ref, ctxPtr);\n';
         sourceStr += '\tiir.set_ctx(ctx);\n';
     }
 
     // Get the global object from the context if available
     sourceStr += '\tvar global = ';
     if (this.ctxVal === undefined)
-        sourceStr += '(ctxPtr !== NULL_PTR)? get_ctx_globalobj(ctx):UNDEFINED';
+        sourceStr += '(ctx !== NULL_PTR)? get_ctx_globalobj(ctx):UNDEFINED';
     else
         sourceStr += 'UNDEFINED';
     sourceStr += ';\n';

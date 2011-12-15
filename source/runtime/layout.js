@@ -764,6 +764,18 @@ MemLayout.prototype.genMethods = function ()
         ''
     );
 
+    // Generate th initialization function
+    sourceStr += 'function init_' + this.name + '(ptr' + (varSize? ', size':'') + ')\n';
+    sourceStr += '{\n';    
+    sourceStr += '\t"tachyon:inline";\n';
+    sourceStr += '\t"tachyon:noglobal";\n';
+    sourceStr += '\t"tachyon:arg ptr ' + this.ptrType + '";\n';
+    if (varSize)
+        sourceStr += '\t"tachyon:arg size pint";\n';
+    sourceStr += indentText(initCode);
+    sourceStr += '}\n';
+    sourceStr += '\n';
+
     // Function to generate the allocation function code
     function genAllocCode(namePrefix, layout, initCode)
     {
@@ -799,7 +811,7 @@ MemLayout.prototype.genMethods = function ()
 
         // If initialization code was specified, include it
         if (initCode)
-            sourceStr += indentText(initCode);
+            sourceStr += '\tinit_' + layout.name + '(ptr' + (varSize? ', size':'') + ');\n';
 
         sourceStr += '\treturn ptr;\n';
         sourceStr += '}\n';

@@ -580,6 +580,8 @@ function newObject(proto)
     // Allocate space for an object
     var obj = alloc_obj();
 
+    //printPtr(iir.icast(IRType.rptr, obj));
+
     // Initialize the prototype object
     set_obj_proto(obj, proto);
 

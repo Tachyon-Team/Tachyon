@@ -56,8 +56,10 @@ function alignPtr(ptr, alignBytes)
     "tachyon:inline";
     "tachyon:noglobal";
     "tachyon:arg ptr rptr";
-    "tachyon:arg alignBytes puint";
+    "tachyon:arg alignBytes pint";
     "tachyon:ret rptr";
+
+    alignBytes = iir.icast(IRType.puint, alignBytes);
 
     // Compute the pointer modulo the given alignment boundary
     var rem = iir.icast(IRType.puint, ptr) % alignBytes;
@@ -106,10 +108,11 @@ function heapAlloc(size)
     // Get a pointer to the context
     var ctx = iir.get_ctx();
 
-    //printPtr(iir.icast(IRType.rptr, ctx));
-
     // Get the current allocation pointer
     var freePtr = get_ctx_freeptr(ctx);
+
+    // Align the allocation pointer
+    freePtr = alignPtr(freePtr, HEAP_ALIGN);
 
     // Compute the next allocation pointer
     var nextPtr = freePtr + size;
@@ -120,6 +123,8 @@ function heapAlloc(size)
     //printInt(iir.icast(IRType.pint, size));
     //printPtr(nextPtr);
     //printPtr(heapLimit);
+
+    // TODO: align before allocation?
 
     // If this allocation exceeds the heap limit
     if (nextPtr >= heapLimit)
@@ -147,9 +152,6 @@ function heapAlloc(size)
         }
     }
 
-    // Align the next allocation pointer
-    nextPtr = alignPtr(nextPtr, HEAP_ALIGN);
-        
     // Update the allocation pointer in the context object
     set_ctx_freeptr(ctx, nextPtr);
 
@@ -201,14 +203,14 @@ function gcCollect()
     iir.trace_print('entering gcCollect');
 
     // Get a reference to the context object (from-space)
-    var fromCtx = iir.get_ctx();
+    var ctx = iir.get_ctx();
 
     // Update the garbage collection count
-    set_ctx_gccount(fromCtx, get_ctx_gccount(fromCtx) + u32(1));
+    set_ctx_gccount(ctx, get_ctx_gccount(ctx) + u32(1));
 
     // Get the current heap parameters (from-space)
-    var fromStart = get_ctx_heapstart(fromCtx);
-    var fromLimit = get_ctx_heaplimit(fromCtx);
+    var fromStart = get_ctx_heapstart(ctx);
+    var fromLimit = get_ctx_heaplimit(ctx);
 
     // Compute the current heap size (from-space)
     var fromSize = fromLimit - fromStart;
@@ -220,29 +222,23 @@ function gcCollect()
     var toLimit = toStart + fromSize;
 
     // Set the to-space heap parameters in the context
-    set_ctx_tostart(fromCtx, toStart);
-    set_ctx_tolimit(fromCtx, toLimit);
-    set_ctx_tofree(fromCtx, toStart);
+    set_ctx_tostart(ctx, toStart);
+    set_ctx_tolimit(ctx, toLimit);
+    set_ctx_tofree(ctx, toStart);
 
-    iir.trace_print('copying context');
+    iir.trace_print('visiting context roots');
 
-    // Copy the context to the to-space
-    var toCtx = gcCopy(fromCtx, comp_size_ctx(), CTX_ALIGN);
+    // Visit the stack roots
+    gc_visit_ctx(ctx);
 
-    // Set the to-space free pointer in the to-space context
-    set_ctx_tofree(toCtx, get_ctx_tofree(fromCtx));
-
-    // Update the context pointer
-    iir.set_ctx(toCtx);
-
-    iir.trace_print('copying stack roots');
+    iir.trace_print('visiting stack roots');
 
     // Get the current return address and stack base pointer
     var ra = iir.get_ra();
     var bp = iir.get_bp();
 
-    // Copy the stack roots to the to-space
-    copyStackRoots(ra, bp);
+    // Visit the stack roots
+    visitStackRoots(ra, bp);
 
     iir.trace_print('scanning to-space');
 
@@ -250,8 +246,8 @@ function gcCollect()
     // processed; objects in front of it have been copied but not processed.
     // Free Pointer: All copied objects are behind it; Space to its right is free
 
-    // Initialize the scan pointer at the to-space context address
-    var scanPtr = iir.icast(IRType.rptr, toCtx);
+    // Initialize the scan pointer at the to-space heap start
+    var scanPtr = toStart;
 
     // Until the to-space scan is complete
     for (var numObjs = pint(0);; ++numObjs)
@@ -259,7 +255,7 @@ function gcCollect()
         iir.trace_print('scanning object');
 
         // Get the current free pointer
-        var freePtr = get_ctx_tofree(toCtx);
+        var freePtr = get_ctx_tofree(ctx);
 
         //printPtr(scanPtr);
         //printPtr(freePtr);
@@ -305,14 +301,14 @@ function gcCollect()
 
     // Flip the from-space and to-space
     // Set the heap start, limit and free pointers in the context
-    set_ctx_heapstart(toCtx, toStart);
-    set_ctx_heaplimit(toCtx, toLimit);
-    set_ctx_freeptr(toCtx, get_ctx_tofree(toCtx));
+    set_ctx_heapstart(ctx, toStart);
+    set_ctx_heaplimit(ctx, toLimit);
+    set_ctx_freeptr(ctx, get_ctx_tofree(ctx));
 
     // Clear the to-space information
-    set_ctx_tostart(toCtx, NULL_PTR);
-    set_ctx_tolimit(toCtx, NULL_PTR);
-    set_ctx_tofree(toCtx, NULL_PTR);
+    set_ctx_tostart(ctx, NULL_PTR);
+    set_ctx_tolimit(ctx, NULL_PTR);
+    set_ctx_tofree(ctx, NULL_PTR);
 
     iir.trace_print('freeing original to-space block');
 
@@ -332,7 +328,7 @@ function gcCopy(ref, size, align)
     "tachyon:noglobal";
     "tachyon:arg ref ref";
     "tachyon:arg size pint";
-    "tachyon:arg align puint";    
+    "tachyon:arg align pint";    
     "tachyon:ret ref";
 
     var objPtr = iir.icast(IRType.rptr, ref);
@@ -457,9 +453,9 @@ function ptrInHeap(ptr)
 }
 
 /**
-Walk the stack and copy references to the to-space
+Walk the stack and forward references to the to-space
 */
-function copyStackRoots(ra, bp)
+function visitStackRoots(ra, bp)
 {
     "tachyon:static";
     "tachyon:noglobal";

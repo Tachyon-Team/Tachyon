@@ -62,20 +62,14 @@ function makeContextLayout(params)
         'CTX_ALIGN',
         IRConst.getConst(
             256,
-            IRType.puint
+            IRType.pint
         )
     );
 
     /**
     Run-time context layout object.
     */
-    var ctxLayout = new MemLayout("ctx", IRType.ref, undefined, params);
-
-    // Ensure that the context pointer type is valid
-    assert (
-        ctxLayout.ptrType === IRType.ref,
-        'invalid pointer type for context layout'
-    );
+    var ctxLayout = new MemLayout("ctx", IRType.rptr, undefined, params);
 
     // Global object
     ctxLayout.addField(
