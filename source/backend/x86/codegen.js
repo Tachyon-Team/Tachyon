@@ -1167,6 +1167,7 @@ x86.writeStackInfo = function (
     allocMap,
     liveOutFunc,
     dynAlign,
+    varArgs,
     padSpace,
     backend
 )
@@ -1195,79 +1196,97 @@ x86.writeStackInfo = function (
     // If using dynamic alignment, encode a special value in the pad space
     if (dynAlign === true)
         padSpace = 0xFFFF;
+    else
+        padSpace = padSpace? padSpace:0;
 
-    // Write the alignment space
-    data.writeInt(padSpace? padSpace:0, 16);
+    // Write the padding/alignment space
+    data.writeInt(padSpace, 16);
+
+    // If the argument count is variable, encode the number
+    // of argument registers with a negative sign bit
+    var numSlots;
+    if (varArgs !== false)
+        numSlots = -varArgs;
+    else
+        numSlots = allocMap.numSpillSlots + allocMap.numArgSlots + 1;
+
+    assert (
+        numSlots <= getIntMax(16, false),
+        'too many stack frame slots: ' + numSlots
+    );
 
     // Write the total number of stack slots in this frame
-    var numSlots = allocMap.numSpillSlots + allocMap.numArgSlots + 1;
     data.writeInt(numSlots, 16);
 
     // Write the return address slot index (top to bottom indexing)
     var raSlot = numSlots - allocMap.retAddrSlot - 1;
     data.writeInt(raSlot, 16);
 
-    // Slot info, encoded as a bit vector
-    var slotInfo = 0;
-    var numBits = 0;
+    // If the argument count is not variable
+    if (varArgs === false)
+    {    
+        // Slot info, encoded as a bit vector
+        var slotInfo = 0;
+        var numBits = 0;
 
-    /*
-    if (funcName === 'test')
-    {
-        var funcName = instr.parentBlock.parentCFG.ownerFunc.funcName;
-        print('\nencoding info for: ' + funcName);
-        print('num slots: ' + numSlots);
-        print('ra slot: ' + raSlot);
-
-        print(instr.parentBlock.parentCFG.ownerFunc);
-    }
-    */
-
-    // Loop through the slots, from bottom to top
-    for (var i = 0; i < numSlots; ++i)
-    {
-        var kind = 0;
-
-        var val = allocMap.getAllocVal(i);
-
-        // If this is a valid, live value
-        if (val !== undefined && liveOutFunc(val) === true)
+        /*
+        if (funcName === 'test')
         {
-            if (val instanceof IRFunction)
-                kind = 1;
-            else if (val.type === IRType.ref)
-                kind = 2;
-            else if (val.type === IRType.box)
-                kind = 3;
+            var funcName = instr.parentBlock.parentCFG.ownerFunc.funcName;
+            print('\nencoding info for: ' + funcName);
+            print('num slots: ' + numSlots);
+            print('ra slot: ' + raSlot);
+
+            print(instr.parentBlock.parentCFG.ownerFunc);
+        }
+        */
+
+        // Loop through the slots, from bottom to top
+        for (var i = 0; i < numSlots; ++i)
+        {
+            var kind = 0;
+
+            var val = allocMap.getAllocVal(i);
+
+            // If this is a valid, live value
+            if (val !== undefined && liveOutFunc(val) === true)
+            {
+                if (val instanceof IRFunction)
+                    kind = 1;
+                else if (val.type === IRType.ref)
+                    kind = 2;
+                else if (val.type === IRType.box)
+                    kind = 3;
+            }
+
+            assert (
+                !(i === allocMap.retAddrSlot && kind !== 0),
+                'invalid kind for return address slot'
+            );
+
+            // Encode the slot kind into our bit vector
+            slotInfo = num_shift(slotInfo, 2);
+            slotInfo = num_add(slotInfo, kind);
+            numBits += 2;
+
+            //if (val instanceof IRValue)
+            //    print(val.getValName());
+
+            //var disp = allocMap.getSlotOpnd(i).disp;
+            //print('slot disp: ' + disp);
+            //print('slot kind: '  + kind);
         }
 
-        assert (
-            !(i === allocMap.retAddrSlot && kind !== 0),
-            'invalid kind for return address slot'
-        );
+        // Pad the slot info to the nearest byte
+        var remBits = numBits % 8;
+        if (remBits !== 0)
+            numBits += 8 - remBits;
 
-        // Encode the slot kind into our bit vector
-        slotInfo = num_shift(slotInfo, 2);
-        slotInfo = num_add(slotInfo, kind);
-        numBits += 2;
+        //print('writing slot info: ' + slotInfo + ' in ' + numBits + ' bits');
 
-        //if (val instanceof IRValue)
-        //    print(val.getValName());
-
-        //var disp = allocMap.getSlotOpnd(i).disp;
-        //print('slot disp: ' + disp);
-        //print('slot kind: '  + kind);
+        // Write the slot kind information
+        data.writeInt(slotInfo, numBits);
     }
-
-    // Pad the slot info to the nearest byte
-    var remBits = numBits % 8;
-    if (remBits !== 0)
-        numBits += 8 - remBits;
-
-    //print('writing slot info: ' + slotInfo + ' in ' + numBits + ' bits');
-
-    // Write the slot kind information
-    data.writeInt(slotInfo, numBits);
 
     // Add the stack info to the instruction stream
     asm.addInstr(data);
@@ -1588,6 +1607,23 @@ x86.genArgObjStub = function (
 
     // Call the allocArgTable function
     asm.call(tr0);
+
+    assert (
+        allocMap.numSpillSlots === 0,
+        'cannot have spill slots in var arg frame'
+    );
+
+    // Encode the stack information
+    x86.writeStackInfo(
+        null,
+        asm,
+        allocMap,
+        undefined,
+        false,
+        argRegs.length,
+        0,
+        backend
+    );
 
     // Save the argument table pointer in tr1
     asm.mov(tr1, callConv.retReg);

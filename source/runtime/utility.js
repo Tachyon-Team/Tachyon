@@ -190,14 +190,18 @@ function printTachyonState()
     var strtbl = get_ctx_strtbl(ctx);
     var numStrings = iir.icast(IRType.pint, get_strtbl_numstrs(strtbl));
 
+    var functbl = get_ctx_functbl(ctx);
+    var numFuncs = iir.icast(IRType.pint, get_functbl_numfuncs(functbl));
+
     var globalobj = get_ctx_globalobj(ctx);
     var numGlobals = iir.icast(IRType.pint, get_obj_numprops(globalobj));
 
     var gcCount = iir.icast(IRType.pint, get_ctx_gccount(ctx));
 
-    printBox('Heap size  : ' + heapSizeKB + ' KB');
-    printBox('Num strings: ' + boxInt(numStrings));
-    printBox('Num globals: ' + boxInt(numGlobals));
-    printBox('gc count   : ' + boxInt(gcCount));
+    printBox('Heap size    : ' + heapSizeKB + ' KB');
+    printBox('Num strings  : ' + boxInt(numStrings));
+    printBox('Num functions: ' + boxInt(numFuncs));
+    printBox('Num globals  : ' + boxInt(numGlobals));
+    printBox('gc col. count: ' + boxInt(gcCount));
 }
 

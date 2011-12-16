@@ -49,9 +49,9 @@ Maxime Chevalier-Boisvert
 */
 
 /**
-Initialize the resources needed for the string hash consing system.
+Initialize the string table used by the hash consing system.
 */
-function initStrings()
+function initStrTbl()
 {
     "tachyon:static";
     "tachyon:noglobal";
@@ -59,7 +59,7 @@ function initStrings()
     // Allocate the string table object
     var strtbl = alloc_strtbl(STR_TBL_INIT_SIZE);
 
-    // Initialize the number of properties
+    // Initialize the number of strings
     set_strtbl_numstrs(strtbl, u32(0));
 
     // Get a pointer to the context

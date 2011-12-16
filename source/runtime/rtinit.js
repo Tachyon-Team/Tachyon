@@ -123,8 +123,11 @@ function initHeap(heapSize)
     // Set the global object reference in the context object
     set_ctx_globalobj(ctx, globalObj);
 
-    // Initialize the string hash consing system
-    initStrings();
+    // Initialize the string table
+    initStrTbl();
+
+    // Initialize the function table
+    initFuncTbl();
 
     // printPtr(iir.icast(IRType.rptr, ctx));
     // printPtr(iir.icast(IRType.rptr, unboxRef(globalObj)));
@@ -150,6 +153,68 @@ function initHeap(heapSize)
 
     // Return a pointer to the context object
     return ctx;
+}
+
+/**
+Initialize the function table
+*/
+function initFuncTbl()
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    // Allocate the function table object
+    var functbl = alloc_functbl(FUNC_TBL_INIT_SIZE);
+
+    // Initialize the number of functions
+    set_functbl_numfuncs(functbl, u32(0));
+
+    // Get a pointer to the context
+    var ctx = iir.get_ctx();
+
+    // Set the function table reference in the context
+    set_ctx_functbl(ctx, functbl);
+}
+
+/**
+Register a function in the function table
+*/
+function regFunction(funcPtr)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg funcPtr rptr";
+
+    var ctx = iir.get_ctx();
+    var funcTbl = get_ctx_functbl(ctx);
+
+    var tblSize = iir.icast(IRType.pint, get_functbl_size(funcTbl));
+    var numFuncs = iir.icast(IRType.pint, get_functbl_numfuncs(funcTbl));
+
+    // If the table needs to be extended
+    if (numFuncs + pint(1) === tblSize)
+    {
+        var newSize = tblSize * pint(2);
+        var newTbl = alloc_functbl(newSize);
+
+        for (var i = pint(0); i < tblSize; ++i)
+        {
+            var f = get_functbl_tbl(funcTbl, i);
+            set_functbl_tbl(newTbl, i, f);
+        }
+
+        set_ctx_functbl(ctx, newTbl);
+
+        funcTbl = newTbl;
+    }
+
+    // Add the new function to the table
+    set_functbl_tbl(funcTbl, iir.icast(IRType.pint, numFuncs), funcPtr);
+
+    // Increment the number of functions in the table
+    set_functbl_numfuncs(funcTbl, iir.icast(IRType.u32, numFuncs) + u32(1));
+
+    return 0;
 }
 
 /**

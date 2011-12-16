@@ -338,5 +338,37 @@ function initRuntime(params)
 
     // Store the string allocatiom function in the compilation parameters
     params.getStrObj = getStrObjFunc;
+
+    // Get the unction registration function
+    log.trace('Get the function registration function');
+    var regFunction = params.staticEnv.getBinding('regFunction');
+
+    // Create a bridge to call the function registration function
+    log.trace('Creating bridge to regFunction');
+    var regFunctionBridge = makeBridge(
+        regFunction,
+        params,
+        [new CPtrAsPtr()],
+        new CIntAsBox()
+    );
+
+    /**
+    Function to register functions with the runtime system
+    */
+    function regFunctionFunc(irFunc)
+    {
+        assert (
+            irFunc instanceof IRFunction,
+            'expected IR function in regFunction'
+        );
+
+        var mcb = irFunc.codeBlock;
+        var blockAddr = mcb.getAddress(0);
+
+        return regFunctionBridge(ctxPtr, blockAddr);
+    }
+
+    // Store the string allocatiom function in the compilation parameters
+    params.regFunction = regFunctionFunc;
 }
 

@@ -763,7 +763,7 @@ x86.DataBlock.prototype.writeInt = function (value, numBits)
 {
     assert (
         isPosInt(numBits) && numBits % 8 === 0,
-        'invalid num bits'
+        'invalid num bits: ' + numBits
     );
 
     this.values.push({ value: value, numBits: numBits});

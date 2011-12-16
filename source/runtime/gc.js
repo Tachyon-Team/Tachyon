@@ -202,6 +202,8 @@ function gcCollect()
 
     iir.trace_print('entering gcCollect');
 
+    var startTime = currentTimeMillis();
+
     // Get a reference to the context object (from-space)
     var ctx = iir.get_ctx();
 
@@ -247,6 +249,19 @@ function gcCollect()
 
     iir.trace_print('scanning to-space');
 
+    // Get the function table
+    var funcTbl = get_ctx_functbl(ctx);
+    var numFuncs = iir.icast(IRType.pint, get_functbl_numfuncs(funcTbl));
+
+    // For each function in the table
+    for (var i = pint(0); i < numFuncs; ++i)
+    {
+        var mcbPtr = get_functbl_tbl(funcTbl, i);
+
+        // Visit the machine code block
+        gcVisitMCB(mcbPtr, pint(0));
+    }
+
     // Scan Pointer: All objects behind it (i.e. to its left) have been fully
     // processed; objects in front of it have been copied but not processed.
     // Free Pointer: All copied objects are behind it; Space to its right is free
@@ -280,6 +295,7 @@ function gcCollect()
 
         //iir.trace_print('end visit');
       
+        /*
         // If the object is a function/closure
         if (get_layout_header(objRef) === TYPEID_CLOS)
         {
@@ -289,8 +305,9 @@ function gcCollect()
             var funcPtr = get_clos_funcptr(boxRef(objRef, TAG_FUNCTION));
 
             // Visit the machine code block
-            gcVisitMCB(funcPtr);
+            gcVisitMCB(funcPtr, MCB_HEADER_SIZE);
         }
+        */
 
         // Get the object size
         var objSize = sizeof_layout(objRef);
@@ -298,9 +315,6 @@ function gcCollect()
         // Move to the next object
         scanPtr = objPtr + objSize;
     }
-
-    iir.trace_print('objects copied/scanned:');
-    printInt(numObjs);
 
     iir.trace_print('flipping from-space and to-space');
 
@@ -317,9 +331,16 @@ function gcCollect()
 
     iir.trace_print('freeing original to-space block');
 
-    // FIXME: issue with unvisited primitive functions
     // Free the from-space heap block
-    //free(fromStart);
+    free(fromStart);
+
+    iir.trace_print('objects copied/scanned:');
+    printInt(numObjs);
+
+    var endTime = currentTimeMillis();
+    var gcTime = endTime - startTime;
+    iir.trace_print('gc time (ms):');
+    printBox(gcTime);
 
     iir.trace_print('leaving gcCollect');
 }
@@ -338,8 +359,8 @@ function gcCopy(ref, size, align)
 
     var objPtr = iir.icast(IRType.rptr, ref);
 
-    iir.trace_print('copying object:');
-    printPtr(objPtr);
+    //iir.trace_print('copying object:');
+    //printPtr(objPtr);
 
     assert (
         ptrInHeap(objPtr) === true,
@@ -418,14 +439,14 @@ function gcForward(ref)
     // If the object is already forwarded
     if (nextPtr >= toStart && nextPtr < toLimit)
     {
-        iir.trace_print('already forwarded');
+        //iir.trace_print('already forwarded');
 
         // Return the forwarding pointer
         return iir.icast(IRType.ref, nextPtr);
     }
     else
     {
-        iir.trace_print('copying');
+        //iir.trace_print('copying');
 
         // Copy the object into the to-space
         return gcCopy(ref, sizeof_layout(ref), HEAP_ALIGN);
@@ -471,8 +492,11 @@ function visitStackRoots(ra, bp)
     "tachyon:arg ra rptr";
     "tachyon:arg bp rptr";
 
+    // Number of hidden arguments
+    const NUM_HIDDEN_ARGS = pint(2);
+
     // Size of a stack slot
-    const slotSize = PTR_NUM_BYTES;
+    const SLOT_SIZE = PTR_NUM_BYTES;
 
     iir.trace_print('** starting stack walk');
 
@@ -495,6 +519,8 @@ function visitStackRoots(ra, bp)
     {
         iir.trace_print('* stack frame');
 
+        printPtr(ra);
+
         // Note: 8 byte offset to data
 
         // Read the magic code
@@ -511,18 +537,16 @@ function visitStackRoots(ra, bp)
         var padSpace = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(10)));
 
         // Read the number of stack slots
-        var numSlots = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(12)));
+        var numSlots = iir.icast(IRType.pint, iir.load(IRType.i16, ra, pint(12)));
 
         // Read the return address slot index
         var raSlot = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(14)));
 
-        // Compute the size of this frame
-        var frameSize = numSlots * slotSize;
+        iir.trace_print('num slots:');
+        printInt(numSlots);
 
-        //print('pad space : ' + boxInt(padSpace));
-        printBox('num slots : ' + boxInt(numSlots));
-        printBox('ra slot   : ' + boxInt(raSlot));
-        //print('frame size: ' + boxInt(frameSize));
+        iir.trace_print('pad space:');
+        printInt(padSpace);
 
         // If this frame uses dynamic alignment
         if (padSpace === pint(0xFFFF))
@@ -538,97 +562,120 @@ function visitStackRoots(ra, bp)
             var sp = bp + padSpace;
         }
 
-        var kindByte = pint(0);
-
-        // For each stack slot, from top to bottom
-        for (var i = pint(0); i < numSlots; ++i)
+        // If this is a frame with a variable argument count
+        //
+        // arg count  <- sp
+        // * spilled arg regs
+        // ret addr
+        // * stack args
+        if (numSlots < pint(0))
         {
-            if (i % pint(4) === pint(0))
+            iir.trace_print('var arg frame');
+
+            // Get the number of argument registers
+            var numArgRegs = -numSlots;
+
+            // Load the argument count at the top of the stack
+            var numArgs = iir.load(IRType.pint, sp, pint(0));
+
+            // Account for the hidden arguments
+            numArgs += NUM_HIDDEN_ARGS;
+
+            // Compute the number of register arguments
+            var numRegArgs = numArgs;
+            if (numRegArgs > numArgRegs)
+                numRegArgs = numArgRegs;
+
+            // Compute the number of stack arguments
+            var numStackArgs = numArgs - numRegArgs;
+            if (numStackArgs < pint(0))
+                numStackArgs = pint(0);
+
+            iir.trace_print('num args:');
+            printInt(numArgs);
+
+            iir.trace_print('num reg args:');
+            printInt(numRegArgs);
+
+            iir.trace_print('num stack args:');
+            printInt(numStackArgs);
+
+            // Compute the return address slot
+            raSlot = pint(1) + numArgRegs;
+
+            // Compute the size of this frame
+            var frameSize = (pint(1) + numArgRegs + pint(1) + numStackArgs) * SLOT_SIZE;
+
+            // Visit the register arguments
+            for (var i = pint(0); i < numRegArgs; ++i)
             {
-                var offset = pint(16) + (i / pint(4));
-                kindByte = iir.load(IRType.u8, ra, offset);
-                kindByte = iir.icast(IRType.pint, kindByte);
+                var disp = (numArgRegs - i) * SLOT_SIZE;
+                gcVisitBox(sp, disp);
             }
 
-            var kind = kindByte & pint(3);
-            kindByte >>>= pint(2);
-
-            //print('slot idx : ' + boxInt(i));
-            //print('slot kind: ' + boxInt(kind));
-
-            // Compute the displacement for this slot
-            var disp = i * slotSize;
-
-            // Function pointer
-            if (kind === pint(1))
+            // Visit the stack arguments
+            for (var i = pint(0); i < numStackArgs; ++i)
             {
-                iir.trace_print('fptr');
-
-                // Read the function pointer
-                var funcPtr = iir.load(IRType.rptr, sp, disp);
-
-                // Visit the function's machine code block
-                gcVisitMCB(funcPtr);
+                var disp = (pint(1) + numArgRegs + pint(1) + i) * SLOT_SIZE;
+                gcVisitBox(sp, disp);
             }
+        }
 
-            // Ref
-            if (kind === pint(2))
+        // The argument count is fixed
+        else
+        {
+            // Compute the size of this frame
+            var frameSize = numSlots * SLOT_SIZE;
+
+            var kindByte = pint(0);
+
+            // For each stack slot, from top to bottom
+            for (var i = pint(0); i < numSlots; ++i)
             {
-                iir.trace_print('ref');
-
-                // Read the reference from the stack
-                var refVal = iir.load(IRType.ref, sp, disp);
-
-                assert (
-                    ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
-                    'ref val points out of heap'
-                );
-
-                // Get a forwarded reference in the to-space
-                var newRef = gcForward(refVal);
-
-                // Update the reference on the stack
-                iir.store(IRType.ref, sp, disp, newRef);
-            }
-
-            // Box
-            else if (kind === pint(3))
-            {
-                //iir.trace_print('box');
-
-                // Read the value from the stack
-                var boxVal = iir.load(IRType.box, sp, disp);
-
-                //print('box val: ' + val);
-
-                // If the boxed value is a reference
-                if (boxIsRef(boxVal) === true)
+                if (i % pint(4) === pint(0))
                 {
-                    iir.trace_print('boxed ref');
+                    var offset = pint(16) + (i / pint(4));
+                    kindByte = iir.load(IRType.u8, ra, offset);
+                    kindByte = iir.icast(IRType.pint, kindByte);
+                }
 
-                    // Unbox the reference
-                    var refVal = unboxRef(boxVal);
-                    var refTag = getRefTag(boxVal);
+                var kind = kindByte & pint(3);
+                kindByte >>>= pint(2);
 
-                    assert (
-                        ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
-                        'ref val points out of heap'
-                    );
+                //print('slot idx : ' + boxInt(i));
+                //print('slot kind: ' + boxInt(kind));
 
-                    // Get a forwarded reference in the to-space
-                    var newRef = gcForward(refVal);
+                // Compute the displacement for this slot
+                var disp = i * SLOT_SIZE;
 
-                    // Rebox the reference value
-                    var newBox = boxRef(newRef, refTag);
+                // Function pointer
+                if (kind === pint(1))
+                {
+                    gcVisitFptr(sp, disp);
+                }
 
-                    // Update the boxed value on the stack
-                    iir.store(IRType.box, sp, disp, newBox);
+                // Ref
+                if (kind === pint(2))
+                {
+                    gcVisitRef(sp, disp);
+                }
+
+                // Box
+                else if (kind === pint(3))
+                {
+                    gcVisitBox(sp, disp);
                 }
             }
         }
 
+        iir.trace_print('ra slot:');
+        printInt(raSlot);
+
+        iir.trace_print('frame size:');
+        printInt(frameSize);
+
         // Load the return address for the next frame down
-        ra = iir.load(IRType.rptr, sp, raSlot * slotSize);
+        ra = iir.load(IRType.rptr, sp, raSlot * SLOT_SIZE);
 
         // Compute the base pointer for this frame
         bp = sp + frameSize;
@@ -638,17 +685,18 @@ function visitStackRoots(ra, bp)
 /**
 Visit a machine code block and its references
 */
-function gcVisitMCB(funcPtr)
+function gcVisitMCB(funcPtr, offset)
 {
     "tachyon:static";
     "tachyon:noglobal";
     "tachyon:arg funcPtr rptr";
+    "tachyon:arg offset pint";
 
-    iir.trace_print('visiting mcb');
-    printPtr(funcPtr);
+    //iir.trace_print('visiting mcb');
+    //printPtr(funcPtr);
 
     // Get the address of the machine code block start
-    var mcbPtr = funcPtr - MCB_HEADER_SIZE;
+    var mcbPtr = funcPtr - offset;
 
     // Get the garbage collection count
     var ctx = iir.get_ctx();
@@ -659,7 +707,7 @@ function gcVisitMCB(funcPtr)
     // If this block has been visited in this collection, stop
     if (lastCol === gcCount)
     {
-        iir.trace_print('already visited');
+        //iir.trace_print('already visited');
         return; 
     }
 
@@ -682,69 +730,108 @@ function gcVisitMCB(funcPtr)
         // Function pointer
         if (kind === u32(1))
         {
-            iir.trace_print('fptr');
-
-            // Read the function pointer
-            var funcPtr = iir.load(IRType.rptr, mcbPtr, offset);
-
-            // Visit the function's machine code block
-            gcVisitMCB(funcPtr);
+            gcVisitFptr(mcbPtr, offset);
         }
 
         // Ref
         if (kind === u32(2))
         {
-            iir.trace_print('ref');
-
-            // Read the reference from the stack
-            var refVal = iir.load(IRType.ref, mcbPtr, offset);
-
-            assert (
-                ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
-                'ref val points out of heap'
-            );
-
-            // Get a forwarded reference in the to-space
-            var newRef = gcForward(refVal);
-
-            // Update the reference on the stack
-            iir.store(IRType.ref, mcbPtr, offset, newRef);
+            gcVisitRef(mcbPtr, offset);
         }
 
         // Box
         else if (kind === u32(3))
         {
-            //iir.trace_print('box');
-
-            // Read the value from the stack
-            var boxVal = iir.load(IRType.box, mcbPtr, offset);
-
-            //print('box val: ' + val);
-
-            // If the boxed value is a reference
-            if (boxIsRef(boxVal) === true)
-            {
-                iir.trace_print('boxed ref');
-
-                // Unbox the reference
-                var refVal = unboxRef(boxVal);
-                var refTag = getRefTag(boxVal);
-
-                assert (
-                    ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
-                    'ref val points out of heap'
-                );
-
-                // Get a forwarded reference in the to-space
-                var newRef = gcForward(refVal);
-
-                // Rebox the reference value
-                var newBox = boxRef(newRef, refTag);
-
-                // Update the boxed value on the stack
-                iir.store(IRType.box, mcbPtr, offset, newBox);
-            }
+            gcVisitBox(mcbPtr, offset);
         }
+    }
+}
+
+/**
+Visit a function pointer and its references
+*/
+function gcVisitFptr(ptr, offset)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+    "tachyon:arg offset pint";
+
+    //iir.trace_print('fptr');
+
+    // Read the function pointer
+    var funcPtr = iir.load(IRType.rptr, ptr, offset);
+
+    // Visit the function's machine code block
+    gcVisitMCB(funcPtr, MCB_HEADER_SIZE);
+}
+
+/**
+Visit and update a reference value
+*/
+function gcVisitRef(ptr, offset)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+    "tachyon:arg offset pint";
+
+    //iir.trace_print('ref');
+
+    // Read the reference
+    var refVal = iir.load(IRType.ref, ptr, offset);
+
+    assert (
+        ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
+        'ref val points out of heap'
+    );
+
+    // Get a forwarded reference in the to-space
+    var newRef = gcForward(refVal);
+
+    // Update the reference
+    iir.store(IRType.ref, ptr, offset, newRef);
+}
+
+/**
+Visit and update a boxed value
+*/
+function gcVisitBox(ptr, offset)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg ptr rptr";
+    "tachyon:arg offset pint";
+
+    //iir.trace_print('box');
+
+    // Read the value
+    var boxVal = iir.load(IRType.box, ptr, offset);
+
+    //print('box val: ' + val);
+
+    // If the boxed value is a reference
+    if (boxIsRef(boxVal) === true)
+    {
+        //iir.trace_print('boxed ref');
+
+        // Unbox the reference
+        var refVal = unboxRef(boxVal);
+        var refTag = getRefTag(boxVal);
+
+        assert (
+            ptrInHeap(iir.icast(IRType.rptr, refVal)) === true,
+            'ref val points out of heap'
+        );
+
+        // Get a forwarded reference in the to-space
+        var newRef = gcForward(refVal);
+
+        // Rebox the reference value
+        var newBox = boxRef(newRef, refTag);
+
+        // Update the boxed value
+        iir.store(IRType.box, ptr, offset, newBox);
     }
 }
 

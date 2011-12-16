@@ -1201,6 +1201,22 @@ tests.programs.gc.arrays = genTest(
     0,
     'hostParams'
 );
+tests.programs.gc.deepstack = genTest(
+    'programs/gc/deepstack.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+/*
+tests.programs.gc.graph = genTest(
+    'programs/gc/graph.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
+*/
 
 /*
 Type analysis test programs

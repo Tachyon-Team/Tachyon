@@ -718,8 +718,12 @@ function allocArgTable(numArgs)
     "tachyon:arg numArgs pint";
     "tachyon:ret ref";
 
+    //iir.trace_print('allocArgTable');
+
     // Allocate space for an array table
     var arrtbl = alloc_arrtbl(numArgs);
+
+    //iir.trace_print('leaving allocArgTable');
 
     // Return the table reference
     return unboxRef(arrtbl);

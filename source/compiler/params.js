@@ -172,6 +172,12 @@ function CompParams(cfgObj)
     this.getStrObj = null;
 
     /**
+    Function to register functions
+    @field
+    */
+    this.regFunction = null;
+
+    /**
     Type propagation analysis instance
     @field
     */

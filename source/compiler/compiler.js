@@ -77,6 +77,11 @@ function linkIR(ir, params)
     
     const backend = params.backend;
 
+    // Register the function with the runtime
+    if (params.regFunction)
+        params.regFunction(ir);
+
+    // Link the function
     backend.linkCode(ir, params);
 };
 

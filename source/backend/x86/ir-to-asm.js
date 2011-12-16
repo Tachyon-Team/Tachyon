@@ -726,6 +726,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
             allocMap,
             genInfo.liveOutFunc,
             dynAlign,
+            false,
             padSpace,
             backend
         );
@@ -1135,6 +1136,7 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
             allocMap,
             genInfo.liveOutFunc,            
             true,
+            false,
             0,
             backend
         );

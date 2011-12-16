@@ -566,7 +566,7 @@ function makeObjectLayouts(params)
     //=============================================================================
 
     /**
-    Hash table entry layout object
+    String table layout object
     */
     var strTblLayout = new MemLayout('strtbl', IRType.box, 'TAG_OTHER', params);
 
@@ -609,6 +609,44 @@ function makeObjectLayouts(params)
         'STR_TBL_MAX_LOAD_DENOM',
         IRConst.getConst(
             5,
+            IRType.pint
+        )
+    );
+
+    //=============================================================================
+    //
+    // Function table layout
+    //
+    //=============================================================================
+
+    /**
+    Function table layout object
+    */
+    var funcTblLayout = new MemLayout('functbl', IRType.box, 'TAG_OTHER', params);
+
+    // Number of functions
+    funcTblLayout.addField(
+        'numfuncs',
+        IRType.u32
+    );
+
+    // Function table entries
+    funcTblLayout.addField(
+        'tbl',
+        IRType.rptr,
+        'NULL_PTR',
+        undefined,
+        false
+    );
+
+    // Finalize the function table layout
+    funcTblLayout.finalize();
+
+    // Initial function table size
+    params.staticEnv.regBinding(
+        'FUNC_TBL_INIT_SIZE',
+        IRConst.getConst(
+            256,
             IRType.pint
         )
     );

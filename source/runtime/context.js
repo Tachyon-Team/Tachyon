@@ -128,6 +128,13 @@ function makeContextLayout(params)
         'null'
     );
 
+    // Function table
+    ctxLayout.addField(
+        'functbl',
+        IRType.box,
+        'null'
+    );
+
     // Object prototype object
     ctxLayout.addField(
         'objproto',
