@@ -721,7 +721,7 @@ CallFuncInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm
     {
         // Encode stack frame info here
         x86.writeStackInfo(
-            instr,
+            instr.parentBlock.parentCFG.ownerFunc,
             asm,
             allocMap,
             genInfo.liveOutFunc,
@@ -1131,7 +1131,7 @@ CallApplyInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, as
     {
         // Encode stack frame info here
         x86.writeStackInfo(
-            instr,
+            instr.parentBlock.parentCFG.ownerFunc,
             asm,
             allocMap,
             genInfo.liveOutFunc,            

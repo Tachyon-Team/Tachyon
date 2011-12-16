@@ -548,6 +548,24 @@ function visitStackRoots(ra, bp)
         iir.trace_print('pad space:');
         printInt(padSpace);
 
+
+        // For debugging purposes, print the function name
+        var numKindBytes = pint(0);
+        if (numSlots > pint(0))
+        {
+            numKindBytes = (numSlots / pint(4));
+            if (numSlots % pint(4) !== pint(0))
+                numKindBytes += pint(1);
+        }
+        var nameDisp = pint(16) + numKindBytes;
+        var nameStr = ra + nameDisp;
+        iir.trace_print('function name:')
+        printStr(nameStr);
+
+
+
+
+
         // If this frame uses dynamic alignment
         if (padSpace === pint(0xFFFF))
         {

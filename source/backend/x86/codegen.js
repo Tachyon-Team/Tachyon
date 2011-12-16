@@ -142,6 +142,7 @@ x86.genCode = function (irFunc, blockOrder, liveness, backend, params)
         {
             // Generate the argument object creation stub
             x86.genArgObjStub(
+                irFunc,
                 asm,
                 entryMap,
                 callConv,
@@ -1162,7 +1163,7 @@ Stack info format (packed):
 
 */
 x86.writeStackInfo = function (
-    instr,
+    irFunc,
     asm,
     allocMap,
     liveOutFunc,
@@ -1229,18 +1230,6 @@ x86.writeStackInfo = function (
         var slotInfo = 0;
         var numBits = 0;
 
-        /*
-        if (funcName === 'test')
-        {
-            var funcName = instr.parentBlock.parentCFG.ownerFunc.funcName;
-            print('\nencoding info for: ' + funcName);
-            print('num slots: ' + numSlots);
-            print('ra slot: ' + raSlot);
-
-            print(instr.parentBlock.parentCFG.ownerFunc);
-        }
-        */
-
         // Loop through the slots, from bottom to top
         for (var i = 0; i < numSlots; ++i)
         {
@@ -1287,6 +1276,16 @@ x86.writeStackInfo = function (
         // Write the slot kind information
         data.writeInt(slotInfo, numBits);
     }
+
+    // For debugging purposes, encode the function name
+    var fName = irFunc.funcName;
+    var fNameData = 0;
+    for (var i = fName.length - 1; i >= 0; --i)
+    {
+        fNameData = num_shift(fNameData, 8);
+        fNameData = num_add(fNameData, fName.charCodeAt(i) & 255);
+    }
+    data.writeInt(fNameData, (fName.length+1) * 8);
 
     // Add the stack info to the instruction stream
     asm.addInstr(data);
@@ -1487,6 +1486,7 @@ x86.genArgNormStub = function (
 Generate the argument object creation stub
 */
 x86.genArgObjStub = function (
+    irFunc,
     asm,
     allocMap,
     callConv,
@@ -1615,7 +1615,7 @@ x86.genArgObjStub = function (
 
     // Encode the stack information
     x86.writeStackInfo(
-        null,
+        irFunc,
         asm,
         allocMap,
         undefined,

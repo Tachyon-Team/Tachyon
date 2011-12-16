@@ -1038,6 +1038,13 @@ function initFFI(params)
     ));
 
     regFFI(new CFunction(
+        'printStr',
+        [new CPtrAsPtr()], 
+        new CIntAsBox(),
+        params
+    ));
+
+    regFFI(new CFunction(
         'sum2Ints', 
         [new CIntAsBox(), new CIntAsBox()],
         new CIntAsBox(),
