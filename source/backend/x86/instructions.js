@@ -757,6 +757,14 @@ x86.DataBlock = function ()
 x86.DataBlock.prototype = new x86.Instruction();
 
 /**
+Produce a string representation of this block
+*/
+x86.DataBlock.prototype.toString = function ()
+{
+    return '[data: ' + this.length + ' bytes]';
+}
+
+/**
 Write an integer value in the data block
 */
 x86.DataBlock.prototype.writeInt = function (value, numBits)

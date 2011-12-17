@@ -9,7 +9,7 @@ Node.prototype.addEdge = function (n)
     this.edges.push(n);
 };
 
-Node.prototype.remEdge = function (n)
+function remEdge(n)
 {
     //iir.trace_print('remEdge');    
 
@@ -21,7 +21,8 @@ Node.prototype.remEdge = function (n)
         this.edges.splice(idx, 1);
 
     //iir.trace_print('leaving remEdge');
-};
+}
+Node.prototype.remEdge = remEdge;
 
 function graphSum(root)
 {

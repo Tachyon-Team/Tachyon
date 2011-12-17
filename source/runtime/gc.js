@@ -529,7 +529,7 @@ function visitStackRoots(ra, bp)
         // If the magic code doesn't match, stop the traversal
         if (magic !== pint(1337))
         {
-            iir.trace_print("magic does't match");
+            iir.trace_print("magic doesn't match");
             break;
         }
 

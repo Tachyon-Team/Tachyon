@@ -103,8 +103,10 @@ x86.optimize = function (asm, maxPasses)
     */
     function remInstr(instr)
     {
-        if (instr instanceof x86.DataBlock)
-            throw 'removing data block';
+        assert (
+            (instr instanceof x86.DataBlock) === false,
+            'removing data block'
+        );
 
         asm.remInstr(instr);
         changed = true;
@@ -201,9 +203,10 @@ x86.optimize = function (asm, maxPasses)
             // simplify assembler helper functions?
             //
 
-            // If this is a jump
-            if (isDirectJump(instr) === true ||
-                isCondJump(instr) === true)
+            // If this is a jump and the next instruction is not a data block
+            if ((isDirectJump(instr) === true ||
+                 isCondJump(instr) === true) &&
+                (instr.next instanceof x86.DataBlock) === false)
             {
                 var label = getJumpLabel(instr);
 
@@ -256,11 +259,10 @@ x86.optimize = function (asm, maxPasses)
                 }
 
                 // If this is an unconditional jump and the next
-                // instruction is not a label or a data block
+                // instruction is not a label
                 else if (isDirectJump(instr) === true &&
                          instr.next !== null &&
-                         (instr.next instanceof x86.Label) === false &&
-                         (instr.next instanceof x86.DataBlock) === false)
+                         (instr.next instanceof x86.Label) === false)
                 {
                     // Remove the instruction after the jump
                     remInstr(instr.next);
