@@ -159,23 +159,6 @@ function isGlobalObj(obj)
 }
 
 /**
-Get the amount of memory allocated in KBs
-*/
-function memAllocatedKBs()
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    var ctx = iir.get_ctx();
-
-    var freePtr = get_ctx_freeptr(ctx);
-    var heapStart = get_ctx_heapstart(ctx);
-    var heapSizeKBs = (freePtr - heapStart) / pint(1024);
-
-    return boxInt(heapSizeKBs);
-}
-
-/**
 Print information about the state of the Tachyon VM
 */
 function printTachyonState()

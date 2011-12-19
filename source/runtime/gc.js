@@ -108,8 +108,20 @@ function heapAlloc(size)
     // Get a pointer to the context
     var ctx = iir.get_ctx();
 
-    // Get the current allocation pointer
+    assert (
+        get_ctx_tostart(ctx) === NULL_PTR,
+        'heapAlloc called during GC'
+    );
+
+    // Get the heap parameters
+    var heapStart = get_ctx_heapstart(ctx);
+    var heapLimit = get_ctx_heaplimit(ctx);
     var freePtr = get_ctx_freeptr(ctx);
+
+    assert (
+        freePtr >= heapStart && freePtr < heapLimit,
+        'free pointer outside of heap after GC'
+    );
 
     // Align the allocation pointer
     freePtr = alignPtr(freePtr, HEAP_ALIGN);
@@ -117,17 +129,12 @@ function heapAlloc(size)
     // Compute the next allocation pointer
     var nextPtr = freePtr + size;
 
-    // Get the heap limit pointer
-    var heapLimit = get_ctx_heaplimit(ctx);
-
     //printInt(iir.icast(IRType.pint, size));
     //printPtr(nextPtr);
     //printPtr(heapLimit);
 
-    // TODO: align before allocation?
-
     // If this allocation exceeds the heap limit
-    if (nextPtr >= heapLimit)
+    if (nextPtr > heapLimit)
     {
         // Log that we are going to perform GC
         puts('Performing garbage collection');
@@ -135,22 +142,34 @@ function heapAlloc(size)
         // Call the garbage collector
         gcCollect();
 
-        // Get the new allocation pointer
-        freePtr = get_ctx_freeptr(ctx);
+        // Get the new heap parameters
+        var heapStart = get_ctx_heapstart(ctx);
+        var heapLimit = get_ctx_heaplimit(ctx);
+        var freePtr = get_ctx_freeptr(ctx);
+
+        assert (
+            freePtr >= heapStart && freePtr < heapLimit,
+            'free pointer outside of heap after GC'
+        );
+
+        // Align the allocation pointer
+        freePtr = alignPtr(freePtr, HEAP_ALIGN);
 
         // Compute the next allocation pointer
-        nextPtr = freePtr + size;
-
-        // Get the new limit pointer
-        heapLimit = get_ctx_heaplimit(ctx);
+        var nextPtr = freePtr + size;
 
         // If this allocation still exceeds the heap limit
-        if (nextPtr >= heapLimit)
+        if (nextPtr > heapLimit)
         {
             // Report an error and abort
             error('allocation exceeds heap limit');
         }
     }
+
+    assert (
+        freePtr >= heapStart && freePtr < heapLimit,
+        'new address outside of heap'
+    );
 
     // Update the allocation pointer in the context object
     set_ctx_freeptr(ctx, nextPtr);
@@ -189,12 +208,6 @@ function gcCollect()
             free = free + size(P)
             forwarding_address(P) = addr
             return addr
-
-    Context variables:
-    heapstart
-    heaplimit
-    freeptr
-    scanptr
     */
 
     "tachyon:static";
@@ -214,11 +227,18 @@ function gcCollect()
     var fromStart = get_ctx_heapstart(ctx);
     var fromLimit = get_ctx_heaplimit(ctx);
 
-    // Compute the current heap size (from-space)
-    var fromSize = fromLimit - fromStart;
+    // Get the size of heap to use
+    // Note: this may differ from the current heap size
+    var heapSize = get_ctx_heapsize(ctx);
+    
+    iir.trace_print('allocating heap of size:');
+    printInt(iir.icast(IRType.pint, heapSize));
 
     // Allocate a memory block for the to-space
-    var toStart = malloc(fromSize);
+    var toStart = malloc(iir.icast(IRType.pint, heapSize));
+
+    iir.trace_print('allocated to-space block:');
+    printPtr(toStart);
 
     assert (
         toStart !== NULL_PTR,
@@ -226,7 +246,7 @@ function gcCollect()
     );
 
     // Compute the to-space heap limit
-    var toLimit = toStart + fromSize;
+    var toLimit = toStart + heapSize;
 
     // Set the to-space heap parameters in the context
     set_ctx_tostart(ctx, toStart);
@@ -288,26 +308,25 @@ function gcCollect()
         var objPtr = alignPtr(scanPtr, HEAP_ALIGN);
         var objRef = iir.icast(IRType.ref, objPtr);        
 
+        if (objPtr < toStart || objPtr >= toLimit)
+        {
+            iir.trace_print('object pointer past to-space limit');
+            error(0);
+        }
+
+        var objSize = sizeof_layout(objRef);
+        if (objPtr + objSize > toLimit)
+        {
+            iir.trace_print('object extends past to-space limit');
+            error(0);
+        }
+
         //iir.trace_print('begin visit');
 
         // Visit the object layout, forward its references
         gc_visit_layout(objRef);
 
         //iir.trace_print('end visit');
-      
-        /*
-        // If the object is a function/closure
-        if (get_layout_header(objRef) === TYPEID_CLOS)
-        {
-            //iir.trace_print('closure object');
-
-            // Get the function pointer
-            var funcPtr = get_clos_funcptr(boxRef(objRef, TAG_FUNCTION));
-
-            // Visit the machine code block
-            gcVisitMCB(funcPtr, MCB_HEADER_SIZE);
-        }
-        */
 
         // Get the object size
         var objSize = sizeof_layout(objRef);
@@ -329,7 +348,8 @@ function gcCollect()
     set_ctx_tolimit(ctx, NULL_PTR);
     set_ctx_tofree(ctx, NULL_PTR);
 
-    iir.trace_print('freeing original to-space block');
+    iir.trace_print('freeing original from-space block');
+    printPtr(fromStart);
 
     // Free the from-space heap block
     free(fromStart);
@@ -370,21 +390,24 @@ function gcCopy(ref, size, align)
     // Get the context pointer
     var ctx = iir.get_ctx();
 
-    // Get the allocation pointer and the heap limit
-    var freePtr = get_ctx_tofree(ctx);
+    // Get the to-space heap parameters
+    var heapStart = get_ctx_tostart(ctx);
     var heapLimit = get_ctx_tolimit(ctx);
+    var freePtr = get_ctx_tofree(ctx);
 
-    // Align the free pointer
-    freePtr = alignPtr(freePtr, align);
-
-    // Use the free pointer as the new object address
-    var newAddr = freePtr;
-
-    // Increment the free pointer
-    freePtr += size;
+    // Align the free pointer to get the new address
+    var newAddr = alignPtr(freePtr, align);
 
     assert (
-        freePtr < heapLimit,
+        newAddr >= heapStart && newAddr < heapLimit,
+        'new address outside of to-space heap'
+    );
+
+    // Compute the next allocation pointer
+    var nextPtr = newAddr + size;
+
+    assert (
+        nextPtr <= heapLimit,
         'cannot copy in to-space, heap limit exceeded'
     );
 
@@ -392,12 +415,9 @@ function gcCopy(ref, size, align)
     memCopy(newAddr, iir.icast(IRType.rptr, ref), size);
 
     // Update the free pointer in the context
-    set_ctx_tofree(ctx, freePtr);
+    set_ctx_tofree(ctx, nextPtr);
 
-    //iir.trace_print('object copied, free ptr:');
-    //printPtr(freePtr);
-
-    // Write the forwarding pointer in the object
+    // Write the forwarding pointer in the old object
     set_layout_next(ref, newAddr);
 
     //iir.trace_print('copying done');
@@ -542,13 +562,6 @@ function visitStackRoots(ra, bp)
         // Read the return address slot index
         var raSlot = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(14)));
 
-        iir.trace_print('num slots:');
-        printInt(numSlots);
-
-        iir.trace_print('pad space:');
-        printInt(padSpace);
-
-
         // For debugging purposes, print the function name
         var numKindBytes = pint(0);
         if (numSlots > pint(0))
@@ -562,9 +575,11 @@ function visitStackRoots(ra, bp)
         iir.trace_print('function name:')
         printStr(nameStr);
 
+        iir.trace_print('num slots:');
+        printInt(numSlots);
 
-
-
+        //iir.trace_print('pad space:');
+        //printInt(padSpace);
 
         // If this frame uses dynamic alignment
         if (padSpace === pint(0xFFFF))
@@ -675,12 +690,15 @@ function visitStackRoots(ra, bp)
                 // Ref
                 if (kind === pint(2))
                 {
+                    iir.trace_print('ref');
                     gcVisitRef(sp, disp);
                 }
 
                 // Box
                 else if (kind === pint(3))
                 {
+                    iir.trace_print('box');
+                    //printInt(getRefTag(iir.load(IRType.box, sp, disp)));
                     gcVisitBox(sp, disp);
                 }
             }
@@ -851,5 +869,60 @@ function gcVisitBox(ptr, offset)
         // Update the boxed value
         iir.store(IRType.box, ptr, offset, newBox);
     }
+}
+
+/**
+Get the amount of memory allocated in KBs
+*/
+function memAllocatedKBs()
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    var ctx = iir.get_ctx();
+
+    var freePtr = get_ctx_freeptr(ctx);
+    var heapStart = get_ctx_heapstart(ctx);
+    var heapSizeKBs = (freePtr - heapStart) / pint(1024);
+
+    return boxInt(heapSizeKBs);
+}
+
+/**
+Shrink the heap to a smaller size, for testing purposes
+*/
+function shrinkHeap(freeSpace)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+    "tachyon:arg freeSpace puint";
+
+    gcCollect();
+
+    var ctx = iir.get_ctx();
+
+    // Get the current heap parameters
+    var heapSize = get_ctx_heapsize(ctx);
+    var heapStart = get_ctx_heapstart(ctx);
+    var heapLimit = get_ctx_heaplimit(ctx);
+    var freePtr = get_ctx_freeptr(ctx);
+
+    var curAlloc = freePtr - heapStart;
+
+    var newLimit = freePtr + freeSpace;
+    var newSize = iir.icast(IRType.puint, newLimit - heapStart);
+
+    assert (
+        newSize <= heapSize,
+        'invalid new heap size'
+    );
+
+    assert (
+        newLimit >= heapStart && newLimit <= heapLimit,
+        'invalid new heap limit'
+    );
+
+    set_ctx_heapsize(ctx, newSize);
+    set_ctx_heaplimit(ctx, newLimit);
 }
 

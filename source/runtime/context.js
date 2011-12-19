@@ -78,40 +78,53 @@ function makeContextLayout(params)
         'null'
     );
 
+    // Heap block size
+    ctxLayout.addField(
+        'heapsize',
+        IRType.puint,
+        'puint(0)'
+    );
+
     // Heap start pointer
     ctxLayout.addField(
         'heapstart',
-        IRType.rptr
+        IRType.rptr,
+        'NULL_PTR'
     );
 
     // Heap limit pointer
     ctxLayout.addField(
         'heaplimit',
-        IRType.rptr
+        IRType.rptr,
+        'NULL_PTR'
     );
 
     // Heap allocation pointer
     ctxLayout.addField(
         'freeptr',
-        IRType.rptr
+        IRType.rptr,
+        'NULL_PTR'
     );
 
     // To-space start pointer
     ctxLayout.addField(
         'tostart',
-        IRType.rptr
+        IRType.rptr,
+        'NULL_PTR'
     );
 
     // To-space limit pointer
     ctxLayout.addField(
         'tolimit',
-        IRType.rptr
+        IRType.rptr,
+        'NULL_PTR'
     );
 
     // To-space free pointer
     ctxLayout.addField(
         'tofree',
-        IRType.rptr
+        IRType.rptr,
+        'NULL_PTR'
     );
 
     // GC collection count

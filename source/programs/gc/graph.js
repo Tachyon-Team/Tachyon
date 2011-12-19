@@ -4,10 +4,11 @@ function Node(v)
     this.edges = [];
 }
 
-Node.prototype.addEdge = function (n)
+function addEdge(n)
 {
     this.edges.push(n);
-};
+}
+Node.prototype.addEdge = addEdge;
 
 function remEdge(n)
 {
@@ -19,6 +20,8 @@ function remEdge(n)
 
     if (idx !== -1)
         this.edges.splice(idx, 1);
+    else
+        error('edge missing');
 
     //iir.trace_print('leaving remEdge');
 }
@@ -35,6 +38,11 @@ function graphSum(root)
     function visit(n)
     {
         //iir.trace_print('entering visit');
+
+        assert (
+            ptrInHeap(iir.icast(IRType.rptr, unboxRef(n))),
+            'node not in heap'
+        );
 
         if (visited.indexOf(n) !== -1)
             return;
@@ -63,6 +71,11 @@ function graphSum(root)
 function test()
 {
     var ctx = iir.get_ctx();
+
+    // Shrink the heap for testing
+    var heapSize = get_ctx_heapsize(ctx);
+    shrinkHeap(puint(2000000));
+
     var initGCCount = get_ctx_gccount(ctx);
 
     var root = new Node(1);
@@ -79,7 +92,7 @@ function test()
     for (;;)
     {
         var curGCCount = get_ctx_gccount(ctx);
-        if (curGCCount >= initGCCount + u32(3))
+        if (curGCCount >= initGCCount + u32(10))
             break;
 
         //iir.trace_print('creating new node');
@@ -103,6 +116,9 @@ function test()
 
     if (graphSum(root) !== 6)
         return 3;
+
+    // Restore the old heap size
+    set_ctx_heapsize(ctx, heapSize);
 
     iir.trace_print('final gcCollect');
 
