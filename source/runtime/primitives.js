@@ -580,6 +580,7 @@ function newObject(proto)
     // Allocate space for an object
     var obj = alloc_obj();
 
+    //iir.trace_print('allocated obj:');
     //printPtr(iir.icast(IRType.rptr, obj));
 
     // Initialize the prototype object
@@ -588,8 +589,10 @@ function newObject(proto)
     // Initialize the number of properties
     set_obj_numprops(obj, u32(0));
 
-    // Allocate space for a hash table and set the hash table reference
+    // Allocate space for a hash table
     var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
+
+    // Set the hash table reference
     set_obj_tbl(obj, hashtbl);
 
     // Return the object reference

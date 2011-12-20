@@ -893,6 +893,7 @@ MemLayout.prototype.genMethods = function ()
             sourceStr += indentText(proStr);
             sourceStr += '\t"tachyon:arg val ' + spec.type + '";\n';
             sourceStr += indentText(offsetStr);
+
             sourceStr += '\tiir.store(IRType.' + spec.type + ', obj, offset, val);\n';
             sourceStr += '}\n';
             sourceStr += '\n';

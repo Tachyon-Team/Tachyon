@@ -87,6 +87,18 @@ function memCopy(dst, src, size)
     "tachyon:arg dst rptr";
     "tachyon:arg size pint";
 
+    var ctx = iir.get_ctx();
+    var toStart = get_ctx_tostart(ctx);
+    var toLimit = get_ctx_tolimit(ctx);
+    assert (
+        dst >= toStart && dst < toLimit,
+        'dst ptr outside of to-space'
+    );
+    assert (
+        dst + size <= toLimit,
+        'object extends past to-space limit'
+    );
+
     // Copy the object byte by byte
     for (var i = pint(0); i < size; ++i)
     {
@@ -105,6 +117,8 @@ function heapAlloc(size)
     "tachyon:arg size pint";
     "tachyon:ret rptr";
 
+    //mprobe(get_ctx_heapstart(iir.get_ctx()));
+
     // Get a pointer to the context
     var ctx = iir.get_ctx();
 
@@ -119,8 +133,8 @@ function heapAlloc(size)
     var freePtr = get_ctx_freeptr(ctx);
 
     assert (
-        freePtr >= heapStart && freePtr < heapLimit,
-        'free pointer outside of heap after GC'
+        freePtr <= heapLimit,
+        'free ptr past heap limit'
     );
 
     // Align the allocation pointer
@@ -220,8 +234,12 @@ function gcCollect()
     // Get a reference to the context object (from-space)
     var ctx = iir.get_ctx();
 
-    // Update the garbage collection count
-    set_ctx_gccount(ctx, get_ctx_gccount(ctx) + u32(1));
+    // Update the garbage collection count    
+    var colNo = get_ctx_gccount(ctx) + u32(1);
+    set_ctx_gccount(ctx, colNo);
+
+    //iir.trace_print('collection no.: ');
+    //printInt(iir.icast(IRType.pint, colNo));
 
     // Get the current heap parameters (from-space)
     var fromStart = get_ctx_heapstart(ctx);
@@ -231,14 +249,14 @@ function gcCollect()
     // Note: this may differ from the current heap size
     var heapSize = get_ctx_heapsize(ctx);
     
-    iir.trace_print('allocating heap of size:');
-    printInt(iir.icast(IRType.pint, heapSize));
+    //iir.trace_print('allocating heap of size:');
+    //printInt(iir.icast(IRType.pint, heapSize));
 
     // Allocate a memory block for the to-space
     var toStart = malloc(iir.icast(IRType.pint, heapSize));
 
-    iir.trace_print('allocated to-space block:');
-    printPtr(toStart);
+    //iir.trace_print('allocated to-space block:');
+    //printPtr(toStart);
 
     assert (
         toStart !== NULL_PTR,
@@ -253,12 +271,12 @@ function gcCollect()
     set_ctx_tolimit(ctx, toLimit);
     set_ctx_tofree(ctx, toStart);
 
-    iir.trace_print('visiting context roots');
+    //iir.trace_print('visiting context roots');
 
     // Visit the context roots
     gc_visit_ctx(ctx);
 
-    iir.trace_print('visiting stack roots');
+    //iir.trace_print('visiting stack roots');
 
     // Get the current return address and stack base pointer
     var ra = iir.get_ra();
@@ -267,7 +285,7 @@ function gcCollect()
     // Visit the stack roots
     visitStackRoots(ra, bp);
 
-    iir.trace_print('scanning to-space');
+    //iir.trace_print('scanning to-space');
 
     // Get the function table
     var funcTbl = get_ctx_functbl(ctx);
@@ -335,7 +353,10 @@ function gcCollect()
         scanPtr = objPtr + objSize;
     }
 
-    iir.trace_print('flipping from-space and to-space');
+    //iir.trace_print('flipping from-space and to-space');
+
+    iir.trace_print('objects copied/scanned:');
+    printInt(numObjs);
 
     // Flip the from-space and to-space
     // Set the heap start, limit and free pointers in the context
@@ -343,24 +364,25 @@ function gcCollect()
     set_ctx_heaplimit(ctx, toLimit);
     set_ctx_freeptr(ctx, get_ctx_tofree(ctx));
 
-    // Clear the to-space information
-    set_ctx_tostart(ctx, NULL_PTR);
-    set_ctx_tolimit(ctx, NULL_PTR);
-    set_ctx_tofree(ctx, NULL_PTR);
+    //iir.trace_print('freeing original from-space block');
+    //printPtr(fromStart);
 
-    iir.trace_print('freeing original from-space block');
-    printPtr(fromStart);
+    // For debugging, clear the old heap
+    //for (var p = fromStart; p < fromLimit; p += pint(1))
+    //    iir.store(IRType.u8, p, pint(0), u8(0x00));
 
     // Free the from-space heap block
     free(fromStart);
 
-    iir.trace_print('objects copied/scanned:');
-    printInt(numObjs);
-
     var endTime = currentTimeMillis();
     var gcTime = endTime - startTime;
     iir.trace_print('gc time (ms):');
-    printBox(gcTime);
+    printInt(unboxInt(gcTime));
+
+    // Clear the to-space information
+    set_ctx_tostart(ctx, NULL_PTR);
+    set_ctx_tolimit(ctx, NULL_PTR);
+    set_ctx_tofree(ctx, NULL_PTR);
 
     iir.trace_print('leaving gcCollect');
 }
@@ -461,16 +483,24 @@ function gcForward(ref)
     {
         //iir.trace_print('already forwarded');
 
-        // Return the forwarding pointer
-        return iir.icast(IRType.ref, nextPtr);
+        // Use the forwarding pointer as the new address
+        var newAddr = iir.icast(IRType.ref, nextPtr);
     }
     else
     {
         //iir.trace_print('copying');
 
         // Copy the object into the to-space
-        return gcCopy(ref, sizeof_layout(ref), HEAP_ALIGN);
+        var newAddr = gcCopy(ref, sizeof_layout(ref), HEAP_ALIGN);
     }
+
+    var newPtr = iir.icast(IRType.rptr, newAddr);
+    assert (
+        newPtr >= toStart && newPtr < toLimit,
+        'forwarded address outside of to-space'
+    );
+
+    return newAddr;
 }
 
 /**
@@ -478,6 +508,7 @@ Function to test if a pointer points inside the heap
 */
 function ptrInHeap(ptr)
 {
+    "tachyon:static";
     "tachyon:arg ptr rptr";
 
     var ctx = iir.get_ctx();
@@ -538,7 +569,6 @@ function visitStackRoots(ra, bp)
     for (var numLevels = 0;; ++numLevels)
     {
         iir.trace_print('* stack frame');
-
         printPtr(ra);
 
         // Note: 8 byte offset to data
@@ -675,11 +705,15 @@ function visitStackRoots(ra, bp)
                 var kind = kindByte & pint(3);
                 kindByte >>>= pint(2);
 
-                //print('slot idx : ' + boxInt(i));
-                //print('slot kind: ' + boxInt(kind));
-
                 // Compute the displacement for this slot
                 var disp = i * SLOT_SIZE;
+
+                /*
+                iir.trace_print('idx: ');
+                printInt(i);                
+                iir.trace_print('disp: ');
+                printInt(disp);
+                */
 
                 // Function pointer
                 if (kind === pint(1))
@@ -688,24 +722,23 @@ function visitStackRoots(ra, bp)
                 }
 
                 // Ref
-                if (kind === pint(2))
+                else if (kind === pint(2))
                 {
-                    iir.trace_print('ref');
+                    //iir.trace_print('ref');
                     gcVisitRef(sp, disp);
                 }
 
                 // Box
                 else if (kind === pint(3))
                 {
-                    iir.trace_print('box');
-                    //printInt(getRefTag(iir.load(IRType.box, sp, disp)));
+                    //iir.trace_print('box');
                     gcVisitBox(sp, disp);
                 }
             }
         }
 
-        iir.trace_print('ra slot:');
-        printInt(raSlot);
+        //iir.trace_print('ra slot:');
+        //printInt(raSlot);
 
         iir.trace_print('frame size:');
         printInt(frameSize);

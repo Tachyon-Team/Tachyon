@@ -1216,6 +1216,9 @@ x86.writeStackInfo = function (
         'too many stack frame slots: ' + numSlots
     );
 
+    //if (irFunc.funcName === 'newObject')
+    //    print('NUM SLOTS: ' + numSlots);
+
     // Write the total number of stack slots in this frame
     data.writeInt(numSlots, 16);
 
@@ -1258,12 +1261,17 @@ x86.writeStackInfo = function (
             slotInfo = num_add(slotInfo, kind);
             numBits += 2;
 
-            //if (val instanceof IRValue)
-            //    print(val.getValName());
+            /*
+            if (irFunc.funcName === 'newObject')
+            {
+                print(val);
 
-            //var disp = allocMap.getSlotOpnd(i).disp;
-            //print('slot disp: ' + disp);
-            //print('slot kind: '  + kind);
+                var disp = allocMap.getSlotOpnd(i).disp;
+                print('slot idx : ' + i);
+                print('slot disp: ' + disp);
+                print('slot kind: ' + kind);
+            }
+            */
         }
 
         // Pad the slot info to the nearest byte
@@ -1276,6 +1284,9 @@ x86.writeStackInfo = function (
         // Write the slot kind information
         data.writeInt(slotInfo, numBits);
     }
+
+    //if (irFunc.funcName === 'newObject')
+    //    print(irFunc);
 
     // For debugging purposes, encode the function name
     var fName = irFunc.funcName;
@@ -1549,11 +1560,14 @@ x86.genArgObjStub = function (
     // Label: argument table creation
     var CREATE_ARG_TBL = new x86.Label('CREATE_ARG_TBL');
 
-    // Label: argument copying loop
-    var ARG_COPY_LOOP = new x86.Label('ARG_COPY_LOOP');
+    // Label: stack argument copying loop
+    var STACK_COPY_LOOP = new x86.Label('STACK_COPY_LOOP');
 
-    // Label: argument copying loop exit
-    var ARG_COPY_DONE = new x86.Label('ARG_COPY_DONE');
+    // Label: stack argument copying loop exit
+    var STACK_COPY_DONE = new x86.Label('STACK_COPY_DONE');
+
+    // Label: register argument copying loop exit
+    var REG_COPY_DONE = new x86.Label('REG_COPY_DONE');
 
     // Label: argument normalization complete
     var ARG_NORM_DONE = new x86.Label('ARG_NORM_DONE');
@@ -1647,11 +1661,13 @@ x86.genArgObjStub = function (
     asm.mov(tableIdx, numRegArgs);
 
     // Argument copying loop
-    asm.addInstr(ARG_COPY_LOOP);
+    asm.addInstr(STACK_COPY_LOOP);
 
     // If we are at the last stack index, stop
-    asm.cmp(stackIdx, 0);
-    asm.jle(ARG_COPY_DONE);
+    asm.cmp(stackIdx, numRegArgs);
+    asm.jle(STACK_COPY_DONE);
+
+    //x86.genTracePrint(asm, params, 'copying stack arg');
 
     // Move a stack value into the table
     asm.mov(
@@ -1680,10 +1696,10 @@ x86.genArgObjStub = function (
     asm.add(tableIdx, 1);
 
     // Repeat the argument copying loop
-    asm.jmp(ARG_COPY_LOOP);
+    asm.jmp(STACK_COPY_LOOP);
 
     // Argument copying loop done
-    asm.addInstr(ARG_COPY_DONE);
+    asm.addInstr(STACK_COPY_DONE);
 
     // Restore the argument registers
     for (var i = argRegs.length - 1; i >= 0; --i)
@@ -1694,6 +1710,12 @@ x86.genArgObjStub = function (
     {
         var argReg = argRegs[i];
 
+        // If there is no non-hidden argument in this register, stop
+        asm.cmp(tr0, i - NUM_HIDDEN_ARGS);
+        asm.jle(REG_COPY_DONE);
+
+        //x86.genTracePrint(asm, params, 'copying reg arg: ' + i);
+
         asm.mov(
             asm.mem(
                 backend.regSizeBits,
@@ -1703,6 +1725,9 @@ x86.genArgObjStub = function (
             argReg
         );
     }
+
+    // Register argument copying done
+    asm.addInstr(REG_COPY_DONE);
 
     // Move the argument table pointer and argument count to their final positions
     asm.mov(argCntOpnd, tr0);

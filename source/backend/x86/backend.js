@@ -220,6 +220,9 @@ x86.Backend.prototype.genCode = function (irFunc, params)
         print('');
     }
 
+    //if (irFunc.funcName === 'newObject')
+    //    print(assembler);
+
     var codeBlock;
     measurePerformance(
         "Assembling",

@@ -6,6 +6,8 @@ function Node(v)
 
 function addEdge(n)
 {
+    //iir.trace_print('entering addEdge');
+
     this.edges.push(n);
 }
 Node.prototype.addEdge = addEdge;
@@ -91,8 +93,10 @@ function test()
 
     for (;;)
     {
+        //iir.trace_print('itr');
+
         var curGCCount = get_ctx_gccount(ctx);
-        if (curGCCount >= initGCCount + u32(10))
+        if (curGCCount >= initGCCount + u32(20))
             break;
 
         //iir.trace_print('creating new node');
@@ -112,7 +116,7 @@ function test()
             return 2;
     }
 
-    iir.trace_print('final sum');
+    //iir.trace_print('final sum');
 
     if (graphSum(root) !== 6)
         return 3;
@@ -120,7 +124,7 @@ function test()
     // Restore the old heap size
     set_ctx_heapsize(ctx, heapSize);
 
-    iir.trace_print('final gcCollect');
+    //iir.trace_print('final gcCollect');
 
     gcCollect();
 
