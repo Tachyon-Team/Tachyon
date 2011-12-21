@@ -1229,6 +1229,13 @@ tests.programs.gc.graph = genTest(
     0,
     'hostParams'
 );
+tests.programs.gc.stackvm = genTest(
+    'programs/gc/stackvm.js',
+    'test',
+    [],
+    0,
+    'hostParams'
+);
 
 /*
 Type analysis test programs
