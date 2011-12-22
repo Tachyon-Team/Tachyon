@@ -127,8 +127,7 @@ BASE_SRCS =                             \
     ir/inlining.js                      \
     ir/lowering.js                      \
     ir/cfgvis.js                        \
-    analysis/typedesc.js                \
-    analysis/typemap.js                 \
+    analysis/types.js                   \
     analysis/typeprop.js                \
     analysis/testing.js                 \
     runtime/layout.js                   \
@@ -160,7 +159,8 @@ RUNTIME_SRCS =                          \
     runtime/strings.js                  \
     runtime/ffi.js                      \
     runtime/rtinit.js                   \
-    runtime/gc.js
+    runtime/gc.js                       \
+    runtime/exceptions.js
 
 # Main-specific source files
 MAIN_SPEC_SRCS =                        \

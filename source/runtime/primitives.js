@@ -509,57 +509,6 @@ function u8(boxVal)
 
 //=============================================================================
 //
-// Exception/error creating functions
-//
-//=============================================================================
-
-/**
-Create a TypeError object without a global reference.
-*/
-function typeError(message)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // FIXME: for now, no exception support, call the error function
-    error(message);
-
-    var ctor = get_ctx_typeerror(iir.get_ctx());
-    throw new ctor(message);
-}
-
-/**
-Create a ReferenceError object without a global reference.
-*/
-function refError(message)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // FIXME: for now, no exception support, call the error function
-    error(message);
-
-    var ctor = get_ctx_referror(iir.get_ctx());
-    throw new ctor(message);
-}
-
-/**
-Create a SyntaxError object without a global reference.
-*/
-function syntaxError(message)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-
-    // FIXME: for now, no exception support, call the error function
-    error(message);
-
-    var ctor = get_ctx_syntaxerror(iir.get_ctx());
-    throw new ctor(message);
-}
-
-//=============================================================================
-//
 // Implementation of JavaScript primitives (IR instructions)
 //
 //=============================================================================

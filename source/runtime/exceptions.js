@@ -42,127 +42,103 @@
 
 /**
 @fileOverview
-Low-level utility functions for the run-time.
+Implementation of the runtime part of exception support.
 
 @author
 Maxime Chevalier-Boisvert
 */
 
+//=============================================================================
+//
+// Exception and stack unwinding implementation
+//
+//=============================================================================
+
 /**
-Perform an assertion test
+Unwind the stack and pass an exception value to the topmost exception handler.
 */
-function assert(testVal, errorVal)
+function throwExc(val)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    if (!testVal)
-    {
-        error(errorVal);
-    }
+    // TODO
+
+    iir.trace_print('exception thrown');
+
+    error(val);
 }
 
+//=============================================================================
+//
+// Exception/error creating functions
+//
+//=============================================================================
+
 /**
-Print values to the console
+Print an error message and stop the execution
 */
-function printBox(val)
+function error(errorVal)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    // Convert the value to a string
-    var strVal = boxToString(val);
-       
-    // Print the string
-    puts(strVal);
+    /*
+    printBox('*** RUN-TIME ERROR ***');
+    printBox(errorStr);
+    exit(0);
+    */
+
+    if (boxIsString(errorVal))
+        runtimeError(errorVal, 0);
+    else if (boxIsInt(errorVal))
+        runtimeError(null, errorVal);
+    else
+        runtimeError(null, 0);
 }
 
 /**
-Get a string representation for a pointer
+Create a TypeError object without a global reference.
 */
-function ptrToStr(ptr)
-{
-    "tachyon:static";
-    "tachyon:noglobal";
-    "tachyon:arg ptr rptr";
-
-    var ptrInt = iir.icast(IRType.puint, ptr);
-
-    var str = '';
-
-    for (var i = pint(0); i < PTR_NUM_BYTES; ++i)
-    {
-        var byteVal = iir.icast(IRType.pint, ptrInt & puint(0xFF));
-        ptrInt >>= puint(8);
-
-        var byteStr = getIntStr(byteVal, pint(16));
-        if (byteStr.length < 2) byteStr = '0' + byteStr;
-
-        str = byteStr + str;
-    }
-
-    str = '0x' + str;
-
-    return str;
-}
-
-/**
-Get a reference to the global object
-*/
-function getGlobalObj()
-{
-    "tachyon:static";
-    "tachyon:inline";
-    "tachyon:noglobal";
-
-    // Get a reference to the global object
-    var globalObj = get_ctx_globalobj(iir.get_ctx());
-
-    return globalObj;
-}
-
-/**
-Test of an object is the global object
-*/
-function isGlobalObj(obj)
-{
-    "tachyon:inline";
-    "tachyon:noglobal";
-
-    // Get a reference to the global object
-    var globalObj = getGlobalObj();
-
-    // Test if our object is the global object
-    return (obj === globalObj);
-}
-
-/**
-Print information about the state of the Tachyon VM
-*/
-function printTachyonState()
+function typeError(message)
 {
     "tachyon:static";
     "tachyon:noglobal";
 
-    var ctx = iir.get_ctx();
+    // FIXME: for now, no exception support, call the error function
+    error(message);
 
-    var heapSizeKB = memAllocatedKBs();
+    var ctor = get_ctx_typeerror(iir.get_ctx());
+    throw new ctor(message);
+}
 
-    var strtbl = get_ctx_strtbl(ctx);
-    var numStrings = iir.icast(IRType.pint, get_strtbl_numstrs(strtbl));
+/**
+Create a ReferenceError object without a global reference.
+*/
+function refError(message)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
 
-    var functbl = get_ctx_functbl(ctx);
-    var numFuncs = iir.icast(IRType.pint, get_functbl_numfuncs(functbl));
+    // FIXME: for now, no exception support, call the error function
+    error(message);
 
-    var globalobj = get_ctx_globalobj(ctx);
-    var numGlobals = iir.icast(IRType.pint, get_obj_numprops(globalobj));
+    var ctor = get_ctx_referror(iir.get_ctx());
+    throw new ctor(message);
+}
 
-    var gcCount = iir.icast(IRType.pint, get_ctx_gccount(ctx));
+/**
+Create a SyntaxError object without a global reference.
+*/
+function syntaxError(message)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
 
-    printBox('Heap size    : ' + heapSizeKB + ' KB');
-    printBox('Num strings  : ' + boxInt(numStrings));
-    printBox('Num functions: ' + boxInt(numFuncs));
-    printBox('Num globals  : ' + boxInt(numGlobals));
-    printBox('gc col. count: ' + boxInt(gcCount));
+    // FIXME: for now, no exception support, call the error function
+    error(message);
+
+    var ctor = get_ctx_syntaxerror(iir.get_ctx());
+    throw new ctor(message);
 }
 

@@ -1297,12 +1297,6 @@ RetInstr.prototype.x86.genCode = function (instr, opnds, dest, scratch, asm, gen
     }
 }
 
-// TODO:
-// Not yet implemented
-ThrowInstr.prototype.x86 = RetInstr.prototype.x86;
-
-// TODO: CatchInstr
-
 // Integer cast instruction
 ICastInstr.prototype.x86 = new x86.InstrCfg();
 ICastInstr.prototype.x86.opndMustBeReg = function (instr, idx, params)

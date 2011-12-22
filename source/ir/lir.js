@@ -1445,30 +1445,6 @@ ExceptInstr.prototype.getThrowTarget = function ()
 };
 
 /**
-@class Exception throw to exception handler. Handler may be left undefined for
-interprocedural throw.
-@augments ExceptInstr
-*/
-var ThrowInstr = instrMaker(
-    'throw',
-    function (typeParams, inputVals, branchTargets)
-    {
-        instrMaker.validNumInputs(inputVals, 1, 1);
-        instrMaker.validType(inputVals[0], IRType.box);
-        instrMaker.validNumBranches(branchTargets, 0, 1);
-        
-        this.type = IRType.none;
-    },
-    ['to'],
-    new ExceptInstr()
-);
-
-/**
-Throw instructions are always branch instructions
-*/
-ThrowInstr.prototype.isBranch = function () { return true; };
-
-/**
 @class Exception value catch
 @augments IRInstr
 */

@@ -1848,8 +1848,14 @@ function stmtToIR(context)
         var throwContext = context.pursue(astStmt.expr);
         exprToIR(throwContext);
 
-        // Generate a throw instruction
-        throwToIR(context, throwContext, throwContext.getOutValue());
+        // Call the exception throw primitive
+        var closVal = insertPrimCallIR(
+            throwContext, 
+            'throwExc',
+            [throwContext.getOutValue()]
+        );
+
+        context.setOutput(throwContext.getExitBlock());
     }
 
     else if (astStmt instanceof TryStatement)
@@ -3805,32 +3811,6 @@ function insertExceptIR(context, instr)
 
     // Return the instruction value
     return instr;
-}
-
-/**
-Generate a throw instruction with a given exception value
-@param throwCtx context after which to throw the exception
-@param excVal exception value to throw
-*/
-function throwToIR(context, throwCtx, excVal)
-{
-    // Add a throw instruction
-    throwCtx.addInstr(
-        new ThrowInstr(excVal)
-    );
-
-    // If this is an intraprocedural throw
-    if (context.throwList !== null)
-    {
-        // Add the context to the list of throw contexts
-        context.throwList.push(throwCtx);
-    }
-
-    // Terminate the current context, no instructions go after this
-    context.terminate();
-
-    // Bridge the throw context to make sure it has an exit block
-    throwCtx.bridge();
 }
 
 /**
