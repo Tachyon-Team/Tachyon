@@ -55,6 +55,17 @@ TypeProp.prototype.testOnFile = function (fileName)
 {
     print('Running type analysis on: "' + fileName + '"');
 
+
+
+
+
+
+
+
+
+
+
+    /*
     // Get the IR for this file
     var ast = parse_src_file(fileName, this.params);
     var ir = unitToIR(ast, this.params);
@@ -84,6 +95,7 @@ TypeProp.prototype.testOnFile = function (fileName)
 
     // Dump info about classes analyzed
     this.dumpClasses();
+    */
 }
 
 /**
@@ -91,6 +103,12 @@ Dump information gathered about functions
 */
 TypeProp.prototype.dumpFunctions = function ()
 {
+
+
+
+
+
+    /*
     // For each function info object
     for (var itr = this.funcInfo.getItr(); itr.valid(); itr.next())
     {
@@ -115,6 +133,7 @@ TypeProp.prototype.dumpFunctions = function ()
 
         print('');
     }
+    */
 }
 
 /**
@@ -122,6 +141,13 @@ Dump information gathered about classes
 */
 TypeProp.prototype.dumpClasses = function ()
 {
+
+
+
+
+
+
+    /*
     // For each class descriptor
     for (var itr = ClassDesc.classMap.getItr(); itr.valid(); itr.next())
     {
@@ -129,7 +155,8 @@ TypeProp.prototype.dumpClasses = function ()
 
         print(classDesc);
         print('');
-    }    
+    }
+    */   
 }
 
 // TODO: HTML + highlighting visualization?
