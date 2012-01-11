@@ -375,7 +375,7 @@ x86.Instruction.prototype.getLength = function (x86_64)
 {
     // If no encoding is yet found, find one
     if (this.encDesc === null)
-        this.findEncoding();
+        this.findEncoding(x86_64);
 
     // Return the encoding length
     return this.encLength;

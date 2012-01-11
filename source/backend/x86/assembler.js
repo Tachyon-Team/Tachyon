@@ -291,7 +291,7 @@ x86.Assembler.prototype.assemble = function (codeOnly)
             else
             {
                 // Get the current instruction length
-                var curInstrLen = instr.getLength();
+                var curInstrLen = instr.getLength(this.x86_64);
 
                 // Add the current instruction length to the total
                 codeLength += curInstrLen;
