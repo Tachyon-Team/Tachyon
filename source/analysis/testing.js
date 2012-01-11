@@ -51,21 +51,11 @@ Maxime Chevalier-Boisvert
 /**
 Test type analysis on a source file
 */
-TypeProp.prototype.testOnFile = function (fileName)
+TypeProp.prototype.testOnFile = function (fileName, verbose)
 {
-    print('Running type analysis on: "' + fileName + '"');
+    if (verbose)
+        print('Running type analysis on: "' + fileName + '"');
 
-
-
-
-
-
-
-
-
-
-
-    /*
     // Get the IR for this file
     var ast = parse_src_file(fileName, this.params);
     var ir = unitToIR(ast, this.params);
@@ -85,17 +75,21 @@ TypeProp.prototype.testOnFile = function (fileName)
     var time = (endTimeMs - startTimeMs) / 1000;
 
     // Log analysis time
-    print('-----------------------------');
-    print('itr count: ' + itrCount);
-    print('time: ' + time + 's');
-    print('');
+    if (verbose)
+    {
+        print('-----------------------------');
+        print('itr count: ' + itrCount);
+        print('time: ' + time + 's');
+        print('');
+    }
 
     // Dump info about functions analyzed
-    this.dumpFunctions();
+    if (verbose)
+        this.dumpFunctions();
 
     // Dump info about classes analyzed
-    this.dumpClasses();
-    */
+    if (verbose)
+        this.dumpClasses();
 }
 
 /**

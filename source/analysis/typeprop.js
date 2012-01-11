@@ -159,8 +159,8 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
 
     // Create nodes for the argument values
     var argNodes = new Array(irFunc.argVars.length + 2);
-    for (var i = 0; i < argTypes.length; ++i)
-        argNode[i] = new TGVariable('arg' + i);
+    for (var i = 0; i < argNodes.length; ++i)
+        argNodes[i] = new TGVariable('arg' + i);
 
     // Return value node
     var retNode = new TGVariable('ret');
@@ -227,13 +227,13 @@ TypeProp.prototype.queueFunc = function (irFunc)
     var entry = irFunc.hirCFG.entry;
 
     // If the function has no entry type info
-    if (this.blockTypes.has(entry) === false)
+    if (this.blockGraphs.has(entry) === false)
     {
         // Get the info object for this function
         var funcInfo = this.getFuncInfo(irFunc);
 
         // Set the type graph for the entry block
-        this.blockTypes.set(entry, funcInfo.entryGraph);
+        this.blockGraphs.set(entry, funcInfo.entryGraph);
     }
 
     // Queue the function's entry block
@@ -307,11 +307,11 @@ TypeProp.prototype.iterate = function ()
     print('');
 
     // Get a copy of the type set at the block entry
-    var typeGraph = this.blockTypes.get(block).copy();
+    var typeGraph = this.blockGraphs.get(block).copy();
 
     assert (
-        typeMap !== HashMap.NOT_FOUND,
-        'type set not found'
+        typeGraph !== HashMap.NOT_FOUND,
+        'type graph not found'
     );
 
     // For each instruction
@@ -394,13 +394,13 @@ TypeProp.prototype.succMerge = function (succ, predMap)
     // TODO
     /*
     // Get the type map for the successor
-    var succMap = this.blockTypes.get(succ);
+    var succMap = this.blockGraphs.get(succ);
 
     // If the successor has no type map yet
     if (succMap === HashMap.NOT_FOUND)
     {
         // Pass a copy of the predecessor map to the successor
-        this.blockTypes.set(succ, predMap.copy());
+        this.blockGraphs.set(succ, predMap.copy());
 
         // Queue the successor for analysis
         this.queueBlock(succ);
@@ -424,10 +424,10 @@ TypeProp.prototype.succMerge = function (succ, predMap)
 //
 //=============================================================================
 
-IRInstr.prototype.typeProp = function (ta, typeMap)
+IRInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // By default, return the any type
-    //return ta.setOutput(typeMap, this, TypeDesc.any);
+    typeGraph.addEdge(this, TGValue.anyVal);
 }
 
 
@@ -456,7 +456,7 @@ IRInstr.prototype.typeProp = function (ta, typeMap)
 
 
 
-PhiInstr.prototype.typeProp = function (ta, typeMap)
+PhiInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var outType = TypeDesc.noinf;
@@ -467,7 +467,7 @@ PhiInstr.prototype.typeProp = function (ta, typeMap)
         var pred = this.preds[i];
 
         // If this predecessor hasn't been visited, skip it
-        if (ta.blockTypes.has(pred) === false)
+        if (ta.blockGraphs.has(pred) === false)
             continue;
 
         // Merge the type of this incoming value
@@ -486,7 +486,7 @@ PhiInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-GlobalObjInstr.prototype.typeProp = function (ta, typeMap)
+GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Return the global object type
     //return ta.setOutput(typeMap, this, typeMap.globalType);

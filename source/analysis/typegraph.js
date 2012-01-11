@@ -265,7 +265,8 @@ Add an edge to the graph
 TypeGraph.prototype.addEdge = function (varNode, valNode)
 {
     assert (
-        varNode instanceof TGVariable,
+        varNode instanceof TGVariable ||
+        varNode instanceof IRInstr,
         'invalid var node'
     );
 

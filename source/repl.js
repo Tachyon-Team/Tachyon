@@ -155,7 +155,7 @@ function tachyonRepl()
             break;
 
             case 'ta':
-            params.typeProp.testOnFile(args);
+            params.typeProp.testOnFile(args, true);
             break;
 
             case 'prim_list':
