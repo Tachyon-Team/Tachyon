@@ -90,20 +90,24 @@ TypeProp.prototype.init = function ()
     this.workSet = new HashSet();
 
     /**
-    Map of type maps at block entries
+    Map of type graphs at block entries
     */
-    this.blockTypes = new HashMap();
+    this.blockGraphs = new HashMap();
 
     /**
-    Object prototype class
+    Initial type graph
     */
-    //this.objProtoClass = new ClassDesc('obj_proto', TypeDesc.null);
+    this.initGraph = new TypeGraph();
 
     /**
-    Global object class
-    This is distinct from specific global object type instances
+    Object prototype object node
     */
-    //this.globalClass = new ClassDesc('global', objProtoType);
+    this.objProto = this.initGraph.newObject('obj_proto');
+
+    /**
+    Global object node
+    */
+    this.globalObj = this.initGraph.newObject('global');
 
     /**
     Map of IR functions to function-specific information
@@ -126,26 +130,40 @@ Get the function info object for an IR function
 */
 TypeProp.prototype.getFuncInfo = function (irFunc)
 {
+    // TODO
+    /* 
+    Need type graph at entry block.
 
+    Need to have variable nodes for the arguments.****
+    - argNodes
+    - Used by ArgValInstr
 
+    Also need type graph at returns. These are merged.
+  
+    Need to have variable node for the return value.***
 
+    When a call is processed... Need to copy edges from arguments
+    to the argument nodes of the entry graph.
+    */
 
-
-
-
-
-
-
-    /*
     // If an info object already exists, return it
     var info = this.funcInfo.get(irFunc);
     if (info !== HashMap.NOT_FOUND)
         return info;
 
-    // Initialize the argument types
-    var argTypes = new Array(irFunc.argVars.length + 2);
+    // Create the entry type graph
+    var entryGraph = new TypeGraph();
+
+    // Create the return type graph
+    var retGraph = new TypeGraph();
+
+    // Create nodes for the argument values
+    var argNodes = new Array(irFunc.argVars.length + 2);
     for (var i = 0; i < argTypes.length; ++i)
-        argTypes[i] = TypeDesc.noinf;
+        argNode[i] = new TGVariable('arg' + i);
+
+    // Return value node
+    var retNode = new TGVariable('ret');
 
     // Create a new info object
     var info = {
@@ -153,16 +171,19 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
         // Function entry block
         entry: irFunc.hirCFG.entry,
 
-        // Global object type
-        globalType: TypeDesc.noinf,
+        // Type graph at the entry
+        entryGraph: entryGraph,
 
-        // Types of formal arguments
-        argTypes : argTypes,
+        // Type graph at return points
+        retGraph: retGraph,
 
-        // Return type
-        retType : TypeDesc.noinf,
+        // Argument value nodes
+        argNodes: argNodes,
 
-        // Set of callers
+        // Return value node
+        retNode: retNode,
+
+        // Set of caller blocks
         callerSet: new HashSet(),
 
         // List of callers
@@ -176,7 +197,6 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
     this.funcInfo.set(irFunc, info);
 
     return info;
-    */
 }
 
 /**
@@ -203,14 +223,6 @@ TypeProp.prototype.queueFunc = function (irFunc)
         'expected IR function'
     );
 
-
-
-
-
-
-
-
-    /*
     // Get the function's entry block
     var entry = irFunc.hirCFG.entry;
 
@@ -220,15 +232,12 @@ TypeProp.prototype.queueFunc = function (irFunc)
         // Get the info object for this function
         var funcInfo = this.getFuncInfo(irFunc);
 
-        // Initialize the entry type info
-        var typeMap = new TypeMap();
-        typeMap.setGlobalType(funcInfo.globalType);
-        this.blockTypes.set(entry, typeMap);
+        // Set the type graph for the entry block
+        this.blockTypes.set(entry, funcInfo.entryGraph);
     }
 
     // Queue the function's entry block
     this.queueBlock(entry);
-    */
 }
 
 /**
@@ -241,22 +250,10 @@ TypeProp.prototype.queueUnit = function (ir)
         'IR object is not unit-level function'
     );
 
+    // TODO: prev/next unit?
 
-
-
-
-    /*
     // Get the info object for this function
     var funcInfo = this.getFuncInfo(ir);
-
-    // FIXME: for now, initialize a new global object for the unit
-    funcInfo.globalType = new TypeDesc(
-        TypeFlags.OBJECT,
-        undefined,
-        undefined,
-        undefined,
-        [new MapDesc(this.globalClass)]
-    );
 
     // Queue the unit function to be analyzed
     this.queueFunc(ir);
@@ -265,7 +262,6 @@ TypeProp.prototype.queueUnit = function (ir)
     this.unitList.push(ir);
 
     // TODO: handle next unit
-    */
 }
 
 /**
@@ -296,13 +292,6 @@ Run one type analysis iteration
 */
 TypeProp.prototype.iterate = function ()
 {
-
-
-
-
-
-
-    /*
     assert (
         this.workList.isEmpty() === false,
             'empty work list'
@@ -318,22 +307,12 @@ TypeProp.prototype.iterate = function ()
     print('');
 
     // Get a copy of the type set at the block entry
-    var typeMap = this.blockTypes.get(block).copy();
+    var typeGraph = this.blockTypes.get(block).copy();
 
     assert (
         typeMap !== HashMap.NOT_FOUND,
         'type set not found'
     );
-
-
-
-    //
-    // TODO: update list of blocks touching classes
-    //
-    // Do this when iterating over instr uses. Should eliminate many
-    // blocks***
-
-
 
     // For each instruction
     for (var i = 0; i < block.instrs.length; ++i)
@@ -341,10 +320,11 @@ TypeProp.prototype.iterate = function ()
         var instr = block.instrs[i];
 
         // Process the instruction
-        var outType = instr.typeProp(this, typeMap);
+        instr.typeProp(this, typeGraph);
 
         print(instr);
 
+        /*
         // For each use of the instruction
         for (var j = 0; j < instr.uses.length; ++j)
         {
@@ -364,18 +344,28 @@ TypeProp.prototype.iterate = function ()
             if (use instanceof IRInstr && use.dests.length === 1)
                 typeMap.rem(use);
         }
+        */
 
+        /*
         if (instr.dests.length > 0)
             print(instr.getValName() + ' => ' + outType);
         print('');
+        */
 
+
+        // TODO: assert output set if instruction has dests?
+        /* 
         assert (
             instr.dests.length === 0 ||
             outType instanceof TypeDesc,
             'instruction flow function returned invalid type descriptor'
         );
+        */
 
-        // If the output is uninferred, stop analyzing this block for not,
+
+        // TODO: implement this using an exception?
+        /*
+        // If the output is uninferred, stop analyzing this block for now,
         // wait until better information is available
         if (outType === TypeDesc.noinf)
         {
@@ -383,8 +373,10 @@ TypeProp.prototype.iterate = function ()
             print('');
             return;
         }
+        */
+
+
     }
-    */
 }
 
 /**
@@ -392,6 +384,14 @@ Merge incoming types for a successor block
 */
 TypeProp.prototype.succMerge = function (succ, predMap)
 {
+
+
+
+
+
+
+
+    // TODO
     /*
     // Get the type map for the successor
     var succMap = this.blockTypes.get(succ);
@@ -429,6 +429,32 @@ IRInstr.prototype.typeProp = function (ta, typeMap)
     // By default, return the any type
     //return ta.setOutput(typeMap, this, TypeDesc.any);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 PhiInstr.prototype.typeProp = function (ta, typeMap)
 {

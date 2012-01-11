@@ -65,8 +65,6 @@ If we keep the nodes (variables, atomic types, object instances) common
 among all graphs, then graphs are just hash maps of edges. Easy to compare.
 
 
-
-
 Variable nodes for all SSA temps
 Variable nodes for object fields
 
@@ -87,6 +85,11 @@ Compression idea****
 - Copy outgoing edge sets on modification
 - Store only changed edge sets?
 - Could eventually have singleton edge sets
+
+Compression observations:
+1. Most nodes are variables. Most only need one edge set through their entire lifetime.
+- Nodes that only have one possible edge set need only be encoded in one location, never copied?
+
 */
 
 
@@ -123,12 +126,10 @@ function TGValue()
 */
 function TGConst(value)
 {
-    assert (
-        value instanceof IRConst,
-        'invalid constant value'
-    );
+    if ((value instanceof IRConst) === false)
+        value = IRConst.getConst(null);
 
-    var node = TGConst.constMap.find(value);
+    var node = TGConst.constMap.get(value);
     if (node !== HashMap.NOT_FOUND)
         return node;
 
@@ -152,6 +153,36 @@ TGConst.prototype.toString = function ()
 }
 
 /**
+Any value, no type information available
+*/
+TGValue.anyVal = Object.create(new TGValue());
+
+/**
+String representation of the any value
+*/
+TGValue.anyVal.toString = function () { return 'any'; };
+
+/**
+Undefined constant value
+*/
+TGValue.undefVal = new TGConst(undefined);
+
+/**
+Null constant value
+*/
+TGValue.nullVal = new TGConst(null);
+
+/**
+True constant value
+*/
+TGValue.trueVal = new TGConst(true);
+
+/**
+False constant value
+*/
+TGValue.falseVal = new TGConst(false);
+
+/**
 @class Object value in a type graph.
 */
 function TGObject(origin)
@@ -161,22 +192,44 @@ function TGObject(origin)
     */
     this.origin = origin;
 
+    // TODO: creation context
+
+    // If the object is already in the map, return it
+    var obj = TGObject.objMap.get(this);
+    if (obj !== HashMap.NOT_FOUND)
+        return obj;
+
+    /**
+    Prototype of this object
+    */
+    this.proto = new TGVariable('proto', this);
+
     /**
     Map of property names to corresponding variable nodes
     */
     this.props = {};
 
-    /**
-    Serial number for this object
-    */
-    this.serial = TGObject.nextSerial++;
+    // Add the object to the map
+    TGObject.objMap.set(this, this);
 }
 TGObject.prototype = new TGValue();
 
 /**
-Next object serial to be assigned
+Map of existing objects
 */
-TGObject.nextSerial = 1;
+TGObject.objMap = new HashMap(
+    function hash(o)
+    {
+        return defHashFunc(o.origin);
+    },
+    function eq(o1, o2)
+    {
+        if (o1.origin !== o2.origin)
+            return false;
+
+        return true;
+    }
+);
 
 /**
 Produce a string representation of this object
@@ -307,5 +360,21 @@ TypeGraph.prototype.equal = function (other)
     }
 
     return true;
+}
+
+/**
+Create a new object in the type graph
+*/
+TypeGraph.prototype.newObject = function (origin, protoVal)
+{
+    // By default, the prototype is null
+    if (protoVal === undefined)
+        protoVal = TGValue.nullVal;
+
+    var obj = new TGObject(origin);
+
+    this.addEdge(obj.proto, protoVal);
+
+    return obj;
 }
 
