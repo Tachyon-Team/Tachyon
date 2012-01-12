@@ -430,42 +430,20 @@ IRInstr.prototype.typeProp = function (ta, typeGraph)
     typeGraph.addEdge(this, TGValue.anyVal);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 PhiInstr.prototype.typeProp = function (ta, typeGraph)
 {
+    // TODO
     /*
     var outType = TypeDesc.noinf;
+    */
 
     // For each phi predecessor
     for (var i = 0; i < this.preds.length; ++i)
     {
         var pred = this.preds[i];
 
+        // TODO
+        /*
         // If this predecessor hasn't been visited, skip it
         if (ta.blockGraphs.has(pred) === false)
             continue;
@@ -473,8 +451,10 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
         // Merge the type of this incoming value
         var incType = typeMap.getType(this.uses[i]);
         outType = outType.union(incType);
+        */
     }
 
+    /*
     assert (
         outType !== TypeDesc.noinf,
         'phi output type is noinf'
@@ -488,17 +468,30 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
 
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // Return the global object type
-    //return ta.setOutput(typeMap, this, typeMap.globalType);
+    // This refers to the global object
+    typeGraph.addEdge(this, ta.globalObj);
 }
 
-InitGlobalInstr.prototype.typeProp = function (ta, typeMap)
+InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // Do nothing, the global property is treated as not being
-    // guaranteed to exist
+    var propName = this.uses[1].value;
+
+    var propNode = ta.globalObj.getPropNode(propName);
+
+    typeGraph.addEdge(propNode, TGValue.undefVal);
 }
 
-BlankObjInstr.prototype.typeProp = function (ta, typeMap)
+
+
+
+
+
+
+
+
+
+// TODO
+BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     // Create a class descriptor for this instruction
@@ -517,7 +510,7 @@ BlankObjInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-BlankArrayInstr.prototype.typeProp = function (ta, typeMap)
+BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     // Create a class descriptor for this instruction
@@ -536,7 +529,7 @@ BlankArrayInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-HasPropInstr.prototype.typeProp = function (ta, typeMap)
+HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO:
     // If type in map, return true
@@ -547,7 +540,7 @@ HasPropInstr.prototype.typeProp = function (ta, typeMap)
     //return ta.setOutput(typeMap, this, TypeDesc.bool);
 }
 
-PutPropInstr.prototype.typeProp = function (ta, typeMap)
+PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var objType = typeMap.getType(this.uses[0]);
@@ -607,7 +600,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-GetPropInstr.prototype.typeProp = function (ta, typeMap)
+GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var objType = typeMap.getType(this.uses[0]);
@@ -656,7 +649,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeMap)
 
 GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
-JSAddInstr.prototype.typeProp = function (ta, typeMap)
+JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var t0 = typeMap.getType(this.uses[0]);
@@ -709,7 +702,7 @@ JSAddInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-JSSubInstr.prototype.typeProp = function (ta, typeMap)
+JSSubInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var t0 = typeMap.getType(this.uses[0]);
@@ -747,7 +740,7 @@ JSSubInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-JSLtInstr.prototype.typeProp = function (ta, typeMap)
+JSLtInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var v0 = typeMap.getType(this.uses[0]);
@@ -760,7 +753,7 @@ JSLtInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-JSEqInstr.prototype.typeProp = function (ta, typeMap)
+JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var v0 = typeMap.getType(this.uses[0]);
@@ -795,13 +788,13 @@ JSEqInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-JSNsInstr.prototype.typeProp = function (ta, typeMap)
+JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO:
     //return ta.setOutput(typeMap, this, TypeDesc.bool);
 }
 
-JSCallInstr.prototype.typeProp = function (ta, typeMap)
+JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var callee = typeMap.getType(this.uses[0]);
@@ -899,7 +892,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeMap)
 }
 
 // LIR call instruction
-CallFuncInstr.prototype.typeProp = function (ta, typeMap)
+CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var callee = this.uses[0];
@@ -959,7 +952,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-ArgValInstr.prototype.typeProp = function (ta, typeMap)
+ArgValInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     // Get the info object for this function
@@ -972,7 +965,7 @@ ArgValInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-RetInstr.prototype.typeProp = function (ta, typeMap)
+RetInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     // Get the info object for this function
@@ -1000,7 +993,7 @@ RetInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-JSNewInstr.prototype.typeProp = function (ta, typeMap)
+JSNewInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     - Want to get the 'this' type at the function output
@@ -1015,7 +1008,7 @@ JSNewInstr.prototype.typeProp = function (ta, typeMap)
 }
 
 // If branching instruction
-IfInstr.prototype.typeProp = function (ta, typeMap)
+IfInstr.prototype.typeProp = function (ta, typeGraph)
 {
     /*
     var v0 = typeMap.getType(this.uses[0]);
@@ -1048,7 +1041,7 @@ IfInstr.prototype.typeProp = function (ta, typeMap)
     */
 }
 
-JumpInstr.prototype.typeProp = function (ta, typeMap)
+JumpInstr.prototype.typeProp = function (ta, typeGraph)
 {
     //ta.succMerge(this.targets[0], typeMap);
 }

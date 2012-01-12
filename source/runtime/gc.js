@@ -227,7 +227,7 @@ function gcCollect()
     "tachyon:static";
     "tachyon:noglobal";
 
-    iir.trace_print('entering gcCollect');
+    //iir.trace_print('entering gcCollect');
 
     var startTime = currentTimeMillis();
 
@@ -315,9 +315,6 @@ function gcCollect()
         // Get the current free pointer
         var freePtr = get_ctx_tofree(ctx);
 
-        //printPtr(scanPtr);
-        //printPtr(freePtr);
-
         // If we are past the free pointer, scanning done
         if (scanPtr >= freePtr)
             break;
@@ -339,12 +336,8 @@ function gcCollect()
             error(0);
         }
 
-        //iir.trace_print('begin visit');
-
         // Visit the object layout, forward its references
         gc_visit_layout(objRef);
-
-        //iir.trace_print('end visit');
 
         // Get the object size
         var objSize = sizeof_layout(objRef);
@@ -353,19 +346,14 @@ function gcCollect()
         scanPtr = objPtr + objSize;
     }
 
-    //iir.trace_print('flipping from-space and to-space');
-
-    iir.trace_print('objects copied/scanned:');
-    printInt(numObjs);
+    //iir.trace_print('objects copied/scanned:');
+    //printInt(numObjs);
 
     // Flip the from-space and to-space
     // Set the heap start, limit and free pointers in the context
     set_ctx_heapstart(ctx, toStart);
     set_ctx_heaplimit(ctx, toLimit);
     set_ctx_freeptr(ctx, get_ctx_tofree(ctx));
-
-    //iir.trace_print('freeing original from-space block');
-    //printPtr(fromStart);
 
     // For debugging, clear the old heap
     //for (var p = fromStart; p < fromLimit; p += pint(1))
@@ -376,15 +364,15 @@ function gcCollect()
 
     var endTime = currentTimeMillis();
     var gcTime = endTime - startTime;
-    iir.trace_print('gc time (ms):');
-    printInt(unboxInt(gcTime));
+    //iir.trace_print('gc time (ms):');
+    //printInt(unboxInt(gcTime));
 
     // Clear the to-space information
     set_ctx_tostart(ctx, NULL_PTR);
     set_ctx_tolimit(ctx, NULL_PTR);
     set_ctx_tofree(ctx, NULL_PTR);
 
-    iir.trace_print('leaving gcCollect');
+    //iir.trace_print('leaving gcCollect');
 }
 
 /**
@@ -549,7 +537,7 @@ function visitStackRoots(ra, bp)
     // Size of a stack slot
     const SLOT_SIZE = PTR_NUM_BYTES;
 
-    iir.trace_print('** starting stack walk');
+    //iir.trace_print('** starting stack walk');
 
     assert (
         ra !== NULL_PTR,
@@ -568,8 +556,8 @@ function visitStackRoots(ra, bp)
     // For each stack level
     for (var numLevels = 0;; ++numLevels)
     {
-        iir.trace_print('* stack frame');
-        printPtr(ra);
+        //iir.trace_print('* stack frame');
+        //printPtr(ra);
 
         // Note: 8 byte offset to data
 
@@ -579,7 +567,7 @@ function visitStackRoots(ra, bp)
         // If the magic code doesn't match, stop the traversal
         if (magic !== pint(1337))
         {
-            iir.trace_print("magic doesn't match");
+            //iir.trace_print("magic doesn't match");
             break;
         }
 
@@ -592,6 +580,7 @@ function visitStackRoots(ra, bp)
         // Read the return address slot index
         var raSlot = iir.icast(IRType.pint, iir.load(IRType.u16, ra, pint(14)));
 
+        /*
         // For debugging purposes, print the function name
         var numKindBytes = pint(0);
         if (numSlots > pint(0))
@@ -604,17 +593,19 @@ function visitStackRoots(ra, bp)
         var nameStr = ra + nameDisp;
         iir.trace_print('function name:')
         printStr(nameStr);
+        */
 
+        /*
         iir.trace_print('num slots:');
         printInt(numSlots);
-
-        //iir.trace_print('pad space:');
-        //printInt(padSpace);
+        iir.trace_print('pad space:');
+        printInt(padSpace);
+        */
 
         // If this frame uses dynamic alignment
         if (padSpace === pint(0xFFFF))
         {
-            iir.trace_print('dynamic alignment');
+            //iir.trace_print('dynamic alignment');
 
             // Load the sp at the base pointer
             var sp = iir.load(IRType.rptr, bp, pint(0));
@@ -633,7 +624,7 @@ function visitStackRoots(ra, bp)
         // * stack args
         if (numSlots < pint(0))
         {
-            iir.trace_print('var arg frame');
+            //trace_print('var arg frame');
 
             // Get the number of argument registers
             var numArgRegs = -numSlots;
@@ -654,14 +645,14 @@ function visitStackRoots(ra, bp)
             if (numStackArgs < pint(0))
                 numStackArgs = pint(0);
 
+            /*
             iir.trace_print('num args:');
             printInt(numArgs);
-
             iir.trace_print('num reg args:');
             printInt(numRegArgs);
-
             iir.trace_print('num stack args:');
             printInt(numStackArgs);
+            */
 
             // Compute the return address slot
             raSlot = pint(1) + numArgRegs;
@@ -708,13 +699,6 @@ function visitStackRoots(ra, bp)
                 // Compute the displacement for this slot
                 var disp = i * SLOT_SIZE;
 
-                /*
-                iir.trace_print('idx: ');
-                printInt(i);                
-                iir.trace_print('disp: ');
-                printInt(disp);
-                */
-
                 // Function pointer
                 if (kind === pint(1))
                 {
@@ -740,8 +724,8 @@ function visitStackRoots(ra, bp)
         //iir.trace_print('ra slot:');
         //printInt(raSlot);
 
-        iir.trace_print('frame size:');
-        printInt(frameSize);
+        //iir.trace_print('frame size:');
+        //printInt(frameSize);
 
         // Load the return address for the next frame down
         ra = iir.load(IRType.rptr, sp, raSlot * SLOT_SIZE);

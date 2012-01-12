@@ -249,6 +249,18 @@ TGObject.prototype.toString = function ()
 }
 
 /**
+Get the value node for a given property
+*/
+TGObject.prototype.getPropNode = function (name)
+{
+    // If the property doesn't exist, create it
+    if (this.props[name] === undefined)
+        this.props[name] = new TGVariable(name, this);
+
+    return this.props[name];
+}
+
+/**
 @class Type graph. Contains edges between nodes and values
 */
 function TypeGraph()
@@ -379,3 +391,35 @@ TypeGraph.prototype.newObject = function (origin, protoVal)
     return obj;
 }
 
+// TODO: copy/overwrite edges from another value node?
+/**
+Do a property set on an object
+*/
+/*
+TypeGraph.prototype.putProp = function (obj, name, val)
+{
+    assert (
+        obj instanceof TGObject,
+        'invalid object;
+    );
+
+    if (obj.props[name] === undefined)
+        obj.addProp(name);
+
+    // TODO
+
+    var edgeSet = this.varMap.get(obj)
+
+    if (edgeSet === HashMap.NOT_FOUND)
+    {
+        var edgeSet = new HashSet();
+        this.varMap.set(varNode, edgeSet);
+    }
+    else
+    {
+        edgeSet.clear()
+    }
+
+    edgeSet.add(valNode);
+}
+*/
