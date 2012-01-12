@@ -105,9 +105,19 @@ TypeProp.prototype.init = function ()
     this.objProto = this.initGraph.newObject('obj_proto');
 
     /**
+    Array prototype object node
+    */
+    this.arrProto = this.initGraph.newObject('arr_proto');
+
+    /**
+    Function prototype object node
+    */
+    this.funcProto = this.initGraph.newObject('func_proto');
+
+    /**
     Global object node
     */
-    this.globalObj = this.initGraph.newObject('global');
+    this.globalObj = this.initGraph.newObject('global', this.objProto);
 
     /**
     Map of IR functions to function-specific information
@@ -346,11 +356,11 @@ TypeProp.prototype.iterate = function ()
         }
         */
 
-        /*
         if (instr.dests.length > 0)
-            print(instr.getValName() + ' => ' + outType);
+            print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
         print('');
-        */
+
+
 
 
         // TODO: assert output set if instruction has dests?
@@ -427,7 +437,7 @@ TypeProp.prototype.succMerge = function (succ, predMap)
 IRInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // By default, return the any type
-    typeGraph.addEdge(this, TGValue.anyVal);
+    typeGraph.unionTypes(this, TypeSet.anySet);
 }
 
 PhiInstr.prototype.typeProp = function (ta, typeGraph)
@@ -469,7 +479,7 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // This refers to the global object
-    typeGraph.addEdge(this, ta.globalObj);
+    typeGraph.unionTypes(this, ta.globalObj);
 }
 
 InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
@@ -478,180 +488,193 @@ InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
 
     var propNode = ta.globalObj.getPropNode(propName);
 
-    typeGraph.addEdge(propNode, TGValue.undefVal);
+    typeGraph.unionTypes(propNode, TypeSet.undefSet);
 }
 
-
-
-
-
-
-
-
-
-
-// TODO
 BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
-    // Create a class descriptor for this instruction
-    var classDesc = new ClassDesc(this, TypeDesc.null);
+    // Create a new object from the object prototype
+    var newObj = typeGraph.newObject(this, ta.objProto);
 
-    // Create a type using the class
-    var objType = new TypeDesc(
-        TypeFlags.OBJECT,
-        undefined,
-        undefined,
-        undefined,
-        [new MapDesc(classDesc)]
-    );
-
-    return ta.setOutput(typeMap, this, objType);
-    */
+    // The result is the new object
+    typeGraph.unionTypes(this, newObj);
 }
 
+/*
 BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
-    // Create a class descriptor for this instruction
-    var classDesc = new ClassDesc(this, TypeDesc.null);
-
-    // Create a type using the class
-    var arrType = new TypeDesc(
-        TypeFlags.ARRAY,
-        undefined,
-        undefined,
-        undefined,
-        [new MapDesc(classDesc)]
-    );
-
-    return ta.setOutput(typeMap, this, arrType);
-    */
+    // TODO
 }
+*/
 
 HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // TODO:
-    // If type in map, return true
-    // If type not in map but in class, return bool
-    // If type not in class, return false
-
-    // TODO: examine type map
-    //return ta.setOutput(typeMap, this, TypeDesc.bool);
+    typeGraph.unionTypes(this, TypeSet.boolSet);
 }
 
 PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
-    var objType = typeMap.getType(this.uses[0]);
-    var nameType = typeMap.getType(this.uses[1]);
-    var valType = typeMap.getType(this.uses[2]);
+    var objSet = typeGraph.getTypeSet(this.uses[0]);
+    var nameSet = typeGraph.getTypeSet(this.uses[1]);
+    var valSet = typeGraph.getTypeSet(this.uses[2]);
 
-    // Try to get a string for the property name
-    var propName = nameType.stringVal();
-
-    // Test if the property name is an index
-    var nameIsIndex = nameType.isIndex();
-
-    // TODO: issue: here, the property name could be unknown
-    // A run-time check is needed
-    if (propName === undefined && nameIsIndex === false)
+    // For each possible object
+    for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
     {
-        print('*WARNING: putProp with unknown property name');
+        var obj = objItr.get();
 
-        return ta.setOutput(typeMap, this, TypeDesc.any);
+        // If this is not an object
+        if ((obj instanceof TGObject) === false)
+        {
+            print('*WARNING: putProp on non-object');
+
+            typeGraph.unionTypes(this, TypeSet.valSet);
+
+            return;
+        }
+
+        // For each possible name
+        for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
+        {
+            var name = nameItr.get();
+
+            // If this is not a string constant
+            if ((name instanceof TGConst) === false ||
+                typeof name.value.value !== 'string')
+            {
+                print('*WARNING: putProp with unknown property name');
+
+                typeGraph.unionTypes(this, TypeSet.valSet);
+
+                return;
+            }
+
+            var propName = name.value.value;
+
+            // Get the node for this property
+            var propNode = obj.getPropNode(propName);
+
+            // Assign the value type set to the property
+            typeGraph.assignTypes(propNode, valSet);
+        }
     }
 
-    // Updated object type
-    var newObjType = objType;
-
-    // If we have a string for the property name
-    if (propName !== undefined)
-    {
-        // Update the object type with the property set
-        newObjType = newObjType.putProp(propName, valType);
-    }
-
-    // If the name could be integer
-    if (nameIsIndex === true)
-    {
-        // Update the array properties
-        newObjType = newObjType.putArray(valType);
-    }
-
-    // The object cannot be undefined or null along the normal branch
-    newObjType = newObjType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
-
-    // Get the global object type
-    var globalType = typeMap.getGlobalType();
-
-    // Test if the input type is the global type
-    var objIsGlobal = objType.equal(globalType) === true;
-
-    // Update the object type
-    ta.setInput(typeMap, this, this.uses[0], newObjType, objType);
-
-    // If the object is the global object, update the global type
-    if (objIsGlobal === true)
-        ta.setGlobal(typeMap, this, newObjType, globalType);
-
-    // Set the output type
-    return ta.setOutput(typeMap, this, valType);
-    */
+    typeGraph.unionTypes(this, valSet);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
-    var objType = typeMap.getType(this.uses[0]);
-    var nameType = typeMap.getType(this.uses[1]);
+    var outSet = new TypeSet();
 
-    // Try to get a string for the property name
-    var propName = nameType.stringVal();
+    var objSet = typeGraph.getTypeSet(this.uses[0]);
+    var nameSet = typeGraph.getTypeSet(this.uses[1]);
 
-    // Test if the property name is an index
-    var nameIsIndex = nameType.isIndex();
-
-    // TODO: issue: here, the property name could be unknown
-    // A run-time check is needed
-    if (propName === undefined && nameIsIndex === false)
+    // For each possible object
+    for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
     {
-        print('*WARNING: putProp with unknown property name');
+        var obj = objItr.get();
 
-        return ta.setOutput(typeMap, this, TypeDesc.any);
+        // If this is not an object
+        if ((obj instanceof TGObject) === false)
+        {
+            print('*WARNING: getProp on non-object');
+
+            typeGraph.unionTypes(this, TypeSet.anySet);
+
+            return;
+        }
+
+        // For each possible name
+        for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
+        {
+            var name = nameItr.get();
+
+            // If this is not a string constant
+            if ((name instanceof TGConst) === false ||
+                typeof name.value.value !== 'string')
+            {
+                print('*WARNING: getProp with unknown property name');
+
+                typeGraph.unionTypes(this, TypeSet.anySet);
+
+                return;
+            }
+
+            var propName = name.value.value;
+
+            // Get the node for this property
+            var propNode = obj.getPropNode(propName);
+
+            // Union the types for this property into the type set
+            outSet.union(typeGraph.getTypeSet(propNode));
+        }
     }
 
-    var propType = TypeDesc.noinf;
-
-    // Union the possible property types
-    for (var i = 0; i < objType.mapSet.length; ++i)
-    {
-        var map = objType.mapSet[i];
-
-        propType = propType.union(map.getPropType(propName));
-
-        if (nameIsIndex === true)
-            propType = propType.union(map.getArrayType());
-    }
-
-    // If the property wasn't found anywhere, make its type undefined
-    if (propType.flags === TypeFlags.NOINF)
-        propType = TypeDesc.undef;
-
-    // Restrict the object type along the normal path
-    var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
-    ta.setInput(typeMap, this, this.uses[0], newObjType, objType);
-
-    // Set the output type
-    return ta.setOutput(typeMap, this, propType);
-    */
+    typeGraph.unionTypes(this, outSet);
 }
 
 GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
+
+
+
+/*
+TODO: 
+ISSUE: FFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUUU.......... 
+
+Can't assign types on putProp if we still aggregate objects based on creation
+context :(
+
+Must union....
+
+
+
+BUT: works for the global object, you know it's a singleton.
+
+
+
+*/
+
+
+
+
+
+/*
+TODO: issue, how do we handle integer ranges? Special provision in type sets for range?
+
+Special rangeMin, rangeMax values?
+- Need to indicate if can be int or float
+
+*** Special handling on typeSet.add, typeSet.union, typeSet.has
+
+ISSUE: can't just iterate over values! Set of one element can also contain
+an infinite number of number values!
+- putProp, getProp need to test typeSet.hasInt()? typeSet.hasFloat()?
+- Fortunately, not many instructions need to iterate over all possible values
+
+
+TODO: simplify things, handle all number values this way****
+- Avoid complexity in analysis of operations that do arithmetic
+
+
+
+TODO: implement call first
+- Function closure creation handling, makeClos
+
+
+*/
+
+
+
+
+
+
+
+
+
+/*
 JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var t0 = typeMap.getType(this.uses[0]);
     var t1 = typeMap.getType(this.uses[1]);
 
@@ -699,12 +722,12 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     return ta.setOutput(typeMap, this, outType);
-    */
 }
+*/
 
+/*
 JSSubInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var t0 = typeMap.getType(this.uses[0]);
     var t1 = typeMap.getType(this.uses[1]);
 
@@ -737,12 +760,12 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     return ta.setOutput(typeMap, this, outType);
-    */
 }
+*/
 
+/*
 JSLtInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var v0 = typeMap.getType(this.uses[0]);
     var v1 = typeMap.getType(this.uses[1]);
 
@@ -750,12 +773,12 @@ JSLtInstr.prototype.typeProp = function (ta, typeGraph)
 
     // TODO:
     return ta.setOutput(typeMap, this, TypeDesc.bool);
-    */
 }
+*/
 
+/*
 JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var v0 = typeMap.getType(this.uses[0]);
     var v1 = typeMap.getType(this.uses[1]);
 
@@ -785,18 +808,20 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     return ta.setOutput(typeMap, this, outType);
-    */
 }
+*/
 
+/*
 JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO:
     //return ta.setOutput(typeMap, this, TypeDesc.bool);
 }
+*/
 
+/*
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var callee = typeMap.getType(this.uses[0]);
     var thisArg = typeMap.getType(this.uses[1]);
 
@@ -888,13 +913,12 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 
     // Return the function return type
     return ta.setOutput(typeMap, this, retType);
-    */
 }
+*/
 
 // LIR call instruction
 CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var callee = this.uses[0];
 
     // Return type
@@ -904,7 +928,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     if ((callee instanceof IRFunction) === false)
     {
         // Do nothing
-        retType = TypeDesc.any;
+        retType = TypeSet.anySet;
     }
 
     // If this is a call to makeClos (closure creation)
@@ -917,44 +941,32 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             'closure of unknown function'
         );
 
-        // Create a class descriptor for this function
-        var classDesc = new ClassDesc(func, TypeDesc.null);
+        // Create an object node for this function
+        var funcObj = typeGraph.newObject(func, ta.funcProto);
 
-        // Create a type using the function's class
-        var closType = new TypeDesc(
-            TypeFlags.FUNCTION,
-            undefined,
-            undefined,
-            undefined,
-            [new MapDesc(classDesc)]
-        );
-
-        retType = closType;
+        retType = funcObj;
     }
 
     // For other primitive functions
     else
     {
         // Do nothing
-        retType = TypeDesc.any;
+        retType = TypeSet.anySet;
     }
 
-    // Set our own output type in the type map
-    if (this.dests.length > 0)
-        typeMap.setType(this, retType);
+    // Set our own output type in the type graph
+    typeGraph.unionTypes(this, retType);
 
+    /* TODO
     // Merge with all possible branch targets
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeMap);
-
-    // Return the return type
-    return ta.setOutput(typeMap, this, retType);
     */
 }
 
+/*
 ArgValInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     // Get the info object for this function
     var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
@@ -962,12 +974,12 @@ ArgValInstr.prototype.typeProp = function (ta, typeGraph)
     // Return the type for this argument
     var argType = funcInfo.argTypes[this.argIndex];
     return ta.setOutput(typeMap, this, argType);
-    */
 }
+*/
 
+/*
 RetInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     // Get the info object for this function
     var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
@@ -990,27 +1002,23 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
             ta.queueBlock(callInstr.parentBlock);
         }
     }
-    */
 }
+*/
 
+/*
 JSNewInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
-    - Want to get the 'this' type at the function output
-    - Could have special provision to keep it live
-    - Merge this type the same way we merge ret type?
-
-    - Could try to generalize this concept for all arguments, for initializers
-    */
+    // TODO: Want to get the 'this' type at the function output
 
     // TODO
     //return ta.setOutput(typeMap, this, TypeDesc.any);
 }
+*/
 
+/*
 // If branching instruction
 IfInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    /*
     var v0 = typeMap.getType(this.uses[0]);
     var v1 = typeMap.getType(this.uses[1]);
     var v2 = (this.uses.length > 2)? typeMap.getType(this.uses[1]):undefined;
@@ -1038,11 +1046,13 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
     // Merge with all possible branch targets
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeMap);
-    */
 }
+*/
 
+/*
 JumpInstr.prototype.typeProp = function (ta, typeGraph)
 {
     //ta.succMerge(this.targets[0], typeMap);
 }
+*/
 

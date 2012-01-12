@@ -60,6 +60,9 @@ TypeProp.prototype.testOnFile = function (fileName, verbose)
     var ast = parse_src_file(fileName, this.params);
     var ir = unitToIR(ast, this.params);
 
+    if (verbose)
+        print(ir);
+
     // Start timing the analysis
     var startTimeMs = (new Date()).getTime();
 

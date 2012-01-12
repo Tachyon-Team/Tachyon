@@ -54,7 +54,7 @@ TypeProp.makeTest = function (fileName)
     {
         const params = config.hostParams;
 
-        params.typeProp.testOnFile(fileName, false);
+        params.typeProp.testOnFile(fileName, true);
     }
 }
 

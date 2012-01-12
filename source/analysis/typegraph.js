@@ -153,36 +153,6 @@ TGConst.prototype.toString = function ()
 }
 
 /**
-Any value, no type information available
-*/
-TGValue.anyVal = Object.create(new TGValue());
-
-/**
-String representation of the any value
-*/
-TGValue.anyVal.toString = function () { return 'any'; };
-
-/**
-Undefined constant value
-*/
-TGValue.undefVal = new TGConst(undefined);
-
-/**
-Null constant value
-*/
-TGValue.nullVal = new TGConst(null);
-
-/**
-True constant value
-*/
-TGValue.trueVal = new TGConst(true);
-
-/**
-False constant value
-*/
-TGValue.falseVal = new TGConst(false);
-
-/**
 @class Object value in a type graph.
 */
 function TGObject(origin)
@@ -236,14 +206,16 @@ Produce a string representation of this object
 */
 TGObject.prototype.toString = function ()
 {
-    var str = '';
+    var str = '<';
 
     if (typeof this.origin === 'string')
-        return this.origin;
+        str += this.origin;
+    else if (this.origin instanceof IRFunction)
+        str += 'func:"' + this.origin.funcName + '"';
     else
-        this.origin.getValName();
+        str += this.origin.getValName();
 
-    str += ' (' + this.serial + ')';
+    str += '>';
 
     return str;
 }
@@ -261,20 +233,142 @@ TGObject.prototype.getPropNode = function (name)
 }
 
 /**
+@class Set of value nodes representing possible variable types
+*/
+function TypeSet()
+{
+    // Run the hash set constructor
+    HashSet.apply(this);
+
+    // Add the arguments to the set
+    for (var i = 0; i < arguments.length; ++i)
+        this.add(arguments[i]);
+}
+TypeSet.prototype = new HashSet();
+
+/**
+Produce a string representation of this type set
+*/
+TypeSet.prototype.toString = function ()
+{
+    if (this === TypeSet.any)
+        return '{any}';
+
+    var str = '{';
+
+
+    for (var itr = this.getItr(); itr.valid(); itr.next())
+    {
+        var val = itr.get();
+
+        if (str !== '{')
+            str += ',';
+
+        str += val.toString();
+    }
+
+    str += '}';
+
+    return str;
+}
+
+/**
+Type set equality test
+*/
+TypeSet.prototype.equal = function (set)
+{
+    if (this === set)
+        return true;
+
+    if (this === TypeSet.anySet || set === TypeSet.anySet)
+        return false;
+
+    return HashSet.prototype.equal.call(this, set);
+}
+
+/**
+Type set union function
+*/
+TypeSet.prototype.union = function (set)
+{
+    if (this === TypeSet.any || set === TypeSet.any)
+        return TypeSet.any;
+
+    return HashSet.prototype.union.call(this, set);
+}
+
+/**
+Type set add element function
+*/
+TypeSet.prototype.add = function (val)
+{
+    if (this === TypeSet.any)
+        return TypeSet.any;
+
+    return HashSet.prototype.add.call(this, val);
+}
+
+/**
+Type set has element function
+*/
+TypeSet.prototype.has = function (val)
+{
+    if (this === TypeSet.any)
+        return true;
+
+    return HashSet.prototype.has.call(this, val);
+}
+
+/**
+Empty type set (bottom element)
+*/
+TypeSet.emptySet = new TypeSet();
+
+/**
+Any/full type set (top element)
+*/
+TypeSet.anySet = new TypeSet();
+
+/**
+Undefined constant value
+*/
+TypeSet.undefSet = new TypeSet(new TGConst(undefined));
+
+/**
+Null constant value
+*/
+TypeSet.nullSet = new TypeSet(new TGConst(null));
+
+/**
+True constant value
+*/
+TypeSet.trueSet = new TypeSet(new TGConst(true));
+
+/**
+False constant value
+*/
+TypeSet.falseSet = new TypeSet(new TGConst(false));
+
+/**
+Boolean set (true or false)
+*/
+TypeSet.boolSet = new TypeSet(new TGConst(true), new TGConst(false));
+
+/**
 @class Type graph. Contains edges between nodes and values
 */
 function TypeGraph()
 {
     /**
-    Map of variables to sets of outgoing edges to values
+    Map of variables nodes to type sets
     */
     this.varMap = new HashMap();
 }
 
 /**
-Add an edge to the graph
+Set the possible types for a variable node
 */
-TypeGraph.prototype.addEdge = function (varNode, valNode)
+TypeGraph.prototype.assignTypes = function (varNode, typeSet)
 {
     assert (
         varNode instanceof TGVariable ||
@@ -282,20 +376,45 @@ TypeGraph.prototype.addEdge = function (varNode, valNode)
         'invalid var node'
     );
 
+    if (typeSet instanceof TGValue)
+        typeSet = new TypeSet(typeSet);
+
     assert (
-        valNode instanceof TGValue,
-        'invalid val node'
+        typeSet instanceof TypeSet,
+        'invalid type set'
+    );
+
+    this.varMap.set(varNode, typeSet);
+}
+
+/**
+Union the types of a variable with another type set
+*/
+TypeGraph.prototype.unionTypes = function (varNode, typeSet)
+{
+    assert (
+        varNode instanceof TGVariable ||
+        varNode instanceof IRInstr,
+        'invalid var node'
+    );
+
+    if (typeSet instanceof TGValue)
+        typeSet = new TypeSet(typeSet);
+
+    assert (
+        typeSet instanceof TypeSet,
+        'invalid type set'
     );
 
     var edgeSet = this.varMap.get(varNode)
 
     if (edgeSet === HashMap.NOT_FOUND)
     {
-        var edgeSet = new HashSet();
+        var edgeSet = new TypeSet();
         this.varMap.set(varNode, edgeSet);
     }
 
-    edgeSet.add(valNode);
+    edgeSet.union(typeSet);
 }
 
 /**
@@ -307,13 +426,11 @@ TypeGraph.prototype.copy = function ()
 
     for (var nodeItr = this.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
-        var edge = nodeItr.get();
+        var pair = nodeItr.get();
+        var node = pair.first;
+        var edgeSet = pair.second;
 
-        var node = edge.first;
-        var edgeSet = edge.second;
-
-        for (var edgeItr = edgeSet.getItr(); edgeItr.valid(); edgeItr.next())
-            newGraph.addEdge(node, edgeItr.get());
+        newGraph.unionTypes(edgeSet);
     } 
 
     return newGraph;
@@ -327,7 +444,6 @@ TypeGraph.prototype.merge = function (other)
     for (nodeItr = other.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var edge = nodeItr.get();
-
         var node = edge.first;
         var edgeSet = edge.second;
 
@@ -340,8 +456,7 @@ TypeGraph.prototype.merge = function (other)
         }
         else
         {
-            for (var edgeItr = edgeSet.getItr(); edgeItr.valid(); edgeItr.next())
-                localSet.add(edeItr.get());
+            localSet.union(edgeSet);
         }
     }
 }
@@ -364,12 +479,8 @@ TypeGraph.prototype.equal = function (other)
 
         var localSet = this.varMap.get(node);
 
-        if (localSet.length !== edgeSet.length)
-            return false
-
-        for (var edgeItr = edgeSet.getItr(); edgeItr.valid(); edgeItr.next())
-            if (localSet.has(edgeItr.get()) === false)
-                return false;
+        if (localSet.equal(edgeSet) === false)
+            return false;
     }
 
     return true;
@@ -378,48 +489,44 @@ TypeGraph.prototype.equal = function (other)
 /**
 Create a new object in the type graph
 */
-TypeGraph.prototype.newObject = function (origin, protoVal)
+TypeGraph.prototype.newObject = function (origin, protoSet)
 {
     // By default, the prototype is null
-    if (protoVal === undefined)
-        protoVal = TGValue.nullVal;
+    if (protoSet === undefined)
+        protoSet = TypeSet.undefSet;
 
     var obj = new TGObject(origin);
 
-    this.addEdge(obj.proto, protoVal);
+    this.unionTypes(obj.proto, protoSet);
 
     return obj;
 }
 
-// TODO: copy/overwrite edges from another value node?
 /**
-Do a property set on an object
+Get the set of value nodes for an IR value
 */
-/*
-TypeGraph.prototype.putProp = function (obj, name, val)
+TypeGraph.prototype.getTypeSet = function (value)
 {
-    assert (
-        obj instanceof TGObject,
-        'invalid object;
-    );
-
-    if (obj.props[name] === undefined)
-        obj.addProp(name);
-
-    // TODO
-
-    var edgeSet = this.varMap.get(obj)
-
-    if (edgeSet === HashMap.NOT_FOUND)
+    // If this is a variable node or IR instruction
+    if (value instanceof TGVariable ||
+        value instanceof IRInstr)
     {
-        var edgeSet = new HashSet();
-        this.varMap.set(varNode, edgeSet);
+        var typeSet = this.varMap.get(value);
+        if (typeSet !== HashMap.NOT_FOUND)
+            return typeSet;
+
+        return TypeSet.emptySet;
     }
+
+    // If this is a constant
     else
     {
-        edgeSet.clear()
-    }
+        assert (
+            value instanceof IRConst,
+            'invalid value'
+        );
 
-    edgeSet.add(valNode);
+        return new TypeSet(new TGConst(value));
+    }
 }
-*/
+
