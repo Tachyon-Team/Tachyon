@@ -136,36 +136,30 @@ TypeProp.prototype.init = function ()
 }
 
 /**
+Get the type graph for a basic block
+*/
+TypeProp.prototype.getTypeGraph = function (block)
+{
+    var graph = this.blockGraphs.get(block);
+
+    if (graph === HashMap.NOT_FOUND)
+    {
+        graph = new TypeGraph();
+        this.blockGraphs.set(block, graph);
+    }
+
+    return graph;
+}
+
+/**
 Get the function info object for an IR function
 */
 TypeProp.prototype.getFuncInfo = function (irFunc)
 {
-    // TODO
-    /* 
-    Need type graph at entry block.
-
-    Need to have variable nodes for the arguments.****
-    - argNodes
-    - Used by ArgValInstr
-
-    Also need type graph at returns. These are merged.
-  
-    Need to have variable node for the return value.***
-
-    When a call is processed... Need to copy edges from arguments
-    to the argument nodes of the entry graph.
-    */
-
     // If an info object already exists, return it
     var info = this.funcInfo.get(irFunc);
     if (info !== HashMap.NOT_FOUND)
         return info;
-
-    // Create the entry type graph
-    var entryGraph = new TypeGraph();
-
-    // Create the return type graph
-    var retGraph = new TypeGraph();
 
     // Create nodes for the argument values
     var argNodes = new Array(irFunc.argVars.length + 2);
@@ -181,17 +175,14 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
         // Function entry block
         entry: irFunc.hirCFG.entry,
 
-        // Type graph at the entry
-        entryGraph: entryGraph,
-
-        // Type graph at return points
-        retGraph: retGraph,
-
         // Argument value nodes
         argNodes: argNodes,
 
         // Return value node
         retNode: retNode,
+
+        // Return graph at returns
+        retGraph: undefined,
 
         // Set of caller blocks
         callerSet: new HashSet(),
@@ -235,16 +226,6 @@ TypeProp.prototype.queueFunc = function (irFunc)
 
     // Get the function's entry block
     var entry = irFunc.hirCFG.entry;
-
-    // If the function has no entry type info
-    if (this.blockGraphs.has(entry) === false)
-    {
-        // Get the info object for this function
-        var funcInfo = this.getFuncInfo(irFunc);
-
-        // Set the type graph for the entry block
-        this.blockGraphs.set(entry, funcInfo.entryGraph);
-    }
 
     // Queue the function's entry block
     this.queueBlock(entry);
@@ -317,7 +298,7 @@ TypeProp.prototype.iterate = function ()
     print('');
 
     // Get a copy of the type set at the block entry
-    var typeGraph = this.blockGraphs.get(block).copy();
+    var typeGraph = this.getTypeGraph(block).copy();
 
     assert (
         typeGraph !== HashMap.NOT_FOUND,
@@ -330,102 +311,43 @@ TypeProp.prototype.iterate = function ()
         var instr = block.instrs[i];
 
         // Process the instruction
-        instr.typeProp(this, typeGraph);
+        var ret = instr.typeProp(this, typeGraph);
 
         print(instr);
 
-        /*
         // For each use of the instruction
         for (var j = 0; j < instr.uses.length; ++j)
         {
             var use = instr.uses[j];
 
-            var useType = typeMap.getType(use);
+            if ((use instanceof IRInstr || use instanceof IRConst) === false)
+                continue;    
+
+            var useType = typeGraph.getTypeSet(use);
 
             assert (
-                useType instanceof TypeDesc || useType === HashMap.NOT_FOUND,
+                useType instanceof TypeSet,
                 'invalid use type'
             );
 
             print(use.getValName() + ' : ' + useType);
-
-            // If this is an IR instruction and this is its only use,
-            // remove it from the type map
-            if (use instanceof IRInstr && use.dests.length === 1)
-                typeMap.rem(use);
         }
-        */
 
         if (instr.dests.length > 0)
             print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
         print('');
 
-
-
-
-        // TODO: assert output set if instruction has dests?
-        /* 
-        assert (
-            instr.dests.length === 0 ||
-            outType instanceof TypeDesc,
-            'instruction flow function returned invalid type descriptor'
-        );
-        */
-
-
-        // TODO: implement this using an exception?
-        /*
-        // If the output is uninferred, stop analyzing this block for now,
-        // wait until better information is available
-        if (outType === TypeDesc.noinf)
+        // If this was a call instruction
+        if (instr instanceof JSCallInstr)
         {
-            print('noinf output, stopping block analysis');
-            print('');
-            return;
+            // Update the current type graph to reflect the post-call state
+            typeGraph = ret;
+
+            // If the calls are not yet analyzed, stop
+            if (typeGraph === undefined)
+                return;
         }
-        */
-
-
     }
-}
-
-/**
-Merge incoming types for a successor block
-*/
-TypeProp.prototype.succMerge = function (succ, predMap)
-{
-
-
-
-
-
-
-
-    // TODO
-    /*
-    // Get the type map for the successor
-    var succMap = this.blockGraphs.get(succ);
-
-    // If the successor has no type map yet
-    if (succMap === HashMap.NOT_FOUND)
-    {
-        // Pass a copy of the predecessor map to the successor
-        this.blockGraphs.set(succ, predMap.copy());
-
-        // Queue the successor for analysis
-        this.queueBlock(succ);
-    }
-    else
-    {
-        // Merge the predecessor type map into the successor's
-        var changed = succMap.merge(predMap);
-
-        // If the successor's type map was changed,
-        // queue the successor for analysis
-        if (changed == true)
-            this.queueBlock(succ);
-    }
-    */
 }
 
 //=============================================================================
@@ -611,7 +533,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
             var propNode = obj.getPropNode(propName);
 
             // Union the types for this property into the type set
-            outSet.union(typeGraph.getTypeSet(propNode));
+            outSet = outSet.union(typeGraph.getTypeSet(propNode));
         }
     }
 
@@ -619,17 +541,6 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 }
 
 GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
-
-
-
-
-/*
-FIXME: issue, if any set is a special value, cannot do union modifying type set...
-Ideally, should create a new type set, this also allows for a future extension with
-a different implementation...
-
-Probably want to rework type set implementation**** Don't derive from hash set directly.
-*/
 
 
 
@@ -814,23 +725,24 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 }
 */
 
-/*
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var callee = typeMap.getType(this.uses[0]);
-    var thisArg = typeMap.getType(this.uses[1]);
+    var calleeSet = typeGraph.getTypeSet(this.uses[0]);
+    var thisSet = typeGraph.getTypeSet(this.uses[1]);
 
-    // Function return type
-    var retType = TypeDesc.noinf;
+    // Return type
+    var retType = TypeSet.emptySet
+
+    // Type graph after call
+    var retGraph = undefined;
 
     // For each potential callee
-    for (var i = 0; i < callee.mapSet.length; ++i)
+    for (var itr = calleeSet.getItr(); itr.valid(); itr.next())
     {
-        // Get this class descriptor
-        var classDesc = callee.mapSet[i].classDesc;
+        var callee = itr.get();
 
         // Get the function for this class
-        var func = classDesc.origin;
+        var func = callee.origin;
 
         // If this is not a function, ignore it
         if ((func instanceof IRFunction) === false)
@@ -841,47 +753,36 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         // Get the info object for this function
         var funcInfo = ta.getFuncInfo(func);
 
-        // Argument types changed flag
-        var argChanged = false;
-
         // For each argument
-        for (var j = 0; j < funcInfo.argTypes.length; ++j)
+        for (var j = 0; j < funcInfo.argNodes.length; ++j)
         {
+            var argNode = funcInfo.argNodes[j];
+
             // Get the incoming type for this argument
-            var argType = 
+            var argTypeSet = 
                 (j < this.uses.length)?
-                typeMap.getType(this.uses[j]):
-                TypeDesc.undef;
+                typeGraph.getTypeSet(this.uses[j]):
+                TypeSet.undefSet;
 
-            // Merge the argument type
-            var newType = argType.union(funcInfo.argTypes[j]);
-            if (newType.equal(funcInfo.argTypes[j]) === false)
-            {
-                //print('arg type changed');
-                //print('old type: ' + funcInfo.argTypes[j]);
-                //print('new type: ' + newType);
-
-                funcInfo.argTypes[j] = newType;
-                argChanged = true;
-            }
+            // Set the types for this argument in the current graph
+            typeGraph.assignTypes(argNode, argTypeSet);
         }
 
-        // Get the global type from the type map
-        var globalType = typeMap.getGlobalType();
+        // Get the type graph at the function entry
+        var entryGraph = ta.getTypeGraph(funcInfo.entry);
 
-        // Merge the function's global type
-        var newGlobal = funcInfo.globalType.union(globalType);
-        if (newGlobal.equal(funcInfo.globalType) === false)
+        // Merge the entry graph with the current type graph
+        var newGraph = entryGraph.merge(typeGraph);
+
+        // If the graph changed
+        if (newGraph.equal(entryGraph) === false)
         {
-            //print('global type changed');
+            // Update the entry graph
+            ta.blockGraphs.set(funcInfo.entry, newGraph);
 
-            funcInfo.globalType = newGlobal;
-            argChanged = true;
-        }
-
-        // If any argument types changed, queue the function for analysis
-        if (argChanged === true)
+            // Queue the function for analysis
             ta.queueFunc(func);
+        }
 
         // Add this instruction to the set of callers
         if (funcInfo.callerSet.has(this) === false)
@@ -890,14 +791,30 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             funcInfo.callerList.push(this);
         }
        
-        // Merge the return type
-        retType = retType.union(funcInfo.retType);
+        var funcRetGraph = funcInfo.retGraph;
+
+        // If there is a return raph for this function
+        if (funcRetGraph !== undefined)
+        {
+            print('merging func ret graph');
+
+            // Merge the return graph into the post-call graph
+            if (retGraph !== undefined)
+                retGraph = retGraph.merge(funcRetGraph)
+            else
+                retGraph = funcRetGraph.copy();
+
+            // Merge the return type
+            var funcRetType = retGraph.getTypeSet(funcInfo.retNode);
+            retType = retType.union(funcRetType);
+        }
     }
 
     // Set our own output type in the type map
-    if (this.dests.length > 0)
-        typeMap.setType(this, retType);
+    typeGraph.assignTypes(this, retType);
 
+    // TODO
+    /*
     // Merge with all possible branch targets
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeMap);
@@ -905,11 +822,11 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     // Restrict the function type along the normal path
     var newFuncType = callee.restrict(TypeFlags.FUNCTION);
     ta.setInput(typeMap, this, this.uses[0], newFuncType, callee);
+    */
 
-    // Return the function return type
-    return ta.setOutput(typeMap, this, retType);
+    // Return the post-call graph
+    return retGraph;
 }
-*/
 
 // LIR call instruction
 CallFuncInstr.prototype.typeProp = function (ta, typeGraph)

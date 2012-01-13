@@ -245,14 +245,24 @@ TGObject.prototype.isSingleton = function ()
 */
 function TypeSet()
 {
-    // Run the hash set constructor
-    HashSet.apply(this);
+    /**
+    Internal set implementation
+    */
+    this.set = new HashMap();
 
     // Add the arguments to the set
     for (var i = 0; i < arguments.length; ++i)
-        this.add(arguments[i]);
+    {
+        var val = arguments[i];
+
+        assert (
+            val instanceof TGValue,
+            'invalid value node'
+        );
+
+        this.set.set(val);
+    }
 }
-TypeSet.prototype = new HashSet();
 
 /**
 Produce a string representation of this type set
@@ -264,9 +274,9 @@ TypeSet.prototype.toString = function ()
 
     var str = '{';
 
-    for (var itr = this.getItr(); itr.valid(); itr.next())
+    for (var itr = this.set.getItr(); itr.valid(); itr.next())
     {
-        var val = itr.get();
+        var val = itr.get().key;
 
         if (str !== '{')
             str += ',';
@@ -280,50 +290,59 @@ TypeSet.prototype.toString = function ()
 }
 
 /**
-Type set copy
-*/
-TypeSet.prototype.copy = function ()
-{
-    if (this === TypeSet.anySet)
-        return this;
-
-    return HashSet.prototype.copy.call(this);
-}
-
-/**
 Type set equality test
 */
-TypeSet.prototype.equal = function (set)
+TypeSet.prototype.equal = function (that)
 {
-    if (this === set)
+    if (this === that)
         return true;
 
-    if (this === TypeSet.anySet || set === TypeSet.anySet)
+    if (this === TypeSet.anySet || that === TypeSet.anySet)
         return false;
 
-    return HashSet.prototype.equal.call(this, set);
+    if (this.set.numItems !== that.set.numItems)
+        return false;
+    
+    for (var itr = that.set.getItr(); itr.valid(); itr.next())
+    {
+        var val = itr.get().key;
+
+        if (this.set.has(val) === false)
+            return false;
+    }
+
+    return true;
 }
 
 /**
 Type set union function
 */
-TypeSet.prototype.union = function (set)
+TypeSet.prototype.union = function (that)
 {
-    if (this === TypeSet.anySet || set === TypeSet.anySet)
-        return TypeSet.any;
+    if (this === TypeSet.anySet || that === TypeSet.anySet)
+        return TypeSet.anySet;
 
-    return HashSet.prototype.union.call(this, set);
-}
+    if (this === TypeSet.emptySet)
+        return that;
 
-/**
-Type set add element function
-*/
-TypeSet.prototype.add = function (val)
-{
-    if (this === TypeSet.any)
-        return TypeSet.any;
+    if (that === TypeSet.emptySet)
+        return this;
 
-    return HashSet.prototype.add.call(this, val);
+    var newSet = new TypeSet();
+
+    for (var itr = this.set.getItr(); itr.valid(); itr.next())
+    {
+        var val = itr.get().key;
+        newSet.set.set(val);
+    }
+
+    for (var itr = that.set.getItr(); itr.valid(); itr.next())
+    {
+        var val = itr.get().key;
+        newSet.set.set(val);
+    }
+
+    return newSet;
 }
 
 /**
@@ -331,10 +350,32 @@ Type set has element function
 */
 TypeSet.prototype.has = function (val)
 {
-    if (this === TypeSet.any)
+    if (this === TypeSet.anySet)
         return true;
 
-    return HashSet.prototype.has.call(this, val);
+    return this.set.has(val);
+}
+
+/**
+Get an iterator for this type set
+*/
+TypeSet.prototype.getItr = function ()
+{
+    assert (
+        this !== TypeSet.anySet,
+        'cannot get iterator to the any set'
+    );
+
+    var itr = this.set.getItr();
+
+    var parentGet = itr.get;
+    itr.get = function ()
+    {
+        var pair = parentGet.call(this);
+        return pair.key;
+    }
+
+    return itr;
 }
 
 /**
@@ -402,7 +443,7 @@ TypeGraph.prototype.assignTypes = function (varNode, typeSet)
         'invalid type set'
     );
 
-    this.varMap.set(varNode, typeSet.copy());
+    this.varMap.set(varNode, typeSet);
 }
 
 /**
@@ -421,18 +462,16 @@ TypeGraph.prototype.unionTypes = function (varNode, typeSet)
 
     assert (
         typeSet instanceof TypeSet,
-        'invalid type set'
+        'invalid type set: ' + typeSet
     );
 
     var edgeSet = this.varMap.get(varNode)
 
     if (edgeSet === HashMap.NOT_FOUND)
-    {
         var edgeSet = new TypeSet();
-        this.varMap.set(varNode, edgeSet);
-    }
 
-    edgeSet.union(typeSet);
+    var unionSet = edgeSet.union(typeSet);
+    this.varMap.set(varNode, unionSet);
 }
 
 /**
@@ -445,10 +484,10 @@ TypeGraph.prototype.copy = function ()
     for (var nodeItr = this.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var pair = nodeItr.get();
-        var node = pair.first;
-        var edgeSet = pair.second;
+        var node = pair.key;
+        var typeSet = pair.value;
 
-        newGraph.unionTypes(edgeSet);
+        newGraph.assignTypes(node, typeSet);
     } 
 
     return newGraph;
@@ -459,24 +498,29 @@ Merge another graph into this one.
 */
 TypeGraph.prototype.merge = function (other)
 {
+    var newGraph = this.copy();
+
     for (nodeItr = other.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var edge = nodeItr.get();
-        var node = edge.first;
-        var edgeSet = edge.second;
+        var node = edge.key;
+        var typeSet = edge.value;
 
         var localSet = this.varMap.get(node);
 
         if (localSet === HashMap.NOT_FOUND)
         {
-            localSet = edgeSet.copy();
-            this.varMap.set(node, localSet);
+            var unionSet = typeSet;
         }
         else
         {
-            localSet.union(edgeSet);
+            var unionSet = localSet.union(typeSet);
         }
+
+        newGraph.varMap.set(node, unionSet);
     }
+
+    return newGraph;
 }
 
 /**
