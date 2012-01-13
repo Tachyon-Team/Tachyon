@@ -500,12 +500,14 @@ BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
     typeGraph.unionTypes(this, newObj);
 }
 
-/*
 BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // TODO
+    // Create a new array object from the array prototype
+    var newObj = typeGraph.newObject(this, ta.arrProto);
+
+    // The result is the new object
+    typeGraph.unionTypes(this, newObj);
 }
-*/
 
 HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
@@ -555,7 +557,10 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             var propNode = obj.getPropNode(propName);
 
             // Assign the value type set to the property
-            typeGraph.assignTypes(propNode, valSet);
+            if (obj.isSingleton === true)
+                typeGraph.assignTypes(propNode, valSet);
+            else
+                typeGraph.unionTypes(propNode, valSet);
         }
     }
 
@@ -619,28 +624,18 @@ GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
 
 /*
-TODO: 
-ISSUE: FFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUUU.......... 
+FIXME: issue, if any set is a special value, cannot do union modifying type set...
+Ideally, should create a new type set, this also allows for a future extension with
+a different implementation...
 
-Can't assign types on putProp if we still aggregate objects based on creation
-context :(
-
-Must union....
-
-
-
-BUT: works for the global object, you know it's a singleton.
-
-
-
+Probably want to rework type set implementation**** Don't derive from hash set directly.
 */
 
 
 
 
-
 /*
-TODO: issue, how do we handle integer ranges? Special provision in type sets for range?
+FIXME: issue, how do we handle integer ranges? Special provision in type sets for range?
 
 Special rangeMin, rangeMax values?
 - Need to indicate if can be int or float

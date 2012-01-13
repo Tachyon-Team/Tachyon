@@ -233,6 +233,14 @@ TGObject.prototype.getPropNode = function (name)
 }
 
 /**
+Test if this object is a singleton instance
+*/
+TGObject.prototype.isSingleton = function ()
+{
+    return (typeof this.origin === 'string');
+}
+
+/**
 @class Set of value nodes representing possible variable types
 */
 function TypeSet()
@@ -251,11 +259,10 @@ Produce a string representation of this type set
 */
 TypeSet.prototype.toString = function ()
 {
-    if (this === TypeSet.any)
+    if (this === TypeSet.anySet)
         return '{any}';
 
     var str = '{';
-
 
     for (var itr = this.getItr(); itr.valid(); itr.next())
     {
@@ -270,6 +277,17 @@ TypeSet.prototype.toString = function ()
     str += '}';
 
     return str;
+}
+
+/**
+Type set copy
+*/
+TypeSet.prototype.copy = function ()
+{
+    if (this === TypeSet.anySet)
+        return this;
+
+    return HashSet.prototype.copy.call(this);
 }
 
 /**
@@ -291,7 +309,7 @@ Type set union function
 */
 TypeSet.prototype.union = function (set)
 {
-    if (this === TypeSet.any || set === TypeSet.any)
+    if (this === TypeSet.anySet || set === TypeSet.anySet)
         return TypeSet.any;
 
     return HashSet.prototype.union.call(this, set);
@@ -384,7 +402,7 @@ TypeGraph.prototype.assignTypes = function (varNode, typeSet)
         'invalid type set'
     );
 
-    this.varMap.set(varNode, typeSet);
+    this.varMap.set(varNode, typeSet.copy());
 }
 
 /**
