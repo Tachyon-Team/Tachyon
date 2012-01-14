@@ -310,9 +310,6 @@ TypeProp.prototype.iterate = function ()
     {
         var instr = block.instrs[i];
 
-        // Process the instruction
-        var ret = instr.typeProp(this, typeGraph);
-
         print(instr);
 
         // For each use of the instruction
@@ -333,9 +330,8 @@ TypeProp.prototype.iterate = function ()
             print(use.getValName() + ' : ' + useType);
         }
 
-        if (instr.dests.length > 0)
-            print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
-        print('');
+        // Process the instruction
+        var ret = instr.typeProp(this, typeGraph);
 
         // If this was a call instruction
         if (instr instanceof JSCallInstr)
@@ -347,6 +343,10 @@ TypeProp.prototype.iterate = function ()
             if (typeGraph === undefined)
                 return;
         }
+
+        if (instr.dests.length > 0)
+            print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
+        print('');
     }
 }
 
@@ -810,8 +810,9 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         }
     }
 
-    // Set our own output type in the type map
-    typeGraph.assignTypes(this, retType);
+    // Set our own output type in the type graph
+    if (retGraph !== undefined)
+        retGraph.assignTypes(this, retType);
 
     // TODO
     /*
@@ -889,23 +890,32 @@ ArgValInstr.prototype.typeProp = function (ta, typeGraph)
 }
 */
 
-/*
 RetInstr.prototype.typeProp = function (ta, typeGraph)
 {
+    // Get the return type
+    var retType = typeGraph.getTypeSet(this.uses[0]);
+
     // Get the info object for this function
     var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
  
-    var retType = typeMap.getType(this.uses[0]);
-
     // Merge the return type
-    var newType = retType.union(funcInfo.retType);
+    typeGraph.unionTypes(funcInfo.retNode, retType);
 
-    // If the return type changed
-    if (newType.equal(funcInfo.retType) === false)
+    // Get the return point graph
+    var retGraph = funcInfo.retGraph;
+
+    // Merge the current type graph into the return graph
+    if (retGraph === undefined)
+        var newGraph = typeGraph.copy();
+    else
+        var newGraph = retGraph.merge(typeGraph);
+
+    // If the return graph changed
+    if (retGraph === undefined || retGraph.equal(newGraph) === false)
     {
-        // Update the function return type
-        funcInfo.retType = newType;
+        // Update the return graph
+        funcInfo.retGraph = newGraph;
 
         // Queue the call site blocks for analysis
         for (var i = 0; i < funcInfo.callerList.length; ++i)
@@ -915,7 +925,6 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
         }
     }
 }
-*/
 
 /*
 JSNewInstr.prototype.typeProp = function (ta, typeGraph)

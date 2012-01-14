@@ -536,12 +536,14 @@ TypeGraph.prototype.equal = function (other)
     {
         var edge = nodeItr.get();
 
-        var node = edge.first;
-        var edgeSet = edge.second;
+        var node = edge.key;
+        var typeSet = edge.value;
 
         var localSet = this.varMap.get(node);
 
-        if (localSet.equal(edgeSet) === false)
+        if (localSet === HashMap.NOT_FOUND && typeSet !== TypeSet.emptySet)
+            return false;
+        else if (localSet.equal(typeSet) === false)
             return false;
     }
 
