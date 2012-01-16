@@ -48,23 +48,7 @@ Implementation of type descriptors for the type analysis.
 Maxime Chevalier-Boisvert
 */
 
-
 /*
-TODO: type graph design, start simple!
-
-TODO: How do we express the any type? Special node?
-- No need for it at this moment!
-
-TODO: true, false nodes, boolean edges (true or false)
-
-For each basic block, maintain an associated graph at the entry.
-If a graph changes after merge, queue the block.
-
-Issue: need graph comparison to do the merge and update if changed.
-If we keep the nodes (variables, atomic types, object instances) common
-among all graphs, then graphs are just hash maps of edges. Easy to compare.
-
-
 Variable nodes for all SSA temps
 Variable nodes for object fields
 
@@ -89,12 +73,7 @@ Compression idea****
 Compression observations:
 1. Most nodes are variables. Most only need one edge set through their entire lifetime.
 - Nodes that only have one possible edge set need only be encoded in one location, never copied?
-
 */
-
-
-
-
 
 /**
 @class Represents a variable or object property in type graph.
@@ -250,6 +229,31 @@ function TypeSet()
     */
     this.set = new HashMap();
 
+    /**
+    Numerical range minimum
+    */
+    this.rangeMin = -Infinity;
+
+    /**
+    Numerical range maximum
+    */
+    this.rangeMax = Infinity;
+
+    /**
+    Flag indicating the set contains numbers
+    */
+    this.hasNum = false;
+
+    /**
+    Flag indicating the set includes float numbers
+    */
+    this.hasFloat = false;
+
+    /**
+    Flag indicating this set contains all possible strings
+    */
+    this.allStrings = false;
+
     // Add the arguments to the set
     for (var i = 0; i < arguments.length; ++i)
     {
@@ -274,6 +278,7 @@ TypeSet.prototype.toString = function ()
 
     var str = '{';
 
+    // For each value
     for (var itr = this.set.getItr(); itr.valid(); itr.next())
     {
         var val = itr.get().key;
@@ -284,9 +289,67 @@ TypeSet.prototype.toString = function ()
         str += val.toString();
     }
 
+    // If there is a numerical range
+    if (this.hasNum === true)
+    {
+        if (str !== '{')
+            str += ',';
+
+        str += (this.hasFloat? 'fp':'int') + ':';
+
+        if (this.rangeMin === this.rangeMax)
+        { 
+            str += this.rangeMin;
+        }
+        else
+        {
+            if (this.rangeMin === -Infinity)
+                str += ']-inf,';
+            else
+                str += '[' + this.rangeMin + ',';
+
+            if (this.rangeMax === Infinity)
+                str += 'inf[';
+            else
+                str += this.rangeMax + ']';
+        }
+    }
+
+    // If this set contains all strings
+    if (this.allStrings === true)
+    {
+        str += 'all-strings'
+    }
+
     str += '}';
 
     return str;
+}
+
+/**
+Set the numerical range for this type set
+*/
+TypeSet.prototype.setNumRange = function (rangeMin, rangeMax, hasFloat)
+{
+    assert (
+        typeof rangeMin === 'number' && typeof rangeMax === 'number',
+        'invalid range extents'
+    );
+
+    assert (
+        typeof hasFloat === 'boolean',
+        'invalid float flag'
+    );
+
+    this.rangeMin = rangeMin;
+
+    this.rangeMax = rangeMax;
+
+    this.hasNum = true;
+
+    this.hasFloat = hasFloat;
+
+    return this;
 }
 
 /**
@@ -300,9 +363,18 @@ TypeSet.prototype.equal = function (that)
     if (this === TypeSet.anySet || that === TypeSet.anySet)
         return false;
 
+    if (this.hasNum !== that.hasNum ||
+        this.rangeMin !== that.rangeMin ||
+        this.rangeMax !== that.rangeMax ||
+        this.hasFloat !== that.hasFloat)
+        return false;
+
     if (this.set.numItems !== that.set.numItems)
         return false;
     
+    if (this.allStrings !== that.allStrings)
+        return false;
+
     for (var itr = that.set.getItr(); itr.valid(); itr.next())
     {
         var val = itr.get().key;
@@ -330,30 +402,97 @@ TypeSet.prototype.union = function (that)
 
     var newSet = new TypeSet();
 
+    // Merge the min range value
+    if (this.rangeMin === that.rangeMin)
+    {
+        newSet.rangeMin = this.rangeMin;
+    }
+    else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
+    {
+        newSet.rangeMin = -Infinity;   
+    }
+    else if (this.rangeMin < 0 || that.rangeMin < 0)
+    {
+        var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
+        
+        if (isPowerOf2(minMin) === true)
+            newSet.rangeMin = -minMin;
+        else
+            newSet.rangeMin = -nextPowerOf2(minMin);
+    }
+    else
+    {
+        newSet.rangeMin = Math.min(this.rangeMin, that.rangeMin);
+        newSet.rangeMin = lowestBit(minVal);
+    }
+    assert (
+        newSet.rangeMin === undefined ||
+        (newSet.rangeMin <= this.rangeMin &&
+         newSet.rangeMin <= that.rangeMin),
+        'invalid min value'
+    );
+
+    // Merge the max range value
+    if (this.rangeMax === that.rangeMax)
+    {
+        newSet.rangeMax = this.rangeMax;
+    }
+    else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
+    {
+        newSet.rangeMax = Infinity;   
+    }
+    else if (this.rangeMax > 0 || that.rangeMax > 0)
+    {
+        var maxMax = Math.max(this.rangeMax, that.rangeMax);
+        
+        if (isPowerOf2(maxMax) === true)
+            newSet.rangeMax = maxMax;
+        else
+            newSet.rangeMax = nextPowerOf2(maxMax);
+    }
+    else
+    {
+        newSet.rangeMax = Math.max(this.rangeMax, that.rangeMax);
+        newSet.rangeMax = -lowestBit(Math.abs(maxVal));
+    }
+    assert (
+        newSet.rangeMax === undefined ||
+        (newSet.rangeMax >= this.rangeMax && 
+         newSet.rangeMax >= that.rangeMax),
+        'invalid max value'
+    );
+
+    newSet.hasNum = this.hasNum || that.hasNum;
+
+    newSet.hasFloat = this.hasFloat || that.hasFloat;
+
+    newSet.allStrings = this.allStrings || that.allStrings;
+
+    // Add the values from both set to the new set
     for (var itr = this.set.getItr(); itr.valid(); itr.next())
     {
         var val = itr.get().key;
+
+        if (newSet.allStrings &&
+            val instanceof TGConst &&
+            val.value.isString() === true)
+            continue;
+
         newSet.set.set(val);
     }
-
     for (var itr = that.set.getItr(); itr.valid(); itr.next())
     {
         var val = itr.get().key;
+
+        if (newSet.allStrings &&
+            val instanceof TGConst &&
+            val.value.isString() === true)
+            continue;
+
         newSet.set.set(val);
     }
 
     return newSet;
-}
-
-/**
-Type set has element function
-*/
-TypeSet.prototype.has = function (val)
-{
-    if (this === TypeSet.anySet)
-        return true;
-
-    return this.set.has(val);
 }
 
 /**
@@ -412,6 +551,11 @@ TypeSet.falseSet = new TypeSet(new TGConst(false));
 Boolean set (true or false)
 */
 TypeSet.boolSet = new TypeSet(new TGConst(true), new TGConst(false));
+
+/**
+Set of all number values
+*/
+TypeSet.numSet = (new TypeSet()).setNumRange(-Infinity, Infinity, true);
 
 /**
 @class Type graph. Contains edges between nodes and values
@@ -590,7 +734,18 @@ TypeGraph.prototype.getTypeSet = function (value)
             'invalid value'
         );
 
-        return new TypeSet(new TGConst(value));
+        // If this is a boxed number
+        if (value.isNumber() && value.type === IRType.box)
+        {
+            var type = new TypeSet();
+            type.setNumRange(value.value, value.value, (value.isInt() === false));
+
+            return type;
+        }
+        else
+        {
+            return new TypeSet(new TGConst(value));
+        }
     }
 }
 

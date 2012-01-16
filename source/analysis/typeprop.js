@@ -442,48 +442,51 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
     var nameSet = typeGraph.getTypeSet(this.uses[1]);
     var valSet = typeGraph.getTypeSet(this.uses[2]);
 
-    // For each possible object
-    for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
+    try
     {
-        var obj = objItr.get();
+        if (objSet === TypeSet.any)
+            throw '*WARNING: putProp on any type';
 
-        // If this is not an object
-        if ((obj instanceof TGObject) === false)
+        if (nameSet === TypeSet.anySet)
+            throw '*WARNING: putProp with any name';
+
+        // For each possible object
+        for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
         {
-            print('*WARNING: putProp on non-object');
+            var obj = objItr.get();
 
-            typeGraph.unionTypes(this, TypeSet.valSet);
+            // If this is not an object
+            if ((obj instanceof TGObject) === false)
+                throw '*WARNING: putProp on non-object';
 
-            return;
-        }
-
-        // For each possible name
-        for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
-        {
-            var name = nameItr.get();
-
-            // If this is not a string constant
-            if ((name instanceof TGConst) === false ||
-                typeof name.value.value !== 'string')
+            // For each possible name
+            for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
             {
-                print('*WARNING: putProp with unknown property name');
+                var name = nameItr.get();
 
-                typeGraph.unionTypes(this, TypeSet.valSet);
+                // If this is not a string constant
+                if ((name instanceof TGConst) === false ||
+                    typeof name.value.value !== 'string')
+                    throw '*WARNING: putProp with unknown property name:' + name;
 
-                return;
+                var propName = name.value.value;
+
+                // Get the node for this property
+                var propNode = obj.getPropNode(propName);
+
+                // Assign the value type set to the property
+                if (obj.isSingleton === true)
+                    typeGraph.assignTypes(propNode, valSet);
+                else
+                    typeGraph.unionTypes(propNode, valSet);
             }
-
-            var propName = name.value.value;
-
-            // Get the node for this property
-            var propNode = obj.getPropNode(propName);
-
-            // Assign the value type set to the property
-            if (obj.isSingleton === true)
-                typeGraph.assignTypes(propNode, valSet);
-            else
-                typeGraph.unionTypes(propNode, valSet);
         }
+    }
+
+    // If an inference problem occurs
+    catch (e)
+    {
+        print(e);
     }
 
     typeGraph.unionTypes(this, valSet);
@@ -496,97 +499,98 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
     var objSet = typeGraph.getTypeSet(this.uses[0]);
     var nameSet = typeGraph.getTypeSet(this.uses[1]);
 
-    // For each possible object
-    for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
+    try
     {
-        var obj = objItr.get();
+        if (objSet === TypeSet.anySet)
+            throw '*WARNING: getProp on any type';
 
-        // If this is not an object
-        if ((obj instanceof TGObject) === false)
+        if (nameSet === TypeSet.anySet)
+            throw '*WARNING: getProp with any name';
+
+        // For each possible object
+        for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
         {
-            print('*WARNING: getProp on non-object');
+            var obj = objItr.get();
 
-            typeGraph.unionTypes(this, TypeSet.anySet);
+            // If this is not an object
+            if ((obj instanceof TGObject) === false)
+                throw '*WARNING: getProp on non-object';
 
-            return;
-        }
-
-        // For each possible name
-        for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
-        {
-            var name = nameItr.get();
-
-            // If this is not a string constant
-            if ((name instanceof TGConst) === false ||
-                typeof name.value.value !== 'string')
+            // For each possible name
+            for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
             {
-                print('*WARNING: getProp with unknown property name');
+                var name = nameItr.get();
 
-                typeGraph.unionTypes(this, TypeSet.anySet);
+                // If this is not a string constant
+                if ((name instanceof TGConst) === false ||
+                    typeof name.value.value !== 'string')
+                    throw '*WARNING: getProp with unknown property name';
 
-                return;
+                var propName = name.value.value;
+
+                // Get the node for this property
+                var propNode = obj.getPropNode(propName);
+
+                // Union the types for this property into the type set
+                outSet = outSet.union(typeGraph.getTypeSet(propNode));
             }
-
-            var propName = name.value.value;
-
-            // Get the node for this property
-            var propNode = obj.getPropNode(propName);
-
-            // Union the types for this property into the type set
-            outSet = outSet.union(typeGraph.getTypeSet(propNode));
         }
+
+        typeGraph.unionTypes(this, outSet);
     }
 
-    typeGraph.unionTypes(this, outSet);
+    // If an inference problem occurs
+    catch (e)
+    {
+        print(e);
+
+        typeGraph.unionTypes(this, TypeSet.anySet);
+    }
 }
 
 GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
-
-
-
-/*
-FIXME: issue, how do we handle integer ranges? Special provision in type sets for range?
-
-Special rangeMin, rangeMax values?
-- Need to indicate if can be int or float
-
-*** Special handling on typeSet.add, typeSet.union, typeSet.has
-
-ISSUE: can't just iterate over values! Set of one element can also contain
-an infinite number of number values!
-- putProp, getProp need to test typeSet.hasInt()? typeSet.hasFloat()?
-- Fortunately, not many instructions need to iterate over all possible values
-
-
-TODO: simplify things, handle all number values this way****
-- Avoid complexity in analysis of operations that do arithmetic
-
-
-
-TODO: implement call first
-- Function closure creation handling, makeClos
-
-
-*/
-
-
-
-
-
-
-
-
-
-/*
 JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var t0 = typeMap.getType(this.uses[0]);
-    var t1 = typeMap.getType(this.uses[1]);
+    // TODO
+
+    var t0 = typeGraph.getTypeSet(this.uses[0]);
+    var t1 = typeGraph.getTypeSet(this.uses[1]);
 
     // Output type
     var outType;
 
+
+
+
+    /* FIXME: set of all strings, no way to express that?
+    allStrings flag?
+
+    Not convenient to test if set is number only
+
+    Should perhaps have flags system as in previous type analysis***
+    - Possibly better performance as well
+
+    Simpler for most type prop functions.
+
+    TypeSet.objSet, undefined if empty
+
+    - No more TGConst uglyness!
+    - Can eliminate TGValue, keep TGObject only
+      - Only care about objects, really, rest is all flags
+
+
+    */
+
+
+
+
+
+    // TODO
+    typeGraph.assignTypes(this, TypeSet.anySet);
+
+
+    /*
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
         var minVal = t0.minVal + t1.minVal;
@@ -628,8 +632,8 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     return ta.setOutput(typeMap, this, outType);
+    */
 }
-*/
 
 /*
 JSSubInstr.prototype.typeProp = function (ta, typeGraph)
@@ -877,18 +881,17 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     */
 }
 
-/*
 ArgValInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Get the info object for this function
     var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
-    
-    // Return the type for this argument
-    var argType = funcInfo.argTypes[this.argIndex];
-    return ta.setOutput(typeMap, this, argType);
+
+    var argNode = funcInfo.argNodes[this.argIndex];
+    var argTypeSet = typeGraph.getTypeSet(argNode);
+
+    typeGraph.assignTypes(this, argTypeSet);
 }
-*/
 
 RetInstr.prototype.typeProp = function (ta, typeGraph)
 {
