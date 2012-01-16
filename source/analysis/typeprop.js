@@ -480,10 +480,13 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
     // If an inference problem occurs
     catch (e)
     {
+        if (e instanceof Error)
+            throw e;
+
         print(e);
     }
 
-    typeGraph.unionTypes(this, valSet);
+    typeGraph.assignTypes(this, valSet);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
@@ -519,15 +522,18 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
             outSet = outSet.union(typeGraph.getTypeSet(propNode));
         }
 
-        typeGraph.unionTypes(this, outSet);
+        typeGraph.assignTypes(this, outSet);
     }
 
     // If an inference problem occurs
     catch (e)
     {
+        if (e instanceof Error)
+            throw e;
+
         print(e);
 
-        typeGraph.unionTypes(this, TypeSet.any);
+        typeGraph.assignTypes(this, TypeSet.any);
     }
 }
 
@@ -535,52 +541,19 @@ GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
 JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // TODO
-
     var t0 = typeGraph.getTypeSet(this.uses[0]);
     var t1 = typeGraph.getTypeSet(this.uses[1]);
 
     // Output type
     var outType;
 
-
-
-
-    /* FIXME: set of all strings, no way to express that?
-    allStrings flag?
-
-    Not convenient to test if set is number only
-
-    Should perhaps have flags system as in previous type analysis***
-    - Possibly better performance as well
-
-    Simpler for most type prop functions.
-
-    TypeSet.objSet, undefined if empty
-
-    - No more TGConst uglyness!
-    - Can eliminate TGValue, keep TGObject only
-      - Only care about objects, really, rest is all flags
-
-
-    */
-
-
-
-
-
-    // TODO
-    typeGraph.assignTypes(this, TypeSet.any);
-
-
-    /*
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
-        var minVal = t0.minVal + t1.minVal;
+        var minVal = t0.rangeMin + t1.rangeMin;
 
-        var maxVal = t0.maxVal + t1.maxVal;
+        var maxVal = t0.rangeMax + t1.rangeMax;
 
-        outType = new TypeDesc(
+        outType = new TypeSet(
             TypeFlags.INT,
             minVal,
             maxVal
@@ -594,7 +567,7 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 
         var newStr = (t0Str && t1Str)? (t0Str + t1Str):undefined;
 
-        outType = new TypeDesc(
+        outType = new TypeSet(
             TypeFlags.STRING,
             undefined,
             undefined,
@@ -605,35 +578,32 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
     else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
         (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
     {
-        outType = new TypeDesc(TypeFlags.INT | TypeFlags.STRING)
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.STRING)
     }
 
     // By default
     else
     {
-        outType = new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
     }
 
-    return ta.setOutput(typeMap, this, outType);
-    */
+    typeGraph.assignTypes(this, outType);
 }
 
-/*
 JSSubInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var t0 = typeMap.getType(this.uses[0]);
-    var t1 = typeMap.getType(this.uses[1]);
+    var t0 = typeGraph.getTypeSet(this.uses[0]);
+    var t1 = typeGraph.getTypeSet(this.uses[1]);
 
     // Output type
     var outType;
 
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
-        var minVal = t0.minVal - t1.maxVal;
+        var minVal = t0.rangeMin - t1.rangeMax;
+        var maxVal = t0.rangeMax - t1.rangeMin;
 
-        var maxVal = t0.maxVal - t1.minVal;
-
-        outType = new TypeDesc(
+        outType = new TypeSet(
             TypeFlags.INT,
             minVal,
             maxVal
@@ -643,18 +613,17 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
     else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
              (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
     {
-        outType = new TypeDesc(TypeFlags.INT)
+        outType = new TypeSet(TypeFlags.INT)
     }
 
     // By default
     else
     {
-        outType = new TypeDesc(TypeFlags.INT | TypeFlags.FLOAT);
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
     }
 
-    return ta.setOutput(typeMap, this, outType);
+    typeGraph.assignTypes(this, outType);
 }
-*/
 
 /*
 JSLtInstr.prototype.typeProp = function (ta, typeGraph)
@@ -681,10 +650,10 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
     // If both values are known integer constants
     if (v0.flags === TypeFlags.INT &&
         v1.flags === TypeFlags.INT &&
-        v0.minVal === v0.maxVal &&
-        v1.minVal === v1.maxVal)
+        v0.rangeMin === v0.rangeMax &&
+        v1.rangeMin === v1.rangeMax)
     {
-        outType = (v0.minVal === v1.minVal)? TypeDesc.true:TypeDesc.false;
+        outType = (v0.rangeMin === v1.rangeMin)? TypeDesc.true:TypeDesc.false;
     }
 
     // If both values are known booleans

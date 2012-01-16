@@ -48,19 +48,27 @@ tests.ta = tests.testSuite();
 /**
 Create a type prop unit test
 */
-TypeProp.makeTest = function (fileName)
+TypeProp.makeTest = function (fileName, verbose)
 {
+    if (verbose === undefined)
+        verbose = false;
+
     return function test()
     {
         const params = config.hostParams;
 
-        params.typeProp.testOnFile(fileName, true);
+        params.typeProp.testOnFile(fileName, verbose);
     }
 }
 
-tests.ta.call_simple = TypeProp.makeTest('programs/type_analysis/call_simple.js');
-//tests.ta.func_2ret = TypeProp.makeTest('programs/type_analysis/func_2ret.js');
+tests.ta.call_simple = TypeProp.makeTest('programs/type_analysis/call_simple.js', true);
+tests.ta.func_2ret = TypeProp.makeTest('programs/type_analysis/func_2ret.js', true);
 //tests.ta.func_2calls = TypeProp.makeTest('programs/type_analysis/func_2calls.js');
+//tests.ta.func_calls = TypeProp.makeTest('programs/type_analysis/func_calls.js');
+//tests.ta.fib = TypeProp.makeTest('programs/type_analysis/fib.js');
+
+
+
 
 
 
