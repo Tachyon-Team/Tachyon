@@ -359,7 +359,7 @@ TypeProp.prototype.iterate = function ()
 IRInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // By default, return the any type
-    typeGraph.unionTypes(this, TypeSet.anySet);
+    typeGraph.assignTypes(this, TypeSet.any);
 }
 
 PhiInstr.prototype.typeProp = function (ta, typeGraph)
@@ -401,16 +401,18 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // This refers to the global object
-    typeGraph.unionTypes(this, ta.globalObj);
+    typeGraph.assignTypes(this, ta.globalObj);
 }
 
 InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var propName = this.uses[1].value;
 
-    var propNode = ta.globalObj.getPropNode(propName);
+    var globalObj = ta.globalObj.getObjItr().get();
 
-    typeGraph.unionTypes(propNode, TypeSet.undefSet);
+    var propNode = globalObj.getPropNode(propName);
+
+    typeGraph.assignTypes(propNode, TypeSet.undef);
 }
 
 BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
@@ -419,13 +421,13 @@ BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
     var newObj = typeGraph.newObject(this, ta.objProto);
 
     // The result is the new object
-    typeGraph.unionTypes(this, newObj);
+    typeGraph.assignTypes(this, newObj);
 }
 
 BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Create a new array object from the array prototype
-    var newObj = typeGraph.newObject(this, ta.arrProto);
+    var newObj = typeGraph.newObject(this, ta.arrProto, TypeFlags.ARRAY);
 
     // The result is the new object
     typeGraph.unionTypes(this, newObj);
@@ -433,7 +435,7 @@ BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 
 HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    typeGraph.unionTypes(this, TypeSet.boolSet);
+    typeGraph.unionTypes(this, TypeSet.bool);
 }
 
 PutPropInstr.prototype.typeProp = function (ta, typeGraph)
@@ -444,42 +446,34 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
     try
     {
-        if (objSet === TypeSet.any)
+        if (objSet.flags === TypeFlags.ANY)
             throw '*WARNING: putProp on any type';
 
-        if (nameSet === TypeSet.anySet)
+        if ((objSet.flags & TypeFlags.OBJEXT) === 0)
+            throw '*WARNING: putProp on non-object';
+
+        if (nameSet.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
+        // If this is not a string constant
+        if (nameSet.flags !== TypeFlags.STRING || nameSet.strVal === undefined)
+            throw '*WARNING: putProp with unknown property name:' + nameSet;
+
+        var propName = nameSet.strVal;
+
         // For each possible object
-        for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
+        for (objItr = objSet.getObjItr(); objItr.valid(); objItr.next())
         {
             var obj = objItr.get();
 
-            // If this is not an object
-            if ((obj instanceof TGObject) === false)
-                throw '*WARNING: putProp on non-object';
+            // Get the node for this property
+            var propNode = obj.getPropNode(propName);
 
-            // For each possible name
-            for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
-            {
-                var name = nameItr.get();
-
-                // If this is not a string constant
-                if ((name instanceof TGConst) === false ||
-                    typeof name.value.value !== 'string')
-                    throw '*WARNING: putProp with unknown property name:' + name;
-
-                var propName = name.value.value;
-
-                // Get the node for this property
-                var propNode = obj.getPropNode(propName);
-
-                // Assign the value type set to the property
-                if (obj.isSingleton === true)
-                    typeGraph.assignTypes(propNode, valSet);
-                else
-                    typeGraph.unionTypes(propNode, valSet);
-            }
+            // Assign the value type set to the property
+            if (obj.isSingleton === true)
+                typeGraph.assignTypes(propNode, valSet);
+            else
+                typeGraph.unionTypes(propNode, valSet);
         }
     }
 
@@ -501,39 +495,28 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 
     try
     {
-        if (objSet === TypeSet.anySet)
+        if (objSet.flags === TypeFlags.ANY)
             throw '*WARNING: getProp on any type';
 
-        if (nameSet === TypeSet.anySet)
+        if (nameSet.flags === TypeFlags.ANY)
             throw '*WARNING: getProp with any name';
 
+        // If this is not a string constant
+        if (nameSet.flags !== TypeFlags.STRING || nameSet.strVal === undefined)
+            throw '*WARNING: getProp with unknown property name:' + nameSet;
+
+        var propName = nameSet.strVal;
+
         // For each possible object
-        for (objItr = objSet.getItr(); objItr.valid(); objItr.next())
+        for (objItr = objSet.objSet.getItr(); objItr.valid(); objItr.next())
         {
             var obj = objItr.get();
 
-            // If this is not an object
-            if ((obj instanceof TGObject) === false)
-                throw '*WARNING: getProp on non-object';
+            // Get the node for this property
+            var propNode = obj.getPropNode(propName);
 
-            // For each possible name
-            for (nameItr = nameSet.getItr(); nameItr.valid(); nameItr.next())
-            {
-                var name = nameItr.get();
-
-                // If this is not a string constant
-                if ((name instanceof TGConst) === false ||
-                    typeof name.value.value !== 'string')
-                    throw '*WARNING: getProp with unknown property name';
-
-                var propName = name.value.value;
-
-                // Get the node for this property
-                var propNode = obj.getPropNode(propName);
-
-                // Union the types for this property into the type set
-                outSet = outSet.union(typeGraph.getTypeSet(propNode));
-            }
+            // Union the types for this property into the type set
+            outSet = outSet.union(typeGraph.getTypeSet(propNode));
         }
 
         typeGraph.unionTypes(this, outSet);
@@ -544,7 +527,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
     {
         print(e);
 
-        typeGraph.unionTypes(this, TypeSet.anySet);
+        typeGraph.unionTypes(this, TypeSet.any);
     }
 }
 
@@ -587,7 +570,7 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 
 
     // TODO
-    typeGraph.assignTypes(this, TypeSet.anySet);
+    typeGraph.assignTypes(this, TypeSet.any);
 
 
     /*
@@ -735,13 +718,13 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     var thisSet = typeGraph.getTypeSet(this.uses[1]);
 
     // Return type
-    var retType = TypeSet.emptySet
+    var retType = TypeSet.empty
 
     // Type graph after call
     var retGraph = undefined;
 
     // For each potential callee
-    for (var itr = calleeSet.getItr(); itr.valid(); itr.next())
+    for (var itr = calleeSet.getObjItr(); itr.valid(); itr.next())
     {
         var callee = itr.get();
 
@@ -766,7 +749,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             var argTypeSet = 
                 (j < this.uses.length)?
                 typeGraph.getTypeSet(this.uses[j]):
-                TypeSet.undefSet;
+                TypeSet.undef;
 
             // Set the types for this argument in the current graph
             typeGraph.assignTypes(argNode, argTypeSet);
@@ -845,7 +828,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     if ((callee instanceof IRFunction) === false)
     {
         // Do nothing
-        retType = TypeSet.anySet;
+        retType = TypeSet.any;
     }
 
     // If this is a call to makeClos (closure creation)
@@ -859,7 +842,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         );
 
         // Create an object node for this function
-        var funcObj = typeGraph.newObject(func, ta.funcProto);
+        var funcObj = typeGraph.newObject(func, ta.funcProto, TypeFlags.FUNCTION);
 
         retType = funcObj;
     }
@@ -868,11 +851,11 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     else
     {
         // Do nothing
-        retType = TypeSet.anySet;
+        retType = TypeSet.any;
     }
 
     // Set our own output type in the type graph
-    typeGraph.unionTypes(this, retType);
+    typeGraph.assignTypes(this, retType);
 
     /* TODO
     // Merge with all possible branch targets

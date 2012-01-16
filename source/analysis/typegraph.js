@@ -63,7 +63,6 @@ What about objects?
   - The object field is a variable***
   - Variables point to possible values***
 
-
 Compression idea****
 - Could reuse whole edge sets for variable nodes
 - Copy outgoing edge sets on modification
@@ -94,48 +93,17 @@ TGVariable.prototype.toString = function ()
 }
 
 /**
-@class Base class for all type graph value nodes.
-*/
-function TGValue()
-{
-}
-
-/**
-@class Constant value in a type graph.
-*/
-function TGConst(value)
-{
-    if ((value instanceof IRConst) === false)
-        value = IRConst.getConst(null);
-
-    var node = TGConst.constMap.get(value);
-    if (node !== HashMap.NOT_FOUND)
-        return node;
-
-    this.value = value;
-
-    TGConst.constMap.set(value, this);
-}
-TGConst.prototype = new TGValue();
-
-/**
-Map of IR constants to type graph nodes.
-*/
-TGConst.constMap = new HashMap();
-
-/**
-Produce a string representation of this node
-*/
-TGConst.prototype.toString = function ()
-{
-    return this.value.toString();
-}
-
-/**
 @class Object value in a type graph.
 */
-function TGObject(origin)
+function TGObject(origin, flags)
 {
+    assert (
+        flags === TypeFlags.OBJECT  ||
+        flags === TypeFlags.ARRAY   ||
+        flags === TypeFlags.FUNCTION,
+        'invalid type flags for object'
+    );
+
     /**
     Origin (creation) site of the object.
     */
@@ -147,6 +115,11 @@ function TGObject(origin)
     var obj = TGObject.objMap.get(this);
     if (obj !== HashMap.NOT_FOUND)
         return obj;
+
+    /**
+    Type flags for this object
+    */
+    this.flags = flags;
 
     /**
     Prototype of this object
@@ -161,7 +134,6 @@ function TGObject(origin)
     // Add the object to the map
     TGObject.objMap.set(this, this);
 }
-TGObject.prototype = new TGValue();
 
 /**
 Map of existing objects
@@ -220,52 +192,150 @@ TGObject.prototype.isSingleton = function ()
 }
 
 /**
+@namespace Type descriptor flags namespace
+*/
+TypeFlags = {};
+
+// Possible type descriptor flags
+TypeFlags.UNDEF    = 1 << 0; // May be undefined
+TypeFlags.NULL     = 1 << 1; // May be null
+TypeFlags.TRUE     = 1 << 2; // May be true
+TypeFlags.FALSE    = 1 << 3; // May be false
+TypeFlags.FLOAT    = 1 << 4; // May be floating-point
+TypeFlags.INT      = 1 << 5; // May be integer
+TypeFlags.STRING   = 1 << 6; // May be string
+TypeFlags.OBJECT   = 1 << 7; // May be string
+TypeFlags.ARRAY    = 1 << 8; // May be string
+TypeFlags.FUNCTION = 1 << 9; // May be string
+
+// Extended object (object or array or function)
+TypeFlags.OBJEXT =
+    TypeFlags.OBJECT    |
+    TypeFlags.ARRAY     |
+    TypeFlags.FUNCTION;
+
+// Unknown/any type flag
+TypeFlags.ANY =
+    TypeFlags.UNDEF    |
+    TypeFlags.NULL     |
+    TypeFlags.TRUE     |
+    TypeFlags.FALSE    |
+    TypeFlags.INT      |
+    TypeFlags.FLOAT    |
+    TypeFlags.STRING   |
+    TypeFlags.OBJECT   |
+    TypeFlags.ARRAY    |
+    TypeFlags.FUNCTION;
+
+// Empty/uninferred type flag (before analysis)
+TypeFlags.EMPTY = 0;
+
+/**
 @class Set of value nodes representing possible variable types
 */
-function TypeSet()
+function TypeSet(
+    flags,
+    rangeMin,
+    rangeMax,
+    strVal,
+    objSet
+)
 {
+    // Empty type descriptors have the uninferred type
+    if (flags === undefined)
+        flags = TypeFlags.EMPTY;
+
+    // By default, the numerical ranges are unbounded.
+    // Otherwise, restrict them to a fixed integer range
+    if (rangeMin === undefined)
+        rangeMin = -Infinity;
+    else if (rangeMin < TypeSet.MIN_NUM_RANGE)
+        rangeMin = -Infinity;
+    if (rangeMax === undefined)
+        rangeMax = Infinity;
+    else if (rangeMax > TypeSet.MAX_NUM_RANGE)
+        rangeMax = Infinity;
+
+    // Limit the string length to force convergence
+    if (strVal !== undefined && strVal.length > TypeSet.MAX_STR_LEN)
+        strVal = undefined;
+
+    assert (
+        objSet === undefined ||
+        objSet instanceof HashSet
+    );
+
     /**
-    Internal set implementation
+    Type flags
     */
-    this.set = new HashMap();
+    this.flags = flags;
+
+    /**
+    Object set
+    */
+    this.objSet = objSet;
 
     /**
     Numerical range minimum
     */
-    this.rangeMin = -Infinity;
+    this.rangeMin = rangeMin;
 
     /**
     Numerical range maximum
     */
-    this.rangeMax = Infinity;
+    this.rangeMax = rangeMax;
 
     /**
-    Flag indicating the set contains numbers
+    String value
     */
-    this.hasNum = false;
+    this.strVal = strVal;
+}
 
-    /**
-    Flag indicating the set includes float numbers
-    */
-    this.hasFloat = false;
+/**
+Generate a type set for a constant value
+*/
+TypeSet.constant = function (value)
+{
+    if (value instanceof IRConst)
+        value = value.value;
 
-    /**
-    Flag indicating this set contains all possible strings
-    */
-    this.allStrings = false;
-
-    // Add the arguments to the set
-    for (var i = 0; i < arguments.length; ++i)
+    if (value === undefined)
     {
-        var val = arguments[i];
-
-        assert (
-            val instanceof TGValue,
-            'invalid value node'
-        );
-
-        this.set.set(val);
+        return new TypeSet(TypeFlags.UNDEF);
     }
+
+    else if (value === null)
+    {
+        return new TypeSet(TypeFlags.NULL);
+    }
+
+    else if (value === true)
+    {
+        return new TypeSet(TypeFlags.TRUE);
+    }
+
+    else if (value === false)
+    {
+        return new TypeSet(TypeFlags.FALSE);
+    }
+
+    else if (isInt(value) === true)
+    {
+        return new TypeSet(TypeFlags.INT, value, value);
+    }
+
+    else if (typeof value === 'number')
+    {
+        return new TypeSet(TypeFlags.FLOAT, value, value);
+    }
+
+    else if (typeof value === 'string')
+    {
+        return new TypeSet(TypeFlags.STRING, undefined, undefined, value);
+    }
+
+    // By default, return the unknown type
+    return TypeSet.any;
 }
 
 /**
@@ -273,83 +343,80 @@ Produce a string representation of this type set
 */
 TypeSet.prototype.toString = function ()
 {
-    if (this === TypeSet.anySet)
+    if (this.flags === TypeFlags.EMPTY)
+        return '{}';
+
+    if (this.flags === TypeFlags.ANY)
         return '{any}';
 
     var str = '{';
 
-    // For each value
-    for (var itr = this.set.getItr(); itr.valid(); itr.next())
+    function addType(tstr)
     {
-        var val = itr.get().key;
-
         if (str !== '{')
-            str += ',';
+            str += ','
 
-        str += val.toString();
+        str += tstr;
     }
 
-    // If there is a numerical range
-    if (this.hasNum === true)
-    {
-        if (str !== '{')
-            str += ',';
+    if (this.flags & TypeFlags.UNDEF)
+        addType('undef');
+    if (this.flags & TypeFlags.NULL)
+        addType('null');
+    if (this.flags & TypeFlags.TRUE)
+        addType('true');
+    if (this.flags & TypeFlags.FALSE)
+        addType('false');
 
-        str += (this.hasFloat? 'fp':'int') + ':';
+    // If the set includes numbers
+    if (this.flags & TypeFlags.INT || this.flags & TypeFlags.FLOAT)
+    {
+        var numStr = ((this.flags & TypeFlags.FLOAT)? 'fp':'int') + ':';
 
         if (this.rangeMin === this.rangeMax)
-        { 
-            str += this.rangeMin;
-        }
+            numStr += this.rangeMin;
+        else if (this.rangeMin !== -Infinity && this.rangeMax !== Infinity)
+            numStr += "[" + this.rangeMin + ", " + this.rangeMax + "]";
+        else if (this.rangeMin === -Infinity)
+            numStr += "]-inf, " + this.rangeMax + "]";
         else
-        {
-            if (this.rangeMin === -Infinity)
-                str += ']-inf,';
-            else
-                str += '[' + this.rangeMin + ',';
+            numStr += "[" + this.rangeMin + ", +inf[";
 
-            if (this.rangeMax === Infinity)
-                str += 'inf[';
-            else
-                str += this.rangeMax + ']';
+        addType(numStr);
+    }
+
+    // If a string constant is defined
+    if (this.flags & TypeFlags.STRING)
+    {
+        addType(
+            'string' + 
+            ((this.strVal !== undefined)? (':"' + this.strVal + '"'):'')
+        );
+    }
+
+    // If the object set is empty
+    if (this.objSet === undefined || this.objSet.length === 0)
+    {
+        if (this.flags & TypeFlags.OBJECT)
+            addType('object');
+        if (this.flags & TypeFlags.ARRAY)
+            addType('array');
+        if (this.flags & TypeFlags.FUNCTION)
+            addType('function');
+    }
+    else
+    {
+        // For each possible object
+        for (var itr = this.objSet.getItr(); itr.valid(); itr.next())
+        {
+            var obj = itr.get();
+            addType(obj.toString());
         }
     }
 
-    // If this set contains all strings
-    if (this.allStrings === true)
-    {
-        str += 'all-strings'
-    }
-
-    str += '}';
+    str += "}";
 
     return str;
-}
-
-/**
-Set the numerical range for this type set
-*/
-TypeSet.prototype.setNumRange = function (rangeMin, rangeMax, hasFloat)
-{
-    assert (
-        typeof rangeMin === 'number' && typeof rangeMax === 'number',
-        'invalid range extents'
-    );
-
-    assert (
-        typeof hasFloat === 'boolean',
-        'invalid float flag'
-    );
-
-    this.rangeMin = rangeMin;
-
-    this.rangeMax = rangeMax;
-
-    this.hasNum = true;
-
-    this.hasFloat = hasFloat;
-
-    return this;
 }
 
 /**
@@ -360,28 +427,20 @@ TypeSet.prototype.equal = function (that)
     if (this === that)
         return true;
 
-    if (this === TypeSet.anySet || that === TypeSet.anySet)
+    if (this.flags !== that.flags)
         return false;
 
-    if (this.hasNum !== that.hasNum ||
-        this.rangeMin !== that.rangeMin ||
-        this.rangeMax !== that.rangeMax ||
-        this.hasFloat !== that.hasFloat)
+    if (this.rangeMin !== that.rangeMin ||
+        this.rangeMax !== that.rangeMax)
         return false;
 
-    if (this.set.numItems !== that.set.numItems)
-        return false;
-    
-    if (this.allStrings !== that.allStrings)
+    if (this.strVal !== that.strVal)
         return false;
 
-    for (var itr = that.set.getItr(); itr.valid(); itr.next())
-    {
-        var val = itr.get().key;
-
-        if (this.set.has(val) === false)
-            return false;
-    }
+    if (this.objSet === undefined && that.objSet !== undefined ||
+        that.objSet === undefined && this.objSet !== undefined ||        
+        this.objSet !== undefined && this.objSet.equal(that.objSet) === false)
+        return false;
 
     return true;
 }
@@ -391,171 +450,193 @@ Type set union function
 */
 TypeSet.prototype.union = function (that)
 {
-    if (this === TypeSet.anySet || that === TypeSet.anySet)
-        return TypeSet.anySet;
-
-    if (this === TypeSet.emptySet)
-        return that;
-
-    if (that === TypeSet.emptySet)
+    // If the other object is the uninferred type
+    if (that.flags === TypeFlags.EMPTY)
+    {
         return this;
+    }
 
-    var newSet = new TypeSet();
+    // If this object is the uninferred type
+    else if (this.flags === TypeFlags.EMPTY)
+    {
+        return that;
+    }
 
-    // Merge the min range value
-    if (this.rangeMin === that.rangeMin)
+    // If both type sets are the any set
+    else if (this.flags === TypeFlags.ANY || that.flags === TypeFlags.ANY)
     {
-        newSet.rangeMin = this.rangeMin;
+        return TypeSet.any;
     }
-    else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
+
+    // If both type descriptors are the same, return this one
+    else if (this === that)
     {
-        newSet.rangeMin = -Infinity;   
+        return this;
     }
-    else if (this.rangeMin < 0 || that.rangeMin < 0)
-    {
-        var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
-        
-        if (isPowerOf2(minMin) === true)
-            newSet.rangeMin = -minMin;
-        else
-            newSet.rangeMin = -nextPowerOf2(minMin);
-    }
+
+    // If both objects have meaningful type values
     else
     {
-        newSet.rangeMin = Math.min(this.rangeMin, that.rangeMin);
-        newSet.rangeMin = lowestBit(minVal);
-    }
-    assert (
-        newSet.rangeMin === undefined ||
-        (newSet.rangeMin <= this.rangeMin &&
-         newSet.rangeMin <= that.rangeMin),
-        'invalid min value'
-    );
+        var flags = this.flags | that.flags;
 
-    // Merge the max range value
-    if (this.rangeMax === that.rangeMax)
-    {
-        newSet.rangeMax = this.rangeMax;
-    }
-    else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
-    {
-        newSet.rangeMax = Infinity;   
-    }
-    else if (this.rangeMax > 0 || that.rangeMax > 0)
-    {
-        var maxMax = Math.max(this.rangeMax, that.rangeMax);
-        
-        if (isPowerOf2(maxMax) === true)
-            newSet.rangeMax = maxMax;
+        // Merge the min range value
+        var rangeMin;
+        if (this.rangeMin === that.rangeMin)
+        {
+            rangeMin = this.rangeMin;
+        }
+        else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
+        {
+            rangeMin = -Infinity;   
+        }
+        else if (this.rangeMin < 0 || that.rangeMin < 0)
+        {
+            var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
+            
+            if (isPowerOf2(minMin) === true)
+                rangeMin = -minMin;
+            else
+                rangeMin = -nextPowerOf2(minMin);
+        }
         else
-            newSet.rangeMax = nextPowerOf2(maxMax);
+        {
+            rangeMin = Math.min(this.rangeMin, that.rangeMin);
+            rangeMin = lowestBit(rangeMin);
+        }
+        assert (
+            rangeMin <= this.rangeMin && rangeMin <= that.rangeMin,
+            'invalid min value'
+        );
+
+        // Merge the max range value
+        var rangeMax;
+        if (this.rangeMax === that.rangeMax)
+        {
+            rangeMax = this.rangeMax;
+        }
+        else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
+        {
+            rangeMax = Infinity;   
+        }
+        else if (this.rangeMax > 0 || that.rangeMax > 0)
+        {
+            var maxMax = Math.max(this.rangeMax, that.rangeMax);
+            
+            if (isPowerOf2(maxMax) === true)
+                rangeMax = maxMax;
+            else
+                rangeMax = nextPowerOf2(maxMax);
+        }
+        else
+        {
+            rangeMax = Math.max(this.rangeMax, that.rangeMax);
+            rangeMax = -lowestBit(Math.abs(rangeMax));
+        }
+        assert (
+            rangeMax >= this.rangeMax && rangeMax >= that.rangeMax,
+            'invalid max value'
+        );
+
+        var strVal =
+            (this.strVal === that.strVal)?
+            this.strVal:undefined;
+
+        // Compute the union of the object sets
+        var objSet;
+        if (this.objSet === undefined && that.objSet === undefined)
+            objSet = undefined;
+        else if (this.objSet === undefined)
+            objSet = that.objSet.copy();
+        else if (that.objSet === undefined)
+            objSet = this.objSet.copy();
+        else
+            objSet = this.objSet.copy().union(that.objSet);
+
+        // Create and return a new type descriptor and return it
+        return new TypeSet(
+            flags,
+            rangeMin,
+            rangeMax,
+            strVal,
+            objSet
+        );
     }
-    else
-    {
-        newSet.rangeMax = Math.max(this.rangeMax, that.rangeMax);
-        newSet.rangeMax = -lowestBit(Math.abs(maxVal));
-    }
-    assert (
-        newSet.rangeMax === undefined ||
-        (newSet.rangeMax >= this.rangeMax && 
-         newSet.rangeMax >= that.rangeMax),
-        'invalid max value'
-    );
-
-    newSet.hasNum = this.hasNum || that.hasNum;
-
-    newSet.hasFloat = this.hasFloat || that.hasFloat;
-
-    newSet.allStrings = this.allStrings || that.allStrings;
-
-    // Add the values from both set to the new set
-    for (var itr = this.set.getItr(); itr.valid(); itr.next())
-    {
-        var val = itr.get().key;
-
-        if (newSet.allStrings &&
-            val instanceof TGConst &&
-            val.value.isString() === true)
-            continue;
-
-        newSet.set.set(val);
-    }
-    for (var itr = that.set.getItr(); itr.valid(); itr.next())
-    {
-        var val = itr.get().key;
-
-        if (newSet.allStrings &&
-            val instanceof TGConst &&
-            val.value.isString() === true)
-            continue;
-
-        newSet.set.set(val);
-    }
-
-    return newSet;
 }
 
 /**
-Get an iterator for this type set
+Get an iterator to the object set
 */
-TypeSet.prototype.getItr = function ()
+TypeSet.prototype.getObjItr = function ()
 {
     assert (
-        this !== TypeSet.anySet,
-        'cannot get iterator to the any set'
+        this !== TypeSet.any,
+        'cannot get object iterator of any set'
     );
 
-    var itr = this.set.getItr();
-
-    var parentGet = itr.get;
-    itr.get = function ()
+    if (this.objSet === undefined)
     {
-        var pair = parentGet.call(this);
-        return pair.key;
+        return {
+            valid: function () { return false; }
+        };
     }
 
-    return itr;
+    return this.objSet.getItr();
 }
 
 /**
-Empty type set (bottom element)
+Minimum numerical range value inferred
 */
-TypeSet.emptySet = new TypeSet();
+TypeSet.MIN_NUM_RANGE = getIntMin(16);
 
 /**
-Any/full type set (top element)
+Maximum numerical range value inferred
 */
-TypeSet.anySet = new TypeSet();
+TypeSet.MAX_NUM_RANGE = getIntMax(16);
 
 /**
-Undefined constant value
+Max string length usable string values
 */
-TypeSet.undefSet = new TypeSet(new TGConst(undefined));
+TypeSet.MAX_STR_LEN = 256;
 
 /**
-Null constant value
+Empty/uninferred type set (bottom element)
 */
-TypeSet.nullSet = new TypeSet(new TGConst(null));
+TypeSet.empty = new TypeSet(TypeFlags.EMPTY);
 
 /**
-True constant value
+Unknown/any type set (top element)
 */
-TypeSet.trueSet = new TypeSet(new TGConst(true));
+TypeSet.any = new TypeSet(TypeFlags.ANY);
 
 /**
-False constant value
+Undefined type descriptor
 */
-TypeSet.falseSet = new TypeSet(new TGConst(false));
+TypeSet.undef = new TypeSet(TypeFlags.UNDEF);
 
 /**
-Boolean set (true or false)
+Null type descriptor
 */
-TypeSet.boolSet = new TypeSet(new TGConst(true), new TGConst(false));
+TypeSet.null = new TypeSet(TypeFlags.NULL);
 
 /**
-Set of all number values
+True type descriptor
 */
-TypeSet.numSet = (new TypeSet()).setNumRange(-Infinity, Infinity, true);
+TypeSet.true = new TypeSet(TypeFlags.TRUE);
+
+/**
+False type descriptor
+*/
+TypeSet.false = new TypeSet(TypeFlags.FALSE);
+
+/**
+Boolean type descriptor
+*/
+TypeSet.bool = new TypeSet(TypeFlags.TRUE | TypeFlags.FALSE);
+
+/**
+String type descriptor
+*/
+TypeSet.string = new TypeSet(TypeFlags.STRING);
 
 /**
 @class Type graph. Contains edges between nodes and values
@@ -579,9 +660,6 @@ TypeGraph.prototype.assignTypes = function (varNode, typeSet)
         'invalid var node'
     );
 
-    if (typeSet instanceof TGValue)
-        typeSet = new TypeSet(typeSet);
-
     assert (
         typeSet instanceof TypeSet,
         'invalid type set'
@@ -601,20 +679,23 @@ TypeGraph.prototype.unionTypes = function (varNode, typeSet)
         'invalid var node'
     );
 
-    if (typeSet instanceof TGValue)
-        typeSet = new TypeSet(typeSet);
-
     assert (
         typeSet instanceof TypeSet,
         'invalid type set: ' + typeSet
     );
 
-    var edgeSet = this.varMap.get(varNode)
+    var curSet = this.varMap.get(varNode)
 
-    if (edgeSet === HashMap.NOT_FOUND)
-        var edgeSet = new TypeSet();
+    if (curSet === HashMap.NOT_FOUND)
+        var curSet = new TypeSet();
 
-    var unionSet = edgeSet.union(typeSet);
+    var unionSet = curSet.union(typeSet);
+
+    assert (
+        unionSet instanceof TypeSet,
+        'invalid union set'
+    );
+
     this.varMap.set(varNode, unionSet);
 }
 
@@ -697,17 +778,30 @@ TypeGraph.prototype.equal = function (other)
 /**
 Create a new object in the type graph
 */
-TypeGraph.prototype.newObject = function (origin, protoSet)
+TypeGraph.prototype.newObject = function (origin, protoSet, flags)
 {
     // By default, the prototype is null
     if (protoSet === undefined)
-        protoSet = TypeSet.undefSet;
+        protoSet = TypeSet.undef;
 
-    var obj = new TGObject(origin);
+    // By default, this is a regular object
+    if (flags === undefined)
+        flags = TypeFlags.OBJECT;
 
-    this.unionTypes(obj.proto, protoSet);
+    var obj = new TGObject(origin, flags);
 
-    return obj;
+    this.assignTypes(obj.proto, protoSet);
+
+    var objSet = new HashSet();
+    objSet.add(obj);
+
+    return new TypeSet(
+        flags, 
+        undefined, 
+        undefined, 
+        undefined, 
+        objSet
+    );
 }
 
 /**
@@ -722,8 +816,8 @@ TypeGraph.prototype.getTypeSet = function (value)
         var typeSet = this.varMap.get(value);
         if (typeSet !== HashMap.NOT_FOUND)
             return typeSet;
-
-        return TypeSet.emptySet;
+ 
+        return TypeSet.empty;
     }
 
     // If this is a constant
@@ -734,18 +828,8 @@ TypeGraph.prototype.getTypeSet = function (value)
             'invalid value'
         );
 
-        // If this is a boxed number
-        if (value.isNumber() && value.type === IRType.box)
-        {
-            var type = new TypeSet();
-            type.setNumRange(value.value, value.value, (value.isInt() === false));
-
-            return type;
-        }
-        else
-        {
-            return new TypeSet(new TGConst(value));
-        }
+        // Create a type set for the constant
+        return TypeSet.constant(value);
     }
 }
 
