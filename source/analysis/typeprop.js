@@ -55,6 +55,35 @@ Maxime Chevalier-Boisvert
 //=============================================================================
 
 /**
+Basic block descriptor
+*/
+function BlockDesc(block, instrIdx)
+{
+    if (instrIdx === undefined)
+        instrIdx = 0;
+
+    this.block = block;
+
+    this.instrIdx = instrIdx;
+}
+
+/**
+Hash function for block descriptors
+*/
+BlockDesc.hashFn = function (d)
+{
+    return defHashFunc(d.block) + d.instrIdx;
+}
+
+/**
+Equality function for block descriptors
+*/
+BlockDesc.equalFn = function (d1, d2)
+{
+    return d1.block === d2.block && d1.instrIdx === d2.instrIdx;
+}
+
+/**
 @class Type propagation interprocedural analysis
 */
 function TypeProp(params)
@@ -87,12 +116,12 @@ TypeProp.prototype.init = function ()
     Set of blocks in the work list
     This is to avoid adding blocks to the work list twice
     */
-    this.workSet = new HashSet();
+    this.workSet = new HashSet(BlockDesc.hashFn, BlockDesc.equalFn);
 
     /**
     Map of type graphs at block entries
     */
-    this.blockGraphs = new HashMap();
+    this.blockGraphs = new HashMap(BlockDesc.hashFn, BlockDesc.equalFn);
 
     /**
     Initial type graph
@@ -138,17 +167,35 @@ TypeProp.prototype.init = function ()
 /**
 Get the type graph for a basic block
 */
-TypeProp.prototype.getTypeGraph = function (block)
+TypeProp.prototype.getTypeGraph = function (blockDesc)
 {
-    var graph = this.blockGraphs.get(block);
+    assert (
+        blockDesc instanceof BlockDesc,
+        'invalid block descriptor'
+    );
+
+    var graph = this.blockGraphs.get(blockDesc);
 
     if (graph === HashMap.NOT_FOUND)
     {
         graph = new TypeGraph();
-        this.blockGraphs.set(block, graph);
+        this.blockGraphs.set(blockDesc, graph);
     }
 
     return graph;
+}
+
+/**
+Set the type graph for a basic block
+*/
+TypeProp.prototype.setTypeGraph = function (blockDesc, typeGraph)
+{
+    assert (
+        blockDesc instanceof BlockDesc,
+        'invalid block descriptor'
+    );
+
+    this.blockGraphs.set(blockDesc, typeGraph);
 }
 
 /**
@@ -203,15 +250,20 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
 /**
 Queue a block to be (re)analyzed
 */
-TypeProp.prototype.queueBlock = function (block)
+TypeProp.prototype.queueBlock = function (blockDesc)
 {
+    assert (
+        blockDesc instanceof BlockDesc,
+        'invalid block descriptor'
+    );
+
     // If the block is already queued, do nothing
-    if (this.workSet.has(block) === true)
+    if (this.workSet.has(blockDesc) === true)
         return;
 
-    this.workList.addLast(block);
+    this.workList.addLast(blockDesc);
 
-    this.workSet.add(block);
+    this.workSet.add(blockDesc);
 }
 
 /**
@@ -228,7 +280,7 @@ TypeProp.prototype.queueFunc = function (irFunc)
     var entry = irFunc.hirCFG.entry;
 
     // Queue the function's entry block
-    this.queueBlock(entry);
+    this.queueBlock(new BlockDesc(entry));
 }
 
 /**
@@ -289,24 +341,37 @@ TypeProp.prototype.iterate = function ()
     );
 
     // Remove a block from the work list
-    var block = this.workList.remFirst();
-    this.workSet.rem(block);
-
-    print('------')
-    print('Block: ' + block.getBlockName());
-    print('------')
-    print('');
+    var blockDesc = this.workList.remFirst();
+    this.workSet.rem(blockDesc);
 
     // Get a copy of the type set at the block entry
-    var typeGraph = this.getTypeGraph(block).copy();
+    var typeGraph = this.getTypeGraph(blockDesc).copy();
+
+    // Get the block and instruction index
+    var block = blockDesc.block;
+    var instrIdx = blockDesc.instrIdx;
+
+    print('------')
+    print(
+        'Block: ' + block.getBlockName() + 
+        ', instr: ' + instrIdx + 
+        ' (' + block.parentCFG.ownerFunc.funcName + ')'
+    );
+    print('------')
+    print('');
 
     assert (
         typeGraph !== HashMap.NOT_FOUND,
         'type graph not found'
     );
 
+    assert (
+        instrIdx < block.instrs.length,
+        'invalid instr idx'
+    );
+
     // For each instruction
-    for (var i = 0; i < block.instrs.length; ++i)
+    for (var i = instrIdx; i < block.instrs.length; ++i)
     {
         var instr = block.instrs[i];
 
@@ -333,15 +398,14 @@ TypeProp.prototype.iterate = function ()
         // Process the instruction
         var ret = instr.typeProp(this, typeGraph);
 
-        // If this was a call instruction
-        if (instr instanceof JSCallInstr)
+        // If this is a call instruction and callees were found
+        if (instr instanceof JSCallInstr && ret === true)
         {
-            // Update the current type graph to reflect the post-call state
-            typeGraph = ret;
+            print('stopping block inference');
 
-            // If the calls are not yet analyzed, stop
-            if (typeGraph === undefined)
-                return;
+            // Stop the inference for this block, the return instruction
+            // will queue the rest of the block
+            return;
         }
 
         if (instr.dests.length > 0)
@@ -355,17 +419,20 @@ Merge incoming types for a successor block
 */
 TypeProp.prototype.succMerge = function (succ, predGraph)
 {
+    // Get a descriptor for the successor block
+    var succDesc = new BlockDesc(succ);
+
     // Get the type map for the successor
-    var succGraph = this.blockGraphs.get(succ);
+    var succGraph = this.blockGraphs.get(succDesc);
 
     // If the successor has no type graph yet
     if (succGraph === HashMap.NOT_FOUND)
     {
         // Pass a copy of the predecessor map to the successor
-        this.blockGraphs.set(succ, predGraph.copy());
+        this.blockGraphs.set(succDesc, predGraph.copy());
 
         // Queue the successor for analysis
-        this.queueBlock(succ);
+        this.queueBlock(succDesc);
     }
     else
     {
@@ -376,8 +443,8 @@ TypeProp.prototype.succMerge = function (succ, predGraph)
         // queue the successor for analysis
         if (newGraph.equal(succGraph) === false)
         {
-            this.blockGraphs.set(succ, newGraph);
-            this.queueBlock(succ);
+            this.blockGraphs.set(succDesc, newGraph);
+            this.queueBlock(succDesc);
         }
     }
 }
@@ -455,6 +522,8 @@ TypeProp.prototype.setInput = function (
         // Exclude this value from the successor merge
         typeGraph.remVar(val);
 
+        // FIXME: no mergeVal implemented
+
         // Merge the normal branch type
         normalMap = ta.blockGraphs.get(this.targets[0]);
         var newNormMap = normalMap.mergeVal(val, normalType);
@@ -489,38 +558,28 @@ IRInstr.prototype.typeProp = function (ta, typeGraph)
 
 PhiInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // TODO
-    /*
-    var outType = TypeSet.noinf;
-    */
+    var outType = TypeSet.empty;
 
     // For each phi predecessor
     for (var i = 0; i < this.preds.length; ++i)
     {
         var pred = this.preds[i];
 
-        // TODO
-        /*
         // If this predecessor hasn't been visited, skip it
-        if (ta.blockGraphs.has(pred) === false)
+        if (ta.blockGraphs.has(new BlockDesc(pred)) === false)
             continue;
 
         // Merge the type of this incoming value
-        var incType = typeGraph.getType(this.uses[i]);
+        var incType = typeGraph.getTypeSet(this.uses[i]);
         outType = outType.union(incType);
-        */
     }
 
-    /*
     assert (
-        outType !== TypeSet.noinf,
-        'phi output type is noinf'
+        outType.flags !== TypeFlags.EMPTY,
+        'phi output type is empty set'
     );
 
-    typeGraph.setType(this, outType);
-
-    return outType;
-    */
+    typeGraph.assignType(this, outType);
 }
 
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
@@ -756,18 +815,14 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
-/*
 JSLtInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
-
-    // TODO: int range handling
+    var v0 = typeGraph.getTypeSet(this.uses[0]);
+    var v1 = typeGraph.getTypeSet(this.uses[1]);
 
     // TODO:
     return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
-*/
 
 JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 {
@@ -802,24 +857,26 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
-/*
 JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO:
-    //return ta.setOutput(typeGraph, this, TypeSet.bool);
+    return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
-*/
 
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var calleeSet = typeGraph.getTypeSet(this.uses[0]);
     var thisSet = typeGraph.getTypeSet(this.uses[1]);
 
-    // Return type
-    var retType = TypeSet.empty
+    // If the callee is unknown
+    if (calleeSet.flags & TypeFlags.any)
+    {
+        print('*WARNING: unknown callee');
 
-    // Type graph after call
-    var retGraph = undefined;
+        ta.setOutput(typeGraph, this, TypeSet.any);
+
+        return false;
+    }
 
     // For each potential callee
     for (var itr = calleeSet.getObjItr(); itr.valid(); itr.next())
@@ -853,8 +910,15 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             typeGraph.assignTypes(argNode, argTypeSet);
         }
 
+        // Get a descriptor for the entry block
+        var entryDesc = new BlockDesc(funcInfo.entry);
+
         // Get the type graph at the function entry
-        var entryGraph = ta.getTypeGraph(funcInfo.entry);
+        var entryGraph = ta.getTypeGraph(entryDesc);
+
+        // Restrict the callee type to functions
+        var newCalleeType = calleeSet.restrict(TypeFlags.FUNCTION);        
+        entryGraph.assignTypes(this.uses[0], newCalleeType);
 
         // Merge the entry graph with the current type graph
         var newGraph = entryGraph.merge(typeGraph);
@@ -863,7 +927,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         if (newGraph.equal(entryGraph) === false)
         {
             // Update the entry graph
-            ta.blockGraphs.set(funcInfo.entry, newGraph);
+            ta.setTypeGraph(entryDesc, newGraph);
 
             // Queue the function for analysis
             ta.queueFunc(func);
@@ -875,39 +939,10 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             funcInfo.callerSet.add(this);
             funcInfo.callerList.push(this);
         }
-       
-        var funcRetGraph = funcInfo.retGraph;
-
-        // If there is a return raph for this function
-        if (funcRetGraph !== undefined)
-        {
-            print('merging func ret graph');
-
-            // Merge the return graph into the post-call graph
-            if (retGraph !== undefined)
-                retGraph = retGraph.merge(funcRetGraph)
-            else
-                retGraph = funcRetGraph.copy();
-
-            // Merge the return type
-            var funcRetType = retGraph.getTypeSet(funcInfo.retNode);
-            retType = retType.union(funcRetType);
-        }
     }
 
-    // If the post-call graph is defined
-    if (retGraph !== undefined)
-    {
-        // Set our own output type in the type graph
-        ta.setOutput(retGraph, this, retType);
-
-        // Restrict the function type along the normal path
-        var newFuncType = calleeSet.restrict(TypeFlags.FUNCTION);
-        ta.setInput(retGraph, this, this.uses[0], newFuncType, calleeSet);
-    }
-
-    // Return the post-call graph
-    return retGraph;
+    // Stop the inference for this block
+    return true;
 }
 
 // LIR call instruction
@@ -995,24 +1030,37 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
         // Update the return graph
         funcInfo.retGraph = newGraph;
 
-        // Queue the call site blocks for analysis
+        // For each caller
         for (var i = 0; i < funcInfo.callerList.length; ++i)
         {
             var callInstr = funcInfo.callerList[i];
-            ta.queueBlock(callInstr.parentBlock);
+            var callerBlock = callInstr.parentBlock;
+
+            var instrIdx = callerBlock.instrs.indexOf(callInstr);
+
+            // Set the return type for the call instruction
+            var funcRetType = newGraph.getTypeSet(funcInfo.retNode);
+            newGraph.assignTypes(callInstr, funcRetType);
+
+            var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+
+            // Queue the continuation block for analysis
+            ta.setTypeGraph(contDesc, newGraph);
+            ta.queueBlock(contDesc);
+
+            // FIXME
+            // TODO: handle exception edges
         }
     }
 }
 
-/*
 JSNewInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO: Want to get the 'this' type at the function output
 
     // TODO
-    //return ta.setOutput(typeGraph, this, TypeSet.any);
+    return ta.setOutput(typeGraph, this, TypeSet.any);
 }
-*/
 
 // If branching instruction
 IfInstr.prototype.typeProp = function (ta, typeGraph)

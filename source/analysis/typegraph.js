@@ -371,16 +371,28 @@ TypeSet.prototype.toString = function ()
     // If the set includes numbers
     if (this.flags & TypeFlags.INT || this.flags & TypeFlags.FLOAT)
     {
-        var numStr = ((this.flags & TypeFlags.FLOAT)? 'fp':'int') + ':';
+        var numStr = (this.flags & TypeFlags.FLOAT)? 'fp':'int';
 
-        if (this.rangeMin === this.rangeMax)
-            numStr += this.rangeMin;
-        else if (this.rangeMin !== -Infinity && this.rangeMax !== Infinity)
-            numStr += "[" + this.rangeMin + ", " + this.rangeMax + "]";
-        else if (this.rangeMin === -Infinity)
-            numStr += "]-inf, " + this.rangeMax + "]";
+        if (this.rangeMin === -Infinity && this.rangeMax === Infinity)
+        {
+            // Add no range information
+        }
+        else if (this.rangeMin === this.rangeMax)
+        {
+            numStr += ':' + this.rangeMin;
+        }
         else
-            numStr += "[" + this.rangeMin + ", +inf[";
+        {
+            if (this.rangeMin === -Infinity)
+                numStr += ':]-inf,';
+            else
+                numStr += ':[' + this.rangeMin + ',';
+
+            if (this.rangeMax === Infinity)
+                numStr += "+inf[";
+            else
+                numStr += this.rangeMax + "]";
+        }
 
         addType(numStr);
     }
@@ -479,67 +491,89 @@ TypeSet.prototype.union = function (that)
     {
         var flags = this.flags | that.flags;
 
-        // Merge the min range value
+        var thisNum = (this.flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
+        var thatNum = (that.flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
+
         var rangeMin;
-        if (this.rangeMin === that.rangeMin)
+        var rangeMax;
+
+        if (thisNum === true && thatNum === false)
         {
             rangeMin = this.rangeMin;
+            rangeMax = this.rangeMax
         }
-        else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
+        else if (thisNum === false && thatNum === true)
         {
-            rangeMin = -Infinity;   
-        }
-        else if (this.rangeMin < 0 || that.rangeMin < 0)
-        {
-            var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
-            
-            if (isPowerOf2(minMin) === true)
-                rangeMin = -minMin;
-            else
-                rangeMin = -nextPowerOf2(minMin);
+            rangeMin = that.rangeMin;
+            rangeMax = that.rangeMax;
         }
         else
         {
-            rangeMin = Math.min(this.rangeMin, that.rangeMin);
-            rangeMin = lowestBit(rangeMin);
-        }
-        assert (
-            rangeMin <= this.rangeMin && rangeMin <= that.rangeMin,
-            'invalid min value'
-        );
-
-        // Merge the max range value
-        var rangeMax;
-        if (this.rangeMax === that.rangeMax)
-        {
-            rangeMax = this.rangeMax;
-        }
-        else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
-        {
-            rangeMax = Infinity;   
-        }
-        else if (this.rangeMax > 0 || that.rangeMax > 0)
-        {
-            var maxMax = Math.max(this.rangeMax, that.rangeMax);
-            
-            if (isPowerOf2(maxMax) === true)
-                rangeMax = maxMax;
+            if (this.rangeMin === that.rangeMin)
+            {
+                rangeMin = this.rangeMin;
+            }
+            else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
+            {
+                rangeMin = -Infinity;   
+            }
+            else if (this.rangeMin < 0 || that.rangeMin < 0)
+            {
+                var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
+                
+                if (isPowerOf2(minMin) === true)
+                    rangeMin = -minMin;
+                else
+                    rangeMin = -nextPowerOf2(minMin);
+            }
             else
-                rangeMax = nextPowerOf2(maxMax);
-        }
-        else
-        {
-            rangeMax = Math.max(this.rangeMax, that.rangeMax);
-            rangeMax = -lowestBit(Math.abs(rangeMax));
-        }
-        assert (
-            rangeMax >= this.rangeMax && rangeMax >= that.rangeMax,
-            'invalid max value'
-        );
+            {
+                rangeMin = Math.min(this.rangeMin, that.rangeMin);
+                rangeMin = lowestBit(rangeMin);
+            }
 
-        var strVal =
-            (this.strVal === that.strVal)?
-            this.strVal:undefined;
+            if (this.rangeMax === that.rangeMax)
+            {
+                rangeMax = this.rangeMax;
+            }
+            else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
+            {
+                rangeMax = Infinity;   
+            }
+            else if (this.rangeMax > 0 || that.rangeMax > 0)
+            {
+                var maxMax = Math.max(this.rangeMax, that.rangeMax);
+                
+                if (isPowerOf2(maxMax) === true)
+                    rangeMax = maxMax;
+                else
+                    rangeMax = nextPowerOf2(maxMax);
+            }
+            else
+            {
+                rangeMax = Math.max(this.rangeMax, that.rangeMax);
+                rangeMax = -lowestBit(Math.abs(rangeMax));
+            }
+
+            assert (
+                rangeMin <= this.rangeMin && rangeMin <= that.rangeMin,
+                'invalid min value'
+            );
+
+            assert (
+                rangeMax >= this.rangeMax && rangeMax >= that.rangeMax,
+                'invalid max value'
+            );
+        }
+
+        // Merge the string values
+        var strVal;
+        if ((this.flags & TypeFlags.STRING) && (that.flags & TypeFlags.STRING))
+            strVal = (this.strVal === that.strVal)? this.strVal:undefined;
+        if (this.flags & TypeFlags.STRING)
+            strVal = this.strVal;
+        else
+            strVal = that.strVal;
 
         // Compute the union of the object sets
         var objSet;
