@@ -63,7 +63,7 @@ TypeProp.makeTest = function (fileName, verbose)
 
 tests.ta.call_simple = TypeProp.makeTest('programs/type_analysis/call_simple.js', true);
 tests.ta.func_2ret = TypeProp.makeTest('programs/type_analysis/func_2ret.js', true);
-//tests.ta.func_2calls = TypeProp.makeTest('programs/type_analysis/func_2calls.js');
+tests.ta.func_2calls = TypeProp.makeTest('programs/type_analysis/func_2calls.js', true);
 //tests.ta.func_calls = TypeProp.makeTest('programs/type_analysis/func_calls.js');
 //tests.ta.fib = TypeProp.makeTest('programs/type_analysis/fib.js');
 

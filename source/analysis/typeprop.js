@@ -350,6 +350,131 @@ TypeProp.prototype.iterate = function ()
     }
 }
 
+/**
+Merge incoming types for a successor block
+*/
+TypeProp.prototype.succMerge = function (succ, predGraph)
+{
+    // Get the type map for the successor
+    var succGraph = this.blockGraphs.get(succ);
+
+    // If the successor has no type graph yet
+    if (succGraph === HashMap.NOT_FOUND)
+    {
+        // Pass a copy of the predecessor map to the successor
+        this.blockGraphs.set(succ, predGraph.copy());
+
+        // Queue the successor for analysis
+        this.queueBlock(succ);
+    }
+    else
+    {
+        // Merge the predecessor type map into the successor's
+        var newGraph = succGraph.merge(predGraph);
+
+        // If the successor's type map was changed,
+        // queue the successor for analysis
+        if (newGraph.equal(succGraph) === false)
+        {
+            this.blockGraphs.set(succ, newGraph);
+            this.queueBlock(succ);
+        }
+    }
+}
+
+/**
+Set an intruction's output and queue its branch targets
+*/
+TypeProp.prototype.setOutput = function (
+    typeGraph,
+    instr,
+    normalType,
+    exceptType
+)
+{
+    // If the instruction has dests, add its type to the type set
+    if (instr.dests.length > 0)
+        typeGraph.assignTypes(instr, normalType);
+
+    // If this is a branch instruction
+    if (instr.targets.length > 0)
+    {
+        assert (
+            instr.targets.length === 2,
+            'invalid branch target count'
+        );
+
+        // By default, the exception type is the any type
+        if (exceptType === undefined)
+            exceptType = TypeSet.any;
+
+        // Merge with the normal target
+        this.succMerge(instr.targets[i], typeGraph);
+
+        // If the instruction has dests, set its type along the exception edge
+        if (instr.dests.length > 0)
+            typeGraph.assignTypes(instr, exceptType);
+
+        // Merge with the exception target
+        this.succMerge(instr.targets[1], typeGraph);
+    }
+
+    // Return the output type
+    return normalType;
+}
+
+/**
+Set the type of an instruction's input value
+*/
+TypeProp.prototype.setInput = function (
+    typeGraph,
+    instr,
+    val,
+    normalType,
+    exceptType
+)
+{
+    // If this value is not an instruction or has only one dest,
+    // do not update its type
+    if ((val instanceof IRInstr) === false || val.dests.length <= 1)
+        return;
+
+    // If this is not a branch instruction
+    if (instr.targets.length === 0)
+    {
+        // Set the value's normal branch type
+        typeGraph.assignTypes(val, normalType);
+    }
+    else
+    {
+        assert (
+            instr.targets.length === 2,
+            'invalid branch target count'
+        );
+
+        // Exclude this value from the successor merge
+        typeGraph.remVar(val);
+
+        // Merge the normal branch type
+        normalMap = ta.blockGraphs.get(this.targets[0]);
+        var newNormMap = normalMap.mergeVal(val, normalType);
+        if (newNormMap.equal(normalMap) === false)
+        {
+            ta.blockGraphs.set(this.targets[0], newNormMap);
+            ta.queueBlock(instr.targets[0]);
+        }
+
+        // Merge the exception branch type
+        exceptMap = ta.blockGraphs.get(this.targets[1]);
+        var newExcMap = exceptMap.mergeVal(val, exceptType);
+        if (newExcMap.equal(exceptMap) === false)
+        {
+            ta.blockGraphs.set(this.targets[1], newExcMap);
+            ta.queueBlock(instr.targets[1]);
+        }
+    }
+}
+
 //=============================================================================
 //
 // Flow functions for HIR instructions
@@ -359,14 +484,14 @@ TypeProp.prototype.iterate = function ()
 IRInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // By default, return the any type
-    typeGraph.assignTypes(this, TypeSet.any);
+    ta.setOutput(typeGraph, this, TypeSet.any);
 }
 
 PhiInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO
     /*
-    var outType = TypeDesc.noinf;
+    var outType = TypeSet.noinf;
     */
 
     // For each phi predecessor
@@ -381,18 +506,18 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
             continue;
 
         // Merge the type of this incoming value
-        var incType = typeMap.getType(this.uses[i]);
+        var incType = typeGraph.getType(this.uses[i]);
         outType = outType.union(incType);
         */
     }
 
     /*
     assert (
-        outType !== TypeDesc.noinf,
+        outType !== TypeSet.noinf,
         'phi output type is noinf'
     );
 
-    typeMap.setType(this, outType);
+    typeGraph.setType(this, outType);
 
     return outType;
     */
@@ -401,7 +526,7 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // This refers to the global object
-    typeGraph.assignTypes(this, ta.globalObj);
+    ta.setOutput(typeGraph, this, ta.globalObj);
 }
 
 InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
@@ -421,7 +546,7 @@ BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
     var newObj = typeGraph.newObject(this, ta.objProto);
 
     // The result is the new object
-    typeGraph.assignTypes(this, newObj);
+    ta.setOutput(typeGraph, this, newObj);
 }
 
 BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
@@ -430,12 +555,12 @@ BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
     var newObj = typeGraph.newObject(this, ta.arrProto, TypeFlags.ARRAY);
 
     // The result is the new object
-    typeGraph.unionTypes(this, newObj);
+    ta.setOutput(typeGraph, this, newObj);
 }
 
 HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    typeGraph.unionTypes(this, TypeSet.bool);
+    ta.setOutput(typeGraph, this, TypeSet.bool);
 }
 
 PutPropInstr.prototype.typeProp = function (ta, typeGraph)
@@ -486,7 +611,13 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         print(e);
     }
 
-    typeGraph.assignTypes(this, valSet);
+    // The object cannot be undefined or null along the normal branch
+    var newObjType = objSet.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
+
+    // Update the object type
+    ta.setInput(typeGraph, this, this.uses[0], newObjType, objSet);
+
+    ta.setOutput(typeGraph, this, valSet);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
@@ -522,7 +653,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
             outSet = outSet.union(typeGraph.getTypeSet(propNode));
         }
 
-        typeGraph.assignTypes(this, outSet);
+        ta.setOutput(typeGraph, this, outSet);
     }
 
     // If an inference problem occurs
@@ -533,7 +664,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 
         print(e);
 
-        typeGraph.assignTypes(this, TypeSet.any);
+        ta.setOutput(typeGraph, this, TypeSet.any);
     }
 }
 
@@ -587,7 +718,7 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
     }
 
-    typeGraph.assignTypes(this, outType);
+    ta.setOutput(typeGraph, this, outType);
 }
 
 JSSubInstr.prototype.typeProp = function (ta, typeGraph)
@@ -622,27 +753,26 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
     }
 
-    typeGraph.assignTypes(this, outType);
+    ta.setOutput(typeGraph, this, outType);
 }
 
 /*
 JSLtInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeMap.getType(this.uses[0]);
-    var v1 = typeMap.getType(this.uses[1]);
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
 
     // TODO: int range handling
 
     // TODO:
-    return ta.setOutput(typeMap, this, TypeDesc.bool);
+    return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
 */
 
-/*
 JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeMap.getType(this.uses[0]);
-    var v1 = typeMap.getType(this.uses[1]);
+    var v0 = typeGraph.getTypeSet(this.uses[0]);
+    var v1 = typeGraph.getTypeSet(this.uses[1]);
 
     // Output type
     var outType;
@@ -653,31 +783,30 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
         v0.rangeMin === v0.rangeMax &&
         v1.rangeMin === v1.rangeMax)
     {
-        outType = (v0.rangeMin === v1.rangeMin)? TypeDesc.true:TypeDesc.false;
+        outType = (v0.rangeMin === v1.rangeMin)? TypeSet.true:TypeSet.false;
     }
 
     // If both values are known booleans
     else if ((v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
              (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
     {
-        outType = (v0.flags === v1.flags)? TypeDesc.true:TypeDesc.false;
+        outType = (v0.flags === v1.flags)? TypeSet.true:TypeSet.false;
     }
 
     // Otherwise, we know the output is boolean
     else
     {
-        outType = TypeDesc.bool;
+        outType = TypeSet.bool;
     }
 
-    return ta.setOutput(typeMap, this, outType);
+    ta.setOutput(typeGraph, this, outType);
 }
-*/
 
 /*
 JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // TODO:
-    //return ta.setOutput(typeMap, this, TypeDesc.bool);
+    //return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
 */
 
@@ -766,20 +895,16 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         }
     }
 
-    // Set our own output type in the type graph
+    // If the post-call graph is defined
     if (retGraph !== undefined)
-        retGraph.assignTypes(this, retType);
+    {
+        // Set our own output type in the type graph
+        ta.setOutput(retGraph, this, retType);
 
-    // TODO
-    /*
-    // Merge with all possible branch targets
-    for (var i = 0; i < this.targets.length; ++i)
-        ta.succMerge(this.targets[i], typeMap);
-
-    // Restrict the function type along the normal path
-    var newFuncType = callee.restrict(TypeFlags.FUNCTION);
-    ta.setInput(typeMap, this, this.uses[0], newFuncType, callee);
-    */
+        // Restrict the function type along the normal path
+        var newFuncType = calleeSet.restrict(TypeFlags.FUNCTION);
+        ta.setInput(retGraph, this, this.uses[0], newFuncType, calleeSet);
+    }
 
     // Return the post-call graph
     return retGraph;
@@ -824,13 +949,11 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     // Set our own output type in the type graph
-    typeGraph.assignTypes(this, retType);
+    ta.setOutput(typeGraph, this, retType);
 
-    /* TODO
     // Merge with all possible branch targets
     for (var i = 0; i < this.targets.length; ++i)
-        ta.succMerge(this.targets[i], typeMap);
-    */
+        ta.succMerge(this.targets[i], typeGraph);
 }
 
 ArgValInstr.prototype.typeProp = function (ta, typeGraph)
@@ -887,25 +1010,23 @@ JSNewInstr.prototype.typeProp = function (ta, typeGraph)
     // TODO: Want to get the 'this' type at the function output
 
     // TODO
-    //return ta.setOutput(typeMap, this, TypeDesc.any);
+    //return ta.setOutput(typeGraph, this, TypeSet.any);
 }
 */
 
-/*
 // If branching instruction
 IfInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeMap.getType(this.uses[0]);
-    var v1 = typeMap.getType(this.uses[1]);
-    var v2 = (this.uses.length > 2)? typeMap.getType(this.uses[1]):undefined;
+    var v0 = typeGraph.getTypeSet(this.uses[0]);
+    var v1 = typeGraph.getTypeSet(this.uses[1]);
+    var v2 = (this.uses.length > 2)? typeGraph.getTypeSet(this.uses[1]):undefined;
 
     // Function to handle the known branching side case
     var instr = this;
     function knownBranch(boolVal)
     {
         var target = instr.targets[(boolVal === true)? 0:1];
-        ta.succMerge(target, typeMap);
-        return TypeDesc.any;
+        ta.succMerge(target, typeGraph);
     }
 
     if (this.testOp === 'EQ')
@@ -921,14 +1042,11 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
 
     // Merge with all possible branch targets
     for (var i = 0; i < this.targets.length; ++i)
-        ta.succMerge(this.targets[i], typeMap);
+        ta.succMerge(this.targets[i], typeGraph);
 }
-*/
 
-/*
 JumpInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    //ta.succMerge(this.targets[0], typeMap);
+    ta.succMerge(this.targets[0], typeGraph);
 }
-*/
 

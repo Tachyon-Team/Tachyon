@@ -564,6 +564,70 @@ TypeSet.prototype.union = function (that)
 }
 
 /**
+Restrict a type set based on possible type flags
+*/
+TypeSet.prototype.restrict = function (flags)
+{
+    var flags = this.flags & flags;
+
+    // If the flags are unchanged, return this descriptor
+    if (flags === this.flags)
+        return this;
+
+    // Test whether the new type can be a number, string, function or object
+    var canBeNum  = (flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
+    var canBeStr  = (flags & TypeFlags.STRING) !== 0;
+    var canBeFunc = (flags & TypeFlags.FUNCTION) !== 0;
+    var canBeObj  = (flags & (TypeFlags.OBJECT | TypeFlags.ARRAY)) !== 0;
+
+    // If the new value can't be a number, remove the range info
+    if (canBeNum === true)
+    {
+        var rangeMin = this.rangeMin;
+        var rangeMax = this.rangeMax;
+    }
+    else
+    {
+        var rangeMin = -Infinity;
+        var rangeMax = Infinity;
+    }
+
+    var strVal = (canBeStr === true)? this.strVal:undefined;
+
+    // If the type can be either a function or an object
+    if (canBeFunc === true && canBeObj === true)
+    {
+        // Leave the object set unchanged
+        var objSet = this.objSet.copy();
+    }
+    else
+    {
+        var objSet = new HashSet();
+
+        // For each item in the object set
+        for (var itr = this.objSet.getItr(); itr.valid(); itr.next())
+        {
+            var obj = itr.get()
+
+            // If the flags don't match, skip this object
+            if ((obj.flags & flags) === 0)
+                continue;
+
+            objSet.add(obj);
+        }
+    }
+
+    // Create and return a new type set and return it
+    return new TypeSet(
+        flags,
+        rangeMin,
+        rangeMax,
+        strVal,
+        objSet
+    );
+}
+
+/**
 Get an iterator to the object set
 */
 TypeSet.prototype.getObjItr = function ()
@@ -697,6 +761,20 @@ TypeGraph.prototype.unionTypes = function (varNode, typeSet)
     );
 
     this.varMap.set(varNode, unionSet);
+}
+
+/**
+Remove a variable node from the graph
+*/
+TypeGraph.prototype.remVar = function (varNode)
+{
+    assert (
+        varNode instanceof TGVariable ||
+        varNode instanceof IRInstr,
+        'invalid var node'
+    );
+
+    this.varMap.rem(varNode);
 }
 
 /**
