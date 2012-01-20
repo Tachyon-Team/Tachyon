@@ -75,7 +75,7 @@ Compression observations:
 */
 
 /**
-@class Represents a variable or object property in type graph.
+@class Represents a variable in the type graph
 */
 function TGVariable(name, parent)
 {
@@ -91,6 +91,18 @@ TGVariable.prototype.toString = function ()
 {
     return this.name;
 }
+
+/**
+@class Represents an object property in the type graph
+@extends TGVariable
+*/
+function TGProperty(name, parent)
+{
+    this.name = name;
+
+    this.parent = parent;
+}
+TGProperty.prototype = new TGVariable();
 
 /**
 @class Object value in a type graph.
@@ -124,7 +136,7 @@ function TGObject(origin, flags)
     /**
     Prototype of this object
     */
-    this.proto = new TGVariable('proto', this);
+    this.proto = new TGProperty('proto', this);
 
     /**
     Map of property names to corresponding variable nodes
@@ -178,7 +190,7 @@ TGObject.prototype.getPropNode = function (name)
 {
     // If the property doesn't exist, create it
     if (this.props[name] === undefined)
-        this.props[name] = new TGVariable(name, this);
+        this.props[name] = new TGProperty(name, this);
 
     return this.props[name];
 }
@@ -782,10 +794,7 @@ TypeGraph.prototype.unionTypes = function (varNode, typeSet)
         'invalid type set: ' + typeSet
     );
 
-    var curSet = this.varMap.get(varNode)
-
-    if (curSet === HashMap.NOT_FOUND)
-        var curSet = new TypeSet();
+    var curSet = this.getTypeSet(varNode);
 
     var unionSet = curSet.union(typeSet);
 
@@ -833,28 +842,18 @@ TypeGraph.prototype.copy = function ()
 /**
 Merge another graph into this one.
 */
-TypeGraph.prototype.merge = function (other)
+TypeGraph.prototype.merge = function (that)
 {
     var newGraph = this.copy();
 
-    for (nodeItr = other.varMap.getItr(); nodeItr.valid(); nodeItr.next())
+    for (nodeItr = that.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var edge = nodeItr.get();
         var node = edge.key;
-        var typeSet = edge.value;
 
-        var localSet = this.varMap.get(node);
+        var thatSet = that.getTypeSet(node);
 
-        if (localSet === HashMap.NOT_FOUND)
-        {
-            var unionSet = typeSet;
-        }
-        else
-        {
-            var unionSet = localSet.union(typeSet);
-        }
-
-        newGraph.varMap.set(node, unionSet);
+        newGraph.unionTypes(node, thatSet);
     }
 
     return newGraph;
@@ -864,23 +863,21 @@ TypeGraph.prototype.merge = function (other)
 Compare this graph for equality with another.
 Equality means both graphs have the same edges.
 */
-TypeGraph.prototype.equal = function (other)
+TypeGraph.prototype.equal = function (that)
 {
-    if (this.varMap.numItems !== other.varMap.numItems)
+    if (this.varMap.numItems !== that.varMap.numItems)
         return false;
 
-    for (nodeItr = other.varMap.getItr(); nodeItr.valid(); nodeItr.next())
+    for (nodeItr = that.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var edge = nodeItr.get();
-
         var node = edge.key;
-        var typeSet = edge.value;
 
-        var localSet = this.varMap.get(node);
+        var thisSet = this.getTypeSet(node);
 
-        if (localSet === HashMap.NOT_FOUND && typeSet !== TypeSet.emptySet)
-            return false;
-        else if (localSet.equal(typeSet) === false)
+        var thatSet = that.getTypeSet(node);
+
+        if (thisSet.equal(thatSet) === false)
             return false;
     }
 
@@ -926,10 +923,22 @@ TypeGraph.prototype.getTypeSet = function (value)
         value instanceof IRInstr)
     {
         var typeSet = this.varMap.get(value);
+
+        // If a type set was found
         if (typeSet !== HashMap.NOT_FOUND)
+        {
             return typeSet;
- 
-        return TypeSet.empty;
+        }
+        else
+        {
+            // If this is a property node and there is no type set,
+            // the type of the property is undefined
+            if (value instanceof TGProperty)
+                return TypeSet.undef;
+
+            // Return the empty type set
+            return TypeSet.empty;
+        }
     }
 
     // If this is a constant
