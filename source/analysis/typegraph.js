@@ -136,7 +136,7 @@ function TGObject(origin, flags)
     /**
     Prototype of this object
     */
-    this.proto = new TGProperty('proto', this);
+    this.proto = new TGVariable('proto', this);
 
     /**
     Map of property names to corresponding variable nodes
@@ -891,7 +891,7 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags)
 {
     // By default, the prototype is null
     if (protoSet === undefined)
-        protoSet = TypeSet.undef;
+        protoSet = TypeSet.null;
 
     // By default, this is a regular object
     if (flags === undefined)

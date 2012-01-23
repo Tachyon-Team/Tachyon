@@ -1,6 +1,6 @@
 var foo = undefined;
 
-var foo = function () { return 1; }
+var foo = function () { return 1; };
 
 function bar(f)
 {

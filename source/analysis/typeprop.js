@@ -98,6 +98,11 @@ function TypeProp(params)
     */
     this.params = params;
 
+    /**
+    Verbose logging flag, for debugging
+    */
+    this.verbose = false;
+
     // Initialize the type analysis
     this.init();
 }
@@ -107,6 +112,9 @@ Initialize/reset the analysis
 */
 TypeProp.prototype.init = function ()
 {
+    // Clear the object map
+    TGObject.objMap.clear();
+
     /**
     Worklist of basic blocks queued to be analyzed
     */
@@ -157,6 +165,20 @@ TypeProp.prototype.init = function ()
     Ordered list of unit-level functions to be analyzed
     */
     this.unitList = [];
+
+    /**
+    Map of hash sets for instruction uses, for gathering statistics
+    */
+    this.typeSets = new HashMap(
+        function (use)
+        {
+            return defHashFunc(use.instr) + use.idx;
+        },
+        function (use1, use2)
+        {
+            return use1.instr === use2.instr && use1.idx === use2.idx;
+        }
+    );
 
     /**
     Total analysis iteration count
@@ -228,7 +250,7 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
         // Return value node
         retNode: retNode,
 
-        // Return graph at returns
+        // Type graph at returns
         retGraph: undefined,
 
         // Set of caller blocks
@@ -298,6 +320,11 @@ TypeProp.prototype.queueUnit = function (ir)
     // Get the info object for this function
     var funcInfo = this.getFuncInfo(ir);
 
+    // FIXME: multiple unit handling
+    // Set the type graph at the unit entry
+    var entry = funcInfo.entry;
+    this.setTypeGraph(new BlockDesc(entry), this.initGraph);
+
     // Queue the unit function to be analyzed
     this.queueFunc(ir);
 
@@ -351,14 +378,17 @@ TypeProp.prototype.iterate = function ()
     var block = blockDesc.block;
     var instrIdx = blockDesc.instrIdx;
 
-    print('------')
-    print(
-        'Block: ' + block.getBlockName() + 
-        ', instr: ' + instrIdx + 
-        ' (' + block.parentCFG.ownerFunc.funcName + ')'
-    );
-    print('------')
-    print('');
+    if (this.verbose === true)
+    {
+        print('------')
+        print(
+            'Block: ' + block.getBlockName() + 
+            ', instr: ' + instrIdx + 
+            ' (' + block.parentCFG.ownerFunc.funcName + ')'
+        );
+        print('------')
+        print('');
+    }
 
     assert (
         typeGraph !== HashMap.NOT_FOUND,
@@ -375,7 +405,8 @@ TypeProp.prototype.iterate = function ()
     {
         var instr = block.instrs[i];
 
-        print(instr);
+        if (this.verbose === true)
+            print(instr);
 
         // For each use of the instruction
         for (var j = 0; j < instr.uses.length; ++j)
@@ -392,7 +423,13 @@ TypeProp.prototype.iterate = function ()
                 'invalid use type'
             );
 
-            print(use.getValName() + ' : ' + useType);
+            if (this.verbose === true)
+            {
+                print(use.getValName() + ' : ' + useType);
+
+                // Store the last seen type set for this use
+                this.typeSets.set({ instr: instr, idx: j }, useType);
+            }
         }
 
         // Process the instruction
@@ -401,16 +438,20 @@ TypeProp.prototype.iterate = function ()
         // If this is a call instruction and callees were found
         if (instr instanceof JSCallInstr && ret === true)
         {
-            print('stopping block inference');
+            if (this.verbose === true)
+                print('stopping block inference');
 
             // Stop the inference for this block, the return instruction
             // will queue the rest of the block
             return;
         }
 
-        if (instr.dests.length > 0)
-            print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
-        print('');
+        if (this.verbose === true)
+        {
+            if (instr.dests.length > 0)
+                print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
+            print('');
+        }
     }
 }
 
@@ -579,7 +620,7 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
         'phi output type is empty set'
     );
 
-    typeGraph.assignType(this, outType);
+    typeGraph.assignTypes(this, outType);
 }
 
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
@@ -667,7 +708,8 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        print(e);
+        if (this.verbose === true)
+            print(e);
     }
 
     // The object cannot be undefined or null along the normal branch
@@ -721,7 +763,8 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        print(e);
+        if (this.verbose === true)
+            print(e);
 
         ta.setOutput(typeGraph, this, TypeSet.any);
     }
@@ -871,7 +914,8 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     // If the callee is unknown
     if (calleeSet.flags & TypeFlags.any)
     {
-        print('*WARNING: unknown callee');
+        if (this.verbose === true)
+            print('*WARNING: unknown callee');
 
         ta.setOutput(typeGraph, this, TypeSet.any);
 

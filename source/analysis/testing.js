@@ -53,14 +53,18 @@ Test type analysis on a source file
 */
 TypeProp.prototype.testOnFile = function (fileName, verbose)
 {
-    if (verbose)
+    // Check the verbose flag
+    var oldVerbose = this.verbose;
+    this.verbose = (verbose === true);
+
+    if (this.verbose === true)
         print('Running type analysis on: "' + fileName + '"');
 
     // Get the IR for this file
     var ast = parse_src_file(fileName, this.params);
     var ir = unitToIR(ast, this.params);
 
-    if (verbose)
+    if (this.verbose === true)
         print(ir);
 
     // Start timing the analysis
@@ -78,7 +82,7 @@ TypeProp.prototype.testOnFile = function (fileName, verbose)
     var time = (endTimeMs - startTimeMs) / 1000;
 
     // Log analysis time
-    if (verbose)
+    if (this.verbose === true)
     {
         print('-----------------------------');
         print('itr count: ' + itrCount);
@@ -87,12 +91,19 @@ TypeProp.prototype.testOnFile = function (fileName, verbose)
     }
 
     // Dump info about functions analyzed
-    if (verbose)
+    if (this.verbose === true)
         this.dumpFunctions();
 
     // Dump info about classes analyzed
-    if (verbose)
+    if (this.verbose === true)
         this.dumpClasses();
+
+    // Compute and dump type statistics
+    if (this.verbose === true)
+        this.compTypeStats();
+
+    // Restore the verbose flag
+    this.verbose = oldVerbose;
 }
 
 /**
@@ -100,12 +111,6 @@ Dump information gathered about functions
 */
 TypeProp.prototype.dumpFunctions = function ()
 {
-
-
-
-
-
-    /*
     // For each function info object
     for (var itr = this.funcInfo.getItr(); itr.valid(); itr.next())
     {
@@ -119,18 +124,20 @@ TypeProp.prototype.dumpFunctions = function ()
 
         print('function "' + irFunc.funcName + '"');
 
-        for (var i = 1; i < funcInfo.argTypes.length; ++i)
+        var retGraph = funcInfo.retGraph;
+
+        for (var i = 1; i < funcInfo.argNodes.length; ++i)
         {
             var argName = (i == 1)? 'this':irFunc.argVars[i-2];
-            
-            print('arg ' + argName + ' : ' + funcInfo.argTypes[i]);
+            var argType = retGraph.getTypeSet(funcInfo.argNodes[i]);
+            print('arg ' + argName + ' : ' + argType);
         }
 
-        print('ret => ' + funcInfo.retType);
-
+        var retType = retGraph.getTypeSet(funcInfo.retNode);
+        print('ret => ' + retType);
+        
         print('');
     }
-    */
 }
 
 /**
@@ -138,23 +145,115 @@ Dump information gathered about classes
 */
 TypeProp.prototype.dumpClasses = function ()
 {
+    // Get the type graph for the return of the last unit analyzed
+    var lastUnit = this.unitList[this.unitList.length-1];
+    var typeGraph = this.funcInfo.get(lastUnit).retGraph;
 
-
-
-
-
-
-    /*
     // For each class descriptor
-    for (var itr = ClassDesc.classMap.getItr(); itr.valid(); itr.next())
+    for (var itr = TGObject.objMap.getItr(); itr.valid(); itr.next())
     {
-        var classDesc = itr.get().value;
+        var obj = itr.get().key;
 
-        print(classDesc);
+        if (obj.origin instanceof IRFunction)
+            continue;
+
+        print('object (' + obj.origin + ')');
+        print('{');
+
+        var protoType = typeGraph.getTypeSet(obj.proto);
+        print('    proto: ' + protoType);
+
+        for (name in obj.props)
+        {
+            var propNode = obj.getPropNode(name);
+            var propType = typeGraph.getTypeSet(propNode);
+            print('    ' + name + ': ' + propType);
+        }
+
+        print('}');
         print('');
     }
-    */   
 }
 
-// TODO: HTML + highlighting visualization?
+/**
+Compute statistics about type sets
+*/
+TypeProp.prototype.compTypeStats = function ()
+{
+    var numSets = 0;
+    var numAny = 0;
+    var numSingleType = 0;
+    var numWithUndef = 0;
+    var numIntOnly = 0;
+    var numStrOnly = 0;
+    var numObjOnly = 0;
+    var numKnownObj = 0;
+    var maxNumObjs = 0;
+
+    // Accumulate stats for one type set occurrence
+    function accumStats(set)
+    {
+        var flags = set.flags;
+
+        var numObjs = set.objSet? set.objSet.length:0;
+
+        var numFlags = 0;
+        for (flag in TypeFlags)
+        {
+            var tf = TypeFlags[flag];
+
+            if (tf === TypeFlags.EMPTY ||
+                tf === TypeFlags.OBJEXT ||
+                tf === TypeFlags.ANY)
+                continue;
+
+            if (flags & TypeFlags[flag])
+                ++numFlags;
+        }
+
+        numSets += 1;
+
+        if (numFlags === 1)
+            numSingleType += 1;
+
+        if (flags === TypeFlags.ANY)
+            numAny += 1;
+
+        if (flags & TypeFlags.UNDEF)
+            numWithUndef += 1;
+
+        if (flags === TypeFlags.INT)
+            numIntOnly += 1;
+
+        if (flags === TypeFlags.STRING)
+            numStrOnly += 1;
+
+        if (flags === TypeFlags.OBJECT)
+            numObjOnly += 1;
+
+        if (flags === TypeFlags.OBJECT && numObjs === 1)
+            numKnownObj += 1;
+
+        maxNumObjs = Math.max(maxNumObjs, numObjs);
+    }
+
+    // Accumulate statistics for each use type set seen
+    for (var itr = this.typeSets.getItr(); itr.valid(); itr.next())
+    {
+        var typeSet = itr.get().value;
+        accumStats(typeSet);
+    }
+
+    print('Num type sets    : ' + numSets);
+    print('Num any type     : ' + numAny);
+    print('Num single type  : ' + numSingleType);
+    print('Num with undef   : ' + numWithUndef);
+    print('Num int only     : ' + numIntOnly);
+    print('Num string only  : ' + numStrOnly);
+    print('Num obj. only    : ' + numObjOnly);
+    print('Num known obj.   : ' + numKnownObj);
+    print('Max num objs.    : ' + maxNumObjs);
+
+    print('');
+}
 
