@@ -102,6 +102,9 @@ TypeProp.prototype.testOnFile = function (fileName, verbose)
     if (this.verbose === true)
         this.compTypeStats();
 
+    // Evaluate the type assertions
+    this.evalTypeAsserts();
+
     // Restore the verbose flag
     this.verbose = oldVerbose;
 }
@@ -255,5 +258,45 @@ TypeProp.prototype.compTypeStats = function ()
     print('Max num objs.    : ' + maxNumObjs);
 
     print('');
+}
+
+/**
+Evaluate type assertions
+*/
+TypeProp.prototype.evalTypeAsserts = function ()
+{
+    function fail(desc, msg)
+    {
+        throw Error(
+            'Type assertion failed: ' + msg + '\n' +
+            'set : ' + desc.typeSet + '\n' +
+            'test: ' + desc.test
+        );
+    }
+
+    // For each type assertion
+    for (var itr = this.typeAsserts.getItr(); itr.valid(); itr.next())
+    {
+        var desc = itr.get().value;
+        var test = desc.test;
+        var set = desc.typeSet;
+
+
+        // TODO: parse type assert
+
+
+
+        if (set.flags === TypeFlags.ANY)
+            fail(desc, 'type set is any');
+
+
+
+
+
+
+
+
+
+    }
 }
 

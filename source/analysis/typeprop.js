@@ -99,7 +99,7 @@ function TypeProp(params)
     this.params = params;
 
     /**
-    Verbose logging flag, for debugging
+    Verbose logging flag, enables debug output
     */
     this.verbose = false;
 
@@ -179,6 +179,11 @@ TypeProp.prototype.init = function ()
             return use1.instr === use2.instr && use1.idx === use2.idx;
         }
     );
+
+    /**
+    Map of type assertions calls to associated type sets
+    */
+    this.typeAsserts = new HashMap();
 
     /**
     Total analysis iteration count
@@ -405,8 +410,35 @@ TypeProp.prototype.iterate = function ()
     {
         var instr = block.instrs[i];
 
+        // If this is a type assertion
+        if (instr instanceof JSCallInstr &&
+            instr.uses.length === 4 &&
+            instr.uses[0] instanceof GetGlobalInstr &&
+            instr.uses[0].uses[1] instanceof IRConst &&
+            instr.uses[0].uses[1].value === 'typeAssert')
+        {
+            var typeSet = typeGraph.getTypeSet(instr.uses[2]);
+            var test = instr.uses[3].value;
+
+            // Store the type assertion for later evaluation
+            this.typeAsserts.set(instr, { test:test, typeSet:typeSet });
+
+            // Skip this instruction
+            continue;
+        }
+
+        // If this the global get of a type assertion
+        if (instr instanceof GetGlobalInstr &&
+            instr.uses[1].value === 'typeAssert')
+        {
+            // Skip this instruction
+            continue;
+        }
+
         if (this.verbose === true)
+        {
             print(instr);
+        }
 
         // For each use of the instruction
         for (var j = 0; j < instr.uses.length; ++j)
@@ -424,12 +456,10 @@ TypeProp.prototype.iterate = function ()
             );
 
             if (this.verbose === true)
-            {
                 print(use.getValName() + ' : ' + useType);
 
-                // Store the last seen type set for this use
-                this.typeSets.set({ instr: instr, idx: j }, useType);
-            }
+            // Store the last seen type set for this use
+            this.typeSets.set({ instr: instr, idx: j }, useType);
         }
 
         // Process the instruction
@@ -563,25 +593,19 @@ TypeProp.prototype.setInput = function (
         // Exclude this value from the successor merge
         typeGraph.remVar(val);
 
-        // FIXME: no mergeVal implemented
-
         // Merge the normal branch type
-        normalMap = ta.blockGraphs.get(this.targets[0]);
-        var newNormMap = normalMap.mergeVal(val, normalType);
-        if (newNormMap.equal(normalMap) === false)
-        {
-            ta.blockGraphs.set(this.targets[0], newNormMap);
+        normalMap = ta.blockGraphs.get(instr.targets[0]);
+        var typeSet = normalMap.getTypeSet(val);
+        var newTypeSet = typeSet.union(normalType);
+        if (typeSet.equal(newTypeSet) === false)
             ta.queueBlock(instr.targets[0]);
-        }
 
         // Merge the exception branch type
         exceptMap = ta.blockGraphs.get(this.targets[1]);
-        var newExcMap = exceptMap.mergeVal(val, exceptType);
-        if (newExcMap.equal(exceptMap) === false)
-        {
-            ta.blockGraphs.set(this.targets[1], newExcMap);
+        var typeSet = exceptMap.getTypeSet(val);
+        var newTypeSet = typeSet.union(normalType);
+        if (typeSet.equal(newTypeSet) === false)
             ta.queueBlock(instr.targets[1]);
-        }
     }
 }
 
@@ -695,7 +719,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             var propNode = obj.getPropNode(propName);
 
             // Assign the value type set to the property
-            if (obj.isSingleton === true)
+            if (obj.isSingleton() === true)
                 typeGraph.assignTypes(propNode, valSet);
             else
                 typeGraph.unionTypes(propNode, valSet);
@@ -793,10 +817,11 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
         );
     }
 
+    // TODO: addition of string + int, etc., string conversion
     else if (t0.flags === TypeFlags.STRING || t1.flags === TypeFlags.STRING)
     {
-        var t0Str = t0.stringVal();
-        var t1Str = t1.stringVal();
+        var t0Str = t0.strVal;
+        var t1Str = t1.strVal;
 
         var newStr = (t0Str && t1Str)? (t0Str + t1Str):undefined;
 
@@ -919,6 +944,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 
         ta.setOutput(typeGraph, this, TypeSet.any);
 
+        // Don't stop the inference for this block
         return false;
     }
 
@@ -1086,14 +1112,21 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
             var funcRetType = newGraph.getTypeSet(funcInfo.retNode);
             newGraph.assignTypes(callInstr, funcRetType);
 
-            var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+            // If there is a call continuation block
+            if (callInstr.targets[0] instanceof BasicBlock)
+            {
+                // Use the continuation target
+                var contDesc = new BlockDesc(callInstr.targets[0]);
+            }
+            else
+            {
+                // The continuation is the rest of the caller block
+                var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+            }
 
             // Queue the continuation block for analysis
             ta.setTypeGraph(contDesc, newGraph);
             ta.queueBlock(contDesc);
-
-            // FIXME
-            // TODO: handle exception edges
         }
     }
 }
@@ -1141,4 +1174,8 @@ JumpInstr.prototype.typeProp = function (ta, typeGraph)
 {
     ta.succMerge(this.targets[0], typeGraph);
 }
+
+// TODO
+// TODO: throw, must merge with all possible catch points
+// TODO
 
