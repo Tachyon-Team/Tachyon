@@ -379,26 +379,34 @@ TypeSet.prototype.toString = function ()
         addType('true');
     if (this.flags & TypeFlags.FALSE)
         addType('false');
+    if (this.flags & TypeFlags.INT)
+        addType('int');
+    if (this.flags & TypeFlags.FLOAT)
+        addType('float');
+    if (this.flags & TypeFlags.STRING)
+        addType('string');
+    if (this.flags & TypeFlags.OBJECT)
+        addType('object');
+    if (this.flags & TypeFlags.ARRAY)
+        addType('array');
+    if (this.flags & TypeFlags.FUNCTION)
+        addType('function');
 
-    // If the set includes numbers
-    if (this.flags & TypeFlags.INT || this.flags & TypeFlags.FLOAT)
+    // If a range is defined
+    if (this.rangeMin !== -Infinity || this.rangeMax !== Infinity)
     {
-        var numStr = (this.flags & TypeFlags.FLOAT)? 'fp':'int';
+        var numStr = '';
 
-        if (this.rangeMin === -Infinity && this.rangeMax === Infinity)
+        if (this.rangeMin === this.rangeMax)
         {
-            // Add no range information
-        }
-        else if (this.rangeMin === this.rangeMax)
-        {
-            numStr += ':' + this.rangeMin;
+            numStr += this.rangeMin;
         }
         else
         {
             if (this.rangeMin === -Infinity)
-                numStr += ':]-inf,';
+                numStr += ']-inf,';
             else
-                numStr += ':[' + this.rangeMin + ',';
+                numStr += '[' + this.rangeMin + ',';
 
             if (this.rangeMax === Infinity)
                 numStr += "+inf[";
@@ -410,25 +418,13 @@ TypeSet.prototype.toString = function ()
     }
 
     // If a string constant is defined
-    if (this.flags & TypeFlags.STRING)
+    if (this.strVal !== undefined)
     {
-        addType(
-            'string' + 
-            ((this.strVal !== undefined)? (':"' + this.strVal + '"'):'')
-        );
+        addType('"' + this.strVal + '"');
     }
 
-    // If the object set is empty
-    if (this.objSet === undefined || this.objSet.length === 0)
-    {
-        if (this.flags & TypeFlags.OBJECT)
-            addType('object');
-        if (this.flags & TypeFlags.ARRAY)
-            addType('array');
-        if (this.flags & TypeFlags.FUNCTION)
-            addType('function');
-    }
-    else
+    // If the object set is not empty
+    if (this.objSet !== undefined && this.objSet.length !== 0)
     {
         // For each possible object
         for (var itr = this.objSet.getItr(); itr.valid(); itr.next())
@@ -846,6 +842,8 @@ TypeGraph.prototype.merge = function (that)
 {
     var newGraph = this.copy();
 
+    //print('graph merge');
+
     for (nodeItr = that.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var edge = nodeItr.get();
@@ -855,6 +853,8 @@ TypeGraph.prototype.merge = function (that)
 
         newGraph.unionTypes(node, thatSet);
     }
+
+    //print('graph merge done');
 
     return newGraph;
 }
@@ -934,7 +934,10 @@ TypeGraph.prototype.getTypeSet = function (value)
             // If this is a property node and there is no type set,
             // the type of the property is undefined
             if (value instanceof TGProperty)
+            {
+                //print('UNDEF TYPE FOR PROP: ' + value);
                 return TypeSet.undef;
+            }
 
             // Return the empty type set
             return TypeSet.empty;

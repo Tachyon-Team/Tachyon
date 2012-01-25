@@ -48,7 +48,7 @@ tests.ta = tests.testSuite();
 /**
 Create a type prop unit test
 */
-TypeProp.makeTest = function (fileName, verbose)
+TypeProp.makeTest = function (fileList, verbose)
 {
     if (verbose === undefined)
         verbose = false;
@@ -57,22 +57,82 @@ TypeProp.makeTest = function (fileName, verbose)
     {
         const params = config.hostParams;
 
-        params.typeProp.testOnFile(fileName, verbose);
+        params.typeProp.testOnFile(fileList, verbose);
     }
 }
 
-tests.ta.global_add     = TypeProp.makeTest('programs/type_analysis/global_add.js'  , false);
-tests.ta.call_simple    = TypeProp.makeTest('programs/type_analysis/call_simple.js' , false);
-tests.ta.func_2ret      = TypeProp.makeTest('programs/type_analysis/func_2ret.js'   , false);
-tests.ta.func_2calls    = TypeProp.makeTest('programs/type_analysis/func_2calls.js' , false);
-tests.ta.func_calls     = TypeProp.makeTest('programs/type_analysis/func_calls.js'  , false);
-tests.ta.fib            = TypeProp.makeTest('programs/type_analysis/fib.js'         , false);
-tests.ta.loop_sum       = TypeProp.makeTest('programs/type_analysis/loop_sum.js'    , false);
-tests.ta.obj_simple     = TypeProp.makeTest('programs/type_analysis/obj_simple.js'  , false);
-tests.ta.linked_list    = TypeProp.makeTest('programs/type_analysis/linked_list.js' , false);
-tests.ta.cond_return    = TypeProp.makeTest('programs/type_analysis/cond_return.js' , false);
-tests.ta.cond_prop      = TypeProp.makeTest('programs/type_analysis/cond_prop.js'   , false);
-tests.ta.arr_simple     = TypeProp.makeTest('programs/type_analysis/arr_simple.js'  , false);
-tests.ta.obj_methods    = TypeProp.makeTest('programs/type_analysis/obj_methods.js' , false);
-tests.ta.obj_init       = TypeProp.makeTest('programs/type_analysis/obj_init.js'    , false);
+tests.ta.global_add = TypeProp.makeTest(
+    'programs/type_analysis/global_add.js',
+    false
+);
+
+tests.ta.call_simple = TypeProp.makeTest(
+    'programs/type_analysis/call_simple.js', 
+    false
+);
+
+tests.ta.func_2ret = TypeProp.makeTest(
+    'programs/type_analysis/func_2ret.js', 
+    false
+);
+
+tests.ta.func_2calls = TypeProp.makeTest(
+    'programs/type_analysis/func_2calls.js', 
+    false
+);
+
+tests.ta.func_calls = TypeProp.makeTest(
+    'programs/type_analysis/func_calls.js', 
+    false
+);
+
+tests.ta.fib = TypeProp.makeTest(
+    'programs/type_analysis/fib.js', 
+    false
+);
+
+tests.ta.loop_sum = TypeProp.makeTest(
+    'programs/type_analysis/loop_sum.js',
+    false
+);
+
+tests.ta.obj_simple = TypeProp.makeTest(
+    'programs/type_analysis/obj_simple.js', 
+    false
+);
+
+tests.ta.linked_list = TypeProp.makeTest(
+    'programs/type_analysis/linked_list.js',
+    false
+);
+
+tests.ta.cond_return = TypeProp.makeTest(
+    'programs/type_analysis/cond_return.js', 
+    false
+);
+
+tests.ta.cond_prop = TypeProp.makeTest(
+    'programs/type_analysis/cond_prop.js', 
+    false
+);
+
+tests.ta.cond_global = TypeProp.makeTest(
+    'programs/type_analysis/cond_global.js', 
+    false
+);
+
+tests.ta.arr_simple = TypeProp.makeTest(
+    'programs/type_analysis/arr_simple.js', 
+    false
+);
+
+tests.ta.obj_methods = TypeProp.makeTest(
+    'programs/type_analysis/obj_methods.js',
+    false
+);
+
+tests.ta.obj_init = TypeProp.makeTest(
+    'programs/type_analysis/obj_init.js',
+    false
+);
 

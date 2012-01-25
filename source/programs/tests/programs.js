@@ -1295,6 +1295,12 @@ tests.programs.type_analysis.cond_prop = genTest(
     [],
     0
 );
+tests.programs.type_analysis.cond_global = genTest(
+    'programs/type_analysis/cond_global.js',
+    'test',
+    [],
+    0
+);
 tests.programs.type_analysis.arr_simple = genTest(
     'programs/type_analysis/arr_simple.js'
 );

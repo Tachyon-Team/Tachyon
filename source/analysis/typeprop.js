@@ -203,12 +203,6 @@ TypeProp.prototype.getTypeGraph = function (blockDesc)
 
     var graph = this.blockGraphs.get(blockDesc);
 
-    if (graph === HashMap.NOT_FOUND)
-    {
-        graph = new TypeGraph();
-        this.blockGraphs.set(blockDesc, graph);
-    }
-
     return graph;
 }
 
@@ -494,7 +488,7 @@ TypeProp.prototype.succMerge = function (succ, predGraph)
     var succDesc = new BlockDesc(succ);
 
     // Get the type map for the successor
-    var succGraph = this.blockGraphs.get(succDesc);
+    var succGraph = this.getTypeGraph(succDesc);
 
     // If the successor has no type graph yet
     if (succGraph === HashMap.NOT_FOUND)
@@ -594,14 +588,14 @@ TypeProp.prototype.setInput = function (
         typeGraph.remVar(val);
 
         // Merge the normal branch type
-        normalMap = ta.blockGraphs.get(instr.targets[0]);
+        normalMap = ta.getTypeGraph(instr.targets[0]);
         var typeSet = normalMap.getTypeSet(val);
         var newTypeSet = typeSet.union(normalType);
         if (typeSet.equal(newTypeSet) === false)
             ta.queueBlock(instr.targets[0]);
 
         // Merge the exception branch type
-        exceptMap = ta.blockGraphs.get(this.targets[1]);
+        exceptMap = ta.getTypeGraph(this.targets[1]);
         var typeSet = exceptMap.getTypeSet(val);
         var newTypeSet = typeSet.union(normalType);
         if (typeSet.equal(newTypeSet) === false)
@@ -719,7 +713,9 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             var propNode = obj.getPropNode(propName);
 
             // Assign the value type set to the property
-            if (obj.isSingleton() === true)
+            if ((obj.origin.parentBlock === this.parentBlock && 
+                 this.uses[0] === obj.origin) ||
+                obj.isSingleton() === true)
                 typeGraph.assignTypes(propNode, valSet);
             else
                 typeGraph.unionTypes(propNode, valSet);
@@ -986,15 +982,19 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         // Get the type graph at the function entry
         var entryGraph = ta.getTypeGraph(entryDesc);
 
+        // Merge the entry graph with the current type graph
+        if (entryGraph === HashMap.NOT_FOUND)
+            var newGraph = typeGraph.copy();
+        else
+            var newGraph = entryGraph.merge(typeGraph);
+
         // Restrict the callee type to functions
         var newCalleeType = calleeSet.restrict(TypeFlags.FUNCTION);        
-        entryGraph.assignTypes(this.uses[0], newCalleeType);
-
-        // Merge the entry graph with the current type graph
-        var newGraph = entryGraph.merge(typeGraph);
+        newGraph.assignTypes(this.uses[0], newCalleeType);
 
         // If the graph changed
-        if (newGraph.equal(entryGraph) === false)
+        if (entryGraph === HashMap.NOT_FOUND || 
+            newGraph.equal(entryGraph) === false)
         {
             // Update the entry graph
             ta.setTypeGraph(entryDesc, newGraph);

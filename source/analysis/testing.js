@@ -53,6 +53,9 @@ Test type analysis on a source file
 */
 TypeProp.prototype.testOnFile = function (fileName, verbose)
 {
+    // TODO: change fileName to fileList
+
+
     // Check the verbose flag
     var oldVerbose = this.verbose;
     this.verbose = (verbose === true);
@@ -160,7 +163,7 @@ TypeProp.prototype.dumpClasses = function ()
         if (obj.origin instanceof IRFunction)
             continue;
 
-        print('object (' + obj.origin + ')');
+        print('object <' + obj.origin + '>');
         print('{');
 
         var protoType = typeGraph.getTypeSet(obj.proto);
@@ -281,7 +284,7 @@ TypeProp.prototype.evalTypeAsserts = function ()
             var flag = TypeFlags[expr.toUpperCase()];
 
             assert (
-                flag !== undefined,
+                typeof flag === 'number',
                 'invalid flag name: "' + expr + '"'
             );
 
@@ -317,8 +320,8 @@ TypeProp.prototype.evalTypeAsserts = function ()
             if (expr[0] === 'and')
             {
                 var r = true;
-                for (var i = 1; i < numArgs; ++i)
-                    r = r && evalExpr(expr[1], set);
+                for (var i = 1; i <= numArgs; ++i)
+                    r = r && evalExpr(expr[i], set);
 
                 return r;
             }
@@ -327,8 +330,8 @@ TypeProp.prototype.evalTypeAsserts = function ()
             if (expr[0] === 'or')
             {
                 var r = false;
-                for (var i = 1; i < numArgs; ++i)
-                    r = r || evalExpr(expr[1], set);
+                for (var i = 1; i <= numArgs; ++i)
+                    r = r || evalExpr(expr[i], set);
 
                 return r;
             }

@@ -12,7 +12,11 @@ function foo(n)
 
 function test()
 {
-    if (foo(3).d !== true)
+    var o = foo(3);
+
+    typeAssert(o.d, '["and", "true", ["not", "int"]]');
+
+    if (o.d !== true)
         return 1;
 
     return 0;

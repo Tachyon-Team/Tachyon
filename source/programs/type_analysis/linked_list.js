@@ -1,12 +1,14 @@
 var list = null;
 
+typeAssert(list, '["and", "null", ["not", "undef"]]');
+
 function linkValue(value)
 {
     typeAssert(value, '"int"');
 
     list = { value: value, next: list };
 
-    typeAssert(list.next, '["or", "null", "object"]');
+    typeAssert(list.next, '["and", "null", "object"]');
 }
 
 function sumValues()
@@ -15,7 +17,7 @@ function sumValues()
 
     for (var node = list; node !== null; node = node.next)
     {
-        typeAssert(node.value, '"int"');
+        typeAssert(node.value, '["and", "int", [">=", 1]]');
 
         sum += node.value;
     }
@@ -26,6 +28,8 @@ function sumValues()
 function test()
 {
     var sum = sumValues();
+
+    typeAssert(sum, '"int"');
 
     if (sum !== 15)
         return 1;
@@ -40,4 +44,6 @@ linkValue(4);
 linkValue(5);
 
 test();
+
+typeAssert(list, '["and", "object", ["not", "null"], ["not", "undef"]]');
 

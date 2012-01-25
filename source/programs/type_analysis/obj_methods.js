@@ -24,3 +24,6 @@ o.incr();
 
 o.getCount();
 
+typeAssert(o, '["and", "object", ["not", "undef"]]');
+typeAssert(o.count, '"int"');
+
