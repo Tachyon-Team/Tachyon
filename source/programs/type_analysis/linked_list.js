@@ -2,7 +2,11 @@ var list = null;
 
 function linkValue(value)
 {
+    typeAssert(value, '"int"');
+
     list = { value: value, next: list };
+
+    typeAssert(list.next, '["or", "null", "object"]');
 }
 
 function sumValues()
@@ -10,7 +14,11 @@ function sumValues()
     var sum = 0;
 
     for (var node = list; node !== null; node = node.next)
-        sum += node.value;    
+    {
+        typeAssert(node.value, '"int"');
+
+        sum += node.value;
+    }
     
     return sum;
 }

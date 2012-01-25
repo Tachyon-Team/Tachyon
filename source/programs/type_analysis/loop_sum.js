@@ -7,6 +7,8 @@ function foo(n)
         sum += i;
     }
 
+    typeAssert(sum, '["and", "int", [">=", 0], ["not", "float"], ["not", "string"]]');
+
     return sum;
 }
 

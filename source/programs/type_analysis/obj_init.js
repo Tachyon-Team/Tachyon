@@ -16,3 +16,8 @@ function ctor()
 
 var o = ctor();
 
+typeAssert(o, '"object"');
+typeAssert(o.a, '["and", "int", ["not", "float"]]');
+typeAssert(o.b, '"string"');
+typeAssert(o.m, '"function"');
+

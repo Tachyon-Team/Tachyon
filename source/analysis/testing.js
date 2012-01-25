@@ -274,29 +274,95 @@ TypeProp.prototype.evalTypeAsserts = function ()
         );
     }
 
+    function evalExpr(expr, set)
+    {
+        if (typeof expr === 'string')
+        {
+            var flag = TypeFlags[expr.toUpperCase()];
+
+            assert (
+                flag !== undefined,
+                'invalid flag name: "' + expr + '"'
+            );
+
+            return (set.flags & flag) !== 0;
+        }
+
+        if (expr instanceof Array)
+        {
+            var numArgs = expr.length - 1;
+
+            // Value equality test
+            if (expr[0] === 'val' && numArgs === 1)
+            {
+                var val = expr[1];
+
+                if (typeof val === 'string')
+                    return (set.strVal === val);
+                if (typeof val === 'number')
+                    return (set.rangeMin === val && set.rangeMax === val);
+
+                error('invalid value in test');
+            }
+
+            // Greater-or-equal-to test
+            if (expr[0] === '>=' && typeof expr[1] === 'number' && numArgs === 1)
+            {
+                var val = expr[1];
+
+                return set.rangeMin >= val;
+            }
+
+            // Conjunction
+            if (expr[0] === 'and')
+            {
+                var r = true;
+                for (var i = 1; i < numArgs; ++i)
+                    r = r && evalExpr(expr[1], set);
+
+                return r;
+            }
+
+            // Disjunction
+            if (expr[0] === 'or')
+            {
+                var r = false;
+                for (var i = 1; i < numArgs; ++i)
+                    r = r || evalExpr(expr[1], set);
+
+                return r;
+            }
+
+            // Negation
+            if (expr[0] === 'not' && numArgs === 1)
+            {
+                return !evalExpr(expr[1], set);
+            }
+
+            error('invalid type test operator: ' + expr[0]);
+        }
+
+        error ('invalid type expr type');
+    }
+
     // For each type assertion
     for (var itr = this.typeAsserts.getItr(); itr.valid(); itr.next())
     {
         var desc = itr.get().value;
-        var test = desc.test;
+
         var set = desc.typeSet;
 
-
-        // TODO: parse type assert
-
-
+        // Parse the test expression
+        var testExpr = JSON.parse(desc.test);
 
         if (set.flags === TypeFlags.ANY)
             fail(desc, 'type set is any');
 
+        // Evaluate the expression
+        var r = evalExpr(testExpr, set);
 
-
-
-
-
-
-
-
+        if (r !== true)
+            fail(desc, 'test failed');
     }
 }
 

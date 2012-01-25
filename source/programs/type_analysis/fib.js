@@ -8,7 +8,11 @@ function fib(n)
 
 function test()
 {
-    if (fib(6) !== 8)
+    var r = fib(6);
+
+    typeAssert(r, '["and", "int", ["not", "float"], ["not", "string"]]');
+
+    if (r !== 8)
         return 1;
 
     return 0;
