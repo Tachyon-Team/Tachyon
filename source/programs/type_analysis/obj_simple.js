@@ -14,7 +14,7 @@ function bar(o)
 
 function test()
 {
-    var o = foo(3)
+    var o = foo(3);
 
     typeAssert(o.a, '["and", "int", ["val", 1], ["not", "undef"]]');
     typeAssert(o.b, '["and", "true", ["not", "undef"]]');

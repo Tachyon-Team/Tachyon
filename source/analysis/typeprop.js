@@ -162,7 +162,7 @@ TypeProp.prototype.init = function ()
     this.funcInfo = new HashMap();
 
     /**
-    Ordered list of unit-level functions to be analyzed
+    Ordered list of unit-level functions (func info objects) to be analyzed
     */
     this.unitList = [];
 
@@ -305,32 +305,42 @@ TypeProp.prototype.queueFunc = function (irFunc)
 }
 
 /**
-Queue a unit-level function to be analyzed
+Add a code unit to the analysis
 */
-TypeProp.prototype.queueUnit = function (ir)
+TypeProp.prototype.addUnit = function (ir)
 {
     assert (
         ir.astNode instanceof Program,
         'IR object is not unit-level function'
     );
 
-    // TODO: prev/next unit?
-
     // Get the info object for this function
     var funcInfo = this.getFuncInfo(ir);
 
-    // FIXME: multiple unit handling
-    // Set the type graph at the unit entry
-    var entry = funcInfo.entry;
-    this.setTypeGraph(new BlockDesc(entry), this.initGraph);
+    assert (
+        this.unitList.indexOf(funcInfo) === -1,
+        'unit already added'
+    );
 
-    // Queue the unit function to be analyzed
-    this.queueFunc(ir);
+    // If this is the first unit
+    if (this.unitList.length === 0)
+    {
+        // Set the type graph at the unit entry
+        var entry = funcInfo.entry;
+        this.setTypeGraph(new BlockDesc(entry), this.initGraph);
 
-    // Add the unit to the list of units to be analyzed
-    this.unitList.push(ir);
+        // Queue the unit function to be analyzed
+        this.queueFunc(ir);
+    }
+    else
+    {
+        // Set the next unit of the previous unit
+        var prevUnit = this.unitList[this.unitList.length - 1];
+        prevUnit.nextUnit = funcInfo;
+    }
 
-    // TODO: handle next unit
+    // Add the unit to the list of units
+    this.unitList.push(funcInfo);
 }
 
 /**
@@ -743,8 +753,6 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var outSet = new TypeSet();
-
     var objSet = typeGraph.getTypeSet(this.uses[0]);
     var nameSet = typeGraph.getTypeSet(this.uses[1]);
 
@@ -762,8 +770,14 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 
         var propName = nameSet.strVal;
 
+        // Initial output type set
+        if (objSet.flags & ~TypeFlags.OBJEXT)
+            var outSet = TypeSet.undef;
+        else
+            var outSet = new TypeSet();
+
         // For each possible object
-        for (objItr = objSet.objSet.getItr(); objItr.valid(); objItr.next())
+        for (objItr = objSet.getObjItr(); objItr.valid(); objItr.next())
         {
             var obj = objItr.get();
 
@@ -1100,34 +1114,53 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
         // Update the return graph
         funcInfo.retGraph = newGraph;
 
-        // For each caller
-        for (var i = 0; i < funcInfo.callerList.length; ++i)
+        // If this is a unit-level function
+        if (funcInfo.nextUnit !== undefined)
         {
-            var callInstr = funcInfo.callerList[i];
-            var callerBlock = callInstr.parentBlock;
+            // The continuation is the next unit's entry
+            var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
 
-            var instrIdx = callerBlock.instrs.indexOf(callInstr);
-
-            // Set the return type for the call instruction
-            var funcRetType = newGraph.getTypeSet(funcInfo.retNode);
-            newGraph.assignTypes(callInstr, funcRetType);
-
-            // If there is a call continuation block
-            if (callInstr.targets[0] instanceof BasicBlock)
-            {
-                // Use the continuation target
-                var contDesc = new BlockDesc(callInstr.targets[0]);
-            }
-            else
-            {
-                // The continuation is the rest of the caller block
-                var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
-            }
+            // Copy the type graph for the next unit
+            var nextGraph = typeGraph.copy();
 
             // Queue the continuation block for analysis
-            ta.setTypeGraph(contDesc, newGraph);
+            ta.setTypeGraph(contDesc, nextGraph);
             ta.queueBlock(contDesc);
         }
+
+        // Otherwise, this is a regular function
+        else
+        {
+            // For each caller
+            for (var i = 0; i < funcInfo.callerList.length; ++i)
+            {
+                var callInstr = funcInfo.callerList[i];
+                var callerBlock = callInstr.parentBlock;
+
+                var instrIdx = callerBlock.instrs.indexOf(callInstr);
+
+                // Set the return type for the call instruction
+                var funcRetType = newGraph.getTypeSet(funcInfo.retNode);
+                newGraph.assignTypes(callInstr, funcRetType);
+
+                // If there is a call continuation block
+                if (callInstr.targets[0] instanceof BasicBlock)
+                {
+                    // Use the continuation target
+                    var contDesc = new BlockDesc(callInstr.targets[0]);
+                }
+                else
+                {
+                    // The continuation is the rest of the caller block
+                    var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+                }
+
+                // Queue the continuation block for analysis
+                ta.setTypeGraph(contDesc, newGraph);
+                ta.queueBlock(contDesc);
+            }
+        }
+
     }
 }
 

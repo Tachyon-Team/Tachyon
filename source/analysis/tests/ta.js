@@ -121,6 +121,26 @@ tests.ta.cond_global = TypeProp.makeTest(
     false
 );
 
+tests.ta.cond_objs = TypeProp.makeTest(
+    'programs/type_analysis/cond_objs.js', 
+    false
+);
+
+tests.ta.cond_call = TypeProp.makeTest(
+    'programs/type_analysis/cond_call.js', 
+    false
+);
+
+tests.ta.cond_pass2 = TypeProp.makeTest(
+    'programs/type_analysis/cond_pass2.js',
+    false
+);
+
+tests.ta.cond_ret_obj = TypeProp.makeTest(
+    'programs/type_analysis/cond_ret_obj.js',
+    false
+);
+
 tests.ta.arr_simple = TypeProp.makeTest(
     'programs/type_analysis/arr_simple.js', 
     false
@@ -133,6 +153,14 @@ tests.ta.obj_methods = TypeProp.makeTest(
 
 tests.ta.obj_init = TypeProp.makeTest(
     'programs/type_analysis/obj_init.js',
+    false
+);
+
+tests.ta.multi_file = TypeProp.makeTest(
+    [
+        'programs/type_analysis/multi_file1.js',
+        'programs/type_analysis/multi_file2.js'
+    ],
     false
 );
 

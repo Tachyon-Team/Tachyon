@@ -1301,6 +1301,21 @@ tests.programs.type_analysis.cond_global = genTest(
     [],
     0
 );
+tests.programs.type_analysis.cond_objs = genTest(
+    'programs/type_analysis/cond_objs.js',
+    'test',
+    [],
+    0
+);
+tests.programs.type_analysis.cond_call = genTest(
+    'programs/type_analysis/cond_call.js'
+);
+tests.programs.type_analysis.cond_pass2 = genTest(
+    'programs/type_analysis/cond_pass2.js'
+);
+tests.programs.type_analysis.cond_ret_obj = genTest(
+    'programs/type_analysis/cond_ret_obj.js'
+);
 tests.programs.type_analysis.arr_simple = genTest(
     'programs/type_analysis/arr_simple.js'
 );
@@ -1309,6 +1324,12 @@ tests.programs.type_analysis.obj_methods = genTest(
 );
 tests.programs.type_analysis.obj_init = genTest(
     'programs/type_analysis/obj_init.js'
+);
+tests.programs.type_analysis.multi_file = genTest(
+    [
+        'programs/type_analysis/multi_file1.js',
+        'programs/type_analysis/multi_file2.js'
+    ]
 );
 
 /**

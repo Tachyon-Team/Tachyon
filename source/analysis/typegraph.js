@@ -647,7 +647,7 @@ TypeSet.prototype.restrict = function (flags)
         var objSet = new HashSet();
 
         // For each item in the object set
-        for (var itr = this.objSet.getItr(); itr.valid(); itr.next())
+        for (var itr = this.getObjItr(); itr.valid(); itr.next())
         {
             var obj = itr.get()
 

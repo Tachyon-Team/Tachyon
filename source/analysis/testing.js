@@ -49,36 +49,49 @@ Maxime Chevalier-Boisvert
 */
 
 /**
-Test type analysis on a source file
+Test type analysis on a source file or a list of source files
 */
-TypeProp.prototype.testOnFile = function (fileName, verbose)
+TypeProp.prototype.testOnFile = function (fileList, verbose)
 {
-    // TODO: change fileName to fileList
-
+    if (typeof fileList === 'string')
+        fileList = [fileList];
 
     // Check the verbose flag
     var oldVerbose = this.verbose;
     this.verbose = (verbose === true);
 
-    if (this.verbose === true)
-        print('Running type analysis on: "' + fileName + '"');
+    // Clear existing analysis results
+    this.init();
 
-    // Get the IR for this file
-    var ast = parse_src_file(fileName, this.params);
-    var ir = unitToIR(ast, this.params);
+    // For each file
+    for (var i = 0; i < fileList.length; ++i)
+    {
+        var fileName = fileList[i];
 
-    if (this.verbose === true)
-        print(ir);
+        if (this.verbose === true)
+            print('Running type analysis on: "' + fileName + '"');
+
+        // Get the IR for this file
+        var ast = parse_src_file(fileName, this.params);
+        var ir = unitToIR(ast, this.params);
+
+        if (this.verbose === true)
+            print(ir);
+
+        // Add the code unit to the analysis
+        this.addUnit(ir);
+    }
 
     // Start timing the analysis
     var startTimeMs = (new Date()).getTime();
 
-    // Clear existing analysis results
-    this.init();
-
-    // Analyze the code unit
-    this.queueUnit(ir);
+    // Run the analysis
     var itrCount = this.run();
+
+    assert (
+        itrCount >= fileList.length,
+        'less than one analysis iteration per code unit'
+    );
 
     // Stop the timing
     var endTimeMs = (new Date()).getTime();
@@ -153,7 +166,12 @@ TypeProp.prototype.dumpClasses = function ()
 {
     // Get the type graph for the return of the last unit analyzed
     var lastUnit = this.unitList[this.unitList.length-1];
-    var typeGraph = this.funcInfo.get(lastUnit).retGraph;
+    var typeGraph = lastUnit.retGraph;
+
+    assert (
+        typeGraph instanceof TypeGraph,
+        'no ret type graph for last unit'
+    );
 
     // For each class descriptor
     for (var itr = TGObject.objMap.getItr(); itr.valid(); itr.next())
@@ -162,6 +180,11 @@ TypeProp.prototype.dumpClasses = function ()
 
         if (obj.origin instanceof IRFunction)
             continue;
+
+        assert (
+            obj instanceof TGObject,
+            'invalid object: ' + obj
+        );
 
         print('object <' + obj.origin + '>');
         print('{');
