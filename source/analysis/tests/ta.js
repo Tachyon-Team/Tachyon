@@ -141,6 +141,11 @@ tests.ta.cond_ret_obj = TypeProp.makeTest(
     false
 );
 
+tests.ta.loop_cond_obj = TypeProp.makeTest(
+    'programs/type_analysis/loop_cond_obj.js',
+    false
+);
+
 tests.ta.arr_simple = TypeProp.makeTest(
     'programs/type_analysis/arr_simple.js', 
     false
@@ -153,6 +158,16 @@ tests.ta.obj_methods = TypeProp.makeTest(
 
 tests.ta.obj_init = TypeProp.makeTest(
     'programs/type_analysis/obj_init.js',
+    false
+);
+
+tests.ta.factory_2calls = TypeProp.makeTest(
+    'programs/type_analysis/factory_2calls.js',
+    false
+);
+
+tests.ta.factory_2paths = TypeProp.makeTest(
+    'programs/type_analysis/factory_2paths.js',
     false
 );
 
