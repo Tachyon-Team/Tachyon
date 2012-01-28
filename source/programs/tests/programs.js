@@ -1277,6 +1277,9 @@ tests.programs.type_analysis.obj_simple = genTest(
     [],
     0
 );
+tests.programs.type_analysis.get_undef = genTest(
+    'programs/type_analysis/get_undef.js'
+);
 tests.programs.type_analysis.linked_list = genTest(
     'programs/type_analysis/linked_list.js',
     'test',
@@ -1333,6 +1336,12 @@ tests.programs.type_analysis.factory_2calls = genTest(
 );
 tests.programs.type_analysis.factory_2paths = genTest(
     'programs/type_analysis/factory_2paths.js'
+);
+tests.programs.type_analysis.ctor_simple = genTest(
+    'programs/type_analysis/ctor_simple.js',
+    'test',
+    [],
+    0
 );
 tests.programs.type_analysis.multi_file = genTest(
     [

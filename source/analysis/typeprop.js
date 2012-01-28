@@ -768,13 +768,19 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (nameSet.flags !== TypeFlags.STRING || nameSet.strVal === undefined)
             throw '*WARNING: getProp with unknown property name:' + nameSet;
 
+        // If there are non-object bases
+        if (objSet.flags & 
+            ~(TypeFlags.OBJEXT | 
+              TypeFlags.UNDEF | 
+              TypeFlags.NULL)
+            )
+            throw '*WARNING: getProp with non-object base';
+
+        // Get the property name string
         var propName = nameSet.strVal;
 
-        // Initial output type set
-        if (objSet.flags & ~TypeFlags.OBJEXT)
-            var outSet = TypeSet.undef;
-        else
-            var outSet = new TypeSet();
+        // Output type set
+        var outSet = TypeSet.empty;
 
         // For each possible object
         for (objItr = objSet.getObjItr(); objItr.valid(); objItr.next())
@@ -943,11 +949,27 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var calleeSet = typeGraph.getTypeSet(this.uses[0]);
-    var thisSet = typeGraph.getTypeSet(this.uses[1]);
+    // Get the type set for the callee
+    var calleeType = typeGraph.getTypeSet(this.uses[0]);
+
+    // Test if this is a new/constructor call
+    var isNew = this instanceof JSNewInstr;
+
+    // If this is a regular function call
+    if (isNew === false)
+    {
+        // Get the this argument call
+        var thisType = typeGraph.getTypeSet(this.uses[1]);
+    }
+    else
+    {
+        // FIXME: eventually, need lookup on Function.prototype
+        // Create a new object to use as the this argument
+        var thisType = typeGraph.newObject(this, ta.objProto);
+    }
 
     // If the callee is unknown
-    if (calleeSet.flags & TypeFlags.any)
+    if (calleeType.flags & TypeFlags.any)
     {
         if (this.verbose === true)
             print('*WARNING: unknown callee');
@@ -959,7 +981,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     // For each potential callee
-    for (var itr = calleeSet.getObjItr(); itr.valid(); itr.next())
+    for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
     {
         var callee = itr.get();
 
@@ -975,16 +997,39 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         // Get the info object for this function
         var funcInfo = ta.getFuncInfo(func);
 
+        // Create a type set for this function only
+        var funcSet = new HashSet();
+        funcSet.add(callee);
+        var funcType = new TypeSet(
+            callee.flags, 
+            undefined, 
+            undefined, 
+            undefined, 
+            funcSet
+        );
+
         // For each argument
         for (var j = 0; j < funcInfo.argNodes.length; ++j)
         {
             var argNode = funcInfo.argNodes[j];
 
             // Get the incoming type for this argument
-            var argTypeSet = 
-                (j < this.uses.length)?
-                typeGraph.getTypeSet(this.uses[j]):
-                TypeSet.undef;
+            if (j === 0)
+            {
+                argTypeSet = funcType;
+            }
+            else if (j === 1)
+            {
+                argTypeSet = thisType;
+            }
+            else
+            {
+                var useIdx = (isNew === true)? (j-1):j;
+                argTypeSet =
+                    (j < this.uses.length)?
+                    typeGraph.getTypeSet(this.uses[useIdx]):
+                    TypeSet.undef;
+            }
 
             // Set the types for this argument in the current graph
             typeGraph.assignTypes(argNode, argTypeSet);
@@ -1003,7 +1048,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             var newGraph = entryGraph.merge(typeGraph);
 
         // Restrict the callee type to functions
-        var newCalleeType = calleeSet.restrict(TypeFlags.FUNCTION);        
+        var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
         newGraph.assignTypes(this.uses[0], newCalleeType);
 
         // If the graph changed
@@ -1028,6 +1073,10 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     // Stop the inference for this block
     return true;
 }
+
+// New/constructor call instruction
+// Handled by the same function as the regular call instruction
+JSNewInstr.prototype.typeProp = JSCallInstr.prototype.typeProp;
 
 // LIR call instruction
 CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
@@ -1137,11 +1186,41 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                 var callInstr = funcInfo.callerList[i];
                 var callerBlock = callInstr.parentBlock;
 
-                var instrIdx = callerBlock.instrs.indexOf(callInstr);
-
-                // Set the return type for the call instruction
+                // Get the function return type
                 var funcRetType = newGraph.getTypeSet(funcInfo.retNode);
-                newGraph.assignTypes(callInstr, funcRetType);
+
+                // If this is a regular call instruction
+                if (callInstr instanceof JSCallInstr)
+                {
+                    // Set the return type for the call instruction
+                    newGraph.assignTypes(callInstr, funcRetType);
+                }
+
+                // Otherwise, this is a constructor call
+                else
+                {
+                    var newType = TypeSet.empty;
+
+                    // If the return type may be undefined
+                    if (funcRetType.flags & TypeFlags.UNDEF)
+                    {
+                        // Union the this argument type
+                        var thisType = newGraph.getTypeSet(funcInfo.argNodes[1]);
+                        newType = newType.union(thisType);
+                    }
+
+                    // If the return type may be not undefined
+                    if (funcRetType.flags !== TypeFlags.UNDEF)
+                    {
+                        // Union all but undefined
+                        newType = newType.union(funcRetType.restrict(
+                            funcRetType.flags & ~TypeFlags.UNDEF
+                        ));
+                    }
+
+                    // Set the return type for the new instruction
+                    newGraph.assignTypes(callInstr, newType);
+                }
 
                 // If there is a call continuation block
                 if (callInstr.targets[0] instanceof BasicBlock)
@@ -1152,6 +1231,7 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                 else
                 {
                     // The continuation is the rest of the caller block
+                    var instrIdx = callerBlock.instrs.indexOf(callInstr);
                     var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
                 }
 
@@ -1160,16 +1240,7 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                 ta.queueBlock(contDesc);
             }
         }
-
     }
-}
-
-JSNewInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    // TODO: Want to get the 'this' type at the function output
-
-    // TODO
-    return ta.setOutput(typeGraph, this, TypeSet.any);
 }
 
 // If branching instruction

@@ -48,32 +48,6 @@ Implementation of type descriptors for the type analysis.
 Maxime Chevalier-Boisvert
 */
 
-/*
-Variable nodes for all SSA temps
-Variable nodes for object fields
-
-Singleton value nodes for constants
-
-Singleton value nodes for objects
-- Can have multiple instances for one creation site
-
-What about objects?
-- Can't be unique nodes because they can have different properties?
-- Could have node for object with sub-nodes for the fields?
-  - The object field is a variable***
-  - Variables point to possible values***
-
-Compression idea****
-- Could reuse whole edge sets for variable nodes
-- Copy outgoing edge sets on modification
-- Store only changed edge sets?
-- Could eventually have singleton edge sets
-
-Compression observations:
-1. Most nodes are variables. Most only need one edge set through their entire lifetime.
-- Nodes that only have one possible edge set need only be encoded in one location, never copied?
-*/
-
 /**
 @class Represents a variable in the type graph
 */

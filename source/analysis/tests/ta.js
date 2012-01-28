@@ -101,6 +101,11 @@ tests.ta.obj_simple = TypeProp.makeTest(
     false
 );
 
+tests.ta.get_undef = TypeProp.makeTest(
+    'programs/type_analysis/get_undef.js', 
+    false
+);
+
 tests.ta.linked_list = TypeProp.makeTest(
     'programs/type_analysis/linked_list.js',
     false
@@ -168,6 +173,11 @@ tests.ta.factory_2calls = TypeProp.makeTest(
 
 tests.ta.factory_2paths = TypeProp.makeTest(
     'programs/type_analysis/factory_2paths.js',
+    false
+);
+
+tests.ta.ctor_simple = TypeProp.makeTest(
+    'programs/type_analysis/ctor_simple.js',
     false
 );
 

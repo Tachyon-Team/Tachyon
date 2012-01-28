@@ -7,7 +7,22 @@ function bar(n)
         var a1 = {};
 
         if (n)
+        {
+            typeAssert(a1, '["and", "object", ["not", "undef"]]');
+
             var r = { a:a1 };
+
+            typeAssert(r.a, '["and", "object", ["not", "undef"]]');
+        }
+
+        /*
+        FIXME? test fails
+        r.a doesn't exist outside of the if statement
+        The type graph has no node for r.a
+
+        This is because the object r doesn't exist here... Its type set is empty.
+        */
+        //typeAssert(r.a, '["and", "object", ["not", "undef"]]');
 
         list[i] = a1;
     }
