@@ -899,6 +899,101 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
+JSMulInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    var t0 = typeGraph.getTypeSet(this.uses[0]);
+    var t1 = typeGraph.getTypeSet(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal;
+        minVal = t0.rangeMin * t1.rangeMin;
+        minVal = Math.min(minVal, t0.rangeMin * t1.rangeMax);
+        minVal = Math.min(minVal, t0.rangeMax * t1.rangeMin);
+
+        var maxVal;
+        maxVal = t0.rangeMax * t1.rangeMax;
+        maxVal = Math.max(maxVal, t0.rangeMin * t1.rangeMin);
+
+        outType = new TypeSet(
+            TypeFlags.INT,
+            minVal,
+            maxVal
+        );
+    }
+
+    else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
+             (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
+    {
+        outType = new TypeSet(TypeFlags.INT)
+    }
+
+    // By default
+    else
+    {
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+
+JSDivInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    var t0 = typeGraph.getTypeSet(this.uses[0]);
+    var t1 = typeGraph.getTypeSet(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal = 0;      
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            minVal = Math.min(t0.rangeMin / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            minVal = Math.min(t0.rangeMin / t1.rangeMax);
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            minVal = Math.min(t0.rangeMax / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            minVal = Math.min(t0.rangeMax / t1.rangeMax);
+
+        var maxVal;
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            maxVal = Math.max(t0.rangeMin / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            maxVal = Math.max(t0.rangeMin / t1.rangeMax);
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            maxVal = Math.max(t0.rangeMax / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            maxVal = Math.max(t0.rangeMax / t1.rangeMax);
+
+        var flags;
+        if (t0.rangeMin === t0.rangeMax && 
+            t1.rangeMin === t1.rangeMax &&
+            t0.rangeMin % t1.rangeMax === 0)
+            flags = TypeFlags.INT;
+        else
+            flags = TypeFlags.INT | TypeFlags.FLOAT;
+
+        outType = new TypeSet(
+            flags,
+            minVal,
+            maxVal
+        );
+    }
+
+    // By default
+    else
+    {
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+
 JSLtInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var v0 = typeGraph.getTypeSet(this.uses[0]);
