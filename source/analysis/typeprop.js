@@ -1003,6 +1003,7 @@ JSLtInstr.prototype.typeProp = function (ta, typeGraph)
     return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
 
+// Operator ==
 JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var v0 = typeGraph.getTypeSet(this.uses[0]);
@@ -1020,9 +1021,18 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
         outType = (v0.rangeMin === v1.rangeMin)? TypeSet.true:TypeSet.false;
     }
 
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal === v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
     // If both values are known booleans
-    else if ((v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
-             (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
+    else if (
+        (v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
+        (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
     {
         outType = (v0.flags === v1.flags)? TypeSet.true:TypeSet.false;
     }
@@ -1036,10 +1046,131 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
+// Operator ===
+JSSeInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    var v0 = typeGraph.getTypeSet(this.uses[0]);
+    var v1 = typeGraph.getTypeSet(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    // If both values are known integer constants
+    if (v0.flags === TypeFlags.INT &&
+        v1.flags === TypeFlags.INT &&
+        v0.rangeMin === v0.rangeMax &&
+        v1.rangeMin === v1.rangeMax)
+    {
+        outType = (v0.rangeMin === v1.rangeMin)? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal === v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known booleans
+    else if (
+        (v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
+        (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
+    {
+        outType = (v0.flags === v1.flags)? TypeSet.true:TypeSet.false;
+    }
+
+    // Otherwise, we know the output is boolean
+    else
+    {
+        outType = TypeSet.bool;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+
+// Operator !=
+JSNeInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    var v0 = typeGraph.getTypeSet(this.uses[0]);
+    var v1 = typeGraph.getTypeSet(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    // If the type flags are mutually exclusive,
+    // the values cannot be equal
+    if (v0.flags & v1.flags === 0)
+    {
+        outType = TypeSet.false;
+    }
+
+    // If both values are numbers
+    else if (
+        (v0.flags === TypeFlags.INT || v0.flags === TypeFlags.FLOAT) &&
+        (v1.flags === TypeFlags.INT || v1.flags === TypeFlags.FLOAT))
+    {
+        var excl = (v0.rangeMax < v1.rangeMin) || (v1.rangeMax < v0.rangeMin);
+        outType = excl? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    // Otherwise, we know the output is boolean
+    else
+    {
+        outType = TypeSet.bool;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+
+// Operator !==
 JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    // TODO:
-    return ta.setOutput(typeGraph, this, TypeSet.bool);
+    var v0 = typeGraph.getTypeSet(this.uses[0]);
+    var v1 = typeGraph.getTypeSet(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    // If the type flags are mutually exclusive,
+    // the values cannot be equal
+    if (v0.flags & v1.flags === 0)
+    {
+        outType = TypeSet.false;
+    }
+
+    // If both values are numbers
+    else if (
+        (v0.flags === TypeFlags.INT || v0.flags === TypeFlags.FLOAT) &&
+        (v1.flags === TypeFlags.INT || v1.flags === TypeFlags.FLOAT))
+    {
+        var excl = (v0.rangeMax < v1.rangeMin) || (v1.rangeMax < v0.rangeMin);
+        outType = excl? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    // Otherwise, we know the output is boolean
+    else
+    {
+        outType = TypeSet.bool;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
 }
 
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
