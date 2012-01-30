@@ -86,6 +86,11 @@ tests.ta.func_calls = TypeProp.makeTest(
     false
 );
 
+tests.ta.arith_simple = TypeProp.makeTest(
+    'programs/type_analysis/arith_simple.js', 
+    false
+);
+
 tests.ta.fib = TypeProp.makeTest(
     'programs/type_analysis/fib.js', 
     false
