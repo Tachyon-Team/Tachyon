@@ -181,6 +181,18 @@ tests.ta.factory_2paths = TypeProp.makeTest(
     false
 );
 
+tests.ta.factory_global = TypeProp.makeTest(
+    'programs/type_analysis/factory_global.js',
+    false
+);
+tests.ta.factory_cond = TypeProp.makeTest(
+    'programs/type_analysis/factory_cond.js',
+    false
+);
+tests.ta.factory_inc = TypeProp.makeTest(
+    'programs/type_analysis/factory_inc.js',
+    false
+);
 tests.ta.ctor_simple = TypeProp.makeTest(
     'programs/type_analysis/ctor_simple.js',
     false

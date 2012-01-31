@@ -1343,6 +1343,15 @@ tests.programs.type_analysis.factory_2calls = genTest(
 tests.programs.type_analysis.factory_2paths = genTest(
     'programs/type_analysis/factory_2paths.js'
 );
+tests.programs.type_analysis.factory_global = genTest(
+    'programs/type_analysis/factory_global.js'
+);
+tests.programs.type_analysis.factory_cond = genTest(
+    'programs/type_analysis/factory_cond.js'
+);
+tests.programs.type_analysis.factory_inc = genTest(
+    'programs/type_analysis/factory_inc.js'
+);
 tests.programs.type_analysis.ctor_simple = genTest(
     'programs/type_analysis/ctor_simple.js',
     'test',
