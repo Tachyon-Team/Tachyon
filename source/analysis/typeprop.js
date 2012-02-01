@@ -1102,7 +1102,7 @@ JSNeInstr.prototype.typeProp = function (ta, typeGraph)
     var v1 = typeGraph.getTypeSet(this.uses[1]);
 
     // Output type
-    var outType;
+    var outType = TypeSet.bool;
 
     // If the type flags are mutually exclusive,
     // the values cannot be equal
@@ -1111,13 +1111,20 @@ JSNeInstr.prototype.typeProp = function (ta, typeGraph)
         outType = TypeSet.false;
     }
 
-    // If both values are numbers
+    // If both values are numbers and their ranges are mutually exclusive
     else if (
         (v0.flags === TypeFlags.INT || v0.flags === TypeFlags.FLOAT) &&
         (v1.flags === TypeFlags.INT || v1.flags === TypeFlags.FLOAT))
     {
-        var excl = (v0.rangeMax < v1.rangeMin) || (v1.rangeMax < v0.rangeMin);
-        outType = excl? TypeSet.true:TypeSet.false;
+        // If the ranges are mutually exclusive
+        if (v0.rangeMax < v1.rangeMin || v1.rangeMax < v0.rangeMin)
+            outType = TypeSet.true;
+
+        // If the values are equal
+        else if (v0.rangeMin === v0.rangeMax && 
+                 v1.rangeMin === v1.rangeMax &&
+                 v0.rangeMin === v1.rangeMin)
+            outType = TypeSet.false;
     }
 
     // If both values are known strings
@@ -1126,12 +1133,6 @@ JSNeInstr.prototype.typeProp = function (ta, typeGraph)
         v0.strVal !== undefined && v1.strVal !== undefined)
     {
         outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
-    }
-
-    // Otherwise, we know the output is boolean
-    else
-    {
-        outType = TypeSet.bool;
     }
 
     ta.setOutput(typeGraph, this, outType);
@@ -1144,7 +1145,7 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
     var v1 = typeGraph.getTypeSet(this.uses[1]);
 
     // Output type
-    var outType;
+    var outType = TypeSet.bool;
 
     // If the type flags are mutually exclusive,
     // the values cannot be equal
@@ -1153,13 +1154,20 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
         outType = TypeSet.false;
     }
 
-    // If both values are numbers
+    // If both values are numbers and their ranges are mutually exclusive
     else if (
         (v0.flags === TypeFlags.INT || v0.flags === TypeFlags.FLOAT) &&
         (v1.flags === TypeFlags.INT || v1.flags === TypeFlags.FLOAT))
     {
-        var excl = (v0.rangeMax < v1.rangeMin) || (v1.rangeMax < v0.rangeMin);
-        outType = excl? TypeSet.true:TypeSet.false;
+        // If the ranges are mutually exclusive
+        if (v0.rangeMax < v1.rangeMin || v1.rangeMax < v0.rangeMin)
+            outType = TypeSet.true;
+
+        // If the values are equal
+        else if (v0.rangeMin === v0.rangeMax && 
+                 v1.rangeMin === v1.rangeMax &&
+                 v0.rangeMin === v1.rangeMin)
+            outType = TypeSet.false;
     }
 
     // If both values are known strings
@@ -1168,12 +1176,6 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
         v0.strVal !== undefined && v1.strVal !== undefined)
     {
         outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
-    }
-
-    // Otherwise, we know the output is boolean
-    else
-    {
-        outType = TypeSet.bool;
     }
 
     ta.setOutput(typeGraph, this, outType);
@@ -1484,9 +1486,13 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
 
     var instr = this;
 
-    // Function to merge a value in a given successor block
+    // Function to merge a value type in a given successor block
     function mergeVal(val, type, target)
     {
+        // If this is a constant, do nothing
+        if (val instanceof IRConst)
+            return;
+
         // Remove the left value from the normal merge
         typeGraph.remVar(val);
 

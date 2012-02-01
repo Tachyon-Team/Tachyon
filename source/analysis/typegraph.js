@@ -784,7 +784,7 @@ TypeGraph.prototype.remVar = function (varNode)
     assert (
         varNode instanceof TGVariable ||
         varNode instanceof IRInstr,
-        'invalid var node'
+        'invalid var node: ' + varNode
     );
 
     this.varMap.rem(varNode);
