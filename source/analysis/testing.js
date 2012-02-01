@@ -335,8 +335,14 @@ TypeProp.prototype.evalTypeAsserts = function ()
             if (expr[0] === '>=' && typeof expr[1] === 'number' && numArgs === 1)
             {
                 var val = expr[1];
-
                 return set.rangeMin >= val;
+            }
+
+            // Less-or-equal-to test
+            if (expr[0] === '<=' && typeof expr[1] === 'number' && numArgs === 1)
+            {
+                var val = expr[1];
+                return set.rangeMax <= val;
             }
 
             // Conjunction

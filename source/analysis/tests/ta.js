@@ -91,6 +91,11 @@ tests.ta.arith_simple = TypeProp.makeTest(
     false
 );
 
+tests.ta.cmp_simple = TypeProp.makeTest(
+    'programs/type_analysis/cmp_simple.js', 
+    false
+);
+
 tests.ta.fib = TypeProp.makeTest(
     'programs/type_analysis/fib.js', 
     false

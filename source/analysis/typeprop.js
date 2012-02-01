@@ -504,7 +504,7 @@ TypeProp.prototype.succMerge = function (succ, predGraph)
     if (succGraph === HashMap.NOT_FOUND)
     {
         // Pass a copy of the predecessor map to the successor
-        this.blockGraphs.set(succDesc, predGraph.copy());
+        this.setTypeGraph(succDesc, predGraph.copy());
 
         // Queue the successor for analysis
         this.queueBlock(succDesc);
@@ -598,18 +598,24 @@ TypeProp.prototype.setInput = function (
         typeGraph.remVar(val);
 
         // Merge the normal branch type
-        normalMap = ta.getTypeGraph(instr.targets[0]);
+        var normalMap = ta.getTypeGraph(instr.targets[0]);
         var typeSet = normalMap.getTypeSet(val);
         var newTypeSet = typeSet.union(normalType);
         if (typeSet.equal(newTypeSet) === false)
+        {
+            normalMap.assignType(val, newTypeSet);
             ta.queueBlock(instr.targets[0]);
+        }
 
         // Merge the exception branch type
-        exceptMap = ta.getTypeGraph(this.targets[1]);
+        var exceptMap = ta.getTypeGraph(this.targets[1]);
         var typeSet = exceptMap.getTypeSet(val);
         var newTypeSet = typeSet.union(normalType);
         if (typeSet.equal(newTypeSet) === false)
+        {
+            exceptMap.assignType(val, newTypeSet);
             ta.queueBlock(instr.targets[1]);
+        }
     }
 }
 
@@ -1476,28 +1482,114 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
     var v1 = typeGraph.getTypeSet(this.uses[1]);
     var v2 = (this.uses.length > 2)? typeGraph.getTypeSet(this.uses[1]):undefined;
 
-    // Function to handle the known branching side case
     var instr = this;
-    function knownBranch(boolVal)
+
+    // Function to merge a value in a given successor block
+    function mergeVal(val, type, target)
     {
-        var target = instr.targets[(boolVal === true)? 0:1];
-        ta.succMerge(target, typeGraph);
+        // Remove the left value from the normal merge
+        typeGraph.remVar(val);
+
+        // Get the target block graph
+        var targetDesc = new BlockDesc(target);
+        var targetGraph = ta.getTypeGraph(targetDesc);
+
+        // If the successor has no type graph yet
+        if (targetGraph === HashMap.NOT_FOUND)
+        {
+            // Pass a copy of the predecessor graph to the successor
+            var targetGraph = typeGraph.copy();
+            ta.setTypeGraph(targetDesc, targetGraph);
+        }
+
+        var curType = targetGraph.getTypeSet(val);
+        var mergedType = curType.union(type);
+
+        // If the type changed
+        if (curType.equal(mergedType) === false)
+        {
+            targetGraph.unionTypes(val, mergedType);
+            ta.queueBlock(targetDesc);
+        }
     }
 
+    // Function to handle the successor queuing for a given branch
+    function mergeSuccs(boolVal)
+    {
+        var trueTarget = instr.targets[0];
+        var falseTarget = instr.targets[1];
+
+        // If we can potentially narrow the comparison input types
+        if (instr.testOp === 'EQ' && 
+            v1.flags === TypeFlags.TRUE &&
+            instr.uses[0] instanceof JSCompInstr)
+        {
+            var compInstr = instr.uses[0];
+
+            var lVal = compInstr.uses[0];
+            var rVal = compInstr.uses[1];
+
+            var lType = typeGraph.getTypeSet(lVal);
+            var rType = typeGraph.getTypeSet(rVal);
+
+            var trueLType = lType;
+            var falseLType = rType;
+            
+            // Less-than comparison
+            if (compInstr instanceof JSLtInstr)
+            {
+                //print(lType + ' < ' + rType);
+
+                // If both values are integer
+                if (lType.flags === TypeFlags.INT && rType.flags === TypeFlags.INT)
+                {
+                    // lVal < rVal
+                    var rangeMax = Math.min(lType.rangeMax, rType.rangeMin - 1);
+                    var rangeMin = Math.min(lType.rangeMin, rangeMax);
+                    var trueLType = new TypeSet(
+                        TypeFlags.INT,
+                        rangeMin,
+                        rangeMax
+                    );
+
+                    // lVal >= rVal
+                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMax);
+                    var rangeMax = Math.max(lType.rangeMax, rangeMin);
+                    var falseLType = new TypeSet(
+                        TypeFlags.INT,
+                        rangeMin,
+                        rangeMax
+                    );
+                }
+            }
+
+            if (boolVal === true || boolVal === undefined)
+                mergeVal(lVal, trueLType, trueTarget);
+            if (boolVal === false || boolVal === undefined)
+                mergeVal(lVal, falseLType, falseTarget);
+        }
+
+        // Merge with the successor blocks
+        if (boolVal === true || boolVal === undefined)
+            ta.succMerge(trueTarget, typeGraph);
+        if (boolVal === false || boolVal === undefined)
+            ta.succMerge(falseTarget, typeGraph);
+    }
+
+    // If this is an equality comparison
     if (this.testOp === 'EQ')
     {
         if ((v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE) ||
             (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE))
-            return knownBranch(true);
+            return mergeSuccs(true);
 
         if ((v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE) ||
             (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE))
-            return knownBranch(false);
+            return mergeSuccs(false);
     }
 
-    // Merge with all possible branch targets
-    for (var i = 0; i < this.targets.length; ++i)
-        ta.succMerge(this.targets[i], typeGraph);
+    // Merge with both possible branch targets
+    mergeSuccs();
 }
 
 JumpInstr.prototype.typeProp = function (ta, typeGraph)

@@ -1265,6 +1265,12 @@ tests.programs.type_analysis.arith_simple = genTest(
     [],
     0
 );
+tests.programs.type_analysis.cmp_simple = genTest(
+    'programs/type_analysis/cmp_simple.js',
+    'test',
+    [],
+    0
+);
 tests.programs.type_analysis.fib = genTest(
     'programs/type_analysis/fib.js',
     'test',
