@@ -211,3 +211,11 @@ tests.ta.multi_file = TypeProp.makeTest(
     false
 );
 
+tests.ta['access-binary-trees'] = TypeProp.makeTest(
+    'programs/sunspider/access-binary-trees.js',
+    false
+);
+
+// TODO: v8bench/richards.js
+// Will need driver to call into it
+

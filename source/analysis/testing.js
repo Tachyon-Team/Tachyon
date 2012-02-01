@@ -218,10 +218,24 @@ TypeProp.prototype.compTypeStats = function ()
     var numObjOnly = 0;
     var numKnownObj = 0;
     var maxNumObjs = 0;
+    var numGetProp = 0;
+    var numGetObj = 0;
+    var numArithOp = 0;
+    var numArithKnown = 0;
 
     // Accumulate stats for one type set occurrence
-    function accumStats(set)
+    function accumStats(instr, useIdx, set)
     {
+        assert (
+            instr instanceof IRInstr,
+            'invalid instruction'
+        );
+
+        assert (
+            typeof useIdx === 'number',
+            'invalid use index'
+        );
+
         var flags = set.flags;
 
         var numObjs = set.objSet? set.objSet.length:0;
@@ -263,15 +277,47 @@ TypeProp.prototype.compTypeStats = function ()
         if (flags === TypeFlags.OBJECT && numObjs === 1)
             numKnownObj += 1;
 
+        if (instr instanceof GetPropInstr && useIdx === 0)
+        {
+            numGetProp += 1;
+            if (set.flags === TypeFlags.OBJECT)
+                numGetObj += 1;
+        }
+
+        if (instr instanceof JSArithInstr)
+        {
+            numArithOp += 1;
+            if (set.flags === TypeFlags.INT ||
+                set.flags === TypeFlags.FLOAT ||
+                set.flags === TypeFlags.STRING)
+                numArithKnown += 1;
+        }
+
         maxNumObjs = Math.max(maxNumObjs, numObjs);
     }
 
     // Accumulate statistics for each use type set seen
     for (var itr = this.typeSets.getItr(); itr.valid(); itr.next())
     {
-        var typeSet = itr.get().value;
-        accumStats(typeSet);
+        var pair = itr.get();
+
+        var instr = pair.key.instr;
+        var useIdx = pair.key.idx;
+        var typeSet = pair.value;
+
+        accumStats(instr, useIdx, typeSet);
     }
+
+    function compPercent(num, denom)
+    {
+        if (denom === 0)
+            return 'N/A';
+
+        return Number(100 * num / denom).toFixed(0) + '%';
+    }
+
+    var perGetObj = compPercent(numGetObj, numGetProp);
+    var perArithKnown = compPercent(numArithKnown, numArithOp);
 
     print('Num type sets    : ' + numSets);
     print('Num any type     : ' + numAny);
@@ -282,6 +328,8 @@ TypeProp.prototype.compTypeStats = function ()
     print('Num obj. only    : ' + numObjOnly);
     print('Num known obj.   : ' + numKnownObj);
     print('Max num objs.    : ' + maxNumObjs);
+    print('Get prop obj only: ' + perGetObj + ' (' + numGetObj + ')');
+    print('Arith opnds known: ' + perArithKnown + ' (' + numArithKnown + ')');
 
     print('');
 }

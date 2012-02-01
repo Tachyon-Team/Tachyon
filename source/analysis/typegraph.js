@@ -714,6 +714,11 @@ Boolean type descriptor
 TypeSet.bool = new TypeSet(TypeFlags.TRUE | TypeFlags.FALSE);
 
 /**
+Boolean type descriptor
+*/
+TypeSet.integer = new TypeSet(TypeFlags.INT);
+
+/**
 String type descriptor
 */
 TypeSet.string = new TypeSet(TypeFlags.STRING);

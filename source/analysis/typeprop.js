@@ -469,8 +469,8 @@ TypeProp.prototype.iterate = function ()
         // Process the instruction
         var ret = instr.typeProp(this, typeGraph);
 
-        // If this is a call instruction and callees were found
-        if (instr instanceof JSCallInstr && ret === true)
+        // If this is a call/new instruction and callees were found
+        if ((instr instanceof JSCallInstr || instr instanceof JSNewInstr) && ret === true)
         {
             if (this.verbose === true)
                 print('stopping block inference');
@@ -1000,12 +1000,27 @@ JSDivInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
-JSLtInstr.prototype.typeProp = function (ta, typeGraph)
+JSLsftInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    ta.setOutput(typeGraph, this, TypeSet.integer);
+}
+
+JSRsftInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    ta.setOutput(typeGraph, this, TypeSet.integer);
+}
+
+JSUrsftInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    ta.setOutput(typeGraph, this, TypeSet.integer);
+}
+
+// Comparison operator base class
+JSCompInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var v0 = typeGraph.getTypeSet(this.uses[0]);
     var v1 = typeGraph.getTypeSet(this.uses[1]);
 
-    // TODO:
     return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
 
@@ -1202,11 +1217,12 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         var thisType = typeGraph.newObject(this, ta.objProto);
     }
 
-    // If the callee is unknown
-    if (calleeType.flags & TypeFlags.any)
+    // If the callee is unknown or non-function
+    if (calleeType.flags === TypeFlags.ANY || 
+        (calleeType.flags & TypeFlags.FUNCTION) === 0)
     {
         if (this.verbose === true)
-            print('*WARNING: unknown callee');
+            print('*WARNING: callee has type ' + calleeType);
 
         ta.setOutput(typeGraph, this, TypeSet.any);
 
@@ -1260,7 +1276,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             {
                 var useIdx = (isNew === true)? (j-1):j;
                 argTypeSet =
-                    (j < this.uses.length)?
+                    (useIdx < this.uses.length)?
                     typeGraph.getTypeSet(this.uses[useIdx]):
                     TypeSet.undef;
             }
