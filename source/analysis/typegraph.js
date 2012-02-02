@@ -183,16 +183,17 @@ TGObject.prototype.isSingleton = function ()
 TypeFlags = {};
 
 // Possible type descriptor flags
-TypeFlags.UNDEF    = 1 << 0; // May be undefined
-TypeFlags.NULL     = 1 << 1; // May be null
-TypeFlags.TRUE     = 1 << 2; // May be true
-TypeFlags.FALSE    = 1 << 3; // May be false
-TypeFlags.FLOAT    = 1 << 4; // May be floating-point
-TypeFlags.INT      = 1 << 5; // May be integer
-TypeFlags.STRING   = 1 << 6; // May be string
-TypeFlags.OBJECT   = 1 << 7; // May be string
-TypeFlags.ARRAY    = 1 << 8; // May be string
-TypeFlags.FUNCTION = 1 << 9; // May be string
+TypeFlags.UNDEF    = 1 << 0;    // May be undefined
+TypeFlags.MISSING  = 1 << 1;    // Missing property
+TypeFlags.NULL     = 1 << 2;    // May be null
+TypeFlags.TRUE     = 1 << 3;    // May be true
+TypeFlags.FALSE    = 1 << 4;    // May be false
+TypeFlags.FLOAT    = 1 << 5;    // May be floating-point
+TypeFlags.INT      = 1 << 6;    // May be integer
+TypeFlags.STRING   = 1 << 7;    // May be string
+TypeFlags.OBJECT   = 1 << 8;    // May be string
+TypeFlags.ARRAY    = 1 << 9;    // May be string
+TypeFlags.FUNCTION = 1 << 10;   // May be string
 
 // Extended object (object or array or function)
 TypeFlags.OBJEXT =
@@ -347,6 +348,8 @@ TypeSet.prototype.toString = function ()
 
     if (this.flags & TypeFlags.UNDEF)
         addType('undef');
+    if (this.flags & TypeFlags.MISSING)
+        addType('missing');
     if (this.flags & TypeFlags.NULL)
         addType('null');
     if (this.flags & TypeFlags.TRUE)
@@ -694,6 +697,11 @@ Undefined type descriptor
 TypeSet.undef = new TypeSet(TypeFlags.UNDEF);
 
 /**
+Missing property type descriptor
+*/
+TypeSet.missing = new TypeSet(TypeFlags.UNDEF);
+
+/**
 Null type descriptor
 */
 TypeSet.null = new TypeSet(TypeFlags.NULL);
@@ -911,11 +919,11 @@ TypeGraph.prototype.getTypeSet = function (value)
         else
         {
             // If this is a property node and there is no type set,
-            // the type of the property is undefined
+            // the type of the property is the special missing type
             if (value instanceof TGProperty)
             {
-                //print('UNDEF TYPE FOR PROP: ' + value);
-                return TypeSet.undef;
+                //print('MISSING TYPE FOR PROP: ' + value);
+                return TypeSet.missing;
             }
 
             // Return the empty type set

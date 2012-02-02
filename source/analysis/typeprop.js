@@ -619,6 +619,71 @@ TypeProp.prototype.setInput = function (
     }
 }
 
+/**
+Perform a property lookup, including the recursive prototype chain search
+*/
+TypeProp.prototype.propLookup = function (typeGraph, objType, propName)
+{
+    if (objType.flags === TypeFlags.ANY)
+        throw '*WARNING: getProp on any type';
+
+    // If there are non-object bases
+    if (objType.flags & 
+        ~(TypeFlags.OBJEXT | 
+          TypeFlags.UNDEF | 
+          TypeFlags.NULL)
+        )
+        throw '*WARNING: getProp with non-object base';
+
+    // Output type set
+    var outType = TypeSet.empty;
+
+    // For each possible object
+    for (objItr = objType.getObjItr(); objItr.valid(); objItr.next())
+    {
+        var obj = objItr.get();
+
+        // Get the type for this property node
+        var propNode = obj.getPropNode(propName);
+        var propType = typeGraph.getTypeSet(propNode)
+
+        // If this property may be missing
+        if (propType.flags & TypeFlags.MISSING)
+        {
+            // Get the type for the object's prototype
+            var protoNode = obj.proto;
+            var protoType = typeGraph.getTypeSet(protoNode);
+
+            // Do a recursive lookup on the prototype
+            var protoProp = this.propLookup(typeGraph, protoType, propName);
+
+            // If we know for sure this property is missing
+            if (propType.flags === TypeFlags.MISSING)
+            {
+                // Take the prototype property type as-is
+                propType = protoProp;
+            }
+            else
+            {
+                // Union the prototype property type
+                propType = propType.union(protoProp);
+
+                // Remove the missing flag from the property type
+                propType = outType.restrict(outType.flags & (~TypeFlags.MISSING));
+            }
+
+            // If the prototype may be null, add the undefined type
+            if (protoType.flags & TypeFlags.NULL)
+                propType = propType.union(TypeSet.undef);
+        }
+
+        // Union the types for this property into the type set
+        outType = outType.union(propType);
+    }
+
+    return outType;
+}
+
 //=============================================================================
 //
 // Flow functions for HIR instructions
@@ -699,16 +764,16 @@ HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 
 PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var objSet = typeGraph.getTypeSet(this.uses[0]);
+    var objType = typeGraph.getTypeSet(this.uses[0]);
     var nameSet = typeGraph.getTypeSet(this.uses[1]);
     var valSet = typeGraph.getTypeSet(this.uses[2]);
 
     try
     {
-        if (objSet.flags === TypeFlags.ANY)
+        if (objType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp on any type';
 
-        if ((objSet.flags & TypeFlags.OBJEXT) === 0)
+        if ((objType.flags & TypeFlags.OBJEXT) === 0)
             throw '*WARNING: putProp on non-object';
 
         if (nameSet.flags === TypeFlags.ANY)
@@ -721,7 +786,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         var propName = nameSet.strVal;
 
         // For each possible object
-        for (objItr = objSet.getObjItr(); objItr.valid(); objItr.next())
+        for (objItr = objType.getObjItr(); objItr.valid(); objItr.next())
         {
             var obj = objItr.get();
 
@@ -749,24 +814,21 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     // The object cannot be undefined or null along the normal branch
-    var newObjType = objSet.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
+    var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
 
     // Update the object type
-    ta.setInput(typeGraph, this, this.uses[0], newObjType, objSet);
+    ta.setInput(typeGraph, this, this.uses[0], newObjType, objType);
 
     ta.setOutput(typeGraph, this, valSet);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var objSet = typeGraph.getTypeSet(this.uses[0]);
+    var objType = typeGraph.getTypeSet(this.uses[0]);
     var nameSet = typeGraph.getTypeSet(this.uses[1]);
 
     try
     {
-        if (objSet.flags === TypeFlags.ANY)
-            throw '*WARNING: getProp on any type';
-
         if (nameSet.flags === TypeFlags.ANY)
             throw '*WARNING: getProp with any name';
 
@@ -775,7 +837,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
             throw '*WARNING: getProp with unknown property name:' + nameSet;
 
         // If there are non-object bases
-        if (objSet.flags & 
+        if (objType.flags & 
             ~(TypeFlags.OBJEXT | 
               TypeFlags.UNDEF | 
               TypeFlags.NULL)
@@ -785,22 +847,10 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         // Get the property name string
         var propName = nameSet.strVal;
 
-        // Output type set
-        var outSet = TypeSet.empty;
+        // Perform the property lookup
+        var outType = ta.propLookup(typeGraph, objType, propName);
 
-        // For each possible object
-        for (objItr = objSet.getObjItr(); objItr.valid(); objItr.next())
-        {
-            var obj = objItr.get();
-
-            // Get the node for this property
-            var propNode = obj.getPropNode(propName);
-
-            // Union the types for this property into the type set
-            outSet = outSet.union(typeGraph.getTypeSet(propNode));
-        }
-
-        ta.setOutput(typeGraph, this, outSet);
+        ta.setOutput(typeGraph, this, outType);
     }
 
     // If an inference problem occurs
@@ -1212,9 +1262,19 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     }
     else
     {
-        // FIXME: eventually, need lookup on Function.prototype
+        // Lookup the "prototype" property of the callee
+        var protoType = ta.propLookup(typeGraph, calleeType, 'prototype');
+
+        // If the prototype may not be an object
+        if (protoType.flags & (~TypeFlags.OBJEXT))
+        {
+            // Exclude non-objects and include the object prototype object
+            protoType = protoType.restrict(protoType.flags & (~TypeFlags.OBJEXT));
+            protoType = protoType.union(ta.objProto);
+        }
+
         // Create a new object to use as the this argument
-        var thisType = typeGraph.newObject(this, ta.objProto);
+        var thisType = typeGraph.newObject(this, protoType);
     }
 
     // If the callee is unknown or non-function
@@ -1355,6 +1415,13 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 
         // Create an object node for this function
         var funcObj = typeGraph.newObject(func, ta.funcProto, TypeFlags.FUNCTION);
+
+        // Create a Function.prototype object for the function
+        var protoObj = typeGraph.newObject(func, ta.objProto);
+
+        // Assign the prototype object to the Function.prototype property
+        var protoNode = funcObj.getObjItr().get().getPropNode('property');
+        typeGraph.assignTypes(protoNode, protoObj);
 
         retType = funcObj;
     }

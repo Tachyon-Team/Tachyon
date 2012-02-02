@@ -63,6 +63,10 @@ TypeProp.prototype.testOnFile = function (fileList, verbose)
     // Clear existing analysis results
     this.init();
 
+    // Get the host and client compilation parameters
+    var hostParams = config.hostParams;
+    var clientParams = config.clientParams;
+
     // For each file
     for (var i = 0; i < fileList.length; ++i)
     {
@@ -72,8 +76,8 @@ TypeProp.prototype.testOnFile = function (fileList, verbose)
             print('Running type analysis on: "' + fileName + '"');
 
         // Get the IR for this file
-        var ast = parse_src_file(fileName, this.params);
-        var ir = unitToIR(ast, this.params);
+        var ast = parse_src_file(fileName, clientParams);
+        var ir = unitToIR(ast, clientParams);
 
         if (this.verbose === true)
             print(ir);

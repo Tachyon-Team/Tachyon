@@ -1364,6 +1364,9 @@ tests.programs.type_analysis.ctor_simple = genTest(
     [],
     0
 );
+tests.programs.type_analysis.proto_chain = genTest(
+    'programs/type_analysis/proto_chain.js'
+);
 tests.programs.type_analysis.multi_file = genTest(
     [
         'programs/type_analysis/multi_file1.js',
