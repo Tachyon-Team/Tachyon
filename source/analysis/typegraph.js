@@ -699,7 +699,7 @@ TypeSet.undef = new TypeSet(TypeFlags.UNDEF);
 /**
 Missing property type descriptor
 */
-TypeSet.missing = new TypeSet(TypeFlags.UNDEF);
+TypeSet.missing = new TypeSet(TypeFlags.MISSING);
 
 /**
 Null type descriptor

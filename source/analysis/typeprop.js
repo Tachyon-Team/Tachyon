@@ -622,7 +622,7 @@ TypeProp.prototype.setInput = function (
 /**
 Perform a property lookup, including the recursive prototype chain search
 */
-TypeProp.prototype.propLookup = function (typeGraph, objType, propName)
+TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
 {
     if (objType.flags === TypeFlags.ANY)
         throw '*WARNING: getProp on any type';
@@ -638,14 +638,21 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName)
     // Output type set
     var outType = TypeSet.empty;
 
+    //print('depth ' + depth);
+    //print('obj type : ' + objType);
+    //print('prop name: ' + propName + ' ' + (typeof propName));
+
     // For each possible object
-    for (objItr = objType.getObjItr(); objItr.valid(); objItr.next())
+    for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
     {
         var obj = objItr.get();
 
         // Get the type for this property node
         var propNode = obj.getPropNode(propName);
         var propType = typeGraph.getTypeSet(propNode)
+
+        //print('prop type: ' + propType);
+        //print('');
 
         // If this property may be missing
         if (propType.flags & TypeFlags.MISSING)
@@ -654,32 +661,42 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName)
             var protoNode = obj.proto;
             var protoType = typeGraph.getTypeSet(protoNode);
 
-            // Do a recursive lookup on the prototype
-            var protoProp = this.propLookup(typeGraph, protoType, propName);
-
-            // If we know for sure this property is missing
-            if (propType.flags === TypeFlags.MISSING)
+            // If the prototype is not necessarily null
+            if (protoType.flags & ~TypeFlags.NULL)
             {
-                // Take the prototype property type as-is
-                propType = protoProp;
-            }
-            else
-            {
-                // Union the prototype property type
-                propType = propType.union(protoProp);
+                // Do a recursive lookup on the prototype
+                var protoProp = this.propLookup(typeGraph, protoType, propName, depth + 1);
 
-                // Remove the missing flag from the property type
-                propType = outType.restrict(outType.flags & (~TypeFlags.MISSING));
+                // If we know for sure this property is missing
+                if (propType.flags === TypeFlags.MISSING)
+                {
+                    // Take the prototype property type as-is
+                    propType = protoProp;
+                }
+                else
+                {
+                    // Union the prototype property type
+                    propType = propType.union(protoProp);
+                }
             }
 
             // If the prototype may be null, add the undefined type
             if (protoType.flags & TypeFlags.NULL)
+            {
                 propType = propType.union(TypeSet.undef);
+            }
+
+            // Remove the missing flag from the property type
+            propType = propType.restrict(propType.flags & (~TypeFlags.MISSING));
         }
 
         // Union the types for this property into the type set
         outType = outType.union(propType);
     }
+
+    //print('depth: ' + depth);
+    //print('out type: ' + outType);
+    //print('');
 
     return outType;
 }
@@ -786,7 +803,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         var propName = nameSet.strVal;
 
         // For each possible object
-        for (objItr = objType.getObjItr(); objItr.valid(); objItr.next())
+        for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
         {
             var obj = objItr.get();
 
@@ -848,7 +865,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         var propName = nameSet.strVal;
 
         // Perform the property lookup
-        var outType = ta.propLookup(typeGraph, objType, propName);
+        var outType = ta.propLookup(typeGraph, objType, propName, 0);
 
         ta.setOutput(typeGraph, this, outType);
     }
@@ -1263,7 +1280,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     else
     {
         // Lookup the "prototype" property of the callee
-        var protoType = ta.propLookup(typeGraph, calleeType, 'prototype');
+        var protoType = ta.propLookup(typeGraph, calleeType, 'prototype', 0);
 
         // If the prototype may not be an object
         if (protoType.flags & (~TypeFlags.OBJEXT))
@@ -1420,7 +1437,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         var protoObj = typeGraph.newObject(func, ta.objProto);
 
         // Assign the prototype object to the Function.prototype property
-        var protoNode = funcObj.getObjItr().get().getPropNode('property');
+        var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
         typeGraph.assignTypes(protoNode, protoObj);
 
         retType = funcObj;

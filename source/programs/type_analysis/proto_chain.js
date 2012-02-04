@@ -5,21 +5,22 @@ function TheCtor(n)
 
 TheCtor.prototype.n = 'foo';
 
-TheCtor.prototype.p = 3;
+TheCtor.prototype.p = 'bar';
 
 var o = new TheCtor(7);
 
+// Ensure that the constructor is recognized as a function
+typeAssert(TheCtor, '"function"');
 
-
-// TODO: add type asserts for TheCtor.prototype
-
-
+// Ensure the prototype object exists
+typeAssert(TheCtor.prototype, '["and", "object", ["not", "undef"], ["not", "missing"]]');
 
 // The missing property type should never appear
 typeAssert(o.n, '["and", "int", ["not", "missing"]]');
 
+// Check the prototype property type
+typeAssert(o.p, '["and", "string", ["not", "int"], ["not", "missing"]]');
 
-
-// FIXME!
-//typeAssert(o.p, '["and", "int", ["not", "missing"]]');
+// Test missing property is undef, not missing
+typeAssert(o.foobar, '["and", "undef", ["not", "missing"]]');
 
