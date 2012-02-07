@@ -722,9 +722,14 @@ Boolean type descriptor
 TypeSet.bool = new TypeSet(TypeFlags.TRUE | TypeFlags.FALSE);
 
 /**
-Boolean type descriptor
+Integer type descriptor
 */
 TypeSet.integer = new TypeSet(TypeFlags.INT);
+
+/**
+Positive integer type descriptor
+*/
+TypeSet.posInt = new TypeSet(TypeFlags.INT, 0);
 
 /**
 String type descriptor
@@ -743,9 +748,9 @@ function TypeGraph()
 }
 
 /**
-Set the possible types for a variable node
+Set the type set for a variable node
 */
-TypeGraph.prototype.assignTypes = function (varNode, typeSet)
+TypeGraph.prototype.assignType = function (varNode, typeSet)
 {
     assert (
         varNode instanceof TGVariable ||
@@ -762,9 +767,9 @@ TypeGraph.prototype.assignTypes = function (varNode, typeSet)
 }
 
 /**
-Union the types of a variable with another type set
+Union the type set of a variable with another type set
 */
-TypeGraph.prototype.unionTypes = function (varNode, typeSet)
+TypeGraph.prototype.unionType = function (varNode, typeSet)
 {
     assert (
         varNode instanceof TGVariable ||
@@ -777,7 +782,7 @@ TypeGraph.prototype.unionTypes = function (varNode, typeSet)
         'invalid type set: ' + typeSet
     );
 
-    var curSet = this.getTypeSet(varNode);
+    var curSet = this.getType(varNode);
 
     var unionSet = curSet.union(typeSet);
 
@@ -816,7 +821,7 @@ TypeGraph.prototype.copy = function ()
         var node = pair.key;
         var typeSet = pair.value;
 
-        newGraph.assignTypes(node, typeSet);
+        newGraph.assignType(node, typeSet);
     } 
 
     return newGraph;
@@ -836,9 +841,9 @@ TypeGraph.prototype.merge = function (that)
         var edge = nodeItr.get();
         var node = edge.key;
 
-        var thatSet = that.getTypeSet(node);
+        var thatSet = that.getType(node);
 
-        newGraph.unionTypes(node, thatSet);
+        newGraph.unionType(node, thatSet);
     }
 
     //print('graph merge done');
@@ -860,9 +865,9 @@ TypeGraph.prototype.equal = function (that)
         var edge = nodeItr.get();
         var node = edge.key;
 
-        var thisSet = this.getTypeSet(node);
+        var thisSet = this.getType(node);
 
-        var thatSet = that.getTypeSet(node);
+        var thatSet = that.getType(node);
 
         if (thisSet.equal(thatSet) === false)
             return false;
@@ -886,7 +891,7 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags)
 
     var obj = new TGObject(origin, flags);
 
-    this.assignTypes(obj.proto, protoSet);
+    this.assignType(obj.proto, protoSet);
 
     var objSet = new HashSet();
     objSet.add(obj);
@@ -901,9 +906,9 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags)
 }
 
 /**
-Get the set of value nodes for an IR value
+Get the type set for an IR value or variable node
 */
-TypeGraph.prototype.getTypeSet = function (value)
+TypeGraph.prototype.getType = function (value)
 {
     // If this is a variable node or IR instruction
     if (value instanceof TGVariable ||

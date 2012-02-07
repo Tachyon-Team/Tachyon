@@ -152,11 +152,11 @@ TypeProp.prototype.dumpFunctions = function ()
         for (var i = 1; i < funcInfo.argNodes.length; ++i)
         {
             var argName = (i == 1)? 'this':irFunc.argVars[i-2];
-            var argType = retGraph.getTypeSet(funcInfo.argNodes[i]);
+            var argType = retGraph.getType(funcInfo.argNodes[i]);
             print('arg ' + argName + ' : ' + argType);
         }
 
-        var retType = retGraph.getTypeSet(funcInfo.retNode);
+        var retType = retGraph.getType(funcInfo.retNode);
         print('ret => ' + retType);
         
         print('');
@@ -193,13 +193,13 @@ TypeProp.prototype.dumpClasses = function ()
         print('object <' + obj.origin + '>');
         print('{');
 
-        var protoType = typeGraph.getTypeSet(obj.proto);
+        var protoType = typeGraph.getType(obj.proto);
         print('    proto: ' + protoType);
 
         for (name in obj.props)
         {
             var propNode = obj.getPropNode(name);
-            var propType = typeGraph.getTypeSet(propNode);
+            var propType = typeGraph.getType(propNode);
             print('    ' + name + ': ' + propType);
         }
 
@@ -226,6 +226,8 @@ TypeProp.prototype.compTypeStats = function ()
     var numGetObj = 0;
     var numArithOp = 0;
     var numArithKnown = 0;
+    var numPropUse = 0;
+    var numPropDef = 0;
 
     // Accumulate stats for one type set occurrence
     function accumStats(instr, useIdx, set)
@@ -288,6 +290,14 @@ TypeProp.prototype.compTypeStats = function ()
                 numGetObj += 1;
         }
 
+        // If this is a property value use
+        if (instr.uses[useIdx] instanceof GetPropInstr)
+        {
+            numPropUse += 1;
+            if ((set.flags & TypeFlags.UNDEF) === 0)
+                numPropDef += 1;
+        }
+
         if (instr instanceof JSArithInstr)
         {
             numArithOp += 1;
@@ -322,18 +332,20 @@ TypeProp.prototype.compTypeStats = function ()
 
     var perGetObj = compPercent(numGetObj, numGetProp);
     var perArithKnown = compPercent(numArithKnown, numArithOp);
+    var perPropDef = compPercent(numPropDef, numPropUse);
 
-    print('Num type sets    : ' + numSets);
-    print('Num any type     : ' + numAny);
-    print('Num single type  : ' + numSingleType);
-    print('Num with undef   : ' + numWithUndef);
-    print('Num int only     : ' + numIntOnly);
-    print('Num string only  : ' + numStrOnly);
-    print('Num obj. only    : ' + numObjOnly);
-    print('Num known obj.   : ' + numKnownObj);
-    print('Max num objs.    : ' + maxNumObjs);
-    print('Get prop obj only: ' + perGetObj + ' (' + numGetObj + ')');
-    print('Arith opnds known: ' + perArithKnown + ' (' + numArithKnown + ')');
+    print('Num type sets     : ' + numSets);
+    print('Num any type      : ' + numAny);
+    print('Num single type   : ' + numSingleType);
+    print('Num with undef    : ' + numWithUndef);
+    print('Num int only      : ' + numIntOnly);
+    print('Num string only   : ' + numStrOnly);
+    print('Num obj. only     : ' + numObjOnly);
+    print('Num known obj.    : ' + numKnownObj);
+    print('Max num objs.     : ' + maxNumObjs);
+    print('Get prop obj only : ' + perGetObj + ' (' + numGetObj + ')');
+    print('Arith opnds known : ' + perArithKnown + ' (' + numArithKnown + ')');
+    print('Prop uses no undef: ' + perPropDef + ' (' + numPropUse + ')');
 
     print('');
 }

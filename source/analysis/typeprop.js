@@ -229,10 +229,16 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
     if (info !== HashMap.NOT_FOUND)
         return info;
 
-    // Create nodes for the argument values
-    var argNodes = new Array(irFunc.argVars.length + 2);
+    // Get the number of named parameters
+    var numParams = irFunc.argVars.length + 2;
+
+    // Create nodes for the parameter values
+    var argNodes = new Array(numParams);
     for (var i = 0; i < argNodes.length; ++i)
         argNodes[i] = new TGVariable('arg' + i);
+
+    // Indexed/fused argument type node
+    var idxArgNode = new TGVariable('idxArgs');
 
     // Return value node
     var retNode = new TGVariable('ret');
@@ -243,8 +249,14 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
         // Function entry block
         entry: irFunc.hirCFG.entry,
 
+        // Number of named parameters
+        numParams: numParams,
+
         // Argument value nodes
         argNodes: argNodes,
+
+        // Indexed/fused argument value node
+        idxArgNode: idxArgNode,
 
         // Return value node
         retNode: retNode,
@@ -421,7 +433,7 @@ TypeProp.prototype.iterate = function ()
             instr.uses[0].uses[1] instanceof IRConst &&
             instr.uses[0].uses[1].value === 'typeAssert')
         {
-            var typeSet = typeGraph.getTypeSet(instr.uses[2]);
+            var typeSet = typeGraph.getType(instr.uses[2]);
             var test = instr.uses[3].value;
 
             // Store the type assertion for later evaluation
@@ -452,7 +464,7 @@ TypeProp.prototype.iterate = function ()
             if ((use instanceof IRInstr || use instanceof IRConst) === false)
                 continue;    
 
-            var useType = typeGraph.getTypeSet(use);
+            var useType = typeGraph.getType(use);
 
             assert (
                 useType instanceof TypeSet,
@@ -483,7 +495,7 @@ TypeProp.prototype.iterate = function ()
         if (this.verbose === true)
         {
             if (instr.dests.length > 0)
-                print(instr.getValName() + ' => ' + typeGraph.getTypeSet(instr));
+                print(instr.getValName() + ' => ' + typeGraph.getType(instr));
             print('');
         }
     }
@@ -536,7 +548,7 @@ TypeProp.prototype.setOutput = function (
 {
     // If the instruction has dests, add its type to the type set
     if (instr.dests.length > 0)
-        typeGraph.assignTypes(instr, normalType);
+        typeGraph.assignType(instr, normalType);
 
     // If this is a branch instruction
     if (instr.targets.length > 0)
@@ -555,7 +567,7 @@ TypeProp.prototype.setOutput = function (
 
         // If the instruction has dests, set its type along the exception edge
         if (instr.dests.length > 0)
-            typeGraph.assignTypes(instr, exceptType);
+            typeGraph.assignType(instr, exceptType);
 
         // Merge with the exception target
         this.succMerge(instr.targets[1], typeGraph);
@@ -585,7 +597,7 @@ TypeProp.prototype.setInput = function (
     if (instr.targets.length === 0)
     {
         // Set the value's normal branch type
-        typeGraph.assignTypes(val, normalType);
+        typeGraph.assignType(val, normalType);
     }
     else
     {
@@ -599,7 +611,7 @@ TypeProp.prototype.setInput = function (
 
         // Merge the normal branch type
         var normalMap = ta.getTypeGraph(instr.targets[0]);
-        var typeSet = normalMap.getTypeSet(val);
+        var typeSet = normalMap.getType(val);
         var newTypeSet = typeSet.union(normalType);
         if (typeSet.equal(newTypeSet) === false)
         {
@@ -609,7 +621,7 @@ TypeProp.prototype.setInput = function (
 
         // Merge the exception branch type
         var exceptMap = ta.getTypeGraph(this.targets[1]);
-        var typeSet = exceptMap.getTypeSet(val);
+        var typeSet = exceptMap.getType(val);
         var newTypeSet = typeSet.union(normalType);
         if (typeSet.equal(newTypeSet) === false)
         {
@@ -649,7 +661,7 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
 
         // Get the type for this property node
         var propNode = obj.getPropNode(propName);
-        var propType = typeGraph.getTypeSet(propNode)
+        var propType = typeGraph.getType(propNode)
 
         //print('prop type: ' + propType);
         //print('');
@@ -659,7 +671,7 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
         {
             // Get the type for the object's prototype
             var protoNode = obj.proto;
-            var protoType = typeGraph.getTypeSet(protoNode);
+            var protoType = typeGraph.getType(protoNode);
 
             // If the prototype is not necessarily null
             if (protoType.flags & ~TypeFlags.NULL)
@@ -727,7 +739,7 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
             continue;
 
         // Merge the type of this incoming value
-        var incType = typeGraph.getTypeSet(this.uses[i]);
+        var incType = typeGraph.getType(this.uses[i]);
         outType = outType.union(incType);
     }
 
@@ -736,7 +748,7 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
         'phi output type is empty set'
     );
 
-    typeGraph.assignTypes(this, outType);
+    typeGraph.assignType(this, outType);
 }
 
 GlobalObjInstr.prototype.typeProp = function (ta, typeGraph)
@@ -753,7 +765,7 @@ InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
 
     var propNode = globalObj.getPropNode(propName);
 
-    typeGraph.assignTypes(propNode, TypeSet.undef);
+    typeGraph.assignType(propNode, TypeSet.undef);
 }
 
 BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
@@ -781,9 +793,9 @@ HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 
 PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var objType = typeGraph.getTypeSet(this.uses[0]);
-    var nameSet = typeGraph.getTypeSet(this.uses[1]);
-    var valSet = typeGraph.getTypeSet(this.uses[2]);
+    var objType = typeGraph.getType(this.uses[0]);
+    var nameSet = typeGraph.getType(this.uses[1]);
+    var valSet = typeGraph.getType(this.uses[2]);
 
     try
     {
@@ -814,9 +826,9 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             if ((obj.origin.parentBlock === this.parentBlock && 
                  this.uses[0] === obj.origin) ||
                 obj.isSingleton() === true)
-                typeGraph.assignTypes(propNode, valSet);
+                typeGraph.assignType(propNode, valSet);
             else
-                typeGraph.unionTypes(propNode, valSet);
+                typeGraph.unionType(propNode, valSet);
         }
     }
 
@@ -841,8 +853,8 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var objType = typeGraph.getTypeSet(this.uses[0]);
-    var nameSet = typeGraph.getTypeSet(this.uses[1]);
+    var objType = typeGraph.getType(this.uses[0]);
+    var nameSet = typeGraph.getType(this.uses[1]);
 
     try
     {
@@ -887,8 +899,8 @@ GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
 JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var t0 = typeGraph.getTypeSet(this.uses[0]);
-    var t1 = typeGraph.getTypeSet(this.uses[1]);
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType;
@@ -939,8 +951,8 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
 
 JSSubInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var t0 = typeGraph.getTypeSet(this.uses[0]);
-    var t1 = typeGraph.getTypeSet(this.uses[1]);
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType;
@@ -974,8 +986,8 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
 
 JSMulInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var t0 = typeGraph.getTypeSet(this.uses[0]);
-    var t1 = typeGraph.getTypeSet(this.uses[1]);
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType;
@@ -1015,8 +1027,8 @@ JSMulInstr.prototype.typeProp = function (ta, typeGraph)
 
 JSDivInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var t0 = typeGraph.getTypeSet(this.uses[0]);
-    var t1 = typeGraph.getTypeSet(this.uses[1]);
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType;
@@ -1085,8 +1097,8 @@ JSUrsftInstr.prototype.typeProp = function (ta, typeGraph)
 // Comparison operator base class
 JSCompInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getTypeSet(this.uses[0]);
-    var v1 = typeGraph.getTypeSet(this.uses[1]);
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
 
     return ta.setOutput(typeGraph, this, TypeSet.bool);
 }
@@ -1094,8 +1106,8 @@ JSCompInstr.prototype.typeProp = function (ta, typeGraph)
 // Operator ==
 JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getTypeSet(this.uses[0]);
-    var v1 = typeGraph.getTypeSet(this.uses[1]);
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType;
@@ -1137,8 +1149,8 @@ JSEqInstr.prototype.typeProp = function (ta, typeGraph)
 // Operator ===
 JSSeInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getTypeSet(this.uses[0]);
-    var v1 = typeGraph.getTypeSet(this.uses[1]);
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType;
@@ -1180,8 +1192,8 @@ JSSeInstr.prototype.typeProp = function (ta, typeGraph)
 // Operator !=
 JSNeInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getTypeSet(this.uses[0]);
-    var v1 = typeGraph.getTypeSet(this.uses[1]);
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType = TypeSet.bool;
@@ -1223,8 +1235,8 @@ JSNeInstr.prototype.typeProp = function (ta, typeGraph)
 // Operator !==
 JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getTypeSet(this.uses[0]);
-    var v1 = typeGraph.getTypeSet(this.uses[1]);
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
 
     // Output type
     var outType = TypeSet.bool;
@@ -1266,7 +1278,7 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Get the type set for the callee
-    var calleeType = typeGraph.getTypeSet(this.uses[0]);
+    var calleeType = typeGraph.getType(this.uses[0]);
 
     // Test if this is a new/constructor call
     var isNew = this instanceof JSNewInstr;
@@ -1275,7 +1287,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     if (isNew === false)
     {
         // Get the this argument call
-        var thisType = typeGraph.getTypeSet(this.uses[1]);
+        var thisType = typeGraph.getType(this.uses[1]);
     }
     else
     {
@@ -1354,12 +1366,26 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
                 var useIdx = (isNew === true)? (j-1):j;
                 argTypeSet =
                     (useIdx < this.uses.length)?
-                    typeGraph.getTypeSet(this.uses[useIdx]):
+                    typeGraph.getType(this.uses[useIdx]):
                     TypeSet.undef;
             }
 
             // Set the types for this argument in the current graph
-            typeGraph.assignTypes(argNode, argTypeSet);
+            typeGraph.assignType(argNode, argTypeSet);
+        }
+
+        // If this function uses the arguments object
+        if (func.usesArguments === true)
+        {
+            print('updating idxArgNode');
+
+            // For each argument of this call (excluding the function and this)
+            for (var i = (isNew? 1:2); i < this.uses.length; ++i)
+            {
+                // Union the argument type into the indexed argument type
+                var argType = typeGraph.getType(this.uses[i]);
+                typeGraph.unionType(funcInfo.idxArgNode, argType);
+            }
         }
 
         // Get a descriptor for the entry block
@@ -1376,7 +1402,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 
         // Restrict the callee type to functions
         var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
-        newGraph.assignTypes(this.uses[0], newCalleeType);
+        newGraph.assignType(this.uses[0], newCalleeType);
 
         // If the graph changed
         if (entryGraph === HashMap.NOT_FOUND || 
@@ -1438,9 +1464,49 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 
         // Assign the prototype object to the Function.prototype property
         var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
-        typeGraph.assignTypes(protoNode, protoObj);
+        typeGraph.assignType(protoNode, protoObj);
 
         retType = funcObj;
+    }
+
+    // If this is the function that creates the 'arguments' object
+    else if (callee.funcName = 'makeArgObj')
+    {
+        print('got makeArgObj call ****');
+
+        // Get the argument type info for this function
+        var func = this.parentBlock.parentCFG.ownerFunc;
+        var funcInfo = ta.getFuncInfo(func);
+
+        // TODO: what happens if we call a function with more arguments
+        // than the function normally has????
+        // Try storing the extra argument type nodes
+
+        // TODO: length??? Need min and max values...
+        // minNumArgs, maxNumArgs
+        // numParams
+
+        // Create the arguments object
+        var argObjType = typeGraph.newObject(this, ta.objProto);
+        var argObj = argObjType.getObjItr().get();
+
+        // Set the arguments length value
+        var lengthNode = argObj.getPropNode('length');
+        typeGraph.assignType(lengthNode, TypeSet.posInt);
+
+        // For each argument node
+        for (var i = 0; i < funcInfo.argNodes.length; ++i)
+        {
+            // Get the argument type
+            var argNode = funcInfo.argNodes[i];
+            var argType = typeGraph.getType(argNode);
+
+            // Set the arguments property type
+            var propNode = argObj.getPropNode(i);
+            typeGraph.assignType(propNode, argType);
+        }
+
+        retType = argObjType;
     }
 
     // For other primitive functions
@@ -1465,22 +1531,22 @@ ArgValInstr.prototype.typeProp = function (ta, typeGraph)
     var funcInfo = ta.getFuncInfo(func);
 
     var argNode = funcInfo.argNodes[this.argIndex];
-    var argTypeSet = typeGraph.getTypeSet(argNode);
+    var argTypeSet = typeGraph.getType(argNode);
 
-    typeGraph.assignTypes(this, argTypeSet);
+    typeGraph.assignType(this, argTypeSet);
 }
 
 RetInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Get the return type
-    var retType = typeGraph.getTypeSet(this.uses[0]);
+    var retType = typeGraph.getType(this.uses[0]);
 
     // Get the info object for this function
     var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
  
     // Merge the return type
-    typeGraph.unionTypes(funcInfo.retNode, retType);
+    typeGraph.unionType(funcInfo.retNode, retType);
 
     // Get the return point graph
     var retGraph = funcInfo.retGraph;
@@ -1521,13 +1587,13 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                 var callerBlock = callInstr.parentBlock;
 
                 // Get the function return type
-                var funcRetType = newGraph.getTypeSet(funcInfo.retNode);
+                var funcRetType = newGraph.getType(funcInfo.retNode);
 
                 // If this is a regular call instruction
                 if (callInstr instanceof JSCallInstr)
                 {
                     // Set the return type for the call instruction
-                    newGraph.assignTypes(callInstr, funcRetType);
+                    newGraph.assignType(callInstr, funcRetType);
                 }
 
                 // Otherwise, this is a constructor call
@@ -1539,7 +1605,7 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                     if (funcRetType.flags & TypeFlags.UNDEF)
                     {
                         // Union the this argument type
-                        var thisType = newGraph.getTypeSet(funcInfo.argNodes[1]);
+                        var thisType = newGraph.getType(funcInfo.argNodes[1]);
                         newType = newType.union(thisType);
                     }
 
@@ -1553,7 +1619,7 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                     }
 
                     // Set the return type for the new instruction
-                    newGraph.assignTypes(callInstr, newType);
+                    newGraph.assignType(callInstr, newType);
                 }
 
                 // If there is a call continuation block
@@ -1580,9 +1646,9 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
 // If branching instruction
 IfInstr.prototype.typeProp = function (ta, typeGraph)
 {
-    var v0 = typeGraph.getTypeSet(this.uses[0]);
-    var v1 = typeGraph.getTypeSet(this.uses[1]);
-    var v2 = (this.uses.length > 2)? typeGraph.getTypeSet(this.uses[1]):undefined;
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+    var v2 = (this.uses.length > 2)? typeGraph.getType(this.uses[1]):undefined;
 
     var instr = this;
 
@@ -1608,13 +1674,13 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
             ta.setTypeGraph(targetDesc, targetGraph);
         }
 
-        var curType = targetGraph.getTypeSet(val);
+        var curType = targetGraph.getType(val);
         var mergedType = curType.union(type);
 
         // If the type changed
         if (curType.equal(mergedType) === false)
         {
-            targetGraph.unionTypes(val, mergedType);
+            targetGraph.unionType(val, mergedType);
             ta.queueBlock(targetDesc);
         }
     }
@@ -1635,8 +1701,8 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
             var lVal = compInstr.uses[0];
             var rVal = compInstr.uses[1];
 
-            var lType = typeGraph.getTypeSet(lVal);
-            var rType = typeGraph.getTypeSet(rVal);
+            var lType = typeGraph.getType(lVal);
+            var rType = typeGraph.getType(rVal);
 
             var trueLType = lType;
             var falseLType = rType;

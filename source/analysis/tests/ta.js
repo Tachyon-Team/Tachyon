@@ -211,6 +211,11 @@ tests.ta.proto_chain = TypeProp.makeTest(
     false
 );
 
+tests.ta.args_sum = TypeProp.makeTest(
+    'programs/type_analysis/args_sum.js',
+    false
+);
+
 tests.ta.multi_file = TypeProp.makeTest(
     [
         'programs/type_analysis/multi_file1.js',
@@ -224,6 +229,11 @@ tests.ta['access-binary-trees'] = TypeProp.makeTest(
     false
 );
 
-// TODO: v8bench/richards.js
-// Will need driver to call into it
+// TODO: 
+// programs/v8bench/richards.js
+// Need to call runRichards...
+// Implements scheduler simulation
+//
+// Uses "new Array"
+//
 
