@@ -659,15 +659,20 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
     {
         var obj = objItr.get();
 
+        // Get the node for this property
+        if (typeof propName === 'string')
+            var propNode = obj.getPropNode(propName);
+        else
+            var propNode = obj.idxProp;
+
         // Get the type for this property node
-        var propNode = obj.getPropNode(propName);
         var propType = typeGraph.getType(propNode)
 
         //print('prop type: ' + propType);
         //print('');
 
-        // If this property may be missing
-        if (propType.flags & TypeFlags.MISSING)
+        // If this property may be missing or this is an unbounded array access
+        if (propType.flags & TypeFlags.MISSING || propName === false)
         {
             // Get the type for the object's prototype
             var protoNode = obj.proto;
@@ -794,8 +799,8 @@ HasPropInstr.prototype.typeProp = function (ta, typeGraph)
 PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var objType = typeGraph.getType(this.uses[0]);
-    var nameSet = typeGraph.getType(this.uses[1]);
-    var valSet = typeGraph.getType(this.uses[2]);
+    var nameType = typeGraph.getType(this.uses[1]);
+    var valType = typeGraph.getType(this.uses[2]);
 
     try
     {
@@ -805,14 +810,20 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if ((objType.flags & TypeFlags.OBJEXT) === 0)
             throw '*WARNING: putProp on non-object';
 
-        if (nameSet.flags === TypeFlags.ANY)
+        if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
-        // If this is not a string constant
-        if (nameSet.flags !== TypeFlags.STRING || nameSet.strVal === undefined)
-            throw '*WARNING: putProp with unknown property name:' + nameSet;
+        // If this is not a string constant or an integer
+        if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
+            nameType.flags !== TypeFlags.INT)
+            throw '*WARNING: putProp with unknown property name:' + nameType;
 
-        var propName = nameSet.strVal;
+        // Get the property name string, if any
+        var propName = (nameType.flags === TypeFlags.STRING)? nameType.strVal:undefined;
+
+        // If writing to an array property, add the undefined type
+        if (nameType.flags === TypeFlags.INT)
+            valType = valType.union(TypeSet.undef);
 
         // For each possible object
         for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
@@ -820,15 +831,18 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             var obj = objItr.get();
 
             // Get the node for this property
-            var propNode = obj.getPropNode(propName);
+            if (propName !== undefined)
+                var propNode = obj.getPropNode(propName);
+            else
+                var propNode = obj.idxProp;
 
             // Assign the value type set to the property
             if ((obj.origin.parentBlock === this.parentBlock && 
                  this.uses[0] === obj.origin) ||
                 obj.isSingleton() === true)
-                typeGraph.assignType(propNode, valSet);
+                typeGraph.assignType(propNode, valType);
             else
-                typeGraph.unionType(propNode, valSet);
+                typeGraph.unionType(propNode, valType);
         }
     }
 
@@ -848,23 +862,16 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
     // Update the object type
     ta.setInput(typeGraph, this, this.uses[0], newObjType, objType);
 
-    ta.setOutput(typeGraph, this, valSet);
+    ta.setOutput(typeGraph, this, valType);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var objType = typeGraph.getType(this.uses[0]);
-    var nameSet = typeGraph.getType(this.uses[1]);
+    var nameType = typeGraph.getType(this.uses[1]);
 
     try
     {
-        if (nameSet.flags === TypeFlags.ANY)
-            throw '*WARNING: getProp with any name';
-
-        // If this is not a string constant
-        if (nameSet.flags !== TypeFlags.STRING || nameSet.strVal === undefined)
-            throw '*WARNING: getProp with unknown property name:' + nameSet;
-
         // If there are non-object bases
         if (objType.flags & 
             ~(TypeFlags.OBJEXT | 
@@ -873,8 +880,27 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
             )
             throw '*WARNING: getProp with non-object base';
 
-        // Get the property name string
-        var propName = nameSet.strVal;
+        if (nameType.flags === TypeFlags.ANY)
+            throw '*WARNING: getProp with any name';
+
+        // If this is not a string constant or an integer
+        if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
+            nameType.flags !== TypeFlags.INT)
+            throw '*WARNING: putProp with unknown property name:' + nameType;
+
+        // If the property name is a string
+        var propName;
+        if (nameType.flags === TypeFlags.STRING)
+        {
+            propName = nameType.strVal;
+        }
+        else
+        {
+            // TODO: test for pos int, int < arr.length
+
+            // For now, assume unbounded array access
+            propName = false;
+        }
 
         // Perform the property lookup
         var outType = ta.propLookup(typeGraph, objType, propName, 0);
@@ -934,15 +960,26 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
         );
     }
 
+    // If the values are either int or string
     else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
-        (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
+             (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
     {
+        // The output is either int or string
         outType = new TypeSet(TypeFlags.INT | TypeFlags.STRING)
+    }
+
+    // If neither values can be string or object
+    else if ((t0.flags & (TypeFlags.STRING | TypeFlags.OBJEXT)) === 0 &&
+             (t1.flags & (TypeFlags.STRING | TypeFlags.OBJEXT)) === 0)
+    {
+        // The result can only be int or float
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
     }
 
     // By default
     else
     {
+        // The result can be int or float or string
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
     }
 
@@ -967,12 +1004,6 @@ JSSubInstr.prototype.typeProp = function (ta, typeGraph)
             minVal,
             maxVal
         );
-    }
-
-    else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
-             (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
-    {
-        outType = new TypeSet(TypeFlags.INT)
     }
 
     // By default
@@ -1008,12 +1039,6 @@ JSMulInstr.prototype.typeProp = function (ta, typeGraph)
             minVal,
             maxVal
         );
-    }
-
-    else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
-             (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
-    {
-        outType = new TypeSet(TypeFlags.INT)
     }
 
     // By default
@@ -1377,8 +1402,6 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         // If this function uses the arguments object
         if (func.usesArguments === true)
         {
-            print('updating idxArgNode');
-
             // For each argument of this call (excluding the function and this)
             for (var i = (isNew? 1:2); i < this.uses.length; ++i)
             {
@@ -1472,19 +1495,9 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     // If this is the function that creates the 'arguments' object
     else if (callee.funcName = 'makeArgObj')
     {
-        print('got makeArgObj call ****');
-
         // Get the argument type info for this function
         var func = this.parentBlock.parentCFG.ownerFunc;
         var funcInfo = ta.getFuncInfo(func);
-
-        // TODO: what happens if we call a function with more arguments
-        // than the function normally has????
-        // Try storing the extra argument type nodes
-
-        // TODO: length??? Need min and max values...
-        // minNumArgs, maxNumArgs
-        // numParams
 
         // Create the arguments object
         var argObjType = typeGraph.newObject(this, ta.objProto);
@@ -1494,17 +1507,9 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         var lengthNode = argObj.getPropNode('length');
         typeGraph.assignType(lengthNode, TypeSet.posInt);
 
-        // For each argument node
-        for (var i = 0; i < funcInfo.argNodes.length; ++i)
-        {
-            // Get the argument type
-            var argNode = funcInfo.argNodes[i];
-            var argType = typeGraph.getType(argNode);
-
-            // Set the arguments property type
-            var propNode = argObj.getPropNode(i);
-            typeGraph.assignType(propNode, argType);
-        }
+        // Set the indexed property type
+        var idxArgType = typeGraph.getType(funcInfo.idxArgNode);
+        typeGraph.assignType(argObj.idxProp, idxArgType);
 
         retType = argObjType;
     }
@@ -1716,7 +1721,7 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
                 if (lType.flags === TypeFlags.INT && rType.flags === TypeFlags.INT)
                 {
                     // lVal < rVal
-                    var rangeMax = Math.min(lType.rangeMax, rType.rangeMin - 1);
+                    var rangeMax = Math.min(lType.rangeMax, rType.rangeMax - 1);
                     var rangeMin = Math.min(lType.rangeMin, rangeMax);
                     var trueLType = new TypeSet(
                         TypeFlags.INT,
@@ -1725,7 +1730,7 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
                     );
 
                     // lVal >= rVal
-                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMax);
+                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMin + 1);
                     var rangeMax = Math.max(lType.rangeMax, rangeMin);
                     var falseLType = new TypeSet(
                         TypeFlags.INT,

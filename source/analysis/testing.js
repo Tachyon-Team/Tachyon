@@ -51,7 +51,7 @@ Maxime Chevalier-Boisvert
 /**
 Test type analysis on a source file or a list of source files
 */
-TypeProp.prototype.testOnFile = function (fileList, verbose)
+TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
@@ -67,7 +67,32 @@ TypeProp.prototype.testOnFile = function (fileList, verbose)
     var hostParams = config.hostParams;
     var clientParams = config.clientParams;
 
-    // For each file
+    // TODO: improve stdlib support
+    // Get the stdlib source file names
+    //const libFiles = TACHYON_STDLIB_SRCS;
+    const libFiles = ['stdlib/math.js'];
+
+    // If the standard library should be included
+    if (useStdlib === true)
+    {
+        // For each stdlib file
+        for (var i = 0; i < libFiles.length; ++i)
+        {
+            var fileName = libFiles[i];
+
+            if (this.verbose === true)
+                print('Running type analysis on: "' + fileName + '"');
+
+            // Get the IR for this file
+            var ast = parse_src_file(fileName, hostParams);
+            var ir = unitToIR(ast, hostParams);
+
+            // Add the code unit to the analysis
+            this.addUnit(ir);
+        }
+    }
+
+    // For each file to be analyzed
     for (var i = 0; i < fileList.length; ++i)
     {
         var fileName = fileList[i];
@@ -156,6 +181,9 @@ TypeProp.prototype.dumpFunctions = function ()
             print('arg ' + argName + ' : ' + argType);
         }
 
+        var idxArgType = retGraph.getType(funcInfo.idxArgNode);
+        print('idx arg : ' + idxArgType);
+
         var retType = retGraph.getType(funcInfo.retNode);
         print('ret => ' + retType);
         
@@ -190,7 +218,7 @@ TypeProp.prototype.dumpClasses = function ()
             'invalid object: ' + obj
         );
 
-        print('object <' + obj.origin + '>');
+        print('object <' + obj.getName() + '>');
         print('{');
 
         var protoType = typeGraph.getType(obj.proto);
@@ -202,6 +230,9 @@ TypeProp.prototype.dumpClasses = function ()
             var propType = typeGraph.getType(propNode);
             print('    ' + name + ': ' + propType);
         }
+
+        var idxType = typeGraph.getType(obj.idxProp);
+        print('    []: ' + idxType);
 
         print('}');
         print('');

@@ -117,6 +117,11 @@ function TGObject(origin, flags)
     */
     this.props = {};
 
+    /**
+    Property node for all indexed/array properties
+    */
+    this.idxProp = new TGVariable('idx', this);
+
     // Add the object to the map
     TGObject.objMap.set(this, this);
 }
@@ -139,22 +144,24 @@ TGObject.objMap = new HashMap(
 );
 
 /**
+Get a printable name of an object
+*/
+TGObject.prototype.getName = function ()
+{
+    if (typeof this.origin === 'string')
+        return this.origin;
+    else if (this.origin instanceof IRFunction)
+        return 'func:"' + this.origin.funcName + '"';
+    else
+        return this.origin.getValName();
+}
+
+/**
 Produce a string representation of this object
 */
 TGObject.prototype.toString = function ()
 {
-    var str = '<';
-
-    if (typeof this.origin === 'string')
-        str += this.origin;
-    else if (this.origin instanceof IRFunction)
-        str += 'func:"' + this.origin.funcName + '"';
-    else
-        str += this.origin.getValName();
-
-    str += '>';
-
-    return str;
+    return '<' + this.getName() + '>';
 }
 
 /**

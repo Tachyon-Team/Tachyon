@@ -48,8 +48,11 @@ tests.ta = tests.testSuite();
 /**
 Create a type prop unit test
 */
-TypeProp.makeTest = function (fileList, verbose)
+TypeProp.makeTest = function (fileList, useStdlib, verbose)
 {
+    if (useStdlib === undefined)
+        useStdlib = false;
+
     if (verbose === undefined)
         verbose = false;
 
@@ -57,7 +60,7 @@ TypeProp.makeTest = function (fileList, verbose)
     {
         const params = config.hostParams;
 
-        params.typeProp.testOnFile(fileList, verbose);
+        params.typeProp.testOnFile(fileList, useStdlib, verbose);
     }
 }
 
@@ -224,8 +227,15 @@ tests.ta.multi_file = TypeProp.makeTest(
     false
 );
 
+tests.ta.stdlib_math = TypeProp.makeTest(
+    'programs/type_analysis/stdlib_math.js',
+    true,
+    false
+);
+
 tests.ta['access-binary-trees'] = TypeProp.makeTest(
     'programs/sunspider/access-binary-trees.js',
+    true,
     false
 );
 

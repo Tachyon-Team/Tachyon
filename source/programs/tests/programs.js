@@ -1376,6 +1376,9 @@ tests.programs.type_analysis.multi_file = genTest(
         'programs/type_analysis/multi_file2.js'
     ]
 );
+tests.programs.type_analysis.stdlib_math = genTest(
+    'programs/type_analysis/stdlib_math.js'
+);
 
 /**
 Print the state of the Tachyon VM.
