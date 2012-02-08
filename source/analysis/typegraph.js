@@ -265,11 +265,6 @@ function TypeSet(
     this.flags = flags;
 
     /**
-    Object set
-    */
-    this.objSet = objSet;
-
-    /**
     Numerical range minimum
     */
     this.rangeMin = rangeMin;
@@ -283,6 +278,11 @@ function TypeSet(
     String value
     */
     this.strVal = strVal;
+
+    /**
+    Object set
+    */
+    this.objSet = objSet;
 }
 
 /**
@@ -895,6 +895,11 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags)
     // By default, this is a regular object
     if (flags === undefined)
         flags = TypeFlags.OBJECT;
+
+    assert (
+        protoSet.flags !== TypeFlags.EMPTY,
+        'invalid proto set flags'
+    )
 
     var obj = new TGObject(origin, flags);
 

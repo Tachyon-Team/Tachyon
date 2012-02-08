@@ -167,12 +167,12 @@ TypeProp.prototype.init = function ()
     this.unitList = [];
 
     /**
-    Map of hash sets for instruction uses, for gathering statistics
+    Map of hash sets for instruction uses/outputs, for gathering statistics
     */
     this.typeSets = new HashMap(
         function (use)
         {
-            return defHashFunc(use.instr) + use.idx;
+            return defHashFunc(use.instr) + ((use.idx !== undefined)? use.idx:7);
         },
         function (use1, use2)
         {
@@ -491,7 +491,10 @@ TypeProp.prototype.iterate = function ()
             // will queue the rest of the block
             return;
         }
-
+        
+        // Store the last seen type set for the instruction's output
+        this.typeSets.set({ instr: instr }, typeGraph.getType(instr));
+        
         if (this.verbose === true)
         {
             if (instr.dests.length > 0)

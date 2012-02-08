@@ -233,11 +233,19 @@ tests.ta.stdlib_math = TypeProp.makeTest(
     false
 );
 
-tests.ta['access-binary-trees'] = TypeProp.makeTest(
-    'programs/sunspider/access-binary-trees.js',
+tests.ta.stdlib_array = TypeProp.makeTest(
+    'programs/type_analysis/stdlib_array.js',
     true,
     false
 );
+
+/*
+tests.ta['access-binary-trees'] = TypeProp.makeTest(
+    'programs/sunspider/access-binary-trees.js',
+    true,
+    true
+);
+*/
 
 // TODO: 
 // programs/v8bench/richards.js

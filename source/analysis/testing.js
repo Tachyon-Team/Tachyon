@@ -70,7 +70,10 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
     // TODO: improve stdlib support
     // Get the stdlib source file names
     //const libFiles = TACHYON_STDLIB_SRCS;
-    const libFiles = ['stdlib/math.js'];
+    const libFiles = [
+        'stdlib/array.js',
+        'stdlib/math.js'
+    ];
 
     // If the standard library should be included
     if (useStdlib === true)
@@ -122,6 +125,11 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
         'less than one analysis iteration per code unit'
     );
 
+    assert (
+        this.blockGraphs.numItems > 0,
+        'no blocks were analyzed'
+    );
+
     // Stop the timing
     var endTimeMs = (new Date()).getTime();
     var time = (endTimeMs - startTimeMs) / 1000;
@@ -135,250 +143,23 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
         print('');
     }
 
+    // Evaluate the type assertions
+    this.evalTypeAsserts();
+
     // Dump info about functions analyzed
     if (this.verbose === true)
         this.dumpFunctions();
 
-    // Dump info about classes analyzed
+    // Dump info about objects analyzed
     if (this.verbose === true)
-        this.dumpClasses();
+        this.dumpObjects();
 
     // Compute and dump type statistics
     if (this.verbose === true)
         this.compTypeStats();
 
-    // Evaluate the type assertions
-    this.evalTypeAsserts();
-
     // Restore the verbose flag
     this.verbose = oldVerbose;
-}
-
-/**
-Dump information gathered about functions
-*/
-TypeProp.prototype.dumpFunctions = function ()
-{
-    // For each function info object
-    for (var itr = this.funcInfo.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var irFunc = pair.key;
-        var funcInfo = pair.value;
-
-        // If this is a unit-level function, skip it
-        if (irFunc.astNode instanceof Program)
-            continue;
-
-        print('function "' + irFunc.funcName + '"');
-
-        var retGraph = funcInfo.retGraph;
-
-        for (var i = 1; i < funcInfo.argNodes.length; ++i)
-        {
-            var argName = (i == 1)? 'this':irFunc.argVars[i-2];
-            var argType = retGraph.getType(funcInfo.argNodes[i]);
-            print('arg ' + argName + ' : ' + argType);
-        }
-
-        var idxArgType = retGraph.getType(funcInfo.idxArgNode);
-        print('idx arg : ' + idxArgType);
-
-        var retType = retGraph.getType(funcInfo.retNode);
-        print('ret => ' + retType);
-        
-        print('');
-    }
-}
-
-/**
-Dump information gathered about classes
-*/
-TypeProp.prototype.dumpClasses = function ()
-{
-    // Get the type graph for the return of the last unit analyzed
-    var lastUnit = this.unitList[this.unitList.length-1];
-    var typeGraph = lastUnit.retGraph;
-
-    assert (
-        typeGraph instanceof TypeGraph,
-        'no ret type graph for last unit'
-    );
-
-    // For each class descriptor
-    for (var itr = TGObject.objMap.getItr(); itr.valid(); itr.next())
-    {
-        var obj = itr.get().key;
-
-        if (obj.origin instanceof IRFunction)
-            continue;
-
-        assert (
-            obj instanceof TGObject,
-            'invalid object: ' + obj
-        );
-
-        print('object <' + obj.getName() + '>');
-        print('{');
-
-        var protoType = typeGraph.getType(obj.proto);
-        print('    proto: ' + protoType);
-
-        for (name in obj.props)
-        {
-            var propNode = obj.getPropNode(name);
-            var propType = typeGraph.getType(propNode);
-            print('    ' + name + ': ' + propType);
-        }
-
-        var idxType = typeGraph.getType(obj.idxProp);
-        print('    []: ' + idxType);
-
-        print('}');
-        print('');
-    }
-}
-
-/**
-Compute statistics about type sets
-*/
-TypeProp.prototype.compTypeStats = function ()
-{
-    var numSets = 0;
-    var numAny = 0;
-    var numSingleType = 0;
-    var numWithUndef = 0;
-    var numIntOnly = 0;
-    var numStrOnly = 0;
-    var numObjOnly = 0;
-    var numKnownObj = 0;
-    var maxNumObjs = 0;
-    var numGetProp = 0;
-    var numGetObj = 0;
-    var numArithOp = 0;
-    var numArithKnown = 0;
-    var numPropUse = 0;
-    var numPropDef = 0;
-
-    // Accumulate stats for one type set occurrence
-    function accumStats(instr, useIdx, set)
-    {
-        assert (
-            instr instanceof IRInstr,
-            'invalid instruction'
-        );
-
-        assert (
-            typeof useIdx === 'number',
-            'invalid use index'
-        );
-
-        var flags = set.flags;
-
-        var numObjs = set.objSet? set.objSet.length:0;
-
-        var numFlags = 0;
-        for (flag in TypeFlags)
-        {
-            var tf = TypeFlags[flag];
-
-            if (tf === TypeFlags.EMPTY ||
-                tf === TypeFlags.OBJEXT ||
-                tf === TypeFlags.ANY)
-                continue;
-
-            if (flags & TypeFlags[flag])
-                ++numFlags;
-        }
-
-        numSets += 1;
-
-        if (numFlags === 1)
-            numSingleType += 1;
-
-        if (flags === TypeFlags.ANY)
-            numAny += 1;
-
-        if (flags & TypeFlags.UNDEF)
-            numWithUndef += 1;
-
-        if (flags === TypeFlags.INT)
-            numIntOnly += 1;
-
-        if (flags === TypeFlags.STRING)
-            numStrOnly += 1;
-
-        if (flags === TypeFlags.OBJECT)
-            numObjOnly += 1;
-
-        if (flags === TypeFlags.OBJECT && numObjs === 1)
-            numKnownObj += 1;
-
-        if (instr instanceof GetPropInstr && useIdx === 0)
-        {
-            numGetProp += 1;
-            if (set.flags === TypeFlags.OBJECT)
-                numGetObj += 1;
-        }
-
-        // If this is a property value use
-        if (instr.uses[useIdx] instanceof GetPropInstr)
-        {
-            numPropUse += 1;
-            if ((set.flags & TypeFlags.UNDEF) === 0)
-                numPropDef += 1;
-        }
-
-        if (instr instanceof JSArithInstr)
-        {
-            numArithOp += 1;
-            if (set.flags === TypeFlags.INT ||
-                set.flags === TypeFlags.FLOAT ||
-                set.flags === TypeFlags.STRING)
-                numArithKnown += 1;
-        }
-
-        maxNumObjs = Math.max(maxNumObjs, numObjs);
-    }
-
-    // Accumulate statistics for each use type set seen
-    for (var itr = this.typeSets.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-
-        var instr = pair.key.instr;
-        var useIdx = pair.key.idx;
-        var typeSet = pair.value;
-
-        accumStats(instr, useIdx, typeSet);
-    }
-
-    function compPercent(num, denom)
-    {
-        if (denom === 0)
-            return 'N/A';
-
-        return Number(100 * num / denom).toFixed(0) + '%';
-    }
-
-    var perGetObj = compPercent(numGetObj, numGetProp);
-    var perArithKnown = compPercent(numArithKnown, numArithOp);
-    var perPropDef = compPercent(numPropDef, numPropUse);
-
-    print('Num type sets     : ' + numSets);
-    print('Num any type      : ' + numAny);
-    print('Num single type   : ' + numSingleType);
-    print('Num with undef    : ' + numWithUndef);
-    print('Num int only      : ' + numIntOnly);
-    print('Num string only   : ' + numStrOnly);
-    print('Num obj. only     : ' + numObjOnly);
-    print('Num known obj.    : ' + numKnownObj);
-    print('Max num objs.     : ' + maxNumObjs);
-    print('Get prop obj only : ' + perGetObj + ' (' + numGetObj + ')');
-    print('Arith opnds known : ' + perArithKnown + ' (' + numArithKnown + ')');
-    print('Prop uses no undef: ' + perPropDef + ' (' + numPropUse + ')');
-
-    print('');
 }
 
 /**
@@ -491,5 +272,221 @@ TypeProp.prototype.evalTypeAsserts = function ()
         if (r !== true)
             fail(desc, 'test failed');
     }
+}
+
+/**
+Dump information gathered about functions
+*/
+TypeProp.prototype.dumpFunctions = function ()
+{
+    // For each function info object
+    for (var itr = this.funcInfo.getItr(); itr.valid(); itr.next())
+    {
+        var pair = itr.get();
+        var irFunc = pair.key;
+        var funcInfo = pair.value;
+
+        // If this is a unit-level function, skip it
+        if (irFunc.astNode instanceof Program)
+            continue;
+
+        print('function "' + irFunc.funcName + '"');
+
+        var retGraph = funcInfo.retGraph;
+
+        for (var i = 1; i < funcInfo.argNodes.length; ++i)
+        {
+            var argName = (i == 1)? 'this':irFunc.argVars[i-2];
+            var argType = retGraph.getType(funcInfo.argNodes[i]);
+            print('arg ' + argName + ' : ' + argType);
+        }
+
+        var idxArgType = retGraph.getType(funcInfo.idxArgNode);
+        print('idx arg : ' + idxArgType);
+
+        var retType = retGraph.getType(funcInfo.retNode);
+        print('ret => ' + retType);
+        
+        print('');
+    }
+}
+
+/**
+Dump information gathered about classes
+*/
+TypeProp.prototype.dumpObjects = function ()
+{
+    // Get the type graph for the return of the last unit analyzed
+    var lastUnit = this.unitList[this.unitList.length-1];
+    var typeGraph = lastUnit.retGraph;
+
+    assert (
+        typeGraph instanceof TypeGraph,
+        'no ret type graph for last unit'
+    );
+
+    // For each class descriptor
+    for (var itr = TGObject.objMap.getItr(); itr.valid(); itr.next())
+    {
+        var obj = itr.get().key;
+
+        if (obj.origin instanceof IRFunction)
+            continue;
+
+        assert (
+            obj instanceof TGObject,
+            'invalid object: ' + obj
+        );
+
+        print('object <' + obj.getName() + '>');
+        print('{');
+
+        var protoType = typeGraph.getType(obj.proto);
+        print('    proto: ' + protoType);
+
+        for (name in obj.props)
+        {
+            var propNode = obj.getPropNode(name);
+            var propType = typeGraph.getType(propNode);
+            print('    ' + name + ': ' + propType);
+        }
+
+        var idxType = typeGraph.getType(obj.idxProp);
+        print('    []: ' + idxType);
+
+        print('}');
+        print('');
+    }
+}
+
+/**
+Compute statistics about type sets
+*/
+TypeProp.prototype.compTypeStats = function ()
+{
+    var maxNumObjs = 0;
+
+    var numGetProp      = 0;
+    var numGetObj       = 0;
+    var numGetSingle    = 0;
+    var numGetDef       = 0;
+
+    var numPutProp      = 0;
+    var numPutObj       = 0;
+    var numPutSingle    = 0;
+
+    var numArithOp  = 0;
+    var numArithInt = 0;
+
+    const ta = this;
+
+    function accumStats(instr)
+    {
+        assert (
+            instr instanceof IRInstr,
+            'invalid instruction'
+        );
+
+        function getUseType(idx)
+        {
+            return ta.typeSets.get({ instr:instr, idx:idx });
+        }
+
+        var outType = ta.typeSets.get({ instr:instr });    
+
+        var numObjs = outType.objSet? outType.objSet.length:0;
+        maxNumObjs = Math.max(maxNumObjs, numObjs);
+
+        // Get property instruction
+        if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+        {
+            var u0 = getUseType(0);
+
+            numGetProp += 1;
+
+            if ((u0.flags & ~TypeFlags.OBJEXT) === 0)
+            {
+                numGetObj += 1;
+
+                if (u0.objSet && u0.objSet.length === 1)
+                    numGetSingle += 1;
+            }
+
+            if ((outType.flags & TypeFlags.UNDEF) === 0)
+                numGetDef += 1;
+        }
+
+        // Put property instruction
+        if (instr instanceof PutPropInstr)
+        {
+            var u0 = getUseType(0);
+
+            numPutProp += 1;
+
+            if ((u0.flags & ~TypeFlags.OBJEXT) === 0)
+            {
+                numPutObj += 1;
+
+                if (u0.objSet && u0.objSet.length === 1)
+                    numPutSingle += 1;
+            }
+        }
+
+        // Arithmetic instructions
+        else if (instr instanceof JSArithInstr)
+        {
+            var u0 = getUseType(0);
+            var u1 = getUseType(1);
+
+            numArithOp += 1;
+
+            if (u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT)
+                numArithInt += 1;
+        }
+    }
+
+    // For each block type graph we have
+    for (var itr = this.blockGraphs.getItr(); itr.valid(); itr.next())
+    {
+        var block = itr.get().key.block;
+
+        // For each instruction of the block
+        for (var i = 0; i < block.instrs.length; ++i)
+        {
+            var instr = block.instrs[i];
+
+            accumStats(instr);
+        }
+    }
+
+    function compPercent(num, denom)
+    {
+        if (denom === 0)
+            return 'N/A';
+
+        return Number(100 * num / denom).toFixed(0) + '%';
+    }
+
+    var perGetObj    = compPercent(numGetObj    , numGetProp);
+    var perGetSingle = compPercent(numGetSingle , numGetProp);
+    var perGetDef    = compPercent(numGetDef    , numGetProp);
+
+    var perPutObj    = compPercent(numPutObj    , numPutProp);
+    var perPutSingle = compPercent(numPutSingle , numPutProp);
+
+    var perArithInt  = compPercent(numArithInt  , numArithOp);
+
+    print('Max num objs: ' + maxNumObjs);
+    print('');
+    print('Get prop obj only  : ' + perGetObj    + ' (' + numGetObj + ')');
+    print('Get prop single obj: ' + perGetSingle + ' (' + numGetSingle + ')');
+    print('Get prop not undef : ' + perGetDef    + ' (' + numGetDef + ')');
+    print('');
+    print('Put prop obj only  : ' + perPutObj    + ' (' + numPutObj + ')');
+    print('Put prop single obj: ' + perPutSingle + ' (' + numPutSingle + ')');
+    print('');
+    print('Arith on int & int : ' + perArithInt  + ' (' + numArithInt + ')');
+
+    print('');
 }
 
