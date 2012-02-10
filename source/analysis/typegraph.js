@@ -81,7 +81,7 @@ TGProperty.prototype = new TGVariable();
 /**
 @class Object value in a type graph.
 */
-function TGObject(origin, flags)
+function TGObject(origin, flags, numClosVars)
 {
     assert (
         flags === TypeFlags.OBJECT  ||
@@ -121,6 +121,13 @@ function TGObject(origin, flags)
     Property node for all indexed/array properties
     */
     this.idxProp = new TGVariable('idx', this);
+
+    /**
+    Closure variables, for function objects
+    */
+    this.closVars = new Array(numClosVars);
+    for (var i = 0; i < numClosVars; ++i)
+        this.closVars[i] = new TGVariable('clos_' + i, this);
 
     // Add the object to the map
     TGObject.objMap.set(this, this);
@@ -170,7 +177,7 @@ Get the value node for a given property
 TGObject.prototype.getPropNode = function (name)
 {
     // If the property doesn't exist, create it
-    if (this.props[name] === undefined)
+    if (this.props.hasOwnProperty(name) === false)
         this.props[name] = new TGProperty(name, this);
 
     return this.props[name];
@@ -182,6 +189,55 @@ Test if this object is a singleton instance
 TGObject.prototype.isSingleton = function ()
 {
     return (typeof this.origin === 'string');
+}
+
+/**
+@class Represents a closure cell in the type graph
+*/
+function TGClosCell(origin)
+{
+    /**
+    Origin (creation) site of the cell.
+    */
+    this.origin = origin;
+
+    // If the object is already in the map, return it
+    var obj = TGObject.objMap.get(this);
+    if (obj !== HashMap.NOT_FOUND)
+        return obj;
+
+    /**
+    Closure cell value variable
+    */
+    this.value = new TGVariable('cell_val', this);
+
+    // Add the cell to the map
+    TGClosCell.cellMap.set(this, this);
+}
+
+/**
+Map of closure cells
+*/
+TGClosCell.cellMap = new HashMap(
+    function hash(o)
+    {
+        return defHashFunc(o.origin);
+    },
+    function eq(o1, o2)
+    {
+        if (o1.origin !== o2.origin)
+            return false;
+
+        return true;
+    }
+);
+
+/**
+Produce a string representation of this object
+*/
+TGClosCell.prototype.toString = function ()
+{
+    return '<' + this.origin.getValName() + '>';
 }
 
 /**
@@ -201,6 +257,7 @@ TypeFlags.STRING   = 1 << 7;    // May be string
 TypeFlags.OBJECT   = 1 << 8;    // May be string
 TypeFlags.ARRAY    = 1 << 9;    // May be string
 TypeFlags.FUNCTION = 1 << 10;   // May be string
+TypeFlags.CELL     = 1 << 11;   // May be closure cell
 
 // Extended object (object or array or function)
 TypeFlags.OBJEXT =
@@ -219,7 +276,8 @@ TypeFlags.ANY =
     TypeFlags.STRING   |
     TypeFlags.OBJECT   |
     TypeFlags.ARRAY    |
-    TypeFlags.FUNCTION;
+    TypeFlags.FUNCTION |
+    TypeFlags.CELL;
 
 // Empty/uninferred type flag (before analysis)
 TypeFlags.EMPTY = 0;
@@ -375,6 +433,8 @@ TypeSet.prototype.toString = function ()
         addType('array');
     if (this.flags & TypeFlags.FUNCTION)
         addType('function');
+    if (this.flags & TypeFlags.CELL)
+        addType('cell');
 
     // If a range is defined
     if (this.rangeMin !== -Infinity || this.rangeMax !== Infinity)
@@ -762,7 +822,7 @@ TypeGraph.prototype.assignType = function (varNode, typeSet)
     assert (
         varNode instanceof TGVariable ||
         varNode instanceof IRInstr,
-        'invalid var node'
+        'invalid var node: ' + varNode
     );
 
     assert (
@@ -781,7 +841,7 @@ TypeGraph.prototype.unionType = function (varNode, typeSet)
     assert (
         varNode instanceof TGVariable ||
         varNode instanceof IRInstr,
-        'invalid var node'
+        'invalid var node: ' + varNode
     );
 
     assert (
@@ -886,7 +946,7 @@ TypeGraph.prototype.equal = function (that)
 /**
 Create a new object in the type graph
 */
-TypeGraph.prototype.newObject = function (origin, protoSet, flags)
+TypeGraph.prototype.newObject = function (origin, protoSet, flags, numClosVars)
 {
     // By default, the prototype is null
     if (protoSet === undefined)
@@ -896,12 +956,16 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags)
     if (flags === undefined)
         flags = TypeFlags.OBJECT;
 
+    // By default, no closure variables
+    if (numClosVars === undefined)
+        numClosVars = 0;
+
     assert (
         protoSet.flags !== TypeFlags.EMPTY,
         'invalid proto set flags'
     )
 
-    var obj = new TGObject(origin, flags);
+    var obj = new TGObject(origin, flags, numClosVars);
 
     this.assignType(obj.proto, protoSet);
 
@@ -913,7 +977,8 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags)
         undefined, 
         undefined, 
         undefined, 
-        objSet
+        objSet,
+        numClosVars
     );
 }
 

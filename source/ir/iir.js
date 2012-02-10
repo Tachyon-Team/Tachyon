@@ -66,6 +66,17 @@ Object containing IR instructions usable inline inside functions
 */
 var iir =
 {
+    //**************************
+    // HIR instructions
+    //**************************
+
+    // Blank array instruction
+    blank_array: BlankArrayInstr,
+
+    //**************************
+    // LIR instructions
+    //**************************
+
     // Memory management
     load        : LoadInstr,
     store       : StoreInstr,

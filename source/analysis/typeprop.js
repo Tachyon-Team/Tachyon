@@ -115,6 +115,9 @@ TypeProp.prototype.init = function ()
     // Clear the object map
     TGObject.objMap.clear();
 
+    // Clear the closure cell map
+    TGClosCell.cellMap.clear();
+
     /**
     Worklist of basic blocks queued to be analyzed
     */
@@ -1472,30 +1475,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         retType = TypeSet.any;
     }
 
-    // If this is a call to makeClos (closure creation)
-    else if (callee.funcName === 'makeClos')
-    {
-        var func = this.uses[3];
-
-        assert (
-            func instanceof IRFunction,
-            'closure of unknown function'
-        );
-
-        // Create an object node for this function
-        var funcObj = typeGraph.newObject(func, ta.funcProto, TypeFlags.FUNCTION);
-
-        // Create a Function.prototype object for the function
-        var protoObj = typeGraph.newObject(func, ta.objProto);
-
-        // Assign the prototype object to the Function.prototype property
-        var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
-        typeGraph.assignType(protoNode, protoObj);
-
-        retType = funcObj;
-    }
-
-    // If this is the function that creates the 'arguments' object
+    // Creates the 'arguments' object
     else if (callee.funcName === 'makeArgObj')
     {
         // Get the argument type info for this function
@@ -1515,6 +1495,191 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         typeGraph.assignType(argObj.idxProp, idxArgType);
 
         retType = argObjType;
+    }
+
+    // Closure object creation
+    else if (callee.funcName === 'makeClos')
+    {
+        var func = this.uses[3];
+        var numClosCells = this.uses[4].value;
+
+        //print(this);
+
+        assert (
+            func instanceof IRFunction,
+            'closure of unknown function'
+        );
+
+        assert (
+            isNonNegInt(numClosCells),
+            'invalid num clos cells'
+        );
+
+        // Create an object node for this function
+        var funcObj = typeGraph.newObject(
+            func, 
+            ta.funcProto, 
+            TypeFlags.FUNCTION, 
+            numClosCells
+        );
+
+        // Create a Function.prototype object for the function
+        var protoObj = typeGraph.newObject(func, ta.objProto);
+
+        // Assign the prototype object to the Function.prototype property
+        var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
+        typeGraph.assignType(protoNode, protoObj);
+
+        retType = funcObj;
+    }
+
+    // Closure cell creation
+    else if (callee.funcName === 'makeCell')
+    {
+        //print('makeCell');
+        //print(this);
+
+        var newCell = new TGClosCell(this);
+
+        var objSet = new HashSet();
+        objSet.add(newCell);
+
+        var cellType = new TypeSet(
+            TypeFlags.CELL,
+            undefined,
+            undefined,
+            undefined,
+            objSet
+        );
+
+        retType = cellType;
+    }
+
+    // Set closure cell variable
+    else if (callee.funcName === 'set_clos_cells')
+    {
+        var closType = typeGraph.getType(this.uses[3]);
+        var cellIdx = this.uses[4].value;
+        var valType = typeGraph.getType(this.uses[5]);
+
+        //print(this);
+
+        assert (
+            closType.flags === TypeFlags.FUNCTION,
+            'invalid closure type'
+        );
+
+        // For each possible closure
+        for (var itr = closType.getObjItr(); itr.valid(); itr.next())
+        {
+            var clos = itr.get();
+
+            assert (
+                cellIdx < clos.closVars.length,
+                'invalid clos var index: ' + cellIdx + 
+                ' (' + clos.closVars.length + ')'
+            );
+
+            var varNode = clos.closVars[cellIdx];
+            typeGraph.unionType(varNode, valType);
+        }
+
+        retType = TypeSet.any;
+    }
+
+    // Get closure cell variable
+    else if (callee.funcName === 'get_clos_cells')
+    {
+        var closType = typeGraph.getType(this.uses[3]);
+        var cellIdx = this.uses[4].value;
+
+        //print('get_clos_cells ******');
+
+        assert (
+            closType.flags === TypeFlags.FUNCTION,
+            'invalid closure type'
+        );
+
+        var outType = TypeSet.empty;
+
+        // For each possible closure
+        for (var itr = closType.getObjItr(); itr.valid(); itr.next())
+        {
+            var clos = itr.get();
+
+            assert (
+                cellIdx < clos.closVars.length,
+                'invalid clos var index: ' + cellIdx + 
+                ' (' + clos.closVars.length + ')'
+            );
+
+            var varNode = clos.closVars[cellIdx];
+            var varType = typeGraph.getType(varNode);
+
+            outType = outType.union(varType);
+        }
+
+        retType = outType;
+    }
+
+    // Set closure cell value
+    else if (callee.funcName === 'set_cell_val')
+    {
+        var cellType = typeGraph.getType(this.uses[3]);
+        var valType = typeGraph.getType(this.uses[4]);
+
+        //print('set_cell_val');
+        //print(this);
+
+        assert (
+            cellType.flags === TypeFlags.CELL,
+            'invalid cell type: ' + cellType
+        );
+
+        // For each possible cell
+        for (var itr = cellType.getObjItr(); itr.valid(); itr.next())
+        {
+            var cell = itr.get();
+
+            var varNode = cell.value;
+            typeGraph.unionType(varNode, valType);
+        }
+
+        retType = TypeSet.any;
+    }
+
+    // Get closure cell value
+    else if (callee.funcName === 'get_cell_val')
+    {
+        var cellType = typeGraph.getType(this.uses[3]);
+
+        //print('get_cell_val');
+        //print(this);
+
+        if (cellType.flags === TypeFlags.ANY)
+        {
+            retType = TypeSet.any;
+        }
+        else
+        {
+            assert (
+                cellType.flags === TypeFlags.CELL,
+                'invalid cell type: ' + cellType
+            );
+
+            var outType = TypeSet.empty;
+
+            // For each possible cell
+            for (var itr = cellType.getObjItr(); itr.valid(); itr.next())
+            {
+                var cell = itr.get();
+                var varType = typeGraph.getType(cell.value);
+
+                outType = outType.union(varType);
+            }
+
+            retType = outType;
+        }
     }
 
     // For other primitive functions
