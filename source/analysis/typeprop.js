@@ -1308,6 +1308,19 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     // Get the type set for the callee
     var calleeType = typeGraph.getType(this.uses[0]);
 
+    // If the callee is unknown or non-function
+    if (calleeType.flags === TypeFlags.ANY || 
+        (calleeType.flags & TypeFlags.FUNCTION) === 0)
+    {
+        if (this.verbose === true)
+            print('*WARNING: callee has type ' + calleeType);
+
+        ta.setOutput(typeGraph, this, TypeSet.any);
+
+        // Don't stop the inference for this block
+        return false;
+    }
+
     // Test if this is a new/constructor call
     var isNew = this instanceof JSNewInstr;
 
@@ -1332,19 +1345,6 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 
         // Create a new object to use as the this argument
         var thisType = typeGraph.newObject(this, protoType);
-    }
-
-    // If the callee is unknown or non-function
-    if (calleeType.flags === TypeFlags.ANY || 
-        (calleeType.flags & TypeFlags.FUNCTION) === 0)
-    {
-        if (this.verbose === true)
-            print('*WARNING: callee has type ' + calleeType);
-
-        ta.setOutput(typeGraph, this, TypeSet.any);
-
-        // Don't stop the inference for this block
-        return false;
     }
 
     // For each potential callee
@@ -1496,7 +1496,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     // If this is the function that creates the 'arguments' object
-    else if (callee.funcName = 'makeArgObj')
+    else if (callee.funcName === 'makeArgObj')
     {
         // Get the argument type info for this function
         var func = this.parentBlock.parentCFG.ownerFunc;

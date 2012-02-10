@@ -624,7 +624,7 @@ TypeSet.prototype.restrict = function (flags)
     if (canBeFunc === true && canBeObj === true)
     {
         // Leave the object set unchanged
-        var objSet = this.objSet.copy();
+        var objSet = this.objSet? this.objSet.copy():undefined;
     }
     else
     {

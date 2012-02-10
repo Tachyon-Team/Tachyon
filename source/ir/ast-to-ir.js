@@ -253,7 +253,7 @@ function stmtListToIRFunc(
     );
 
     // If the function uses the arguments object
-    if (newFunc.usesArguments)
+    if (newFunc.usesArguments === true)
     {
         // Add an instruction to get the number of arguments
         var numArgs = new GetNumArgsInstr();
