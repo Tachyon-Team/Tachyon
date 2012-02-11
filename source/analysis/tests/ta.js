@@ -219,6 +219,11 @@ tests.ta.args_sum = TypeProp.makeTest(
     false
 );
 
+tests.ta.clos_simple = TypeProp.makeTest(
+    'programs/type_analysis/clos_simple.js',
+    false
+);
+
 tests.ta.multi_file = TypeProp.makeTest(
     [
         'programs/type_analysis/multi_file1.js',

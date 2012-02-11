@@ -1370,6 +1370,9 @@ tests.programs.type_analysis.proto_chain = genTest(
 tests.programs.type_analysis.args_sum = genTest(
     'programs/type_analysis/args_sum.js'
 );
+tests.programs.type_analysis.clos_simple = genTest(
+    'programs/type_analysis/clos_simple.js'
+);
 tests.programs.type_analysis.multi_file = genTest(
     [
         'programs/type_analysis/multi_file1.js',
