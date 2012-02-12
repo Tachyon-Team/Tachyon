@@ -209,6 +209,12 @@ tests.ta.ctor_simple = TypeProp.makeTest(
     false
 );
 
+tests.ta.ctor_array = TypeProp.makeTest(
+    'programs/type_analysis/ctor_array.js',
+    false,
+    false
+);
+
 tests.ta.proto_chain = TypeProp.makeTest(
     'programs/type_analysis/proto_chain.js',
     false
