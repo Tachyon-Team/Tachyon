@@ -375,6 +375,9 @@ TypeProp.prototype.compTypeStats = function ()
     var numPutObj       = 0;
     var numPutSingle    = 0;
 
+    var numCall     = 0;
+    var numCallMono = 0;
+
     var numArithOp  = 0;
     var numArithInt = 0;
 
@@ -387,12 +390,19 @@ TypeProp.prototype.compTypeStats = function ()
             'invalid instruction'
         );
 
-        function getUseType(idx)
-        {
-            return ta.typeSets.get({ instr:instr, idx:idx });
-        }
-
         var outType = ta.typeSets.get({ instr:instr });    
+
+        var useTypes = [];
+
+        for (var i = 0; i < instr.uses.length; ++i)
+        {
+            var type = ta.typeSets.get({ instr:instr, idx:i });
+          
+            if ((type instanceof TypeSet) === false)
+                return;
+
+            useTypes.push(type);
+        }
 
         var numObjs = outType.objSet? outType.objSet.length:0;
         maxNumObjs = Math.max(maxNumObjs, numObjs);
@@ -400,7 +410,7 @@ TypeProp.prototype.compTypeStats = function ()
         // Get property instruction
         if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
         {
-            var u0 = getUseType(0);
+            var u0 = useTypes[0];
 
             numGetProp += 1;
 
@@ -419,7 +429,7 @@ TypeProp.prototype.compTypeStats = function ()
         // Put property instruction
         if (instr instanceof PutPropInstr)
         {
-            var u0 = getUseType(0);
+            var u0 = useTypes[0];
 
             numPutProp += 1;
 
@@ -432,11 +442,24 @@ TypeProp.prototype.compTypeStats = function ()
             }
         }
 
+        // Function call/new instruction
+        if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+        {
+            var u0 = useTypes[0];
+
+            numCall += 1;
+
+            if (u0.objSet && u0.objSet.length === 1)
+                numCallMono += 1;
+            else
+                print(u0);
+        }
+
         // Arithmetic instructions
         else if (instr instanceof JSArithInstr)
         {
-            var u0 = getUseType(0);
-            var u1 = getUseType(1);
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
 
             numArithOp += 1;
 
@@ -474,6 +497,8 @@ TypeProp.prototype.compTypeStats = function ()
     var perPutObj    = compPercent(numPutObj    , numPutProp);
     var perPutSingle = compPercent(numPutSingle , numPutProp);
 
+    var perCallMono = compPercent(numCallMono , numCall);
+
     var perArithInt  = compPercent(numArithInt  , numArithOp);
 
     print('Max num objs: ' + maxNumObjs);
@@ -484,6 +509,8 @@ TypeProp.prototype.compTypeStats = function ()
     print('');
     print('Put prop obj only  : ' + perPutObj    + ' (' + numPutObj + ')');
     print('Put prop single obj: ' + perPutSingle + ' (' + numPutSingle + ')');
+    print('');
+    print('Fn call monomorphic: ' + perCallMono + ' (' + numCallMono + ')');
     print('');
     print('Arith on int & int : ' + perArithInt  + ' (' + numArithInt + ')');
 
