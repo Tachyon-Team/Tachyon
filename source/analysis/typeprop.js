@@ -147,7 +147,7 @@ TypeProp.prototype.init = function ()
     /**
     Array prototype object node
     */
-    this.arrProto = this.initGraph.newObject('arr_proto');
+    this.arrProto = TypeSet.null;
 
     /**
     Function prototype object node
@@ -1465,14 +1465,13 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 {
     var callee = this.uses[0];
 
-    // Return type
-    var retType;
+    // Return type (by default, any type)
+    var retType = TypeSet.any;
 
     // If we cannot determine the callee
     if ((callee instanceof IRFunction) === false)
     {
         // Do nothing
-        retType = TypeSet.any;
     }
 
     // Creates the 'arguments' object
@@ -1524,7 +1523,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         );
 
         // Create a Function.prototype object for the function
-        var protoObj = typeGraph.newObject(func, ta.objProto);
+        var protoObj = typeGraph.newObject(this, ta.objProto);
 
         // Assign the prototype object to the Function.prototype property
         var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
@@ -1583,8 +1582,6 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             var varNode = clos.closVars[cellIdx];
             typeGraph.unionType(varNode, valType);
         }
-
-        retType = TypeSet.any;
     }
 
     // Get closure cell variable
@@ -1644,8 +1641,6 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             var varNode = cell.value;
             typeGraph.unionType(varNode, valType);
         }
-
-        retType = TypeSet.any;
     }
 
     // Get closure cell value
@@ -1656,11 +1651,8 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         //print('get_cell_val');
         //print(this);
 
-        if (cellType.flags === TypeFlags.ANY)
-        {
-            retType = TypeSet.any;
-        }
-        else
+        // If the cell type is not unknown
+        if (cellType.flags !== TypeFlags.ANY)
         {
             assert (
                 cellType.flags === TypeFlags.CELL,
@@ -1682,11 +1674,17 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         }
     }
 
-    // For other primitive functions
-    else
+    // Set the array prototype object
+    else if (callee.funcName === 'set_ctx_arrproto')
     {
-        // Do nothing
-        retType = TypeSet.any;
+        var arrProto = typeGraph.getType(this.uses[4]);
+
+        // Rename the object
+        var obj = arrProto.getObjItr().get();
+        obj.origin = 'arr_proto';        
+
+        // Store the array prototype object
+        ta.arrProto = arrProto;
     }
 
     // Set our own output type in the type graph
