@@ -142,7 +142,7 @@ TypeProp.prototype.init = function ()
     /**
     Object prototype object node
     */
-    this.objProto = this.initGraph.newObject('obj_proto');
+    this.objProto = TypeSet.null;
 
     /**
     Array prototype object node
@@ -152,7 +152,7 @@ TypeProp.prototype.init = function ()
     /**
     Function prototype object node
     */
-    this.funcProto = this.initGraph.newObject('func_proto');
+    this.funcProto = TypeSet.null;
 
     /**
     Global object node
@@ -1674,17 +1674,37 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         }
     }
 
+    // Set the object prototype object
+    else if (callee.funcName === 'set_ctx_objproto')
+    {
+        var objProto = typeGraph.getType(this.uses[4]);
+
+        // Rename the object and store it in the type analysis
+        var obj = objProto.getObjItr().get();
+        obj.origin = 'obj_proto';        
+        ta.objProto = objProto;
+    }
+
     // Set the array prototype object
     else if (callee.funcName === 'set_ctx_arrproto')
     {
         var arrProto = typeGraph.getType(this.uses[4]);
 
-        // Rename the object
+        // Rename the object and store it in the type analysis
         var obj = arrProto.getObjItr().get();
         obj.origin = 'arr_proto';        
-
-        // Store the array prototype object
         ta.arrProto = arrProto;
+    }
+
+    // Set the function prototype object
+    else if (callee.funcName === 'set_ctx_funcproto')
+    {
+        var funcProto = typeGraph.getType(this.uses[4]);
+
+        // Rename the object and store it in the type analysis
+        var obj = funcProto.getObjItr().get();
+        obj.origin = 'func_proto';        
+        ta.funcProto = funcProto;
     }
 
     // Set our own output type in the type graph

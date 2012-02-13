@@ -177,7 +177,7 @@ Get the value node for a given property
 TGObject.prototype.getPropNode = function (name)
 {
     // If the property doesn't exist, create it
-    if (this.props.hasOwnProperty(name) === false)
+    if (Object.prototype.hasOwnProperty.call(this.props, name) === false)
         this.props[name] = new TGProperty(name, this);
 
     return this.props[name];

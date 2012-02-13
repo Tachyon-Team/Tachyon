@@ -71,7 +71,9 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
     // Get the stdlib source file names
     //const libFiles = TACHYON_STDLIB_SRCS;
     const libFiles = [
+        'stdlib/object.js',
         'stdlib/array.js',
+        'stdlib/function.js',
         'stdlib/math.js'
     ];
 
