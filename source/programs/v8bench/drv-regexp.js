@@ -1,7 +1,2 @@
-function runRegExpBenchmark()
-{
-    RegExp.run();
-
-    return 0;
-}
+RegExp.run();
 

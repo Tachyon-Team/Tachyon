@@ -1,7 +1,2 @@
-function runDeltaBlueBenchmark()
-{
-    deltaBlue();
-
-    return 0;
-}
+deltaBlue();
 

@@ -1,7 +1,2 @@
-function runSplayBenchmark()
-{
-    Splay.run();
-
-    return 0;
-}
+Splay.run();
 

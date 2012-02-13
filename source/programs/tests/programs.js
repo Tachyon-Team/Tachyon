@@ -1032,29 +1032,20 @@ tests.programs.v8bench = tests.testSuite();
 tests.programs.v8bench['crypto'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/crypto.js',
-     'drv-crypto'],
-    'runCryptoBenchmark',
-    [],
-    0
+     'drv-crypto']
 );
 */
 tests.programs.v8bench['deltablue'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/deltablue.js',
-     'programs/v8bench/drv-deltablue.js'],
-    'runDeltaBlueBenchmark',
-    [],
-    0
+     'programs/v8bench/drv-deltablue.js']
 );
 /*
 //FIXME: requires Math.random (FP support)
 tests.programs.v8bench['earley-boyer'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/earley-boyer.js',
-     'programs/v8bench/drv-earley-boyer.js'],
-    'runEarleyBoyerBenchmark',
-    [],
-    0
+     'programs/v8bench/drv-earley-boyer.js']
 );
 */
 /*
@@ -1062,9 +1053,7 @@ tests.programs.v8bench['earley-boyer'] = genTest(
 tests.programs.v8bench['raytrace'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/raytrace.js',
-     'renderScene'],
-    [],
-    0
+     'renderScene']
 );
 */
 /*
@@ -1072,19 +1061,13 @@ tests.programs.v8bench['raytrace'] = genTest(
 tests.programs.v8bench['regexp'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/regexp.js',
-     'programs/v8bench/drv-regexp.js'],
-    'runRegExpBenchmark',
-    [],
-    0
+     'programs/v8bench/drv-regexp.js']
 );
 */
 tests.programs.v8bench['richards'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/richards.js',
-     'programs/v8bench/drv-richards.js'],
-    'runRichardsBenchmark',
-    [],
-    0
+     'programs/v8bench/drv-richards.js']
 );
 /*
 //FIXME: requires Math.random (FP support)
@@ -1092,9 +1075,7 @@ tests.programs.v8bench['splay'] = genTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/splay.js',
      'programs/v8bench/drv-splay.js',
-     'runSplayBenchmark'],
-    [],
-    0
+     'runSplayBenchmark']
 );
 */
 

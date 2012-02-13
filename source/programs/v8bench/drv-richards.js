@@ -1,7 +1,2 @@
-function runRichardsBenchmark()
-{
-    runRichards();
-
-    return 0;
-}
+runRichards();
 

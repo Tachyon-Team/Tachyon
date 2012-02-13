@@ -258,11 +258,15 @@ tests.ta['access-binary-trees'] = TypeProp.makeTest(
 );
 */
 
-// TODO: 
-// programs/v8bench/richards.js
-// Need to call runRichards...
-// Implements scheduler simulation
-//
-// Uses "new Array"
-//
+/*
+// FIXME: process out of memory
+tests.ta['richards'] = TypeProp.makeTest(
+    [
+        'programs/v8bench/richards.js',
+        'programs/v8bench/drv-richards.js'
+    ],
+    true,
+    false
+);
+*/
 

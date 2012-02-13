@@ -915,6 +915,8 @@ TypeGraph.prototype.merge = function (that)
 
     //print('graph merge done');
 
+    //print(newGraph.varMap.numItems);
+
     return newGraph;
 }
 
