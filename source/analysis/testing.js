@@ -78,7 +78,7 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
     ];
 
     // Library IR units
-    var libUnits = [];
+    this.libUnits = [];
 
     // If the standard library should be included
     if (useStdlib === true)
@@ -99,7 +99,7 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
             this.addUnit(ir);
 
             // Add the code to the list of library units
-            libUnits.push(ir);
+            this.libUnits.push(ir);
         }
     }
 
@@ -164,10 +164,33 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
 
     // Compute and dump type statistics
     if (this.verbose === true)
-        this.compTypeStats(libUnits);
+        this.compTypeStats();
 
     // Restore the verbose flag
     this.verbose = oldVerbose;
+}
+
+/**
+Test if an instruction, basic block or function originates
+in standard library code
+*/
+TypeProp.prototype.fromLib = function (elem)
+{
+    var block;
+    if (elem instanceof BasicBlock)
+        block = elem;
+    else if (elem instanceof IRInstr)
+        block = elem.parentBlock;
+    else if (elem instanceof IRFunction)
+        block = elem.hirCFG.entry;
+    else
+        return false;
+
+    var parentFunc = block.parentCFG.ownerFunc;
+    while (parentFunc.parentFunc !== null)
+        parentFunc = parentFunc.parentFunc;
+
+    return this.libUnits.indexOf(parentFunc) !== -1;
 }
 
 /**
@@ -338,13 +361,16 @@ TypeProp.prototype.dumpObjects = function ()
     {
         var obj = itr.get().key;
 
-        if (obj.origin instanceof IRFunction)
-            continue;
-
         assert (
             obj instanceof TGObject,
             'invalid object: ' + obj
         );
+
+        if (obj.origin instanceof IRFunction)
+            continue;
+
+        if (this.fromLib(obj.origin) === true)
+            continue;
 
         print('object <' + obj.getName() + '>');
         print('{');
@@ -370,7 +396,7 @@ TypeProp.prototype.dumpObjects = function ()
 /**
 Compute statistics about type sets
 */
-TypeProp.prototype.compTypeStats = function (libUnits)
+TypeProp.prototype.compTypeStats = function ()
 {
     const ta = this;
 
@@ -519,10 +545,7 @@ TypeProp.prototype.compTypeStats = function (libUnits)
         var block = itr.get().key.block;
 
         // If this is library code, skip it
-        var parentFunc = block.parentCFG.ownerFunc;
-        while (parentFunc.parentFunc !== null)
-            parentFunc = parentFunc.parentFunc;
-        if (libUnits.indexOf(parentFunc) !== -1)
+        if (this.fromLib(block) === true)
             continue;
 
         // For each instruction of the block
