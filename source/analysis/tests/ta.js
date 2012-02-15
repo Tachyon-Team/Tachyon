@@ -254,7 +254,7 @@ tests.ta.stdlib_array = TypeProp.makeTest(
 tests.ta['access-binary-trees'] = TypeProp.makeTest(
     'programs/sunspider/access-binary-trees.js',
     true,
-    false
+    true
 );
 */
 

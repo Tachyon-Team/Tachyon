@@ -77,6 +77,9 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
         'stdlib/math.js'
     ];
 
+    // Library IR units
+    var libUnits = [];
+
     // If the standard library should be included
     if (useStdlib === true)
     {
@@ -94,6 +97,9 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
 
             // Add the code unit to the analysis
             this.addUnit(ir);
+
+            // Add the code to the list of library units
+            libUnits.push(ir);
         }
     }
 
@@ -158,7 +164,7 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
 
     // Compute and dump type statistics
     if (this.verbose === true)
-        this.compTypeStats();
+        this.compTypeStats(libUnits);
 
     // Restore the verbose flag
     this.verbose = oldVerbose;
@@ -364,26 +370,57 @@ TypeProp.prototype.dumpObjects = function ()
 /**
 Compute statistics about type sets
 */
-TypeProp.prototype.compTypeStats = function ()
+TypeProp.prototype.compTypeStats = function (libUnits)
 {
+    const ta = this;
+
+    function compPercent(num, denom)
+    {
+        if (denom === 0)
+            return 'N/A';
+
+        return Number(100 * num / denom).toFixed(0);
+    }
+
+    function Stat(name)
+    {
+        this.name = name;
+        this.trueCnt = 0;
+        this.falseCnt = 0;
+    }
+
+    Stat.prototype.count = function (val)
+    {
+        if (val)
+            this.trueCnt++;
+        else
+            this.falseCnt++;
+    }
+
+    Stat.prototype.toString = function ()
+    {
+        var total = this.trueCnt + this.falseCnt;        
+
+        var percent = compPercent(this.trueCnt, total);
+
+        return this.name + ': ' + percent + '% (' + this.trueCnt + '/' + total + ')';
+    }
+
     var maxNumObjs = 0;
 
-    var numGetProp      = 0;
-    var numGetObj       = 0;
-    var numGetSingle    = 0;
-    var numGetDef       = 0;
+    var getObj      = new Stat('getProp on object only');
+    var getSingle   = new Stat('getProp on known object');
+    var getDef      = new Stat('getProp output not undef');
 
-    var numPutProp      = 0;
-    var numPutObj       = 0;
-    var numPutSingle    = 0;
+    var putObj      = new Stat('putProp on object only');
+    var putSingle   = new Stat('putProp on known object');
 
-    var numCall     = 0;
-    var numCallMono = 0;
+    var callMono    = new Stat('function call monomorphic');
 
-    var numArithOp  = 0;
-    var numArithInt = 0;
+    var arithInt    = new Stat('arith op on int & int');
+    var cmpInt      = new Stat('compare op on int & int');
 
-    const ta = this;
+    var branchKnown = new Stat('branch direction known');
 
     function accumStats(instr)
     {
@@ -414,47 +451,35 @@ TypeProp.prototype.compTypeStats = function ()
         {
             var u0 = useTypes[0];
 
-            numGetProp += 1;
+            getObj.count((u0.flags & ~TypeFlags.OBJEXT) === 0);
 
-            if ((u0.flags & ~TypeFlags.OBJEXT) === 0)
-            {
-                numGetObj += 1;
+            getSingle.count(
+                (u0.flags & ~TypeFlags.OBJEXT) === 0 &&
+                u0.objSet && u0.objSet.length === 1
+            );
 
-                if (u0.objSet && u0.objSet.length === 1)
-                    numGetSingle += 1;
-            }
-
-            if ((outType.flags & TypeFlags.UNDEF) === 0)
-                numGetDef += 1;
+            getDef.count((outType.flags & TypeFlags.UNDEF) === 0);
         }
 
         // Put property instruction
-        if (instr instanceof PutPropInstr)
+        else if (instr instanceof PutPropInstr)
         {
             var u0 = useTypes[0];
 
-            numPutProp += 1;
+            putObj.count((u0.flags & ~TypeFlags.OBJEXT) === 0);
 
-            if ((u0.flags & ~TypeFlags.OBJEXT) === 0)
-            {
-                numPutObj += 1;
-
-                if (u0.objSet && u0.objSet.length === 1)
-                    numPutSingle += 1;
-            }
+            putSingle.count(
+                (u0.flags & ~TypeFlags.OBJEXT) === 0 &&
+                u0.objSet && u0.objSet.length === 1
+            );
         }
 
         // Function call/new instruction
-        if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+        else if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
         {
             var u0 = useTypes[0];
 
-            numCall += 1;
-
-            if (u0.objSet && u0.objSet.length === 1)
-                numCallMono += 1;
-            else
-                print(u0);
+            callMono.count(u0.objSet && u0.objSet.length === 1);
         }
 
         // Arithmetic instructions
@@ -463,10 +488,28 @@ TypeProp.prototype.compTypeStats = function ()
             var u0 = useTypes[0];
             var u1 = useTypes[1];
 
-            numArithOp += 1;
+            arithInt.count(u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT);
+        }
 
-            if (u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT)
-                numArithInt += 1;
+        // Comparison instructions
+        else if (instr instanceof JSCompInstr)
+        {
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
+
+            cmpInt.count(u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT);
+        }
+
+        // If instruction
+        else if (instr instanceof IfInstr)
+        {
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
+
+            branchKnown.count(
+                (u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
+                (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
+            );
         }
     }
 
@@ -474,6 +517,13 @@ TypeProp.prototype.compTypeStats = function ()
     for (var itr = this.blockGraphs.getItr(); itr.valid(); itr.next())
     {
         var block = itr.get().key.block;
+
+        // If this is library code, skip it
+        var parentFunc = block.parentCFG.ownerFunc;
+        while (parentFunc.parentFunc !== null)
+            parentFunc = parentFunc.parentFunc;
+        if (libUnits.indexOf(parentFunc) !== -1)
+            continue;
 
         // For each instruction of the block
         for (var i = 0; i < block.instrs.length; ++i)
@@ -484,38 +534,26 @@ TypeProp.prototype.compTypeStats = function ()
         }
     }
 
-    function compPercent(num, denom)
-    {
-        if (denom === 0)
-            return 'N/A';
-
-        return Number(100 * num / denom).toFixed(0) + '%';
-    }
-
-    var perGetObj    = compPercent(numGetObj    , numGetProp);
-    var perGetSingle = compPercent(numGetSingle , numGetProp);
-    var perGetDef    = compPercent(numGetDef    , numGetProp);
-
-    var perPutObj    = compPercent(numPutObj    , numPutProp);
-    var perPutSingle = compPercent(numPutSingle , numPutProp);
-
-    var perCallMono = compPercent(numCallMono , numCall);
-
-    var perArithInt  = compPercent(numArithInt  , numArithOp);
-
     print('Max num objs: ' + maxNumObjs);
     print('');
-    print('Get prop obj only  : ' + perGetObj    + ' (' + numGetObj + ')');
-    print('Get prop single obj: ' + perGetSingle + ' (' + numGetSingle + ')');
-    print('Get prop not undef : ' + perGetDef    + ' (' + numGetDef + ')');
-    print('');
-    print('Put prop obj only  : ' + perPutObj    + ' (' + numPutObj + ')');
-    print('Put prop single obj: ' + perPutSingle + ' (' + numPutSingle + ')');
-    print('');
-    print('Fn call monomorphic: ' + perCallMono + ' (' + numCallMono + ')');
-    print('');
-    print('Arith on int & int : ' + perArithInt  + ' (' + numArithInt + ')');
 
+    print(getObj);
+    print(getSingle);
+    print(getDef);
+    print('');
+
+    print(putObj);
+    print(putSingle);
+    print('');
+
+    print(callMono);
+    print('');
+
+    print(arithInt);
+    print(cmpInt);
+    print('');
+
+    print(branchKnown);
     print('');
 }
 
