@@ -259,14 +259,13 @@ tests.ta['access-binary-trees'] = TypeProp.makeTest(
 */
 
 /*
-// FIXME: process out of memory
 tests.ta['richards'] = TypeProp.makeTest(
     [
         'programs/v8bench/richards.js',
         'programs/v8bench/drv-richards.js'
     ],
     true,
-    false
+    true
 );
 */
 

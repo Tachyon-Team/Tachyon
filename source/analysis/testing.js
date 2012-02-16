@@ -469,8 +469,8 @@ TypeProp.prototype.compTypeStats = function ()
             useTypes.push(type);
         }
 
-        var numObjs = outType.objSet? outType.objSet.length:0;
-        maxNumObjs = Math.max(maxNumObjs, numObjs);
+        if (outType instanceof TypeSet)
+            maxNumObjs = Math.max(maxNumObjs, outType.getNumObjs());
 
         // Get property instruction
         if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
@@ -481,7 +481,7 @@ TypeProp.prototype.compTypeStats = function ()
 
             getSingle.count(
                 (u0.flags & ~TypeFlags.OBJEXT) === 0 &&
-                u0.objSet && u0.objSet.length === 1
+                u0.getNumObjs() === 1
             );
 
             getDef.count((outType.flags & TypeFlags.UNDEF) === 0);
@@ -496,7 +496,7 @@ TypeProp.prototype.compTypeStats = function ()
 
             putSingle.count(
                 (u0.flags & ~TypeFlags.OBJEXT) === 0 &&
-                u0.objSet && u0.objSet.length === 1
+                u0.getNumObjs() === 1
             );
         }
 
@@ -505,7 +505,7 @@ TypeProp.prototype.compTypeStats = function ()
         {
             var u0 = useTypes[0];
 
-            callMono.count(u0.objSet && u0.objSet.length === 1);
+            callMono.count(u0.getNumObjs() === 1);
         }
 
         // Arithmetic instructions

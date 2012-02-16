@@ -1110,17 +1110,8 @@ JSDivInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
-JSLsftInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    ta.setOutput(typeGraph, this, TypeSet.integer);
-}
-
-JSRsftInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    ta.setOutput(typeGraph, this, TypeSet.integer);
-}
-
-JSUrsftInstr.prototype.typeProp = function (ta, typeGraph)
+// Bitwise operations
+JSBitOpInstr.prototype.typeProp = function (ta, typeGraph)
 {
     ta.setOutput(typeGraph, this, TypeSet.integer);
 }
@@ -1368,14 +1359,12 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         var funcInfo = ta.getFuncInfo(func);
 
         // Create a type set for this function only
-        var funcSet = new HashSet();
-        funcSet.add(callee);
         var funcType = new TypeSet(
             callee.flags, 
             undefined, 
             undefined, 
             undefined, 
-            funcSet
+            callee
         );
 
         // For each argument
@@ -1540,15 +1529,12 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 
         var newCell = new TGClosCell(this);
 
-        var objSet = new HashSet();
-        objSet.add(newCell);
-
         var cellType = new TypeSet(
             TypeFlags.CELL,
             undefined,
             undefined,
             undefined,
-            objSet
+            newCell
         );
 
         retType = cellType;

@@ -290,7 +290,7 @@ function TypeSet(
     rangeMin,
     rangeMax,
     strVal,
-    objSet
+    object
 )
 {
     // Empty type descriptors have the uninferred type
@@ -313,8 +313,10 @@ function TypeSet(
         strVal = undefined;
 
     assert (
-        objSet === undefined ||
-        objSet instanceof HashSet
+        object === undefined ||
+        object instanceof TGObject ||
+        object instanceof TGClosCell,
+        'invalid object'
     );
 
     /**
@@ -340,7 +342,7 @@ function TypeSet(
     /**
     Object set
     */
-    this.objSet = objSet;
+    this.objSet = object;
 }
 
 /**
@@ -467,15 +469,11 @@ TypeSet.prototype.toString = function ()
         addType('"' + this.strVal + '"');
     }
 
-    // If the object set is not empty
-    if (this.objSet !== undefined && this.objSet.length !== 0)
+    // For each possible object
+    for (var itr = this.getObjItr(); itr.valid(); itr.next())
     {
-        // For each possible object
-        for (var itr = this.objSet.getItr(); itr.valid(); itr.next())
-        {
-            var obj = itr.get();
-            addType(obj.toString());
-        }
+        var obj = itr.get();
+        addType(obj.toString());
     }
 
     str += "}";
@@ -501,10 +499,12 @@ TypeSet.prototype.equal = function (that)
     if (this.strVal !== that.strVal)
         return false;
 
-    if (this.objSet === undefined && that.objSet !== undefined ||
-        that.objSet === undefined && this.objSet !== undefined ||        
-        this.objSet !== undefined && this.objSet.equal(that.objSet) === false)
+    if (this.getNumObjs() !== that.getNumObjs())
         return false;
+
+    for (var itr = that.getObjItr(); itr.valid(); itr.next())
+        if (this.hasObj(itr.get()) === false)
+            return false;
 
     return true;
 }
@@ -538,115 +538,107 @@ TypeSet.prototype.union = function (that)
         return this;
     }
 
-    // If both objects have meaningful type values
+    var flags = this.flags | that.flags;
+
+    var thisNum = (this.flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
+    var thatNum = (that.flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
+
+    var rangeMin;
+    var rangeMax;
+
+    if (thisNum === true && thatNum === false)
+    {
+        rangeMin = this.rangeMin;
+        rangeMax = this.rangeMax
+    }
+    else if (thisNum === false && thatNum === true)
+    {
+        rangeMin = that.rangeMin;
+        rangeMax = that.rangeMax;
+    }
     else
     {
-        var flags = this.flags | that.flags;
-
-        var thisNum = (this.flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
-        var thatNum = (that.flags & (TypeFlags.INT | TypeFlags.FLOAT)) !== 0;
-
-        var rangeMin;
-        var rangeMax;
-
-        if (thisNum === true && thatNum === false)
+        if (this.rangeMin === that.rangeMin)
         {
             rangeMin = this.rangeMin;
-            rangeMax = this.rangeMax
         }
-        else if (thisNum === false && thatNum === true)
+        else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
         {
-            rangeMin = that.rangeMin;
-            rangeMax = that.rangeMax;
+            rangeMin = -Infinity;   
+        }
+        else if (this.rangeMin < 0 || that.rangeMin < 0)
+        {
+            var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
+            
+            if (isPowerOf2(minMin) === true)
+                rangeMin = -minMin;
+            else
+                rangeMin = -nextPowerOf2(minMin);
         }
         else
         {
-            if (this.rangeMin === that.rangeMin)
-            {
-                rangeMin = this.rangeMin;
-            }
-            else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
-            {
-                rangeMin = -Infinity;   
-            }
-            else if (this.rangeMin < 0 || that.rangeMin < 0)
-            {
-                var minMin = Math.abs(Math.min(this.rangeMin, that.rangeMin));
-                
-                if (isPowerOf2(minMin) === true)
-                    rangeMin = -minMin;
-                else
-                    rangeMin = -nextPowerOf2(minMin);
-            }
-            else
-            {
-                rangeMin = Math.min(this.rangeMin, that.rangeMin);
-                rangeMin = lowestBit(rangeMin);
-            }
-
-            if (this.rangeMax === that.rangeMax)
-            {
-                rangeMax = this.rangeMax;
-            }
-            else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
-            {
-                rangeMax = Infinity;   
-            }
-            else if (this.rangeMax > 0 || that.rangeMax > 0)
-            {
-                var maxMax = Math.max(this.rangeMax, that.rangeMax);
-                
-                if (isPowerOf2(maxMax) === true)
-                    rangeMax = maxMax;
-                else
-                    rangeMax = nextPowerOf2(maxMax);
-            }
-            else
-            {
-                rangeMax = Math.max(this.rangeMax, that.rangeMax);
-                rangeMax = -lowestBit(Math.abs(rangeMax));
-            }
-
-            assert (
-                rangeMin <= this.rangeMin && rangeMin <= that.rangeMin,
-                'invalid min value'
-            );
-
-            assert (
-                rangeMax >= this.rangeMax && rangeMax >= that.rangeMax,
-                'invalid max value'
-            );
+            rangeMin = Math.min(this.rangeMin, that.rangeMin);
+            rangeMin = lowestBit(rangeMin);
         }
 
-        // Merge the string values
-        var strVal;
-        if ((this.flags & TypeFlags.STRING) && (that.flags & TypeFlags.STRING))
-            strVal = (this.strVal === that.strVal)? this.strVal:undefined;
-        if (this.flags & TypeFlags.STRING)
-            strVal = this.strVal;
+        if (this.rangeMax === that.rangeMax)
+        {
+            rangeMax = this.rangeMax;
+        }
+        else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
+        {
+            rangeMax = Infinity;   
+        }
+        else if (this.rangeMax > 0 || that.rangeMax > 0)
+        {
+            var maxMax = Math.max(this.rangeMax, that.rangeMax);
+            
+            if (isPowerOf2(maxMax) === true)
+                rangeMax = maxMax;
+            else
+                rangeMax = nextPowerOf2(maxMax);
+        }
         else
-            strVal = that.strVal;
+        {
+            rangeMax = Math.max(this.rangeMax, that.rangeMax);
+            rangeMax = -lowestBit(Math.abs(rangeMax));
+        }
 
-        // Compute the union of the object sets
-        var objSet;
-        if (this.objSet === undefined && that.objSet === undefined)
-            objSet = undefined;
-        else if (this.objSet === undefined)
-            objSet = that.objSet.copy();
-        else if (that.objSet === undefined)
-            objSet = this.objSet.copy();
-        else
-            objSet = this.objSet.copy().union(that.objSet);
+        assert (
+            rangeMin <= this.rangeMin && rangeMin <= that.rangeMin,
+            'invalid min value'
+        );
 
-        // Create and return a new type descriptor and return it
-        return new TypeSet(
-            flags,
-            rangeMin,
-            rangeMax,
-            strVal,
-            objSet
+        assert (
+            rangeMax >= this.rangeMax && rangeMax >= that.rangeMax,
+            'invalid max value'
         );
     }
+
+    // Merge the string values
+    var strVal;
+    if ((this.flags & TypeFlags.STRING) && (that.flags & TypeFlags.STRING))
+        strVal = (this.strVal === that.strVal)? this.strVal:undefined;
+    if (this.flags & TypeFlags.STRING)
+        strVal = this.strVal;
+    else
+        strVal = that.strVal;
+
+    // Create a new type set
+    var newSet = new TypeSet(
+        flags,
+        rangeMin,
+        rangeMax,
+        strVal
+    );
+
+    // Add the objects from both sets
+    for (var itr = this.getObjItr(); itr.valid(); itr.next())
+        newSet.addObj(itr.get());
+    for (var itr = that.getObjItr(); itr.valid(); itr.next())
+        newSet.addObj(itr.get());
+
+    return newSet;
 }
 
 /**
@@ -680,37 +672,42 @@ TypeSet.prototype.restrict = function (flags)
 
     var strVal = (canBeStr === true)? this.strVal:undefined;
 
-    // If the type can be either a function or an object
-    if (canBeFunc === true && canBeObj === true)
-    {
-        // Leave the object set unchanged
-        var objSet = this.objSet? this.objSet.copy():undefined;
-    }
-    else
-    {
-        var objSet = new HashSet();
-
-        // For each item in the object set
-        for (var itr = this.getObjItr(); itr.valid(); itr.next())
-        {
-            var obj = itr.get()
-
-            // If the flags don't match, skip this object
-            if ((obj.flags & flags) === 0)
-                continue;
-
-            objSet.add(obj);
-        }
-    }
-
-    // Create and return a new type set and return it
-    return new TypeSet(
+    // Create a new type set
+    var newSet = new TypeSet(
         flags,
         rangeMin,
         rangeMax,
-        strVal,
-        objSet
+        strVal
     );
+
+    // For each item in the object set
+    for (var itr = this.getObjItr(); itr.valid(); itr.next())
+    {
+        var obj = itr.get()
+
+        // If the flags don't match, skip this object
+        if ((obj.flags & flags) === 0)
+            continue;
+
+        newSet.addObj(obj);
+    }
+
+    return newSet;
+}
+
+/**
+Get the number of objects in the object set
+*/
+TypeSet.prototype.getNumObjs = function ()
+{
+    if (this.objSet === undefined)
+        return 0;
+    else if (this.objSet instanceof Array)
+        return this.objSet.length;
+    else if (this.objSet instanceof HashSet)
+        return this.objSet.length;
+    else
+        return 1;
 }
 
 /**
@@ -730,7 +727,92 @@ TypeSet.prototype.getObjItr = function ()
         };
     }
 
-    return this.objSet.getItr();
+    else if (this.objSet instanceof Array)
+    {
+        return new ArrayIterator(this.objSet);
+    }
+
+    else if (this.objSet instanceof HashSet)
+    {
+        return this.objSet.getItr();
+    }
+
+    else
+    {
+        return {
+            object: this.objSet,
+            valid : function () { return this.object !== undefined; },
+            next  : function () { this.object = undefined; },
+            get   : function () { return this.object; }
+        };
+    }
+}
+
+/**
+Test if the object set contains a given object
+*/
+TypeSet.prototype.hasObj = function (obj)
+{
+    if (this.objSet === undefined)
+    {
+        return false;
+    }
+
+    else if (this.objSet instanceof Array)
+    {
+        return arraySetHas(this.objSet, obj);
+    }
+
+    else if (this.objSet instanceof HashSet)
+    {
+        return this.objSet.has(obj);
+    }
+
+    else
+    {
+        return (this.objSet === obj);
+    }
+}
+
+/**
+Add an object to the type set
+*/
+TypeSet.prototype.addObj = function (obj)
+{
+    if (this.objSet === undefined)
+    {
+        this.objSet = obj;
+    }
+
+    else if (this.objSet instanceof Array)
+    {
+        arraySetHas(this.objSet, obj);
+
+        if (this.objSet.length > 10)
+        {
+            print('object set promoted to hash set');
+
+            var newSet = new HashSet();
+
+            for (var i = 0; i < this.objSet.length; ++i)
+                newSet.add(this.objSet[i]);
+
+            this.objSet = newSet;
+        }
+    }
+
+    else if (this.objSet instanceof HashSet)
+    {
+        this.objSet.add(obj);
+    }
+
+    else
+    {
+        if (this.objSet === obj)
+            this.objSet = [this.objSet];
+        else
+            this.objSet = [this.objSet, obj];
+    }
 }
 
 /**
@@ -971,16 +1053,12 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags, numClosVars)
 
     this.assignType(obj.proto, protoSet);
 
-    var objSet = new HashSet();
-    objSet.add(obj);
-
     return new TypeSet(
         flags, 
         undefined, 
         undefined, 
         undefined, 
-        objSet,
-        numClosVars
+        obj
     );
 }
 

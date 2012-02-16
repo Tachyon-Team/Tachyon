@@ -247,25 +247,25 @@ compiler/sources.js: makefile compiler/sources.js.in
 	done
 	@echo "];"                                       >> compiler/sources.js
 
-test:
+test: all
 	$(JSVM) $(RUN_SRCS) -- -test -v=trace
 
-test64:
+test64: all
 	$(JSVM64) $(RUN_SRCS) -- -test -v=trace
 
-shell:
+shell: all
 	$(RLWJSVM) $(RUN_SRCS)
 
-shell64:
+shell64: all
 	$(RLWJSVM64) $(RUN_SRCS)
 
-bootstrap:
+bootstrap: all
 	time $(JSVM) $(RUN_SRCS) -- -bootstrap -v=all
 
-bootstrap64:
+bootstrap64: all
 	time $(JSVM64) $(RUN_SRCS) -- -bootstrap -v=all
 
-prof:
+prof: all
 	$(JSVM) --prof $(RUN_SRCS) -- -test -v=trace
 	deps/v8/tools/linux-tick-processor v8.log > prof_log.txt
 	rm v8.log
