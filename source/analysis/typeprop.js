@@ -157,7 +157,13 @@ TypeProp.prototype.init = function ()
     /**
     Global object node
     */
-    this.globalObj = this.initGraph.newObject('global', this.objProto);
+    this.globalObj = this.initGraph.newObject(
+        'global', 
+        this.objProto, 
+        undefined, 
+        undefined, 
+        true
+    );
 
     /**
     Map of IR functions to function-specific information
@@ -845,7 +851,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             // Assign the value type set to the property
             if ((obj.origin.parentBlock === this.parentBlock && 
                  this.uses[0] === obj.origin) ||
-                obj.isSingleton() === true)
+                obj.singleton === true)
                 typeGraph.assignType(propNode, valType);
             else
                 typeGraph.unionType(propNode, valType);
@@ -1512,7 +1518,13 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         );
 
         // Create a Function.prototype object for the function
-        var protoObj = typeGraph.newObject(this, ta.objProto);
+        var protoObj = typeGraph.newObject(
+            this, 
+            ta.objProto,
+            undefined,
+            undefined,
+            true
+        );
 
         // Assign the prototype object to the Function.prototype property
         var protoNode = funcObj.getObjItr().get().getPropNode('prototype');

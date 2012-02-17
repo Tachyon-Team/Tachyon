@@ -81,7 +81,7 @@ TGProperty.prototype = new TGVariable();
 /**
 @class Object value in a type graph.
 */
-function TGObject(origin, flags, numClosVars)
+function TGObject(origin, flags, numClosVars, singleton)
 {
     assert (
         flags === TypeFlags.OBJECT  ||
@@ -128,6 +128,11 @@ function TGObject(origin, flags, numClosVars)
     this.closVars = new Array(numClosVars);
     for (var i = 0; i < numClosVars; ++i)
         this.closVars[i] = new TGVariable('clos_' + i, this);
+
+    /**
+    Singleton flag
+    */
+    this.singleton = singleton;
 
     // Add the object to the map
     TGObject.objMap.set(this, this);
@@ -181,14 +186,6 @@ TGObject.prototype.getPropNode = function (name)
         this.props[name] = new TGProperty(name, this);
 
     return this.props[name];
-}
-
-/**
-Test if this object is a singleton instance
-*/
-TGObject.prototype.isSingleton = function ()
-{
-    return (typeof this.origin === 'string');
 }
 
 /**
@@ -1030,7 +1027,13 @@ TypeGraph.prototype.equal = function (that)
 /**
 Create a new object in the type graph
 */
-TypeGraph.prototype.newObject = function (origin, protoSet, flags, numClosVars)
+TypeGraph.prototype.newObject = function (
+    origin, 
+    protoSet, 
+    flags, 
+    numClosVars, 
+    singleton
+)
 {
     // By default, the prototype is null
     if (protoSet === undefined)
@@ -1044,12 +1047,21 @@ TypeGraph.prototype.newObject = function (origin, protoSet, flags, numClosVars)
     if (numClosVars === undefined)
         numClosVars = 0;
 
+    // By default, not singleton
+    if (singleton === undefined)
+        singleton = false;
+
     assert (
         protoSet.flags !== TypeFlags.EMPTY,
         'invalid proto set flags'
     )
 
-    var obj = new TGObject(origin, flags, numClosVars);
+    var obj = new TGObject(
+        origin,
+        flags, 
+        numClosVars,
+        singleton
+    );
 
     this.assignType(obj.proto, protoSet);
 
