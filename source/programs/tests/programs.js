@@ -1369,6 +1369,9 @@ tests.programs.type_analysis.stdlib_math = genTest(
 tests.programs.type_analysis.stdlib_array = genTest(
     'programs/type_analysis/stdlib_array.js'
 );
+tests.programs.type_analysis.regress_btree = genTest(
+    'programs/type_analysis/regress_btree.js'
+);
 
 /**
 Print the state of the Tachyon VM.

@@ -783,7 +783,7 @@ TypeSet.prototype.addObj = function (obj)
 
     else if (this.objSet instanceof Array)
     {
-        arraySetHas(this.objSet, obj);
+        arraySetAdd(this.objSet, obj);
 
         if (this.objSet.length > 10)
         {

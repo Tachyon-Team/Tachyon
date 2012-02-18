@@ -250,6 +250,12 @@ tests.ta.stdlib_array = TypeProp.makeTest(
     false
 );
 
+tests.ta.regress_btree = TypeProp.makeTest(
+    'programs/type_analysis/regress_btree.js',
+    false,
+    false
+);
+
 /*
 tests.ta['access-binary-trees'] = TypeProp.makeTest(
     'programs/sunspider/access-binary-trees.js',
