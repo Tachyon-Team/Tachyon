@@ -5,12 +5,12 @@ function ctor(z)
 
     this.x = 3;
     this.y = 'foo';
-    this.z = false;
+    this.z = z;
 }
 
 function test()
 {
-    var o = new ctor();
+    var o = new ctor(false);
 
     typeAssert(o, '["and", "object", ["not", "undef"]]');
     typeAssert(o.x, '["and", "int", ["not", "undef"]]');
@@ -28,4 +28,6 @@ function test()
 
     return 0;
 }
+
+test();
 
