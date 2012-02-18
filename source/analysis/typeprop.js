@@ -279,6 +279,10 @@ TypeProp.prototype.getFuncInfo = function (irFunc)
         // List of callers
         callerList: [],
 
+        // Call type flags
+        normalCall: false,
+        ctorCall: false,
+
         // Next unit in the chain, for unit-level functions
         nextUnit: undefined
     };
@@ -825,6 +829,16 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
+        // If the object is the this argument of the function
+        if (this.uses[0] instanceof ArgValInstr &&
+            this.uses[0].argIndex === 1)
+        {
+            // Test if this function is only ever called as a constructor
+            var func = this.parentBlock.parentCFG.ownerFunc;
+            var funcInfo = ta.getFuncInfo(func);
+            var isCtorThis = (funcInfo.normalCall === false);
+        }
+
         // If this is not a string constant or an integer
         if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
             nameType.flags !== TypeFlags.INT)
@@ -848,10 +862,16 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             else
                 var propNode = obj.idxProp;
 
-            // Assign the value type set to the property
-            if ((obj.origin.parentBlock === this.parentBlock && 
+            // Test if we can overwrite the current property type
+            var canAssignType = (
+                (obj.origin.parentBlock === this.parentBlock && 
                  this.uses[0] === obj.origin) ||
-                obj.singleton === true)
+                isCtorThis === true ||
+                obj.singleton === true
+            );
+
+            // Update the property type
+            if (canAssignType === true)
                 typeGraph.assignType(propNode, valType);
             else
                 typeGraph.unionType(propNode, valType);
@@ -1445,6 +1465,12 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             funcInfo.callerSet.add(this);
             funcInfo.callerList.push(this);
         }
+
+        // Set the call type flags
+        if (isNew === true)
+            funcInfo.ctorCall = true;
+        else
+            funcInfo.normalCall = true;
     }
 
     // Stop the inference for this block
