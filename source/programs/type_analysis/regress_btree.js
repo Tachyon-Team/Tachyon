@@ -16,7 +16,7 @@ function bottomUpTree(item, depth)
     }
 }
 
-var r = bottomUpTree(3);
+var r = bottomUpTree(3, 3);
 
 // Assert that the object can come from both branches
 typeAssert(r.item, '["and", "int", "string"]');

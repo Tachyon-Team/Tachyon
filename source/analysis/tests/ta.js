@@ -257,8 +257,44 @@ tests.ta.regress_btree = TypeProp.makeTest(
 );
 
 /*
+tests.ta['access-nsieve'] = TypeProp.makeTest(
+    'programs/sunspider/access-nsieve.js',
+    true,
+    true
+);
+*/
+
+/*
+tests.ta['bitops-bits-in-byte'] = TypeProp.makeTest(
+    'programs/sunspider/bitops-bits-in-byte.js',
+    true,
+    true
+);
+*/
+
+/*
+tests.ta['bitops-nsieve-bits'] = TypeProp.makeTest(
+    'programs/sunspider/bitops-nsieve-bits.js',
+    true,
+    true
+);
+*/
+
+/*
 tests.ta['access-binary-trees'] = TypeProp.makeTest(
     'programs/sunspider/access-binary-trees.js',
+    true,
+    true
+);
+*/
+
+// FIXME: error during test
+/*
+tests.ta['deltablue'] = TypeProp.makeTest(
+    [
+        'programs/v8bench/deltablue.js',
+        'programs/v8bench/drv-deltablue.js'
+    ],
     true,
     true
 );

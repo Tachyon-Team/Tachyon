@@ -643,6 +643,11 @@ Restrict a type set based on possible type flags
 */
 TypeSet.prototype.restrict = function (flags)
 {
+    // If this is the any set, do not restrict as this would
+    // make the object set the empty set
+    if (this.flags === TypeFlags.ANY)
+        return this;
+
     var flags = this.flags & flags;
 
     // If the flags are unchanged, return this descriptor

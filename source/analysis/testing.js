@@ -74,6 +74,12 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
         'stdlib/object.js',
         'stdlib/array.js',
         'stdlib/function.js',
+        'stdlib/boolean.js',
+        'stdlib/number.js',
+        
+        // TODO
+        //'stdlib/string.js',
+
         'stdlib/math.js'
     ];
 
