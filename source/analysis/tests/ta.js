@@ -266,17 +266,25 @@ tests.ta.regress_btree = TypeProp.makeTest(
     false
 );
 
+tests.ta['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
+    'programs/sunspider/bitops-3bit-bits-in-byte.js',
+    false,
+    false
+);
+
 tests.ta['bitops-bitwise-and'] = TypeProp.makeTest(
     'programs/sunspider/bitops-bitwise-and.js',
     false,
     false
 );
 
-tests.ta['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
-    'programs/sunspider/bitops-3bit-bits-in-byte.js',
-    false,
-    false
+/*
+tests.ta['access-binary-trees'] = TypeProp.makeTest(
+    'programs/sunspider/access-binary-trees.js',
+    true,
+    true
 );
+*/
 
 /*
 tests.ta['access-nsieve'] = TypeProp.makeTest(
@@ -297,14 +305,6 @@ tests.ta['bitops-bits-in-byte'] = TypeProp.makeTest(
 /*
 tests.ta['bitops-nsieve-bits'] = TypeProp.makeTest(
     'programs/sunspider/bitops-nsieve-bits.js',
-    true,
-    true
-);
-*/
-
-/*
-tests.ta['access-binary-trees'] = TypeProp.makeTest(
-    'programs/sunspider/access-binary-trees.js',
     true,
     true
 );

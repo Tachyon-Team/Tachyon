@@ -548,18 +548,25 @@ TypeProp.prototype.compTypeStats = function ()
     // For each block type graph we have
     for (var itr = this.blockGraphs.getItr(); itr.valid(); itr.next())
     {
-        var block = itr.get().key.block;
+        var blockDesc = itr.get().key;
+
+        var block = blockDesc.block;
+        var instrIdx = blockDesc.instrIdx;
 
         // If this is library code, skip it
         if (this.fromLib(block) === true)
             continue;
 
         // For each instruction of the block
-        for (var i = 0; i < block.instrs.length; ++i)
+        for (var i = instrIdx; i < block.instrs.length; ++i)
         {
             var instr = block.instrs[i];
 
             accumStats(instr);
+
+            // If this is a call instruction, this is the end of the block
+            if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+                break;
         }
     }
 
