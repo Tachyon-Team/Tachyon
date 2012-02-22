@@ -179,6 +179,11 @@ tests.ta.obj_init = TypeProp.makeTest(
     false
 );
 
+tests.ta.obj_init_junk = TypeProp.makeTest(
+    'programs/type_analysis/obj_init_junk.js',
+    false
+);
+
 tests.ta.factory_2calls = TypeProp.makeTest(
     'programs/type_analysis/factory_2calls.js',
     false
@@ -217,6 +222,11 @@ tests.ta.ctor_array = TypeProp.makeTest(
 
 tests.ta.proto_chain = TypeProp.makeTest(
     'programs/type_analysis/proto_chain.js',
+    false
+);
+
+tests.ta.proto_chain = TypeProp.makeTest(
+    'programs/type_analysis/proto_clos.js',
     false
 );
 

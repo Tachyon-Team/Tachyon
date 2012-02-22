@@ -1324,6 +1324,9 @@ tests.programs.type_analysis.obj_methods = genTest(
 tests.programs.type_analysis.obj_init = genTest(
     'programs/type_analysis/obj_init.js'
 );
+tests.programs.type_analysis.obj_init_junk = genTest(
+    'programs/type_analysis/obj_init_junk.js'
+);
 tests.programs.type_analysis.factory_2calls = genTest(
     'programs/type_analysis/factory_2calls.js'
 );
@@ -1350,6 +1353,9 @@ tests.programs.type_analysis.ctor_array = genTest(
 );
 tests.programs.type_analysis.proto_chain = genTest(
     'programs/type_analysis/proto_chain.js'
+);
+tests.programs.type_analysis.proto_clos = genTest(
+    'programs/type_analysis/proto_clos.js'
 );
 tests.programs.type_analysis.args_sum = genTest(
     'programs/type_analysis/args_sum.js'

@@ -829,12 +829,14 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
+        // Get a reference to this function
+        var func = this.parentBlock.parentCFG.ownerFunc;
+
         // If the object is the this argument of the function
         if (this.uses[0] instanceof ArgValInstr &&
             this.uses[0].argIndex === 1)
         {
             // Test if this function is only ever called as a constructor
-            var func = this.parentBlock.parentCFG.ownerFunc;
             var funcInfo = ta.getFuncInfo(func);
             var isCtorThis = (funcInfo.normalCall === false);
         }
@@ -862,11 +864,17 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             else
                 var propNode = obj.idxProp;
 
+            // Test if the object was created in this function
+            var isLocalObj = (
+                obj.origin.parentBlock !== undefined &&
+                obj.origin.parentBlock.parentCFG.ownerFunc === func &&
+                this.uses[0] === obj.origin
+            );
+
             // Test if we can overwrite the current property type
             var canAssignType = (
-                (obj.origin.parentBlock === this.parentBlock && 
-                 this.uses[0] === obj.origin) ||
                 isCtorThis === true ||
+                isLocalObj === true ||
                 obj.singleton === true
             );
 
@@ -1543,13 +1551,18 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             numClosCells
         );
 
+        // If this is in a global function, the prototype
+        // object is a singleton
+        var curFunc = this.parentBlock.parentCFG.ownerFunc;
+        var protoSingle = curFunc.parentFunc === null;
+
         // Create a Function.prototype object for the function
         var protoObj = typeGraph.newObject(
             this, 
             ta.objProto,
             undefined,
             undefined,
-            true
+            protoSingle
         );
 
         // Assign the prototype object to the Function.prototype property
