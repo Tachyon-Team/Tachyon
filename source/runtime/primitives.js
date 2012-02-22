@@ -205,7 +205,7 @@ function boxIsArray(boxVal)
 /**
 Test if a boxed value is an object or an object extension (array or function)
 */
-function boxIsObjExt(boxVal)
+function boxIsExtObj(boxVal)
 {
     "tachyon:inline";
 
@@ -288,7 +288,7 @@ function boxToPrim(boxVal)
     "tachyon:static";
     "tachyon:noglobal";
 
-    if (boxIsObjExt(boxVal))
+    if (boxIsExtObj(boxVal))
         return boxToString(boxVal);
 
     return boxVal;
@@ -309,7 +309,7 @@ function boxToNumber(boxVal)
     if (boxIsString(boxVal))
         return strToInt(boxVal);
 
-    if (boxIsObjExt(boxVal))
+    if (boxIsExtObj(boxVal))
         return strToInt(boxToString(boxVal));
 
     if (boxVal === null)
@@ -381,11 +381,11 @@ function boxToString(val)
         return val;
     }
 
-    if (boxIsObjExt(val))
+    if (boxIsExtObj(val))
     {
         var res = val.toString();
 
-        if (boxIsObjExt(res))
+        if (boxIsExtObj(res))
             typeError('cannot convert object to string');
         else
             return boxToString(res);
@@ -522,7 +522,7 @@ function newObject(proto)
     "tachyon:noglobal";
 
     assert (
-        proto === null || boxIsObjExt(proto),
+        proto === null || boxIsExtObj(proto),
         'invalid object prototype'
     );
 
@@ -987,10 +987,10 @@ function eq(x, y)
     if (typeof y === 'boolean')
         return x == boxToNumber(y);
 
-    if ((typeof x === 'string' || typeof x === 'number') && boxIsObjExt(y))
+    if ((typeof x === 'string' || typeof x === 'number') && boxIsExtObj(y))
         return x == boxToPrim(y);
 
-    if (boxIsObjExt(x) && (typeof y === 'string' || typeof y === 'number'))
+    if (boxIsExtObj(x) && (typeof y === 'string' || typeof y === 'number'))
         return boxToPrim(x) == y;
 
     // The values are not comparable
@@ -1493,7 +1493,7 @@ function putPropObj(obj, propName, propHash, propVal)
     "tachyon:arg propHash pint";
 
     assert (
-        boxIsObjExt(obj),
+        boxIsExtObj(obj),
         'putPropObj on non-object'
     );
 
@@ -1584,7 +1584,7 @@ function extObjHashTable(obj, curTbl, curSize)
     "tachyon:arg curSize pint";
 
     assert (
-        boxIsObjExt(obj),
+        boxIsExtObj(obj),
         'extObjHashTable on non-object'
     );
 
@@ -1663,7 +1663,7 @@ function getOwnPropObj(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     assert (
-        boxIsObjExt(obj),
+        boxIsExtObj(obj),
         'getOwnPropObj on non-object'
     );
 
@@ -1735,7 +1735,7 @@ function getPropObj(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     assert (
-        boxIsObjExt(obj),
+        boxIsExtObj(obj),
         'getPropObj on non-object'
     );
 
@@ -1775,7 +1775,7 @@ function delPropObj(obj, propName, propHash)
     "tachyon:arg propHash pint";
 
     assert (
-        boxIsObjExt(obj),
+        boxIsExtObj(obj),
         'delPropObj on non-object'
     );
 
@@ -2149,7 +2149,7 @@ function putProp(obj, propName, propVal)
     }
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === false)
+    if (boxIsExtObj(obj) === false)
     {
         // Return the property value
         return propVal;
@@ -2273,7 +2273,7 @@ function getProp(obj, propName)
     }
 
     // If the value is not an object
-    else if (boxIsObjExt(obj) === false)
+    else if (boxIsExtObj(obj) === false)
     {
         // Return the undefined value
         return UNDEFINED;
@@ -2518,7 +2518,7 @@ function delProp(obj, propName)
     }
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === false)
+    if (boxIsExtObj(obj) === false)
     {
         // Operation succeeded
         return true;
@@ -2583,7 +2583,7 @@ function getPropNames(obj)
     "tachyon:noglobal";
 
     // If the value is not an object
-    if (boxIsObjExt(obj) === false)
+    if (boxIsExtObj(obj) === false)
     {
         // Return the empty enumeration function
         return function ()
@@ -2623,7 +2623,7 @@ function getPropNames(obj)
                 return UNDEFINED;
 
             // If the current object is an object or extension
-            if (boxIsObjExt(curObj))
+            if (boxIsExtObj(curObj))
             {
                 // Get a pointer to the hash table
                 var tblPtr = get_obj_tbl(curObj);
@@ -2729,7 +2729,7 @@ function inOp(propName, obj)
     "tachyon:static"; 
     
     // If the value is not an object
-    if (boxIsObjExt(obj) === false)
+    if (boxIsExtObj(obj) === false)
     {
         // Throw a TypeError exception
         typeError('in operator expects object');
@@ -2753,7 +2753,7 @@ function instanceOf(obj, ctor)
     }
 
     // If the value is not an object    
-    if (boxIsObjExt(obj) === false)
+    if (boxIsExtObj(obj) === false)
     {
         // Return the false value
         return false;

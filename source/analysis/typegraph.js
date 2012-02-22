@@ -257,7 +257,7 @@ TypeFlags.FUNCTION = 1 << 10;   // May be string
 TypeFlags.CELL     = 1 << 11;   // May be closure cell
 
 // Extended object (object or array or function)
-TypeFlags.OBJEXT =
+TypeFlags.EXTOBJ =
     TypeFlags.OBJECT    |
     TypeFlags.ARRAY     |
     TypeFlags.FUNCTION;
@@ -352,27 +352,32 @@ TypeSet.constant = function (value)
 
     if (value === undefined)
     {
-        return new TypeSet(TypeFlags.UNDEF);
+        return TypeSet.undef;
     }
 
     else if (value === null)
     {
-        return new TypeSet(TypeFlags.NULL);
+        return TypeSet.null;
     }
 
     else if (value === true)
     {
-        return new TypeSet(TypeFlags.TRUE);
+        return TypeSet.true
     }
 
     else if (value === false)
     {
-        return new TypeSet(TypeFlags.FALSE);
+        return TypeSet.false;
     }
 
     else if (isInt(value) === true)
     {
         return new TypeSet(TypeFlags.INT, value, value);
+    }
+
+    else if (bignum_instance(value) === true)
+    {
+        return TypeSet.posInt;
     }
 
     else if (typeof value === 'number')

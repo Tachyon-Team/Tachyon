@@ -119,7 +119,7 @@ function walk_it(verb)
 
                 if (verb === true)
                 {
-                    //if (boxIsObjExt(val) === true)
+                    //if (boxIsExtObj(val) === true)
                     //    print('box is obj ext');
 
                     //if (boxIsFunc(val) === true)

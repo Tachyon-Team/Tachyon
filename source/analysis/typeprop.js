@@ -657,11 +657,15 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
 
     // If there are non-object bases
     if (objType.flags & 
-        ~(TypeFlags.OBJEXT | 
+        ~(TypeFlags.EXTOBJ | 
           TypeFlags.UNDEF | 
           TypeFlags.NULL)
         )
         throw '*WARNING: getProp with non-object base';
+
+    // If we have exceeded the maximum lookup depth
+    if (depth > 8)
+        throw '*WARNING: maximum prototype chain lookup depth exceeded';
 
     // Output type set
     var outType = TypeSet.empty;
@@ -823,7 +827,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (objType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp on any type';
 
-        if ((objType.flags & TypeFlags.OBJEXT) === 0)
+        if ((objType.flags & TypeFlags.EXTOBJ) === 0)
             throw '*WARNING: putProp on non-object';
 
         if (nameType.flags === TypeFlags.ANY)
@@ -914,7 +918,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
     {
         // If there are non-object bases
         if (objType.flags & 
-            ~(TypeFlags.OBJEXT | 
+            ~(TypeFlags.EXTOBJ | 
               TypeFlags.UNDEF | 
               TypeFlags.NULL)
             )
@@ -1009,8 +1013,8 @@ JSAddInstr.prototype.typeProp = function (ta, typeGraph)
     }
 
     // If neither values can be string or object
-    else if ((t0.flags & (TypeFlags.STRING | TypeFlags.OBJEXT)) === 0 &&
-             (t1.flags & (TypeFlags.STRING | TypeFlags.OBJEXT)) === 0)
+    else if ((t0.flags & (TypeFlags.STRING | TypeFlags.EXTOBJ)) === 0 &&
+             (t1.flags & (TypeFlags.STRING | TypeFlags.EXTOBJ)) === 0)
     {
         // The result can only be int or float
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
@@ -1364,10 +1368,10 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         var protoType = ta.propLookup(typeGraph, calleeType, 'prototype', 0);
 
         // If the prototype may not be an object
-        if (protoType.flags & (~TypeFlags.OBJEXT))
+        if (protoType.flags & (~TypeFlags.EXTOBJ))
         {
             // Exclude non-objects and include the object prototype object
-            protoType = protoType.restrict(protoType.flags & (~TypeFlags.OBJEXT));
+            protoType = protoType.restrict(protoType.flags & (~TypeFlags.EXTOBJ));
             protoType = protoType.union(ta.objProto);
         }
 

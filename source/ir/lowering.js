@@ -552,7 +552,7 @@ JSNewInstr.prototype.lower = function (params)
             var funcProto = ctor.prototype;             \
                                                         \
             var protoVal =                              \
-                (boxIsObjExt(funcProto) === true)?      \
+                (boxIsExtObj(funcProto) === true)?      \
                 funcProto:                              \
                 get_ctx_objproto(ctx);                  \
                                                         \
@@ -574,7 +574,7 @@ JSNewInstr.prototype.lower = function (params)
             );                                          \
                                                         \
             var objVal =                                \
-                (boxIsObjExt(retVal) === true)?         \
+                (boxIsExtObj(retVal) === true)?         \
                 retVal:                                 \
                 newObj;                                 \
                                                         \

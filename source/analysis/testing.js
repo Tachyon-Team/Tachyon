@@ -483,10 +483,10 @@ TypeProp.prototype.compTypeStats = function ()
         {
             var u0 = useTypes[0];
 
-            getObj.count((u0.flags & ~TypeFlags.OBJEXT) === 0);
+            getObj.count((u0.flags & ~TypeFlags.EXTOBJ) === 0);
 
             getSingle.count(
-                (u0.flags & ~TypeFlags.OBJEXT) === 0 &&
+                (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
                 u0.getNumObjs() === 1
             );
 
@@ -498,10 +498,10 @@ TypeProp.prototype.compTypeStats = function ()
         {
             var u0 = useTypes[0];
 
-            putObj.count((u0.flags & ~TypeFlags.OBJEXT) === 0);
+            putObj.count((u0.flags & ~TypeFlags.EXTOBJ) === 0);
 
             putSingle.count(
-                (u0.flags & ~TypeFlags.OBJEXT) === 0 &&
+                (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
                 u0.getNumObjs() === 1
             );
         }
