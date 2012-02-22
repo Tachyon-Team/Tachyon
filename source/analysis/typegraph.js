@@ -1064,7 +1064,7 @@ TypeGraph.prototype.newObject = function (
     assert (
         protoSet.flags !== TypeFlags.EMPTY,
         'invalid proto set flags'
-    )
+    );
 
     var obj = new TGObject(
         origin,

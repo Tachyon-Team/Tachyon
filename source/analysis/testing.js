@@ -75,10 +75,16 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
         'stdlib/array.js',
         'stdlib/function.js',
         'stdlib/boolean.js',
-        'stdlib/number.js',
-        
+
         // TODO
-        //'stdlib/string.js',
+        // FIXME: big type sets happening
+        //'stdlib/error.js',
+
+        'stdlib/number.js',
+        'stdlib/string.js',
+
+        // TODO
+        //'stdlib/regexp.js',
 
         'stdlib/math.js'
     ];

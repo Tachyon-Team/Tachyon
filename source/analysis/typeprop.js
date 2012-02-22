@@ -142,17 +142,46 @@ TypeProp.prototype.init = function ()
     /**
     Object prototype object node
     */
-    this.objProto = TypeSet.null;
+    this.objProto = this.initGraph.newObject(
+        'obj_proto', 
+        undefined, 
+        undefined, 
+        undefined, 
+        true
+    );
 
     /**
     Array prototype object node
     */
-    this.arrProto = TypeSet.null;
+    this.arrProto = this.initGraph.newObject(
+        'arr_proto', 
+        this.objProto, 
+        undefined, 
+        undefined, 
+        true
+    );
 
     /**
     Function prototype object node
     */
-    this.funcProto = TypeSet.null;
+    this.funcProto = this.initGraph.newObject(
+        'func_proto', 
+        this.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    /**
+    String prototype object node
+    */
+    this.strProto = this.initGraph.newObject(
+        'str_proto', 
+        this.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
 
     /**
     Global object node
@@ -160,7 +189,7 @@ TypeProp.prototype.init = function ()
     this.globalObj = this.initGraph.newObject(
         'global', 
         this.objProto, 
-        undefined, 
+        undefined,
         undefined, 
         true
     );
@@ -1335,6 +1364,136 @@ JSNsInstr.prototype.typeProp = function (ta, typeGraph)
     ta.setOutput(typeGraph, this, outType);
 }
 
+JumpInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    ta.succMerge(this.targets[0], typeGraph);
+}
+
+// TODO
+// TODO: throw, must merge with all possible catch points
+// TODO
+
+// If branching instruction
+IfInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+    var v2 = (this.uses.length > 2)? typeGraph.getType(this.uses[1]):undefined;
+
+    var instr = this;
+
+    // Function to merge a value type in a given successor block
+    function mergeVal(val, type, target)
+    {
+        // If this is a constant, do nothing
+        if (val instanceof IRConst)
+            return;
+
+        // Remove the left value from the normal merge
+        typeGraph.remVar(val);
+
+        // Get the target block graph
+        var targetDesc = new BlockDesc(target);
+        var targetGraph = ta.getTypeGraph(targetDesc);
+
+        // If the successor has no type graph yet
+        if (targetGraph === HashMap.NOT_FOUND)
+        {
+            // Pass a copy of the predecessor graph to the successor
+            var targetGraph = typeGraph.copy();
+            ta.setTypeGraph(targetDesc, targetGraph);
+        }
+
+        var curType = targetGraph.getType(val);
+        var mergedType = curType.union(type);
+
+        // If the type changed
+        if (curType.equal(mergedType) === false)
+        {
+            targetGraph.unionType(val, mergedType);
+            ta.queueBlock(targetDesc);
+        }
+    }
+
+    // Function to handle the successor queuing for a given branch
+    function mergeSuccs(boolVal)
+    {
+        var trueTarget = instr.targets[0];
+        var falseTarget = instr.targets[1];
+
+        // If we can potentially narrow the comparison input types
+        if (instr.testOp === 'EQ' && 
+            v1.flags === TypeFlags.TRUE &&
+            instr.uses[0] instanceof JSCompInstr)
+        {
+            var compInstr = instr.uses[0];
+
+            var lVal = compInstr.uses[0];
+            var rVal = compInstr.uses[1];
+
+            var lType = typeGraph.getType(lVal);
+            var rType = typeGraph.getType(rVal);
+
+            var trueLType = lType;
+            var falseLType = rType;
+            
+            // Less-than comparison
+            if (compInstr instanceof JSLtInstr)
+            {
+                //print(lType + ' < ' + rType);
+
+                // If both values are integer
+                if (lType.flags === TypeFlags.INT && rType.flags === TypeFlags.INT)
+                {
+                    // lVal < rVal
+                    var rangeMax = Math.min(lType.rangeMax, rType.rangeMax - 1);
+                    var rangeMin = Math.min(lType.rangeMin, rangeMax);
+                    var trueLType = new TypeSet(
+                        TypeFlags.INT,
+                        rangeMin,
+                        rangeMax
+                    );
+
+                    // lVal >= rVal
+                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMin + 1);
+                    var rangeMax = Math.max(lType.rangeMax, rangeMin);
+                    var falseLType = new TypeSet(
+                        TypeFlags.INT,
+                        rangeMin,
+                        rangeMax
+                    );
+                }
+            }
+
+            if (boolVal === true || boolVal === undefined)
+                mergeVal(lVal, trueLType, trueTarget);
+            if (boolVal === false || boolVal === undefined)
+                mergeVal(lVal, falseLType, falseTarget);
+        }
+
+        // Merge with the successor blocks
+        if (boolVal === true || boolVal === undefined)
+            ta.succMerge(trueTarget, typeGraph);
+        if (boolVal === false || boolVal === undefined)
+            ta.succMerge(falseTarget, typeGraph);
+    }
+
+    // If this is an equality comparison
+    if (this.testOp === 'EQ')
+    {
+        if ((v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE) ||
+            (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE))
+            return mergeSuccs(true);
+
+        if ((v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE) ||
+            (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE))
+            return mergeSuccs(false);
+    }
+
+    // Merge with both possible branch targets
+    mergeSuccs();
+}
+
 JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Get the type set for the callee
@@ -1493,6 +1652,125 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 // Handled by the same function as the regular call instruction
 JSNewInstr.prototype.typeProp = JSCallInstr.prototype.typeProp;
 
+ArgValInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    // Get the info object for this function
+    var func = this.parentBlock.parentCFG.ownerFunc;
+    var funcInfo = ta.getFuncInfo(func);
+
+    var argNode = funcInfo.argNodes[this.argIndex];
+    var argTypeSet = typeGraph.getType(argNode);
+
+    typeGraph.assignType(this, argTypeSet);
+}
+
+RetInstr.prototype.typeProp = function (ta, typeGraph)
+{
+    // Get the return type
+    var retType = typeGraph.getType(this.uses[0]);
+
+    // Get the info object for this function
+    var func = this.parentBlock.parentCFG.ownerFunc;
+    var funcInfo = ta.getFuncInfo(func);
+ 
+    // Merge the return type
+    typeGraph.unionType(funcInfo.retNode, retType);
+
+    // Get the return point graph
+    var retGraph = funcInfo.retGraph;
+
+    // Merge the current type graph into the return graph
+    if (retGraph === undefined)
+        var newGraph = typeGraph.copy();
+    else
+        var newGraph = retGraph.merge(typeGraph);
+
+    // If the return graph changed
+    if (retGraph === undefined || retGraph.equal(newGraph) === false)
+    {
+        // Update the return graph
+        funcInfo.retGraph = newGraph;
+
+        // If this is a unit-level function
+        if (funcInfo.nextUnit !== undefined)
+        {
+            // The continuation is the next unit's entry
+            var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
+
+            // Copy the type graph for the next unit
+            var nextGraph = typeGraph.copy();
+
+            // Queue the continuation block for analysis
+            ta.setTypeGraph(contDesc, nextGraph);
+            ta.queueBlock(contDesc);
+        }
+
+        // Otherwise, this is a regular function
+        else
+        {
+            // For each caller
+            for (var i = 0; i < funcInfo.callerList.length; ++i)
+            {
+                var callInstr = funcInfo.callerList[i];
+                var callerBlock = callInstr.parentBlock;
+
+                // Get the function return type
+                var funcRetType = newGraph.getType(funcInfo.retNode);
+
+                // If this is a regular call instruction
+                if (callInstr instanceof JSCallInstr)
+                {
+                    // Set the return type for the call instruction
+                    newGraph.assignType(callInstr, funcRetType);
+                }
+
+                // Otherwise, this is a constructor call
+                else
+                {
+                    var newType = TypeSet.empty;
+
+                    // If the return type may be undefined
+                    if (funcRetType.flags & TypeFlags.UNDEF)
+                    {
+                        // Union the this argument type
+                        var thisType = newGraph.getType(funcInfo.argNodes[1]);
+                        newType = newType.union(thisType);
+                    }
+
+                    // If the return type may be not undefined
+                    if (funcRetType.flags !== TypeFlags.UNDEF)
+                    {
+                        // Union all but undefined
+                        newType = newType.union(funcRetType.restrict(
+                            funcRetType.flags & ~TypeFlags.UNDEF
+                        ));
+                    }
+
+                    // Set the return type for the new instruction
+                    newGraph.assignType(callInstr, newType);
+                }
+
+                // If there is a call continuation block
+                if (callInstr.targets[0] instanceof BasicBlock)
+                {
+                    // Use the continuation target
+                    var contDesc = new BlockDesc(callInstr.targets[0]);
+                }
+                else
+                {
+                    // The continuation is the rest of the caller block
+                    var instrIdx = callerBlock.instrs.indexOf(callInstr);
+                    var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+                }
+
+                // Queue the continuation block for analysis
+                ta.setTypeGraph(contDesc, newGraph);
+                ta.queueBlock(contDesc);
+            }
+        }
+    }
+}
+
 // LIR call instruction
 CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 {
@@ -1555,19 +1833,36 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             numClosCells
         );
 
-        // If this is in a global function, the prototype
-        // object is a singleton
-        var curFunc = this.parentBlock.parentCFG.ownerFunc;
-        var protoSingle = curFunc.parentFunc === null;
+        // If this is a global library function
+        if (ta.fromLib(func) === true)
+        {
+            // Try to find the right prototype object
+            var protoObj;
+            switch (func.funcName)
+            {
+                case 'Object'   : protoObj = ta.objProto; break;
+                case 'Array'    : protoObj = ta.arrProto; break;
+                case 'Function' : protoObj = ta.funcProto; break;
+                case 'String'   : protoObj = ta.strProto; break;
+            }
+        }
 
-        // Create a Function.prototype object for the function
-        var protoObj = typeGraph.newObject(
-            this, 
-            ta.objProto,
-            undefined,
-            undefined,
-            protoSingle
-        );
+        // If no prototype object exists
+        if (protoObj === undefined)
+        {
+            // Test if this is a global function
+            var curFunc = this.parentBlock.parentCFG.ownerFunc;
+            var globalFunc = curFunc.parentFunc === null;
+
+            // Create a Function.prototype object for the function
+            var protoObj = typeGraph.newObject(
+                this, 
+                ta.objProto,
+                undefined,
+                undefined,
+                globalFunc
+            );
+        }
 
         // Assign the prototype object to the Function.prototype property
         var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
@@ -1715,37 +2010,15 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         }
     }
 
-    // Set the object prototype object
-    else if (callee.funcName === 'set_ctx_objproto')
+    // Box value to string conversion
+    else if (callee.funcName === 'boxToString')
     {
-        var objProto = typeGraph.getType(this.uses[4]);
+        var valType = typeGraph.getType(this.uses[2]);
 
-        // Rename the object and store it in the type analysis
-        var obj = objProto.getObjItr().get();
-        obj.origin = 'obj_proto';        
-        ta.objProto = objProto;
-    }
-
-    // Set the array prototype object
-    else if (callee.funcName === 'set_ctx_arrproto')
-    {
-        var arrProto = typeGraph.getType(this.uses[4]);
-
-        // Rename the object and store it in the type analysis
-        var obj = arrProto.getObjItr().get();
-        obj.origin = 'arr_proto';        
-        ta.arrProto = arrProto;
-    }
-
-    // Set the function prototype object
-    else if (callee.funcName === 'set_ctx_funcproto')
-    {
-        var funcProto = typeGraph.getType(this.uses[4]);
-
-        // Rename the object and store it in the type analysis
-        var obj = funcProto.getObjItr().get();
-        obj.origin = 'func_proto';        
-        ta.funcProto = funcProto;
+        if (valType.flags === TypeFlags.STRING)
+            retType = valType;
+        else
+            retType = TypeSet.string;
     }
 
     // Set our own output type in the type graph
@@ -1755,253 +2028,4 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
     for (var i = 0; i < this.targets.length; ++i)
         ta.succMerge(this.targets[i], typeGraph);
 }
-
-ArgValInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    // Get the info object for this function
-    var func = this.parentBlock.parentCFG.ownerFunc;
-    var funcInfo = ta.getFuncInfo(func);
-
-    var argNode = funcInfo.argNodes[this.argIndex];
-    var argTypeSet = typeGraph.getType(argNode);
-
-    typeGraph.assignType(this, argTypeSet);
-}
-
-RetInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    // Get the return type
-    var retType = typeGraph.getType(this.uses[0]);
-
-    // Get the info object for this function
-    var func = this.parentBlock.parentCFG.ownerFunc;
-    var funcInfo = ta.getFuncInfo(func);
- 
-    // Merge the return type
-    typeGraph.unionType(funcInfo.retNode, retType);
-
-    // Get the return point graph
-    var retGraph = funcInfo.retGraph;
-
-    // Merge the current type graph into the return graph
-    if (retGraph === undefined)
-        var newGraph = typeGraph.copy();
-    else
-        var newGraph = retGraph.merge(typeGraph);
-
-    // If the return graph changed
-    if (retGraph === undefined || retGraph.equal(newGraph) === false)
-    {
-        // Update the return graph
-        funcInfo.retGraph = newGraph;
-
-        // If this is a unit-level function
-        if (funcInfo.nextUnit !== undefined)
-        {
-            // The continuation is the next unit's entry
-            var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
-
-            // Copy the type graph for the next unit
-            var nextGraph = typeGraph.copy();
-
-            // Queue the continuation block for analysis
-            ta.setTypeGraph(contDesc, nextGraph);
-            ta.queueBlock(contDesc);
-        }
-
-        // Otherwise, this is a regular function
-        else
-        {
-            // For each caller
-            for (var i = 0; i < funcInfo.callerList.length; ++i)
-            {
-                var callInstr = funcInfo.callerList[i];
-                var callerBlock = callInstr.parentBlock;
-
-                // Get the function return type
-                var funcRetType = newGraph.getType(funcInfo.retNode);
-
-                // If this is a regular call instruction
-                if (callInstr instanceof JSCallInstr)
-                {
-                    // Set the return type for the call instruction
-                    newGraph.assignType(callInstr, funcRetType);
-                }
-
-                // Otherwise, this is a constructor call
-                else
-                {
-                    var newType = TypeSet.empty;
-
-                    // If the return type may be undefined
-                    if (funcRetType.flags & TypeFlags.UNDEF)
-                    {
-                        // Union the this argument type
-                        var thisType = newGraph.getType(funcInfo.argNodes[1]);
-                        newType = newType.union(thisType);
-                    }
-
-                    // If the return type may be not undefined
-                    if (funcRetType.flags !== TypeFlags.UNDEF)
-                    {
-                        // Union all but undefined
-                        newType = newType.union(funcRetType.restrict(
-                            funcRetType.flags & ~TypeFlags.UNDEF
-                        ));
-                    }
-
-                    // Set the return type for the new instruction
-                    newGraph.assignType(callInstr, newType);
-                }
-
-                // If there is a call continuation block
-                if (callInstr.targets[0] instanceof BasicBlock)
-                {
-                    // Use the continuation target
-                    var contDesc = new BlockDesc(callInstr.targets[0]);
-                }
-                else
-                {
-                    // The continuation is the rest of the caller block
-                    var instrIdx = callerBlock.instrs.indexOf(callInstr);
-                    var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
-                }
-
-                // Queue the continuation block for analysis
-                ta.setTypeGraph(contDesc, newGraph);
-                ta.queueBlock(contDesc);
-            }
-        }
-    }
-}
-
-// If branching instruction
-IfInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
-    var v2 = (this.uses.length > 2)? typeGraph.getType(this.uses[1]):undefined;
-
-    var instr = this;
-
-    // Function to merge a value type in a given successor block
-    function mergeVal(val, type, target)
-    {
-        // If this is a constant, do nothing
-        if (val instanceof IRConst)
-            return;
-
-        // Remove the left value from the normal merge
-        typeGraph.remVar(val);
-
-        // Get the target block graph
-        var targetDesc = new BlockDesc(target);
-        var targetGraph = ta.getTypeGraph(targetDesc);
-
-        // If the successor has no type graph yet
-        if (targetGraph === HashMap.NOT_FOUND)
-        {
-            // Pass a copy of the predecessor graph to the successor
-            var targetGraph = typeGraph.copy();
-            ta.setTypeGraph(targetDesc, targetGraph);
-        }
-
-        var curType = targetGraph.getType(val);
-        var mergedType = curType.union(type);
-
-        // If the type changed
-        if (curType.equal(mergedType) === false)
-        {
-            targetGraph.unionType(val, mergedType);
-            ta.queueBlock(targetDesc);
-        }
-    }
-
-    // Function to handle the successor queuing for a given branch
-    function mergeSuccs(boolVal)
-    {
-        var trueTarget = instr.targets[0];
-        var falseTarget = instr.targets[1];
-
-        // If we can potentially narrow the comparison input types
-        if (instr.testOp === 'EQ' && 
-            v1.flags === TypeFlags.TRUE &&
-            instr.uses[0] instanceof JSCompInstr)
-        {
-            var compInstr = instr.uses[0];
-
-            var lVal = compInstr.uses[0];
-            var rVal = compInstr.uses[1];
-
-            var lType = typeGraph.getType(lVal);
-            var rType = typeGraph.getType(rVal);
-
-            var trueLType = lType;
-            var falseLType = rType;
-            
-            // Less-than comparison
-            if (compInstr instanceof JSLtInstr)
-            {
-                //print(lType + ' < ' + rType);
-
-                // If both values are integer
-                if (lType.flags === TypeFlags.INT && rType.flags === TypeFlags.INT)
-                {
-                    // lVal < rVal
-                    var rangeMax = Math.min(lType.rangeMax, rType.rangeMax - 1);
-                    var rangeMin = Math.min(lType.rangeMin, rangeMax);
-                    var trueLType = new TypeSet(
-                        TypeFlags.INT,
-                        rangeMin,
-                        rangeMax
-                    );
-
-                    // lVal >= rVal
-                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMin + 1);
-                    var rangeMax = Math.max(lType.rangeMax, rangeMin);
-                    var falseLType = new TypeSet(
-                        TypeFlags.INT,
-                        rangeMin,
-                        rangeMax
-                    );
-                }
-            }
-
-            if (boolVal === true || boolVal === undefined)
-                mergeVal(lVal, trueLType, trueTarget);
-            if (boolVal === false || boolVal === undefined)
-                mergeVal(lVal, falseLType, falseTarget);
-        }
-
-        // Merge with the successor blocks
-        if (boolVal === true || boolVal === undefined)
-            ta.succMerge(trueTarget, typeGraph);
-        if (boolVal === false || boolVal === undefined)
-            ta.succMerge(falseTarget, typeGraph);
-    }
-
-    // If this is an equality comparison
-    if (this.testOp === 'EQ')
-    {
-        if ((v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE) ||
-            (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE))
-            return mergeSuccs(true);
-
-        if ((v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE) ||
-            (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE))
-            return mergeSuccs(false);
-    }
-
-    // Merge with both possible branch targets
-    mergeSuccs();
-}
-
-JumpInstr.prototype.typeProp = function (ta, typeGraph)
-{
-    ta.succMerge(this.targets[0], typeGraph);
-}
-
-// TODO
-// TODO: throw, must merge with all possible catch points
-// TODO
 

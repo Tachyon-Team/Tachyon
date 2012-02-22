@@ -254,8 +254,26 @@ tests.ta.stdlib_math = TypeProp.makeTest(
     false
 );
 
+tests.ta.stdlib_object = TypeProp.makeTest(
+    'programs/type_analysis/stdlib_object.js',
+    true,
+    false
+);
+
 tests.ta.stdlib_array = TypeProp.makeTest(
     'programs/type_analysis/stdlib_array.js',
+    true,
+    false
+);
+
+tests.ta.stdlib_function = TypeProp.makeTest(
+    'programs/type_analysis/stdlib_function.js',
+    true,
+    false
+);
+
+tests.ta.stdlib_string = TypeProp.makeTest(
+    'programs/type_analysis/stdlib_string.js',
     true,
     false
 );

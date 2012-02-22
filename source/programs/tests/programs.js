@@ -1372,8 +1372,17 @@ tests.programs.type_analysis.multi_file = genTest(
 tests.programs.type_analysis.stdlib_math = genTest(
     'programs/type_analysis/stdlib_math.js'
 );
+tests.programs.type_analysis.stdlib_object = genTest(
+    'programs/type_analysis/stdlib_object.js'
+);
 tests.programs.type_analysis.stdlib_array = genTest(
     'programs/type_analysis/stdlib_array.js'
+);
+tests.programs.type_analysis.stdlib_function = genTest(
+    'programs/type_analysis/stdlib_function.js'
+);
+tests.programs.type_analysis.stdlib_string = genTest(
+    'programs/type_analysis/stdlib_string.js'
 );
 tests.programs.type_analysis.regress_btree = genTest(
     'programs/type_analysis/regress_btree.js'
