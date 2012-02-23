@@ -686,11 +686,12 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
 
     // If there are non-object bases
     if (objType.flags & 
-        ~(TypeFlags.EXTOBJ | 
-          TypeFlags.UNDEF | 
-          TypeFlags.NULL)
+        ~(TypeFlags.EXTOBJ  | 
+          TypeFlags.UNDEF   | 
+          TypeFlags.NULL    |
+          TypeFlags.STRING)
         )
-        throw '*WARNING: getProp with non-object base';
+        throw '*WARNING: getProp with invalid base';
 
     // If we have exceeded the maximum lookup depth
     if (depth > 8)
@@ -703,61 +704,96 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
     //print('obj type : ' + objType);
     //print('prop name: ' + propName + ' ' + (typeof propName));
 
+    // If the object may be a string
+    if (objType.flags & TypeFlags.STRING)
+    {
+        // If this is the length property
+        if (propName === 'length')
+        {
+            outType = outType.union(TypeSet.posInt);
+        }
+
+        // If this is a named property
+        else if (typeof propName === 'string')
+        {
+            // Lookup the property on the string prototype
+            var protoProp = this.propLookup(typeGraph, this.strProto, propName, depth + 1);
+            outType = outType.union(protoProp);
+        }
+
+        // Otherwise, this is an index property
+        else
+        {
+            // This is a substring
+            outType = outType.union(TypeSet.string);
+        }
+    }
+
     // For each possible object
     for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
     {
         var obj = objItr.get();
 
-        // Get the node for this property
-        if (typeof propName === 'string')
-            var propNode = obj.getPropNode(propName);
-        else
-            var propNode = obj.idxProp;
-
-        // Get the type for this property node
-        var propType = typeGraph.getType(propNode)
-
-        //print('prop type: ' + propType);
-        //print('');
-
-        // If this property may be missing or this is an unbounded array access
-        if (propType.flags & TypeFlags.MISSING || propName === false)
+        // If this is the length property of an array
+        if (obj.flags === TypeFlags.ARRAY && propName === 'length')
         {
-            // Get the type for the object's prototype
-            var protoNode = obj.proto;
-            var protoType = typeGraph.getType(protoNode);
-
-            // If the prototype is not necessarily null
-            if (protoType.flags & ~TypeFlags.NULL)
-            {
-                // Do a recursive lookup on the prototype
-                var protoProp = this.propLookup(typeGraph, protoType, propName, depth + 1);
-
-                // If we know for sure this property is missing
-                if (propType.flags === TypeFlags.MISSING)
-                {
-                    // Take the prototype property type as-is
-                    propType = protoProp;
-                }
-                else
-                {
-                    // Union the prototype property type
-                    propType = propType.union(protoProp);
-                }
-            }
-
-            // If the prototype may be null, add the undefined type
-            if (protoType.flags & TypeFlags.NULL)
-            {
-                propType = propType.union(TypeSet.undef);
-            }
-
-            // Remove the missing flag from the property type
-            propType = propType.restrict(propType.flags & (~TypeFlags.MISSING));
+            outType = outType.union(TypeSet.posInt)
         }
 
-        // Union the types for this property into the type set
-        outType = outType.union(propType);
+        // Otherwise, for normal properties
+        else
+        {
+            // Get the node for this property
+            if (typeof propName === 'string')
+                var propNode = obj.getPropNode(propName);
+            else
+                var propNode = obj.idxProp;
+
+            // Get the type for this property node
+            var propType = typeGraph.getType(propNode)
+
+            //print('prop type: ' + propType);
+            //print('');
+
+            // If this property may be missing or this is an unbounded array access
+            if (propType.flags & TypeFlags.MISSING || propName === false)
+            {
+                // Get the type for the object's prototype
+                var protoNode = obj.proto;
+                var protoType = typeGraph.getType(protoNode);
+
+                // If the prototype is not necessarily null
+                if (protoType.flags & ~TypeFlags.NULL)
+                {
+                    // Do a recursive lookup on the prototype
+                    var protoProp = this.propLookup(typeGraph, protoType, propName, depth + 1);
+
+                    // If we know for sure this property is missing
+                    if (propType.flags === TypeFlags.MISSING)
+                    {
+                        // Take the prototype property type as-is
+                        propType = protoProp;
+                    }
+                    else
+                    {
+                        // Union the prototype property type
+                        propType = propType.union(protoProp);
+                    }
+                }
+
+                // If the prototype may be null, add the undefined type
+                if (protoType.flags & TypeFlags.NULL)
+                {
+                    propType = propType.union(TypeSet.undef);
+                }
+
+                // Remove the missing flag from the property type
+                propType = propType.restrict(propType.flags & (~TypeFlags.MISSING));
+            }
+
+            // Union the types for this property into the type set
+            outType = outType.union(propType);
+        }
     }
 
     //print('depth: ' + depth);
@@ -925,8 +961,8 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        if (this.verbose === true)
-            print(e);
+        print(e);
+        print(this);
     }
 
     // The object cannot be undefined or null along the normal branch
@@ -945,14 +981,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 
     try
     {
-        // If there are non-object bases
-        if (objType.flags & 
-            ~(TypeFlags.EXTOBJ | 
-              TypeFlags.UNDEF | 
-              TypeFlags.NULL)
-            )
-            throw '*WARNING: getProp with non-object base';
-
+        // If the property name could be anything
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: getProp with any name';
 
@@ -987,8 +1016,8 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        if (this.verbose === true)
-            print(e);
+        print(e);
+        //print(this);
 
         ta.setOutput(typeGraph, this, TypeSet.any);
     }
@@ -2008,6 +2037,12 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 
             retType = outType;
         }
+    }
+
+    // Box an integer
+    else if (callee.funcName === 'boxInt')
+    {
+        retType = TypeSet.posInt;
     }
 
     // Box value to string conversion

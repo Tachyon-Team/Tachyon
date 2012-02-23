@@ -8,3 +8,5 @@ typeAssert(arr, '["and", "array", ["not", "object"], ["not", "undef"]]');
 typeAssert(arr.push, '"function"');
 typeAssert(arr.pop, '"function"');
 
+typeAssert(arr.length, '["and", "int", ["not", "undef"]]');
+
