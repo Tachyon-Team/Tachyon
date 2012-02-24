@@ -548,6 +548,16 @@ TypeProp.prototype.compTypeStats = function ()
                 (u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
             );
+
+            /*
+            if ((u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
+                (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE))
+            {
+                print('Known branch: (' + instr.parentBlock.parentCFG.ownerFunc.funcName + ')');
+                print(instr.parentBlock);
+                print('');
+            }
+            */
         }
     }
 

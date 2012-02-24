@@ -141,10 +141,10 @@ function compileAndRunSrcs(srcFiles, funcName, inputArgs, compParams)
 }
 
 /**
-Generate a unit test for a source file, testing the return value
-obtained after execution.
+Generate a unit test from source files, testing the return value
+obtained after compilation and execution.
 */
-function genTest(srcFiles, funcName, inputArgs, expectResult, compParams)
+function genProgTest(srcFiles, funcName, inputArgs, expectResult, compParams)
 {
     if (typeof srcFiles === 'string')
         srcFiles = [srcFiles];
@@ -186,21 +186,10 @@ tests.programs.initPrimitives = function ()
     reportPerformance();
 };
 
-/*
-// Temporary test, for debugging
-tests.programs.test = genTest(
-    'test_backend.js', 
-    'test', 
-    [], 
-    0,
-    'hostParams'
-);
-*/
-
 /**
 Value return test.
 */
-tests.programs.basic_ret = genTest(
+tests.programs.basic_ret = genProgTest(
     'programs/basic_ret/basic_ret.js', 
     'f', 
     [20], 
@@ -210,7 +199,7 @@ tests.programs.basic_ret = genTest(
 /**
 If statement test.
 */
-tests.programs.basic_if = genTest(
+tests.programs.basic_if = genProgTest(
     'programs/basic_if/basic_if.js', 
     'f', 
     [],
@@ -220,7 +209,7 @@ tests.programs.basic_if = genTest(
 /**
 Argument passing test.
 */
-tests.programs.basic_many_args = genTest(
+tests.programs.basic_many_args = genProgTest(
     'programs/basic_many_args/basic_many_args.js', 
     'f',
     [0,0,0,0,20],
@@ -230,7 +219,7 @@ tests.programs.basic_many_args = genTest(
 /**
 Comparison operators test
 */
-tests.programs.basic_cmp = genTest(
+tests.programs.basic_cmp = genProgTest(
     'programs/basic_cmp/basic_cmp.js',
     'test',
     [5],
@@ -240,7 +229,7 @@ tests.programs.basic_cmp = genTest(
 /**
 Global object access test
 */
-tests.programs.global_obj = genTest(
+tests.programs.global_obj = genProgTest(
     'programs/global_obj/global_obj.js',
     'test',
     [],
@@ -251,7 +240,7 @@ tests.programs.global_obj = genTest(
 /**
 Arithmetic operators test.
 */
-tests.programs.basic_arith = genTest(
+tests.programs.basic_arith = genProgTest(
     'programs/basic_arith/basic_arith.js',
     'test',
     [],
@@ -261,7 +250,7 @@ tests.programs.basic_arith = genTest(
 /**
 Bitwise operators test.
 */
-tests.programs.basic_bitops = genTest(
+tests.programs.basic_bitops = genProgTest(
     'programs/basic_bitops/basic_bitops.js',
     'test',
     [],
@@ -271,7 +260,7 @@ tests.programs.basic_bitops = genTest(
 /**
 Arithmetic shift test.
 */
-tests.programs.basic_shift = genTest(
+tests.programs.basic_shift = genProgTest(
     'programs/basic_shift/basic_shift.js',
     'foo',
     [],
@@ -281,7 +270,7 @@ tests.programs.basic_shift = genTest(
 /**
 Test of limits of integer overflow handling.
 */
-tests.programs.basic_ovf = genTest(
+tests.programs.basic_ovf = genProgTest(
     'programs/basic_ovf/basic_ovf.js',
     'proxy',
     [],
@@ -292,7 +281,7 @@ tests.programs.basic_ovf = genTest(
 /**
 Test of basic optimization patterns.
 */
-tests.programs.basic_opts = genTest(
+tests.programs.basic_opts = genProgTest(
     'programs/basic_opts/basic_opts.js',
     'proxy',
     [],
@@ -303,7 +292,7 @@ tests.programs.basic_opts = genTest(
 /**
 Test of assignment expressions.
 */
-tests.programs.basic_assign = genTest(
+tests.programs.basic_assign = genProgTest(
     'programs/basic_assign/basic_assign.js',
     'proxy',
     [],
@@ -314,7 +303,7 @@ tests.programs.basic_assign = genTest(
 /**
 Test of boolean value evaluation.
 */
-tests.programs.basic_bool_eval = genTest(
+tests.programs.basic_bool_eval = genProgTest(
     'programs/basic_bool_eval/basic_bool_eval.js',
     'test',
     [],
@@ -324,7 +313,7 @@ tests.programs.basic_bool_eval = genTest(
 /**
 Multiple files/units test
 */
-tests.programs.multi_file = genTest(
+tests.programs.multi_file = genProgTest(
     ['programs/multi_file/file1.js', 'programs/multi_file/file2.js'],
     'test',
     [],
@@ -334,7 +323,7 @@ tests.programs.multi_file = genTest(
 /**
 Test of typed IIR variables.
 */
-tests.programs.iir_vars = genTest(
+tests.programs.iir_vars = genProgTest(
     'programs/iir_vars/iir_vars.js',
     'test',
     [],
@@ -345,7 +334,7 @@ tests.programs.iir_vars = genTest(
 /**
 Passing arguments and getting a return value from an FFI function
 */
-tests.programs.ffi_sum = genTest(
+tests.programs.ffi_sum = genProgTest(
     'programs/ffi_sum/ffi_sum.js',
     'f',
     [10,15],
@@ -356,7 +345,7 @@ tests.programs.ffi_sum = genTest(
 /**
 Time-related FFI functions
 */
-tests.programs.ffi_time = genTest(
+tests.programs.ffi_time = genProgTest(
     'programs/ffi_time/ffi_time.js',
     'test',
     [],
@@ -367,7 +356,7 @@ tests.programs.ffi_time = genTest(
 /**
 File I/O FFI functions
 */
-tests.programs.ffi_fileio = genTest(
+tests.programs.ffi_fileio = genProgTest(
     'programs/ffi_fileio/ffi_fileio.js',
     'test',
     [],
@@ -380,7 +369,7 @@ This test is meant to ensure that values are correctly merged after
 conditionals and that local variable values are properly preserved across
 calls.
 */
-tests.programs.cond_calls = genTest(
+tests.programs.cond_calls = genProgTest(
     'programs/cond_calls/cond_calls.js',
     'fee',
     [],
@@ -390,7 +379,7 @@ tests.programs.cond_calls = genTest(
 /**
 Test of multiple function calls with computations in between.
 */
-tests.programs.two_calls = genTest(
+tests.programs.two_calls = genProgTest(
     'programs/two_calls/two_calls.js',
     'foo',
     [],
@@ -400,7 +389,7 @@ tests.programs.two_calls = genTest(
 /**
 Fibonacci implementation to test recursive calls.
 */
-tests.programs.fib = genTest(
+tests.programs.fib = genProgTest(
     'programs/fib/fib.js',
     'fib',
     [20],
@@ -410,7 +399,7 @@ tests.programs.fib = genTest(
 /**
 Test of a loop computing a sum.
 */
-tests.programs.loop_sum = genTest(
+tests.programs.loop_sum = genProgTest(
     'programs/loop_sum/loop_sum.js',
     'loop_sum',
     [10],
@@ -420,7 +409,7 @@ tests.programs.loop_sum = genTest(
 /**
 Test of a function call followed by a loop.
 */
-tests.programs.call_loop = genTest(
+tests.programs.call_loop = genProgTest(
     'programs/call_loop/call_loop.js',
     'foo',
     [],
@@ -430,7 +419,7 @@ tests.programs.call_loop = genTest(
 /**
 Test of function calls before, inside and after a loop.
 */
-tests.programs.loop_calls = genTest(
+tests.programs.loop_calls = genProgTest(
     'programs/loop_calls/loop_calls.js',
     'foo',
     [1],
@@ -440,7 +429,7 @@ tests.programs.loop_calls = genTest(
 /**
 Test of two loops, one after the other, each performing function calls.
 */
-tests.programs.loop_loop = genTest(
+tests.programs.loop_loop = genProgTest(
     'programs/loop_loop/loop_loop.js',
     'foo',
     [5],
@@ -450,7 +439,7 @@ tests.programs.loop_loop = genTest(
 /**
 Test of a for loop inside a while loop.
 */
-tests.programs.while_for = genTest(
+tests.programs.while_for = genProgTest(
     'programs/while_for/while_for.js',
     'foo',
     [5],
@@ -460,7 +449,7 @@ tests.programs.while_for = genTest(
 /**
 Loop with enough variables to force spilling of phi nodes.
 */
-tests.programs.loop_spills = genTest(
+tests.programs.loop_spills = genProgTest(
     'programs/loop_spills/loop_spills.js',
     'foo',
     [42],
@@ -470,7 +459,7 @@ tests.programs.loop_spills = genTest(
 /**
 Nested loops unit test.
 */
-tests.programs.nested_loops = genTest(
+tests.programs.nested_loops = genProgTest(
     'programs/nested_loops/nested_loops.js',
     'foo',
     [3],
@@ -480,7 +469,7 @@ tests.programs.nested_loops = genTest(
 /**
 Object property put/get unit test.
 */
-tests.programs.obj_props = genTest(
+tests.programs.obj_props = genProgTest(
     'programs/obj_props/obj_props.js',
     'foo',
     [33],
@@ -490,7 +479,7 @@ tests.programs.obj_props = genTest(
 /**
 Linked list unit test.
 */
-tests.programs.linked_list = genTest(
+tests.programs.linked_list = genProgTest(
     'programs/linked_list/linked_list.js',
     'linkedlist',
     [5],
@@ -500,7 +489,7 @@ tests.programs.linked_list = genTest(
 /**
 String equality and non-equality.
 */
-tests.programs.str_equality = genTest(
+tests.programs.str_equality = genProgTest(
     'programs/str_equality/str_equality.js',
     'foo',
     [],
@@ -510,7 +499,7 @@ tests.programs.str_equality = genTest(
 /**
 String concatenation with another string.
 */
-tests.programs.str_cat_str = genTest(
+tests.programs.str_cat_str = genProgTest(
     'programs/str_cat_str/str_cat_str.js',
     'foo',
     [],
@@ -520,7 +509,7 @@ tests.programs.str_cat_str = genTest(
 /**
 String concatenation with integers.
 */
-tests.programs.str_cat_int = genTest(
+tests.programs.str_cat_int = genProgTest(
     'programs/str_cat_int/str_cat_int.js',
     'foo',
     [],
@@ -530,7 +519,7 @@ tests.programs.str_cat_int = genTest(
 /**
 String conversion from/to integer
 */
-tests.programs.str_int_conv = genTest(
+tests.programs.str_int_conv = genProgTest(
     'programs/str_int_conv/str_int_conv.js',
     'test',
     [],
@@ -540,7 +529,7 @@ tests.programs.str_int_conv = genTest(
 /**
 Comma operator test
 */
-tests.programs.comma_op = genTest(
+tests.programs.comma_op = genProgTest(
     'programs/comma_op/comma_op.js',
     'test',
     [],
@@ -550,7 +539,7 @@ tests.programs.comma_op = genTest(
 /**
 Switch statement test
 */
-tests.programs.switch = genTest(
+tests.programs.switch = genProgTest(
     'programs/switch/switch.js',
     'test',
     [],
@@ -560,7 +549,7 @@ tests.programs.switch = genTest(
 /**
 With statement test
 */
-tests.programs.with = genTest(
+tests.programs.with = genProgTest(
     'programs/with/with.js',
     'test',
     [],
@@ -570,7 +559,7 @@ tests.programs.with = genTest(
 /**
 Exceptions test
 */
-tests.programs.exceptions = genTest(
+tests.programs.exceptions = genProgTest(
     'programs/exceptions/exceptions.js',
     'test',
     [],
@@ -580,7 +569,7 @@ tests.programs.exceptions = genTest(
 /**
 Array indexing test.
 */
-tests.programs.array_idx = genTest(
+tests.programs.array_idx = genProgTest(
     'programs/array_idx/array_idx.js',
     'foo',
     [12],
@@ -590,7 +579,7 @@ tests.programs.array_idx = genTest(
 /**
 Array length property test.
 */
-tests.programs.array_length = genTest(
+tests.programs.array_length = genProgTest(
     'programs/array_length/array_length.js',
     'foo',
     [],
@@ -600,7 +589,7 @@ tests.programs.array_length = genTest(
 /**
 Array size extension test.
 */
-tests.programs.array_ext = genTest(
+tests.programs.array_ext = genProgTest(
     'programs/array_ext/array_ext.js',
     'test',
     [],
@@ -610,7 +599,7 @@ tests.programs.array_ext = genTest(
 /**
 Property deletion on objects.
 */
-tests.programs.obj_delete = genTest(
+tests.programs.obj_delete = genProgTest(
     'programs/obj_delete/obj_delete.js',
     'test',
     [],
@@ -620,7 +609,7 @@ tests.programs.obj_delete = genTest(
 /**
 Recursive n-queens solver. Uses arrays extensively.
 */
-tests.programs.nqueens = genTest(
+tests.programs.nqueens = genProgTest(
     'programs/nqueens/nqueens.js',
     'test',
     [],
@@ -630,7 +619,7 @@ tests.programs.nqueens = genTest(
 /**
 Iterative mergesort test.
 */
-tests.programs.merge_sort = genTest(
+tests.programs.merge_sort = genProgTest(
     'programs/merge_sort/merge_sort.js',
     'test',
     [],
@@ -641,7 +630,7 @@ tests.programs.merge_sort = genTest(
 /**
 Closure variable initialization.
 */
-tests.programs.clos_init = genTest(
+tests.programs.clos_init = genProgTest(
     'programs/clos_init/clos_init.js',
     'test',
     [],
@@ -651,7 +640,7 @@ tests.programs.clos_init = genTest(
 /**
 Closure variable capture.
 */
-tests.programs.clos_capt = genTest(
+tests.programs.clos_capt = genProgTest(
     'programs/clos_capt/clos_capt.js',
     'foo',
     [5],
@@ -661,7 +650,7 @@ tests.programs.clos_capt = genTest(
 /**
 Closure variable access.
 */
-tests.programs.clos_access = genTest(
+tests.programs.clos_access = genProgTest(
     'programs/clos_access/clos_access.js',
     'test',
     [],
@@ -671,7 +660,7 @@ tests.programs.clos_access = genTest(
 /**
 Calls across closure boundaries.
 */
-tests.programs.clos_xcall = genTest(
+tests.programs.clos_xcall = genProgTest(
     'programs/clos_xcall/clos_xcall.js',
     'test',
     [5],
@@ -681,7 +670,7 @@ tests.programs.clos_xcall = genTest(
 /**
 Closure and global variable test.
 */
-tests.programs.clos_globals = genTest(
+tests.programs.clos_globals = genProgTest(
     'programs/clos_globals/clos_globals.js',
     'test',
     [],
@@ -691,7 +680,7 @@ tests.programs.clos_globals = genTest(
 /**
 Closure capturing an argument and global variable access test.
 */
-tests.programs.clos_arg = genTest(
+tests.programs.clos_arg = genProgTest(
     'programs/clos_arg/clos_arg.js',
     'test',
     [],
@@ -701,7 +690,7 @@ tests.programs.clos_arg = genTest(
 /**
 Constructor/new test.
 */
-tests.programs.ctor_new = genTest(
+tests.programs.ctor_new = genProgTest(
     'programs/ctor_new/ctor_new.js',
     'foo',
     [5],
@@ -711,7 +700,7 @@ tests.programs.ctor_new = genTest(
 /**
 Constructor, prototype and methods test.
 */
-tests.programs.ctor_proto = genTest(
+tests.programs.ctor_proto = genProgTest(
     'programs/ctor_proto/ctor_proto.js',
     'test',
     [5],
@@ -721,7 +710,7 @@ tests.programs.ctor_proto = genTest(
 /**
 Constructor and instanceof test
 */
-tests.programs.ctor_instof = genTest(
+tests.programs.ctor_instof = genProgTest(
     'programs/ctor_instof/ctor_instof.js',
     'test',
     [],
@@ -731,7 +720,7 @@ tests.programs.ctor_instof = genTest(
 /**
 For-in loop, property enumeration.
 */
-tests.programs.for_in = genTest(
+tests.programs.for_in = genProgTest(
     'programs/for_in/for_in.js',
     'test',
     [],
@@ -741,7 +730,7 @@ tests.programs.for_in = genTest(
 /**
 Variable number of arguments test.
 */
-tests.programs.var_args = genTest(
+tests.programs.var_args = genProgTest(
     'programs/var_args/var_args.js',
     'foo_proxy',
     [],
@@ -751,7 +740,7 @@ tests.programs.var_args = genTest(
 /**
 Arguments object test.
 */
-tests.programs.arg_obj = genTest(
+tests.programs.arg_obj = genProgTest(
     'programs/arg_obj/arg_obj.js',
     'foo_proxy',
     [],
@@ -762,7 +751,7 @@ tests.programs.arg_obj = genTest(
 /**
 Low-level apply function call test
 */
-tests.programs.apply_iir = genTest(
+tests.programs.apply_iir = genProgTest(
     'programs/apply_iir/apply_iir.js',
     'test',
     [],
@@ -784,7 +773,7 @@ tests.programs.initStdlib = function ()
 /**
 Object access runtime primitives test.
 */
-tests.programs.obj_prims = genTest(
+tests.programs.obj_prims = genProgTest(
     'programs/obj_prims/obj_prims.js',
     'test',
     [],
@@ -794,7 +783,7 @@ tests.programs.obj_prims = genTest(
 /**
 Constructor, prototype and toString method test.
 */
-tests.programs.obj_tostring = genTest(
+tests.programs.obj_tostring = genProgTest(
     'programs/obj_tostring/obj_tostring.js',
     'test',
     [],
@@ -804,7 +793,7 @@ tests.programs.obj_tostring = genTest(
 /**
 Test of the use of objects as properties.
 */
-tests.programs.obj_objprops = genTest(
+tests.programs.obj_objprops = genProgTest(
     'programs/obj_objprops/obj_objprops.js',
     'test',
     [],
@@ -814,7 +803,7 @@ tests.programs.obj_objprops = genTest(
 /**
 Bubble-sort implementation. Uses closures and string conversion of arrays.
 */
-tests.programs.bubble_sort = genTest(
+tests.programs.bubble_sort = genProgTest(
     'programs/bubble_sort/bubble_sort.js',
     'test',
     [],
@@ -824,7 +813,7 @@ tests.programs.bubble_sort = genTest(
 /**
 Function apply test.
 */
-tests.programs.apply = genTest(
+tests.programs.apply = genProgTest(
     'programs/apply/apply.js',
     'foo_proxy',
     [],
@@ -835,7 +824,7 @@ tests.programs.apply = genTest(
 /**
 Matrix computations, uses arrays, constructors, strings, closures.
 */
-tests.programs.matrix_comp = genTest(
+tests.programs.matrix_comp = genProgTest(
     'programs/matrix_comp/matrix_comp.js',
     'test',
     [],
@@ -845,7 +834,7 @@ tests.programs.matrix_comp = genTest(
 /**
 Standard conformance test for comparison operators.
 */
-tests.programs.es5_cmp = genTest(
+tests.programs.es5_cmp = genProgTest(
     'programs/es5_cmp/es5_cmp.js',
     'test',
     [],
@@ -857,7 +846,7 @@ Standard library global code tests.
 */
 /*
 FIXME: currently disabled
-tests.programs.stdlib_global = genTest(
+tests.programs.stdlib_global = genProgTest(
     'programs/stdlib_global/stdlib_global.js',
     'test',
     [],
@@ -868,7 +857,7 @@ tests.programs.stdlib_global = genTest(
 /**
 Standard library objects code tests.
 */
-tests.programs.stdlib_object = genTest(
+tests.programs.stdlib_object = genProgTest(
     'programs/stdlib_object/stdlib_object.js',
     'test',
     [],
@@ -878,7 +867,7 @@ tests.programs.stdlib_object = genTest(
 /**
 Standard library function code tests.
 */
-tests.programs.stdlib_function = genTest(
+tests.programs.stdlib_function = genProgTest(
     'programs/stdlib_function/stdlib_function.js',
     'test',
     [],
@@ -888,7 +877,7 @@ tests.programs.stdlib_function = genTest(
 /**
 Standard library array code tests.
 */
-tests.programs.stdlib_array = genTest(
+tests.programs.stdlib_array = genProgTest(
     'programs/stdlib_array/stdlib_array.js',
     'test',
     [],
@@ -898,7 +887,7 @@ tests.programs.stdlib_array = genTest(
 /**
 Standard library boolean code tests.
 */
-tests.programs.stdlib_boolean = genTest(
+tests.programs.stdlib_boolean = genProgTest(
     'programs/stdlib_boolean/stdlib_boolean.js',
     'test',
     [],
@@ -908,7 +897,7 @@ tests.programs.stdlib_boolean = genTest(
 /**
 Standard library number code tests.
 */
-tests.programs.stdlib_number = genTest(
+tests.programs.stdlib_number = genProgTest(
     'programs/stdlib_number/stdlib_number.js',
     'test',
     [],
@@ -918,7 +907,7 @@ tests.programs.stdlib_number = genTest(
 /**
 Standard library string code tests.
 */
-tests.programs.stdlib_string = genTest(
+tests.programs.stdlib_string = genProgTest(
     'programs/stdlib_string/stdlib_string.js',
     'test',
     [],
@@ -928,7 +917,7 @@ tests.programs.stdlib_string = genTest(
 /**
 Standard library regexp code tests.
 */
-tests.programs.stdlib_regexp = genTest(
+tests.programs.stdlib_regexp = genProgTest(
     'programs/stdlib_regexp/stdlib_regexp.js',
     'test',
     [],
@@ -938,7 +927,7 @@ tests.programs.stdlib_regexp = genTest(
 /**
 Standard library json code tests.
 */
-tests.programs.stdlib_json = genTest(
+tests.programs.stdlib_json = genProgTest(
     'programs/stdlib_json/stdlib_json.js',
     'test',
     [],
@@ -948,7 +937,7 @@ tests.programs.stdlib_json = genTest(
 /**
 Standard library math code tests.
 */
-tests.programs.stdlib_math = genTest(
+tests.programs.stdlib_math = genProgTest(
     'programs/stdlib_math/stdlib_math.js',
     'test',
     [],
@@ -958,7 +947,7 @@ tests.programs.stdlib_math = genTest(
 /**
 Simple object access performance test.
 */
-tests.programs.perf_obj_access = genTest(
+tests.programs.perf_obj_access = genProgTest(
     'programs/perf_obj_access/perf_obj_access.js',
     'test',
     [],
@@ -968,7 +957,7 @@ tests.programs.perf_obj_access = genTest(
 /**
 Simple array access performance test.
 */
-tests.programs.perf_arr_access = genTest(
+tests.programs.perf_arr_access = genProgTest(
     'programs/perf_arr_access/perf_arr_access.js',
     'test',
     [],
@@ -979,46 +968,46 @@ tests.programs.perf_arr_access = genTest(
 Tests for sunspider.
 */
 tests.programs.sunspider = tests.testSuite();
-tests.programs.sunspider['access-binary-trees'] = genTest(
+tests.programs.sunspider['access-binary-trees'] = genProgTest(
     'programs/sunspider/access-binary-trees.js'
 );
-tests.programs.sunspider['access-fannkuch'] = genTest(
+tests.programs.sunspider['access-fannkuch'] = genProgTest(
     'programs/sunspider/access-fannkuch.js'
 );
-tests.programs.sunspider['access-nsieve'] = genTest(
+tests.programs.sunspider['access-nsieve'] = genProgTest(
     'programs/sunspider/access-nsieve.js'
 );
-tests.programs.sunspider['bitops-3bit-bits-in-byte'] = genTest(
+tests.programs.sunspider['bitops-3bit-bits-in-byte'] = genProgTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js'
 );
-tests.programs.sunspider['bitops-bits-in-byte'] = genTest(
+tests.programs.sunspider['bitops-bits-in-byte'] = genProgTest(
     'programs/sunspider/bitops-bits-in-byte.js'
 );
 /* Only works in 64-bit for now
-tests.programs.sunspider['bitops-bitwise-and'] = genTest(
+tests.programs.sunspider['bitops-bitwise-and'] = genProgTest(
     'programs/sunspider/bitops-bitwise-and.js'
 );
 */
 /* Only works in 64-bit for now
-tests.programs.sunspider['bitops-nsieve-bits'] = genTest(
+tests.programs.sunspider['bitops-nsieve-bits'] = genProgTest(
     'programs/sunspider/bitops-nsieve-bits.js'
 );
 */
-tests.programs.sunspider['controlflow-recursive'] = genTest(
+tests.programs.sunspider['controlflow-recursive'] = genProgTest(
     'programs/sunspider/controlflow-recursive.js'
 );
 /* Only works in 64-bit for now
-tests.programs.sunspider['crypto-md5'] = genTest(
+tests.programs.sunspider['crypto-md5'] = genProgTest(
     'programs/sunspider/crypto-md5.js'
 );
 */
 /* Only works in 64-bit for now
-tests.programs.sunspider['crypto-sha1'] = genTest(
+tests.programs.sunspider['crypto-sha1'] = genProgTest(
     'programs/sunspider/crypto-sha1.js'
 );
 */
 /* Uses Math.random 
-tests.programs.sunspider['string-base64'] = genTest(
+tests.programs.sunspider['string-base64'] = genProgTest(
     'programs/sunspider/string-base64.js'
 );*/
 
@@ -1029,20 +1018,20 @@ tests.programs.v8bench = tests.testSuite();
 /*
 //FIXME: requires int32/FP support
 //FIXME: requires Math.random (FP support)
-tests.programs.v8bench['crypto'] = genTest(
+tests.programs.v8bench['crypto'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/crypto.js',
      'drv-crypto']
 );
 */
-tests.programs.v8bench['deltablue'] = genTest(
+tests.programs.v8bench['deltablue'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/deltablue.js',
      'programs/v8bench/drv-deltablue.js']
 );
 /*
 //FIXME: requires Math.random (FP support)
-tests.programs.v8bench['earley-boyer'] = genTest(
+tests.programs.v8bench['earley-boyer'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/earley-boyer.js',
      'programs/v8bench/drv-earley-boyer.js']
@@ -1050,7 +1039,7 @@ tests.programs.v8bench['earley-boyer'] = genTest(
 */
 /*
 // FIXME: requires FP support
-tests.programs.v8bench['raytrace'] = genTest(
+tests.programs.v8bench['raytrace'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/raytrace.js',
      'renderScene']
@@ -1058,20 +1047,20 @@ tests.programs.v8bench['raytrace'] = genTest(
 */
 /*
 //FIXME: requires Math.random (FP support)
-tests.programs.v8bench['regexp'] = genTest(
+tests.programs.v8bench['regexp'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/regexp.js',
      'programs/v8bench/drv-regexp.js']
 );
 */
-tests.programs.v8bench['richards'] = genTest(
+tests.programs.v8bench['richards'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/richards.js',
      'programs/v8bench/drv-richards.js']
 );
 /*
 //FIXME: requires Math.random (FP support)
-tests.programs.v8bench['splay'] = genTest(
+tests.programs.v8bench['splay'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/splay.js',
      'programs/v8bench/drv-splay.js',
@@ -1082,7 +1071,7 @@ tests.programs.v8bench['splay'] = genTest(
 /**
 Tachyon hash map utility code test
 */
-tests.programs.tachyon_hashmap = genTest(
+tests.programs.tachyon_hashmap = genProgTest(
     [
         'utility/debug.js',
         'utility/hashmap.js',
@@ -1096,7 +1085,7 @@ tests.programs.tachyon_hashmap = genTest(
 /**
 Tachyon graph utility code test
 */
-tests.programs.tachyon_graph = genTest(
+tests.programs.tachyon_graph = genProgTest(
     [
         'utility/debug.js',
         'utility/iterators.js',
@@ -1113,7 +1102,7 @@ tests.programs.tachyon_graph = genTest(
 /**
 Tachyon bignum utility code test
 */
-tests.programs.tachyon_num = genTest(
+tests.programs.tachyon_num = genProgTest(
     [
         'utility/debug.js',
         'utility/num.js',
@@ -1128,7 +1117,7 @@ tests.programs.tachyon_num = genTest(
 /**
 Tachyon machine code block test code.
 */
-tests.programs.tachyon_mcb = genTest(
+tests.programs.tachyon_mcb = genProgTest(
     [
         'utility/debug.js',
         'platform/mcb.js',
@@ -1143,7 +1132,7 @@ tests.programs.tachyon_mcb = genTest(
 /**
 Tachyon bridge test code.
 */
-tests.programs.tachyon_bridge = genTest(
+tests.programs.tachyon_bridge = genProgTest(
     [
         'programs/tachyon_bridge/tachyon_bridge.js',
         'utility/debug.js',
@@ -1161,56 +1150,56 @@ tests.programs.tachyon_bridge = genTest(
 Garbage collector tests
 */
 tests.programs.gc = tests.testSuite();
-tests.programs.gc.walk_stack = genTest(
+tests.programs.gc.walk_stack = genProgTest(
     'programs/gc/walk_stack.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.collect = genTest(
+tests.programs.gc.collect = genProgTest(
     'programs/gc/collect.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.deepstack = genTest(
+tests.programs.gc.deepstack = genProgTest(
     'programs/gc/deepstack.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.apply = genTest(
+tests.programs.gc.apply = genProgTest(
     'programs/gc/apply.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.arguments = genTest(
+tests.programs.gc.arguments = genProgTest(
     'programs/gc/arguments.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.arrays = genTest(
+tests.programs.gc.arrays = genProgTest(
     'programs/gc/arrays.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.graph = genTest(
+tests.programs.gc.graph = genProgTest(
     'programs/gc/graph.js',
     'test',
     [],
     0,
     'hostParams'
 );
-tests.programs.gc.stackvm = genTest(
+tests.programs.gc.stackvm = genProgTest(
     'programs/gc/stackvm.js',
     'test',
     [],
@@ -1219,179 +1208,15 @@ tests.programs.gc.stackvm = genTest(
 );
 
 /*
-Type analysis test programs
+Type analysis test programs. This test suite is auto-filled
+by the type analysis tests.
 */
 tests.programs.type_analysis = tests.testSuite();
-tests.programs.type_analysis.global_add = genTest(
-    'programs/type_analysis/global_add.js'
-);
-tests.programs.type_analysis.call_simple = genTest(
-    'programs/type_analysis/call_simple.js'
-);
-tests.programs.type_analysis.func_2ret = genTest(
-    'programs/type_analysis/func_2ret.js'
-);
-tests.programs.type_analysis.func_2calls = genTest(
-    'programs/type_analysis/func_2calls.js'
-);
-tests.programs.type_analysis.func_calls = genTest(
-    'programs/type_analysis/func_calls.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.arith_simple = genTest(
-    'programs/type_analysis/arith_simple.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.cmp_simple = genTest(
-    'programs/type_analysis/cmp_simple.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.fib = genTest(
-    'programs/type_analysis/fib.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.loop_sum = genTest(
-    'programs/type_analysis/loop_sum.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.obj_simple = genTest(
-    'programs/type_analysis/obj_simple.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.get_undef = genTest(
-    'programs/type_analysis/get_undef.js'
-);
-tests.programs.type_analysis.linked_list = genTest(
-    'programs/type_analysis/linked_list.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.cond_return = genTest(
-    'programs/type_analysis/cond_return.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.cond_prop = genTest(
-    'programs/type_analysis/cond_prop.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.cond_global = genTest(
-    'programs/type_analysis/cond_global.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.cond_objs = genTest(
-    'programs/type_analysis/cond_objs.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.cond_call = genTest(
-    'programs/type_analysis/cond_call.js'
-);
-tests.programs.type_analysis.cond_pass2 = genTest(
-    'programs/type_analysis/cond_pass2.js'
-);
-tests.programs.type_analysis.cond_ret_obj = genTest(
-    'programs/type_analysis/cond_ret_obj.js'
-);
-tests.programs.type_analysis.loop_cond_obj = genTest(
-    'programs/type_analysis/loop_cond_obj.js'
-);
-tests.programs.type_analysis.arr_simple = genTest(
-    'programs/type_analysis/arr_simple.js'
-);
-tests.programs.type_analysis.obj_methods = genTest(
-    'programs/type_analysis/obj_methods.js'
-);
-tests.programs.type_analysis.obj_init = genTest(
-    'programs/type_analysis/obj_init.js'
-);
-tests.programs.type_analysis.obj_init_junk = genTest(
-    'programs/type_analysis/obj_init_junk.js'
-);
-tests.programs.type_analysis.factory_2calls = genTest(
-    'programs/type_analysis/factory_2calls.js'
-);
-tests.programs.type_analysis.factory_2paths = genTest(
-    'programs/type_analysis/factory_2paths.js'
-);
-tests.programs.type_analysis.factory_global = genTest(
-    'programs/type_analysis/factory_global.js'
-);
-tests.programs.type_analysis.factory_cond = genTest(
-    'programs/type_analysis/factory_cond.js'
-);
-tests.programs.type_analysis.factory_inc = genTest(
-    'programs/type_analysis/factory_inc.js'
-);
-tests.programs.type_analysis.ctor_simple = genTest(
-    'programs/type_analysis/ctor_simple.js',
-    'test',
-    [],
-    0
-);
-tests.programs.type_analysis.ctor_array = genTest(
-    'programs/type_analysis/ctor_array.js'
-);
-tests.programs.type_analysis.proto_chain = genTest(
-    'programs/type_analysis/proto_chain.js'
-);
-tests.programs.type_analysis.proto_clos = genTest(
-    'programs/type_analysis/proto_clos.js'
-);
-tests.programs.type_analysis.args_sum = genTest(
-    'programs/type_analysis/args_sum.js'
-);
-tests.programs.type_analysis.clos_simple = genTest(
-    'programs/type_analysis/clos_simple.js'
-);
-tests.programs.type_analysis.multi_file = genTest(
-    [
-        'programs/type_analysis/multi_file1.js',
-        'programs/type_analysis/multi_file2.js'
-    ]
-);
-tests.programs.type_analysis.stdlib_math = genTest(
-    'programs/type_analysis/stdlib_math.js'
-);
-tests.programs.type_analysis.stdlib_object = genTest(
-    'programs/type_analysis/stdlib_object.js'
-);
-tests.programs.type_analysis.stdlib_array = genTest(
-    'programs/type_analysis/stdlib_array.js'
-);
-tests.programs.type_analysis.stdlib_function = genTest(
-    'programs/type_analysis/stdlib_function.js'
-);
-tests.programs.type_analysis.stdlib_string = genTest(
-    'programs/type_analysis/stdlib_string.js'
-);
-tests.programs.type_analysis.regress_btree = genTest(
-    'programs/type_analysis/regress_btree.js'
-);
 
 /**
 Print the state of the Tachyon VM.
 */
-tests.programs.tachyon_state = genTest(
+tests.programs.tachyon_state = genProgTest(
     'programs/tachyon_state/tachyon_state.js',
     'printState',
     [],

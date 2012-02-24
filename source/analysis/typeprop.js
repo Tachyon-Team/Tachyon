@@ -527,22 +527,46 @@ TypeProp.prototype.iterate = function ()
         if ((instr instanceof JSCallInstr || instr instanceof JSNewInstr) && ret === true)
         {
             if (this.verbose === true)
-                print('stopping block inference');
+                print('stopping block inference\n');
 
             // Stop the inference for this block, the return instruction
             // will queue the rest of the block
             return;
         }
         
+        // Get the instruction's output type
+        var outType = typeGraph.getType(instr);
+
         // Store the last seen type set for the instruction's output
-        this.typeSets.set({ instr: instr }, typeGraph.getType(instr));
+        this.typeSets.set({ instr: instr }, outType);
         
         if (this.verbose === true)
         {
             if (instr.dests.length > 0)
-                print(instr.getValName() + ' => ' + typeGraph.getType(instr));
+                print(instr.getValName() + ' => ' + outType);
             print('');
         }
+
+        /*
+        if (instr.dests.length > 0 && outType.flags === TypeFlags.EMPTY)
+        {
+            print(instr);
+
+            for (var j = 0; j < instr.uses.length; ++j)
+            {
+                var use = instr.uses[j];
+
+                if ((use instanceof IRInstr || use instanceof IRConst) === false)
+                    continue;    
+
+                var useType = typeGraph.getType(use);
+
+                print(use.getValName() + ' : ' + useType);
+            }
+
+            print('');
+        }
+        */
     }
 }
 
@@ -833,11 +857,6 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
         outType = outType.union(incType);
     }
 
-    assert (
-        outType.flags !== TypeFlags.EMPTY,
-        'phi output type is empty set'
-    );
-
     typeGraph.assignType(this, outType);
 }
 
@@ -913,7 +932,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         // If this is not a string constant or an integer
         if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
             nameType.flags !== TypeFlags.INT)
-            throw '*WARNING: putProp with unknown property name:' + nameType;
+            throw '*WARNING: putProp with unknown property name: ' + nameType;
 
         // Get the property name string, if any
         var propName = (nameType.flags === TypeFlags.STRING)? nameType.strVal:undefined;
@@ -942,9 +961,13 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
             // Test if we can overwrite the current property type
             var canAssignType = (
-                isCtorThis === true ||
-                isLocalObj === true ||
-                obj.singleton === true
+                propNode !== obj.idxProp 
+                && 
+                (
+                    isCtorThis === true ||
+                    isLocalObj === true ||
+                    obj.singleton === true
+                )
             );
 
             // Update the property type
@@ -961,8 +984,11 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        print(e);
-        print(this);
+        if (this.verbose === true)
+        {
+            print(e);
+            print(this);
+        }
     }
 
     // The object cannot be undefined or null along the normal branch
@@ -988,7 +1014,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         // If this is not a string constant or an integer
         if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
             nameType.flags !== TypeFlags.INT)
-            throw '*WARNING: putProp with unknown property name:' + nameType;
+            throw '*WARNING: getProp with unknown property name: ' + nameType;
 
         // If the property name is a string
         var propName;
@@ -1016,8 +1042,11 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        print(e);
-        //print(this);
+        if (this.verbose === true)
+        {
+            print(e);
+            print(this);
+        }
 
         ta.setOutput(typeGraph, this, TypeSet.any);
     }
@@ -2054,6 +2083,12 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             retType = valType;
         else
             retType = TypeSet.string;
+    }
+
+    // Unknown primitive
+    else
+    {
+        //print('unknown primitive: ' + callee.funcName);
     }
 
     // Set our own output type in the type graph

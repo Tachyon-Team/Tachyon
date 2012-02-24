@@ -50,22 +50,39 @@ Create a type prop unit test
 */
 TypeProp.makeTest = function (fileList, useStdlib, verbose)
 {
+    if (typeof fileList === 'string')
+        fileList = [fileList];
+
     if (useStdlib === undefined)
         useStdlib = false;
 
     if (verbose === undefined)
         verbose = false;
 
-    return function test()
+    var test = function ()
     {
         const params = config.hostParams;
 
         params.typeProp.testOnFile(fileList, useStdlib, verbose);
     }
+
+    test.srcFiles = fileList;
+
+    return test;
 }
 
 tests.ta.global_add = TypeProp.makeTest(
     'programs/type_analysis/global_add.js',
+    false
+);
+
+tests.ta.string_simple = TypeProp.makeTest(
+    'programs/type_analysis/string_simple.js', 
+    false
+);
+
+tests.ta.array_simple = TypeProp.makeTest(
+    'programs/type_analysis/array_simple.js', 
     false
 );
 
@@ -284,6 +301,12 @@ tests.ta.regress_btree = TypeProp.makeTest(
     false
 );
 
+tests.ta.regress_base64 = TypeProp.makeTest(
+    'programs/type_analysis/regress_base64.js',
+    true,
+    false
+);
+
 tests.ta['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     false,
@@ -329,6 +352,14 @@ tests.ta['bitops-nsieve-bits'] = TypeProp.makeTest(
 */
 
 /*
+tests.ta['string-base64'] = TypeProp.makeTest(
+    'programs/sunspider/string-base64.js',
+    true,
+    true
+);
+*/
+
+/*
 tests.ta['deltablue'] = TypeProp.makeTest(
     [
         'programs/v8bench/deltablue.js',
@@ -349,4 +380,20 @@ tests.ta['richards'] = TypeProp.makeTest(
     true
 );
 */
+
+// Replicate the type analysis tests as program tests
+for (testName in tests.ta)
+{
+    var taTest = tests.ta[testName];
+    var srcFiles = taTest.srcFiles;
+
+    if (srcFiles === undefined)
+        continue;
+
+    if (srcFiles[0].indexOf('v8bench') !== -1 ||
+        srcFiles[0].indexOf('sunspider') !== -1)
+        continue;
+
+    tests.programs.type_analysis[testName] = genProgTest(srcFiles);
+}
 

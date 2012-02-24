@@ -621,7 +621,7 @@ TypeSet.prototype.union = function (that)
     var strVal;
     if ((this.flags & TypeFlags.STRING) && (that.flags & TypeFlags.STRING))
         strVal = (this.strVal === that.strVal)? this.strVal:undefined;
-    if (this.flags & TypeFlags.STRING)
+    else if (this.flags & TypeFlags.STRING)
         strVal = this.strVal;
     else
         strVal = that.strVal;
