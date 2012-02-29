@@ -78,6 +78,7 @@ tests.ta.global_add = TypeProp.makeTest(
 
 tests.ta.string_simple = TypeProp.makeTest(
     'programs/type_analysis/string_simple.js', 
+    false,
     false
 );
 
@@ -113,11 +114,13 @@ tests.ta.arith_simple = TypeProp.makeTest(
 
 tests.ta.cmp_simple = TypeProp.makeTest(
     'programs/type_analysis/cmp_simple.js', 
+    false,
     false
 );
 
 tests.ta.fib = TypeProp.makeTest(
     'programs/type_analysis/fib.js', 
+    false,
     false
 );
 
@@ -153,6 +156,7 @@ tests.ta.cond_prop = TypeProp.makeTest(
 
 tests.ta.cond_global = TypeProp.makeTest(
     'programs/type_analysis/cond_global.js', 
+    false,
     false
 );
 
@@ -297,6 +301,12 @@ tests.ta.stdlib_string = TypeProp.makeTest(
 
 tests.ta.regress_btree = TypeProp.makeTest(
     'programs/type_analysis/regress_btree.js',
+    false,
+    false
+);
+
+tests.ta.regress_btree2 = TypeProp.makeTest(
+    'programs/type_analysis/regress_btree2.js',
     false,
     false
 );

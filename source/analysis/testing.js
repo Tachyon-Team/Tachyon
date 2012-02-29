@@ -163,9 +163,6 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
         print('');
     }
 
-    // Evaluate the type assertions
-    this.evalTypeAsserts();
-
     // Dump info about functions analyzed
     if (this.verbose === true)
         this.dumpFunctions();
@@ -177,6 +174,9 @@ TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
     // Compute and dump type statistics
     if (this.verbose === true)
         this.compTypeStats();
+
+    // Evaluate the type assertions
+    this.evalTypeAsserts();
 
     // Restore the verbose flag
     this.verbose = oldVerbose;
@@ -212,11 +212,14 @@ TypeProp.prototype.evalTypeAsserts = function ()
 {
     function fail(desc, msg)
     {
-        throw Error(
+        var error = Error(
             'Type assertion failed: ' + msg + '\n' +
             'set : ' + desc.typeSet + '\n' +
             'test: ' + desc.test
         );
+
+        throw error;
+        //print(error);
     }
 
     function evalExpr(expr, set)
@@ -335,16 +338,17 @@ TypeProp.prototype.dumpFunctions = function ()
 
         print('function "' + irFunc.funcName + '"');
 
+        var entryGraph = this.getTypeGraph(new BlockDesc(funcInfo.entry));
         var retGraph = funcInfo.retGraph;
 
         for (var i = 1; i < funcInfo.argNodes.length; ++i)
         {
             var argName = (i == 1)? 'this':irFunc.argVars[i-2];
-            var argType = retGraph.getType(funcInfo.argNodes[i]);
+            var argType = entryGraph.getType(funcInfo.argNodes[i]);
             print('arg ' + argName + ' : ' + argType);
         }
 
-        var idxArgType = retGraph.getType(funcInfo.idxArgNode);
+        var idxArgType = entryGraph.getType(funcInfo.idxArgNode);
         print('idx arg : ' + idxArgType);
 
         var retType = retGraph.getType(funcInfo.retNode);

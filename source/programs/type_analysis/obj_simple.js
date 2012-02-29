@@ -12,20 +12,10 @@ function bar(o)
     return o;
 }
 
-function test()
-{
-    var o = foo(3);
+var o = foo(3);
 
-    typeAssert(o.a, '["and", "int", ["val", 1], ["not", "undef"]]');
-    typeAssert(o.b, '["and", "true", ["not", "undef"]]');
-    typeAssert(o.c, '["and", "string", ["not", "undef"]]');
-    typeAssert(o.d, '["and", "int", ["not", "undef"]]');
-
-    if (o.d !== 10)
-        return 1;
-
-    return 0;
-}
-
-test();
+typeAssert(o.a, '["and", "int", ["val", 1], ["not", "undef"]]');
+typeAssert(o.b, '["and", "true", ["not", "undef"]]');
+typeAssert(o.c, '["and", "string", ["not", "undef"]]');
+typeAssert(o.d, '["and", "int", ["not", "undef"]]');
 

@@ -435,7 +435,12 @@ TypeProp.prototype.iterate = function ()
     this.workSet.rem(blockDesc);
 
     // Get a copy of the type set at the block entry
-    var typeGraph = this.getTypeGraph(blockDesc).copy();
+    var typeGraph = this.getTypeGraph(blockDesc).copy(true, true);
+
+
+
+
+
 
     // Get the block and instruction index
     var block = blockDesc.block;
@@ -584,8 +589,10 @@ TypeProp.prototype.succMerge = function (succ, predGraph)
     // If the successor has no type graph yet
     if (succGraph === HashMap.NOT_FOUND)
     {
+        var newGraph = predGraph.copy(true, true);
+
         // Pass a copy of the predecessor map to the successor
-        this.setTypeGraph(succDesc, predGraph.copy());
+        this.setTypeGraph(succDesc, newGraph);
 
         // Queue the successor for analysis
         this.queueBlock(succDesc);
@@ -593,7 +600,7 @@ TypeProp.prototype.succMerge = function (succ, predGraph)
     else
     {
         // Merge the predecessor type map into the successor's
-        var newGraph = succGraph.merge(predGraph);
+        var newGraph = succGraph.merge(predGraph, true, true);
 
         // If the successor's type map was changed,
         // queue the successor for analysis
@@ -1458,7 +1465,7 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
         if (targetGraph === HashMap.NOT_FOUND)
         {
             // Pass a copy of the predecessor graph to the successor
-            var targetGraph = typeGraph.copy();
+            var targetGraph = typeGraph.copy(true, true);
             ta.setTypeGraph(targetDesc, targetGraph);
         }
 
@@ -1513,7 +1520,7 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
                     );
 
                     // lVal >= rVal
-                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMin + 1);
+                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMin);
                     var rangeMax = Math.max(lType.rangeMax, rangeMin);
                     var falseLType = new TypeSet(
                         TypeFlags.INT,
@@ -1596,6 +1603,35 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         var thisType = typeGraph.newObject(this, protoType);
     }
 
+    // Get a descriptor for the continuation block
+    if (this.targets[0] instanceof BasicBlock)
+    {
+        // Use the continuation target
+        var contDesc = new BlockDesc(this.targets[0]);
+    }
+    else
+    {
+        // The continuation is the rest of the caller block
+        var instrIdx = this.parentBlock.instrs.indexOf(this);
+        var contDesc = new BlockDesc(this.parentBlock, instrIdx + 1);
+    }
+
+    // Get the type graph for the continuation
+    var contGraph = ta.getTypeGraph(contDesc);
+
+    // Merge the continuation graph with the current type graph
+    if (contGraph === HashMap.NOT_FOUND)
+        var newContGraph = typeGraph.copy(true, false);
+    else
+        var newContGraph = contGraph.merge(typeGraph, true, false);
+
+    // Restrict the callee type in the continuation to functions
+    var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
+    newContGraph.assignType(this.uses[0], newCalleeType);
+
+    // Flag to indicate a potential callee has been analyzed
+    var calleeAnalyzed = false;
+
     // For each potential callee
     for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
     {
@@ -1613,7 +1649,19 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         // Get the info object for this function
         var funcInfo = ta.getFuncInfo(func);
 
-        // Create a type set for this function only
+        // Get a descriptor for the entry block
+        var entryDesc = new BlockDesc(funcInfo.entry);
+
+        // Get the type graph at the function entry
+        var entryGraph = ta.getTypeGraph(entryDesc);
+
+        // Merge the entry graph with the current type graph
+        if (entryGraph === HashMap.NOT_FOUND)
+            var newEntryGraph = typeGraph.copy(false, true);
+        else
+            var newEntryGraph = entryGraph.merge(typeGraph, false, true);
+
+        // Get the type set for this callee function
         var funcType = new TypeSet(
             callee.flags, 
             undefined, 
@@ -1645,8 +1693,8 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
                     TypeSet.undef;
             }
 
-            // Set the types for this argument in the current graph
-            typeGraph.assignType(argNode, argTypeSet);
+            // Union the type for this argument
+            newEntryGraph.unionType(argNode, argTypeSet);
         }
 
         // If this function uses the arguments object
@@ -1657,32 +1705,16 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             {
                 // Union the argument type into the indexed argument type
                 var argType = typeGraph.getType(this.uses[i]);
-                typeGraph.unionType(funcInfo.idxArgNode, argType);
+                newEntryGraph.unionType(funcInfo.idxArgNode, argType);
             }
         }
 
-        // Get a descriptor for the entry block
-        var entryDesc = new BlockDesc(funcInfo.entry);
-
-        // Get the type graph at the function entry
-        var entryGraph = ta.getTypeGraph(entryDesc);
-
-        // Merge the entry graph with the current type graph
-        if (entryGraph === HashMap.NOT_FOUND)
-            var newGraph = typeGraph.copy();
-        else
-            var newGraph = entryGraph.merge(typeGraph);
-
-        // Restrict the callee type to functions
-        var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
-        newGraph.assignType(this.uses[0], newCalleeType);
-
-        // If the graph changed
+        // If the entry graph changed
         if (entryGraph === HashMap.NOT_FOUND || 
-            newGraph.equal(entryGraph) === false)
+            newEntryGraph.equal(entryGraph) === false)
         {
             // Update the entry graph
-            ta.setTypeGraph(entryDesc, newGraph);
+            ta.setTypeGraph(entryDesc, newEntryGraph);
 
             // Queue the function for analysis
             ta.queueFunc(func);
@@ -1700,6 +1732,71 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
             funcInfo.ctorCall = true;
         else
             funcInfo.normalCall = true;
+
+        // Get the return graph for the callee
+        var retGraph = funcInfo.retGraph;
+
+        // If there is a return graph for the callee
+        if (retGraph !== undefined)
+        {
+            // At least one callee has been analyzed
+            calleeAnalyzed = true;
+
+            // Merge the return graph into the continuation graph
+            newContGraph = newContGraph.merge(retGraph, false, true);
+
+            // Get the return type for this call
+            var retType = retGraph.getType(funcInfo.retNode);
+
+            // If this is a regular call
+            if (isNew === false)
+            {
+                newContGraph.unionType(this, retType);
+            }
+            else
+            {
+                var callRetType = TypeSet.empty;
+
+                // If the return type may be undefined
+                if (retType.flags & TypeFlags.UNDEF)
+                {
+                    // Union the "this" argument type
+                    callRetType = callRetType.union(thisType);
+                }
+
+                // If the return type may be not undefined
+                if (retType.flags !== TypeFlags.UNDEF)
+                {
+                    // Union all but undefined
+                    callRetType = callRetType.union(retType.restrict(
+                        retType.flags & ~TypeFlags.UNDEF
+                    ));
+                }
+
+                newContGraph.unionType(this, callRetType);
+            }
+        }
+    }
+
+    // If the continuation graph changed
+    if (contGraph === HashMap.NOT_FOUND || 
+        newContGraph.equal(contGraph) === false)
+    {
+        // Update the continuation graph
+        ta.setTypeGraph(contDesc, newContGraph);
+
+        // If at least one potential callee has been analyzed
+        if (calleeAnalyzed === true)
+        {
+
+
+            if (newContGraph.objSet.length === 0)
+                error('cont graph obj set size 0 and queing call succ *********');
+
+
+            // Queue the continuation for analysis
+            ta.queueBlock(contDesc);
+        }
     }
 
     // Stop the inference for this block
@@ -1731,98 +1828,118 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
     var func = this.parentBlock.parentCFG.ownerFunc;
     var funcInfo = ta.getFuncInfo(func);
  
-    // Merge the return type
-    typeGraph.unionType(funcInfo.retNode, retType);
-
     // Get the return point graph
     var retGraph = funcInfo.retGraph;
 
     // Merge the current type graph into the return graph
     if (retGraph === undefined)
-        var newGraph = typeGraph.copy();
+        var newRetGraph = typeGraph.copy(false, true);
     else
-        var newGraph = retGraph.merge(typeGraph);
+        var newRetGraph = retGraph.merge(typeGraph, false, true);
+
+    // Merge the return type
+    newRetGraph.unionType(funcInfo.retNode, retType);
 
     // If the return graph changed
-    if (retGraph === undefined || retGraph.equal(newGraph) === false)
+    if (retGraph === undefined || newRetGraph.equal(retGraph) === false)
     {
         // Update the return graph
-        funcInfo.retGraph = newGraph;
+        funcInfo.retGraph = newRetGraph;
+    }
+    else
+    {
+        // Stop here, do not re-queue the callers
+        return;
+    }
 
-        // If this is a unit-level function
-        if (funcInfo.nextUnit !== undefined)
+    // If this is a unit-level function
+    if (funcInfo.nextUnit !== undefined)
+    {
+        // The continuation is the next unit's entry
+        var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
+
+        // Get the current continuation type graph
+        var contGraph = ta.getTypeGraph(contDesc);
+
+        // Copy the return graph for the next unit
+        var nextGraph = newRetGraph.copy(false, true);
+
+        // If the continuation graph changed
+        if (contGraph === HashMap.NOT_FOUND ||
+            nextGraph.equal(contGraph) === false)
         {
-            // The continuation is the next unit's entry
-            var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
-
-            // Copy the type graph for the next unit
-            var nextGraph = typeGraph.copy();
-
             // Queue the continuation block for analysis
             ta.setTypeGraph(contDesc, nextGraph);
             ta.queueBlock(contDesc);
         }
+    }
 
-        // Otherwise, this is a regular function
-        else
+    // Otherwise, this is a regular function
+    else
+    {
+        // For each caller
+        for (var i = 0; i < funcInfo.callerList.length; ++i)
         {
-            // For each caller
-            for (var i = 0; i < funcInfo.callerList.length; ++i)
+            var callInstr = funcInfo.callerList[i];
+            var callerBlock = callInstr.parentBlock;
+
+            // If there is a call continuation block
+            if (callInstr.targets[0] instanceof BasicBlock)
             {
-                var callInstr = funcInfo.callerList[i];
-                var callerBlock = callInstr.parentBlock;
+                // Use the continuation target
+                var contDesc = new BlockDesc(callInstr.targets[0]);
+            }
+            else
+            {
+                // The continuation is the rest of the caller block
+                var instrIdx = callerBlock.instrs.indexOf(callInstr);
+                var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+            }
 
-                // Get the function return type
-                var funcRetType = newGraph.getType(funcInfo.retNode);
+            // Get the current type graph for the continuation
+            var contGraph = ta.getTypeGraph(contDesc);
 
-                // If this is a regular call instruction
-                if (callInstr instanceof JSCallInstr)
+            // Merge the return graph into the continuation graph
+            var newContGraph = contGraph.merge(newRetGraph, false, true);
+
+            // If this is a regular call instruction
+            if (callInstr instanceof JSCallInstr)
+            {
+                // Set the return type for the call instruction
+                newContGraph.unionType(callInstr, retType);
+            }
+
+            // Otherwise, this is a constructor call
+            else
+            {
+                var newType = TypeSet.empty;
+
+                // If the return type may be undefined
+                if (retType.flags & TypeFlags.UNDEF)
                 {
-                    // Set the return type for the call instruction
-                    newGraph.assignType(callInstr, funcRetType);
+                    // Union the "this" argument type
+                    var thisType = typeGraph.getType(funcInfo.argNodes[1]);
+                    newType = newType.union(thisType);
                 }
 
-                // Otherwise, this is a constructor call
-                else
+                // If the return type may be not undefined
+                if (retType.flags !== TypeFlags.UNDEF)
                 {
-                    var newType = TypeSet.empty;
-
-                    // If the return type may be undefined
-                    if (funcRetType.flags & TypeFlags.UNDEF)
-                    {
-                        // Union the this argument type
-                        var thisType = newGraph.getType(funcInfo.argNodes[1]);
-                        newType = newType.union(thisType);
-                    }
-
-                    // If the return type may be not undefined
-                    if (funcRetType.flags !== TypeFlags.UNDEF)
-                    {
-                        // Union all but undefined
-                        newType = newType.union(funcRetType.restrict(
-                            funcRetType.flags & ~TypeFlags.UNDEF
-                        ));
-                    }
-
-                    // Set the return type for the new instruction
-                    newGraph.assignType(callInstr, newType);
+                    // Union all but undefined
+                    newType = newType.union(retType.restrict(
+                        retType.flags & ~TypeFlags.UNDEF
+                    ));
                 }
 
-                // If there is a call continuation block
-                if (callInstr.targets[0] instanceof BasicBlock)
-                {
-                    // Use the continuation target
-                    var contDesc = new BlockDesc(callInstr.targets[0]);
-                }
-                else
-                {
-                    // The continuation is the rest of the caller block
-                    var instrIdx = callerBlock.instrs.indexOf(callInstr);
-                    var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
-                }
+                // Set the return type for the new instruction
+                newContGraph.unionType(callInstr, newType);
+            }
 
+            // If the continuation graph changed
+            if (newContGraph.equal(contGraph) === false)
+            {
                 // Queue the continuation block for analysis
-                ta.setTypeGraph(contDesc, newGraph);
+                ta.setTypeGraph(contDesc, newContGraph);
                 ta.queueBlock(contDesc);
             }
         }
@@ -2050,7 +2167,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         {
             assert (
                 cellType.flags === TypeFlags.CELL,
-                'invalid cell type: ' + cellType
+                'invalid closure cell type: ' + cellType
             );
 
             var outType = TypeSet.empty;

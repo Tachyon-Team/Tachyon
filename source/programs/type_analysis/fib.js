@@ -1,5 +1,7 @@
 function fib(n)
 {
+    typeAssert(n, '["and", "int", [">=", 0], ["not", "float"]]');
+
     if (n < 2)
         return n;
 
@@ -10,7 +12,7 @@ function test()
 {
     var r = fib(6);
 
-    typeAssert(r, '["and", "int", ["not", "float"], ["not", "string"]]');
+    typeAssert(r, '["and", "int", [">=", 0], ["not", "float"], ["not", "string"]]');
 
     if (r !== 8)
         return 1;

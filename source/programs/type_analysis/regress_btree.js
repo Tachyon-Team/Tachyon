@@ -18,6 +18,9 @@ function bottomUpTree(item, depth)
 
 var r = bottomUpTree(3, 3);
 
+// Assert that the object is not undef
+typeAssert(r, '["and", "object", ["not", "undef"]]');
+
 // Assert that the object can come from both branches
 typeAssert(r.item, '["and", "int", "string"]');
 

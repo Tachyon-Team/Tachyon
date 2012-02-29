@@ -901,6 +901,11 @@ function TypeGraph()
     Map of variables nodes to type sets
     */
     this.varMap = new HashMap();
+
+    /**
+    Set of objects referenced in this graph
+    */
+    this.objSet = new HashSet();
 }
 
 /**
@@ -967,9 +972,21 @@ TypeGraph.prototype.remVar = function (varNode)
 /**
 Copy a graph instance
 */
-TypeGraph.prototype.copy = function ()
+TypeGraph.prototype.copy = function (mergeLocals, mergeGlobals)
 {
-    var newGraph = new TypeGraph();
+    assert (
+        typeof mergeLocals === 'boolean',
+        'invalid merge locals flag'
+    );
+
+    assert (
+        typeof mergeGlobals === 'boolean',
+        'invalid merge gloabls flag'
+    );
+
+    var newGraph = Object.create(TypeGraph.prototype);
+
+    newGraph.varMap = new HashMap();
 
     for (var nodeItr = this.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
@@ -977,8 +994,25 @@ TypeGraph.prototype.copy = function ()
         var node = pair.key;
         var typeSet = pair.value;
 
+        // If this is a global value
+        if (node.parent instanceof TGObject || node.parent instanceof TGClosCell)
+        {
+            if (mergeGlobals === false)
+                continue;
+        }
+        else
+        {
+            if (mergeLocals === false)
+                continue;
+        }
+
         newGraph.assignType(node, typeSet);
     } 
+
+    if (mergeGlobals === true)
+        newGraph.objSet = this.objSet.copy();
+    else
+        newGraph.objSet = new HashSet();
 
     return newGraph;
 }
@@ -986,25 +1020,40 @@ TypeGraph.prototype.copy = function ()
 /**
 Merge another graph into this one.
 */
-TypeGraph.prototype.merge = function (that)
+TypeGraph.prototype.merge = function (that, mergeLocals, mergeGlobals)
 {
-    var newGraph = this.copy();
-
-    //print('graph merge');
+    var newGraph = this.copy(true, true);
 
     for (nodeItr = that.varMap.getItr(); nodeItr.valid(); nodeItr.next())
     {
         var edge = nodeItr.get();
         var node = edge.key;
 
+        // If this is a global value
+        if (node.parent instanceof TGObject || node.parent instanceof TGClosCell)
+        {
+            if (mergeGlobals === false)
+                continue;
+        }
+        else
+        {
+            if (mergeLocals === false)
+                continue;
+        }
+
         var thatSet = that.getType(node);
 
         newGraph.unionType(node, thatSet);
     }
 
-    //print('graph merge done');
-
-    //print(newGraph.varMap.numItems);
+    if (mergeGlobals === true)
+    {
+        for (var itr = that.objSet.getItr(); itr.valid(); itr.next())
+        {
+            var obj = itr.get();
+            newGraph.objSet.add(obj);
+        }
+    }
 
     return newGraph;
 }
@@ -1075,6 +1124,9 @@ TypeGraph.prototype.newObject = function (
 
     this.assignType(obj.proto, protoSet);
 
+    // Add the object to the object set of this type graph
+    this.objSet.add(obj);
+
     return new TypeSet(
         flags, 
         undefined, 
@@ -1102,9 +1154,10 @@ TypeGraph.prototype.getType = function (value)
         }
         else
         {
-            // If this is a property node and there is no type set,
-            // the type of the property is the special missing type
-            if (value instanceof TGProperty)
+            // If this is a property with no type set and the object
+            // is present in the graph, the type of the property is
+            // the special missing type
+            if (value instanceof TGProperty && this.objSet.has(value.parent) === true)
             {
                 //print('MISSING TYPE FOR PROP: ' + value);
                 return TypeSet.missing;
