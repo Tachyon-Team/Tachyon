@@ -437,11 +437,6 @@ TypeProp.prototype.iterate = function ()
     // Get a copy of the type set at the block entry
     var typeGraph = this.getTypeGraph(blockDesc).copy(true, true);
 
-
-
-
-
-
     // Get the block and instruction index
     var block = blockDesc.block;
     var instrIdx = blockDesc.instrIdx;

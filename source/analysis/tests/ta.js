@@ -311,6 +311,12 @@ tests.ta.regress_btree2 = TypeProp.makeTest(
     false
 );
 
+tests.ta.regress_btree3 = TypeProp.makeTest(
+    'programs/type_analysis/regress_btree3.js',
+    false,
+    false
+);
+
 tests.ta.regress_base64 = TypeProp.makeTest(
     'programs/type_analysis/regress_base64.js',
     true,
