@@ -103,6 +103,48 @@ function main()
         // TODO
     }
 
+    // If type analysis should be performed
+    else if (args.options['ta'])
+    {
+        const params = config.hostParams;
+
+        var taName = args.options['ta'];
+
+        var analysis;
+
+        switch (taName)
+        {
+            case true:
+            case 'TypeProp':
+            analysis = new TypeProp(params);
+            break;
+
+            case 'Hackett':
+            // TODO
+            // TODO
+            // TODO
+            break;
+
+            default:
+            error('invalid analysis name: "' + taName + '"');
+        }
+
+        if (args.files.length === 0)
+            error('no files specified for type analysis');
+
+        // Perform a partial initialization of the Tachyon runtime
+        // without compiling machine code
+        initPrimitives(config.hostParams, true);
+
+        print('Running analysis on: ' + args.files);
+
+        // Run the type analysis
+        analysis.testOnFiles(args.files, true, false);
+
+        // Output type stats
+        analysis.compTypeStats();
+    }
+
     // If source files or inline source are provided    
     else if (args.files.length > 0 || args.options['e'])
     {

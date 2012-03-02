@@ -51,7 +51,7 @@ Maxime Chevalier-Boisvert
 /**
 Test type analysis on a source file or a list of source files
 */
-TypeProp.prototype.testOnFile = function (fileList, useStdlib, verbose)
+TypeProp.prototype.testOnFiles = function (fileList, useStdlib, verbose)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
@@ -585,7 +585,8 @@ TypeProp.prototype.compTypeStats = function ()
             accumStats(instr);
 
             // If this is a call instruction, this is the end of the block
-            if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+            if ((instr instanceof JSCallInstr || instr instanceof JSNewInstr) &&
+                isTypeAssert(instr) === false)
                 break;
         }
     }
@@ -611,5 +612,30 @@ TypeProp.prototype.compTypeStats = function ()
 
     print(branchKnown);
     print('');
+}
+
+/**
+Test if an instruction is a type assertion
+*/
+function isTypeAssert(instr)
+{
+    return (
+        instr instanceof JSCallInstr &&
+        instr.uses.length === 4 &&
+        instr.uses[0] instanceof GetGlobalInstr &&
+        instr.uses[0].uses[1] instanceof IRConst &&
+        instr.uses[0].uses[1].value === 'typeAssert'
+    );
+}
+
+/**
+Test if an instruction was inserted for a type assertion
+*/
+function isTypeAssertUse(instr)
+{
+    return (
+        instr instanceof GetGlobalInstr &&
+        instr.uses[1].value === 'typeAssert'
+    );
 }
 

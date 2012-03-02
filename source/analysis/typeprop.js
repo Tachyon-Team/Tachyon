@@ -469,11 +469,7 @@ TypeProp.prototype.iterate = function ()
         var instr = block.instrs[i];
 
         // If this is a type assertion
-        if (instr instanceof JSCallInstr &&
-            instr.uses.length === 4 &&
-            instr.uses[0] instanceof GetGlobalInstr &&
-            instr.uses[0].uses[1] instanceof IRConst &&
-            instr.uses[0].uses[1].value === 'typeAssert')
+        if (isTypeAssert(instr) === true)
         {
             var typeSet = typeGraph.getType(instr.uses[2]);
             var test = instr.uses[3].value;
@@ -486,8 +482,7 @@ TypeProp.prototype.iterate = function ()
         }
 
         // If this the global get of a type assertion
-        if (instr instanceof GetGlobalInstr &&
-            instr.uses[1].value === 'typeAssert')
+        if (isTypeAssertUse(instr) === true)
         {
             // Skip this instruction
             continue;

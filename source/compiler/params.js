@@ -178,12 +178,6 @@ function CompParams(cfgObj)
     this.regFunction = null;
 
     /**
-    Type propagation analysis instance
-    @field
-    */
-    this.typeProp = new TypeProp(this);
-
-    /**
     Flag to print the ASTs generated during the compilation
     @field
     */

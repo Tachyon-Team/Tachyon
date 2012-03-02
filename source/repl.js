@@ -69,7 +69,6 @@ function tachyonRepl()
         print('  /hir <command>                 view HIR produced for a command/file');
         print('  /lir <command>                 view LIR produced for a command/file');
         print('  /asm <command>                 view ASM produced for a command/file');
-        print('  /ta <filename>                 run type analysis on a source file');
         print('  /prim_list                     view a list of the primitive functions');
         print('  /prim_ir <func_name>           view LIR produced for a primitive function');
         print('  /cfg <command> [func_name]     visualize the CFG for a command/file/function');
@@ -152,10 +151,6 @@ function tachyonRepl()
             params.printASM = true;
             compFileOrString(args);
             params.printASM = false;
-            break;
-
-            case 'ta':
-            params.typeProp.testOnFile(args, true);
             break;
 
             case 'prim_list':

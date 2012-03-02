@@ -63,7 +63,9 @@ TypeProp.makeTest = function (fileList, useStdlib, verbose)
     {
         const params = config.hostParams;
 
-        params.typeProp.testOnFile(fileList, useStdlib, verbose);
+        var analysis = new TypeProp(params);
+
+        analysis.testOnFiles(fileList, useStdlib, verbose);
     }
 
     test.srcFiles = fileList;
