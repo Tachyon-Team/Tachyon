@@ -115,14 +115,13 @@ function main()
         switch (taName)
         {
             case true:
+            taName = TypeProp;
             case 'TypeProp':
             analysis = new TypeProp();
             break;
 
             case 'MozTI':
-            // TODO
-            // TODO
-            // TODO
+            analysis = new MozTI();
             break;
 
             default:
@@ -136,13 +135,13 @@ function main()
         // without compiling machine code
         initPrimitives(config.hostParams, true);
 
-        print('Running analysis on: ' + args.files);
+        print('Running ' + taName + ' analysis on: ' + args.files);
 
         // Run the type analysis
         analysis.testOnFiles(args.files, true, false);
 
-        // Output type stats
-        analysis.compTypeStats();
+        // Output analysis results
+        analysis.logResults();
     }
 
     // If source files or inline source are provided    

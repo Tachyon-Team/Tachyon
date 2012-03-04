@@ -67,14 +67,10 @@ function TypeAnalysis()
 /**
 Test type analysis on a source file or a list of source files
 */
-TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib, verbose)
+TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
-
-    // Check the verbose flag
-    var oldVerbose = this.verbose;
-    this.verbose = (verbose === true);
 
     // Clear existing analysis results
     this.init();
@@ -150,9 +146,6 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib, verbose)
         this.addUnit(ir);
     }
 
-    // Start timing the analysis
-    var startTimeMs = (new Date()).getTime();
-
     // Run the analysis
     var itrCount = this.run();
 
@@ -166,36 +159,28 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib, verbose)
         'no blocks were analyzed'
     );
 
-    // Stop the timing
-    var endTimeMs = (new Date()).getTime();
-    var time = (endTimeMs - startTimeMs) / 1000;
-
-    // Log analysis time
-    if (this.verbose === true)
-    {
-        print('-----------------------------');
-        print('itr count: ' + itrCount);
-        print('time: ' + time + 's');
-        print('');
-    }
-
-    // Dump info about functions analyzed
-    if (this.verbose === true)
-        this.dumpFunctions();
-
-    // Dump info about objects analyzed
-    if (this.verbose === true)
-        this.dumpObjects();
-
-    // Compute and dump type statistics
-    if (this.verbose === true)
-        this.compTypeStats();
-
     // Evaluate the type assertions
     this.evalTypeAsserts();
+}
 
-    // Restore the verbose flag
-    this.verbose = oldVerbose;
+/**
+Log information about analysis results
+*/
+TypeAnalysis.prototype.logResults = function ()
+{
+    // Log analysis time
+    print('itr count: ' + this.itrCount);
+    print('time: ' + this.totalTime.toFixed(2) + 's');
+    print('');
+
+    // Dump info about functions analyzed
+    this.dumpFunctions();
+
+    // Dump info about objects analyzed
+    this.dumpObjects();
+
+    // Compute and dump type statistics
+    this.compTypeStats();
 }
 
 /**

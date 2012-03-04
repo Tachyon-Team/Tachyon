@@ -214,10 +214,15 @@ TypeProp.prototype.init = function ()
     Total analysis iteration count
     */
     this.itrCount = 0;
+
+    /**
+    Total analysis time
+    */
+    this.totalTime = 0;
 }
 
 /**
-Dump information gathered about functions
+Dump information gathered about functions during analysis
 */
 TypeProp.prototype.dumpFunctions = function ()
 {
@@ -255,7 +260,7 @@ TypeProp.prototype.dumpFunctions = function ()
 }
 
 /**
-Dump information gathered about classes
+Dump information gathered about objects during analysis
 */
 TypeProp.prototype.dumpObjects = function ()
 {
@@ -511,7 +516,7 @@ TypeProp.prototype.compTypeStats = function ()
 }
 
 /**
-Evaluate type assertions
+Evaluate type assertions, throw an exception if any fail
 */
 TypeProp.prototype.evalTypeAsserts = function ()
 {
@@ -794,10 +799,14 @@ TypeProp.prototype.addUnit = function (ir)
 }
 
 /**
-Run the analysis for some number of iterations
+Run the analysis until fixed-point or until the maximum number of
+iterations is reached
 */
 TypeProp.prototype.run = function (maxItrs)
 {
+    // Start timing the analysis
+    var startTimeMs = (new Date()).getTime();
+
     // Until the max iteration count is reached
     for (var numItrs = 0; maxItrs === undefined || numItrs < maxItrs; ++numItrs)
     {
@@ -809,15 +818,22 @@ TypeProp.prototype.run = function (maxItrs)
         this.iterate();
     }
 
+    // Stop the timing
+    var endTimeMs = (new Date()).getTime();
+    var time = (endTimeMs - startTimeMs) / 1000;
+
     // Update the total iteration count
     this.itrCount += numItrs;
+
+    // Update the total analysis time
+    this.totalTime += time;
 
     // Return the number of iterations performed
     return numItrs;
 }
 
 /**
-Run one type analysis iteration
+Run one analysis iteration
 */
 TypeProp.prototype.iterate = function ()
 {
@@ -837,7 +853,7 @@ TypeProp.prototype.iterate = function ()
     var block = blockDesc.block;
     var instrIdx = blockDesc.instrIdx;
 
-    if (this.verbose === true)
+    if (config.verbosity >= log.DEBUG)
     {
         print('------')
         print(
@@ -884,7 +900,7 @@ TypeProp.prototype.iterate = function ()
             continue;
         }
 
-        if (this.verbose === true)
+        if (config.verbosity >= log.DEBUG)
         {
             print(instr);
         }
@@ -904,7 +920,7 @@ TypeProp.prototype.iterate = function ()
                 'invalid use type'
             );
 
-            if (this.verbose === true)
+            if (config.verbosity >= log.DEBUG)
                 print(use.getValName() + ' : ' + useType);
 
             // Store the last seen type set for this use
@@ -917,7 +933,7 @@ TypeProp.prototype.iterate = function ()
         // If this is a call/new instruction and callees were found
         if ((instr instanceof JSCallInstr || instr instanceof JSNewInstr) && ret === true)
         {
-            if (this.verbose === true)
+            if (config.verbosity >= log.DEBUG)
                 print('stopping block inference\n');
 
             // Stop the inference for this block, the return instruction
@@ -931,7 +947,7 @@ TypeProp.prototype.iterate = function ()
         // Store the last seen type set for the instruction's output
         this.typeSets.set({ instr: instr }, outType);
         
-        if (this.verbose === true)
+        if (config.verbosity >= log.DEBUG)
         {
             if (instr.dests.length > 0)
                 print(instr.getValName() + ' => ' + outType);
@@ -1222,7 +1238,7 @@ TypeProp.prototype.propLookup = function (typeGraph, objType, propName, depth)
 
 //=============================================================================
 //
-// Flow functions for HIR instructions
+// Per-instruction flow/transfer functions
 //
 //=============================================================================
 
@@ -1377,7 +1393,7 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        if (this.verbose === true)
+        if (config.verbosity >= log.DEBUG)
         {
             print(e);
             print(this);
@@ -1451,7 +1467,7 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (e instanceof Error)
             throw e;
 
-        if (this.verbose === true)
+        if (config.verbosity >= log.DEBUG)
         {
             print(e);
             print(this);
@@ -1970,7 +1986,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     if (calleeType.flags === TypeFlags.ANY || 
         (calleeType.flags & TypeFlags.FUNCTION) === 0)
     {
-        if (this.verbose === true)
+        if (config.verbosity >= log.DEBUG)
             print('*WARNING: callee has type ' + calleeType);
 
         ta.setOutput(typeGraph, this, TypeSet.any);

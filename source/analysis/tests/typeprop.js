@@ -48,7 +48,7 @@ tests.ta = tests.testSuite();
 /**
 Create a type prop unit test
 */
-TypeProp.makeTest = function (fileList, useStdlib, verbose)
+TypeProp.makeTest = function (fileList, useStdlib)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
@@ -56,16 +56,13 @@ TypeProp.makeTest = function (fileList, useStdlib, verbose)
     if (useStdlib === undefined)
         useStdlib = false;
 
-    if (verbose === undefined)
-        verbose = false;
-
     var test = function ()
     {
         const params = config.hostParams;
 
         var analysis = new TypeProp(params);
 
-        analysis.testOnFiles(fileList, useStdlib, verbose);
+        analysis.testOnFiles(fileList, useStdlib);
     }
 
     test.srcFiles = fileList;
@@ -80,7 +77,6 @@ tests.ta.global_add = TypeProp.makeTest(
 
 tests.ta.string_simple = TypeProp.makeTest(
     'programs/type_analysis/string_simple.js', 
-    false,
     false
 );
 
@@ -116,13 +112,11 @@ tests.ta.arith_simple = TypeProp.makeTest(
 
 tests.ta.cmp_simple = TypeProp.makeTest(
     'programs/type_analysis/cmp_simple.js', 
-    false,
     false
 );
 
 tests.ta.fib = TypeProp.makeTest(
     'programs/type_analysis/fib.js', 
-    false,
     false
 );
 
@@ -158,7 +152,6 @@ tests.ta.cond_prop = TypeProp.makeTest(
 
 tests.ta.cond_global = TypeProp.makeTest(
     'programs/type_analysis/cond_global.js', 
-    false,
     false
 );
 
@@ -239,7 +232,6 @@ tests.ta.ctor_simple = TypeProp.makeTest(
 
 tests.ta.ctor_array = TypeProp.makeTest(
     'programs/type_analysis/ctor_array.js',
-    false,
     false
 );
 
@@ -255,13 +247,11 @@ tests.ta.proto_chain = TypeProp.makeTest(
 
 tests.ta.args_sum = TypeProp.makeTest(
     'programs/type_analysis/args_sum.js',
-    false,
     false
 );
 
 tests.ta.args_max = TypeProp.makeTest(
     'programs/type_analysis/args_max.js',
-    false,
     false
 );
 
@@ -280,74 +270,62 @@ tests.ta.multi_file = TypeProp.makeTest(
 
 tests.ta.stdlib_math = TypeProp.makeTest(
     'programs/type_analysis/stdlib_math.js',
-    true,
-    false
+    true
 );
 
 tests.ta.stdlib_object = TypeProp.makeTest(
     'programs/type_analysis/stdlib_object.js',
-    true,
-    false
+    true
 );
 
 tests.ta.stdlib_array = TypeProp.makeTest(
     'programs/type_analysis/stdlib_array.js',
-    true,
-    false
+    true
 );
 
 tests.ta.stdlib_function = TypeProp.makeTest(
     'programs/type_analysis/stdlib_function.js',
-    true,
-    false
+    true
 );
 
 tests.ta.stdlib_string = TypeProp.makeTest(
     'programs/type_analysis/stdlib_string.js',
-    true,
-    false
+    true
 );
 
 tests.ta.regress_btree = TypeProp.makeTest(
     'programs/type_analysis/regress_btree.js',
-    false,
     false
 );
 
 tests.ta.regress_btree2 = TypeProp.makeTest(
     'programs/type_analysis/regress_btree2.js',
-    false,
     false
 );
 
 tests.ta.regress_btree3 = TypeProp.makeTest(
     'programs/type_analysis/regress_btree3.js',
-    false,
     false
 );
 
 tests.ta.regress_base64 = TypeProp.makeTest(
     'programs/type_analysis/regress_base64.js',
-    true,
-    false
+    true
 );
 
 tests.ta['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
-    false,
     false
 );
 
 tests.ta['bitops-bitwise-and'] = TypeProp.makeTest(
     'programs/sunspider/bitops-bitwise-and.js',
-    false,
     false
 );
 
 /*
 tests.ta['access-binary-trees'] = TypeProp.makeTest(
     'programs/sunspider/access-binary-trees.js',
-    true,
     true
 );
 */
@@ -355,7 +333,6 @@ tests.ta['access-binary-trees'] = TypeProp.makeTest(
 /*
 tests.ta['access-nsieve'] = TypeProp.makeTest(
     'programs/sunspider/access-nsieve.js',
-    true,
     true
 );
 */
@@ -363,7 +340,6 @@ tests.ta['access-nsieve'] = TypeProp.makeTest(
 /*
 tests.ta['bitops-bits-in-byte'] = TypeProp.makeTest(
     'programs/sunspider/bitops-bits-in-byte.js',
-    true,
     true
 );
 */
@@ -371,7 +347,6 @@ tests.ta['bitops-bits-in-byte'] = TypeProp.makeTest(
 /*
 tests.ta['bitops-nsieve-bits'] = TypeProp.makeTest(
     'programs/sunspider/bitops-nsieve-bits.js',
-    true,
     true
 );
 */
@@ -379,7 +354,6 @@ tests.ta['bitops-nsieve-bits'] = TypeProp.makeTest(
 /*
 tests.ta['string-base64'] = TypeProp.makeTest(
     'programs/sunspider/string-base64.js',
-    true,
     true
 );
 */
@@ -390,7 +364,6 @@ tests.ta['deltablue'] = TypeProp.makeTest(
         'programs/v8bench/deltablue.js',
         'programs/v8bench/drv-deltablue.js'
     ],
-    true,
     true
 );
 */
@@ -401,7 +374,6 @@ tests.ta['richards'] = TypeProp.makeTest(
         'programs/v8bench/richards.js',
         'programs/v8bench/drv-richards.js'
     ],
-    true,
     true
 );
 */
