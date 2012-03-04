@@ -127,9 +127,10 @@ BASE_SRCS =                             \
     ir/inlining.js                      \
     ir/lowering.js                      \
     ir/cfgvis.js                        \
+    analysis/interface.js               \
     analysis/typegraph.js               \
     analysis/typeprop.js                \
-    analysis/testing.js                 \
+    analysis/mozti.js                   \
     runtime/layout.js                   \
     runtime/context.js                  \
     runtime/objects.js                  \
@@ -179,7 +180,7 @@ TEST_SPEC_SRCS =                        \
     backend/x86/tests/assembler.js      \
     backend/x86/tests/ir-to-asm.js      \
     programs/tests/programs.js          \
-    analysis/tests/ta.js
+    analysis/tests/typeprop.js
 
 # Source files used to run the Tachyon VM
 RUN_SRCS =                              \

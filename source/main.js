@@ -116,10 +116,10 @@ function main()
         {
             case true:
             case 'TypeProp':
-            analysis = new TypeProp(params);
+            analysis = new TypeProp();
             break;
 
-            case 'Hackett':
+            case 'MozTI':
             // TODO
             // TODO
             // TODO

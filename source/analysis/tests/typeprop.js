@@ -255,6 +255,13 @@ tests.ta.proto_chain = TypeProp.makeTest(
 
 tests.ta.args_sum = TypeProp.makeTest(
     'programs/type_analysis/args_sum.js',
+    false,
+    false
+);
+
+tests.ta.args_max = TypeProp.makeTest(
+    'programs/type_analysis/args_max.js',
+    false,
     false
 );
 
