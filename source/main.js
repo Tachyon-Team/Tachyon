@@ -115,7 +115,7 @@ function main()
         switch (taName)
         {
             case true:
-            taName = TypeProp;
+            taName = 'TypeProp';
             case 'TypeProp':
             analysis = new TypeProp();
             break;

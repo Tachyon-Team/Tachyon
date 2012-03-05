@@ -1411,21 +1411,72 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)
 {
-
-    // TODO
-    function idxAccessBounded()
+    // Test if this is a bounded arguments object propery access
+    function boundedArgsGet(instr)
     {
+        function isArgObj(valDef)
+        {
+            return (
+                valDef instanceof CallFuncInstr && 
+                valDef.uses[0] instanceof IRFunction &&
+                valDef.uses[0].funcName === 'makeArgObj'
+            );
+        }        
 
+        function allDestsGet(valDef)
+        {
+            for (var i = 0; i < valDef.dests.length; ++i)
+                if ((valDef.dests[i] instanceof GetPropInstr) === false)
+                    return false;
 
+            return true;
+        }
 
+        function idxBounded(valDef, idx, curBlock, depth)
+        {
+            if (depth >= 5)
+                return false;
 
+            if (curBlock.preds.length === 0)
+                return false;
 
+            // For each predecessor
+            for (var i = 0; i < curBlock.preds.length; ++i)
+            {
+                var pred = curBlock.preds[i];
 
+                var branch = pred.getLastInstr();
+
+                if (branch instanceof IfInstr && 
+                    branch.uses[1] === IRConst.getConst(true) &&
+                    branch.uses[0] instanceof JSLtInstr &&
+                    branch.uses[0].uses[0] === idx &&
+                    branch.uses[0].uses[1] instanceof GetPropInstr &&
+                    branch.uses[0].uses[1].uses[0] === valDef &&
+                    branch.uses[0].uses[1].uses[1] === IRConst.getConst('length') &&
+                    branch.targets[0] === curBlock)
+                {
+                    continue;
+                }
+                
+                if (idxBounded(valDef, idx, pred, depth + 1) === false)
+                    return false;
+            }
+
+            return true;
+        }
+
+        var valDef = instr.uses[0];
+        var idx = instr.uses[1];
+        var curBlock = instr.parentBlock;
+
+        if (isArgObj(valDef) === true &&
+            allDestsGet(valDef) === true && 
+            idxBounded(valDef, idx, curBlock, 0) === true)
+            return true;
+
+        return false;
     }
-
-
-
-
 
     var objType = typeGraph.getType(this.uses[0]);
     var nameType = typeGraph.getType(this.uses[1]);
@@ -1449,10 +1500,19 @@ GetPropInstr.prototype.typeProp = function (ta, typeGraph)
         }
         else
         {
-            // TODO: test for pos int, int < arr.length
+            // TODO: more generic test for pos int, int < arr.length
 
-            // For now, assume unbounded array access
-            propName = false;
+            // If this is a bounded arguments access
+            if (boundedArgsGet(this) === true)
+            {
+                // The array access is bounded
+                propName = true;
+            }
+            else
+            {
+                // For now, assume unbounded array access
+                propName = false;
+            }
         }
 
         // Perform the property lookup
