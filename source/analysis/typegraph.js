@@ -310,6 +310,16 @@ function TypeSet(
         strVal = undefined;
 
     assert (
+        isNaN(rangeMin) === false,
+        'rangeMin is NaN'
+    );
+
+    assert (
+        isNaN(rangeMax) === false,
+        'rangeMax is NaN'
+    );
+
+    assert (
         object === undefined ||
         object instanceof TGObject ||
         object instanceof TGClosCell,

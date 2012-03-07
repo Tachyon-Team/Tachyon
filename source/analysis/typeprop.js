@@ -454,7 +454,6 @@ TypeProp.prototype.compTypeStats = function ()
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
             );
 
-            /*
             if ((u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE))
             {
@@ -462,7 +461,6 @@ TypeProp.prototype.compTypeStats = function ()
                 print(instr.parentBlock);
                 print('');
             }
-            */
         }
     }
 
@@ -1645,10 +1643,14 @@ JSMulInstr.prototype.typeProp = function (ta, typeGraph)
         minVal = t0.rangeMin * t1.rangeMin;
         minVal = Math.min(minVal, t0.rangeMin * t1.rangeMax);
         minVal = Math.min(minVal, t0.rangeMax * t1.rangeMin);
+        if (isNaN(minVal))
+            minVal = -Infinity;
 
         var maxVal;
         maxVal = t0.rangeMax * t1.rangeMax;
         maxVal = Math.max(maxVal, t0.rangeMin * t1.rangeMin);
+        if (isNaN(maxVal))
+            maxVal = Infinity;
 
         outType = new TypeSet(
             TypeFlags.INT,

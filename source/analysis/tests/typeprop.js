@@ -331,6 +331,13 @@ tests.ta['access-binary-trees'] = TypeProp.makeTest(
 */
 
 /*
+tests.ta['access-fannkuch'] = TypeProp.makeTest(
+    'programs/sunspider/access-fannkuch.js',
+    true
+);
+*/
+
+/*
 tests.ta['access-nsieve'] = TypeProp.makeTest(
     'programs/sunspider/access-nsieve.js',
     true
