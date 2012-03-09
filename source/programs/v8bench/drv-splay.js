@@ -1,2 +1,6 @@
-Splay.run();
+SplaySetup();
+
+SplayRun();
+
+SplayTearDown();
 

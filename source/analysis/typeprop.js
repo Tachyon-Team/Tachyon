@@ -457,7 +457,7 @@ TypeProp.prototype.compTypeStats = function ()
             if ((u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE))
             {
-                print('Known branch: (' + instr.parentBlock.parentCFG.ownerFunc.funcName + ')');
+                print('Known branch: ' + u0 + ' (' + instr.parentBlock.parentCFG.ownerFunc.funcName + ')');
                 print(instr.parentBlock);
                 print('');
             }
@@ -1259,6 +1259,8 @@ PhiInstr.prototype.typeProp = function (ta, typeGraph)
         if (ta.blockGraphs.has(new BlockDesc(pred)) === false)
             continue;
 
+        //print('merging pred ' + pred.getBlockName());
+
         // Merge the type of this incoming value
         var incType = typeGraph.getType(this.uses[i]);
         outType = outType.union(incType);
@@ -1980,7 +1982,7 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
             var rType = typeGraph.getType(rVal);
 
             var trueLType = lType;
-            var falseLType = rType;
+            var falseLType = lType;
             
             // Less-than comparison
             if (compInstr instanceof JSLtInstr)

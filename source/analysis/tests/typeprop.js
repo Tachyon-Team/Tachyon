@@ -313,6 +313,11 @@ tests.ta.regress_base64 = TypeProp.makeTest(
     true
 );
 
+tests.ta.regress_crypto = TypeProp.makeTest(
+    'programs/type_analysis/regress_crypto.js',
+    false
+);
+
 tests.ta['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     false
