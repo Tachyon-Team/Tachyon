@@ -313,7 +313,7 @@ TypeProp.prototype.dumpObjects = function ()
 /**
 Compute statistics about type sets
 */
-TypeProp.prototype.compTypeStats = function ()
+TypeProp.prototype.compTypeStats = function (outFile)
 {
     const ta = this;
 
@@ -325,14 +325,38 @@ TypeProp.prototype.compTypeStats = function ()
         return Number(100 * num / denom).toFixed(0);
     }
 
-    function Stat(name)
+    function MaxStat(name)
+    {
+        this.name = name;
+        this.maxVal = -Infinity;
+    }
+
+    MaxStat.prototype.count = function (val)
+    {
+        this.maxVal = Math.max(this.maxVal, val);
+    }
+
+    MaxStat.prototype.getValue = function ()
+    {
+        if (this.maxVal !== -Infinity)
+            return this.maxVal;
+        else
+            return 'N/A';
+    }
+
+    MaxStat.prototype.toString = function ()
+    {
+        return this.name + ': ' + this.getValue();
+    }
+
+    function PercentStat(name)
     {
         this.name = name;
         this.trueCnt = 0;
         this.falseCnt = 0;
     }
 
-    Stat.prototype.count = function (val)
+    PercentStat.prototype.count = function (val)
     {
         if (val)
             this.trueCnt++;
@@ -340,30 +364,48 @@ TypeProp.prototype.compTypeStats = function ()
             this.falseCnt++;
     }
 
-    Stat.prototype.toString = function ()
+    PercentStat.prototype.getValue = function ()
     {
-        var total = this.trueCnt + this.falseCnt;        
+        var total = this.trueCnt + this.falseCnt;
+
+        var percent = compPercent(this.trueCnt, total);
+
+        return percent;
+    }
+
+    PercentStat.prototype.toString = function ()
+    {
+        var total = this.trueCnt + this.falseCnt;
 
         var percent = compPercent(this.trueCnt, total);
 
         return this.name + ': ' + percent + '% (' + this.trueCnt + '/' + total + ')';
     }
 
-    var maxNumObjs = 0;
+    // List of statistics to gather
+    var stats = [];
 
-    var getObj      = new Stat('getProp on object only');
-    var getSingle   = new Stat('getProp on known object');
-    var getDef      = new Stat('getProp output not undef');
+    function addStat(stat)
+    {
+        stats.push(stat);
+        return stat;
+    }
 
-    var putObj      = new Stat('putProp on object only');
-    var putSingle   = new Stat('putProp on known object');
+    var maxNumObjs  = addStat(new MaxStat('max obj set size'));
 
-    var callMono    = new Stat('function call monomorphic');
+    var getObj      = addStat(new PercentStat('getProp on object only'));
+    var getSingle   = addStat(new PercentStat('getProp on known object'));
+    var getDef      = addStat(new PercentStat('getProp output not undef'));
 
-    var arithInt    = new Stat('arith op on int & int');
-    var cmpInt      = new Stat('compare op on int & int');
+    var putObj      = addStat(new PercentStat('putProp on object only'));
+    var putSingle   = addStat(new PercentStat('putProp on known object'));
 
-    var branchKnown = new Stat('branch direction known');
+    var callMono    = addStat(new PercentStat('function call monomorphic'));
+
+    var arithInt    = addStat(new PercentStat('arith op on int & int'));
+    var cmpInt      = addStat(new PercentStat('compare op on int & int'));
+
+    var branchKnown = addStat(new PercentStat('branch direction known'));
 
     function accumStats(instr)
     {
@@ -387,7 +429,7 @@ TypeProp.prototype.compTypeStats = function ()
         }
 
         if (outType instanceof TypeSet)
-            maxNumObjs = Math.max(maxNumObjs, outType.getNumObjs());
+            maxNumObjs.count(outType.getNumObjs());
 
         // Get property instruction
         if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
@@ -490,27 +532,16 @@ TypeProp.prototype.compTypeStats = function ()
         }
     }
 
-    print('Max num objs: ' + maxNumObjs);
+    // Print the statistics
+    for (var i = 0; i < stats.length; ++i)
+        print(stats[i]);
     print('');
 
-    print(getObj);
-    print(getSingle);
-    print(getDef);
-    print('');
+    // TODO
+    // if (outFile)
+    //var outCSV = '';
 
-    print(putObj);
-    print(putSingle);
-    print('');
-
-    print(callMono);
-    print('');
-
-    print(arithInt);
-    print(cmpInt);
-    print('');
-
-    print(branchKnown);
-    print('');
+    return stats;
 }
 
 /**
