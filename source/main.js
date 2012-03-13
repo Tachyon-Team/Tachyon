@@ -141,7 +141,7 @@ function main()
         analysis.testOnFiles(args.files, true, false);
 
         // Output analysis results
-        analysis.logResults();
+        analysis.logResults(args.options['outfile']);
     }
 
     // If source files or inline source are provided    

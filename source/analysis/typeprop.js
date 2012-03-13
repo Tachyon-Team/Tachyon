@@ -532,15 +532,6 @@ TypeProp.prototype.compTypeStats = function (outFile)
         }
     }
 
-    // Print the statistics
-    for (var i = 0; i < stats.length; ++i)
-        print(stats[i]);
-    print('');
-
-    // TODO
-    // if (outFile)
-    //var outCSV = '';
-
     return stats;
 }
 
@@ -2319,6 +2310,12 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
 // New/constructor call instruction
 // Handled by the same function as the regular call instruction
 JSNewInstr.prototype.typeProp = JSCallInstr.prototype.typeProp;
+
+// Call with apply instruction
+// TODO
+//CallApplyInstr.prototype.typeProp = function (ta, typeGraph)
+//{
+//}
 
 ArgValInstr.prototype.typeProp = function (ta, typeGraph)
 {

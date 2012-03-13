@@ -166,7 +166,7 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
 /**
 Log information about analysis results
 */
-TypeAnalysis.prototype.logResults = function ()
+TypeAnalysis.prototype.logResults = function (outFile)
 {
     // Log analysis time
     print('itr count: ' + this.itrCount);
@@ -180,7 +180,46 @@ TypeAnalysis.prototype.logResults = function ()
     this.dumpObjects();
 
     // Compute and dump type statistics
-    this.compTypeStats();
+    var stats = this.compTypeStats();
+
+    // Print the statistics
+    if (stats)
+    {
+        for (var i = 0; i < stats.length; ++i)
+            print(stats[i]);
+        print('');
+    }
+
+    // If an output file was specified
+    if (outFile)
+    {
+        var outCSV = '';
+
+        function writeRow()
+        {
+            for (var i = 0; i < arguments.length; ++i)
+                outCSV += arguments[i] + ',';
+
+            outCSV += '\n';
+        }
+
+        writeRow();
+        writeRow('benchmark', outFile);
+        writeRow();
+        writeRow('itr count', this.itrCount);
+        writeRow('time', this.totalTime.toFixed(2))
+        writeRow();
+
+        // Write the statistics
+        if (stats)
+        {
+            for (var i = 0; i < stats.length; ++i)
+                writeRow(stats[i].name, stats[i].getValue());
+        }
+
+        // Write the output file
+        writeFile(outFile, outCSV);
+    }
 }
 
 /**
