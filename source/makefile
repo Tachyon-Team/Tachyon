@@ -112,6 +112,9 @@ BASE_SRCS =                             \
     compiler/init.js                    \
     compiler/bootstrap.js               \
     compiler/imgwriter.js               \
+    np/ast.js                           \
+    np/parser.js                        \
+    np/pp.js                            \
     ir/types.js                         \
     ir/static.js                        \
     ir/lir.js                           \
@@ -173,6 +176,7 @@ TEST_SPEC_SRCS =                        \
     tests/testing.js                    \
     utility/tests/*.js                  \
     stdlib/tests/*.js                   \
+    np/tests/parser.js                  \
     ir/tests/cfg.js                     \
     ir/tests/ir.js                      \
     ir/tests/constprop.js               \

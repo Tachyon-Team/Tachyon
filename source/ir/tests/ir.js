@@ -59,16 +59,6 @@ Helper functions for this test suite
 tests.ir.helpers = {};
 
 /**
-Setup function for the IR test suite
-*/
-tests.ir.init = function ()
-{
-    // Perform a partial initialization of the Tachyon runtime
-    // without compiling machine code
-    initPrimitives(config.hostParams, true);
-}
-
-/**
 Parse a source code string, copy the resulting IR and validate it
 */
 tests.ir.helpers.testSource = function (sourceStr, printOut, hostParams)
@@ -125,6 +115,16 @@ tests.ir.helpers.forEachInstr = function (ir, instrFunc, testModule)
         }
     }
 };
+
+/**
+Setup function for the IR test suite
+*/
+tests.ir.init = function ()
+{
+    // Perform a partial initialization of the Tachyon runtime
+    // without compiling machine code
+    initPrimitives(config.hostParams, true);
+}
 
 /**
 Object literal expression

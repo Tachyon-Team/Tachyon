@@ -42,82 +42,73 @@
 
 /**
 @fileOverview
-Abstract Syntax Tree (AST) class hierarchy.
+Parser implementation.
 
 @author
 Maxime Chevalier-Boisvert
 */
 
+// TODO: option to keep comments?
 
-// TODO: source position class
+// TODO: look at grammar productions for kinds of expressions, statements, program-level
+
+// TODO: automatic semicolon unit test
 
 /**
-@class Source code position
+@class JavaScript parser
 */
-function SrcPos(
-    srcFile,
-    startLine,
-    startCol,
-    endLine,
-    endCol
-)
+function JSParser(str, fileName)
+{
+    this.str = str;
+
+    this.fileName = fileName;
+
+    this.curPos = 0;
+
+    this.keepComments = false;
+}
+
+JSParser.parseFile = function (fileName)
+{
+    // TODO
+    //return JSParser.parseString();
+}
+
+JSParser.parseString = function (str, fileName)
+{
+    if (fileName === undefined)
+        fileName = '';
+
+    var parser = new Parser(str, fileName);
+
+    // TODO
+}
+
+JSParser.prototype.parseProgram = function ()
 {
     // TODO
 }
 
-SrcPos.prototype.toString = function ()
+JSParser.prototype.parseFuncDecl = function ()
 {
     // TODO
 }
 
-
-/**
-@class Base class for AST nodes
-*/
-function ASTNode()
+JSParser.prototype.parseStatement = function ()
 {
-    // TODO: standard traversal, children node array?
+    // TODO
 }
 
-
-
-function ASTProgram()
+JSParser.prototype.parseExpression = function ()
 {
+    // TODO
 }
 
+// consume vs peek?
 
 
-function ASTFunction()
-{
-}
-
-
-
-function Statement()
-{
-}
-
-
-// TODO: kinds of statements
-
-
-
-
-
-function Expression()
-{
-}
-
-
-// TODO: kinds of expressions
-// Assign
-// UnOp
-// BinOp
-//
-// Or OpExpr, more in line with old parser?
-
-
-
+// TODO: standard way of generating operator/expression parsing?
+// priority, keywords
 
 
 
