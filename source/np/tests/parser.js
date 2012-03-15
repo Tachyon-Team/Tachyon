@@ -50,18 +50,62 @@ tests.parser = tests.testSuite();
 
 
 
-
+/*
 // TODO: test automatic semicolon insertion, multiple cases
 // TODO: insert example cases
 
+{ 1 2 } 3
+is not a valid sentence in the ECMAScript grammar, even with the automatic
+semicolon insertion rules. In contrast, the source
+{ 1 
+2 } 3
+is also not a valid ECMAScript sentence, but is transformed by automatic
+semicolon insertion into the following:
+{ 1 
+;2 ;} 3;
+which is a valid ECMAScript sentence.
 
 
+for (a; b 
+)
+
+is not a valid ECMAScript sentence and is not altered by automatic semicolon
+insertion because the semicolon is needed for the header of a for statement.
+Automatic semicolon insertion never inserts one of the two semicolons in the
+header of a for statement
 
 
+The source
+return 
+a + b
+is transformed by automatic semicolon insertion into the following:
+return; 
+a + b;
 
 
+The source
+a = b 
+++c
+is transformed by automatic semicolon insertion into the following:
+a = b; 
+++c;
 
 
+The source
+if (a > b) 
+else c = d
+is not a valid ECMAScript sentence and is not altered by automatic semicolon
+insertion before the else token, even though no production of the grammar
+applies at that point, because an automatically inserted semicolon would then
+be parsed as an empty statement.
 
 
+The source
+a = b + c 
+(d + e).print()
+is not transformed by automatic semicolon insertion, because the parenthesised
+expression that begins the second line can be interpreted as an argument list
+for a function call:
+a = b + c(d + e).print()
+*/
 

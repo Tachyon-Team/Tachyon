@@ -92,7 +92,11 @@ IRConst.prototype.toString = function ()
     {
        return '"' + escapeJSString(this.value) + '"';
     }
-    else if (num_instance(this.value))
+    else if (typeof this.value === 'number')
+    {
+        return this.type + ':' + this.value;
+    }
+    else if (bignum_instance(this.value))
     {
         return this.type + ':' + num_to_string(this.value);
     }

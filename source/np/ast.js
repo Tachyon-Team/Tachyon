@@ -52,19 +52,31 @@ Maxime Chevalier-Boisvert
 @class Source code position
 */
 function SrcPos(
-    srcFile,
+    fileName,
     startLine,
     startCol,
     endLine,
     endCol
 )
 {
-    // TODO
+    this.fileName = fileName;
+
+    this.startLine = startLine;
+
+    this.startCol = startCol;
+
+    this.endLine = endLine;
+
+    this.endCol = endCol;
 }
 
 SrcPos.prototype.toString = function ()
 {
-    // TODO
+    return (
+        '"' + this.fileName + '"@' +
+        this.startLine + '.' + this.startCol + '-' +
+        this.endLine + '.' + this.endCol
+    );
 }
 
 /**
@@ -72,42 +84,85 @@ SrcPos.prototype.toString = function ()
 */
 function ASTNode()
 {
+    this.srcPos = undefined;
+
+    this.children = undefined;
+
     // TODO: standard traversal, children node array?
 }
 
-
-function ASTComment()
+/**
+Add a child to this node
+*/
+ASTNode.prototype.addChild = function (node)
 {
+    if (this.children === undefined)
+        this.children = [];
+
+    this.childre.push(node);
+}
+
+/**
+@class Comment node
+@extends ASTNode
+*/
+function ASTComment(text)
+{
+    this.text = text;
 }
 ASTComment.prototype = new ASTNode();
 
-
+/**
+@class Top-level program node (code unit, source file)
+@extends ASTNode
+*/
 function ASTProgram()
 {
 }
+ASTProgram.prototype = new ASTNode();
 
+function ASTFunction(name)
+{
+    this.name = name;
+}
+ASTFunction.prototype = new ASTFunction();
 
-
-function ASTFunction()
+function ASTStmt()
 {
 }
+ASTStmt.prototype = new ASTNode();
 
-
-
-function Statement()
+function ASTExpr()
 {
 }
+ASTExpr.prototype = new ASTNode();
 
+/**
+@class Block statement
+@extends ASTStmt
+*/
+function ASTBlock()
+{
+}
+ASTBlock.prototype = new ASTStmt();
+
+/**
+@class Constant expression
+@extends ASTConst
+*/
+function ASTConst(value)
+{
+    this.value = value;
+}
+ASTConst.prototype = new ASTExpr();
+
+function ASTBinOp()
+{
+}
+ASTBinOp.prototype = new ASTExpr();
 
 // TODO: kinds of statements
 
-
-
-
-
-function Expression()
-{
-}
 
 
 // TODO: kinds of expressions

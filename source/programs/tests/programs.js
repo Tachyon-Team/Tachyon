@@ -1039,6 +1039,14 @@ tests.programs.v8bench['earley-boyer'] = genProgTest(
 */
 /*
 // FIXME: requires FP support
+tests.programs.v8bench['navier-stokes'] = genProgTest(
+    ['programs/v8bench/base.js',
+     'programs/v8bench/navier-stokes.js',
+     'programs/v8bench/drv-navier-stokes.js']
+);
+*/
+/*
+// FIXME: requires FP support
 tests.programs.v8bench['raytrace'] = genProgTest(
     ['programs/v8bench/base.js',
      'programs/v8bench/raytrace.js',

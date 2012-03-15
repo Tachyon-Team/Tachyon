@@ -55,15 +55,66 @@ Maxime Chevalier-Boisvert
 // TODO: automatic semicolon unit test
 
 /**
+Test if a character code is whitespace
+*/
+function charIsWS(charCode)
+{
+    switch (charCode)
+    {
+        case 9:     // Tab
+        case 10:    // Line feed
+        case 11:    // Vertical tab
+        case 12:    // Form feed
+        case 13:    // Carriage return
+        case 32:    // Space
+        case 160:   // Non-breaking space
+        case 65279: // Byte-order mark
+        return true;
+
+        default:
+        return false;
+    }
+}
+
+/**
+Test if a character code is a digit
+*/
+function charIsDigit(charCode)
+{
+    return (charCode >= 48 && charCode <= 57);
+}
+
+/**
+Test if a character code is a hexadecimal digit
+*/
+function charIsHexDigit(charCode)
+{
+    return (
+        (charCode >= 48 && charCode <= 57)  ||  // 0-9
+        (charCode >= 97 && charCode <= 122) ||  // a-z
+        (charCode >= 64 && charCode <= 90)      // A-Z
+    );
+}
+
+/**
 @class JavaScript parser
 */
 function JSParser(str, fileName)
 {
+    /**
+    Code string to parse
+    */
     this.str = str;
 
+    /**
+    File being parsed
+    */
     this.fileName = fileName;
 
-    this.curPos = 0;
+    /**
+    Current character index
+    */
+    this.curIdx = 0;
 
     this.keepComments = false;
 }
@@ -84,6 +135,29 @@ JSParser.parseString = function (str, fileName)
     // TODO
 }
 
+JSParser.prototype.peekCh = function (offset)
+{
+    if (offset === undefined)
+        offset = 0;
+
+    return this.str.charCodeAt(this.curIdx + offset);
+}
+
+JSParser.prototype.readCh = function ()
+{
+    return this.str.charCodeAt(this.curIdx++);
+}
+
+JSParser.prototype.match = function (token)
+{
+    // TODO
+}
+
+JSParser.prototype.mustMatch = function (token)
+{
+    // TODO: if no match, throw error
+}
+
 JSParser.prototype.parseProgram = function ()
 {
     // TODO
@@ -94,17 +168,16 @@ JSParser.prototype.parseFuncDecl = function ()
     // TODO
 }
 
-JSParser.prototype.parseStatement = function ()
+JSParser.prototype.parseStmt = function ()
 {
     // TODO
 }
 
-JSParser.prototype.parseExpression = function ()
+JSParser.prototype.parseExpr = function ()
 {
     // TODO
 }
 
-// consume vs peek?
 
 
 // TODO: standard way of generating operator/expression parsing?
