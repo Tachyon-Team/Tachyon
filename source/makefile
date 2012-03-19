@@ -113,6 +113,7 @@ BASE_SRCS =                             \
     compiler/bootstrap.js               \
     compiler/imgwriter.js               \
     np/ast.js                           \
+    np/lexer.js                         \
     np/parser.js                        \
     np/pp.js                            \
     ir/types.js                         \

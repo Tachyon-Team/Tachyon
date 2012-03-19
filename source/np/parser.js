@@ -48,132 +48,68 @@ Parser implementation.
 Maxime Chevalier-Boisvert
 */
 
-// TODO: option to keep comments?
-
-// TODO: look at grammar productions for kinds of expressions, statements, program-level
-
-// TODO: automatic semicolon unit test
-
 /**
-Test if a character code is whitespace
+Parse a JavaScript source file
 */
-function charIsWS(charCode)
+function parseFile(fileName)
 {
-    switch (charCode)
-    {
-        case 9:     // Tab
-        case 10:    // Line feed
-        case 11:    // Vertical tab
-        case 12:    // Form feed
-        case 13:    // Carriage return
-        case 32:    // Space
-        case 160:   // Non-breaking space
-        case 65279: // Byte-order mark
-        return true;
+    var str = readFile(fileName);
 
-        default:
-        return false;
-    }
+    return parseString(str, fileName);
 }
 
 /**
-Test if a character code is a digit
+Parse a JavaScript source string
 */
-function charIsDigit(charCode)
-{
-    return (charCode >= 48 && charCode <= 57);
-}
-
-/**
-Test if a character code is a hexadecimal digit
-*/
-function charIsHexDigit(charCode)
-{
-    return (
-        (charCode >= 48 && charCode <= 57)  ||  // 0-9
-        (charCode >= 97 && charCode <= 122) ||  // a-z
-        (charCode >= 64 && charCode <= 90)      // A-Z
-    );
-}
-
-/**
-@class JavaScript parser
-*/
-function JSParser(str, fileName)
-{
-    /**
-    Code string to parse
-    */
-    this.str = str;
-
-    /**
-    File being parsed
-    */
-    this.fileName = fileName;
-
-    /**
-    Current character index
-    */
-    this.curIdx = 0;
-
-    this.keepComments = false;
-}
-
-JSParser.parseFile = function (fileName)
-{
-    // TODO
-    //return JSParser.parseString();
-}
-
-JSParser.parseString = function (str, fileName)
+function parseString(str, fileName)
 {
     if (fileName === undefined)
         fileName = '';
 
-    var parser = new Parser(str, fileName);
+    // Create a lexer for this file
+    var lexer = new Lexer(str, fileName);
 
-    // TODO
+    return parseProgram(lexer);
 }
 
-JSParser.prototype.peekCh = function (offset)
-{
-    if (offset === undefined)
-        offset = 0;
-
-    return this.str.charCodeAt(this.curIdx + offset);
-}
-
-JSParser.prototype.readCh = function ()
-{
-    return this.str.charCodeAt(this.curIdx++);
-}
-
-JSParser.prototype.match = function (token)
+function parseProgram(lexer)
 {
     // TODO
+    // Sequence of statements or function declarations
+    //
+
+
+    // TODO: temp
+
+    for (;;)
+    {
+        var l = lexer.getToken();
+
+        if (l.type === 'eof')
+            break;
+    }
+
+
+
 }
 
-JSParser.prototype.mustMatch = function (token)
-{
-    // TODO: if no match, throw error
-}
-
-JSParser.prototype.parseProgram = function ()
-{
-    // TODO
-}
-
-JSParser.prototype.parseFuncDecl = function ()
+function parseFuncDecl()
 {
     // TODO
 }
 
-JSParser.prototype.parseStmt = function ()
+function parseStmt()
 {
     // TODO
+
+
+    // TODO: by default, expression statement
+
+
+
 }
 
-JSParser.prototype.parseExpr = function ()
+function parseExpr()
 {
     // TODO
 }

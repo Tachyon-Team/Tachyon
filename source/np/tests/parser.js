@@ -45,8 +45,62 @@ Test suite for the parser
 */
 tests.parser = tests.testSuite();
 
+/**
+Utility function to create a parser unit test
+*/
+function makeParserTest(srcFile)
+{
+    var ast = parseFile(srcFile);
 
-// TODO
+    // TODO: assert ast instanceof ASTNode
+}
+
+/**
+Lexer test
+*/
+tests.parser.lexer = function ()
+{
+    var str = readFile('np/tests/test-lexer.js')
+
+    var lexer = new Lexer(str);
+
+    for (;;)
+    {
+        var l = lexer.getToken();
+
+        assert (
+            l instanceof Lexeme,
+            'invalid lexeme object: ' + l
+        );
+
+        if (l.type === 'eof')
+            break;
+    }
+}
+
+//tests.parser.simple1 = makeParserTest('np/tests/test-simple1.js');
+
+//tests.parser.simple2 = makeParserTest('np/tests/test-simple2.js');
+
+//tests.parser.fib = makeParserTest('np/tests/test-fib.js');
+
+//tests.parser.recfn = makeParserTest('np/tests/test-recfn.js');
+
+// Number formats
+//tests.parser.numbers = makeParserTest('np/tests/test-numbers.js');
+
+// Various kinds of statements
+//tests.parser.stmts = makeParserTest('np/tests/test-stmts.js');
+
+// JavaScript captured in the wild
+//tests.parser.wild1 = makeParserTest('np/tests/test-wild1.js');
+//tests.parser.wild2 = makeParserTest('np/tests/test-wild2.js');
+
+
+
+
+// TODO: SunSpider/V8 benchmarks
+
 
 
 

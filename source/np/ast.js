@@ -87,8 +87,6 @@ function ASTNode()
     this.srcPos = undefined;
 
     this.children = undefined;
-
-    // TODO: standard traversal, children node array?
 }
 
 /**
@@ -100,6 +98,14 @@ ASTNode.prototype.addChild = function (node)
         this.children = [];
 
     this.childre.push(node);
+}
+
+/**
+Get an iterator for the children of this node
+*/
+ASTNode.prototype.getChildItr = function ()
+{
+    // TODO
 }
 
 /**
