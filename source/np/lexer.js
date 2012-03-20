@@ -105,6 +105,26 @@ function charIsHexDigit(charCode)
 }
 
 /**
+Test if a character code can be part of a symbol
+*/
+function charIsSymbol(charCode)
+{
+    switch (charCode)
+    {
+        case 36:    // $
+        case 95:    // _
+        return true;
+
+        default:
+        return (
+            (charCode >= 48 && charCode <= 57) ||   // 0-9
+            (charCode >= 97 && charCode <= 122) ||  // a-z
+            (charCode >= 64 && charCode <= 90)      // A-Z
+        );
+    }
+}
+
+/**
 @class Source code lexeme
 */
 function Lexeme(type, pos, value)
@@ -126,9 +146,9 @@ function Lexeme(type, pos, value)
 }
 
 /**
-Lexeme types
+Lexeme type in list format
 */
-Lexeme.types = [
+Lexeme.typeList = [
 
     // Punctuators
     '{', '}', '(', ')', '[', ']',
@@ -166,6 +186,19 @@ Lexeme.types = [
     // End of file
     'eof'
 ];
+
+/**
+Lexeme types object
+*/
+Lexeme.types = {};
+
+// Map the lexeme types to their index in the list
+Lexeme.typeList.forEach(function (t, i) { Lexeme.types[t] = i; });
+
+/**
+Maximum operator length in characters
+*/
+Lexeme.MAX_OP_LEN = 4;
 
 /**
 @class Lexer
@@ -282,6 +315,19 @@ Lexer.prototype.getPos = function ()
     );
 }
 
+
+/**
+Signal a lexing error with position information
+*/
+Lexer.prototype.error = function (str)
+{
+    this.markEnd();
+
+    var pos = this.getPos();
+
+    error(str + '(' + pos + ')');
+}
+
 /**
 Consume a line terminator sequence
 */
@@ -310,7 +356,7 @@ Lexer.prototype.newline = function ()
     } 
     else 
     {
-        error('newline on invalid line terminator sequence');
+        this.error('newline on invalid line terminator sequence');
     }
 
     this.markEnd();
@@ -382,16 +428,17 @@ Lexer.prototype.getToken = function (/*TODO: exprContext*/)
             this.lexMultiComment();
         }
 
-        // TODO: separators, operators
-        // TODO: keywords
-        // TODO: symbols
-        /*
-        // Otherwise, this is either a separator, an operator or a symbol
+        // If this is a symbol character
+        else if (charIsSymbol(ch0) === true)
+        {
+            this.lexSymbol();
+        }
+
+        // Punctuator or operator
         else
         {
-            return this.lexOther();
+            this.lexOther();
         }
-        */
 
         // TODO: regular expressions
         // How do you know that the initial / is not the division operator?
@@ -425,7 +472,7 @@ Lexer.prototype.lexString = function ()
         // End of input
         if (this.curIdx >= this.str.length)
         {
-            error('unterminated string literal');
+            this.error('unterminated string literal');
         }
 
         // Get the char code for this character
@@ -436,7 +483,7 @@ Lexer.prototype.lexString = function ()
         // Newline character
         if (charsAreNewline(ch0, ch1) === true)
         {
-            lexError('newline inside string literal');
+            this.error('newline inside string literal');
         }
 
         // Line continuation, \newline
@@ -456,28 +503,94 @@ Lexer.prototype.lexString = function ()
             break;
         }
 
-        // Consume the current character
-        this.readCh();
+        // Start of an escape sequence \*
+        else if (ch0 === 92)
+        {
+            this.readCh();
 
-        //
-        // TODO: char escape codes
-        //
+            // Read the first escape character
+            var ch = this.readCh();
 
-        /*
-        SingleEscapeCharacter :: one of
-        ' " \ b f n r t v
-        NonEscapeCharacter ::
-        SourceCharacter but not EscapeCharacter or LineTerminator
-        EscapeCharacter ::
-        SingleEscapeCharacter DecimalDigit x u
-        HexEscapeSequence ::
-        x HexDigit HexDigit
-        UnicodeEscapeSequence ::
-        u HexDigit HexDigit HexDigit HexDigit
-        */
+            // Switch on the first escape character
+            switch (ch)
+            {
+                // \b backspace
+                case 98: strChars.push(8); break;
 
-        // Add the current character code to the array
-        strChars.push(ch0);
+                // \t horizontal tab
+                case 116: strChars.push(9); break;
+
+                // \n line feed
+                case 110: strChars.push(10); break;
+
+                // \v vertical tab
+                case 118: strChars.push(11); break;
+
+                // \f form feed
+                case 102: strChars.push(12); break;
+
+                // \r carriage return
+                case 114: strChars.push(13); break;
+
+                // \"
+                // \'
+                // \\ 
+                case 34:
+                case 39:
+                case 92:
+                strChars.push(ch);
+                break;
+
+                // \xHH
+                case 120:
+                {
+                    var h0 = this.readCh();
+                    var h1 = this.readCh();
+
+                    if (charIsHexDigit(h0) === false || 
+                        charIsHexDigit(h1) === false)
+                        this.error('invalid hex escape sequence');
+
+                    var chVal = (h0 << 4) + h1;
+
+                    strChars.push(chVal);
+                }
+                break;
+
+                // \uHHHH
+                case 117:
+                {
+                    var h0 = this.readCh();
+                    var h1 = this.readCh();
+                    var h2 = this.readCh();
+                    var h3 = this.readCh();
+
+                    if (charIsHexDigit(h0) === false || 
+                        charIsHexDigit(h1) === false ||
+                        charIsHexDigit(h2) === false ||
+                        charIsHexDigit(h3) === false)
+                        this.error('invalid unicode escape sequence');
+
+                    var chVal = (h0 << 12) + (h1 << 8) + (h2 << 4) + h3;
+
+                    strChars.push(chVal);
+                }
+                break;
+
+                default:
+                this.error('invalid escape character');
+            }
+        }
+
+        // Normal string characters
+        else
+        {
+            // Consume the current character
+            this.readCh();
+
+            // Add the current character code to the array
+            strChars.push(ch0);
+        }
     }
 
     // Get the string from the character codes
@@ -630,7 +743,7 @@ Lexer.prototype.lexDecNumber = function ()
                 else if (charIsDigit(ch0) === true) // digit
                     state = 'EXP_PART';
                 else
-                    error('invalid character in number');
+                    this.error('invalid character in number');
             }
             break;
 
@@ -639,12 +752,12 @@ Lexer.prototype.lexDecNumber = function ()
                 if (charIsDigit(ch0) === true)
                     readCh();
                 else
-                    state = 'END'
+                    state = 'DONE'
             }
             break;
 
             default:
-            error('invalid state: "' + state + '"');
+            this.error('invalid state: "' + state + '"');
         }
     }
 
@@ -663,6 +776,8 @@ Tokenize a line comment
 Lexer.prototype.lexLineComment = function ()
 {
     print('lexing line comment');
+
+    this.markStart();
 
     // Move past the comment opening
     this.readCh();
@@ -693,6 +808,8 @@ Lexer.prototype.lexLineComment = function ()
         // Consume the current character
         this.readCh();
     }
+
+    this.markEnd();
 }
 
 /**
@@ -701,6 +818,8 @@ Tokenize a multi-line comment
 Lexer.prototype.lexMultiComment = function ()
 {
     print('lexing multi-line comment');
+
+    this.markStart();
 
     // Move past the comment opening
     this.readCh();
@@ -712,7 +831,7 @@ Lexer.prototype.lexMultiComment = function ()
         // End of input
         if (this.curIdx >= this.str.length)
         {
-            error('unterminated multi-line comment');
+            this.error('unterminated multi-line comment');
         }
 
         // Get the char code for this character
@@ -738,5 +857,95 @@ Lexer.prototype.lexMultiComment = function ()
         // Consume the current character
         this.readCh();
     }
+
+    this.markEnd();
+}
+
+/**
+Tokenize a symbol or keyword
+*/
+Lexer.prototype.lexSymbol = function ()
+{
+    print('lexing symbol');
+
+    this.markStart();
+
+    var symChars = [];
+
+    // For each character in the input
+    for (;;)
+    {
+        // End of input
+        if (this.curIdx >= this.str.length)
+        {
+            break;
+        }
+
+        // Get the char code for this character
+        var ch0 = this.peekCh(0);
+
+        // If this is not a symbol character
+        if (charIsSymbol(ch0) === false)
+        {
+            break;
+        }
+
+        this.readCh()
+        symChars.push(ch0);
+    }
+
+    this.markEnd();
+
+    var symStr = String.fromCharCode.apply(null, symChars);
+
+    // If this is a keyword
+    if (Lexeme.types.hasOwnProperty(symStr) === true)
+    {
+        // Create a lexeme for the keyword
+        return new Lexeme(symStr, this.getPos());
+    }
+    else
+    {
+        // Create a lexeme for the identifier
+        return new Lexeme('ident', this.getPos(), symChars);
+    }
+}
+
+/**
+Tokenize a punctuator or an operator
+*/
+Lexer.prototype.lexOther = function ()
+{
+    this.markStart();
+
+    var chars = [];
+
+    // Loop until the max operator length
+    for (var i = 0; i < Lexeme.MAX_OP_LEN; ++i)
+    {
+        // End of input
+        if (this.curIdx >= this.str.length)
+        {
+            this.error('unexpected end of input');
+        }
+
+        // Read an input character
+        var ch = this.readCh();
+        chars.push(ch);
+
+        var str = String.fromCharCode.apply(null, chars);
+
+        // If we have found a corresponding punctuator or operator
+        if (Lexeme.types.hasOwnProperty(str) === true)
+        {
+            this.markEnd();
+
+            // Return a lexeme for it
+            return new Lexeme(str, this.getPos());
+        }
+    }
+
+    // Failed to parse punctuator or operator
+    this.error('invalid punctuator or operator');
 }
 

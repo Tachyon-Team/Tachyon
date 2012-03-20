@@ -72,22 +72,45 @@ function parseString(str, fileName)
     return parseProgram(lexer);
 }
 
+/**
+Parse a source code unit or program
+*/
 function parseProgram(lexer)
 {
-    // TODO
-    // Sequence of statements or function declarations
-    //
-
-
-    // TODO: temp
-
     for (;;)
     {
         var l = lexer.getToken();
 
         if (l.type === 'eof')
-            break;
+        {
+
+
+        }
+
+        else if (l.type === 'function')
+        {
+
+
+
+        }
+
+        else
+        {
+
+
+
+        }
     }
+
+
+
+
+    // TODO: note start and end position?
+
+
+    // TODO: return a program node
+
+
 
 
 
