@@ -78,7 +78,7 @@ tests.parser.lexer = function ()
     }
 }
 
-//tests.parser.simple1 = makeParserTest('np/tests/test-simple1.js');
+tests.parser.simple1 = makeParserTest('np/tests/test-simple1.js');
 
 //tests.parser.simple2 = makeParserTest('np/tests/test-simple2.js');
 

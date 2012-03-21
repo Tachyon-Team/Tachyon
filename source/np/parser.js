@@ -77,43 +77,44 @@ Parse a source code unit or program
 */
 function parseProgram(lexer)
 {
+    var program = new ASTProgram();
+ 
+    // For each program element
     for (;;)
     {
+        // TODO: peekToken() vs readToken()?
+        // probably want this
+
         var l = lexer.getToken();
+
+
 
         if (l.type === 'eof')
         {
-
-
+            break;
         }
 
         else if (l.type === 'function')
         {
-
-
-
+            var node = parseFuncDecl();
+            program.addChild(node);
         }
 
         else
         {
-
-
-
+            // TODO
+            //var node = parseStmt();
+            //program.addChild(node);
         }
     }
 
+    // Set the program's source position
+    if (program.hasChildren())
+        program.pos = SrcPos.merge(program.firstChild().pos, program.lastChild().pos);
+    else
+        program.pos = l.pos;
 
-
-
-    // TODO: note start and end position?
-
-
-    // TODO: return a program node
-
-
-
-
-
+    return program;
 }
 
 function parseFuncDecl()
@@ -123,13 +124,20 @@ function parseFuncDecl()
 
 function parseStmt()
 {
+
+
+    // TODO: variable declaration
+
+
     // TODO
 
 
+
+
+
+
     // TODO: by default, expression statement
-
-
-
+    //return parseExpr();
 }
 
 function parseExpr()

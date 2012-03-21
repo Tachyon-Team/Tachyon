@@ -70,6 +70,22 @@ function SrcPos(
     this.endCol = endCol;
 }
 
+SrcPos.merge = function (startPos, endPos)
+{
+    assert (
+        startPos.fileName === endPos.fileName,
+        'file names do not match'
+    );
+
+    return new SrcPos(
+        startPos.fileName,
+        startPos.startLine,
+        startPos.startCol,
+        endPos.endLine,
+        endPos.endCol
+    );
+}
+
 SrcPos.prototype.toString = function ()
 {
     return (
@@ -97,7 +113,41 @@ ASTNode.prototype.addChild = function (node)
     if (this.children === undefined)
         this.children = [];
 
-    this.childre.push(node);
+    this.children.push(node);
+}
+
+/**
+Test if this node has children
+*/
+ASTNode.prototype.hasChildren = function ()
+{
+    return (this.children !== undefined);
+}
+
+/**
+Get the first child of this node
+*/
+ASTNode.prototype.firstChild = function ()
+{
+    assert (
+        this.children !== undefined,
+        'node has no children'
+    );
+
+    return this.children[0];
+}
+
+/**
+Get the first child of this node
+*/
+ASTNode.prototype.lastChild = function ()
+{
+    assert (
+        this.children !== undefined,
+        'node has no children'
+    );
+
+    return this.children[this.children.length - 1];
 }
 
 /**
