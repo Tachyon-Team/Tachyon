@@ -49,6 +49,7 @@ Maxime Chevalier-Boisvert
 */
 
 
+
 // TODO: refactor parser as a class, many useful methods, no need to pass lexer argument?
 
 
@@ -98,6 +99,8 @@ function parseProgram(lexer)
         // Peek at the current token
         var t = lexer.peekToken();
 
+        print('top-level token: "' + t.type + '"');
+
         // End of file
         if (t.type === 'eof')
         {
@@ -115,13 +118,18 @@ function parseProgram(lexer)
         else
         {
             var node = parseStmt(lexer);
+
+            // If this is an empty statement, discard it
+            if (node instanceof ASTEmpty)
+                continue;
+
             program.addChild(node);
         }
     }
 
     // Set the program's source position
     if (program.hasChildren())
-        program.pos = SrcPos.merge(program.firstChild().pos, program.lastChild().pos);
+        program.calcPos();
     else
         program.pos = t.pos;
 
@@ -137,6 +145,8 @@ function parseStmt(lexer)
 {
     var t = lexer.peekToken();
 
+    print('statement: "' + t.type + '"');
+
     // Switch on the token type
     switch (t.type)
     {
@@ -144,53 +154,70 @@ function parseStmt(lexer)
         // var identifier = expr, ...
         case 'var':
         {
+            print('var statement');
+
+            var varNode = new ASTVar();
+
             do
             {
-                // Read the identifier
+                // Read the var keyword or preceding comma
                 lexer.readToken();
-                var t = lexer.readToken();
 
-                if (t.type !== 'ident')
-                    parseError('unexpected token', t);           
+                // Read the identifier
+                var it = lexer.readToken();
 
-                var ident = new ASTIdent(t.value);
-                ident.pos = t.pos;
+                if (it.type !== 'ident')
+                    parseError('unexpected token', it);
+
+                var expr = new ASTIdent(it.value);
+                expr.pos = it.pos;
 
                 // Peek at the next token
-                var t = lexer.peekToken();
+                var nt = lexer.peekToken();
 
                 // If there is an equal sign
-                if (t.type === '=')
+                if (nt.type === '=')
                 {
+                    lexer.readToken();
 
+                    var rhs = parseAssign(lexer);
+
+                    var assign = new ASTAssign();
+                    assign.addChild(expr);
+                    assign.addChild(rhs);
+                    assign.calcPos(t, rhs);
+
+                    expr = assign;
                 }
 
+                varNode.addChild(expr);
 
+                // Peek for a comma
+                var ct = lexer.peekToken();
 
-            // TODO: repeat while comma
-            } while (false)
+            // Repeat while comma
+            } while (ct.type === ',')
 
-            // TODO: semicolon handling? Look at Narcissus?
-            // Auto semicolon only happens at end of statements
+            varNode.calcPos(t);
 
-
-
-
+            return varNode;
         }
 
         // TODO: const
 
-
-
         // TODO: block statement {
 
-
-
-        // TODO: semicolon, newline, empty statement
-
+        // Empty statement
+        case 'newline':
+        case ';':
+        {
+            print('empty statement');
+            lexer.readToken();
+            return ASTNode.make(ASTEmpty, t);
+        }
+        break;
 
         // TODO: return
-
 
         // TODO: if
 
@@ -205,12 +232,16 @@ function parseStmt(lexer)
         // TODO: catch
         // TODO: finally
 
-
         // TODO: with
 
-
-        // TODO: debugger
-
+        // Debugger breakpoint statement
+        case 'debugger':
+        {
+            print('debugger statement');
+            lexer.readToken();
+            return ASTNode.make(ASTDebugger, t);
+        }
+        break;
 
         // By default, expression statement
         default:     
@@ -218,19 +249,118 @@ function parseStmt(lexer)
     }
 }
 
+/**
+Parse any kind of expression, including comma expressions.
+*/
 function parseExpr(lexer)
 {
     // TODO
 }
 
+/**
+Parse the right-hand side of an assignment expression. 
+Excludes the comma expression (lowest priority).
+*/
+function parseAssign(lexer)
+{
+    /*
+    TODO: standard way of generating operator/expression parsing?
+    operator priority?
+
+    Binary expressions
+    + - * / %
+    && ||
+    & | ^
+    << >> >>>
+    < <= > >= == ===
+    = += -= *= /= %= <<= <<<= >>=
+    instanceof
+    in
+    , comma
+    . period
+
+    Unary expressions
+    ~ !
+    ++ --
+    typeof new
+
+    Ternary expression
+    ? :
+
+    Brackets and parentheses
+    [x] (x)
+
+    Function call
 
 
-// TODO: standard way of generating operator/expression parsing?
-// priority, keywords
+    Idea: parsing an expression from left to right, need to keep track of the
+    current topmost node of the expression subtree
+
+    When we encounter an operator, we create a new matching node, make the current
+    node the corresponding child.
+
+    May need some context for the ? expression (condExpr)
+
+    Parsing an expression, if we see each operator, take appropriate response.
+    Need to be able to know priority of each operator.
+
+    Priority mapping?
+
+    */
+
+    print('assign expr');
+
+
+    // TODO
+
+
+
+    var t = lexer.peekToken();
+
+    var expr = undefined;
+
+    if (t.type === 'number' ||
+        t.type === 'string')
+    {    
+        print('constant expr');
+        lexer.readToken();
+        expr = new ASTConst(t.value);
+        expr.pos = t.pos;
+    }
+
+    else if (
+        t.type === 'true'   ||
+        t.type === 'false'  ||
+        t.type === 'null')
+    {
+        var val;
+        if (t.type === 'true')
+            val = true;
+        else if (t.type === 'false')
+            val = false;
+        else
+            val === 'null';
+
+        print('constant expr');
+        lexer.readToken();
+        expr = new ASTConst(val);
+        expr.pos = t.pos;
+    }
+
+    else if (t.type === 'ident')
+    {
+        print('ident expr');
+        lexer.readToken();
+        expr = new ASTIdent(t.value);
+        expr.pos = t.pos;
+    }
 
 
 
 
 
 
+
+    return expr;
+}
 

@@ -164,6 +164,7 @@ Lexeme.typeList = [
     '=', '+=', '-=', '*=', '%=', '<<=', '>>=', '>>>=', '&=', '|=', '^=',
 
     // Keywords
+    'true', 'false', 'null',
     'var', 'const', 
     'function', 'this', 'return',
     'if', 'else',
@@ -194,6 +195,74 @@ Lexeme.types = {};
 
 // Map the lexeme types to their index in the list
 Lexeme.typeList.forEach(function (t, i) { Lexeme.types[t] = i; });
+
+/**
+Operator priority table
+*/
+Lexeme.opPriority = {
+    '.'         : 17,
+    '['         : 17,   // Indexing
+    'new'       : 17,
+
+    '('         : 16,   // Call  
+
+    '++'        : 15,
+    '--'        : 15,
+
+    '!'         : 14,
+    '~'         : 14,
+    '+1'        : 14,   // Unary +
+    '-1'        : 14,   // Unary -
+    'typeof'    : 14,
+    'delete'    : 14,
+
+    '*'         : 13,
+    '/'         : 13,
+    '%'         : 13,
+
+    '+'         : 12,
+    '-'         : 12,
+
+    '<<'        : 11,
+    '>>'        : 11,
+    '>>>'       : 11,
+
+    '<'         : 10,
+    '<='        : 10,
+    '>'         : 10,
+    '>='        : 10,
+    'in'        : 10,
+    'instanceof': 10,
+
+    '=='        : 9,
+    '!='        : 9,
+    '==='       : 9,
+    '!=='       : 9,
+
+    '&'         : 8,
+    '^'         : 7,
+    '|'         : 6,
+
+    '&&'        : 5,
+    '||'        : 4,
+
+    '?'         : 3, // Conditional operator
+
+    '='         : 2,
+    '+='        : 2,
+    '-='        : 2,
+    '*='        : 2,
+    '/='        : 2,
+    '%='        : 2,
+    '<<='       : 2,
+    '>>='       : 2,
+    '>>>='      : 2,
+    '&='        : 2,
+    '^='        : 2,
+    '|='        : 2,
+
+    ','         : 1
+};
 
 /**
 Maximum operator length in characters
@@ -278,6 +347,8 @@ Read and consume a character from the input
 Lexer.prototype.readCh = function ()
 {
     //print('readCh');
+
+    this.curCol++;
 
     return this.str.charCodeAt(this.curIdx++);
 }
@@ -442,7 +513,7 @@ Lexer.prototype.readToken = function ()
         // Start of a decimal number literal
         else if (charIsDigit(ch0) === true)
         {
-            this.lexDecNumber();
+            return this.lexDecNumber();
         }
 
         // Line comment (//)
@@ -460,13 +531,13 @@ Lexer.prototype.readToken = function ()
         // If this is a symbol character
         else if (charIsSymbol(ch0) === true)
         {
-            this.lexSymbol();
+            return this.lexSymbol();
         }
 
         // Punctuator or operator
         else
         {
-            this.lexOther();
+            return this.lexOther();
         }
 
         // TODO: regular expressions

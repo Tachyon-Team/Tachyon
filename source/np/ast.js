@@ -74,7 +74,9 @@ SrcPos.merge = function (startPos, endPos)
 {
     assert (
         startPos.fileName === endPos.fileName,
-        'file names do not match'
+        'file names do not match:\n' +
+        '"' + startPos.fileName + '"\n' +
+        '"' + endPos.fileName + '"'
     );
 
     return new SrcPos(
@@ -103,6 +105,21 @@ function ASTNode()
     this.pos = undefined;
 
     this.children = undefined;
+}
+
+/**
+Create an AST node and set its position
+*/
+ASTNode.make = function (ctor, pos)
+{
+    if (pos instanceof Lexeme)
+        pos = pos.pos;
+
+    var node = new ctor();
+
+    node.pos = pos;
+
+    return node;
 }
 
 /**
@@ -159,6 +176,25 @@ ASTNode.prototype.getChildItr = function ()
 }
 
 /**
+Calculate a node's position based on its children
+*/
+ASTNode.prototype.calcPos = function (startPos)
+{
+    assert (
+        this.hasChildren() === true,
+        'node has no children'
+    );
+
+    if (startPos instanceof Lexeme)
+        startPos = startPos.pos;
+
+    this.pos = SrcPos.merge(
+        (startPos !== undefined)? startPos:this.firstChild().pos, 
+        this.lastChild().pos
+    );
+}
+
+/**
 @class Comment node
 @extends ASTNode
 */
@@ -193,6 +229,24 @@ function ASTStmt()
 ASTStmt.prototype = new ASTNode();
 
 /**
+@class Variable delcaration statement
+@extends ASTStmt
+*/
+function ASTVar()
+{
+}
+ASTVar.prototype = new ASTStmt();
+
+/**
+@class Empty statement
+@extends ASTStmt
+*/
+function ASTEmpty()
+{
+}
+ASTEmpty.prototype = new ASTStmt();
+
+/**
 @class Block statement
 @extends ASTStmt
 */
@@ -201,7 +255,18 @@ function ASTBlock()
 }
 ASTBlock.prototype = new ASTStmt();
 
+/**
+@class Debugger breakpoint statement
+@extends ASTStmt
+*/
+function ASTDebugger()
+{
+}
+ASTDebugger.prototype = new ASTStmt();
+
+// TODO
 // TODO: other kinds of statements
+// TODO
 
 /**
 @class AST expression node
@@ -232,24 +297,31 @@ function ASTIdent(name)
 }
 ASTIdent.prototype = new ASTExpr();
 
+/**
+@class Assignment expression
+@extends ASTExpr
+*/
+function ASTAssign()
+{
+}
+ASTAssign.prototype = new ASTExpr();
+
+/**
+@class Base class for binary expressions
+@extends ASTExpr
+*/
 function ASTBinOp()
 {
 }
 ASTBinOp.prototype = new ASTExpr();
 
+// TODO
 // TODO: other kinds of expressions
+// TODO
+//
 // Assign
 // UnOp
 // BinOp
 //
-// Or OpExpr, more in line with old parser?
-
-
-
-
-
-
-
-
-
+// Or OpExpr, more in line with old parser
 

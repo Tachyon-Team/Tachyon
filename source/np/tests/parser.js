@@ -83,7 +83,14 @@ tests.parser.lexer = function ()
     }
 }
 
-//tests.parser.simple1 = makeParserTest('np/tests/test-simple1.js');
+// Variable definitions
+tests.parser['var1'] = makeParserTest('np/tests/test-var1.js');
+tests.parser['var2'] = makeParserTest('np/tests/test-var2.js');
+
+// Debugger statement
+tests.parser['debugger'] = makeParserTest('np/tests/test-debugger.js');
+
+tests.parser['var-num'] = makeParserTest('np/tests/test-var-num.js');
 
 //tests.parser.simple2 = makeParserTest('np/tests/test-simple2.js');
 
@@ -97,7 +104,7 @@ tests.parser.lexer = function ()
 // Various kinds of statements
 //tests.parser.stmts = makeParserTest('np/tests/test-stmts.js');
 
-// JavaScript captured in the wild
+// JavaScript code captured in the wild
 //tests.parser.wild1 = makeParserTest('np/tests/test-wild1.js');
 //tests.parser.wild2 = makeParserTest('np/tests/test-wild2.js');
 
