@@ -254,6 +254,11 @@ function Lexer(str, fileName)
     Marked end column
     */
     this.endCol = undefined;
+
+    /**
+    Peeked token, ready to be read
+    */
+    this.token = undefined;
 }
 
 /**
@@ -369,10 +374,34 @@ Lexer.prototype.newline = function ()
 }
 
 /**
+Get the current token and keep it available for reading
+*/
+Lexer.prototype.peekToken = function ()
+{
+    // If a token is already available
+    if (this.token !== undefined)
+        return this.token;
+
+    // Read a token
+    this.token = this.readToken();
+
+    return this.token;
+}
+
+/**
 Get the current token
 */
-Lexer.prototype.getToken = function (/*TODO: exprContext*/)
+Lexer.prototype.readToken = function ()
 {
+    // If a token was already read during peeking
+    if (this.token !== undefined)
+    {
+        var token = this.token;
+        this.token = undefined;
+
+        return token;
+    }
+
     // Until a lexeme is read or the end of file is reached
     while (this.curIdx < this.str.length)
     {

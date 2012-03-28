@@ -100,7 +100,7 @@ SrcPos.prototype.toString = function ()
 */
 function ASTNode()
 {
-    this.srcPos = undefined;
+    this.pos = undefined;
 
     this.children = undefined;
 }
@@ -183,15 +183,14 @@ function ASTFunction(name)
 }
 ASTFunction.prototype = new ASTFunction();
 
+/**
+@class AST statement node
+@extends ASTNode
+*/
 function ASTStmt()
 {
 }
 ASTStmt.prototype = new ASTNode();
-
-function ASTExpr()
-{
-}
-ASTExpr.prototype = new ASTNode();
 
 /**
 @class Block statement
@@ -201,6 +200,17 @@ function ASTBlock()
 {
 }
 ASTBlock.prototype = new ASTStmt();
+
+// TODO: other kinds of statements
+
+/**
+@class AST expression node
+@extends ASTNode
+*/
+function ASTExpr()
+{
+}
+ASTExpr.prototype = new ASTNode();
 
 /**
 @class Constant expression
@@ -212,16 +222,22 @@ function ASTConst(value)
 }
 ASTConst.prototype = new ASTExpr();
 
+/**
+@class Identifier expression
+@extends ASTExpr
+*/
+function ASTIdent(name)
+{
+    this.name = name;
+}
+ASTIdent.prototype = new ASTExpr();
+
 function ASTBinOp()
 {
 }
 ASTBinOp.prototype = new ASTExpr();
 
-// TODO: kinds of statements
-
-
-
-// TODO: kinds of expressions
+// TODO: other kinds of expressions
 // Assign
 // UnOp
 // BinOp

@@ -48,6 +48,11 @@ Parser implementation.
 Maxime Chevalier-Boisvert
 */
 
+
+// TODO: refactor parser as a class, many useful methods, no need to pass lexer argument?
+
+
+
 /**
 Parse a JavaScript source file
 */
@@ -73,6 +78,14 @@ function parseString(str, fileName)
 }
 
 /**
+Handle a parse error
+*/
+function parseError(text, token)
+{
+    error('parse error: ' + text + ' ' + token.pos);
+}
+
+/**
 Parse a source code unit or program
 */
 function parseProgram(lexer)
@@ -82,29 +95,27 @@ function parseProgram(lexer)
     // For each program element
     for (;;)
     {
-        // TODO: peekToken() vs readToken()?
-        // probably want this
+        // Peek at the current token
+        var t = lexer.peekToken();
 
-        var l = lexer.getToken();
-
-
-
-        if (l.type === 'eof')
+        // End of file
+        if (t.type === 'eof')
         {
             break;
         }
 
-        else if (l.type === 'function')
+        // Function declaration
+        else if (t.type === 'function')
         {
             var node = parseFuncDecl();
             program.addChild(node);
         }
 
+        // Statement
         else
         {
-            // TODO
-            //var node = parseStmt();
-            //program.addChild(node);
+            var node = parseStmt(lexer);
+            program.addChild(node);
         }
     }
 
@@ -112,35 +123,102 @@ function parseProgram(lexer)
     if (program.hasChildren())
         program.pos = SrcPos.merge(program.firstChild().pos, program.lastChild().pos);
     else
-        program.pos = l.pos;
+        program.pos = t.pos;
 
     return program;
 }
 
-function parseFuncDecl()
+function parseFuncDecl(lexer)
 {
     // TODO
 }
 
-function parseStmt()
+function parseStmt(lexer)
 {
+    var t = lexer.peekToken();
+
+    // Switch on the token type
+    switch (t.type)
+    {
+        // Variable declaration
+        // var identifier = expr, ...
+        case 'var':
+        {
+            do
+            {
+                // Read the identifier
+                lexer.readToken();
+                var t = lexer.readToken();
+
+                if (t.type !== 'ident')
+                    parseError('unexpected token', t);           
+
+                var ident = new ASTIdent(t.value);
+                ident.pos = t.pos;
+
+                // Peek at the next token
+                var t = lexer.peekToken();
+
+                // If there is an equal sign
+                if (t.type === '=')
+                {
+
+                }
 
 
-    // TODO: variable declaration
+
+            // TODO: repeat while comma
+            } while (false)
+
+            // TODO: semicolon handling? Look at Narcissus?
+            // Auto semicolon only happens at end of statements
 
 
-    // TODO
+
+
+        }
+
+        // TODO: const
 
 
 
+        // TODO: block statement {
 
 
 
-    // TODO: by default, expression statement
-    //return parseExpr();
+        // TODO: semicolon, newline, empty statement
+
+
+        // TODO: return
+
+
+        // TODO: if
+
+        // TODO: while
+        // TODO: do
+        // TODO: for
+        // TODO: switch
+        // TODO: break
+        // TODO: continue
+
+        // TODO: try
+        // TODO: catch
+        // TODO: finally
+
+
+        // TODO: with
+
+
+        // TODO: debugger
+
+
+        // By default, expression statement
+        default:     
+        return parseExpr();
+    }
 }
 
-function parseExpr()
+function parseExpr(lexer)
 {
     // TODO
 }

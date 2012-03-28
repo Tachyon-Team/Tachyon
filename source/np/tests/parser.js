@@ -50,9 +50,14 @@ Utility function to create a parser unit test
 */
 function makeParserTest(srcFile)
 {
-    var ast = parseFile(srcFile);
+    function test()
+    {
+        var ast = parseFile(srcFile);
 
-    // TODO: assert ast instanceof ASTNode
+        // TODO: assert ast instanceof ASTNode
+    }
+
+    return test;
 }
 
 /**
@@ -66,7 +71,7 @@ tests.parser.lexer = function ()
 
     for (;;)
     {
-        var l = lexer.getToken();
+        var l = lexer.readToken();
 
         assert (
             l instanceof Lexeme,
@@ -78,7 +83,7 @@ tests.parser.lexer = function ()
     }
 }
 
-tests.parser.simple1 = makeParserTest('np/tests/test-simple1.js');
+//tests.parser.simple1 = makeParserTest('np/tests/test-simple1.js');
 
 //tests.parser.simple2 = makeParserTest('np/tests/test-simple2.js');
 
