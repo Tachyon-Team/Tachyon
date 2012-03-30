@@ -142,6 +142,14 @@ ASTNode.prototype.hasChildren = function ()
 }
 
 /**
+Get the number of children of this node
+*/
+ASTNode.prototype.numChildren = function ()
+{
+    return (this.children !== undefined)? this.children.length:0;
+}
+
+/**
 Get the first child of this node
 */
 ASTNode.prototype.firstChild = function ()
@@ -172,7 +180,10 @@ Get an iterator for the children of this node
 */
 ASTNode.prototype.getChildItr = function ()
 {
-    // TODO
+    if (this.children === undefined)
+        return { valid: function() { return false; } };
+
+    return new ArrayIterator(this.children);
 }
 
 /**
@@ -213,18 +224,23 @@ function ASTProgram()
 }
 ASTProgram.prototype = new ASTNode();
 
-function ASTFunction(name)
+ASTProgram.prototype.toString = function ()
 {
-    this.name = name;
+    var str = '';
+
+    for (var itr = this.getChildItr(); itr.valid(); itr.next())
+        str += itr.get() + '\n';
+
+    return str;
 }
-ASTFunction.prototype = new ASTFunction();
 
 /**
-@class AST statement node
+@class Base class for statements
 @extends ASTNode
 */
 function ASTStmt()
 {
+
 }
 ASTStmt.prototype = new ASTNode();
 
@@ -237,6 +253,21 @@ function ASTVar()
 }
 ASTVar.prototype = new ASTStmt();
 
+ASTVar.prototype.toString = function ()
+{
+    var str = 'var ';
+
+    for (var itr = this.getChildItr(); itr.valid(); itr.next())
+    {
+        if (str !== 'var ')
+            str += ', ';
+
+        str += String(itr.get());
+    }
+
+    return str + ';';
+}
+
 /**
 @class Empty statement
 @extends ASTStmt
@@ -245,6 +276,11 @@ function ASTEmpty()
 {
 }
 ASTEmpty.prototype = new ASTStmt();
+
+ASTEmpty.prototype.toString = function ()
+{
+    return ';';
+}
 
 /**
 @class Block statement
@@ -255,6 +291,16 @@ function ASTBlock()
 }
 ASTBlock.prototype = new ASTStmt();
 
+ASTBlock.prototype.toString = function ()
+{
+    var str = '{\n';
+
+    for (var itr = this.getChildItr(); itr.valid(); itr.next())
+        str += itr.get() + '\n';
+
+    return str + '}';
+}
+
 /**
 @class Debugger breakpoint statement
 @extends ASTStmt
@@ -263,6 +309,11 @@ function ASTDebugger()
 {
 }
 ASTDebugger.prototype = new ASTStmt();
+
+ASTDebugger.prototype.toString = function ()
+{
+    return 'debugger;';
+}
 
 // TODO
 // TODO: other kinds of statements
@@ -287,6 +338,11 @@ function ASTConst(value)
 }
 ASTConst.prototype = new ASTExpr();
 
+ASTConst.prototype.toString = function ()
+{
+    return String(this.value);
+}
+
 /**
 @class Identifier expression
 @extends ASTExpr
@@ -297,6 +353,11 @@ function ASTIdent(name)
 }
 ASTIdent.prototype = new ASTExpr();
 
+ASTIdent.prototype.toString = function ()
+{
+    return this.name;
+}
+
 /**
 @class Assignment expression
 @extends ASTExpr
@@ -306,14 +367,35 @@ function ASTAssign()
 }
 ASTAssign.prototype = new ASTExpr();
 
+ASTAssign.prototype.toString = function ()
+{
+    return this.children[0] + ' = ' + this.children[1];
+}
+
 /**
-@class Base class for binary expressions
+@class Unary operator expressions
 @extends ASTExpr
 */
-function ASTBinOp()
+function ASTUnOp(op)
 {
+    this.op = op;
+}
+ASTUnOp.prototype = new ASTExpr();
+
+/**
+@class Binary operator expressions
+@extends ASTExpr
+*/
+function ASTBinOp(op)
+{
+    this.op = op;
 }
 ASTBinOp.prototype = new ASTExpr();
+
+ASTBinOp.prototype.toString = function ()
+{
+    return '(' + this.children[0] + ' ' + this.op + ' ' + this.children[1] + ')';
+}
 
 // TODO
 // TODO: other kinds of expressions

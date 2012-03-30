@@ -1007,7 +1007,7 @@ Lexer.prototype.lexSymbol = function ()
     else
     {
         // Create a lexeme for the identifier
-        return new Lexeme('ident', this.getPos(), symChars);
+        return new Lexeme('ident', this.getPos(), symStr);
     }
 }
 

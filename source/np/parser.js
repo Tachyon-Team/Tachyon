@@ -264,9 +264,6 @@ Excludes the comma expression (lowest priority).
 function parseAssign(lexer)
 {
     /*
-    TODO: standard way of generating operator/expression parsing?
-    operator priority?
-
     Binary expressions
     + - * / %
     && ||
@@ -292,7 +289,6 @@ function parseAssign(lexer)
 
     Function call
 
-
     Idea: parsing an expression from left to right, need to keep track of the
     current topmost node of the expression subtree
 
@@ -303,64 +299,110 @@ function parseAssign(lexer)
 
     Parsing an expression, if we see each operator, take appropriate response.
     Need to be able to know priority of each operator.
-
-    Priority mapping?
-
     */
 
     print('assign expr');
 
+    // Current topmost expression
+    var topExpr = undefined;
 
-    // TODO
-
-
-
-    var t = lexer.peekToken();
-
-    var expr = undefined;
-
-    if (t.type === 'number' ||
-        t.type === 'string')
-    {    
-        print('constant expr');
-        lexer.readToken();
-        expr = new ASTConst(t.value);
-        expr.pos = t.pos;
-    }
-
-    else if (
-        t.type === 'true'   ||
-        t.type === 'false'  ||
-        t.type === 'null')
+    // Until the expression is parsed
+    for (;;)
     {
-        var val;
-        if (t.type === 'true')
-            val = true;
-        else if (t.type === 'false')
-            val = false;
+        var t = lexer.peekToken();
+
+        // If this is a terminal subexpression
+        if (t.type === 'number' ||
+            t.type === 'string' ||
+            t.type === 'true'   ||
+            t.type === 'false'  ||
+            t.type === 'null'   ||
+            t.type === 'ident')
+        {   
+            print('terminal expr');
+
+            var expr = undefined;
+
+            lexer.readToken();
+          
+            // Number or string constant
+            if (t.type === 'number' ||
+                t.type === 'string')
+            {
+                expr = new ASTConst(t.value);
+            }
+
+            // true/false/null constant
+            else if (
+                t.type === 'true'   ||
+                t.type === 'false'  ||
+                t.type === 'null')
+            {
+                var val;
+                if (t.type === 'true')
+                    val = true;
+                else if (t.type === 'false')
+                    val = false;
+                else
+                    val === 'null';
+
+                expr = new ASTConst(val);
+            }
+
+            // Identifier
+            else if (t.type === 'ident')
+            {
+                expr = new ASTIdent(t.value);
+            }
+
+            // Set the expression position
+            expr.pos = t.pos;
+
+            // If there is no top expression
+            if (topExpr === undefined)
+            {
+                topExpr = expr;
+            }
+            else
+            {
+                if ((topExpr instanceof BinOpExpr) === false &&
+                    (topExpr instanceof UnOpExpr) === false)
+                    parseError('malformed expression', t);
+
+                if (topExpr.numChildren() > 1)
+                    parseError('unexpected token in expression', t);
+
+                topExpr.addChild(expr);
+
+                // TODO: recompute position
+            }
+        }
+
+        // If this is a binary operator
+        if (t.type === '+' ||
+            t.type === '-')
+        {
+            // TODO
+
+
+
+
+
+        }
+
+        // TODO: unary +, -
+
+        // Unrecognized token
         else
-            val === 'null';
-
-        print('constant expr');
-        lexer.readToken();
-        expr = new ASTConst(val);
-        expr.pos = t.pos;
+        {
+            // Stop the expression parsing
+            break;
+        }
     }
 
-    else if (t.type === 'ident')
-    {
-        print('ident expr');
-        lexer.readToken();
-        expr = new ASTIdent(t.value);
-        expr.pos = t.pos;
-    }
+    if (topExpr === undefined)
+        parseError('expression parsing failed', t);
 
-
-
-
-
-
-
-    return expr;
+    return topExpr;
 }
 

@@ -54,7 +54,12 @@ function makeParserTest(srcFile)
     {
         var ast = parseFile(srcFile);
 
-        // TODO: assert ast instanceof ASTNode
+        assert (
+            ast instanceof ASTNode,
+            'invalid ast node'
+        );
+
+        print('AST:\n' + ast);
     }
 
     return test;
