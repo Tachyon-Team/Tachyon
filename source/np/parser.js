@@ -312,7 +312,8 @@ function parseAssign(lexer)
         var t = lexer.peekToken();
 
         // If this is a terminal subexpression
-        if (t.type === 'number' ||
+        if (
+            t.type === 'number' ||
             t.type === 'string' ||
             t.type === 'true'   ||
             t.type === 'false'  ||
@@ -365,8 +366,8 @@ function parseAssign(lexer)
             }
             else
             {
-                if ((topExpr instanceof BinOpExpr) === false &&
-                    (topExpr instanceof UnOpExpr) === false)
+                if ((topExpr instanceof ASTBinOp) === false &&
+                    (topExpr instanceof ASTUnOp) === false)
                     parseError('malformed expression', t);
 
                 if (topExpr.numChildren() > 1)
@@ -374,20 +375,26 @@ function parseAssign(lexer)
 
                 topExpr.addChild(expr);
 
-                // TODO: recompute position
+                // Recompute the top expression position
+                topExpr.calcPos();
             }
         }
 
         // If this is a binary operator
-        if (t.type === '+' ||
+        else if (
+            t.type === '+' ||
             t.type === '-')
         {
-            // TODO
+            if (topExpr === undefined)
+                parseError('unexpected operator', t);
 
+            lexer.readToken();
 
+            var binExpr = new ASTBinOp(t.type);
 
+            binExpr.addChild(topExpr);
 
-
+            topExpr = binExpr;
         }
 
         // TODO: unary +, -

@@ -97,6 +97,18 @@ tests.parser['debugger'] = makeParserTest('np/tests/test-debugger.js');
 
 tests.parser['var-num'] = makeParserTest('np/tests/test-var-num.js');
 
+// Addition expression
+tests.parser['add1'] = makeParserTest('np/tests/test-add1.js');
+
+// Addition and subtraction
+tests.parser['addsub'] = makeParserTest('np/tests/test-addsub.js');
+
+
+
+
+
+
+
 //tests.parser.simple2 = makeParserTest('np/tests/test-simple2.js');
 
 //tests.parser.fib = makeParserTest('np/tests/test-fib.js');
