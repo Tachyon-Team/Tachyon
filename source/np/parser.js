@@ -167,7 +167,7 @@ function parseStmt(lexer)
                 var it = lexer.readToken();
 
                 if (it.type !== 'ident')
-                    parseError('unexpected token', it);
+                    parseError('unexpected token ' + it.type, it);
 
                 var expr = new ASTIdent(it.value);
                 expr.pos = it.pos;
@@ -303,8 +303,11 @@ function parseAssign(lexer)
 
     print('assign expr');
 
-    // Current topmost expression
-    var topExpr = undefined;
+    // Current root expression
+    var rootExpr = undefined;
+
+    // Rightmost expression
+    var rightExpr = undefined;
 
     // Until the expression is parsed
     for (;;)
@@ -359,42 +362,71 @@ function parseAssign(lexer)
             // Set the expression position
             expr.pos = t.pos;
 
-            // If there is no top expression
-            if (topExpr === undefined)
+            // If there is no rightmost expression
+            if (rightExpr === undefined)
             {
-                topExpr = expr;
+                rightExpr = expr;
+                rootExpr = expr;
             }
             else
             {
-                if ((topExpr instanceof ASTBinOp) === false &&
-                    (topExpr instanceof ASTUnOp) === false)
+                if ((rightExpr instanceof ASTBinOp) === false &&
+                    (rightExpr instanceof ASTUnOp) === false)
                     parseError('malformed expression', t);
 
-                if (topExpr.numChildren() > 1)
-                    parseError('unexpected token in expression', t);
+                if (rightExpr.numChildren() > 1)
+                    parseError('unexpected ' + t.type + ' token in expression', t);
 
-                topExpr.addChild(expr);
+                rightExpr.addChild(expr);
 
                 // Recompute the top expression position
-                topExpr.calcPos();
+                rightExpr.calcPos();
             }
         }
 
         // If this is a binary operator
         else if (
             t.type === '+' ||
-            t.type === '-')
+            t.type === '-' ||
+            t.type === '*' ||
+            t.type === '/' ||
+            t.type === '%')
         {
-            if (topExpr === undefined)
+            if (rightExpr === undefined)
                 parseError('unexpected operator', t);
 
             lexer.readToken();
 
+            var opPri = Lexeme.opPriority[t.type];
+
+            var rightPri =
+                (rightExpr instanceof ASTBinOp)?
+                Lexeme.opPriority[rightExpr.op]:
+                Infinity;
+
             var binExpr = new ASTBinOp(t.type);
 
-            binExpr.addChild(topExpr);
+            // If this operator has higher priority than the
+            // current expression operator
+            if (opPri > rightPri)
+            {
+                if (rightExpr.numChildren() < 2)
+                    parseError('malformed expression', t);
 
-            topExpr = binExpr;
+                binExpr.addChild(rightExpr.children[1]);
+
+                rightExpr.children[1] = binExpr;
+
+                rightExpr = binExpr;
+            }
+            else
+            {
+                binExpr.addChild(rightExpr);
+
+                rightExpr = binExpr;
+
+                rootExpr = binExpr;
+            }
         }
 
         // TODO: unary +, -
@@ -407,9 +439,9 @@ function parseAssign(lexer)
         }
     }
 
-    if (topExpr === undefined)
+    if (rootExpr === undefined)
         parseError('expression parsing failed', t);
 
-    return topExpr;
+    return rootExpr;
 }
 

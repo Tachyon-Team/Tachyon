@@ -46,9 +46,29 @@ Test suite for the parser
 tests.parser = tests.testSuite();
 
 /**
-Utility function to create a parser unit test
+Create a parser unit test from a source string
 */
-function makeParserTest(srcFile)
+function parserTestStr(srcStr)
+{
+    function test()
+    {
+        var ast = parseString(srcStr, 'string');
+
+        assert (
+            ast instanceof ASTNode,
+            'invalid ast node'
+        );
+
+        print('AST:\n' + ast);
+    }
+
+    return test;
+}
+
+/**
+Create a parser unit test from a source file
+*/
+function parserTestSrc(srcFile)
 {
     function test()
     {
@@ -88,42 +108,60 @@ tests.parser.lexer = function ()
     }
 }
 
-// Variable definitions
-tests.parser['var1'] = makeParserTest('np/tests/test-var1.js');
-tests.parser['var2'] = makeParserTest('np/tests/test-var2.js');
+tests.parser['var1'] = parserTestStr(
+    'var foo;'
+);
 
-// Debugger statement
-tests.parser['debugger'] = makeParserTest('np/tests/test-debugger.js');
+tests.parser['var2'] = parserTestStr(
+    'var foo, bar, bif'
+);
 
-tests.parser['var-num'] = makeParserTest('np/tests/test-var-num.js');
+tests.parser['debugger'] = parserTestStr(
+    'debugger;'
+);
 
-// Addition expression
-tests.parser['add1'] = makeParserTest('np/tests/test-add1.js');
+tests.parser['multi-stmt'] = parserTestStr(
+    'var foo; debugger; var bif;'
+);
 
-// Addition and subtraction
-tests.parser['addsub'] = makeParserTest('np/tests/test-addsub.js');
+tests.parser['var-num'] = parserTestStr(
+    'var n = 1;'
+);
+
+tests.parser['add1'] = parserTestStr(
+    'var s = x + y;'
+);
+
+tests.parser['addsub'] = parserTestStr(
+    'var v = x + y - 3;'
+);
+
+tests.parser['addmul'] = parserTestStr(
+    'var v = x + y * 3;'
+);
+
+tests.parser['muladdmul'] = parserTestStr(
+    'var v = x * y + y * z;'
+);
 
 
 
 
 
 
+//tests.parser.fib = parserTestSrc('np/tests/test-fib.js');
 
-//tests.parser.simple2 = makeParserTest('np/tests/test-simple2.js');
-
-//tests.parser.fib = makeParserTest('np/tests/test-fib.js');
-
-//tests.parser.recfn = makeParserTest('np/tests/test-recfn.js');
+//tests.parser.recfn = parserTestSrc('np/tests/test-recfn.js');
 
 // Number formats
-//tests.parser.numbers = makeParserTest('np/tests/test-numbers.js');
+//tests.parser.numbers = parserTestSrc('np/tests/test-numbers.js');
 
 // Various kinds of statements
-//tests.parser.stmts = makeParserTest('np/tests/test-stmts.js');
+//tests.parser.stmts = parserTestSrc('np/tests/test-stmts.js');
 
 // JavaScript code captured in the wild
-//tests.parser.wild1 = makeParserTest('np/tests/test-wild1.js');
-//tests.parser.wild2 = makeParserTest('np/tests/test-wild2.js');
+//tests.parser.wild1 = parserTestSrc('np/tests/test-wild1.js');
+//tests.parser.wild2 = parserTestSrc('np/tests/test-wild2.js');
 
 
 
