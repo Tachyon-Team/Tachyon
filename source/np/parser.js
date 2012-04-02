@@ -245,7 +245,7 @@ function parseStmt(lexer)
 
         // By default, expression statement
         default:     
-        return parseExpr();
+        return parseExpr(lexer);
     }
 }
 
@@ -255,6 +255,7 @@ Parse any kind of expression, including comma expressions.
 function parseExpr(lexer)
 {
     // TODO
+    return parseAssign(lexer);
 }
 
 /**
@@ -430,6 +431,46 @@ function parseAssign(lexer)
         }
 
         // TODO: unary +, -
+
+        // TODO: call expression
+        // If this is the start of a parenthesized expression
+        else if (t.type === '(')
+        {
+            //print('paren expr*******');
+
+            lexer.readToken();
+
+            var expr = parseExpr(lexer);
+
+            //print('sub expr: ' + expr);
+
+            var lt = lexer.readToken();
+
+            if (lt.type !== ')')
+                parseError('expected closing parenthesis', lt);
+
+            // TODO: factor this code
+            // If there is no rightmost expression
+            if (rightExpr === undefined)
+            {
+                rightExpr = expr;
+                rootExpr = expr;
+            }
+            else
+            {
+                if ((rightExpr instanceof ASTBinOp) === false &&
+                    (rightExpr instanceof ASTUnOp) === false)
+                    parseError('malformed expression', t);
+
+                if (rightExpr.numChildren() > 1)
+                    parseError('unexpected ' + t.type + ' token in expression', t);
+
+                rightExpr.addChild(expr);
+
+                // Recompute the top expression position
+                rightExpr.calcPos();
+            }
+        }
 
         // Unrecognized token
         else

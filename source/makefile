@@ -115,6 +115,7 @@ BASE_SRCS =                             \
     np/ast.js                           \
     np/lexer.js                         \
     np/parser.js                        \
+    np/evalexpr.js                      \
     ir/types.js                         \
     ir/static.js                        \
     ir/lir.js                           \

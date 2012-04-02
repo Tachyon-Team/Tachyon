@@ -46,20 +46,61 @@ Test suite for the parser
 tests.parser = tests.testSuite();
 
 /**
+Validate an AST after parsing
+*/
+function parserTestAST(ast, validator)
+{
+    assert (
+        ast instanceof ASTNode,
+        'invalid ast node'
+    );
+
+    print('AST:\n' + ast);
+
+    if (validator)
+        validator(ast);
+}
+
+/**
+Generate a validator function to test an expression result
+*/
+function testExprResult(result)
+{
+    function validator(ast)
+    {
+        if ((ast instanceof ASTProgram) === false ||
+            (ast.numChildren() !== 1) ||
+            (ast.children[0] instanceof ASTExpr) === false)
+            error('malformed ast');
+
+        var expr = ast.children[0];
+
+        var r = evalASTExpr(expr);
+
+        if (r !== result)
+        {
+            error(
+                'invalid expression result:\n' +
+                r + '\n' +
+                'expected:\n' +
+                result
+            );
+        }
+    }
+
+    return validator;
+}
+
+/**
 Create a parser unit test from a source string
 */
-function parserTestStr(srcStr)
+function parserTestStr(srcStr, validator)
 {
     function test()
     {
         var ast = parseString(srcStr, 'string');
 
-        assert (
-            ast instanceof ASTNode,
-            'invalid ast node'
-        );
-
-        print('AST:\n' + ast);
+        parserTestAST(ast, validator);
     }
 
     return test;
@@ -68,18 +109,13 @@ function parserTestStr(srcStr)
 /**
 Create a parser unit test from a source file
 */
-function parserTestSrc(srcFile)
+function parserTestSrc(srcFile, validator)
 {
     function test()
     {
         var ast = parseFile(srcFile);
 
-        assert (
-            ast instanceof ASTNode,
-            'invalid ast node'
-        );
-
-        print('AST:\n' + ast);
+        parserTestAST(ast, validator);
     }
 
     return test;
@@ -132,17 +168,31 @@ tests.parser['add1'] = parserTestStr(
     'var s = x + y;'
 );
 
+tests.parser['add2'] = parserTestStr(
+    '1 + 1 + 1 + 1 + 1;',
+    testExprResult(5)
+);
+
 tests.parser['addsub'] = parserTestStr(
-    'var v = x + y - 3;'
+    '1 + 2 - 3;',
+    testExprResult(0)
 );
 
 tests.parser['addmul'] = parserTestStr(
-    'var v = x + y * 3;'
+    '1 + 2 * 3;',
+    testExprResult(7)
 );
 
 tests.parser['muladdmul'] = parserTestStr(
-    'var v = x * y + y * z;'
+    '1 * 2 + 1 * 5;',
+    testExprResult(7)
 );
+
+tests.parser['paren'] = parserTestStr(
+    '3 * (1 + 4);',
+    testExprResult(15)
+);
+
 
 
 
