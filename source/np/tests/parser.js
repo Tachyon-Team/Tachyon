@@ -193,7 +193,19 @@ tests.parser['paren'] = parserTestStr(
     testExprResult(15)
 );
 
+tests.parser['minus1'] = parserTestStr(
+    'var s = -x;'
+);
 
+tests.parser['minus2'] = parserTestStr(
+    '-3;',
+    testExprResult(-3)
+);
+
+tests.parser['minus3'] = parserTestStr(
+    '10 + -3;',
+    testExprResult(7)
+);
 
 
 

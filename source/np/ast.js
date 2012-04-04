@@ -328,6 +328,11 @@ function ASTExpr()
 }
 ASTExpr.prototype = new ASTNode();
 
+ASTExpr.prototype.priority = function ()
+{
+    return 100;
+}
+
 /**
 @class Constant expression
 @extends ASTConst
@@ -362,14 +367,40 @@ ASTIdent.prototype.toString = function ()
 @class Assignment expression
 @extends ASTExpr
 */
-function ASTAssign()
+function ASTAssign(op)
 {
+    assert (
+        op in ASTAssign.ops,
+        'invalid assignment operator'
+    );
+
+    this.op = op;
 }
 ASTAssign.prototype = new ASTExpr();
 
+ASTAssign.ops = {
+    '='         : 2,
+    '+='        : 2,
+    '-='        : 2,
+    '*='        : 2,
+    '/='        : 2,
+    '%='        : 2,
+    '<<='       : 2,
+    '>>='       : 2,
+    '>>>='      : 2,
+    '&='        : 2,
+    '^='        : 2,
+    '|='        : 2,
+};
+
 ASTAssign.prototype.toString = function ()
 {
-    return this.children[0] + ' = ' + this.children[1];
+    return this.children[0] + ' ' + this.op + ' ' + this.children[1];
+}
+
+ASTAssign.prototype.priority = function ()
+{
+    return ASTAssign.ops[this.op];
 }
 
 /**
@@ -383,6 +414,33 @@ function ASTUnOp(op)
 ASTUnOp.prototype = new ASTExpr();
 
 /**
+Unary operators and associated priority rankings
+*/
+ASTUnOp.ops = {
+    'new'       : 17,
+
+    '++'        : 15,
+    '--'        : 15,
+
+    '!'         : 14,
+    '~'         : 14,
+    '+'         : 14,
+    '-'         : 14,
+    'typeof'    : 14,
+    'delete'    : 14,
+};
+
+ASTUnOp.prototype.toString = function ()
+{
+    return this.op + this.children[0];
+}
+
+ASTUnOp.prototype.priority = function ()
+{
+    return ASTUnOp.ops[this.op];
+}
+
+/**
 @class Binary operator expressions
 @extends ASTExpr
 */
@@ -392,18 +450,50 @@ function ASTBinOp(op)
 }
 ASTBinOp.prototype = new ASTExpr();
 
+/**
+Binary operators and associated priority rankings
+*/
+ASTBinOp.ops = {
+    '.'         : 17,
+
+    '*'         : 13,
+    '/'         : 13,
+    '%'         : 13,
+
+    '+'         : 12,
+    '-'         : 12,
+
+    '<<'        : 11,
+    '>>'        : 11,
+    '>>>'       : 11,
+
+    '<'         : 10,
+    '<='        : 10,
+    '>'         : 10,
+    '>='        : 10,
+    'in'        : 10,
+    'instanceof': 10,
+
+    '=='        : 9,
+    '!='        : 9,
+    '==='       : 9,
+    '!=='       : 9,
+
+    '&'         : 8,
+    '^'         : 7,
+    '|'         : 6,
+
+    '&&'        : 5,
+    '||'        : 4,
+};
+
 ASTBinOp.prototype.toString = function ()
 {
     return '(' + this.children[0] + ' ' + this.op + ' ' + this.children[1] + ')';
 }
 
-// TODO
-// TODO: other kinds of expressions
-// TODO
-//
-// Assign
-// UnOp
-// BinOp
-//
-// Or OpExpr, more in line with old parser
+ASTBinOp.prototype.priority = function ()
+{
+    return ASTBinOp.ops[this.op];
+}
 

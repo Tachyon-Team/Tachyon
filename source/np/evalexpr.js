@@ -50,6 +50,21 @@ function evalASTExpr(expr)
         return expr.value;
     }
 
+    else if (expr instanceof ASTUnOp)
+    {
+        var v0 = evalASTExpr(expr.children[0]);
+
+        switch (expr.op)
+        {
+            case '+': return +v0;
+            case '-': return -v0;
+            case '!': return !v0;
+            case '~': return ~v0;
+        }
+
+        error('unsupported unary operator: ' + expr.op);
+    }
+
     else if (expr instanceof ASTBinOp)
     {
         var v0 = evalASTExpr(expr.children[0]);
@@ -61,9 +76,10 @@ function evalASTExpr(expr)
             case '-': return v0 - v1;
             case '*': return v0 * v1;
             case '/': return v0 / v1;
+            case '%': return v0 % v1;
         }
 
-        error('unsupported operator: ' + expr.op);
+        error('unsupported binary operator: ' + expr.op);
     }
 
     error('unsupported expression: ' + expr);
