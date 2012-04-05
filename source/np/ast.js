@@ -395,7 +395,7 @@ ASTAssign.ops = {
 
 ASTAssign.prototype.toString = function ()
 {
-    return this.children[0] + ' ' + this.op + ' ' + this.children[1];
+    return '(' + this.children[0] + ' ' + this.op + ' ' + this.children[1] + ')';
 }
 
 ASTAssign.prototype.priority = function ()

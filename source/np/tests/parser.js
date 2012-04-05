@@ -183,6 +183,11 @@ tests.parser['addmul'] = parserTestStr(
     testExprResult(7)
 );
 
+tests.parser['mulladd'] = parserTestStr(
+    '2 * 2 + 3;',
+    testExprResult(7)
+);
+
 tests.parser['muladdmul'] = parserTestStr(
     '1 * 2 + 1 * 5;',
     testExprResult(7)
@@ -207,7 +212,26 @@ tests.parser['minus3'] = parserTestStr(
     testExprResult(7)
 );
 
+tests.parser['assign1'] = parserTestStr(
+    'a = 3;'
+);
 
+tests.parser['assign2'] = parserTestStr(
+    'a = b = c;'
+);
+
+tests.parser['assign3'] = parserTestStr(
+    'a = b + c;'
+);
+
+tests.parser['assign3'] = parserTestStr(
+    'a = b = c + d;'
+);
+
+// FIXME
+tests.parser['assign4'] = parserTestStr(
+    'a = b = c * d + e;'
+);
 
 
 

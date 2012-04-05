@@ -298,6 +298,15 @@ function parseAssign(lexer)
     */
     function addExpr(tree, expr, parent)
     {
+        function complete(expr)
+        {
+            return (
+                (expr instanceof ASTUnOp   && expr.numChildren() === 1) ||
+                (expr instanceof ASTBinOp  && expr.numChildren() === 2) ||
+                (expr instanceof ASTAssign && expr.numChildren() === 2)
+            );
+        }
+
         //print('**** adding expr: ' + expr);
 
         // Identifier
@@ -312,8 +321,7 @@ function parseAssign(lexer)
         {
             print('*** adding unary');
 
-            if (tree instanceof ASTUnOp  && tree.numChildren() === 1 ||
-                tree instanceof ASTBinOp && tree.numChildren() === 2)
+            if (complete(tree) === true)
             {
                 addExpr(tree.lastChild(), expr, tree);
             }
@@ -347,26 +355,55 @@ function parseAssign(lexer)
 
         else if (expr instanceof ASTBinOp)
         {
-            var treePri = tree.priority();            
-            var exprPri = expr.priority();
-
-            // If this expression has higher priority than the tree node
-            if (exprPri > treePri)
+            if (!(tree instanceof ASTUnOp) &&
+                complete(tree) === true    && 
+                complete(tree.lastChild()) === true)
             {
-                //if (rightExpr.numChildren() < 2)
-                //    parseError('malformed expression', t);
-
-                // Take the tree node's last child and
-                // place the new node under the tree node
-                expr.addChild(tree.lastChild());
-                tree.children[tree.children.length-1] = expr;
+                addExpr(tree.lastChild(), expr, tree);
             }
             else
             {
-                // Make the tree node the first child of this node
+                var treePri = tree.priority();            
+                var exprPri = expr.priority();
+
+                // If this expression has higher priority than the tree node
+                if (exprPri > treePri)
+                {
+                    //if (rightExpr.numChildren() < 2)
+                    //    parseError('malformed expression', t);
+
+                    // Take the tree node's last child and
+                    // place the new node under the tree node
+                    expr.addChild(tree.lastChild());
+                    tree.children[tree.children.length-1] = expr;
+                }
+                else
+                {
+                    // Make the tree node the first child of this node
+                    expr.addChild(tree);
+         
+                    // Replace the top node by the new expression
+                    if (parent)
+                        parent.children[parent.children.length-1] = expr;
+                    else
+                        rootExpr = expr;
+                }
+
+                acceptUnary = true;
+                acceptBinary = false;
+            }
+        }
+
+        else if (expr instanceof ASTAssign)
+        {
+            if (tree.numChildren() > 0)
+            {
+                addExpr(tree.lastChild(), expr, tree);
+            }
+            else
+            {
                 expr.addChild(tree);
-     
-                // Replace the top node by the new expression
+
                 if (parent)
                     parent.children[parent.children.length-1] = expr;
                 else
@@ -396,25 +433,10 @@ function parseAssign(lexer)
     // Until the expression is parsed
     for (;;)
     {
-        /*
-        var acceptUnary = (
-            rightExpr === undefined ||
-            ((rightExpr instanceof ASTBinOp) && rightExpr.numChildren() < 2) ||
-            ((rightExpr instanceof ASTUnOp)  && rightExpr.numChildren() < 1)
-        );
-
-        var acceptBinary = (
-            (rightExpr instanceof ASTConst) ||
-            (rightExpr instanceof ASTIdent) ||
-            ((rightExpr instanceof ASTBinOp) && rightExpr.numChildren() === 2) ||
-            ((rightExpr instanceof ASTUnOp)  && rightExpr.numChildren() === 1)
-        );
-        */
-
         // Peek at the current token
         var t = lexer.peekToken();
 
-        // If this is a terminal subexpression
+        // Terminal subexpression
         if (acceptUnary === true &&
             (
                 t.type === 'number' ||
@@ -484,7 +506,7 @@ function parseAssign(lexer)
             addExpr(rootExpr, expr);
         }
 
-        // If this is a unary operator
+        // Unary operator
         else if (
             acceptUnary === true &&
             t.type in ASTUnOp.ops)
@@ -520,7 +542,7 @@ function parseAssign(lexer)
             addExpr(rootExpr, expr);
         }
 
-        // If this is a binary operator
+        // Binary operator
         else if (
             acceptBinary === true &&
             t.type in ASTBinOp.ops)
@@ -558,7 +580,23 @@ function parseAssign(lexer)
             addExpr(rootExpr, binExpr);
         }
 
-        // If this is the start of a parenthesized expression
+        // TODO
+        // Assignment expression
+        else if (
+            acceptBinary === true &&
+            t.type in ASTAssign.ops)
+        {
+            if (rootExpr === undefined)
+                parseError('unexpected operator', t);
+
+            lexer.readToken();
+
+            var expr = new ASTAssign(t.type);
+
+            addExpr(rootExpr, expr);
+        }
+
+        // Start of a parenthesized expression
         else if (
             acceptUnary === true &&
             t.type === '(')
