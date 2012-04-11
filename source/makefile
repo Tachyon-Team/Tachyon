@@ -134,6 +134,7 @@ BASE_SRCS =                             \
     analysis/interface.js               \
     analysis/typegraph.js               \
     analysis/typeprop.js                \
+    analysis/spstf.js                   \
     analysis/mozti.js                   \
     runtime/layout.js                   \
     runtime/context.js                  \
