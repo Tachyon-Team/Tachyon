@@ -58,36 +58,11 @@ Maxime Chevalier-Boisvert
 TODO
 Try to minimize hash table lookups
 
-
-
-SPSTFFunc
-- func, original func
-- entry
-
-SPSTFBlock
-- func, owner function
-- block, original block,
-- instrIdx, start instruction
-- preds
-- instrs
-
-SPSTFInstr
-- inputs (type sets -> incoming edges)
-  - List of variables, list of lists of incoming edges (instrs)
-  - inVars, inEdges
-  - No hash table lookups***
-
-- outputs (type sets -> outgoing edges)
-- instr, original instruction
-- flow function
-
-
-
 Algorithm:
 - blockWorkList, instrWorkList
 
 - Queue entry block
-  - SPSTFBlock gets constructed until end or first call
+  - SPSTFBlock gets constructed until end or first call instr
   - Construct SPSTFInstr nodes for block instructions
   - Make stumps for branch targets (or resolve if existing)
   - Queue the block instructions for evaluation
@@ -99,10 +74,6 @@ Algorithm:
   representation immediately! ***
 
 
-
-
-
-
 Methods:
 SPSTF.queueBlock
 - Constructs block representation
@@ -112,54 +83,204 @@ SPSTF.queueBlock
 How do we deal with function calls and returns? **********
 - Probably want SPSTFFunc object, so we can think in terms of call graphs
 - Type flow edges for ArgValInstr go to corresponding definitions directly???
-  - Need to tell the ArgValInstr what type sets to fetch
+  - Need to tell the ArgValInstr what type sets (values) to fetch
   - Special method for this *****
 - Same for returns, tell the calls instrs what type sets to fetch
   - Special method for this *****
-
-
-
-
 */
-
-
-
 
 
 
 
 /**
-TODO
+@class Basic block stump
 */
-function SPSTFFunc()
+function SPSTFStump(block, instrIdx)
 {
-    // TODO
+    if (instrIdx === undefined)
+        instrIdx = 0;
 
+    this.block = block;
 
+    this.instrIdx = instrIdx;
+}
 
+/**
+Hash function for block descriptors
+*/
+SPSTFStump.hashFn = function (s)
+{
+    return defHashFunc(s.block) + s.instrIdx;
+}
+
+/**
+Equality function for block descriptors
+*/
+SPSTFStump.equalFn = function (s1, s2)
+{
+    return s1.block === s2.block && s1.instrIdx === s2.instrIdx;
+}
+
+/**
+@class Function representation for the SPSTF analysis
+*/
+function SPSTFFunc(irFunc)
+{
+    assert (
+        irFunc instanceof IRFunction,
+        'invalid function object'
+    );
+
+    /**
+    Original IR function
+    */
+    this.irFunc = irFunc;
+
+    /**
+    Entry block
+    */
+    this.entry = undefined;
+
+    /**
+    Next unit in the chain, for unit-level functions
+    */
     this.nextUnit = undefined;
 }
 
 /**
-TODO
+@class Basic block representation for the SPSTF analysis
 */
-function SPSTFBlock()
+function SPSTFBlock(irBlock, instrIdx, func)
 {
-    // TODO
+    assert (
+        irBlock instanceof BasicBlock,
+        'invalid block object'
+    );
+
+    assert (
+        isNonNegInt(instrIdx) === true,
+        'invalid instr index'
+    );
+
+    assert (
+        func instanceof SPSTFFunc,
+        'invalid function object'
+    );
+
+    this.irBlock = irBlock;
+
+    this.instrIdx = instrIdx;
+
+    this.func = func;
+
+    this.preds = [];
+
+    this.instrs = [];
 }
 
 /**
-TODO
+@class Instruction representation for the SPSTF analysis
 */
-function SPSTFInstr()
+function SPSTFInstr(irInstr, instrIdx, block)
 {
-    // TODO
+    assert (
+        irInstr instanceof IRInstr,
+        'invalid instr object'
+    );
+
+    assert (
+        isNonNegInt(instrIdx) === true,
+        'invalid instr index'
+    );
+
+    assert (
+        block instanceof SPSTFBlock,
+        'invalid block object'
+    );
+
+
+    this.irInstr = irInstr;
+
+
+    this.block = block;
+
+
+    this.targets = undefined;
+
+
+
+
+
+
+
+
+    /**
+    Flow function for this instruction
+    */
+    this.flowFunc = irInstr.spstfFlowFunc;
+
+
+
+
+
+
+
+    // If the instruction has targets
+    if (irInstr.targets !== undefined)
+    {
+        this.targets = new Array(irInstr.targets.length);
+    
+        for (var i = 0; i < this.targets.length; ++i)
+            this.targets[i] = new SPSTFStump(irInstr.targets[i]);
+    }
+
+    // If this is a call instruction with no explicit targets
+    else if (irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr)
+    {
+        this.targets = [new SPSTFStump(irInstr.parentBlock, instrIdx + 1)];
+    }
+
+
+
+
+
+
+    /* 
+    TODO: special mapping for argument type sets, map to first input values
+    - makes search faster
+
+    // List of input values
+    this.inVals = []
+
+    // List of source objects
+    {
+        val
+
+        srcs: []
+
+            instr
+            targetIdx
+            outIdx
+    }
+
+    */
+
+
+
+
+
+
+    // TODO: issue
+    // Sometimes, need different outputs for different targets*****
+    // - identify the targets by index
+    // TODO: special mapping for output type set
+
+
+
+
+
+
 }
-
-
-
-
-
 
 /**
 @class Sparse Path-Sensitive Type Flow (SPSTF) Analysis
@@ -177,7 +298,6 @@ Initialize/reset the analysis
 */
 SPSTF.prototype.init = function ()
 {
-
     /**
     Worklist of instructions queued to be analyzed
     */
@@ -189,11 +309,22 @@ SPSTF.prototype.init = function ()
     */
     this.workSet = new HashSet();
 
+    /**
+    Map of block stumps to basic block representations
+    */
+    this.blockMap = new HashMap(SPSTFStump.hashFn, SPSTFStump.equalFn);
 
 
-    // TODO
-    // TODO
-    // TODO
+
+
+    /**
+    Total number of type flow edges
+    */
+    this.edgeCount = 0;
+
+
+
+
 
 
 
@@ -203,8 +334,9 @@ SPSTF.prototype.init = function ()
     this.unitList = [];
 
 
-
-
+    // TODO
+    // TODO: handle type assertions
+    // TODO
 
 
     /**
@@ -253,23 +385,63 @@ SPSTF.prototype.evalTypeAsserts = function ()
 }
 
 /**
-Queue a block to be (re)analyzed
+Queue an instruction for (re-)analysis
 */
-SPSTF.prototype.queueBlock = function (blockDesc)
+SPSTF.prototype.queueInstr = function (instr)
 {
-    // TODO: construct block representation if it doesn't exist
-    
-    // TODO: queue block instructions
+    assert (
+        instr instanceof SPSTFInstr,
+        'invalid instruction object'
+    );
 
-    /*
-    // If the block is already queued, do nothing
-    if (this.workSet.has(blockDesc) === true)
+    // TODO: test if the work set helps the performance at all
+    // in a relatively large benchmark
+    if (this.workSet.has(instr) === true)
         return;
 
-    this.workList.addLast(blockDesc);
+    this.workList.addLast(instr);
 
-    this.workSet.add(blockDesc);
-    */
+    this.workSet.add(instr);
+}
+
+/**
+Queue a block to be analyzed
+*/
+SPSTF.prototype.queueBlock = function (stump, func)
+{
+    if (instrIdx === undefined)
+        instrIdx = 0;
+
+    // Check if a representation has already been created for this block
+    var block = this.blockMap.get(stump);
+
+    // If no representation has yet been created
+    if (block === HashMap.NOT_FOUND)
+    {
+        // Construct the block representation
+        var block = SPSTFBlock(stump.block, stump.instrIdx, func);
+
+        // For each instruction
+        for (var i = 0; i < irBlock.instrs.length; ++i)
+        {
+            var irInstr = irBlock.instrs[i];
+
+            // Create the instruction object and add it to the block
+            var instr = new SPSTFInstr(irInstr, i, block);
+            block.instrs.push(instr);
+
+            // If this is a call/new instruction, stop. Remaining
+            // instructions will be in a continuation block.
+            if (irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr)
+                break;
+
+            // Queue the instruction for analysis;
+            this.queueInstr(instr);
+        }
+    }
+
+    // Return block representation
+    return block;
 }
 
 /**
@@ -282,12 +454,17 @@ SPSTF.prototype.queueFunc = function (irFunc)
         'expected IR function'
     );
 
-    // Get the function's entry block
-    var entry = irFunc.hirCFG.entry;
+    // Construct function representation
+    var func = new SPSTFFunc(irFunc, 0, func);
 
-    // TODO
     // Queue the function's entry block
-    //this.queueBlock(new BlockDesc(entry));
+    var entry = this.queueBlock(new SPSTFStump(irFunc.hirCFG.entry), func);
+
+    // Set the function entry block
+    func.entry = entry;
+
+    // Return the function representation
+    return func;
 }
 
 /**
@@ -300,37 +477,19 @@ SPSTF.prototype.addUnit = function (ir)
         'IR object is not unit-level function'
     );
 
-    // TODO: construct function object
+    // Construct the function object and queue it for analysis
+    var func = this.queueFunc(ir);
 
-    /*
-    // Get the info object for this function
-    var funcInfo = this.getFuncInfo(ir);
-
-    assert (
-        this.unitList.indexOf(funcInfo) === -1,
-        'unit already added'
-    );
-
-    // If this is the first unit
-    if (this.unitList.length === 0)
-    {
-        // Set the type graph at the unit entry
-        var entry = funcInfo.entry;
-        this.setTypeGraph(new BlockDesc(entry), this.initGraph);
-
-        // Queue the unit function to be analyzed
-        this.queueFunc(ir);
-    }
-    else
+    // If this is not the first unit
+    if (this.unitList.length > 0)
     {
         // Set the next unit of the previous unit
         var prevUnit = this.unitList[this.unitList.length - 1];
-        prevUnit.nextUnit = funcInfo;
+        prevUnit.nextUnit = func;
     }
 
     // Add the unit to the list of units
-    this.unitList.push(funcInfo);
-    */
+    this.unitList.push(func);
 }
 
 /**
@@ -379,4 +538,26 @@ SPSTF.prototype.iterate = function ()
 
     // TODO
 }
+
+//=============================================================================
+//
+// Per-instruction flow/transfer functions
+//
+//=============================================================================
+
+IRInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // TODO
+}
+
+
+
+
+
+
+
+
+
+
+
 

@@ -115,7 +115,13 @@ function main()
         switch (taName)
         {
             case true:
-            taName = 'TypeProp';
+            taName = 'SPSTF';
+            case 'SPSTF':
+            analysis = new SPSTF();
+            break;
+
+            //case true:
+            //taName = 'TypeProp';
             case 'TypeProp':
             analysis = new TypeProp();
             break;
