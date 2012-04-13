@@ -154,11 +154,6 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
         'less than one analysis iteration per code unit'
     );
 
-    assert (
-        this.blockGraphs.numItems > 0,
-        'no blocks were analyzed'
-    );
-
     // Evaluate the type assertions
     this.evalTypeAsserts();
 }

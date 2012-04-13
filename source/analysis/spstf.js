@@ -80,6 +80,13 @@ SPSTF.queueBlock
 
 
 
+TODO: Need to handle value outputs we can't find.
+- Map them in the type analysis, in a hash map
+
+
+
+
+
 How do we deal with function calls and returns? **********
 - Probably want SPSTFFunc object, so we can think in terms of call graphs
 - Type flow edges for ArgValInstr go to corresponding definitions directly???
@@ -205,14 +212,6 @@ function SPSTFInstr(irInstr, instrIdx, block)
     this.block = block;
 
 
-    this.targets = undefined;
-
-
-
-
-
-
-
 
     /**
     Flow function for this instruction
@@ -221,6 +220,15 @@ function SPSTFInstr(irInstr, instrIdx, block)
 
 
 
+    this.targets = undefined;
+
+
+
+    this.inVals = [];
+
+
+
+    this.outVals = [];
 
 
 
@@ -269,12 +277,18 @@ function SPSTFInstr(irInstr, instrIdx, block)
 
 
 
-
+    /*
     // TODO: issue
     // Sometimes, need different outputs for different targets*****
     // - identify the targets by index
     // TODO: special mapping for output type set
 
+
+    this.outVals = []
+
+
+
+    */
 
 
 
@@ -409,9 +423,6 @@ Queue a block to be analyzed
 */
 SPSTF.prototype.queueBlock = function (stump, func)
 {
-    if (instrIdx === undefined)
-        instrIdx = 0;
-
     // Check if a representation has already been created for this block
     var block = this.blockMap.get(stump);
 
@@ -419,12 +430,12 @@ SPSTF.prototype.queueBlock = function (stump, func)
     if (block === HashMap.NOT_FOUND)
     {
         // Construct the block representation
-        var block = SPSTFBlock(stump.block, stump.instrIdx, func);
+        var block = new SPSTFBlock(stump.block, stump.instrIdx, func);
 
         // For each instruction
-        for (var i = 0; i < irBlock.instrs.length; ++i)
+        for (var i = stump.instrIdx; i < stump.block.instrs.length; ++i)
         {
-            var irInstr = irBlock.instrs[i];
+            var irInstr = stump.block.instrs[i];
 
             // Create the instruction object and add it to the block
             var instr = new SPSTFInstr(irInstr, i, block);
@@ -536,7 +547,16 @@ SPSTF.prototype.iterate = function ()
             'empty work list'
     );
 
+    // Remove an instruction from the work list
+    var instr = this.workList.remFirst();
+    this.workSet.rem(instr);
+
+
+
     // TODO
+
+
+
 }
 
 //=============================================================================

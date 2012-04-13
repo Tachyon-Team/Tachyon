@@ -43,12 +43,12 @@
 /**
 Test suite for type analysis.
 */
-tests.typeProp = tests.testSuite();
+tests.spstf = tests.testSuite();
 
 /**
-Create a type prop unit test
+Create an SPSTF analysis unit test
 */
-TypeProp.makeTest = function (fileList, useStdlib)
+SPSTF.makeTest = function (fileList, useStdlib)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
@@ -60,7 +60,7 @@ TypeProp.makeTest = function (fileList, useStdlib)
     {
         const params = config.hostParams;
 
-        var analysis = new TypeProp(params);
+        var analysis = new SPSTF(params);
 
         analysis.testOnFiles(fileList, useStdlib);
     }
@@ -70,197 +70,198 @@ TypeProp.makeTest = function (fileList, useStdlib)
     return test;
 }
 
-tests.typeProp.global_add = TypeProp.makeTest(
+tests.spstf.global_add = SPSTF.makeTest(
     'programs/type_analysis/global_add.js',
     false
 );
 
-tests.typeProp.string_simple = TypeProp.makeTest(
+/*
+tests.spstf.string_simple = SPSTF.makeTest(
     'programs/type_analysis/string_simple.js', 
     false
 );
 
-tests.typeProp.array_simple = TypeProp.makeTest(
+tests.spstf.array_simple = SPSTF.makeTest(
     'programs/type_analysis/array_simple.js', 
     false
 );
 
-tests.typeProp.call_simple = TypeProp.makeTest(
+tests.spstf.call_simple = SPSTF.makeTest(
     'programs/type_analysis/call_simple.js', 
     false
 );
 
-tests.typeProp.func_2ret = TypeProp.makeTest(
+tests.spstf.func_2ret = SPSTF.makeTest(
     'programs/type_analysis/func_2ret.js', 
     false
 );
 
-tests.typeProp.func_2calls = TypeProp.makeTest(
+tests.spstf.func_2calls = SPSTF.makeTest(
     'programs/type_analysis/func_2calls.js', 
     false
 );
 
-tests.typeProp.func_calls = TypeProp.makeTest(
+tests.spstf.func_calls = SPSTF.makeTest(
     'programs/type_analysis/func_calls.js', 
     false
 );
 
-tests.typeProp.arith_simple = TypeProp.makeTest(
+tests.spstf.arith_simple = SPSTF.makeTest(
     'programs/type_analysis/arith_simple.js', 
     false
 );
 
-tests.typeProp.cmp_simple = TypeProp.makeTest(
+tests.spstf.cmp_simple = SPSTF.makeTest(
     'programs/type_analysis/cmp_simple.js', 
     false
 );
 
-tests.typeProp.fib = TypeProp.makeTest(
+tests.spstf.fib = SPSTF.makeTest(
     'programs/type_analysis/fib.js', 
     false
 );
 
-tests.typeProp.loop_sum = TypeProp.makeTest(
+tests.spstf.loop_sum = SPSTF.makeTest(
     'programs/type_analysis/loop_sum.js',
     false
 );
 
-tests.typeProp.obj_simple = TypeProp.makeTest(
+tests.spstf.obj_simple = SPSTF.makeTest(
     'programs/type_analysis/obj_simple.js', 
     false
 );
 
-tests.typeProp.get_undef = TypeProp.makeTest(
+tests.spstf.get_undef = SPSTF.makeTest(
     'programs/type_analysis/get_undef.js', 
     false
 );
 
-tests.typeProp.linked_list = TypeProp.makeTest(
+tests.spstf.linked_list = SPSTF.makeTest(
     'programs/type_analysis/linked_list.js',
     false
 );
 
-tests.typeProp.cond_return = TypeProp.makeTest(
+tests.spstf.cond_return = SPSTF.makeTest(
     'programs/type_analysis/cond_return.js', 
     false
 );
 
-tests.typeProp.cond_prop = TypeProp.makeTest(
+tests.spstf.cond_prop = SPSTF.makeTest(
     'programs/type_analysis/cond_prop.js', 
     false
 );
 
-tests.typeProp.cond_global = TypeProp.makeTest(
+tests.spstf.cond_global = SPSTF.makeTest(
     'programs/type_analysis/cond_global.js', 
     false
 );
 
-tests.typeProp.cond_objs = TypeProp.makeTest(
+tests.spstf.cond_objs = SPSTF.makeTest(
     'programs/type_analysis/cond_objs.js', 
     false
 );
 
-tests.typeProp.cond_call = TypeProp.makeTest(
+tests.spstf.cond_call = SPSTF.makeTest(
     'programs/type_analysis/cond_call.js', 
     false
 );
 
-tests.typeProp.cond_pass2 = TypeProp.makeTest(
+tests.spstf.cond_pass2 = SPSTF.makeTest(
     'programs/type_analysis/cond_pass2.js',
     false
 );
 
-tests.typeProp.cond_ret_obj = TypeProp.makeTest(
+tests.spstf.cond_ret_obj = SPSTF.makeTest(
     'programs/type_analysis/cond_ret_obj.js',
     false
 );
 
-tests.typeProp.loop_cond_obj = TypeProp.makeTest(
+tests.spstf.loop_cond_obj = SPSTF.makeTest(
     'programs/type_analysis/loop_cond_obj.js',
     false
 );
 
-tests.typeProp.arr_simple = TypeProp.makeTest(
+tests.spstf.arr_simple = SPSTF.makeTest(
     'programs/type_analysis/arr_simple.js', 
     false
 );
 
-tests.typeProp.obj_methods = TypeProp.makeTest(
+tests.spstf.obj_methods = SPSTF.makeTest(
     'programs/type_analysis/obj_methods.js',
     false
 );
 
-tests.typeProp.obj_init = TypeProp.makeTest(
+tests.spstf.obj_init = SPSTF.makeTest(
     'programs/type_analysis/obj_init.js',
     false
 );
 
-tests.typeProp.obj_init_junk = TypeProp.makeTest(
+tests.spstf.obj_init_junk = SPSTF.makeTest(
     'programs/type_analysis/obj_init_junk.js',
     false
 );
 
-tests.typeProp.factory_2calls = TypeProp.makeTest(
+tests.spstf.factory_2calls = SPSTF.makeTest(
     'programs/type_analysis/factory_2calls.js',
     false
 );
 
-tests.typeProp.factory_2paths = TypeProp.makeTest(
+tests.spstf.factory_2paths = SPSTF.makeTest(
     'programs/type_analysis/factory_2paths.js',
     false
 );
 
-tests.typeProp.factory_global = TypeProp.makeTest(
+tests.spstf.factory_global = SPSTF.makeTest(
     'programs/type_analysis/factory_global.js',
     false
 );
 
-tests.typeProp.factory_cond = TypeProp.makeTest(
+tests.spstf.factory_cond = SPSTF.makeTest(
     'programs/type_analysis/factory_cond.js',
     false
 );
 
-tests.typeProp.factory_inc = TypeProp.makeTest(
+tests.spstf.factory_inc = SPSTF.makeTest(
     'programs/type_analysis/factory_inc.js',
     false
 );
 
-tests.typeProp.ctor_simple = TypeProp.makeTest(
+tests.spstf.ctor_simple = SPSTF.makeTest(
     'programs/type_analysis/ctor_simple.js',
     false
 );
 
-tests.typeProp.ctor_array = TypeProp.makeTest(
+tests.spstf.ctor_array = SPSTF.makeTest(
     'programs/type_analysis/ctor_array.js',
     false
 );
 
-tests.typeProp.proto_chain = TypeProp.makeTest(
+tests.spstf.proto_chain = SPSTF.makeTest(
     'programs/type_analysis/proto_chain.js',
     false
 );
 
-tests.typeProp.proto_chain = TypeProp.makeTest(
+tests.spstf.proto_chain = SPSTF.makeTest(
     'programs/type_analysis/proto_clos.js',
     false
 );
 
-tests.typeProp.args_sum = TypeProp.makeTest(
+tests.spstf.args_sum = SPSTF.makeTest(
     'programs/type_analysis/args_sum.js',
     false
 );
 
-tests.typeProp.args_max = TypeProp.makeTest(
+tests.spstf.args_max = SPSTF.makeTest(
     'programs/type_analysis/args_max.js',
     false
 );
 
-tests.typeProp.clos_simple = TypeProp.makeTest(
+tests.spstf.clos_simple = SPSTF.makeTest(
     'programs/type_analysis/clos_simple.js',
     false
 );
 
-tests.typeProp.multi_file = TypeProp.makeTest(
+tests.spstf.multi_file = SPSTF.makeTest(
     [
         'programs/type_analysis/multi_file1.js',
         'programs/type_analysis/multi_file2.js'
@@ -268,110 +269,111 @@ tests.typeProp.multi_file = TypeProp.makeTest(
     false
 );
 
-tests.typeProp.stdlib_math = TypeProp.makeTest(
+tests.spstf.stdlib_math = SPSTF.makeTest(
     'programs/type_analysis/stdlib_math.js',
     true
 );
 
-tests.typeProp.stdlib_object = TypeProp.makeTest(
+tests.spstf.stdlib_object = SPSTF.makeTest(
     'programs/type_analysis/stdlib_object.js',
     true
 );
 
-tests.typeProp.stdlib_array = TypeProp.makeTest(
+tests.spstf.stdlib_array = SPSTF.makeTest(
     'programs/type_analysis/stdlib_array.js',
     true
 );
 
-tests.typeProp.stdlib_function = TypeProp.makeTest(
+tests.spstf.stdlib_function = SPSTF.makeTest(
     'programs/type_analysis/stdlib_function.js',
     true
 );
 
-tests.typeProp.stdlib_string = TypeProp.makeTest(
+tests.spstf.stdlib_string = SPSTF.makeTest(
     'programs/type_analysis/stdlib_string.js',
     true
 );
 
-tests.typeProp.regress_btree = TypeProp.makeTest(
+tests.spstf.regress_btree = SPSTF.makeTest(
     'programs/type_analysis/regress_btree.js',
     false
 );
 
-tests.typeProp.regress_btree2 = TypeProp.makeTest(
+tests.spstf.regress_btree2 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree2.js',
     false
 );
 
-tests.typeProp.regress_btree3 = TypeProp.makeTest(
+tests.spstf.regress_btree3 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree3.js',
     false
 );
 
-tests.typeProp.regress_base64 = TypeProp.makeTest(
+tests.spstf.regress_base64 = SPSTF.makeTest(
     'programs/type_analysis/regress_base64.js',
     true
 );
 
-tests.typeProp.regress_crypto = TypeProp.makeTest(
+tests.spstf.regress_crypto = SPSTF.makeTest(
     'programs/type_analysis/regress_crypto.js',
     false
 );
 
-tests.typeProp['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
+tests.spstf['bitops-3bit-bits-in-byte'] = SPSTF.makeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     false
 );
 
-tests.typeProp['bitops-bitwise-and'] = TypeProp.makeTest(
+tests.spstf['bitops-bitwise-and'] = SPSTF.makeTest(
     'programs/sunspider/bitops-bitwise-and.js',
     false
 );
+*/
 
 /*
-tests.typeProp['access-binary-trees'] = TypeProp.makeTest(
+tests.spstf['access-binary-trees'] = SPSTF.makeTest(
     'programs/sunspider/access-binary-trees.js',
     true
 );
 */
 
 /*
-tests.typeProp['access-fannkuch'] = TypeProp.makeTest(
+tests.spstf['access-fannkuch'] = SPSTF.makeTest(
     'programs/sunspider/access-fannkuch.js',
     true
 );
 */
 
 /*
-tests.typeProp['access-nsieve'] = TypeProp.makeTest(
+tests.spstf['access-nsieve'] = SPSTF.makeTest(
     'programs/sunspider/access-nsieve.js',
     true
 );
 */
 
 /*
-tests.typeProp['bitops-bits-in-byte'] = TypeProp.makeTest(
+tests.spstf['bitops-bits-in-byte'] = SPSTF.makeTest(
     'programs/sunspider/bitops-bits-in-byte.js',
     true
 );
 */
 
 /*
-tests.typeProp['bitops-nsieve-bits'] = TypeProp.makeTest(
+tests.spstf['bitops-nsieve-bits'] = SPSTF.makeTest(
     'programs/sunspider/bitops-nsieve-bits.js',
     true
 );
 */
 
 /*
-tests.typeProp['string-base64'] = TypeProp.makeTest(
+tests.spstf['string-base64'] = SPSTF.makeTest(
     'programs/sunspider/string-base64.js',
     true
 );
 */
 
 /*
-tests.typeProp['deltablue'] = TypeProp.makeTest(
+tests.spstf['deltablue'] = SPSTF.makeTest(
     [
         'programs/v8bench/deltablue.js',
         'programs/v8bench/drv-deltablue.js'
@@ -381,7 +383,7 @@ tests.typeProp['deltablue'] = TypeProp.makeTest(
 */
 
 /*
-tests.typeProp['richards'] = TypeProp.makeTest(
+tests.spstf['richards'] = SPSTF.makeTest(
     [
         'programs/v8bench/richards.js',
         'programs/v8bench/drv-richards.js'
@@ -389,20 +391,4 @@ tests.typeProp['richards'] = TypeProp.makeTest(
     true
 );
 */
-
-// Replicate the type analysis tests as program tests
-for (testName in tests.typeProp)
-{
-    var taTest = tests.typeProp[testName];
-    var srcFiles = taTest.srcFiles;
-
-    if (srcFiles === undefined)
-        continue;
-
-    if (srcFiles[0].indexOf('v8bench') !== -1 ||
-        srcFiles[0].indexOf('sunspider') !== -1)
-        continue;
-
-    tests.programs.type_analysis[testName] = genProgTest(srcFiles);
-}
 
