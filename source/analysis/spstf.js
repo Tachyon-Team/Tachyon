@@ -52,39 +52,12 @@ Maxime Chevalier-Boisvert
 
 
 
-
-
 /*
 TODO
 Try to minimize hash table lookups
 
-Algorithm:
-- blockWorkList, instrWorkList
-
-- Queue entry block
-  - SPSTFBlock gets constructed until end or first call instr
-  - Construct SPSTFInstr nodes for block instructions
-  - Make stumps for branch targets (or resolve if existing)
-  - Queue the block instructions for evaluation
-
-- Phi instrs must make sure to have in-edges for all reachable *edges*
+Phi instrs must make sure to have in-edges for all reachable *edges*
   - Edges, not preds!
-
-- Do we really need to queue blocks? Can probably just construct their
-  representation immediately! ***
-
-
-Methods:
-SPSTF.queueBlock
-- Constructs block representation
-
-
-
-TODO: Need to handle value outputs we can't find.
-- Map them in the type analysis, in a hash map
-
-
-
 
 
 How do we deal with function calls and returns? **********
@@ -94,7 +67,22 @@ How do we deal with function calls and returns? **********
   - Special method for this *****
 - Same for returns, tell the calls instrs what type sets to fetch
   - Special method for this *****
+
+
+TODO: Need to handle value outputs we can't find.
+- Map them in the type analysis, in a hash map
+
+
+
+TODO: Object does not exist in one branch, how do we keep track of this? How do we merge?
+- If you can't reach a prop type set on a given path, the object doesn't exist on that path
+  - Resolves to initDefs, gives empty set
+- Objects need to create undefined type sets for their properties at the creation site******
+
+
+
 */
+
 
 
 
@@ -205,36 +193,55 @@ function SPSTFInstr(irInstr, instrIdx, block)
         'invalid block object'
     );
 
-
+    /**
+    Original IRInstr instance
+    */
     this.irInstr = irInstr;
 
-
+    /**
+    SPSTFBlock instance this instruction belongs to
+    */
     this.block = block;
-
-
 
     /**
     Flow function for this instruction
     */
     this.flowFunc = irInstr.spstfFlowFunc;
 
-
-
+    /**
+    List of target blocks
+    */
     this.targets = undefined;
 
-
-
+    /**
+    Input value list.
+    List of objects specifying the value and sources.
+        {
+            value,
+            srcs: []
+            {
+                instr
+                targetIdx
+                outIdx
+            }
+        }
+    */
     this.inVals = [];
 
-
-
-    this.outVals = [];
-
-
-
+    /**
+    Output value list.
+    List of lists (one per target) of objects specifying
+    the defined value, type and destinations.
+        {
+            value,
+            type,
+            dests: []
+        }
+    */
+    this.outVals = undefined;
 
     // If the instruction has targets
-    if (irInstr.targets !== undefined)
+    if (irInstr.targets.length > 0)
     {
         this.targets = new Array(irInstr.targets.length);
     
@@ -248,52 +255,16 @@ function SPSTFInstr(irInstr, instrIdx, block)
         this.targets = [new SPSTFStump(irInstr.parentBlock, instrIdx + 1)];
     }
 
-
-
-
-
-
-    /* 
-    TODO: special mapping for argument type sets, map to first input values
-    - makes search faster
-
-    // List of input values
-    this.inVals = []
-
-    // List of source objects
+    // There are no targets
+    else
     {
-        val
-
-        srcs: []
-
-            instr
-            targetIdx
-            outIdx
+        this.targets = [];
     }
 
-    */
-
-
-
-
-
-    /*
-    // TODO: issue
-    // Sometimes, need different outputs for different targets*****
-    // - identify the targets by index
-    // TODO: special mapping for output type set
-
-
-    this.outVals = []
-
-
-
-    */
-
-
-
-
-
+    // Create the per-branch definitions list
+    this.outVals = new Array((this.targets.length > 0)? this.targets.length:1);
+    for (var i = 0; i < this.outVals.length; ++i)
+        this.outVals[i] = [];
 }
 
 /**
@@ -312,6 +283,12 @@ Initialize/reset the analysis
 */
 SPSTF.prototype.init = function ()
 {
+    // Clear the object map
+    TGObject.objMap.clear();
+
+    // Clear the closure cell map
+    TGClosCell.cellMap.clear();
+
     /**
     Worklist of instructions queued to be analyzed
     */
@@ -328,19 +305,31 @@ SPSTF.prototype.init = function ()
     */
     this.blockMap = new HashMap(SPSTFStump.hashFn, SPSTFStump.equalFn);
 
-
-
-
     /**
     Total number of type flow edges
     */
     this.edgeCount = 0;
 
+    /**
+    Map of values to objects specifying the defined type and destinations.
+        {
+            type,
+            dests: []
+        }
+    */
+    this.initDefs = new HashMap();
 
-
-
-
-
+    /**
+    Global object node
+    */
+    this.globalObj = this.newObject(
+        undefined,
+        'global', 
+        this.objProto, 
+        undefined,
+        undefined, 
+        true
+    );
 
     /**
     Ordered list of unit-level functions (function objects) to be analyzed
@@ -551,12 +540,244 @@ SPSTF.prototype.iterate = function ()
     var instr = this.workList.remFirst();
     this.workSet.rem(instr);
 
+    // Call the flow function for ths instruction
+    instr.flowFunc(this);
+}
+
+/**
+Create a new object abstraction
+*/
+SPSTF.prototype.newObject = function (
+    instr,
+    origin, 
+    protoSet, 
+    flags, 
+    numClosVars, 
+    singleton
+)
+{   
+    // By default, the prototype is null
+    if (protoSet === undefined)
+        protoSet = TypeSet.null;
+
+    // By default, this is a regular object
+    if (flags === undefined)
+        flags = TypeFlags.OBJECT;
+
+    // By default, no closure variables
+    if (numClosVars === undefined)
+        numClosVars = 0;
+
+    // By default, not singleton
+    if (singleton === undefined)
+        singleton = false;
+
+    assert (
+        protoSet.flags !== TypeFlags.EMPTY,
+        'invalid proto set flags'
+    );
+
+    var obj = new TGObject(
+        origin,
+        flags, 
+        numClosVars,
+        singleton
+    );
+
+    // Set the prototype set for the object
+    this.setType(instr, obj.proto, protoSet);
+
+    return new TypeSet(
+        flags, 
+        undefined, 
+        undefined, 
+        undefined, 
+        obj
+    );
+}
+
+/**
+Get the type set for a value
+*/
+SPSTF.prototype.getType = function (instr, value)
+{
+    assert (
+        instr instanceof SPSTFInstr,
+        'invalid instruction object'
+    );
+
+    // If this is a constant
+    if (value instanceof IRConst)
+    {
+        // Create a type set for the constant
+        return TypeSet.constant(value);
+    }
 
 
-    // TODO
+    // TODO: test if value is already resolved
+
+
+    /*
+    TODO
+    TODO
+    TODO: for phi nodes, do we need to keep track of which pred values come from?
+
+    Not necessary?
+
+    Phi takes multiple values as input, one per edge. Only resolve values from
+    reachable preds.
+
+    Should also ignore unreachable preds in resolution process.
+    - Can encode this in the normal resolution algorithm
+
+    If a block becomes reachable, new definitions can be made
+    - These can invalidate pred edges as normal?
+    - BUT, there were no edges going through the new block before...
+      - Which pred will we fall onto?
+
+    Musn't forget, if a value doesn't dominate a successor, it can only be used
+    by a phi node. If a value is used by a non-phi, it must be reachable along all paths******
 
 
 
+    */
+
+
+
+
+
+
+}
+
+/**
+Set the type set for a value
+*/
+SPSTF.prototype.setType = function (instr, value, type, targetIdx)
+{
+    if (targetIdx === undefined)
+        targetIdx = 0;
+
+    assert (
+        instr === undefined || instr instanceof SPSTFInstr,
+        'invalid instruction object'
+    );
+
+    assert (
+        value instanceof SPSTFInstr ||
+        value instanceof TGProperty ||
+        value instanceof TGVariable
+    );
+
+    assert (
+        targetIdx === 0 || targetIdx < instr.targets.length,
+        'invalid target index'
+    );
+
+    // If this is an initial definition
+    if (instr === undefined)
+    {
+        // Lookup the value in the initial definitions
+        var def = this.initDefs.get(value);
+
+        if (def === HashMap.NOT_FOUND)
+        {
+            var def = {
+                type: undefined,
+                dests: []
+            }
+
+            this.initDefs.set(value, def);
+        }
+
+        def.type = type;
+
+        // Queue all destinations of this definition
+        for (var i = 0; i < def.dests.length; ++i)
+            this.queueInstr(def.dests[i]);
+
+        return;
+    }
+
+    // Get the list of definitions for this target
+    var defList = instr.outVals[targetIdx];
+
+    var def = undefined;
+
+    // Try to find the definition for this value in the list
+    for (var j = 0; j < defList.length; ++j)        
+    {
+        if (defList[j].value === value)
+        {
+            def = defList[j];
+            break;
+        }
+    }
+
+    // If the definition was found
+    if (def !== undefined)
+    {
+        // If the type hasn't changed, do nothing
+        if (def.type.equal(type) === true)
+            return;
+
+        // Update the definition type
+        def.type = type;
+
+        // Queue all the destination instructions
+        for (i = 0; i < def.dests.length; ++i)
+            this.queueInstr(def.dests[i]);
+    }
+    else
+    {
+        // Resolve the predecessors for this value
+        this.getType(instr, value);
+
+
+        // TODO
+        // TODO: loop through the predecessors, remove the pred-succ edges (both sides)
+        // TODO: decrement edge count
+        // TODO
+
+
+
+
+        // Create a new definition object
+        var def = {
+            value: value,
+            type: type,
+            dests: []
+        }
+
+        // Add the new definition to the list for this target
+        defList.push(def);
+    }
+}
+
+/**
+Get the type for an instruction input (use) value
+*/
+SPSTF.prototype.getInType = function (instr, useIdx)
+{
+    assert (
+        useIdx < instr.irInstr.uses.length,
+        'invalid use index'
+    );
+
+    return this.getType(instr, instr.irInstr.uses[useIdx]);
+}
+
+/**
+Set an instruction output type
+*/
+SPSTF.prototype.setOutType = function (instr, normalType, exceptType)
+{
+    if (exceptType === undefined)
+        exceptType = normalType;
+
+    this.setType(instr, instr, normalType, 0);
+
+    if (instr.targets.length > 0)
+        this.setType(instr, instr, exceptType, 1);
 }
 
 //=============================================================================
@@ -570,6 +791,13 @@ IRInstr.prototype.spstfFlowFunc = function (ta)
     // TODO
 }
 
+JSAddInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var t0 = ta.getInType(this, 0);
+    var t1 = ta.getInType(this, 1);
+
+
+    // TODO
 
 
 
@@ -580,4 +808,92 @@ IRInstr.prototype.spstfFlowFunc = function (ta)
 
 
 
+    /*
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal = t0.rangeMin + t1.rangeMin;
+
+        var maxVal = t0.rangeMax + t1.rangeMax;
+
+        outType = new TypeSet(
+            TypeFlags.INT,
+            minVal,
+            maxVal
+        );
+    }
+
+    // TODO: addition of string + int, etc., string conversion
+    else if (t0.flags === TypeFlags.STRING || t1.flags === TypeFlags.STRING)
+    {
+        var t0Str = t0.strVal;
+        var t1Str = t1.strVal;
+
+        var newStr = (t0Str && t1Str)? (t0Str + t1Str):undefined;
+
+        outType = new TypeSet(
+            TypeFlags.STRING,
+            undefined,
+            undefined,
+            newStr
+        );
+    }
+
+    // If the values are either int or string
+    else if ((t0.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0 &&
+             (t1.flags & ~(TypeFlags.STRING | TypeFlags.INT)) === 0)
+    {
+        // The output is either int or string
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.STRING)
+    }
+
+    // If neither values can be string or object
+    else if ((t0.flags & (TypeFlags.STRING | TypeFlags.EXTOBJ)) === 0 &&
+             (t1.flags & (TypeFlags.STRING | TypeFlags.EXTOBJ)) === 0)
+    {
+        // The result can only be int or float
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    // By default
+    else
+    {
+        // The result can be int or float or string
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+    */
+}
+
+GlobalObjInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // This refers to the global object
+    ta.setOutType(this, ta.globalObj);
+}
+
+PutPropInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var objType  = ta.getInType(this, 0);
+    var nameType = ta.getInType(this, 1);
+    var valType  = ta.getInType(this, 2);
+
+
+
+    // TODO
+}
+
+GetPropInstr.prototype.spstfFlowFunc = function (ta)
+{
+
+
+
+
+    // TODO
+}
 
