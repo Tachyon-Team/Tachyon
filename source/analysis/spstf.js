@@ -122,7 +122,7 @@ SPSTFStump.equalFn = function (s1, s2)
 function SPSTFFunc(irFunc)
 {
     assert (
-        irFunc instanceof IRFunction,
+        irFunc === null || irFunc instanceof IRFunction,
         'invalid function object'
     );
 
@@ -148,7 +148,7 @@ function SPSTFFunc(irFunc)
 function SPSTFBlock(irBlock, instrIdx, func)
 {
     assert (
-        irBlock instanceof BasicBlock,
+        irBlock === null || irBlock instanceof BasicBlock,
         'invalid block object'
     );
 
@@ -289,6 +289,13 @@ SPSTF.prototype.init = function ()
     // Clear the closure cell map
     TGClosCell.cellMap.clear();
 
+    // Create a pseudo-unit to hold initial definitions
+    var initUnit = new SPSTFFunc(null);
+    var initEntry = new SPSTFBlock(null, 0, initUnit)
+    initUnit.entry = initEntry;
+    var initInstr = new SPSTFInstr(new RetInstr(), 0, initEntry);
+    initEntry.instrs.push(initInstr);
+
     /**
     Worklist of instructions queued to be analyzed
     */
@@ -311,19 +318,20 @@ SPSTF.prototype.init = function ()
     this.edgeCount = 0;
 
     /**
-    Map of values to objects specifying the defined type and destinations.
-        {
-            type,
-            dests: []
-        }
+    Ordered list of unit-level functions (function objects) to be analyzed
     */
-    this.initDefs = new HashMap();
+    this.unitList = [initUnit];    
+
+    /**
+    Pseudo-instruction holding initial definitions
+    */
+    this.initInstr = initInstr;
 
     /**
     Global object node
     */
     this.globalObj = this.newObject(
-        undefined,
+        initInstr,
         'global', 
         this.objProto, 
         undefined,
@@ -331,16 +339,9 @@ SPSTF.prototype.init = function ()
         true
     );
 
-    /**
-    Ordered list of unit-level functions (function objects) to be analyzed
-    */
-    this.unitList = [];
-
-
     // TODO
     // TODO: handle type assertions
     // TODO
-
 
     /**
     Total analysis iteration count
@@ -613,35 +614,66 @@ SPSTF.prototype.getType = function (instr, value)
         return TypeSet.constant(value);
     }
 
+    // Try to find the use for this value in the list
+    var use = undefined;
+    for (var i = 0; i < instr.inVals.length; ++i)
+    {
+        if (instr.inVals[i].value === value)
+        {
+            use = instr.inVals[i];
+            break;
+        }
+    }
 
-    // TODO: test if value is already resolved
+    // If this is a new use, create the use object
+    if (use === undefined)
+    {
+        var use = {
+            value: value,
+            srcs: []
+        };
+
+        instr.inVals.push(use);
+    }
+
+    // If the use is already resolved
+    if (use.srcs.length > 0)
+    {
+        var type = TypeSet.empty;
+
+        // For each source
+        for (var i = 0; i < use.srcs.length; ++i)
+        {
+            var src = use.srcs[i];
+
+            if (src === null)
+                continue;
+
+            var outVal = src.instr.outVals[targetIdx][outIdx];
+
+            type = type.union(outVal.type);
+        }
+
+        return type;
+    }
 
 
-    /*
-    TODO
-    TODO
-    TODO: for phi nodes, do we need to keep track of which pred values come from?
-
-    Not necessary?
-
-    Phi takes multiple values as input, one per edge. Only resolve values from
-    reachable preds.
-
-    Should also ignore unreachable preds in resolution process.
-    - Can encode this in the normal resolution algorithm
-
-    If a block becomes reachable, new definitions can be made
-    - These can invalidate pred edges as normal?
-    - BUT, there were no edges going through the new block before...
-      - Which pred will we fall onto?
-
-    Musn't forget, if a value doesn't dominate a successor, it can only be used
-    by a phi node. If a value is used by a non-phi, it must be reachable along all paths******
 
 
 
-    */
 
+    // TODO: keep track of targetIdx when going into pred...
+    // - Necessary to identify outVal of last instruction
+    // - May require marking edges as visited rather than blocks
+
+
+
+
+    // TODO: use arraySetAdd to add srcs, dsts, not push!
+
+    // TODO: if unresolved, add null pred so resolution executes only once
+
+    // TODO: increment edge count (even for null pred)
 
 
 
@@ -654,16 +686,95 @@ Set the type set for a value
 */
 SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 {
+    /**
+    Clear successor use edges referring to this value
+    */
+    function clearSuccs(startBlock, startIdx)
+    {
+        // Create a work list and add the start block to it
+        var workList = new LinkedList();
+        workList.addLast(startBlock);
+
+        // Set of visited blocks
+        var visited = new HashSet();
+
+        // Until the work list is empty
+        BLOCK_LOOP:
+        while (workList.isEmpty() === false)
+        {
+            var block = workList.remFirst();
+
+            visited.add(block);
+
+            // For each instruction of the block
+            var instrIdx = (block === startBlock)? startIdx:0;
+            for (; instrIdx < block.instrs.length; ++instrIdx)
+            {
+                var instr = block.instrs[instrIdx];
+
+                // For each value used by this instruction
+                for (var i = 0; i < instr.inVals.length; ++i)
+                {
+                    var use = instr.inVals[i];
+
+                    // If this is the value we are defining
+                    if (use.value === value)
+                    {
+                        // For each source of this value
+                        for (var j = 0; j < use.srcs.length; ++j)
+                        {
+                            var src = use.srcs[j];
+
+                            if (src === null)
+                                continue;
+
+                            // Remove the def-use edge
+                            var outVal = src.outVals[src.targetIdx][src.outIdx];
+                            arraySetRem(outVal.dsts, instr);
+                        }
+
+                        // Decrement the global edge count
+                        this.edgeCount -= use.srcs.length;
+
+                        // Remove all sources for this use to force the
+                        // type edge resolution to update this
+                        use.srcs = [];
+
+                        // Move to the next block in the work list
+                        continue BLOCK_LOOP;
+                    }
+                }
+                
+                // If this is the last instruction of the block
+                if (instrIdx === block.instrs.length - 1)
+                {
+                    // TODO: return instruction handling
+
+                    for (var i = 0; i < instr.targets.length; ++i)
+                    {
+                        var target = instr.targets[i];
+
+                        if (target instanceof SPSTFBlock &&
+                            visited.has(target) === false)
+                            workList.addLast(target);
+                    }
+                }
+            }
+        }
+
+        print('forward visited: ' + visited.length);
+    }
+
     if (targetIdx === undefined)
         targetIdx = 0;
 
     assert (
-        instr === undefined || instr instanceof SPSTFInstr,
+        instr instanceof SPSTFInstr,
         'invalid instruction object'
     );
 
     assert (
-        value instanceof SPSTFInstr ||
+        value instanceof IRInstr ||
         value instanceof TGProperty ||
         value instanceof TGVariable
     );
@@ -673,37 +784,11 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         'invalid target index'
     );
 
-    // If this is an initial definition
-    if (instr === undefined)
-    {
-        // Lookup the value in the initial definitions
-        var def = this.initDefs.get(value);
-
-        if (def === HashMap.NOT_FOUND)
-        {
-            var def = {
-                type: undefined,
-                dests: []
-            }
-
-            this.initDefs.set(value, def);
-        }
-
-        def.type = type;
-
-        // Queue all destinations of this definition
-        for (var i = 0; i < def.dests.length; ++i)
-            this.queueInstr(def.dests[i]);
-
-        return;
-    }
-
     // Get the list of definitions for this target
     var defList = instr.outVals[targetIdx];
 
-    var def = undefined;
-
     // Try to find the definition for this value in the list
+    var def = undefined;
     for (var j = 0; j < defList.length; ++j)        
     {
         if (defList[j].value === value)
@@ -727,19 +812,18 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         for (i = 0; i < def.dests.length; ++i)
             this.queueInstr(def.dests[i]);
     }
+
+    // This is a new definition for this instruction
     else
     {
-        // Resolve the predecessors for this value
-        this.getType(instr, value);
+        // TODO: return instruction handling, must find function successors
+        // TODO: can this be handled automatically in clearSuccs? noes
 
-
-        // TODO
-        // TODO: loop through the predecessors, remove the pred-succ edges (both sides)
-        // TODO: decrement edge count
-        // TODO
-
-
-
+        // Clear sucessor uses referring to this value
+        if (instr.targets.length > 0)
+            clearSuccs(instr.targets[targetIdx], 0);
+        else
+            clearSuccs(instr.block, instr.block.instrs.indexOf(instr) + 1);
 
         // Create a new definition object
         var def = {
@@ -774,10 +858,10 @@ SPSTF.prototype.setOutType = function (instr, normalType, exceptType)
     if (exceptType === undefined)
         exceptType = normalType;
 
-    this.setType(instr, instr, normalType, 0);
+    this.setType(instr, instr.irInstr, normalType, 0);
 
     if (instr.targets.length > 0)
-        this.setType(instr, instr, exceptType, 1);
+        this.setType(instr, instr.irInstr, exceptType, 1);
 }
 
 //=============================================================================
