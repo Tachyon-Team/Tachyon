@@ -137,9 +137,9 @@ function SPSTFFunc(irFunc)
     this.entry = undefined;
 
     /**
-    Next unit in the chain, for unit-level functions
+    List of return successor blocks
     */
-    this.nextUnit = undefined;
+    this.retSuccs = [];
 }
 
 /**
@@ -289,10 +289,12 @@ SPSTF.prototype.init = function ()
     // Clear the closure cell map
     TGClosCell.cellMap.clear();
 
-    // Create a pseudo-unit to hold initial definitions
-    var initUnit = new SPSTFFunc(null);
-    var initEntry = new SPSTFBlock(null, 0, initUnit)
-    initUnit.entry = initEntry;
+    // Create a meta-unit to hold initial definitions and unit calls
+    var metaUnit = new SPSTFFunc(null);
+    var initEntry = new SPSTFBlock(null, 0, metaUnit)
+    metaUnit.entry = initEntry;
+
+    // Create the instruction holding the initial definitions
     var initInstr = new SPSTFInstr(new RetInstr(), 0, initEntry);
     initEntry.instrs.push(initInstr);
 
@@ -318,9 +320,9 @@ SPSTF.prototype.init = function ()
     this.edgeCount = 0;
 
     /**
-    Ordered list of unit-level functions (function objects) to be analyzed
+    Meta-unit holding the initial instruction and unit calls
     */
-    this.unitList = [initUnit];    
+    this.metaUnit = metaUnit;
 
     /**
     Pseudo-instruction holding initial definitions
@@ -481,16 +483,17 @@ SPSTF.prototype.addUnit = function (ir)
     // Construct the function object and queue it for analysis
     var func = this.queueFunc(ir);
 
-    // If this is not the first unit
-    if (this.unitList.length > 0)
-    {
-        // Set the next unit of the previous unit
-        var prevUnit = this.unitList[this.unitList.length - 1];
-        prevUnit.nextUnit = func;
-    }
-
-    // Add the unit to the list of units
-    this.unitList.push(func);
+    // Add a call to the function in the meta-unit
+    var callInstr = new SPSTFInstr(
+        new CallFuncInstr(
+            func.irFunc,
+            IRConst.getConst(undefined),
+            IRConst.getConst(undefined)
+        ),
+        0,
+        this.metaUnit.entry
+    );
+    this.metaUnit.entry.instrs.push(callInstr);
 }
 
 /**
@@ -659,6 +662,14 @@ SPSTF.prototype.getType = function (instr, value)
 
 
 
+    // TODO: findPreds function
+
+    function findPreds()
+    {
+
+
+
+    }
 
 
 
@@ -748,15 +759,30 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
                 // If this is the last instruction of the block
                 if (instrIdx === block.instrs.length - 1)
                 {
-                    // TODO: return instruction handling
+                    // TODO: call instruction handling
 
-                    for (var i = 0; i < instr.targets.length; ++i)
+                    // If this is a return instruction
+                    if (instr.irInstr instanceof RetInstr)
                     {
-                        var target = instr.targets[i];
-
-                        if (target instanceof SPSTFBlock &&
-                            visited.has(target) === false)
-                            workList.addLast(target);
+                        // For each successor of the return instruction
+                        var func = instr.block.func;
+                        for (var i = 0; i < func.retSuccs.length; ++i)
+                        {
+                            var succ = func.retSuccs[i];
+                            if (visited.has(succ) === false)
+                                workList.addLast(succ);
+                        }
+                    }
+                    else
+                    {
+                        // For each target of the instruction
+                        for (var i = 0; i < instr.targets.length; ++i)
+                        {
+                            var target = instr.targets[i];
+                            if (target instanceof SPSTFBlock &&
+                                visited.has(target) === false)
+                                workList.addLast(target);
+                        }
                     }
                 }
             }
@@ -816,14 +842,25 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
     // This is a new definition for this instruction
     else
     {
-        // TODO: return instruction handling, must find function successors
-        // TODO: can this be handled automatically in clearSuccs? noes
+
+        // FIXME: don't want to loop here. This would make multiple visits
+        // with different visited lists
 
         // Clear sucessor uses referring to this value
-        if (instr.targets.length > 0)
+        if (instr.irInstr instanceof RetInstr)
+        {
+            var func = instr.block.func;
+            for (var i = 0; i < func.retSuccs.length; ++i)
+                clearSuccs(func.retSuccs[i], 0);
+        }
+        else if (instr.targets.length > 0)
+        {
             clearSuccs(instr.targets[targetIdx], 0);
+        }
         else
+        {
             clearSuccs(instr.block, instr.block.instrs.indexOf(instr) + 1);
+        }
 
         // Create a new definition object
         var def = {
