@@ -60,7 +60,7 @@ function test()
     }
 
     /*
-    print('num items: ' + map.numItems);
+    print('num items: ' + map.length);
     print('num slots: ' + map.numSlots);
     print('array length: ' + map.array.length);
     */

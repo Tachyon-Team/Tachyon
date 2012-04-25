@@ -1074,7 +1074,7 @@ Equality means both graphs have the same edges.
 */
 TypeGraph.prototype.equal = function (that)
 {
-    if (this.varMap.numItems !== that.varMap.numItems)
+    if (this.varMap.length !== that.varMap.length)
         return false;
 
     for (nodeItr = that.varMap.getItr(); nodeItr.valid(); nodeItr.next())

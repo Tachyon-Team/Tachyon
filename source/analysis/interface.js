@@ -147,12 +147,7 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
     }
 
     // Run the analysis
-    var itrCount = this.run();
-
-    assert (
-        itrCount >= fileList.length,
-        'less than one analysis iteration per code unit'
-    );
+    this.run();
 
     // Evaluate the type assertions
     this.evalTypeAsserts();

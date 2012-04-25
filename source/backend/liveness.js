@@ -143,7 +143,7 @@ function liveAnalysis(blockOrder)
         var liveInCur = blockLiveIn[block.blockId];
 
         // If the new live set has more temps
-        if (liveInCur === undefined || liveInCur.numItems !== liveCur.numItems)
+        if (liveInCur === undefined || liveInCur.length !== liveCur.length)
         {
             /*
             print('updating');

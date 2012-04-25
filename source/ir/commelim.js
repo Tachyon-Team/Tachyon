@@ -129,7 +129,7 @@ function commElim(cfg, maxItrs)
         // otherwise, assign it a new value number
         if (valNo === HashMap.NOT_FOUND)
         {
-            valNo = valNoHash.numItems;
+            valNo = valNoHash.length;
             valNoHash.set(val, valNo);
         }
 

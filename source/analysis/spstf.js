@@ -49,16 +49,12 @@ Maxime Chevalier-Boisvert
 */
 
 
-
-
-
 /*
 TODO
 Try to minimize hash table lookups
 
 Phi instrs must make sure to have in-edges for all reachable *edges*
   - Edges, not preds!
-
 
 How do we deal with function calls and returns? **********
 - Probably want SPSTFFunc object, so we can think in terms of call graphs
@@ -68,24 +64,143 @@ How do we deal with function calls and returns? **********
 - Same for returns, tell the calls instrs what type sets to fetch
   - Special method for this *****
 
-
-TODO: Need to handle value outputs we can't find.
-- Map them in the type analysis, in a hash map
-
-
-
 TODO: Object does not exist in one branch, how do we keep track of this? How do we merge?
 - If you can't reach a prop type set on a given path, the object doesn't exist on that path
   - Resolves to initDefs, gives empty set
 - Objects need to create undefined type sets for their properties at the creation site******
-
-
-
 */
 
 
+/**
+@class Set of live value uses
+*/
+function SPSTFUseSet()
+{
+    HashSet.call(this);
+}
 
+SPSTFUseSet.prototype.union = function (that)
+{
+    if (this === that)
+        return this;
 
+    var newSet = this.copy();
+
+    return HashSet.prototype.union.call(newSet, that);
+}
+
+SPSTFUseSet.prototype.add = function (use)
+{
+    var newSet = this.copy();
+
+    HashSet.prototype.add.call(newSet, use);
+
+    return newSet;
+}
+
+/**
+Empty use set
+*/
+SPSTFUseSet.empty = new SPSTFUseSet();
+
+/**
+@class Map of live values to their future uses
+*/
+function SPSTFLiveMap()
+{
+    HashMap.call(this, undefined, undefined, 3);
+}
+
+SPSTFLiveMap.prototype.copy = function ()
+{
+    var newMap = new SPSTFLiveMap();
+
+    for (var itr = this.getItr(); itr.valid(); itr.next())
+    {
+        var pair = itr.get();
+        var val = pair.key;
+        var set = pair.value;
+
+        // Use sets do copy on write and so they are not copied here
+        newMap.set(val, set);
+    }
+
+    return newMap;
+}
+
+SPSTFLiveMap.prototype.equal = function (that)
+{
+    if (this.length !== that.length)
+        return false;
+
+    for (var itr = this.getItr(); itr.valid(); itr.next())
+    {
+        var pair = itr.get();
+        var val = pair.key;
+        var setA = pair.value;
+
+        var setB = that.get(val);
+
+        if (setA.equal(setB) === false)
+            return false;
+    }
+
+    return true;
+}
+
+SPSTFLiveMap.prototype.union = function (that)
+{
+    var newMap = this.copy();
+
+    for (var itr = that.getItr(); itr.valid(); itr.next())
+    {
+        var pair = itr.get();
+        var val = pair.key;
+        var setB = pair.value;
+
+        var setA = this.get(val);
+
+        // Union the use sets
+        var newSet = setA.union(setB);
+
+        newMap.set(val, newSet);
+    }
+
+    return newMap;
+}
+
+/**
+Add a use for a given value
+*/
+SPSTFLiveMap.prototype.addLive = function (value, use)
+{
+    var origSet = this.get(value);
+
+    var newSet = origSet.add(use);
+
+    this.set(value, newSet);
+}
+
+/**
+Kill the uses for a given value
+*/
+SPSTFLiveMap.prototype.killLive = function (value)
+{
+    this.rem(value);
+}
+
+/**
+Get the use set for a given value
+*/
+SPSTFLiveMap.prototype.get = function (value)
+{
+    var set = HashMap.prototype.get.call(this, value);
+
+    if (set === HashMap.NOT_FOUND)
+        return SPSTFUseSet.empty;
+
+    return set;
+}
 
 /**
 @class Basic block stump
@@ -171,6 +286,19 @@ function SPSTFBlock(irBlock, instrIdx, func)
     this.preds = [];
 
     this.instrs = [];
+
+    /**
+    Map of live values to uses at the beginning of the block
+    */
+    this.liveMap = new SPSTFLiveMap();
+}
+
+SPSTFBlock.prototype.getBlockName = function ()
+{
+    if (this.irBlock instanceof BasicBlock)
+        return this.irBlock.getBlockName();
+
+    return 'null block';
 }
 
 /**
@@ -299,15 +427,26 @@ SPSTF.prototype.init = function ()
     initEntry.instrs.push(initInstr);
 
     /**
-    Worklist of instructions queued to be analyzed
+    Work list of instructions queued for type flow analysis
     */
-    this.workList = new LinkedList();
+    this.instrWorkList = new LinkedList();
 
     /**
-    Set of instructions in the work list
+    Set of instructions in the instruction work list
     This is to avoid adding instructions to the work list twice
     */
-    this.workSet = new HashSet();
+    this.instrWorkSet = new HashSet();
+
+    /**
+    Work list of blocks queued for live value analysis
+    */
+    this.blockWorkList = new LinkedList();
+
+    /**
+    Set of block in the block work list
+    This is to avoid adding blocks to the work list twice
+    */
+    this.blockWorkSet = new HashSet();
 
     /**
     Map of block stumps to basic block representations
@@ -346,9 +485,14 @@ SPSTF.prototype.init = function ()
     // TODO
 
     /**
-    Total analysis iteration count
+    Instruction iteration count
     */
-    this.itrCount = 0;
+    this.instrItrCount = 0;
+
+    /**
+    Block iteration count
+    */
+    this.blockItrCount = 0;
 
     /**
     Total analysis time
@@ -391,29 +535,9 @@ SPSTF.prototype.evalTypeAsserts = function ()
 }
 
 /**
-Queue an instruction for (re-)analysis
+Get the SPSTFBlock instance for a given block stump
 */
-SPSTF.prototype.queueInstr = function (instr)
-{
-    assert (
-        instr instanceof SPSTFInstr,
-        'invalid instruction object'
-    );
-
-    // TODO: test if the work set helps the performance at all
-    // in a relatively large benchmark
-    if (this.workSet.has(instr) === true)
-        return;
-
-    this.workList.addLast(instr);
-
-    this.workSet.add(instr);
-}
-
-/**
-Queue a block to be analyzed
-*/
-SPSTF.prototype.queueBlock = function (stump, func)
+SPSTF.prototype.getBlock = function (stump, func)
 {
     // Check if a representation has already been created for this block
     var block = this.blockMap.get(stump);
@@ -448,6 +572,44 @@ SPSTF.prototype.queueBlock = function (stump, func)
 }
 
 /**
+Queue an instruction for type flow analysis
+*/
+SPSTF.prototype.queueInstr = function (instr)
+{
+    assert (
+        instr instanceof SPSTFInstr,
+        'invalid instruction object'
+    );
+
+    // TODO: test if the work set helps the performance at all
+    // in a relatively large benchmark
+    if (this.instrWorkSet.has(instr) === true)
+        return;
+
+    this.instrWorkList.addLast(instr);
+    this.instrWorkSet.add(instr);
+}
+
+/**
+Queue a block for live value analysis
+*/
+SPSTF.prototype.queueBlock = function (block)
+{
+    assert (
+        block instanceof SPSTFBlock,
+        'invalid block object'
+    );
+
+    if (this.blockWorkSet.has(block) === true)
+        return;
+
+    this.blockWorkList.addLast(block);
+    this.blockWorkSet.add(block);
+
+    print('block queued: ' + block.getBlockName());
+}
+
+/**
 Queue a function to be analyzed
 */
 SPSTF.prototype.queueFunc = function (irFunc)
@@ -461,7 +623,7 @@ SPSTF.prototype.queueFunc = function (irFunc)
     var func = new SPSTFFunc(irFunc, 0, func);
 
     // Queue the function's entry block
-    var entry = this.queueBlock(new SPSTFStump(irFunc.hirCFG.entry), func);
+    var entry = this.getBlock(new SPSTFStump(irFunc.hirCFG.entry), func);
 
     // Set the function entry block
     func.entry = entry;
@@ -497,55 +659,153 @@ SPSTF.prototype.addUnit = function (ir)
 }
 
 /**
-Run the analysis until fixed-point or until the maximum number of
-iterations is reached
+Run the analysis until fixed-point is reached
 */
-SPSTF.prototype.run = function (maxItrs)
+SPSTF.prototype.run = function ()
 {
     // Start timing the analysis
     var startTimeMs = (new Date()).getTime();
 
-    // Until the max iteration count is reached
-    for (var numItrs = 0; maxItrs === undefined || numItrs < maxItrs; ++numItrs)
+    // Until a fixed point is reached
+    for (;;)
     {
-        // If the work list is empty, stop
-        if (this.workList.isEmpty() === true)
-            break;
+        if (this.instrWorkList.isEmpty() === false)
+        {
+            // Run one type flow analysis iteration
+            this.instrItr();
+        }
 
-        // Run one analysis iteration
-        this.iterate();
+        else if (this.blockWorkList.isEmpty() === false)
+        {
+            // Run one live value analysis iteration
+            this.blockItr();
+        }
+
+        // Both work lists are empty
+        else
+        {
+            break;
+        }
     }
 
     // Stop the timing
     var endTimeMs = (new Date()).getTime();
     var time = (endTimeMs - startTimeMs) / 1000;
 
-    // Update the total iteration count
-    this.itrCount += numItrs;
-
     // Update the total analysis time
     this.totalTime += time;
-
-    // Return the number of iterations performed
-    return numItrs;
 }
 
 /**
-Run one analysis iteration
+Run one type flow analysis iteration
 */
-SPSTF.prototype.iterate = function ()
+SPSTF.prototype.instrItr = function ()
 {
     assert (
-        this.workList.isEmpty() === false,
+        this.instrWorkList.isEmpty() === false,
             'empty work list'
     );
 
     // Remove an instruction from the work list
-    var instr = this.workList.remFirst();
-    this.workSet.rem(instr);
+    var instr = this.instrWorkList.remFirst();
+    this.instrWorkSet.rem(instr);
 
     // Call the flow function for ths instruction
     instr.flowFunc(this);
+
+    // Increment the instruction iteration count
+    this.instrItrCount++;
+}
+
+/**
+Run one live value analysis iteration
+*/
+SPSTF.prototype.blockItr = function ()
+{
+    assert (
+        this.blockWorkList.isEmpty() === false,
+            'empty work list'
+    );
+
+    // Remove a block from the work list
+    var block = this.blockWorkList.remFirst();
+    this.blockWorkSet.rem(block);
+
+    print('iterating block: ' + block.getBlockName());
+
+
+
+
+    // TODO: merge live values coming from successors
+    // ISSUE: last instr kills different values depending on target we came from
+
+    // TODO: want field SPSTFBlock.liveMap, storing live values at the end
+
+
+    var branchInstr = block.instrs[block.instrs.length-1];
+
+
+    var targets = block.instrs[block.instrs.length-1].targets;
+
+
+
+    // TODO: function call and return successors
+    // Can we unify this somehow? ********************
+
+
+
+
+    var liveMap = new SPSTFLiveMap();
+
+
+
+
+
+
+
+
+    // For each instruction, in reverse order
+    for (var i = block.instrs.length - 1; i >= 0; --i)
+    {
+        var instr = block.instrs[i];
+
+        /* TODO
+
+        Definitions kill live values
+
+        Uses generate live values
+
+        New live value uses reaching a definition creates a new edge and re-queueing
+
+        Live value uses can also be removed, causing edges to be removed
+        */
+
+
+
+
+
+
+
+
+
+    }
+
+    // If the live map at the beginning of the block changed
+    if (liveMap.equal(block.liveMap) === false)
+    {
+        block.liveMap = liveMap;
+
+        // TODO: queue predecessors
+
+
+
+
+
+
+    }
+
+    // Increment the block iteration count
+    this.blockItrCount++;
 }
 
 /**
@@ -637,59 +897,28 @@ SPSTF.prototype.getType = function (instr, value)
         };
 
         instr.inVals.push(use);
+
+        // Queue this instruction's block for live value analysis
+        this.queueBlock(instr.block);
     }
 
-    // If the use is already resolved
-    if (use.srcs.length > 0)
+    // Value type
+    var type = TypeSet.empty;
+
+    // For each source
+    for (var i = 0; i < use.srcs.length; ++i)
     {
-        var type = TypeSet.empty;
+        var src = use.srcs[i];
 
-        // For each source
-        for (var i = 0; i < use.srcs.length; ++i)
-        {
-            var src = use.srcs[i];
+        if (src === null)
+            continue;
 
-            if (src === null)
-                continue;
+        var outVal = src.instr.outVals[targetIdx][outIdx];
 
-            var outVal = src.instr.outVals[targetIdx][outIdx];
-
-            type = type.union(outVal.type);
-        }
-
-        return type;
+        type = type.union(outVal.type);
     }
 
-
-
-    // TODO: findPreds function
-
-    function findPreds()
-    {
-
-
-
-    }
-
-
-
-    // TODO: keep track of targetIdx when going into pred...
-    // - Necessary to identify outVal of last instruction
-    // - May require marking edges as visited rather than blocks
-
-
-
-
-    // TODO: use arraySetAdd to add srcs, dsts, not push!
-
-    // TODO: if unresolved, add null pred so resolution executes only once
-
-    // TODO: increment edge count (even for null pred)
-
-
-
-
-
+    return type;
 }
 
 /**
@@ -697,100 +926,6 @@ Set the type set for a value
 */
 SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 {
-    /**
-    Clear successor use edges referring to this value
-    */
-    function clearSuccs(startBlock, startIdx)
-    {
-        // Create a work list and add the start block to it
-        var workList = new LinkedList();
-        workList.addLast(startBlock);
-
-        // Set of visited blocks
-        var visited = new HashSet();
-
-        // Until the work list is empty
-        BLOCK_LOOP:
-        while (workList.isEmpty() === false)
-        {
-            var block = workList.remFirst();
-
-            visited.add(block);
-
-            // For each instruction of the block
-            var instrIdx = (block === startBlock)? startIdx:0;
-            for (; instrIdx < block.instrs.length; ++instrIdx)
-            {
-                var instr = block.instrs[instrIdx];
-
-                // For each value used by this instruction
-                for (var i = 0; i < instr.inVals.length; ++i)
-                {
-                    var use = instr.inVals[i];
-
-                    // If this is the value we are defining
-                    if (use.value === value)
-                    {
-                        // For each source of this value
-                        for (var j = 0; j < use.srcs.length; ++j)
-                        {
-                            var src = use.srcs[j];
-
-                            if (src === null)
-                                continue;
-
-                            // Remove the def-use edge
-                            var outVal = src.outVals[src.targetIdx][src.outIdx];
-                            arraySetRem(outVal.dsts, instr);
-                        }
-
-                        // Decrement the global edge count
-                        this.edgeCount -= use.srcs.length;
-
-                        // Remove all sources for this use to force the
-                        // type edge resolution to update this
-                        use.srcs = [];
-
-                        // Move to the next block in the work list
-                        continue BLOCK_LOOP;
-                    }
-                }
-                
-                // If this is the last instruction of the block
-                if (instrIdx === block.instrs.length - 1)
-                {
-                    // TODO: call instruction handling
-
-                    // If this is a return instruction
-                    if (instr.irInstr instanceof RetInstr)
-                    {
-                        // For each successor of the return instruction
-                        var func = instr.block.func;
-                        for (var i = 0; i < func.retSuccs.length; ++i)
-                        {
-                            var succ = func.retSuccs[i];
-                            if (visited.has(succ) === false)
-                                workList.addLast(succ);
-                        }
-                    }
-                    else
-                    {
-                        // For each target of the instruction
-                        for (var i = 0; i < instr.targets.length; ++i)
-                        {
-                            var target = instr.targets[i];
-                            if (target instanceof SPSTFBlock &&
-                                visited.has(target) === false)
-                                workList.addLast(target);
-                        }
-                    }
-                }
-            }
-        }
-
-        print('forward visited: ' + visited.length);
-    }
-
     if (targetIdx === undefined)
         targetIdx = 0;
 
@@ -842,26 +977,6 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
     // This is a new definition for this instruction
     else
     {
-
-        // FIXME: don't want to loop here. This would make multiple visits
-        // with different visited lists
-
-        // Clear sucessor uses referring to this value
-        if (instr.irInstr instanceof RetInstr)
-        {
-            var func = instr.block.func;
-            for (var i = 0; i < func.retSuccs.length; ++i)
-                clearSuccs(func.retSuccs[i], 0);
-        }
-        else if (instr.targets.length > 0)
-        {
-            clearSuccs(instr.targets[targetIdx], 0);
-        }
-        else
-        {
-            clearSuccs(instr.block, instr.block.instrs.indexOf(instr) + 1);
-        }
-
         // Create a new definition object
         var def = {
             value: value,
@@ -871,6 +986,9 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 
         // Add the new definition to the list for this target
         defList.push(def);
+
+        // Queue this instruction's block for live value analysis
+        this.queueBlock(instr.block);
     }
 }
 
