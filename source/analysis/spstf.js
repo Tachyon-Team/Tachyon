@@ -76,8 +76,9 @@ TODO: Object does not exist in one branch, how do we keep track of this? How do 
 */
 function SPSTFUseSet()
 {
-    HashSet.call(this);
+    HashSet.call(this, undefined, undefined, 3);
 }
+SPSTFUseSet.prototype = Object.create(HashSet.prototype);
 
 SPSTFUseSet.prototype.union = function (that)
 {
@@ -110,6 +111,7 @@ function SPSTFLiveMap()
 {
     HashMap.call(this, undefined, undefined, 3);
 }
+SPSTFLiveMap.prototype = Object.create(HashMap.prototype);
 
 SPSTFLiveMap.prototype.copy = function ()
 {
@@ -252,9 +254,19 @@ function SPSTFFunc(irFunc)
     this.entry = undefined;
 
     /**
+    List of return blocks
+    */
+    this.retBlocks = [];
+
+    /**
     List of return successor blocks
     */
     this.retSuccs = [];
+
+    /**
+    List of values defined in this function or callees
+    */
+    this.defSet = new HashSet();
 }
 
 /**
@@ -456,7 +468,7 @@ SPSTF.prototype.init = function ()
     /**
     Total number of type flow edges
     */
-    this.edgeCount = 0;
+    this.numEdges = 0;
 
     /**
     Meta-unit holding the initial instruction and unit calls
@@ -487,7 +499,7 @@ SPSTF.prototype.init = function ()
     /**
     Instruction iteration count
     */
-    this.instrItrCount = 0;
+    this.itrCount = 0;
 
     /**
     Block iteration count
@@ -561,6 +573,11 @@ SPSTF.prototype.getBlock = function (stump, func)
             // instructions will be in a continuation block.
             if (irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr)
                 break;
+
+            // If this is a return instruction, add this block to the list of
+            // return blocks for the function
+            if (irInstr instanceof RetInstr)
+                func.retBlocks.push(block);
 
             // Queue the instruction for analysis;
             this.queueInstr(instr);
@@ -714,7 +731,7 @@ SPSTF.prototype.instrItr = function ()
     instr.flowFunc(this);
 
     // Increment the instruction iteration count
-    this.instrItrCount++;
+    this.itrCount++;
 }
 
 /**
@@ -733,75 +750,198 @@ SPSTF.prototype.blockItr = function ()
 
     print('iterating block: ' + block.getBlockName());
 
+    /* TODO: 
+    Lazy propagation: if fn (or callees) doesn't define a value, don't
+    propagate uses for that value though the call. 
+    - Special treatment needed at returns
+    - Special treatment needed at call sites
+    */
 
+    var that = this;
 
+    /**
+    Process definitions for an instruction
+    */
+    function processDefs(instr, liveMap, targetIdx)
+    {
+        // Get the definitions for this target
+        var outVals = instr.outVals[targetIdx];
 
-    // TODO: merge live values coming from successors
-    // ISSUE: last instr kills different values depending on target we came from
+        // For each definition of the instruction
+        for (var outIdx = 0; outIdx < outVals.length; ++outIdx)
+        {
+            var def = outVals[outIdx];
+            var value = def.value;
+            var dests = def.dests;
 
-    // TODO: want field SPSTFBlock.liveMap, storing live values at the end
+            // Get the uses for this value
+            var useSet = liveMap.get(value);
 
+            // For each current dest of this definition
+            for (var i = 0; i < dests.length; ++i)
+            {
+                var dest = dests[i];
 
-    var branchInstr = block.instrs[block.instrs.length-1];
+                // If the use is no longer present
+                if (useSet.has(dest) === false)
+                {
+                    // Remove the type flow edge
+                    that.addEdge(
+                        value, 
+                        dest, 
+                        instr, 
+                        outIdx, 
+                        targetIdx
+                    );
 
+                    // Re-queue the dest instruction for analysis
+                    that.queueInstr(dest);
+                }          
+            }
 
-    var targets = block.instrs[block.instrs.length-1].targets;
+            // For each use in the incoming use set
+            for (var itr = useSet.getItr(); itr.valid(); itr.next())
+            {
+                var dest = itr.get();
 
+                // If this is a new use
+                if (arraySetHas(dests, dest) === false)
+                {
+                    // Add a new type flow edge
+                    that.addEdge(
+                        value, 
+                        dest, 
+                        instr, 
+                        outIdx, 
+                        targetIdx
+                    );
 
+                    // Re-queue the dest instruction for analysis
+                    that.queueInstr(dest);
+                }
+            }
 
-    // TODO: function call and return successors
-    // Can we unify this somehow? ********************
+            // Definitions kill live values
+            liveMap.killLive(value);
+        }
+    }
 
+    /**
+    Process uses for an instruction
+    */
+    function processUses(instr, liveMap)
+    {
+        // For each use of the instruction
+        for (var i = 0; i < instr.inVals.length; ++i)
+        {
+            var value = instr.inVals[i].value;
 
+            // Uses generate live values
+            liveMap.addLive(value, instr);
+        }
+    }
 
+    // Get the branch instruction for this block
+    var branch = block.instrs[block.instrs.length-1];
 
+    // Live value map to be propagated through this block
     var liveMap = new SPSTFLiveMap();
 
+    // If the branch is a return instruction
+    if (branch.irInstr instanceof RetInstr)
+    {
+        // TODO: don't prop local vars
+        // TODO: lazy prop
 
+        var retSuccs = branch.func.retSuccs;
 
+        for (var i = 0; i < retSuccs.length; ++i)
+        {
+            print('ret succ merge');
 
+            var succ = retSuccs[i];
 
+            var liveOut = succ.liveMap.copy();
+            liveMap = liveMap.union(liveOut);
+        }
+    }
 
+    // If the branch is a call instruction
+    else if (branch.irInstr instanceof JSCallInstr ||
+             branch.irInstr instanceof JSNewInstr)
+    {
+        // TODO: local var prop
+        // TODO: lazy prop
 
+        if (branch.callees !== undefined)
+        {
+            var callees = branch.callees;
 
-    // For each instruction, in reverse order
-    for (var i = block.instrs.length - 1; i >= 0; --i)
+            for (var i = 0; i < branch.callees.length; ++i)
+            {
+                print('call entry merge');
+
+                var entry = branch.callees[i].entry;
+
+                var liveOut = succ.liveMap.copy();
+                liveMap = liveMap.union(liveOut);
+            }
+        }
+        else
+        {
+            print('no callees');
+        }
+    }
+
+    // Other kinds of branch instructions
+    else
+    {
+        var targets = branch.targets;
+
+        for (var targetIdx = 0; targetIdx < targets.length; ++targetIdx)
+        {
+            var target = targets[targetIdx];
+
+            if (target instanceof SPSTFStump)
+                continue;
+
+            print('target merge');
+
+            var liveOut = target.liveMap.copy();
+            processDefs(branch, liveOut, targetIdx);
+
+            liveMap = liveMap.union(liveOut);
+        }
+    }
+
+    // Process uses for branch instruction
+    processUses(branch, liveMap);
+
+    // For each instruction except the last, in reverse order
+    for (var i = block.instrs.length - 2; i >= 0; --i)
     {
         var instr = block.instrs[i];
 
-        /* TODO
+        // Process defs of the instruction
+        processDefs(instr, liveMap, 0);
 
-        Definitions kill live values
-
-        Uses generate live values
-
-        New live value uses reaching a definition creates a new edge and re-queueing
-
-        Live value uses can also be removed, causing edges to be removed
-        */
-
-
-
-
-
-
-
-
-
+        // Process uses of the instruction
+        processUses(instr, liveMap);
     }
 
     // If the live map at the beginning of the block changed
     if (liveMap.equal(block.liveMap) === false)
     {
+        print('queueing preds');
+
         block.liveMap = liveMap;
 
-        // TODO: queue predecessors
-
-
-
-
-
-
+        // Queue all predecessors
+        for (var i = 0; i < block.preds.length; ++i)
+        {
+            var pred = block.preds[i];
+            this.queueBlock(pred);
+        }
     }
 
     // Increment the block iteration count
@@ -861,6 +1001,93 @@ SPSTF.prototype.newObject = function (
 }
 
 /**
+Add a def-use edge
+*/
+SPSTF.prototype.addEdge = function (
+    value, 
+    useInstr, 
+    defInstr, 
+    outIdx, 
+    targetIdx
+)
+{
+    print('Adding edge');
+
+    var def = defInstr.outVals[targetIdx][outIdx];
+
+    var use = undefined;
+    for (var i = 0; i < useInstr.inVals.length; ++i)
+    {
+        if (useInstr.inVals[i].value === value)
+        {
+            use = useInstr.inVals[i];
+            break;
+        }
+    }
+
+    assert (
+        use !== undefined,
+        'use not found'
+    );
+
+    def.dests.push(useInstr);
+
+    use.srcs.push(
+        {
+            instr: defInstr,
+            targetIdx: targetIdx,
+            outIdx: outIdx
+        }
+    );
+
+    this.numEdges++;
+}
+
+/**
+Remove a def-use edge
+*/
+SPSTF.prototype.remEdge = function (
+    value, 
+    useInstr, 
+    defInstr, 
+    outIdx,
+    targetIdx
+)
+{
+    print('Removing edge');
+
+    var def = defInstr.outVals[targetIdx][outIdx];
+
+    var use = undefined;
+    for (var i = 0; i < useInstr.inVals.length; ++i)
+    {
+        if (useInstr.inVals[i].value === value)
+        {
+            use = useInstr.inVals[i];
+            break;
+        }
+    }
+
+    assert (
+        use !== undefined,
+        'use not found'
+    );
+
+    arraySetRem(def.dests, useInstr);
+
+    for (var i = 0; i < use.srcs.length; ++i)
+    {
+        if (use.srcs[i].value === value)
+        {
+            use.srcs.splice(i, 1);
+            break;
+        }
+    }
+
+    this.numEdges--;
+}
+
+/**
 Get the type set for a value
 */
 SPSTF.prototype.getType = function (instr, value)
@@ -909,9 +1136,8 @@ SPSTF.prototype.getType = function (instr, value)
     for (var i = 0; i < use.srcs.length; ++i)
     {
         var src = use.srcs[i];
-
-        if (src === null)
-            continue;
+        var targetIdx = src.targetIdx;
+        var outIdx = src.outIdx;
 
         var outVal = src.instr.outVals[targetIdx][outIdx];
 
