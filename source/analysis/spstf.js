@@ -429,15 +429,6 @@ SPSTF.prototype.init = function ()
     // Clear the closure cell map
     TGClosCell.cellMap.clear();
 
-    // Create a meta-unit to hold initial definitions and unit calls
-    var metaUnit = new SPSTFFunc(null);
-    var initEntry = new SPSTFBlock(null, 0, metaUnit)
-    metaUnit.entry = initEntry;
-
-    // Create the instruction holding the initial definitions
-    var initInstr = new SPSTFInstr(new RetInstr(), 0, initEntry);
-    initEntry.instrs.push(initInstr);
-
     /**
     Work list of instructions queued for type flow analysis
     */
@@ -470,6 +461,14 @@ SPSTF.prototype.init = function ()
     */
     this.numEdges = 0;
 
+    // Create a meta-unit to hold initial definitions and unit calls
+    var metaUnit = new SPSTFFunc(null);
+    var initEntry = new SPSTFBlock(null, 0, metaUnit)
+    metaUnit.entry = initEntry;
+
+    // Create the instruction holding the initial definitions
+    var initInstr = this.makeInstr(new RetInstr(), initEntry);
+
     /**
     Meta-unit holding the initial instruction and unit calls
     */
@@ -479,6 +478,54 @@ SPSTF.prototype.init = function ()
     Pseudo-instruction holding initial definitions
     */
     this.initInstr = initInstr;
+
+    /**
+    Object prototype object node
+    */
+    this.objProto = this.newObject(
+        initInstr,
+        'obj_proto', 
+        undefined, 
+        undefined, 
+        undefined, 
+        true
+    );
+
+    /**
+    Array prototype object node
+    */
+    this.arrProto = this.newObject(
+        initInstr,
+        'arr_proto', 
+        this.objProto, 
+        undefined, 
+        undefined, 
+        true
+    );
+
+    /**
+    Function prototype object node
+    */
+    this.funcProto = this.newObject(
+        initInstr,
+        'func_proto', 
+        this.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    /**
+    String prototype object node
+    */
+    this.strProto = this.newObject(
+        initInstr,
+        'str_proto', 
+        this.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
 
     /**
     Global object node
@@ -547,6 +594,24 @@ SPSTF.prototype.evalTypeAsserts = function ()
 }
 
 /**
+Create an SPSTFInstr instance and add it to a block
+*/
+SPSTF.prototype.makeInstr = function (irInstr, block, instrIdx)
+{
+    if (instrIdx === undefined)
+        instrIdx = block.instrs.length;
+
+    var instr = new SPSTFInstr(irInstr, instrIdx, block);
+
+    block.instrs.push(instr);
+
+    // Queue the instruction for analysis;
+    this.queueInstr(instr);
+
+    return instr;
+}
+
+/**
 Get the SPSTFBlock instance for a given block stump
 */
 SPSTF.prototype.getBlock = function (stump, func)
@@ -566,8 +631,7 @@ SPSTF.prototype.getBlock = function (stump, func)
             var irInstr = stump.block.instrs[i];
 
             // Create the instruction object and add it to the block
-            var instr = new SPSTFInstr(irInstr, i, block);
-            block.instrs.push(instr);
+            var instr = this.makeInstr(irInstr, block, i);
 
             // If this is a call/new instruction, stop. Remaining
             // instructions will be in a continuation block.
@@ -578,9 +642,6 @@ SPSTF.prototype.getBlock = function (stump, func)
             // return blocks for the function
             if (irInstr instanceof RetInstr)
                 func.retBlocks.push(block);
-
-            // Queue the instruction for analysis;
-            this.queueInstr(instr);
         }
     }
 
@@ -662,17 +723,27 @@ SPSTF.prototype.addUnit = function (ir)
     // Construct the function object and queue it for analysis
     var func = this.queueFunc(ir);
 
-    // Add a call to the function in the meta-unit
-    var callInstr = new SPSTFInstr(
+    // Create a closure for the function in the meta-unit
+
+    var makeClosInstr = this.makeInstr(
         new CallFuncInstr(
-            func.irFunc,
+            config.clientParams.staticEnv.getBinding('makeClos'),
             IRConst.getConst(undefined),
-            IRConst.getConst(undefined)
+            IRConst.getConst(undefined),
+            func.irFunc,
+            IRConst.getConst(0, IRType.pint)
         ),
-        0,
         this.metaUnit.entry
     );
-    this.metaUnit.entry.instrs.push(callInstr);
+
+    // Call the function in the meta-unit
+    var callInstr = this.makeInstr(
+        new JSCallInstr(
+            makeClosInstr.irInstr,
+            IRConst.getConst(undefined)
+        ),
+        this.metaUnit.entry
+    );
 }
 
 /**
@@ -1256,30 +1327,326 @@ IRInstr.prototype.spstfFlowFunc = function (ta)
     // TODO
 }
 
+/*
+PhiInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var outType = TypeSet.empty;
+
+    // For each phi predecessor
+    for (var i = 0; i < this.preds.length; ++i)
+    {
+        var pred = this.preds[i];
+
+        // If this predecessor hasn't been visited, skip it
+        if (ta.blockGraphs.has(new BlockDesc(pred)) === false)
+            continue;
+
+        //print('merging pred ' + pred.getBlockName());
+
+        // Merge the type of this incoming value
+        var incType = typeGraph.getType(this.uses[i]);
+        outType = outType.union(incType);
+    }
+
+    typeGraph.assignType(this, outType);
+}
+*/
+
+GlobalObjInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // This refers to the global object
+    ta.setOutType(this, ta.globalObj);
+}
+
+/*
+InitGlobalInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var propName = this.uses[1].value;
+
+    var globalObj = ta.globalObj.getObjItr().get();
+
+    var propNode = globalObj.getPropNode(propName);
+
+    typeGraph.assignType(propNode, TypeSet.undef);
+}
+*/
+
+/*
+BlankObjInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Create a new object from the object prototype
+    var newObj = typeGraph.newObject(this, ta.objProto);
+
+    // The result is the new object
+    ta.setOutput(typeGraph, this, newObj);
+}
+*/
+
+/*
+BlankArrayInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Create a new array object from the array prototype
+    var newObj = typeGraph.newObject(this, ta.arrProto, TypeFlags.ARRAY);
+
+    // The result is the new object
+    ta.setOutput(typeGraph, this, newObj);
+}
+*/
+
+HasPropInstr.prototype.spstfFlowFunc = function (ta)
+{
+    ta.setOutput(typeGraph, this, TypeSet.bool);
+
+    ta.setOutType(this, TypeSet.boolj);
+}
+
+PutPropInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var objType  = ta.getInType(this, 0);
+    var nameType = ta.getInType(this, 1);
+    var valType  = ta.getInType(this, 2);
+
+    /*
+    var objType = typeGraph.getType(this.uses[0]);
+    var nameType = typeGraph.getType(this.uses[1]);
+    var valType = typeGraph.getType(this.uses[2]);
+
+    try
+    {
+        if (objType.flags === TypeFlags.ANY)
+            throw '*WARNING: putProp on any type';
+
+        if ((objType.flags & TypeFlags.EXTOBJ) === 0)
+            throw '*WARNING: putProp on non-object';
+
+        if (nameType.flags === TypeFlags.ANY)
+            throw '*WARNING: putProp with any name';
+
+        // Get a reference to this function
+        var func = this.parentBlock.parentCFG.ownerFunc;
+
+        // If the object is the this argument of the function
+        if (this.uses[0] instanceof ArgValInstr &&
+            this.uses[0].argIndex === 1)
+        {
+            // Test if this function is only ever called as a constructor
+            var funcInfo = ta.getFuncInfo(func);
+            var isCtorThis = (funcInfo.normalCall === false);
+        }
+
+        // If this is not a string constant or an integer
+        if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
+            nameType.flags !== TypeFlags.INT)
+            throw '*WARNING: putProp with unknown property name: ' + nameType;
+
+        // Get the property name string, if any
+        var propName = (nameType.flags === TypeFlags.STRING)? nameType.strVal:undefined;
+
+        // If writing to an array property, add the undefined type
+        if (nameType.flags === TypeFlags.INT)
+            valType = valType.union(TypeSet.undef);
+
+        // For each possible object
+        for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
+        {
+            var obj = objItr.get();
+
+            // Get the node for this property
+            if (propName !== undefined)
+                var propNode = obj.getPropNode(propName);
+            else
+                var propNode = obj.idxProp;
+
+            // Test if the object was created in this function
+            var isLocalObj = (
+                obj.origin.parentBlock !== undefined &&
+                obj.origin.parentBlock.parentCFG.ownerFunc === func &&
+                this.uses[0] === obj.origin
+            );
+
+            // Test if we can overwrite the current property type
+            var canAssignType = (
+                propNode !== obj.idxProp 
+                && 
+                (
+                    isCtorThis === true ||
+                    isLocalObj === true ||
+                    obj.singleton === true
+                )
+            );
+
+            // Update the property type
+            if (canAssignType === true)
+                typeGraph.assignType(propNode, valType);
+            else
+                typeGraph.unionType(propNode, valType);
+        }
+    }
+
+    // If an inference problem occurs
+    catch (e)
+    {
+        if (e instanceof Error)
+            throw e;
+
+        if (config.verbosity >= log.DEBUG)
+        {
+            print(e);
+            print(this);
+        }
+    }
+
+    // The object cannot be undefined or null along the normal branch
+    var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
+
+    // Update the object type
+    ta.setInput(typeGraph, this, this.uses[0], newObjType, objType);
+
+    ta.setOutput(typeGraph, this, valType);
+    */
+}
+
+/*
+GetPropInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Test if this is a bounded arguments object propery access
+    function boundedArgsGet(instr)
+    {
+        function isArgObj(valDef)
+        {
+            return (
+                valDef instanceof CallFuncInstr && 
+                valDef.uses[0] instanceof IRFunction &&
+                valDef.uses[0].funcName === 'makeArgObj'
+            );
+        }        
+
+        function allDestsGet(valDef)
+        {
+            for (var i = 0; i < valDef.dests.length; ++i)
+                if ((valDef.dests[i] instanceof GetPropInstr) === false)
+                    return false;
+
+            return true;
+        }
+
+        function idxBounded(valDef, idx, curBlock, depth)
+        {
+            if (depth >= 5)
+                return false;
+
+            if (curBlock.preds.length === 0)
+                return false;
+
+            // For each predecessor
+            for (var i = 0; i < curBlock.preds.length; ++i)
+            {
+                var pred = curBlock.preds[i];
+
+                var branch = pred.getLastInstr();
+
+                if (branch instanceof IfInstr && 
+                    branch.uses[1] === IRConst.getConst(true) &&
+                    branch.uses[0] instanceof JSLtInstr &&
+                    branch.uses[0].uses[0] === idx &&
+                    branch.uses[0].uses[1] instanceof GetPropInstr &&
+                    branch.uses[0].uses[1].uses[0] === valDef &&
+                    branch.uses[0].uses[1].uses[1] === IRConst.getConst('length') &&
+                    branch.targets[0] === curBlock)
+                {
+                    continue;
+                }
+                
+                if (idxBounded(valDef, idx, pred, depth + 1) === false)
+                    return false;
+            }
+
+            return true;
+        }
+
+        var valDef = instr.uses[0];
+        var idx = instr.uses[1];
+        var curBlock = instr.parentBlock;
+
+        if (isArgObj(valDef) === true &&
+            allDestsGet(valDef) === true && 
+            idxBounded(valDef, idx, curBlock, 0) === true)
+            return true;
+
+        return false;
+    }
+
+    var objType = typeGraph.getType(this.uses[0]);
+    var nameType = typeGraph.getType(this.uses[1]);
+
+    try
+    {
+        // If the property name could be anything
+        if (nameType.flags === TypeFlags.ANY)
+            throw '*WARNING: getProp with any name';
+
+        // If this is not a string constant or an integer
+        if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
+            nameType.flags !== TypeFlags.INT)
+            throw '*WARNING: getProp with unknown property name: ' + nameType;
+
+        // If the property name is a string
+        var propName;
+        if (nameType.flags === TypeFlags.STRING)
+        {
+            propName = nameType.strVal;
+        }
+        else
+        {
+            // TODO: more generic test for pos int, int < arr.length
+
+            // If this is a bounded arguments access
+            if (boundedArgsGet(this) === true)
+            {
+                // The array access is bounded
+                propName = true;
+            }
+            else
+            {
+                // For now, assume unbounded array access
+                propName = false;
+            }
+        }
+
+        // Perform the property lookup
+        var outType = ta.propLookup(typeGraph, objType, propName, 0);
+
+        ta.setOutput(typeGraph, this, outType);
+    }
+
+    // If an inference problem occurs
+    catch (e)
+    {
+        if (e instanceof Error)
+            throw e;
+
+        if (config.verbosity >= log.DEBUG)
+        {
+            print(e);
+            print(this);
+        }
+
+        ta.setOutput(typeGraph, this, TypeSet.any);
+    }
+}
+*/
+
+//GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
+
 JSAddInstr.prototype.spstfFlowFunc = function (ta)
 {
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
-
-
-    // TODO
-
-
-
-
-
-
-
-
-
-
-    /*
-    var t0 = typeGraph.getType(this.uses[0]);
-    var t1 = typeGraph.getType(this.uses[1]);
-
+    
     // Output type
     var outType;
 
+    /*
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
         var minVal = t0.rangeMin + t1.rangeMin;
@@ -1336,29 +1703,1140 @@ JSAddInstr.prototype.spstfFlowFunc = function (ta)
     */
 }
 
-GlobalObjInstr.prototype.spstfFlowFunc = function (ta)
+/*
+JSSubInstr.prototype.spstfFlowFunc = function (ta)
 {
-    // This refers to the global object
-    ta.setOutType(this, ta.globalObj);
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal = t0.rangeMin - t1.rangeMax;
+        var maxVal = t0.rangeMax - t1.rangeMin;
+
+        outType = new TypeSet(
+            TypeFlags.INT,
+            minVal,
+            maxVal
+        );
+    }
+
+    // By default
+    else
+    {
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    ta.setOutput(typeGraph, this, outType);
 }
+*/
 
-PutPropInstr.prototype.spstfFlowFunc = function (ta)
+/*
+JSMulInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var objType  = ta.getInType(this, 0);
-    var nameType = ta.getInType(this, 1);
-    var valType  = ta.getInType(this, 2);
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
 
+    // Output type
+    var outType;
 
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal;
+        minVal = t0.rangeMin * t1.rangeMin;
+        minVal = Math.min(minVal, t0.rangeMin * t1.rangeMax);
+        minVal = Math.min(minVal, t0.rangeMax * t1.rangeMin);
+        if (isNaN(minVal))
+            minVal = -Infinity;
 
-    // TODO
+        var maxVal;
+        maxVal = t0.rangeMax * t1.rangeMax;
+        maxVal = Math.max(maxVal, t0.rangeMin * t1.rangeMin);
+        if (isNaN(maxVal))
+            maxVal = Infinity;
+
+        outType = new TypeSet(
+            TypeFlags.INT,
+            minVal,
+            maxVal
+        );
+    }
+
+    // By default
+    else
+    {
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    ta.setOutput(typeGraph, this, outType);
 }
+*/
 
-GetPropInstr.prototype.spstfFlowFunc = function (ta)
+/*
+JSDivInstr.prototype.spstfFlowFunc = function (ta)
 {
+    var t0 = typeGraph.getType(this.uses[0]);
+    var t1 = typeGraph.getType(this.uses[1]);
 
+    // Output type
+    var outType;
 
+    if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
+    {
+        var minVal = 0;      
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            minVal = Math.min(t0.rangeMin / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            minVal = Math.min(t0.rangeMin / t1.rangeMax);
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            minVal = Math.min(t0.rangeMax / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            minVal = Math.min(t0.rangeMax / t1.rangeMax);
 
+        var maxVal;
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            maxVal = Math.max(t0.rangeMin / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            maxVal = Math.max(t0.rangeMin / t1.rangeMax);
+        if (Math.abs(t1.rangeMin) !== Infinity)
+            maxVal = Math.max(t0.rangeMax / t1.rangeMin);
+        if (Math.abs(t1.rangeMax) !== Infinity)
+            maxVal = Math.max(t0.rangeMax / t1.rangeMax);
 
-    // TODO
+        var flags;
+        if (t0.rangeMin === t0.rangeMax && 
+            t1.rangeMin === t1.rangeMax &&
+            t0.rangeMin % t1.rangeMax === 0)
+            flags = TypeFlags.INT;
+        else
+            flags = TypeFlags.INT | TypeFlags.FLOAT;
+
+        outType = new TypeSet(
+            flags,
+            minVal,
+            maxVal
+        );
+    }
+
+    // By default
+    else
+    {
+        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+*/
+
+/*
+// Bitwise operations
+JSBitOpInstr.prototype.spstfFlowFunc = function (ta)
+{
+    ta.setOutput(typeGraph, this, TypeSet.integer);
+}
+*/
+
+/*
+// Comparison operator base class
+JSCompInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+
+    return ta.setOutput(typeGraph, this, TypeSet.bool);
+}
+*/
+
+/*
+// Operator ==
+JSEqInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    // If both values are known integer constants
+    if (v0.flags === TypeFlags.INT &&
+        v1.flags === TypeFlags.INT &&
+        v0.rangeMin === v0.rangeMax &&
+        v1.rangeMin === v1.rangeMax)
+    {
+        outType = (v0.rangeMin === v1.rangeMin)? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal === v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known booleans
+    else if (
+        (v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
+        (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
+    {
+        outType = (v0.flags === v1.flags)? TypeSet.true:TypeSet.false;
+    }
+
+    // Otherwise, we know the output is boolean
+    else
+    {
+        outType = TypeSet.bool;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+*/
+
+/*
+// Operator ===
+JSSeInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+
+    // Output type
+    var outType;
+
+    // If both values are known integer constants
+    if (v0.flags === TypeFlags.INT &&
+        v1.flags === TypeFlags.INT &&
+        v0.rangeMin === v0.rangeMax &&
+        v1.rangeMin === v1.rangeMax)
+    {
+        outType = (v0.rangeMin === v1.rangeMin)? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal === v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    // If both values are known booleans
+    else if (
+        (v0.flags === TypeFlags.TRUE || v0.flags === TypeFlags.FALSE) &&
+        (v1.flags === TypeFlags.TRUE || v1.flags === TypeFlags.FALSE))
+    {
+        outType = (v0.flags === v1.flags)? TypeSet.true:TypeSet.false;
+    }
+
+    // Otherwise, we know the output is boolean
+    else
+    {
+        outType = TypeSet.bool;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+*/
+
+/*
+// Operator !=
+JSNeInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+
+    // Output type
+    var outType = TypeSet.bool;
+
+    // If the type flags are mutually exclusive,
+    // the values cannot be equal
+    if (v0.flags & v1.flags === 0)
+    {
+        outType = TypeSet.false;
+    }
+
+    // If both values are numbers and their ranges are mutually exclusive
+    else if (
+        (v0.flags === TypeFlags.INT || v0.flags === TypeFlags.FLOAT) &&
+        (v1.flags === TypeFlags.INT || v1.flags === TypeFlags.FLOAT))
+    {
+        // If the ranges are mutually exclusive
+        if (v0.rangeMax < v1.rangeMin || v1.rangeMax < v0.rangeMin)
+            outType = TypeSet.true;
+
+        // If the values are equal
+        else if (v0.rangeMin === v0.rangeMax && 
+                 v1.rangeMin === v1.rangeMax &&
+                 v0.rangeMin === v1.rangeMin)
+            outType = TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+*/
+
+/*
+// Operator !==
+JSNsInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+
+    // Output type
+    var outType = TypeSet.bool;
+
+    // If the type flags are mutually exclusive,
+    // the values cannot be equal
+    if (v0.flags & v1.flags === 0)
+    {
+        outType = TypeSet.false;
+    }
+
+    // If both values are numbers and their ranges are mutually exclusive
+    else if (
+        (v0.flags === TypeFlags.INT || v0.flags === TypeFlags.FLOAT) &&
+        (v1.flags === TypeFlags.INT || v1.flags === TypeFlags.FLOAT))
+    {
+        // If the ranges are mutually exclusive
+        if (v0.rangeMax < v1.rangeMin || v1.rangeMax < v0.rangeMin)
+            outType = TypeSet.true;
+
+        // If the values are equal
+        else if (v0.rangeMin === v0.rangeMax && 
+                 v1.rangeMin === v1.rangeMax &&
+                 v0.rangeMin === v1.rangeMin)
+            outType = TypeSet.false;
+    }
+
+    // If both values are known strings
+    else if (
+        v0.flags === TypeFlags.STRING && v1.flags === TypeFlags.STRING &&
+        v0.strVal !== undefined && v1.strVal !== undefined)
+    {
+        outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
+    }
+
+    ta.setOutput(typeGraph, this, outType);
+}
+*/
+
+/*
+JumpInstr.prototype.spstfFlowFunc = function (ta)
+{
+    ta.succMerge(this.targets[0], typeGraph);
+}
+*/
+
+// TODO
+// TODO: throw, must merge with all possible catch points
+// TODO
+
+/*
+// If branching instruction
+IfInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var v0 = typeGraph.getType(this.uses[0]);
+    var v1 = typeGraph.getType(this.uses[1]);
+    var v2 = (this.uses.length > 2)? typeGraph.getType(this.uses[1]):undefined;
+
+    var instr = this;
+
+    // Function to merge a value type in a given successor block
+    function mergeVal(val, type, target)
+    {
+        // If this is a constant, do nothing
+        if (val instanceof IRConst)
+            return;
+
+        // Remove the left value from the normal merge
+        typeGraph.remVar(val);
+
+        // Get the target block graph
+        var targetDesc = new BlockDesc(target);
+        var targetGraph = ta.getTypeGraph(targetDesc);
+
+        // If the successor has no type graph yet
+        if (targetGraph === HashMap.NOT_FOUND)
+        {
+            // Pass a copy of the predecessor graph to the successor
+            var targetGraph = typeGraph.copy(true, true);
+            ta.setTypeGraph(targetDesc, targetGraph);
+        }
+
+        var curType = targetGraph.getType(val);
+        var mergedType = curType.union(type);
+
+        // If the type changed
+        if (curType.equal(mergedType) === false)
+        {
+            targetGraph.unionType(val, mergedType);
+            ta.queueBlock(targetDesc);
+        }
+    }
+
+    // Function to handle the successor queuing for a given branch
+    function mergeSuccs(boolVal)
+    {
+        var trueTarget = instr.targets[0];
+        var falseTarget = instr.targets[1];
+
+        // If we can potentially narrow the comparison input types
+        if (instr.testOp === 'EQ' && 
+            v1.flags === TypeFlags.TRUE &&
+            instr.uses[0] instanceof JSCompInstr)
+        {
+            var compInstr = instr.uses[0];
+
+            var lVal = compInstr.uses[0];
+            var rVal = compInstr.uses[1];
+
+            var lType = typeGraph.getType(lVal);
+            var rType = typeGraph.getType(rVal);
+
+            var trueLType = lType;
+            var falseLType = lType;
+            
+            // Less-than comparison
+            if (compInstr instanceof JSLtInstr)
+            {
+                //print(lType + ' < ' + rType);
+
+                // If both values are integer
+                if (lType.flags === TypeFlags.INT && rType.flags === TypeFlags.INT)
+                {
+                    // lVal < rVal
+                    var rangeMax = Math.min(lType.rangeMax, rType.rangeMax - 1);
+                    var rangeMin = Math.min(lType.rangeMin, rangeMax);
+                    var trueLType = new TypeSet(
+                        TypeFlags.INT,
+                        rangeMin,
+                        rangeMax
+                    );
+
+                    // lVal >= rVal
+                    var rangeMin = Math.max(lType.rangeMin, rType.rangeMin);
+                    var rangeMax = Math.max(lType.rangeMax, rangeMin);
+                    var falseLType = new TypeSet(
+                        TypeFlags.INT,
+                        rangeMin,
+                        rangeMax
+                    );
+                }
+            }
+
+            if (boolVal === true || boolVal === undefined)
+                mergeVal(lVal, trueLType, trueTarget);
+            if (boolVal === false || boolVal === undefined)
+                mergeVal(lVal, falseLType, falseTarget);
+        }
+
+        // Merge with the successor blocks
+        if (boolVal === true || boolVal === undefined)
+            ta.succMerge(trueTarget, typeGraph);
+        if (boolVal === false || boolVal === undefined)
+            ta.succMerge(falseTarget, typeGraph);
+    }
+
+    // If this is an equality comparison
+    if (this.testOp === 'EQ')
+    {
+        if ((v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE) ||
+            (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE))
+            return mergeSuccs(true);
+
+        if ((v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.TRUE) ||
+            (v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.FALSE))
+            return mergeSuccs(false);
+    }
+
+    // Merge with both possible branch targets
+    mergeSuccs();
+}
+*/
+
+/*
+JSCallInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Get the type set for the callee
+    var calleeType = typeGraph.getType(this.uses[0]);
+
+    // If the callee is unknown or non-function
+    if (calleeType.flags === TypeFlags.ANY || 
+        (calleeType.flags & TypeFlags.FUNCTION) === 0)
+    {
+        if (config.verbosity >= log.DEBUG)
+            print('*WARNING: callee has type ' + calleeType);
+
+        ta.setOutput(typeGraph, this, TypeSet.any);
+
+        // Don't stop the inference for this block
+        return false;
+    }
+
+    // Test if this is a new/constructor call
+    var isNew = this instanceof JSNewInstr;
+
+    // If this is a regular function call
+    if (isNew === false)
+    {
+        // Get the this argument call
+        var thisType = typeGraph.getType(this.uses[1]);
+    }
+    else
+    {
+        // Lookup the "prototype" property of the callee
+        var protoType = ta.propLookup(typeGraph, calleeType, 'prototype', 0);
+
+        // If the prototype may not be an object
+        if (protoType.flags & (~TypeFlags.EXTOBJ))
+        {
+            // Exclude non-objects and include the object prototype object
+            protoType = protoType.restrict(protoType.flags & (~TypeFlags.EXTOBJ));
+            protoType = protoType.union(ta.objProto);
+        }
+
+        // Create a new object to use as the this argument
+        var thisType = typeGraph.newObject(this, protoType);
+    }
+
+    // Get a descriptor for the continuation block
+    if (this.targets[0] instanceof BasicBlock)
+    {
+        // Use the continuation target
+        var contDesc = new BlockDesc(this.targets[0]);
+    }
+    else
+    {
+        // The continuation is the rest of the caller block
+        var instrIdx = this.parentBlock.instrs.indexOf(this);
+        var contDesc = new BlockDesc(this.parentBlock, instrIdx + 1);
+    }
+
+    // Get the type graph for the continuation
+    var contGraph = ta.getTypeGraph(contDesc);
+
+    // Merge the continuation graph with the current type graph
+    if (contGraph === HashMap.NOT_FOUND)
+        var newContGraph = typeGraph.copy(true, false);
+    else
+        var newContGraph = contGraph.merge(typeGraph, true, false);
+
+    // Restrict the callee type in the continuation to functions
+    var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
+    newContGraph.assignType(this.uses[0], newCalleeType);
+
+    // Flag to indicate a potential callee has been analyzed
+    var calleeAnalyzed = false;
+
+    // For each potential callee
+    for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
+    {
+        var callee = itr.get();
+
+        // Get the function for this class
+        var func = callee.origin;
+
+        // If this is not a function, ignore it
+        if ((func instanceof IRFunction) === false)
+            continue;
+
+        //print('potential callee: ' + func.funcName);
+
+        // Get the info object for this function
+        var funcInfo = ta.getFuncInfo(func);
+
+        // Get a descriptor for the entry block
+        var entryDesc = new BlockDesc(funcInfo.entry);
+
+        // Get the type graph at the function entry
+        var entryGraph = ta.getTypeGraph(entryDesc);
+
+        // Merge the entry graph with the current type graph
+        if (entryGraph === HashMap.NOT_FOUND)
+            var newEntryGraph = typeGraph.copy(false, true);
+        else
+            var newEntryGraph = entryGraph.merge(typeGraph, false, true);
+
+        // Get the type set for this callee function
+        var funcType = new TypeSet(
+            callee.flags, 
+            undefined, 
+            undefined, 
+            undefined, 
+            callee
+        );
+
+        // For each argument
+        for (var j = 0; j < funcInfo.argNodes.length; ++j)
+        {
+            var argNode = funcInfo.argNodes[j];
+
+            // Get the incoming type for this argument
+            if (j === 0)
+            {
+                argTypeSet = funcType;
+            }
+            else if (j === 1)
+            {
+                argTypeSet = thisType;
+            }
+            else
+            {
+                var useIdx = (isNew === true)? (j-1):j;
+                argTypeSet =
+                    (useIdx < this.uses.length)?
+                    typeGraph.getType(this.uses[useIdx]):
+                    TypeSet.undef;
+            }
+
+            // Union the type for this argument
+            newEntryGraph.unionType(argNode, argTypeSet);
+        }
+
+        // If this function uses the arguments object
+        if (func.usesArguments === true)
+        {
+            // For each argument of this call (excluding the function and this)
+            for (var i = (isNew? 1:2); i < this.uses.length; ++i)
+            {
+                // Union the argument type into the indexed argument type
+                var argType = typeGraph.getType(this.uses[i]);
+                newEntryGraph.unionType(funcInfo.idxArgNode, argType);
+            }
+        }
+
+        // If the entry graph changed
+        if (entryGraph === HashMap.NOT_FOUND || 
+            newEntryGraph.equal(entryGraph) === false)
+        {
+            // Update the entry graph
+            ta.setTypeGraph(entryDesc, newEntryGraph);
+
+            // Queue the function for analysis
+            ta.queueFunc(func);
+        }
+
+        // Add this instruction to the set of callers
+        if (funcInfo.callerSet.has(this) === false)
+        {
+            funcInfo.callerSet.add(this);
+            funcInfo.callerList.push(this);
+        }
+
+        // Set the call type flags
+        if (isNew === true)
+            funcInfo.ctorCall = true;
+        else
+            funcInfo.normalCall = true;
+
+        // Get the return graph for the callee
+        var retGraph = funcInfo.retGraph;
+
+        // If there is a return graph for the callee
+        if (retGraph !== undefined)
+        {
+            // At least one callee has been analyzed
+            calleeAnalyzed = true;
+
+            // Merge the return graph into the continuation graph
+            newContGraph = newContGraph.merge(retGraph, false, true);
+
+            // Get the return type for this call
+            var retType = retGraph.getType(funcInfo.retNode);
+
+            // If this is a regular call
+            if (isNew === false)
+            {
+                newContGraph.unionType(this, retType);
+            }
+            else
+            {
+                var callRetType = TypeSet.empty;
+
+                // If the return type may be undefined
+                if (retType.flags & TypeFlags.UNDEF)
+                {
+                    // Union the "this" argument type
+                    callRetType = callRetType.union(thisType);
+                }
+
+                // If the return type may be not undefined
+                if (retType.flags !== TypeFlags.UNDEF)
+                {
+                    // Union all but undefined
+                    callRetType = callRetType.union(retType.restrict(
+                        retType.flags & ~TypeFlags.UNDEF
+                    ));
+                }
+
+                newContGraph.unionType(this, callRetType);
+            }
+        }
+    }
+
+    // If the continuation graph changed
+    if (contGraph === HashMap.NOT_FOUND || 
+        newContGraph.equal(contGraph) === false)
+    {
+        // Update the continuation graph
+        ta.setTypeGraph(contDesc, newContGraph);
+
+        // If at least one potential callee has been analyzed
+        if (calleeAnalyzed === true)
+        {
+            // Queue the continuation for analysis
+            ta.queueBlock(contDesc);
+        }
+    }
+
+    // Stop the inference for this block
+    return true;
+}
+*/
+
+// New/constructor call instruction
+// Handled by the same function as the regular call instruction
+//JSNewInstr.prototype.typeProp = JSCallInstr.prototype.typeProp;
+
+// Call with apply instruction
+// TODO
+//CallApplyInstr.prototype.spstfFlowFunc = function (ta)
+//{
+//}
+
+/*
+ArgValInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Get the info object for this function
+    var func = this.parentBlock.parentCFG.ownerFunc;
+    var funcInfo = ta.getFuncInfo(func);
+
+    var argNode = funcInfo.argNodes[this.argIndex];
+    var argTypeSet = typeGraph.getType(argNode);
+
+    typeGraph.assignType(this, argTypeSet);
+}
+*/
+
+/*
+RetInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Get the return type
+    var retType = typeGraph.getType(this.uses[0]);
+
+    // Get the info object for this function
+    var func = this.parentBlock.parentCFG.ownerFunc;
+    var funcInfo = ta.getFuncInfo(func);
+ 
+    // Get the return point graph
+    var retGraph = funcInfo.retGraph;
+
+    // Merge the current type graph into the return graph
+    if (retGraph === undefined)
+        var newRetGraph = typeGraph.copy(false, true);
+    else
+        var newRetGraph = retGraph.merge(typeGraph, false, true);
+
+    // Merge the return type
+    newRetGraph.unionType(funcInfo.retNode, retType);
+
+    // If the return graph changed
+    if (retGraph === undefined || newRetGraph.equal(retGraph) === false)
+    {
+        // Update the return graph
+        funcInfo.retGraph = newRetGraph;
+    }
+    else
+    {
+        // Stop here, do not re-queue the callers
+        return;
+    }
+
+    // If this is a unit-level function
+    if (funcInfo.nextUnit !== undefined)
+    {
+        // The continuation is the next unit's entry
+        var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
+
+        // Get the current continuation type graph
+        var contGraph = ta.getTypeGraph(contDesc);
+
+        // Copy the return graph for the next unit
+        var nextGraph = newRetGraph.copy(false, true);
+
+        // If the continuation graph changed
+        if (contGraph === HashMap.NOT_FOUND ||
+            nextGraph.equal(contGraph) === false)
+        {
+            // Queue the continuation block for analysis
+            ta.setTypeGraph(contDesc, nextGraph);
+            ta.queueBlock(contDesc);
+        }
+    }
+
+    // Otherwise, this is a regular function
+    else
+    {
+        // For each caller
+        for (var i = 0; i < funcInfo.callerList.length; ++i)
+        {
+            var callInstr = funcInfo.callerList[i];
+            var callerBlock = callInstr.parentBlock;
+
+            // If there is a call continuation block
+            if (callInstr.targets[0] instanceof BasicBlock)
+            {
+                // Use the continuation target
+                var contDesc = new BlockDesc(callInstr.targets[0]);
+            }
+            else
+            {
+                // The continuation is the rest of the caller block
+                var instrIdx = callerBlock.instrs.indexOf(callInstr);
+                var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
+            }
+
+            // Get the current type graph for the continuation
+            var contGraph = ta.getTypeGraph(contDesc);
+
+            // Merge the return graph into the continuation graph
+            var newContGraph = contGraph.merge(newRetGraph, false, true);
+
+            // If this is a regular call instruction
+            if (callInstr instanceof JSCallInstr)
+            {
+                // Set the return type for the call instruction
+                newContGraph.unionType(callInstr, retType);
+            }
+
+            // Otherwise, this is a constructor call
+            else
+            {
+                var newType = TypeSet.empty;
+
+                // If the return type may be undefined
+                if (retType.flags & TypeFlags.UNDEF)
+                {
+                    // Union the "this" argument type
+                    var thisType = typeGraph.getType(funcInfo.argNodes[1]);
+                    newType = newType.union(thisType);
+                }
+
+                // If the return type may be not undefined
+                if (retType.flags !== TypeFlags.UNDEF)
+                {
+                    // Union all but undefined
+                    newType = newType.union(retType.restrict(
+                        retType.flags & ~TypeFlags.UNDEF
+                    ));
+                }
+
+                // Set the return type for the new instruction
+                newContGraph.unionType(callInstr, newType);
+            }
+
+            // If the continuation graph changed
+            if (newContGraph.equal(contGraph) === false)
+            {
+                // Queue the continuation block for analysis
+                ta.setTypeGraph(contDesc, newContGraph);
+                ta.queueBlock(contDesc);
+            }
+        }
+    }
+}
+*/
+
+// LIR call instruction
+CallFuncInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var callee = this.irInstr.uses[0];
+
+    // Return type (by default, any type)
+    var retType = TypeSet.any;
+
+    // If we cannot determine the callee
+    if ((callee instanceof IRFunction) === false)
+    {
+        // Do nothing
+    }
+
+    /*
+    // Creates the 'arguments' object
+    else if (callee.funcName === 'makeArgObj')
+    {
+        // Get the argument type info for this function
+        var func = this.parentBlock.parentCFG.ownerFunc;
+        var funcInfo = ta.getFuncInfo(func);
+
+        // Create the arguments object
+        var argObjType = typeGraph.newObject(this, ta.objProto);
+        var argObj = argObjType.getObjItr().get();
+
+        // Set the arguments length value
+        var lengthNode = argObj.getPropNode('length');
+        typeGraph.assignType(lengthNode, TypeSet.posInt);
+
+        // Set the indexed property type
+        var idxArgType = typeGraph.getType(funcInfo.idxArgNode);
+        typeGraph.assignType(argObj.idxProp, idxArgType);
+
+        retType = argObjType;
+    }
+    */
+
+    // Closure object creation
+    else if (callee.funcName === 'makeClos')
+    {
+        print('makeClos');
+
+        var func = this.irInstr.uses[3];
+        var numClosCells = this.irInstr.uses[4].value;
+
+        //print(this);
+
+        assert (
+            func instanceof IRFunction,
+            'closure of unknown function'
+        );
+
+        assert (
+            isNonNegInt(numClosCells),
+            'invalid num clos cells'
+        );
+
+        // Create an object node for this function
+        var funcObj = ta.newObject(
+            this,
+            func, 
+            ta.funcProto, 
+            TypeFlags.FUNCTION, 
+            numClosCells
+        );
+
+        // If this is a global library function
+        if (ta.fromLib(func) === true)
+        {
+            // Try to find the right prototype object
+            var protoObj;
+
+            switch (func.funcName)
+            {
+                case 'Object'   : protoObj = ta.objProto; break;
+                case 'Array'    : protoObj = ta.arrProto; break;
+                case 'Function' : protoObj = ta.funcProto; break;
+                case 'String'   : protoObj = ta.strProto; break;
+            }
+        }
+
+        // If no prototype object exists
+        if (protoObj === undefined)
+        {
+            // Test if this is a global function
+            var globalFunc = (
+                this.irInstr.parentBlock &&
+                this.irInstr.parentBlock.parentCFG.ownerFunc.parentFunc === null
+            );
+
+            // Create a Function.prototype object for the function
+            var protoObj = ta.newObject(
+                this,
+                this.irInstr, 
+                ta.objProto,
+                undefined,
+                undefined,
+                globalFunc
+            );
+        }
+
+        // Assign the prototype object to the Function.prototype property
+        var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
+        ta.setType(this, protoNode, protoObj);
+
+        retType = funcObj;
+    }
+
+    /*
+    // Closure cell creation
+    else if (callee.funcName === 'makeCell')
+    {
+        //print('makeCell');
+        //print(this);
+
+        var newCell = new TGClosCell(this);
+
+        var cellType = new TypeSet(
+            TypeFlags.CELL,
+            undefined,
+            undefined,
+            undefined,
+            newCell
+        );
+
+        retType = cellType;
+    }
+
+    // Set closure cell variable
+    else if (callee.funcName === 'set_clos_cells')
+    {
+        var closType = typeGraph.getType(this.uses[3]);
+        var cellIdx = this.uses[4].value;
+        var valType = typeGraph.getType(this.uses[5]);
+
+        //print(this);
+
+        assert (
+            closType.flags === TypeFlags.FUNCTION,
+            'invalid closure type'
+        );
+
+        // For each possible closure
+        for (var itr = closType.getObjItr(); itr.valid(); itr.next())
+        {
+            var clos = itr.get();
+
+            assert (
+                cellIdx < clos.closVars.length,
+                'invalid clos var index: ' + cellIdx + 
+                ' (' + clos.closVars.length + ')'
+            );
+
+            var varNode = clos.closVars[cellIdx];
+            typeGraph.unionType(varNode, valType);
+        }
+    }
+
+    // Get closure cell variable
+    else if (callee.funcName === 'get_clos_cells')
+    {
+        var closType = typeGraph.getType(this.uses[3]);
+        var cellIdx = this.uses[4].value;
+
+        //print('get_clos_cells ******');
+
+        assert (
+            closType.flags === TypeFlags.FUNCTION,
+            'invalid closure type'
+        );
+
+        var outType = TypeSet.empty;
+
+        // For each possible closure
+        for (var itr = closType.getObjItr(); itr.valid(); itr.next())
+        {
+            var clos = itr.get();
+
+            assert (
+                cellIdx < clos.closVars.length,
+                'invalid clos var index: ' + cellIdx + 
+                ' (' + clos.closVars.length + ')'
+            );
+
+            var varNode = clos.closVars[cellIdx];
+            var varType = typeGraph.getType(varNode);
+
+            outType = outType.union(varType);
+        }
+
+        retType = outType;
+    }
+
+    // Set closure cell value
+    else if (callee.funcName === 'set_cell_val')
+    {
+        var cellType = typeGraph.getType(this.uses[3]);
+        var valType = typeGraph.getType(this.uses[4]);
+
+        //print('set_cell_val');
+        //print(this);
+
+        assert (
+            cellType.flags === TypeFlags.CELL,
+            'invalid cell type: ' + cellType
+        );
+
+        // For each possible cell
+        for (var itr = cellType.getObjItr(); itr.valid(); itr.next())
+        {
+            var cell = itr.get();
+
+            var varNode = cell.value;
+            typeGraph.unionType(varNode, valType);
+        }
+    }
+
+    // Get closure cell value
+    else if (callee.funcName === 'get_cell_val')
+    {
+        var cellType = typeGraph.getType(this.uses[3]);
+
+        //print('get_cell_val');
+        //print(this);
+
+        // If the cell type is not unknown
+        if (cellType.flags !== TypeFlags.ANY)
+        {
+            assert (
+                cellType.flags === TypeFlags.CELL,
+                'invalid closure cell type: ' + cellType
+            );
+
+            var outType = TypeSet.empty;
+
+            // For each possible cell
+            for (var itr = cellType.getObjItr(); itr.valid(); itr.next())
+            {
+                var cell = itr.get();
+                var varType = typeGraph.getType(cell.value);
+
+                outType = outType.union(varType);
+            }
+
+            retType = outType;
+        }
+    }
+
+    // Box an integer
+    else if (callee.funcName === 'boxInt')
+    {
+        retType = TypeSet.posInt;
+    }
+
+    // Box value to string conversion
+    else if (callee.funcName === 'boxToString')
+    {
+        var valType = typeGraph.getType(this.uses[2]);
+
+        if (valType.flags === TypeFlags.STRING)
+            retType = valType;
+        else
+            retType = TypeSet.string;
+    }
+    */
+
+    // Unknown primitive
+    else
+    {
+        print('unknown primitive: ' + callee.funcName);
+    }
+
+    // Set our own output type
+    ta.setOutType(this, retType);
+
+    /*
+    // Merge with all possible branch targets
+    for (var i = 0; i < this.targets.length; ++i)
+        ta.succMerge(this.targets[i], typeGraph);
+    */
 }
 
