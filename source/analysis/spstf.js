@@ -207,6 +207,11 @@ SPSTFLiveMap.prototype.get = function (value)
 */
 function SPSTFStump(block, instrIdx)
 {
+    assert (
+        block instanceof BasicBlock,
+        'invalid basic block'
+    );
+
     if (instrIdx === undefined)
         instrIdx = 0;
 
@@ -270,6 +275,11 @@ function SPSTFFunc(irFunc)
     this.callSites = [];
 
     /**
+    List of argument value instructions
+    */
+    this.argInstrs = new Array(numParams);
+
+    /**
     List of lists of argument values
     */
     this.argVals = argVals;
@@ -324,7 +334,7 @@ function SPSTFBlock(irBlock, instrIdx, func)
     );
 
     assert (
-        func instanceof SPSTFFunc,
+        func === null || func instanceof SPSTFFunc,
         'invalid function object'
     );
 
@@ -419,17 +429,25 @@ function SPSTFInstr(irInstr, instrIdx, block)
     */
     this.outVals = undefined;
 
+    // If this is a call instruction
+    if (irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr)
+    {
+        // Add a field for the list of callees
+        this.callees = [];
+    }
+
     // If the instruction has targets
     if (irInstr.targets.length > 0)
     {
         this.targets = new Array(irInstr.targets.length);
-    
+
         for (var i = 0; i < this.targets.length; ++i)
             this.targets[i] = new SPSTFStump(irInstr.targets[i]);
     }
 
     // If this is a call instruction with no explicit targets
-    else if (irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr)
+    else if ((irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr) &&
+             irInstr.parentBlock instanceof BasicBlock)
     {
         this.targets = [new SPSTFStump(irInstr.parentBlock, instrIdx + 1)];
     }
@@ -507,11 +525,11 @@ SPSTF.prototype.init = function ()
 
     // Create a meta-unit to hold initial definitions and unit calls
     var metaUnit = new SPSTFFunc(null);
-    var initEntry = new SPSTFBlock(null, 0, metaUnit)
-    metaUnit.entry = initEntry;
+    var metaEntry = new SPSTFBlock(null, 0, metaUnit)
+    metaUnit.entry = metaEntry;
 
     // Create the instruction holding the initial definitions
-    var initInstr = this.makeInstr(new RetInstr(), initEntry);
+    var initInstr = this.makeInstr(Object.create(JumpInstr.prototype), metaEntry);
 
     /**
     Meta-unit holding the initial instruction and unit calls
@@ -522,6 +540,11 @@ SPSTF.prototype.init = function ()
     Pseudo-instruction holding initial definitions
     */
     this.initInstr = initInstr;
+
+    /**
+    Last meta-unit block added
+    */
+    this.lastMetaBlock = metaEntry;
 
     /**
     Object prototype object node
@@ -660,6 +683,11 @@ Get the SPSTFBlock instance for a given block stump
 */
 SPSTF.prototype.getBlock = function (stump, func)
 {
+    assert (
+        func === null || func instanceof SPSTFFunc,
+        'invalid function object'
+    );
+
     // Check if a representation has already been created for this block
     var block = this.blockMap.get(stump);
 
@@ -682,10 +710,26 @@ SPSTF.prototype.getBlock = function (stump, func)
             if (irInstr instanceof JSCallInstr || irInstr instanceof JSNewInstr)
                 break;
 
-            // If this is a return instruction, add this block to the list of
-            // return blocks for the function
+            // If this is a return instruction
             if (irInstr instanceof RetInstr)
+            {
+                // Add this block to the list of return blocks for the function
                 func.retBlocks.push(block);
+            }
+
+            // If this is an argument value instruction
+            else if (irInstr instanceof ArgValInstr)
+            {
+                var argIndex = irInstr.argIndex;
+
+                assert (
+                    func.argInstrs[argIndex] === undefined,
+                    'already have ArgValInstr for index'
+                );
+
+                // Store the instruction on the function object
+                func.argInstrs[argIndex] = instr;
+            }
         }
 
         // Queue the block for live value analysis
@@ -780,8 +824,10 @@ SPSTF.prototype.addUnit = function (ir)
     // Construct the function object and queue it for analysis
     var func = this.getFunc(ir);
 
-    // Create a closure for the function in the meta-unit
+    // Create a new block in the meta-unit to call into the new unit
+    var callBlock = new SPSTFBlock(null, 0, this.metaUnit);
 
+    // Create a closure for the function in the meta-unit
     var makeClosInstr = this.makeInstr(
         new CallFuncInstr(
             config.clientParams.staticEnv.getBinding('makeClos'),
@@ -790,7 +836,7 @@ SPSTF.prototype.addUnit = function (ir)
             func.irFunc,
             IRConst.getConst(0, IRType.pint)
         ),
-        this.metaUnit.entry
+        callBlock
     );
 
     // Call the function in the meta-unit
@@ -799,8 +845,16 @@ SPSTF.prototype.addUnit = function (ir)
             makeClosInstr.irInstr,
             IRConst.getConst(undefined)
         ),
-        this.metaUnit.entry
+        callBlock
     );
+
+    // Make the last meta-unit block branch to the new block
+    var lastBlock = this.lastMetaBlock;
+    var lastBranch = lastBlock.instrs[lastBlock.instrs.length-1];
+    lastBranch.targets = [callBlock];
+
+    // The new block is the last meta-unit block
+    this.lastMetaBlock = callBlock;    
 }
 
 /**
@@ -984,7 +1038,7 @@ SPSTF.prototype.blockItr = function ()
         // TODO: don't prop local vars
         // TODO: lazy prop
 
-        var callSites = branch.func.callSites;
+        var callSites = branch.block.func.callSites;
 
         for (var i = 0; i < callSites.length; ++i)
         {
@@ -1005,23 +1059,14 @@ SPSTF.prototype.blockItr = function ()
         // TODO: local var prop
         // TODO: lazy prop
 
-        if (branch.callees !== undefined)
+        for (var i = 0; i < branch.callees.length; ++i)
         {
-            var callees = branch.callees;
+            print('call entry merge');
 
-            for (var i = 0; i < branch.callees.length; ++i)
-            {
-                print('call entry merge');
+            var entry = branch.callees[i].entry;
 
-                var entry = branch.callees[i].entry;
-
-                var liveOut = entry.liveMap.copy();
-                liveMap = liveMap.union(liveOut);
-            }
-        }
-        else
-        {
-            print('no callees');
+            var liveOut = entry.liveMap.copy();
+            liveMap = liveMap.union(liveOut);
         }
     }
 
@@ -1068,11 +1113,43 @@ SPSTF.prototype.blockItr = function ()
 
         block.liveMap = liveMap;
 
-        // Queue all predecessors
-        for (var i = 0; i < block.preds.length; ++i)
+        // If this is a function entry block
+        if (block === block.func.entry)
         {
-            var pred = block.preds[i];
-            this.queueBlock(pred);
+            var func = block.func;
+
+            // Queue the call site blocks
+            for (var i = 0; i < func.callSites.length; ++i)
+            {
+                var callSite = func.callSites[i];
+                this.queueBlock(callSite.block);
+            }
+        }
+        else
+        {
+            // For each predecessor block
+            for (var i = 0; i < block.preds.length; ++i)
+            {
+                var pred = block.preds[i];
+
+                // Queue the predecessors
+                this.queueBlock(pred);
+
+                // Get the branch instruction of the predecessor block
+                var branch = pred.instrs[pred.instrs.length-1];
+
+                // If the predecessor is a call site
+                if (branch instanceof JSCallInstr || brach instanceof JSNewInstr)
+                {
+                    // Queue all callee return sites
+                    for (var j = 0; j < branch.callees.length; ++j)
+                    {
+                        var callee = callees[j];
+                        for (var k = 0; k < callee.retBlocks.length; ++k)
+                            this.queueBlock(callee.retBlocks[k]);
+                    }
+                }
+            }
         }
     }
 
@@ -1396,6 +1473,28 @@ SPSTF.prototype.setInType = function (instr, useIdx, normalType, exceptType)
 
     if (instr.targets.length > 1)
         this.setType(instr, value, exceptType, 1);
+}
+
+/**
+Mark a branch instruction's target block as reachable
+*/
+SPSTF.prototype.touchTarget = function (instr, targetIdx)
+{
+    assert (
+        targetIdx < instr.targets.length,
+        'invalid target'
+    );
+    
+    var target = instr.targets[targetIdx];
+
+    // If this target has not yet been visited
+    if (target instanceof SPSTFStump)
+    {
+        // Create the basic block for this target and queue it for analysis
+        var block = this.getBlock(target, instr.block.func);
+
+        instr.targets[targetIdx] = block;
+    }
 }
 
 /**
@@ -2230,12 +2329,11 @@ JSNsInstr.prototype.spstfFlowFunc = function (ta)
 }
 */
 
-/*
 JumpInstr.prototype.spstfFlowFunc = function (ta)
 {
-    ta.succMerge(this.targets[0], typeGraph);
+    // Make the successor reachable
+    ta.touchTarget(this, 0);
 }
-*/
 
 // TODO
 // TODO: throw, must merge with all possible catch points
@@ -2408,10 +2506,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         var thisType = ta.newObject(this, this.irInstr, protoType);
     }
 
-    // If the callee set does not exist, create it
-    if (this.callees === undefined)
-        this.callees = [];
-
     // Union of the return type of all potential callees
     var retType = TypeSet.empty;
 
@@ -2468,33 +2562,32 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
                     this.uses[useIdx]:
                     IRConst.getConst(undefined);
 
+                // TODO: re-queue arg obj instr on change
+
                 // If this function uses the arguments object, add the
                 // value to the indexed argument value list
                 if (func.irFunc.usesArguments === true)
                     arraySetAdd(func.idxArgVals, argVal);
             }
 
-            arraySetAdd(argVals, argVal);
+            // If this is a new value for this argument
+            if (arraySetHas(argVals, argVal) === false)
+            {
+                // Add the value to the set of values for this argument
+                arraySetAdd(argVals, argVal);
 
-
-            // TODO
-            // TODO: re-queue the corresponding ArgValInstr instructions
-            // if the argument value sets change*****
-
-
-
+                // Queue the argument value instruction
+                var argInstr = func.argInstrs[j];
+                if (argInstr !== undefined)
+                    ta.queueInstr(func.argInstrs[j]);
+            }
         }
 
         // Compute the return type for this call
         var calleeRet = TypeSet.empty;
-        for (var i = 0; i < func.retBlocks.length; ++i)
+        for (var i = 0; i < func.retVals.length; ++i)
         {
-            var retBlock = func.retBlocks[i];
-            var retInstr = retBlock.instrs[retBlock.instrs.length-1];
-            var retVal = retInstr.irInstr.uses[0];
-
-            var retRet = ta.getType(instr, retVal);
-
+            var retRet = ta.getType(instr, func.retVals[i]);
             calleeRet = calleeRet.union(retRet);
         }
 
@@ -2533,16 +2626,9 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Set the call return type
     ta.setOutType(this, retType);
 
-
-
-
-    // TODO
-    // TODO: queue successors blocks (continuations)
-    // TODO
-
-
-
-
+    // Mark the successors as reachable
+    for (var i = 0; i < this.targets.length; ++i)
+        ta.touchTarget(this, i);
 }
 
 // New/constructor call instruction
@@ -2555,149 +2641,47 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 //{
 //}
 
-/*
 ArgValInstr.prototype.spstfFlowFunc = function (ta)
 {
-    // Get the info object for this function
-    var func = this.parentBlock.parentCFG.ownerFunc;
-    var funcInfo = ta.getFuncInfo(func);
+    print('ArgValInstr');
 
-    var argNode = funcInfo.argNodes[this.argIndex];
-    var argTypeSet = typeGraph.getType(argNode);
+    var func = this.block.func;
+    var argIndex = this.irInstr.argIndex;
+    var argVals = func.argVals[argIndex];
 
-    typeGraph.assignType(this, argTypeSet);
+    var argType = TypeSet.empty;
+
+    for (var i = 0; i < argVals; ++i)
+    {
+        var val = argVals[i];
+        var type = ta.getType(this, val);
+
+        argType = argType.union(type);
+    }
+
+    ta.setOutType(this, argType);
 }
-*/
 
 RetInstr.prototype.spstfFlowFunc = function (ta)
 {
-    // TODO: update type of call instructions? re-queue them?
+    print('RetInstr');
 
-    /*
-    // Get the return type
-    var retType = typeGraph.getType(this.uses[0]);
+    var func = this.block.func;
+    var retVals = func.retVals;
 
-    // Get the info object for this function
-    var func = this.parentBlock.parentCFG.ownerFunc;
-    var funcInfo = ta.getFuncInfo(func);
- 
-    // Get the return point graph
-    var retGraph = funcInfo.retGraph;
+    // Get the return value
+    var retVal = this.irInstr.uses[0];
 
-    // Merge the current type graph into the return graph
-    if (retGraph === undefined)
-        var newRetGraph = typeGraph.copy(false, true);
-    else
-        var newRetGraph = retGraph.merge(typeGraph, false, true);
-
-    // Merge the return type
-    newRetGraph.unionType(funcInfo.retNode, retType);
-
-    // If the return graph changed
-    if (retGraph === undefined || newRetGraph.equal(retGraph) === false)
+    // If this return value is not yet accounted for
+    if (this.visited !== true && arraySetHas(retVals, retVal) === false)
     {
-        // Update the return graph
-        funcInfo.retGraph = newRetGraph;
+        arraySetAdd(retVals, retVal);
+        this.visited = true;
+
+        // Queue the call instructions at the call sites
+        for (var i = 0; i < func.callSites.length; ++i)
+            ta.queueInstr(func.callSites[i]);
     }
-    else
-    {
-        // Stop here, do not re-queue the callers
-        return;
-    }
-
-    // If this is a unit-level function
-    if (funcInfo.nextUnit !== undefined)
-    {
-        // The continuation is the next unit's entry
-        var contDesc = new BlockDesc(funcInfo.nextUnit.entry);
-
-        // Get the current continuation type graph
-        var contGraph = ta.getTypeGraph(contDesc);
-
-        // Copy the return graph for the next unit
-        var nextGraph = newRetGraph.copy(false, true);
-
-        // If the continuation graph changed
-        if (contGraph === HashMap.NOT_FOUND ||
-            nextGraph.equal(contGraph) === false)
-        {
-            // Queue the continuation block for analysis
-            ta.setTypeGraph(contDesc, nextGraph);
-            ta.queueBlock(contDesc);
-        }
-    }
-
-    // Otherwise, this is a regular function
-    else
-    {
-        // For each caller
-        for (var i = 0; i < funcInfo.callerList.length; ++i)
-        {
-            var callInstr = funcInfo.callerList[i];
-            var callerBlock = callInstr.parentBlock;
-
-            // If there is a call continuation block
-            if (callInstr.targets[0] instanceof BasicBlock)
-            {
-                // Use the continuation target
-                var contDesc = new BlockDesc(callInstr.targets[0]);
-            }
-            else
-            {
-                // The continuation is the rest of the caller block
-                var instrIdx = callerBlock.instrs.indexOf(callInstr);
-                var contDesc = new BlockDesc(callerBlock, instrIdx + 1);
-            }
-
-            // Get the current type graph for the continuation
-            var contGraph = ta.getTypeGraph(contDesc);
-
-            // Merge the return graph into the continuation graph
-            var newContGraph = contGraph.merge(newRetGraph, false, true);
-
-            // If this is a regular call instruction
-            if (callInstr instanceof JSCallInstr)
-            {
-                // Set the return type for the call instruction
-                newContGraph.unionType(callInstr, retType);
-            }
-
-            // Otherwise, this is a constructor call
-            else
-            {
-                var newType = TypeSet.empty;
-
-                // If the return type may be undefined
-                if (retType.flags & TypeFlags.UNDEF)
-                {
-                    // Union the "this" argument type
-                    var thisType = typeGraph.getType(funcInfo.argNodes[1]);
-                    newType = newType.union(thisType);
-                }
-
-                // If the return type may be not undefined
-                if (retType.flags !== TypeFlags.UNDEF)
-                {
-                    // Union all but undefined
-                    newType = newType.union(retType.restrict(
-                        retType.flags & ~TypeFlags.UNDEF
-                    ));
-                }
-
-                // Set the return type for the new instruction
-                newContGraph.unionType(callInstr, newType);
-            }
-
-            // If the continuation graph changed
-            if (newContGraph.equal(contGraph) === false)
-            {
-                // Queue the continuation block for analysis
-                ta.setTypeGraph(contDesc, newContGraph);
-                ta.queueBlock(contDesc);
-            }
-        }
-    }
-    */
 }
 
 // LIR call instruction
