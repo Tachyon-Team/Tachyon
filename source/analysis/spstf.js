@@ -48,27 +48,6 @@ Sparse Path-Sensitive Type Flow (SPSTF) analysis implementation.
 Maxime Chevalier-Boisvert
 */
 
-/*
-TODO
-Try to minimize hash table lookups
-
-Phi instrs must make sure to have in-edges for all reachable *edges*
-  - Edges, not preds!
-
-How do we deal with function calls and returns? **********
-- Probably want SPSTFFunc object, so we can think in terms of call graphs
-- Type flow edges for ArgValInstr go to corresponding definitions directly???
-  - Need to tell the ArgValInstr what type sets (values) to fetch
-  - Special method for this *****
-- Same for returns, tell the calls instrs what type sets to fetch
-  - Special method for this *****
-
-TODO: Object does not exist in one branch, how do we keep track of this? How do we merge?
-- If you can't reach a prop type set on a given path, the object doesn't exist on that path
-  - Resolves to initDefs, gives empty set
-- Objects need to create undefined type sets for their properties at the creation site******
-*/
-
 /**
 @class Set of live value uses
 */
@@ -902,8 +881,10 @@ SPSTF.prototype.instrItr = function ()
 {
     assert (
         this.instrWorkList.isEmpty() === false,
-            'empty work list'
+        'empty work list'
     );
+
+    print('Iterating instr');
 
     // Remove an instruction from the work list
     var instr = this.instrWorkList.remFirst();
@@ -1644,18 +1625,29 @@ PhiInstr.prototype.spstfFlowFunc = function (ta)
     {
         var pred = this.irInstr.preds[i];
 
-        // TODO
+
+
+        // TODO: test if predecessor is reachable?
+
+
+
         /*
-        // If this predecessor hasn't been visited, skip it
-        if (ta.blockGraphs.has(new BlockDesc(pred)) === false)
-            continue;
+        TODO: need to get the value type in the corresponding predecessor?
 
-        //print('merging pred ' + pred.getBlockName());
+        TODO: special handling in live value analysis?
 
-        // Merge the type of this incoming value
-        var incType = typeGraph.getType(this.uses[i]);
-        outType = outType.union(incType);
+        For phi node, only want to propagate the live value to the corresponding
+        predecessor???
+
+        This is problematic. Don't want to merge the definitions from all predecessors!
+
+        Need to propagate phi uses selectively. Could do filtering.
+
+
         */
+
+
+
     }
 
     ta.setOutType(this, outType);
@@ -1709,11 +1701,6 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
     var nameType = ta.getInType(this, 1);
     var valType  = ta.getInType(this, 2);
 
-    /*
-    var objType = typeGraph.getType(this.uses[0]);
-    var nameType = typeGraph.getType(this.uses[1]);
-    var valType = typeGraph.getType(this.uses[2]);
-
     try
     {
         if (objType.flags === TypeFlags.ANY)
@@ -1726,16 +1713,15 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
             throw '*WARNING: putProp with any name';
 
         // Get a reference to this function
-        var func = this.parentBlock.parentCFG.ownerFunc;
+        var func = this.block.func;
 
-        // If the object is the this argument of the function
-        if (this.uses[0] instanceof ArgValInstr &&
-            this.uses[0].argIndex === 1)
-        {
-            // Test if this function is only ever called as a constructor
-            var funcInfo = ta.getFuncInfo(func);
-            var isCtorThis = (funcInfo.normalCall === false);
-        }
+        // Test if the object is the this argument of the function and
+        // the function is only ever called as a constructor
+        var isCtorThis = (
+            this.irInstr.uses[0] instanceof ArgValInstr &&
+            this.irInstr.uses[0].argIndex === 1 &&
+            func.normalCall === false
+        );
 
         // If this is not a string constant or an integer
         if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
@@ -1763,8 +1749,8 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
             // Test if the object was created in this function
             var isLocalObj = (
                 obj.origin.parentBlock !== undefined &&
-                obj.origin.parentBlock.parentCFG.ownerFunc === func &&
-                this.uses[0] === obj.origin
+                obj.origin.parentBlock.parentCFG.ownerFunc === func.irFunc &&
+                this.irInstr.uses[0] === obj.origin
             );
 
             // Test if we can overwrite the current property type
@@ -1778,11 +1764,15 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 )
             );
 
+            // If we cannot assign the property type, union with the current type
+            if (canAssignType === false)
+            {
+                var propType = ta.getType(this, propNode);
+                var valType = propType.union(valType);
+            }
+
             // Update the property type
-            if (canAssignType === true)
-                typeGraph.assignType(propNode, valType);
-            else
-                typeGraph.unionType(propNode, valType);
+            ta.setType(this, propNode, valType);
         }
     }
 
@@ -1801,15 +1791,11 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
 
     // The object cannot be undefined or null along the normal branch
     var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
+    ta.setInType(this, 0, newObjType, objType);
 
-    // Update the object type
-    ta.setInput(typeGraph, this, this.uses[0], newObjType, objType);
-
-    ta.setOutput(typeGraph, this, valType);
-    */
+    ta.setOutType(this, valType);
 }
 
-/*
 GetPropInstr.prototype.spstfFlowFunc = function (ta)
 {
     // Test if this is a bounded arguments object propery access
@@ -1879,8 +1865,8 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
         return false;
     }
 
-    var objType = typeGraph.getType(this.uses[0]);
-    var nameType = typeGraph.getType(this.uses[1]);
+    var objType = ta.getInType(this, 0);
+    var nameType = ta.getInType(this, 1);
 
     try
     {
@@ -1904,7 +1890,7 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
             // TODO: more generic test for pos int, int < arr.length
 
             // If this is a bounded arguments access
-            if (boundedArgsGet(this) === true)
+            if (boundedArgsGet(this.irInstr) === true)
             {
                 // The array access is bounded
                 propName = true;
@@ -1917,9 +1903,9 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
         }
 
         // Perform the property lookup
-        var outType = ta.propLookup(typeGraph, objType, propName, 0);
+        var outType = ta.propLookup(this, objType, propName, 0);
 
-        ta.setOutput(typeGraph, this, outType);
+        ta.setOutType(this, outType);
     }
 
     // If an inference problem occurs
@@ -1934,26 +1920,25 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
             print(this);
         }
 
-        ta.setOutput(typeGraph, this, TypeSet.any);
+        ta.setOutType(this, TypeSet.any);
     }
 }
-*/
 
-//GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
+GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
 JSAddInstr.prototype.spstfFlowFunc = function (ta)
 {
+    print('JSAddInstr');
+
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
     
     // Output type
     var outType;
 
-    /*
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
         var minVal = t0.rangeMin + t1.rangeMin;
-
         var maxVal = t0.rangeMax + t1.rangeMax;
 
         outType = new TypeSet(
@@ -2002,16 +1987,14 @@ JSAddInstr.prototype.spstfFlowFunc = function (ta)
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT | TypeFlags.STRING);
     }
 
-    ta.setOutput(typeGraph, this, outType);
-    */
+    ta.setOutType(this, outType);
 }
 
-/*
 JSSubInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var t0 = typeGraph.getType(this.uses[0]);
-    var t1 = typeGraph.getType(this.uses[1]);
-
+    var t0 = ta.getInType(this, 0);
+    var t1 = ta.getInType(this, 1);
+    
     // Output type
     var outType;
 
@@ -2033,16 +2016,14 @@ JSSubInstr.prototype.spstfFlowFunc = function (ta)
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
-/*
 JSMulInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var t0 = typeGraph.getType(this.uses[0]);
-    var t1 = typeGraph.getType(this.uses[1]);
-
+    var t0 = ta.getInType(this, 0);
+    var t1 = ta.getInType(this, 1);
+    
     // Output type
     var outType;
 
@@ -2074,9 +2055,8 @@ JSMulInstr.prototype.spstfFlowFunc = function (ta)
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
 /*
 JSDivInstr.prototype.spstfFlowFunc = function (ta)
@@ -2149,12 +2129,11 @@ JSCompInstr.prototype.spstfFlowFunc = function (ta)
     ta.setOutType(this, TypeSet.bool);
 }
 
-/*
 // Operator ==
 JSEqInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
+    var v0 = ta.getInType(this, 0);
+    var v1 = ta.getInType(this, 1);
 
     // Output type
     var outType;
@@ -2190,9 +2169,8 @@ JSEqInstr.prototype.spstfFlowFunc = function (ta)
         outType = TypeSet.bool;
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
 /*
 // Operator ===
