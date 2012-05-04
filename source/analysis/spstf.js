@@ -169,6 +169,16 @@ SPSTFLiveMap.prototype.killLive = function (value)
 }
 
 /**
+Kill a specific use of a value
+*/
+SPSTFLiveMap.prototype.killUse = function (value, use)
+{
+    var useSet = this.get(value);
+
+    useSet.rem(use);
+}
+
+/**
 Get the use set for a given value
 */
 SPSTFLiveMap.prototype.get = function (value)
@@ -1007,6 +1017,34 @@ SPSTF.prototype.blockItr = function ()
         }
     }
 
+    /**
+    Filter incoming phi uses not meant for this block
+    */
+    function filterPhis(liveMap, pred, succ)
+    {
+        // For phi node of the successor
+        for (var i = 0; i < succ.instrs.length; ++i)
+        {
+            var phi = succ.instrs[i].irInstr;
+
+            if ((phi instanceof PhiInstr) === false)
+                return;
+
+            var predIdx = phi.preds.indexOf(pred.irBlock);
+
+            // For each use of the phi node
+            for (var j = 0; j < phi.uses.length; ++j)
+            {
+                var value = phi.uses[j];
+
+                // If the value is not meant for this block,
+                // remove the use associated with this phi node
+                if (predIdx === -1 || value !== phi.uses[predIdx])
+                    liveMap.killUse(value, phi);
+            }
+        }
+    }
+
     // Get the branch instruction for this block
     var branch = block.instrs[block.instrs.length-1];
 
@@ -1029,6 +1067,9 @@ SPSTF.prototype.blockItr = function ()
             var callCont = callSite.targets[0];
 
             var liveOut = callCont.liveMap.copy();
+
+            filterPhis(liveOut, block, callCont);
+
             liveMap = liveMap.union(liveOut);
         }
     }
@@ -1066,6 +1107,10 @@ SPSTF.prototype.blockItr = function ()
             print('target merge');
 
             var liveOut = target.liveMap.copy();
+
+            filterPhis(liveOut, block, target);
+ 
+            // Process the definitions along the target (kills)
             processDefs(branch, liveOut, targetIdx);
 
             liveMap = liveMap.union(liveOut);
@@ -1120,7 +1165,7 @@ SPSTF.prototype.blockItr = function ()
                 var branch = pred.instrs[pred.instrs.length-1];
 
                 // If the predecessor is a call site
-                if (branch instanceof JSCallInstr || brach instanceof JSNewInstr)
+                if (branch instanceof JSCallInstr || branch instanceof JSNewInstr)
                 {
                     // Queue all callee return sites
                     for (var j = 0; j < branch.callees.length; ++j)
@@ -1143,7 +1188,7 @@ Create a new object abstraction
 */
 SPSTF.prototype.newObject = function (
     instr,
-    origin, 
+    tag, 
     protoSet, 
     flags, 
     numClosVars, 
@@ -1172,8 +1217,9 @@ SPSTF.prototype.newObject = function (
     );
 
     var obj = new TGObject(
-        origin,
-        flags, 
+        instr.irInstr,
+        tag,
+        flags,
         numClosVars,
         singleton
     );
@@ -1471,10 +1517,17 @@ SPSTF.prototype.touchTarget = function (instr, targetIdx)
     // If this target has not yet been visited
     if (target instanceof SPSTFStump)
     {
-        // Create the basic block for this target and queue it for analysis
+        // Create the basic block for this target
         var block = this.getBlock(target, instr.block.func);
 
+        // Update the target to point to the block
         instr.targets[targetIdx] = block;
+
+        // Add this block to the predecessors of the target
+        arraySetAdd(block.preds, instr.block);
+
+        // Queue the branch instruction's block for analysis 
+        this.queueBlock(instr.block);
     }
 }
 
@@ -1621,33 +1674,16 @@ PhiInstr.prototype.spstfFlowFunc = function (ta)
     var outType = TypeSet.empty;
 
     // For each phi predecessor
+    // Note: only reachable predecessors appear in this list
     for (var i = 0; i < this.preds.length; ++i)
     {
         var pred = this.irInstr.preds[i];
 
+        var val = this.irInstr.uses[i];
 
+        var type = ta.getType(this, val);
 
-        // TODO: test if predecessor is reachable?
-
-
-
-        /*
-        TODO: need to get the value type in the corresponding predecessor?
-
-        TODO: special handling in live value analysis?
-
-        For phi node, only want to propagate the live value to the corresponding
-        predecessor???
-
-        This is problematic. Don't want to merge the definitions from all predecessors!
-
-        Need to propagate phi uses selectively. Could do filtering.
-
-
-        */
-
-
-
+        outType = outType.union(type);
     }
 
     ta.setOutType(this, outType);
@@ -1673,7 +1709,7 @@ InitGlobalInstr.prototype.spstfFlowFunc = function (ta)
 BlankObjInstr.prototype.spstfFlowFunc = function (ta)
 {
     // Create a new object from the object prototype
-    var newObj = ta.newObject(this, this.irInstr, ta.objProto);
+    var newObj = ta.newObject(this, 'obj', ta.objProto);
 
     // The result is the new object
     ta.setOutType(this, newObj);
@@ -1682,7 +1718,7 @@ BlankObjInstr.prototype.spstfFlowFunc = function (ta)
 BlankArrayInstr.prototype.spstfFlowFunc = function (ta)
 {
     // Create a new array object from the array prototype
-    var newObj = ta.newObject(this, this.irInstr, ta.arrProto, TypeFlags.ARRAY);
+    var newObj = ta.newObject(this, 'array', ta.arrProto, TypeFlags.ARRAY);
 
     // The result is the new object
     ta.setOutType(this, newObj);
@@ -1748,7 +1784,8 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
 
             // Test if the object was created in this function
             var isLocalObj = (
-                obj.origin.parentBlock !== undefined &&
+                obj.origin.parentBlock &&
+                obj.origin.parentBlock.parentCFG &&
                 obj.origin.parentBlock.parentCFG.ownerFunc === func.irFunc &&
                 this.irInstr.uses[0] === obj.origin
             );
@@ -2481,7 +2518,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         }
 
         // Create a new object to use as the this argument
-        var thisType = ta.newObject(this, this.irInstr, protoType);
+        var thisType = ta.newObject(this, 'new_obj', protoType);
     }
 
     // Union of the return type of all potential callees
@@ -2504,11 +2541,22 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         // Get the SPSTFFunc instance for this value
         var func = ta.getFunc(origin);
 
-        // Add the function to the callee set
-        arraySetAdd(this.callees, func);
+        // If this function is a new callee
+        if (arraySetHas(this.callees, func) === false)
+        {
+            // Add the function to the callee set
+            arraySetAdd(this.callees, func);
 
-        // Add this instruction to the set of callers of the function
-        arraySetAdd(func.callSites, this);
+            // Add this instruction to the set of callers of the function
+            arraySetAdd(func.callSites, this);
+
+            // Queue the call site block
+            ta.queueBlock(this.block);
+
+            // Queue the return blocks
+            for (var i = 0; i < func.retBlocks.length; ++i)
+                ta.queueBlock(func.retBlocks[i]);
+        }
 
         // Set the call type flags
         if (isNew === true)
@@ -2565,7 +2613,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         var calleeRet = TypeSet.empty;
         for (var i = 0; i < func.retVals.length; ++i)
         {
-            var retRet = ta.getType(instr, func.retVals[i]);
+            var retRet = ta.getType(this, func.retVals[i]);
             calleeRet = calleeRet.union(retRet);
         }
 
@@ -2723,7 +2771,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         // Create an object node for this function
         var funcObj = ta.newObject(
             this,
-            func, 
+            'closure', 
             ta.funcProto, 
             TypeFlags.FUNCTION, 
             numClosCells
@@ -2756,7 +2804,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
             // Create a Function.prototype object for the function
             var protoObj = ta.newObject(
                 this,
-                this.irInstr, 
+                'proto', 
                 ta.objProto,
                 undefined,
                 undefined,
@@ -2938,10 +2986,8 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Set our own output type
     ta.setOutType(this, retType);
 
-    /*
-    // Merge with all possible branch targets
+    // Mark the successors as reachable
     for (var i = 0; i < this.targets.length; ++i)
-        ta.succMerge(this.targets[i], typeGraph);
-    */
+        ta.touchTarget(this, i);
 }
 

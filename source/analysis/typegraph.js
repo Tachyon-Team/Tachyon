@@ -81,8 +81,25 @@ TGProperty.prototype = new TGVariable();
 /**
 @class Object value in a type graph.
 */
-function TGObject(origin, flags, numClosVars, singleton)
+function TGObject(
+    origin,
+    tag,
+    flags, 
+    numClosVars, 
+    singleton
+)
 {
+    assert (
+        origin === null ||
+        origin instanceof IRInstr,
+        'invalid origin instruction'
+    );
+
+    assert (
+        typeof tag === 'string',
+        'invalid object tag'
+    );
+
     assert (
         flags === TypeFlags.OBJECT  ||
         flags === TypeFlags.ARRAY   ||
@@ -91,11 +108,14 @@ function TGObject(origin, flags, numClosVars, singleton)
     );
 
     /**
-    Origin (creation) site of the object.
+    Origin instruction (creation site) of the object.
     */
     this.origin = origin;
 
-    // TODO: creation context
+    /**
+    Object tag
+    */
+    this.tag = tag;
 
     // If the object is already in the map, return it
     var obj = TGObject.objMap.get(this);
@@ -144,11 +164,14 @@ Map of existing objects
 TGObject.objMap = new HashMap(
     function hash(o)
     {
-        return defHashFunc(o.origin);
+        return (defHashFunc(o.origin) << 2) + defHashFunc(o.tag);
     },
     function eq(o1, o2)
     {
         if (o1.origin !== o2.origin)
+            return false;
+
+        if (o1.tag !== o2.tag)
             return false;
 
         return true;
@@ -160,12 +183,14 @@ Get a printable name of an object
 */
 TGObject.prototype.getName = function ()
 {
-    if (typeof this.origin === 'string')
-        return this.origin;
-    else if (this.origin instanceof IRFunction)
-        return 'func:"' + this.origin.funcName + '"';
-    else
-        return this.origin.getValName();
+    var str = '';
+
+    if (this.origin instanceof IRValue)
+        str += this.origin.getValName() + '/';
+
+    str += this.objTag;
+
+    return str;
 }
 
 /**
@@ -1097,7 +1122,8 @@ TypeGraph.prototype.equal = function (that)
 Create a new object in the type graph
 */
 TypeGraph.prototype.newObject = function (
-    origin, 
+    origin,
+    tag,
     protoSet, 
     flags, 
     numClosVars, 
@@ -1127,6 +1153,7 @@ TypeGraph.prototype.newObject = function (
 
     var obj = new TGObject(
         origin,
+        tag,
         flags, 
         numClosVars,
         singleton

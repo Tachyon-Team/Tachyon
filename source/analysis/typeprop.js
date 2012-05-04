@@ -130,6 +130,7 @@ TypeProp.prototype.init = function ()
     Object prototype object node
     */
     this.objProto = this.initGraph.newObject(
+        null,
         'obj_proto', 
         undefined, 
         undefined, 
@@ -141,6 +142,7 @@ TypeProp.prototype.init = function ()
     Array prototype object node
     */
     this.arrProto = this.initGraph.newObject(
+        null,
         'arr_proto', 
         this.objProto, 
         undefined, 
@@ -152,6 +154,7 @@ TypeProp.prototype.init = function ()
     Function prototype object node
     */
     this.funcProto = this.initGraph.newObject(
+        null,
         'func_proto', 
         this.objProto,
         undefined, 
@@ -163,6 +166,7 @@ TypeProp.prototype.init = function ()
     String prototype object node
     */
     this.strProto = this.initGraph.newObject(
+        null,
         'str_proto', 
         this.objProto,
         undefined, 
@@ -174,6 +178,7 @@ TypeProp.prototype.init = function ()
     Global object node
     */
     this.globalObj = this.initGraph.newObject(
+        null,
         'global', 
         this.objProto, 
         undefined,
@@ -282,9 +287,6 @@ TypeProp.prototype.dumpObjects = function ()
             obj instanceof TGObject,
             'invalid object: ' + obj
         );
-
-        if (obj.origin instanceof IRFunction)
-            continue;
 
         if (this.fromLib(obj.origin) === true)
             continue;
@@ -1311,7 +1313,7 @@ InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
 BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Create a new object from the object prototype
-    var newObj = typeGraph.newObject(this, ta.objProto);
+    var newObj = typeGraph.newObject(this, 'obj', ta.objProto);
 
     // The result is the new object
     ta.setOutput(typeGraph, this, newObj);
@@ -1320,7 +1322,7 @@ BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
 BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Create a new array object from the array prototype
-    var newObj = typeGraph.newObject(this, ta.arrProto, TypeFlags.ARRAY);
+    var newObj = typeGraph.newObject(this, 'array', ta.arrProto, TypeFlags.ARRAY);
 
     // The result is the new object
     ta.setOutput(typeGraph, this, newObj);
@@ -1385,7 +1387,8 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
             // Test if the object was created in this function
             var isLocalObj = (
-                obj.origin.parentBlock !== undefined &&
+                obj.origin &&
+                obj.origin.parentBlock &&
                 obj.origin.parentBlock.parentCFG.ownerFunc === func &&
                 this.uses[0] === obj.origin
             );
@@ -2104,7 +2107,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         }
 
         // Create a new object to use as the this argument
-        var thisType = typeGraph.newObject(this, protoType);
+        var thisType = typeGraph.newObject(this, 'new_obj', protoType);
     }
 
     // Get a descriptor for the continuation block
@@ -2141,12 +2144,13 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
     {
         var callee = itr.get();
 
-        // Get the function for this class
-        var func = callee.origin;
-
         // If this is not a function, ignore it
-        if ((func instanceof IRFunction) === false)
+        if ((callee.origin instanceof IRInstr) === false ||
+            (callee.origin.uses[0] instanceof IRFunction) === false ||
+            callee.origin.uses[0].funcName !== 'makeClos')
             continue;
+
+        var func = callee.origin.uses[3];
 
         //print('potential callee: ' + func.funcName);
 
@@ -2478,7 +2482,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         var funcInfo = ta.getFuncInfo(func);
 
         // Create the arguments object
-        var argObjType = typeGraph.newObject(this, ta.objProto);
+        var argObjType = typeGraph.newObject(this, 'arg_obj', ta.objProto);
         var argObj = argObjType.getObjItr().get();
 
         // Set the arguments length value
@@ -2512,7 +2516,8 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 
         // Create an object node for this function
         var funcObj = typeGraph.newObject(
-            func, 
+            this,
+            'closure',
             ta.funcProto, 
             TypeFlags.FUNCTION, 
             numClosCells
@@ -2541,7 +2546,8 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
 
             // Create a Function.prototype object for the function
             var protoObj = typeGraph.newObject(
-                this, 
+                this,
+                'proto',
                 ta.objProto,
                 undefined,
                 undefined,
