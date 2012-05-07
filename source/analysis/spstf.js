@@ -1217,7 +1217,7 @@ SPSTF.prototype.newObject = function (
     );
 
     var obj = new TGObject(
-        instr.irInstr,
+        instr,
         tag,
         flags,
         numClosVars,
@@ -1532,6 +1532,32 @@ SPSTF.prototype.touchTarget = function (instr, targetIdx)
 }
 
 /**
+Get the value node corresponding to a given object property
+*/
+SPSTF.prototype.getPropNode = function (obj, propName)
+{
+    // If the property node does not already exist
+    if (obj.hasPropNode(propName) === false)
+    {
+        var propNode = obj.getPropNode(propName);
+
+        var origInstr = obj.origin;
+
+        assert (
+            origInstr instanceof SPSTFInstr,
+            'invalid origin instruction'
+        );
+
+        // Assign the undefined type to the property at the object
+        // creation site. This is because object properties are
+        // initially undefined.
+        this.setType(origInstr, propNode, TypeSet.undef);
+    }
+
+    return obj.getPropNode(propName);
+}
+
+/**
 Perform a property lookup with recursive prototype chain search
 */
 SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
@@ -1600,7 +1626,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
         {
             // Get the node for this property
             if (typeof propName === 'string')
-                var propNode = obj.getPropNode(propName);
+                var propNode = this.getPropNode(obj, propName);
             else
                 var propNode = obj.idxProp;
 
@@ -1701,7 +1727,7 @@ InitGlobalInstr.prototype.spstfFlowFunc = function (ta)
 
     var globalObj = ta.globalObj.getObjItr().get();
 
-    var propNode = globalObj.getPropNode(propName);
+    var propNode = ta.getPropNode(globalObj, propName);
 
     ta.setType(this, propNode, TypeSet.undef);
 }
@@ -1778,7 +1804,7 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
 
             // Get the node for this property
             if (propName !== undefined)
-                var propNode = obj.getPropNode(propName);
+                var propNode = ta.getPropNode(obj, propName);
             else
                 var propNode = obj.idxProp;
 
@@ -2737,7 +2763,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         var argObj = argObjType.getObjItr().get();
 
         // Set the arguments length value
-        var lengthNode = argObj.getPropNode('length');
+        var lengthNode = ta.getPropNode(argObj, 'length');
         typeGraph.assignType(lengthNode, TypeSet.posInt);
 
         // Set the indexed property type
@@ -2813,7 +2839,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         }
 
         // Assign the prototype object to the Function.prototype property
-        var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
+        var protoNode = ta.getPropNode(funcObj.getObjItr().get(), 'prototype');
         ta.setType(this, protoNode, protoObj);
 
         retType = funcObj;

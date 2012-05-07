@@ -91,7 +91,8 @@ function TGObject(
 {
     assert (
         origin === null ||
-        origin instanceof IRInstr,
+        origin instanceof IRInstr ||
+        origin instanceof SPSTFInstr,
         'invalid origin instruction'
     );
 
@@ -202,12 +203,21 @@ TGObject.prototype.toString = function ()
 }
 
 /**
+Test if an object has a value node for a given property
+*/
+TGObject.prototype.hasPropNode = function (name)
+{
+    // If the property doesn't exist, create it
+    return Object.prototype.hasOwnProperty.call(this.props, name);
+}
+
+/**
 Get the value node for a given property
 */
 TGObject.prototype.getPropNode = function (name)
 {
     // If the property doesn't exist, create it
-    if (Object.prototype.hasOwnProperty.call(this.props, name) === false)
+    if (this.hasPropNode(name) === false)
         this.props[name] = new TGProperty(name, this);
 
     return this.props[name];
