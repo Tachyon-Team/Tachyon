@@ -454,6 +454,17 @@ function SPSTFInstr(irInstr, instrIdx, block)
 }
 
 /**
+Get a string representation of this instruction
+*/
+SPSTFInstr.prototype.toString = function ()
+{
+    if (!this.irInstr.parentBlock)
+        return 'null instr';
+    else
+        return this.irInstr.toString();
+}
+
+/**
 @class Sparse Path-Sensitive Type Flow (SPSTF) Analysis
 @extends TypeAnalysis
 */
@@ -894,14 +905,30 @@ SPSTF.prototype.instrItr = function ()
         'empty work list'
     );
 
-    print('Iterating instr');
-
     // Remove an instruction from the work list
     var instr = this.instrWorkList.remFirst();
     this.instrWorkSet.rem(instr);
 
+    print(
+        'Iterating instr: ' + 
+        (instr.irInstr.parentBlock? instr.irInstr:null)
+    );
+
     // Call the flow function for ths instruction
     instr.flowFunc(this);
+
+    var irInstr = instr.irInstr;
+    var outVals = instr.outVals[0];
+    for (var i = 0; i < outVals.length; ++i)
+    {
+        var def = outVals[i];
+
+        if (def.value === irInstr)
+        {
+            print('  output: ' + def.type);
+            break;
+        }
+    }
 
     // Increment the instruction iteration count
     this.itrCount++;
@@ -921,10 +948,12 @@ SPSTF.prototype.blockItr = function ()
     var block = this.blockWorkList.remFirst();
     this.blockWorkSet.rem(block);
 
+    /*
     print(
         'iterating block: ' + block.getName() +
         ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')
     );
+    */
 
     /* TODO: 
     Lazy propagation: if fn (or callees) doesn't define a value, don't
@@ -1104,8 +1133,6 @@ SPSTF.prototype.blockItr = function ()
             if (target instanceof SPSTFStump)
                 continue;
 
-            print('target merge');
-
             var liveOut = target.liveMap.copy();
 
             filterPhis(liveOut, block, target);
@@ -1135,7 +1162,7 @@ SPSTF.prototype.blockItr = function ()
     // If the live map at the beginning of the block changed
     if (liveMap.equal(block.liveMap) === false)
     {
-        print('queueing preds');
+        //print('queueing preds');
 
         block.liveMap = liveMap;
 
@@ -1248,6 +1275,8 @@ SPSTF.prototype.addEdge = function (
 )
 {
     print('Adding edge');
+    print('  from: ' + defInstr);
+    print('  to  : ' + useInstr);
 
     var def = defInstr.outVals[targetIdx][outIdx];
 
@@ -1991,11 +2020,13 @@ GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
 
 JSAddInstr.prototype.spstfFlowFunc = function (ta)
 {
-    print('JSAddInstr');
-
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
-    
+ 
+    //print('JSAddInstr');
+    print('t0: ' + t0);
+    print('t1: ' + t1);
+   
     // Output type
     var outType;
 
@@ -2777,7 +2808,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Closure object creation
     else if (callee.funcName === 'makeClos')
     {
-        print('makeClos');
+        //print('makeClos');
 
         var func = this.irInstr.uses[3];
         var numClosCells = this.irInstr.uses[4].value;
