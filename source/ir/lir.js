@@ -213,7 +213,10 @@ Get a string representation of an instruction's value/name
 */
 IRInstr.prototype.getValName = function ()
 {
-    return this.parentBlock.parentCFG.getUniqueName(this, this.outName);
+    if (this.parentBlock !== null)
+        return this.parentBlock.parentCFG.getUniqueName(this, this.outName);
+    else
+        return this.outName;
 };
 
 /**

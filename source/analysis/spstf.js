@@ -57,6 +57,23 @@ function SPSTFUseSet()
 }
 SPSTFUseSet.prototype = Object.create(HashSet.prototype);
 
+SPSTFUseSet.prototype.toString = function ()
+{
+    var str = '{';
+
+    for (var itr = this.getItr(); itr.valid(); itr.next())
+    {
+        var use = itr.get();
+
+        if (str !== '{')
+            str += ',';
+
+        str += use.getValName();
+    }
+
+    return str + '}';
+}
+
 SPSTFUseSet.prototype.union = function (that)
 {
     if (this === that)
@@ -89,6 +106,25 @@ function SPSTFLiveMap()
     HashMap.call(this, undefined, undefined, 3);
 }
 SPSTFLiveMap.prototype = Object.create(HashMap.prototype);
+
+SPSTFLiveMap.prototype.toString = function ()
+{
+    var str = '';
+
+    for (var itr = this.getItr(); itr.valid(); itr.next())
+    {
+        var pair = itr.get();
+        var value = pair.key;
+        var useSet = pair.value;
+
+        if (str !== '')
+            str += '\n';
+
+        str += (value.getValName? value.getValName():value) + ' => ' + useSet;
+    }
+
+    return str;
+}
 
 SPSTFLiveMap.prototype.copy = function ()
 {
@@ -345,10 +381,12 @@ function SPSTFBlock(irBlock, instrIdx, func)
 
 SPSTFBlock.prototype.getName = function ()
 {
-    if (this.irBlock instanceof BasicBlock)
-        return this.irBlock.getBlockName();
+    var blockName = 
+        (this.irBlock instanceof BasicBlock)?
+        this.irBlock.getBlockName():
+        'null block';
 
-    return 'null block';
+    return blockName + '(' + this.instrIdx + ')';
 }
 
 /**
@@ -458,10 +496,15 @@ Get a string representation of this instruction
 */
 SPSTFInstr.prototype.toString = function ()
 {
-    if (!this.irInstr.parentBlock)
-        return 'null instr';
-    else
-        return this.irInstr.toString();
+    return this.irInstr.toString();
+}
+
+/**
+Get the value name for this instruction
+*/
+SPSTFInstr.prototype.getValName = function ()
+{
+    return this.irInstr.getValName();
 }
 
 /**
@@ -802,13 +845,13 @@ SPSTF.prototype.queueBlock = function (block)
         'invalid block object'
     );
 
+    //print('queueing block: ' + block.getName());
+
     if (this.blockWorkSet.has(block) === true)
         return;
 
     this.blockWorkList.addLast(block);
     this.blockWorkSet.add(block);
-
-    print('block queued: ' + block.getName());
 }
 
 /**
@@ -948,12 +991,10 @@ SPSTF.prototype.blockItr = function ()
     var block = this.blockWorkList.remFirst();
     this.blockWorkSet.rem(block);
 
-    /*
     print(
-        'iterating block: ' + block.getName() +
-        ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')
+        'Iterating block: ' + block.getName() /*+
+        ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
     );
-    */
 
     /* TODO: 
     Lazy propagation: if fn (or callees) doesn't define a value, don't
@@ -978,6 +1019,8 @@ SPSTF.prototype.blockItr = function ()
             var def = outVals[outIdx];
             var value = def.value;
             var dests = def.dests;
+
+            print('def: ' + ((value instanceof IRValue)? value.getValName():value));
 
             // Get the uses for this value
             var useSet = liveMap.get(value);
@@ -1152,11 +1195,16 @@ SPSTF.prototype.blockItr = function ()
     {
         var instr = block.instrs[i];
 
+        print('instr: ' + instr);
+
         // Process defs of the instruction
         processDefs(instr, liveMap, 0);
 
         // Process uses of the instruction
         processUses(instr, liveMap);
+
+        print('live map:\n' + liveMap);
+        print('');
     }
 
     // If the live map at the beginning of the block changed
@@ -1463,6 +1511,8 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         // Queue all the destination instructions
         for (i = 0; i < def.dests.length; ++i)
             this.queueInstr(def.dests[i]);
+
+        print('existing definition');
     }
 
     // This is a new definition for this instruction
@@ -1477,6 +1527,8 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 
         // Add the new definition to the list for this target
         defList.push(def);
+
+        print('new def, queueing block: ' + instr.block.getName());
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
@@ -2016,7 +2068,7 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
     }
 }
 
-GetGlobalInstr.prototype.typeProp = GetPropInstr.prototype.typeProp;
+GetGlobalInstr.prototype.spstfFlowFunc = GetPropInstr.prototype.spstfFlowFunc;
 
 JSAddInstr.prototype.spstfFlowFunc = function (ta)
 {
