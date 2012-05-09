@@ -234,6 +234,13 @@ TypeAnalysis.prototype.fromLib = function (elem)
     return this.libUnits.indexOf(parentFunc) !== -1;
 }
 
+// TODO
+// TODO: generic function to evaluate type assertions
+// TODO
+TypeAnalysis.prototype.evalTypeAsserts = function ()
+{
+}
+
 /**
 Test if an instruction is a type assertion
 */

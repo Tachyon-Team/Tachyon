@@ -649,9 +649,19 @@ SPSTF.prototype.init = function ()
         true
     );
 
-    // TODO
-    // TODO: handle type assertions
-    // TODO
+    /**
+    Map of hash sets for instruction uses/outputs, for gathering statistics
+    */
+    this.typeSets = new HashMap(
+        function (use)
+        {
+            return defHashFunc(use.instr) + ((use.idx !== undefined)? use.idx:7);
+        },
+        function (use1, use2)
+        {
+            return use1.instr === use2.instr && use1.idx === use2.idx;
+        }
+    );
 
     /**
     Instruction iteration count
@@ -670,6 +680,47 @@ SPSTF.prototype.init = function ()
 }
 
 /**
+Public API function to test if a basic block was visited by the analysis.
+@returns a boolean value
+*/
+SPSTF.prototype.blockVisited = function (irBlock)
+{
+    assert (
+        irBlock instanceof BasicBlock,
+        'invalid basic block'
+    );
+
+    var block = this.blockMap.get(new SPSTFStump(irBlock, 0));
+
+    return (block !== HashMap.NOT_FOUND);
+}
+
+/**
+Public API function to get the type set associated with an IR instruction or
+one of its inputs.
+@returns a type set object or null if unavailable
+*/
+SPSTF.prototype.getTypeSet = function (irInstr, useIdx)
+{
+    assert (
+        irInstr instanceof IRInstr,
+        'invalid IR instruction'
+    );
+
+    assert (
+        useIdx === undefined || useIdx < irInstr.uses.length,
+        'invalid use index'
+    );
+
+    var typeSet = this.typeSets.get({ instr:irInstr, idx:useIdx });
+
+    if (typeSet === HashMap.NOT_FOUND)
+        return null;
+
+    return typeSet;
+}
+
+/**
 Dump information gathered about functions during analysis
 */
 SPSTF.prototype.dumpFunctions = function ()
@@ -682,24 +733,6 @@ Dump information gathered about objects during analysis
 */
 SPSTF.prototype.dumpObjects = function ()
 {
-    // TODO
-}
-
-/**
-Compute statistics about type sets
-*/
-SPSTF.prototype.compTypeStats = function ()
-{
-    // TODO
-}
-
-/**
-Evaluate type assertions, throw an exception if any fail
-*/
-SPSTF.prototype.evalTypeAsserts = function ()
-{
-    // For now, do nothing. The type assertions are representative
-    // of the capabilities of the type propagation analysis.
     // TODO
 }
 
@@ -2463,67 +2496,31 @@ JumpInstr.prototype.spstfFlowFunc = function (ta)
 // TODO: throw, must merge with all possible catch points
 // TODO
 
-/*
 // If branching instruction
 IfInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
-    var v2 = (this.uses.length > 2)? typeGraph.getType(this.uses[1]):undefined;
-
     var instr = this;
+    var irInstr = this.irInstr;
 
-    // Function to merge a value type in a given successor block
-    function mergeVal(val, type, target)
-    {
-        // If this is a constant, do nothing
-        if (val instanceof IRConst)
-            return;
-
-        // Remove the left value from the normal merge
-        typeGraph.remVar(val);
-
-        // Get the target block graph
-        var targetDesc = new BlockDesc(target);
-        var targetGraph = ta.getTypeGraph(targetDesc);
-
-        // If the successor has no type graph yet
-        if (targetGraph === HashMap.NOT_FOUND)
-        {
-            // Pass a copy of the predecessor graph to the successor
-            var targetGraph = typeGraph.copy(true, true);
-            ta.setTypeGraph(targetDesc, targetGraph);
-        }
-
-        var curType = targetGraph.getType(val);
-        var mergedType = curType.union(type);
-
-        // If the type changed
-        if (curType.equal(mergedType) === false)
-        {
-            targetGraph.unionType(val, mergedType);
-            ta.queueBlock(targetDesc);
-        }
-    }
+    var v0 = ta.getInType(this, 2);
+    var v1 = ta.getInType(this, 2);
+    var v2 = (irInstr.uses.length > 2)? ta.getInType(this, 2):undefined;
 
     // Function to handle the successor queuing for a given branch
     function mergeSuccs(boolVal)
     {
-        var trueTarget = instr.targets[0];
-        var falseTarget = instr.targets[1];
-
         // If we can potentially narrow the comparison input types
-        if (instr.testOp === 'EQ' && 
+        if (irInstr.testOp === 'EQ' && 
             v1.flags === TypeFlags.TRUE &&
-            instr.uses[0] instanceof JSCompInstr)
+            irInstr.uses[0] instanceof JSCompInstr)
         {
-            var compInstr = instr.uses[0];
+            var compInstr = irInstr.uses[0];
 
             var lVal = compInstr.uses[0];
             var rVal = compInstr.uses[1];
 
-            var lType = typeGraph.getType(lVal);
-            var rType = typeGraph.getType(rVal);
+            var lType = ta.getType(instr, lVal);
+            var rType = ta.getType(instr, rVal);
 
             var trueLType = lType;
             var falseLType = lType;
@@ -2557,16 +2554,16 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
             }
 
             if (boolVal === true || boolVal === undefined)
-                mergeVal(lVal, trueLType, trueTarget);
+                ta.setType(instr, lVal, trueLType, 0);
             if (boolVal === false || boolVal === undefined)
-                mergeVal(lVal, falseLType, falseTarget);
+                ta.setType(instr, lVal, falseLType, 1);
         }
 
-        // Merge with the successor blocks
+        // Touch the reachable successors
         if (boolVal === true || boolVal === undefined)
-            ta.succMerge(trueTarget, typeGraph);
+            ta.touchTarget(instr, 0);
         if (boolVal === false || boolVal === undefined)
-            ta.succMerge(falseTarget, typeGraph);
+            ta.touchTarget(instr, 0);
     }
 
     // If this is an equality comparison
@@ -2584,7 +2581,6 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
     // Merge with both possible branch targets
     mergeSuccs();
 }
-*/
 
 JSCallInstr.prototype.spstfFlowFunc = function (ta)
 {

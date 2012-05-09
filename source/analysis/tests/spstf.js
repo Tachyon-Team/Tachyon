@@ -70,17 +70,21 @@ SPSTF.makeTest = function (fileList, useStdlib)
     return test;
 }
 
+
 tests.spstf.global_add = SPSTF.makeTest(
     'programs/type_analysis/global_add.js',
     false
 );
+
 
 /*
 tests.spstf.string_simple = SPSTF.makeTest(
     'programs/type_analysis/string_simple.js', 
     false
 );
+*/
 
+/*
 tests.spstf.array_simple = SPSTF.makeTest(
     'programs/type_analysis/array_simple.js', 
     false
