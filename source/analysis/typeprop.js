@@ -231,8 +231,8 @@ TypeProp.prototype.blockVisited = function (irBlock)
         irBlock instanceof BasicBlock,
         'invalid basic block'
     );
-ts
-    var block = this.blockMap.get(new BlockDesc(irBlock, 0));
+
+    var block = this.blockGraphs.get(new BlockDesc(irBlock, 0));
 
     return (block !== HashMap.NOT_FOUND);
 }

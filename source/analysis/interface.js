@@ -345,17 +345,13 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
             'invalid instruction'
         );
 
-        var outType = ta.typeSets.get({ instr:instr });    
+        var outType = ta.getTypeSet(instr);
 
         var useTypes = [];
 
         for (var i = 0; i < instr.uses.length; ++i)
         {
-            var type = ta.typeSets.get({ instr:instr, idx:i });
-          
-            if ((type instanceof TypeSet) === false)
-                return;
-
+            var type = ta.getTypeSet(instr, i);
             useTypes.push(type);
         }
 
@@ -437,39 +433,41 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
         }
     }
 
-    // TODO
-    // TODO
-    // TODO
-
-
-
-    /*
-    // For each block type graph we have
-    for (var itr = this.blockGraphs.getItr(); itr.valid(); itr.next())
+    function visitFunc(irFunc)
     {
-        var blockDesc = itr.get().key;
-
-        var block = blockDesc.block;
-        var instrIdx = blockDesc.instrIdx;
-
         // If this is library code, skip it
-        if (this.fromLib(block) === true)
-            continue;
+        if (ta.fromLib(irFunc.hirCFG.entry) === true)
+            return;
 
-        // For each instruction of the block
-        for (var i = instrIdx; i < block.instrs.length; ++i)
+        // Visit the sub-functions
+        irFunc.childFuncs.forEach(visitFunc);
+
+        // For each block of the function
+        for (var i = 0; i < irFunc.hirCFG.blocks.length; ++i)
         {
-            var instr = block.instrs[i];
+            var block = irFunc.hirCFG.blocks[i];
 
-            accumStats(instr);
+            // If the block wasn't visited, skip it
+            if (ta.blockVisited(block) === false)
+                continue;
 
-            // If this is a call instruction, this is the end of the block
-            if ((instr instanceof JSCallInstr || instr instanceof JSNewInstr) &&
-                isTypeAssert(instr) === false)
-                break;
+            // For each instruction of the block
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                var instr = block.instrs[j];
+
+                // If this instruction wasn't visited, skip it
+                var outType = ta.getTypeSet(instr);
+                if (outType === null)
+                    continue;
+
+                accumStats(instr);
+            }
         }
     }
-    */
+
+    // Visit all analyzed units
+    this.allUnits.forEach(visitFunc);
 
     return stats;
 }
