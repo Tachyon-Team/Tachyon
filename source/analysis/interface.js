@@ -101,8 +101,11 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
         'stdlib/math.js'
     ];
 
-    // Clear the library IR units
+    // List of library IR units
     this.libUnits = [];
+
+    // List of all IR units analyzed
+    this.allUnits = [];
 
     // If the standard library should be included
     if (useStdlib === true)
@@ -124,6 +127,7 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
 
             // Add the code to the list of library units
             this.libUnits.push(ir);
+            this.allUnits.push(ir);
         }
     }
 
@@ -144,6 +148,9 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
 
         // Add the code unit to the analysis
         this.addUnit(ir);
+
+        // Add this unit to the list of analyzed units
+        this.allUnits.push(ir);
     }
 
     // Run the analysis
@@ -234,11 +241,379 @@ TypeAnalysis.prototype.fromLib = function (elem)
     return this.libUnits.indexOf(parentFunc) !== -1;
 }
 
-// TODO
-// TODO: generic function to evaluate type assertions
-// TODO
+/**
+Compute statistics about type sets
+*/
+TypeAnalysis.prototype.compTypeStats = function (outFile)
+{
+    const ta = this;
+
+    function compPercent(num, denom)
+    {
+        if (denom === 0)
+            return 'N/A';
+
+        return Number(100 * num / denom).toFixed(0);
+    }
+
+    function MaxStat(name)
+    {
+        this.name = name;
+        this.maxVal = -Infinity;
+    }
+
+    MaxStat.prototype.count = function (val)
+    {
+        this.maxVal = Math.max(this.maxVal, val);
+    }
+
+    MaxStat.prototype.getValue = function ()
+    {
+        if (this.maxVal !== -Infinity)
+            return this.maxVal;
+        else
+            return 'N/A';
+    }
+
+    MaxStat.prototype.toString = function ()
+    {
+        return this.name + ': ' + this.getValue();
+    }
+
+    function PercentStat(name)
+    {
+        this.name = name;
+        this.trueCnt = 0;
+        this.falseCnt = 0;
+    }
+
+    PercentStat.prototype.count = function (val)
+    {
+        if (val)
+            this.trueCnt++;
+        else
+            this.falseCnt++;
+    }
+
+    PercentStat.prototype.getValue = function ()
+    {
+        var total = this.trueCnt + this.falseCnt;
+
+        var percent = compPercent(this.trueCnt, total);
+
+        return percent;
+    }
+
+    PercentStat.prototype.toString = function ()
+    {
+        var total = this.trueCnt + this.falseCnt;
+
+        var percent = compPercent(this.trueCnt, total);
+
+        return this.name + ': ' + percent + '% (' + this.trueCnt + '/' + total + ')';
+    }
+
+    // List of statistics to gather
+    var stats = [];
+
+    function addStat(stat)
+    {
+        stats.push(stat);
+        return stat;
+    }
+
+    var maxNumObjs  = addStat(new MaxStat('max obj set size'));
+
+    var getObj      = addStat(new PercentStat('getProp on object only'));
+    var getSingle   = addStat(new PercentStat('getProp on known object'));
+    var getDef      = addStat(new PercentStat('getProp output not undef'));
+
+    var putObj      = addStat(new PercentStat('putProp on object only'));
+    var putSingle   = addStat(new PercentStat('putProp on known object'));
+
+    var callMono    = addStat(new PercentStat('function call monomorphic'));
+
+    var arithInt    = addStat(new PercentStat('arith op on int & int'));
+    var cmpInt      = addStat(new PercentStat('compare op on int & int'));
+
+    var branchKnown = addStat(new PercentStat('branch direction known'));
+
+    function accumStats(instr)
+    {
+        assert (
+            instr instanceof IRInstr,
+            'invalid instruction'
+        );
+
+        var outType = ta.typeSets.get({ instr:instr });    
+
+        var useTypes = [];
+
+        for (var i = 0; i < instr.uses.length; ++i)
+        {
+            var type = ta.typeSets.get({ instr:instr, idx:i });
+          
+            if ((type instanceof TypeSet) === false)
+                return;
+
+            useTypes.push(type);
+        }
+
+        if (outType instanceof TypeSet)
+            maxNumObjs.count(outType.getNumObjs());
+
+        // Get property instruction
+        if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+        {
+            var u0 = useTypes[0];
+
+            getObj.count((u0.flags & ~TypeFlags.EXTOBJ) === 0);
+
+            getSingle.count(
+                (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
+                u0.getNumObjs() === 1
+            );
+
+            getDef.count((outType.flags & TypeFlags.UNDEF) === 0);
+        }
+
+        // Put property instruction
+        else if (instr instanceof PutPropInstr)
+        {
+            var u0 = useTypes[0];
+
+            putObj.count((u0.flags & ~TypeFlags.EXTOBJ) === 0);
+
+            putSingle.count(
+                (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
+                u0.getNumObjs() === 1
+            );
+        }
+
+        // Function call/new instruction
+        else if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+        {
+            var u0 = useTypes[0];
+
+            callMono.count(u0.getNumObjs() === 1);
+        }
+
+        // Arithmetic instructions
+        else if (instr instanceof JSArithInstr)
+        {
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
+
+            arithInt.count(u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT);
+        }
+
+        // Comparison instructions
+        else if (instr instanceof JSCompInstr)
+        {
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
+
+            cmpInt.count(u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT);
+        }
+
+        // If instruction
+        else if (instr instanceof IfInstr)
+        {
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
+
+            branchKnown.count(
+                (u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
+                (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
+            );
+
+            if ((u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
+                (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE))
+            {
+                print('Known branch: ' + u0 + ' (' + instr.parentBlock.parentCFG.ownerFunc.funcName + ')');
+                print(instr.parentBlock);
+                print('');
+            }
+        }
+    }
+
+    // TODO
+    // TODO
+    // TODO
+
+
+
+    /*
+    // For each block type graph we have
+    for (var itr = this.blockGraphs.getItr(); itr.valid(); itr.next())
+    {
+        var blockDesc = itr.get().key;
+
+        var block = blockDesc.block;
+        var instrIdx = blockDesc.instrIdx;
+
+        // If this is library code, skip it
+        if (this.fromLib(block) === true)
+            continue;
+
+        // For each instruction of the block
+        for (var i = instrIdx; i < block.instrs.length; ++i)
+        {
+            var instr = block.instrs[i];
+
+            accumStats(instr);
+
+            // If this is a call instruction, this is the end of the block
+            if ((instr instanceof JSCallInstr || instr instanceof JSNewInstr) &&
+                isTypeAssert(instr) === false)
+                break;
+        }
+    }
+    */
+
+    return stats;
+}
+
+/**
+Evaluate type assertions, throw an exception if any fail
+*/
 TypeAnalysis.prototype.evalTypeAsserts = function ()
 {
+    var ta = this;
+
+    function fail(test, set, msg)
+    {
+        var error = Error(
+            'Type assertion failed: ' + msg + '\n' +
+            'set : ' + set + '\n' +
+            'test: ' + test
+        );
+
+        throw error;
+        //print(error);
+    }
+
+    function evalExpr(expr, set)
+    {
+        if (typeof expr === 'string')
+        {
+            var flag = TypeFlags[expr.toUpperCase()];
+
+            assert (
+                typeof flag === 'number',
+                'invalid flag name: "' + expr + '"'
+            );
+
+            return (set.flags & flag) !== 0;
+        }
+
+        if (expr instanceof Array)
+        {
+            var numArgs = expr.length - 1;
+
+            // Value equality test
+            if (expr[0] === 'val' && numArgs === 1)
+            {
+                var val = expr[1];
+
+                if (typeof val === 'string')
+                    return (set.strVal === val);
+                if (typeof val === 'number')
+                    return (set.rangeMin === val && set.rangeMax === val);
+
+                error('invalid value in test');
+            }
+
+            // Greater-or-equal-to test
+            if (expr[0] === '>=' && typeof expr[1] === 'number' && numArgs === 1)
+            {
+                var val = expr[1];
+                return set.rangeMin >= val;
+            }
+
+            // Less-or-equal-to test
+            if (expr[0] === '<=' && typeof expr[1] === 'number' && numArgs === 1)
+            {
+                var val = expr[1];
+                return set.rangeMax <= val;
+            }
+
+            // Conjunction
+            if (expr[0] === 'and')
+            {
+                var r = true;
+                for (var i = 1; i <= numArgs; ++i)
+                    r = r && evalExpr(expr[i], set);
+
+                return r;
+            }
+
+            // Disjunction
+            if (expr[0] === 'or')
+            {
+                var r = false;
+                for (var i = 1; i <= numArgs; ++i)
+                    r = r || evalExpr(expr[i], set);
+
+                return r;
+            }
+
+            // Negation
+            if (expr[0] === 'not' && numArgs === 1)
+            {
+                return !evalExpr(expr[1], set);
+            }
+
+            error('invalid type test operator: ' + expr[0]);
+        }
+
+        error ('invalid type expr type');
+    }
+
+    function evalAssert(testStr, set)
+    {
+        var testExpr = JSON.parse(testStr);
+
+        if (set === null)
+            fail(testExpr, set, 'type assertion not visited');
+
+        // Evaluate the expression
+        var r = evalExpr(testExpr, set);
+
+        if (r !== true)
+            fail(testExpr, set, 'test failed');
+    }
+
+    function visitFunc(irFunc)
+    {
+        // Visit the sub-functions
+        irFunc.childFuncs.forEach(visitFunc);
+
+        // For each block of the function
+        for (var i = 0; i < irFunc.hirCFG.blocks.length; ++i)
+        {
+            var block = irFunc.hirCFG.blocks[i];
+
+            // For each instruction of the block
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                var instr = block.instrs[j];
+
+                // If this is a type assertion
+                if (isTypeAssert(instr) === true)
+                {
+                    var test = instr.uses[3].value;
+                    var typeSet = ta.getTypeSet(instr, 2);
+
+                    // Evaluate the type assertion on the type set
+                    evalAssert(test, typeSet);
+                }
+            }
+        }
+    }
+
+    // Visit all analyzed units
+    this.allUnits.forEach(visitFunc);
 }
 
 /**

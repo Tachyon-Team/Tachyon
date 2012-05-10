@@ -680,7 +680,7 @@ SPSTF.prototype.init = function ()
 }
 
 /**
-Public API function to test if a basic block was visited by the analysis.
+Client API function to test if a basic block was visited by the analysis.
 @returns a boolean value
 */
 SPSTF.prototype.blockVisited = function (irBlock)
@@ -696,7 +696,7 @@ SPSTF.prototype.blockVisited = function (irBlock)
 }
 
 /**
-Public API function to get the type set associated with an IR instruction or
+Client API function to get the type set associated with an IR instruction or
 one of its inputs.
 @returns a type set object or null if unavailable
 */
@@ -993,6 +993,13 @@ SPSTF.prototype.instrItr = function ()
     // Call the flow function for ths instruction
     instr.flowFunc(this);
 
+    // Store the type set for all uses of the instruction
+    for (var i = 0; i < instr.irInstr.uses.length; ++i)
+    {
+        var useType = this.getInType(instr, i);
+        this.typeSets.set({ instr:instr.irInstr, idx:i }, useType);
+    }
+
     var irInstr = instr.irInstr;
     var outVals = instr.outVals[0];
     for (var i = 0; i < outVals.length; ++i)
@@ -1001,7 +1008,11 @@ SPSTF.prototype.instrItr = function ()
 
         if (def.value === irInstr)
         {
-            print('  output: ' + def.type);
+            //print('  output: ' + def.type);
+
+            // Store the type set of the output value
+            this.typeSets.set({ instr: irInstr }, def.type);
+
             break;
         }
     }
