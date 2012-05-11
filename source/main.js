@@ -148,6 +148,10 @@ function main()
 
         // Output analysis results
         analysis.logResults(args.options['outfile']);
+
+        // Output HTML visualization
+        if (args.options['html'])
+            analysis.writeHTML(args.options['html'])
     }
 
     // If source files or inline source are provided    

@@ -264,7 +264,7 @@ tests.utility.xml.strEscape = function ()
     var origStr = 'foo & bar <3 >3 "lol" \'lol\'';
     var validStr = 'foo&nbsp;&amp;&nbsp;bar&nbsp;&lt;3&nbsp;&gt;3&nbsp;&quot;lol&quot;&nbsp;&apos;lol&apos;';
 
-    assert (escapeXMLString(origStr) === validStr);
+    assert (escapeXMLString(origStr, true) === validStr);
 };
 
 /**

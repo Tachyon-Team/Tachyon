@@ -146,12 +146,22 @@ function HTMLPar(textStr)
     textElem.toString = function (document, indent)
     {
         // Escape and indent the string
-        return indentText(escapeXMLString(this.text, true), indent);    
+        return indentText(escapeXMLString(this.text, true, true), indent);    
     };
 
     parElem.addChild(textElem);
 
     return parElem;
+}
+
+/**
+Create an XML pre tag
+*/
+function HTMLPre()
+{
+    var pre = new XMLElement('pre', {}, false, true);
+
+    return pre;
 }
 
 /**

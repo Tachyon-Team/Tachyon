@@ -178,7 +178,7 @@ function escapeJSString(input)
 /**
 Escape XML strings for output
 */
-function escapeXMLString(input, isHTML)
+function escapeXMLString(input, escapeSpace, escapeNewline)
 {
     var chars = [];
 
@@ -221,12 +221,15 @@ function escapeXMLString(input, isHTML)
 
             // space
             case 32:
-            pushStr('&nbsp;');
+            if (escapeSpace)
+                pushStr('&nbsp;');
+            else
+                chars.push(charCode);
             break;
 
             // newline
             case 10:
-            if (isHTML)
+            if (escapeNewline)
                 pushStr('<br />');
             else
                 chars.push(charCode);

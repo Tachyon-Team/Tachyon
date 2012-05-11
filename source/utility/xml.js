@@ -88,12 +88,15 @@ XMLDocument.prototype.toString = function ()
 /**
 @class Represent an XML/HTML element
 */
-function XMLElement(name, attribs, isLeaf)
+function XMLElement(name, attribs, isLeaf, noFormat)
 {
     assert (
         !attribs || attribs instanceof Object,
         'the attributes must be provided in an object'
     );
+
+    isLeaf = Boolean(isLeaf);
+    noFormat = Boolean(noFormat);
 
     /**
     Element name
@@ -118,18 +121,30 @@ function XMLElement(name, attribs, isLeaf)
     @field
     */
     this.isLeaf = isLeaf;
+
+    /**
+    Flag to indicate subtrees of this node should receive
+    special formatting for pretty-printing
+    @field
+    */
+    this.noFormat = noFormat;
 }
 XMLElement.prototype = new XMLNode();
 
 /**
 Produce a string representation of this node
 */
-XMLElement.prototype.toString = function (document, indent)
+XMLElement.prototype.toString = function (document, indentStr)
 {
     var escName = escapeXMLString(this.name);
 
+    var noFormat = (this.noFormat === true || indentStr === false);
+
     // Declare a string for the output
-    var output = indent + '<' + escName;
+    var output = '';
+
+    output += noFormat? '':indentStr;
+    output += '<' + escName;
 
     // For each attribute
     for (var attrName in this.attribs)
@@ -138,16 +153,28 @@ XMLElement.prototype.toString = function (document, indent)
         output += escapeXMLString(this.attribs[attrName].toString()) + '"';
     }
 
-    output += (this.isLeaf? ' />':'>\n');
+    output += (this.isLeaf? ' />':'>');
+
+    if (this.isLeaf === false && noFormat === false)
+        output += '\n';
+
+    var subIndent = noFormat? false:(indentStr + '  ');
 
     // For each child node
     for (var i = 0; i < this.children.length; ++i)
     {
-        output += this.children[i].toString(document, indent + '  ') + '\n';
+        output += this.children[i].toString(document, subIndent);
+
+        if (noFormat === false)
+            output += '\n';
     }
 
-    if (!this.isLeaf)
-        output += indent + '</' + escName + '>';
+    if (this.isLeaf === false)
+    {
+        if (noFormat === false)
+            output += indentStr;
+        output += '</' + escName + '>';
+    }
 
     // Return the output string
     return output;
@@ -158,6 +185,9 @@ Add a new child to an XML element
 */
 XMLElement.prototype.addChild = function (childNode)
 {
+    if (typeof childNode === 'string')
+        childNode = new XMLText(childNode);
+
     assert (
         childNode instanceof XMLNode,
         'new child should be XML node'
