@@ -1,34 +1,9 @@
 #!/bin/sh
 
-# Environment variables
-COMMON_COMMITTER_URL=git@github.com:Tachyon-Team/Common.git
-COMMON_READONLY_URL=git://github.com/Tachyon-Team/Common.git
-
 # Installation script
 
 mkdir -p deps
 
-echo "Installing common dependencies"
-if [ -d deps/common ]; then
-    echo "  Common dependencies seem to exist, skipping."
-else
-    git clone $COMMON_COMMITTER_URL deps/common
-    if [ $? -ne 0 ]; then
-        echo "Retrying using read-only repository url"
-        git clone $COMMON_READONLY_URL deps/common
-    fi
-    
-    if [ -d deps/common/source ]; then
-        for i in deps/common/source/*; do
-            ln -s $i;
-        done
-    else
-        echo "  Failed to clone common dependencies"
-        exit 1
-    fi
-
-    echo "  Done"
-fi
-
 echo "Installing host VM"
 host/install-host-vm
+

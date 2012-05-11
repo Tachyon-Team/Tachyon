@@ -2131,6 +2131,10 @@ RetInstr.prototype.typeProp = function (ta, typeGraph)
                 // Queue the continuation block for analysis
                 ta.setTypeGraph(contDesc, newContGraph);
                 ta.queueBlock(contDesc);
+
+                // Store the last seen type set for the call instruction's output
+                var outType = newContGraph.getType(callInstr);
+                ta.typeSets.set({ instr: callInstr }, outType);
             }
         }
     }

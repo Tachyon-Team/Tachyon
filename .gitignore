@@ -4,7 +4,4 @@
 doc/*
 source/compiler/sources.js
 source/deps
-bench
-stdlib
-utility
 

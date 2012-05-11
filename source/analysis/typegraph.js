@@ -189,7 +189,7 @@ TGObject.prototype.getName = function ()
     if (this.origin instanceof IRValue)
         str += this.origin.getValName() + '/';
 
-    str += this.objTag;
+    str += this.tag;
 
     return str;
 }
