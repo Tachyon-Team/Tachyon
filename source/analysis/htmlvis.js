@@ -61,73 +61,134 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
     var page = new HTMLPage('Analysis Results');
 
     var css = new XMLElement('style', { type:"text/css" });
-    css.addChild(cssData);
+    css.addChild(new XMLText(cssData, true));
     page.head.addChild(css);
 
     var js = new XMLElement('script', { type:"text/javascript" });
-    js.addChild(jsData);
+    js.addChild(new XMLText(jsData, true));
     page.head.addChild(js);
-
-
-    // TODO: list of bubble divs
-
-
-
-    function indentElem(elem)
-    {
-        var sawNL = true;
-        var indent = '    ';
-
-        var workList = [];
-        workList.push(elem);
-
-        while (workList.length > 0)
-        {
-            var elem = workList.pop();
-
-            if (elem instanceof XMLText)
-            {
-                var text = elem.text;
-
-                var chars = [];
-
-                for (var i = 0; i < text.length; ++i)
-                {
-                    if (sawNL === true)
-                    {
-                        for (var j = 0; j < indent.length; ++j)
-                            chars.push(indent.charCodeAt(j));
-                        sawNL = false;
-                    }
-                
-                    var ch = text.charCodeAt(i);
-
-                    // Newline
-                    if (ch === 10)
-                        sawNL = true;
-
-                    chars.push(ch);
-                }
-
-                elem.text = strFromChars(chars);;
-            }
-            else
-            {
-                for (var i = elem.children.length - 1; i >= 0; --i)
-                    workList.push(elem.children[i]);
-            }
-        }
-    }
 
     var ta = this;
 
-    function visitInstr(instr)
-    {
-        // TODO
+    var nextId = 0;
 
+    function makeBubble(span, typeSet)
+    {
+        var div = new XMLElement('div');
+
+        var divId  = 'd' + nextId++;
+        var spanId = 's' + nextId++;
+
+        div.attribs.id = divId;
+        div.attribs['class'] = 'bubble';
+
+        span.attribs.id = spanId;
+        span.attribs.onmouseover = 'showBubble("' + divId + '","' + spanId + '")';
+        span.attribs.onmouseout = 'hideBubble("' + divId + '")';
+
+        div.addChild(typeSet.toString());
+
+        page.addContents(div);
     }
 
-    function visitBlock(block)
+    // TODO: this function should also install pop-up bubbles
+    function colorType(elem, instr, useIdx)
+    {
+        var outType = ta.getTypeSet(instr);
+
+        // If the instruction wasn't visited, stop
+        if (outType === null)
+            return;
+
+        // Color string
+        var color;
+
+        if (useIdx === undefined)
+        {
+            if (outType === TypeSet.empty)
+                color = 'grey';
+
+
+            makeBubble(elem, outType);
+        }
+        else
+        {
+
+
+
+
+        }
+
+        if (color !== undefined)
+            elem.attribs.style = 'color: ' + color + ';';
+    }
+
+    function visitInstr(instr, indent)
+    {
+        var elem = new XMLElement('span');
+
+        elem.addChild(indent);
+
+        if (instr.type !== IRType.none)
+        {
+            var outElem = new XMLElement('span');
+            colorType(outElem, instr);
+            outElem.addChild(instr.type.name + ' ' + instr.getValName());
+            elem.addChild(outElem);        
+            elem.addChild(' = ');
+        }
+
+        elem.addChild(instr.mnemonic);
+
+        // For each use
+        for (useIdx = 0; useIdx < instr.uses.length; ++useIdx)
+        {
+            elem.addChild(' ')
+
+            var useElem = new XMLElement('span');
+
+            colorType(useElem, instr, useIdx);
+
+            var use = instr.uses[useIdx];
+
+            if (instr instanceof PhiInstr)
+            {
+                var pred = instr.preds[useIdx];
+                useElem.addChild(
+                    '[' + use.getValName() + ' ' + 
+                    pred.getBlockName() + ']'
+                );
+            }
+            else
+            {
+                useElem.addChild(use.getValName());
+            }
+
+            elem.addChild(useElem);
+
+            if (useIdx !== instr.uses.length - 1)
+                elem.addChild(',');
+        }
+
+        // For each branch target
+        for (var i = 0; i < instr.targets.length; ++i)
+        {
+            var targetElem = new XMLElement('span');
+
+            targetElem.addChild(
+                (instr.targetNames[i]? (' ' + instr.targetNames[i]):'') + 
+                ' ' + instr.targets[i].getBlockName()
+            );           
+
+            // TODO: color code
+
+            elem.addChild(targetElem);
+        }
+
+        return elem;
+    }
+
+    function visitBlock(block, indent)
     {
         var elem = new XMLElement('span');
 
@@ -135,6 +196,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         if (ta.blockVisited(block) === false)
             elem.attribs.style = "color: #222222;";
 
+        elem.addChild(indent);
         elem.addChild(block.getBlockName() + ':\n');
 
         // For each instruction of the block
@@ -142,14 +204,16 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         {
             var instr = block.instrs[j];
 
-            // TODO
-            elem.addChild(instr.toString() + '\n');
+            var instrElem = visitInstr(instr, indent);
+
+            elem.addChild(instrElem);
+            elem.addChild('\n');
         }
 
         return elem;
     }
 
-    function visitFunc(func)
+    function visitFunc(func, indent)
     {
         // If the function wasn't visited, do nothing
         var entry = func.hirCFG.entry;
@@ -158,6 +222,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
         var fnElem = new XMLElement('span');
 
+        fnElem.addChild(indent);
         fnElem.addChild(func.retType + ' function ' + func.funcName + '(');
 
         for (var i = 0; i < func.argVars.length; ++i)
@@ -169,17 +234,17 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         }
 
         fnElem.addChild(')\n');
+        fnElem.addChild(indent);
         fnElem.addChild('{\n');
 
         // Visit the sub-functions
         var subFnsAdded = false;
         for (var i = 0; i < func.childFuncs.length; ++i)
         {
-            var subElem = visitFunc(func.childFuncs[i]);
+            var subElem = visitFunc(func.childFuncs[i], indent + '    ');
             if (!subElem)
                 continue;
 
-            indentElem(subElem);
             fnElem.addChild(subElem);
             subFnsAdded = true;
         }
@@ -189,15 +254,15 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         {
             var block = func.hirCFG.blocks[i];
 
-            var subElem = visitBlock(block);
+            var subElem = visitBlock(block, indent + '    ');
 
             if (subFnsAdded === true || i > 0)
                 fnElem.addChild('\n');
 
-            indentElem(subElem);
             fnElem.addChild(subElem);
         }
 
+        fnElem.addChild(indent);
         fnElem.addChild('}\n');
 
         return fnElem;
@@ -206,7 +271,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
     function visitUnit(ir)
     {
         var pre = new HTMLPre()
-        var func = visitFunc(ir, pre)
+        var func = visitFunc(ir, '')
         pre.addChild(func);
         page.addContents(pre);
     }

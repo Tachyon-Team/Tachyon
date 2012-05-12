@@ -95,9 +95,6 @@ function XMLElement(name, attribs, isLeaf, noFormat)
         'the attributes must be provided in an object'
     );
 
-    isLeaf = Boolean(isLeaf);
-    noFormat = Boolean(noFormat);
-
     /**
     Element name
     @field
@@ -120,14 +117,14 @@ function XMLElement(name, attribs, isLeaf, noFormat)
     Flag to indicate that this is a leaf
     @field
     */
-    this.isLeaf = isLeaf;
+    this.isLeaf = Boolean(isLeaf);
 
     /**
     Flag to indicate subtrees of this node should receive
     special formatting for pretty-printing
     @field
     */
-    this.noFormat = noFormat;
+    this.noFormat = Boolean(noFormat);
 }
 XMLElement.prototype = new XMLNode();
 
@@ -199,13 +196,19 @@ XMLElement.prototype.addChild = function (childNode)
 /**
 @class XML text string node
 */
-function XMLText(text)
+function XMLText(text, rawText)
 {
     /**
     Text contents of this node
     @field
     */
     this.text = text;
+
+    /**
+    Flag indicating the text should not be escaped
+    @field
+    */
+    this.rawText = Boolean(rawText);
 }
 XMLText.prototype = new XMLNode();
 
@@ -215,6 +218,9 @@ Produce a string representation of this node
 XMLText.prototype.toString = function (document, indent)
 {
     // Escape and indent the string
-    return indentText(escapeXMLString(this.text), indent);
+    if (this.rawText === true)
+        return this.text;
+    else
+        return indentText(escapeXMLString(this.text), indent);
 };
 

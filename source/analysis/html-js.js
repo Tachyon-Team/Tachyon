@@ -1,35 +1,17 @@
-function getPos(obj)
+function showBubble(divId, spanId)
 {
-    var curLeft = 0;
-    var curTop = 0;
-
-    if (obj && obj.offsetParent) 
-    {
-	    do 
-        {
-	         curLeft += obj.offsetLeft;
-	         curTop += obj.offsetTop;
-        } 
-        while (obj = obj.offsetParent);
-    }
-
-    return { left: curLeft, top: curTop };
-}
-
-function show(divId, spanId)
-{
-    var span = document.getElementById(spanId);
     var div = document.getElementById(divId);
+    var span = document.getElementById(spanId);
 
-    var spanPos = getPos(span);
+    var rect = span.getBoundingClientRect();
 
     div.style.visibility = 'visible';
 
-    div.style.top = spanPos.top + span.offsetHeight + 5;
-    div.style.left = spanPos.left + 5;
+    div.style.left = rect.left + 5;
+    div.style.top  = rect.top + rect.height + 5;
 }
 
-function hide(divId)
+function hideBubble(divId)
 {
     var div = document.getElementById(divId);
 
