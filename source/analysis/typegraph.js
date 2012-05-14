@@ -1216,15 +1216,17 @@ TypeGraph.prototype.getType = function (value)
     }
 
     // If this is a constant
-    else
+    else if (value instanceof IRConst)
     {
-        assert (
-            value instanceof IRConst,
-            'invalid value'
-        );
-
         // Create a type set for the constant
         return TypeSet.constant(value);
+    }
+
+    // By default
+    else
+    {
+        // No information
+        return TypeSet.empty;
     }
 }
 

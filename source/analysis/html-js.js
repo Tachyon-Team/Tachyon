@@ -17,3 +17,21 @@ function hideBubble(divId)
 
     div.style.visibility = 'hidden';
 }
+
+function toggleBody(bodyId, buttonId)
+{
+    var bodySpan = document.getElementById(bodyId);
+    var buttonSpan = document.getElementById(buttonId);
+
+    if (bodySpan.style.display === 'none')
+    {
+        bodySpan.style.display = 'block';
+        buttonSpan.innerHTML = '[-]';
+    }
+    else
+    {
+        bodySpan.style.display = 'none';
+        buttonSpan.innerHTML = '[+]';
+    }
+}
+

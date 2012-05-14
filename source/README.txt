@@ -6,7 +6,7 @@ INSTALLATION
 ------------
 
 Requirements:
-- A PC running linux/unix/macos
+- A PC running Linux/Unix/MacOS
 - An up to date version of gcc
 - Build tools such as make
 
@@ -29,11 +29,11 @@ fetch the V8 JavaScript VM, install the Tachyon extensions onto it, and compile
     make
 
 4. You are done. You may test that Tachyon works properly by running its unit
-tests using "make test", and "make 64" (for 64-bit compilation). This should
-run all unit tests and display "All tests passed." when done.
+tests using "make test", and "make test64" (for 64-bit compilation). This
+should run all unit tests and display "All tests passed." when done.
 
     make test
-    make test64     (64 bit machines only)
+    make test64     (64-bit machines only)
 
 You may run the Tachyon read-eval print loop by running the tachyon script:
 

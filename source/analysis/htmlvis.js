@@ -70,19 +70,46 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
     var ta = this;
 
+    // Next available id number
     var nextId = 0;
+
+    // Assign an id to an element
+    function assignId(elem)
+    {
+        var id = nextId++;
+        elem.attribs.id = id;
+        return id;
+    }
+
+    // Map of color names to color codes
+    var colorMap = {
+        'grey': '#898973',
+        'green': '#009933',
+        'blue': '#3333FF',
+        'red': '#FF0000',
+        'orange': '#FF6600'
+    };
+
+    // Set the color of an element
+    function setColor(elem, color)
+    {
+        if (elem.attribs.style)
+            elem.attribs.style += ' ';
+        else
+            elem.attribs.style = '';
+
+        elem.attribs.style += 'color:' + colorMap[color] + ';';
+    }
 
     function makeBubble(span, typeSet)
     {
         var div = new XMLElement('div');
 
-        var divId  = 'd' + nextId++;
-        var spanId = 's' + nextId++;
+        var divId  = assignId(div);
+        var spanId = assignId(span);
 
-        div.attribs.id = divId;
         div.attribs['class'] = 'bubble';
 
-        span.attribs.id = spanId;
         span.attribs.onmouseover = 'showBubble("' + divId + '","' + spanId + '")';
         span.attribs.onmouseout = 'hideBubble("' + divId + '")';
 
@@ -91,7 +118,6 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         page.addContents(div);
     }
 
-    // TODO: this function should also install pop-up bubbles
     function colorType(elem, instr, useIdx)
     {
         var outType = ta.getTypeSet(instr);
@@ -104,32 +130,46 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
             (useIdx === undefined)? 
             outType:ta.getTypeSet(instr, useIdx);
 
-        if (type === null)
-            type = TypeSet.empty;
+        // Test if the set contains a single object
+        var numObjs = type.getNumObjs();
+        var singleObj = numObjs === 1;
 
         // Color string
-        var color;
+        var color = undefined;
 
+        // Empty type set
         if (type === TypeSet.empty)
             color = 'grey';
 
-        // If the type is known exactly
-        if (type.flags === TypeFlags.UNDEF ||
-            type.flags === TypeFlags.INT ||
-            type.flags === TypeFlags.STRING)
-            color = 'green';
-
-
-
-        if (type.flags === TypeFlags.ANY)
+        // Any/unknown type
+        else if (type.flags === TypeFlags.ANY)
             color = 'red';
 
+        // The type is known exactly
+        else if (
+            type.flags === TypeFlags.UNDEF ||
+            type.flags === TypeFlags.NULL  ||
+            type.flags === TypeFlags.TRUE  ||
+            type.flags === TypeFlags.FALSE ||
+            type.flags === TypeFlags.INT   ||
+            type.flags === TypeFlags.STRING ||
+            ((type.flags & ~TypeFlags.EXTOBJ) === 0 && singleObj) ||
+            (type.flags === TypeFlags.CELL && singleObj))
+            color = 'green';
+
+        // Undef is in the type set
+        else if (type.flags & TypeFlags.UNDEF)
+            color = 'orange';
+
+        // More than one type per set, but not undef
+        else
+            color = 'blue';
 
         // Make an info-bubble for the element
         makeBubble(elem, type);
 
         if (color !== undefined)
-            elem.attribs.style = 'color: ' + color + ';';
+            setColor(elem, color);
     }
 
     function visitInstr(instr, indent)
@@ -154,29 +194,46 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         {
             elem.addChild(' ')
 
-            var useElem = new XMLElement('span');
-
-            colorType(useElem, instr, useIdx);
-
             var use = instr.uses[useIdx];
 
             if (instr instanceof PhiInstr)
             {
                 var pred = instr.preds[useIdx];
-                useElem.addChild(
-                    '[' + use.getValName() + ' ' + 
-                    pred.getBlockName() + ']'
-                );
+
+                var predElem = new XMLElement('span');
+  
+                predElem.addChild('[');
+    
+                var useElem = new XMLElement('span');
+                useElem.addChild(use.getValName());
+                predElem.addChild(useElem);
+
+                predElem.addChild(' ');
+                predElem.addChild(pred.getBlockName());
+                predElem.addChild(']');
+
+                if (ta.blockVisited(pred) === false)
+                    setColor(predElem, 'grey');
+                else
+                    colorType(useElem, instr, useIdx);
+
+                elem.addChild(predElem);
             }
             else
             {
+                var useElem = new XMLElement('span');
                 useElem.addChild(use.getValName());
+                colorType(useElem, instr, useIdx);
+                elem.addChild(useElem);
             }
-
-            elem.addChild(useElem);
 
             if (useIdx !== instr.uses.length - 1)
                 elem.addChild(',');
+        }
+
+        if (instr instanceof ArgValInstr)
+        {
+            elem.addChild(' ' + instr.argIndex);
         }
 
         // For each branch target
@@ -184,12 +241,16 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         {
             var targetElem = new XMLElement('span');
 
+            var target = instr.targets[i];
+
             targetElem.addChild(
                 (instr.targetNames[i]? (' ' + instr.targetNames[i]):'') + 
-                ' ' + instr.targets[i].getBlockName()
-            );           
+                ' ' + target.getBlockName()
+            );
 
-            // TODO: grey out unvisited blocks
+            // If the target is unvisited, grey it out
+            if (ta.blockVisited(target) === false)
+                setColor(target, 'grey');
 
             elem.addChild(targetElem);
         }
@@ -203,7 +264,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
         // If the block wasn't visited, grey it out
         if (ta.blockVisited(block) === false)
-            elem.attribs.style = "color: #222222;";
+            setColor(elem, 'grey');
 
         elem.addChild(indent);
         elem.addChild(block.getBlockName() + ':\n');
@@ -242,9 +303,28 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
                 fnElem.addChild(', ');
         }
 
-        fnElem.addChild(')\n');
-        fnElem.addChild(indent);
-        fnElem.addChild('{\n');
+        fnElem.addChild(') ');
+
+        // Create an element for the expand/collapse button
+        var buttonElem = new XMLElement('span');
+        buttonElem.attribs['class'] = 'button';
+        buttonElem.addChild('[+]');
+
+        // Create an element for the function body, make it initially hidden
+        var bodyElem = new XMLElement('span');
+        bodyElem.attribs.style = "display:none;";
+
+        // Allocate ids for the expand button and body
+        var buttonId = assignId(buttonElem);
+        var bodyId = assignId(bodyElem);
+
+        // Set the click event code for the button
+        buttonElem.attribs.onClick = 'toggleBody("' + bodyId + '","' + buttonId + '");';
+
+        fnElem.addChild(buttonElem);
+        fnElem.addChild('\n');
+        bodyElem.addChild(indent);
+        bodyElem.addChild('{\n');
 
         // Visit the sub-functions
         var subFnsAdded = false;
@@ -254,7 +334,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
             if (!subElem)
                 continue;
 
-            fnElem.addChild(subElem);
+            bodyElem.addChild(subElem);
             subFnsAdded = true;
         }
 
@@ -266,13 +346,15 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
             var subElem = visitBlock(block, indent + '    ');
 
             if (subFnsAdded === true || i > 0)
-                fnElem.addChild('\n');
+                bodyElem.addChild('\n');
 
-            fnElem.addChild(subElem);
+            bodyElem.addChild(subElem);
         }
 
-        fnElem.addChild(indent);
-        fnElem.addChild('}\n');
+        bodyElem.addChild(indent);
+        bodyElem.addChild('}\n');
+
+        fnElem.addChild(bodyElem);
 
         return fnElem;
     }

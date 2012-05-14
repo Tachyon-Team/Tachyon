@@ -352,6 +352,17 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
         for (var i = 0; i < instr.uses.length; ++i)
         {
             var type = ta.getTypeSet(instr, i);
+
+            assert (
+                type instanceof TypeSet,
+                'invalid type set:\n' + 
+                type + '\n' +
+                'for use:\n' +
+                i + '\n' +
+                'of instruction:\n' +
+                instr
+            );
+
             useTypes.push(type);
         }
 

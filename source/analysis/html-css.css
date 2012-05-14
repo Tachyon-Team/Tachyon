@@ -11,3 +11,9 @@ div.bubble
     background: yellow;
     font-family: monospace;
 }
+
+span.button
+{
+    font-family: monospace;
+    font-weight:bold;
+}

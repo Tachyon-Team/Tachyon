@@ -608,9 +608,6 @@ TypeProp.prototype.iterate = function ()
         {
             var use = instr.uses[j];
 
-            if ((use instanceof IRInstr || use instanceof IRConst) === false)
-                continue;    
-
             var useType = typeGraph.getType(use);
 
             assert (
