@@ -274,7 +274,7 @@ x86.optimize = function (asm, maxPasses)
             {
                 // If the reference count is 0 and this label is
                 // not exported, remove it
-                if (instr.refCount === 0 && instr.export === false)
+                if (instr.refCount === 0 && instr.exported === false)
                     remInstr(instr);
 
                 // Reset the reference count for the label

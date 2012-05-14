@@ -50,7 +50,8 @@ DEFAULT_JSVM="v8"
 
 # Install V8
 
-V8_REVISION="7932"
+# 2012-05-13 (3.11.0)
+V8_REVISION="11553"
 
 V8_DIR="deps/v8"
 
@@ -99,17 +100,19 @@ v8_patch_for_tachyon()
     ln -s $SRC_DIR/host/d8-tachyon-exts.cc .
   fi
 
-  if [ ! -e "SConscript-orig" ]; then
-    mv -n SConscript SConscript-orig
+  if [ ! -e "d8.gyp-orig" ]; then
+    mv -n d8.gyp d8.gyp-orig
   fi
-  sed -e '/accessors\.cc/q' SConscript-orig | sed -e '/accessors\.cc/d' > SConscript
-  echo "    tachyon-exts.cc" >> SConscript
-  echo "    d8-tachyon-exts.cc" >> SConscript
-  sed -e '/accessors\.cc/,$!d' SConscript-orig >> SConscript
+
+  sed -e '/d8\.cc/q' d8.gyp-orig | sed -e '/d8\.cc/d' > d8.gyp
+  echo "        'tachyon-exts.cc'," >> d8.gyp
+  echo "        'd8-tachyon-exts.cc'," >> d8.gyp
+  sed -e '/d8\.cc/,$!d' d8.gyp-orig >> d8.gyp
 
   if [ ! -e "d8.cc-orig" ]; then
     mv -n d8.cc d8.cc-orig
   fi
+
   sed -e '/namespace v8 {/q' d8.cc-orig | sed -e '/namespace v8 {/d' > d8.cc
   echo "#include \"d8-tachyon-exts.h\"" >> d8.cc
   echo "" >> d8.cc
@@ -123,9 +126,11 @@ v8_patch_for_tachyon()
 
 v8_build()
 {
-  scons arch=x64 mode=release disassembler=on d8
-  mv d8 d8_64
-  scons mode=release disassembler=on d8
+  make dependencies
+  make x64.release
+  mv out/x64.release/d8 d8_64
+  make ia32.release
+  mv out/ia32.release/d8 d8
 }
 
 v8_install_path()

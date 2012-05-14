@@ -61,13 +61,13 @@ function linkCode(codeBlock, backend, params)
     // For each imported value in the code block
     for (var i = 0; i < codeBlock.imports.length; ++i)
     {
-        var import = codeBlock.imports[i];
+        var imported = codeBlock.imports[i];
 
         // Get a reference to the value
-        var value = import.value;
+        var value = imported.value;
 
         // Set the write position
-        codeBlock.setWritePos(import.pos);
+        codeBlock.setWritePos(imported.pos);
 
         // If this is a static function reference
         if (value instanceof IRFunction)

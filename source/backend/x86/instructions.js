@@ -677,7 +677,7 @@ x86.Instruction.prototype.encode = function (codeBlock, x86_64)
 @class Label operand
 @extends x86.Instruction
 */
-x86.Label = function (name, export)
+x86.Label = function (name, exported)
 {
     /**
     @field Label name
@@ -698,7 +698,7 @@ x86.Label = function (name, export)
     @field Flag to indicate this label will be externally visible
     and usable for linking.
     */
-    this.export = (export === true);
+    this.exported = (exported === true);
 }
 x86.Label.prototype = new x86.Instruction();
 
@@ -707,7 +707,7 @@ Get the string representation of a label
 */
 x86.Label.prototype.toString = function ()
 {
-    return this.name + (this.export? ' (export)':'') + ':';
+    return this.name + (this.exported? ' (exported)':'') + ':';
 }
 
 /**
@@ -731,7 +731,7 @@ Encode a label into a code block
 x86.Label.prototype.encode = function (codeBlock)
 {
     // If this label is to be exported
-    if (this.export === true)
+    if (this.exported === true)
     {
         // Add the export to the code block
         codeBlock.exportLabel(this.name);
