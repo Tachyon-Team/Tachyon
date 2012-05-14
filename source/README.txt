@@ -17,18 +17,22 @@ probably already done this. If not, the command is:
 
     git clone <tachyon_repo_url>
 
-2. Run the install script. This will fetch the code from the common repository
-which contains our unit tests, parser and standard libraries. It will also
-fetch the V8 JavaScript VM, install the Tachyon extensions onto it, and compile
-32 and 64 bit binaries for your system.
+2. Run the install script. This will fetch the V8 JavaScript VM, install
+Tachyon-specific extensions onto it, and compile 32 and 64-bit binaries for
+your system.
 
     ./install
 
-3. Run make to build final dependencies for Tachyon
+3. Add the compiled V8 binaries to your path. On a typical Linux system, this
+can be done by adding the following line to your ~/.bash_profile file:
+
+    export PATH=$PATH:/home/<your_user_name>/Tachyon/source/deps/v8
+
+4. Run make to build final dependencies for Tachyon
 
     make
 
-4. You are done. You may test that Tachyon works properly by running its unit
+5. You are done. You may test that Tachyon works properly by running its unit
 tests using "make test", and "make test64" (for 64-bit compilation). This
 should run all unit tests and display "All tests passed." when done.
 
