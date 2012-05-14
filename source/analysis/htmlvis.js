@@ -100,24 +100,33 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
         if (outType === null)
             return;
 
+        var type = 
+            (useIdx === undefined)? 
+            outType:ta.getTypeSet(instr, useIdx);
+
+        if (type === null)
+            type = TypeSet.empty;
+
         // Color string
         var color;
 
-        if (useIdx === undefined)
-        {
-            if (outType === TypeSet.empty)
-                color = 'grey';
+        if (type === TypeSet.empty)
+            color = 'grey';
 
-
-            makeBubble(elem, outType);
-        }
-        else
-        {
-
+        // If the type is known exactly
+        if (type.flags === TypeFlags.UNDEF ||
+            type.flags === TypeFlags.INT ||
+            type.flags === TypeFlags.STRING)
+            color = 'green';
 
 
 
-        }
+        if (type.flags === TypeFlags.ANY)
+            color = 'red';
+
+
+        // Make an info-bubble for the element
+        makeBubble(elem, type);
 
         if (color !== undefined)
             elem.attribs.style = 'color: ' + color + ';';
@@ -180,7 +189,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
                 ' ' + instr.targets[i].getBlockName()
             );           
 
-            // TODO: color code
+            // TODO: grey out unvisited blocks
 
             elem.addChild(targetElem);
         }

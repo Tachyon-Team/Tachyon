@@ -7,8 +7,8 @@ function showBubble(divId, spanId)
 
     div.style.visibility = 'visible';
 
-    div.style.left = rect.left + 5;
-    div.style.top  = rect.top + rect.height + 5;
+    div.style.top  = document.body.scrollTop + rect.top + rect.height + 5;
+    div.style.left = document.body.scrollLeft + rect.left + 5;
 }
 
 function hideBubble(divId)
