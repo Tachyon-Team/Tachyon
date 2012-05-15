@@ -361,8 +361,12 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
     function visitUnit(ir)
     {
-        var pre = new HTMLPre()
         var func = visitFunc(ir, '')
+
+        if (!func)
+            return;
+
+        var pre = new HTMLPre()
         pre.addChild(func);
         page.addContents(pre);
     }

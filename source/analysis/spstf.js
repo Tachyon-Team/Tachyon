@@ -691,8 +691,9 @@ SPSTF.prototype.blockVisited = function (irBlock)
     );
 
     var block = this.blockMap.get(new SPSTFStump(irBlock, 0));
+    var visited = (block !== HashMap.NOT_FOUND);
 
-    return (block !== HashMap.NOT_FOUND);
+    return visited;
 }
 
 /**
@@ -807,6 +808,9 @@ SPSTF.prototype.getBlock = function (stump, func)
                 func.argInstrs[argIndex] = instr;
             }
         }
+
+        // Add the block to the block map
+        this.blockMap.set(stump, block);
 
         // Queue the block for live value analysis
         this.queueBlock(block);
@@ -1952,15 +1956,19 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 )
             );
 
-            // If we cannot assign the property type, union with the current type
+            // If we cannot do a strong update
             if (canAssignType === false)
             {
+                // Union with the current property type
                 var propType = ta.getType(this, propNode);
-                var valType = propType.union(valType);
+                var newType = propType.union(valType);
+                ta.setType(this, propNode, newType);
             }
-
-            // Update the property type
-            ta.setType(this, propNode, valType);
+            else
+            {
+                // Do a strong update on the property type
+                ta.setType(this, propNode, valType);
+            }
         }
     }
 
