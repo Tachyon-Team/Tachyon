@@ -131,7 +131,8 @@ TypeProp.prototype.init = function ()
     */
     this.objProto = this.initGraph.newObject(
         null,
-        'obj_proto', 
+        'obj_proto',
+        undefined,  
         undefined, 
         undefined, 
         undefined, 
@@ -143,7 +144,8 @@ TypeProp.prototype.init = function ()
     */
     this.arrProto = this.initGraph.newObject(
         null,
-        'arr_proto', 
+        'arr_proto',
+        undefined, 
         this.objProto, 
         undefined, 
         undefined, 
@@ -155,7 +157,8 @@ TypeProp.prototype.init = function ()
     */
     this.funcProto = this.initGraph.newObject(
         null,
-        'func_proto', 
+        'func_proto',
+        undefined, 
         this.objProto,
         undefined, 
         undefined, 
@@ -167,7 +170,8 @@ TypeProp.prototype.init = function ()
     */
     this.strProto = this.initGraph.newObject(
         null,
-        'str_proto', 
+        'str_proto',
+        undefined, 
         this.objProto,
         undefined, 
         undefined, 
@@ -179,7 +183,8 @@ TypeProp.prototype.init = function ()
     */
     this.globalObj = this.initGraph.newObject(
         null,
-        'global', 
+        'global',
+        undefined,
         this.objProto, 
         undefined,
         undefined, 
@@ -986,7 +991,7 @@ InitGlobalInstr.prototype.typeProp = function (ta, typeGraph)
 BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Create a new object from the object prototype
-    var newObj = typeGraph.newObject(this, 'obj', ta.objProto);
+    var newObj = typeGraph.newObject(this, 'obj', undefined, ta.objProto);
 
     // The result is the new object
     ta.setOutput(typeGraph, this, newObj);
@@ -995,7 +1000,7 @@ BlankObjInstr.prototype.typeProp = function (ta, typeGraph)
 BlankArrayInstr.prototype.typeProp = function (ta, typeGraph)
 {
     // Create a new array object from the array prototype
-    var newObj = typeGraph.newObject(this, 'array', ta.arrProto, TypeFlags.ARRAY);
+    var newObj = typeGraph.newObject(this, 'array', undefined, ta.arrProto, TypeFlags.ARRAY);
 
     // The result is the new object
     ta.setOutput(typeGraph, this, newObj);
@@ -1780,7 +1785,7 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         }
 
         // Create a new object to use as the this argument
-        var thisType = typeGraph.newObject(this, 'new_obj', protoType);
+        var thisType = typeGraph.newObject(this, 'new_obj', undefined, protoType);
     }
 
     // Get a descriptor for the continuation block
@@ -1818,12 +1823,10 @@ JSCallInstr.prototype.typeProp = function (ta, typeGraph)
         var callee = itr.get();
 
         // If this is not a function, ignore it
-        if ((callee.origin instanceof IRInstr) === false ||
-            (callee.origin.uses[0] instanceof IRFunction) === false ||
-            callee.origin.uses[0].funcName !== 'makeClos')
+        if ((callee.func instanceof IRFunction) === false)
             continue;
 
-        var func = callee.origin.uses[3];
+        var func = callee.func;
 
         //print('potential callee: ' + func.funcName);
 
@@ -2159,7 +2162,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         var funcInfo = ta.getFuncInfo(func);
 
         // Create the arguments object
-        var argObjType = typeGraph.newObject(this, 'arg_obj', ta.objProto);
+        var argObjType = typeGraph.newObject(this, 'arg_obj', undefined, ta.objProto);
         var argObj = argObjType.getObjItr().get();
 
         // Set the arguments length value
@@ -2195,6 +2198,7 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         var funcObj = typeGraph.newObject(
             this,
             'closure',
+            func, 
             ta.funcProto, 
             TypeFlags.FUNCTION, 
             numClosCells
@@ -2217,14 +2221,17 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         // If no prototype object exists
         if (protoObj === undefined)
         {
-            // Test if this is a global function
-            var curFunc = this.parentBlock.parentCFG.ownerFunc;
-            var globalFunc = curFunc.parentFunc === null;
+            // Test if this is a global function declaration (not in a loop)
+            var curBlock = this.parentBlock;
+            var curFunc = curBlock.parentCFG.ownerFunc;
+            var curEntry = curFunc.hirCFG.entry;
+            var globalFunc = curFunc.parentFunc === null && curBlock === curEntry;
 
             // Create a Function.prototype object for the function
             var protoObj = typeGraph.newObject(
                 this,
                 'proto',
+                undefined, 
                 ta.objProto,
                 undefined,
                 undefined,

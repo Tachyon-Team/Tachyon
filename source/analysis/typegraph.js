@@ -84,6 +84,7 @@ TGProperty.prototype = new TGVariable();
 function TGObject(
     origin,
     tag,
+    func,
     flags, 
     numClosVars, 
     singleton
@@ -109,7 +110,7 @@ function TGObject(
     );
 
     /**
-    Origin instruction (creation site) of the object.
+    IR instruction having created the object (origin site)
     */
     this.origin = origin;
 
@@ -122,6 +123,11 @@ function TGObject(
     var obj = TGObject.objMap.get(this);
     if (obj !== HashMap.NOT_FOUND)
         return obj;
+
+    /**
+    IR function represented, if any
+    */
+    this.func = func;
 
     /**
     Type flags for this object
@@ -1134,6 +1140,7 @@ Create a new object in the type graph
 TypeGraph.prototype.newObject = function (
     origin,
     tag,
+    func,
     protoSet, 
     flags, 
     numClosVars, 
@@ -1164,6 +1171,7 @@ TypeGraph.prototype.newObject = function (
     var obj = new TGObject(
         origin,
         tag,
+        func,
         flags, 
         numClosVars,
         singleton

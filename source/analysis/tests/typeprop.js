@@ -240,8 +240,13 @@ tests.typeProp.proto_chain = TypeProp.makeTest(
     false
 );
 
-tests.typeProp.proto_chain = TypeProp.makeTest(
+tests.typeProp.proto_clos = TypeProp.makeTest(
     'programs/type_analysis/proto_clos.js',
+    false
+);
+
+tests.typeProp.proto_loop = TypeProp.makeTest(
+    'programs/type_analysis/proto_loop.js',
     false
 );
 

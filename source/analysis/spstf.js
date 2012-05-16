@@ -594,7 +594,8 @@ SPSTF.prototype.init = function ()
     */
     this.objProto = this.newObject(
         initInstr,
-        'obj_proto', 
+        'obj_proto',
+        undefined,
         undefined, 
         undefined, 
         undefined, 
@@ -606,7 +607,8 @@ SPSTF.prototype.init = function ()
     */
     this.arrProto = this.newObject(
         initInstr,
-        'arr_proto', 
+        'arr_proto',
+        undefined,
         this.objProto, 
         undefined, 
         undefined, 
@@ -618,7 +620,7 @@ SPSTF.prototype.init = function ()
     */
     this.funcProto = this.newObject(
         initInstr,
-        'func_proto', 
+        'func_proto',
         this.objProto,
         undefined, 
         undefined, 
@@ -630,7 +632,8 @@ SPSTF.prototype.init = function ()
     */
     this.strProto = this.newObject(
         initInstr,
-        'str_proto', 
+        'str_proto',
+        undefined,
         this.objProto,
         undefined, 
         undefined, 
@@ -642,7 +645,8 @@ SPSTF.prototype.init = function ()
     */
     this.globalObj = this.newObject(
         initInstr,
-        'global', 
+        'global',
+        undefined,
         this.objProto, 
         undefined,
         undefined, 
@@ -989,10 +993,10 @@ SPSTF.prototype.instrItr = function ()
     var instr = this.instrWorkList.remFirst();
     this.instrWorkSet.rem(instr);
 
-    print(
-        'Iterating instr: ' + 
-        (instr.irInstr.parentBlock? instr.irInstr:null)
-    );
+    //print(
+    //    'Iterating instr: ' + 
+    //    (instr.irInstr.parentBlock? instr.irInstr:null)
+    //);
 
     // Call the flow function for ths instruction
     instr.flowFunc(this);
@@ -1004,8 +1008,10 @@ SPSTF.prototype.instrItr = function ()
         this.typeSets.set({ instr:instr.irInstr, idx:i }, useType);
     }
 
+    // Store the type set of the output value   
     var irInstr = instr.irInstr;
     var outVals = instr.outVals[0];
+    var outType = TypeSet.empty;
     for (var i = 0; i < outVals.length; ++i)
     {
         var def = outVals[i];
@@ -1013,13 +1019,11 @@ SPSTF.prototype.instrItr = function ()
         if (def.value === irInstr)
         {
             //print('  output: ' + def.type);
-
-            // Store the type set of the output value
-            this.typeSets.set({ instr: irInstr }, def.type);
-
+            outType = def.type;
             break;
         }
     }
+    this.typeSets.set({ instr: irInstr }, outType);
 
     // Increment the instruction iteration count
     this.itrCount++;
@@ -1039,10 +1043,10 @@ SPSTF.prototype.blockItr = function ()
     var block = this.blockWorkList.remFirst();
     this.blockWorkSet.rem(block);
 
-    print(
-        'Iterating block: ' + block.getName() /*+
-        ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
-    );
+    //print(
+    //    'Iterating block: ' + block.getName() /*+
+    //    ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
+    //);
 
     /* TODO: 
     Lazy propagation: if fn (or callees) doesn't define a value, don't
@@ -1068,7 +1072,7 @@ SPSTF.prototype.blockItr = function ()
             var value = def.value;
             var dests = def.dests;
 
-            print('def: ' + ((value instanceof IRValue)? value.getValName():value));
+            //print('def: ' + ((value instanceof IRValue)? value.getValName():value));
 
             // Get the uses for this value
             var useSet = liveMap.get(value);
@@ -1181,7 +1185,7 @@ SPSTF.prototype.blockItr = function ()
 
         for (var i = 0; i < callSites.length; ++i)
         {
-            print('ret succ merge');
+            //print('ret succ merge');
 
             var callSite = callSites[i];
             var callCont = callSite.targets[0];
@@ -1203,7 +1207,7 @@ SPSTF.prototype.blockItr = function ()
 
         for (var i = 0; i < branch.callees.length; ++i)
         {
-            print('call entry merge');
+            //print('call entry merge');
 
             var entry = branch.callees[i].entry;
 
@@ -1243,7 +1247,7 @@ SPSTF.prototype.blockItr = function ()
     {
         var instr = block.instrs[i];
 
-        print('instr: ' + instr);
+        //print('instr: ' + instr);
 
         // Process defs of the instruction
         processDefs(instr, liveMap, 0);
@@ -1251,8 +1255,8 @@ SPSTF.prototype.blockItr = function ()
         // Process uses of the instruction
         processUses(instr, liveMap);
 
-        print('live map:\n' + liveMap);
-        print('');
+        //print('live map:\n' + liveMap);
+        //print('');
     }
 
     // If the live map at the beginning of the block changed
@@ -1312,6 +1316,7 @@ Create a new object abstraction
 SPSTF.prototype.newObject = function (
     instr,
     tag, 
+    func,
     protoSet, 
     flags, 
     numClosVars, 
@@ -1342,6 +1347,7 @@ SPSTF.prototype.newObject = function (
     var obj = new TGObject(
         instr,
         tag,
+        func,
         flags,
         numClosVars,
         singleton
@@ -1370,9 +1376,9 @@ SPSTF.prototype.addEdge = function (
     targetIdx
 )
 {
-    print('Adding edge');
-    print('  from: ' + defInstr);
-    print('  to  : ' + useInstr);
+    //print('Adding edge');
+    //print('  from: ' + defInstr);
+    //print('  to  : ' + useInstr);
 
     var def = defInstr.outVals[targetIdx][outIdx];
 
@@ -1415,7 +1421,7 @@ SPSTF.prototype.remEdge = function (
     targetIdx
 )
 {
-    print('Removing edge');
+    //print('Removing edge');
 
     var def = defInstr.outVals[targetIdx][outIdx];
 
@@ -1559,8 +1565,6 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         // Queue all the destination instructions
         for (i = 0; i < def.dests.length; ++i)
             this.queueInstr(def.dests[i]);
-
-        print('existing definition');
     }
 
     // This is a new definition for this instruction
@@ -1576,7 +1580,7 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         // Add the new definition to the list for this target
         defList.push(def);
 
-        print('new def, queueing block: ' + instr.block.getName());
+        //print('new def, queueing block: ' + instr.block.getName());
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
@@ -1864,7 +1868,7 @@ InitGlobalInstr.prototype.spstfFlowFunc = function (ta)
 BlankObjInstr.prototype.spstfFlowFunc = function (ta)
 {
     // Create a new object from the object prototype
-    var newObj = ta.newObject(this, 'obj', ta.objProto);
+    var newObj = ta.newObject(this, 'obj', undefined, ta.objProto);
 
     // The result is the new object
     ta.setOutType(this, newObj);
@@ -1873,7 +1877,7 @@ BlankObjInstr.prototype.spstfFlowFunc = function (ta)
 BlankArrayInstr.prototype.spstfFlowFunc = function (ta)
 {
     // Create a new array object from the array prototype
-    var newObj = ta.newObject(this, 'array', ta.arrProto, TypeFlags.ARRAY);
+    var newObj = ta.newObject(this, 'array',  undefined, ta.arrProto, TypeFlags.ARRAY);
 
     // The result is the new object
     ta.setOutType(this, newObj);
@@ -2128,8 +2132,8 @@ JSAddInstr.prototype.spstfFlowFunc = function (ta)
     var t1 = ta.getInType(this, 1);
  
     //print('JSAddInstr');
-    print('t0: ' + t0);
-    print('t1: ' + t1);
+    //print('t0: ' + t0);
+    //print('t1: ' + t1);
    
     // Output type
     var outType;
@@ -2642,28 +2646,30 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         }
 
         // Create a new object to use as the this argument
-        var thisType = ta.newObject(this, 'new_obj', protoType);
+        var thisType = ta.newObject(this, 'new_obj', undefined, protoType);
     }
 
     // Union of the return type of all potential callees
     var retType = TypeSet.empty;
+
+    print(this);
+    //print('  ' + calleeType);
 
     // For each potential callee
     for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
     {
         var callee = itr.get();
 
-        // Get the origin for this class
-        var origin = callee.origin;
-
         // If this is not a function, ignore it
-        if ((origin instanceof IRFunction) === false)
+        if ((callee.func instanceof IRFunction) === false)
             continue;
 
-        print('callee: ' + origin.funcName);
+        var irFunc = callee.func;
+
+        print('callee: ' + irFunc.funcName);
 
         // Get the SPSTFFunc instance for this value
-        var func = ta.getFunc(origin);
+        var func = ta.getFunc(irFunc);
 
         // If this function is a new callee
         if (arraySetHas(this.callees, func) === false)
@@ -2793,7 +2799,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
 ArgValInstr.prototype.spstfFlowFunc = function (ta)
 {
-    print('ArgValInstr');
+    //print('ArgValInstr');
 
     var func = this.block.func;
     var argIndex = this.irInstr.argIndex;
@@ -2814,7 +2820,7 @@ ArgValInstr.prototype.spstfFlowFunc = function (ta)
 
 RetInstr.prototype.spstfFlowFunc = function (ta)
 {
-    print('RetInstr');
+    //print('RetInstr');
 
     var func = this.block.func;
     var retVals = func.retVals;
@@ -2895,7 +2901,8 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         // Create an object node for this function
         var funcObj = ta.newObject(
             this,
-            'closure', 
+            'closure',
+            func,
             ta.funcProto, 
             TypeFlags.FUNCTION, 
             numClosCells
@@ -2919,16 +2926,21 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         // If no prototype object exists
         if (protoObj === undefined)
         {
-            // Test if this is a global function
-            var globalFunc = (
-                this.irInstr.parentBlock &&
-                this.irInstr.parentBlock.parentCFG.ownerFunc.parentFunc === null
-            );
+            // Test if this is a global function declaration (not in a loop)
+            var globalFunc = false;
+            var curBlock = this.irInstr.parentBlock;
+            if (curBlock instanceof BasicBlock)
+            {
+                var curFunc = curBlock.parentCFG.ownerFunc;
+                var curEntry = curFunc.hirCFG.entry;
+                var globalFunc = curFunc.parentFunc === null && curBlock === curEntry;
+            }
 
             // Create a Function.prototype object for the function
             var protoObj = ta.newObject(
                 this,
-                'proto', 
+                'proto',
+                undefined,
                 ta.objProto,
                 undefined,
                 undefined,

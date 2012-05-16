@@ -40,7 +40,7 @@
  * _________________________________________________________________________
  */
 
-parseInt = function (
+function parseInt(
     string,
     radix
 )

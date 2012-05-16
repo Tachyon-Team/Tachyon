@@ -132,8 +132,10 @@ function funcToIR(
 )
 {
     // Ensure that the top-level AST is a program
-    assert (astFunc instanceof FunctionExpr,
-            'function must be AST function expression');
+    assert (
+        astFunc instanceof FunctionExpr,
+        'function must be AST function expression'
+    );
 
     // Compile the function
     return stmtListToIRFunc(

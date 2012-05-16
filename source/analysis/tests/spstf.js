@@ -245,8 +245,13 @@ tests.spstf.proto_chain = SPSTF.makeTest(
     false
 );
 
-tests.spstf.proto_chain = SPSTF.makeTest(
+tests.spstf.proto_clos = SPSTF.makeTest(
     'programs/type_analysis/proto_clos.js',
+    false
+);
+
+tests.spstf.proto_loop = TypeProp.makeTest(
+    'programs/type_analysis/proto_loop.js',
     false
 );
 
