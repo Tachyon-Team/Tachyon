@@ -1215,6 +1215,20 @@ tests.programs.gc.stackvm = genProgTest(
     'hostParams'
 );
 
+/**
+Esprima parser test
+*/
+tests.programs.esprima = genProgTest(
+    [
+        'programs/esprima/esprima.js',
+        'programs/esprima/harness.js'
+    ],
+    'test',
+    [],
+    0,
+    'clientParams'
+);
+
 /*
 Type analysis test programs. This test suite is auto-filled
 by the type analysis tests.

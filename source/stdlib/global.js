@@ -385,6 +385,8 @@ function parseFloat (
     string
 )
 {
+    // FIXME: implement fully once floating-point support is added
+    return parseInt(string);
 }
 
 function isNaN (

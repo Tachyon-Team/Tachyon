@@ -159,7 +159,7 @@ Object.getOwnPropertyNames = function (O)
 */
 Object.create = function (O, Properties)
 {
-    if (boxIsExtObj(O) === false && obj !== null)
+    if (boxIsExtObj(O) === false && O !== null)
     {
         typeError('can only create object from object or null prototype');
     }
