@@ -250,8 +250,13 @@ tests.spstf.proto_clos = SPSTF.makeTest(
     false
 );
 
-tests.spstf.proto_loop = TypeProp.makeTest(
+tests.spstf.proto_loop = SPSTF.makeTest(
     'programs/type_analysis/proto_loop.js',
+    false
+);
+
+tests.spstf.proto_cond = SPSTF.makeTest(
+    'programs/type_analysis/proto_cond.js',
     false
 );
 

@@ -250,6 +250,11 @@ tests.typeProp.proto_loop = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.proto_cond = TypeProp.makeTest(
+    'programs/type_analysis/proto_cond.js',
+    false
+);
+
 tests.typeProp.args_sum = TypeProp.makeTest(
     'programs/type_analysis/args_sum.js',
     false

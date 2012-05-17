@@ -1907,6 +1907,12 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
+        // Test if there is a single, known object type
+        var singleType = (
+            objType.getNumObjs() === 1 && 
+            (objType & ~TypeFlags.EXTOBJ) === 0
+        );
+
         // Get a reference to this function
         var func = this.block.func;
 
@@ -1946,13 +1952,14 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 obj.origin.parentBlock &&
                 obj.origin.parentBlock.parentCFG &&
                 obj.origin.parentBlock.parentCFG.ownerFunc === func.irFunc &&
-                this.irInstr.uses[0] === obj.origin
+                (this.irInstr.uses[0] === obj.origin ||
+                 this.irInstr.parentBlock === obj.origin.parentBlock)
             );
 
             // Test if we can overwrite the current property type
             var canAssignType = (
-                propNode !== obj.idxProp 
-                && 
+                propNode !== obj.idxProp &&
+                singleType === true && 
                 (
                     isCtorThis === true ||
                     isLocalObj === true ||

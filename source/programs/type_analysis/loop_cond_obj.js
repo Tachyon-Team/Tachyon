@@ -23,8 +23,11 @@ function bar(n)
     if (n)
         r.a.f = 3;
 
+    list[0].g = 3;
+
     typeAssert(a1, '["and", "object", "undef"]');
     typeAssert(r, '["and", "object", "undef"]');
+    typeAssert(list[1].g, '"undef"');
 }
 
 bar(0);

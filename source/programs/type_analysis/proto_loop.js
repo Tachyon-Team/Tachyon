@@ -10,6 +10,7 @@ for (var i = 0; i <= 10; ++i)
 
 closEvn.prototype.x = 4;
 
+typeAssert(closOdd, '"undef"');
 typeAssert(closEvn.prototype.x, '"int"');
 typeAssert(closOdd.prototype.x, '"undef"');
 

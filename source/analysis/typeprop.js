@@ -1028,6 +1028,12 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
+        // Test if there is a single, known object type
+        var singleType = (
+            objType.getNumObjs() === 1 && 
+            (objType & ~TypeFlags.EXTOBJ) === 0
+        );
+
         // Get a reference to this function
         var func = this.parentBlock.parentCFG.ownerFunc;
 
@@ -1068,13 +1074,14 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
                 obj.origin &&
                 obj.origin.parentBlock &&
                 obj.origin.parentBlock.parentCFG.ownerFunc === func &&
-                this.uses[0] === obj.origin
+                (this.uses[0] === obj.origin ||
+                 this.parentBlock === obj.origin.parentBlock)
             );
 
             // Test if we can overwrite the current property type
             var canAssignType = (
-                propNode !== obj.idxProp 
-                && 
+                propNode !== obj.idxProp &&
+                singleType === true && 
                 (
                     isCtorThis === true ||
                     isLocalObj === true ||
