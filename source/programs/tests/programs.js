@@ -925,20 +925,20 @@ tests.programs.stdlib_regexp = genProgTest(
 );
 
 /**
-Standard library json code tests.
+Standard library math code tests.
 */
-tests.programs.stdlib_json = genProgTest(
-    'programs/stdlib_json/stdlib_json.js',
+tests.programs.stdlib_math = genProgTest(
+    'programs/stdlib_math/stdlib_math.js',
     'test',
     [],
     0
 );
 
 /**
-Standard library math code tests.
+Standard library json code tests.
 */
-tests.programs.stdlib_math = genProgTest(
-    'programs/stdlib_math/stdlib_math.js',
+tests.programs.stdlib_json = genProgTest(
+    'programs/stdlib_json/stdlib_json.js',
     'test',
     [],
     0

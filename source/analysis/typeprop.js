@@ -2201,6 +2201,12 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             'invalid num clos cells'
         );
 
+        // Test if this is a global function declaration (not in a loop)
+        var curBlock = this.parentBlock;
+        var curFunc = curBlock.parentCFG.ownerFunc;
+        var curEntry = curFunc.hirCFG.entry;
+        var globalFunc = curFunc.parentFunc === null && curBlock === curEntry;
+
         // Create an object node for this function
         var funcObj = typeGraph.newObject(
             this,
@@ -2208,43 +2214,20 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
             func, 
             ta.funcProto, 
             TypeFlags.FUNCTION, 
-            numClosCells
+            numClosCells,
+            globalFunc
         );
 
-        // If this is a global library function
-        if (ta.fromLib(func) === true)
-        {
-            // Try to find the right prototype object
-            var protoObj;
-            switch (func.funcName)
-            {
-                case 'Object'   : protoObj = ta.objProto; break;
-                case 'Array'    : protoObj = ta.arrProto; break;
-                case 'Function' : protoObj = ta.funcProto; break;
-                case 'String'   : protoObj = ta.strProto; break;
-            }
-        }
-
-        // If no prototype object exists
-        if (protoObj === undefined)
-        {
-            // Test if this is a global function declaration (not in a loop)
-            var curBlock = this.parentBlock;
-            var curFunc = curBlock.parentCFG.ownerFunc;
-            var curEntry = curFunc.hirCFG.entry;
-            var globalFunc = curFunc.parentFunc === null && curBlock === curEntry;
-
-            // Create a Function.prototype object for the function
-            var protoObj = typeGraph.newObject(
-                this,
-                'proto',
-                undefined, 
-                ta.objProto,
-                undefined,
-                undefined,
-                globalFunc
-            );
-        }
+        // Create a Function.prototype object for the function
+        var protoObj = typeGraph.newObject(
+            this,
+            'proto',
+            undefined, 
+            ta.objProto,
+            undefined,
+            undefined,
+            globalFunc
+        );
 
         // Assign the prototype object to the Function.prototype property
         var protoNode = funcObj.getObjItr().get().getPropNode('prototype');
@@ -2270,6 +2253,30 @@ CallFuncInstr.prototype.typeProp = function (ta, typeGraph)
         );
 
         retType = cellType;
+    }
+
+    // Get object prototype
+    else if (callee.funcName === 'get_ctx_objproto')
+    {
+        retType = ta.objProto;
+    }
+
+    // Get array prototype
+    else if (callee.funcName === 'get_ctx_arrproto')
+    {
+        retType = ta.arrProto;
+    }
+
+    // Get function prototype
+    else if (callee.funcName === 'get_ctx_funcproto')
+    {
+        retType = ta.funcProto;
+    }
+
+    // Get string prototype
+    else if (callee.funcName === 'get_ctx_strproto')
+    {
+        retType = ta.strProto;
     }
 
     // Set closure cell variable

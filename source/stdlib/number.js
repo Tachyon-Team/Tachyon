@@ -76,17 +76,8 @@ function Number(value)
     }
 }
 
-/**
-Anonymous function to initialize this library
-*/
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the number prototype object in the context
-    set_ctx_numproto(ctx, Number.prototype);
-})();
+// Set the number prototype object
+Number.prototype = get_ctx_numproto(iir.get_ctx());
 
 //-----------------------------------------------------------------------------
 

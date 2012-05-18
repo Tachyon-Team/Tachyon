@@ -78,17 +78,8 @@ function String(value)
     }
 }
 
-/**
-Anonymous function to initialize this library
-*/
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the String prototype object in the context
-    set_ctx_strproto(ctx, String.prototype);
-})();
+// Set the string prototype object
+String.prototype = get_ctx_strproto(iir.get_ctx());
 
 //-----------------------------------------------------------------------------
 

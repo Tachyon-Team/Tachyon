@@ -94,18 +94,36 @@ function initHeap(heapSize)
         1
     );
 
-    // Allocate the global object
-    var globalObj = newObject(null);
+    // Allocate the object prototype object
+    var objProto = newObject(null);
 
     assert (
-        boxIsObj(globalObj),
+        boxIsObj(objProto),
         2
     );
 
     assert (
-        iir.icast(IRType.rptr, unboxRef(globalObj)) >= heapPtr,
+        iir.icast(IRType.rptr, unboxRef(objProto)) >= heapPtr,
         3
     );
+
+    // Allocate the other prototype objects
+    var funcProto = newObject(objProto);
+    var arrProto = newObject(objProto);
+    var boolProto = newObject(objProto);
+    var numProto = newObject(objProto);
+    var strProto = newObject(objProto);
+
+    // Set the prototype object references in the context object
+    set_ctx_objproto(ctx, objProto);
+    set_ctx_funcproto(ctx, funcProto);
+    set_ctx_arrproto(ctx, arrProto);
+    set_ctx_boolproto(ctx, boolProto);
+    set_ctx_numproto(ctx, numProto);
+    set_ctx_strproto(ctx, strProto);
+
+    // Allocate the global object
+    var globalObj = newObject(objProto);
 
     // Set the global object reference in the context object
     set_ctx_globalobj(ctx, globalObj);

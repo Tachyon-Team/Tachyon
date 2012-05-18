@@ -56,8 +56,21 @@ Print a value to the console.
 */
 function print(val)
 {
+    "tachyon:noglobal";
+
     // Use the runtime utility function
     printBox(val);
+}
+
+/**
+Read a file as a string.
+*/
+function readFile(fileName)
+{
+    "tachyon:noglobal";
+
+    // Call the statically linked primitive of the same name
+    return readFile(fileName);
 }
 
 /**

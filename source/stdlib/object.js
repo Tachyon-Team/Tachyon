@@ -79,30 +79,15 @@ function Object(value)
     return {};
 }
 
+// Set the object prototype object
+Object.prototype = get_ctx_objproto(iir.get_ctx());
+
 Object.length = 1;
 
 /**
 15.2.4.1 Object.prototype.constructor
 */
 Object.prototype.constructor = Object;
-
-/**
-Anonymous function to initialize this library
-*/
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the object prototype object in the context
-    set_ctx_objproto(ctx, Object.prototype);
-
-    // Get a reference to the global object
-    var globalObj = get_ctx_globalobj(ctx);
-
-    // Set the global object prototype
-    set_obj_proto(globalObj, Object.prototype);
-})();
 
 //-----------------------------------------------------------------------------
 

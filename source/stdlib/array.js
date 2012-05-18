@@ -81,17 +81,8 @@ function Array(len)
     return a;
 }
 
-/**
-Anonymous function to initialize this library
-*/
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the Array prototype object in the context
-    set_ctx_arrproto(ctx, Array.prototype);
-})();
+// Set the array prototype object
+Array.prototype = get_ctx_arrproto(iir.get_ctx());
 
 //-----------------------------------------------------------------------------
 

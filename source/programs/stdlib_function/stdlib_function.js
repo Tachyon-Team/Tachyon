@@ -54,6 +54,19 @@ function test_ctor()
     return 0;
 }
 
+function test_proto()
+{
+    var fProto = Function.prototype;
+
+    if (fProto.isPrototypeOf(Function.prototype.toString) === false)
+        return 1;
+
+    if (fProto.isPrototypeOf(Object.prototype.hasOwnProperty) === false)
+        return 2;
+
+    return 0;
+}
+
 function test_toString()
 {
     var s = test_toString.toString();
@@ -105,17 +118,21 @@ function test()
     if (r != 0)
         return 100 + r;
 
-   var r = test_toString();
+    var r = test_proto()
     if (r != 0)
         return 200 + r;
 
-   var r = test_apply();
+   var r = test_toString();
     if (r != 0)
         return 300 + r;
 
-   var r = test_call();
+   var r = test_apply();
     if (r != 0)
         return 400 + r;
+
+   var r = test_call();
+    if (r != 0)
+        return 500 + r;
 
     return 0;
 }

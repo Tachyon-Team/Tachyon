@@ -59,42 +59,10 @@ function Function()
     // TODO
 }
 
+// Set the function prototype object
+Function.prototype = get_ctx_funcproto(iir.get_ctx());
+
 Function.prototype.length = 0;
-
-/**
-Anonymous function to initialize this library
-*/
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the function prototype object in the context
-    set_ctx_funcproto(ctx, Function.prototype);
-
-    // Set the prototype on all globally-accessible function objects
-    // Note: this assumes that there are no cycles among global objects
-    // at this point in the initialization.
-    function setProto(obj)
-    {
-        for (var k in obj)
-        {
-            var p = obj[k];
-
-            if (typeof p === 'function')
-            {
-                set_obj_proto(p, Function.prototype);
-                setProto(p);
-            }
-            else if (typeof p === 'object')
-            {
-                setProto(p);
-            }
-        }
-    }
-    setProto(getGlobalObj());
-    
-})();
 
 //-----------------------------------------------------------------------------
 

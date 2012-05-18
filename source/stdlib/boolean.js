@@ -76,17 +76,8 @@ function Boolean(value)
     }
 }
 
-/**
-Anonymous function to initialize this library
-*/
-(function ()
-{
-    // Get a reference to the context
-    var ctx = iir.get_ctx();
-
-    // Set the boolean prototype object in the context
-    set_ctx_boolproto(ctx, Boolean.prototype);
-})();
+// Set the boolean prototype object
+Boolean.prototype = get_ctx_boolproto(iir.get_ctx());
 
 //-----------------------------------------------------------------------------
 
