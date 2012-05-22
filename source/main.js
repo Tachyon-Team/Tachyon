@@ -144,7 +144,17 @@ function main()
         print('Running ' + taName + ' analysis on: ' + args.files);
 
         // Run the type analysis
-        analysis.testOnFiles(args.files, true, false);
+        try 
+        {
+            analysis.testOnFiles(args.files, true, false);
+        }
+        catch (e)
+        {
+            if (e.stack)
+                print(e.stack);
+            else
+                print(e);
+        }
 
         // Output analysis results
         analysis.logResults(args.options['outfile']);

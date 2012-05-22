@@ -81,7 +81,11 @@ SPSTFUseSet.prototype.union = function (that)
 
     var newSet = this.copy();
 
-    return HashSet.prototype.union.call(newSet, that);
+    // Add the elements from the second set
+    for (var itr = that.getItr(); itr.valid(); itr.next())
+        HashSet.prototype.add.call(newSet, itr.get());
+
+    return newSet;
 }
 
 SPSTFUseSet.prototype.add = function (use)
@@ -621,6 +625,32 @@ SPSTF.prototype.init = function ()
     this.funcProto = this.newObject(
         initInstr,
         'func_proto',
+        this.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    /**
+    Boolean prototype object node
+    */
+    this.boolProto = this.newObject(
+        initInstr,
+        'bool_proto',
+        undefined,
+        this.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    /**
+    Number prototype object node
+    */
+    this.numProto = this.newObject(
+        initInstr,
+        'num_proto',
+        undefined,
         this.objProto,
         undefined, 
         undefined, 
@@ -1190,6 +1220,9 @@ SPSTF.prototype.blockItr = function ()
             var callSite = callSites[i];
             var callCont = callSite.targets[0];
 
+            if ((callCont instanceof SPSTFBlock) === false)
+                continue;
+
             var liveOut = callCont.liveMap.copy();
 
             filterPhis(liveOut, block, callCont);
@@ -1205,6 +1238,7 @@ SPSTF.prototype.blockItr = function ()
         // TODO: local var prop
         // TODO: lazy prop
 
+        // For each callee
         for (var i = 0; i < branch.callees.length; ++i)
         {
             //print('call entry merge');
@@ -1212,6 +1246,19 @@ SPSTF.prototype.blockItr = function ()
             var entry = branch.callees[i].entry;
 
             var liveOut = entry.liveMap.copy();
+            liveMap = liveMap.union(liveOut);
+        }
+
+        var callCont = branch.targets[0];
+
+        if (callCont instanceof SPSTFBlock)
+        {
+            //print('got call cont for: ' + branch);
+
+            var liveOut = callCont.liveMap.copy();
+
+            filterPhis(liveOut, block, callCont);
+
             liveMap = liveMap.union(liveOut);
         }
     }
@@ -2617,6 +2664,8 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Get the type set for the callee
     var calleeType = ta.getInType(this, 0);
 
+    print('call: ' + this);
+
     // If the callee is unknown or non-function
     if (calleeType.flags === TypeFlags.ANY || 
         (calleeType.flags & TypeFlags.FUNCTION) === 0)
@@ -2626,8 +2675,12 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
         ta.setOutType(this, TypeSet.any);
 
-        // Don't stop the inference for this block
-        return false;
+        // Mark the call successors as reachable
+        for (var i = 0; i < this.targets.length; ++i)
+            ta.touchTarget(this, i);
+
+        // No callees to analyze
+        return;
     }
 
     // Test if this is a new/constructor call
@@ -2658,9 +2711,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
     // Union of the return type of all potential callees
     var retType = TypeSet.empty;
-
-    print(this);
-    //print('  ' + calleeType);
 
     // For each potential callee
     for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
@@ -2721,8 +2771,8 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             {
                 var useIdx = (isNew === true)? (j-1):j;
                 argVal =
-                    (useIdx < this.uses.length)?
-                    this.uses[useIdx]:
+                    (useIdx < this.irInstr.uses.length)?
+                    this.irInstr.uses[useIdx]:
                     IRConst.getConst(undefined);
 
                 // TODO: re-queue arg obj instr on change
@@ -2789,7 +2839,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Set the call return type
     ta.setOutType(this, retType);
 
-    // Mark the successors as reachable
+    // Mark the call successors as reachable
     for (var i = 0; i < this.targets.length; ++i)
         ta.touchTarget(this, i);
 }
@@ -2963,6 +3013,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
 
         retType = cellType;
     }
+    */
 
     // Get object prototype
     else if (callee.funcName === 'get_ctx_objproto')
@@ -2982,12 +3033,25 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         retType = ta.funcProto;
     }
 
+    // Get boolean prototype
+    else if (callee.funcName === 'get_ctx_boolproto')
+    {
+        retType = ta.boolProto;
+    }
+
+    // Get number prototype
+    else if (callee.funcName === 'get_ctx_numproto')
+    {
+        retType = ta.numProto;
+    }
+
     // Get string prototype
     else if (callee.funcName === 'get_ctx_strproto')
     {
         retType = ta.strProto;
     }
 
+    /*
     // Set closure cell variable
     else if (callee.funcName === 'set_clos_cells')
     {
@@ -3129,7 +3193,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Unknown primitive
     else
     {
-        print('unknown primitive: ' + callee.funcName);
+        //print('unknown primitive: ' + callee.funcName);
     }
 
     // Set our own output type

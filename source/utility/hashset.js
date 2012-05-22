@@ -148,12 +148,10 @@ In-place union
 */
 HashSet.prototype.union = function (set)
 {
-    const that = this;
-
     for (var it = set.hashMap.getItr(); it.valid(); it.next())
     {
-        that.add(it.get().key);    
-    };
+        this.add(it.get().key);    
+    }
 
     return this;
 };
@@ -174,7 +172,6 @@ HashSet.prototype.intr = function (set)
     });
     return this;
 };
-
 
 /**
 Test set for equality
@@ -212,8 +209,11 @@ Copy the set
 */
 HashSet.prototype.copy = function ()
 {
-    var h = Object.create(this);
-    h.hashMap = this.hashMap.copy(); 
+    var h = Object.create(Object.getPrototypeOf(this));
+
+    h.hashMap = this.hashMap.copy();
+    h.length = this.length;
+
     return h;
 };
 

@@ -89,12 +89,16 @@ tests.spstf.array_simple = SPSTF.makeTest(
     'programs/type_analysis/array_simple.js', 
     false
 );
+*/
 
+/*
 tests.spstf.call_simple = SPSTF.makeTest(
     'programs/type_analysis/call_simple.js', 
     false
 );
+*/
 
+/*
 tests.spstf.func_2ret = SPSTF.makeTest(
     'programs/type_analysis/func_2ret.js', 
     false
