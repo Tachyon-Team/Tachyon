@@ -319,11 +319,6 @@ function SPSTFFunc(irFunc)
     this.idxArgVals = [];
 
     /**
-    List of values returned by the function
-    */
-    this.retVals = [];
-
-    /**
     List of values defined in this function or callees
     */
     this.defSet = new HashSet();
@@ -1261,6 +1256,9 @@ SPSTF.prototype.blockItr = function ()
 
             liveMap = liveMap.union(liveOut);
         }
+
+        // Process the definitions along the normal target (kills)
+        processDefs(branch, liveMap, 0);
     }
 
     // Other kinds of branch instructions
@@ -1538,6 +1536,8 @@ SPSTF.prototype.getType = function (instr, value)
         };
 
         instr.inVals.push(use);
+
+        //print('***new use: queueing block');
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
@@ -2664,7 +2664,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Get the type set for the callee
     var calleeType = ta.getInType(this, 0);
 
-    print('call: ' + this);
+    //print('call: ' + this);
 
     // If the callee is unknown or non-function
     if (calleeType.flags === TypeFlags.ANY || 
@@ -2723,7 +2723,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
         var irFunc = callee.func;
 
-        print('callee: ' + irFunc.funcName);
+        //print('callee: ' + irFunc.funcName);
 
         // Get the SPSTFFunc instance for this value
         var func = ta.getFunc(irFunc);
@@ -2798,9 +2798,15 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
         // Compute the return type for this call
         var calleeRet = TypeSet.empty;
-        for (var i = 0; i < func.retVals.length; ++i)
+        for (var i = 0; i < func.retBlocks.length; ++i)
         {
-            var retRet = ta.getType(this, func.retVals[i]);
+            var retBlock = func.retBlocks[i];
+            var retInstr = retBlock.instrs[retBlock.instrs.length-1];
+            var retRet = retInstr.retType;
+
+            if ((retRet instanceof TypeSet) === false)
+                continue;
+
             calleeRet = calleeRet.union(retRet);
         }
 
@@ -2836,6 +2842,8 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
     ta.setInType(this, 0, newCalleeType, calleeType);
 
+    //print('setting return type: ' + retType);
+
     // Set the call return type
     ta.setOutType(this, retType);
 
@@ -2864,10 +2872,12 @@ ArgValInstr.prototype.spstfFlowFunc = function (ta)
 
     var argType = TypeSet.empty;
 
-    for (var i = 0; i < argVals; ++i)
+    for (var i = 0; i < argVals.length; ++i)
     {
         var val = argVals[i];
         var type = ta.getType(this, val);
+
+        //print('getting arg val: ' + val);
 
         argType = argType.union(type);
     }
@@ -2879,22 +2889,18 @@ RetInstr.prototype.spstfFlowFunc = function (ta)
 {
     //print('RetInstr');
 
+    // Get the return value type
+    var retType = ta.getInType(this, 0);
+
+    // Store the return value type
+    this.retType = retType;
+
+    // Get the function this belongs to
     var func = this.block.func;
-    var retVals = func.retVals;
 
-    // Get the return value
-    var retVal = this.irInstr.uses[0];
-
-    // If this return value is not yet accounted for
-    if (this.visited !== true && arraySetHas(retVals, retVal) === false)
-    {
-        arraySetAdd(retVals, retVal);
-        this.visited = true;
-
-        // Queue the call instructions at the call sites
-        for (var i = 0; i < func.callSites.length; ++i)
-            ta.queueInstr(func.callSites[i]);
-    }
+    // Queue the call instructions at the call sites
+    for (var i = 0; i < func.callSites.length; ++i)
+        ta.queueInstr(func.callSites[i]);
 }
 
 // LIR call instruction

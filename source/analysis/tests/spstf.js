@@ -70,12 +70,10 @@ SPSTF.makeTest = function (fileList, useStdlib)
     return test;
 }
 
-
 tests.spstf.global_add = SPSTF.makeTest(
     'programs/type_analysis/global_add.js',
     false
 );
-
 
 /*
 tests.spstf.string_simple = SPSTF.makeTest(
@@ -91,12 +89,10 @@ tests.spstf.array_simple = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf.call_simple = SPSTF.makeTest(
     'programs/type_analysis/call_simple.js', 
     false
 );
-*/
 
 /*
 tests.spstf.func_2ret = SPSTF.makeTest(
