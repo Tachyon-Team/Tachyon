@@ -189,15 +189,50 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
         elem.addChild(instr.mnemonic);
 
-        // For each use
-        for (useIdx = 0; useIdx < instr.uses.length; ++useIdx)
+        if (instr instanceof ArgValInstr)
+        {
+            elem.addChild(' ' + instr.argIndex);
+        }
+
+        else if (instr instanceof IfInstr)
         {
             elem.addChild(' ')
+            var use = instr.uses[0];
+            var useElem = new XMLElement('span');
+            useElem.addChild(use.getValName());
+            colorType(useElem, instr, 0);
+            elem.addChild(useElem);
+            elem.addChild(' ');
 
-            var use = instr.uses[useIdx];
-
-            if (instr instanceof PhiInstr)
+            var cmpOp;
+            switch (instr.testOp)
             {
+                case 'LT': cmpOp = '<';   break;
+                case 'LE': cmpOp = '<=';  break;
+                case 'GT': cmpOp = '>';   break;
+                case 'GE': cmpOp = '>=';  break;
+                case 'EQ': cmpOp = '==='; break;
+                case 'NE': cmpOp = '!=='; break;
+                default: error('invalid operator');
+            }
+            elem.addChild(cmpOp);
+
+            elem.addChild(' ')
+            var use = instr.uses[1];
+            var useElem = new XMLElement('span');
+            useElem.addChild(use.getValName());
+            colorType(useElem, instr, 1);
+            elem.addChild(useElem);
+        }
+
+        else if (instr instanceof PhiInstr)
+        {
+            // For each use
+            for (useIdx = 0; useIdx < instr.uses.length; ++useIdx)
+            {
+                elem.addChild(' ')
+
+                var use = instr.uses[useIdx];
                 var pred = instr.preds[useIdx];
 
                 var predElem = new XMLElement('span');
@@ -218,22 +253,30 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
                     colorType(useElem, instr, useIdx);
 
                 elem.addChild(predElem);
+
+                if (useIdx !== instr.uses.length - 1)
+                    elem.addChild(',');
             }
-            else
+        }
+
+        // All other instruction types
+        else
+        {
+            // For each use
+            for (useIdx = 0; useIdx < instr.uses.length; ++useIdx)
             {
+                elem.addChild(' ')
+
+                var use = instr.uses[useIdx];
+
                 var useElem = new XMLElement('span');
                 useElem.addChild(use.getValName());
                 colorType(useElem, instr, useIdx);
                 elem.addChild(useElem);
+   
+                if (useIdx !== instr.uses.length - 1)
+                    elem.addChild(',');
             }
-
-            if (useIdx !== instr.uses.length - 1)
-                elem.addChild(',');
-        }
-
-        if (instr instanceof ArgValInstr)
-        {
-            elem.addChild(' ' + instr.argIndex);
         }
 
         // For each branch target
@@ -250,7 +293,7 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
             // If the target is unvisited, grey it out
             if (ta.blockVisited(target) === false)
-                setColor(target, 'grey');
+                setColor(targetElem, 'grey');
 
             elem.addChild(targetElem);
         }

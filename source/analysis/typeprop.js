@@ -1017,6 +1017,9 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
     var nameType = typeGraph.getType(this.uses[1]);
     var valType = typeGraph.getType(this.uses[2]);
 
+    // Set the output type
+    ta.setOutput(typeGraph, this, valType);
+
     try
     {
         if (objType.flags === TypeFlags.ANY)
@@ -1115,8 +1118,6 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
 
     // Update the object type
     ta.setInput(typeGraph, this, this.uses[0], newObjType, objType);
-
-    ta.setOutput(typeGraph, this, valType);
 }
 
 GetPropInstr.prototype.typeProp = function (ta, typeGraph)

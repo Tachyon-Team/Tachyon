@@ -1943,6 +1943,9 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
     var nameType = ta.getInType(this, 1);
     var valType  = ta.getInType(this, 2);
 
+    // Set the output type
+    ta.setOutType(this, valType);
+
     try
     {
         if (objType.flags === TypeFlags.ANY)
@@ -2046,8 +2049,6 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
     // The object cannot be undefined or null along the normal branch
     var newObjType = objType.restrict(TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL));
     ta.setInType(this, 0, newObjType, objType);
-
-    ta.setOutType(this, valType);
 }
 
 GetPropInstr.prototype.spstfFlowFunc = function (ta)
@@ -2579,8 +2580,8 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
     var instr = this;
     var irInstr = this.irInstr;
 
-    var v0 = ta.getInType(this, 2);
-    var v1 = ta.getInType(this, 2);
+    var v0 = ta.getInType(this, 0);
+    var v1 = ta.getInType(this, 1);
     var v2 = (irInstr.uses.length > 2)? ta.getInType(this, 2):undefined;
 
     // Function to handle the successor queuing for a given branch
@@ -3000,14 +3001,13 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         retType = funcObj;
     }
 
-    /*
     // Closure cell creation
     else if (callee.funcName === 'makeCell')
     {
         //print('makeCell');
         //print(this);
 
-        var newCell = new TGClosCell(this);
+        var newCell = new TGClosCell(this.irInstr);
 
         var cellType = new TypeSet(
             TypeFlags.CELL,
@@ -3019,7 +3019,6 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
 
         retType = cellType;
     }
-    */
 
     // Get object prototype
     else if (callee.funcName === 'get_ctx_objproto')
@@ -3057,18 +3056,17 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         retType = ta.strProto;
     }
 
-    /*
     // Set closure cell variable
     else if (callee.funcName === 'set_clos_cells')
     {
-        var closType = typeGraph.getType(this.uses[3]);
-        var cellIdx = this.uses[4].value;
-        var valType = typeGraph.getType(this.uses[5]);
+        var closType = ta.getInType(this, 3);
+        var cellIdx = this.irInstr.uses[4].value;
+        var valType = ta.getInType(this, 5);
 
         //print(this);
 
         assert (
-            closType.flags === TypeFlags.FUNCTION,
+            (closType.flags & ~TypeFlags.FUNCTION) === 0,
             'invalid closure type'
         );
 
@@ -3084,20 +3082,25 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
             );
 
             var varNode = clos.closVars[cellIdx];
-            typeGraph.unionType(varNode, valType);
+
+            var curType = ta.getType(this, varNode);
+            curType = curType.union(valType);
+            ta.setType(this, varNode, curType);
         }
+
+        retType = TypeSet.empty;
     }
 
     // Get closure cell variable
     else if (callee.funcName === 'get_clos_cells')
     {
-        var closType = typeGraph.getType(this.uses[3]);
-        var cellIdx = this.uses[4].value;
+        var closType = ta.getInType(this, 3);
+        var cellIdx = this.irInstr.uses[4].value;
 
         //print('get_clos_cells ******');
 
         assert (
-            closType.flags === TypeFlags.FUNCTION,
+            (closType.flags & ~TypeFlags.FUNCTION) === 0,
             'invalid closure type'
         );
 
@@ -3115,7 +3118,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
             );
 
             var varNode = clos.closVars[cellIdx];
-            var varType = typeGraph.getType(varNode);
+            var varType = ta.getType(this, varNode);
 
             outType = outType.union(varType);
         }
@@ -3126,31 +3129,35 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Set closure cell value
     else if (callee.funcName === 'set_cell_val')
     {
-        var cellType = typeGraph.getType(this.uses[3]);
-        var valType = typeGraph.getType(this.uses[4]);
+        var cellType = ta.getInType(this, 3);
+        var valType = ta.getInType(this, 4);
 
         //print('set_cell_val');
         //print(this);
 
         assert (
-            cellType.flags === TypeFlags.CELL,
-            'invalid cell type: ' + cellType
+            (cellType.flags & ~TypeFlags.CELL) === 0,
+            'invalid closure cell type: ' + cellType
         );
 
         // For each possible cell
         for (var itr = cellType.getObjItr(); itr.valid(); itr.next())
         {
             var cell = itr.get();
-
             var varNode = cell.value;
-            typeGraph.unionType(varNode, valType);
+
+            var curType = ta.getType(this, varNode);
+            curType = curType.union(valType);
+            ta.setType(this, varNode, curType);
         }
+
+        retType = TypeSet.empty;
     }
 
     // Get closure cell value
     else if (callee.funcName === 'get_cell_val')
     {
-        var cellType = typeGraph.getType(this.uses[3]);
+        var cellType = ta.getInType(this, 3);
 
         //print('get_cell_val');
         //print(this);
@@ -3159,7 +3166,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         if (cellType.flags !== TypeFlags.ANY)
         {
             assert (
-                cellType.flags === TypeFlags.CELL,
+                (cellType.flags & ~TypeFlags.CELL) === 0,
                 'invalid closure cell type: ' + cellType
             );
 
@@ -3169,7 +3176,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
             for (var itr = cellType.getObjItr(); itr.valid(); itr.next())
             {
                 var cell = itr.get();
-                var varType = typeGraph.getType(cell.value);
+                var varType = ta.getType(this, cell.value);
 
                 outType = outType.union(varType);
             }
@@ -3187,14 +3194,13 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Box value to string conversion
     else if (callee.funcName === 'boxToString')
     {
-        var valType = typeGraph.getType(this.uses[2]);
+        var valType = ta.getInType(this, 2);
 
         if (valType.flags === TypeFlags.STRING)
             retType = valType;
         else
             retType = TypeSet.string;
     }
-    */
 
     // Unknown primitive
     else

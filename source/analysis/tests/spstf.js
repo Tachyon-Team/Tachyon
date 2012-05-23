@@ -82,12 +82,10 @@ tests.spstf.string_simple = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf.array_simple = SPSTF.makeTest(
     'programs/type_analysis/array_simple.js', 
     false
 );
-*/
 
 tests.spstf.call_simple = SPSTF.makeTest(
     'programs/type_analysis/call_simple.js', 
@@ -185,8 +183,8 @@ tests.spstf.loop_cond_obj = SPSTF.makeTest(
     false
 );
 
-tests.spstf.arr_simple = SPSTF.makeTest(
-    'programs/type_analysis/arr_simple.js', 
+tests.spstf.array_sum = SPSTF.makeTest(
+    'programs/type_analysis/array_sum.js', 
     false
 );
 

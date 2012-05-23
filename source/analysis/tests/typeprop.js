@@ -180,8 +180,8 @@ tests.typeProp.loop_cond_obj = TypeProp.makeTest(
     false
 );
 
-tests.typeProp.arr_simple = TypeProp.makeTest(
-    'programs/type_analysis/arr_simple.js', 
+tests.typeProp.array_sum = TypeProp.makeTest(
+    'programs/type_analysis/array_sum.js', 
     false
 );
 

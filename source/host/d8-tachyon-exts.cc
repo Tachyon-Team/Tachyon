@@ -533,6 +533,9 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
     if (idxVal >= size)
     {
         printf("Error in getBlockAddr -- index is past end of block\n");
+        printf("Block ptr : %p\n", blockPtr);
+        printf("Block size: %lu\n", (unsigned long)size);
+        printf("Index     : %lu\n", (unsigned long)idxVal);
         exit(1);
     }
 

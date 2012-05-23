@@ -33,22 +33,17 @@ function test()
     //
 
     var srcFile = readFile('programs/esprima/test1.js');
-    var ast = esprima.parse(srcFile/*, { loc:true }*/);
+    var ast = esprima.parse(srcFile, { loc:true });
 
     //print(JSON.stringify(ast));
-
     // TODO: recursively search for specific nodes?
 
     //
     // Self-parse test, esprima parsing esprima
     //
 
-    /*
     var srcFile = readFile('programs/esprima/esprima.js');
-    print('start...');
     var ast = esprima.parse(srcFile);
-    print('...end');
-    */
 
     return 0;
 }
