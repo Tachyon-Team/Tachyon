@@ -11,5 +11,5 @@ foo(1);
 
 var r = foo(3);
 
-typeAssert(r, '["and", "string", ["not", ["val", "foo"]]]');
+typeAssert(r, '["and", "string", ["not", ["val", "foo"]], ["not", ["val", "bar"]]]');
 

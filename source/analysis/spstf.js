@@ -2587,6 +2587,8 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
     // Function to handle the successor queuing for a given branch
     function mergeSuccs(boolVal)
     {
+        //print('if branch bool: ' + boolVal);
+
         // If we can potentially narrow the comparison input types
         if (irInstr.testOp === 'EQ' && 
             v1.flags === TypeFlags.TRUE &&
@@ -2641,7 +2643,7 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
         if (boolVal === true || boolVal === undefined)
             ta.touchTarget(instr, 0);
         if (boolVal === false || boolVal === undefined)
-            ta.touchTarget(instr, 0);
+            ta.touchTarget(instr, 1);
     }
 
     // If this is an equality comparison
