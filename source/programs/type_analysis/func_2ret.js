@@ -6,7 +6,7 @@ function foo(n)
         return 1;
 }
 
-foo(0);
+var r = foo(0);
 
-//foo(5);
+typeAssert(r, '["and", "int", ["val", 0], ["not", "undef"]]');
 

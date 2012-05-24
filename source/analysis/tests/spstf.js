@@ -90,7 +90,6 @@ tests.spstf.call_simple = SPSTF.makeTest(
     false
 );
 
-/*
 tests.spstf.func_2ret = SPSTF.makeTest(
     'programs/type_analysis/func_2ret.js', 
     false
@@ -106,51 +105,70 @@ tests.spstf.func_calls = SPSTF.makeTest(
     false
 );
 
+/*
 tests.spstf.arith_simple = SPSTF.makeTest(
     'programs/type_analysis/arith_simple.js', 
     false
 );
+*/
 
+/*
 tests.spstf.cmp_simple = SPSTF.makeTest(
     'programs/type_analysis/cmp_simple.js', 
     false
 );
+*/
 
+/*
 tests.spstf.fib = SPSTF.makeTest(
     'programs/type_analysis/fib.js', 
     false
 );
+*/
 
+/*
 tests.spstf.loop_sum = SPSTF.makeTest(
     'programs/type_analysis/loop_sum.js',
     false
 );
+*/
 
+/*
 tests.spstf.obj_simple = SPSTF.makeTest(
     'programs/type_analysis/obj_simple.js', 
     false
 );
+*/
 
+/*
 tests.spstf.get_undef = SPSTF.makeTest(
     'programs/type_analysis/get_undef.js', 
     false
 );
+*/
 
+/*
 tests.spstf.linked_list = SPSTF.makeTest(
     'programs/type_analysis/linked_list.js',
     false
 );
+*/
 
+/*
 tests.spstf.cond_return = SPSTF.makeTest(
     'programs/type_analysis/cond_return.js', 
     false
 );
+*/
 
+/*
 tests.spstf.cond_prop = SPSTF.makeTest(
     'programs/type_analysis/cond_prop.js', 
     false
 );
+*/
 
+/*
 tests.spstf.cond_global = SPSTF.makeTest(
     'programs/type_analysis/cond_global.js', 
     false

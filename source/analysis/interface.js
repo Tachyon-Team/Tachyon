@@ -495,7 +495,7 @@ TypeAnalysis.prototype.evalTypeAsserts = function ()
         var error = Error(
             'Type assertion failed: ' + msg + '\n' +
             'set : ' + set + '\n' +
-            'test: ' + test
+            'test: ' + JSON.stringify(test)
         );
 
         throw error;

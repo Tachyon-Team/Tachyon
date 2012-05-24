@@ -14,5 +14,7 @@ function test()
     return 0;
 }
 
-test();
+var r = test();
+
+typeAssert(r, '["val", 0]');
 

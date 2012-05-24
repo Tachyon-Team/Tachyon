@@ -1577,7 +1577,8 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
     assert (
         value instanceof IRInstr ||
         value instanceof TGProperty ||
-        value instanceof TGVariable
+        value instanceof TGVariable,
+        'invalid value'
     );
 
     assert (
@@ -1881,7 +1882,7 @@ PhiInstr.prototype.spstfFlowFunc = function (ta)
 
     // For each phi predecessor
     // Note: only reachable predecessors appear in this list
-    for (var i = 0; i < this.preds.length; ++i)
+    for (var i = 0; i < this.irInstr.preds.length; ++i)
     {
         var pred = this.irInstr.preds[i];
 
@@ -2315,11 +2316,10 @@ JSMulInstr.prototype.spstfFlowFunc = function (ta)
     ta.setOutType(this, outType);
 }
 
-/*
 JSDivInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var t0 = typeGraph.getType(this.uses[0]);
-    var t1 = typeGraph.getType(this.uses[1]);
+    var t0 = ta.getInType(this, 0);
+    var t1 = ta.getInType(this, 1);
 
     // Output type
     var outType;
@@ -2367,9 +2367,8 @@ JSDivInstr.prototype.spstfFlowFunc = function (ta)
         outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
 // Bitwise operations
 JSBitOpInstr.prototype.spstfFlowFunc = function (ta)
@@ -2391,6 +2390,13 @@ JSEqInstr.prototype.spstfFlowFunc = function (ta)
 {
     var v0 = ta.getInType(this, 0);
     var v1 = ta.getInType(this, 1);
+
+    // If either type sets are undetermined, do nothing
+    if (v0 === TypeSet.empty || v1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
 
     // Output type
     var outType;
@@ -2429,12 +2435,18 @@ JSEqInstr.prototype.spstfFlowFunc = function (ta)
     ta.setOutType(this, outType);
 }
 
-/*
 // Operator ===
 JSSeInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
+    var v0 = ta.getInType(this, 0);
+    var v1 = ta.getInType(this, 1);
+
+    // If either type sets are undetermined, do nothing
+    if (v0 === TypeSet.empty || v1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
 
     // Output type
     var outType;
@@ -2470,16 +2482,21 @@ JSSeInstr.prototype.spstfFlowFunc = function (ta)
         outType = TypeSet.bool;
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
-/*
 // Operator !=
 JSNeInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
+    var v0 = ta.getInType(this, 0);
+    var v1 = ta.getInType(this, 1);
+
+    // If either type sets are undetermined, do nothing
+    if (v0 === TypeSet.empty || v1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
 
     // Output type
     var outType = TypeSet.bool;
@@ -2515,16 +2532,21 @@ JSNeInstr.prototype.spstfFlowFunc = function (ta)
         outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
-/*
 // Operator !==
 JSNsInstr.prototype.spstfFlowFunc = function (ta)
 {
-    var v0 = typeGraph.getType(this.uses[0]);
-    var v1 = typeGraph.getType(this.uses[1]);
+    var v0 = ta.getInType(this, 0);
+    var v1 = ta.getInType(this, 1);
+
+    // If either type sets are undetermined, do nothing
+    if (v0 === TypeSet.empty || v1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
 
     // Output type
     var outType = TypeSet.bool;
@@ -2560,9 +2582,8 @@ JSNsInstr.prototype.spstfFlowFunc = function (ta)
         outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
     }
 
-    ta.setOutput(typeGraph, this, outType);
+    ta.setOutType(this, outType);
 }
-*/
 
 JumpInstr.prototype.spstfFlowFunc = function (ta)
 {
@@ -2633,10 +2654,14 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
                 }
             }
 
-            if (boolVal === true || boolVal === undefined)
-                ta.setType(instr, lVal, trueLType, 0);
-            if (boolVal === false || boolVal === undefined)
-                ta.setType(instr, lVal, falseLType, 1);
+            // If the compared value is not a constant
+            if ((lVal instanceof IRConst) === false)
+            {
+                if (boolVal === true)
+                    ta.setType(instr, lVal, trueLType, 0);
+                if (boolVal === false)
+                    ta.setType(instr, lVal, falseLType, 1);
+            }
         }
 
         // Touch the reachable successors
@@ -2646,8 +2671,12 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
             ta.touchTarget(instr, 1);
     }
 
+    // If either type sets are undetermined, do nothing
+    if (v0 === TypeSet.empty || v1 === TypeSet.empty)
+        return;
+
     // If this is an equality comparison
-    if (this.testOp === 'EQ')
+    if (irInstr.testOp === 'EQ')
     {
         if ((v0.flags === TypeFlags.TRUE && v1.flags === TypeFlags.TRUE) ||
             (v0.flags === TypeFlags.FALSE && v1.flags === TypeFlags.FALSE))
@@ -3191,6 +3220,17 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     else if (callee.funcName === 'boxInt')
     {
         retType = TypeSet.posInt;
+    }
+
+    // Box value to boolean conversion
+    else if (callee.funcName === 'boxToBool')
+    {
+        var val = ta.getInType(this, 2);
+
+        if (val.flags === TypeFlags.TRUE || val.flags === TypeFlags.FALSE)
+            retType = val;
+        else
+            retType = TypeSet.bool;
     }
 
     // Box value to string conversion

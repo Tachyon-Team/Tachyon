@@ -9,3 +9,5 @@ function bar(f)
 
 bar(foo);
 
+typeAssert(c, '["val", 2]');
+
