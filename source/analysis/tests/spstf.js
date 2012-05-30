@@ -321,7 +321,26 @@ tests.spstf.stdlib_string = SPSTF.makeTest(
     'programs/type_analysis/stdlib_string.js',
     true
 );
+*/
 
+tests.spstf.regress_global = SPSTF.makeTest(
+    'programs/type_analysis/regress_global.js',
+    false
+);
+
+tests.spstf.regress_obj = SPSTF.makeTest(
+    'programs/type_analysis/regress_obj.js',
+    false
+);
+
+/*
+tests.spstf.regress_cond = SPSTF.makeTest(
+    'programs/type_analysis/regress_cond.js',
+    false
+);
+*/
+
+/*
 tests.spstf.regress_btree = SPSTF.makeTest(
     'programs/type_analysis/regress_btree.js',
     false

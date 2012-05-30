@@ -303,6 +303,21 @@ tests.typeProp.stdlib_string = TypeProp.makeTest(
     true
 );
 
+tests.typeProp.regress_global = TypeProp.makeTest(
+    'programs/type_analysis/regress_global.js',
+    false
+);
+
+tests.typeProp.regress_obj = TypeProp.makeTest(
+    'programs/type_analysis/regress_obj.js',
+    false
+);
+
+tests.typeProp.regress_cond = TypeProp.makeTest(
+    'programs/type_analysis/regress_cond.js',
+    false
+);
+
 tests.typeProp.regress_btree = TypeProp.makeTest(
     'programs/type_analysis/regress_btree.js',
     false

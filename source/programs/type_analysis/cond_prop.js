@@ -14,6 +14,7 @@ function test()
 {
     var o = foo(3);
 
+    typeAssert(o, '"object"');
     typeAssert(o.d, '["and", "true", ["not", "int"]]');
 
     if (o.d !== true)
