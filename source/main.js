@@ -143,10 +143,15 @@ function main()
 
         print('Running ' + taName + ' analysis on: ' + args.files);
 
+        // Get the type analysis parameters
+        var useStdLib = !args.options['nostdlib'];
+        var outFile = args.options['outfile'];
+        var htmlFile = args.options['html'];
+
         // Run the type analysis
         try 
         {
-            analysis.testOnFiles(args.files, true, false);
+            analysis.testOnFiles(args.files, useStdLib);
         }
         catch (e)
         {
@@ -157,11 +162,11 @@ function main()
         }
 
         // Output analysis results
-        analysis.logResults(args.options['outfile']);
+        analysis.logResults(outFile);
 
         // Output HTML visualization
-        if (args.options['html'])
-            analysis.writeHTML(args.options['html'])
+        if (htmlFile)
+            analysis.writeHTML(htmlFile)
     }
 
     // If source files or inline source are provided    

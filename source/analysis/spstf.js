@@ -388,6 +388,23 @@ SPSTFBlock.prototype.getName = function ()
     return blockName + '(' + this.instrIdx + ')';
 }
 
+SPSTFBlock.prototype.toString = function ()
+{
+    var str = '';
+
+    str += this.getName() + ':';
+
+    for (var i = 0; i < this.instrs.length; ++i)
+    {
+        if (str !== '')
+            str += '\n';
+
+        str += this.instrs[i];
+    }
+
+    return str;
+}
+
 /**
 @class Instruction representation for the SPSTF analysis
 */
@@ -1210,8 +1227,6 @@ SPSTF.prototype.blockItr = function ()
 
         for (var i = 0; i < callSites.length; ++i)
         {
-            //print('ret succ merge');
-
             var callSite = callSites[i];
             var callCont = callSite.targets[0];
 
@@ -1219,6 +1234,10 @@ SPSTF.prototype.blockItr = function ()
                 continue;
 
             var liveOut = callCont.liveMap.copy();
+
+            //print('ret succ merge from: ' + branch.block.func.getName());
+            //print(liveOut);
+            //print(callCont.irBlock);
 
             filterPhis(liveOut, block, callCont);
 
@@ -1307,7 +1326,7 @@ SPSTF.prototype.blockItr = function ()
     // If the live map at the beginning of the block changed
     if (liveMap.equal(block.liveMap) === false)
     {
-        //print('queueing preds');
+        //print('live map changed, queueing preds');
 
         block.liveMap = liveMap;
 
@@ -1336,13 +1355,16 @@ SPSTF.prototype.blockItr = function ()
                 // Get the branch instruction of the predecessor block
                 var branch = pred.instrs[pred.instrs.length-1];
 
+                //print('queuing pred ending in: ' + branch);
+
                 // If the predecessor is a call site
-                if (branch instanceof JSCallInstr || branch instanceof JSNewInstr)
+                if (branch.irInstr instanceof JSCallInstr || 
+                    branch.irInstr instanceof JSNewInstr)
                 {
                     // Queue all callee return sites
                     for (var j = 0; j < branch.callees.length; ++j)
                     {
-                        var callee = callees[j];
+                        var callee = branch.callees[j];
                         for (var k = 0; k < callee.retBlocks.length; ++k)
                             this.queueBlock(callee.retBlocks[k]);
                     }
@@ -1421,9 +1443,11 @@ SPSTF.prototype.addEdge = function (
     targetIdx
 )
 {
-    //print('Adding edge');
-    //print('  from: ' + defInstr);
-    //print('  to  : ' + useInstr);
+    /*
+    print('Adding edge');
+    print('  from: ' + defInstr);
+    print('  to  : ' + useInstr);
+    */
 
     var def = defInstr.outVals[targetIdx][outIdx];
 
@@ -1537,7 +1561,13 @@ SPSTF.prototype.getType = function (instr, value)
 
         instr.inVals.push(use);
 
-        //print('***new use: queueing block');
+        /*        
+        if (value instanceof TGProperty)
+        {
+            print('new prop use: ' + value);
+            print('  from: ' + instr);
+        }
+        */
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
@@ -1628,7 +1658,13 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         // Add the new definition to the list for this target
         defList.push(def);
 
-        //print('new def, queueing block: ' + instr.block.getName());
+        /*
+        if (value instanceof TGProperty)
+        {
+            print('new prop def: ' + value);
+            print('  from: ' + instr);
+        }
+        */
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
@@ -1998,6 +2034,7 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
             else
                 var propNode = obj.idxProp;
 
+            /*
             // Test if the object was created in this function
             var isLocalObj = (
                 obj.origin.parentBlock &&
@@ -2005,6 +2042,14 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 obj.origin.parentBlock.parentCFG.ownerFunc === func.irFunc &&
                 (this.irInstr.uses[0] === obj.origin ||
                  this.irInstr.parentBlock === obj.origin.parentBlock)
+            );
+            */
+
+            // Test if the object was created in this function
+            var isLocalObj = (
+                obj.origin.block.func === func &&
+                (this.irInstr.uses[0] === obj.origin.irInstr ||
+                 this.irInstr.parentBlock === obj.origin.irInstr.parentBlock)
             );
 
             // Test if we can overwrite the current property type
@@ -2018,18 +2063,18 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 )
             );
 
-            // If we cannot do a strong update
-            if (canAssignType === false)
+            // If we can do a strong update
+            if (canAssignType === true)
+            {
+                // Do a strong update on the property type
+                ta.setType(this, propNode, valType);
+            }
+            else
             {
                 // Union with the current property type
                 var propType = ta.getType(this, propNode);
                 var newType = propType.union(valType);
                 ta.setType(this, propNode, newType);
-            }
-            else
-            {
-                // Do a strong update on the property type
-                ta.setType(this, propNode, valType);
             }
         }
     }

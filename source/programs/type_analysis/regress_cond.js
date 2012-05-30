@@ -1,4 +1,4 @@
-function foo(n)
+function foo()
 {
     var o = {};
     o.d = true;
@@ -6,7 +6,7 @@ function foo(n)
     return o;
 }
 
-var o = foo(3);
+var o = foo();
 
-typeAssert(o.d, '["and", "true", ["not", "int"]]');
+typeAssert(o.d, '["and", "true", ["not", "int"], ["not", "undef"]]');
 

@@ -333,12 +333,10 @@ tests.spstf.regress_obj = SPSTF.makeTest(
     false
 );
 
-/*
 tests.spstf.regress_cond = SPSTF.makeTest(
     'programs/type_analysis/regress_cond.js',
     false
 );
-*/
 
 /*
 tests.spstf.regress_btree = SPSTF.makeTest(
