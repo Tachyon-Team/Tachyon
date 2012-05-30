@@ -133,19 +133,15 @@ tests.spstf.loop_sum = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf.obj_simple = SPSTF.makeTest(
     'programs/type_analysis/obj_simple.js', 
     false
 );
-*/
 
-/*
 tests.spstf.get_undef = SPSTF.makeTest(
     'programs/type_analysis/get_undef.js', 
     false
 );
-*/
 
 /*
 tests.spstf.linked_list = SPSTF.makeTest(
@@ -161,18 +157,17 @@ tests.spstf.cond_return = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf.cond_prop = SPSTF.makeTest(
     'programs/type_analysis/cond_prop.js', 
     false
 );
-*/
 
 /*
 tests.spstf.cond_global = SPSTF.makeTest(
     'programs/type_analysis/cond_global.js', 
     false
 );
+*/
 
 tests.spstf.cond_objs = SPSTF.makeTest(
     'programs/type_analysis/cond_objs.js', 
@@ -184,6 +179,7 @@ tests.spstf.cond_call = SPSTF.makeTest(
     false
 );
 
+
 tests.spstf.cond_pass2 = SPSTF.makeTest(
     'programs/type_analysis/cond_pass2.js',
     false
@@ -194,10 +190,12 @@ tests.spstf.cond_ret_obj = SPSTF.makeTest(
     false
 );
 
+/*
 tests.spstf.loop_cond_obj = SPSTF.makeTest(
     'programs/type_analysis/loop_cond_obj.js',
     false
 );
+*/
 
 tests.spstf.array_sum = SPSTF.makeTest(
     'programs/type_analysis/array_sum.js', 
@@ -229,21 +227,25 @@ tests.spstf.factory_2paths = SPSTF.makeTest(
     false
 );
 
+/*
 tests.spstf.factory_global = SPSTF.makeTest(
     'programs/type_analysis/factory_global.js',
     false
 );
+*/
 
 tests.spstf.factory_cond = SPSTF.makeTest(
     'programs/type_analysis/factory_cond.js',
     false
 );
 
+
 tests.spstf.factory_inc = SPSTF.makeTest(
     'programs/type_analysis/factory_inc.js',
     false
 );
 
+/*
 tests.spstf.ctor_simple = SPSTF.makeTest(
     'programs/type_analysis/ctor_simple.js',
     false
@@ -283,6 +285,7 @@ tests.spstf.args_max = SPSTF.makeTest(
     'programs/type_analysis/args_max.js',
     false
 );
+*/
 
 tests.spstf.clos_simple = SPSTF.makeTest(
     'programs/type_analysis/clos_simple.js',
@@ -297,11 +300,14 @@ tests.spstf.multi_file = SPSTF.makeTest(
     false
 );
 
+/*
 tests.spstf.stdlib_math = SPSTF.makeTest(
     'programs/type_analysis/stdlib_math.js',
     true
 );
+*/
 
+/*
 tests.spstf.stdlib_object = SPSTF.makeTest(
     'programs/type_analysis/stdlib_object.js',
     true
