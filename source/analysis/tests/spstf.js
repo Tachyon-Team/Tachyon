@@ -150,12 +150,10 @@ tests.spstf.linked_list = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf.cond_return = SPSTF.makeTest(
     'programs/type_analysis/cond_return.js', 
     false
 );
-*/
 
 tests.spstf.cond_prop = SPSTF.makeTest(
     'programs/type_analysis/cond_prop.js', 

@@ -434,6 +434,7 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
             );
 
+            /*
             if ((u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE))
             {
@@ -441,6 +442,7 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
                 print(instr.parentBlock);
                 print('');
             }
+            */
         }
     }
 

@@ -588,8 +588,16 @@ SPSTF.prototype.init = function ()
     metaUnit.entry = metaEntry;
 
     // Create the instruction holding the initial definitions
-    var initInstr = this.makeInstr(Object.create(JumpInstr.prototype), metaEntry);
+    var initIRInstr = Object.create(IRInstr.prototype);
+    initIRInstr.mnemonic = 'init';
+    initIRInstr.uses = [];
+    initIRInstr.dests = [];
+    initIRInstr.targets = [];
+    var initInstr = this.makeInstr(initIRInstr, metaEntry);
 
+    // Create a jump to the next meta-block
+    this.makeInstr(Object.create(JumpInstr.prototype), metaEntry);
+    
     /**
     Meta-unit holding the initial instruction and unit calls
     */
@@ -1313,6 +1321,15 @@ SPSTF.prototype.blockItr = function ()
 
         //print('instr: ' + instr);
 
+        /*
+        if (instr === this.initInstr)
+        {
+            print('*** init instr ***');
+            print('live map:\n' + liveMap);
+            print('');
+        }
+        */
+
         // Process defs of the instruction
         processDefs(instr, liveMap, 0);
 
@@ -1538,6 +1555,13 @@ SPSTF.prototype.getType = function (instr, value)
     {
         // Create a type set for the constant
         return TypeSet.constant(value);
+    }
+
+    // If this is an IR function (function pointer)
+    else if (value instanceof IRFunction)
+    {
+        // Return the empty set type
+        return TypeSet.empty;
     }
 
     // Try to find the use for this value in the list
@@ -1769,6 +1793,9 @@ SPSTF.prototype.getPropNode = function (obj, propName)
         // creation site. This is because object properties are
         // initially undefined.
         this.setType(origInstr, propNode, TypeSet.undef);
+
+        //print('creating init def for: "' + propName + '"');
+        //print('  orig instr: ' + origInstr);
     }
 
     return obj.getPropNode(propName);
@@ -2653,7 +2680,9 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
     // Function to handle the successor queuing for a given branch
     function mergeSuccs(boolVal)
     {
-        //print('if branch bool: ' + boolVal);
+        //print(irInstr);
+        //print('  from: ' + instr.block.func.getName());
+        //print('  if branch bool: ' + boolVal);
 
         // If we can potentially narrow the comparison input types
         if (irInstr.testOp === 'EQ' && 
@@ -2743,9 +2772,8 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
     //print('call: ' + this);
 
-    // If the callee is unknown or non-function
-    if (calleeType.flags === TypeFlags.ANY || 
-        (calleeType.flags & TypeFlags.FUNCTION) === 0)
+    // If the callee could be any function
+    if (calleeType.flags === TypeFlags.ANY)
     {
         if (config.verbosity >= log.DEBUG)
             print('*WARNING: callee has type ' + calleeType);
