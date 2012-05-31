@@ -355,7 +355,11 @@ TypeAnalysis.prototype.writeHTML = function (fileName)
 
         // Create an element for the function body, make it initially hidden
         var bodyElem = new XMLElement('span');
-        bodyElem.attribs.style = "display:none;";
+
+        // If there is more than one unit function or
+        // this is a nested function, hide the body
+        if (ta.allUnits.length > 1 || func !== ta.allUnits[0])
+            bodyElem.attribs.style = "display:none;";
 
         // Allocate ids for the expand button and body
         var buttonId = assignId(buttonElem);

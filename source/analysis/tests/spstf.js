@@ -105,6 +105,7 @@ tests.spstf.func_calls = SPSTF.makeTest(
     false
 );
 
+// FIXME: superfluous undef
 /*
 tests.spstf.global_def = SPSTF.makeTest(
     'programs/type_analysis/global_def.js',
@@ -112,6 +113,7 @@ tests.spstf.global_def = SPSTF.makeTest(
 );
 */
 
+// FIXME: type assertion failed
 /*
 tests.spstf.arith_simple = SPSTF.makeTest(
     'programs/type_analysis/arith_simple.js', 
@@ -119,6 +121,7 @@ tests.spstf.arith_simple = SPSTF.makeTest(
 );
 */
 
+// FIXME: type assertion failed (cmp restrict failed?)
 /*
 tests.spstf.cmp_simple = SPSTF.makeTest(
     'programs/type_analysis/cmp_simple.js', 
@@ -126,6 +129,7 @@ tests.spstf.cmp_simple = SPSTF.makeTest(
 );
 */
 
+// FIXME: local vars flow
 /*
 tests.spstf.fib = SPSTF.makeTest(
     'programs/type_analysis/fib.js', 
@@ -133,6 +137,7 @@ tests.spstf.fib = SPSTF.makeTest(
 );
 */
 
+// FIXME: type assertion failed
 /*
 tests.spstf.loop_sum = SPSTF.makeTest(
     'programs/type_analysis/loop_sum.js',
@@ -150,6 +155,7 @@ tests.spstf.get_undef = SPSTF.makeTest(
     false
 );
 
+// FIXME: superfluous null
 /*
 tests.spstf.linked_list = SPSTF.makeTest(
     'programs/type_analysis/linked_list.js',
@@ -167,6 +173,7 @@ tests.spstf.cond_prop = SPSTF.makeTest(
     false
 );
 
+// FIXME: superfluous undef
 /*
 tests.spstf.cond_global = SPSTF.makeTest(
     'programs/type_analysis/cond_global.js', 
@@ -195,6 +202,7 @@ tests.spstf.cond_ret_obj = SPSTF.makeTest(
     false
 );
 
+// FIXME: empty type set in type assertion
 /*
 tests.spstf.loop_cond_obj = SPSTF.makeTest(
     'programs/type_analysis/loop_cond_obj.js',
@@ -232,6 +240,7 @@ tests.spstf.factory_2paths = SPSTF.makeTest(
     false
 );
 
+// FIXME: superfluous undef
 /*
 tests.spstf.factory_global = SPSTF.makeTest(
     'programs/type_analysis/factory_global.js',
@@ -258,15 +267,12 @@ tests.spstf.ctor_simple = SPSTF.makeTest(
 );
 */
 
-// FIXME: type assertion not visited
-/*
 tests.spstf.ctor_array = SPSTF.makeTest(
     'programs/type_analysis/ctor_array.js',
     false
 );
-*/
 
-// FIXME: type assertion not visited
+// FIXME: type assertion failed
 /*
 tests.spstf.proto_chain = SPSTF.makeTest(
     'programs/type_analysis/proto_chain.js',
@@ -320,12 +326,10 @@ tests.spstf.multi_file = SPSTF.makeTest(
     false
 );
 
-/*
 tests.spstf.stdlib_math = SPSTF.makeTest(
     'programs/type_analysis/stdlib_math.js',
     true
 );
-*/
 
 /*
 tests.spstf.stdlib_object = SPSTF.makeTest(
@@ -339,12 +343,17 @@ tests.spstf.stdlib_array = SPSTF.makeTest(
     'programs/type_analysis/stdlib_array.js',
     true
 );
+*/
 
+/*
 tests.spstf.stdlib_function = SPSTF.makeTest(
     'programs/type_analysis/stdlib_function.js',
     true
 );
+*/
 
+// FIXME: superfluous undef
+/*
 tests.spstf.stdlib_string = SPSTF.makeTest(
     'programs/type_analysis/stdlib_string.js',
     true
@@ -366,16 +375,21 @@ tests.spstf.regress_cond = SPSTF.makeTest(
     false
 );
 
+// FIXME: infinite loop?
 /*
 tests.spstf.regress_btree = SPSTF.makeTest(
     'programs/type_analysis/regress_btree.js',
     false
 );
+*/
 
+// FIXME: infinite loop?
+/*
 tests.spstf.regress_btree2 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree2.js',
     false
 );
+*/
 
 tests.spstf.regress_btree3 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree3.js',
@@ -401,7 +415,6 @@ tests.spstf['bitops-bitwise-and'] = SPSTF.makeTest(
     'programs/sunspider/bitops-bitwise-and.js',
     false
 );
-*/
 
 /*
 tests.spstf['access-binary-trees'] = SPSTF.makeTest(
@@ -424,12 +437,10 @@ tests.spstf['access-nsieve'] = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf['bitops-bits-in-byte'] = SPSTF.makeTest(
     'programs/sunspider/bitops-bits-in-byte.js',
     true
 );
-*/
 
 /*
 tests.spstf['bitops-nsieve-bits'] = SPSTF.makeTest(

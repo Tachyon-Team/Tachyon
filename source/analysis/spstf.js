@@ -278,11 +278,6 @@ function SPSTFFunc(irFunc)
     // Get the number of named parameters
     var numParams = irFunc? (irFunc.argVars.length + 2):0;
 
-    // Create the argument value lists
-    var argVals = new Array(numParams);
-    for (var i = 0; i < argVals.length; ++i)
-        argVals[i] = [];
-
     /**
     Original IR function
     */
@@ -307,16 +302,6 @@ function SPSTFFunc(irFunc)
     List of argument value instructions
     */
     this.argInstrs = new Array(numParams);
-
-    /**
-    List of lists of argument values
-    */
-    this.argVals = argVals;
-
-    /**
-    List of argument values for the arguments object
-    */
-    this.idxArgVals = [];
 
     /**
     List of values defined in this function or callees
@@ -477,6 +462,12 @@ function SPSTFInstr(irInstr, instrIdx, block)
     {
         // Add a field for the list of callees
         this.callees = [];
+
+        // Add a field for the argument types
+        var numArgs = irInstr.uses.length + ((irInstr instanceof JSNewInstr)? 1:0);
+        this.argTypes = new Array(numArgs);
+        for (var i = 0; i < numArgs; ++i)
+            this.argTypes[i] = TypeSet.empty;
     }
 
     // If the instruction has targets
@@ -2790,7 +2781,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     }
 
     // Test if this is a new/constructor call
-    var isNew = this instanceof JSNewInstr;
+    var isNew = (this.irInstr instanceof JSNewInstr);
 
     // If this is a regular function call
     if (isNew === false)
@@ -2803,16 +2794,74 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         // Lookup the "prototype" property of the callee
         var protoType = ta.propLookup(this, calleeType, 'prototype', 0);
 
-        // If the prototype may not be an object
-        if (protoType.flags & (~TypeFlags.EXTOBJ))
+        // If the prototype type is not yet resolved
+        if (protoType === TypeSet.empty)
         {
-            // Exclude non-objects and include the object prototype object
-            protoType = protoType.restrict(protoType.flags & (~TypeFlags.EXTOBJ));
-            protoType = protoType.union(ta.objProto);
+            var thisType = TypeSet.empty;
+        }
+        else
+        {
+            // If the prototype may not be an object
+            if (protoType.flags & (~TypeFlags.EXTOBJ))
+            {
+                // Exclude non-objects and include the object prototype object
+                protoType = protoType.restrict(protoType.flags & (~TypeFlags.EXTOBJ));
+                protoType = protoType.union(ta.objProto);
+            }
+
+            // Create a new object to use as the this argument
+            var thisType = ta.newObject(this, 'new_obj', undefined, protoType);
+        }
+    }
+
+    // For each argument
+    for (var i = 0; i < this.argTypes.length; ++i)
+    {
+        var argType;
+
+        // Get the incoming type for this argument
+        if (i === 0)
+        {
+            argType = ta.getInType(this, 0);
+        }
+        else if (i === 1)
+        {
+            argType = thisType;
+        }
+        else
+        {
+            var useIdx = (isNew === true)? (i-1):i;
+            argType = ta.getInType(this, useIdx);
         }
 
-        // Create a new object to use as the this argument
-        var thisType = ta.newObject(this, 'new_obj', undefined, protoType);
+        // If the argument type changed
+        if (this.argTypes[i].equal(argType) === false)
+        {
+            // Update the argument type
+            this.argTypes[i] = argType;
+
+            // For each potential callee
+            for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
+            {
+                var callee = itr.get();
+
+                // If this is not a function, ignore it
+                if ((callee.func instanceof IRFunction) === false)
+                    continue;
+
+                // Get the SPSTFFunc instance for this value
+                var irFunc = callee.func;
+                var func = ta.getFunc(irFunc);
+
+                // Queue the argument value instruction for this argument
+                var argInstr = func.argInstrs[i];
+                if (argInstr !== undefined)
+                    ta.queueInstr(func.argInstrs[i]);
+            }
+        }
+
+        // TODO: if args changed, queue arg obj instr
+        //if (func.irFunc.usesArguments === true)
     }
 
     // Union of the return type of all potential callees
@@ -2849,6 +2898,11 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             // Queue the return blocks
             for (var i = 0; i < func.retBlocks.length; ++i)
                 ta.queueBlock(func.retBlocks[i]);
+
+            // Queue the argument value instructions
+            for (var i = 0; i < func.argInstrs.length; ++i)
+                if (func.argInstrs[i] !== undefined)
+                    ta.queueInstr(func.argInstrs[i]);
         }
 
         // Set the call type flags
@@ -2856,51 +2910,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             func.ctorCall = true;
         else
             func.normalCall = true;
-
-        // For each argument
-        for (var j = 0; j < func.argVals.length; ++j)
-        {
-            var argVals = func.argVals[j];
-
-            var argVal; 
-
-            // Get the incoming type for this argument
-            if (j === 0)
-            {
-                argVal = this.irInstr.uses[0];
-            }
-            else if (j === 1)
-            {
-                argVal = this.irInstr.uses[1];
-            }
-            else
-            {
-                var useIdx = (isNew === true)? (j-1):j;
-                argVal =
-                    (useIdx < this.irInstr.uses.length)?
-                    this.irInstr.uses[useIdx]:
-                    IRConst.getConst(undefined);
-
-                // TODO: re-queue arg obj instr on change
-
-                // If this function uses the arguments object, add the
-                // value to the indexed argument value list
-                if (func.irFunc.usesArguments === true)
-                    arraySetAdd(func.idxArgVals, argVal);
-            }
-
-            // If this is a new value for this argument
-            if (arraySetHas(argVals, argVal) === false)
-            {
-                // Add the value to the set of values for this argument
-                arraySetAdd(argVals, argVal);
-
-                // Queue the argument value instruction
-                var argInstr = func.argInstrs[j];
-                if (argInstr !== undefined)
-                    ta.queueInstr(func.argInstrs[j]);
-            }
-        }
 
         // Compute the return type for this call
         var calleeRet = TypeSet.empty;
@@ -2960,7 +2969,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
 // New/constructor call instruction
 // Handled by the same function as the regular call instruction
-//JSNewInstr.prototype.typeProp = JSCallInstr.prototype.typeProp;
+JSNewInstr.prototype.spstfFlowFunc = JSCallInstr.prototype.spstfFlowFunc;
 
 // Call with apply instruction
 // TODO
@@ -2974,18 +2983,18 @@ ArgValInstr.prototype.spstfFlowFunc = function (ta)
 
     var func = this.block.func;
     var argIndex = this.irInstr.argIndex;
-    var argVals = func.argVals[argIndex];
 
     var argType = TypeSet.empty;
 
-    for (var i = 0; i < argVals.length; ++i)
+    // For each call site
+    for (var i = 0; i < func.callSites.length; ++i)
     {
-        var val = argVals[i];
-        var type = ta.getType(this, val);
+        // Get the type of the argument from this caller
+        var callerArg = func.callSites[i].argTypes[argIndex];
+        if (callerArg === undefined)
+            callerArg = TypeSet.undef;
 
-        //print('getting arg val: ' + val);
-
-        argType = argType.union(type);
+        argType = argType.union(callerArg);
     }
 
     ta.setOutType(this, argType);
@@ -2998,15 +3007,19 @@ RetInstr.prototype.spstfFlowFunc = function (ta)
     // Get the return value type
     var retType = ta.getInType(this, 0);
 
-    // Store the return value type
-    this.retType = retType;
+    // If the return type changed
+    if (this.retType === undefined || this.retType.equal(retType) === false)
+    {
+        // Store the return value type
+        this.retType = retType;
 
-    // Get the function this belongs to
-    var func = this.block.func;
+        // Get the function this belongs to
+        var func = this.block.func;
 
-    // Queue the call instructions at the call sites
-    for (var i = 0; i < func.callSites.length; ++i)
-        ta.queueInstr(func.callSites[i]);
+        // Queue the call instructions at the call sites
+        for (var i = 0; i < func.callSites.length; ++i)
+            ta.queueInstr(func.callSites[i]);
+    }
 }
 
 // LIR call instruction
