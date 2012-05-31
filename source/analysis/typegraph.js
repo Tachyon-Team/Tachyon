@@ -929,6 +929,11 @@ Boolean type descriptor
 TypeSet.bool = new TypeSet(TypeFlags.TRUE | TypeFlags.FALSE);
 
 /**
+Number type descriptor
+*/
+TypeSet.number = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+
+/**
 Integer type descriptor
 */
 TypeSet.integer = new TypeSet(TypeFlags.INT);

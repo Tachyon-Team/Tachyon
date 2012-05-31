@@ -12,12 +12,7 @@ function foo(n)
     return sum;
 }
 
-function test()
-{
-    if (foo(5) !== 10)
-        return 1;
+var r = foo(5);
 
-    return 0;
-}
+typeAssert(r, '"int"');
 
-test();

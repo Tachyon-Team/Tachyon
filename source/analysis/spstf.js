@@ -2254,6 +2254,13 @@ JSAddInstr.prototype.spstfFlowFunc = function (ta)
     //print('JSAddInstr');
     //print('t0: ' + t0);
     //print('t1: ' + t1);
+
+    // If either type sets are undetermined, do nothing
+    if (t0 === TypeSet.empty || t1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
    
     // Output type
     var outType;
@@ -2299,7 +2306,7 @@ JSAddInstr.prototype.spstfFlowFunc = function (ta)
              (t1.flags & (TypeFlags.STRING | TypeFlags.EXTOBJ)) === 0)
     {
         // The result can only be int or float
-        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+        outType = TypeSet.number;
     }
 
     // By default
@@ -2317,6 +2324,13 @@ JSSubInstr.prototype.spstfFlowFunc = function (ta)
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
     
+    // If either type sets are undetermined, do nothing
+    if (t0 === TypeSet.empty || t1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
+
     // Output type
     var outType;
 
@@ -2335,7 +2349,7 @@ JSSubInstr.prototype.spstfFlowFunc = function (ta)
     // By default
     else
     {
-        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+        outType = TypeSet.number;
     }
 
     ta.setOutType(this, outType);
@@ -2346,6 +2360,13 @@ JSMulInstr.prototype.spstfFlowFunc = function (ta)
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
     
+    // If either type sets are undetermined, do nothing
+    if (t0 === TypeSet.empty || t1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
+
     // Output type
     var outType;
 
@@ -2374,7 +2395,7 @@ JSMulInstr.prototype.spstfFlowFunc = function (ta)
     // By default
     else
     {
-        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+        outType = TypeSet.number;
     }
 
     ta.setOutType(this, outType);
@@ -2384,6 +2405,13 @@ JSDivInstr.prototype.spstfFlowFunc = function (ta)
 {
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
+
+    // If either type sets are undetermined, do nothing
+    if (t0 === TypeSet.empty || t1 === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
 
     // Output type
     var outType;
@@ -2428,10 +2456,16 @@ JSDivInstr.prototype.spstfFlowFunc = function (ta)
     // By default
     else
     {
-        outType = new TypeSet(TypeFlags.INT | TypeFlags.FLOAT);
+        outType = TypeSet.number;
     }
 
     ta.setOutType(this, outType);
+}
+
+// Modulo (remainder) instruction
+JSModInstr.prototype.spstfFlowFunc = function (ta)
+{
+    ta.setOutType(this, TypeSet.integer);
 }
 
 // Bitwise operations
@@ -2723,9 +2757,9 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
             // If the compared value is not a constant
             if ((lVal instanceof IRConst) === false)
             {
-                if (boolVal === true)
+                if (boolVal === true || boolVal === undefined)
                     ta.setType(instr, lVal, trueLType, 0);
-                if (boolVal === false)
+                if (boolVal === false || boolVal === undefined)
                     ta.setType(instr, lVal, falseLType, 1);
             }
         }

@@ -113,21 +113,15 @@ tests.spstf.global_def = SPSTF.makeTest(
 );
 */
 
-// FIXME: type assertion failed
-/*
 tests.spstf.arith_simple = SPSTF.makeTest(
     'programs/type_analysis/arith_simple.js', 
     false
 );
-*/
 
-// FIXME: type assertion failed (cmp restrict failed?)
-/*
 tests.spstf.cmp_simple = SPSTF.makeTest(
     'programs/type_analysis/cmp_simple.js', 
     false
 );
-*/
 
 // FIXME: local vars flow
 /*
@@ -137,13 +131,10 @@ tests.spstf.fib = SPSTF.makeTest(
 );
 */
 
-// FIXME: type assertion failed
-/*
 tests.spstf.loop_sum = SPSTF.makeTest(
     'programs/type_analysis/loop_sum.js',
     false
 );
-*/
 
 tests.spstf.obj_simple = SPSTF.makeTest(
     'programs/type_analysis/obj_simple.js', 
@@ -202,13 +193,10 @@ tests.spstf.cond_ret_obj = SPSTF.makeTest(
     false
 );
 
-// FIXME: empty type set in type assertion
-/*
 tests.spstf.loop_cond_obj = SPSTF.makeTest(
     'programs/type_analysis/loop_cond_obj.js',
     false
 );
-*/
 
 tests.spstf.array_sum = SPSTF.makeTest(
     'programs/type_analysis/array_sum.js', 
@@ -259,7 +247,7 @@ tests.spstf.factory_inc = SPSTF.makeTest(
     false
 );
 
-// FIXME: type assertion not visited
+// FIXME: superfluous undef
 /*
 tests.spstf.ctor_simple = SPSTF.makeTest(
     'programs/type_analysis/ctor_simple.js',
@@ -285,21 +273,15 @@ tests.spstf.proto_clos = SPSTF.makeTest(
     false
 );
 
-// FIXME: empty type set
-/*
 tests.spstf.proto_loop = SPSTF.makeTest(
     'programs/type_analysis/proto_loop.js',
     false
 );
-*/
 
-// FIXME: type assertion not visited
-/*
 tests.spstf.proto_cond = SPSTF.makeTest(
     'programs/type_analysis/proto_cond.js',
     false
 );
-*/
 
 /*
 tests.spstf.args_sum = SPSTF.makeTest(
