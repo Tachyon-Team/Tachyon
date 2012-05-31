@@ -106,6 +106,13 @@ tests.spstf.func_calls = SPSTF.makeTest(
 );
 
 /*
+tests.spstf.global_def = SPSTF.makeTest(
+    'programs/type_analysis/global_def.js',
+    false
+);
+*/
+
+/*
 tests.spstf.arith_simple = SPSTF.makeTest(
     'programs/type_analysis/arith_simple.js', 
     false
@@ -243,37 +250,52 @@ tests.spstf.factory_inc = SPSTF.makeTest(
     false
 );
 
+// FIXME: type assertion not visited
 /*
 tests.spstf.ctor_simple = SPSTF.makeTest(
     'programs/type_analysis/ctor_simple.js',
     false
 );
+*/
 
+// FIXME: type assertion not visited
+/*
 tests.spstf.ctor_array = SPSTF.makeTest(
     'programs/type_analysis/ctor_array.js',
     false
 );
+*/
 
+// FIXME: type assertion not visited
+/*
 tests.spstf.proto_chain = SPSTF.makeTest(
     'programs/type_analysis/proto_chain.js',
     false
 );
+*/
 
 tests.spstf.proto_clos = SPSTF.makeTest(
     'programs/type_analysis/proto_clos.js',
     false
 );
 
+// FIXME: empty type set
+/*
 tests.spstf.proto_loop = SPSTF.makeTest(
     'programs/type_analysis/proto_loop.js',
     false
 );
+*/
 
+// FIXME: type assertion not visited
+/*
 tests.spstf.proto_cond = SPSTF.makeTest(
     'programs/type_analysis/proto_cond.js',
     false
 );
+*/
 
+/*
 tests.spstf.args_sum = SPSTF.makeTest(
     'programs/type_analysis/args_sum.js',
     false
@@ -310,7 +332,9 @@ tests.spstf.stdlib_object = SPSTF.makeTest(
     'programs/type_analysis/stdlib_object.js',
     true
 );
+*/
 
+/*
 tests.spstf.stdlib_array = SPSTF.makeTest(
     'programs/type_analysis/stdlib_array.js',
     true

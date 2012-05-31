@@ -986,6 +986,7 @@ SPSTF.prototype.addUnit = function (ir)
     var lastBlock = this.lastMetaBlock;
     var lastBranch = lastBlock.instrs[lastBlock.instrs.length-1];
     lastBranch.targets = [callBlock];
+    callBlock.preds = [lastBlock];
 
     // The new block is the last meta-unit block
     this.lastMetaBlock = callBlock;    
@@ -1263,12 +1264,12 @@ SPSTF.prototype.blockItr = function ()
         // For each callee
         for (var i = 0; i < branch.callees.length; ++i)
         {
-            //print('call entry merge');
-
             var entry = branch.callees[i].entry;
-
             var liveOut = entry.liveMap.copy();
             liveMap = liveMap.union(liveOut);
+
+            //print('call entry merge from: ' + entry.func.getName());
+            //print(indentText(liveOut.toString()))
         }
 
         var callCont = branch.targets[0];
@@ -1321,15 +1322,6 @@ SPSTF.prototype.blockItr = function ()
 
         //print('instr: ' + instr);
 
-        /*
-        if (instr === this.initInstr)
-        {
-            print('*** init instr ***');
-            print('live map:\n' + liveMap);
-            print('');
-        }
-        */
-
         // Process defs of the instruction
         processDefs(instr, liveMap, 0);
 
@@ -1361,6 +1353,9 @@ SPSTF.prototype.blockItr = function ()
         }
         else
         {
+            //print('num preds: ' + block.preds.length)
+            //print(block);
+
             // For each predecessor block
             for (var i = 0; i < block.preds.length; ++i)
             {
@@ -2090,14 +2085,20 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 )
             );
 
+            //print(this);
+
             // If we can do a strong update
             if (canAssignType === true)
             {
+                //print('strong update');
+
                 // Do a strong update on the property type
                 ta.setType(this, propNode, valType);
             }
             else
             {
+                //print('weak update');
+
                 // Union with the current property type
                 var propType = ta.getType(this, propNode);
                 var newType = propType.union(valType);

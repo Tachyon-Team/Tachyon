@@ -105,6 +105,11 @@ tests.typeProp.func_calls = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.global_def = TypeProp.makeTest(
+    'programs/type_analysis/global_def.js',
+    false
+);
+
 tests.typeProp.arith_simple = TypeProp.makeTest(
     'programs/type_analysis/arith_simple.js', 
     false
