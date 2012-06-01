@@ -57,6 +57,19 @@ function getGlobalObj()
 }
 
 /**
+Get the sign of an integer value
+*/
+function sign(x)
+{
+    if (num_gt(x, 0) === true)
+        return 1;
+    else if (num_lt(x, 0) === true)
+        return -1;
+    else
+        return 0;
+}
+
+/**
 Test if an integer value is a power of 2
 */
 function isPowerOf2(x)

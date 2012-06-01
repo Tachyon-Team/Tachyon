@@ -609,13 +609,14 @@ TypeSet.prototype.union = function (that)
         rangeMin = that.rangeMin;
         rangeMax = that.rangeMax;
     }
+    else if (this.rangeMin === that.rangeMin && this.rangeMax === that.rangeMax)
+    {
+        rangeMin = this.rangeMin;
+        rangeMax = this.rangeMax;
+    }
     else
     {
-        if (this.rangeMin === that.rangeMin)
-        {
-            rangeMin = this.rangeMin;
-        }
-        else if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
+        if (this.rangeMin === -Infinity || that.rangeMin === -Infinity)
         {
             rangeMin = -Infinity;   
         }
@@ -630,15 +631,13 @@ TypeSet.prototype.union = function (that)
         }
         else
         {
-            rangeMin = Math.min(this.rangeMin, that.rangeMin);
-            rangeMin = lowestBit(rangeMin);
+            rangeMin = Math.max(
+                lowestBit(Math.min(this.rangeMin, that.rangeMin)), 
+                num_and(this.rangeMin, that.rangeMin)
+            );
         }
 
-        if (this.rangeMax === that.rangeMax)
-        {
-            rangeMax = this.rangeMax;
-        }
-        else if (this.rangeMax === Infinity || that.rangeMax === Infinity)
+        if (this.rangeMax === Infinity || that.rangeMax === Infinity)
         {
             rangeMax = Infinity;   
         }
@@ -654,7 +653,7 @@ TypeSet.prototype.union = function (that)
         else
         {
             rangeMax = Math.max(this.rangeMax, that.rangeMax);
-            rangeMax = -lowestBit(Math.abs(rangeMax));
+            rangeMax = lowestBit(Math.abs(rangeMax));
         }
 
         assert (

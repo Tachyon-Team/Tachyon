@@ -1723,6 +1723,12 @@ IfInstr.prototype.typeProp = function (ta, typeGraph)
                 }
             }
 
+            /*
+            print('lType     : ' + lType);
+            print('trueLType : ' + trueLType);
+            print('falseLType: ' + falseLType);
+            */
+
             if (boolVal === true || boolVal === undefined)
                 mergeVal(lVal, trueLType, trueTarget);
             if (boolVal === false || boolVal === undefined)

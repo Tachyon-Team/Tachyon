@@ -357,21 +357,15 @@ tests.spstf.regress_cond = SPSTF.makeTest(
     false
 );
 
-// FIXME: infinite loop?
-/*
 tests.spstf.regress_btree = SPSTF.makeTest(
     'programs/type_analysis/regress_btree.js',
     false
 );
-*/
 
-// FIXME: infinite loop?
-/*
 tests.spstf.regress_btree2 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree2.js',
     false
 );
-*/
 
 tests.spstf.regress_btree3 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree3.js',

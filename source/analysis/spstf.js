@@ -1035,10 +1035,12 @@ SPSTF.prototype.instrItr = function ()
     var instr = this.instrWorkList.remFirst();
     this.instrWorkSet.rem(instr);
 
-    //print(
-    //    'Iterating instr: ' + 
-    //    (instr.irInstr.parentBlock? instr.irInstr:null)
-    //);
+    /*
+    print(
+        'Iterating instr: ' + 
+        (instr.irInstr.parentBlock? instr.irInstr:null)
+    );
+    */
 
     // Call the flow function for ths instruction
     instr.flowFunc(this);
@@ -2324,6 +2326,12 @@ JSSubInstr.prototype.spstfFlowFunc = function (ta)
     var t0 = ta.getInType(this, 0);
     var t1 = ta.getInType(this, 1);
     
+    /*
+    print('JSSubInstr');
+    print('  t0: ' + t0);
+    print('  t1: ' + t1);
+    */
+
     // If either type sets are undetermined, do nothing
     if (t0 === TypeSet.empty || t1 === TypeSet.empty)
     {
@@ -2706,9 +2714,11 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
     // Function to handle the successor queuing for a given branch
     function mergeSuccs(boolVal)
     {
-        //print(irInstr);
-        //print('  from: ' + instr.block.func.getName());
-        //print('  if branch bool: ' + boolVal);
+        /*
+        print(irInstr);
+        print('  from: ' + instr.block.func.getName());
+        print('  if branch bool: ' + boolVal);
+        */
 
         // If we can potentially narrow the comparison input types
         if (irInstr.testOp === 'EQ' && 
@@ -2757,6 +2767,12 @@ IfInstr.prototype.spstfFlowFunc = function (ta)
             // If the compared value is not a constant
             if ((lVal instanceof IRConst) === false)
             {
+                /*
+                print('lType     : ' + lType);
+                print('trueLType : ' + trueLType);
+                print('falseLType: ' + falseLType);
+                */
+
                 if (boolVal === true || boolVal === undefined)
                     ta.setType(instr, lVal, trueLType, 0);
                 if (boolVal === false || boolVal === undefined)
@@ -3013,12 +3029,14 @@ JSNewInstr.prototype.spstfFlowFunc = JSCallInstr.prototype.spstfFlowFunc;
 
 ArgValInstr.prototype.spstfFlowFunc = function (ta)
 {
-    //print('ArgValInstr');
 
     var func = this.block.func;
     var argIndex = this.irInstr.argIndex;
 
     var argType = TypeSet.empty;
+
+    //print('ArgValInstr');
+    //print('argIndex: ' + argIndex);
 
     // For each call site
     for (var i = 0; i < func.callSites.length; ++i)
@@ -3028,8 +3046,12 @@ ArgValInstr.prototype.spstfFlowFunc = function (ta)
         if (callerArg === undefined)
             callerArg = TypeSet.undef;
 
+        //print(callerArg);
+
         argType = argType.union(callerArg);
     }
+
+    //print('out: ' + argType);
 
     ta.setOutType(this, argType);
 }
