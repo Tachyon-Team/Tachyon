@@ -372,6 +372,11 @@ tests.spstf.regress_btree3 = SPSTF.makeTest(
     false
 );
 
+tests.spstf.regress_btree4 = SPSTF.makeTest(
+    'programs/type_analysis/regress_btree4.js',
+    false
+);
+
 tests.spstf.regress_base64 = SPSTF.makeTest(
     'programs/type_analysis/regress_base64.js',
     true

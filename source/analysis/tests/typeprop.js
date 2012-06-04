@@ -338,6 +338,11 @@ tests.typeProp.regress_btree3 = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.regress_btree4 = TypeProp.makeTest(
+    'programs/type_analysis/regress_btree4.js',
+    false
+);
+
 tests.typeProp.regress_base64 = TypeProp.makeTest(
     'programs/type_analysis/regress_base64.js',
     true
@@ -430,7 +435,8 @@ for (testName in tests.typeProp)
         continue;
 
     if (srcFiles[0].indexOf('v8bench') !== -1 ||
-        srcFiles[0].indexOf('sunspider') !== -1)
+        srcFiles[0].indexOf('sunspider') !== -1 ||
+        srcFiles[0].indexOf('regress_btree4') !== -1)
         continue;
 
     tests.programs.type_analysis[testName] = genProgTest(srcFiles);

@@ -1035,7 +1035,7 @@ SPSTF.prototype.instrItr = function ()
     var instr = this.instrWorkList.remFirst();
     this.instrWorkSet.rem(instr);
 
-    /*
+    /*    
     print(
         'Iterating instr: ' + 
         (instr.irInstr.parentBlock? instr.irInstr:null)
@@ -1130,7 +1130,7 @@ SPSTF.prototype.blockItr = function ()
                 if (useSet.has(dest) === false)
                 {
                     // Remove the type flow edge
-                    that.addEdge(
+                    that.remEdge(
                         value, 
                         dest, 
                         instr, 
@@ -1380,6 +1380,8 @@ SPSTF.prototype.blockItr = function ()
 
     // Increment the block iteration count
     this.blockItrCount++;
+
+    //print('block itr: ' + this.blockItrCount);
 }
 
 /**

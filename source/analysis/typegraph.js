@@ -341,10 +341,14 @@ function TypeSet(
         rangeMin = -Infinity;
     else if (rangeMin < TypeSet.MIN_NUM_RANGE)
         rangeMin = -Infinity;
+    else if (rangeMin > TypeSet.MAX_NUM_RANGE)
+        rangeMin = Infinity;
     if (rangeMax === undefined)
         rangeMax = Infinity;
     else if (rangeMax > TypeSet.MAX_NUM_RANGE)
         rangeMax = Infinity;
+    else if (rangeMax < TypeSet.MIN_NUM_RANGE)
+        rangeMax = -Infinity;
 
     // Limit the string length to force convergence
     if (strVal !== undefined && strVal.length > TypeSet.MAX_STR_LEN)
@@ -637,7 +641,7 @@ TypeSet.prototype.union = function (that)
             );
         }
 
-        if (this.rangeMax === Infinity || that.rangeMax === Infinity)
+        if (this.rangeMax > Infinity || that.rangeMax === Infinity)
         {
             rangeMax = Infinity;   
         }
