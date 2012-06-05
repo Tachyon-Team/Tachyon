@@ -304,6 +304,11 @@ function SPSTFFunc(irFunc)
     this.argInstrs = new Array(numParams);
 
     /**
+    Argument object instruction
+    */
+    this.argObjInstr = undefined;
+
+    /**
     List of values defined in this function or callees
     */
     this.defSet = new HashSet();
@@ -851,6 +856,15 @@ SPSTF.prototype.getBlock = function (stump, func)
 
                 // Store the instruction on the function object
                 func.argInstrs[argIndex] = instr;
+            }
+
+            // If this is the argument object creation instruction
+            else if (
+                irInstr instanceof CallFuncInstr && 
+                irInstr.uses[0] instanceof IRFunction &&
+                irInstr.uses[0].funcName === 'makeArgObj')
+            {
+                func.argObjInstr = instr;
             }
         }
 
@@ -1940,7 +1954,6 @@ PhiInstr.prototype.spstfFlowFunc = function (ta)
         var pred = this.irInstr.preds[i];
 
         var val = this.irInstr.uses[i];
-
         var type = ta.getType(this, val);
 
         outType = outType.union(type);
@@ -2191,6 +2204,13 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
 
     var objType = ta.getInType(this, 0);
     var nameType = ta.getInType(this, 1);
+
+    // If either argument is undetermined, do nothing for now
+    if (objType === TypeSet.empty || nameType === TypeSet.empty)
+    {
+        ta.setOutType(this, TypeSet.empty);
+        return;
+    }
 
     try
     {
@@ -2909,11 +2929,13 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
                 var argInstr = func.argInstrs[i];
                 if (argInstr !== undefined)
                     ta.queueInstr(func.argInstrs[i]);
+
+                // If the function uses the arguments object, queue the
+                // argument object creation instruction
+                if (func.argObjInstr !== undefined)
+                    ta.queueInstr(func.argObjInstr);
             }
         }
-
-        // TODO: if args changed, queue arg obj instr
-        //if (func.irFunc.usesArguments === true)
     }
 
     // Union of the return type of all potential callees
@@ -3031,7 +3053,6 @@ JSNewInstr.prototype.spstfFlowFunc = JSCallInstr.prototype.spstfFlowFunc;
 
 ArgValInstr.prototype.spstfFlowFunc = function (ta)
 {
-
     var func = this.block.func;
     var argIndex = this.irInstr.argIndex;
 
@@ -3094,29 +3115,43 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         // Do nothing
     }
 
-    /*
     // Creates the 'arguments' object
     else if (callee.funcName === 'makeArgObj')
     {
-        // Get the argument type info for this function
-        var func = this.parentBlock.parentCFG.ownerFunc;
-        var funcInfo = ta.getFuncInfo(func);
+        var func = this.block.func;
 
         // Create the arguments object
-        var argObjType = typeGraph.newObject(this, ta.objProto);
+        var argObjType = ta.newObject(
+            this,
+            'arg_obj',
+            undefined,
+            ta.objProto
+        );
         var argObj = argObjType.getObjItr().get();
 
         // Set the arguments length value
         var lengthNode = ta.getPropNode(argObj, 'length');
-        typeGraph.assignType(lengthNode, TypeSet.posInt);
+        ta.setType(this, lengthNode, TypeSet.posInt);
 
-        // Set the indexed property type
-        var idxArgType = typeGraph.getType(funcInfo.idxArgNode);
-        typeGraph.assignType(argObj.idxProp, idxArgType);
+        // TODO: callee property
+
+        // Compute the union of all visible argument types
+        var idxArgType = TypeSet.empty;
+        for (var i = 0; i < func.callSites.length; ++i)
+        {
+            var callSite = func.callSites[i];
+            for (var j = 2; j < callSite.argTypes.length; ++j)
+            {
+                var callerArg = callSite.argTypes[j];
+                idxArgType = idxArgType.union(callerArg);
+            }
+        }
+
+        // Set the indexed property type of the argument object
+        ta.setType(this, argObj.idxProp, idxArgType);
 
         retType = argObjType;
     }
-    */
 
     // Closure object creation
     else if (callee.funcName === 'makeClos')

@@ -285,7 +285,6 @@ tests.spstf.proto_cond = SPSTF.makeTest(
     false
 );
 
-/*
 tests.spstf.args_sum = SPSTF.makeTest(
     'programs/type_analysis/args_sum.js',
     false
@@ -295,7 +294,6 @@ tests.spstf.args_max = SPSTF.makeTest(
     'programs/type_analysis/args_max.js',
     false
 );
-*/
 
 tests.spstf.clos_simple = SPSTF.makeTest(
     'programs/type_analysis/clos_simple.js',
@@ -322,12 +320,10 @@ tests.spstf.stdlib_object = SPSTF.makeTest(
 );
 */
 
-/*
 tests.spstf.stdlib_array = SPSTF.makeTest(
     'programs/type_analysis/stdlib_array.js',
     true
 );
-*/
 
 /*
 tests.spstf.stdlib_function = SPSTF.makeTest(
