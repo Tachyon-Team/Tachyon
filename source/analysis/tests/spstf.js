@@ -260,13 +260,15 @@ tests.spstf.ctor_array = SPSTF.makeTest(
     false
 );
 
-// FIXME: type assertion failed
-/*
+tests.spstf.proto_method = SPSTF.makeTest(
+    'programs/type_analysis/proto_method.js',
+    false
+);
+
 tests.spstf.proto_chain = SPSTF.makeTest(
     'programs/type_analysis/proto_chain.js',
     false
 );
-*/
 
 tests.spstf.proto_clos = SPSTF.makeTest(
     'programs/type_analysis/proto_clos.js',

@@ -1779,10 +1779,10 @@ SPSTF.prototype.getPropNode = function (obj, propName)
             'invalid origin instruction'
         );
 
-        // Assign the undefined type to the property at the object
-        // creation site. This is because object properties are
-        // initially undefined.
-        this.setType(origInstr, propNode, TypeSet.undef);
+        // Assign the missing type to the property at the object
+        // creation site. This is because object properties do not
+        // exist at object creation time
+        this.setType(origInstr, propNode, TypeSet.missing);
 
         //print('creating init def for: "' + propName + '"');
         //print('  orig instr: ' + origInstr);

@@ -240,6 +240,11 @@ tests.typeProp.ctor_array = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.proto_method = TypeProp.makeTest(
+    'programs/type_analysis/proto_method.js',
+    false
+);
+
 tests.typeProp.proto_chain = TypeProp.makeTest(
     'programs/type_analysis/proto_chain.js',
     false
