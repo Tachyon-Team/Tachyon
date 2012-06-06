@@ -123,13 +123,10 @@ tests.spstf.cmp_simple = SPSTF.makeTest(
     false
 );
 
-// FIXME: local vars flow
-/*
 tests.spstf.fib = SPSTF.makeTest(
     'programs/type_analysis/fib.js', 
     false
 );
-*/
 
 tests.spstf.loop_sum = SPSTF.makeTest(
     'programs/type_analysis/loop_sum.js',
@@ -156,13 +153,10 @@ tests.spstf.get_undef = SPSTF.makeTest(
     false
 );
 
-// FIXME: superfluous null
-/*
 tests.spstf.linked_list = SPSTF.makeTest(
     'programs/type_analysis/linked_list.js',
     false
 );
-*/
 
 tests.spstf.cond_return = SPSTF.makeTest(
     'programs/type_analysis/cond_return.js', 
@@ -174,13 +168,10 @@ tests.spstf.cond_prop = SPSTF.makeTest(
     false
 );
 
-// FIXME: superfluous undef
-/*
 tests.spstf.cond_global = SPSTF.makeTest(
     'programs/type_analysis/cond_global.js', 
     false
 );
-*/
 
 tests.spstf.cond_objs = SPSTF.makeTest(
     'programs/type_analysis/cond_objs.js', 
@@ -191,7 +182,6 @@ tests.spstf.cond_call = SPSTF.makeTest(
     'programs/type_analysis/cond_call.js', 
     false
 );
-
 
 tests.spstf.cond_pass2 = SPSTF.makeTest(
     'programs/type_analysis/cond_pass2.js',
@@ -238,13 +228,10 @@ tests.spstf.factory_2paths = SPSTF.makeTest(
     false
 );
 
-// FIXME: superfluous undef
-/*
 tests.spstf.factory_global = SPSTF.makeTest(
     'programs/type_analysis/factory_global.js',
     false
 );
-*/
 
 tests.spstf.factory_cond = SPSTF.makeTest(
     'programs/type_analysis/factory_cond.js',
@@ -257,13 +244,10 @@ tests.spstf.factory_inc = SPSTF.makeTest(
     false
 );
 
-// FIXME: superfluous undef
-/*
 tests.spstf.ctor_simple = SPSTF.makeTest(
     'programs/type_analysis/ctor_simple.js',
     false
 );
-*/
 
 tests.spstf.ctor_array = SPSTF.makeTest(
     'programs/type_analysis/ctor_array.js',
@@ -323,18 +307,17 @@ tests.spstf.stdlib_math = SPSTF.makeTest(
     true
 );
 
-/*
 tests.spstf.stdlib_object = SPSTF.makeTest(
     'programs/type_analysis/stdlib_object.js',
     true
 );
-*/
 
 tests.spstf.stdlib_array = SPSTF.makeTest(
     'programs/type_analysis/stdlib_array.js',
     true
 );
 
+// FIXME: superfluous undef
 /*
 tests.spstf.stdlib_function = SPSTF.makeTest(
     'programs/type_analysis/stdlib_function.js',
@@ -342,13 +325,10 @@ tests.spstf.stdlib_function = SPSTF.makeTest(
 );
 */
 
-// FIXME: superfluous undef
-/*
 tests.spstf.stdlib_string = SPSTF.makeTest(
     'programs/type_analysis/stdlib_string.js',
     true
 );
-*/
 
 tests.spstf.regress_global = SPSTF.makeTest(
     'programs/type_analysis/regress_global.js',

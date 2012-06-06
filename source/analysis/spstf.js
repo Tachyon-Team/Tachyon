@@ -1227,6 +1227,33 @@ SPSTF.prototype.blockItr = function ()
         }
     }
 
+    /**
+    Filter locals or global variable uses out of a live map
+    */
+    function filterVars(liveMap, keepLocals, keepGlobals)
+    {
+        var remList = [];
+
+        // For each live value
+        for (var itr = liveMap.getItr(); itr.valid(); itr.next())
+        {
+            var pair = itr.get();
+            var value = pair.key;
+
+            var isGlobal = (
+                value.parent instanceof TGObject || 
+                value.parent instanceof TGClosCell
+            );
+
+            if ((isGlobal === false && keepLocals  === false) ||
+                (isGlobal === true  && keepGlobals === false))
+                remList.push(value);
+        }
+
+        for (var i = 0; i < remList.length; ++i)
+             liveMap.killLive(remList[i]);
+    }
+
     // Get the branch instruction for this block
     var branch = block.instrs[block.instrs.length-1];
 
@@ -1251,11 +1278,9 @@ SPSTF.prototype.blockItr = function ()
 
             var liveOut = callCont.liveMap.copy();
 
-            //print('ret succ merge from: ' + branch.block.func.getName());
-            //print(liveOut);
-            //print(callCont.irBlock);
-
             filterPhis(liveOut, block, callCont);
+
+            filterVars(liveOut, false, true);
 
             liveMap = liveMap.union(liveOut);
         }
@@ -1268,11 +1293,14 @@ SPSTF.prototype.blockItr = function ()
         // TODO: local var prop
         // TODO: lazy prop
 
-        // For each callee
+        // For each callee entry block
         for (var i = 0; i < branch.callees.length; ++i)
         {
             var entry = branch.callees[i].entry;
             var liveOut = entry.liveMap.copy();
+
+            filterVars(liveOut, false, true);
+
             liveMap = liveMap.union(liveOut);
 
             //print('call entry merge from: ' + entry.func.getName());
@@ -1281,6 +1309,7 @@ SPSTF.prototype.blockItr = function ()
 
         var callCont = branch.targets[0];
 
+        // If the call continuation was visited
         if (callCont instanceof SPSTFBlock)
         {
             //print('got call cont for: ' + branch);
@@ -1288,6 +1317,12 @@ SPSTF.prototype.blockItr = function ()
             var liveOut = callCont.liveMap.copy();
 
             filterPhis(liveOut, block, callCont);
+
+            filterVars(
+                liveOut,
+                true,
+                (branch.callees.length === 0)
+            );
 
             liveMap = liveMap.union(liveOut);
         }
