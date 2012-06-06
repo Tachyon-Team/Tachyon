@@ -586,6 +586,7 @@ SPSTF.prototype.init = function ()
     // Create the instruction holding the initial definitions
     var initIRInstr = Object.create(IRInstr.prototype);
     initIRInstr.mnemonic = 'init';
+    initIRInstr.type = IRType.none;
     initIRInstr.uses = [];
     initIRInstr.dests = [];
     initIRInstr.targets = [];
@@ -1501,6 +1502,7 @@ SPSTF.prototype.addEdge = function (
 {
     /*
     print('Adding edge');
+    print('  val : ' + value);
     print('  from: ' + defInstr);
     print('  to  : ' + useInstr);
     */
@@ -1546,7 +1548,12 @@ SPSTF.prototype.remEdge = function (
     targetIdx
 )
 {
-    //print('Removing edge');
+    /*
+    print('Removing edge');
+    print('  val : ' + value);
+    print('  from: ' + defInstr);
+    print('  to  : ' + useInstr);
+    */
 
     var def = defInstr.outVals[targetIdx][outIdx];
 
@@ -1567,14 +1574,22 @@ SPSTF.prototype.remEdge = function (
 
     arraySetRem(def.dests, useInstr);
 
+    var srcIdx = -1;
     for (var i = 0; i < use.srcs.length; ++i)
     {
-        if (use.srcs[i].value === value)
+        if (use.srcs[i].instr === defInstr)
         {
-            use.srcs.splice(i, 1);
+            srcIdx = i;
             break;
         }
     }
+
+    assert (
+        srcIdx !== -1,
+        'src not found'
+    );
+
+    use.srcs.splice(srcIdx, 1);
 
     this.numEdges--;
 }

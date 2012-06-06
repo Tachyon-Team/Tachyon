@@ -105,13 +105,10 @@ tests.spstf.func_calls = SPSTF.makeTest(
     false
 );
 
-// FIXME: superfluous undef
-/*
 tests.spstf.global_def = SPSTF.makeTest(
     'programs/type_analysis/global_def.js',
     false
 );
-*/
 
 tests.spstf.arith_simple = SPSTF.makeTest(
     'programs/type_analysis/arith_simple.js', 
