@@ -135,6 +135,16 @@ tests.typeProp.obj_simple = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.obj_2paths = TypeProp.makeTest(
+    'programs/type_analysis/obj_2paths.js', 
+    false
+);
+
+tests.typeProp.obj_3paths = TypeProp.makeTest(
+    'programs/type_analysis/obj_3paths.js', 
+    false
+);
+
 tests.typeProp.get_undef = TypeProp.makeTest(
     'programs/type_analysis/get_undef.js', 
     false
@@ -433,15 +443,31 @@ tests.typeProp['richards'] = TypeProp.makeTest(
 // Replicate the type analysis tests as program tests
 for (testName in tests.typeProp)
 {
+    function skipBench(srcFiles)
+    {
+        var skipList = [
+            'v8bench',
+            'sunspider',
+            'regress_btree4',
+            'obj_2paths',
+            'obj_3paths',
+        ];
+
+        for (var i = 0; i < srcFiles.length; ++i)
+            for (var j = 0; j < skipList.length; ++j)
+                if (srcFiles[i].indexOf(skipList[j]) !== -1)
+                    return true;
+
+        return false;
+    }
+
     var taTest = tests.typeProp[testName];
     var srcFiles = taTest.srcFiles;
 
     if (srcFiles === undefined)
         continue;
 
-    if (srcFiles[0].indexOf('v8bench') !== -1 ||
-        srcFiles[0].indexOf('sunspider') !== -1 ||
-        srcFiles[0].indexOf('regress_btree4') !== -1)
+    if (skipBench(srcFiles) === true)
         continue;
 
     tests.programs.type_analysis[testName] = genProgTest(srcFiles);

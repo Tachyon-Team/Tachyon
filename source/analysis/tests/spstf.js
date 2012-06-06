@@ -141,6 +141,16 @@ tests.spstf.obj_simple = SPSTF.makeTest(
     false
 );
 
+tests.spstf.obj_2paths = SPSTF.makeTest(
+    'programs/type_analysis/obj_2paths.js', 
+    false
+);
+
+tests.spstf.obj_3paths = SPSTF.makeTest(
+    'programs/type_analysis/obj_3paths.js', 
+    false
+);
+
 tests.spstf.get_undef = SPSTF.makeTest(
     'programs/type_analysis/get_undef.js', 
     false

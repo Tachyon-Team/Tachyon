@@ -3274,12 +3274,8 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         var cellIdx = this.irInstr.uses[4].value;
         var valType = ta.getInType(this, 5);
 
-        //print(this);
-
-        assert (
-            (closType.flags & ~TypeFlags.FUNCTION) === 0,
-            'invalid closure type'
-        );
+        if (closType === TypeSet.any)
+            print('*WARNING: set_clos_cells on any type');
 
         // For each possible closure
         for (var itr = closType.getObjItr(); itr.valid(); itr.next())
@@ -3308,14 +3304,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         var closType = ta.getInType(this, 3);
         var cellIdx = this.irInstr.uses[4].value;
 
-        //print('get_clos_cells ******');
-
-        assert (
-            (closType.flags & ~TypeFlags.FUNCTION) === 0,
-            'invalid closure type'
-        );
-
-        var outType = TypeSet.empty;
+        var outType = (closType === TypeSet.any)? TypeSet.any:TypeSet.empty;
 
         // For each possible closure
         for (var itr = closType.getObjItr(); itr.valid(); itr.next())
