@@ -103,6 +103,12 @@ function TGObject(
     );
 
     assert (
+        func === undefined ||
+        func instanceof IRFunction,
+        'invalid function'
+    );
+
+    assert (
         flags === TypeFlags.OBJECT  ||
         flags === TypeFlags.ARRAY   ||
         flags === TypeFlags.FUNCTION,

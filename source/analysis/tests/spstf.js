@@ -235,7 +235,6 @@ tests.spstf.factory_cond = SPSTF.makeTest(
     false
 );
 
-
 tests.spstf.factory_inc = SPSTF.makeTest(
     'programs/type_analysis/factory_inc.js',
     false
@@ -314,13 +313,10 @@ tests.spstf.stdlib_array = SPSTF.makeTest(
     true
 );
 
-// FIXME: superfluous undef
-/*
 tests.spstf.stdlib_function = SPSTF.makeTest(
     'programs/type_analysis/stdlib_function.js',
     true
 );
-*/
 
 tests.spstf.stdlib_string = SPSTF.makeTest(
     'programs/type_analysis/stdlib_string.js',

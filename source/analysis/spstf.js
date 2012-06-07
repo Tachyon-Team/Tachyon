@@ -642,6 +642,7 @@ SPSTF.prototype.init = function ()
     this.funcProto = this.newObject(
         initInstr,
         'func_proto',
+        undefined,
         this.objProto,
         undefined, 
         undefined, 
@@ -1930,10 +1931,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
 
             // Get the type for this property node
             var propType = this.getType(instr, propNode)
-
-            //print('prop type: ' + propType);
-            //print('');
-
+        
             // If this property may be missing or this is an unbounded array access
             if (propType.flags & TypeFlags.MISSING || propName === false)
             {
