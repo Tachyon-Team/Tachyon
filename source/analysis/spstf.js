@@ -97,6 +97,15 @@ SPSTFUseSet.prototype.add = function (use)
     return newSet;
 }
 
+SPSTFUseSet.prototype.rem = function (use)
+{
+    var newSet = this.copy();
+
+    HashSet.prototype.rem.call(newSet, use);
+
+    return newSet;
+}
+
 /**
 Empty use set
 */
@@ -205,6 +214,9 @@ Kill the uses for a given value
 */
 SPSTFLiveMap.prototype.killLive = function (value)
 {
+    if (String(value) === 'n')
+        print('killLive on n');
+
     this.rem(value);
 }
 
@@ -213,9 +225,11 @@ Kill a specific use of a value
 */
 SPSTFLiveMap.prototype.killUse = function (value, use)
 {
-    var useSet = this.get(value);
+    var origSet = this.get(value);
 
-    useSet.rem(use);
+    var newSet = origSet.rem(use);
+
+    this.set(value, newSet);
 }
 
 /**
@@ -309,7 +323,7 @@ function SPSTFFunc(irFunc)
     this.argObjInstr = undefined;
 
     /**
-    List of values defined in this function or callees
+    List of global values defined in this function or callees
     */
     this.defSet = new HashSet();
 
@@ -1087,6 +1101,8 @@ SPSTF.prototype.instrItr = function ()
 
     // Increment the instruction iteration count
     this.itrCount++;
+
+    //print('instr itr: ' + this.itrCount);
 }
 
 /**
@@ -1107,13 +1123,6 @@ SPSTF.prototype.blockItr = function ()
     //    'Iterating block: ' + block.getName() /*+
     //    ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
     //);
-
-    /* TODO: 
-    Lazy propagation: if fn (or callees) doesn't define a value, don't
-    propagate uses for that value though the call. 
-    - Special treatment needed at returns
-    - Special treatment needed at call sites
-    */
 
     var that = this;
 
@@ -1232,7 +1241,7 @@ SPSTF.prototype.blockItr = function ()
     /**
     Filter locals or global variable uses out of a live map
     */
-    function filterVars(liveMap, keepLocals, keepGlobals)
+    function filterVals(liveMap, filterFunc)
     {
         var remList = [];
 
@@ -1242,13 +1251,7 @@ SPSTF.prototype.blockItr = function ()
             var pair = itr.get();
             var value = pair.key;
 
-            var isGlobal = (
-                value.parent instanceof TGObject || 
-                value.parent instanceof TGClosCell
-            );
-
-            if ((isGlobal === false && keepLocals  === false) ||
-                (isGlobal === true  && keepGlobals === false))
+            if (filterFunc(value) === false)
                 remList.push(value);
         }
 
@@ -1265,9 +1268,6 @@ SPSTF.prototype.blockItr = function ()
     // If the branch is a return instruction
     if (branch.irInstr instanceof RetInstr)
     {
-        // TODO: don't prop local vars
-        // TODO: lazy prop
-
         var callSites = branch.block.func.callSites;
 
         for (var i = 0; i < callSites.length; ++i)
@@ -1282,7 +1282,21 @@ SPSTF.prototype.blockItr = function ()
 
             filterPhis(liveOut, block, callCont);
 
-            filterVars(liveOut, false, true);
+            // Filter out local variables from the caller
+            filterVals(
+                liveOut, 
+                function (value)
+                {
+                    var isGlobal = (
+                        value.parent instanceof TGObject || 
+                        value.parent instanceof TGClosCell
+                    );
+
+                    // Keep only globals defined within 
+                    // this function or one of its callees
+                    return (isGlobal && block.func.defSet.has(value) === true);
+                }
+            );
 
             liveMap = liveMap.union(liveOut);
         }
@@ -1292,21 +1306,25 @@ SPSTF.prototype.blockItr = function ()
     else if (branch.irInstr instanceof JSCallInstr ||
              branch.irInstr instanceof JSNewInstr)
     {
-        // TODO: local var prop
-        // TODO: lazy prop
-
         // For each callee entry block
         for (var i = 0; i < branch.callees.length; ++i)
         {
             var entry = branch.callees[i].entry;
             var liveOut = entry.liveMap.copy();
 
-            filterVars(liveOut, false, true);
+            // Filter out local values from the callee
+            filterVals(
+                liveOut,
+                function (value)
+                {
+                    return (
+                        value.parent instanceof TGObject || 
+                        value.parent instanceof TGClosCell
+                    );
+                }
+            );
 
             liveMap = liveMap.union(liveOut);
-
-            //print('call entry merge from: ' + entry.func.getName());
-            //print(indentText(liveOut.toString()))
         }
 
         var callCont = branch.targets[0];
@@ -1314,16 +1332,38 @@ SPSTF.prototype.blockItr = function ()
         // If the call continuation was visited
         if (callCont instanceof SPSTFBlock)
         {
-            //print('got call cont for: ' + branch);
-
             var liveOut = callCont.liveMap.copy();
+
+            printN(liveOut);
 
             filterPhis(liveOut, block, callCont);
 
-            filterVars(
+            // Filter out global values
+            filterVals(
                 liveOut,
-                true,
-                (branch.callees.length === 0)
+                function (value)
+                {
+                    // If there are no callees, filter nothing
+                    if (branch.callees.length === 0)
+                        return true;
+
+                    var isGlobal = (
+                        value.parent instanceof TGObject || 
+                        value.parent instanceof TGClosCell
+                    );
+
+                    // Keep locals
+                    if (isGlobal === false)
+                        return true;
+
+                    // If any callee defines this value, remove it
+                    for (var i = 0; i < branch.callees.length; ++i)
+                        if (branch.callees[i].defSet.has(value) === true)
+                            return false;
+
+                    // Keep globals not defined by any callee
+                    return true;
+                }
             );
 
             liveMap = liveMap.union(liveOut);
@@ -1359,6 +1399,37 @@ SPSTF.prototype.blockItr = function ()
     // Process uses for branch instruction
     processUses(branch, liveMap);
 
+
+
+
+    function printN(liveMap)
+    {
+        for (var itr = liveMap.getItr(); itr.valid(); itr.next())
+        {
+            var pair = itr.get();
+            var value = pair.key;
+            var useSet = pair.value;
+
+            if (String(value) === 'n')
+                print(useSet);
+
+
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // For each instruction except the last, in reverse order
     for (var i = block.instrs.length - 2; i >= 0; --i)
     {
@@ -1375,6 +1446,32 @@ SPSTF.prototype.blockItr = function ()
         //print('live map:\n' + liveMap);
         //print('');
     }
+
+    /*
+    var numDiff = 0;
+    for (var itr = liveMap.getItr(); itr.valid(); itr.next())
+    {
+        var pair = itr.get();
+        var val = pair.key;
+        var t1 = pair.value;
+
+        var t2 = block.liveMap.get(val);
+
+        if (t2 === HashMap.NOT_FOUND || t2.equal(t1) === false)
+            ++numDiff;
+    }
+
+    if (numDiff <= 1)
+        numSingle += 1;
+    numTotal += 1;
+
+    var perSingle = 100 * numSingle / numTotal;
+
+    print('per single: ' + perSingle.toFixed(1) + '%');
+    */
+
+
+
 
     // If the live map at the beginning of the block changed
     if (liveMap.equal(block.liveMap) === false)
@@ -1491,6 +1588,42 @@ SPSTF.prototype.newObject = function (
 }
 
 /**
+Add a value to a function's definition set. This may update
+caller functions recursively.
+*/
+SPSTF.prototype.addFuncDef = function (func, value)
+{
+    // If this is not a global value, stop
+    if ((value.parent instanceof TGObject) === false &&
+        (value.parent instanceof TGClosCell) === false)
+        return;
+
+    var workList = [func];
+
+    while (workList.length > 0)
+    {
+        var func = workList.pop();
+
+        if (func.defSet.has(value) === true)
+            continue;
+
+        // Add the value to the function's definition set
+        func.defSet.add(value);
+
+        // Queue the return site blocks
+        for (var i = 0; i < func.retBlocks.length; ++i)
+            this.queueBlock(func.retBlocks[i]);
+
+        // Queue the call site blocks
+        for (var i = 0; i < func.callSites.length; ++i)
+            this.queueBlock(func.callSites[i].block);
+
+        for (var i = 0; i < func.callSites.length; ++i)
+            workList.push(func.callSites[i].block.func);
+    }
+}
+
+/**
 Add a def-use edge
 */
 SPSTF.prototype.addEdge = function (
@@ -1549,7 +1682,7 @@ SPSTF.prototype.remEdge = function (
     targetIdx
 )
 {
-    /*
+    /*   
     print('Removing edge');
     print('  val : ' + value);
     print('  from: ' + defInstr);
@@ -1744,6 +1877,9 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
             print('  from: ' + instr);
         }
         */
+
+        // Add the definition to the function's definition set
+        this.addFuncDef(instr.block.func, value);
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
@@ -3025,6 +3161,11 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             for (var i = 0; i < func.argInstrs.length; ++i)
                 if (func.argInstrs[i] !== undefined)
                     ta.queueInstr(func.argInstrs[i]);
+
+            // Add the callee's definitions to the caller's definitions
+            var caller = this.block.func;
+            for (var defItr = func.defSet.getItr(); defItr.valid(); defItr.next())
+                ta.addFuncDef(caller, defItr.get());
         }
 
         // Set the call type flags

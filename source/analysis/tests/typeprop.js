@@ -358,6 +358,11 @@ tests.typeProp.regress_btree4 = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.regress_btree5 = TypeProp.makeTest(
+    'programs/type_analysis/regress_btree5.js',
+    false
+);
+
 tests.typeProp.regress_base64 = TypeProp.makeTest(
     'programs/type_analysis/regress_base64.js',
     true

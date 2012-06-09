@@ -358,6 +358,14 @@ tests.spstf.regress_btree4 = SPSTF.makeTest(
     false
 );
 
+// FIXME: infinite loop
+/*
+tests.spstf.regress_btree5 = SPSTF.makeTest(
+    'programs/type_analysis/regress_btree5.js',
+    false
+);
+*/
+
 tests.spstf.regress_base64 = SPSTF.makeTest(
     'programs/type_analysis/regress_base64.js',
     true
