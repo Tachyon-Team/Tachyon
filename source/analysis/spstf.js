@@ -1410,40 +1410,7 @@ SPSTF.prototype.blockItr = function ()
 
         // Process uses of the instruction
         processUses(instr, liveMap);
-
-        //print('live map:\n' + liveMap);
-        //print('');
     }
-
-
-
-
-
-    /*
-    var numDiff = 0;
-    for (var itr = liveMap.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var t1 = pair.value;
-
-        var t2 = block.liveMap.get(val);
-
-        if (t2 === HashMap.NOT_FOUND || t2.equal(t1) === false)
-            ++numDiff;
-    }
-
-    if (numDiff <= 1)
-        numSingle += 1;
-    numTotal += 1;
-
-    var perSingle = 100 * numSingle / numTotal;
-
-    print('per single: ' + perSingle.toFixed(1) + '%');
-    */
-
-
-
 
     // If the live map at the beginning of the block changed
     if (liveMap.equal(block.liveMap) === false)
@@ -2307,11 +2274,10 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
             // Test if we can overwrite the current property type
             var canAssignType = (
                 propNode !== obj.idxProp &&
-                singleType === true && 
                 (
                     isCtorThis === true ||
-                    isLocalObj === true ||
-                    obj.singleton === true
+                    (singleType === true && isLocalObj === true) ||
+                    (singleType === true && obj.singleton === true)
                 )
             );
 

@@ -250,6 +250,11 @@ tests.typeProp.ctor_array = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.ctor_strong = TypeProp.makeTest(
+    'programs/type_analysis/ctor_strong.js',
+    false
+);
+
 tests.typeProp.proto_method = TypeProp.makeTest(
     'programs/type_analysis/proto_method.js',
     false

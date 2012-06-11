@@ -250,6 +250,11 @@ tests.spstf.ctor_array = SPSTF.makeTest(
     false
 );
 
+tests.spstf.ctor_strong = SPSTF.makeTest(
+    'programs/type_analysis/ctor_strong.js',
+    false
+);
+
 tests.spstf.proto_method = SPSTF.makeTest(
     'programs/type_analysis/proto_method.js',
     false

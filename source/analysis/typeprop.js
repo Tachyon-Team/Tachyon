@@ -1084,11 +1084,10 @@ PutPropInstr.prototype.typeProp = function (ta, typeGraph)
             // Test if we can overwrite the current property type
             var canAssignType = (
                 propNode !== obj.idxProp &&
-                singleType === true && 
                 (
                     isCtorThis === true ||
-                    isLocalObj === true ||
-                    obj.singleton === true
+                    (singleType === true && isLocalObj === true) ||
+                    (singleType === true && obj.singleton === true)
                 )
             );
 
