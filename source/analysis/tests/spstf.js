@@ -358,13 +358,10 @@ tests.spstf.regress_btree4 = SPSTF.makeTest(
     false
 );
 
-// FIXME: infinite loop
-/*
 tests.spstf.regress_btree5 = SPSTF.makeTest(
     'programs/type_analysis/regress_btree5.js',
     false
 );
-*/
 
 tests.spstf.regress_base64 = SPSTF.makeTest(
     'programs/type_analysis/regress_base64.js',
@@ -427,16 +424,6 @@ tests.spstf['string-base64'] = SPSTF.makeTest(
 */
 
 /*
-tests.spstf['deltablue'] = SPSTF.makeTest(
-    [
-        'programs/v8bench/deltablue.js',
-        'programs/v8bench/drv-deltablue.js'
-    ],
-    true
-);
-*/
-
-/*
 tests.spstf['richards'] = SPSTF.makeTest(
     [
         'programs/v8bench/richards.js',
@@ -446,3 +433,12 @@ tests.spstf['richards'] = SPSTF.makeTest(
 );
 */
 
+/*
+tests.spstf['deltablue'] = SPSTF.makeTest(
+    [
+        'programs/v8bench/deltablue.js',
+        'programs/v8bench/drv-deltablue.js'
+    ],
+    true
+);
+*/

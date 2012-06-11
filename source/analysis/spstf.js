@@ -214,9 +214,6 @@ Kill the uses for a given value
 */
 SPSTFLiveMap.prototype.killLive = function (value)
 {
-    if (String(value) === 'n')
-        print('killLive on n');
-
     this.rem(value);
 }
 
@@ -1327,6 +1324,8 @@ SPSTF.prototype.blockItr = function ()
             liveMap = liveMap.union(liveOut);
         }
 
+        //print(branch);
+
         var callCont = branch.targets[0];
 
         // If the call continuation was visited
@@ -1334,7 +1333,7 @@ SPSTF.prototype.blockItr = function ()
         {
             var liveOut = callCont.liveMap.copy();
 
-            printN(liveOut);
+            //printN(callCont.liveMap);
 
             filterPhis(liveOut, block, callCont);
 
@@ -1399,37 +1398,6 @@ SPSTF.prototype.blockItr = function ()
     // Process uses for branch instruction
     processUses(branch, liveMap);
 
-
-
-
-    function printN(liveMap)
-    {
-        for (var itr = liveMap.getItr(); itr.valid(); itr.next())
-        {
-            var pair = itr.get();
-            var value = pair.key;
-            var useSet = pair.value;
-
-            if (String(value) === 'n')
-                print(useSet);
-
-
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // For each instruction except the last, in reverse order
     for (var i = block.instrs.length - 2; i >= 0; --i)
     {
@@ -1446,6 +1414,10 @@ SPSTF.prototype.blockItr = function ()
         //print('live map:\n' + liveMap);
         //print('');
     }
+
+
+
+
 
     /*
     var numDiff = 0;
@@ -1620,6 +1592,69 @@ SPSTF.prototype.addFuncDef = function (func, value)
 
         for (var i = 0; i < func.callSites.length; ++i)
             workList.push(func.callSites[i].block.func);
+    }
+}
+
+/**
+Kill all uses of a given value in predecessors, starting from a specified block
+*/
+SPSTF.prototype.killUses = function (block, value)
+{
+    var workList = new LinkedList();
+
+    workList.addLast(block);
+
+    // Until the work list is empty
+    while (workList.isEmpty() === false)
+    {
+        var block = workList.remFirst();
+
+        // If the value is not live in this block, skip it
+        if (block.liveMap.get(value).length === 0)
+            continue;
+
+        // Kill all live uses for this value
+        block.liveMap.killLive(value);
+
+        // If this is a function entry block
+        if (block === block.func.entry)
+        {
+            var func = block.func;
+
+            // Queue the call site blocks
+            for (var i = 0; i < func.callSites.length; ++i)
+            {
+                var callSite = func.callSites[i];
+                workList.addLast(callSite.block);
+            }
+        }
+        else
+        {
+            // For each predecessor block
+            for (var i = 0; i < block.preds.length; ++i)
+            {
+                var pred = block.preds[i];
+
+                // Queue the predecessor
+                workList.addLast(pred);
+
+                // Get the branch instruction of the predecessor block
+                var branch = pred.instrs[pred.instrs.length-1];
+
+                // If the predecessor is a call site
+                if (branch.irInstr instanceof JSCallInstr || 
+                    branch.irInstr instanceof JSNewInstr)
+                {
+                    // Queue all callee return sites
+                    for (var j = 0; j < branch.callees.length; ++j)
+                    {
+                        var callee = branch.callees[j];
+                        for (var k = 0; k < callee.retBlocks.length; ++k)
+                            workList.addLast(callee.retBlocks[k]);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1880,6 +1915,9 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 
         // Add the definition to the function's definition set
         this.addFuncDef(instr.block.func, value);
+
+        // Kill all uses of this value, starting from this block
+        this.killUses(instr.block, value);
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block);
