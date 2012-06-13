@@ -41,357 +41,460 @@
  */
 
 /**
-Test suite for type analysis.
+Create a type analysis test
 */
-tests.typeProp = tests.testSuite();
-
-/**
-Create a type prop unit test
-*/
-TypeProp.makeTest = function (fileList, useStdlib)
+function makeTypeTest(fileList, testName)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
 
-    if (useStdlib === undefined)
-        useStdlib = false;
-
-    var test = function ()
+    if (testName === undefined)
     {
-        const params = config.hostParams;
-
-        var analysis = new TypeProp(params);
-
-        analysis.testOnFiles(fileList, useStdlib);
+        testName = fileList[0];
+        var slashIdx = testName.lastIndexOf('/');
+        var periodIdx = testName.indexOf('.');
+        testName = testName.substr(slashIdx + 1, periodIdx - slashIdx - 1);
     }
 
-    test.srcFiles = fileList;
+    var useStdLib = true;
+    var runProgram = true;
 
-    return test;
+    for (var i = 2; i < arguments.length; ++i)
+    {
+        var flag = arguments[i];
+
+        switch (flag)
+        {
+            case 'nostdlib':
+            useStdLib = false;
+            break;
+
+            case 'norun':
+            runProgram = false;
+            break;
+
+            default:
+            error('unsupported flag: ' + flag);
+        }
+    }
+
+    tests.typeProp[testName] = function ()
+    {
+        const params = config.hostParams;
+        var analysis = new TypeProp(params);
+        analysis.testOnFiles(fileList, useStdLib);
+    }
+
+    tests.spstf[testName] = function ()
+    {
+        const params = config.hostParams;
+        var analysis = new SPSTF(params);
+        analysis.testOnFiles(fileList, useStdLib);
+    }
+
+    if (runProgram === true)
+        tests.programs.type_analysis[testName] = genProgTest(fileList);
 }
 
-tests.typeProp.global_add = TypeProp.makeTest(
+/**
+Test suite for the TypeProp type analysis.
+*/
+tests.typeProp = tests.testSuite();
+
+/**
+Test suite for the SPSTF type analysis.
+*/
+tests.spstf = tests.testSuite();
+
+//
+// TODO: add ctor_modif, factory_modif
+// Need to implement recency types first
+//
+
+makeTypeTest(
     'programs/type_analysis/global_add.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.string_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/string_simple.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.array_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/array_simple.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.call_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/call_simple.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.func_2ret = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/func_2ret.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.func_2calls = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/func_2calls.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.func_calls = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/func_calls.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.global_def = TypeProp.makeTest(
+makeTypeTest(
+    'programs/type_analysis/func_calls.js', 
+    undefined,
+    'nostdlib'
+);
+
+makeTypeTest(
     'programs/type_analysis/global_def.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.arith_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/arith_simple.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cmp_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cmp_simple.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.fib = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/fib.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.loop_sum = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/loop_sum.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.obj_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/obj_simple.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.obj_2paths = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/obj_2paths.js', 
-    false
+    undefined,
+    'nostdlib',
+    'norun'
 );
 
-tests.typeProp.obj_3paths = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/obj_3paths.js', 
-    false
+    undefined,
+    'nostdlib',
+    'norun'
 );
 
-tests.typeProp.get_undef = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/get_undef.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.linked_list = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/linked_list.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_return = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_return.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_prop = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_prop.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_global = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_global.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_objs = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_objs.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_call = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_call.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_pass2 = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_pass2.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.cond_ret_obj = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/cond_ret_obj.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.loop_obj = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/loop_obj.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.loop_cond_obj = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/loop_cond_obj.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.array_sum = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/array_sum.js', 
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.obj_methods = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/obj_methods.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.obj_init = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/obj_init.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.obj_init_junk = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/obj_init_junk.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.factory_2calls = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/factory_2calls.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.factory_2paths = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/factory_2paths.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.factory_global = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/factory_global.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.factory_cond = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/factory_cond.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.factory_inc = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/factory_inc.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.ctor_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/ctor_simple.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.ctor_array = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/ctor_array.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.ctor_strong = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/ctor_strong.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.proto_method = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/proto_method.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.proto_chain = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/proto_chain.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.proto_clos = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/proto_clos.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.proto_loop = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/proto_loop.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.proto_cond = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/proto_cond.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.args_sum = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/args_sum.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.args_max = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/args_max.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.clos_simple = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/clos_simple.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.multi_file = TypeProp.makeTest(
+makeTypeTest(
     [
         'programs/type_analysis/multi_file1.js',
         'programs/type_analysis/multi_file2.js'
     ],
-    false
+    'multi_file',
+    'nostdlib'
 );
 
-tests.typeProp.stdlib_math = TypeProp.makeTest(
-    'programs/type_analysis/stdlib_math.js',
-    true
+makeTypeTest(
+    'programs/type_analysis/stdlib_math.js'
 );
 
-tests.typeProp.stdlib_object = TypeProp.makeTest(
-    'programs/type_analysis/stdlib_object.js',
-    true
+makeTypeTest(
+    'programs/type_analysis/stdlib_object.js'
 );
 
-tests.typeProp.stdlib_array = TypeProp.makeTest(
-    'programs/type_analysis/stdlib_array.js',
-    true
+makeTypeTest(
+    'programs/type_analysis/stdlib_array.js'
 );
 
-tests.typeProp.stdlib_function = TypeProp.makeTest(
-    'programs/type_analysis/stdlib_function.js',
-    true
+makeTypeTest(
+    'programs/type_analysis/stdlib_function.js'
 );
 
-tests.typeProp.stdlib_string = TypeProp.makeTest(
-    'programs/type_analysis/stdlib_string.js',
-    true
+makeTypeTest(
+    'programs/type_analysis/stdlib_string.js'
 );
 
-tests.typeProp.regress_global = TypeProp.makeTest(
-    'programs/type_analysis/regress_global.js',
-    false
-);
-
-tests.typeProp.regress_obj = TypeProp.makeTest(
-    'programs/type_analysis/regress_obj.js',
-    false
-);
-
-tests.typeProp.regress_cond = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_cond.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.regress_btree = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_btree.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.regress_btree2 = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_btree2.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.regress_btree3 = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_btree3.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.regress_btree4 = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_btree4.js',
-    false
+    undefined,
+    'nostdlib',
+    'norun'
 );
 
-tests.typeProp.regress_btree5 = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_btree5.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp.regress_base64 = TypeProp.makeTest(
-    'programs/type_analysis/regress_base64.js',
-    true
-);
-
-tests.typeProp.regress_crypto = TypeProp.makeTest(
+makeTypeTest(
     'programs/type_analysis/regress_crypto.js',
-    false
+    undefined,
+    'nostdlib'
 );
 
-tests.typeProp['bitops-3bit-bits-in-byte'] = TypeProp.makeTest(
+makeTypeTest(
+    'programs/type_analysis/regress_global.js'
+);
+
+makeTypeTest(
+    'programs/type_analysis/regress_obj.js'
+);
+
+makeTypeTest(
+    'programs/type_analysis/regress_base64.js'
+);
+
+makeTypeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
-    false
+    undefined,
+    'nostdlib',
+    'norun'
 );
 
-tests.typeProp['bitops-bitwise-and'] = TypeProp.makeTest(
+makeTypeTest(
     'programs/sunspider/bitops-bitwise-and.js',
-    false
+    undefined,
+    'nostdlib',
+    'norun'
 );
+
+// TODO: enable some of the faster benchmarks for SPSTF only?
+// notypeprop flag?
 
 /*
 tests.typeProp['access-binary-trees'] = TypeProp.makeTest(
@@ -454,37 +557,4 @@ tests.typeProp['richards'] = TypeProp.makeTest(
     true
 );
 */
-
-// Replicate the type analysis tests as program tests
-for (testName in tests.typeProp)
-{
-    function skipBench(srcFiles)
-    {
-        var skipList = [
-            'v8bench',
-            'sunspider',
-            'regress_btree4',
-            'obj_2paths',
-            'obj_3paths',
-        ];
-
-        for (var i = 0; i < srcFiles.length; ++i)
-            for (var j = 0; j < skipList.length; ++j)
-                if (srcFiles[i].indexOf(skipList[j]) !== -1)
-                    return true;
-
-        return false;
-    }
-
-    var taTest = tests.typeProp[testName];
-    var srcFiles = taTest.srcFiles;
-
-    if (srcFiles === undefined)
-        continue;
-
-    if (skipBench(srcFiles) === true)
-        continue;
-
-    tests.programs.type_analysis[testName] = genProgTest(srcFiles);
-}
 
