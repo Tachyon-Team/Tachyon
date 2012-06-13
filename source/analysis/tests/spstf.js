@@ -190,6 +190,11 @@ tests.spstf.cond_ret_obj = SPSTF.makeTest(
     false
 );
 
+tests.spstf.loop_obj = SPSTF.makeTest(
+    'programs/type_analysis/loop_obj.js',
+    false
+);
+
 tests.spstf.loop_cond_obj = SPSTF.makeTest(
     'programs/type_analysis/loop_cond_obj.js',
     false

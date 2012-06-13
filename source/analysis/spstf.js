@@ -569,12 +569,6 @@ SPSTF.prototype.init = function ()
     this.blockWorkList = new LinkedList();
 
     /**
-    Set of block in the block work list
-    This is to avoid adding blocks to the work list twice
-    */
-    this.blockWorkSet = new HashSet();
-
-    /**
     Map of block stumps to basic block representations
     */
     this.blockMap = new HashMap(SPSTFStump.hashFn, SPSTFStump.equalFn);
@@ -883,9 +877,6 @@ SPSTF.prototype.getBlock = function (stump, func)
 
         // Add the block to the block map
         this.blockMap.set(stump, block);
-
-        // Queue the block for live value analysis
-        this.queueBlock(block);
     }
 
     // Return block representation
@@ -945,22 +936,21 @@ SPSTF.prototype.queueInstr = function (instr)
 }
 
 /**
-Queue a block for live value analysis
+Queue a block and value for live value analysis
 */
-SPSTF.prototype.queueBlock = function (block)
+SPSTF.prototype.queueBlock = function (block, value)
 {
     assert (
         block instanceof SPSTFBlock,
         'invalid block object'
     );
 
-    //print('queueing block: ' + block.getName());
+    assert (
+        value !== undefined,
+        'invalid value'
+    );
 
-    if (this.blockWorkSet.has(block) === true)
-        return;
-
-    this.blockWorkList.addLast(block);
-    this.blockWorkSet.add(block);
+    this.blockWorkList.addLast({ block:block, value:value });
 }
 
 /**
@@ -1113,8 +1103,9 @@ SPSTF.prototype.blockItr = function ()
     );
 
     // Remove a block from the work list
-    var block = this.blockWorkList.remFirst();
-    this.blockWorkSet.rem(block);
+    var item = this.blockWorkList.remFirst();
+    var block = item.block;
+    var value = item.value;
 
     //print(
     //    'Iterating block: ' + block.getName() /*+
@@ -1126,7 +1117,7 @@ SPSTF.prototype.blockItr = function ()
     /**
     Process definitions for an instruction
     */
-    function processDefs(instr, liveMap, targetIdx)
+    function processDefs(instr, value, useSet, targetIdx)
     {
         // Get the definitions for this target
         var outVals = instr.outVals[targetIdx];
@@ -1135,13 +1126,14 @@ SPSTF.prototype.blockItr = function ()
         for (var outIdx = 0; outIdx < outVals.length; ++outIdx)
         {
             var def = outVals[outIdx];
-            var value = def.value;
+
+            // If this is not the value we want, skip it
+            if (def.value !== value)
+                continue;
+
             var dests = def.dests;
 
             //print('def: ' + ((value instanceof IRValue)? value.getValName():value));
-
-            // Get the uses for this value
-            var useSet = liveMap.get(value);
 
             // For each current dest of this definition
             for (var i = 0; i < dests.length; ++i)
@@ -1188,85 +1180,70 @@ SPSTF.prototype.blockItr = function ()
             }
 
             // Definitions kill live values
-            liveMap.killLive(value);
+            useSet = SPSTFUseSet.empty;
         }
+
+        return useSet;
     }
 
     /**
     Process uses for an instruction
     */
-    function processUses(instr, liveMap)
+    function processUses(instr, value, useSet)
     {
         // For each use of the instruction
         for (var i = 0; i < instr.inVals.length; ++i)
         {
-            var value = instr.inVals[i].value;
+            var inVal = instr.inVals[i];
+
+            // If this is not a definition of our value, skip it
+            if (inVal.value !== value)
+                continue;
 
             // Uses generate live values
-            liveMap.addLive(value, instr);
+            useSet = useSet.add(instr);
         }
+
+        return useSet;
     }
 
     /**
     Filter incoming phi uses not meant for this block
     */
-    function filterPhis(liveMap, pred, succ)
+    function filterPhis(useSet, pred, succ, value)
     {
-        // For phi node of the successor
-        for (var i = 0; i < succ.instrs.length; ++i)
+        // For each use in the set
+        for (var itr = useSet.getItr(); itr.valid(); itr.next())
         {
-            var phi = succ.instrs[i].irInstr;
+            var use = itr.get();
 
-            if ((phi instanceof PhiInstr) === false)
-                return;
+            // If this is not a phi node from the next block, skip it
+            if (use.block !== succ || (use instanceof PhiInstr) === false)
+                continue;
 
-            var predIdx = phi.preds.indexOf(pred.irBlock);
+            var predIdx = use.preds.indexOf(pred.irBlock);
 
-            // For each use of the phi node
-            for (var j = 0; j < phi.uses.length; ++j)
-            {
-                var value = phi.uses[j];
-
-                // If the value is not meant for this block,
-                // remove the use associated with this phi node
-                if (predIdx === -1 || value !== phi.uses[predIdx])
-                    liveMap.killUse(value, phi);
-            }
-        }
-    }
-
-    /**
-    Filter locals or global variable uses out of a live map
-    */
-    function filterVals(liveMap, filterFunc)
-    {
-        var remList = [];
-
-        // For each live value
-        for (var itr = liveMap.getItr(); itr.valid(); itr.next())
-        {
-            var pair = itr.get();
-            var value = pair.key;
-
-            if (filterFunc(value) === false)
-                remList.push(value);
+            // If the value is not meant for this block,
+            // remove the use associated with this phi node
+            if (predIdx === -1 || value !== use.uses[predIdx])
+                useSet = useSet.rem(use);
         }
 
-        for (var i = 0; i < remList.length; ++i)
-             liveMap.killLive(remList[i]);
+        return useSet;
     }
+
+    // Use set to be propagated through this block
+    var useSet = SPSTFUseSet.empty;
 
     // Get the branch instruction for this block
     var branch = block.instrs[block.instrs.length-1];
-
-    // Live value map to be propagated through this block
-    var liveMap = new SPSTFLiveMap();
 
     // If the branch is a return instruction
     if (branch.irInstr instanceof RetInstr)
     {
         var callSites = branch.block.func.callSites;
 
+        // For each call site of this function
         for (var i = 0; i < callSites.length; ++i)
         {
             var callSite = callSites[i];
@@ -1275,27 +1252,19 @@ SPSTF.prototype.blockItr = function ()
             if ((callCont instanceof SPSTFBlock) === false)
                 continue;
 
-            var liveOut = callCont.liveMap.copy();
-
-            filterPhis(liveOut, block, callCont);
-
-            // Filter out local variables from the caller
-            filterVals(
-                liveOut, 
-                function (value)
-                {
-                    var isGlobal = (
-                        value.parent instanceof TGObject || 
-                        value.parent instanceof TGClosCell
-                    );
-
-                    // Keep only globals defined within 
-                    // this function or one of its callees
-                    return (isGlobal && block.func.defSet.has(value) === true);
-                }
+            // Test if the value is global
+            var isGlobal = (
+                value.parent instanceof TGObject || 
+                value.parent instanceof TGClosCell
             );
 
-            liveMap = liveMap.union(liveOut);
+            // If the value is global and defined in this function
+            if (isGlobal === true && block.func.defSet.has(value) === true)
+            {
+                var succSet = callCont.liveMap.get(value);
+                var succSet = filterPhis(succSet, block, callCont, value);
+                useSet = useSet.union(succSet);
+            }
         }
     }
 
@@ -1303,73 +1272,57 @@ SPSTF.prototype.blockItr = function ()
     else if (branch.irInstr instanceof JSCallInstr ||
              branch.irInstr instanceof JSNewInstr)
     {
+        // Test if the value is global
+        var isGlobal = (
+            value.parent instanceof TGObject || 
+            value.parent instanceof TGClosCell
+        );
+
         // For each callee entry block
         for (var i = 0; i < branch.callees.length; ++i)
         {
             var entry = branch.callees[i].entry;
-            var liveOut = entry.liveMap.copy();
 
-            // Filter out local values from the callee
-            filterVals(
-                liveOut,
-                function (value)
-                {
-                    return (
-                        value.parent instanceof TGObject || 
-                        value.parent instanceof TGClosCell
-                    );
-                }
-            );
-
-            liveMap = liveMap.union(liveOut);
+            // If the value is global
+            if (isGlobal === true)
+            {
+                var succSet = entry.liveMap.get(value);
+                useSet = useSet.union(succSet);
+            }
         }
-
-        //print(branch);
 
         var callCont = branch.targets[0];
 
         // If the call continuation was visited
         if (callCont instanceof SPSTFBlock)
         {
-            var liveOut = callCont.liveMap.copy();
-
-            //printN(callCont.liveMap);
-
-            filterPhis(liveOut, block, callCont);
-
-            // Filter out global values
-            filterVals(
-                liveOut,
-                function (value)
+            // If any callee defines this value, remove it
+            var calleeDef = false;
+            CALLEE_DEF_LOOP:
+            for (var i = 0; i < branch.callees.length; ++i)
+            {
+                if (branch.callees[i].defSet.has(value) === true)
                 {
-                    // If there are no callees, filter nothing
-                    if (branch.callees.length === 0)
-                        return true;
-
-                    var isGlobal = (
-                        value.parent instanceof TGObject || 
-                        value.parent instanceof TGClosCell
-                    );
-
-                    // Keep locals
-                    if (isGlobal === false)
-                        return true;
-
-                    // If any callee defines this value, remove it
-                    for (var i = 0; i < branch.callees.length; ++i)
-                        if (branch.callees[i].defSet.has(value) === true)
-                            return false;
-
-                    // Keep globals not defined by any callee
-                    return true;
+                    calleeDef = true;
+                    break CALLEE_DEF_LOOP;
                 }
-            );
+            }
 
-            liveMap = liveMap.union(liveOut);
+            // If there are no callees
+            // or the value is not global
+            // or no callee defines this value
+            if (branch.callees.length === 0 ||
+                isGlobal === false ||
+                calleeDef === false)
+            {
+                var succSet = callCont.liveMap.get(value);
+                succSet = filterPhis(succSet, block, callCont, value);
+                useSet = useSet.union(succSet);
+            }
         }
 
         // Process the definitions along the normal target (kills)
-        processDefs(branch, liveMap, 0);
+        useSet = processDefs(branch, value, useSet, 0);
     }
 
     // Other kinds of branch instructions
@@ -1384,40 +1337,42 @@ SPSTF.prototype.blockItr = function ()
             if (target instanceof SPSTFStump)
                 continue;
 
-            var liveOut = target.liveMap.copy();
+            var succSet = target.liveMap.get(value);
 
-            filterPhis(liveOut, block, target);
- 
+            succSet = filterPhis(succSet, block, target, value);
+
             // Process the definitions along the target (kills)
-            processDefs(branch, liveOut, targetIdx);
+            succSet = processDefs(branch, value, succSet, targetIdx);
 
-            liveMap = liveMap.union(liveOut);
+            useSet = useSet.union(succSet);
         }
     }
 
     // Process uses for branch instruction
-    processUses(branch, liveMap);
+    useSet = processUses(branch, value, useSet);
 
-    // For each instruction except the last, in reverse order
+    // For each instruction except the branch, in reverse order
     for (var i = block.instrs.length - 2; i >= 0; --i)
     {
         var instr = block.instrs[i];
 
-        //print('instr: ' + instr);
-
         // Process defs of the instruction
-        processDefs(instr, liveMap, 0);
+        useSet = processDefs(instr, value, useSet, 0);
 
         // Process uses of the instruction
-        processUses(instr, liveMap);
+        useSet = processUses(instr, value, useSet);
     }
 
-    // If the live map at the beginning of the block changed
-    if (liveMap.equal(block.liveMap) === false)
+    // Get the live set at the beginning of the block
+    var outSet = block.liveMap.get(value);
+
+    // If the set at the beginning of the block changed
+    if (useSet.equal(outSet) === false)
     {
         //print('live map changed, queueing preds');
 
-        block.liveMap = liveMap;
+        // Update the live set for the value
+        block.liveMap.set(value, useSet);
 
         // If this is a function entry block
         if (block === block.func.entry)
@@ -1428,7 +1383,7 @@ SPSTF.prototype.blockItr = function ()
             for (var i = 0; i < func.callSites.length; ++i)
             {
                 var callSite = func.callSites[i];
-                this.queueBlock(callSite.block);
+                this.queueBlock(callSite.block, value);
             }
         }
         else
@@ -1442,7 +1397,7 @@ SPSTF.prototype.blockItr = function ()
                 var pred = block.preds[i];
 
                 // Queue the predecessors
-                this.queueBlock(pred);
+                this.queueBlock(pred, value);
 
                 // Get the branch instruction of the predecessor block
                 var branch = pred.instrs[pred.instrs.length-1];
@@ -1458,7 +1413,7 @@ SPSTF.prototype.blockItr = function ()
                     {
                         var callee = branch.callees[j];
                         for (var k = 0; k < callee.retBlocks.length; ++k)
-                            this.queueBlock(callee.retBlocks[k]);
+                            this.queueBlock(callee.retBlocks[k], value);
                     }
                 }
             }
@@ -1551,11 +1506,11 @@ SPSTF.prototype.addFuncDef = function (func, value)
 
         // Queue the return site blocks
         for (var i = 0; i < func.retBlocks.length; ++i)
-            this.queueBlock(func.retBlocks[i]);
+            this.queueBlock(func.retBlocks[i], value);
 
         // Queue the call site blocks
         for (var i = 0; i < func.callSites.length; ++i)
-            this.queueBlock(func.callSites[i].block);
+            this.queueBlock(func.callSites[i].block, value);
 
         for (var i = 0; i < func.callSites.length; ++i)
             workList.push(func.callSites[i].block.func);
@@ -1784,7 +1739,7 @@ SPSTF.prototype.getType = function (instr, value)
         */
 
         // Queue this instruction's block for live value analysis
-        this.queueBlock(instr.block);
+        this.queueBlock(instr.block, value);
     }
 
     // Value type
@@ -1887,7 +1842,7 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         this.killUses(instr.block, value);
 
         // Queue this instruction's block for live value analysis
-        this.queueBlock(instr.block);
+        this.queueBlock(instr.block, value);
     }
 }
 
@@ -1954,17 +1909,21 @@ SPSTF.prototype.touchTarget = function (instr, targetIdx)
     // If this target has not yet been visited
     if (target instanceof SPSTFStump)
     {
+        // Get the predecessor block
+        var pred = instr.block;
+
         // Create the basic block for this target
-        var block = this.getBlock(target, instr.block.func);
+        var block = this.getBlock(target, pred.func);
 
         // Update the target to point to the block
         instr.targets[targetIdx] = block;
 
-        // Add this block to the predecessors of the target
-        arraySetAdd(block.preds, instr.block);
+        // Add this the predecessor to the predecessors of the target
+        arraySetAdd(block.preds, pred);
 
-        // Queue the branch instruction's block for analysis 
-        this.queueBlock(instr.block);
+        // Queue the predecessor for all live values in the target
+        for (var itr = block.liveMap.getItr(); itr.valid(); itr.next())
+            this.queueBlock(pred, itr.get().key);
     }
 }
 
@@ -3126,6 +3085,13 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         }
     }
 
+    // Mark the call successors as reachable
+    for (var i = 0; i < this.targets.length; ++i)
+        ta.touchTarget(this, i);
+
+    // Get the call continuation block
+    var callCont = this.targets[0];
+
     // Union of the return type of all potential callees
     var retType = TypeSet.empty;
 
@@ -3154,12 +3120,20 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             // Add this instruction to the set of callers of the function
             arraySetAdd(func.callSites, this);
 
-            // Queue the call site block
-            ta.queueBlock(this.block);
+            // Queue the call site block for all live values at the function entry
+            for (var liveItr = func.entry.liveMap.getItr(); liveItr.valid(); liveItr.next())
+                ta.queueBlock(this.block, liveItr.get().key);
 
-            // Queue the return blocks
-            for (var i = 0; i < func.retBlocks.length; ++i)
-                ta.queueBlock(func.retBlocks[i]);
+            // Queue the return blocks for all values live in the call continuation
+            if (callCont instanceof SPSTFBlock)
+            {
+                for (var liveItr = callCont.liveMap.getItr(); liveItr.valid(); liveItr.next())
+                {
+                    var value = liveItr.get().key;
+                    for (var i = 0; i < func.retBlocks.length; ++i)
+                        ta.queueBlock(func.retBlocks[i], value);
+                }
+            }
 
             // Queue the argument value instructions
             for (var i = 0; i < func.argInstrs.length; ++i)
@@ -3228,10 +3202,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
     // Set the call return type
     ta.setOutType(this, retType);
-
-    // Mark the call successors as reachable
-    for (var i = 0; i < this.targets.length; ++i)
-        ta.touchTarget(this, i);
 }
 
 // New/constructor call instruction

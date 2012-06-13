@@ -190,6 +190,11 @@ tests.typeProp.cond_ret_obj = TypeProp.makeTest(
     false
 );
 
+tests.typeProp.loop_obj = TypeProp.makeTest(
+    'programs/type_analysis/loop_obj.js',
+    false
+);
+
 tests.typeProp.loop_cond_obj = TypeProp.makeTest(
     'programs/type_analysis/loop_cond_obj.js',
     false
