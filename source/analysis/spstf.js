@@ -1639,7 +1639,7 @@ SPSTF.prototype.remEdge = function (
     targetIdx
 )
 {
-    /*   
+    /*    
     print('Removing edge');
     print('  val : ' + value);
     print('  from: ' + defInstr);

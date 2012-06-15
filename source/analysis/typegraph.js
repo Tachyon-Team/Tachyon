@@ -857,7 +857,7 @@ TypeSet.prototype.addObj = function (obj)
 
         if (this.objSet.length > 10)
         {
-            print('object set promoted to hash set');
+            //print('object set promoted to hash set');
 
             var newSet = new HashSet();
 
