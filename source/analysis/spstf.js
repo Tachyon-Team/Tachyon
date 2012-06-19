@@ -49,15 +49,15 @@ Maxime Chevalier-Boisvert
 */
 
 /**
-@class Set of live value uses
+@class Set of definitions objects for a given value.
 */
-function SPSTFUseSet()
+function SPSTFDefSet()
 {
     HashSet.call(this, undefined, undefined, 3);
 }
-SPSTFUseSet.prototype = Object.create(HashSet.prototype);
+SPSTFDefSet.prototype = Object.create(HashSet.prototype);
 
-SPSTFUseSet.prototype.toString = function ()
+SPSTFDefSet.prototype.toString = function ()
 {
     var str = '{';
 
@@ -74,7 +74,15 @@ SPSTFUseSet.prototype.toString = function ()
     return str + '}';
 }
 
-SPSTFUseSet.prototype.union = function (that)
+SPSTFDefSet.prototype.equal = function (that)
+{
+    if (this === that)
+        return true;
+
+    return HashSet.prototype.equal.call(this, that);
+}
+
+SPSTFDefSet.prototype.union = function (that)
 {
     if (this === that)
         return this;
@@ -88,7 +96,7 @@ SPSTFUseSet.prototype.union = function (that)
     return newSet;
 }
 
-SPSTFUseSet.prototype.add = function (use)
+SPSTFDefSet.prototype.add = function (use)
 {
     var newSet = this.copy();
 
@@ -97,7 +105,7 @@ SPSTFUseSet.prototype.add = function (use)
     return newSet;
 }
 
-SPSTFUseSet.prototype.rem = function (use)
+SPSTFDefSet.prototype.rem = function (use)
 {
     var newSet = this.copy();
 
@@ -107,20 +115,20 @@ SPSTFUseSet.prototype.rem = function (use)
 }
 
 /**
-Empty use set
+Empty def set
 */
-SPSTFUseSet.empty = new SPSTFUseSet();
+SPSTFDefSet.empty = new SPSTFDefSet();
 
 /**
-@class Map of live values to their future uses
+@class Map of values to their reaching definitions
 */
-function SPSTFLiveMap()
+function SPSTFDefMap()
 {
     HashMap.call(this, undefined, undefined, 3);
 }
-SPSTFLiveMap.prototype = Object.create(HashMap.prototype);
+SPSTFDefMap.prototype = Object.create(HashMap.prototype);
 
-SPSTFLiveMap.prototype.toString = function ()
+SPSTFDefMap.prototype.toString = function ()
 {
     var str = '';
 
@@ -139,105 +147,15 @@ SPSTFLiveMap.prototype.toString = function ()
     return str;
 }
 
-SPSTFLiveMap.prototype.copy = function ()
-{
-    var newMap = new SPSTFLiveMap();
-
-    for (var itr = this.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var set = pair.value;
-
-        // Use sets do copy on write and so they are not copied here
-        newMap.set(val, set);
-    }
-
-    return newMap;
-}
-
-SPSTFLiveMap.prototype.equal = function (that)
-{
-    if (this.length !== that.length)
-        return false;
-
-    for (var itr = this.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var setA = pair.value;
-
-        var setB = that.get(val);
-
-        if (setA.equal(setB) === false)
-            return false;
-    }
-
-    return true;
-}
-
-SPSTFLiveMap.prototype.union = function (that)
-{
-    var newMap = this.copy();
-
-    for (var itr = that.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var setB = pair.value;
-
-        var setA = this.get(val);
-
-        // Union the use sets
-        var newSet = setA.union(setB);
-
-        newMap.set(val, newSet);
-    }
-
-    return newMap;
-}
-
 /**
-Add a use for a given value
+Get the def set for a given value
 */
-SPSTFLiveMap.prototype.addLive = function (value, use)
-{
-    var origSet = this.get(value);
-
-    var newSet = origSet.add(use);
-
-    this.set(value, newSet);
-}
-
-/**
-Kill the uses for a given value
-*/
-SPSTFLiveMap.prototype.killLive = function (value)
-{
-    this.rem(value);
-}
-
-/**
-Kill a specific use of a value
-*/
-SPSTFLiveMap.prototype.killUse = function (value, use)
-{
-    var origSet = this.get(value);
-
-    var newSet = origSet.rem(use);
-
-    this.set(value, newSet);
-}
-
-/**
-Get the use set for a given value
-*/
-SPSTFLiveMap.prototype.get = function (value)
+SPSTFDefMap.prototype.get = function (value)
 {
     var set = HashMap.prototype.get.call(this, value);
 
     if (set === HashMap.NOT_FOUND)
-        return SPSTFUseSet.empty;
+        return SPSTFDefSet.empty;
 
     return set;
 }
@@ -320,9 +238,9 @@ function SPSTFFunc(irFunc)
     this.argObjInstr = undefined;
 
     /**
-    List of global values defined in this function or callees
+    List of global values used in this function or callees
     */
-    this.defSet = new HashSet();
+    this.useSet = new HashSet();
 
     /**
     Flag indicating this function has been called in a normal call
@@ -374,9 +292,10 @@ function SPSTFBlock(irBlock, instrIdx, func)
     this.instrs = [];
 
     /**
-    Map of live values to uses at the beginning of the block
+    List of maps of values to their definitions the end of the block,
+    one map per branch target.
     */
-    this.liveMap = new SPSTFLiveMap();
+    this.defMaps = [new SPSTFDefMap()];
 }
 
 SPSTFBlock.prototype.getName = function ()
@@ -452,11 +371,6 @@ function SPSTFInstr(irInstr, instrIdx, block)
         {
             value,
             srcs: []
-            {
-                instr
-                targetIdx
-                outIdx
-            }
         }
     */
     this.inVals = [];
@@ -489,8 +403,8 @@ function SPSTFInstr(irInstr, instrIdx, block)
     // If the instruction has targets
     if (irInstr.targets.length > 0)
     {
+        // Create block stumps for the targets
         this.targets = new Array(irInstr.targets.length);
-
         for (var i = 0; i < this.targets.length; ++i)
             this.targets[i] = new SPSTFStump(irInstr.targets[i]);
     }
@@ -506,6 +420,15 @@ function SPSTFInstr(irInstr, instrIdx, block)
     else
     {
         this.targets = [];
+    }
+
+    // If this instruction has more than 1 branch target
+    if (this.targets.length > 1)
+    {
+        // Create definition maps for the branch targets
+        block.defMaps.length = this.targets.length;
+        for (var i = 1; i < block.defMaps.length; ++i)
+            block.defMaps[i] = new SPSTFDefMap();
     }
 
     // Create the per-branch definitions list
@@ -598,7 +521,10 @@ SPSTF.prototype.init = function ()
     var initInstr = this.makeInstr(initIRInstr, metaEntry);
 
     // Create a jump to the next meta-block
-    this.makeInstr(Object.create(JumpInstr.prototype), metaEntry);
+    var jumpIRInstr = Object.create(JumpInstr.prototype);
+    jumpIRInstr.mnemonic = 'jump';
+    jumpIRInstr.type = IRType.none;
+    this.makeInstr(jumpIRInstr, metaEntry);
     
     /**
     Meta-unit holding the initial instruction and unit calls
@@ -1009,24 +935,26 @@ SPSTF.prototype.run = function ()
     var startTimeMs = (new Date()).getTime();
 
     // Until a fixed point is reached
-    for (;;)
+    while (this.instrWorkList.isEmpty() === false ||
+           this.blockWorkList.isEmpty() === false)
     {
-        if (this.instrWorkList.isEmpty() === false)
+        // Run as many instruction iterations as possible
+        while (this.instrWorkList.isEmpty() === false)
         {
-            // Run one type flow analysis iteration
-            this.instrItr();
+            var instr = this.instrWorkList.remFirst();
+            this.instrWorkSet.rem(instr);
+
+            this.instrItr(instr);
         }
 
-        else if (this.blockWorkList.isEmpty() === false)
+        // Run as many block iterations as possible
+        while (this.blockWorkList.isEmpty() === false)
         {
-            // Run one live value analysis iteration
-            this.blockItr();
-        }
+            var item = this.blockWorkList.remFirst();
+            var block = item.block;
+            var value = item.value;
 
-        // Both work lists are empty
-        else
-        {
-            break;
+            this.blockItr(block, value);
         }
     }
 
@@ -1041,17 +969,8 @@ SPSTF.prototype.run = function ()
 /**
 Run one type flow analysis iteration
 */
-SPSTF.prototype.instrItr = function ()
+SPSTF.prototype.instrItr = function (instr)
 {
-    assert (
-        this.instrWorkList.isEmpty() === false,
-        'empty work list'
-    );
-
-    // Remove an instruction from the work list
-    var instr = this.instrWorkList.remFirst();
-    this.instrWorkSet.rem(instr);
-
     /*    
     print(
         'Iterating instr: ' + 
@@ -1095,29 +1014,125 @@ SPSTF.prototype.instrItr = function ()
 /**
 Run one live value analysis iteration
 */
-SPSTF.prototype.blockItr = function ()
+SPSTF.prototype.blockItr = function (block, value)
 {
-    assert (
-        this.blockWorkList.isEmpty() === false,
-            'empty work list'
-    );
-
-    // Remove a block from the work list
-    var item = this.blockWorkList.remFirst();
-    var block = item.block;
-    var value = item.value;
-
     //print(
     //    'Iterating block: ' + block.getName() /*+
     //    ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
     //);
 
-    var that = this;
+    var ta = this;
+
+    /**
+    Process uses for an instruction
+    */
+    function processUses(instr, value, defSet)
+    {
+        // For each use of the instruction
+        for (var i = 0; i < instr.inVals.length; ++i)
+        {
+            var inVal = instr.inVals[i];
+
+            // If this is not a use of our value, skip it
+            if (inVal.value !== value)
+                continue;
+
+            // For each definition in the def set
+            for (var itr = defSet.getItr(); itr.valid(); itr.next())
+            {
+                var def = itr.get();
+
+                // If this definition is not in the sources set
+                if (arraySetHas(inVal.srcs, def) === false)
+                {
+                    // Add a new def-use edge
+                    ta.addEdge(
+                        value,
+                        def,
+                        inVal,
+                        instr
+                    );
+
+                    // Re-iterate the instruction immediately
+                    ta.instrItr(instr);
+                }
+            }
+        }
+    }
+
+    /**
+    Process uses for a phi node
+    */
+    function filterPhiUses(instr, value)
+    {
+        // For each use of the instruction
+        for (var i = 0; i < instr.inVals.length; ++i)
+        {
+            var inVal = instr.inVals[i];
+
+            // If this is not a use of our value, skip it
+            if (inVal.value !== value)
+                continue;
+
+            // Find the associated predecessor index
+            var predIdx = instr.irInstr.uses.indexOf(value);
+
+            assert (
+                predIdx !== -1,
+                'invalid pred index'
+            );
+
+            // Find the associated predecessor
+            var irPred = instr.irInstr.preds[predIdx];
+            var pred = undefined;
+            for (var j = 0; j < block.preds.length; ++j)
+            {
+                if (block.preds[j].irBlock === irPred)
+                {
+                    pred = block.preds[j];
+                    break;
+                }
+            }
+            var branch = pred.instrs[pred.instrs.length-1];
+
+            // Compute the incoming def set for this predecessor
+            var defSet = SPSTFDefSet.empty;
+            for (var targetIdx = 0; targetIdx < branch.targets.length; ++targetIdx)
+            {
+                if (branch.targets[targetIdx] === block)
+                {
+                    var predSet = pred.defMaps[targetIdx].get(value);
+                    defSet = defSet.union(predSet);
+                }
+            }
+
+            // For each definition in the def set
+            for (var itr = defSet.getItr(); itr.valid(); itr.next())
+            {
+                var def = itr.get();
+
+                // If this definition is not in the sources set
+                if (arraySetHas(inVal.srcs, def) === false)
+                {
+                    // Add a new def-use edge
+                    ta.addEdge(
+                        value,
+                        def,
+                        inVal,
+                        instr
+                    );
+
+                    // Re-iterate the instruction immediately
+                    ta.instrItr(instr);
+                }
+            }
+        }
+    }
 
     /**
     Process definitions for an instruction
     */
-    function processDefs(instr, value, useSet, targetIdx)
+    function processDefs(instr, value, defSet, targetIdx)
     {
         // Get the definitions for this target
         var outVals = instr.outVals[targetIdx];
@@ -1131,139 +1146,162 @@ SPSTF.prototype.blockItr = function ()
             if (def.value !== value)
                 continue;
 
-            var dests = def.dests;
+            // Definitions kill/replace previous definitions
+            defSet = new SPSTFDefSet();
+            defSet = defSet.add(def);
+        }
 
-            //print('def: ' + ((value instanceof IRValue)? value.getValName():value));
+        return defSet;
+    }
 
-            // For each current dest of this definition
-            for (var i = 0; i < dests.length; ++i)
+    // Def set to be propagated through this block
+    var defSet = SPSTFDefSet.empty;
+
+    // Test if the value is global
+    var isGlobal = (
+        value.parent instanceof TGObject || 
+        value.parent instanceof TGClosCell
+    );
+
+    // If this is a function entry block
+    if (block === block.func.entry)
+    {
+        // If the value is global and used in this function
+        if (isGlobal === true && block.func.useSet.has(value) === true)
+        {
+            var func = block.func;
+        
+            // Union the value from all 
+            for (var i = 0; i < func.callSites.length; ++i)
             {
-                var dest = dests[i];
-
-                // If the use is no longer present
-                if (useSet.has(dest) === false)
-                {
-                    // Remove the type flow edge
-                    that.remEdge(
-                        value, 
-                        dest, 
-                        instr, 
-                        outIdx, 
-                        targetIdx
-                    );
-
-                    // Re-queue the dest instruction for analysis
-                    that.queueInstr(dest);
-                }          
+                var callBlock = func.callSites[i].block;
+                var predSet = callBlock.defMaps[0].get(value);
+                defSet = defSet.union(predSet);
             }
+        }
+    }
+    else
+    {
+        // For each predecessor block
+        for (var i = 0; i < block.preds.length; ++i)
+        {
+            var pred = block.preds[i];
 
-            // For each use in the incoming use set
-            for (var itr = useSet.getItr(); itr.valid(); itr.next())
+            // Get the branch instruction of the predecessor block
+            var branch = pred.instrs[pred.instrs.length-1];
+
+            // If the predecessor is a call site
+            if (branch.irInstr instanceof JSCallInstr || 
+                branch.irInstr instanceof JSNewInstr)
             {
-                var dest = itr.get();
+                // Flag indicating a callee uses this value
+                var calleeUse = false;
 
-                // If this is a new use
-                if (arraySetHas(dests, dest) === false)
+                // If the value is global
+                if (isGlobal === true)
                 {
-                    // Add a new type flow edge
-                    that.addEdge(
-                        value, 
-                        dest, 
-                        instr, 
-                        outIdx, 
-                        targetIdx
-                    );
+                    // For each callee
+                    for (var j = 0; j < branch.callees.length; ++j)
+                    {
+                        var callee = branch.callees[j]
 
-                    // Re-queue the dest instruction for analysis
-                    that.queueInstr(dest);
+                        // Test if the callee uses this value
+                        if (callee.useSet.has(value) === true)
+                            calleeUse = true;
+
+                        // For each return block
+                        for (var k = 0; k < callee.retBlocks.length; ++k)
+                        {
+                            var retBlock = callee.retBlocks[k];
+                            var predSet = retBlock.defMaps[0].get(value);
+                            defSet = defSet.union(predSet);
+                        }
+                    }
+                }
+
+                // If there are no callees
+                // or the value is not global
+                // or no callee uses this value
+                if (branch.callees.length === 0 ||
+                    isGlobal === false ||
+                    calleeUse === false)
+                {
+                    var predSet = pred.defMaps[0].get(value);
+                    defSet = defSet.union(predSet);
                 }
             }
 
-            // Definitions kill live values
-            useSet = SPSTFUseSet.empty;
+            // The predecessor is not a call site
+            else
+            {
+                // Union with the predecessor set
+                for (var targetIdx = 0; targetIdx < branch.targets.length; ++targetIdx)
+                {
+                    if (branch.targets[targetIdx] === block)
+                    {
+                        var predSet = pred.defMaps[targetIdx].get(value);
+                        defSet = defSet.union(predSet);
+                    }
+                }
+            }
         }
-
-        return useSet;
     }
 
-    /**
-    Process uses for an instruction
-    */
-    function processUses(instr, value, useSet)
+    // For each instruction except the branch, in forward order
+    for (var i = 0; i < block.instrs.length - 1; ++i)
     {
-        // For each use of the instruction
-        for (var i = 0; i < instr.inVals.length; ++i)
+        var instr = block.instrs[i];
+
+        // If this is a phi instruction
+        if (instr.irInstr instanceof PhiInstr)
         {
-            var inVal = instr.inVals[i];
-
-            // If this is not a definition of our value, skip it
-            if (inVal.value !== value)
-                continue;
-
-            // Uses generate live values
-            useSet = useSet.add(instr);
+            // Process uses of the phi node
+            processPhiUses(instr, value);
+        }
+        else
+        {
+            // Process uses of the instruction
+            processUses(instr, value, defSet);
         }
 
-        return useSet;
+        // Process defs of the instruction
+        defSet = processDefs(instr, value, defSet, 0);
     }
-
-    /**
-    Filter incoming phi uses not meant for this block
-    */
-    function filterPhis(useSet, pred, succ, value)
-    {
-        // For each use in the set
-        for (var itr = useSet.getItr(); itr.valid(); itr.next())
-        {
-            var use = itr.get();
-
-            // If this is not a phi node from the next block, skip it
-            if (use.block !== succ || (use instanceof PhiInstr) === false)
-                continue;
-
-            var predIdx = use.preds.indexOf(pred.irBlock);
-
-            // If the value is not meant for this block,
-            // remove the use associated with this phi node
-            if (predIdx === -1 || value !== use.uses[predIdx])
-                useSet = useSet.rem(use);
-        }
-
-        return useSet;
-    }
-
-    // Use set to be propagated through this block
-    var useSet = SPSTFUseSet.empty;
 
     // Get the branch instruction for this block
     var branch = block.instrs[block.instrs.length-1];
+
+    // Process uses of the branch instruction
+    processUses(branch, value, defSet);
 
     // If the branch is a return instruction
     if (branch.irInstr instanceof RetInstr)
     {
         var callSites = branch.block.func.callSites;
 
-        // For each call site of this function
-        for (var i = 0; i < callSites.length; ++i)
+        // Process defs of the instruction
+        defSet = processDefs(branch, value, defSet, 0);
+
+        // Get the current output set
+        var outSet = block.defMaps[0].get(value);
+
+        // If the output set changed
+        if (defSet.equal(outSet) === false)
         {
-            var callSite = callSites[i];
-            var callCont = callSite.targets[0];
+            // Update the def map
+            block.defMaps[0].set(value, defSet);
 
-            if ((callCont instanceof SPSTFBlock) === false)
-                continue;
-
-            // Test if the value is global
-            var isGlobal = (
-                value.parent instanceof TGObject || 
-                value.parent instanceof TGClosCell
-            );
-
-            // If the value is global and defined in this function
-            if (isGlobal === true && block.func.defSet.has(value) === true)
+            // For each call site of this function
+            for (var i = 0; i < callSites.length; ++i)
             {
-                var succSet = callCont.liveMap.get(value);
-                var succSet = filterPhis(succSet, block, callCont, value);
-                useSet = useSet.union(succSet);
+                var callSite = callSites[i];
+                var callCont = callSite.targets[0];
+
+                if ((callCont instanceof SPSTFBlock) === false)
+                    continue;
+
+                // Queue the call continuation block
+                this.queueBlock(callCont, value);
             }
         }
     }
@@ -1272,57 +1310,33 @@ SPSTF.prototype.blockItr = function ()
     else if (branch.irInstr instanceof JSCallInstr ||
              branch.irInstr instanceof JSNewInstr)
     {
-        // Test if the value is global
-        var isGlobal = (
-            value.parent instanceof TGObject || 
-            value.parent instanceof TGClosCell
-        );
+        // Process defs of the call instruction
+        defSet = processDefs(branch, value, defSet, 0);
 
-        // For each callee entry block
-        for (var i = 0; i < branch.callees.length; ++i)
+        // Get the current output set
+        var outSet = block.defMaps[0].get(value);
+
+        // If the output set changed
+        if (defSet.equal(outSet) === false)
         {
-            var entry = branch.callees[i].entry;
+            // Update the def map
+            block.defMaps[0].set(value, defSet);
 
-            // If the value is global
-            if (isGlobal === true)
-            {
-                var succSet = entry.liveMap.get(value);
-                useSet = useSet.union(succSet);
-            }
-        }
-
-        var callCont = branch.targets[0];
-
-        // If the call continuation was visited
-        if (callCont instanceof SPSTFBlock)
-        {
-            // If any callee defines this value, remove it
-            var calleeDef = false;
-            CALLEE_DEF_LOOP:
+            // Queue the call entry blocks
             for (var i = 0; i < branch.callees.length; ++i)
             {
-                if (branch.callees[i].defSet.has(value) === true)
-                {
-                    calleeDef = true;
-                    break CALLEE_DEF_LOOP;
-                }
+                var entry = branch.callees[i].entry;
+                this.queueBlock(entry, value);
             }
 
-            // If there are no callees
-            // or the value is not global
-            // or no callee defines this value
-            if (branch.callees.length === 0 ||
-                isGlobal === false ||
-                calleeDef === false)
+            // If the call continuation was visited
+            var callCont = branch.targets[0];
+            if (callCont instanceof SPSTFBlock)
             {
-                var succSet = callCont.liveMap.get(value);
-                succSet = filterPhis(succSet, block, callCont, value);
-                useSet = useSet.union(succSet);
+                // Queue the call continuation
+                this.queueBlock(callCont, value);
             }
         }
-
-        // Process the definitions along the normal target (kills)
-        useSet = processDefs(branch, value, useSet, 0);
     }
 
     // Other kinds of branch instructions
@@ -1330,6 +1344,7 @@ SPSTF.prototype.blockItr = function ()
     {
         var targets = branch.targets;
 
+        // For each branch target
         for (var targetIdx = 0; targetIdx < targets.length; ++targetIdx)
         {
             var target = targets[targetIdx];
@@ -1337,85 +1352,20 @@ SPSTF.prototype.blockItr = function ()
             if (target instanceof SPSTFStump)
                 continue;
 
-            var succSet = target.liveMap.get(value);
+            // Process defs of the call instruction
+            var targetSet = processDefs(branch, value, defSet, targetIdx);
 
-            succSet = filterPhis(succSet, block, target, value);
+            // Get the current output set
+            var outSet = block.defMaps[targetIdx].get(value);
 
-            // Process the definitions along the target (kills)
-            succSet = processDefs(branch, value, succSet, targetIdx);
-
-            useSet = useSet.union(succSet);
-        }
-    }
-
-    // Process uses for branch instruction
-    useSet = processUses(branch, value, useSet);
-
-    // For each instruction except the branch, in reverse order
-    for (var i = block.instrs.length - 2; i >= 0; --i)
-    {
-        var instr = block.instrs[i];
-
-        // Process defs of the instruction
-        useSet = processDefs(instr, value, useSet, 0);
-
-        // Process uses of the instruction
-        useSet = processUses(instr, value, useSet);
-    }
-
-    // Get the live set at the beginning of the block
-    var outSet = block.liveMap.get(value);
-
-    // If the set at the beginning of the block changed
-    if (useSet.equal(outSet) === false)
-    {
-        //print('live map changed, queueing preds');
-
-        // Update the live set for the value
-        block.liveMap.set(value, useSet);
-
-        // If this is a function entry block
-        if (block === block.func.entry)
-        {
-            var func = block.func;
-
-            // Queue the call site blocks
-            for (var i = 0; i < func.callSites.length; ++i)
+            // If the output set changed
+            if (defSet.equal(outSet) === false)
             {
-                var callSite = func.callSites[i];
-                this.queueBlock(callSite.block, value);
-            }
-        }
-        else
-        {
-            //print('num preds: ' + block.preds.length)
-            //print(block);
+                // Update the def map
+                block.defMaps[targetIdx].set(value, targetSet);
 
-            // For each predecessor block
-            for (var i = 0; i < block.preds.length; ++i)
-            {
-                var pred = block.preds[i];
-
-                // Queue the predecessors
-                this.queueBlock(pred, value);
-
-                // Get the branch instruction of the predecessor block
-                var branch = pred.instrs[pred.instrs.length-1];
-
-                //print('queuing pred ending in: ' + branch);
-
-                // If the predecessor is a call site
-                if (branch.irInstr instanceof JSCallInstr || 
-                    branch.irInstr instanceof JSNewInstr)
-                {
-                    // Queue all callee return sites
-                    for (var j = 0; j < branch.callees.length; ++j)
-                    {
-                        var callee = branch.callees[j];
-                        for (var k = 0; k < callee.retBlocks.length; ++k)
-                            this.queueBlock(callee.retBlocks[k], value);
-                    }
-                }
+                // Queue the target block
+                this.queueBlock(target, value);
             }
         }
     }
@@ -1426,6 +1376,28 @@ SPSTF.prototype.blockItr = function ()
     //print('block itr: ' + this.blockItrCount);
 }
 
+/**
+Add a def-use edge
+*/
+SPSTF.prototype.addEdge = function (
+    value,
+    def, 
+    use,
+    useInstr
+)
+{
+    /*
+    print('Adding edge');
+    print('  val : ' + value);
+    print('  to  : ' + useInstr);
+    */
+
+    def.dests.push(useInstr);
+
+    use.srcs.push(def);
+
+    this.numEdges++;
+}
 /**
 Create a new object abstraction
 */
@@ -1482,10 +1454,10 @@ SPSTF.prototype.newObject = function (
 }
 
 /**
-Add a value to a function's definition set. This may update
-caller functions recursively.
+Add a value to a function's use set. This may update caller 
+functions recursively.
 */
-SPSTF.prototype.addFuncDef = function (func, value)
+SPSTF.prototype.addFuncUse = function (func, value)
 {
     // If this is not a global value, stop
     if ((value.parent instanceof TGObject) === false &&
@@ -1498,191 +1470,23 @@ SPSTF.prototype.addFuncDef = function (func, value)
     {
         var func = workList.pop();
 
-        if (func.defSet.has(value) === true)
+        if (func.useSet.has(value) === true)
             continue;
 
-        // Add the value to the function's definition set
-        func.defSet.add(value);
+        // Add the value to the function's use set
+        func.useSet.add(value);
 
-        // Queue the return site blocks
-        for (var i = 0; i < func.retBlocks.length; ++i)
-            this.queueBlock(func.retBlocks[i], value);
+        // Queue the function entry block
+        this.queueBlock(func.entry, value);
 
         // Queue the call site blocks
         for (var i = 0; i < func.callSites.length; ++i)
             this.queueBlock(func.callSites[i].block, value);
 
+        // Add callers to the work list
         for (var i = 0; i < func.callSites.length; ++i)
             workList.push(func.callSites[i].block.func);
     }
-}
-
-/**
-Kill all uses of a given value in predecessors, starting from a specified block
-*/
-SPSTF.prototype.killUses = function (block, value)
-{
-    var workList = new LinkedList();
-
-    workList.addLast(block);
-
-    // Until the work list is empty
-    while (workList.isEmpty() === false)
-    {
-        var block = workList.remFirst();
-
-        // If the value is not live in this block, skip it
-        if (block.liveMap.get(value).length === 0)
-            continue;
-
-        // Kill all live uses for this value
-        block.liveMap.killLive(value);
-
-        // If this is a function entry block
-        if (block === block.func.entry)
-        {
-            var func = block.func;
-
-            // Queue the call site blocks
-            for (var i = 0; i < func.callSites.length; ++i)
-            {
-                var callSite = func.callSites[i];
-                workList.addLast(callSite.block);
-            }
-        }
-        else
-        {
-            // For each predecessor block
-            for (var i = 0; i < block.preds.length; ++i)
-            {
-                var pred = block.preds[i];
-
-                // Queue the predecessor
-                workList.addLast(pred);
-
-                // Get the branch instruction of the predecessor block
-                var branch = pred.instrs[pred.instrs.length-1];
-
-                // If the predecessor is a call site
-                if (branch.irInstr instanceof JSCallInstr || 
-                    branch.irInstr instanceof JSNewInstr)
-                {
-                    // Queue all callee return sites
-                    for (var j = 0; j < branch.callees.length; ++j)
-                    {
-                        var callee = branch.callees[j];
-                        for (var k = 0; k < callee.retBlocks.length; ++k)
-                            workList.addLast(callee.retBlocks[k]);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
-Add a def-use edge
-*/
-SPSTF.prototype.addEdge = function (
-    value, 
-    useInstr, 
-    defInstr, 
-    outIdx, 
-    targetIdx
-)
-{
-    /*
-    print('Adding edge');
-    print('  val : ' + value);
-    print('  from: ' + defInstr);
-    print('  to  : ' + useInstr);
-    */
-
-    var def = defInstr.outVals[targetIdx][outIdx];
-
-    var use = undefined;
-    for (var i = 0; i < useInstr.inVals.length; ++i)
-    {
-        if (useInstr.inVals[i].value === value)
-        {
-            use = useInstr.inVals[i];
-            break;
-        }
-    }
-
-    assert (
-        use !== undefined,
-        'use not found'
-    );
-
-    def.dests.push(useInstr);
-
-    use.srcs.push(
-        {
-            instr: defInstr,
-            targetIdx: targetIdx,
-            outIdx: outIdx
-        }
-    );
-
-    this.numEdges++;
-}
-
-/**
-Remove a def-use edge
-*/
-SPSTF.prototype.remEdge = function (
-    value, 
-    useInstr, 
-    defInstr, 
-    outIdx,
-    targetIdx
-)
-{
-    /*    
-    print('Removing edge');
-    print('  val : ' + value);
-    print('  from: ' + defInstr);
-    print('  to  : ' + useInstr);
-    */
-
-    var def = defInstr.outVals[targetIdx][outIdx];
-
-    var use = undefined;
-    for (var i = 0; i < useInstr.inVals.length; ++i)
-    {
-        if (useInstr.inVals[i].value === value)
-        {
-            use = useInstr.inVals[i];
-            break;
-        }
-    }
-
-    assert (
-        use !== undefined,
-        'use not found'
-    );
-
-    arraySetRem(def.dests, useInstr);
-
-    var srcIdx = -1;
-    for (var i = 0; i < use.srcs.length; ++i)
-    {
-        if (use.srcs[i].instr === defInstr)
-        {
-            srcIdx = i;
-            break;
-        }
-    }
-
-    assert (
-        srcIdx !== -1,
-        'src not found'
-    );
-
-    use.srcs.splice(srcIdx, 1);
-
-    this.numEdges--;
 }
 
 /**
@@ -1738,6 +1542,9 @@ SPSTF.prototype.getType = function (instr, value)
         }
         */
 
+        // Add the use to the function's use set
+        this.addFuncUse(instr.block.func, value);
+
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block, value);
     }
@@ -1745,16 +1552,11 @@ SPSTF.prototype.getType = function (instr, value)
     // Value type
     var type = TypeSet.empty;
 
-    // For each source
+    // Union the types for each source
     for (var i = 0; i < use.srcs.length; ++i)
     {
         var src = use.srcs[i];
-        var targetIdx = src.targetIdx;
-        var outIdx = src.outIdx;
-
-        var outVal = src.instr.outVals[targetIdx][outIdx];
-
-        type = type.union(outVal.type);
+        type = type.union(src.type);
     }
 
     return type;
@@ -1834,12 +1636,6 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
             print('  from: ' + instr);
         }
         */
-
-        // Add the definition to the function's definition set
-        this.addFuncDef(instr.block.func, value);
-
-        // Kill all uses of this value, starting from this block
-        this.killUses(instr.block, value);
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block, value);
@@ -1921,9 +1717,10 @@ SPSTF.prototype.touchTarget = function (instr, targetIdx)
         // Add this the predecessor to the predecessors of the target
         arraySetAdd(block.preds, pred);
 
-        // Queue the predecessor for all live values in the target
-        for (var itr = block.liveMap.getItr(); itr.valid(); itr.next())
-            this.queueBlock(pred, itr.get().key);
+        // Queue the target for all live values in the predecessor
+        var predDefMap = pred.defMaps[targetIdx];
+        for (var itr = predDefMap.getItr(); itr.valid(); itr.next())
+            this.queueBlock(block, itr.get().key);
     }
 }
 
@@ -3120,18 +2917,26 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             // Add this instruction to the set of callers of the function
             arraySetAdd(func.callSites, this);
 
-            // Queue the call site block for all live values at the function entry
-            for (var liveItr = func.entry.liveMap.getItr(); liveItr.valid(); liveItr.next())
-                ta.queueBlock(this.block, liveItr.get().key);
+            // Queue the entry block for all live values at this call site
+            var callDefMap = this.block.defMaps[0];
+            for (var liveItr = callDefMap.getItr(); liveItr.valid(); liveItr.next())
+            {
+                ta.queueBlock(func.entry, liveItr.get().key);
+            }
 
-            // Queue the return blocks for all values live in the call continuation
+            // Queue the continuation for all live values in the return blocks
             if (callCont instanceof SPSTFBlock)
             {
-                for (var liveItr = callCont.liveMap.getItr(); liveItr.valid(); liveItr.next())
+                for (var i = 0; i < func.retBlocks.length; ++i)
                 {
-                    var value = liveItr.get().key;
-                    for (var i = 0; i < func.retBlocks.length; ++i)
-                        ta.queueBlock(func.retBlocks[i], value);
+                    var retBlock = func.retBlocks[i];
+                    var retDefMap = retBlock.defMaps[0];
+
+                    for (var liveItr = retDefMap.getItr(); liveItr.valid(); liveItr.next())
+                    {
+                        var value = liveItr.get().key;
+                        ta.queueBlock(contBlock, value);
+                    }
                 }
             }
 
@@ -3140,10 +2945,10 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
                 if (func.argInstrs[i] !== undefined)
                     ta.queueInstr(func.argInstrs[i]);
 
-            // Add the callee's definitions to the caller's definitions
+            // Add the callee's uses to the caller's uses
             var caller = this.block.func;
-            for (var defItr = func.defSet.getItr(); defItr.valid(); defItr.next())
-                ta.addFuncDef(caller, defItr.get());
+            for (var useItr = func.useSet.getItr(); useItr.valid(); useItr.next())
+                ta.addFuncUse(caller, useItr.get());
         }
 
         // Set the call type flags

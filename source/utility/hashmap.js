@@ -118,10 +118,10 @@ HashMap.MAX_LOAD_NUM = 6;
 HashMap.MAX_LOAD_DENOM = 10;
 
 // Key value for free hash table slots
-HashMap.FREE_KEY = {};
+HashMap.FREE_KEY = { toString: function() { return 'FREE_KEY'; } };
 
 // Value returned for not found items
-HashMap.NOT_FOUND = {};
+HashMap.NOT_FOUND = { toString: function() { return 'NOT_FOUND'; } };
 
 /**
 @class Hash map implementation

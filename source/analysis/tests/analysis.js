@@ -78,6 +78,11 @@ function makeTypeTest(fileList, testName)
         }
     }
 
+    assert (
+        tests.typeProp.hasOwnProperty(testName) === false,
+        'test already exists: "' + testName + '"'
+    );
+
     tests.typeProp[testName] = function ()
     {
         const params = config.hostParams;
@@ -143,12 +148,6 @@ makeTypeTest(
 
 makeTypeTest(
     'programs/type_analysis/func_2calls.js', 
-    undefined,
-    'nostdlib'
-);
-
-makeTypeTest(
-    'programs/type_analysis/func_calls.js', 
     undefined,
     'nostdlib'
 );
