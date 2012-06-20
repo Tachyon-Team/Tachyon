@@ -176,27 +176,6 @@ SPSTFLiveMap.prototype.equal = function (that)
     return true;
 }
 
-SPSTFLiveMap.prototype.union = function (that)
-{
-    var newMap = this.copy();
-
-    for (var itr = that.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var setB = pair.value;
-
-        var setA = this.get(val);
-
-        // Union the use sets
-        var newSet = setA.union(setB);
-
-        newMap.set(val, newSet);
-    }
-
-    return newMap;
-}
-
 /**
 Add a use for a given value
 */
@@ -215,18 +194,6 @@ Kill the uses for a given value
 SPSTFLiveMap.prototype.killLive = function (value)
 {
     this.rem(value);
-}
-
-/**
-Kill a specific use of a value
-*/
-SPSTFLiveMap.prototype.killUse = function (value, use)
-{
-    var origSet = this.get(value);
-
-    var newSet = origSet.rem(use);
-
-    this.set(value, newSet);
 }
 
 /**
@@ -451,12 +418,14 @@ function SPSTFInstr(irInstr, instrIdx, block)
     List of objects specifying the value and sources.
         {
             value,
+            type,
             srcs: []
             {
-                instr
+                instr,
                 targetIdx
                 outIdx
-            }
+            },
+            instr
         }
     */
     this.inVals = [];
@@ -1133,28 +1102,20 @@ SPSTF.prototype.blockItr = function ()
 
             var dests = def.dests;
 
-            //print('def: ' + ((value instanceof IRValue)? value.getValName():value));
-
             // For each current dest of this definition
             for (var i = 0; i < dests.length; ++i)
             {
-                var dest = dests[i];
+                var use = dests[i];
 
                 // If the use is no longer present
-                if (useSet.has(dest) === false)
+                if (useSet.has(use) === false)
                 {
                     // Remove the type flow edge
                     that.remEdge(
-                        value, 
-                        dest, 
-                        instr, 
-                        outIdx, 
-                        targetIdx
+                        def,
+                        use
                     );
-
-                    // Re-queue the dest instruction for analysis
-                    that.queueInstr(dest);
-                }          
+                }
             }
 
             // For each use in the incoming use set
@@ -1167,15 +1128,9 @@ SPSTF.prototype.blockItr = function ()
                 {
                     // Add a new type flow edge
                     that.addEdge(
-                        value, 
-                        dest, 
-                        instr, 
-                        outIdx, 
-                        targetIdx
+                        def,
+                        dest
                     );
-
-                    // Re-queue the dest instruction for analysis
-                    that.queueInstr(dest);
                 }
             }
 
@@ -1196,12 +1151,15 @@ SPSTF.prototype.blockItr = function ()
         {
             var inVal = instr.inVals[i];
 
-            // If this is not a definition of our value, skip it
+            // If this is not a use of our value, skip it
             if (inVal.value !== value)
                 continue;
 
             // Uses generate live values
-            useSet = useSet.add(instr);
+            useSet = useSet.add(inVal);
+
+            // Stop, there is at most one use per value
+            break;
         }
 
         return useSet;
@@ -1216,16 +1174,18 @@ SPSTF.prototype.blockItr = function ()
         for (var itr = useSet.getItr(); itr.valid(); itr.next())
         {
             var use = itr.get();
+            var instr = use.instr;
+            var irInstr = instr.irInstr;
 
             // If this is not a phi node from the next block, skip it
-            if (use.block !== succ || (use instanceof PhiInstr) === false)
+            if (instr.block !== succ || (irInstr instanceof PhiInstr) === false)
                 continue;
 
-            var predIdx = use.preds.indexOf(pred.irBlock);
+            var predIdx = irInstr.preds.indexOf(pred.irBlock);
 
             // If the value is not meant for this block,
             // remove the use associated with this phi node
-            if (predIdx === -1 || value !== use.uses[predIdx])
+            if (predIdx === -1 || value !== irInstr.uses[predIdx])
                 useSet = useSet.rem(use);
         }
 
@@ -1584,11 +1544,8 @@ SPSTF.prototype.killUses = function (block, value)
 Add a def-use edge
 */
 SPSTF.prototype.addEdge = function (
-    value, 
-    useInstr, 
-    defInstr, 
-    outIdx, 
-    targetIdx
+    def,
+    use
 )
 {
     /*
@@ -1598,32 +1555,36 @@ SPSTF.prototype.addEdge = function (
     print('  to  : ' + useInstr);
     */
 
-    var def = defInstr.outVals[targetIdx][outIdx];
-
-    var use = undefined;
-    for (var i = 0; i < useInstr.inVals.length; ++i)
-    {
-        if (useInstr.inVals[i].value === value)
-        {
-            use = useInstr.inVals[i];
-            break;
-        }
-    }
+    assert (
+        def.value === use.value,
+        'def-use value mismatch'
+    );
 
     assert (
-        use !== undefined,
-        'use not found'
+        use.instr instanceof SPSTFInstr,
+        'invalid use object'
     );
 
-    def.dests.push(useInstr);
-
-    use.srcs.push(
-        {
-            instr: defInstr,
-            targetIdx: targetIdx,
-            outIdx: outIdx
-        }
+    assert (
+        arraySetHas(use.srcs, def) === false &&
+        arraySetHas(def.dests, use) === false,
+        'edges already present'
     );
+
+    // Add mutual def-use edges
+    def.dests.push(use);
+    use.srcs.push(def);
+
+    // Compute the updated use type
+    var useType = use.type.union(def.type);
+
+    // If the use type changed
+    if (useType.equal(use.type) === false)
+    {
+        use.type = useType;
+
+        this.queueInstr(use.instr);
+    }
 
     this.numEdges++;
 }
@@ -1632,55 +1593,57 @@ SPSTF.prototype.addEdge = function (
 Remove a def-use edge
 */
 SPSTF.prototype.remEdge = function (
-    value, 
-    useInstr, 
-    defInstr, 
-    outIdx,
-    targetIdx
+    def,
+    use
 )
 {
-    /*    
+    /*
     print('Removing edge');
-    print('  val : ' + value);
-    print('  from: ' + defInstr);
-    print('  to  : ' + useInstr);
+    print('  val : ' + def.value);
+    print('  from: ' + def.instr);
+    print('  to  : ' + use.instr);
     */
 
-    var def = defInstr.outVals[targetIdx][outIdx];
-
-    var use = undefined;
-    for (var i = 0; i < useInstr.inVals.length; ++i)
-    {
-        if (useInstr.inVals[i].value === value)
-        {
-            use = useInstr.inVals[i];
-            break;
-        }
-    }
-
     assert (
-        use !== undefined,
-        'use not found'
+        def.value === use.value,
+        'def-use value mismatch'
     );
 
-    arraySetRem(def.dests, useInstr);
+    assert (
+        use.instr instanceof SPSTFInstr,
+        'invalid use object'
+    );
 
-    var srcIdx = -1;
+    // Remove mutual def-use edges
+    arraySetRem(def.dests, use);
+    arraySetRem(use.srcs, def);
+
+    // Compute the updated use type
+    var useType = TypeSet.empty;
     for (var i = 0; i < use.srcs.length; ++i)
     {
-        if (use.srcs[i].instr === defInstr)
-        {
-            srcIdx = i;
-            break;
-        }
+        var srcType = use.srcs[i].type;
+        useType = useType.union(srcType);
     }
 
-    assert (
-        srcIdx !== -1,
-        'src not found'
-    );
+    // If the use type changed
+    if (useType.equal(use.type) === false)
+    {
+        // TODO
+        // TODO: warn if changed?
+        // TODO
 
-    use.srcs.splice(srcIdx, 1);
+        /*
+        print('changed');
+        print('  pre : ' + use.type);
+        print('  post: ' + useType);
+        print('  ' + use.srcs.length);
+        */
+
+        use.type = useType;
+
+        this.queueInstr(use.instr);
+    }
 
     this.numEdges--;
 }
@@ -1725,39 +1688,19 @@ SPSTF.prototype.getType = function (instr, value)
     {
         var use = {
             value: value,
-            srcs: []
+            type: TypeSet.empty,
+            srcs: [],
+            instr: instr
         };
 
         instr.inVals.push(use);
-
-        /*        
-        if (value instanceof TGProperty)
-        {
-            print('new prop use: ' + value);
-            print('  from: ' + instr);
-        }
-        */
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block, value);
     }
 
-    // Value type
-    var type = TypeSet.empty;
-
-    // For each source
-    for (var i = 0; i < use.srcs.length; ++i)
-    {
-        var src = use.srcs[i];
-        var targetIdx = src.targetIdx;
-        var outIdx = src.outIdx;
-
-        var outVal = src.instr.outVals[targetIdx][outIdx];
-
-        type = type.union(outVal.type);
-    }
-
-    return type;
+    // Return the current use type
+    return use.type;
 }
 
 /**
@@ -1811,7 +1754,21 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 
         // Queue all the destination instructions
         for (i = 0; i < def.dests.length; ++i)
-            this.queueInstr(def.dests[i]);
+        {
+            var dest = def.dests[i];
+
+            var newType = dest.type.union(type);
+
+            // If the destination type changed
+            if (newType.equal(dest.type) === false)
+            {
+                // Store the updated type
+                dest.type = newType; 
+
+                // Queue the destination instruction
+                this.queueInstr(dest.instr);
+            }
+        }
     }
 
     // This is a new definition for this instruction
@@ -1821,19 +1778,12 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         var def = {
             value: value,
             type: type,
-            dests: []
+            dests: [],
+            instr: instr
         }
 
         // Add the new definition to the list for this target
         defList.push(def);
-
-        /*
-        if (value instanceof TGProperty)
-        {
-            print('new prop def: ' + value);
-            print('  from: ' + instr);
-        }
-        */
 
         // Add the definition to the function's definition set
         this.addFuncDef(instr.block.func, value);
