@@ -209,6 +209,12 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/type_analysis/obj_chain.js', 
+    undefined,
+    'nostdlib'
+);
+
+makeTypeTest(
     'programs/type_analysis/get_undef.js', 
     undefined,
     'nostdlib'
