@@ -78,6 +78,10 @@ SPSTFUseSet.prototype.union = function (that)
 {
     if (this === that)
         return this;
+    if (this === SPSTFUseSet.empty)
+        return that;
+    if (that === SPSTFUseSet.empty)
+        return this;
 
     var newSet = this.copy();
 
@@ -86,6 +90,16 @@ SPSTFUseSet.prototype.union = function (that)
         HashSet.prototype.add.call(newSet, itr.get());
 
     return newSet;
+}
+
+SPSTFUseSet.prototype.equal = function (that)
+{
+    if (this === that)
+        return true;
+    if (this.length !== that.length)
+        return false;
+
+    return HashSet.prototype.equal.call(this, that);
 }
 
 SPSTFUseSet.prototype.add = function (use)
@@ -137,43 +151,6 @@ SPSTFLiveMap.prototype.toString = function ()
     }
 
     return str;
-}
-
-SPSTFLiveMap.prototype.copy = function ()
-{
-    var newMap = new SPSTFLiveMap();
-
-    for (var itr = this.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var set = pair.value;
-
-        // Use sets do copy on write and so they are not copied here
-        newMap.set(val, set);
-    }
-
-    return newMap;
-}
-
-SPSTFLiveMap.prototype.equal = function (that)
-{
-    if (this.length !== that.length)
-        return false;
-
-    for (var itr = this.getItr(); itr.valid(); itr.next())
-    {
-        var pair = itr.get();
-        var val = pair.key;
-        var setA = pair.value;
-
-        var setB = that.get(val);
-
-        if (setA.equal(setB) === false)
-            return false;
-    }
-
-    return true;
 }
 
 /**
@@ -543,6 +520,11 @@ SPSTF.prototype.init = function ()
     this.blockMap = new HashMap(SPSTFStump.hashFn, SPSTFStump.equalFn);
 
     /**
+    Map of IR instructions to instruction representations
+    */
+    this.instrMap = new HashMap();
+
+    /**
     Map of IR functions to function representations
     */
     this.funcMap = new HashMap();
@@ -739,10 +721,38 @@ SPSTF.prototype.getTypeSet = function (irInstr, useIdx)
         'invalid use index'
     );
 
-    var typeSet = this.typeSets.get({ instr:irInstr, idx:useIdx });
+    // Find the instruction in the instruction map    
+    var instr = this.instrMap.get(irInstr);
 
-    if (typeSet === HashMap.NOT_FOUND)
+    // If the instruction wasn't analyzed, no info available
+    if (instr === HashMap.NOT_FOUND)
         return null;
+
+    // Call the flow function for ths instruction
+    instr.flowFunc(this);
+
+    if (useIdx !== undefined)
+    {
+        // Get the input type
+        var typeSet = this.getInType(instr, useIdx);
+    }
+    else
+    {
+        // Store the type set of the output value   
+        var outVals = instr.outVals[0];
+        var typeSet = TypeSet.empty;
+        for (var i = 0; i < outVals.length; ++i)
+        {
+            var def = outVals[i];
+
+            if (def.value === irInstr)
+            {
+                //print('  output: ' + def.type);
+                typeSet = def.type;
+                break;
+            }
+        }
+    }
 
     return typeSet;
 }
@@ -773,7 +783,11 @@ SPSTF.prototype.makeInstr = function (irInstr, block, instrIdx)
 
     var instr = new SPSTFInstr(irInstr, instrIdx, block);
 
+    // Add the instruction to the block
     block.instrs.push(instr);
+
+    // Store the object in the instruction map
+    this.instrMap.set(irInstr, instr);
 
     // Queue the instruction for analysis
     this.queueInstr(instr);
@@ -1028,32 +1042,8 @@ SPSTF.prototype.instrItr = function ()
     );
     */
 
-    // Call the flow function for ths instruction
+    // Call the flow function for this instruction
     instr.flowFunc(this);
-
-    // Store the type set for all uses of the instruction
-    for (var i = 0; i < instr.irInstr.uses.length; ++i)
-    {
-        var useType = this.getInType(instr, i);
-        this.typeSets.set({ instr:instr.irInstr, idx:i }, useType);
-    }
-
-    // Store the type set of the output value   
-    var irInstr = instr.irInstr;
-    var outVals = instr.outVals[0];
-    var outType = TypeSet.empty;
-    for (var i = 0; i < outVals.length; ++i)
-    {
-        var def = outVals[i];
-
-        if (def.value === irInstr)
-        {
-            //print('  output: ' + def.type);
-            outType = def.type;
-            break;
-        }
-    }
-    this.typeSets.set({ instr: irInstr }, outType);
 
     // Increment the instruction iteration count
     this.itrCount++;
