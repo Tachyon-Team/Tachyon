@@ -1097,15 +1097,9 @@ SPSTF.prototype.blockItr = function ()
             {
                 var use = dests[i];
 
-                // If the use is no longer present
+                // If the use is no longer present, remove the type flow edge
                 if (useSet.has(use) === false)
-                {
-                    // Remove the type flow edge
-                    that.remEdge(
-                        def,
-                        use
-                    );
-                }
+                    that.remEdge(def, use);
             }
 
             // For each use in the incoming use set
@@ -1113,15 +1107,9 @@ SPSTF.prototype.blockItr = function ()
             {
                 var dest = itr.get();
 
-                // If this is a new use
+                // If this is a new use, add a new type flow edge
                 if (arraySetHas(dests, dest) === false)
-                {
-                    // Add a new type flow edge
-                    that.addEdge(
-                        def,
-                        dest
-                    );
-                }
+                    that.addEdge(def, dest);
             }
 
             // Definitions kill live values
@@ -1188,6 +1176,9 @@ SPSTF.prototype.blockItr = function ()
     // Get the branch instruction for this block
     var branch = block.instrs[block.instrs.length-1];
 
+    // Test if the value is global
+    var isGlobal = (value instanceof TGVariable);
+
     // If the branch is a return instruction
     if (branch.irInstr instanceof RetInstr)
     {
@@ -1201,12 +1192,6 @@ SPSTF.prototype.blockItr = function ()
 
             if ((callCont instanceof SPSTFBlock) === false)
                 continue;
-
-            // Test if the value is global
-            var isGlobal = (
-                value.parent instanceof TGObject || 
-                value.parent instanceof TGClosCell
-            );
 
             // If the value is global and defined in this function
             if (isGlobal === true && block.func.defSet.has(value) === true)
@@ -1222,12 +1207,6 @@ SPSTF.prototype.blockItr = function ()
     else if (branch.irInstr instanceof JSCallInstr ||
              branch.irInstr instanceof JSNewInstr)
     {
-        // Test if the value is global
-        var isGlobal = (
-            value.parent instanceof TGObject || 
-            value.parent instanceof TGClosCell
-        );
-
         // For each callee entry block
         for (var i = 0; i < branch.callees.length; ++i)
         {

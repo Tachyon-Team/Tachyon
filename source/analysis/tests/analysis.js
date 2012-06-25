@@ -57,6 +57,8 @@ function makeTypeTest(fileList, testName)
     }
 
     var useStdLib = true;
+    var runTypeProp = true;
+    var runSPSTF = true;
     var runProgram = true;
 
     for (var i = 2; i < arguments.length; ++i)
@@ -65,13 +67,10 @@ function makeTypeTest(fileList, testName)
 
         switch (flag)
         {
-            case 'nostdlib':
-            useStdLib = false;
-            break;
-
-            case 'norun':
-            runProgram = false;
-            break;
+            case 'nostdlib'     : useStdLib = false;    break;
+            case 'notypeprop'   : runTypeProp = false;  break;
+            case 'nospstf'      : runSPSTF = false;     break;
+            case 'norun'        : runProgram = false;   break;
 
             default:
             error('unsupported flag: ' + flag);
@@ -83,22 +82,30 @@ function makeTypeTest(fileList, testName)
         'test already exists: "' + testName + '"'
     );
 
-    tests.typeProp[testName] = function ()
+    if (runTypeProp == true)
     {
-        const params = config.hostParams;
-        var analysis = new TypeProp(params);
-        analysis.testOnFiles(fileList, useStdLib);
+        tests.typeProp[testName] = function ()
+        {
+            const params = config.hostParams;
+            var analysis = new TypeProp(params);
+            analysis.testOnFiles(fileList, useStdLib);
+        }
     }
 
-    tests.spstf[testName] = function ()
+    if (runSPSTF === true)
     {
-        const params = config.hostParams;
-        var analysis = new SPSTF(params);
-        analysis.testOnFiles(fileList, useStdLib);
+        tests.spstf[testName] = function ()
+        {
+            const params = config.hostParams;
+            var analysis = new SPSTF(params);
+            analysis.testOnFiles(fileList, useStdLib);
+        }
     }
 
     if (runProgram === true)
+    {
         tests.programs.type_analysis[testName] = genProgTest(fileList);
+    }
 }
 
 /**
@@ -498,43 +505,41 @@ makeTypeTest(
     'norun'
 );
 
-// TODO: enable some of the faster benchmarks for SPSTF only?
-// notypeprop flag?
-
-/*
-tests.typeProp['access-binary-trees'] = TypeProp.makeTest(
+makeTypeTest(
     'programs/sunspider/access-binary-trees.js',
-    true
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
 
-/*
-tests.typeProp['access-fannkuch'] = TypeProp.makeTest(
+makeTypeTest(
     'programs/sunspider/access-fannkuch.js',
-    true
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
 
-/*
-tests.typeProp['access-nsieve'] = TypeProp.makeTest(
+makeTypeTest(
     'programs/sunspider/access-nsieve.js',
-    true
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
 
-/*
-tests.typeProp['bitops-bits-in-byte'] = TypeProp.makeTest(
+makeTypeTest(
     'programs/sunspider/bitops-bits-in-byte.js',
-    true
+    undefined,
+    'nostdlib',
+    'notypeprop',
+    'norun'
 );
-*/
 
-/*
-tests.typeProp['bitops-nsieve-bits'] = TypeProp.makeTest(
+makeTypeTest(
     'programs/sunspider/bitops-nsieve-bits.js',
-    true
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
 
 /*
 tests.typeProp['string-base64'] = TypeProp.makeTest(
