@@ -68,7 +68,7 @@ SPSTFUseSet.prototype.toString = function ()
         if (str !== '{')
             str += ',';
 
-        str += use.getValName();
+        str += use.instr.getValName();
     }
 
     return str + '}';
@@ -88,6 +88,11 @@ SPSTFUseSet.prototype.union = function (that)
     // Add the elements from the second set
     for (var itr = that.getItr(); itr.valid(); itr.next())
         HashSet.prototype.add.call(newSet, itr.get());
+
+    assert (
+        newSet.length >= this.length && newSet.length >= that.length,
+        'incorrect use set union result'
+    );
 
     return newSet;
 }
@@ -233,6 +238,14 @@ function SPSTFFunc(irFunc)
     // Get the number of named parameters
     var numParams = irFunc? (irFunc.argVars.length + 2):0;
 
+    // Create the argument values
+    var argVals = new Array(numParams);
+    for (var i = 0; i < argVals.length; ++i)
+        argVals[i] = new TGVariable('arg' + i, this);
+
+    // Create the indexed argument value
+    var idxArgVal = new TGVariable('idxArg', this);
+
     /**
     Original IR function
     */
@@ -254,14 +267,14 @@ function SPSTFFunc(irFunc)
     this.callSites = [];
 
     /**
-    List of argument value instructions
+    List of argument values
     */
-    this.argInstrs = new Array(numParams);
+    this.argVals = argVals;
 
     /**
-    Argument object instruction
+    Indexed argument value (for argument object)
     */
-    this.argObjInstr = undefined;
+    this.idxArgVal = idxArgVal;
 
     /**
     List of global values defined in this function or callees
@@ -350,6 +363,11 @@ SPSTFBlock.prototype.toString = function ()
     return str;
 }
 
+SPSTFBlock.prototype.getBranch = function()
+{
+    return this.instrs[this.instrs.length-1];
+}
+
 /**
 @class Instruction representation for the SPSTF analysis
 */
@@ -424,12 +442,6 @@ function SPSTFInstr(irInstr, instrIdx, block)
     {
         // Add a field for the list of callees
         this.callees = [];
-
-        // Add a field for the argument types
-        var numArgs = irInstr.uses.length + ((irInstr instanceof JSNewInstr)? 1:0);
-        this.argTypes = new Array(numArgs);
-        for (var i = 0; i < numArgs; ++i)
-            this.argTypes[i] = TypeSet.empty;
     }
 
     // If the instruction has targets
@@ -833,29 +845,6 @@ SPSTF.prototype.getBlock = function (stump, func)
                 // Add this block to the list of return blocks for the function
                 func.retBlocks.push(block);
             }
-
-            // If this is an argument value instruction
-            else if (irInstr instanceof ArgValInstr)
-            {
-                var argIndex = irInstr.argIndex;
-
-                assert (
-                    func.argInstrs[argIndex] === undefined,
-                    'already have ArgValInstr for index'
-                );
-
-                // Store the instruction on the function object
-                func.argInstrs[argIndex] = instr;
-            }
-
-            // If this is the argument object creation instruction
-            else if (
-                irInstr instanceof CallFuncInstr && 
-                irInstr.uses[0] instanceof IRFunction &&
-                irInstr.uses[0].funcName === 'makeArgObj')
-            {
-                func.argObjInstr = instr;
-            }
         }
 
         // Add the block to the block map
@@ -975,7 +964,7 @@ SPSTF.prototype.addUnit = function (ir)
 
     // Make the last meta-unit block branch to the new block
     var lastBlock = this.lastMetaBlock;
-    var lastBranch = lastBlock.instrs[lastBlock.instrs.length-1];
+    var lastBranch = lastBlock.getBranch();
     lastBranch.targets = [callBlock];
     callBlock.preds = [lastBlock];
 
@@ -1174,10 +1163,16 @@ SPSTF.prototype.blockItr = function ()
     var useSet = SPSTFUseSet.empty;
 
     // Get the branch instruction for this block
-    var branch = block.instrs[block.instrs.length-1];
+    var branch = block.getBranch();
 
     // Test if the value is global
     var isGlobal = (value instanceof TGVariable);
+
+    // Test if the value is a return value
+    var isRetVal = (
+        value instanceof JSCallInstr ||
+        value instanceof JSNewInstr
+    );
 
     // If the branch is a return instruction
     if (branch.irInstr instanceof RetInstr)
@@ -1193,14 +1188,19 @@ SPSTF.prototype.blockItr = function ()
             if ((callCont instanceof SPSTFBlock) === false)
                 continue;
 
-            // If the value is global and defined in this function
-            if (isGlobal === true && block.func.defSet.has(value) === true)
+            // If the value is global and defined in this function or
+            // if it is a call return value
+            if ((isGlobal === true && block.func.defSet.has(value) === true) ||
+                isRetVal === true)
             {
                 var succSet = callCont.liveMap.get(value);
                 var succSet = filterPhis(succSet, block, callCont, value);
-                useSet = useSet.union(succSet);
+                useSet = useSet.union(succSet);                
             }
         }
+
+        // Process the definitions
+        useSet = processDefs(branch, value, useSet, 0);
     }
 
     // If the branch is a call instruction
@@ -1317,9 +1317,6 @@ SPSTF.prototype.blockItr = function ()
         }
         else
         {
-            //print('num preds: ' + block.preds.length)
-            //print(block);
-
             // For each predecessor block
             for (var i = 0; i < block.preds.length; ++i)
             {
@@ -1329,7 +1326,7 @@ SPSTF.prototype.blockItr = function ()
                 this.queueBlock(pred, value);
 
                 // Get the branch instruction of the predecessor block
-                var branch = pred.instrs[pred.instrs.length-1];
+                var branch = pred.getBranch();
 
                 //print('queuing pred ending in: ' + branch);
 
@@ -1490,7 +1487,7 @@ SPSTF.prototype.killUses = function (block, value)
                 workList.addLast(pred);
 
                 // Get the branch instruction of the predecessor block
-                var branch = pred.instrs[pred.instrs.length-1];
+                var branch = pred.getBranch();
 
                 // If the predecessor is a call site
                 if (branch.irInstr instanceof JSCallInstr || 
@@ -1519,9 +1516,9 @@ SPSTF.prototype.addEdge = function (
 {
     /*
     print('Adding edge');
-    print('  val : ' + value);
-    print('  from: ' + defInstr);
-    print('  to  : ' + useInstr);
+    print('  val : ' + def.value);
+    print('  from: ' + def.instr);
+    print('  to  : ' + use.instr);
     */
 
     assert (
@@ -1693,6 +1690,11 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
     );
 
     assert (
+        type instanceof TypeSet,
+        'invalid type'
+    );
+
+    assert (
         targetIdx === 0 || targetIdx < instr.targets.length,
         'invalid target index'
     );
@@ -1843,6 +1845,29 @@ SPSTF.prototype.touchTarget = function (instr, targetIdx)
         // Queue the predecessor for all live values in the target
         for (var itr = block.liveMap.getItr(); itr.valid(); itr.next())
             this.queueBlock(pred, itr.get().key);
+
+        // Get the branch instruction for this block
+        var branch = block.getBranch();
+
+        // If this is a return block
+        if (branch.irInstr instanceof RetInstr)
+        {
+            var func = block.func;
+            var callSites = func.callSites;
+
+            // For each call site
+            for (var i = 0; i < callSites.length; ++i)
+            {
+                var callCont = callSites[i].targets[0];
+
+                if ((callCont instanceof SPSTFBlock) === false)
+                    continue;
+
+                // Queue the return block for all values live in the call continuation
+                for (var liveItr = callCont.liveMap.getItr(); liveItr.valid(); liveItr.next())
+                    this.queueBlock(block, liveItr.get().key);
+            }
+        }
     }
 }
 
@@ -2900,8 +2925,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Get the type set for the callee
     var calleeType = ta.getInType(this, 0);
 
-    //print('call: ' + this);
-
     // If the callee could be any function
     if (calleeType.flags === TypeFlags.ANY)
     {
@@ -2952,56 +2975,13 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         }
     }
 
-    // For each argument
-    for (var i = 0; i < this.argTypes.length; ++i)
+    // If there are no callees, get all argument types,
+    // this prevents type assetions from failing
+    // TODO: create pseudo TypeAssert function?
+    if (calleeType.getNumObjs() === 0)
     {
-        var argType;
-
-        // Get the incoming type for this argument
-        if (i === 0)
-        {
-            argType = ta.getInType(this, 0);
-        }
-        else if (i === 1)
-        {
-            argType = thisType;
-        }
-        else
-        {
-            var useIdx = (isNew === true)? (i-1):i;
-            argType = ta.getInType(this, useIdx);
-        }
-
-        // If the argument type changed
-        if (this.argTypes[i].equal(argType) === false)
-        {
-            // Update the argument type
-            this.argTypes[i] = argType;
-
-            // For each potential callee
-            for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
-            {
-                var callee = itr.get();
-
-                // If this is not a function, ignore it
-                if ((callee.func instanceof IRFunction) === false)
-                    continue;
-
-                // Get the SPSTFFunc instance for this value
-                var irFunc = callee.func;
-                var func = ta.getFunc(irFunc);
-
-                // Queue the argument value instruction for this argument
-                var argInstr = func.argInstrs[i];
-                if (argInstr !== undefined)
-                    ta.queueInstr(func.argInstrs[i]);
-
-                // If the function uses the arguments object, queue the
-                // argument object creation instruction
-                if (func.argObjInstr !== undefined)
-                    ta.queueInstr(func.argObjInstr);
-            }
-        }
+        for (var i = 0; i < this.irInstr.uses.length; ++i)
+            ta.getInType(this, i);
     }
 
     // Mark the call successors as reachable
@@ -3010,9 +2990,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 
     // Get the call continuation block
     var callCont = this.targets[0];
-
-    // Union of the return type of all potential callees
-    var retType = TypeSet.empty;
 
     // For each potential callee
     for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
@@ -3023,11 +3000,8 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
         if ((callee.func instanceof IRFunction) === false)
             continue;
 
-        var irFunc = callee.func;
-
-        //print('callee: ' + irFunc.funcName);
-
         // Get the SPSTFFunc instance for this value
+        var irFunc = callee.func;
         var func = ta.getFunc(irFunc);
 
         // If this function is a new callee
@@ -3054,73 +3028,74 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
                 }
             }
 
-            // Queue the argument value instructions
-            for (var i = 0; i < func.argInstrs.length; ++i)
-                if (func.argInstrs[i] !== undefined)
-                    ta.queueInstr(func.argInstrs[i]);
+            // Queue the return instructions
+            for (var i = 0; i < func.retBlocks.length; ++i)
+            {
+                var retInstr = func.retBlocks[i].getBranch();
+                ta.queueInstr(retInstr, value);
+            }
 
             // Add the callee's definitions to the caller's definitions
             var caller = this.block.func;
             for (var defItr = func.defSet.getItr(); defItr.valid(); defItr.next())
                 ta.addFuncDef(caller, defItr.get());
+
+            // Set the call type flags
+            if (isNew === true)
+                func.ctorCall = true;
+            else
+                func.normalCall = true;
         }
 
-        // Set the call type flags
-        if (isNew === true)
-            func.ctorCall = true;
-        else
-            func.normalCall = true;
-
-        // Compute the return type for this call
-        var calleeRet = TypeSet.empty;
-        for (var i = 0; i < func.retBlocks.length; ++i)
+        // For each argument used by the function
+        for (var i = 0; i < func.argVals.length; ++i)
         {
-            var retBlock = func.retBlocks[i];
-            var retInstr = retBlock.instrs[retBlock.instrs.length-1];
-            var retRet = retInstr.retType;
+            var argType;
 
-            if ((retRet instanceof TypeSet) === false)
-                continue;
-
-            calleeRet = calleeRet.union(retRet);
-        }
-
-        // If this is a constructor call
-        if (isNew === true)
-        {
-            var newCalleeRet = TypeSet.empty;
-
-            // If the return type may be undefined
-            if (calleeRet.flags & TypeFlags.UNDEF)
+            // Get the incoming type for this argument
+            if (i === 0)
             {
-                // Union the "this" argument type
-                newCalleeRet = newCalleeRet.union(thisType);
+                argType = ta.getInType(this, 0);
+            }
+            else if (i === 1)
+            {
+                argType = thisType;
+            }
+            else
+            {
+                var useIdx = (isNew === true)? (i-1):i;
+
+                if (useIdx >= this.irInstr.uses.length)
+                    argType = TypeSet.undef;
+                else
+                    argType = ta.getInType(this, useIdx);
             }
 
-            // If the return type may be not undefined
-            if (calleeRet.flags !== TypeFlags.UNDEF)
-            {
-                // Union all but undefined
-                newCalleeRet = newCalleeRet.union(calleeRet.restrict(
-                    calleeRet.flags & ~TypeFlags.UNDEF
-                ));
-            }
-
-            calleeRet = newCalleeRet;
+            // Set the type for this argument value
+            ta.setType(this, func.argVals[i], argType);
         }
 
-        // Update the return type
-        retType = retType.union(calleeRet);
+        // If the callee uses the arguments object
+        if (irFunc.usesArguments === true)
+        {
+            // Indexed argument type
+            var idxArgType = TypeSet.empty;
+
+            // For each argument passed
+            for (var i = (isNew? 1:2); i < this.irInstr.uses.length; ++i)
+            {
+                var argType = ta.getInType(this, i);
+                idxArgType = idxArgType.union(argType);
+            }
+
+            // Set the indexed argument type
+            ta.setType(this, func.idxArgVal, idxArgType)
+        }
     }
 
     // Restrict the callee type in the continuation to functions
     var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
     ta.setInType(this, 0, newCalleeType, calleeType);
-
-    //print('setting return type: ' + retType);
-
-    // Set the call return type
-    ta.setOutType(this, retType);
 }
 
 // New/constructor call instruction
@@ -3138,25 +3113,8 @@ ArgValInstr.prototype.spstfFlowFunc = function (ta)
     var func = this.block.func;
     var argIndex = this.irInstr.argIndex;
 
-    var argType = TypeSet.empty;
-
-    //print('ArgValInstr');
-    //print('argIndex: ' + argIndex);
-
-    // For each call site
-    for (var i = 0; i < func.callSites.length; ++i)
-    {
-        // Get the type of the argument from this caller
-        var callerArg = func.callSites[i].argTypes[argIndex];
-        if (callerArg === undefined)
-            callerArg = TypeSet.undef;
-
-        //print(callerArg);
-
-        argType = argType.union(callerArg);
-    }
-
-    //print('out: ' + argType);
+    // Get the type of this argument
+    var argType = ta.getType(this, func.argVals[argIndex]);
 
     ta.setOutType(this, argType);
 }
@@ -3168,18 +3126,45 @@ RetInstr.prototype.spstfFlowFunc = function (ta)
     // Get the return value type
     var retType = ta.getInType(this, 0);
 
-    // If the return type changed
-    if (this.retType === undefined || this.retType.equal(retType) === false)
+    // Get the function this belongs to
+    var func = this.block.func;
+
+    // For each call site
+    for (var i = 0; i < func.callSites.length; ++i)
     {
-        // Store the return value type
-        this.retType = retType;
+        var callSite = func.callSites[i];
 
-        // Get the function this belongs to
-        var func = this.block.func;
+        // If this is a constructor call
+        if (callSite.irInstr instanceof JSNewInstr)
+        {
+            var callRet = TypeSet.empty;
 
-        // Queue the call instructions at the call sites
-        for (var i = 0; i < func.callSites.length; ++i)
-            ta.queueInstr(func.callSites[i]);
+            // If the return type may be undefined
+            if (retType.flags & TypeFlags.UNDEF)
+            {
+                // Get the type of this function's this value
+                var thisType = ta.getType(this, func.argVals[1]);
+
+                // Union the "this" argument type
+                callRet = callRet.union(thisType);
+            }
+
+            // If the return type may be not undefined
+            if (retType.flags !== TypeFlags.UNDEF)
+            {
+                // Union all but undefined
+                callRet = callRet.union(retType.restrict(
+                    retType.flags & ~TypeFlags.UNDEF
+                ));
+            }
+        }
+        else
+        {
+            var callRet = retType;
+        }
+
+        // Define the return type for this call site
+        ta.setType(this, callSite.irInstr, callRet);
     }
 }
 
@@ -3217,17 +3202,8 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
 
         // TODO: callee property
 
-        // Compute the union of all visible argument types
-        var idxArgType = TypeSet.empty;
-        for (var i = 0; i < func.callSites.length; ++i)
-        {
-            var callSite = func.callSites[i];
-            for (var j = 2; j < callSite.argTypes.length; ++j)
-            {
-                var callerArg = callSite.argTypes[j];
-                idxArgType = idxArgType.union(callerArg);
-            }
-        }
+        // Get the type of the indexed function argument value
+        var idxArgType = ta.getType(this, func.idxArgVal);
 
         // Set the indexed property type of the argument object
         ta.setType(this, argObj.idxProp, idxArgType);

@@ -541,12 +541,19 @@ makeTypeTest(
     'norun'
 );
 
-/*
-tests.typeProp['string-base64'] = TypeProp.makeTest(
-    'programs/sunspider/string-base64.js',
-    true
+makeTypeTest(
+    'programs/sunspider/crypto-sha1.js',
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
+
+makeTypeTest(
+    'programs/sunspider/string-base64.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
 
 /*
 tests.typeProp['deltablue'] = TypeProp.makeTest(
