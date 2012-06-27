@@ -240,8 +240,12 @@ function SPSTFFunc(irFunc)
 
     // Create the argument values
     var argVals = new Array(numParams);
-    for (var i = 0; i < argVals.length; ++i)
-        argVals[i] = new TGVariable('arg' + i, this);
+    for (var argIndex = 0; argIndex < argVals.length; ++argIndex)
+    {
+        var argVal = new TGVariable('arg' + argIndex, this);
+        argVal.argIndex = argIndex;
+        argVals[argIndex] = argVal;
+    }
 
     // Create the indexed argument value
     var idxArgVal = new TGVariable('idxArg', this);
@@ -1506,6 +1510,77 @@ SPSTF.prototype.killUses = function (block, value)
 }
 
 /**
+Reset the outputs of an instruction and its subgraph of successors
+*/
+SPSTF.prototype.resetInstr = function (instr, useIdx)
+{
+    var visited = new HashSet();
+
+    var workList = new LinkedList();
+
+    workList.addLast({ instr: instr, useIdx:useIdx });
+
+    // Until the work list is empty
+    while (workList.isEmpty() === false)
+    {
+        var item = workList.remFirst();
+        var instr = item.instr;
+        var useIdx = item.useIdx;
+
+        // If this instruction was already visited, skip it
+        if (visited.has(instr) === true)
+            continue;
+
+        visited.add(instr);
+
+        // Test if this is a call instruction
+        var isCall = (
+            instr.irInstr instanceof JSCallInstr || 
+            instr.irInstr instanceof JSNewInstr
+        );
+
+        // Compute the call argument index, if applicable
+        var argIndex = (instr.irInstr instanceof JSNewInstr)? (useIdx-1):useIdx;
+
+        // For each target
+        for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
+        {
+            var defs = instr.outVals[targetIdx];
+
+            // For each definition
+            for (var defIdx = 0; defIdx < defs.length; ++defIdx)
+            {
+                var def = defs[defIdx];
+
+                // If this is a call but it isn't the right
+                // argument definition, skip it                
+                if (isCall === true && def.name !== 'idxArg' && argIndex !== def.argIndex)
+                    continue;
+
+                // Reset the definition type
+                def.type = TypeSet.empty;
+
+                // For each destination
+                for (var i = 0; i < def.dests.length; ++i)
+                {
+                    var use = def.dests[i];
+
+                    // Reset the use type
+                    use.type = TypeSet.empty;
+
+                    // Add the instruction to the work list
+                    var destUseIdx = use.instr.irInstr.uses.indexOf(use.value);
+                    workList.addLast({ instr:use.instr, useIdx:destUseIdx });
+
+                    // Queue the instruction for analysis
+                    this.queueInstr(use.instr);
+                }
+            }
+        }
+    }
+}
+
+/**
 Add a def-use edge
 */
 SPSTF.prototype.addEdge = function (
@@ -1594,20 +1669,13 @@ SPSTF.prototype.remEdge = function (
     // If the use type changed
     if (useType.equal(use.type) === false)
     {
-        // TODO
-        // TODO: warn if changed?
-        // TODO
-
-        /*
-        print('changed');
-        print('  pre : ' + use.type);
-        print('  post: ' + useType);
-        print('  ' + use.srcs.length);
-        */
-
         use.type = useType;
 
         this.queueInstr(use.instr);
+
+        // Reset the instruction's and its successors
+        var useIdx = use.instr.irInstr.uses.indexOf(use.value);
+        this.resetInstr(use.instr, useIdx);
     }
 
     this.numEdges--;

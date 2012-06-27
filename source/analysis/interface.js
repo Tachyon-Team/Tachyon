@@ -169,6 +169,8 @@ TypeAnalysis.prototype.logResults = function (outFile)
     print('itr count: ' + this.itrCount);
     if (this.blockItrCount !== undefined)
         print('block itrs: ' + this.blockItrCount);
+    if (this.numEdges !== undefined)
+        print('num edges: ' + this.numEdges);
     print('time: ' + this.totalTime.toFixed(2) + 's');
     print('');
 
