@@ -1168,12 +1168,6 @@ SPSTF.prototype.blockItr = function ()
     // Test if the value is global
     var isGlobal = (value instanceof TGVariable);
 
-    // Test if the value is a return value
-    var isRetVal = (
-        value instanceof JSCallInstr ||
-        value instanceof JSNewInstr
-    );
-
     // If the branch is a return instruction
     if (branch.irInstr instanceof RetInstr)
     {
@@ -1189,9 +1183,9 @@ SPSTF.prototype.blockItr = function ()
                 continue;
 
             // If the value is global and defined in this function or
-            // if it is a call return value
+            // if it this call's return value
             if ((isGlobal === true && block.func.defSet.has(value) === true) ||
-                isRetVal === true)
+                value === callSite.irInstr)
             {
                 var succSet = callCont.liveMap.get(value);
                 var succSet = filterPhis(succSet, block, callCont, value);
@@ -1225,7 +1219,7 @@ SPSTF.prototype.blockItr = function ()
         // If the call continuation was visited
         if (callCont instanceof SPSTFBlock)
         {
-            // If any callee defines this value, remove it
+            // Test if any callee defines this value
             var calleeDef = false;
             CALLEE_DEF_LOOP:
             for (var i = 0; i < branch.callees.length; ++i)
@@ -1237,12 +1231,17 @@ SPSTF.prototype.blockItr = function ()
                 }
             }
 
+            // Test if the value is this call's return value
+            var isCallRet = (value === branch.irInstr);
+
             // If there are no callees
             // or the value is not global
             // or no callee defines this value
-            if (branch.callees.length === 0 ||
-                isGlobal === false ||
-                calleeDef === false)
+            // and this is not this call's return value
+            if ((branch.callees.length === 0 ||
+                 isGlobal === false ||
+                 calleeDef === false) &&
+                isCallRet === false)
             {
                 var succSet = callCont.liveMap.get(value);
                 succSet = filterPhis(succSet, block, callCont, value);
