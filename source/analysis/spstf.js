@@ -418,12 +418,8 @@ function SPSTFInstr(irInstr, instrIdx, block)
         {
             value,
             type,
-            srcs: []
-            {
-                instr,
-                targetIdx
-                outIdx
-            },
+            srcs: [],
+            numRems,
             instr
         }
     */
@@ -502,6 +498,11 @@ function SPSTF()
     this.init();
 }
 SPSTF.prototype = new TypeAnalysis();
+
+/**
+Maximum number of edge removals for a given use
+*/
+SPSTF.MAX_EDGE_REMS = 100;
 
 /**
 Initialize/reset the analysis
@@ -1512,35 +1513,85 @@ SPSTF.prototype.killUses = function (block, value)
 /**
 Reset the outputs of an instruction and its subgraph of successors
 */
-SPSTF.prototype.resetInstr = function (instr, useIdx)
+SPSTF.prototype.resetInstr = function (use, visited)
 {
-    var visited = new HashSet();
-
     var workList = new LinkedList();
 
-    workList.addLast({ instr: instr, useIdx:useIdx });
+    visited = new HashSet();
 
-    // Until the work list is empty
-    while (workList.isEmpty() === false)
+    var ta = this;
+
+    // Reset the definitions of an instruction
+    function resetDefs(instr)
     {
-        var item = workList.remFirst();
-        var instr = item.instr;
-        var useIdx = item.useIdx;
+        // For each target
+        for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
+        {
+            var defs = instr.outVals[targetIdx];
 
-        // If this instruction was already visited, skip it
-        if (visited.has(instr) === true)
-            continue;
+            // For each definition
+            for (var defIdx = 0; defIdx < defs.length; ++defIdx)
+            {
+                var def = defs[defIdx];
 
-        visited.add(instr);
+                // Reset the definition type
+                def.type = TypeSet.empty;
 
-        // Test if this is a call instruction
-        var isCall = (
-            instr.irInstr instanceof JSCallInstr || 
-            instr.irInstr instanceof JSNewInstr
-        );
+                // Add all destinations to the work list
+                for (var i = 0; i < def.dests.length; ++i)
+                    workList.addLast(def.dests[i]);
+            }
+        }
+    }
 
-        // Compute the call argument index, if applicable
-        var argIndex = (instr.irInstr instanceof JSNewInstr)? (useIdx-1):useIdx;
+    // Remove all definitions for a given instruction
+    function removeDefs(instr)
+    {
+        // For each target
+        for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
+        {
+            var defs = instr.outVals[targetIdx];
+
+            // For each definition
+            for (var defIdx = 0; defIdx < defs.length; ++defIdx)
+            {
+                var def = defs[defIdx];
+
+                // Remove all outgoing edges
+                for (var i = 0; i < def.dests.length; ++i)
+                {
+                    var dest = def.dests[i];
+
+                    arraySetRem(dest.srcs, def);
+                    ta.numEdges--;
+
+                    workList.addLast(dest);
+                }
+
+                // Queue the definition block for analysis
+                ta.queueBlock(instr.block, def.value);
+            }
+
+            // Remove all definitions for this instruction
+            instr.outVals[targetIdx] = [];
+        }
+    }
+
+    // Reset a call instruction
+    function resetCall(instr, use)
+    {
+        var irInstr = instr.irInstr;
+
+        var useIndex;
+        for (var i = 0; i < instr.inVals.length; ++i)
+            if (instr.inVals[i].value === use.value)
+                useIndex = i;
+
+        if (useIndex === undefined)
+            return;
+
+        // Compute the call argument index
+        var argIndex = (irInstr instanceof JSNewInstr)? (useIndex-1):useIndex;
 
         // For each target
         for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
@@ -1552,31 +1603,72 @@ SPSTF.prototype.resetInstr = function (instr, useIdx)
             {
                 var def = defs[defIdx];
 
-                // If this is a call but it isn't the right
-                // argument definition, skip it                
-                if (isCall === true && def.name !== 'idxArg' && argIndex !== def.argIndex)
+                // If this is not the argument definition, skip it
+                if (def.value.argIndex !== argIndex &&
+                    def.value.name !== 'idxArg')
                     continue;
 
                 // Reset the definition type
                 def.type = TypeSet.empty;
 
-                // For each destination
+                // Add all destinations to the work list
                 for (var i = 0; i < def.dests.length; ++i)
-                {
-                    var use = def.dests[i];
-
-                    // Reset the use type
-                    use.type = TypeSet.empty;
-
-                    // Add the instruction to the work list
-                    var destUseIdx = use.instr.irInstr.uses.indexOf(use.value);
-                    workList.addLast({ instr:use.instr, useIdx:destUseIdx });
-
-                    // Queue the instruction for analysis
-                    this.queueInstr(use.instr);
-                }
+                    workList.addLast(def.dests[i]);
             }
         }
+    }
+
+    // Add the use to the work list
+    workList.addLast(use);
+
+    // Until the work list is empty
+    while (workList.isEmpty() === false)
+    {
+        var use = workList.remFirst();
+        var instr = use.instr;
+        var irInstr = instr.irInstr;
+
+        // If this use was already visited, skip it
+        if (visited.has(use) === true)
+            continue;
+
+        // Mark the use as visited
+        visited.add(use);
+
+        // If this is a call instruction
+        if (irInstr instanceof JSCallInstr || 
+            irInstr instanceof JSNewInstr)
+        {
+            resetCall(instr, use);
+        }
+
+        // Other kinds of instructions
+        else
+        {
+            resetDefs(instr);
+        }
+    }
+
+    // For each visited use
+    for (var itr = visited.getItr(); itr.valid(); itr.next())
+    {
+        var use = itr.get();
+
+        // Don't remove objects from the set of objects touched by
+        // property write instructions
+        if (use.instr.irInstr instanceof PutPropInstr &&
+            use.value === use.instr.irInstr.uses[0])
+            continue;
+
+        // Recompute the type for this use
+        use.type = TypeSet.empty;
+        for (var i = 0; i < use.srcs.length; ++i)
+        {
+            var src = use.srcs[i];
+            use.type = use.type.union(src.type);
+        }
+
+        this.queueInstr(use.instr);
     }
 }
 
@@ -1654,6 +1746,18 @@ SPSTF.prototype.remEdge = function (
         'invalid use object'
     );
 
+    // If the maximum number of edge removals for the use was reached,
+    // don't remove the edge
+    if (use.numRems >= SPSTF.MAX_EDGE_REMS)
+        return;
+
+    // Increment the number of edge removals for the use
+    use.numRems++;
+
+    // If the maximum removal count is reached, print a warning
+    if (use.numRems === SPSTF.MAX_EDGE_REMS)
+        print('WARNING: max edge rem count reached');
+
     // Remove mutual def-use edges
     arraySetRem(def.dests, use);
     arraySetRem(use.srcs, def);
@@ -1669,13 +1773,17 @@ SPSTF.prototype.remEdge = function (
     // If the use type changed
     if (useType.equal(use.type) === false)
     {
+        //print('type changed');
+        //print('  from: ' + use.type);
+        //print('  to  : ' + useType);
+
         use.type = useType;
 
-        this.queueInstr(use.instr);
-
         // Reset the instruction's and its successors
-        var useIdx = use.instr.irInstr.uses.indexOf(use.value);
-        this.resetInstr(use.instr, useIdx);
+        this.resetInstr(use);
+
+        // Queue the instruction for analysis
+        this.queueInstr(use.instr);
     }
 
     this.numEdges--;
@@ -1723,6 +1831,7 @@ SPSTF.prototype.getType = function (instr, value)
             value: value,
             type: TypeSet.empty,
             srcs: [],
+            numRems: 0,
             instr: instr
         };
 
@@ -1986,7 +2095,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
 
     // If we have exceeded the maximum lookup depth
     if (depth > 8)
-        throw '*WARNING: maximum prototype chain lookup depth exceeded';
+        throw  '*WARNING: maximum prototype chain lookup depth exceeded';
 
     // Output type set
     var outType = TypeSet.empty;
@@ -2428,6 +2537,13 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
 
 GetGlobalInstr.prototype.spstfFlowFunc = GetPropInstr.prototype.spstfFlowFunc;
 
+TypeOfInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var t0 = ta.getInType(this, 0);
+
+    ta.setOutType(this, TypeSet.string);
+}
+
 JSAddInstr.prototype.spstfFlowFunc = function (ta)
 {
     var t0 = ta.getInType(this, 0);
@@ -2653,6 +2769,9 @@ JSDivInstr.prototype.spstfFlowFunc = function (ta)
 // Modulo (remainder) instruction
 JSModInstr.prototype.spstfFlowFunc = function (ta)
 {
+    var v0 = ta.getInType(this, 0);
+    var v1 = ta.getInType(this, 1);
+
     ta.setOutType(this, TypeSet.integer);
 }
 

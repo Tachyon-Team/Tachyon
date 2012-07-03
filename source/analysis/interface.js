@@ -79,7 +79,6 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
     var hostParams = config.hostParams;
     var clientParams = config.clientParams;
 
-    // TODO: improve stdlib support
     // Get the stdlib source file names
     //const libFiles = TACHYON_STDLIB_SRCS;
     const libFiles = [
@@ -352,21 +351,9 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
         var outType = ta.getTypeSet(instr);
 
         var useTypes = [];
-
         for (var i = 0; i < instr.uses.length; ++i)
         {
             var type = ta.getTypeSet(instr, i);
-
-            assert (
-                type instanceof TypeSet,
-                'invalid type set:\n' + 
-                type + '\n' +
-                'for use:\n' +
-                i + '\n' +
-                'of instruction:\n' +
-                instr
-            );
-
             useTypes.push(type);
         }
 
@@ -599,6 +586,50 @@ TypeAnalysis.prototype.evalTypeAsserts = function ()
             fail(testExpr, set, 'test failed');
     }
 
+    function validateTypes(instr)
+    {
+        var outType = ta.getTypeSet(instr);
+
+        var useTypes = [];
+        for (var k = 0; k < instr.uses.length; ++k)
+        {
+            var type = ta.getTypeSet(instr, k);
+            useTypes.push(type);
+        }
+
+        for (var i = 0; i < useTypes.length; ++i)
+        {
+            assert (
+                type instanceof TypeSet,
+                'invalid type set:\n' + 
+                type + '\n' +
+                'for use:\n' +
+                i + '\n' +
+                'of instruction:\n' +
+                instr
+            );
+        }
+
+        /*
+        // Arithmetic and comparison instructions
+        if (instr instanceof JSArithInstr || instr instanceof JSCompInstr)
+        {
+            var u0 = useTypes[0];
+            var u1 = useTypes[1];
+
+            if (u0 === TypeSet.empty || u1 === TypeSet.empty)
+            {
+                print(
+                    'comparison/arith operand has empty type set:\n' +
+                    instr + '\n' +
+                    u0 + '\n' +
+                    u1
+                );
+            }      
+        }
+        */
+    }
+
     function visitFunc(irFunc)
     {
         // Visit the sub-functions
@@ -622,6 +653,13 @@ TypeAnalysis.prototype.evalTypeAsserts = function ()
 
                     // Evaluate the type assertion on the type set
                     evalAssert(test, typeSet);
+                }
+
+                // If this instruction was visited
+                else if (ta.getTypeSet(instr) !== null)
+                {
+                    // Perform type validation on the instruction
+                    validateTypes(instr);
                 }
             }
         }

@@ -10,3 +10,4 @@ else
 }
 
 typeAssert(o.k, '["and", "int", "string", ["not", "undef"]]');
+

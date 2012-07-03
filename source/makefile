@@ -203,11 +203,15 @@ ALL_SRCS =                              \
     $(TEST_SPEC_SRCS)                   \
     $(MAIN_SPEC_SRCS)
 
-all: tachyon compiler/sources.js
+all: tachyon tachyon64 compiler/sources.js
 
 tachyon: makefile tachyon.in compiler/sources.js
 	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon
 	chmod +x tachyon
+
+tachyon64: makefile tachyon.in compiler/sources.js
+	sed -e "s:@JSVMPROG@:$(JSVMPROG64):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon64
+	chmod +x tachyon64
 
 compiler/sources.js: makefile compiler/sources.js.in
 	cp compiler/sources.js.in compiler/sources.js

@@ -549,6 +549,13 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/sunspider/crypto-md5.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
     'programs/sunspider/string-base64.js',
     undefined,
     'notypeprop',
