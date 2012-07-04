@@ -492,6 +492,13 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/sunspider/3d-morph.js',
+    undefined,
+    'nostdlib',
+    'norun'
+);
+
+makeTypeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     undefined,
     'nostdlib',
@@ -514,6 +521,13 @@ makeTypeTest(
 
 makeTypeTest(
     'programs/sunspider/access-fannkuch.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
+    'programs/sunspider/access-nbody.js',
     undefined,
     'notypeprop',
     'norun'
@@ -556,29 +570,75 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/sunspider/math-cordic.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
+    'programs/sunspider/math-partial-sums.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+// FIXME: rangeMin is NaN
+/*
+makeTypeTest(
+    'programs/sunspider/math-spectral-norm.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+*/
+
+makeTypeTest(
     'programs/sunspider/string-base64.js',
     undefined,
     'notypeprop',
     'norun'
 );
 
-/*
-tests.typeProp['deltablue'] = TypeProp.makeTest(
+makeTypeTest(
     [
         'programs/v8bench/deltablue.js',
         'programs/v8bench/drv-deltablue.js'
     ],
-    true
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
 
-/*
-tests.typeProp['richards'] = TypeProp.makeTest(
+makeTypeTest(
+    [
+        'programs/v8bench/navier-stokes.js',
+        'programs/v8bench/drv-navier-stokes.js'
+    ],
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
     [
         'programs/v8bench/richards.js',
         'programs/v8bench/drv-richards.js'
     ],
-    true
+    undefined,
+    'notypeprop',
+    'norun'
 );
-*/
+
+makeTypeTest(
+    [
+        'programs/v8bench/splay.js',
+        'programs/v8bench/drv-splay.js'
+    ],
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+// TODO: crypto, currently very slow
 

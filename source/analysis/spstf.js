@@ -1039,6 +1039,19 @@ SPSTF.prototype.instrItr = function ()
     // Call the flow function for this instruction
     instr.flowFunc(this);
 
+    /*
+    var outType = this.getOutType(instr);
+    if (outType.flags === TypeFlags.ANY)
+    {
+        print('instr produces any: ' + instr);
+
+        print('  ' + instr.block);
+
+        for (var i = 0; i < instr.irInstr.uses.length; ++i)
+            print('  ' + this.getInType(instr, i));
+    }
+    */
+
     // Increment the instruction iteration count
     this.itrCount++;
 
@@ -1992,6 +2005,20 @@ SPSTF.prototype.setInType = function (instr, useIdx, normalType, exceptType)
 }
 
 /**
+Get the output type of an instruction
+*/
+SPSTF.prototype.getOutType = function (instr)
+{
+    var outVals = instr.outVals[0];
+
+    for (var i = 0; i < outVals.length; ++i)
+        if (outVals[i].value === instr.irInstr)
+            return outVals[i].type;
+
+    return TypeSet.empty;
+}
+
+/**
 Mark a branch instruction's target block as reachable
 */
 SPSTF.prototype.touchTarget = function (instr, targetIdx)
@@ -2084,14 +2111,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     if (objType.flags === TypeFlags.ANY)
         throw '*WARNING: getProp on any type';
 
-    // If there are non-object bases
-    if (objType.flags & 
-        ~(TypeFlags.EXTOBJ  | 
-          TypeFlags.UNDEF   | 
-          TypeFlags.NULL    |
-          TypeFlags.STRING)
-        )
-        throw '*WARNING: getProp with invalid base';
+    // TODO: exception edge reachable for undef and null
 
     // If we have exceeded the maximum lookup depth
     if (depth > 8)
@@ -2103,6 +2123,30 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     //print('depth ' + depth);
     //print('obj type : ' + objType);
     //print('prop name: ' + propName + ' ' + (typeof propName));
+
+    // If the object may be a number
+    if (objType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
+    {
+        // If this is a named property
+        if (typeof propName === 'string')
+        {
+            // Lookup the property on the number prototype
+            var protoProp = this.propLookup(instr, this.numProto, propName, depth + 1);
+            outType = outType.union(protoProp);
+        }
+    }
+
+    // If the object may be a boolean
+    if (objType.flags & (TypeFlags.TRUE | TypeFlags.FALSE))
+    {
+        // If this is a named property
+        if (typeof propName === 'string')
+        {
+            // Lookup the property on the boolean prototype
+            var protoProp = this.propLookup(instr, this.boolProto, propName, depth + 1);
+            outType = outType.union(protoProp);
+        }
+    }
 
     // If the object may be a string
     if (objType.flags & TypeFlags.STRING)
@@ -3241,7 +3285,13 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
             // Get the incoming type for this argument
             if (i === 0)
             {
-                argType = ta.getInType(this, 0);
+                argType = new TypeSet(
+                    TypeFlags.FUNCTION, 
+                    undefined, 
+                    undefined, 
+                    undefined, 
+                    callee
+                );
             }
             else if (i === 1)
             {
@@ -3655,6 +3705,31 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
             retType = valType;
         else
             retType = TypeSet.string;
+    }
+
+    // Test if a value is the global object
+    else if (callee.funcName === 'isGlobalObj')
+    {
+        var valType = ta.getInType(this, 2);
+
+        if (valType.getNumObjs() === 1)
+        {
+            if (valType.getObjItr().get() === ta.globalObj)
+                retType = TypeSet.true;
+            else
+                retType = TypeSet.false;
+        }
+        else
+        {
+            retType = TypeSet.bool;
+        }
+    }
+
+    // Throw an exception
+    else if (callee.funcName === 'throwExc')
+    {
+        // The output of this function is never used
+        retType = TypeSet.empty;
     }
 
     // Unknown primitive

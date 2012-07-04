@@ -1,2 +1,2 @@
-Crypto.run();
-
+encrypt();
+decrypt();
