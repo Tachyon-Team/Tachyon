@@ -437,6 +437,12 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/type_analysis/regress_arith.js',
+    undefined,
+    'nostdlib'
+);
+
+makeTypeTest(
     'programs/type_analysis/regress_cond.js',
     undefined,
     'nostdlib'

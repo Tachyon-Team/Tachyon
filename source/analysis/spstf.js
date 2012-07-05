@@ -2766,25 +2766,21 @@ JSDivInstr.prototype.spstfFlowFunc = function (ta)
 
     if (t0.flags === TypeFlags.INT && t1.flags === TypeFlags.INT)
     {
-        var minVal = 0;      
-        if (Math.abs(t1.rangeMin) !== Infinity)
-            minVal = Math.min(t0.rangeMin / t1.rangeMin);
-        if (Math.abs(t1.rangeMax) !== Infinity)
-            minVal = Math.min(t0.rangeMin / t1.rangeMax);
-        if (Math.abs(t1.rangeMin) !== Infinity)
-            minVal = Math.min(t0.rangeMax / t1.rangeMin);
-        if (Math.abs(t1.rangeMax) !== Infinity)
-            minVal = Math.min(t0.rangeMax / t1.rangeMax);
+        var minVal = Infinity;
+        minVal = Math.min(minVal, t0.rangeMin / t1.rangeMin);
+        minVal = Math.min(minVal, t0.rangeMin / t1.rangeMax);
+        minVal = Math.min(minVal, t0.rangeMax / t1.rangeMin);
+        minVal = Math.min(minVal, t0.rangeMax / t1.rangeMax);
+        if (minVal === Infinity || isNaN(minVal) === true)
+            minVal = -Infinity;
 
-        var maxVal;
-        if (Math.abs(t1.rangeMin) !== Infinity)
-            maxVal = Math.max(t0.rangeMin / t1.rangeMin);
-        if (Math.abs(t1.rangeMax) !== Infinity)
-            maxVal = Math.max(t0.rangeMin / t1.rangeMax);
-        if (Math.abs(t1.rangeMin) !== Infinity)
-            maxVal = Math.max(t0.rangeMax / t1.rangeMin);
-        if (Math.abs(t1.rangeMax) !== Infinity)
-            maxVal = Math.max(t0.rangeMax / t1.rangeMax);
+        var maxVal = -Infinity;
+        maxVal = Math.max(maxVal, t0.rangeMin / t1.rangeMin);
+        maxVal = Math.max(maxVal, t0.rangeMin / t1.rangeMax);
+        maxVal = Math.max(maxVal, t0.rangeMax / t1.rangeMin);
+        maxVal = Math.max(maxVal, t0.rangeMax / t1.rangeMax);
+        if (maxVal === -Infinity || isNaN(maxVal) === true)
+            maxVal = Infinity;
 
         var flags;
         if (t0.rangeMin === t0.rangeMax && 
