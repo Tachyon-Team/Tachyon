@@ -142,3 +142,16 @@ function syntaxError(message)
     throw new ctor(message);
 }
 
+/**
+Called when an FP operation is required but no support is available.
+Also serves as a placeholder for the type analysis: this function is
+assumed to return an unknown integer or floating-point number.
+*/
+function noFPSupport(funcName)
+{
+    "tachyon:static";
+    "tachyon:noglobal";
+
+    error("no floating-point support: " + funcName);
+}
+

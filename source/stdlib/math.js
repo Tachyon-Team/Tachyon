@@ -201,3 +201,100 @@ Math.pow = function (x, y)
     return p;
 };
 
+/*
+15.8.2.7 cos (x)
+Returns an implementation-dependent approximation to the cosine of x. The
+argument is expressed in radians.
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is 1.
+• If x is −0, the result is 1.
+• If x is +∞, the result is NaN.
+• If x is −∞, the result is NaN.
+*/
+Math.cos = function (x)
+{
+    // TODO: implement this function
+    return noFPSupport('Math.cos');
+};
+
+/*
+15.8.2.16 sin (x)
+Returns an implementation-dependent approximation to the sine of x. The
+argument is expressed in radians.
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is +0.
+• If x is −0, the result is −0.
+• If x is +∞ or −∞, the result is NaN.
+*/
+Math.sin = function (x)
+{
+    // TODO: implement this function
+    return noFPSupport('Math.sin');
+};
+
+/*
+15.8.2.17 sqrt (x)
+Returns an implementation-dependent approximation to the square root of x.
+
+• If x is NaN, the result is NaN.
+• If x is less than 0, the result is NaN.
+• If x is +0, the result is +0.
+• If x is −0, the result is −0.
+• If x is +∞, the result is +∞.
+*/
+Math.sqrt = function (x)
+{
+    // TODO: implement this function
+    return noFPSupport('Math.sqrt');
+};
+
+/*
+15.8.2.8 exp (x)
+Returns an implementation-dependent approximation to the exponential
+function of x (e raised to the power of x, where e is the base of the
+natural logarithms).
+
+• If x is NaN, the result is NaN.
+• If x is +0, the result is 1.
+• If x is −0, the result is 1.
+• If x is +∞, the result is +∞.
+• If x is −∞, the result is +0.
+*/
+Math.exp = function (x)
+{
+    // TODO: implement this function
+    return noFPSupport('Math.exp');
+};
+
+/*
+15.8.2.10 log (x)
+Returns an implementation-dependent approximation to the natural
+logarithm of x.
+
+• If x is NaN, the result is NaN.
+• If x is less than 0, the result is NaN.
+• If x is +0 or −0, the result is −∞.
+• If x is 1, the result is +0.
+• If x is +∞, the result is +∞.
+*/
+Math.log = function (x)
+{
+    // TODO: implement this function
+    return noFPSupport('Math.log');
+};
+
+/*
+15.8.2.14 random ()
+Returns a Number value with positive sign, greater than or equal to 0 but
+less than 1, chosen randomly or pseudo randomly with approximately
+uniform distribution over that range, using an implementation-dependent
+algorithm or strategy. This function takes no arguments.
+*/
+Math.random = function ()
+{
+    // TODO: implement this function
+    return noFPSupport('Math.random');
+};
+

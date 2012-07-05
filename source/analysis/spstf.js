@@ -3732,6 +3732,13 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         retType = TypeSet.empty;
     }
 
+    // Floating-point operation placeholder
+    else if (callee.funcName === 'noFPSupport')
+    {
+        // Assume any number can be returned
+        retType = TypeSet.number;
+    }
+
     // Unknown primitive
     else
     {
