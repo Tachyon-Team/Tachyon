@@ -589,15 +589,12 @@ makeTypeTest(
     'norun'
 );
 
-// FIXME: rangeMin is NaN
-/*
 makeTypeTest(
     'programs/sunspider/math-spectral-norm.js',
     undefined,
     'notypeprop',
     'norun'
 );
-*/
 
 makeTypeTest(
     'programs/sunspider/string-base64.js',
@@ -646,5 +643,7 @@ makeTypeTest(
     'norun'
 );
 
-// TODO: crypto, currently very slow
+// TODO: sunspider/crypto-aes, currently somewhat slow
+
+// TODO: v8bench/crypto, currently very slow
 
