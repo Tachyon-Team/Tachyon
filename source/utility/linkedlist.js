@@ -67,6 +67,12 @@ function LinkedList()
     @field
     */
     this.last = null;
+
+    /**
+    Number of list items
+    @field
+    */
+    this.length = 0;
 }
 LinkedList.prototype = {};
 
@@ -111,6 +117,7 @@ LinkedList.prototype.clear = function ()
 {
     this.first = null;
     this.last = null;
+    this.length = 0;
 };
 
 /**
@@ -148,6 +155,8 @@ LinkedList.prototype.addFirst = function (item)
 
     if (this.last === null)
         this.last = this.first;
+
+    this.length++;
 };
 
 /**
@@ -168,6 +177,8 @@ LinkedList.prototype.addLast = function (item)
         this.last = newNode;
     }
 
+    this.length++;
+
     assert (
         this.last === newNode,
         'error adding new node to linked list'
@@ -180,9 +191,14 @@ Add an element before an iterator's current position
 LinkedList.prototype.addBefore = function (item, itr)
 {
     if (itr.prev === null)
+    {
         this.addFirst(item);
+    }
     else
+    {
         itr.prev.next = new LinkedList.Node(item, itr.current);
+        this.length++;
+    }
 };
 
 /**
@@ -191,9 +207,14 @@ Add an element after an iterator's current position
 LinkedList.prototype.addAfter = function (item, itr)
 {
     if (itr.current === null)
+    {
         this.addLast(item);
+    }
     else
+    {
         itr.current.next = new LinkedList.Node(item, itr.current.next);
+        this.length++;
+    }
 };
 
 /**
@@ -225,6 +246,8 @@ LinkedList.prototype.remFirst = function ()
     if (this.first === null)
         this.last = null;
 
+    this.length--;
+
     return item;
 };
 
@@ -241,6 +264,7 @@ LinkedList.prototype.remItr = function (itr)
     if (itr.prev)
     {
         itr.prev.next = itr.current.next;
+        this.length--;
     }
     else
     {

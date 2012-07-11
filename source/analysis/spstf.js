@@ -745,9 +745,6 @@ SPSTF.prototype.getTypeSet = function (irInstr, useIdx)
     if (instr === HashMap.NOT_FOUND)
         return null;
 
-    // Call the flow function for ths instruction
-    instr.flowFunc(this);
-
     if (useIdx !== undefined)
     {
         // Get the input type
@@ -882,6 +879,15 @@ SPSTF.prototype.getFunc = function (irFunc)
         // Queue the function's entry block
         var entry = this.getBlock(new SPSTFStump(irFunc.hirCFG.entry), func);
 
+        // Create the function entry pseudo-instruction and move it
+        // at the start of the block
+        var entryInstr = this.makeInstr(
+            new SPSTFEntryInstr(),
+            entry
+        );
+        entry.instrs.pop();
+        entry.instrs.unshift(entryInstr);
+
         // Set the function entry block
         func.entry = entry;
 
@@ -1006,6 +1012,12 @@ SPSTF.prototype.run = function ()
             break;
         }
     }
+
+    assert (
+        this.instrWorkList.isEmpty() === true &&
+        this.blockWorkList.isEmpty() === true,
+        'non-empty work list'
+    );
 
     // Stop the timing
     var endTimeMs = (new Date()).getTime();
@@ -1547,6 +1559,11 @@ SPSTF.prototype.resetInstr = function (use, visited)
             {
                 var def = defs[defIdx];
 
+                // If this is a property initialization, skip it
+                if (def.value instanceof TGProperty &&
+                    def.value.parent.origin === instr)
+                    continue;
+
                 // Reset the definition type
                 def.type = TypeSet.empty;
 
@@ -1557,6 +1574,7 @@ SPSTF.prototype.resetInstr = function (use, visited)
         }
     }
 
+    /*
     // Remove all definitions for a given instruction
     function removeDefs(instr)
     {
@@ -1589,6 +1607,7 @@ SPSTF.prototype.resetInstr = function (use, visited)
             instr.outVals[targetIdx] = [];
         }
     }
+    */
 
     // Reset a call instruction
     function resetCall(instr, use)
@@ -1667,12 +1686,14 @@ SPSTF.prototype.resetInstr = function (use, visited)
     {
         var use = itr.get();
 
+        this.queueInstr(use.instr);
+
         // Don't remove objects from the set of objects touched by
         // property write instructions
         if (use.instr.irInstr instanceof PutPropInstr &&
             use.value === use.instr.irInstr.uses[0])
             continue;
-
+        
         // Recompute the type for this use
         use.type = TypeSet.empty;
         for (var i = 0; i < use.srcs.length; ++i)
@@ -1680,8 +1701,6 @@ SPSTF.prototype.resetInstr = function (use, visited)
             var src = use.srcs[i];
             use.type = use.type.union(src.type);
         }
-
-        this.queueInstr(use.instr);
     }
 }
 
@@ -3170,36 +3189,8 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Test if this is a new/constructor call
     var isNew = (this.irInstr instanceof JSNewInstr);
 
-    // If this is a regular function call
-    if (isNew === false)
-    {
-        // Get the this argument call
-        var thisType = ta.getInType(this, 1);
-    }
-    else
-    {
-        // Lookup the "prototype" property of the callee
-        var protoType = ta.propLookup(this, calleeType, 'prototype', 0);
-
-        // If the prototype type is not yet resolved
-        if (protoType === TypeSet.empty)
-        {
-            var thisType = TypeSet.empty;
-        }
-        else
-        {
-            // If the prototype may not be an object
-            if (protoType.flags & (~TypeFlags.EXTOBJ))
-            {
-                // Exclude non-objects and include the object prototype object
-                protoType = protoType.restrict(protoType.flags & (~TypeFlags.EXTOBJ));
-                protoType = protoType.union(ta.objProto);
-            }
-
-            // Create a new object to use as the this argument
-            var thisType = ta.newObject(this, 'new_obj', undefined, protoType);
-        }
-    }
+    // Get the this argument call
+    var thisType = (isNew === false)? ta.getInType(this, 1):TypeSet.empty;
 
     // If there are no callees, get all argument types,
     // this prevents type assetions from failing
@@ -3340,6 +3331,60 @@ JSNewInstr.prototype.spstfFlowFunc = JSCallInstr.prototype.spstfFlowFunc;
 //{
 //}
 
+// Function entry pseudo-instruction
+function SPSTFEntryInstr()
+{
+    this.mnemonic = 'entry';
+    this.targets = [];
+}
+SPSTFEntryInstr.prototype = new IRInstr();
+
+SPSTFEntryInstr.prototype.spstfFlowFunc = function (ta)
+{
+    var func = this.block.func;
+
+    // If this function is called as a constructor
+    if (func.ctorCall === true)
+    {
+        // Get the callee function type
+        var calleeType = ta.getType(this, func.argVals[0]);
+
+        // Get the "this" argument type
+        var thisType = ta.getType(this, func.argVals[1]);
+
+        // Lookup the "prototype" property of the callee
+        var protoType = ta.propLookup(this, calleeType, 'prototype', 0);
+
+        //print('calleeType : ' + calleeType);
+        //print('  protoType: ' + protoType);
+
+        // If the prototype type is not yet resolved
+        if (protoType === TypeSet.empty)
+        {
+            var objType = TypeSet.empty;
+        }
+        else
+        {
+            // If the prototype may not be an object
+            if (protoType.flags & (~TypeFlags.EXTOBJ))
+            {
+                // Exclude non-objects and include the object prototype object
+                protoType = protoType.restrict(protoType.flags & (~TypeFlags.EXTOBJ));
+                protoType = protoType.union(ta.objProto);
+            }
+
+            // Create a new object to use as the this argument
+            var objType = ta.newObject(this, 'new_obj', undefined, protoType);
+        }
+
+        // Union the new object argument type with the this argument type
+        thisType = thisType.union(objType);
+
+        // Update the "this" argument type
+        ta.setType(this, func.argVals[1], thisType);
+    }
+}
+
 ArgValInstr.prototype.spstfFlowFunc = function (ta)
 {
     var func = this.block.func;
@@ -3374,7 +3419,7 @@ RetInstr.prototype.spstfFlowFunc = function (ta)
             // If the return type may be undefined
             if (retType.flags & TypeFlags.UNDEF)
             {
-                // Get the type of this function's this value
+                // Get the type of the function's "this" value
                 var thisType = ta.getType(this, func.argVals[1]);
 
                 // Union the "this" argument type
@@ -3476,7 +3521,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         // Create an object node for this function
         var funcObj = ta.newObject(
             this,
-            'closure',
+            'clos:"' + func.funcName + '"',
             func,
             ta.funcProto, 
             TypeFlags.FUNCTION, 
