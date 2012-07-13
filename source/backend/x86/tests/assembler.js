@@ -84,7 +84,7 @@ tests.x86.asmEncoding = function ()
             );
 
             assert (
-                enc.length % 2 == 0,
+                enc.length % 2 === 0,
                 'encoding string should have multiple of 2 length'
             );
 
