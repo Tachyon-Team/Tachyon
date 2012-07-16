@@ -1420,13 +1420,14 @@ SPSTF.prototype.newObject = function (
 
 
     // Create the recent and summary objects
+    // The recent object is marked as a singleton
     var recentObj = new TGObject(
         instr,
         tag + '_r',
         func,
         flags,
         numClosVars,
-        singleton
+        singleton/*true*/ // TODO
     );
     var summaryObj = new TGObject(
         instr,
@@ -1437,12 +1438,14 @@ SPSTF.prototype.newObject = function (
         singleton
     );
 
+    assert (
+        recentObj !== summaryObj,
+        'recent and summary objects are the same'
+    );
+
     // Set the prototype set for the objects
     this.setType(instr, recentObj.proto, protoSet);
     this.setType(instr, summaryObj.proto, protoSet);
-
-    // Mark the recent object
-    recentObj.recent = true;
 
     // For each named property of the recent object
     for (propName in recentObj.props)
@@ -1458,9 +1461,10 @@ SPSTF.prototype.newObject = function (
 
         // Initialize the recent property to missing
         // This is so non-existent properties show as undefined
-        // TODO: modify getPropNode to queue init instr when node doesn't exist
-        //       and not create missing def
         this.setType(instr, rcntProp, TypeSet.missing);
+
+        //print('init: ' + rcntProp);
+        //print('  ' + instr);
     }
 
     // Union the recent indexed property type into the summary type
@@ -1486,6 +1490,8 @@ SPSTF.prototype.newObject = function (
         // If the value type contains the recent object
         if (value.hasObj(recentObj) === true)
         {
+            print('translating ref');
+
             var outType = new TypeSet(
                 inType.flags,
                 inType.rangeMin,
@@ -1969,6 +1975,9 @@ Set the type set for a value
 */
 SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 {
+    //if (String(value) === 'k')
+    //    print('setting type: ' + type);
+
     if (targetIdx === undefined)
         targetIdx = 0;
 
@@ -2197,10 +2206,17 @@ SPSTF.prototype.getPropNode = function (obj, propName)
             'invalid origin instruction'
         );
 
+        // TODO: modify getPropNode to queue init instr when node doesn't exist
+        //       and not create missing def
+
         // Assign the missing type to the property at the object
         // creation site. This is because object properties do not
         // exist at object creation time
-        this.setType(origInstr, propNode, TypeSet.missing);
+        //this.setType(origInstr, propNode, TypeSet.missing);
+
+        // Queue the creation site so that it will initialize
+        // the new property to the missing type
+        this.queueInstr(origInstr);
 
         //print('creating init def for: "' + propName + '"');
         //print('  orig instr: ' + origInstr);

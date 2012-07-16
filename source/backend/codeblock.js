@@ -125,6 +125,9 @@ Get the address of an offset in the code block
 */
 CodeBlock.prototype.getAddress = function (idx)
 {
+    if (idx === undefined)
+        idx = 0;
+
     return getBlockAddr(this.memBlock, idx);
 }
 

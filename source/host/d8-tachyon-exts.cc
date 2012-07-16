@@ -525,8 +525,16 @@ v8::Handle<v8::Value> v8Proxy_getBlockAddr(const v8::Arguments& args)
     size_t idxVal = 0;
     if (args.Length() > 1)
     {
-        i::Handle<i::Object> idxObj = v8::Utils::OpenHandle(*args[1]);
-        idxVal = (size_t)idxObj->Number();
+        if (args[1]->IsUint32() == false)
+        {
+            printf("Error in getBlockAddr -- index is not uint32\n");
+            printf("IsInt32: %s\n", args[1]->IsInt32()? "true":"false");
+            printf("IsNumber: %s\n", args[1]->IsNumber()? "true":"false");
+            printf("IsUndefined: %s\n", args[1]->IsUndefined()? "true":"false");
+            exit(1);
+        }
+
+        idxVal = (size_t)args[1]->Uint32Value();
     }
 
     // Ensure that the index is valid
