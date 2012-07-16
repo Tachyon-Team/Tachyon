@@ -556,14 +556,11 @@ SPSTF.prototype.init = function ()
     var metaEntry = new SPSTFBlock(null, 0, metaUnit)
     metaUnit.entry = metaEntry;
 
-    // Create the instruction holding the initial definitions
-    var initIRInstr = Object.create(IRInstr.prototype);
-    initIRInstr.mnemonic = 'init';
-    initIRInstr.type = IRType.none;
-    initIRInstr.uses = [];
-    initIRInstr.dests = [];
-    initIRInstr.targets = [];
-    var initInstr = this.makeInstr(initIRInstr, metaEntry);
+    // Create the global initialization instruction
+    var initInstr = this.makeInstr(
+        new SPSTFInitInstr(),
+        metaEntry
+    );
 
     // Create a jump to the next meta-block
     this.makeInstr(Object.create(JumpInstr.prototype), metaEntry);
@@ -586,93 +583,37 @@ SPSTF.prototype.init = function ()
     /**
     Object prototype object node
     */
-    this.objProto = this.newObject(
-        initInstr,
-        'obj_proto',
-        undefined,
-        undefined, 
-        undefined, 
-        undefined, 
-        true
-    );
+    this.objProto = undefined;
 
     /**
     Array prototype object node
     */
-    this.arrProto = this.newObject(
-        initInstr,
-        'arr_proto',
-        undefined,
-        this.objProto, 
-        undefined, 
-        undefined, 
-        true
-    );
+    this.arrProto = undefined;
 
     /**
     Function prototype object node
     */
-    this.funcProto = this.newObject(
-        initInstr,
-        'func_proto',
-        undefined,
-        this.objProto,
-        undefined, 
-        undefined, 
-        true
-    );
+    this.funcProto = undefined;
 
     /**
     Boolean prototype object node
     */
-    this.boolProto = this.newObject(
-        initInstr,
-        'bool_proto',
-        undefined,
-        this.objProto,
-        undefined, 
-        undefined, 
-        true
-    );
+    this.boolProto = undefined;
 
     /**
     Number prototype object node
     */
-    this.numProto = this.newObject(
-        initInstr,
-        'num_proto',
-        undefined,
-        this.objProto,
-        undefined, 
-        undefined, 
-        true
-    );
+    this.numProto = undefined;
 
     /**
     String prototype object node
     */
-    this.strProto = this.newObject(
-        initInstr,
-        'str_proto',
-        undefined,
-        this.objProto,
-        undefined, 
-        undefined, 
-        true
-    );
+    this.strProto = undefined;
 
     /**
     Global object node
     */
-    this.globalObj = this.newObject(
-        initInstr,
-        'global',
-        undefined,
-        this.objProto, 
-        undefined,
-        undefined, 
-        true
-    );
+    this.globalObj = undefined;
 
     /**
     Map of hash sets for instruction uses/outputs, for gathering statistics
@@ -702,6 +643,9 @@ SPSTF.prototype.init = function ()
     Total analysis time
     */
     this.totalTime = 0;
+
+    // Queue the global initialization instruction
+    this.queueInstr(initInstr);
 }
 
 /**
@@ -1461,7 +1405,8 @@ SPSTF.prototype.newObject = function (
 
         // Initialize the recent property to missing
         // This is so non-existent properties show as undefined
-        this.setType(instr, rcntProp, TypeSet.missing);
+        if (this.hasOutDef(instr, rcntProp) === false)
+            this.setType(instr, rcntProp, TypeSet.missing);
 
         //print('init: ' + rcntProp);
         //print('  ' + instr);
@@ -2120,6 +2065,22 @@ SPSTF.prototype.setInType = function (instr, useIdx, normalType, exceptType)
 }
 
 /**
+Test if an instruction defines an output value
+*/
+SPSTF.prototype.hasOutDef = function (instr, value, targetIdx)
+{
+    if (targetIdx === undefined)
+        targetIdx = 0;
+
+    var outVals = instr.outVals[targetIdx];
+    for (var i = 0; i < outVals.length; ++i)
+        if (outVals[i].value === value)
+            return true;
+
+    return false;
+}
+
+/**
 Get the output type of an instruction
 */
 SPSTF.prototype.getOutType = function (instr)
@@ -2205,14 +2166,6 @@ SPSTF.prototype.getPropNode = function (obj, propName)
             origInstr instanceof SPSTFInstr,
             'invalid origin instruction'
         );
-
-        // TODO: modify getPropNode to queue init instr when node doesn't exist
-        //       and not create missing def
-
-        // Assign the missing type to the property at the object
-        // creation site. This is because object properties do not
-        // exist at object creation time
-        //this.setType(origInstr, propNode, TypeSet.missing);
 
         // Queue the creation site so that it will initialize
         // the new property to the missing type
@@ -2372,6 +2325,98 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
 //
 //=============================================================================
 
+// Global initialization pseudo-instruction
+function SPSTFInitInstr()
+{
+    this.mnemonic = 'init';
+    this.type = IRType.none;
+    this.uses = [];
+    this.dests = [];
+    this.targets = [];
+}
+SPSTFInitInstr.prototype = new IRInstr();
+
+SPSTFInitInstr.prototype.spstfFlowFunc = function (ta)
+{
+    // Object prototype object node
+    ta.objProto = ta.newObject(
+        this,
+        'obj_proto',
+        undefined,
+        undefined, 
+        undefined, 
+        undefined, 
+        true
+    );
+
+    // Array prototype object node
+    ta.arrProto = ta.newObject(
+        this,
+        'arr_proto',
+        undefined,
+        ta.objProto, 
+        undefined, 
+        undefined, 
+        true
+    );
+
+    // Function prototype object node
+    ta.funcProto = ta.newObject(
+        this,
+        'func_proto',
+        undefined,
+        ta.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    // Boolean prototype object node
+    ta.boolProto = ta.newObject(
+        this,
+        'bool_proto',
+        undefined,
+        ta.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    // Number prototype object node
+    ta.numProto = ta.newObject(
+        this,
+        'num_proto',
+        undefined,
+        ta.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    // String prototype object node
+    ta.strProto = ta.newObject(
+        this,
+        'str_proto',
+        undefined,
+        ta.objProto,
+        undefined, 
+        undefined, 
+        true
+    );
+
+    // Global object node
+    ta.globalObj = ta.newObject(
+        this,
+        'global',
+        undefined,
+        ta.objProto, 
+        undefined,
+        undefined, 
+        true
+    );
+}
+
+// Default flow function
 IRInstr.prototype.spstfFlowFunc = function (ta)
 {
     // By default, do nothing
@@ -3438,6 +3483,9 @@ JSNewInstr.prototype.spstfFlowFunc = JSCallInstr.prototype.spstfFlowFunc;
 function SPSTFEntryInstr()
 {
     this.mnemonic = 'entry';
+    this.type = IRType.none;
+    this.uses = [];
+    this.dests = [];
     this.targets = [];
 }
 SPSTFEntryInstr.prototype = new IRInstr();
@@ -3645,6 +3693,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
 
         // Assign the prototype object to the Function.prototype property
         var protoNode = ta.getPropNode(funcObj.getObjItr().get(), 'prototype');
+
         ta.setType(this, protoNode, protoObj);
 
         retType = funcObj;
