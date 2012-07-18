@@ -1359,9 +1359,39 @@ SPSTF.prototype.newObject = function (
         'invalid proto set flags'
     );
 
+    // TODO
+    // TODO: special handling for known singletons, no recency types?
+    // TODO
 
+    /**
+    Translate recent object references into summary object references
+    */
+    function translRefs(inType)
+    {
+        // If the value type contains the recent object
+        if (inType.hasObj(recentObj) === false)
+            return inType;
 
+        var outType = new TypeSet(
+            inType.flags,
+            inType.rangeMin,
+            inType.rangeMax,
+            inType.strVal
+        );
 
+        // Replace occurrences of the recent object by the summary object
+        for (var objItr = inType.getObjItr(); objItr.valid(); objItr.next())
+        {
+            var obj = objItr.get();
+
+            if (obj === recentObj)
+                obj = summaryObj;
+
+            outType.addObj(obj);
+        }
+
+        return outType
+    }
 
     // Create the recent and summary objects
     // The recent object is marked as a singleton
@@ -1371,7 +1401,7 @@ SPSTF.prototype.newObject = function (
         func,
         flags,
         numClosVars,
-        singleton/*true*/ // TODO
+        true
     );
     var summaryObj = new TGObject(
         instr,
@@ -1379,7 +1409,7 @@ SPSTF.prototype.newObject = function (
         func,
         flags,
         numClosVars,
-        singleton
+        false
     );
 
     assert (
@@ -1406,11 +1436,13 @@ SPSTF.prototype.newObject = function (
         // Initialize the recent property to missing
         // This is so non-existent properties show as undefined
         if (this.hasOutDef(instr, rcntProp) === false)
+        {
+            print('init: ' + rcntProp);
             this.setType(instr, rcntProp, TypeSet.missing);
-
-        //print('init: ' + rcntProp);
-        //print('  ' + instr);
+        }
     }
+
+    // TODO: translate
 
     // Union the recent indexed property type into the summary type
     var rcntIdxType = this.getType(instr, recentObj.idxProp);
@@ -1427,42 +1459,11 @@ SPSTF.prototype.newObject = function (
     {
         var value = itr.get();
 
-        // Get the input type for the value
+        // Translate recent object references
         var inType = this.getType(instr, value);
-
-        var outType = inType;
-
-        // If the value type contains the recent object
-        if (value.hasObj(recentObj) === true)
-        {
-            print('translating ref');
-
-            var outType = new TypeSet(
-                inType.flags,
-                inType.rangeMin,
-                inType.rangeMax,
-                inType.strVal
-            );
-
-            // Replace occurrences of the recent object by the summary object
-            for (var objItr = value.getObjItr(); objItr.valid(); objItr.next())
-            {
-                var obj = objItr.get();
-
-                if (obj === recentObj)
-                    obj = summaryObj;
-
-                outType.addObj(obj);
-            }
-        }
-
+        var outType = translRefs(inType);
         this.setType(instr, value, outType);
     }
-
-
-
-
-
 
     // Return a type set containing only the recent object
     return new TypeSet(
@@ -1755,6 +1756,7 @@ SPSTF.prototype.addEdge = function (
     print('  val : ' + def.value);
     print('  from: ' + def.instr);
     print('  to  : ' + use.instr);
+    print('  type: ' + def.type);
     */
 
     assert (
@@ -1962,42 +1964,13 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         }
     }
 
-    // If the definition was found
-    if (def !== undefined)
-    {
-        // If the type hasn't changed, do nothing
-        if (def.type.equal(type) === true)
-            return;
-
-        // Update the definition type
-        def.type = type;
-
-        // Queue all the destination instructions
-        for (i = 0; i < def.dests.length; ++i)
-        {
-            var dest = def.dests[i];
-
-            var newType = dest.type.union(type);
-
-            // If the destination type changed
-            if (newType.equal(dest.type) === false)
-            {
-                // Store the updated type
-                dest.type = newType; 
-
-                // Queue the destination instruction
-                this.queueInstr(dest.instr);
-            }
-        }
-    }
-
-    // This is a new definition for this instruction
-    else
+    // If this is a new definition
+    if (def === undefined)
     {
         // Create a new definition object
         var def = {
             value: value,
-            type: type,
+            type: TypeSet.empty,
             dests: [],
             instr: instr
         }
@@ -2013,6 +1986,60 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block, value);
+    }
+
+    // If the type hasn't changed, do nothing
+    if (def.type.equal(type) === true)
+        return;
+
+    // Update the definition type
+    def.type = type;
+
+    // If the type set contains objects
+    if (type.getNumObjs() > 0)
+    {
+        // TODO: skip locals from other functions
+
+        // For each object
+        for (var itr = type.getObjItr(); itr.valid(); itr.next())
+        {
+            var obj = itr.get();
+
+            // If this is not a recent object, skip it
+            if (obj.singleton === false)
+                continue;
+
+            // If the value is a property defined at the object's origin or
+            // the value is the object's origin, skip it
+            if (/*(value.parent !== undefined && value.parent.origin === obj.origin) ||*/
+                 value === obj.origin.irInstr)
+                continue;
+
+            //print('adding: ' + value);
+            //print('  ' + value.parent.origin);
+
+            // Add the value to the list of recent values
+            // for the object's origin instruction
+            obj.origin.recentVals.add(value);
+        }
+    }
+
+    // Queue all the destination instructions
+    for (i = 0; i < def.dests.length; ++i)
+    {
+        var dest = def.dests[i];
+
+        var newType = dest.type.union(type);
+
+        // If the destination type changed
+        if (newType.equal(dest.type) === false)
+        {
+            // Store the updated type
+            dest.type = newType; 
+
+            // Queue the destination instruction
+            this.queueInstr(dest.instr);
+        }
     }
 }
 

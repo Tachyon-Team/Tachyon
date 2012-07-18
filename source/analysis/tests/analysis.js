@@ -282,6 +282,12 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/type_analysis/loop_obj2.js',
+    undefined,
+    'nostdlib'
+);
+
+makeTypeTest(
     'programs/type_analysis/loop_cond_obj.js',
     undefined,
     'nostdlib'
