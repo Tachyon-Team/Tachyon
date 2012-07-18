@@ -1437,7 +1437,7 @@ SPSTF.prototype.newObject = function (
         // This is so non-existent properties show as undefined
         if (this.hasOutDef(instr, rcntProp) === false)
         {
-            print('init: ' + rcntProp);
+            //print('init: ' + rcntProp);
             this.setType(instr, rcntProp, TypeSet.missing);
         }
     }
@@ -1996,7 +1996,7 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
     def.type = type;
 
     // If the type set contains objects
-    if (type.getNumObjs() > 0)
+    if ((type.flags & TypeFlags.EXTOBJ) !== 0 && type.getNumObjs() > 0)
     {
         // TODO: skip locals from other functions
 
@@ -2009,10 +2009,8 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
             if (obj.singleton === false)
                 continue;
 
-            // If the value is a property defined at the object's origin or
-            // the value is the object's origin, skip it
-            if (/*(value.parent !== undefined && value.parent.origin === obj.origin) ||*/
-                 value === obj.origin.irInstr)
+            // If the origin already defines this value, skip it
+            if (this.hasOutDef(obj.origin, value) === true)
                 continue;
 
             //print('adding: ' + value);
@@ -3699,7 +3697,7 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
         // Create an object node for this function
         var funcObj = ta.newObject(
             this,
-            'clos:"' + func.funcName + '"',
+            func.funcName,
             func,
             ta.funcProto, 
             TypeFlags.FUNCTION, 
@@ -3707,23 +3705,55 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
             globalFunc
         );
 
-        // Create a Function.prototype object for the function
-        var protoObj = ta.newObject(
-            this,
-            'proto',
-            undefined,
-            ta.objProto,
-            undefined,
-            undefined,
-            globalFunc
-        );
-
-        // Assign the prototype object to the Function.prototype property
-        var protoNode = ta.getPropNode(funcObj.getObjItr().get(), 'prototype');
-
-        ta.setType(this, protoNode, protoObj);
+        //var protoNode = ta.getPropNode(funcObj.getObjItr().get(), 'prototype');
+        //ta.setType(this, protoNode, TypeSet.empty);
 
         retType = funcObj;
+    }
+
+    // Closure prototype object creation
+    else if (callee.funcName === 'makeClosProto')
+    {
+        var funcObj = ta.getInType(this, 3);
+
+        if (funcObj === TypeSet.empty)
+        {
+            retType = TypeSet.empty;
+        }
+        else
+        {
+            assert (
+                funcObj.flags === TypeFlags.FUNCTION && funcObj.getNumObjs() === 1,
+                'invalid function type'
+            );
+
+            // Test if this is a global function declaration (not in a loop)
+            var globalFunc = false;
+            var curBlock = this.irInstr.parentBlock;
+            if (curBlock instanceof BasicBlock)
+            {
+                var curFunc = curBlock.parentCFG.ownerFunc;
+                var curEntry = curFunc.hirCFG.entry;
+                var globalFunc = curFunc.parentFunc === null && curBlock === curEntry;
+            }
+
+            // Create a Function.prototype object for the function
+            var protoObj = ta.newObject(
+                this,
+                'proto',
+                undefined,
+                ta.objProto,
+                undefined,
+                undefined,
+                globalFunc
+            );
+
+            // Assign the prototype object to the Function.prototype property
+            var protoNode = ta.getPropNode(funcObj.getObjItr().get(), 'prototype');
+            ta.setType(this, protoNode, protoObj);
+
+            retType = TypeSet.empty;
+        }
     }
 
     // Closure cell creation

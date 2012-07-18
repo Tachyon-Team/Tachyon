@@ -637,12 +637,24 @@ function makeClos(funcPtr, numCells)
     var hashtbl = alloc_hashtbl(HASH_MAP_INIT_SIZE);
     set_obj_tbl(clos, hashtbl);
 
+    // Return the closure reference
+    return clos;
+}
+
+/**
+Create the ".prototype" object for a function's closure
+*/
+function makeClosProto(clos)
+{
+    "tachyon:static"; 
+    "tachyon:noglobal";
+
+    // Get a reference to the context
+    var ctx = iir.get_ctx();
+
     // Create a prototype object for the function
     var objproto = get_ctx_objproto(ctx);
     clos.prototype = newObject(objproto);
-
-    // Return the closure reference
-    return clos;
 }
 
 /**

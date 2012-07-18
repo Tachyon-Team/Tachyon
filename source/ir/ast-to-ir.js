@@ -368,6 +368,15 @@ function stmtListToIRFunc(
                 ]
             );
 
+            // Create the ".prototype" object for the function
+            insertPrimCallIR(
+                bodyContext, 
+                'makeClosProto', 
+                [
+                    closVal
+                ]
+            );
+
             // Write the closure variables into the closure
             for (var i = 0; i < closVals.length; ++i)
             {
@@ -2063,6 +2072,15 @@ function exprToIR(context)
             context, 
             'makeClos', 
             [nestFunc, IRConst.getConst(closVals.length, IRType.pint)]
+        );
+
+        // Create the ".prototype" object for the function
+        insertPrimCallIR(
+            context, 
+            'makeClosProto', 
+            [
+                closVal
+            ]
         );
 
         // Write the closure variables into the closure
