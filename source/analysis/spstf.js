@@ -1998,27 +1998,33 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
     // If the type set contains objects
     if ((type.flags & TypeFlags.EXTOBJ) !== 0 && type.getNumObjs() > 0)
     {
-        // TODO: skip locals from other functions
-
         // For each object
         for (var itr = type.getObjItr(); itr.valid(); itr.next())
         {
             var obj = itr.get();
+            var origin = obj.origin;
 
             // If this is not a recent object, skip it
             if (obj.singleton === false)
                 continue;
 
             // If the origin already defines this value, skip it
-            if (this.hasOutDef(obj.origin, value) === true)
+            if (this.hasOutDef(origin, value) === true)
+                continue;
+           
+            // If this is a local variable from a different function
+            // than the object's origin, skip it
+            if (value instanceof IRValue && value.parentBlock instanceof BasicBlock &&
+                value.parentBlock.parentCFG.ownerFunc !== origin.block.func.irFunc)
                 continue;
 
             //print('adding: ' + value);
             //print('  ' + value.parent.origin);
 
             // Add the value to the list of recent values
-            // for the object's origin instruction
-            obj.origin.recentVals.add(value);
+            // and queue the object's origin instruction
+            origin.recentVals.add(value);
+            this.queueInstr(origin);
         }
     }
 
@@ -2537,14 +2543,6 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
         // Get a reference to this function
         var func = this.block.func;
 
-        // Test if the object is the this argument of the function and
-        // the function is only ever called as a constructor
-        var isCtorThis = (
-            this.irInstr.uses[0] instanceof ArgValInstr &&
-            this.irInstr.uses[0].argIndex === 1 &&
-            func.normalCall === false
-        );
-
         // If this is not a string constant or an integer
         if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
             nameType.flags !== TypeFlags.INT)
@@ -2568,35 +2566,12 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
             else
                 var propNode = obj.idxProp;
 
-            /*
-            // Test if the object was created in this function
-            var isLocalObj = (
-                obj.origin.parentBlock &&
-                obj.origin.parentBlock.parentCFG &&
-                obj.origin.parentBlock.parentCFG.ownerFunc === func.irFunc &&
-                (this.irInstr.uses[0] === obj.origin ||
-                 this.irInstr.parentBlock === obj.origin.parentBlock)
-            );
-            */
-
-            // Test if the object was created in this function
-            var isLocalObj = (
-                obj.origin.block.func === func &&
-                (this.irInstr.uses[0] === obj.origin.irInstr ||
-                 this.irInstr.parentBlock === obj.origin.irInstr.parentBlock)
-            );
-
             // Test if we can overwrite the current property type
             var canAssignType = (
-                propNode !== obj.idxProp &&
-                (
-                    isCtorThis === true ||
-                    (singleType === true && isLocalObj === true) ||
-                    (singleType === true && obj.singleton === true)
-                )
+                singleType === true && 
+                obj.singleton === true &&
+                propNode !== obj.idxProp
             );
-
-            //print(this);
 
             // If we can do a strong update
             if (canAssignType === true)

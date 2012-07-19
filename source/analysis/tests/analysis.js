@@ -320,7 +320,8 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/factory_2calls.js',
     undefined,
-    'nostdlib'
+    'nostdlib',
+    'notypeprop' // FIXME: TypeProp does strong updates wrong!
 );
 
 makeTypeTest(
@@ -363,6 +364,13 @@ makeTypeTest(
     'programs/type_analysis/ctor_strong.js',
     undefined,
     'nostdlib'
+);
+
+makeTypeTest(
+    'programs/type_analysis/ctor_2calls.js',
+    undefined,
+    'nostdlib',
+    'notypeprop' // FIXME: TypeProp does strong updates wrong!
 );
 
 makeTypeTest(

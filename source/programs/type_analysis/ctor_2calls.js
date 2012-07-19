@@ -1,15 +1,13 @@
-function factory()
+function ctor()
 {
-    var obj = {};
-    obj.x = 3;
-    return obj
+    this.x = 3;
 }
 
-a = factory();
+a = new ctor();
 
 a.x = 'foo';
 
-b = factory();
+b = new ctor();
 
 a.y = 3;
 
