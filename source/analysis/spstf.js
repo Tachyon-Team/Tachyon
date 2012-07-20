@@ -1354,14 +1354,11 @@ SPSTF.prototype.newObject = function (
     if (singleton === undefined)
         singleton = false;
 
+    // Ensure that the prototype set is not empty
     assert (
         protoSet.flags !== TypeFlags.EMPTY,
         'invalid proto set flags'
     );
-
-    // TODO
-    // TODO: special handling for known singletons, no recency types?
-    // TODO
 
     /**
     Translate recent object references into summary object references
@@ -1393,8 +1390,7 @@ SPSTF.prototype.newObject = function (
         return outType
     }
 
-    // Create the recent and summary objects
-    // The recent object is marked as a singleton
+    // Create the recent object and mark it as a singleton
     var recentObj = new TGObject(
         instr,
         tag + '_r',
@@ -1403,66 +1399,65 @@ SPSTF.prototype.newObject = function (
         numClosVars,
         true
     );
-    var summaryObj = new TGObject(
-        instr,
-        tag + '_s',
-        func,
-        flags,
-        numClosVars,
-        false
-    );
-
-    assert (
-        recentObj !== summaryObj,
-        'recent and summary objects are the same'
-    );
-
-    // Set the prototype set for the objects
     this.setType(instr, recentObj.proto, protoSet);
-    this.setType(instr, summaryObj.proto, protoSet);
 
-    // For each named property of the recent object
+    // Initialize recent object properties to missing
+    // This is so non-existent properties show as undefined
     for (propName in recentObj.props)
     {
         var rcntProp = recentObj.getPropNode(propName);
-        var summProp = summaryObj.getPropNode(propName);
-
-        var rcntType = this.getType(instr, rcntProp);
-        var summType = this.getType(instr, summProp);
-
-        // Union recent type into summary prop type
-        this.setType(instr, summProp, summType.union(rcntType));
-
-        // Initialize the recent property to missing
-        // This is so non-existent properties show as undefined
         if (this.hasOutDef(instr, rcntProp) === false)
-        {
-            //print('init: ' + rcntProp);
             this.setType(instr, rcntProp, TypeSet.missing);
-        }
     }
 
-    // TODO: translate
-
-    // Union the recent indexed property type into the summary type
-    var rcntIdxType = this.getType(instr, recentObj.idxProp);
-    var summIdxType = this.getType(instr, summaryObj.idxProp);
-    this.setType(instr, summaryObj.idxProp, summIdxType.union(rcntIdxType));
-
-    // Create a set on the instruction for values possibly having
-    // the recent object in their type set
-    if (instr.recentVals === undefined)
-        instr.recentVals = new HashSet();
-
-    // For each value possibly using the recent object
-    for (var itr = instr.recentVals.getItr(); itr.valid(); itr.next())
+    // If this is not a known singleton object
+    if (singleton !== true)
     {
-        var value = itr.get();
+        // Create the summary object
+        var summaryObj = new TGObject(
+            instr,
+            tag + '_s',
+            func,
+            flags,
+            numClosVars,
+            false
+        );
+        this.setType(instr, summaryObj.proto, protoSet);
 
-        // Translate recent object references
-        var inType = this.getType(instr, value);
-        var outType = translRefs(inType);
-        this.setType(instr, value, outType);
+        // For each named property of the recent object
+        for (propName in recentObj.props)
+        {
+            var rcntProp = recentObj.getPropNode(propName);
+            var summProp = summaryObj.getPropNode(propName);
+
+            // Union recent type into summary prop type,
+            // translating the recent type
+            var rcntType = translRefs(this.getType(instr, rcntProp));
+            var summType = this.getType(instr, summProp);
+            this.setType(instr, summProp, summType.union(rcntType));
+        }
+
+        // Union the recent indexed property type into the
+        // summary type, translating the recent type
+        var rcntIdxType = translRefs(this.getType(instr, recentObj.idxProp));
+        var summIdxType = this.getType(instr, summaryObj.idxProp);
+        this.setType(instr, summaryObj.idxProp, summIdxType.union(rcntIdxType));
+
+        // Create a set on the instruction for values possibly having
+        // the recent object in their type set
+        if (instr.recentVals === undefined)
+            instr.recentVals = new HashSet();
+
+        // For each value possibly using the recent object
+        for (var itr = instr.recentVals.getItr(); itr.valid(); itr.next())
+        {
+            var value = itr.get();
+
+            // Translate recent object references
+            var inType = this.getType(instr, value);
+            var outType = translRefs(inType);
+            this.setType(instr, value, outType);
+        }
     }
 
     // Return a type set containing only the recent object
@@ -2006,6 +2001,10 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
 
             // If this is not a recent object, skip it
             if (obj.singleton === false)
+                continue;
+
+            // If the origin does not track recent values, skip it
+            if (origin.recentVals === undefined)
                 continue;
 
             // If the origin already defines this value, skip it
