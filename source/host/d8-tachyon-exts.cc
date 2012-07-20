@@ -733,30 +733,22 @@ v8::Handle<v8::Value> v8Proxy_getFuncAddr(const v8::Arguments& args)
 
 /*---------------------------------------------------------------------------*/
 
-// Temp profiler extensions
+// Profiler extensions
 
-v8::Handle<v8::Value> resumeV8Profile(const v8::Arguments& args)
+v8::Handle<v8::Value> startV8Profile(const v8::Arguments& args)
 {
-    fprintf(stderr, "[PROF] Resuming profiler\n");
+    fprintf(stderr, "[PROF] Starting V8 profiler\n");
 
-    fprintf(stderr, "Profiler currently deactivated\n");
-    exit(0);
-
-    // FIXME:
-    //V8::ResumeProfiler();
+    v8::V8::ResumeProfiler();
 
     return v8::Undefined();
 }
 
-v8::Handle<v8::Value> pauseV8Profile(const v8::Arguments& args)
+v8::Handle<v8::Value> stopV8Profile(const v8::Arguments& args)
 {
-    fprintf(stderr, "[PROF] Pausing profiler\n");
+    fprintf(stderr, "[PROF] Stopping V8 profiler\n");
 
-    fprintf(stderr, "Profiler currently deactivated\n");
-    exit(0);
-
-    // FIXME:
-    //V8::PauseProfiler();
+    v8::V8::PauseProfiler();
 
     return v8::Undefined();
 }
@@ -848,13 +840,13 @@ void init_d8_extensions(v8::Handle<v8::ObjectTemplate> global_template)
     );
 
     global_template->Set(
-        v8::String::New("resumeV8Profile"),
-        v8::FunctionTemplate::New(resumeV8Profile)
+        v8::String::New("startV8Profile"),
+        v8::FunctionTemplate::New(startV8Profile)
     );
 
     global_template->Set(
-        v8::String::New("pauseV8Profile"),
-        v8::FunctionTemplate::New(pauseV8Profile)
+        v8::String::New("stopV8Profile"),
+        v8::FunctionTemplate::New(stopV8Profile)
     );
 }
 

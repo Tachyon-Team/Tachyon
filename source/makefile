@@ -293,5 +293,5 @@ snapshot: makefile d8/d8-tachyon-exts.cc $(ALL_SRCS)
 	gzip -9 tachyon-snapshot.tar
 
 clean:
-	rm -f compiler/sources.js tachyon
+	rm -f compiler/sources.js tachyon tachyon64
 

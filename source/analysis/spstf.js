@@ -932,6 +932,8 @@ Run the analysis until fixed-point is reached
 */
 SPSTF.prototype.run = function ()
 {
+    //startV8Profile();
+
     // Start timing the analysis
     var startTimeMs = (new Date()).getTime();
 
@@ -969,6 +971,8 @@ SPSTF.prototype.run = function ()
 
     // Update the total analysis time
     this.totalTime += time;
+
+    //stopV8Profile();
 }
 
 /**
@@ -2006,10 +2010,6 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
             // If the origin does not track recent values, skip it
             if (origin.recentVals === undefined)
                 continue;
-
-            // If the origin already defines this value, skip it
-            if (this.hasOutDef(origin, value) === true)
-                continue;
            
             // If this is a local variable from a different function
             // than the object's origin, skip it
@@ -2017,8 +2017,9 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
                 value.parentBlock.parentCFG.ownerFunc !== origin.block.func.irFunc)
                 continue;
 
-            //print('adding: ' + value);
-            //print('  ' + value.parent.origin);
+            // If the origin already defines this value, skip it
+            if (this.hasOutDef(origin, value) === true)
+                continue;
 
             // Add the value to the list of recent values
             // and queue the object's origin instruction
