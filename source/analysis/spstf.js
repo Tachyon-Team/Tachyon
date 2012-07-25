@@ -996,6 +996,18 @@ SPSTF.prototype.instrItr = function ()
     );
     */
 
+    /*
+    if (instr.count === undefined)
+        instr.count = 0;
+
+    instr.count++;
+
+    //print(instr.count);
+
+    if (instr.count > 5)
+        print(instr + ' : ' + instr.count);
+    */    
+
     // Call the flow function for this instruction
     instr.flowFunc(this);
 
@@ -2737,8 +2749,26 @@ InitGlobalInstr.prototype.spstfFlowFunc = function (ta)
 
 BlankObjInstr.prototype.spstfFlowFunc = function (ta)
 {
+    // Test if this is a global object (not in a loop)
+    var isGlobal = false;
+    var curBlock = this.irInstr.parentBlock;
+    if (curBlock instanceof BasicBlock)
+    {
+        var curFunc = curBlock.parentCFG.ownerFunc;
+        var curEntry = curFunc.hirCFG.entry;
+        var isGlobal = curFunc.parentFunc === null && curBlock === curEntry;
+    }
+
     // Create a new object from the object prototype
-    var newObj = ta.newObject(this, 'obj', undefined, ta.objProto);
+    var newObj = ta.newObject(
+        this, 
+        'obj', 
+        undefined, 
+        ta.objProto,
+        undefined,
+        undefined,
+        isGlobal
+    );
 
     // The result is the new object
     ta.setOutType(this, newObj);
@@ -2830,6 +2860,7 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 obj.singleton === true &&
                 propNode !== obj.idxProp
             );
+
 
             // If we can do a strong update
             if (canAssignType === true)
