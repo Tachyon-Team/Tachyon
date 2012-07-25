@@ -2462,7 +2462,10 @@ SPSTF.prototype.funcCall = function (
             }
             else
             {
-                argType = (i-2 < argTypes.length)? argTypes[i-2]:TypeSet.undef;
+                if (argTypes instanceof Array)
+                    argType = (i-2 < argTypes.length)? argTypes[i-2]:TypeSet.undef;
+                else
+                    argType = argTypes;
             }
 
             // Set the type for this argument value
@@ -2513,6 +2516,16 @@ TypeProp.libHandlers.func_proto_r.call = function (callInstr, callCont)
 
     var thisType = this.getInType(callInstr, 2);
 
+    // If "this" contains null or undef, replace by the global object
+    if ((thisType.flags & (TypeFlags.UNDEF | TypeFlags.NULL)) !== 0)
+    {
+        thisType = thisType.restrict(
+            TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL)
+        );
+
+        thisType = thisType.union(this.globalObj);
+    }
+
     // Get the argument types
     var argTypes = [];
     for (var i = 3; i < callInstr.irInstr.uses.length; ++i)
@@ -2528,6 +2541,58 @@ TypeProp.libHandlers.func_proto_r.call = function (callInstr, callCont)
         calleeType, 
         thisType, 
         argTypes
+    );
+}
+
+/**
+Handler for the Function.prototype.apply function
+*/
+TypeProp.libHandlers.func_proto_r.apply = function (callInstr, callCont)
+{
+    // JSCallInstr apply func this arg_array
+
+    var calleeType = this.getInType(callInstr, 1);
+
+    var thisType = this.getInType(callInstr, 2);
+
+    // If "this" contains null or undef, replace by the global object
+    if ((thisType.flags & (TypeFlags.UNDEF | TypeFlags.NULL)) !== 0)
+    {
+        thisType = thisType.restrict(
+            TypeFlags.ANY & ~(TypeFlags.UNDEF | TypeFlags.NULL)
+        );
+
+        thisType = thisType.union(this.globalObj);
+    }
+
+    // Get the type for the argument array
+    var arrayType = this.getInType(callInstr, 3);
+
+    var argType = TypeSet.empty;
+
+    // Union the array property types into the argument type
+    for (var itr = arrayType.getObjItr(); itr.valid(); itr.next())
+    {
+        var obj = itr.get();
+
+        if ((obj.flags & TypeFlags.ARRAY) !== 0)
+        {
+            var idxType = this.getType(callInstr, obj.idxProp);
+            argType = argType.union(idxType);
+        }
+    }
+
+    // If the array type may be null or undefined, add undefined
+    if ((arrayType.flags & (TypeFlags.NULL | TypeFlags.UNDEF)) !== 0)
+        argType = argType.union(TypeSet.undef);
+
+    // Perform the function call
+    this.funcCall(
+        callInstr,
+        false,
+        calleeType, 
+        thisType, 
+        argType
     );
 }
 

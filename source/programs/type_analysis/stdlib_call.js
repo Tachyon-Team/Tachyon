@@ -1,6 +1,7 @@
 function foo(x, y)
 {
-    typeAssert(this, '"null"');
+    typeAssert(this, '["and", "object", ["not", "null"], ["not", "undef"]]');
+
     typeAssert(x, '["and", "int", ["not", ["val", 1]]]');
     typeAssert(y, '["and", "int", "string"]');
 }

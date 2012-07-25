@@ -457,6 +457,12 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/type_analysis/stdlib_apply.js',
+    undefined,
+    'notypeprop' // FIXME: no support for .call in TypeProp
+);
+
+makeTypeTest(
     'programs/type_analysis/regress_arith.js',
     undefined,
     'nostdlib'
