@@ -2350,6 +2350,187 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     return outType;
 }
 
+/**
+Implements function call semantics
+*/
+SPSTF.prototype.funcCall = function (
+    callInstr,
+    ctorCall,
+    calleeType,
+    thisType, 
+    argTypes
+)
+{
+    // If the callee could be any function
+    if (calleeType.flags === TypeFlags.ANY)
+    {
+        if (config.verbosity >= log.DEBUG)
+            print('*WARNING: callee has type ' + calleeType);
+
+        this.setOutType(callInstr, TypeSet.any);
+
+        // No callees to analyze
+        return;
+    }
+
+    // Get the call continuation block
+    var callCont = callInstr.targets[0];
+
+    // For each potential callee
+    for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
+    {
+        var callee = itr.get();
+
+        // If this is not a function, ignore it
+        if ((callee.func instanceof IRFunction) === false)
+            continue;
+
+        // If we have a handler for this function
+        if (ctorCall === false && callee.handler !== undefined)
+        {
+            // Call the handler function instead
+            callee.handler.call(this, callInstr, callCont);
+            continue;
+        }
+
+        // Get the SPSTFFunc instance for this value
+        var irFunc = callee.func;
+        var func = this.getFunc(irFunc);
+
+        // If this function is a new callee
+        if (arraySetHas(callInstr.callees, func) === false)
+        {
+            // Add the function to the callee set
+            arraySetAdd(callInstr.callees, func);
+
+            // Add this instruction to the set of callers of the function
+            arraySetAdd(func.callSites, callInstr);
+
+            // Queue the call site block for all live values at the function entry
+            for (var liveItr = func.entry.liveMap.getItr(); liveItr.valid(); liveItr.next())
+                this.queueBlock(callInstr.block, liveItr.get().key);
+
+            // Queue the return blocks for all values live in the call continuation
+            if (callCont instanceof SPSTFBlock)
+            {
+                for (var liveItr = callCont.liveMap.getItr(); liveItr.valid(); liveItr.next())
+                {
+                    var value = liveItr.get().key;
+                    for (var i = 0; i < func.retBlocks.length; ++i)
+                        this.queueBlock(func.retBlocks[i], value);
+                }
+            }
+
+            // Queue the return instructions
+            for (var i = 0; i < func.retBlocks.length; ++i)
+            {
+                var retInstr = func.retBlocks[i].getBranch();
+                this.queueInstr(retInstr, value);
+            }
+
+            // Add the callee's definitions to the caller's definitions
+            var caller = callInstr.block.func;
+            for (var defItr = func.defSet.getItr(); defItr.valid(); defItr.next())
+                this.addFuncDef(caller, defItr.get());
+
+            // Set the call type flags
+            if (ctorCall === true)
+                func.ctorCall = true;
+            else
+                func.normalCall = true;
+        }
+
+        // For each argument used by the function
+        for (var i = 0; i < func.argVals.length; ++i)
+        {
+            var argType;
+
+            // Get the incoming type for this argument
+            if (i === 0)
+            {
+                argType = new TypeSet(
+                    TypeFlags.FUNCTION, 
+                    undefined, 
+                    undefined, 
+                    undefined, 
+                    callee
+                );
+            }
+            else if (i === 1)
+            {
+                argType = thisType;
+            }
+            else
+            {
+                argType = (i-2 < argTypes.length)? argTypes[i-2]:TypeSet.undef;
+            }
+
+            // Set the type for this argument value
+            this.setType(callInstr, func.argVals[i], argType);
+        }
+
+        // If the callee uses the arguments object
+        if (irFunc.usesArguments === true)
+        {
+            // Indexed argument type
+            var idxArgType = TypeSet.empty;
+
+            // For each argument passed
+            for (var i = 0; i < argTypes.length; ++i)
+            {
+                var argType = argTypes[i];
+                idxArgType = idxArgType.union(argType);
+            }
+
+            // Set the indexed argument type
+            this.setType(callInstr, func.idxArgVal, idxArgType)
+        }
+    }
+}
+
+//=============================================================================
+//
+// Library function handlers
+//
+//=============================================================================
+
+/**
+Map of library handler functions. Maps global object tags to maps from 
+property names to handler functions.
+*/
+TypeProp.libHandlers = {
+    func_proto_r: {}
+};
+
+/**
+Handler for the Function.prototype.call function
+*/
+TypeProp.libHandlers.func_proto_r.call = function (callInstr, callCont)
+{
+    // JSCallInstr call func this arg*
+
+    var calleeType = this.getInType(callInstr, 1);
+
+    var thisType = this.getInType(callInstr, 2);
+
+    // Get the argument types
+    var argTypes = [];
+    for (var i = 3; i < callInstr.irInstr.uses.length; ++i)
+    {
+        var argType = this.getInType(callInstr, i);
+        argTypes.push(argType);
+    }
+
+    // Perform the function call
+    this.funcCall(
+        callInstr,
+        false,
+        calleeType, 
+        thisType, 
+        argTypes
+    );
+}
+
 //=============================================================================
 //
 // Per-instruction flow/transfer functions
@@ -2559,6 +2740,18 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
         for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
         {
             var obj = objItr.get();
+
+            // If this is a library function for which we have a handler
+            if ((valType.flags & TypeFlags.FUNCTION) !== 0 &&
+                valType.getNumObjs() === 1 &&
+                typeof propName === 'string' &&
+                TypeProp.libHandlers.hasOwnProperty(obj.tag) === true &&
+                TypeProp.libHandlers[obj.tag].hasOwnProperty(propName) === true)
+            {
+                // Set the handler function for the value object
+                var valObj = valType.getObjItr().get();
+                valObj.handler = TypeProp.libHandlers[obj.tag][propName];
+            }
 
             // Get the node for this property
             if (propName !== undefined)
@@ -3318,22 +3511,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     // Get the type set for the callee
     var calleeType = ta.getInType(this, 0);
 
-    // If the callee could be any function
-    if (calleeType.flags === TypeFlags.ANY)
-    {
-        if (config.verbosity >= log.DEBUG)
-            print('*WARNING: callee has type ' + calleeType);
-
-        ta.setOutType(this, TypeSet.any);
-
-        // Mark the call successors as reachable
-        for (var i = 0; i < this.targets.length; ++i)
-            ta.touchTarget(this, i);
-
-        // No callees to analyze
-        return;
-    }
-
     // Test if this is a new/constructor call
     var isNew = (this.irInstr instanceof JSNewInstr);
 
@@ -3341,7 +3518,7 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     var thisType = (isNew === false)? ta.getInType(this, 1):TypeSet.empty;
 
     // If there are no callees, get all argument types,
-    // this prevents type assetions from failing
+    // this prevents type assertions from failing
     // TODO: create pseudo TypeAssert function?
     if (calleeType.getNumObjs() === 0)
     {
@@ -3353,116 +3530,22 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
     for (var i = 0; i < this.targets.length; ++i)
         ta.touchTarget(this, i);
 
-    // Get the call continuation block
-    var callCont = this.targets[0];
-
-    // For each potential callee
-    for (var itr = calleeType.getObjItr(); itr.valid(); itr.next())
+    // Get the argument types
+    var argTypes = [];
+    for (var i = isNew? 1:2; i < this.irInstr.uses.length; ++i)
     {
-        var callee = itr.get();
-
-        // If this is not a function, ignore it
-        if ((callee.func instanceof IRFunction) === false)
-            continue;
-
-        // Get the SPSTFFunc instance for this value
-        var irFunc = callee.func;
-        var func = ta.getFunc(irFunc);
-
-        // If this function is a new callee
-        if (arraySetHas(this.callees, func) === false)
-        {
-            // Add the function to the callee set
-            arraySetAdd(this.callees, func);
-
-            // Add this instruction to the set of callers of the function
-            arraySetAdd(func.callSites, this);
-
-            // Queue the call site block for all live values at the function entry
-            for (var liveItr = func.entry.liveMap.getItr(); liveItr.valid(); liveItr.next())
-                ta.queueBlock(this.block, liveItr.get().key);
-
-            // Queue the return blocks for all values live in the call continuation
-            if (callCont instanceof SPSTFBlock)
-            {
-                for (var liveItr = callCont.liveMap.getItr(); liveItr.valid(); liveItr.next())
-                {
-                    var value = liveItr.get().key;
-                    for (var i = 0; i < func.retBlocks.length; ++i)
-                        ta.queueBlock(func.retBlocks[i], value);
-                }
-            }
-
-            // Queue the return instructions
-            for (var i = 0; i < func.retBlocks.length; ++i)
-            {
-                var retInstr = func.retBlocks[i].getBranch();
-                ta.queueInstr(retInstr, value);
-            }
-
-            // Add the callee's definitions to the caller's definitions
-            var caller = this.block.func;
-            for (var defItr = func.defSet.getItr(); defItr.valid(); defItr.next())
-                ta.addFuncDef(caller, defItr.get());
-
-            // Set the call type flags
-            if (isNew === true)
-                func.ctorCall = true;
-            else
-                func.normalCall = true;
-        }
-
-        // For each argument used by the function
-        for (var i = 0; i < func.argVals.length; ++i)
-        {
-            var argType;
-
-            // Get the incoming type for this argument
-            if (i === 0)
-            {
-                argType = new TypeSet(
-                    TypeFlags.FUNCTION, 
-                    undefined, 
-                    undefined, 
-                    undefined, 
-                    callee
-                );
-            }
-            else if (i === 1)
-            {
-                argType = thisType;
-            }
-            else
-            {
-                var useIdx = (isNew === true)? (i-1):i;
-
-                if (useIdx >= this.irInstr.uses.length)
-                    argType = TypeSet.undef;
-                else
-                    argType = ta.getInType(this, useIdx);
-            }
-
-            // Set the type for this argument value
-            ta.setType(this, func.argVals[i], argType);
-        }
-
-        // If the callee uses the arguments object
-        if (irFunc.usesArguments === true)
-        {
-            // Indexed argument type
-            var idxArgType = TypeSet.empty;
-
-            // For each argument passed
-            for (var i = (isNew? 1:2); i < this.irInstr.uses.length; ++i)
-            {
-                var argType = ta.getInType(this, i);
-                idxArgType = idxArgType.union(argType);
-            }
-
-            // Set the indexed argument type
-            ta.setType(this, func.idxArgVal, idxArgType)
-        }
+        var argType = ta.getInType(this, i);
+        argTypes.push(argType);
     }
+
+    // Perform the function call
+    ta.funcCall(
+        this,
+        isNew,
+        calleeType, 
+        thisType,
+        argTypes
+    );
 
     // Restrict the callee type in the continuation to functions
     var newCalleeType = calleeType.restrict(TypeFlags.FUNCTION);        
@@ -3472,12 +3555,6 @@ JSCallInstr.prototype.spstfFlowFunc = function (ta)
 // New/constructor call instruction
 // Handled by the same function as the regular call instruction
 JSNewInstr.prototype.spstfFlowFunc = JSCallInstr.prototype.spstfFlowFunc;
-
-// Call with apply instruction
-// TODO
-//CallApplyInstr.prototype.spstfFlowFunc = function (ta)
-//{
-//}
 
 // Function entry pseudo-instruction
 function SPSTFEntryInstr()
