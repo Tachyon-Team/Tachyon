@@ -502,7 +502,7 @@ SPSTF.prototype = new TypeAnalysis();
 /**
 Maximum number of edge removals for a given use
 */
-SPSTF.MAX_EDGE_REMS = 100;
+SPSTF.MAX_EDGE_REMS = 10;
 
 /**
 Initialize/reset the analysis

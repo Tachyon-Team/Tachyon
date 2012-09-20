@@ -37,9 +37,9 @@
 // scrambled to exercise the regexp engine on different input strings.
 
 
-var RegExp = new BenchmarkSuite('RegExp', 910985, [
-  new Benchmark("RegExp", RegExpRun, RegExpSetup, RegExpTearDown)
-]);
+//var RegExp = new BenchmarkSuite('RegExp', 910985, [
+//  new Benchmark("RegExp", RegExpRun, RegExpSetup, RegExpTearDown)
+//]);
 
 var regExpBenchmark = null;
 

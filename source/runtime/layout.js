@@ -764,7 +764,7 @@ MemLayout.prototype.genMethods = function ()
         ''
     );
 
-    // Generate th initialization function
+    // Generate the initialization function
     sourceStr += 'function init_' + this.name + '(ptr' + (varSize? ', size':'') + ')\n';
     sourceStr += '{\n';    
     sourceStr += '\t"tachyon:inline";\n';

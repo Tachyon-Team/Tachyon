@@ -24,11 +24,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
-                                      [new Benchmark('NavierStokes',
-                                                     runNavierStokes,
-                                                     setupNavierStokes,
-                                                     tearDownNavierStokes)]);
+//var NavierStokes = new BenchmarkSuite('NavierStokes', 1484000,
+//                                      [new Benchmark('NavierStokes',
+//                                                     runNavierStokes,
+//                                                     setupNavierStokes,
+//                                                     tearDownNavierStokes)]);
 
 var solver = null;
 

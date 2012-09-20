@@ -33,9 +33,9 @@
 // also has to deal with a lot of changes to the large tree object
 // graph.
 
-var Splay = new BenchmarkSuite('Splay', 81491, [
-  new Benchmark("Splay", SplayRun, SplaySetup, SplayTearDown)
-]);
+//var Splay = new BenchmarkSuite('Splay', 81491, [
+//  new Benchmark("Splay", SplayRun, SplaySetup, SplayTearDown)
+//]);
 
 
 // Configuration.
