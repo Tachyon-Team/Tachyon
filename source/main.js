@@ -111,7 +111,6 @@ function main()
         var taName = args.options['ta'];
 
         var analysis;
-
         switch (taName)
         {
             case true:
@@ -143,15 +142,10 @@ function main()
 
         print('Running ' + taName + ' analysis on: ' + args.files);
 
-        // Get the type analysis parameters
-        var useStdLib = !args.options['nostdlib'];
-        var outFile = args.options['outfile'];
-        var htmlFile = args.options['html'];
-
         // Run the type analysis
         try 
         {
-            analysis.testOnFiles(args.files, useStdLib);
+            analysis.testOnFiles(args.files, args.options);
         }
         catch (e)
         {
@@ -160,6 +154,10 @@ function main()
             else
                 print(e);
         }
+
+        // Get the output options
+        var outFile = args.options['outfile'];
+        var htmlFile = args.options['html'];
 
         // Output analysis results
         analysis.logResults(outFile);

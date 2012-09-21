@@ -495,7 +495,7 @@ SPSTFInstr.prototype.getValName = function ()
 function SPSTF()
 {
     // Initialize the type analysis
-    this.init();
+    this.init({});
 }
 SPSTF.prototype = new TypeAnalysis();
 
@@ -507,8 +507,13 @@ SPSTF.MAX_EDGE_REMS = 10;
 /**
 Initialize/reset the analysis
 */
-SPSTF.prototype.init = function ()
+SPSTF.prototype.init = function (options)
 {
+    /**
+    Option to disable edge removal during analysis
+    */
+    this.noEdgeRem = Boolean(options['noedgerem']);
+
     // Clear the object map
     TGObject.objMap.clear();
 
@@ -1812,6 +1817,10 @@ SPSTF.prototype.remEdge = function (
     use
 )
 {
+    // If edge removal is disabled, return
+    if (this.noEdgeRem == true)
+        return;
+
     /*
     print('Removing edge');
     print('  val : ' + def.value);

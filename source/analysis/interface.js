@@ -67,13 +67,16 @@ function TypeAnalysis()
 /**
 Test type analysis on a source file or a list of source files
 */
-TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
+TypeAnalysis.prototype.testOnFiles = function (fileList, options)
 {
     if (typeof fileList === 'string')
         fileList = [fileList];
 
-    // Clear existing analysis results
-    this.init();
+    // Get the relevant command-line options
+    var useStdLib = !options['nostdlib'];
+
+    // Clear existing analysis results and re-initialize the analysis
+    this.init(options);
 
     // Get the host and client compilation parameters
     var hostParams = config.hostParams;
@@ -107,7 +110,7 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, useStdlib)
     this.allUnits = [];
 
     // If the standard library should be included
-    if (useStdlib === true)
+    if (useStdLib === true)
     {
         // For each stdlib file
         for (var i = 0; i < libFiles.length; ++i)
