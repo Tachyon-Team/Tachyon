@@ -3740,7 +3740,8 @@ function refToIR(context)
 
 
     // FIXME: Hack: mark the ast node of the reference on the value
-    varValue.refNode = context.astNode
+    if ((varValue instanceof IRConst) === false)
+        varValue.refNode = context.astNode
 
 
     // The variable value is the output value

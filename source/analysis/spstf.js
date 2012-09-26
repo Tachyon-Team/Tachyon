@@ -806,11 +806,49 @@ SPSTF.prototype.getBlock = function (stump, func)
     return block;
 }
 
+
+var postOrderNo = 0;
+
+
 /**
 Get the SPSTFBlock instance for a given IR function
 */
 SPSTF.prototype.getFunc = function (irFunc)
 {
+
+    function compPostOrder(irFunc)
+    {
+        var stack = [irFunc.hirCFG.entry];
+
+        while (stack.length > 0)
+        {
+            var node = stack.pop();
+
+            // If this node was never visited
+            if (node.orderNo === undefined)
+            {
+                node.orderNo = 0;
+                stack.push(node);
+            }
+            else
+            {
+                node.orderNo = ++postOrderNo;
+                continue;
+            }
+
+            // Push the successors
+            for (var i = 0; i < node.succs.length; ++i)
+            {
+                var succ = node.succs[i];
+                if (succ.orderNo === undefined)
+                    stack.push(succ);
+            }
+        }
+    }
+
+
+
+
     assert (
         irFunc instanceof IRFunction,
         'expected IR function'
@@ -822,6 +860,10 @@ SPSTF.prototype.getFunc = function (irFunc)
     // If no representation has yet been created
     if (func === HashMap.NOT_FOUND)
     {
+
+        compPostOrder(irFunc);
+
+
         // Construct function representation
         var func = new SPSTFFunc(irFunc, 0, func);
 
@@ -882,6 +924,34 @@ SPSTF.prototype.queueBlock = function (block, value)
         'invalid value'
     );
 
+
+    
+ 
+    /*
+    var newItem = { block:block, value:value };
+
+    for (var itr = this.blockWorkList.getItr(); itr.valid(); itr.next())
+    {
+        var item = itr.get();
+
+        if (item.block.irBlock === null)
+            continue;
+
+        var curNo = item.block.irBlock.orderNo;
+
+        if (!block.irBlock || block.irBlock.orderNo < curNo)
+        {
+            //print('adding before');
+
+            this.blockWorkList.addBefore(newItem, itr);
+            return;
+        }
+    }
+
+    this.blockWorkList.addLast(newItem);
+    */
+
+    
     this.blockWorkList.addLast({ block:block, value:value });
 }
 
