@@ -233,11 +233,13 @@ TypeAnalysis.prototype.dumpTypes = function ()
 
     function visitInstr(instr, useTypes)
     {
-
-
-
-
-
+        for (var i = 0; i < instr.uses.length; ++i)
+        {
+            var use = instr.uses[i];
+            var type = useTypes[i];
+            if (use.refNode instanceof Ref)
+                logVarType(use.refNode, type);
+        }
     }
 
     function visitFunc(irFunc)

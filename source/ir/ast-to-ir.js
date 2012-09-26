@@ -981,6 +981,15 @@ Add an instruction at the end of the current block of this context
 */
 IRConvContext.prototype.addInstr = function (instr, outName)
 {
+    // FIXME: Hack: store the AST nodes for uses of the instruction
+    instr.refNodes = new Array(instr.uses.length);
+    for (var i = 0; i < instr.uses.length; ++i)
+    {
+        instr.refNodes[i] = instr.uses[i].refNode;
+        //pp(instr.refNodes[i]);
+    }
+
+
     var insBlock = (this.exitBlock !== undefined)
                    ? this.exitBlock
                    : this.entryBlock;
@@ -3728,6 +3737,11 @@ function refToIR(context)
         var curContext = varContext;
         var varValue = varValueVar;
     }
+
+
+    // FIXME: Hack: mark the ast node of the reference on the value
+    varValue.refNode = context.astNode
+
 
     // The variable value is the output value
     context.setOutput(curContext.entryBlock, varValue);
