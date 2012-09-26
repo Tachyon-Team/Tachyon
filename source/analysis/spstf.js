@@ -1124,6 +1124,11 @@ SPSTF.prototype.blockItr = function ()
     //    'Iterating block: ' + block.getName() /*+
     //    ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
     //);
+    /*
+    print(
+        'Iterating block/value: ' + block.getName() + ' / ' + value
+    );
+    */
 
     var that = this;
 
@@ -1458,7 +1463,7 @@ SPSTF.prototype.newObject = function (
     */
     function translRefs(inType)
     {
-        // If the value type contains the recent object
+        // If the value type doesn't contain the recent object
         if (inType.hasObj(recentObj) === false)
             return inType;
 

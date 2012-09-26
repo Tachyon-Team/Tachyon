@@ -167,15 +167,6 @@ Log information about analysis results
 */
 TypeAnalysis.prototype.logResults = function ()
 {
-    // Log analysis time
-    print('itr count: ' + this.itrCount);
-    if (this.blockItrCount !== undefined)
-        print('block itrs: ' + this.blockItrCount);
-    if (this.numEdges !== undefined)
-        print('num edges: ' + this.numEdges);
-    print('time: ' + this.totalTime.toFixed(2) + 's');
-    print('');
-
     // Dump info about functions analyzed
     this.dumpFunctions();
 
@@ -184,17 +175,24 @@ TypeAnalysis.prototype.logResults = function ()
 
     // Dump info about the instruction output types
     this.dumpTypes();
+    print('');
 
     // Compute and dump type statistics
     var stats = this.compTypeStats();
 
     // Print the statistics
-    if (stats)
-    {
-        for (var i = 0; i < stats.length; ++i)
-            print(stats[i]);
-        print('');
-    }
+    for (var i = 0; i < stats.length; ++i)
+        print(stats[i]);
+    print('');
+
+    // Log analysis time
+    print('itr count: ' + this.itrCount);
+    if (this.blockItrCount !== undefined)
+        print('block itrs: ' + this.blockItrCount);
+    if (this.numEdges !== undefined)
+        print('num edges: ' + this.numEdges);
+    print('time: ' + this.totalTime.toFixed(2) + 's');
+    print('');
 }
 
 /**
