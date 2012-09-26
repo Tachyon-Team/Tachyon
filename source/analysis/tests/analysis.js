@@ -56,7 +56,7 @@ function makeTypeTest(fileList, testName)
         testName = testName.substr(slashIdx + 1, periodIdx - slashIdx - 1);
     }
 
-    var useStdLib = true;
+    var noStdLib = false;
     var runTypeProp = true;
     var runSPSTF = true;
     var runProgram = true;
@@ -67,7 +67,7 @@ function makeTypeTest(fileList, testName)
 
         switch (flag)
         {
-            case 'nostdlib'     : useStdLib = false;    break;
+            case 'nostdlib'     : noStdLib = true;      break;
             case 'notypeprop'   : runTypeProp = false;  break;
             case 'nospstf'      : runSPSTF = false;     break;
             case 'norun'        : runProgram = false;   break;
@@ -88,7 +88,7 @@ function makeTypeTest(fileList, testName)
         {
             const params = config.hostParams;
             var analysis = new TypeProp(params);
-            analysis.testOnFiles(fileList, useStdLib);
+            analysis.testOnFiles(fileList, {'nostdlib':noStdLib});
         }
     }
 
@@ -98,7 +98,7 @@ function makeTypeTest(fileList, testName)
         {
             const params = config.hostParams;
             var analysis = new SPSTF(params);
-            analysis.testOnFiles(fileList, useStdLib);
+            analysis.testOnFiles(fileList, {'nostdlib':noStdLib});
         }
     }
 

@@ -1076,6 +1076,7 @@ SPSTF.prototype.blockItr = function ()
 
             var dests = def.dests;
 
+            /*
             // For each current dest of this definition
             for (var i = 0; i < dests.length; ++i)
             {
@@ -1085,6 +1086,7 @@ SPSTF.prototype.blockItr = function ()
                 if (useSet.has(use) === false)
                     that.remEdge(def, use);
             }
+            */
 
             // For each use in the incoming use set
             for (var itr = useSet.getItr(); itr.valid(); itr.next())
@@ -1593,6 +1595,7 @@ SPSTF.prototype.killUses = function (block, value)
 /**
 Reset the outputs of an instruction and its subgraph of successors
 */
+/*
 SPSTF.prototype.resetInstr = function (use, visited)
 {
     var workList = new LinkedList();
@@ -1628,41 +1631,6 @@ SPSTF.prototype.resetInstr = function (use, visited)
             }
         }
     }
-
-    /*
-    // Remove all definitions for a given instruction
-    function removeDefs(instr)
-    {
-        // For each target
-        for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
-        {
-            var defs = instr.outVals[targetIdx];
-
-            // For each definition
-            for (var defIdx = 0; defIdx < defs.length; ++defIdx)
-            {
-                var def = defs[defIdx];
-
-                // Remove all outgoing edges
-                for (var i = 0; i < def.dests.length; ++i)
-                {
-                    var dest = def.dests[i];
-
-                    arraySetRem(dest.srcs, def);
-                    ta.numEdges--;
-
-                    workList.addLast(dest);
-                }
-
-                // Queue the definition block for analysis
-                ta.queueBlock(instr.block, def.value);
-            }
-
-            // Remove all definitions for this instruction
-            instr.outVals[targetIdx] = [];
-        }
-    }
-    */
 
     // Reset a call instruction
     function resetCall(instr, use)
@@ -1758,6 +1726,7 @@ SPSTF.prototype.resetInstr = function (use, visited)
         }
     }
 }
+*/
 
 /**
 Add a def-use edge
@@ -1812,6 +1781,7 @@ SPSTF.prototype.addEdge = function (
 /**
 Remove a def-use edge
 */
+/*
 SPSTF.prototype.remEdge = function (
     def,
     use
@@ -1821,12 +1791,10 @@ SPSTF.prototype.remEdge = function (
     if (this.noEdgeRem == true)
         return;
 
-    /*
-    print('Removing edge');
-    print('  val : ' + def.value);
-    print('  from: ' + def.instr);
-    print('  to  : ' + use.instr);
-    */
+    //print('Removing edge');
+    //print('  val : ' + def.value);
+    //print('  from: ' + def.instr);
+    //print('  to  : ' + use.instr);
 
     assert (
         def.value === use.value,
@@ -1880,6 +1848,7 @@ SPSTF.prototype.remEdge = function (
 
     this.numEdges--;
 }
+*/
 
 /**
 Get the type set for a value

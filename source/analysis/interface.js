@@ -165,7 +165,7 @@ TypeAnalysis.prototype.testOnFiles = function (fileList, options)
 /**
 Log information about analysis results
 */
-TypeAnalysis.prototype.logResults = function (outFile)
+TypeAnalysis.prototype.logResults = function ()
 {
     // Log analysis time
     print('itr count: ' + this.itrCount);
@@ -182,6 +182,9 @@ TypeAnalysis.prototype.logResults = function (outFile)
     // Dump info about objects analyzed
     this.dumpObjects();
 
+    // Dump info about the instruction output types
+    this.dumpTypes();
+
     // Compute and dump type statistics
     var stats = this.compTypeStats();
 
@@ -191,37 +194,6 @@ TypeAnalysis.prototype.logResults = function (outFile)
         for (var i = 0; i < stats.length; ++i)
             print(stats[i]);
         print('');
-    }
-
-    // If an output file was specified
-    if (outFile)
-    {
-        var outCSV = '';
-
-        function writeRow()
-        {
-            for (var i = 0; i < arguments.length; ++i)
-                outCSV += arguments[i] + ',';
-
-            outCSV += '\n';
-        }
-
-        writeRow();
-        writeRow('benchmark', outFile);
-        writeRow();
-        writeRow('itr count', this.itrCount);
-        writeRow('time', this.totalTime.toFixed(2))
-        writeRow();
-
-        // Write the statistics
-        if (stats)
-        {
-            for (var i = 0; i < stats.length; ++i)
-                writeRow(stats[i].name, stats[i].getValue());
-        }
-
-        // Write the output file
-        writeFile(outFile, outCSV);
     }
 }
 
@@ -248,9 +220,75 @@ TypeAnalysis.prototype.fromLib = function (elem)
 }
 
 /**
+Dump info about the instruction output types gathered during analysis
+*/
+TypeAnalysis.prototype.dumpTypes = function ()
+{
+    const ta = this;
+
+    function logVarType(ast, type)
+    {
+        print(ast.id.toString() + ': ' + ast.loc.toString() + ' -> ' + type);
+    }
+
+    function visitInstr(instr, useTypes)
+    {
+
+
+
+
+
+    }
+
+    function visitFunc(irFunc)
+    {
+        // If this is library code, skip it
+        if (ta.fromLib(irFunc.hirCFG.entry) === true)
+            return;
+
+        // Visit the sub-functions
+        irFunc.childFuncs.forEach(visitFunc);
+
+        // For each block of the function
+        for (var i = 0; i < irFunc.hirCFG.blocks.length; ++i)
+        {
+            var block = irFunc.hirCFG.blocks[i];
+
+            // If the block wasn't visited, skip it
+            if (ta.blockVisited(block) === false)
+                continue;
+
+            // For each instruction of the block
+            for (var j = 0; j < block.instrs.length; ++j)
+            {
+                var instr = block.instrs[j];
+
+                // If this instruction wasn't visited, skip it
+                var outType = ta.getTypeSet(instr);
+                if (outType === null)
+                    continue;
+
+                // Get the use types for the instruction
+                var useTypes = [];
+                for (var k = 0; k < instr.uses.length; ++k)
+                {
+                    var type = ta.getTypeSet(instr, k);
+                    useTypes.push(type);
+                }
+
+                visitInstr(instr, useTypes);
+            }
+        }
+    }
+
+    // Visit all analyzed units
+    this.allUnits.forEach(visitFunc);
+}
+
+/**
 Compute statistics about type sets
 */
-TypeAnalysis.prototype.compTypeStats = function (outFile)
+TypeAnalysis.prototype.compTypeStats = function ()
 {
     const ta = this;
 
@@ -284,6 +322,27 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
     MaxStat.prototype.toString = function ()
     {
         return this.name + ': ' + this.getValue();
+    }
+
+    function CountStat(name)
+    {
+        this.name = name;
+        this.cnt = 0;
+    }
+
+    CountStat.prototype.count = function ()
+    {
+        this.cnt++;
+    }
+
+    CountStat.prototype.getValue = function ()
+    {
+        return String(this.cnt);
+    }
+
+    CountStat.prototype.toString = function ()
+    {
+        return this.name + ': ' + this.cnt;
     }
 
     function PercentStat(name)
@@ -322,15 +381,47 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
     // List of statistics to gather
     var stats = [];
 
-    function addStat(stat)
+    function addStat(stat, visitInstr, visitFunc)
     {
+        stat.visitInstr = visitInstr;
+        stat.visitFunc = visitFunc;
         stats.push(stat);
         return stat;
     }
 
-    var maxNumObjs  = addStat(new MaxStat('max obj set size'));
+    /*
+    May not be able to implement:
+    ==> Read variable nodes that are certain to never read absent variables:      99.9%
+    ==> Average type size in property reads:                                      1.689
+    ==> Average type size in variable reads:                                      1.098
+    ==> Average type size in all reads:                                           1.275
 
-    var getObj      = addStat(new PercentStat('getProp on object only'));
+    Variable reads resulting in singleton types:                                  3259
+    ==> Variable reads with singleton results:                                    92.71693%
+    ==> Reads with singleton results:                                             82.127914%
+    ==> Reads with at most one type:                                              4,122
+    ==> Reads with at least two types:                                            897
+    */
+
+    /*
+    addStat(
+        new MaxStat('max obj set size'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (outType instanceof TypeSet)
+                this.count(outType.getNumObjs());
+        }
+    );
+
+    addStat(
+        new PercentStat('getProp on object only'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+                this.count((useTypes[0].flags & ~TypeFlags.EXTOBJ) === 0);
+        }
+    );
+
     var getSingle   = addStat(new PercentStat('getProp on known object'));
     var getDef      = addStat(new PercentStat('getProp output not undef'));
 
@@ -343,32 +434,20 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
     var cmpInt      = addStat(new PercentStat('compare op on int & int'));
 
     var branchKnown = addStat(new PercentStat('branch direction known'));
+    */
 
-    function accumStats(instr)
+    /*
+    function visitInstr(instr)
     {
         assert (
             instr instanceof IRInstr,
             'invalid instruction'
         );
 
-        var outType = ta.getTypeSet(instr);
-
-        var useTypes = [];
-        for (var i = 0; i < instr.uses.length; ++i)
-        {
-            var type = ta.getTypeSet(instr, i);
-            useTypes.push(type);
-        }
-
-        if (outType instanceof TypeSet)
-            maxNumObjs.count(outType.getNumObjs());
-
         // Get property instruction
         if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
         {
             var u0 = useTypes[0];
-
-            getObj.count((u0.flags & ~TypeFlags.EXTOBJ) === 0);
 
             getSingle.count(
                 (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
@@ -427,24 +506,116 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
                 (u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
                 (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
             );
-
-            /*
-            if ((u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
-                (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE))
-            {
-                print('Known branch: ' + u0 + ' (' + instr.parentBlock.parentCFG.ownerFunc.funcName + ')');
-                print(instr.parentBlock);
-                print('');
-            }
-            */
         }
     }
+    */
 
+    addStat(
+        new PercentStat('Call/construct nodes that are certain to never call non-functions'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+            {
+                this.count(
+                    (useTypes[0].flags & ~TypeFlags.FUNCTION) === 0
+                );
+            }
+        }
+    );
+
+    addStat(
+        new PercentStat('Property access nodes that are certain to never have null/undef base'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+            {
+                this.count(
+                    (useTypes[0].flags & (TypeFlags.NULL | TypeFlags.UNDEF)) === 0
+                );
+            }
+        }
+    );
+
+    // TODO: does Moller separate int/float, true/false?
+    addStat(
+        new PercentStat('Property reads with singleton results'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+            {
+                var fl = useTypes[0].flags;
+
+                this.count(
+                    ((fl & ~TypeFlags.OBJEXT) && useTypes[0].getNumObjs() == 1) ||
+                    (fl === TypeFlags.TRUE) ||
+                    (fl === TypeFlags.FALSE) ||
+                    (fl === TypeFlags.NULL) ||
+                    (fl === TypeFlags.UNDEF) ||
+                    (fl === TypeFlags.STRING) ||
+                    (fl === TypeFlags.INT) ||
+                    (fl === TypeFlags.FLOAT)
+                );
+            }
+        }
+    );
+
+    // TODO: undef is not the same as missing
+    addStat(
+        new PercentStat('Fixed-property read nodes that are certain to never have absent property'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if ((instr instanceof GetPropInstr || instr instanceof GetGlobalInstr) == false)
+                return;
+
+            if (typeof instr.uses[1].value !== 'string')
+                return;
+
+            this.count(
+                (useTypes[0].flags & TypeFlags.UNDEF) === 0
+            );
+        }
+    );
+
+    addStat(
+        new CountStat('Total number of functions'),
+        undefined,
+        function visitFunc(func)
+        {
+            this.count();
+        }
+    );
+
+    addStat(
+        new CountStat('Number of unreachable functions'),
+        undefined,
+        function visitFunc(func)
+        {
+            // If the function's entry block wasn't visited, count it
+            if (ta.blockVisited(func.hirCFG.entry) === false)
+            {
+                print('Unreachable function: ' + func.getValName() + ' ' + func.astNode.loc.to_string());
+
+                this.count();
+            }
+        }
+    );
+
+    /**
+    Visit an IR function and update relevant statistics
+    */
     function visitFunc(irFunc)
     {
         // If this is library code, skip it
         if (ta.fromLib(irFunc.hirCFG.entry) === true)
             return;
+
+        // Update the statistics
+        for (var i = 0; i < stats.length; ++i)
+        {
+            var stat = stats[i];
+            if (stat.visitFunc)
+                stat.visitFunc.call(stat, irFunc);
+        }
 
         // Visit the sub-functions
         irFunc.childFuncs.forEach(visitFunc);
@@ -468,7 +639,21 @@ TypeAnalysis.prototype.compTypeStats = function (outFile)
                 if (outType === null)
                     continue;
 
-                accumStats(instr);
+                // Get the use types for the instruction
+                var useTypes = [];
+                for (var k = 0; k < instr.uses.length; ++k)
+                {
+                    var type = ta.getTypeSet(instr, k);
+                    useTypes.push(type);
+                }
+
+                // Update the statistics
+                for (var k = 0; k < stats.length; ++k)
+                {
+                    var stat = stats[k];
+                    if (stat.visitInstr)
+                        stat.visitInstr.call(stat, instr, outType, useTypes);
+                }
             }
         }
     }

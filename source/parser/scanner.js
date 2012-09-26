@@ -870,6 +870,10 @@ function Location(filename, start_pos, end_pos)
     };
 }
 
+Location.prototype.toString = function ()
+{
+    return this.to_string();
+}
 
 var NUL_CH         =   0;
 var BS_CH          =   8;

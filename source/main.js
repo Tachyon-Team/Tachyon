@@ -120,13 +120,8 @@ function main()
             break;
 
             //case true:
-            //taName = 'TypeProp';
             case 'TypeProp':
             analysis = new TypeProp();
-            break;
-
-            case 'MozTI':
-            analysis = new MozTI();
             break;
 
             default:
@@ -155,14 +150,11 @@ function main()
                 print(e);
         }
 
-        // Get the output options
-        var outFile = args.options['outfile'];
-        var htmlFile = args.options['html'];
-
         // Output analysis results
-        analysis.logResults(outFile);
+        analysis.logResults();
 
-        // Output HTML visualization
+        // Output HTML visualization if requested
+        var htmlFile = args.options['html'];
         if (htmlFile)
             analysis.writeHTML(htmlFile)
     }

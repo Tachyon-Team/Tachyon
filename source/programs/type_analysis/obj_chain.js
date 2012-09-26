@@ -10,5 +10,6 @@ o2.o = o1;
 
 o3.o.o.v = 3;
 
-typeAssert(o1.v, '["and", "int", ["not", "undef"]]');
+typeAssert(o1.v, '["and", "int"]');
+//typeAssert(o1.v, '["and", "int", ["not", "undef"]]');
 
