@@ -233,12 +233,17 @@ TypeAnalysis.prototype.dumpTypes = function ()
 
     function visitInstr(instr, useTypes)
     {
+        if (instr.refNodes === undefined)
+            return;
+
         for (var i = 0; i < instr.uses.length; ++i)
         {
             var use = instr.uses[i];
             var type = useTypes[i];
-            if (use.refNode instanceof Ref)
-                logVarType(use.refNode, type);
+            var refNode = instr.refNodes[i];
+
+            if (refNode instanceof Ref)
+                logVarType(refNode, type);
         }
     }
 
@@ -393,13 +398,11 @@ TypeAnalysis.prototype.compTypeStats = function ()
 
     /*
     May not be able to implement:
-    ==> Read variable nodes that are certain to never read absent variables:      99.9%
     ==> Average type size in property reads:                                      1.689
     ==> Average type size in variable reads:                                      1.098
     ==> Average type size in all reads:                                           1.275
 
     Variable reads resulting in singleton types:                                  3259
-    ==> Variable reads with singleton results:                                    92.71693%
     ==> Reads with singleton results:                                             82.127914%
     ==> Reads with at most one type:                                              4,122
     ==> Reads with at least two types:                                            897
@@ -538,29 +541,6 @@ TypeAnalysis.prototype.compTypeStats = function ()
         }
     );
 
-    // TODO: does Moller separate int/float, true/false?
-    addStat(
-        new PercentStat('Property reads with singleton results'),
-        function visitInstr(instr, outType, useTypes)
-        {
-            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
-            {
-                var fl = useTypes[0].flags;
-
-                this.count(
-                    ((fl & ~TypeFlags.OBJEXT) && useTypes[0].getNumObjs() == 1) ||
-                    (fl === TypeFlags.TRUE) ||
-                    (fl === TypeFlags.FALSE) ||
-                    (fl === TypeFlags.NULL) ||
-                    (fl === TypeFlags.UNDEF) ||
-                    (fl === TypeFlags.STRING) ||
-                    (fl === TypeFlags.INT) ||
-                    (fl === TypeFlags.FLOAT)
-                );
-            }
-        }
-    );
-
     // TODO: undef is not the same as missing
     addStat(
         new PercentStat('Fixed-property read nodes that are certain to never have absent property'),
@@ -575,6 +555,55 @@ TypeAnalysis.prototype.compTypeStats = function ()
             this.count(
                 (useTypes[0].flags & TypeFlags.UNDEF) === 0
             );
+        }
+    );
+
+    // TODO: does Moller separate int/float, true/false?
+    function isSingleton(type)
+    {
+        var fl = type.flags;
+
+        return (
+            ((fl & ~TypeFlags.OBJEXT) && type.getNumObjs() == 1) ||
+            (fl === TypeFlags.TRUE) ||
+            (fl === TypeFlags.FALSE) ||
+            (fl === TypeFlags.NULL) ||
+            (fl === TypeFlags.UNDEF) ||
+            (fl === TypeFlags.STRING) ||
+            (fl === TypeFlags.INT) ||
+            (fl === TypeFlags.FLOAT)
+        );
+    }
+
+    addStat(
+        new PercentStat('Property reads with singleton results'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+            {
+                this.count(
+                    isSingleton(useTypes[0])
+                );
+            }
+        }
+    );
+
+    addStat(
+        new PercentStat('Variable reads with singleton results'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr.refNodes === undefined)
+                return;
+
+            for (var i = 0; i < instr.uses.length; ++i)
+            {
+                if (instr.refNodes[i] instanceof Ref)
+                {
+                    this.count(
+                        isSingleton(useTypes[i])
+                    );
+                }
+            }
         }
     );
 
