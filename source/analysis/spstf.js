@@ -1092,7 +1092,7 @@ SPSTF.prototype.instrItr = function ()
     {
         print('instr produces any: ' + instr);
 
-        print('  ' + instr.block);
+        //print('  ' + instr.block);
 
         for (var i = 0; i < instr.irInstr.uses.length; ++i)
             print('  ' + this.getInType(instr, i));
@@ -2284,9 +2284,40 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
 
     // TODO: exception edge reachable for undef and null
 
+
+
+
+
+    /*
+    If we already visited an object (prototype), we already accounted for its
+    possible contribution. We should be safely able to skip it.
+    - Instead of depth, keep visited list
+
+
+
+    Do we need to copy this at each recursion level?
+    - Probably not, doesn't matter which branch visits it
+
+
+    Could technically make this function non-recursive...
+
+
+
+    */
+
+
+
+
+
+
+
     // If we have exceeded the maximum lookup depth
     if (depth > 8)
         throw  '*WARNING: maximum prototype chain lookup depth exceeded';
+
+
+
+
 
     // Output type set
     var outType = TypeSet.empty;
@@ -2852,13 +2883,14 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
     // Set the output type
     ta.setOutType(this, valType);
 
+    // If either the base or name are undetermined, do nothing for now
+    if (objType === TypeSet.empty || nameType === TypeSet.empty)
+        return;
+
     try
     {
         if (objType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp on any type';
-
-        if ((objType.flags & TypeFlags.EXTOBJ) === 0)
-            throw '*WARNING: putProp on non-object';
 
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
@@ -4139,9 +4171,11 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Box value to boolean conversion
     else if (callee.funcName === 'boxToBool')
     {
-        var val = ta.getInType(this, 2);
+        var val = ta.getInType(this, 3);
 
-        if (val.flags === TypeFlags.TRUE || val.flags === TypeFlags.FALSE)
+        if (val.flags === TypeFlags.EMPTY)
+            retType = TypeSet.empty;
+        else if (val.flags === TypeFlags.TRUE || val.flags === TypeFlags.FALSE)
             retType = val;
         else
             retType = TypeSet.bool;
@@ -4150,18 +4184,48 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Box value to string conversion
     else if (callee.funcName === 'boxToString')
     {
-        var valType = ta.getInType(this, 2);
+        var val = ta.getInType(this, 3);
 
-        if (valType.flags === TypeFlags.STRING)
-            retType = valType;
+        if (val.flags === TypeFlags.EMPTY)
+            retType = TypeSet.empty;
+        else if (val.flags === TypeFlags.STRING)
+            retType = val;
         else
             retType = TypeSet.string;
+    }
+
+    else if (callee.funcName === 'boxIsInt')
+    {
+        var val = ta.getInType(this, 3);
+
+        if (val.flags === TypeFlags.EMPTY)
+            retType = TypeSet.empty;
+        else if (val.flags === TypeFlags.INT)
+            retType = TypeSet.true;
+        else if ((val.flags & TypeFlags.INT) == 0)
+            retType = TypeSet.false;
+        else
+            retType = TypeSet.bool;
+    }
+
+    else if (callee.funcName === 'boxIsObj')
+    {
+        var val = ta.getInType(this, 3);
+
+        if (val.flags === TypeFlags.EMPTY)
+            retType = TypeSet.empty;
+        else if (val.flags === TypeFlags.OBJECT)
+            retType = TypeSet.true;
+        else if ((val.flags & TypeFlags.OBJECT) == 0)
+            retType = TypeSet.false;
+        else
+            retType = TypeSet.bool;
     }
 
     // Test if a value is the global object
     else if (callee.funcName === 'isGlobalObj')
     {
-        var valType = ta.getInType(this, 2);
+        var valType = ta.getInType(this, 3);
 
         if (valType.getNumObjs() === 1)
         {
