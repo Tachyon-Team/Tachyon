@@ -2284,33 +2284,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
 
     // TODO: exception edge reachable for undef and null
 
-
-
-
-
-    /*
-    If we already visited an object (prototype), we already accounted for its
-    possible contribution. We should be safely able to skip it.
-    - Instead of depth, keep visited list
-
-
-
-    Do we need to copy this at each recursion level?
-    - Probably not, doesn't matter which branch visits it
-
-
-    Could technically make this function non-recursive...
-
-
-
-    */
-
-
-
-
-
-
-
+    // TODO: use visited set/list instead
     // If we have exceeded the maximum lookup depth
     if (depth > 8)
         throw  '*WARNING: maximum prototype chain lookup depth exceeded';
@@ -2329,25 +2303,17 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     // If the object may be a number
     if (objType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
     {
-        // If this is a named property
-        if (typeof propName === 'string')
-        {
-            // Lookup the property on the number prototype
-            var protoProp = this.propLookup(instr, this.numProto, propName, depth + 1);
-            outType = outType.union(protoProp);
-        }
+        // Lookup the property on the number prototype
+        var protoProp = this.propLookup(instr, this.numProto, propName, depth + 1);
+        outType = outType.union(protoProp);
     }
 
     // If the object may be a boolean
     if (objType.flags & (TypeFlags.TRUE | TypeFlags.FALSE))
     {
-        // If this is a named property
-        if (typeof propName === 'string')
-        {
-            // Lookup the property on the boolean prototype
-            var protoProp = this.propLookup(instr, this.boolProto, propName, depth + 1);
-            outType = outType.union(protoProp);
-        }
+        // Lookup the property on the boolean prototype
+        var protoProp = this.propLookup(instr, this.boolProto, propName, depth + 1);
+        outType = outType.union(protoProp);
     }
 
     // If the object may be a string
@@ -2389,15 +2355,31 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
         // Otherwise, for normal properties
         else
         {
-            // Get the node for this property
-            if (typeof propName === 'string')
-                var propNode = this.getPropNode(obj, propName);
-            else
-                var propNode = obj.idxProp;
+            // If the property name is known
+            if (propName !== TypeSet.any)
+            {
+                // Get the node for this property
+                if (typeof propName === 'string')
+                    var propNode = this.getPropNode(obj, propName);
+                else
+                    var propNode = obj.idxProp;
 
-            // Get the type for this property node
-            var propType = this.getType(instr, propNode)
-        
+                // Get the type for this property node
+                var propType = this.getType(instr, propNode)
+            }
+            else
+            {
+                var propType = TypeSet.empty;
+
+                for (propName in obj.props)
+                {
+                    var propNode = this.getPropNode(obj, propName);
+                    propType = propType.union(this.getType(instr, propNode));
+                }
+
+                propType = propType.union(this.getType(instr, obj.idxProp));
+            }
+
             // If this property may be missing or this is an unbounded array access
             if (propType.flags & TypeFlags.MISSING || propName === false)
             {
@@ -2460,7 +2442,7 @@ SPSTF.prototype.funcCall = function (
     // If the callee could be any function
     if (calleeType.flags === TypeFlags.ANY)
     {
-        if (config.verbosity >= log.DEBUG)
+        //if (config.verbosity >= log.DEBUG)
             print('*WARNING: callee has type ' + calleeType);
 
         this.setOutType(callInstr, TypeSet.any);
@@ -2946,7 +2928,6 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
                 propNode !== obj.idxProp
             );
 
-
             // If we can do a strong update
             if (canAssignType === true)
             {
@@ -2973,10 +2954,10 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
         if (e instanceof Error)
             throw e;
 
-        if (config.verbosity >= log.DEBUG)
+        //if (config.verbosity >= log.DEBUG)
         {
             print(e);
-            print(this);
+            //print(this);
         }
     }
 
@@ -3067,21 +3048,18 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
     try
     {
         // If the property name could be anything
-        if (nameType.flags === TypeFlags.ANY)
-            throw '*WARNING: getProp with any name';
-
-        // If this is not a string constant or an integer
-        if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
-            nameType.flags !== TypeFlags.INT)
-            throw '*WARNING: getProp with unknown property name: ' + nameType;
+        if (objType.flags === TypeFlags.ANY)
+            throw '*WARNING: getProp with any object';
 
         // If the property name is a string
         var propName;
-        if (nameType.flags === TypeFlags.STRING)
+        if (nameType.flags === TypeFlags.STRING && nameType.strVal !== undefined)
         {
             propName = nameType.strVal;
         }
-        else
+
+        // If the property name is an integer
+        else if (nameType.flags === TypeFlags.INT)
         {
             // TODO: more generic test for pos int, int < arr.length
 
@@ -3098,6 +3076,12 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
             }
         }
 
+        // The property name could be anything
+        else
+        {
+            propName = TypeSet.any;
+        }
+
         // Perform the property lookup
         var outType = ta.propLookup(this, objType, propName, 0);
 
@@ -3110,10 +3094,10 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
         if (e instanceof Error)
             throw e;
 
-        if (config.verbosity >= log.DEBUG)
+        //if (config.verbosity >= log.DEBUG)
         {
             print(e);
-            print(this);
+            //print(this);
         }
 
         ta.setOutType(this, TypeSet.any);

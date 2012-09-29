@@ -524,13 +524,6 @@ makeTypeTest(
 );
 
 makeTypeTest(
-    'programs/sunspider/3d-morph.js',
-    undefined,
-    'nostdlib',
-    'norun'
-);
-
-makeTypeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     undefined,
     'nostdlib',
@@ -588,6 +581,19 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/sunspider/3d-morph.js',
+    undefined,
+    'norun'
+);
+
+makeTypeTest(
+    'programs/sunspider/3d-cube.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
     'programs/sunspider/crypto-sha1.js',
     undefined,
     'notypeprop',
@@ -596,6 +602,13 @@ makeTypeTest(
 
 makeTypeTest(
     'programs/sunspider/crypto-md5.js',
+    undefined,
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
+    'programs/sunspider/crypto-aes.js',
     undefined,
     'notypeprop',
     'norun'
@@ -668,8 +681,6 @@ makeTypeTest(
     'notypeprop',
     'norun'
 );
-
-// TODO: sunspider/crypto-aes, currently somewhat slow
 
 // TODO: v8bench/crypto, currently very slow
 
