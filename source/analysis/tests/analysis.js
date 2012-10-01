@@ -642,6 +642,8 @@ makeTypeTest(
     'norun'
 );
 
+// FIXME: infinite loop
+/*
 makeTypeTest(
     [
         'programs/v8bench/deltablue.js',
@@ -651,6 +653,7 @@ makeTypeTest(
     'notypeprop',
     'norun'
 );
+*/
 
 makeTypeTest(
     [

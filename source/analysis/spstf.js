@@ -2277,21 +2277,15 @@ SPSTF.prototype.getPropNode = function (obj, propName)
 /**
 Perform a property lookup with recursive prototype chain search
 */
-SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
+SPSTF.prototype.propLookup = function (instr, objType, propName, visited)
 {
+    if (visited === undefined)
+        visited = [];
+
     if (objType.flags === TypeFlags.ANY)
         throw '*WARNING: getProp on any type';
 
     // TODO: exception edge reachable for undef and null
-
-    // TODO: use visited set/list instead
-    // If we have exceeded the maximum lookup depth
-    if (depth > 8)
-        throw  '*WARNING: maximum prototype chain lookup depth exceeded';
-
-
-
-
 
     // Output type set
     var outType = TypeSet.empty;
@@ -2304,7 +2298,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     if (objType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
     {
         // Lookup the property on the number prototype
-        var protoProp = this.propLookup(instr, this.numProto, propName, depth + 1);
+        var protoProp = this.propLookup(instr, this.numProto, propName, visited);
         outType = outType.union(protoProp);
     }
 
@@ -2312,7 +2306,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     if (objType.flags & (TypeFlags.TRUE | TypeFlags.FALSE))
     {
         // Lookup the property on the boolean prototype
-        var protoProp = this.propLookup(instr, this.boolProto, propName, depth + 1);
+        var protoProp = this.propLookup(instr, this.boolProto, propName, visited);
         outType = outType.union(protoProp);
     }
 
@@ -2329,7 +2323,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
         else if (typeof propName === 'string')
         {
             // Lookup the property on the string prototype
-            var protoProp = this.propLookup(instr, this.strProto, propName, depth + 1);
+            var protoProp = this.propLookup(instr, this.strProto, propName, visited);
             outType = outType.union(protoProp);
         }
 
@@ -2345,6 +2339,13 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
     for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
     {
         var obj = objItr.get();
+
+        // If the object was already visited, skip it
+        if (arraySetHas(visited, obj) === true)
+            continue;
+
+        // Mark the object as visited
+        arraySetAdd(visited, obj);
 
         // If this is the length property of an array
         if (obj.flags === TypeFlags.ARRAY && propName === 'length')
@@ -2391,7 +2392,7 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, depth)
                 if (protoType.flags & ~TypeFlags.NULL)
                 {
                     // Do a recursive lookup on the prototype
-                    var protoProp = this.propLookup(instr, protoType, propName, depth + 1);
+                    var protoProp = this.propLookup(instr, protoType, propName, visited);
 
                     // If we know for sure this property is missing
                     if (propType.flags === TypeFlags.MISSING)
@@ -3083,7 +3084,7 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
         }
 
         // Perform the property lookup
-        var outType = ta.propLookup(this, objType, propName, 0);
+        var outType = ta.propLookup(this, objType, propName);
 
         ta.setOutType(this, outType);
     }
@@ -3552,6 +3553,14 @@ JSNsInstr.prototype.spstfFlowFunc = function (ta)
         outType = (v0.strVal !== v1.strVal)? TypeSet.true:TypeSet.false;
     }
 
+    // If both values are equal constants
+    else if (
+        (v0.flags === TypeFlags.UNDEF && v1.flags == TypeFlags.UNDEF) ||
+        (v0.flags === TypeFlags.NULL && v1.flags == TypeFlags.NULL))
+    {
+        outType = TypeSet.false;
+    }
+
     ta.setOutType(this, outType);
 }
 
@@ -3746,7 +3755,7 @@ SPSTFEntryInstr.prototype.spstfFlowFunc = function (ta)
         var thisType = ta.getType(this, func.argVals[1]);
 
         // Lookup the "prototype" property of the callee
-        var protoType = ta.propLookup(this, calleeType, 'prototype', 0);
+        var protoType = ta.propLookup(this, calleeType, 'prototype');
 
         //print('calleeType : ' + calleeType);
         //print('  protoType: ' + protoType);
