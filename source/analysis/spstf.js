@@ -2277,28 +2277,92 @@ SPSTF.prototype.getPropNode = function (obj, propName)
 /**
 Perform a property lookup with recursive prototype chain search
 */
-SPSTF.prototype.propLookup = function (instr, objType, propName, visited)
+SPSTF.prototype.propLookup = function (instr, objType, nameType, visited)
 {
+    // Test if this is a bounded arguments object propery access
+    function boundedArgsGet(instr)
+    {
+        function isArgObj(valDef)
+        {
+            return (
+                valDef instanceof CallFuncInstr && 
+                valDef.uses[0] instanceof IRFunction &&
+                valDef.uses[0].funcName === 'makeArgObj'
+            );
+        }        
+
+        function allDestsGet(valDef)
+        {
+            for (var i = 0; i < valDef.dests.length; ++i)
+                if ((valDef.dests[i] instanceof GetPropInstr) === false)
+                    return false;
+
+            return true;
+        }
+
+        function idxBounded(valDef, idx, curBlock, depth)
+        {
+            if (depth >= 5)
+                return false;
+
+            if (curBlock.preds.length === 0)
+                return false;
+
+            // For each predecessor
+            for (var i = 0; i < curBlock.preds.length; ++i)
+            {
+                var pred = curBlock.preds[i];
+
+                var branch = pred.getLastInstr();
+
+                if (branch instanceof IfInstr && 
+                    branch.uses[1] === IRConst.getConst(true) &&
+                    branch.uses[0] instanceof JSLtInstr &&
+                    branch.uses[0].uses[0] === idx &&
+                    branch.uses[0].uses[1] instanceof GetPropInstr &&
+                    branch.uses[0].uses[1].uses[0] === valDef &&
+                    branch.uses[0].uses[1].uses[1] === IRConst.getConst('length') &&
+                    branch.targets[0] === curBlock)
+                {
+                    continue;
+                }
+                
+                if (idxBounded(valDef, idx, pred, depth + 1) === false)
+                    return false;
+            }
+
+            return true;
+        }
+
+        var valDef = instr.uses[0];
+        var idx = instr.uses[1];
+        var curBlock = instr.parentBlock;
+
+        if (isArgObj(valDef) === true &&
+            allDestsGet(valDef) === true && 
+            idxBounded(valDef, idx, curBlock, 0) === true)
+            return true;
+
+        return false;
+    }
+
+    if (typeof nameType === 'string')
+        nameType = TypeSet.constant(nameType);
+
     if (visited === undefined)
         visited = [];
 
     if (objType.flags === TypeFlags.ANY)
-        throw '*WARNING: getProp on any type';
-
-    // TODO: exception edge reachable for undef and null
+        throw '*WARNING: getProp base has any type';
 
     // Output type set
     var outType = TypeSet.empty;
-
-    //print('depth ' + depth);
-    //print('obj type : ' + objType);
-    //print('prop name: ' + propName + ' ' + (typeof propName));
 
     // If the object may be a number
     if (objType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
     {
         // Lookup the property on the number prototype
-        var protoProp = this.propLookup(instr, this.numProto, propName, visited);
+        var protoProp = this.propLookup(instr, this.numProto, nameType, visited);
         outType = outType.union(protoProp);
     }
 
@@ -2306,29 +2370,34 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, visited)
     if (objType.flags & (TypeFlags.TRUE | TypeFlags.FALSE))
     {
         // Lookup the property on the boolean prototype
-        var protoProp = this.propLookup(instr, this.boolProto, propName, visited);
+        var protoProp = this.propLookup(instr, this.boolProto, nameType, visited);
         outType = outType.union(protoProp);
     }
 
     // If the object may be a string
     if (objType.flags & TypeFlags.STRING)
     {
-        // If this is the length property
-        if (propName === 'length')
+        // If this may be the length property
+        if (nameType.strVal === 'length')
         {
             outType = outType.union(TypeSet.posInt);
         }
 
-        // If this is a named property
-        else if (typeof propName === 'string')
+        // If this may be any string property
+        else if (nameType.flags & TypeFlags.STRING)
         {
             // Lookup the property on the string prototype
-            var protoProp = this.propLookup(instr, this.strProto, propName, visited);
+            var protoProp = this.propLookup(
+                instr, 
+                this.strProto, 
+                nameType.restrict(TypeFlags.ANY & ~TypeFlags.INT & ~TypeFlags.FLOAT),
+                visited
+            );
             outType = outType.union(protoProp);
         }
 
-        // Otherwise, this is an index property
-        else
+        // If this may be an index property
+        if (nameType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
         {
             // This is a substring
             outType = outType.union(TypeSet.string);
@@ -2347,79 +2416,99 @@ SPSTF.prototype.propLookup = function (instr, objType, propName, visited)
         // Mark the object as visited
         arraySetAdd(visited, obj);
 
-        // If this is the length property of an array
-        if (obj.flags === TypeFlags.ARRAY && propName === 'length')
+        var propType = TypeSet.empty;
+
+        // If the property name could be anything
+        if ((nameType.flags & TypeFlags.STRING && !nameType.strVal) ||
+            (nameType.flags & TypeFlags.OBJEXT) ||
+            (nameType.flags & TypeFlags.NULL)   ||
+            (nameType.flags & TypeFlags.UNDEF)  ||
+            (nameType.flags & TypeFlags.TRUE)   ||
+            (nameType.flags & TypeFlags.FALSE))
         {
-            outType = outType.union(TypeSet.posInt)
+            // Union all property types
+            for (propName in obj.props)
+            {
+                var propNode = this.getPropNode(obj, propName);
+                propType = propType.union(this.getType(instr, propNode));
+            }
+            propType = propType.union(this.getType(instr, obj.idxProp));
         }
 
-        // Otherwise, for normal properties
+        // The property type is not anything
         else
-        {
-            // If the property name is known
-            if (propName !== TypeSet.any)
+        {       
+            // If this may the length property of an array
+            if (obj.flags === TypeFlags.ARRAY && nameType.strVal === 'length')
             {
-                // Get the node for this property
-                if (typeof propName === 'string')
-                    var propNode = this.getPropNode(obj, propName);
-                else
-                    var propNode = obj.idxProp;
-
-                // Get the type for this property node
-                var propType = this.getType(instr, propNode)
-            }
-            else
-            {
-                var propType = TypeSet.empty;
-
-                for (propName in obj.props)
-                {
-                    var propNode = this.getPropNode(obj, propName);
-                    propType = propType.union(this.getType(instr, propNode));
-                }
-
-                propType = propType.union(this.getType(instr, obj.idxProp));
+                propType = propType.union(TypeSet.posInt);
             }
 
-            // If this property may be missing or this is an unbounded array access
-            if (propType.flags & TypeFlags.MISSING || propName === false)
+            // If the property may be another string
+            else if (nameType.flags & TypeFlags.STRING)
             {
-                // Get the type for the object's prototype
-                var protoNode = obj.proto;
-                var protoType = this.getType(instr, protoNode);
-
-                // If the prototype is not necessarily null
-                if (protoType.flags & ~TypeFlags.NULL)
-                {
-                    // Do a recursive lookup on the prototype
-                    var protoProp = this.propLookup(instr, protoType, propName, visited);
-
-                    // If we know for sure this property is missing
-                    if (propType.flags === TypeFlags.MISSING)
-                    {
-                        // Take the prototype property type as-is
-                        propType = protoProp;
-                    }
-                    else
-                    {
-                        // Union the prototype property type
-                        propType = propType.union(protoProp);
-                    }
-                }
-
-                // If the prototype may be null, add the undefined type
-                if (protoType.flags & TypeFlags.NULL)
-                {
-                    propType = propType.union(TypeSet.undef);
-                }
-
-                // Remove the missing flag from the property type
-                propType = propType.restrict(propType.flags & (~TypeFlags.MISSING));
+                var propType = propType.union(
+                    this.getType(
+                        instr,
+                        this.getPropNode(obj, nameType.strVal)
+                    )
+                );
             }
 
-            // Union the types for this property into the type set
-            outType = outType.union(propType);
+            // If the property may be a numeric
+            if (nameType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
+            {
+                var propType = propType.union(
+                    this.getType(
+                        instr,
+                        obj.idxProp
+                    )
+                );
+
+                // If this is an unbounded array access
+                if (boundedArgsGet(instr.irInstr) === false)
+                    propType = propType.union(TypeSet.missing);
+            }
         }
+
+        // If this property may be missing
+        if (propType.flags & TypeFlags.MISSING)
+        {
+            // Get the type for the object's prototype
+            var protoNode = obj.proto;
+            var protoType = this.getType(instr, protoNode);
+
+            // If the prototype is not necessarily null
+            if (protoType.flags & ~TypeFlags.NULL)
+            {
+                // Do a recursive lookup on the prototype
+                var protoProp = this.propLookup(instr, protoType, nameType, visited);
+
+                // If we know for sure this property is missing
+                if (propType.flags === TypeFlags.MISSING)
+                {
+                    // Take the prototype property type as-is
+                    propType = protoProp;
+                }
+                else
+                {
+                    // Union the prototype property type
+                    propType = propType.union(protoProp);
+                }
+            }
+
+            // If the prototype may be null, add the undefined type
+            if (protoType.flags & TypeFlags.NULL)
+            {
+                propType = propType.union(TypeSet.undef);
+            }
+
+            // Remove the missing flag from the property type
+            propType = propType.restrict(propType.flags & (~TypeFlags.MISSING));
+        }
+
+        // Union the types for this property into the type set
+        outType = outType.union(propType);
     }
 
     //print('depth: ' + depth);
@@ -2870,6 +2959,42 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
     if (objType === TypeSet.empty || nameType === TypeSet.empty)
         return;
 
+    // Test if there is a single, known object type
+    var singleType = (
+        objType.getNumObjs() === 1 && 
+        (objType & ~TypeFlags.EXTOBJ) === 0
+    );
+
+    var instr = this;
+
+    function updateProp(obj, propNode, valType)
+    {
+        // Test if we can overwrite the current property type
+        var canAssignType = (
+            singleType === true && 
+            obj.singleton === true &&
+            propNode !== obj.idxProp
+        );
+
+        // If we can do a strong update
+        if (canAssignType === true)
+        {
+            //print('strong update');
+
+            // Do a strong update on the property type
+            ta.setType(instr, propNode, valType);
+        }
+        else
+        {
+            //print('weak update');
+
+            // Union with the current property type
+            var propType = ta.getType(instr, propNode);
+            var newType = propType.union(valType);
+            ta.setType(instr, propNode, newType);
+        }
+    }
+
     try
     {
         if (objType.flags === TypeFlags.ANY)
@@ -2878,26 +3003,12 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
         if (nameType.flags === TypeFlags.ANY)
             throw '*WARNING: putProp with any name';
 
-        // Test if there is a single, known object type
-        var singleType = (
-            objType.getNumObjs() === 1 && 
-            (objType & ~TypeFlags.EXTOBJ) === 0
-        );
-
-        // Get a reference to this function
-        var func = this.block.func;
-
-        // If this is not a string constant or an integer
-        if ((nameType.flags !== TypeFlags.STRING || nameType.strVal === undefined) &&
-            nameType.flags !== TypeFlags.INT)
-            throw '*WARNING: putProp with unknown property name: ' + nameType;
-
-        // Get the property name string, if any
-        var propName = (nameType.flags === TypeFlags.STRING)? nameType.strVal:undefined;
-
-        // If writing to an array property, add the undefined type
-        if (nameType.flags === TypeFlags.INT)
-            valType = valType.union(TypeSet.undef);
+        // If the name type cannot be fully handled
+        if (nameType.flags & TypeFlags.TRUE ||
+            nameType.flags & TypeFlags.FALSE ||
+            nameType.flags & TypeFlags.EXTOBJ ||
+            ((nameType.flags & TypeFlags.STRING) && nameType.strVal === undefined))
+            throw '*WARNING: putProp with unhandled property type: ' + nameType;
 
         // For each possible object
         for (var objItr = objType.getObjItr(); objItr.valid(); objItr.next())
@@ -2907,44 +3018,56 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
             // If this is a library function for which we have a handler
             if ((valType.flags & TypeFlags.FUNCTION) !== 0 &&
                 valType.getNumObjs() === 1 &&
-                typeof propName === 'string' &&
+                nameType.flags === TypeFlags.STRING &&
+                nameType.strVal !== undefined &&
                 TypeProp.libHandlers.hasOwnProperty(obj.tag) === true &&
-                TypeProp.libHandlers[obj.tag].hasOwnProperty(propName) === true)
+                TypeProp.libHandlers[obj.tag].hasOwnProperty(nameType.strVal) === true)
             {
                 // Set the handler function for the value object
+                var propName = nameType.strVal;
                 var valObj = valType.getObjItr().get();
                 valObj.handler = TypeProp.libHandlers[obj.tag][propName];
             }
 
-            // Get the node for this property
-            if (propName !== undefined)
-                var propNode = ta.getPropNode(obj, propName);
-            else
-                var propNode = obj.idxProp;
-
-            // Test if we can overwrite the current property type
-            var canAssignType = (
-                singleType === true && 
-                obj.singleton === true &&
-                propNode !== obj.idxProp
-            );
-
-            // If we can do a strong update
-            if (canAssignType === true)
+            // If the name may be a specific string
+            if ((nameType.flags & TypeFlags.STRING) && nameType.strVal !== undefined)
             {
-                //print('strong update');
-
-                // Do a strong update on the property type
-                ta.setType(this, propNode, valType);
+                updateProp(
+                    obj,
+                    ta.getPropNode(obj, nameType.strVal),
+                    valType
+                );
             }
-            else
-            {
-                //print('weak update');
 
-                // Union with the current property type
-                var propType = ta.getType(this, propNode);
-                var newType = propType.union(valType);
-                ta.setType(this, propNode, newType);
+            // If the property may be numeric (indexed)
+            if (nameType.flags & (TypeFlags.INT | TypeFlags.FLOAT))
+            {
+                // If writing to an array property, add the undefined type
+                updateProp(
+                    obj,
+                    obj.idxProp,
+                    valType.union(TypeSet.undef)
+                );
+            }
+
+            // If the name may be the undefined value
+            if (nameType.flags & TypeFlags.UNDEF)
+            {
+                updateProp(
+                    obj,
+                    ta.getPropNode(obj, "undefined"),
+                    valType
+                );
+            }
+
+            // If the name may be the null value
+            if (nameType.flags & TypeFlags.NULL)
+            {
+                updateProp(
+                    obj,
+                    ta.getPropNode(obj, "null"),
+                    valType
+                );
             }
         }
     }
@@ -2955,11 +3078,8 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
         if (e instanceof Error)
             throw e;
 
-        //if (config.verbosity >= log.DEBUG)
-        {
-            print(e);
-            //print(this);
-        }
+        print(e);
+        //print(this);
     }
 
     // The object cannot be undefined or null along the normal branch
@@ -2969,73 +3089,6 @@ PutPropInstr.prototype.spstfFlowFunc = function (ta)
 
 GetPropInstr.prototype.spstfFlowFunc = function (ta)
 {
-    // Test if this is a bounded arguments object propery access
-    function boundedArgsGet(instr)
-    {
-        function isArgObj(valDef)
-        {
-            return (
-                valDef instanceof CallFuncInstr && 
-                valDef.uses[0] instanceof IRFunction &&
-                valDef.uses[0].funcName === 'makeArgObj'
-            );
-        }        
-
-        function allDestsGet(valDef)
-        {
-            for (var i = 0; i < valDef.dests.length; ++i)
-                if ((valDef.dests[i] instanceof GetPropInstr) === false)
-                    return false;
-
-            return true;
-        }
-
-        function idxBounded(valDef, idx, curBlock, depth)
-        {
-            if (depth >= 5)
-                return false;
-
-            if (curBlock.preds.length === 0)
-                return false;
-
-            // For each predecessor
-            for (var i = 0; i < curBlock.preds.length; ++i)
-            {
-                var pred = curBlock.preds[i];
-
-                var branch = pred.getLastInstr();
-
-                if (branch instanceof IfInstr && 
-                    branch.uses[1] === IRConst.getConst(true) &&
-                    branch.uses[0] instanceof JSLtInstr &&
-                    branch.uses[0].uses[0] === idx &&
-                    branch.uses[0].uses[1] instanceof GetPropInstr &&
-                    branch.uses[0].uses[1].uses[0] === valDef &&
-                    branch.uses[0].uses[1].uses[1] === IRConst.getConst('length') &&
-                    branch.targets[0] === curBlock)
-                {
-                    continue;
-                }
-                
-                if (idxBounded(valDef, idx, pred, depth + 1) === false)
-                    return false;
-            }
-
-            return true;
-        }
-
-        var valDef = instr.uses[0];
-        var idx = instr.uses[1];
-        var curBlock = instr.parentBlock;
-
-        if (isArgObj(valDef) === true &&
-            allDestsGet(valDef) === true && 
-            idxBounded(valDef, idx, curBlock, 0) === true)
-            return true;
-
-        return false;
-    }
-
     var objType = ta.getInType(this, 0);
     var nameType = ta.getInType(this, 1);
 
@@ -3048,44 +3101,8 @@ GetPropInstr.prototype.spstfFlowFunc = function (ta)
 
     try
     {
-        // If the property name could be anything
-        if (objType.flags === TypeFlags.ANY)
-            throw '*WARNING: getProp with any object';
-
-        // If the property name is a string
-        var propName;
-        if (nameType.flags === TypeFlags.STRING && nameType.strVal !== undefined)
-        {
-            propName = nameType.strVal;
-        }
-
-        // If the property name is an integer
-        else if (nameType.flags === TypeFlags.INT)
-        {
-            // TODO: more generic test for pos int, int < arr.length
-
-            // If this is a bounded arguments access
-            if (boundedArgsGet(this.irInstr) === true)
-            {
-                // The array access is bounded
-                propName = true;
-            }
-            else
-            {
-                // For now, assume unbounded array access
-                propName = false;
-            }
-        }
-
-        // The property name could be anything
-        else
-        {
-            propName = TypeSet.any;
-        }
-
         // Perform the property lookup
-        var outType = ta.propLookup(this, objType, propName);
-
+        var outType = ta.propLookup(this, objType, nameType);
         ta.setOutType(this, outType);
     }
 
@@ -4158,7 +4175,19 @@ CallFuncInstr.prototype.spstfFlowFunc = function (ta)
     // Box an integer
     else if (callee.funcName === 'boxInt')
     {
-        retType = TypeSet.posInt;
+        retType = TypeSet.integer;
+    }
+
+    // Allocate a string
+    else if (callee.funcName === 'alloc_str')
+    {
+        retType = TypeSet.string;
+    }
+
+    // Retrieve a string from the string table
+    else if (callee.funcName === 'getTableStr')
+    {
+        retType = TypeSet.string;
     }
 
     // Box value to boolean conversion
