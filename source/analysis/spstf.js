@@ -1336,6 +1336,14 @@ SPSTF.prototype.blockItr = function ()
     // If the set at the beginning of the block changed
     if (useSet.equal(outSet) === false)
     {
+        // If this block has been updated too many times,
+        // union the new set with the old set to ensure convergence
+        if (block.updCount === undefined)
+            block.updCount = 0;
+        block.updCount++;
+        if (block.updCount > 20 * block.liveMap.length)
+            useSet = useSet.union(outSet);
+
         // Update the live set for the value
         block.liveMap.set(value, useSet);
 
@@ -1572,6 +1580,7 @@ SPSTF.prototype.addFuncDef = function (func, value)
 /**
 Kill all uses of a given value in predecessors, starting from a specified block
 */
+/*
 SPSTF.prototype.killUses = function (block, value)
 {
     var workList = new LinkedList();
@@ -1631,6 +1640,7 @@ SPSTF.prototype.killUses = function (block, value)
         }
     }
 }
+*/
 
 /**
 Add a def-use edge
@@ -1802,7 +1812,7 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         this.addFuncDef(instr.block.func, value);
 
         // Kill all uses of this value, starting from this block
-        this.killUses(instr.block, value);
+        //this.killUses(instr.block, value);
 
         // Queue this instruction's block for live value analysis
         this.queueBlock(instr.block, value);

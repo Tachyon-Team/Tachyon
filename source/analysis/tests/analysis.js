@@ -672,7 +672,6 @@ makeTypeTest(
     'norun'
 );
 
-/*
 makeTypeTest(
     [
         'programs/v8bench/deltablue.js',
@@ -682,7 +681,6 @@ makeTypeTest(
     'notypeprop',
     'norun'
 );
-*/
 
 // TODO: v8bench/crypto, currently very slow
 
