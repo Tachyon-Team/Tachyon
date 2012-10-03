@@ -642,19 +642,6 @@ makeTypeTest(
     'norun'
 );
 
-// FIXME: infinite loop
-/*
-makeTypeTest(
-    [
-        'programs/v8bench/deltablue.js',
-        'programs/v8bench/drv-deltablue.js'
-    ],
-    undefined,
-    'notypeprop',
-    'norun'
-);
-*/
-
 makeTypeTest(
     [
         'programs/v8bench/navier-stokes.js',
@@ -684,6 +671,18 @@ makeTypeTest(
     'notypeprop',
     'norun'
 );
+
+/*
+makeTypeTest(
+    [
+        'programs/v8bench/deltablue.js',
+        'programs/v8bench/drv-deltablue.js'
+    ],
+    undefined,
+    'notypeprop',
+    'norun'
+);
+*/
 
 // TODO: v8bench/crypto, currently very slow
 

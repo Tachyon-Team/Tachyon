@@ -419,7 +419,6 @@ function SPSTFInstr(irInstr, instrIdx, block)
             value,
             type,
             srcs: [],
-            numRems,
             instr
         }
     */
@@ -500,20 +499,10 @@ function SPSTF()
 SPSTF.prototype = new TypeAnalysis();
 
 /**
-Maximum number of edge removals for a given use
-*/
-SPSTF.MAX_EDGE_REMS = 10;
-
-/**
 Initialize/reset the analysis
 */
 SPSTF.prototype.init = function (options)
 {
-    /**
-    Option to disable edge removal during analysis
-    */
-    this.noEdgeRem = Boolean(options['noedgerem']);
-
     // Clear the object map
     TGObject.objMap.clear();
 
@@ -815,7 +804,6 @@ Get the SPSTFBlock instance for a given IR function
 */
 SPSTF.prototype.getFunc = function (irFunc)
 {
-
     function compPostOrder(irFunc)
     {
         var stack = [irFunc.hirCFG.entry];
@@ -846,9 +834,6 @@ SPSTF.prototype.getFunc = function (irFunc)
         }
     }
 
-
-
-
     assert (
         irFunc instanceof IRFunction,
         'expected IR function'
@@ -860,9 +845,8 @@ SPSTF.prototype.getFunc = function (irFunc)
     // If no representation has yet been created
     if (func === HashMap.NOT_FOUND)
     {
-
+        // Compute the postorder ordering for the basic blocks
         compPostOrder(irFunc);
-
 
         // Construct function representation
         var func = new SPSTFFunc(irFunc, 0, func);
@@ -924,12 +908,9 @@ SPSTF.prototype.queueBlock = function (block, value)
         'invalid value'
     );
 
-
-    
- 
     /*
+    // Queue the block, sorting by postorder    
     var newItem = { block:block, value:value };
-
     for (var itr = this.blockWorkList.getItr(); itr.valid(); itr.next())
     {
         var item = itr.get();
@@ -942,16 +923,13 @@ SPSTF.prototype.queueBlock = function (block, value)
         if (!block.irBlock || block.irBlock.orderNo < curNo)
         {
             //print('adding before');
-
             this.blockWorkList.addBefore(newItem, itr);
             return;
         }
     }
-
     this.blockWorkList.addLast(newItem);
-    */
-
-    
+    */    
+  
     this.blockWorkList.addLast({ block:block, value:value });
 }
 
@@ -1064,7 +1042,7 @@ SPSTF.prototype.instrItr = function ()
     var instr = this.instrWorkList.remFirst();
     this.instrWorkSet.rem(instr);
 
-    /*    
+    /*
     print(
         'Iterating instr: ' + 
         (instr.irInstr.parentBlock? instr.irInstr:null)
@@ -1124,6 +1102,7 @@ SPSTF.prototype.blockItr = function ()
     //    'Iterating block: ' + block.getName() /*+
     //    ((block === block.func.entry)? (' (' + block.func.getName() + ')'):'')*/
     //);
+    
     /*
     print(
         'Iterating block/value: ' + block.getName() + ' / ' + value
@@ -1150,18 +1129,6 @@ SPSTF.prototype.blockItr = function ()
                 continue;
 
             var dests = def.dests;
-
-            /*
-            // For each current dest of this definition
-            for (var i = 0; i < dests.length; ++i)
-            {
-                var use = dests[i];
-
-                // If the use is no longer present, remove the type flow edge
-                if (useSet.has(use) === false)
-                    that.remEdge(def, use);
-            }
-            */
 
             // For each use in the incoming use set
             for (var itr = useSet.getItr(); itr.valid(); itr.next())
@@ -1369,8 +1336,6 @@ SPSTF.prototype.blockItr = function ()
     // If the set at the beginning of the block changed
     if (useSet.equal(outSet) === false)
     {
-        //print('live map changed, queueing preds');
-
         // Update the live set for the value
         block.liveMap.set(value, useSet);
 
@@ -1668,142 +1633,6 @@ SPSTF.prototype.killUses = function (block, value)
 }
 
 /**
-Reset the outputs of an instruction and its subgraph of successors
-*/
-/*
-SPSTF.prototype.resetInstr = function (use, visited)
-{
-    var workList = new LinkedList();
-
-    visited = new HashSet();
-
-    var ta = this;
-
-    // Reset the definitions of an instruction
-    function resetDefs(instr)
-    {
-        // For each target
-        for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
-        {
-            var defs = instr.outVals[targetIdx];
-
-            // For each definition
-            for (var defIdx = 0; defIdx < defs.length; ++defIdx)
-            {
-                var def = defs[defIdx];
-
-                // If this is a property initialization, skip it
-                if (def.value instanceof TGProperty &&
-                    def.value.parent.origin === instr)
-                    continue;
-
-                // Reset the definition type
-                def.type = TypeSet.empty;
-
-                // Add all destinations to the work list
-                for (var i = 0; i < def.dests.length; ++i)
-                    workList.addLast(def.dests[i]);
-            }
-        }
-    }
-
-    // Reset a call instruction
-    function resetCall(instr, use)
-    {
-        var irInstr = instr.irInstr;
-
-        var useIndex;
-        for (var i = 0; i < instr.inVals.length; ++i)
-            if (instr.inVals[i].value === use.value)
-                useIndex = i;
-
-        if (useIndex === undefined)
-            return;
-
-        // Compute the call argument index
-        var argIndex = (irInstr instanceof JSNewInstr)? (useIndex-1):useIndex;
-
-        // For each target
-        for (var targetIdx = 0; targetIdx < instr.outVals.length; ++targetIdx)
-        {
-            var defs = instr.outVals[targetIdx];
-
-            // For each definition
-            for (var defIdx = 0; defIdx < defs.length; ++defIdx)
-            {
-                var def = defs[defIdx];
-
-                // If this is not the argument definition, skip it
-                if (def.value.argIndex !== argIndex &&
-                    def.value.name !== 'idxArg')
-                    continue;
-
-                // Reset the definition type
-                def.type = TypeSet.empty;
-
-                // Add all destinations to the work list
-                for (var i = 0; i < def.dests.length; ++i)
-                    workList.addLast(def.dests[i]);
-            }
-        }
-    }
-
-    // Add the use to the work list
-    workList.addLast(use);
-
-    // Until the work list is empty
-    while (workList.isEmpty() === false)
-    {
-        var use = workList.remFirst();
-        var instr = use.instr;
-        var irInstr = instr.irInstr;
-
-        // If this use was already visited, skip it
-        if (visited.has(use) === true)
-            continue;
-
-        // Mark the use as visited
-        visited.add(use);
-
-        // If this is a call instruction
-        if (irInstr instanceof JSCallInstr || 
-            irInstr instanceof JSNewInstr)
-        {
-            resetCall(instr, use);
-        }
-
-        // Other kinds of instructions
-        else
-        {
-            resetDefs(instr);
-        }
-    }
-
-    // For each visited use
-    for (var itr = visited.getItr(); itr.valid(); itr.next())
-    {
-        var use = itr.get();
-
-        this.queueInstr(use.instr);
-
-        // Don't remove objects from the set of objects touched by
-        // property write instructions
-        if (use.instr.irInstr instanceof PutPropInstr &&
-            use.value === use.instr.irInstr.uses[0])
-            continue;
-        
-        // Recompute the type for this use
-        use.type = TypeSet.empty;
-        for (var i = 0; i < use.srcs.length; ++i)
-        {
-            var src = use.srcs[i];
-            use.type = use.type.union(src.type);
-        }
-    }
-}
-*/
-
-/**
 Add a def-use edge
 */
 SPSTF.prototype.addEdge = function (
@@ -1854,78 +1683,6 @@ SPSTF.prototype.addEdge = function (
 }
 
 /**
-Remove a def-use edge
-*/
-/*
-SPSTF.prototype.remEdge = function (
-    def,
-    use
-)
-{
-    // If edge removal is disabled, return
-    if (this.noEdgeRem == true)
-        return;
-
-    //print('Removing edge');
-    //print('  val : ' + def.value);
-    //print('  from: ' + def.instr);
-    //print('  to  : ' + use.instr);
-
-    assert (
-        def.value === use.value,
-        'def-use value mismatch'
-    );
-
-    assert (
-        use.instr instanceof SPSTFInstr,
-        'invalid use object'
-    );
-
-    // If the maximum number of edge removals for the use was reached,
-    // don't remove the edge
-    if (use.numRems >= SPSTF.MAX_EDGE_REMS)
-        return;
-
-    // Increment the number of edge removals for the use
-    use.numRems++;
-
-    // If the maximum removal count is reached, print a warning
-    if (use.numRems === SPSTF.MAX_EDGE_REMS)
-        print('WARNING: max edge rem count reached');
-
-    // Remove mutual def-use edges
-    arraySetRem(def.dests, use);
-    arraySetRem(use.srcs, def);
-
-    // Compute the updated use type
-    var useType = TypeSet.empty;
-    for (var i = 0; i < use.srcs.length; ++i)
-    {
-        var srcType = use.srcs[i].type;
-        useType = useType.union(srcType);
-    }
-
-    // If the use type changed
-    if (useType.equal(use.type) === false)
-    {
-        //print('type changed');
-        //print('  from: ' + use.type);
-        //print('  to  : ' + useType);
-
-        use.type = useType;
-
-        // Reset the instruction's and its successors
-        this.resetInstr(use);
-
-        // Queue the instruction for analysis
-        this.queueInstr(use.instr);
-    }
-
-    this.numEdges--;
-}
-*/
-
-/**
 Get the type set for a value
 */
 SPSTF.prototype.getType = function (instr, value)
@@ -1967,7 +1724,6 @@ SPSTF.prototype.getType = function (instr, value)
             value: value,
             type: TypeSet.empty,
             srcs: [],
-            numRems: 0,
             instr: instr
         };
 
@@ -2421,11 +2177,12 @@ SPSTF.prototype.propLookup = function (instr, objType, nameType, visited)
         // If the property name could be anything
         if ((nameType.flags & TypeFlags.STRING && !nameType.strVal) ||
             (nameType.flags & TypeFlags.OBJEXT) ||
-            (nameType.flags & TypeFlags.NULL)   ||
-            (nameType.flags & TypeFlags.UNDEF)  ||
             (nameType.flags & TypeFlags.TRUE)   ||
             (nameType.flags & TypeFlags.FALSE))
         {
+            print('Unioning all property types');
+            print('  key type: ' + nameType);
+
             // Union all property types
             for (propName in obj.props)
             {
@@ -2451,6 +2208,28 @@ SPSTF.prototype.propLookup = function (instr, objType, nameType, visited)
                     this.getType(
                         instr,
                         this.getPropNode(obj, nameType.strVal)
+                    )
+                );
+            }
+
+            // If the property may be the undefined value
+            if (nameType.flags & TypeFlags.UNDEF)
+            {
+                var propType = propType.union(
+                    this.getType(
+                        instr,
+                        this.getPropNode(obj, "undefined")
+                    )
+                );
+            }
+
+            // If the property may be the null value
+            if (nameType.flags & TypeFlags.NULL)
+            {
+                var propType = propType.union(
+                    this.getType(
+                        instr,
+                        this.getPropNode(obj, "null")
                     )
                 );
             }
