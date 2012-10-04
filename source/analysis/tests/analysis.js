@@ -524,6 +524,10 @@ makeTypeTest(
 );
 
 makeTypeTest(
+    'programs/type_analysis/regress_deltablue.js'
+);
+
+makeTypeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     undefined,
     'nostdlib',

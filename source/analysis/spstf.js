@@ -1495,6 +1495,15 @@ SPSTF.prototype.newObject = function (
         );
         this.setType(instr, summaryObj.proto, protoSet);
 
+        // Initialize summary object properties to missing
+        // This is so non-existent properties show as undefined
+        for (propName in summaryObj.props)
+        {
+            var summProp = summaryObj.getPropNode(propName);
+            if (this.hasOutDef(instr, summProp) === false)
+                this.setType(instr, summProp, TypeSet.missing);
+        }
+
         // For each named property of the recent object
         for (propName in recentObj.props)
         {
