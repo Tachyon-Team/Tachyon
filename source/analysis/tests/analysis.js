@@ -43,8 +43,14 @@
 /**
 Create a type analysis test
 */
-function makeTypeTest(fileList, testName)
+function makeTypeTest(fileList, testName, validator)
 {
+    assert (
+        typeof validator === 'function' ||
+        validator === undefined,
+        'invalid analysis validator function for: ' + fileList
+    );
+
     if (typeof fileList === 'string')
         fileList = [fileList];
 
@@ -61,7 +67,7 @@ function makeTypeTest(fileList, testName)
     var runSPSTF = true;
     var runProgram = true;
 
-    for (var i = 2; i < arguments.length; ++i)
+    for (var i = 3; i < arguments.length; ++i)
     {
         var flag = arguments[i];
 
@@ -89,6 +95,8 @@ function makeTypeTest(fileList, testName)
             const params = config.hostParams;
             var analysis = new TypeProp(params);
             analysis.testOnFiles(fileList, {'nostdlib':noStdLib});
+            if (validator)
+                validator(testName, analysis);
         }
     }
 
@@ -99,12 +107,34 @@ function makeTypeTest(fileList, testName)
             const params = config.hostParams;
             var analysis = new SPSTF(params);
             analysis.testOnFiles(fileList, {'nostdlib':noStdLib});
+            if (validator)
+                validator(testName, analysis);
         }
     }
 
     if (runProgram === true)
     {
         tests.programs.type_analysis[testName] = genProgTest(fileList);
+    }
+}
+
+
+function typeStatValidator(numUnreach)
+{
+    return function (testName, analysis)
+    {
+        var stats = analysis.compTypeStats();        
+
+        var unreachStat = stats['num-fun-unreach'];
+
+        if (unreachStat.cnt > numUnreach)
+        {
+            error(
+                testName + ':\n' + 
+                'found ' + unreachStat.cnt + ' unreachable functions, ' +
+                'expected at most ' + numUnreach
+            );
+        }
     }
 }
 
@@ -126,11 +156,13 @@ tests.spstf = tests.testSuite();
 makeTypeTest(
     'programs/type_analysis/global_add.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/string_simple.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -138,11 +170,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/array_simple.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/call_simple.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -150,11 +184,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/func_2ret.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/func_2calls.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -162,11 +198,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/func_calls.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/global_def.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -174,11 +212,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/arith_simple.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/cmp_simple.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -186,11 +226,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/fib.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/loop_sum.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -198,11 +240,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/obj_simple.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/obj_2paths.js', 
+    undefined,
     undefined,
     'nostdlib',
     'norun'
@@ -211,6 +255,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/obj_3paths.js', 
     undefined,
+    undefined,
     'nostdlib',
     'norun'
 );
@@ -218,11 +263,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/obj_chain.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/get_undef.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -230,11 +277,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/linked_list.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/cond_return.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -242,11 +291,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/cond_prop.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/cond_global.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -254,11 +305,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/cond_objs.js', 
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/cond_call.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -266,11 +319,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/cond_pass2.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/cond_ret_obj.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -278,11 +333,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/loop_obj.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/loop_obj2.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -290,11 +347,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/loop_cond_obj.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/array_sum.js', 
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -302,11 +361,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/obj_methods.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/obj_init.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -314,11 +375,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/obj_init_junk.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/factory_2calls.js',
+    undefined,
     undefined,
     'nostdlib',
     'notypeprop' // FIXME: TypeProp does strong updates wrong!
@@ -327,11 +390,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/factory_2paths.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/factory_global.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -339,11 +404,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/factory_cond.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/factory_inc.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -351,11 +418,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/ctor_simple.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/ctor_array.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -363,11 +432,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/ctor_strong.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/ctor_2calls.js',
+    undefined,
     undefined,
     'nostdlib',
     'notypeprop' // FIXME: TypeProp does strong updates wrong!
@@ -376,11 +447,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/proto_method.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/proto_chain.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -388,11 +461,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/proto_clos.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/proto_loop.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -400,11 +475,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/proto_cond.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/args_sum.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -412,11 +489,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/args_max.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/clos_simple.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -427,6 +506,7 @@ makeTypeTest(
         'programs/type_analysis/multi_file2.js'
     ],
     'multi_file',
+    undefined,
     'nostdlib'
 );
 
@@ -453,11 +533,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/stdlib_call.js',
     undefined,
+    undefined,
     'notypeprop' // FIXME: no support for .call in TypeProp
 );
 
 makeTypeTest(
     'programs/type_analysis/stdlib_apply.js',
+    undefined,
     undefined,
     'notypeprop' // FIXME: no support for .call in TypeProp
 );
@@ -465,11 +547,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/regress_arith.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/regress_cond.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -477,11 +561,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/regress_btree.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/regress_btree2.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -489,11 +575,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/regress_btree3.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/regress_btree4.js',
+    undefined,
     undefined,
     'nostdlib',
     'norun'
@@ -502,11 +590,13 @@ makeTypeTest(
 makeTypeTest(
     'programs/type_analysis/regress_btree5.js',
     undefined,
+    undefined,
     'nostdlib'
 );
 
 makeTypeTest(
     'programs/type_analysis/regress_crypto.js',
+    undefined,
     undefined,
     'nostdlib'
 );
@@ -530,6 +620,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/bitops-3bit-bits-in-byte.js',
     undefined,
+    typeStatValidator(0),
     'nostdlib',
     'norun'
 );
@@ -537,6 +628,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/bitops-bitwise-and.js',
     undefined,
+    typeStatValidator(0),
     'nostdlib',
     'norun'
 );
@@ -544,6 +636,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/access-binary-trees.js',
     undefined,
+    typeStatValidator(0),
     'notypeprop',
     'norun'
 );
@@ -551,6 +644,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/access-fannkuch.js',
     undefined,
+    typeStatValidator(0),
     'notypeprop',
     'norun'
 );
@@ -558,6 +652,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/access-nbody.js',
     undefined,
+    typeStatValidator(1),
     'notypeprop',
     'norun'
 );
@@ -565,6 +660,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/access-nsieve.js',
     undefined,
+    typeStatValidator(1),
     'notypeprop',
     'norun'
 );
@@ -572,6 +668,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/bitops-bits-in-byte.js',
     undefined,
+    typeStatValidator(0),
     'nostdlib',
     'notypeprop',
     'norun'
@@ -580,6 +677,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/bitops-nsieve-bits.js',
     undefined,
+    typeStatValidator(1),
     'notypeprop',
     'norun'
 );
@@ -587,12 +685,22 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/3d-morph.js',
     undefined,
+    typeStatValidator(0),
     'norun'
 );
 
 makeTypeTest(
     'programs/sunspider/3d-cube.js',
     undefined,
+    typeStatValidator(1),
+    'notypeprop',
+    'norun'
+);
+
+makeTypeTest(
+    'programs/sunspider/3d-raytrace.js',
+    undefined,
+    typeStatValidator(1),
     'notypeprop',
     'norun'
 );
@@ -600,6 +708,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/crypto-sha1.js',
     undefined,
+    typeStatValidator(9),
     'notypeprop',
     'norun'
 );
@@ -607,6 +716,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/crypto-md5.js',
     undefined,
+    typeStatValidator(9),
     'notypeprop',
     'norun'
 );
@@ -614,6 +724,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/crypto-aes.js',
     undefined,
+    typeStatValidator(11),
     'notypeprop',
     'norun'
 );
@@ -621,6 +732,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/math-cordic.js',
     undefined,
+    typeStatValidator(2),
     'notypeprop',
     'norun'
 );
@@ -628,6 +740,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/math-partial-sums.js',
     undefined,
+    typeStatValidator(0),
     'notypeprop',
     'norun'
 );
@@ -635,6 +748,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/math-spectral-norm.js',
     undefined,
+    typeStatValidator(0),
     'notypeprop',
     'norun'
 );
@@ -642,6 +756,7 @@ makeTypeTest(
 makeTypeTest(
     'programs/sunspider/string-base64.js',
     undefined,
+    typeStatValidator(0),
     'notypeprop',
     'norun'
 );
@@ -652,6 +767,7 @@ makeTypeTest(
         'programs/v8bench/drv-navier-stokes.js'
     ],
     undefined,
+    typeStatValidator(7),
     'notypeprop',
     'norun'
 );
@@ -662,6 +778,7 @@ makeTypeTest(
         'programs/v8bench/drv-richards.js'
     ],
     undefined,
+    typeStatValidator(6),
     'notypeprop',
     'norun'
 );
@@ -672,6 +789,7 @@ makeTypeTest(
         'programs/v8bench/drv-splay.js'
     ],
     undefined,
+    typeStatValidator(0),
     'notypeprop',
     'norun'
 );
@@ -682,6 +800,7 @@ makeTypeTest(
         'programs/v8bench/drv-deltablue.js'
     ],
     undefined,
+    typeStatValidator(1),
     'notypeprop',
     'norun'
 );

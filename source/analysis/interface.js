@@ -181,8 +181,8 @@ TypeAnalysis.prototype.logResults = function ()
     var stats = this.compTypeStats();
 
     // Print the statistics
-    for (var i = 0; i < stats.length; ++i)
-        print(stats[i]);
+    for (statName in stats)
+        print(stats[statName]);
     print('');
 
     // Log analysis time
@@ -240,7 +240,9 @@ TypeAnalysis.prototype.dumpTypes = function ()
             var type = useTypes[i];
             var refNode = instr.refNodes[i];
 
-            if (refNode instanceof Ref)
+            if (refNode instanceof Ref &&
+                use.type === IRType.box &&
+                use.staticVar !== true)
                 logVarType(refNode, type);
         }
     }
@@ -383,14 +385,20 @@ TypeAnalysis.prototype.compTypeStats = function ()
         return this.name + ': ' + percent + '% (' + this.trueCnt + '/' + total + ')';
     }
 
-    // List of statistics to gather
-    var stats = [];
+    // Map of statistics to gather
+    var stats = {};
 
-    function addStat(stat, visitInstr, visitFunc)
+    function addStat(key, stat, visitInstr, visitFunc)
     {
+        assert (
+            stats.hasOwnProperty(key) === false,
+            'already have stat for key'
+        );
+
         stat.visitInstr = visitInstr;
         stat.visitFunc = visitFunc;
-        stats.push(stat);
+        stats[key] = stat;
+
         return stat;
     }
 
@@ -405,156 +413,6 @@ TypeAnalysis.prototype.compTypeStats = function ()
     ==> Reads with at most one type:                                              4,122
     ==> Reads with at least two types:                                            897
     */
-
-    /*
-    addStat(
-        new MaxStat('max obj set size'),
-        function visitInstr(instr, outType, useTypes)
-        {
-            if (outType instanceof TypeSet)
-                this.count(outType.getNumObjs());
-        }
-    );
-
-    addStat(
-        new PercentStat('getProp on object only'),
-        function visitInstr(instr, outType, useTypes)
-        {
-            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
-                this.count((useTypes[0].flags & ~TypeFlags.EXTOBJ) === 0);
-        }
-    );
-
-    var getSingle   = addStat(new PercentStat('getProp on known object'));
-    var getDef      = addStat(new PercentStat('getProp output not undef'));
-
-    var putObj      = addStat(new PercentStat('putProp on object only'));
-    var putSingle   = addStat(new PercentStat('putProp on known object'));
-
-    var callMono    = addStat(new PercentStat('function call monomorphic'));
-
-    var arithInt    = addStat(new PercentStat('arith op on int & int'));
-    var cmpInt      = addStat(new PercentStat('compare op on int & int'));
-
-    var branchKnown = addStat(new PercentStat('branch direction known'));
-    */
-
-    /*
-    function visitInstr(instr)
-    {
-        assert (
-            instr instanceof IRInstr,
-            'invalid instruction'
-        );
-
-        // Get property instruction
-        if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
-        {
-            var u0 = useTypes[0];
-
-            getSingle.count(
-                (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
-                u0.getNumObjs() === 1
-            );
-
-            getDef.count((outType.flags & TypeFlags.UNDEF) === 0);
-        }
-
-        // Put property instruction
-        else if (instr instanceof PutPropInstr)
-        {
-            var u0 = useTypes[0];
-
-            putObj.count((u0.flags & ~TypeFlags.EXTOBJ) === 0);
-
-            putSingle.count(
-                (u0.flags & ~TypeFlags.EXTOBJ) === 0 &&
-                u0.getNumObjs() === 1
-            );
-        }
-
-        // Function call/new instruction
-        else if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
-        {
-            var u0 = useTypes[0];
-
-            callMono.count(u0.getNumObjs() === 1);
-        }
-
-        // Arithmetic instructions
-        else if (instr instanceof JSArithInstr)
-        {
-            var u0 = useTypes[0];
-            var u1 = useTypes[1];
-
-            arithInt.count(u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT);
-        }
-
-        // Comparison instructions
-        else if (instr instanceof JSCompInstr)
-        {
-            var u0 = useTypes[0];
-            var u1 = useTypes[1];
-
-            cmpInt.count(u0.flags === TypeFlags.INT && u1.flags === TypeFlags.INT);
-        }
-
-        // If instruction
-        else if (instr instanceof IfInstr)
-        {
-            var u0 = useTypes[0];
-            var u1 = useTypes[1];
-
-            branchKnown.count(
-                (u0.flags === TypeFlags.TRUE || u0.flags === TypeFlags.FALSE) &&
-                (u1.flags === TypeFlags.TRUE || u1.flags === TypeFlags.FALSE)
-            );
-        }
-    }
-    */
-
-    addStat(
-        new PercentStat('Call/construct nodes that are certain to never call non-functions'),
-        function visitInstr(instr, outType, useTypes)
-        {
-            if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
-            {
-                this.count(
-                    (useTypes[0].flags & ~TypeFlags.FUNCTION) === 0
-                );
-            }
-        }
-    );
-
-    addStat(
-        new PercentStat('Property access nodes that are certain to never have null/undef base'),
-        function visitInstr(instr, outType, useTypes)
-        {
-            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
-            {
-                this.count(
-                    (useTypes[0].flags & (TypeFlags.NULL | TypeFlags.UNDEF)) === 0
-                );
-            }
-        }
-    );
-
-    // TODO: undef is not the same as missing
-    addStat(
-        new PercentStat('Fixed-property read nodes that are certain to never have absent property'),
-        function visitInstr(instr, outType, useTypes)
-        {
-            if ((instr instanceof GetPropInstr || instr instanceof GetGlobalInstr) == false)
-                return;
-
-            if (typeof instr.uses[1].value !== 'string')
-                return;
-
-            this.count(
-                (useTypes[0].flags & TypeFlags.UNDEF) === 0
-            );
-        }
-    );
 
     // TODO: does Moller separate int/float, true/false?
     function isSingleton(type)
@@ -574,6 +432,53 @@ TypeAnalysis.prototype.compTypeStats = function ()
     }
 
     addStat(
+        'call-always-fun',
+        new PercentStat('Call/construct nodes that are certain to never call non-functions'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof JSCallInstr || instr instanceof JSNewInstr)
+            {
+                this.count(
+                    (useTypes[0].flags & ~TypeFlags.FUNCTION) === 0
+                );
+            }
+        }
+    );
+
+    addStat(
+        'getpop-valid-base',
+        new PercentStat('Property access nodes that are certain to never have null/undef base'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
+            {
+                this.count(
+                    (useTypes[0].flags & (TypeFlags.NULL | TypeFlags.UNDEF)) === 0
+                );
+            }
+        }
+    );
+
+    // TODO: undef is not the same as missing
+    addStat(
+        'getpop-not-missing',
+        new PercentStat('Fixed-property read nodes that are certain to never have absent property'),
+        function visitInstr(instr, outType, useTypes)
+        {
+            if ((instr instanceof GetPropInstr || instr instanceof GetGlobalInstr) == false)
+                return;
+
+            if (typeof instr.uses[1].value !== 'string')
+                return;
+
+            this.count(
+                (useTypes[0].flags & TypeFlags.UNDEF) === 0
+            );
+        }
+    );
+
+    addStat(
+        'getpop-singleton',
         new PercentStat('Property reads with singleton results'),
         function visitInstr(instr, outType, useTypes)
         {
@@ -587,6 +492,7 @@ TypeAnalysis.prototype.compTypeStats = function ()
     );
 
     addStat(
+        'var-singleton',
         new PercentStat('Variable reads with singleton results'),
         function visitInstr(instr, outType, useTypes)
         {
@@ -606,6 +512,7 @@ TypeAnalysis.prototype.compTypeStats = function ()
     );
 
     addStat(
+        'num-fun',
         new CountStat('Total number of functions'),
         undefined,
         function visitFunc(func)
@@ -615,6 +522,7 @@ TypeAnalysis.prototype.compTypeStats = function ()
     );
 
     addStat(
+        'num-fun-unreach',
         new CountStat('Number of unreachable functions'),
         undefined,
         function visitFunc(func)
@@ -639,9 +547,9 @@ TypeAnalysis.prototype.compTypeStats = function ()
             return;
 
         // Update the statistics
-        for (var i = 0; i < stats.length; ++i)
+        for (statName in stats)
         {
-            var stat = stats[i];
+            var stat = stats[statName];
             if (stat.visitFunc)
                 stat.visitFunc.call(stat, irFunc);
         }
@@ -677,9 +585,9 @@ TypeAnalysis.prototype.compTypeStats = function ()
                 }
 
                 // Update the statistics
-                for (var k = 0; k < stats.length; ++k)
+                for (statName in stats)
                 {
-                    var stat = stats[k];
+                    var stat = stats[statName];
                     if (stat.visitInstr)
                         stat.visitInstr.call(stat, instr, outType, useTypes);
                 }

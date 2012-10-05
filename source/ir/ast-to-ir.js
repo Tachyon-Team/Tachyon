@@ -3638,6 +3638,9 @@ function refToIR(context)
         {
             // Use the value of the binding
             varValueVar = context.params.staticEnv.getBinding(symName);
+
+            // FIXME: hack, mark the value as a static variable
+            varValueVar.staticVar = true;
         }
         else
         {
@@ -3738,11 +3741,8 @@ function refToIR(context)
         var varValue = varValueVar;
     }
 
-
     // FIXME: Hack: mark the ast node of the reference on the value
-    if ((varValue instanceof IRConst) === false)
-        varValue.refNode = context.astNode
-
+    varValue.refNode = context.astNode
 
     // The variable value is the output value
     context.setOutput(curContext.entryBlock, varValue);
