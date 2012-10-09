@@ -2299,6 +2299,8 @@ SPSTF.prototype.propLookup = function (instr, objType, nameType, visited)
             if (protoType.flags & TypeFlags.NULL)
             {
                 propType = propType.union(TypeSet.undef);
+
+                instr.irInstr.missingProp = true;
             }
 
             // Remove the missing flag from the property type

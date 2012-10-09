@@ -459,9 +459,8 @@ TypeAnalysis.prototype.compTypeStats = function ()
         }
     );
 
-    // TODO: undef is not the same as missing
     addStat(
-        'getpop-not-missing',
+        'getprop-not-missing',
         new PercentStat('Fixed-property read nodes that are certain to never have absent property'),
         function visitInstr(instr, outType, useTypes)
         {
@@ -472,20 +471,20 @@ TypeAnalysis.prototype.compTypeStats = function ()
                 return;
 
             this.count(
-                (useTypes[0].flags & TypeFlags.UNDEF) === 0
+                instr.missingProp !== true
             );
         }
     );
 
     addStat(
-        'getpop-singleton',
+        'getprop-singleton',
         new PercentStat('Property reads with singleton results'),
         function visitInstr(instr, outType, useTypes)
         {
             if (instr instanceof GetPropInstr || instr instanceof GetGlobalInstr)
             {
                 this.count(
-                    isSingleton(useTypes[0])
+                    isSingleton(outType)
                 );
             }
         }
