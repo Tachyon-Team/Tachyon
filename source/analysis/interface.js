@@ -419,8 +419,8 @@ TypeAnalysis.prototype.compTypeStats = function ()
     {
         var fl = type.flags;
 
-        return (
-            ((fl & ~TypeFlags.OBJEXT) && type.getNumObjs() == 1) ||
+        var v = (
+            ((fl & ~TypeFlags.EXTOBJ) === 0 && type.getNumObjs() === 1) ||
             (fl === TypeFlags.TRUE) ||
             (fl === TypeFlags.FALSE) ||
             (fl === TypeFlags.NULL) ||
@@ -429,6 +429,10 @@ TypeAnalysis.prototype.compTypeStats = function ()
             (fl === TypeFlags.INT) ||
             (fl === TypeFlags.FLOAT)
         );
+
+        //print(type + ' => ' + v);
+
+        return v;
     }
 
     addStat(
