@@ -1064,7 +1064,7 @@ SPSTF.prototype.instrItr = function ()
     // Call the flow function for this instruction
     instr.flowFunc(this);
 
-    /*
+    
     var outType = this.getOutType(instr);
     if (outType.flags === TypeFlags.ANY)
     {
@@ -1075,7 +1075,7 @@ SPSTF.prototype.instrItr = function ()
         for (var i = 0; i < instr.irInstr.uses.length; ++i)
             print('  ' + this.getInType(instr, i));
     }
-    */
+    
 
     // Increment the instruction iteration count
     this.itrCount++;
@@ -1323,8 +1323,11 @@ SPSTF.prototype.blockItr = function ()
     {
         var instr = block.instrs[i];
 
-        // Process defs of the instruction
-        useSet = processDefs(instr, value, useSet, 0);
+        if (useSet.length > 0)
+        {
+            // Process defs of the instruction
+            useSet = processDefs(instr, value, useSet, 0);
+        }
 
         // Process uses of the instruction
         useSet = processUses(instr, value, useSet);
