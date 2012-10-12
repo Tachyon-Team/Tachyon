@@ -118,6 +118,9 @@ SPSTFUseSet.prototype.add = function (use)
 
 SPSTFUseSet.prototype.rem = function (use)
 {
+
+
+
     var newSet = this.copy();
 
     HashSet.prototype.rem.call(newSet, use);
@@ -1064,7 +1067,7 @@ SPSTF.prototype.instrItr = function ()
     // Call the flow function for this instruction
     instr.flowFunc(this);
 
-    
+    /*
     var outType = this.getOutType(instr);
     if (outType.flags === TypeFlags.ANY)
     {
@@ -1075,7 +1078,7 @@ SPSTF.prototype.instrItr = function ()
         for (var i = 0; i < instr.irInstr.uses.length; ++i)
             print('  ' + this.getInType(instr, i));
     }
-    
+    */
 
     // Increment the instruction iteration count
     this.itrCount++;
@@ -1176,23 +1179,28 @@ SPSTF.prototype.blockItr = function ()
     */
     function filterPhis(useSet, pred, succ, value)
     {
-        // For each use in the set
-        for (var itr = useSet.getItr(); itr.valid(); itr.next())
-        {
-            var use = itr.get();
-            var instr = use.instr;
-            var irInstr = instr.irInstr;
+        if (useSet.length === 0)
+            return useSet;
 
-            // If this is not a phi node from the next block, skip it
-            if (instr.block !== succ || (irInstr instanceof PhiInstr) === false)
-                continue;
+        for (var i = 0; i < succ.instrs.length; ++i)
+        {
+            var irInstr = succ.instrs[i].irInstr;
+            
+            if ((irInstr instanceof PhiInstr) === false)
+                break;
 
             var predIdx = irInstr.preds.indexOf(pred.irBlock);
 
-            // If the value is not meant for this block,
-            // remove the use associated with this phi node
-            if (predIdx === -1 || value !== irInstr.uses[predIdx])
-                useSet = useSet.rem(use);
+            if (predIdx === -1)
+                continue;
+
+            var use = irInstr.uses[predIdx];
+
+            if (use !== value)
+                continue;
+
+            if (useSet.has(value) === true)
+                useSet = useSet.rem(value);
         }
 
         return useSet;
@@ -1332,6 +1340,7 @@ SPSTF.prototype.blockItr = function ()
         // Process uses of the instruction
         useSet = processUses(instr, value, useSet);
     }
+
 
     // Get the live set at the beginning of the block
     var outSet = block.liveMap.get(value);
