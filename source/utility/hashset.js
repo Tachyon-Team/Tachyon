@@ -170,6 +170,7 @@ HashSet.prototype.intr = function (set)
             that.rem(key);
         }
     });
+
     return this;
 };
 

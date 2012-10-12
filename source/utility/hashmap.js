@@ -184,6 +184,26 @@ function HashMap(hashFunc, equalFunc, initSize)
 }
 
 /**
+Copy the map
+*/
+HashMap.prototype.copy = function ()
+{
+    var newMap = Object.create(Object.getPrototypeOf(this));
+
+    newMap.initSize = this.initSize;
+    newMap.numSlots = this.initSize;
+
+    newMap.numSlots = this.numSlots;
+    newMap.array = this.array.slice(0);
+    newMap.length = this.length;
+
+    newMap.hashFunc = this.hashFunc;
+    newMap.equalFunc = this.equalFunc;
+
+    return newMap;
+};
+
+/**
 Add or change a key-value binding in the map
 */
 HashMap.prototype.set = function (key, value)
@@ -373,20 +393,6 @@ HashMap.prototype.clear = function ()
 
     // Reset the number of items stored
     this.length = 0;
-};
-
-/**
-Copy the map
-*/
-HashMap.prototype.copy = function ()
-{
-    var newMap = new HashMap(this.hashFunc, this.equalFunc);
-
-    newMap.numSlots = this.numSlots;
-    newMap.array = this.array.slice(0);
-    newMap.length = this.length;
-
-    return newMap;
 };
 
 /**

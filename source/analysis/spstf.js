@@ -118,9 +118,6 @@ SPSTFUseSet.prototype.add = function (use)
 
 SPSTFUseSet.prototype.rem = function (use)
 {
-
-
-
     var newSet = this.copy();
 
     HashSet.prototype.rem.call(newSet, use);
