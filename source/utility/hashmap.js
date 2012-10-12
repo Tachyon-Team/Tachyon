@@ -393,6 +393,8 @@ HashMap.prototype.clear = function ()
 
     // Reset the number of items stored
     this.length = 0;
+
+    return this;
 };
 
 /**

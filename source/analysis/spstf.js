@@ -86,8 +86,15 @@ SPSTFUseSet.prototype.union = function (that)
     var newSet = this.copy();
 
     // Add the elements from the second set
-    for (var itr = that.getItr(); itr.valid(); itr.next())
-        HashSet.prototype.add.call(newSet, itr.get());
+    //for (var itr = that.getItr(); itr.valid(); itr.next())
+    //    HashSet.prototype.add.call(newSet, itr.get());
+    for (var i = 0; i < that.array.length; i += 2)
+    {
+        var val = that.array[i];
+        if (val === HashMap.FREE_KEY)
+            continue;
+        HashSet.prototype.add.call(newSet, val);
+    }
 
     assert (
         newSet.length >= this.length && newSet.length >= that.length,

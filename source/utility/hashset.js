@@ -56,36 +56,18 @@ Copyright (c) 2010 Erick Lavoie, All Rights Reserved
 */
 function HashSet(hashFunc, equalFunc, initSize)
 {
-    /**
-    Internal hash map
-    @private
-    */
-    this.hashMap = new HashMap(hashFunc, equalFunc, initSize);
-
-    /**
-    Number of items
-    @field
-    */
-    this.length = 0;
+    HashMap.call(this, hashFunc, equalFunc, initSize);
 }
 
-HashSet.prototype = {};
-
-/**
-Test if a set contains a value
-*/
-HashSet.prototype.has = function (val)
-{
-    return this.hashMap.has(val);
-};
+HashSet.prototype = Object.create(HashMap.prototype);
 
 /**
 Add a value to the set
 */
 HashSet.prototype.add = function (val)
 {
-    this.hashMap.set(val, val);
-    this.length = this.hashMap.length;
+    HashMap.prototype.set.call(this, val, val);
+
     return this;
 };
 
@@ -100,16 +82,6 @@ HashSet.prototype.addArray = function (arr)
     {
         that.add(val);    
     });
-    return this;
-};
-
-/**
-Remove a value from the set
-*/
-HashSet.prototype.rem = function (val)
-{
-    this.hashMap.rem(val);
-    this.length = this.hashMap.length;
 
     return this;
 };
@@ -120,10 +92,12 @@ Remove all values in array from the set
 HashSet.prototype.remArray = function (arr)
 {
     const that = this;
+
     arr.forEach(function (val)
     {
         that.rem(val);
     });
+
     return this;
 };
 
@@ -134,10 +108,10 @@ HashSet.prototype.diff = function (set)
 {
     const that = this;
 
-    for (var it = set.hashMap.getItr(); it.valid(); it.next())
+    for (var it = set.getItr(); it.valid(); it.next())
     {
         var item = it.get();
-        that.rem(item.key);
+        that.rem(item);
     };
     
     return this;
@@ -146,11 +120,11 @@ HashSet.prototype.diff = function (set)
 /**
 In-place union
 */
-HashSet.prototype.union = function (set)
+HashSet.prototype.union = function (that)
 {
-    for (var it = set.hashMap.getItr(); it.valid(); it.next())
+    for (var it = that.getItr(); it.valid(); it.next())
     {
-        this.add(it.get().key);    
+        this.add(it.get());    
     }
 
     return this;
@@ -163,7 +137,7 @@ HashSet.prototype.intr = function (set)
 {
     const that = this;
 
-    this.hashMap.getKeys().forEach(function (key)
+    this.getKeys().forEach(function (key)
     {
         if (!set.has(key))
         {
@@ -177,45 +151,18 @@ HashSet.prototype.intr = function (set)
 /**
 Test set for equality
 */
-HashSet.prototype.equal = function (set)
+HashSet.prototype.equal = function (that)
 {
-    if (set.length !== this.length)
-    {
+    if (that.length !== this.length)
         return false;
+
+    for (var it = HashMap.prototype.getItr.call(that); it.valid(); it.next())
+    {
+        if (this.has(it.get().key) === false)
+            return false;
     }
 
-    for (var it = set.hashMap.getItr(); it.valid(); it.next())
-    {
-        if(!set.has(it.get().key))
-        {
-            return false;    
-        }
-    };
-
     return true;
-};
-
-/**
-Clear the set content
-*/
-HashSet.prototype.clear = function ()
-{
-    this.hashMap.clear();
-    this.length = 0;
-    return this;
-};
-
-/**
-Copy the set
-*/
-HashSet.prototype.copy = function ()
-{
-    var h = Object.create(Object.getPrototypeOf(this));
-
-    h.hashMap = this.hashMap.copy();
-    h.length = this.length;
-
-    return h;
 };
 
 /**
@@ -223,8 +170,9 @@ Iterate through all items
 */
 HashSet.prototype.getItr = function ()
 {
-    // Redefine the get function because we only need to 
-    // iterate through keys
+    var itr = HashMap.prototype.getItr.call(this);
+
+    // Redefine the get function because we only need to iterate through keys
     function get()
     {
         assert(
@@ -234,9 +182,8 @@ HashSet.prototype.getItr = function ()
 
         return this.map.array[this.index];
     }
-
-    var itr = this.hashMap.getItr();
     itr.get = get;
+
     return itr;
 };
 
