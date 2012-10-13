@@ -1485,7 +1485,7 @@ SPSTF.prototype.newObject = function (
         numClosVars,
         true
     );
-    this.setType(instr, recentObj.proto, protoSet);
+    this.setType(instr, recentObj.proto, protoSet, undefined, false);
 
     // Initialize recent object properties to missing
     // This is so non-existent properties show as undefined
@@ -1508,7 +1508,7 @@ SPSTF.prototype.newObject = function (
             numClosVars,
             false
         );
-        this.setType(instr, summaryObj.proto, protoSet);
+        this.setType(instr, summaryObj.proto, protoSet, undefined, false);
 
         // Initialize summary object properties to missing
         // This is so non-existent properties show as undefined
@@ -1600,71 +1600,6 @@ SPSTF.prototype.addFuncDef = function (func, value)
             workList.push(func.callSites[i].block.func);
     }
 }
-
-/**
-Kill all uses of a given value in predecessors, starting from a specified block
-*/
-/*
-SPSTF.prototype.killUses = function (block, value)
-{
-    var workList = new LinkedList();
-
-    workList.addLast(block);
-
-    // Until the work list is empty
-    while (workList.isEmpty() === false)
-    {
-        var block = workList.remFirst();
-
-        // If the value is not live in this block, skip it
-        if (block.liveMap.get(value).length === 0)
-            continue;
-
-        // Kill all live uses for this value
-        block.liveMap.killLive(value);
-
-        // If this is a function entry block
-        if (block === block.func.entry)
-        {
-            var func = block.func;
-
-            // Queue the call site blocks
-            for (var i = 0; i < func.callSites.length; ++i)
-            {
-                var callSite = func.callSites[i];
-                workList.addLast(callSite.block);
-            }
-        }
-        else
-        {
-            // For each predecessor block
-            for (var i = 0; i < block.preds.length; ++i)
-            {
-                var pred = block.preds[i];
-
-                // Queue the predecessor
-                workList.addLast(pred);
-
-                // Get the branch instruction of the predecessor block
-                var branch = pred.getBranch();
-
-                // If the predecessor is a call site
-                if (branch.irInstr instanceof JSCallInstr || 
-                    branch.irInstr instanceof JSNewInstr)
-                {
-                    // Queue all callee return sites
-                    for (var j = 0; j < branch.callees.length; ++j)
-                    {
-                        var callee = branch.callees[j];
-                        for (var k = 0; k < callee.retBlocks.length; ++k)
-                            workList.addLast(callee.retBlocks[k]);
-                    }
-                }
-            }
-        }
-    }
-}
-*/
 
 /**
 Add a def-use edge
@@ -1763,8 +1698,16 @@ SPSTF.prototype.getType = function (instr, value)
 
         instr.inVals.push(use);
 
-        // Queue this instruction's block for live value analysis
-        this.queueBlock(instr.block, value);
+        // If this value is path-sensitive
+        if (value.def === undefined)
+        {
+            // Queue this instruction's block for live value analysis
+            this.queueBlock(instr.block, value);
+        }
+        else
+        {
+            this.addEdge(value.def, use);
+        }
     }
 
     // Return the current use type
@@ -1774,13 +1717,16 @@ SPSTF.prototype.getType = function (instr, value)
 /**
 Set the type set for a value
 */
-SPSTF.prototype.setType = function (instr, value, type, targetIdx)
+SPSTF.prototype.setType = function (instr, value, type, targetIdx, pathSens)
 {
     //if (String(value) === 'k')
     //    print('setting type: ' + type);
 
     if (targetIdx === undefined)
         targetIdx = 0;
+
+    if (pathSens === undefined)
+        pathSens = true;
 
     assert (
         instr instanceof SPSTFInstr,
@@ -1832,14 +1778,23 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx)
         // Add the new definition to the list for this target
         defList.push(def);
 
-        // Add the definition to the function's definition set
-        this.addFuncDef(instr.block.func, value);
+        if (pathSens === true)
+        {
+            // Add the definition to the function's definition set
+            this.addFuncDef(instr.block.func, value);
 
-        // Kill all uses of this value, starting from this block
-        //this.killUses(instr.block, value);
+            // Queue this instruction's block for live value analysis
+            this.queueBlock(instr.block, value);
+        }
+        else
+        {
+            assert (
+                value.def === undefined,
+                'already have path-insensitive def for value'
+            );
 
-        // Queue this instruction's block for live value analysis
-        this.queueBlock(instr.block, value);
+            value.def = def;
+        }
     }
 
     // If the type hasn't changed, do nothing
