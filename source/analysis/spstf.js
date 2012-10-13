@@ -1345,7 +1345,6 @@ SPSTF.prototype.blockItr = function ()
         useSet = processUses(instr, value, useSet);
     }
 
-
     // Get the live set at the beginning of the block
     var outSet = block.liveMap.get(value);
 
