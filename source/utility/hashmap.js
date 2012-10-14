@@ -86,7 +86,7 @@ function defHashFunc(val)
 
     else
     {
-        if (!val.hasOwnProperty('__hashCode__'))
+        if (val.__hashCode__ === undefined)
         {
             val.__hashCode__ = defHashFunc.nextObjectSerial++;
         }
