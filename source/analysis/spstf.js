@@ -83,25 +83,38 @@ SPSTFUseSet.prototype.union = function (that)
     if (that === SPSTFUseSet.empty)
         return this;
 
-    var newSet = this.copy();
+    // Ensure that the bigger set is copied directly
+    // This will minimize the number of insertions
+    var fromSet;
+    var intoSet;
+    if (this.length < that.length)
+    {
+        fromSet = this;
+        intoSet = that.copy();
+    }
+    else
+    {
+        fromSet = that;
+        intoSet = this.copy();
+    }
 
     // Add the elements from the second set
     //for (var itr = that.getItr(); itr.valid(); itr.next())
     //    HashSet.prototype.add.call(newSet, itr.get());
-    for (var i = 0; i < that.array.length; i += 2)
+    for (var i = 0; i < fromSet.array.length; i += 2)
     {
-        var val = that.array[i];
+        var val = fromSet.array[i];
         if (val === HashMap.FREE_KEY)
             continue;
-        HashSet.prototype.add.call(newSet, val);
+        HashSet.prototype.add.call(intoSet, val);
     }
 
     assert (
-        newSet.length >= this.length && newSet.length >= that.length,
+        intoSet.length >= this.length && intoSet.length >= that.length,
         'incorrect use set union result'
     );
 
-    return newSet;
+    return intoSet;
 }
 
 SPSTFUseSet.prototype.equal = function (that)
@@ -175,14 +188,6 @@ SPSTFLiveMap.prototype.addLive = function (value, use)
     var newSet = origSet.add(use);
 
     this.set(value, newSet);
-}
-
-/**
-Kill the uses for a given value
-*/
-SPSTFLiveMap.prototype.killLive = function (value)
-{
-    this.rem(value);
 }
 
 /**
@@ -802,45 +807,11 @@ SPSTF.prototype.getBlock = function (stump, func)
     return block;
 }
 
-
-var postOrderNo = 0;
-
-
 /**
 Get the SPSTFBlock instance for a given IR function
 */
 SPSTF.prototype.getFunc = function (irFunc)
 {
-    function compPostOrder(irFunc)
-    {
-        var stack = [irFunc.hirCFG.entry];
-
-        while (stack.length > 0)
-        {
-            var node = stack.pop();
-
-            // If this node was never visited
-            if (node.orderNo === undefined)
-            {
-                node.orderNo = 0;
-                stack.push(node);
-            }
-            else
-            {
-                node.orderNo = ++postOrderNo;
-                continue;
-            }
-
-            // Push the successors
-            for (var i = 0; i < node.succs.length; ++i)
-            {
-                var succ = node.succs[i];
-                if (succ.orderNo === undefined)
-                    stack.push(succ);
-            }
-        }
-    }
-
     assert (
         irFunc instanceof IRFunction,
         'expected IR function'
@@ -852,9 +823,6 @@ SPSTF.prototype.getFunc = function (irFunc)
     // If no representation has yet been created
     if (func === HashMap.NOT_FOUND)
     {
-        // Compute the postorder ordering for the basic blocks
-        compPostOrder(irFunc);
-
         // Construct function representation
         var func = new SPSTFFunc(irFunc, 0, func);
 
@@ -914,28 +882,6 @@ SPSTF.prototype.queueBlock = function (block, value)
         value !== undefined,
         'invalid value'
     );
-
-    /*
-    // Queue the block, sorting by postorder    
-    var newItem = { block:block, value:value };
-    for (var itr = this.blockWorkList.getItr(); itr.valid(); itr.next())
-    {
-        var item = itr.get();
-
-        if (item.block.irBlock === null)
-            continue;
-
-        var curNo = item.block.irBlock.orderNo;
-
-        if (!block.irBlock || block.irBlock.orderNo < curNo)
-        {
-            //print('adding before');
-            this.blockWorkList.addBefore(newItem, itr);
-            return;
-        }
-    }
-    this.blockWorkList.addLast(newItem);
-    */    
   
     this.blockWorkList.addLast({ block:block, value:value });
 }
