@@ -443,7 +443,7 @@ function SPSTFInstr(irInstr, instrIdx, block)
         {
             value,
             type,
-            dests: []
+            dests: HashSet
         }
     */
     this.outVals = undefined;
@@ -1089,7 +1089,7 @@ SPSTF.prototype.blockItr = function ()
                 var dest = itr.get();
 
                 // If this is a new use, add a new type flow edge
-                if (arraySetHas(dests, dest) === false)
+                if (dests.has(dest) === false)
                     that.addEdge(def, dest);
             }
 
@@ -1575,12 +1575,12 @@ SPSTF.prototype.addEdge = function (
 
     assert (
         arraySetHas(use.srcs, def) === false &&
-        arraySetHas(def.dests, use) === false,
+        def.dests.has(use) === false,
         'edges already present'
     );
 
     // Add mutual def-use edges
-    def.dests.push(use);
+    def.dests.add(use);
     use.srcs.push(def);
 
     // Compute the updated use type
@@ -1717,7 +1717,7 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx, pathSens)
         var def = {
             value: value,
             type: TypeSet.empty,
-            dests: [],
+            dests: new HashSet(),
             instr: instr
         }
 
@@ -1785,9 +1785,9 @@ SPSTF.prototype.setType = function (instr, value, type, targetIdx, pathSens)
     }
 
     // Queue all the destination instructions
-    for (i = 0; i < def.dests.length; ++i)
+    for (var itr = def.dests.getItr(); itr.valid(); itr.next())
     {
-        var dest = def.dests[i];
+        var dest = itr.get();
 
         var newType = dest.type.union(type);
 

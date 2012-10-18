@@ -58,10 +58,6 @@ JSVMOPTSDEBUG = $(JSVMOPTS) --noopt
 JSVM = $(JSVMPROG) $(JSVMOPTS)
 JSVM64 = $(JSVMPROG64) $(JSVMOPTS)
 
-# JavaScript VM command with rlwrap
-RLWJSVM = rlwrap $(JSVM)
-RLWJSVM64 = rlwrap $(JSVM64)
-
 # Common program source files
 COMMON_SRCS =                           \
     utility/log.js                      \
@@ -263,12 +259,6 @@ test: all
 
 test64: all
 	$(JSVM64) $(RUN_SRCS) -- -test -v=trace
-
-shell: all
-	$(RLWJSVM) $(RUN_SRCS)
-
-shell64: all
-	$(RLWJSVM64) $(RUN_SRCS)
 
 bootstrap: all
 	time $(JSVM) $(RUN_SRCS) -- -bootstrap -v=all
