@@ -191,7 +191,7 @@ TypeAnalysis.prototype.logResults = function ()
         print('block itrs: ' + this.blockItrCount);
     if (this.numEdges !== undefined)
         print('num edges: ' + this.numEdges);
-    print('time: ' + this.totalTime.toFixed(2) + 's');
+    print('analysis time: ' + this.totalTime + 'ms');
     print('');
 }
 

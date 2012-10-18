@@ -646,7 +646,7 @@ SPSTF.prototype.init = function (options)
     this.blockItrCount = 0;
 
     /**
-    Total analysis time
+    Total analysis time in ms
     */
     this.totalTime = 0;
 
@@ -973,7 +973,7 @@ SPSTF.prototype.run = function ()
 
     // Stop the timing
     var endTimeMs = (new Date()).getTime();
-    var time = (endTimeMs - startTimeMs) / 1000;
+    var time = (endTimeMs - startTimeMs);
 
     // Update the total analysis time
     this.totalTime += time;
