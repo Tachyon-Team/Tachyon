@@ -267,14 +267,13 @@ bootstrap64: all
 	time $(JSVM64) $(RUN_SRCS) -- -bootstrap -v=all
 
 prof: all
-	$(JSVM) --prof $(RUN_SRCS) -- -test -v=trace
+	$(JSVM) --prof --prof_auto $(RUN_SRCS) -- -test -v=trace
 	deps/v8/tools/linux-tick-processor v8.log > prof_log.txt
 	rm v8.log
 
 profta: all
-	$(JSVM) --prof $(RUN_SRCS) -- -ta programs/v8bench/crypto.js programs/v8bench/drv-crypto.js
+	$(JSVM) --prof --prof_auto $(RUN_SRCS) -- -ta programs/v8bench/regexp.js programs/v8bench/drv-regexp.js
 	deps/v8/tools/linux-tick-processor v8.log > prof_log.txt
-	rm v8.log
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)
