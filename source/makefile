@@ -274,6 +274,7 @@ prof: all
 profta: all
 	$(JSVM) --prof --prof_auto $(RUN_SRCS) -- -ta programs/v8bench/regexp.js programs/v8bench/drv-regexp.js
 	deps/v8/tools/linux-tick-processor v8.log > prof_log.txt
+	rm v8.log
 
 doc: $(SRCS)
 	jsdoc -d=../doc/source $(MAIN_SRCS)

@@ -51,7 +51,7 @@ DEFAULT_JSVM="v8"
 # Install V8
 
 # 2012-10-15: Version 3.14.4
-V8_REVISION="12765"
+V8_REVISION="12648"
 
 V8_DIR="deps/v8"
 
