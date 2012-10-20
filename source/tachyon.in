@@ -57,7 +57,7 @@
 
 # Which host VM is to be used.
 
-TACHYON_JSVMPROG="${TACHYON_JSVMPROG:-@JSVMPROG@}"
+TACHYON_JSVM="${TACHYON_JSVM:-@JSVM@}"
 
 # Set the root directory of the Tachyon installation.
 
@@ -72,6 +72,6 @@ TACHYON_RUN_SRCS_ABS=`echo " ${TACHYON_RUN_SRCS}" | sed "s: : ${TACHYON_SOURCE_D
 
 #==============================================================================
 
-rlwrap "${TACHYON_JSVMPROG}" ${TACHYON_RUN_SRCS_ABS} -- "$@"
+rlwrap ${TACHYON_JSVM} ${TACHYON_RUN_SRCS_ABS} -- "$@"
 
 #==============================================================================

@@ -155,7 +155,7 @@ SPSTFUseSet.empty = new SPSTFUseSet();
 */
 function SPSTFLiveMap()
 {
-    HashMap.call(this, undefined, undefined, 3);
+    HashMap.call(this, undefined, undefined, 11);
 }
 SPSTFLiveMap.prototype = Object.create(HashMap.prototype);
 
@@ -176,18 +176,6 @@ SPSTFLiveMap.prototype.toString = function ()
     }
 
     return str;
-}
-
-/**
-Add a use for a given value
-*/
-SPSTFLiveMap.prototype.addLive = function (value, use)
-{
-    var origSet = this.get(value);
-
-    var newSet = origSet.add(use);
-
-    this.set(value, newSet);
 }
 
 /**

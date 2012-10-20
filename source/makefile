@@ -49,10 +49,7 @@ JSVMPROG = d8
 JSVMPROG64 = d8_64
 
 #JavaScript VM command options
-JSVMOPTS = --allow_natives_syntax --nocollect_maps
-
-#JavaScript VM command options when debugging
-JSVMOPTSDEBUG = $(JSVMOPTS) --noopt
+JSVMOPTS = --allow_natives_syntax --nocollect_maps --harmony --harmony-collections
 
 #JavaScript VM command
 JSVM = $(JSVMPROG) $(JSVMOPTS)
@@ -201,11 +198,11 @@ ALL_SRCS =                              \
 all: tachyon tachyon64 compiler/sources.js
 
 tachyon: makefile tachyon.in compiler/sources.js
-	sed -e "s:@JSVMPROG@:$(JSVMPROG):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon
+	sed -e "s:@JSVM@:$(JSVM):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon
 	chmod +x tachyon
 
 tachyon64: makefile tachyon.in compiler/sources.js
-	sed -e "s:@JSVMPROG@:$(JSVMPROG64):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon64
+	sed -e "s:@JSVM@:$(JSVM64):g" -e "s:@ROOT_DIR@:$(ROOT_DIR):g" -e "s:@SOURCE_DIR@:$(ROOT_DIR)/source:g" -e "s:@RUN_SRCS@:$(RUN_SRCS):g" tachyon.in > tachyon64
 	chmod +x tachyon64
 
 compiler/sources.js: makefile compiler/sources.js.in
