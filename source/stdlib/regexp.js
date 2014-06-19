@@ -51,6 +51,7 @@ RegExpParser.prototype.parse = function (
     pattern
 )
 {
+    assert(typeof pattern === "string");
     this.pattern = pattern;
 
     // Init current char cursor.
