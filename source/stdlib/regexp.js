@@ -51,7 +51,8 @@ RegExpParser.prototype.parse = function (
     pattern
 )
 {
-    assert(typeof pattern === "string");
+    if (typeof pattern === "string")
+        throw "Patterns should be strings"
     this.pattern = pattern;
 
     // Init current char cursor.
